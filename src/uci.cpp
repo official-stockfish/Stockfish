@@ -43,26 +43,10 @@
 
 namespace {
 
-  // UCIInputParser is a class for parsing UCI input.  The class is
-  // very simple, and basically just consist of a string stream
-  // built on a given input string.  There are methods for checking
-  // if we are at the end of the line, for getting the next token
-  // (defined as any whitespace-delimited sequence of characters),
-  // and for getting the rest of the line as a single string.
+  // UCIInputParser is a class for parsing UCI input.  The class
+  // is actually a string stream built on a given input string.
 
-  class UCIInputParser {
-
-  public:
-    UCIInputParser(const std::string &line);
-    std::string get_next_token();
-    std::string get_rest_of_line();
-    bool at_end_of_line();
-
-  private:
-    std::istringstream inputLineStream;
-
-  };
-
+  typedef std::istringstream UCIInputParser;
 
   // The root position.  This is set up when the user (or in practice, the GUI)
   // sends the "position" UCI command.  The root position is sent to the think()
@@ -70,7 +54,7 @@ namespace {
   Position RootPosition;
 
   // Local functions
-  void wait_for_command();
+  void get_command();
   void handle_command(const std::string &command);
   void set_option(UCIInputParser &uip);
   void set_position(UCIInputParser &uip);
@@ -88,8 +72,11 @@ namespace {
 /// command.
 
 void uci_main_loop() {
+
   RootPosition.from_fen(StartPosition);
-  while(1) wait_for_command();
+
+  while (1)
+      get_command();
 }
 
 
@@ -99,65 +86,13 @@ void uci_main_loop() {
 
 namespace {
 
-  ///
-  /// Implementation of the UCIInputParser class.
-  ///
-
-  // Constructor for the UCIInputParser class.  The constructor takes a 
-  // text string containing a single UCI command as input.
-
-  UCIInputParser::UCIInputParser(const std::string &line) : inputLineStream(line) { }
-
-
-  // UCIInputParser::get_next_token() gets the next token in an UCI
-  // command.  A 'token' in an UCI command is simply any
-  // whitespace-delimited sequence of characters.
-
-  std::string UCIInputParser::get_next_token() {
-
-    std::string token;
-
-    inputLineStream >> token; // operator >> skips any whitespace
-
-    return token;
-  }
-
-
-  // UCIInputParser::get_rest_of_line() returns the rest of the input
-  // line (from the current location) as a single string.
-
-  std::string UCIInputParser::get_rest_of_line() {
-
-    std::string tail;
-
-    std::getline(inputLineStream, tail);
-
-    return tail;
-  }
-
-
-  // UCIInputParser::at_end_of_line() tests whether we have reached the
-  // end of the input string, i.e. if any more input remains to be
-  // parsed.
-
-  bool UCIInputParser::at_end_of_line() {
-
-    return inputLineStream.eof();
-  }
-
-
-  /// 
-  /// Other functions
-  ///
-
-
-  // wait_for_command() waits for a command from the user, and passes
-  // this command to handle_command.  wait_for_command also intercepts
+  // get_command() waits for a command from the user, and passes
+  // this command to handle_command.  get_command also intercepts
   // EOF from stdin, by translating EOF to the "quit" command.  This
   // ensures that Glaurung exits gracefully if the GUI dies
   // unexpectedly.
 
-  void wait_for_command() {
+  void get_command() {
 
     std::string command;
 
@@ -176,64 +111,75 @@ namespace {
   void handle_command(const std::string &command) {
 
     UCIInputParser uip(command);
-    std::string token = uip.get_next_token();
+    std::string token;
 
-    if(token == "quit") {
-      OpeningBook.close();
-      stop_threads();
-      quit_eval();
-      exit(0);
+    uip >> token; // operator >> skips any whitespace
+
+    if (token == "quit")
+    {
+        OpeningBook.close();
+        stop_threads();
+        quit_eval();
+        exit(0);
     }
-    else if(token == "uci") {
-      std::cout << "id name " << engine_name() << std::endl;
-      std::cout << "id author Tord Romstad" << std::endl;
-      print_uci_options();
-      std::cout << "uciok" << std::endl;
+    else if (token == "uci")
+    {
+        std::cout << "id name " << engine_name() << std::endl;
+        std::cout << "id author Tord Romstad" << std::endl;
+        print_uci_options();
+        std::cout << "uciok" << std::endl;
     }
-    else if(token == "ucinewgame") {
-      TT.clear();
-      Position::init_piece_square_tables();
-      RootPosition.from_fen(StartPosition);
+    else if (token == "ucinewgame")
+    {
+        TT.clear();
+        Position::init_piece_square_tables();
+        RootPosition.from_fen(StartPosition);
     }
-    else if(token == "isready")
-      std::cout << "readyok" << std::endl;
-    else if(token == "position")
-      set_position(uip);
-    else if(token == "setoption")
-      set_option(uip);
-    else if(token == "go")
-      go(uip);
+    else if (token == "isready")
+        std::cout << "readyok" << std::endl;
+    else if (token == "position")
+        set_position(uip);
+    else if (token == "setoption")
+        set_option(uip);
+    else if (token == "go")
+        go(uip);
 
     // The remaining commands are for debugging purposes only.
     // Perhaps they should be removed later in order to reduce the
     // size of the program binary.
-    else if(token == "d")
-      RootPosition.print();
-    else if(token == "flip") {
-      Position p(RootPosition);
-      RootPosition.flipped_copy(p);
+    else if (token == "d")
+        RootPosition.print();
+    else if (token == "flip")
+    {
+        Position p(RootPosition);
+        RootPosition.flipped_copy(p);
     }
-    else if(token == "eval") {
-      EvalInfo ei;
-      std::cout << "Incremental mg: " << RootPosition.mg_value()
-                << std::endl;
-      std::cout << "Incremental eg: " << RootPosition.eg_value()
-                << std::endl;
-      std::cout << "Full eval: "
-                << evaluate(RootPosition, ei, 0)
-                << std::endl;
+    else if (token == "eval")
+    {
+        EvalInfo ei;
+        std::cout << "Incremental mg: " << RootPosition.mg_value()
+                  << std::endl;
+        std::cout << "Incremental eg: " << RootPosition.eg_value()
+                  << std::endl;
+        std::cout << "Full eval: "
+                  << evaluate(RootPosition, ei, 0)
+                  << std::endl;
     }
-    else if(token == "key") {
-      std::cout << "key: " << RootPosition.get_key()
-                << " material key: " << RootPosition.get_material_key()
-                << " pawn key: " << RootPosition.get_pawn_key()
-                << std::endl;
-    }
-    else {
-      std::cout << "Unknown command: " << command << std::endl;
-      while(!uip.at_end_of_line()) {
-        std::cout << uip.get_next_token() << std::endl;
-      }
+    else if (token == "key")
+    {
+        std::cout << "key: " << RootPosition.get_key()
+                  << " material key: " << RootPosition.get_material_key()
+                  << " pawn key: " << RootPosition.get_pawn_key()
+                  << std::endl;
+    } 
+    else 
+    {
+        std::cout << "Unknown command: " << command << std::endl;
+        while (!uip.eof())
+        {
+            uip >> token;
+            std::cout << token << std::endl;
+        }
     }
   }
 
@@ -248,33 +194,39 @@ namespace {
 
     std::string token;
 
-    token = uip.get_next_token();
-    if(token == "startpos")
-      RootPosition.from_fen(StartPosition);
-    else if(token == "fen") {
-      std::string fen;
-      while(token != "moves" && !uip.at_end_of_line()) {
-        token = uip.get_next_token();
-        fen += token;
-        fen += ' ';
-      }
-      RootPosition.from_fen(fen);
+    uip >> token; // operator >> skips any whitespace
+
+    if (token == "startpos")
+        RootPosition.from_fen(StartPosition);
+    else if (token == "fen")
+    {
+        std::string fen;
+        while (token != "moves" && !uip.eof())
+        {
+          uip >> token;
+          fen += token;
+          fen += ' ';
+        }
+        RootPosition.from_fen(fen);
     }
 
-    if(!uip.at_end_of_line()) {
-      if(token != "moves")
-        token = uip.get_next_token();
-      if(token == "moves") {
-        Move move;
-        UndoInfo u;
-        while(!uip.at_end_of_line()) {
-          token = uip.get_next_token();
-          move = move_from_string(RootPosition, token);
-          RootPosition.do_move(move, u);
-          if(RootPosition.rule_50_counter() == 0)
-            RootPosition.reset_game_ply();
+    if (!uip.eof())
+    {
+        if (token != "moves")
+          uip >> token;
+        if (token == "moves")
+        {
+            Move move;
+            UndoInfo u;
+            while (!uip.eof())
+            {
+                uip >> token;
+                move = move_from_string(RootPosition, token);
+                RootPosition.do_move(move, u);
+                if (RootPosition.rule_50_counter() == 0)
+                    RootPosition.reset_game_ply();
+            }
         }
-      }
     }
   }
 
@@ -287,21 +239,24 @@ namespace {
 
   void set_option(UCIInputParser &uip) {
 
-    std::string token;
+    std::string token, name;
 
-    if(!uip.at_end_of_line()) {
-      token = uip.get_next_token();
-      if(token == "name" && !uip.at_end_of_line()) {
-        std::string name = uip.get_next_token();
-        std::string nextToken;
-        while(!uip.at_end_of_line()
-              && (nextToken = uip.get_next_token()) != "value")
-          name += (" " + nextToken);
-        if(nextToken == "value")
-          set_option_value(name, uip.get_rest_of_line());
-        else
-          push_button(name);
-      }
+    uip >> token;
+    if (token == "name")
+    {
+        uip >> name;
+        uip >> token;
+        while (!uip.eof() && token != "value")
+        {
+          name += (" " + token);
+          uip >> token;
+        }
+        if (token == "value")
+        {
+            std::getline(uip, token); // reads until end of line
+            set_option_value(name, token);
+        } else
+            push_button(name);
     }
   }
 
@@ -318,68 +273,54 @@ namespace {
 
     std::string token;
 
-    int time[2] = {0, 0}, inc[2] = {0, 0}, movesToGo = 0, depth = 0, nodes = 0;
-    int moveTime = 0;
+    int time[2] = {0, 0}, inc[2] = {0, 0};
+    int movesToGo = 0, depth = 0, nodes = 0, moveTime = 0;
     bool infinite = false, ponder = false;
     Move searchMoves[500];
 
     searchMoves[0] = MOVE_NONE;
 
-    while(!uip.at_end_of_line()) {
-      token = uip.get_next_token();
+    while (!uip.eof())
+    {
+        uip >> token;
 
-      if(token == "infinite")
-        infinite = true;
-      else if(token == "ponder")
-        ponder = true;
-      else if(token == "wtime") {
-        if(!uip.at_end_of_line())
-          time[0] = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "btime") {
-        if(!uip.at_end_of_line())
-          time[1] = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "winc") {
-        if(!uip.at_end_of_line())
-          inc[0] = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "binc") {
-        if(!uip.at_end_of_line())
-          inc[1] = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "movestogo") {
-        if(!uip.at_end_of_line())
-          movesToGo = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "depth") {
-        if(!uip.at_end_of_line())
-          depth = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "nodes") {
-        if(!uip.at_end_of_line())
-          nodes = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "movetime") {
-        if(!uip.at_end_of_line())
-          moveTime = atoi(uip.get_next_token().c_str());
-      }
-      else if(token == "searchmoves" && !uip.at_end_of_line()) {
-        int numOfMoves = 0;
-        while(!uip.at_end_of_line()) {
-          token = uip.get_next_token();
-          searchMoves[numOfMoves++] = move_from_string(RootPosition, token);
+        if (token == "infinite")
+            infinite = true;
+        else if (token == "ponder")
+            ponder = true;
+        else if (token == "wtime")
+            uip >> time[0];
+        else if (token == "btime")
+            uip >> time[1];
+        else if (token == "winc")
+            uip >> inc[0];
+        else if (token == "binc")
+            uip >> inc[1];
+        else if (token == "movestogo")
+            uip >> movesToGo;
+        else if (token == "depth")
+            uip >> depth;
+        else if (token == "nodes")
+            uip >> nodes;
+        else if (token == "movetime")
+            uip >> moveTime;
+        else if (token == "searchmoves")
+        {
+            int numOfMoves = 0;
+            while (!uip.eof())
+            {
+                uip >> token;
+                searchMoves[numOfMoves++] = move_from_string(RootPosition, token);
+            }
+            searchMoves[numOfMoves] = MOVE_NONE;
         }
-        searchMoves[numOfMoves] = MOVE_NONE;
-      }
     }
 
-    if(moveTime)
-      infinite = true;  // HACK
+    if (moveTime)
+        infinite = true;  // HACK
 
     think(RootPosition, infinite, ponder, time[RootPosition.side_to_move()],
           inc[RootPosition.side_to_move()], movesToGo, depth, nodes, moveTime,
           searchMoves);
   }
-  
 }
