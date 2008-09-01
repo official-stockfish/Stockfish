@@ -22,7 +22,6 @@
 ////
 
 #include <cassert>
-#include <map>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -53,23 +52,22 @@ namespace {
 
   typedef std::vector<std::string> ComboValues;
 
-  struct OptionValue
+  struct Option
   {
-    std::string defaultValue, currentValue;
+    std::string name, defaultValue, currentValue;
     OptionType type;
     int minValue, maxValue;
     ComboValues comboValues;
 
-    // Helper to convert a bool or an int in a std::string
+    // Helper to convert a bool or an int to a std::string
     template<typename T> std::string stringify(const T& v);
 
-    OptionValue(); // this is needed to use a std::map
-    OptionValue(const char* defaultValue, OptionType = STRING);
-    OptionValue(bool defaultValue);
-    OptionValue(int defaultValue, int minValue, int maxValue);
+    Option(const char* name, const char* defaultValue, OptionType = STRING);
+    Option(const char* name, bool defaultValue);
+    Option(const char* name, int defaultValue, int minValue, int maxValue);
   };
 
-  typedef std::map<std::string, OptionValue> Options;
+  typedef std::vector<Option> Options;
 
   ///
   /// Constants
@@ -77,71 +75,70 @@ namespace {
 
   // load-defaults populates the options map with the hard
   // coded options names and their default values.
-  void load_defaults(Options& options) {
+  void load_defaults(Options& o) {
 
-    options["Use Search Log"]                            = OptionValue(false);
-    options["Search Log Filename"]                       = OptionValue("SearchLog.txt");
-    options["Book File"]                                 = OptionValue("book.bin");
-    options["Mobility (Middle Game)"]                    = OptionValue(100, 0, 200);
-    options["Mobility (Endgame)"]                        = OptionValue(100, 0, 200);
-    options["Pawn Structure (Middle Game)"]              = OptionValue(100, 0, 200);
-    options["Pawn Structure (Endgame)"]                  = OptionValue(100, 0, 200);
-    options["Passed Pawns (Middle Game)"]                = OptionValue(100, 0, 200);
-    options["Passed Pawns (Endgame)"]                    = OptionValue(100, 0, 200);
-    options["Aggressiveness"]                            = OptionValue(100, 0, 200);
-    options["Cowardice"]                                 = OptionValue(100, 0, 200);
-    options["King Safety Curve"]                         = OptionValue("Quadratic", COMBO);
+    o.push_back(Option("Use Search Log", false));
+    o.push_back(Option("Search Log Filename", "SearchLog.txt"));
+    o.push_back(Option("Book File", "book.bin"));
+    o.push_back(Option("Mobility (Middle Game)", 100, 0, 200));
+    o.push_back(Option("Mobility (Endgame)", 100, 0, 200));
+    o.push_back(Option("Pawn Structure (Middle Game)", 100, 0, 200));
+    o.push_back(Option("Pawn Structure (Endgame)", 100, 0, 200));
+    o.push_back(Option("Passed Pawns (Middle Game)", 100, 0, 200));
+    o.push_back(Option("Passed Pawns (Endgame)", 100, 0, 200));
+    o.push_back(Option("Aggressiveness", 100, 0, 200));
+    o.push_back(Option("Cowardice", 100, 0, 200));
+    o.push_back(Option("King Safety Curve", "Quadratic", COMBO));
 
-       options["King Safety Curve"].comboValues.push_back("Quadratic");
-       options["King Safety Curve"].comboValues.push_back("Linear");  /*, "From File"*/
+       o.back().comboValues.push_back("Quadratic");
+       o.back().comboValues.push_back("Linear");  /*, "From File"*/
 
-    options["King Safety Coefficient"]                   = OptionValue(40, 1, 100);
-    options["King Safety X Intercept"]                   = OptionValue(0, 0, 20);
-    options["King Safety Max Slope"]                     = OptionValue(30, 10, 100);
-    options["King Safety Max Value"]                     = OptionValue(500, 100, 1000);
-    options["Queen Contact Check Bonus"]                 = OptionValue(4, 0, 8);
-    options["Rook Contact Check Bonus"]                  = OptionValue(2, 0, 4);
-    options["Queen Check Bonus"]                         = OptionValue(2, 0, 4);
-    options["Rook Check Bonus"]                          = OptionValue(1, 0, 4);
-    options["Bishop Check Bonus"]                        = OptionValue(1, 0, 4);
-    options["Knight Check Bonus"]                        = OptionValue(1, 0, 4);
-    options["Discovered Check Bonus"]                    = OptionValue(3, 0, 8);
-    options["Mate Threat Bonus"]                         = OptionValue(3, 0, 8);
-
-    options["Check Extension (PV nodes)"]                = OptionValue(2, 0, 2);
-    options["Check Extension (non-PV nodes)"]            = OptionValue(1, 0, 2);
-    options["Single Reply Extension (PV nodes)"]         = OptionValue(2, 0, 2);
-    options["Single Reply Extension (non-PV nodes)"]     = OptionValue(2, 0, 2);
-    options["Mate Threat Extension (PV nodes)"]          = OptionValue(2, 0, 2);
-    options["Mate Threat Extension (non-PV nodes)"]      = OptionValue(0, 0, 2);
-    options["Pawn Push to 7th Extension (PV nodes)"]     = OptionValue(1, 0, 2);
-    options["Pawn Push to 7th Extension (non-PV nodes)"] = OptionValue(1, 0, 2);
-    options["Passed Pawn Extension (PV nodes)"]          = OptionValue(1, 0, 2);
-    options["Passed Pawn Extension (non-PV nodes)"]      = OptionValue(0, 0, 2);
-    options["Pawn Endgame Extension (PV nodes)"]         = OptionValue(2, 0, 2);
-    options["Pawn Endgame Extension (non-PV nodes)"]     = OptionValue(2, 0, 2);
-    options["Full Depth Moves (PV nodes)"]               = OptionValue(14, 1, 100);
-    options["Full Depth Moves (non-PV nodes)"]           = OptionValue(3, 1, 100);
-    options["Threat Depth"]                              = OptionValue(5, 0, 100);
-    options["Selective Plies"]                           = OptionValue(7, 0, 10);
-    options["Futility Pruning (Main Search)"]            = OptionValue(true);
-    options["Futility Pruning (Quiescence Search)"]      = OptionValue(true);
-    options["Futility Margin 0"]                         = OptionValue(50, 0, 1000);
-    options["Futility Margin 1"]                         = OptionValue(100, 0, 1000);
-    options["Futility Margin 2"]                         = OptionValue(300, 0, 1000);
-    options["Maximum Razoring Depth"]                    = OptionValue(3, 0, 4);
-    options["Razoring Margin"]                           = OptionValue(300, 150, 600);
-    options["Randomness"]                                = OptionValue(0, 0, 10);
-    options["Minimum Split Depth"]                       = OptionValue(4, 4, 7);
-    options["Maximum Number of Threads per Split Point"] = OptionValue(5, 4, 8);
-    options["Threads"]                                   = OptionValue(1, 1, 8);
-    options["Hash"]                                      = OptionValue(32, 4, 4096);
-    options["Clear Hash"]                                = OptionValue(false);
-    options["Ponder"]                                    = OptionValue(true);
-    options["OwnBook"]                                   = OptionValue(true);
-    options["MultiPV"]                                   = OptionValue(1, 1, 500);
-    options["UCI_ShowCurrLine"]                          = OptionValue(false);
-    options["UCI_Chess960"]                              = OptionValue(false);
+    o.push_back(Option("King Safety Coefficient", 40, 1, 100));
+    o.push_back(Option("King Safety X Intercept", 0, 0, 20));
+    o.push_back(Option("King Safety Max Slope", 30, 10, 100));
+    o.push_back(Option("King Safety Max Value", 500, 100, 1000));
+    o.push_back(Option("Queen Contact Check Bonus", 4, 0, 8));
+    o.push_back(Option("Rook Contact Check Bonus", 2, 0, 4));
+    o.push_back(Option("Queen Check Bonus", 2, 0, 4));
+    o.push_back(Option("Rook Check Bonus", 1, 0, 4));
+    o.push_back(Option("Bishop Check Bonus", 1, 0, 4));
+    o.push_back(Option("Knight Check Bonus", 1, 0, 4));
+    o.push_back(Option("Discovered Check Bonus", 3, 0, 8));
+    o.push_back(Option("Mate Threat Bonus", 3, 0, 8));
+    o.push_back(Option("Check Extension (PV nodes)", 2, 0, 2));
+    o.push_back(Option("Check Extension (non-PV nodes)", 1, 0, 2));
+    o.push_back(Option("Single Reply Extension (PV nodes)", 2, 0, 2));
+    o.push_back(Option("Single Reply Extension (non-PV nodes)", 2, 0, 2));
+    o.push_back(Option("Mate Threat Extension (PV nodes)", 2, 0, 2));
+    o.push_back(Option("Mate Threat Extension (non-PV nodes)", 0, 0, 2));
+    o.push_back(Option("Pawn Push to 7th Extension (PV nodes)", 1, 0, 2));
+    o.push_back(Option("Pawn Push to 7th Extension (non-PV nodes)", 1, 0, 2));
+    o.push_back(Option("Passed Pawn Extension (PV nodes)", 1, 0, 2));
+    o.push_back(Option("Passed Pawn Extension (non-PV nodes)", 0, 0, 2));
+    o.push_back(Option("Pawn Endgame Extension (PV nodes)", 2, 0, 2));
+    o.push_back(Option("Pawn Endgame Extension (non-PV nodes)", 2, 0, 2));
+    o.push_back(Option("Full Depth Moves (PV nodes)", 14, 1, 100));
+    o.push_back(Option("Full Depth Moves (non-PV nodes)", 3, 1, 100));
+    o.push_back(Option("Threat Depth", 5, 0, 100));
+    o.push_back(Option("Selective Plies", 7, 0, 10));
+    o.push_back(Option("Futility Pruning (Main Search)", true));
+    o.push_back(Option("Futility Pruning (Quiescence Search)", true));
+    o.push_back(Option("Futility Margin 0", 50, 0, 1000));
+    o.push_back(Option("Futility Margin 1", 100, 0, 1000));
+    o.push_back(Option("Futility Margin 2", 300, 0, 1000));
+    o.push_back(Option("Maximum Razoring Depth", 3, 0, 4));
+    o.push_back(Option("Razoring Margin", 300, 150, 600));
+    o.push_back(Option("Randomness", 0, 0, 10));
+    o.push_back(Option("Minimum Split Depth", 4, 4, 7));
+    o.push_back(Option("Maximum Number of Threads per Split Point", 5, 4, 8));
+    o.push_back(Option("Threads", 1, 1, 8));
+    o.push_back(Option("Hash", 32, 4, 4096));
+    o.push_back(Option("Clear Hash", false));
+    o.push_back(Option("Ponder", true));
+    o.push_back(Option("OwnBook", true));
+    o.push_back(Option("MultiPV", 1, 1, 500));
+    o.push_back(Option("UCI_ShowCurrLine", false));
+    o.push_back(Option("UCI_Chess960", false));
   }
 
 
@@ -153,6 +150,7 @@ namespace {
 
   // Local functions
   template<typename T> T get_option_value(const std::string& optionName);
+  Options::iterator option_from_name(const std::string& optionName);
 
 }
 
@@ -172,20 +170,24 @@ void init_uci_options() {
   // According to Ken Dail's tests, Glaurung plays much better with 7 than
   // with 8 threads.  This is weird, but it is probably difficult to find out
   // why before I have a 8-core computer to experiment with myself.
-  assert(options.find("Threads") != options.end());
+  Options::iterator it = option_from_name("Threads");
 
-  options["Threads"].defaultValue = Min(cpu_count(), 7);
-  options["Threads"].currentValue = Min(cpu_count(), 7);
+  assert(it != options.end());
+
+  it->defaultValue = Min(cpu_count(), 7);
+  it->currentValue = Min(cpu_count(), 7);
 
   // Increase the minimum split depth when the number of CPUs is big.
   // It would probably be better to let this depend on the number of threads
   // instead.
   if(cpu_count() > 4)
   {
-      assert(options.find("Minimum Split Depth") != options.end());
+      it = option_from_name("Minimum Split Depth");
 
-      options["Minimum Split Depth"].defaultValue = 6;
-      options["Minimum Split Depth"].currentValue = 6;
+      assert(it != options.end());
+
+      it->defaultValue = 6;
+      it->currentValue = 6;
   }
 }
 
@@ -201,22 +203,21 @@ void print_uci_options() {
 
   for (Options::iterator it = options.begin(); it != options.end(); ++it)
   {
-      const OptionValue& o = it->second;
+      std::cout << "option name " << it->name
+                << " type "       << optionTypeName[it->type];
 
-      std::cout << "option name " << it->first
-                << " type "       << optionTypeName[o.type];
-
-      if (o.type != BUTTON)
+      if (it->type != BUTTON)
       {
-          std::cout << " default " << o.defaultValue;
+          std::cout << " default " << it->defaultValue;
 
-          if (o.type == SPIN)
-              std::cout << " min " << o.minValue
-                        << " max " << o.maxValue;
+          if (it->type == SPIN)
+              std::cout << " min " << it->minValue
+                        << " max " << it->maxValue;
 
-          else if (o.type == COMBO)
-              for(ComboValues::size_type i = 0; i < o.comboValues.size(); ++i)
-                  std::cout << " var " << o.comboValues[i];
+          else if (it->type == COMBO)
+              for(ComboValues::iterator itc = it->comboValues.begin();
+                  itc != it->comboValues.end(); ++itc)
+                      std::cout << " var " << *itc;
       }
       std::cout << std::endl;
   }
@@ -273,8 +274,10 @@ bool button_was_pressed(const std::string& buttonName) {
 void set_option_value(const std::string& optionName,
                       const std::string& newValue) {
 
-  if (options.find(optionName) != options.end())
-      options[optionName].currentValue = newValue;
+  Options::iterator it = option_from_name(optionName);
+
+  if (it != options.end())
+      it->currentValue = newValue;
   else
       std::cout << "No such option: " << optionName << std::endl;
 }
@@ -291,10 +294,10 @@ void push_button(const std::string& buttonName) {
 
 namespace {
 
-    // methods and c'tors of OptionValue class.
+    // methods and c'tors of Option class.
 
     template<typename T>
-    std::string OptionValue::stringify(const T& v)
+    std::string Option::stringify(const T& v)
     {
         std::ostringstream ss;
         ss << v;
@@ -302,16 +305,15 @@ namespace {
         return ss.str();
     }
 
-    OptionValue::OptionValue() {}
+    Option::Option(const char* nm, const char* def, OptionType t)
+    : name(nm), defaultValue(def), currentValue(def), type(t), minValue(0), maxValue(0) {}
 
-    OptionValue::OptionValue(const char* def, OptionType t)
-    : defaultValue(def), currentValue(def), type(t), minValue(0), maxValue(0) {}
+    Option::Option(const char* nm, bool def)
+    : name(nm), defaultValue(stringify(def)), currentValue(stringify(def)), type(CHECK), minValue(0), maxValue(0) {}
 
-    OptionValue::OptionValue(bool def)
-    : defaultValue(stringify(def)), currentValue(stringify(def)), type(CHECK), minValue(0), maxValue(0) {}
+    Option::Option(const char* nm, int def, int minv, int maxv)
+    : name(nm), defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), minValue(minv), maxValue(maxv) {}
 
-    OptionValue::OptionValue(int def, int minv, int maxv)
-    : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), minValue(minv), maxValue(maxv) {}
 
     // get_option_value is the implementation of the various
     // get_option_value_<type>, because only the option value
@@ -322,12 +324,27 @@ namespace {
 
         T ret;
 
-        if (options.find(optionName) != options.end())
+        Options::iterator it = option_from_name(optionName);
+
+        if (it != options.end())
         {
-            std::istringstream ss(options[optionName].currentValue);
+            std::istringstream ss(it->currentValue);
             ss >> ret;
         }
         return ret;
+    }
+
+
+    // option_from_name returns an iterator to the option
+    // with name optionName.
+
+    Options::iterator option_from_name(const std::string& optionName) {
+
+        for (Options::iterator it = options.begin(); it != options.end(); ++it)
+            if (it->name == optionName)
+                return it;
+
+        return options.end();
     }
 
 }
