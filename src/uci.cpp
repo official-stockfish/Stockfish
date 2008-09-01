@@ -119,7 +119,7 @@ namespace {
   // characters from the current location in an input string.
 
   void UCIInputParser::skip_whitespace() {
-    while(isspace((int)(unsigned char)this->inputLine[this->currentIndex]))
+    while(isspace(std::char_traits<char>::to_int_type(this->inputLine[this->currentIndex])))
       this->currentIndex++;
   }
 
