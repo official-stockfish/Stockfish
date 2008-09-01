@@ -305,6 +305,12 @@ namespace {
         return ss.str();
     }
 
+    template<>
+    std::string Option::stringify(const bool& v)
+    {
+        return v ? "true" : "false";
+    }
+
     Option::Option(const char* nm, const char* def, OptionType t)
     : name(nm), defaultValue(def), currentValue(def), type(t), minValue(0), maxValue(0) {}
 
