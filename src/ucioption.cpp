@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -22,8 +22,10 @@
 ////
 
 #include <cassert>
-#include <cstdarg>
-#include <cstdio>
+#include <map>
+#include <string>
+#include <sstream>
+#include <vector>
 
 #include "misc.h"
 #include "thread.h"
@@ -47,92 +49,112 @@ namespace {
   /// Types
   ///
 
-  enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON, OPTION_TYPE_NONE};
+  enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON, OPTION_TYPE_NONE };
 
-  struct Option {
-    char name[50], defaultValue[300], currentValue[300];
+  typedef std::vector<std::string> ComboValues;
+
+  struct OptionValue
+  {
+    std::string defaultValue, currentValue;
     OptionType type;
     int minValue, maxValue;
-    char comboValues[8][64];
+    ComboValues comboValues;
+
+    // Helper to convert a bool or an int in a std::string
+    template<typename T> std::string stringify(const T& v);
+
+    OptionValue(); // this is needed to use a std::map
+    OptionValue(const char* defaultValue, OptionType = STRING);
+    OptionValue(bool defaultValue);
+    OptionValue(int defaultValue, int minValue, int maxValue);
   };
-    
+
+  typedef std::map<std::string, OptionValue> Options;
+
+  ///
+  /// Constants
+  ///
+
+  // load-defaults populates the options map with the hard
+  // coded options names and their default values.
+  void load_defaults(Options& options) {
+
+    options["Use Search Log"]                            = OptionValue(false);
+    options["Search Log Filename"]                       = OptionValue("SearchLog.txt");
+    options["Book File"]                                 = OptionValue("book.bin");
+    options["Mobility (Middle Game)"]                    = OptionValue(100, 0, 200);
+    options["Mobility (Endgame)"]                        = OptionValue(100, 0, 200);
+    options["Pawn Structure (Middle Game)"]              = OptionValue(100, 0, 200);
+    options["Pawn Structure (Endgame)"]                  = OptionValue(100, 0, 200);
+    options["Passed Pawns (Middle Game)"]                = OptionValue(100, 0, 200);
+    options["Passed Pawns (Endgame)"]                    = OptionValue(100, 0, 200);
+    options["Aggressiveness"]                            = OptionValue(100, 0, 200);
+    options["Cowardice"]                                 = OptionValue(100, 0, 200);
+    options["King Safety Curve"]                         = OptionValue("Quadratic", COMBO);
+
+       options["King Safety Curve"].comboValues.push_back("Quadratic");
+       options["King Safety Curve"].comboValues.push_back("Linear");  /*, "From File"*/
+
+    options["King Safety Coefficient"]                   = OptionValue(40, 1, 100);
+    options["King Safety X Intercept"]                   = OptionValue(0, 0, 20);
+    options["King Safety Max Slope"]                     = OptionValue(30, 10, 100);
+    options["King Safety Max Value"]                     = OptionValue(500, 100, 1000);
+    options["Queen Contact Check Bonus"]                 = OptionValue(4, 0, 8);
+    options["Rook Contact Check Bonus"]                  = OptionValue(2, 0, 4);
+    options["Queen Check Bonus"]                         = OptionValue(2, 0, 4);
+    options["Rook Check Bonus"]                          = OptionValue(1, 0, 4);
+    options["Bishop Check Bonus"]                        = OptionValue(1, 0, 4);
+    options["Knight Check Bonus"]                        = OptionValue(1, 0, 4);
+    options["Discovered Check Bonus"]                    = OptionValue(3, 0, 8);
+    options["Mate Threat Bonus"]                         = OptionValue(3, 0, 8);
+
+    options["Check Extension (PV nodes)"]                = OptionValue(2, 0, 2);
+    options["Check Extension (non-PV nodes)"]            = OptionValue(1, 0, 2);
+    options["Single Reply Extension (PV nodes)"]         = OptionValue(2, 0, 2);
+    options["Single Reply Extension (non-PV nodes)"]     = OptionValue(2, 0, 2);
+    options["Mate Threat Extension (PV nodes)"]          = OptionValue(2, 0, 2);
+    options["Mate Threat Extension (non-PV nodes)"]      = OptionValue(0, 0, 2);
+    options["Pawn Push to 7th Extension (PV nodes)"]     = OptionValue(1, 0, 2);
+    options["Pawn Push to 7th Extension (non-PV nodes)"] = OptionValue(1, 0, 2);
+    options["Passed Pawn Extension (PV nodes)"]          = OptionValue(1, 0, 2);
+    options["Passed Pawn Extension (non-PV nodes)"]      = OptionValue(0, 0, 2);
+    options["Pawn Endgame Extension (PV nodes)"]         = OptionValue(2, 0, 2);
+    options["Pawn Endgame Extension (non-PV nodes)"]     = OptionValue(2, 0, 2);
+    options["Full Depth Moves (PV nodes)"]               = OptionValue(14, 1, 100);
+    options["Full Depth Moves (non-PV nodes)"]           = OptionValue(3, 1, 100);
+    options["Threat Depth"]                              = OptionValue(5, 0, 100);
+    options["Selective Plies"]                           = OptionValue(7, 0, 10);
+    options["Futility Pruning (Main Search)"]            = OptionValue(true);
+    options["Futility Pruning (Quiescence Search)"]      = OptionValue(true);
+    options["Futility Margin 0"]                         = OptionValue(50, 0, 1000);
+    options["Futility Margin 1"]                         = OptionValue(100, 0, 1000);
+    options["Futility Margin 2"]                         = OptionValue(300, 0, 1000);
+    options["Maximum Razoring Depth"]                    = OptionValue(3, 0, 4);
+    options["Razoring Margin"]                           = OptionValue(300, 150, 600);
+    options["Randomness"]                                = OptionValue(0, 0, 10);
+    options["Minimum Split Depth"]                       = OptionValue(4, 4, 7);
+    options["Maximum Number of Threads per Split Point"] = OptionValue(5, 4, 8);
+    options["Threads"]                                   = OptionValue(1, 1, 8);
+    options["Hash"]                                      = OptionValue(32, 4, 4096);
+    options["Clear Hash"]                                = OptionValue(false);
+    options["Ponder"]                                    = OptionValue(true);
+    options["OwnBook"]                                   = OptionValue(true);
+    options["MultiPV"]                                   = OptionValue(1, 1, 500);
+    options["UCI_ShowCurrLine"]                          = OptionValue(false);
+    options["UCI_Chess960"]                              = OptionValue(false);
+  }
+
 
   ///
   /// Variables
   ///
 
-  Option Options[] = {
-    { "Use Search Log", "false", "false", CHECK, 0, 0, {""} },
-    { "Search Log Filename", "SearchLog.txt", "SearchLog.txt", STRING, 0, 0, {""} },
-    { "Book File", "book.bin", "book.bin", STRING, 0, 0, {""} },
-    { "Mobility (Middle Game)", "100", "100", SPIN, 0, 200, {""} },
-    { "Mobility (Endgame)", "100", "100", SPIN, 0, 200, {""} },
-    { "Pawn Structure (Middle Game)", "100", "100", SPIN, 0, 200, {""} },
-    { "Pawn Structure (Endgame)", "100", "100", SPIN, 0, 200, {""} },
-    { "Passed Pawns (Middle Game)", "100", "100", SPIN, 0, 200, {""} },
-    { "Passed Pawns (Endgame)", "100", "100", SPIN, 0, 200, {""} },
-    { "Aggressiveness", "100", "100", SPIN, 0, 200, {""} },
-    { "Cowardice", "100", "100", SPIN, 0, 200, {""} },
-    { "King Safety Curve", "Quadratic", "Quadratic", COMBO, 0, 0,
-      { "Quadratic", "Linear" /*, "From File"*/ } },
-    { "King Safety Coefficient", "40", "40", SPIN, 1, 100 , {""} },
-    { "King Safety X Intercept", "0", "0", SPIN, 0, 20, {""} },
-    { "King Safety Max Slope", "30", "30", SPIN, 10, 100, {""} },
-    { "King Safety Max Value", "500", "500", SPIN, 100, 1000, {""} },
-    { "Queen Contact Check Bonus", "4", "4", SPIN, 0, 8, {""} },
-    { "Rook Contact Check Bonus", "2", "2", SPIN, 0, 4, {""} },
-    { "Queen Check Bonus", "2", "2", SPIN, 0, 4, {""} },
-    { "Rook Check Bonus", "1", "1", SPIN, 0, 4, {""} },
-    { "Bishop Check Bonus", "1", "1", SPIN, 0, 4, {""} },
-    { "Knight Check Bonus", "1", "1", SPIN, 0, 4, {""} },
-    { "Discovered Check Bonus", "3", "3", SPIN, 0, 8, {""} },
-    { "Mate Threat Bonus", "3", "3", SPIN, 0, 8, {""} },
-    { "Check Extension (PV nodes)", "2", "2", SPIN, 0, 2, {""} },
-    { "Check Extension (non-PV nodes)", "1", "1", SPIN, 0, 2, {""} },
-    { "Single Reply Extension (PV nodes)", "2", "2", SPIN, 0, 2, {""} },
-    { "Single Reply Extension (non-PV nodes)", "2", "2", SPIN, 0, 2, {""} },
-    { "Mate Threat Extension (PV nodes)", "0", "0", SPIN, 0, 2, {""} },
-    { "Mate Threat Extension (non-PV nodes)", "0", "0", SPIN, 0, 2, {""} },
-    { "Pawn Push to 7th Extension (PV nodes)", "1", "1", SPIN, 0, 2, {""} },
-    { "Pawn Push to 7th Extension (non-PV nodes)", "1", "1", SPIN, 0, 2, {""} },
-    { "Passed Pawn Extension (PV nodes)", "1", "1", SPIN, 0, 2, {""} },
-    { "Passed Pawn Extension (non-PV nodes)", "0", "0", SPIN, 0, 2, {""} },
-    { "Pawn Endgame Extension (PV nodes)", "2", "2", SPIN, 0, 2, {""} },
-    { "Pawn Endgame Extension (non-PV nodes)", "2", "2", SPIN, 0, 2, {""} },
-    { "Full Depth Moves (PV nodes)", "14", "14", SPIN, 1, 100, {""} },
-    { "Full Depth Moves (non-PV nodes)", "3", "3", SPIN, 1, 100, {""} },
-    { "Threat Depth", "5", "5", SPIN, 0, 100, {""} },
-    { "Selective Plies", "7", "7", SPIN, 0, 10, {""} },
-    { "Futility Pruning (Main Search)", "true", "true", CHECK, 0, 0, {""} },
-    { "Futility Pruning (Quiescence Search)", "true", "true", CHECK, 0, 0, {""} },
-    { "Futility Margin 0", "50", "50", SPIN, 0, 1000, {""} },
-    { "Futility Margin 1", "100", "100", SPIN, 0, 1000, {""} },
-    { "Futility Margin 2", "300", "300", SPIN, 0, 1000, {""} },
-    { "Maximum Razoring Depth", "3", "3", SPIN, 0, 4, {""} },
-    { "Razoring Margin", "300", "300", SPIN, 150, 600, {""} },
-    { "Randomness", "0", "0", SPIN, 0, 10, {""} },
-    { "Minimum Split Depth", "4", "4", SPIN, 4, 7, {""} },
-    { "Maximum Number of Threads per Split Point", "5", "5", SPIN, 4, 8, {""} },
-    { "Threads", "1", "1", SPIN, 1, 8, {""} },
-    { "Hash", "32", "32", SPIN, 4, 4096, {""} },
-    { "Clear Hash", "false", "false", BUTTON, 0, 0, {""} },
-    { "Ponder", "true", "true", CHECK, 0, 0, {""} },
-    { "OwnBook", "true", "true", CHECK, 0, 0, {""} },
-    { "MultiPV", "1", "1", SPIN, 1, 500, {""} },
-    { "UCI_ShowCurrLine", "false", "false", CHECK, 0, 0, {""} },
-    { "UCI_Chess960", "false", "false", CHECK, 0, 0, {""} },
-    { "", "", "", OPTION_TYPE_NONE, 0, 0, {""}}
-  };
-    
+  Options options;
 
-  ///
-  /// Functions
-  ///
-
-  Option *option_with_name(const char *optionName);
+  // Local functions
+  template<typename T> T get_option_value(const std::string& optionName);
 
 }
-
 
 ////
 //// Functions
@@ -143,26 +165,27 @@ namespace {
 /// "Threads" parameter to the number of available CPU cores.
 
 void init_uci_options() {
-  Option *o;
 
-  o = option_with_name("Threads");
-  assert(o != NULL);
+  load_defaults(options);
 
   // Limit the default value of "Threads" to 7 even if we have 8 CPU cores.
   // According to Ken Dail's tests, Glaurung plays much better with 7 than
   // with 8 threads.  This is weird, but it is probably difficult to find out
   // why before I have a 8-core computer to experiment with myself.
-  sprintf(o->defaultValue, "%d", Min(cpu_count(), 7));
-  sprintf(o->currentValue, "%d", Min(cpu_count(), 7));
+  assert(options.find("Threads") != options.end());
+
+  options["Threads"].defaultValue = Min(cpu_count(), 7);
+  options["Threads"].currentValue = Min(cpu_count(), 7);
 
   // Increase the minimum split depth when the number of CPUs is big.
   // It would probably be better to let this depend on the number of threads
   // instead.
-  o = option_with_name("Minimum Split Depth");
-  assert(o != NULL);
-  if(cpu_count() > 4) {
-    sprintf(o->defaultValue, "%d", 6);
-    sprintf(o->defaultValue, "%d", 6);
+  if(cpu_count() > 4)
+  {
+      assert(options.find("Minimum Split Depth") != options.end());
+
+      options["Minimum Split Depth"].defaultValue = 6;
+      options["Minimum Split Depth"].currentValue = 6;
   }
 }
 
@@ -171,30 +194,40 @@ void init_uci_options() {
 /// in the format defined by the UCI protocol.
 
 void print_uci_options() {
+
   static const char optionTypeName[][16] = {
     "spin", "combo", "check", "string", "button"
   };
-  for(Option *o = Options; o->type != OPTION_TYPE_NONE; o++) {
-    printf("option name %s type %s", o->name, optionTypeName[o->type]);
-    if(o->type != BUTTON) {
-      printf(" default %s", o->defaultValue);
-      if(o->type == SPIN)
-        printf(" min %d max %d", o->minValue, o->maxValue);
-      else if(o->type == COMBO)
-        for(int i = 0; strlen(o->comboValues[i]) > 0; i++)
-          printf(" var %s", o->comboValues[i]);
-    }
-    printf("\n");
+
+  for (Options::iterator it = options.begin(); it != options.end(); ++it)
+  {
+      const OptionValue& o = it->second;
+
+      std::cout << "option name " << it->first
+                << " type "       << optionTypeName[o.type];
+
+      if (o.type != BUTTON)
+      {
+          std::cout << " default " << o.defaultValue;
+
+          if (o.type == SPIN)
+              std::cout << " min " << o.minValue
+                        << " max " << o.maxValue;
+
+          else if (o.type == COMBO)
+              for(ComboValues::size_type i = 0; i < o.comboValues.size(); ++i)
+                  std::cout << " var " << o.comboValues[i];
+      }
+      std::cout << std::endl;
   }
 }
-
 
 /// get_option_value_bool() returns the current value of a UCI parameter of
 /// type "check".
 
-bool get_option_value_bool(const std::string &optionName) {
-  Option *o = option_with_name(optionName.c_str());
-  return o != NULL && strcmp(o->currentValue, "true") == 0;
+bool get_option_value_bool(const std::string& optionName) {
+
+  return get_option_value<bool>(optionName);
 }
 
 
@@ -203,31 +236,33 @@ bool get_option_value_bool(const std::string &optionName) {
 /// it could also be used with a "combo" parameter, where all the available
 /// values are integers.
 
-int get_option_value_int(const std::string &optionName) {
-  Option *o = option_with_name(optionName.c_str());
-  return atoi(o->currentValue);
+int get_option_value_int(const std::string& optionName) {
+
+  return get_option_value<int>(optionName);
 }
 
 
 /// get_option_value_string() returns the current value of a UCI parameter as
 /// a string.  It is used with parameters of type "combo" and "string".
 
-const std::string get_option_value_string(const std::string &optionName) {
-  Option *o = option_with_name(optionName.c_str());
-  return o->currentValue;
+const std::string get_option_value_string(const std::string& optionName) {
+
+   return get_option_value<std::string>(optionName);
 }
 
 
 /// button_was_pressed() tests whether a UCI parameter of type "button" has
 /// been selected since the last time the function was called.
 
-bool button_was_pressed(const std::string &buttonName) {
-  if(get_option_value_bool(buttonName)) {
+bool button_was_pressed(const std::string& buttonName) {
+
+  if (get_option_value<bool>(buttonName))
+  {
     set_option_value(buttonName, "false");
     return true;
   }
-  else
-    return false;
+
+  return false;
 }
 
 
@@ -235,36 +270,64 @@ bool button_was_pressed(const std::string &buttonName) {
 /// the function does not check that the new value is legal for the given
 /// parameter:  This is assumed to be the responsibility of the GUI.
 
-void set_option_value(const std::string &optionName,
-                      const std::string &newValue) {
-  Option *o = option_with_name(optionName.c_str());
+void set_option_value(const std::string& optionName,
+                      const std::string& newValue) {
 
-  if(o != NULL)
-    strcpy(o->currentValue, newValue.c_str());
+  if (options.find(optionName) != options.end())
+      options[optionName].currentValue = newValue;
   else
-    std::cout << "No such option: " << optionName << std::endl;
+      std::cout << "No such option: " << optionName << std::endl;
 }
 
 
 /// push_button() is used to tell the engine that a UCI parameter of type
 /// "button" has been selected:
 
-void push_button(const std::string &buttonName) {
+void push_button(const std::string& buttonName) {
+
   set_option_value(buttonName, "true");
 }
 
 
 namespace {
 
-  // option_with_name() tries to find a UCI option with a given
-  // name.  It returns a pointer to the UCI option or the null pointer,
-  // depending on whether an option with the given name exists.
-  
-  Option *option_with_name(const char *optionName) {
-    for(Option *o = Options; o->type != OPTION_TYPE_NONE; o++)
-      if(strcmp(o->name, optionName) == 0)
-        return o;
-    return NULL;
-  }
+    // methods and c'tors of OptionValue class.
+
+    template<typename T>
+    std::string OptionValue::stringify(const T& v)
+    {
+        std::ostringstream ss;
+        ss << v;
+
+        return ss.str();
+    }
+
+    OptionValue::OptionValue() {}
+
+    OptionValue::OptionValue(const char* def, OptionType t)
+    : defaultValue(def), currentValue(def), type(t), minValue(0), maxValue(0) {}
+
+    OptionValue::OptionValue(bool def)
+    : defaultValue(stringify(def)), currentValue(stringify(def)), type(CHECK), minValue(0), maxValue(0) {}
+
+    OptionValue::OptionValue(int def, int minv, int maxv)
+    : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), minValue(minv), maxValue(maxv) {}
+
+    // get_option_value is the implementation of the various
+    // get_option_value_<type>, because only the option value
+    // type changes a template is the proper solution.
+
+    template<typename T>
+    T get_option_value(const std::string& optionName) {
+
+        T ret;
+
+        if (options.find(optionName) != options.end())
+        {
+            std::istringstream ss(options[optionName].currentValue);
+            ss >> ret;
+        }
+        return ret;
+    }
 
 }

@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -107,7 +107,7 @@ namespace {
   // UCIInputParser object to parse this text string as a UCI command,
   // and calls the appropriate functions.  In addition to the UCI
   // commands, the function also supports a few debug commands.
-  
+
   void handle_command(const std::string &command) {
 
     UCIInputParser uip(command);
@@ -171,8 +171,8 @@ namespace {
                   << " material key: " << RootPosition.get_material_key()
                   << " pawn key: " << RootPosition.get_pawn_key()
                   << std::endl;
-    } 
-    else 
+    }
+    else
     {
         std::cout << "Unknown command: " << command << std::endl;
         while (!uip.eof())
