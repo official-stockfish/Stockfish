@@ -22,6 +22,7 @@
 ////
 
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "book.h"
@@ -43,12 +44,11 @@
 namespace {
 
   // UCIInputParser is a class for parsing UCI input.  The class is
-  // very simple, and basically just consist of a constant input
-  // string and a current location in the string.  There are methods
-  // for checking if we are at the end of the line, for getting the
-  // next token (defined as any whitespace-delimited sequence of
-  // characters), and for getting the rest of the line as a single
-  // string.
+  // very simple, and basically just consist of a string stream
+  // built on a given input string.  There are methods for checking
+  // if we are at the end of the line, for getting the next token
+  // (defined as any whitespace-delimited sequence of characters),
+  // and for getting the rest of the line as a single string.
 
   class UCIInputParser {
 
@@ -59,10 +59,7 @@ namespace {
     bool at_end_of_line();
 
   private:
-    const std::string &inputLine;
-    int length, currentIndex;
-
-    void skip_whitespace();
+    std::istringstream inputLineStream;
 
   };
 
@@ -109,19 +106,7 @@ namespace {
   // Constructor for the UCIInputParser class.  The constructor takes a 
   // text string containing a single UCI command as input.
 
-  UCIInputParser::UCIInputParser(const std::string &line) : inputLine(line) {
-    this->currentIndex = 0;
-    this->length = line.length();
-  }
-
-
-  // UCIInputParser::skip_whitspace() skips any number of whitespace
-  // characters from the current location in an input string.
-
-  void UCIInputParser::skip_whitespace() {
-    while(isspace(std::char_traits<char>::to_int_type(this->inputLine[this->currentIndex])))
-      this->currentIndex++;
-  }
+  UCIInputParser::UCIInputParser(const std::string &line) : inputLineStream(line) { }
 
 
   // UCIInputParser::get_next_token() gets the next token in an UCI
@@ -129,18 +114,12 @@ namespace {
   // whitespace-delimited sequence of characters.
 
   std::string UCIInputParser::get_next_token() {
-    int i, j;
 
-    this->skip_whitespace();
-    for(i = j = this->currentIndex; 
-        j < this->length && !isspace(this->inputLine[j]); 
-        j++);
-    this->currentIndex = j;
-    this->skip_whitespace();
+    std::string token;
 
-    std::string str = this->inputLine.substr(i, j - i);
+    inputLineStream >> token; // operator >> skips any whitespace
 
-    return str;
+    return token;
   }
 
 
@@ -148,8 +127,12 @@ namespace {
   // line (from the current location) as a single string.
 
   std::string UCIInputParser::get_rest_of_line() {
-    this->skip_whitespace();
-    return this->inputLine.substr(this->currentIndex, this->length);
+
+    std::string tail;
+
+    std::getline(inputLineStream, tail);
+
+    return tail;
   }
 
 
@@ -158,7 +141,8 @@ namespace {
   // parsed.
 
   bool UCIInputParser::at_end_of_line() {
-    return this->currentIndex == this->length;
+
+    return inputLineStream.eof();
   }
 
 
@@ -174,8 +158,12 @@ namespace {
   // unexpectedly.
 
   void wait_for_command() {
+
     std::string command;
-    if(!std::getline(std::cin, command)) command = "quit";
+
+    if (!std::getline(std::cin, command))
+        command = "quit";
+
     handle_command(command);
   }
 
@@ -186,45 +174,46 @@ namespace {
   // commands, the function also supports a few debug commands.
   
   void handle_command(const std::string &command) {
-    UCIInputParser uip(command);
-    std::string s = uip.get_next_token();
 
-    if(s == "quit") {
+    UCIInputParser uip(command);
+    std::string token = uip.get_next_token();
+
+    if(token == "quit") {
       OpeningBook.close();
       stop_threads();
       quit_eval();
       exit(0);
     }
-    else if(s == "uci") {
+    else if(token == "uci") {
       std::cout << "id name " << engine_name() << std::endl;
       std::cout << "id author Tord Romstad" << std::endl;
       print_uci_options();
       std::cout << "uciok" << std::endl;
     }
-    else if(s == "ucinewgame") {
+    else if(token == "ucinewgame") {
       TT.clear();
       Position::init_piece_square_tables();
       RootPosition.from_fen(StartPosition);
     }
-    else if(s == "isready")
+    else if(token == "isready")
       std::cout << "readyok" << std::endl;
-    else if(s == "position")
+    else if(token == "position")
       set_position(uip);
-    else if(s == "setoption")
+    else if(token == "setoption")
       set_option(uip);
-    else if(s == "go")
+    else if(token == "go")
       go(uip);
 
     // The remaining commands are for debugging purposes only.
     // Perhaps they should be removed later in order to reduce the
     // size of the program binary.
-    else if(s == "d")
+    else if(token == "d")
       RootPosition.print();
-    else if(s == "flip") {
+    else if(token == "flip") {
       Position p(RootPosition);
       RootPosition.flipped_copy(p);
     }
-    else if(s == "eval") {
+    else if(token == "eval") {
       EvalInfo ei;
       std::cout << "Incremental mg: " << RootPosition.mg_value()
                 << std::endl;
@@ -234,7 +223,7 @@ namespace {
                 << evaluate(RootPosition, ei, 0)
                 << std::endl;
     }
-    else if(s == "key") {
+    else if(token == "key") {
       std::cout << "key: " << RootPosition.get_key()
                 << " material key: " << RootPosition.get_material_key()
                 << " pawn key: " << RootPosition.get_pawn_key()
@@ -256,6 +245,7 @@ namespace {
   // or "fen", if the input is well-formed).
 
   void set_position(UCIInputParser &uip) {
+
     std::string token;
 
     token = uip.get_next_token();
@@ -296,7 +286,9 @@ namespace {
   // the input is well-formed).
 
   void set_option(UCIInputParser &uip) {
+
     std::string token;
+
     if(!uip.at_end_of_line()) {
       token = uip.get_next_token();
       if(token == "name" && !uip.at_end_of_line()) {
@@ -323,7 +315,9 @@ namespace {
   // parameters.
 
   void go(UCIInputParser &uip) {
+
     std::string token;
+
     int time[2] = {0, 0}, inc[2] = {0, 0}, movesToGo = 0, depth = 0, nodes = 0;
     int moveTime = 0;
     bool infinite = false, ponder = false;
