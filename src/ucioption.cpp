@@ -48,22 +48,19 @@ namespace {
   /// Types
   ///
 
-  enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON, OPTION_TYPE_NONE };
+  enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON };
 
   typedef std::vector<std::string> ComboValues;
 
-  struct Option
-  {
+  struct Option {
+
     std::string name, defaultValue, currentValue;
     OptionType type;
     int minValue, maxValue;
     ComboValues comboValues;
 
-    // Helper to convert a bool or an int to a std::string
-    template<typename T> std::string stringify(const T& v);
-
     Option(const char* name, const char* defaultValue, OptionType = STRING);
-    Option(const char* name, bool defaultValue);
+    Option(const char* name, bool defaultValue, OptionType = CHECK);
     Option(const char* name, int defaultValue, int minValue, int maxValue);
   };
 
@@ -73,8 +70,8 @@ namespace {
   /// Constants
   ///
 
-  // load-defaults populates the options map with the hard
-  // coded options names and their default values.
+  // load_defaults populates the options vector with the hard
+  // coded names and default values.
   void load_defaults(Options& o) {
 
     o.push_back(Option("Use Search Log", false));
@@ -109,7 +106,7 @@ namespace {
     o.push_back(Option("Check Extension (non-PV nodes)", 1, 0, 2));
     o.push_back(Option("Single Reply Extension (PV nodes)", 2, 0, 2));
     o.push_back(Option("Single Reply Extension (non-PV nodes)", 2, 0, 2));
-    o.push_back(Option("Mate Threat Extension (PV nodes)", 2, 0, 2));
+    o.push_back(Option("Mate Threat Extension (PV nodes)", 0, 0, 2));
     o.push_back(Option("Mate Threat Extension (non-PV nodes)", 0, 0, 2));
     o.push_back(Option("Pawn Push to 7th Extension (PV nodes)", 1, 0, 2));
     o.push_back(Option("Pawn Push to 7th Extension (non-PV nodes)", 1, 0, 2));
@@ -133,14 +130,13 @@ namespace {
     o.push_back(Option("Maximum Number of Threads per Split Point", 5, 4, 8));
     o.push_back(Option("Threads", 1, 1, 8));
     o.push_back(Option("Hash", 32, 4, 4096));
-    o.push_back(Option("Clear Hash", false));
+    o.push_back(Option("Clear Hash", false, BUTTON));
     o.push_back(Option("Ponder", true));
     o.push_back(Option("OwnBook", true));
     o.push_back(Option("MultiPV", 1, 1, 500));
     o.push_back(Option("UCI_ShowCurrLine", false));
     o.push_back(Option("UCI_Chess960", false));
   }
-
 
   ///
   /// Variables
@@ -149,9 +145,55 @@ namespace {
   Options options;
 
   // Local functions
-  template<typename T> T get_option_value(const std::string& optionName);
-  Options::iterator option_from_name(const std::string& optionName);
+  Options::iterator option_with_name(const std::string& optionName);
 
+  // stringify converts a value of type T to a std::string
+  template<typename T>
+  std::string stringify(const T& v) {
+
+     std::ostringstream ss;
+     ss << v;
+     return ss.str();
+  }
+
+  // We want conversion from a bool value to be "true" or "false",
+  // not "1" or "0", so add a specialization for bool type.
+  template<>
+  std::string stringify<bool>(const bool& v) {
+
+    return v ? "true" : "false";
+  }
+
+  // get_option_value implements the various get_option_value_<type>
+  // functions defined later, because only the option value
+  // type changes a template seems a proper solution.
+
+  template<typename T>
+  T get_option_value(const std::string& optionName) {
+
+      T ret;
+      Options::iterator it = option_with_name(optionName);
+
+      if (it != options.end())
+      {
+          std::istringstream ss(it->currentValue);
+          ss >> ret;
+      }
+      return ret;
+  }
+
+  // Unfortunatly we need a specialization to convert "false" and "true"
+  // to proper bool values. The culprit is that we use a non standard way
+  // to store a bool value in a string, in particular we use "false" and
+  // "true" instead of "0" and "1" due to how UCI protocol works.
+
+  template<>
+  bool get_option_value<bool>(const std::string& optionName) {
+
+      Options::iterator it = option_with_name(optionName);
+
+      return it != options.end() && it->currentValue == "true";
+  }
 }
 
 ////
@@ -170,24 +212,24 @@ void init_uci_options() {
   // According to Ken Dail's tests, Glaurung plays much better with 7 than
   // with 8 threads.  This is weird, but it is probably difficult to find out
   // why before I have a 8-core computer to experiment with myself.
-  Options::iterator it = option_from_name("Threads");
+  Options::iterator it = option_with_name("Threads");
 
   assert(it != options.end());
 
-  it->defaultValue = Min(cpu_count(), 7);
-  it->currentValue = Min(cpu_count(), 7);
+  it->defaultValue = stringify(Min(cpu_count(), 7));
+  it->currentValue = stringify(Min(cpu_count(), 7));
 
   // Increase the minimum split depth when the number of CPUs is big.
   // It would probably be better to let this depend on the number of threads
   // instead.
   if(cpu_count() > 4)
   {
-      it = option_from_name("Minimum Split Depth");
+      it = option_with_name("Minimum Split Depth");
 
       assert(it != options.end());
 
-      it->defaultValue = 6;
-      it->currentValue = 6;
+      it->defaultValue = "6";
+      it->currentValue = "6";
   }
 }
 
@@ -274,7 +316,7 @@ bool button_was_pressed(const std::string& buttonName) {
 void set_option_value(const std::string& optionName,
                       const std::string& newValue) {
 
-  Options::iterator it = option_from_name(optionName);
+  Options::iterator it = option_with_name(optionName);
 
   if (it != options.end())
       it->currentValue = newValue;
@@ -294,57 +336,22 @@ void push_button(const std::string& buttonName) {
 
 namespace {
 
-    // methods and c'tors of Option class.
-
-    template<typename T>
-    std::string Option::stringify(const T& v)
-    {
-        std::ostringstream ss;
-        ss << v;
-
-        return ss.str();
-    }
-
-    template<>
-    std::string Option::stringify(const bool& v)
-    {
-        return v ? "true" : "false";
-    }
+    // Define constructors of Option class.
 
     Option::Option(const char* nm, const char* def, OptionType t)
     : name(nm), defaultValue(def), currentValue(def), type(t), minValue(0), maxValue(0) {}
 
-    Option::Option(const char* nm, bool def)
-    : name(nm), defaultValue(stringify(def)), currentValue(stringify(def)), type(CHECK), minValue(0), maxValue(0) {}
+    Option::Option(const char* nm, bool def, OptionType t)
+    : name(nm), defaultValue(stringify(def)), currentValue(stringify(def)), type(t), minValue(0), maxValue(0) {}
 
     Option::Option(const char* nm, int def, int minv, int maxv)
     : name(nm), defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), minValue(minv), maxValue(maxv) {}
 
+    // option_with_name() tries to find a UCI option with a given
+    // name.  It returns an iterator to the UCI option or to options.end(),
+    // depending on whether an option with the given name exists.
 
-    // get_option_value is the implementation of the various
-    // get_option_value_<type>, because only the option value
-    // type changes a template is the proper solution.
-
-    template<typename T>
-    T get_option_value(const std::string& optionName) {
-
-        T ret;
-
-        Options::iterator it = option_from_name(optionName);
-
-        if (it != options.end())
-        {
-            std::istringstream ss(it->currentValue);
-            ss >> ret;
-        }
-        return ret;
-    }
-
-
-    // option_from_name returns an iterator to the option
-    // with name optionName.
-
-    Options::iterator option_from_name(const std::string& optionName) {
+    Options::iterator option_with_name(const std::string& optionName) {
 
         for (Options::iterator it = options.begin(); it != options.end(); ++it)
             if (it->name == optionName)
@@ -352,5 +359,4 @@ namespace {
 
         return options.end();
     }
-
 }
