@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -266,7 +266,7 @@ namespace {
 #else
   DWORD WINAPI init_thread(LPVOID threadID);
 #endif
-  
+
 }
 
 
@@ -353,7 +353,7 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
     Depth(get_option_value_int("Pawn Push to 7th Extension (non-PV nodes)"));
   PassedPawnExtension[1] =
     Depth(get_option_value_int("Passed Pawn Extension (PV nodes)"));
-  PassedPawnExtension[0] = 
+  PassedPawnExtension[0] =
     Depth(get_option_value_int("Passed Pawn Extension (non-PV nodes)"));
   PawnEndgameExtension[1] =
     Depth(get_option_value_int("Pawn Endgame Extension (PV nodes)"));
@@ -396,7 +396,7 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
     get_option_value_int("Maximum Number of Threads per Split Point");
 
   read_weights(pos.side_to_move());
-  
+
   int newActiveThreads = get_option_value_int("Threads");
   if(newActiveThreads != ActiveThreads) {
     ActiveThreads = newActiveThreads;
@@ -462,7 +462,7 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
 
   if(UseLogFile)
     LogFile.close();
-  
+
   if(Quit) {
     OpeningBook.close();
     stop_threads();
@@ -492,7 +492,7 @@ void init_threads() {
   lock_init(&IOLock, NULL);
 
   init_split_point_stack();
-  
+
 #if !defined(_MSC_VER)
   pthread_mutex_init(&WaitLock, NULL);
   pthread_cond_init(&WaitCond, NULL);
@@ -645,7 +645,7 @@ namespace {
         }
       }
 
-      // Write PV to transposition table, in case the relevant entries have 
+      // Write PV to transposition table, in case the relevant entries have
       // been overwritten during the search:
       TT.insert_pv(p, ss[0].pv);
 
@@ -712,7 +712,7 @@ namespace {
       if(current_search_time() >= 1000)
         std::cout << "info currmove " << move
                   << " currmovenumber " << i + 1 << std::endl;
-      
+
       // Decide search depth for this move:
       ext = extension(pos, move, true, pos.move_is_check(move), false, false);
       newDepth = (Iteration-2)*OnePly + ext + InitialDepth;
@@ -734,7 +734,7 @@ namespace {
       else {
         value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
         if(value > alpha) {
-          // Fail high!  Set the boolean variable FailHigh to true, and 
+          // Fail high!  Set the boolean variable FailHigh to true, and
           // re-search the move with a big window.  The variable FailHigh is
           // used for time managment:  We try to avoid aborting the search
           // prematurely during a fail high research.
@@ -753,7 +753,7 @@ namespace {
       if(AbortSearch)
         break;
 
-      // Remember the node count for this move.  The node counts are used to 
+      // Remember the node count for this move.  The node counts are used to
       // sort the root moves at the next iteration.
       rml.set_move_nodes(i, nodes_searched() - nodes);
 
@@ -770,7 +770,7 @@ namespace {
         rml.set_move_pv(i, ss[0].pv);
 
         if(MultiPV == 1) {
-          // We record how often the best move has been changed in each 
+          // We record how often the best move has been changed in each
           // iteration.  This information is used for time managment:  When
           // the best move changes frequently, we allocate some more time.
           if(i > 0)
@@ -858,7 +858,7 @@ namespace {
       return alpha;
 
     // Transposition table lookup.  At PV nodes, we don't use the TT for
-    // pruning, but only for move ordering.  
+    // pruning, but only for move ordering.
     Value ttValue;
     Depth ttDepth;
     Move ttMove = MOVE_NONE;
@@ -894,7 +894,7 @@ namespace {
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
-      
+
       assert(move_is_ok(move));
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
@@ -907,8 +907,8 @@ namespace {
 
       // Make and search the move.
       pos.do_move(move, u, dcCandidates);
-      
-      if(moveCount == 1) 
+
+      if(moveCount == 1)
         value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
       else {
         if(depth >= 2*OnePly && ext == Depth(0) && moveCount >= LMRPVMoves
@@ -916,7 +916,7 @@ namespace {
            && !moveIsPassedPawnPush && !move_is_castle(move)
            && move != ss[ply].killer1 && move != ss[ply].killer2) {
           ss[ply].reduction = OnePly;
-          value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true, 
+          value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true,
                           threadID);
         }
         else value = alpha + 1;
@@ -931,7 +931,7 @@ namespace {
               // such cases, because resolving the fail high at ply 1 could
               // result in a big drop in score at the root.
               Threads[threadID].failHighPly1 = true;
-            value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, 
+            value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1,
                                threadID);
             Threads[threadID].failHighPly1 = false;
           }
@@ -940,7 +940,7 @@ namespace {
       pos.undo_move(move, u);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
-      
+
       // New best move?
       if(value > bestValue) {
         bestValue = value;
@@ -976,7 +976,7 @@ namespace {
         return VALUE_DRAW;
     }
 
-    // If the search is not aborted, update the transposition table, 
+    // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.  This code is somewhat messy,
     // and definitely needs to be cleaned up.  FIXME
     if(!AbortSearch && !thread_should_stop(threadID)) {
@@ -995,7 +995,7 @@ namespace {
                         movesSearched[i]);
 
           H.success(pos.piece_on(move_from(m)), m, depth);
-          
+
           if(m != ss[ply].killer1) {
             ss[ply].killer2 = ss[ply].killer1;
             ss[ply].killer1 = m;
@@ -1010,7 +1010,7 @@ namespace {
 
     return bestValue;
   }
-  
+
 
   // search() is the search function for zero-width nodes.
 
@@ -1152,7 +1152,7 @@ namespace {
       // Futility pruning
       if(useFutilityPruning && ext == Depth(0) && !moveIsCapture &&
          !moveIsPassedPawnPush && !move_promotion(move)) {
-        
+
         if(moveCount >= 2 + int(depth)
            && ok_to_prune(pos, move, ss[ply].threatMove, depth))
           continue;
@@ -1171,7 +1171,7 @@ namespace {
 
       // Make and search the move.
       pos.do_move(move, u, dcCandidates);
-      
+
       if(depth >= 2*OnePly && ext == Depth(0) && moveCount >= LMRNonPVMoves
          && !moveIsCapture && !move_promotion(move) && !moveIsPassedPawnPush
          && !move_is_castle(move)
@@ -1189,7 +1189,7 @@ namespace {
       pos.undo_move(move, u);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
-      
+
       // New best move?
       if(value > bestValue) {
         bestValue = value;
@@ -1226,7 +1226,7 @@ namespace {
                  VALUE_TYPE_UPPER);
       else {
         Move m = ss[ply].pv[ply];
-                                                       
+
         if(pos.square_is_empty(move_to(m)) && !move_promotion(m) &&
            !move_is_ep(m)) {
           for(int i = 0; i < moveCount - 1; i++)
@@ -1236,7 +1236,7 @@ namespace {
               H.failure(pos.piece_on(move_from(movesSearched[i])),
                         movesSearched[i]);
           H.success(pos.piece_on(move_from(m)), m, depth);
-          
+
           if(m != ss[ply].killer1) {
             ss[ply].killer2 = ss[ply].killer1;
             ss[ply].killer1 = m;
@@ -1248,7 +1248,7 @@ namespace {
 
     return bestValue;
   }
-  
+
 
   // qsearch() is the quiescence search function, which is called by the main
   // search function when the remaining depth is zero (or, to be more precise,
@@ -1265,7 +1265,7 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
-    // Initialize, and make an early exit in case of an aborted search, 
+    // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
     if(AbortSearch || thread_should_stop(threadID))
       return Value(0);
@@ -1302,7 +1302,7 @@ namespace {
     Bitboard dcCandidates = mp.discovered_check_candidates();
     bool isCheck = pos.is_check();
 
-    // Loop through the moves until no moves remain or a beta cutoff 
+    // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
     while(alpha < beta && ((move = mp.get_next_move()) != MOVE_NONE)) {
       UndoInfo u;
@@ -1315,18 +1315,18 @@ namespace {
       ss[ply].currentMove = move;
 
       // Futility pruning
-      if(UseQSearchFutilityPruning && !isCheck && !moveIsCheck && 
-         !move_promotion(move) && !moveIsPassedPawnPush && 
+      if(UseQSearchFutilityPruning && !isCheck && !moveIsCheck &&
+         !move_promotion(move) && !moveIsPassedPawnPush &&
          beta - alpha == 1 &&
          pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame) {
         Value futilityValue =
-          staticValue 
+          staticValue
           + Max(pos.midgame_value_of_piece_on(move_to(move)),
                 pos.endgame_value_of_piece_on(move_to(move)))
           + FutilityMargin0
           + ei.futilityMargin;
         if(futilityValue < alpha) {
-          if(futilityValue > bestValue) 
+          if(futilityValue > bestValue)
             bestValue = futilityValue;
           continue;
         }
@@ -1357,7 +1357,7 @@ namespace {
     }
 
     // All legal moves have been searched.  A special case: If we're in check
-    // and no legal moves were found, it is checkmate: 
+    // and no legal moves were found, it is checkmate:
     if(pos.is_check() && moveCount == 0) // Mate!
       return value_mated_in(ply);
 
@@ -1374,11 +1374,11 @@ namespace {
   // splitting, we don't have to repeat all this work in sp_search().  We
   // also don't need to store anything to the hash table here:  This is taken
   // care of after we return from the split point.
-  
+
   void sp_search(SplitPoint *sp, int threadID) {
     assert(threadID >= 0 && threadID < ActiveThreads);
     assert(ActiveThreads > 1);
-    
+
     Position pos = Position(sp->pos);
     SearchStack *ss = sp->sstack[threadID];
     Value value;
@@ -1439,7 +1439,7 @@ namespace {
 
       if(thread_should_stop(threadID))
         break;
-      
+
       // New best move?
       lock_grab(&(sp->lock));
       if(value > sp->bestValue && !thread_should_stop(threadID)) {
@@ -1478,11 +1478,11 @@ namespace {
   // don't have to repeat all this work in sp_search_pv().  We also don't
   // need to store anything to the hash table here:  This is taken care of
   // after we return from the split point.
-  
+
   void sp_search_pv(SplitPoint *sp, int threadID) {
     assert(threadID >= 0 && threadID < ActiveThreads);
     assert(ActiveThreads > 1);
-    
+
     Position pos = Position(sp->pos);
     SearchStack *ss = sp->sstack[threadID];
     Value value;
@@ -1508,7 +1508,7 @@ namespace {
       lock_release(&(sp->lock));
 
       ss[sp->ply].currentMove = move;
-      
+
       // Decide the new search depth.
       ext = extension(pos, move, true, moveIsCheck, false, false);
       newDepth = sp->depth - OnePly + ext;
@@ -1548,7 +1548,7 @@ namespace {
 
       if(thread_should_stop(threadID))
         break;
-      
+
       // New best move?
       lock_grab(&(sp->lock));
       if(value > sp->bestValue && !thread_should_stop(threadID)) {
@@ -1588,7 +1588,7 @@ namespace {
     sp->slaves[threadID] = 0;
 
     lock_release(&(sp->lock));
-  }  
+  }
 
 
   /// The RootMove class
@@ -1598,7 +1598,7 @@ namespace {
   RootMove::RootMove() {
     nodes = cumulativeNodes = 0ULL;
   }
-  
+
 
   /// The RootMoveList class
 
@@ -1627,7 +1627,7 @@ namespace {
             SearchStack ss[PLY_MAX_PLUS_2];
 
             moves[count].move = mlist[i].move;
-            moves[count].nodes = 0ULL;            
+            moves[count].nodes = 0ULL;
             pos.do_move(moves[count].move, u);
             moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE,
                                           Depth(0), 1, 0);
@@ -1654,7 +1654,7 @@ namespace {
   void RootMoveList::set_move_score(int moveNum, Value score) {
     moves[moveNum].score = score;
   }
-  
+
   void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
     moves[moveNum].nodes = nodes;
     moves[moveNum].cumulativeNodes += nodes;
@@ -1674,7 +1674,7 @@ namespace {
   int64_t RootMoveList::get_move_cumulative_nodes(int moveNum) {
     return moves[moveNum].cumulativeNodes;
   }
-  
+
   int RootMoveList::move_count() const {
     return count;
   }
@@ -1690,11 +1690,30 @@ namespace {
 
   Move RootMoveList::scan_for_easy_move() const {
 
-    Value bestMoveValue = this->get_move_score(0);
-    for(int i = 1; i < this->move_count(); i++)
-      if(this->get_move_score(i) >= bestMoveValue - EasyMoveMargin)
-        return MOVE_NONE;
-    return this->get_move(0);
+    assert(count);
+
+    if (count == 1)
+        return get_move(0);
+
+    // moves are sorted so just consider the best and the second one
+    if (get_move_score(0) > get_move_score(1) + EasyMoveMargin)
+        return get_move(0);
+
+    return MOVE_NONE;
+  }
+
+
+  // RootMoveList::compare_root_moves() is the comparison function used by
+  // RootMoveList::sort when sorting the moves.  A move m1 is considered to
+  // be better than a move m2 if it has a higher score, or if the moves have
+  // equal score but m1 has the higher node count.
+
+  bool RootMoveList::compare_root_moves(const RootMove &rm1,
+                                        const RootMove &rm2) {
+    if (rm1.score != rm2.score)
+        return (rm1.score < rm2.score);
+
+    return rm1.nodes <= rm2.nodes;
   }
 
 
@@ -1724,21 +1743,6 @@ namespace {
         moves[j] = moves[j-1];
       moves[j] = rm;
     }
-  }
-
-
-  // RootMoveList::compare_root_moves() is the comparison function used by
-  // RootMoveList::sort when sorting the moves.  A move m1 is considered to
-  // be better than a move m2 if it has a higher score, or if the moves have
-  // equal score but m1 has the higher node count.
-  
-  bool RootMoveList::compare_root_moves(const RootMove &rm1,
-                                       const RootMove &rm2) {
-
-    if (rm1.score != rm2.score)
-        return (rm1.score < rm2.score);
-    
-    return rm1.nodes <= rm2.nodes;
   }
 
 
@@ -1794,7 +1798,7 @@ namespace {
   // update_pv() is called whenever a search returns a value > alpha.  It
   // updates the PV in the SearchStack object corresponding to the current
   // node.
-    
+
   void update_pv(SearchStack ss[], int ply) {
     assert(ply >= 0 && ply < PLY_MAX);
 
@@ -1885,8 +1889,8 @@ namespace {
 
     return false;
   }
-    
-  
+
+
   // extension() decides whether a move should be searched with normal depth,
   // or with extended depth.  Certain classes of moves (checking moves, in
   // particular) are searched with bigger depth than ordinary moves.
@@ -1972,7 +1976,7 @@ namespace {
     // Case 4: Don't prune moves with good history.
     if(!H.ok_to_prune(pos.piece_on(move_from(m)), m, d))
       return false;
-    
+
     // Case 5: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
     if(!PruneBlockingMoves && threat != MOVE_NONE
@@ -1982,12 +1986,12 @@ namespace {
 
     return true;
   }
-  
+
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
   // high at ply 1 at the node below the first root node.  This information
   // is used for time managment.
-  
+
   bool fail_high_ply_1() {
     for(int i = 0; i < ActiveThreads; i++)
       if(Threads[i].failHighPly1)
@@ -2040,7 +2044,7 @@ namespace {
       else if(strncmp(input, "ponderhit", 9) == 0)
         ponderhit();
     }
-    
+
     // Print search information
     if(t < 1000)
       lastInfoTime = 0;
@@ -2054,7 +2058,7 @@ namespace {
       std::cout << "info nodes " << nodes_searched() << " nps " << nps()
                 << " time " << t << " hashfull " << TT.full() << std::endl;
       lock_release(&IOLock);
-      if(ShowCurrentLine) 
+      if(ShowCurrentLine)
         Threads[0].printCurrentLine = true;
     }
 
@@ -2096,7 +2100,7 @@ namespace {
 
   // print_current_line() prints the current line of search for a given
   // thread.  Called when the UCI option UCI_ShowCurrLine is 'true'.
-  
+
   void print_current_line(SearchStack ss[], int ply, int threadID) {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
@@ -2121,14 +2125,14 @@ namespace {
   // "bestmove" before the GUI sends it a "stop" or "ponderhit" command.
   // We simply wait here until one of these commands is sent, and return,
   // after which the bestmove and pondermove will be printed (in id_loop()).
-  
+
   void wait_for_stop_or_ponderhit() {
     std::string command;
 
     while(true) {
       if(!std::getline(std::cin, command))
         command = "quit";
-      
+
       if(command == "quit") {
         OpeningBook.close();
         stop_threads();
@@ -2140,7 +2144,7 @@ namespace {
     }
   }
 
-  
+
   // idle_loop() is where the threads are parked when they have no work to do.
   // The parameter "waitSp", if non-NULL, is a pointer to an active SplitPoint
   // object for which the current thread is the master.
@@ -2148,7 +2152,7 @@ namespace {
   void idle_loop(int threadID, SplitPoint *waitSp) {
     assert(threadID >= 0 && threadID < THREAD_MAX);
 
-    Threads[threadID].running = true; 
+    Threads[threadID].running = true;
 
     while(true) {
       if(AllThreadsShouldExit && threadID != 0)
@@ -2206,7 +2210,7 @@ namespace {
     for(int i = 0; i < THREAD_MAX; i++)
       for(int j = 0; j < MaxActiveSplitPoints; j++)
         lock_destroy(&(SplitPointStack[i][j].lock));
-  }  
+  }
 
 
   // thread_should_stop() checks whether the thread with a given threadID has
@@ -2216,7 +2220,7 @@ namespace {
 
   bool thread_should_stop(int threadID) {
     assert(threadID >= 0 && threadID < ActiveThreads);
-  
+
     SplitPoint *sp;
 
     if(Threads[threadID].stop)
@@ -2229,7 +2233,7 @@ namespace {
         return true;
       }
     return false;
-  }  
+  }
 
 
   // thread_is_available() checks whether the thread with threadID "slave" is
@@ -2244,7 +2248,7 @@ namespace {
     assert(slave >= 0 && slave < ActiveThreads);
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
-  
+
     if(!Threads[slave].idle || slave == master)
       return false;
 
@@ -2263,14 +2267,14 @@ namespace {
     return false;
   }
 
-  
+
   // idle_thread_exists() tries to find an idle thread which is available as
   // a slave for the thread with threadID "master".
 
   bool idle_thread_exists(int master) {
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
-  
+
     for(int i = 0; i < ActiveThreads; i++)
       if(thread_is_available(i, master))
         return true;
@@ -2408,20 +2412,20 @@ namespace {
 #endif
     }
   }
-    
+
 
   // init_thread() is the function which is called when a new thread is
   // launched.  It simply calls the idle_loop() function with the supplied
   // threadID.  There are two versions of this function; one for POSIX threads
   // and one for Windows threads.
-  
+
 #if !defined(_MSC_VER)
 
   void *init_thread(void *threadID) {
     idle_loop(*(int *)threadID, NULL);
     return NULL;
   }
-  
+
 #else
 
   DWORD WINAPI init_thread(LPVOID threadID) {
