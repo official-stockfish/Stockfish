@@ -72,6 +72,7 @@ namespace {
 
   // load_defaults populates the options vector with the hard
   // coded names and default values.
+
   void load_defaults(Options& o) {
 
     o.push_back(Option("Use Search Log", false));

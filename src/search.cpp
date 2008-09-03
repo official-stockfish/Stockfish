@@ -82,7 +82,7 @@ namespace {
     void sort_multipv(int n);
 
   private:
-    static int compare_root_moves(const RootMove &rm1, const RootMove &rm2);
+    static bool compare_root_moves(const RootMove &rm1, const RootMove &rm2);
     static const int MaxRootMoves = 500;
     RootMove moves[MaxRootMoves];
     int count;
@@ -562,8 +562,10 @@ namespace {
 
   void id_loop(const Position &pos, Move searchMoves[]) {
     Position p(pos);
-    RootMoveList rml(p, searchMoves);
     SearchStack ss[PLY_MAX_PLUS_2];
+
+    // searchMoves are verified, copied, scored and sorted
+    RootMoveList rml(p, searchMoves);
 
     // Initialize
     TT.new_search();
@@ -1602,45 +1604,40 @@ namespace {
 
   // Constructor
 
-  RootMoveList::RootMoveList(Position &pos, Move searchMoves[]) {
+  RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) : count(0) {
+
     MoveStack mlist[MaxRootMoves];
     bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
-    int i, j = 0, k;
 
     // Generate all legal moves
-    count = generate_legal_moves(pos, mlist);
+    int lm_count = generate_legal_moves(pos, mlist);
 
     // Add each move to the moves[] array
-    for(i = 0; i < count; i++) {
-      UndoInfo u;
-      SearchStack ss[PLY_MAX_PLUS_2];
-      bool includeMove;
+    for (int i = 0; i < lm_count; i++)
+    {
+        bool includeMove = includeAllMoves;
 
-      if(includeAllMoves)
-        includeMove = true;
-      else {
-        includeMove = false;
-        for(k = 0; searchMoves[k] != MOVE_NONE; k++)
-          if(searchMoves[k] == mlist[i].move) {
-            includeMove = true;
-            break;
-          }
-      }
+        for (int k = 0; !includeMove && searchMoves[k] != MOVE_NONE; k++)
+            includeMove = (searchMoves[k] == mlist[i].move);
 
-      if(includeMove) {
-        moves[j].move = mlist[i].move;
-        moves[j].nodes = 0ULL;
-        pos.do_move(moves[j].move, u);
-        moves[j].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE,
-                                  Depth(0), 1, 0);
-        pos.undo_move(moves[j].move, u);
-        moves[j].pv[0] = moves[i].move;
-        moves[j].pv[1] = MOVE_NONE; // FIXME
-        j++;
-      }
+        if (includeMove)
+        {
+            // Find a quick score for the move
+            UndoInfo u;
+            SearchStack ss[PLY_MAX_PLUS_2];
+
+            moves[count].move = mlist[i].move;
+            moves[count].nodes = 0ULL;            
+            pos.do_move(moves[count].move, u);
+            moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE,
+                                          Depth(0), 1, 0);
+            pos.undo_move(moves[count].move, u);
+            moves[count].pv[0] = moves[i].move;
+            moves[count].pv[1] = MOVE_NONE; // FIXME
+            count++;
+        }
     }
-    count = j;
-    this->sort();
+    sort();
   }
 
 
@@ -1689,9 +1686,10 @@ namespace {
   // is returned, otherwise the function returns MOVE_NONE.  It is very
   // important that this function is called at the right moment:  The code
   // assumes that the first iteration has been completed and the moves have
-  // been sorted.
+  // been sorted. This is done in RootMoveList c'tor.
 
   Move RootMoveList::scan_for_easy_move() const {
+
     Value bestMoveValue = this->get_move_score(0);
     for(int i = 1; i < this->move_count(); i++)
       if(this->get_move_score(i) >= bestMoveValue - EasyMoveMargin)
@@ -1734,13 +1732,13 @@ namespace {
   // be better than a move m2 if it has a higher score, or if the moves have
   // equal score but m1 has the higher node count.
   
-  int RootMoveList::compare_root_moves(const RootMove &rm1,
+  bool RootMoveList::compare_root_moves(const RootMove &rm1,
                                        const RootMove &rm2) {
-    if(rm1.score < rm2.score) return 1;
-    else if(rm1.score > rm2.score) return 0;
-    else if(rm1.nodes < rm2.nodes) return 1;
-    else if(rm1.nodes > rm2.nodes) return 0;
-    else return 1;
+
+    if (rm1.score != rm2.score)
+        return (rm1.score < rm2.score);
+    
+    return rm1.nodes <= rm2.nodes;
   }
 
 
