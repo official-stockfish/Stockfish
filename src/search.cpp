@@ -51,10 +51,11 @@ namespace {
   // root move, we store a score, a node count, and a PV (really a refutation
   // in the case of moves which fail low).
 
-  class RootMove {
+  struct RootMove {
 
-  public:
     RootMove();
+    bool operator<(const RootMove&); // used to sort
+
     Move move;
     Value score;
     int64_t nodes, cumulativeNodes;
@@ -78,11 +79,10 @@ namespace {
     int64_t get_move_cumulative_nodes(int moveNum);
     int move_count() const;
     Move scan_for_easy_move() const;
-    void sort();
+    inline void sort();
     void sort_multipv(int n);
 
   private:
-    static bool compare_root_moves(const RootMove &rm1, const RootMove &rm2);
     static const int MaxRootMoves = 500;
     RootMove moves[MaxRootMoves];
     int count;
@@ -1599,6 +1599,18 @@ namespace {
     nodes = cumulativeNodes = 0ULL;
   }
 
+  // RootMove::operator<() is the comparison function used when
+  // sorting the moves.  A move m1 is considered to be better
+  // than a move m2 if it has a higher score, or if the moves
+  // have equal score but m1 has the higher node count.
+
+  bool RootMove::operator<(const RootMove& m) {
+
+    if (score != m.score)
+        return (score < m.score);
+
+    return nodes <= m.nodes;
+  }
 
   /// The RootMoveList class
 
@@ -1702,45 +1714,27 @@ namespace {
     return MOVE_NONE;
   }
 
-
-  // RootMoveList::compare_root_moves() is the comparison function used by
-  // RootMoveList::sort when sorting the moves.  A move m1 is considered to
-  // be better than a move m2 if it has a higher score, or if the moves have
-  // equal score but m1 has the higher node count.
-
-  bool RootMoveList::compare_root_moves(const RootMove &rm1,
-                                        const RootMove &rm2) {
-    if (rm1.score != rm2.score)
-        return (rm1.score < rm2.score);
-
-    return rm1.nodes <= rm2.nodes;
-  }
-
-
   // RootMoveList::sort() sorts the root move list at the beginning of a new
   // iteration.
 
-  void RootMoveList::sort() {
-    for(int i = 1; i < count; i++) {
-      RootMove rm = moves[i];
-      int j;
-      for(j = i; j > 0 && compare_root_moves(moves[j-1], rm); j--)
-        moves[j] = moves[j-1];
-      moves[j] = rm;
-    }
+  inline void RootMoveList::sort() {
+
+    sort_multipv(count - 1); // all items
   }
 
 
   // RootMoveList::sort_multipv() sorts the first few moves in the root move
-  // list by their scores and depths.  It is used to order the different PVs
+  // list by their scores and depths. It is used to order the different PVs
   // correctly in MultiPV mode.
 
   void RootMoveList::sort_multipv(int n) {
-    for(int i = 1; i <= n; i++) {
+
+    for (int i = 1; i <= n; i++)
+    {
       RootMove rm = moves[i];
       int j;
-      for(j = i; j > 0 && moves[j-1].score < rm.score; j--)
-        moves[j] = moves[j-1];
+      for (j = i; j > 0 && moves[j-1] < rm; j--)
+          moves[j] = moves[j-1];
       moves[j] = rm;
     }
   }
