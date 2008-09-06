@@ -136,29 +136,20 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
 
 
 /// TranspositionTable::retrieve looks up the current position in the
-/// transposition table, and extracts the value, value type, depth and
-/// best move if the position is found.  The return value is true if
-/// the position is found, and false if it isn't.
+/// transposition table. Returns a pointer to the TTEntry or NULL
+/// if position is not found.
 
-bool TranspositionTable::retrieve(const Position &pos, Value *value,
-                                  Depth *d, Move *move,
-                                  ValueType *type) const {
+const TTEntry* TranspositionTable::retrieve(const Position &pos) const {
+
   TTEntry *tte = first_entry(pos);
 
   for (int i = 0; i < 4; i++)
   {
       tte += i;
       if (tte->key() == pos.get_key())
-      {
-          *value = tte->value();
-          *type = tte->type();
-          *d = tte->depth();
-          *move = tte->move();
-          return true;
-      }
+          return tte;
   }
-  *move = MOVE_NONE;
-  return false;
+  return NULL;
 }
 
 
@@ -222,28 +213,4 @@ TTEntry::TTEntry(Key k, Value v, ValueType t, Depth d, Move m,
   value_(v), depth_(int16_t(d)) {}
 
 
-/// Functions for extracting data from TTEntry objects.
 
-inline Key TTEntry::key() const {
-  return key_;
-}
-
-inline Depth TTEntry::depth() const {
-  return Depth(depth_);
-}
-
-inline Move TTEntry::move() const {
-  return Move(data & 0x7FFFF);
-}
-
-inline Value TTEntry::value() const {
-  return Value(value_);
-}
-
-inline ValueType TTEntry::type() const {
-  return ValueType((data >> 20) & 3);
-}
-
-inline int TTEntry::generation() const {
-  return (data >> 23);
-}

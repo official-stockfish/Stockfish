@@ -40,12 +40,12 @@ class TTEntry {
 public:
   TTEntry();
   TTEntry(Key k, Value v, ValueType t, Depth d, Move m, int generation);
-  Key key() const;
-  Depth depth() const;
-  Move move() const;
-  Value value() const;
-  ValueType type() const;
-  int generation() const;
+  Key key() const { return key_; }
+  Depth depth() const { return Depth(depth_); }
+  Move move() const { return Move(data & 0x7FFFF); }
+  Value value() const { return Value(value_); }
+  ValueType type() const { return ValueType((data >> 20) & 3); }
+  int generation() const { return (data >> 23); }
 
 private:
   Key key_;
@@ -53,7 +53,6 @@ private:
   int16_t value_;
   int16_t depth_;
 };
-
 
 /// The transposition table class.  This is basically just a huge array
 /// containing TTEntry objects, and a few methods for writing new entries
@@ -67,8 +66,7 @@ public:
   void set_size(unsigned mbSize);
   void clear();
   void store(const Position &pos, Value v, Depth d, Move m, ValueType type);
-  bool retrieve(const Position &pos, Value *value, Depth *d, Move *move,
-                ValueType *type) const;
+  const TTEntry* retrieve(const Position &pos) const;
   void new_search();
   void insert_pv(const Position &pos, Move pv[]);
   int full();

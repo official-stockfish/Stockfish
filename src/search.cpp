@@ -240,6 +240,7 @@ namespace {
                   bool singleReply, bool mateThreat);
   bool ok_to_do_nullmove(const Position &pos);
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
+  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -458,7 +459,7 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
 
   // We're ready to start thinking.  Call the iterative deepening loop
   // function:
-  id_loop(pos, searchMoves);
+  id_loop(pos, searchMoves);;
 
   if(UseLogFile)
     LogFile.close();
@@ -859,14 +860,11 @@ namespace {
 
     // Transposition table lookup.  At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
-    Value ttValue;
-    Depth ttDepth;
-    Move ttMove = MOVE_NONE;
-    ValueType ttValueType;
+    const TTEntry* tte = TT.retrieve(pos);
 
-    TT.retrieve(pos, &ttValue, &ttDepth, &ttMove, &ttValueType);
+    Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    // Internal iterative deepening.
+    // Go with internal iterative deepening if we don't have a TT move.
     if(UseIIDAtPVNodes && ttMove == MOVE_NONE && depth >= 5*OnePly) {
       search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
       ttMove = ss[ply].pv[ply];
@@ -1045,24 +1043,14 @@ namespace {
       return beta-1;
 
     // Transposition table lookup
-    bool ttFound;
-    Value ttValue;
-    Depth ttDepth;
-    Move ttMove = MOVE_NONE;
-    ValueType ttValueType;
+    const TTEntry* tte = TT.retrieve(pos);
 
-    ttFound = TT.retrieve(pos, &ttValue, &ttDepth, &ttMove, &ttValueType);
-    if(ttFound) {
-      ttValue = value_from_tt(ttValue, ply);
-      if(ttDepth >= depth
-         || ttValue >= Max(value_mate_in(100), beta)
-         || ttValue < Min(value_mated_in(100), beta)) {
-        if((is_lower_bound(ttValueType) && ttValue >= beta) ||
-           (is_upper_bound(ttValueType) && ttValue < beta)) {
-          ss[ply].currentMove = ttMove;
-          return ttValue;
-        }
-      }
+    Move ttMove = (tte ? tte->move() : MOVE_NONE);
+
+    if (tte && ok_to_use_TT(tte, depth, beta, ply))
+    {
+        ss[ply].currentMove = ttMove; // can be MOVE_NONE ?
+        return value_from_tt(tte->value(), ply);
     }
 
     Value approximateEval = quick_evaluate(pos);
@@ -1590,6 +1578,20 @@ namespace {
     lock_release(&(sp->lock));
   }
 
+  // ok_to_use_TT() returns true if a transposition table score
+  // can be used at a given point in search.
+
+  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply) {
+
+    Value v = value_from_tt(tte->value(), ply);
+
+    return   (   tte->depth() >= depth
+              || v >= Max(value_mate_in(100), beta)
+              || v < Min(value_mated_in(100), beta))
+
+          && (   (is_lower_bound(tte->type()) && v >= beta)
+              || (is_upper_bound(tte->type()) && v < beta));
+  }
 
   /// The RootMove class
 
