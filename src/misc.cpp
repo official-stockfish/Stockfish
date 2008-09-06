@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -52,12 +52,12 @@ long dbg_cnt0 = 0;
 long dbg_cnt1 = 0;
 
 
-//// 
+////
 //// Functions
 ////
 
 void dbg_print_hit_rate() {
-    
+
   std::cout << "Total " << dbg_cnt0 << " Hit " << dbg_cnt1
             << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1)
             << std::endl;
@@ -76,15 +76,15 @@ const std::string engine_name() {
     const char *dateString = __DATE__;
     std::stringstream s;
     int month = 0, day = 0;
-    
+
     for(int i = 0; i < 12; i++)
       if(strncmp(dateString, monthNames[i], 3) == 0)
         month = i + 1;
     day = atoi(dateString+4);
-    
+
     s << "Glaurung " << (dateString+9) << std::setfill('0') << std::setw(2)
       << month << std::setfill('0') << std::setw(2) << day;
-    
+
     return s.str();
   }
   else
@@ -98,7 +98,7 @@ const std::string engine_name() {
 int get_system_time() {
   struct timeval t;
   gettimeofday(&t, NULL);
-  return t.tv_sec*1000 + t.tv_usec/1000; 
+  return t.tv_sec*1000 + t.tv_usec/1000;
 }
 
 
@@ -136,14 +136,14 @@ int Bioskey()
 {
   fd_set          readfds;
   struct timeval  timeout;
-  
+
   FD_ZERO(&readfds);
   FD_SET(fileno(stdin), &readfds);
   /* Set to timeout immediately */
   timeout.tv_sec = 0;
   timeout.tv_usec = 0;
   select(16, &readfds, 0, 0, &timeout);
-  
+
   return (FD_ISSET(fileno(stdin), &readfds));
 }
 

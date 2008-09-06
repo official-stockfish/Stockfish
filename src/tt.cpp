@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -105,7 +105,7 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
                                Move m, ValueType type) {
   TTEntry *tte, *replace;
 
-  tte = replace = entries + int(pos.get_key() & (size - 1)) * 4;
+  tte = replace = first_entry(pos);
   for (int i = 0; i < 4; i++)
   {
     if (!(tte+i)->key()) // still empty
@@ -118,12 +118,12 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
     {
         if (m == MOVE_NONE)
             m = (tte+i)->move();
-        
+
         *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
         return;
     }
     if (   i == 0  // already is (replace == tte+i), common case
-        || replace->generation() < (tte+i)->generation()) 
+        || replace->generation() < (tte+i)->generation())
         continue;
 
     if (    replace->generation() > (tte+i)->generation()
@@ -143,27 +143,32 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
 bool TranspositionTable::retrieve(const Position &pos, Value *value,
                                   Depth *d, Move *move,
                                   ValueType *type) const {
-  TTEntry *tte;
-  bool found = false;
+  TTEntry *tte = first_entry(pos);
 
-  tte = entries + int(pos.get_key() & (size - 1)) * 4;
-  for (int i = 0; i < 4 && !found ; i++)
-      if ((tte+i)->key() == pos.get_key())
+  for (int i = 0; i < 4; i++)
+  {
+      tte += i;
+      if (tte->key() == pos.get_key())
       {
-          tte = tte + i;
-          found = true;
+          *value = tte->value();
+          *type = tte->type();
+          *d = tte->depth();
+          *move = tte->move();
+          return true;
       }
-  if (!found) {
-      *move = MOVE_NONE;
-      return false;
   }
-  *value = tte->value();
-  *type = tte->type();
-  *d = tte->depth();
-  *move = tte->move();
-  return true;
+  *move = MOVE_NONE;
+  return false;
 }
 
+
+/// TranspositionTable::first_entry returns a pointer to the first
+/// entry of a cluster given a position.
+
+inline TTEntry* TranspositionTable::first_entry(const Position &pos) const {
+
+  return entries + (int(pos.get_key() & (size - 1)) << 2);
+}
 
 /// TranspositionTable::new_search() is called at the beginning of every new
 /// search.  It increments the "generation" variable, which is used to
@@ -177,7 +182,7 @@ void TranspositionTable::new_search() {
 }
 
 
-/// TranspositionTable::insert_pv() is called at the end of a search 
+/// TranspositionTable::insert_pv() is called at the end of a search
 /// iteration, and inserts the PV back into the PV.  This makes sure the
 /// old PV moves are searched first, even if the old TT entries have been
 /// overwritten.
@@ -212,12 +217,9 @@ TTEntry::TTEntry() {
 }
 
 TTEntry::TTEntry(Key k, Value v, ValueType t, Depth d, Move m,
-                 int generation) {
-  key_ = k;
-  data = (m & 0x7FFFF) | (t << 20) | (generation << 23);
-  value_ = v;
-  depth_ = int16_t(d);
-}
+                 int generation) :
+  key_ (k), data((m & 0x7FFFF) | (t << 20) | (generation << 23)),
+  value_(v), depth_(int16_t(d)) {}
 
 
 /// Functions for extracting data from TTEntry objects.
