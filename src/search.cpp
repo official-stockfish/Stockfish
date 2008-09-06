@@ -76,10 +76,10 @@ namespace {
     void set_move_nodes(int moveNum, int64_t nodes);
     void set_move_pv(int moveNum, const Move pv[]);
     Move get_move_pv(int moveNum, int i) const;
-    int64_t get_move_cumulative_nodes(int moveNum);
+    int64_t get_move_cumulative_nodes(int moveNum) const;
     int move_count() const;
     Move scan_for_easy_move() const;
-    inline void sort();
+    void sort();
     void sort_multipv(int n);
 
   private:
@@ -1655,19 +1655,19 @@ namespace {
 
   // Simple accessor methods for the RootMoveList class
 
-  Move RootMoveList::get_move(int moveNum) const {
+  inline Move RootMoveList::get_move(int moveNum) const {
     return moves[moveNum].move;
   }
 
-  Value RootMoveList::get_move_score(int moveNum) const {
+  inline Value RootMoveList::get_move_score(int moveNum) const {
     return moves[moveNum].score;
   }
 
-  void RootMoveList::set_move_score(int moveNum, Value score) {
+  inline void RootMoveList::set_move_score(int moveNum, Value score) {
     moves[moveNum].score = score;
   }
 
-  void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
+  inline void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
     moves[moveNum].nodes = nodes;
     moves[moveNum].cumulativeNodes += nodes;
   }
@@ -1679,15 +1679,15 @@ namespace {
     moves[moveNum].pv[j] = MOVE_NONE;
   }
 
-  Move RootMoveList::get_move_pv(int moveNum, int i) const {
+  inline Move RootMoveList::get_move_pv(int moveNum, int i) const {
     return moves[moveNum].pv[i];
   }
 
-  int64_t RootMoveList::get_move_cumulative_nodes(int moveNum) {
+  inline int64_t RootMoveList::get_move_cumulative_nodes(int moveNum) const {
     return moves[moveNum].cumulativeNodes;
   }
 
-  int RootMoveList::move_count() const {
+  inline int RootMoveList::move_count() const {
     return count;
   }
 
