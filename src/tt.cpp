@@ -108,6 +108,12 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
   tte = replace = entries + int(pos.get_key() & (size - 1)) * 4;
   for (int i = 0; i < 4; i++)
   {
+    if (!(tte+i)->key()) // still empty
+    {
+        *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
+        writes++;
+        return;
+    }
     if ((tte+i)->key() == pos.get_key())
     {
         if (m == MOVE_NONE)
