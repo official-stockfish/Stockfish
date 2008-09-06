@@ -38,14 +38,30 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp);
 
 #include <cstdio>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 #include "misc.h"
 
 
+////
+//// Variables
+////
+
+long dbg_cnt0 = 0;
+long dbg_cnt1 = 0;
+
+
 //// 
 //// Functions
 ////
+
+void dbg_print_hit_rate() {
+    
+  std::cout << "Total " << dbg_cnt0 << " Hit " << dbg_cnt1
+            << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1)
+            << std::endl;
+}
 
 /// engine_name() returns the full name of the current Glaurung version.
 /// This will be either "Glaurung YYMMDD" (where YYMMDD is the date when the

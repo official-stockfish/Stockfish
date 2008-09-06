@@ -56,5 +56,13 @@ extern int get_system_time();
 extern int cpu_count();
 extern int Bioskey();
 
+////
+//// Debug
+////
+extern long dbg_cnt0;
+extern long dbg_cnt1;
+extern void dbg_print_hit_rate();
+
+#define dbg_hit_on(x) { dbg_cnt0++; if (x) dbg_cnt1++; }
 
 #endif // !defined(MISC_H_INCLUDED)
