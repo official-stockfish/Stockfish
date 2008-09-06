@@ -459,7 +459,7 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
 
   // We're ready to start thinking.  Call the iterative deepening loop
   // function:
-  id_loop(pos, searchMoves);;
+  id_loop(pos, searchMoves);
 
   if(UseLogFile)
     LogFile.close();
@@ -827,6 +827,7 @@ namespace {
 
   Value search_pv(Position &pos, SearchStack ss[], Value alpha, Value beta,
                   Depth depth, int ply, int threadID) {
+
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -838,25 +839,25 @@ namespace {
     // an instant draw, maximum ply reached, etc.
     Value oldAlpha = alpha;
 
-    if(AbortSearch || thread_should_stop(threadID))
-      return Value(0);
+    if (AbortSearch || thread_should_stop(threadID))
+        return Value(0);
 
-    if(depth < OnePly)
-      return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
+    if (depth < OnePly)
+        return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
 
     init_node(pos, ss, ply, threadID);
 
-    if(pos.is_draw())
-      return VALUE_DRAW;
+    if (pos.is_draw())
+        return VALUE_DRAW;
 
-    if(ply >= PLY_MAX - 1)
-      return evaluate(pos, ei, threadID);
+    if (ply >= PLY_MAX - 1)
+        return evaluate(pos, ei, threadID);
 
     // Mate distance pruning
     alpha = Max(value_mated_in(ply), alpha);
     beta = Min(value_mate_in(ply+1), beta);
-    if(alpha >= beta)
-      return alpha;
+    if (alpha >= beta)
+        return alpha;
 
     // Transposition table lookup.  At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
@@ -865,73 +866,89 @@ namespace {
     Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Go with internal iterative deepening if we don't have a TT move.
-    if(UseIIDAtPVNodes && ttMove == MOVE_NONE && depth >= 5*OnePly) {
-      search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
-      ttMove = ss[ply].pv[ply];
+    if (UseIIDAtPVNodes && ttMove == MOVE_NONE && depth >= 5*OnePly)
+    {
+        search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
+        ttMove = ss[ply].pv[ply];
     }
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves:
     MovePicker mp = MovePicker(pos, true, ttMove, ss[ply].mateKiller,
                                ss[ply].killer1, ss[ply].killer2, depth);
+
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
-    bool mateThreat =
-      MateThreatExtension[1] > Depth(0)
-      && pos.has_mate_threat(opposite_color(pos.side_to_move()));
+    bool mateThreat =   MateThreatExtension[1] > Depth(0)
+                     && pos.has_mate_threat(opposite_color(pos.side_to_move()));
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
-    while(alpha < beta && !thread_should_stop(threadID)
-          && (move = mp.get_next_move()) != MOVE_NONE) {
-      UndoInfo u;
-      Depth ext, newDepth;
+    while (   alpha < beta
+           && (move = mp.get_next_move()) != MOVE_NONE
+           && !thread_should_stop(threadID))
+    {
+      assert(move_is_ok(move));
+
       bool singleReply = (pos.is_check() && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
-      assert(move_is_ok(move));
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
-      ss[ply].currentMoveCaptureValue = move_is_ep(move)?
+      ss[ply].currentMoveCaptureValue = move_is_ep(move) ?
         PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
 
       // Decide the new search depth.
-      ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat);
-      newDepth = depth - OnePly + ext;
+      Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat);
+      Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move.
+      UndoInfo u;
       pos.do_move(move, u, dcCandidates);
 
-      if(moveCount == 1)
-        value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
-      else {
-        if(depth >= 2*OnePly && ext == Depth(0) && moveCount >= LMRPVMoves
-           && !moveIsCapture && !move_promotion(move)
-           && !moveIsPassedPawnPush && !move_is_castle(move)
-           && move != ss[ply].killer1 && move != ss[ply].killer2) {
-          ss[ply].reduction = OnePly;
-          value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true,
-                          threadID);
+      if (moveCount == 1) // The first move in list is the PV
+          value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
+      else
+      {
+        // Try to reduce non-pv search depth by one ply if move seems not problematic,
+        // if the move fails high will be re-searched at full depth.
+        if (    depth >= 2*OnePly
+            &&  ext == Depth(0)
+            &&  moveCount >= LMRPVMoves
+            && !moveIsCapture
+            && !move_promotion(move)
+            && !moveIsPassedPawnPush
+            && !move_is_castle(move)
+            &&  move != ss[ply].killer1
+            &&  move != ss[ply].killer2)
+        {
+            ss[ply].reduction = OnePly;
+            value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true, threadID);
         }
-        else value = alpha + 1;
-        if(value > alpha) {
-          ss[ply].reduction = Depth(0);
-          value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
-          if(value > alpha && value < beta) {
-            if(ply == 1 && RootMoveNumber == 1)
-              // When the search fails high at ply 1 while searching the first
-              // move at the root, set the flag failHighPly1.  This is used for
-              // time managment:  We don't want to stop the search early in
-              // such cases, because resolving the fail high at ply 1 could
-              // result in a big drop in score at the root.
-              Threads[threadID].failHighPly1 = true;
-            value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1,
-                               threadID);
-            Threads[threadID].failHighPly1 = false;
+        else
+            value = alpha + 1; // Just to trigger next condition
+
+        if (value > alpha) // Go with full depth non-pv search
+        {
+            ss[ply].reduction = Depth(0);
+            value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
+            if (value > alpha && value < beta)
+            {
+                // When the search fails high at ply 1 while searching the first
+                // move at the root, set the flag failHighPly1. This is used for
+                // time managment:  We don't want to stop the search early in
+                // such cases, because resolving the fail high at ply 1 could
+                // result in a big drop in score at the root.
+                if (ply == 1 && RootMoveNumber == 1)
+                    Threads[threadID].failHighPly1 = true;
+
+                // A fail high occurred. Re-search at full window (pv search)
+                value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
+                Threads[threadID].failHighPly1 = false;
           }
         }
       }
@@ -940,71 +957,70 @@ namespace {
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // New best move?
-      if(value > bestValue) {
-        bestValue = value;
-        if(value > alpha) {
-          alpha = value;
-          update_pv(ss, ply);
-          if(value == value_mate_in(ply + 1))
-            ss[ply].mateKiller = move;
-        }
-        // If we are at ply 1, and we are searching the first root move at
-        // ply 0, set the 'Problem' variable if the score has dropped a lot
-        // (from the computer's point of view) since the previous iteration:
-        if(Iteration >= 2 &&
-           -value <= ValueByIteration[Iteration-1] - ProblemMargin)
-          Problem = true;
+      if (value > bestValue)
+      {
+          bestValue = value;
+          if (value > alpha)
+          {
+              alpha = value;
+              update_pv(ss, ply);
+              if (value == value_mate_in(ply + 1))
+                  ss[ply].mateKiller = move;
+          }
+          // If we are at ply 1, and we are searching the first root move at
+          // ply 0, set the 'Problem' variable if the score has dropped a lot
+          // (from the computer's point of view) since the previous iteration:
+          if (Iteration >= 2 && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
+              Problem = true;
       }
 
       // Split?
-      if(ActiveThreads > 1 && bestValue < beta && depth >= MinimumSplitDepth
-         && Iteration <= 99 && idle_thread_exists(threadID)
-         && !AbortSearch && !thread_should_stop(threadID)
-         && split(pos, ss, ply, &alpha, &beta, &bestValue, depth,
-                  &moveCount, &mp, dcCandidates, threadID, true))
-        break;
+      if (   ActiveThreads > 1
+          && bestValue < beta && depth >= MinimumSplitDepth
+          && Iteration <= 99 && idle_thread_exists(threadID)
+          && !AbortSearch && !thread_should_stop(threadID)
+          && split(pos, ss, ply, &alpha, &beta, &bestValue, depth,
+                   &moveCount, &mp, dcCandidates, threadID, true))
+          break;
     }
 
     // All legal moves have been searched.  A special case: If there were
     // no legal moves, it must be mate or stalemate:
-    if(moveCount == 0) {
-      if(pos.is_check())
-        return value_mated_in(ply);
-      else
-        return VALUE_DRAW;
-    }
+    if (moveCount == 0)
+        return (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.  This code is somewhat messy,
     // and definitely needs to be cleaned up.  FIXME
-    if(!AbortSearch && !thread_should_stop(threadID)) {
-      if(bestValue <= oldAlpha)
-        TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE,
-                 VALUE_TYPE_UPPER);
-      else if(bestValue >= beta) {
+    if (AbortSearch || thread_should_stop(threadID))
+        return bestValue;
+
+    if (bestValue <= oldAlpha)
+        TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_UPPER);
+
+    else if (bestValue >= beta)
+    {
         Move m = ss[ply].pv[ply];
-        if(pos.square_is_empty(move_to(m)) && !move_promotion(m) &&
-           !move_is_ep(m)) {
-          for(int i = 0; i < moveCount - 1; i++)
-            if(pos.square_is_empty(move_to(movesSearched[i]))
-               && !move_promotion(movesSearched[i])
-               && !move_is_ep(movesSearched[i]))
-              H.failure(pos.piece_on(move_from(movesSearched[i])),
-                        movesSearched[i]);
+        if (pos.square_is_empty(move_to(m)) && !move_promotion(m) && !move_is_ep(m))
+        {
+            for(int i = 0; i < moveCount - 1; i++)
+                if(    pos.square_is_empty(move_to(movesSearched[i]))
+                   && !move_promotion(movesSearched[i])
+                   && !move_is_ep(movesSearched[i]))
+                    H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
 
-          H.success(pos.piece_on(move_from(m)), m, depth);
+            H.success(pos.piece_on(move_from(m)), m, depth);
 
-          if(m != ss[ply].killer1) {
+          if (m != ss[ply].killer1)
+          {
             ss[ply].killer2 = ss[ply].killer1;
             ss[ply].killer1 = m;
           }
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
-      }
-      else
-        TT.store(pos, value_to_tt(bestValue, ply), depth, ss[ply].pv[ply],
-                 VALUE_TYPE_EXACT);
     }
+    else
+        TT.store(pos, value_to_tt(bestValue, ply), depth, ss[ply].pv[ply], VALUE_TYPE_EXACT);
 
     return bestValue;
   }
