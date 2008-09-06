@@ -114,7 +114,7 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
         writes++;
         return;
     }
-    if ((tte+i)->key() == pos.get_key())
+    if ((tte+i)->key() == pos.get_key()) // overwrite old
     {
         if (m == MOVE_NONE)
             m = (tte+i)->move();
@@ -122,12 +122,12 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
         *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
         return;
     }
-    if (replace->generation() == generation)
-    {
-        if ((tte+i)->generation() != generation || (tte+i)->depth() < replace->depth())
-            replace = tte+i;
-    }
-    else if ((tte+i)->generation() != generation && (tte+i)->depth() < replace->depth())
+    if (   i == 0  // already is (replace == tte+i), common case
+        || replace->generation() < (tte+i)->generation()) 
+        continue;
+
+    if (    replace->generation() > (tte+i)->generation()
+        || (tte+i)->depth() < replace->depth())
         replace = tte+i;
   }
   *replace = TTEntry(pos.get_key(), v, type, d, m, generation);
