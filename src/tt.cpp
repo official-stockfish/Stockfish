@@ -34,17 +34,19 @@
 /// Constructor
 
 TranspositionTable::TranspositionTable(unsigned mbSize) {
+
   size = 0;
   generation = 0;
   writes = 0;
   entries = 0;
-  this->set_size(mbSize);
+  set_size(mbSize);
 }
 
 
 /// Destructor
 
 TranspositionTable::~TranspositionTable() {
+
   delete [] entries;
 }
 
@@ -53,25 +55,28 @@ TranspositionTable::~TranspositionTable() {
 /// measured in megabytes.
 
 void TranspositionTable::set_size(unsigned mbSize) {
-  unsigned newSize;
 
   assert(mbSize >= 4 && mbSize <= 1024);
 
-  for(newSize = 1024; newSize * 4 * (sizeof(TTEntry)) <= (mbSize << 20);
-      newSize *= 2);
-  newSize /= 2;
+  unsigned newSize = 1024;
 
-  if(newSize != size) {
+  // We store a cluster of 4 TTEntry for each position and newSize is
+  // the maximum number of storable positions
+  for ( ; newSize * 4 * (sizeof(TTEntry)) <= (mbSize << 20); newSize *= 2);
+  newSize /= 2;
+  if (newSize != size)
+  {
     size = newSize;
     delete [] entries;
     entries = new TTEntry[size * 4];
-    if(entries == NULL) {
+    if (!entries)
+    {
       std::cerr << "Failed to allocate " << mbSize
                 << " MB for transposition table."
                 << std::endl;
       exit(EXIT_FAILURE);
     }
-    this->clear();
+    clear();
   }
 }
 
@@ -82,6 +87,7 @@ void TranspositionTable::set_size(unsigned mbSize) {
 /// Perhaps we should also clear it when the "ucinewgame" command is recieved?
 
 void TranspositionTable::clear() {
+
   memset(entries, 0, size * 4 * sizeof(TTEntry));
 }
 
@@ -100,21 +106,23 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
   TTEntry *tte, *replace;
 
   tte = replace = entries + int(pos.get_key() & (size - 1)) * 4;
-  for(int i = 0; i < 4; i++) {
-    if((tte+i)->key() == pos.get_key()) {
-      if(m == MOVE_NONE)
-        m = (tte+i)->move();
-      *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
-      return;
+  for (int i = 0; i < 4; i++)
+  {
+    if ((tte+i)->key() == pos.get_key())
+    {
+        if (m == MOVE_NONE)
+            m = (tte+i)->move();
+        
+        *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
+        return;
     }
-    if(replace->generation() == generation) {
-      if((tte+i)->generation() != generation ||
-         (tte+i)->depth() < replace->depth())
+    if (replace->generation() == generation)
+    {
+        if ((tte+i)->generation() != generation || (tte+i)->depth() < replace->depth())
+            replace = tte+i;
+    }
+    else if ((tte+i)->generation() != generation && (tte+i)->depth() < replace->depth())
         replace = tte+i;
-    }
-    else if((tte+i)->generation() != generation &&
-            (tte+i)->depth() < replace->depth())
-      replace = tte+i;
   }
   *replace = TTEntry(pos.get_key(), v, type, d, m, generation);
   writes++;
@@ -133,21 +141,20 @@ bool TranspositionTable::retrieve(const Position &pos, Value *value,
   bool found = false;
 
   tte = entries + int(pos.get_key() & (size - 1)) * 4;
-  for(int i = 0; i < 4 && !found ; i++)
-    if((tte+i)->key() == pos.get_key()) {
-      tte = tte + i;
-      found = true;
-    }
-  if(!found) {
-    *move = MOVE_NONE;
-    return false;
+  for (int i = 0; i < 4 && !found ; i++)
+      if ((tte+i)->key() == pos.get_key())
+      {
+          tte = tte + i;
+          found = true;
+      }
+  if (!found) {
+      *move = MOVE_NONE;
+      return false;
   }
-
   *value = tte->value();
   *type = tte->type();
   *d = tte->depth();
   *move = tte->move();
-
   return true;
 }
 
@@ -158,6 +165,7 @@ bool TranspositionTable::retrieve(const Position &pos, Value *value,
 /// entries from the current search.
 
 void TranspositionTable::new_search() {
+
   generation++;
   writes = 0;
 }
@@ -169,11 +177,13 @@ void TranspositionTable::new_search() {
 /// overwritten.
 
 void TranspositionTable::insert_pv(const Position &pos, Move pv[]) {
+
   UndoInfo u;
   Position p(pos);
 
-  for(int i = 0; pv[i] != MOVE_NONE; i++) {
-    this->store(p, VALUE_NONE, Depth(0), pv[i], VALUE_TYPE_NONE);
+  for (int i = 0; pv[i] != MOVE_NONE; i++)
+  {
+    store(p, VALUE_NONE, Depth(0), pv[i], VALUE_TYPE_NONE);
     p.do_move(pv[i], u);
   }
 }
@@ -184,6 +194,7 @@ void TranspositionTable::insert_pv(const Position &pos, Move pv[]) {
 /// It is used to display the "info hashfull ..." information in UCI.
 
 int TranspositionTable::full() {
+
   double N = double(size) * 4.0;
   return int(1000 * (1 - exp(writes * log(1.0 - 1.0/N))));
 }
@@ -205,26 +216,26 @@ TTEntry::TTEntry(Key k, Value v, ValueType t, Depth d, Move m,
 
 /// Functions for extracting data from TTEntry objects.
 
-Key TTEntry::key() const {
+inline Key TTEntry::key() const {
   return key_;
 }
 
-Depth TTEntry::depth() const {
+inline Depth TTEntry::depth() const {
   return Depth(depth_);
 }
 
-Move TTEntry::move() const {
+inline Move TTEntry::move() const {
   return Move(data & 0x7FFFF);
 }
 
-Value TTEntry::value() const {
+inline Value TTEntry::value() const {
   return Value(value_);
 }
 
-ValueType TTEntry::type() const {
+inline ValueType TTEntry::type() const {
   return ValueType((data >> 20) & 3);
 }
 
-int TTEntry::generation() const {
+inline int TTEntry::generation() const {
   return (data >> 23);
 }
