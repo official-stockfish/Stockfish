@@ -241,6 +241,9 @@ namespace {
   bool ok_to_do_nullmove(const Position &pos);
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
+  bool ok_to_history(const Position &pos, Move m);
+  void update_history(const Position& pos, Move m, Depth depth,
+                      Move movesSearched[], int moveCount);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -993,8 +996,7 @@ namespace {
         return (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
     // If the search is not aborted, update the transposition table,
-    // history counters, and killer moves.  This code is somewhat messy,
-    // and definitely needs to be cleaned up.  FIXME
+    // history counters, and killer moves.
     if (AbortSearch || thread_should_stop(threadID))
         return bestValue;
 
@@ -1004,21 +1006,14 @@ namespace {
     else if (bestValue >= beta)
     {
         Move m = ss[ply].pv[ply];
-        if (pos.square_is_empty(move_to(m)) && !move_promotion(m) && !move_is_ep(m))
+        if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
-            for (int i = 0; i < moveCount - 1; i++)
-                if (    pos.square_is_empty(move_to(movesSearched[i]))
-                    && !move_promotion(movesSearched[i])
-                    && !move_is_ep(movesSearched[i]))
-                    H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
-
-            H.success(pos.piece_on(move_from(m)), m, depth);
-
-          if (m != ss[ply].killer1)
-          {
-            ss[ply].killer2 = ss[ply].killer1;
-            ss[ply].killer1 = m;
-          }
+            update_history(pos, m, depth, movesSearched, moveCount);
+            if (m != ss[ply].killer1)
+            {
+                ss[ply].killer2 = ss[ply].killer1;
+                ss[ply].killer1 = m;
+            }
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
     }
@@ -1255,8 +1250,7 @@ namespace {
         return (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
     // If the search is not aborted, update the transposition table,
-    // history counters, and killer moves.  This code is somewhat messy,
-    // and definitely needs to be cleaned up.  FIXME
+    // history counters, and killer moves.
     if (AbortSearch || thread_should_stop(threadID))
         return bestValue;
 
@@ -1265,16 +1259,9 @@ namespace {
     else
     {
         Move m = ss[ply].pv[ply];
-        if (pos.square_is_empty(move_to(m)) && !move_promotion(m) && !move_is_ep(m))
+        if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
-            for (int i = 0; i < moveCount - 1; i++)
-                if (    pos.square_is_empty(move_to(movesSearched[i]))
-                    && !move_promotion(movesSearched[i])
-                    && !move_is_ep(movesSearched[i]))
-                    H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
-
-            H.success(pos.piece_on(move_from(m)), m, depth);
-
+            update_history(pos, m, depth, movesSearched, moveCount);
             if (m != ss[ply].killer1)
             {
                 ss[ply].killer2 = ss[ply].killer1;
@@ -2043,6 +2030,30 @@ namespace {
               || (is_upper_bound(tte->type()) && v < beta));
   }
 
+
+  // ok_to_history() returns true if a move m can be stored
+  // in history. Should be a non capturing move.
+
+  bool ok_to_history(const Position& pos, Move m) {
+
+    return    pos.square_is_empty(move_to(m))
+          && !move_promotion(m)
+          && !move_is_ep(m);
+  }
+
+
+  // update_history() registers a good move that produced a beta-cutoff
+  // in history and marks as failures all the other moves of that ply.
+
+  void update_history(const Position& pos, Move m, Depth depth,
+                      Move movesSearched[], int moveCount) {
+
+    H.success(pos.piece_on(move_from(m)), m, depth);
+
+    for (int i = 0; i < moveCount - 1; i++)
+        if (ok_to_history(pos, movesSearched[i]) && m != movesSearched[i])
+            H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
+  }
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
   // high at ply 1 at the node below the first root node.  This information
