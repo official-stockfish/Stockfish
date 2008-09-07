@@ -242,7 +242,6 @@ namespace {
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
 
-
   bool fail_high_ply_1();
   int current_search_time();
   int nps();
@@ -1060,6 +1059,7 @@ namespace {
     // Mate distance pruning
     if (value_mated_in(ply) >= beta)
         return beta;
+
     if (value_mate_in(ply + 1) < beta)
         return beta - 1;
 
@@ -1151,9 +1151,9 @@ namespace {
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
-    while(    bestValue < beta
-          && (move = mp.get_next_move()) != MOVE_NONE
-          && !thread_should_stop(threadID))
+    while (   bestValue < beta
+           && (move = mp.get_next_move()) != MOVE_NONE
+           && !thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
 
@@ -1182,11 +1182,12 @@ namespace {
           if (depth < 3 * OnePly && approximateEval < beta)
           {
               if (futilityValue == VALUE_NONE)
-                  futilityValue = evaluate(pos, ei, threadID) + (depth < 2 * OnePly ? FutilityMargin1 : FutilityMargin2);
+                  futilityValue =  evaluate(pos, ei, threadID)
+                                + (depth < 2 * OnePly ? FutilityMargin1 : FutilityMargin2);
 
               if (futilityValue < beta)
               {
-                  if(futilityValue > bestValue)
+                  if (futilityValue > bestValue)
                       bestValue = futilityValue;
                   continue;
               }
@@ -1230,20 +1231,21 @@ namespace {
         bestValue = value;
         if (value >= beta)
             update_pv(ss, ply);
+
         if (value == value_mate_in(ply + 1))
             ss[ply].mateKiller = move;
       }
 
       // Split?
-      if(   ActiveThreads > 1
-         && bestValue < beta
-         && depth >= MinimumSplitDepth
-         && Iteration <= 99
-         && idle_thread_exists(threadID)
-         && !AbortSearch
-         && !thread_should_stop(threadID)
-         && split(pos, ss, ply, &beta, &beta, &bestValue, depth, &moveCount,
-                  &mp, dcCandidates, threadID, false))
+      if (   ActiveThreads > 1
+          && bestValue < beta
+          && depth >= MinimumSplitDepth
+          && Iteration <= 99
+          && idle_thread_exists(threadID)
+          && !AbortSearch
+          && !thread_should_stop(threadID)
+          && split(pos, ss, ply, &beta, &beta, &bestValue, depth, &moveCount,
+                   &mp, dcCandidates, threadID, false))
         break;
     }
 
@@ -1291,8 +1293,6 @@ namespace {
 
   Value qsearch(Position &pos, SearchStack ss[], Value alpha, Value beta,
                 Depth depth, int ply, int threadID) {
-    Value staticValue, bestValue, value;
-    EvalInfo ei;
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
@@ -1300,32 +1300,33 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
+    EvalInfo ei;
+
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    if(AbortSearch || thread_should_stop(threadID))
-      return Value(0);
+    if (AbortSearch || thread_should_stop(threadID))
+        return Value(0);
 
     init_node(pos, ss, ply, threadID);
 
-    if(pos.is_draw())
-      return VALUE_DRAW;
+    if (pos.is_draw())
+        return VALUE_DRAW;
 
     // Evaluate the position statically:
-    staticValue = evaluate(pos, ei, threadID);
+    Value staticValue = evaluate(pos, ei, threadID);
 
-    if(ply == PLY_MAX - 1) return staticValue;
+    if (ply == PLY_MAX - 1)
+        return staticValue;
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.
-    if(pos.is_check())
-      bestValue = -VALUE_INFINITE;
-    else {
-      bestValue = staticValue;
-      if(bestValue >= beta)
+    Value bestValue = (pos.is_check() ? -VALUE_INFINITE : staticValue);
+
+    if (bestValue >= beta)
         return bestValue;
-      if(bestValue > alpha)
+
+    if (bestValue > alpha)
         alpha = bestValue;
-    }
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
@@ -1339,62 +1340,72 @@ namespace {
 
     // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
-    while(alpha < beta && ((move = mp.get_next_move()) != MOVE_NONE)) {
-      UndoInfo u;
+    while (   alpha < beta
+           && (move = mp.get_next_move()) != MOVE_NONE)
+    {
+      assert(move_is_ok(move));
+
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
-
-      assert(move_is_ok(move));
 
       moveCount++;
       ss[ply].currentMove = move;
 
       // Futility pruning
-      if(UseQSearchFutilityPruning && !isCheck && !moveIsCheck &&
-         !move_promotion(move) && !moveIsPassedPawnPush &&
-         beta - alpha == 1 &&
-         pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame) {
-        Value futilityValue =
-          staticValue
-          + Max(pos.midgame_value_of_piece_on(move_to(move)),
-                pos.endgame_value_of_piece_on(move_to(move)))
-          + FutilityMargin0
-          + ei.futilityMargin;
-        if(futilityValue < alpha) {
-          if(futilityValue > bestValue)
-            bestValue = futilityValue;
-          continue;
-        }
+      if (    UseQSearchFutilityPruning
+          && !isCheck
+          && !moveIsCheck
+          && !move_promotion(move)
+          && !moveIsPassedPawnPush
+          &&  beta - alpha == 1
+          &&  pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame)
+      {
+          Value futilityValue = staticValue
+                              + Max(pos.midgame_value_of_piece_on(move_to(move)),
+                                    pos.endgame_value_of_piece_on(move_to(move)))
+                              + FutilityMargin0
+                              + ei.futilityMargin;
+
+          if (futilityValue < alpha)
+          {
+              if (futilityValue > bestValue)
+                  bestValue = futilityValue;
+              continue;
+          }
       }
 
       // Don't search captures and checks with negative SEE values.
-      if(!isCheck && !move_promotion(move) &&
-         pos.midgame_value_of_piece_on(move_from(move)) >
-         pos.midgame_value_of_piece_on(move_to(move)) &&
-         pos.see(move) < 0)
-        continue;
+      if (   !isCheck
+          && !move_promotion(move)
+          && (pos.midgame_value_of_piece_on(move_from(move)) >
+              pos.midgame_value_of_piece_on(move_to(move)))
+          &&  pos.see(move) < 0)
+          continue;
 
       // Make and search the move.
+      UndoInfo u;
       pos.do_move(move, u, dcCandidates);
-      value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
+      Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move, u);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // New best move?
-      if(value > bestValue) {
-        bestValue = value;
-        if(value > alpha) {
-          alpha = value;
-          update_pv(ss, ply);
-        }
-      }
+      if (value > bestValue)
+      {
+          bestValue = value;
+          if (value > alpha)
+          {
+              alpha = value;
+              update_pv(ss, ply);
+          }
+       }
     }
 
     // All legal moves have been searched.  A special case: If we're in check
     // and no legal moves were found, it is checkmate:
-    if(pos.is_check() && moveCount == 0) // Mate!
-      return value_mated_in(ply);
+    if (pos.is_check() && moveCount == 0) // Mate!
+        return value_mated_in(ply);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1623,22 +1634,6 @@ namespace {
     sp->slaves[threadID] = 0;
 
     lock_release(&(sp->lock));
-  }
-
-
-  // ok_to_use_TT() returns true if a transposition table score
-  // can be used at a given point in search.
-
-  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply) {
-
-    Value v = value_from_tt(tte->value(), ply);
-
-    return   (   tte->depth() >= depth
-              || v >= Max(value_mate_in(100), beta)
-              || v < Min(value_mated_in(100), beta))
-
-          && (   (is_lower_bound(tte->type()) && v >= beta)
-              || (is_upper_bound(tte->type()) && v < beta));
   }
 
 
@@ -2030,6 +2025,22 @@ namespace {
       return false;
 
     return true;
+  }
+
+
+  // ok_to_use_TT() returns true if a transposition table score
+  // can be used at a given point in search.
+
+  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply) {
+
+    Value v = value_from_tt(tte->value(), ply);
+
+    return   (   tte->depth() >= depth
+              || v >= Max(value_mate_in(100), beta)
+              || v < Min(value_mated_in(100), beta))
+
+          && (   (is_lower_bound(tte->type()) && v >= beta)
+              || (is_upper_bound(tte->type()) && v < beta));
   }
 
 
