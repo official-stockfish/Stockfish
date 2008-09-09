@@ -1516,8 +1516,8 @@ namespace {
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads:
     if (sp->master == threadID && thread_should_stop(threadID))
-        for(int i = 0; i < ActiveThreads; i++)
-            if(sp->slaves[i])
+        for (int i = 0; i < ActiveThreads; i++)
+            if (sp->slaves[i])
                 Threads[i].stop = true;
 
     sp->cpus--;
@@ -1536,6 +1536,7 @@ namespace {
   // after we return from the split point.
 
   void sp_search_pv(SplitPoint *sp, int threadID) {
+
     assert(threadID >= 0 && threadID < ActiveThreads);
     assert(ActiveThreads > 1);
 
@@ -1543,12 +1544,11 @@ namespace {
     SearchStack *ss = sp->sstack[threadID];
     Value value;
     Move move;
-    int moveCount = sp->moves;
 
-    while(sp->alpha < sp->beta && !thread_should_stop(threadID)
-          && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE) {
-      UndoInfo u;
-      Depth ext, newDepth;
+    while (    sp->alpha < sp->beta
+           && !thread_should_stop(threadID)
+           && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
+    {
       bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
@@ -1559,74 +1559,88 @@ namespace {
         PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
 
       lock_grab(&(sp->lock));
-      sp->moves++;
-      moveCount = sp->moves;
+      int moveCount = ++sp->moves;
       lock_release(&(sp->lock));
 
       ss[sp->ply].currentMove = move;
 
       // Decide the new search depth.
-      ext = extension(pos, move, true, moveIsCheck, false, false);
-      newDepth = sp->depth - OnePly + ext;
+      Depth ext = extension(pos, move, true, moveIsCheck, false, false);
+      Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
+      UndoInfo u;
       pos.do_move(move, u, sp->dcCandidates);
-      if(ext == Depth(0) && moveCount >= LMRPVMoves && !moveIsCapture
-         && !move_promotion(move) && !moveIsPassedPawnPush
-         && !move_is_castle(move)
-         && move != ss[sp->ply].killer1 && move != ss[sp->ply].killer2) {
-        ss[sp->ply].reduction = OnePly;
-        value = -search(pos, ss, -sp->alpha, newDepth - OnePly, sp->ply+1,
-                        true, threadID);
+
+      // Try to reduce non-pv search depth by one ply if move seems not problematic,
+      // if the move fails high will be re-searched at full depth.
+      if (    ext == Depth(0)
+          &&  moveCount >= LMRPVMoves
+          && !moveIsCapture
+          && !moveIsPassedPawnPush
+          && !move_promotion(move)
+          && !move_is_castle(move)
+          &&  move != ss[sp->ply].killer1
+          &&  move != ss[sp->ply].killer2)
+      {
+          ss[sp->ply].reduction = OnePly;
+          value = -search(pos, ss, -sp->alpha, newDepth - OnePly, sp->ply+1, true, threadID);
       }
       else
-        value = sp->alpha + 1;
-      if(value > sp->alpha) {
-        ss[sp->ply].reduction = Depth(0);
-        value = -search(pos, ss, -sp->alpha, newDepth, sp->ply+1, true,
-                        threadID);
-        if(value > sp->alpha && value < sp->beta) {
-          if(sp->ply == 1 && RootMoveNumber == 1)
-            // When the search fails high at ply 1 while searching the first
-            // move at the root, set the flag failHighPly1.  This is used for
-            // time managment:  We don't want to stop the search early in
-            // such cases, because resolving the fail high at ply 1 could
-            // result in a big drop in score at the root.
-            Threads[threadID].failHighPly1 = true;
-          value = -search_pv(pos, ss, -sp->beta, -sp->alpha, newDepth,
-                             sp->ply+1, threadID);
-          Threads[threadID].failHighPly1 = false;
+          value = sp->alpha + 1; // Just to trigger next condition
+
+      if (value > sp->alpha) // Go with full depth non-pv search
+      {
+          ss[sp->ply].reduction = Depth(0);
+          value = -search(pos, ss, -sp->alpha, newDepth, sp->ply+1, true, threadID);
+
+          if (value > sp->alpha && value < sp->beta)
+          {
+              // When the search fails high at ply 1 while searching the first
+              // move at the root, set the flag failHighPly1.  This is used for
+              // time managment:  We don't want to stop the search early in
+              // such cases, because resolving the fail high at ply 1 could
+              // result in a big drop in score at the root.
+              if (sp->ply == 1 && RootMoveNumber == 1)
+                  Threads[threadID].failHighPly1 = true;
+
+              value = -search_pv(pos, ss, -sp->beta, -sp->alpha, newDepth, sp->ply+1, threadID);
+              Threads[threadID].failHighPly1 = false;
         }
       }
       pos.undo_move(move, u);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      if(thread_should_stop(threadID))
-        break;
+      if (thread_should_stop(threadID))
+          break;
 
       // New best move?
       lock_grab(&(sp->lock));
-      if(value > sp->bestValue && !thread_should_stop(threadID)) {
-        sp->bestValue = value;
-        if(value > sp->alpha) {
-          sp->alpha = value;
-          sp_update_pv(sp->parentSstack, ss, sp->ply);
-          if(value == value_mate_in(sp->ply + 1))
-            ss[sp->ply].mateKiller = move;
-          if(value >= sp->beta) {
-            for(int i = 0; i < ActiveThreads; i++)
-              if(i != threadID && (i == sp->master || sp->slaves[i]))
-                Threads[i].stop = true;
-            sp->finished = true;
-          }
+      if (value > sp->bestValue && !thread_should_stop(threadID))
+      {
+          sp->bestValue = value;
+          if (value > sp->alpha)
+          {
+              sp->alpha = value;
+              sp_update_pv(sp->parentSstack, ss, sp->ply);
+              if (value == value_mate_in(sp->ply + 1))
+                  ss[sp->ply].mateKiller = move;
+
+              if(value >= sp->beta)
+              {
+                  for(int i = 0; i < ActiveThreads; i++)
+                      if(i != threadID && (i == sp->master || sp->slaves[i]))
+                          Threads[i].stop = true;
+
+                  sp->finished = true;
+              }
         }
         // If we are at ply 1, and we are searching the first root move at
         // ply 0, set the 'Problem' variable if the score has dropped a lot
         // (from the computer's point of view) since the previous iteration:
-        if(Iteration >= 2 &&
-           -value <= ValueByIteration[Iteration-1] - ProblemMargin)
-          Problem = true;
+        if (Iteration >= 2 && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
+            Problem = true;
       }
       lock_release(&(sp->lock));
     }
@@ -1635,10 +1649,10 @@ namespace {
 
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads:
-    if(sp->master == threadID && thread_should_stop(threadID))
-      for(int i = 0; i < ActiveThreads; i++)
-        if(sp->slaves[i])
-          Threads[i].stop = true;
+    if (sp->master == threadID && thread_should_stop(threadID))
+        for (int i = 0; i < ActiveThreads; i++)
+            if (sp->slaves[i])
+                Threads[i].stop = true;
 
     sp->cpus--;
     sp->slaves[threadID] = 0;
