@@ -935,7 +935,7 @@ namespace {
         else
             value = alpha + 1; // Just to trigger next condition
 
-        if (value > alpha) // Go with full depth non-pv search
+        if (value > alpha) // Go with full depth pv search
         {
             ss[ply].reduction = Depth(0);
             value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
@@ -1417,6 +1417,7 @@ namespace {
   // care of after we return from the split point.
 
   void sp_search(SplitPoint *sp, int threadID) {
+
     assert(threadID >= 0 && threadID < ActiveThreads);
     assert(ActiveThreads > 1);
 
@@ -1424,73 +1425,87 @@ namespace {
     SearchStack *ss = sp->sstack[threadID];
     Value value;
     Move move;
-    int moveCount = sp->moves;
     bool isCheck = pos.is_check();
-    bool useFutilityPruning =
-      UseFutilityPruning && sp->depth < SelectiveDepth && !isCheck;
+    bool useFutilityPruning =    UseFutilityPruning
+                              && sp->depth < SelectiveDepth
+                              && !isCheck;
 
-    while(sp->bestValue < sp->beta && !thread_should_stop(threadID)
-          && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE) {
-      UndoInfo u;
-      Depth ext, newDepth;
+    while (    sp->bestValue < sp->beta
+           && !thread_should_stop(threadID)
+           && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
+    {
+      assert(move_is_ok(move));
+
       bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
-      assert(move_is_ok(move));
-
       lock_grab(&(sp->lock));
-      sp->moves++;
-      moveCount = sp->moves;
+      int moveCount = ++sp->moves;
       lock_release(&(sp->lock));
 
       ss[sp->ply].currentMove = move;
 
       // Decide the new search depth.
-      ext = extension(pos, move, false, moveIsCheck, false, false);
-      newDepth = sp->depth - OnePly + ext;
+      Depth ext = extension(pos, move, false, moveIsCheck, false, false);
+      Depth newDepth = sp->depth - OnePly + ext;
 
       // Prune?
-      if(useFutilityPruning && ext == Depth(0) && !moveIsCapture
-         && !moveIsPassedPawnPush && !move_promotion(move)
-         && moveCount >= 2 + int(sp->depth)
-         && ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth))
+      if (    useFutilityPruning
+          &&  ext == Depth(0)
+          && !moveIsCapture
+          && !moveIsPassedPawnPush
+          && !move_promotion(move)
+          &&  moveCount >= 2 + int(sp->depth)
+          &&  ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth))
         continue;
 
       // Make and search the move.
+      UndoInfo u;
       pos.do_move(move, u, sp->dcCandidates);
-      if(ext == Depth(0) && moveCount >= LMRNonPVMoves
-         && !moveIsCapture && !move_promotion(move) && !moveIsPassedPawnPush
-         && !move_is_castle(move)
-         && move != ss[sp->ply].killer1 && move != ss[sp->ply].killer2) {
-        ss[sp->ply].reduction = OnePly;
-        value = -search(pos, ss, -(sp->beta-1), newDepth - OnePly, sp->ply+1,
-                        true, threadID);
+
+      // Try to reduce non-pv search depth by one ply if move seems not problematic,
+      // if the move fails high will be re-searched at full depth.
+      if (    ext == Depth(0)
+          &&  moveCount >= LMRNonPVMoves
+          && !moveIsCapture
+          && !moveIsPassedPawnPush
+          && !move_promotion(move)
+          && !move_is_castle(move)
+          &&  move != ss[sp->ply].killer1
+          &&  move != ss[sp->ply].killer2)
+      {
+          ss[sp->ply].reduction = OnePly;
+          value = -search(pos, ss, -(sp->beta-1), newDepth - OnePly, sp->ply+1, true, threadID);
       }
       else
-        value = sp->beta;
-      if(value >= sp->beta) {
-        ss[sp->ply].reduction = Depth(0);
-        value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true,
-                        threadID);
+          value = sp->beta; // Just to trigger next condition
+
+      if (value >= sp->beta) // Go with full depth non-pv search
+      {
+          ss[sp->ply].reduction = Depth(0);
+          value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true, threadID);
       }
       pos.undo_move(move, u);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      if(thread_should_stop(threadID))
-        break;
+      if (thread_should_stop(threadID))
+          break;
 
       // New best move?
       lock_grab(&(sp->lock));
-      if(value > sp->bestValue && !thread_should_stop(threadID)) {
-        sp->bestValue = value;
-        if(sp->bestValue >= sp->beta) {
-          sp_update_pv(sp->parentSstack, ss, sp->ply);
-          for(int i = 0; i < ActiveThreads; i++)
-            if(i != threadID && (i == sp->master || sp->slaves[i]))
-              Threads[i].stop = true;
-          sp->finished = true;
+      if (value > sp->bestValue && !thread_should_stop(threadID))
+      {
+          sp->bestValue = value;
+          if (sp->bestValue >= sp->beta)
+          {
+              sp_update_pv(sp->parentSstack, ss, sp->ply);
+              for (int i = 0; i < ActiveThreads; i++)
+                  if (i != threadID && (i == sp->master || sp->slaves[i]))
+                      Threads[i].stop = true;
+
+              sp->finished = true;
         }
       }
       lock_release(&(sp->lock));
@@ -1500,10 +1515,10 @@ namespace {
 
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads:
-    if(sp->master == threadID && thread_should_stop(threadID))
-      for(int i = 0; i < ActiveThreads; i++)
-        if(sp->slaves[i])
-          Threads[i].stop = true;
+    if (sp->master == threadID && thread_should_stop(threadID))
+        for(int i = 0; i < ActiveThreads; i++)
+            if(sp->slaves[i])
+                Threads[i].stop = true;
 
     sp->cpus--;
     sp->slaves[threadID] = 0;
