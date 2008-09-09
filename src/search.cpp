@@ -1299,6 +1299,11 @@ namespace {
     if (pos.is_draw())
         return VALUE_DRAW;
 
+    // Transposition table lookup
+    const TTEntry* tte = TT.retrieve(pos);
+    if (tte && ok_to_use_TT(tte, depth, beta, ply))
+        return value_from_tt(tte->value(), ply);
+
     // Evaluate the position statically:
     Value staticValue = evaluate(pos, ei, threadID);
 
@@ -1395,6 +1400,9 @@ namespace {
         return value_mated_in(ply);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
+
+    // Update transposition table
+    TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_EXACT);
 
     return bestValue;
   }
