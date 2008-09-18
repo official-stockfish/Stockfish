@@ -181,7 +181,7 @@ namespace {
   // Time managment variables
   int SearchStartTime;
   int MaxNodes, MaxDepth;
-  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime;
+  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, TimeAdvantage;
   Move BestRootMove, PonderMove, EasyMove;
   int RootMoveNumber;
   bool InfiniteSearch;
@@ -407,14 +407,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
     init_eval(ActiveThreads);
   }
 
-  // Write information to search log file:
-  if(UseLogFile) {
-    LogFile << "Searching: " << pos.to_fen() << '\n';
-    LogFile << "infinite: " << infinite << " ponder: " << ponder
-            << " time: " << time << " increment: " << increment
-            << " moves to go: " << movesToGo << '\n';
-  }
-
   // Wake up sleeping threads:
   wake_sleeping_threads();
 
@@ -425,7 +417,8 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   int myTime = time[side_to_move];
   int myIncrement = increment[side_to_move];
   int oppTime = time[1 - side_to_move];
-  int oppIncrement = increment[1 - side_to_move];
+  
+  TimeAdvantage = myTime - oppTime;
 
   if(!movesToGo) { // Sudden death time control
     if(increment) {
@@ -464,6 +457,15 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   }
   else
     NodesBetweenPolls = 30000;
+
+
+  // Write information to search log file:
+  if(UseLogFile) {
+    LogFile << "Searching: " << pos.to_fen() << '\n';
+    LogFile << "infinite: " << infinite << " ponder: " << ponder
+            << " time: " << myTime << " increment: " << myIncrement
+            << " moves to go: " << movesToGo << '\n';
+  }
 
   // We're ready to start thinking.  Call the iterative deepening loop
   // function:
@@ -639,6 +641,10 @@ namespace {
           ExtraSearchTime =
             BestMoveChangesByIteration[Iteration] * (MaxSearchTime / 2) +
             BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
+
+        // If we need some more and we are in time advantage take it.
+        if (ExtraSearchTime > 0 && TimeAdvantage > 2 * MaxSearchTime)
+            ExtraSearchTime += MaxSearchTime / 2;
 
         // Stop search if most of MaxSearchTime is consumed at the end of the
         // iteration.  We probably don't have enough time to search the first

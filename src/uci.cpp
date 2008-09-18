@@ -134,7 +134,6 @@ namespace {
         TT.clear();
         Position::init_piece_square_tables();
         RootPosition.from_fen(StartPosition);
-
     }
     else if (token == "isready")
         std::cout << "readyok" << std::endl;

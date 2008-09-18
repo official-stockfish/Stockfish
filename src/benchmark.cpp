@@ -123,7 +123,8 @@ void benchmark(const std::string& commandLine) {
   for (it = positions.begin(); it != positions.end(); ++it)
   {
       Move moves[1] = {MOVE_NONE};
+      int dummy[2] = {0, 0};
       Position pos(*it);      
-      think(pos, true, false, 0, 0, 0, 0, 0, 0, secsPerPos * 1000, moves);
+      think(pos, true, false, 0, dummy, dummy, 0, 0, 0, secsPerPos * 1000, moves);
   }
 }
