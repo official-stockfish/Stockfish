@@ -39,6 +39,7 @@
 #include "uci.h"
 #include "ucioption.h"
 
+using std::string;
 
 //// 
 //// Functions
@@ -67,20 +68,23 @@ int main(int argc, char *argv[]) {
   init_threads();
 
   // Make random number generation less deterministic, for book moves
-  int i = abs(get_system_time() % 10000);
-  for(int j = 0; j < i; j++)
-    genrand_int32();
+  for (int i = abs(get_system_time() % 10000); i > 0; i--)
+      genrand_int32();
 
   // Process command line arguments
-  if(argc >= 2) {
-    if(std::string(argv[1]) == "bench") {
-      if(argc != 4) {
-        std::cout << "Usage: glaurung bench <hash> <threads>" << std::endl;
+  if (argc >= 2 && string(argv[1]) == "bench")
+  {
+      if (argc < 4 || argc > 6)
+      {
+        std::cout << "Usage: glaurung bench <hash size> <threads> "
+                  << "[time = 60s] [fen positions file = default]"
+                  << std::endl;
         exit(0);
       }
-      benchmark(std::string(argv[2]), std::string(argv[3]));
+      string time = argc > 4 ? argv[4] : "60";
+      string fen = argc > 5 ? argv[5] : "default";
+      benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen);
       return 0;
-    }
   }
 
   // Print copyright notice

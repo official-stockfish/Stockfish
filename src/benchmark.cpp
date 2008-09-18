@@ -20,6 +20,7 @@
 ////
 //// Includes
 ////
+#include <sstream>
 
 #include "benchmark.h"
 #include "search.h"
@@ -59,33 +60,45 @@ const std::string BenchmarkPositions[15] = {
 /// transposition table size and the number of search threads that should
 /// be used.  The analysis is written to a file named bench.txt.
 
-void benchmark(const std::string &ttSize, const std::string &threads) {
+void benchmark(const std::string& commandLine) {
+
   Position pos;
   Move moves[1] = {MOVE_NONE};
-  int i;
+  std::string ttSize, threads, fileName;
+  std::istringstream csVal(commandLine);
+  std::istringstream csStr(commandLine);
+  int val, time;
 
-  i = atoi(ttSize.c_str());
-  if(i < 4 || i > 1024) {
-    std::cerr << "The hash table size must be between 4 and 1024" << std::endl;
-    exit(EXIT_FAILURE);
+  csStr >> ttSize;
+  csVal >> val;
+  if (val < 4 || val > 1024)
+  {
+      std::cerr << "The hash table size must be between 4 and 1024" << std::endl;
+      exit(EXIT_FAILURE);
   }
-
-  i = atoi(threads.c_str());
-  if(i < 1 || i > THREAD_MAX) {
-    std::cerr << "The number of threads must be between 1 and " << THREAD_MAX
-              << std::endl;
-    exit(EXIT_FAILURE);
-  }
-  
+  csStr >> threads;
+  csVal >> val;
+  if (val < 1 || val > THREAD_MAX)
+  {
+      std::cerr << "The number of threads must be between 1 and " << THREAD_MAX
+                << std::endl;
+      exit(EXIT_FAILURE);
+  }  
   set_option_value("Hash", ttSize);
   set_option_value("Threads", threads);
   set_option_value("OwnBook", "false");
   set_option_value("Use Search Log", "true");
   set_option_value("Search Log Filename", "bench.txt");
 
-  for(i = 0; i < 15; i++) {
-    pos.from_fen(BenchmarkPositions[i]);
-    think(pos, true, false, 0, 0, 0, 0, 0, 60000, moves);
+  csVal >> time; // In seconds
+  csVal >> fileName;
+  
+  if (fileName != "default")
+      exit(0);
+
+  for (int i = 0; i < 15; i++)
+  {
+      pos.from_fen(BenchmarkPositions[i]);
+      think(pos, true, false, 0, 0, 0, 0, 0, time * 1000, moves);
   }
-    
 }

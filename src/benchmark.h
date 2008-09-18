@@ -31,7 +31,6 @@
 //// Prototypes
 ////
 
-extern void benchmark(const std::string &ttSize, const std::string &threads);
-
+extern void benchmark(const std::string& commandLine);
 
 #endif // !defined(BENCHMARK_H_INCLUDED)
