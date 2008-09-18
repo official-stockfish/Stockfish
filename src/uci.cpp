@@ -134,6 +134,7 @@ namespace {
         TT.clear();
         Position::init_piece_square_tables();
         RootPosition.from_fen(StartPosition);
+
     }
     else if (token == "isready")
         std::cout << "readyok" << std::endl;
@@ -319,8 +320,7 @@ namespace {
     if (moveTime)
         infinite = true;  // HACK
 
-    think(RootPosition, infinite, ponder, time[RootPosition.side_to_move()],
-          inc[RootPosition.side_to_move()], movesToGo, depth, nodes, moveTime,
-          searchMoves);
+    think(RootPosition, infinite, ponder, RootPosition.side_to_move(), time,
+          inc, movesToGo, depth, nodes, moveTime, searchMoves);
   }
 }

@@ -81,9 +81,9 @@ extern History H;
 
 extern void init_threads();
 extern void stop_threads();
-extern void think(const Position &pos, bool infinite, bool ponder, int time,
-                  int increment, int movesToGo, int maxDepth, int maxNodes,
-                  int maxTime, Move searchMoves[]);
+extern void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
+                  int time[], int increment[], int movesToGo, int maxDepth, 
+                  int maxNodes, int maxTime, Move searchMoves[]);
 extern int64_t nodes_searched();
 
 

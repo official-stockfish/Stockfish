@@ -300,9 +300,9 @@ History H;  // Should be made local?
 /// the program receives the UCI 'go' command.  It initializes various
 /// search-related global variables, and calls root_search()
 
-void think(const Position &pos, bool infinite, bool ponder, int time,
-           int increment, int movesToGo, int maxDepth, int maxNodes,
-           int maxTime, Move searchMoves[]) {
+void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
+           int time[], int increment[], int movesToGo, int maxDepth,
+           int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Look for a book move:
   if(!infinite && !ponder && get_option_value_bool("OwnBook")) {
@@ -422,24 +422,29 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
     assert(thread_is_available(i, 0));
 
   // Set thinking time:
+  int myTime = time[side_to_move];
+  int myIncrement = increment[side_to_move];
+  int oppTime = time[1 - side_to_move];
+  int oppIncrement = increment[1 - side_to_move];
+
   if(!movesToGo) { // Sudden death time control
     if(increment) {
-      MaxSearchTime = time / 30 + increment;
-      AbsoluteMaxSearchTime = Max(time / 4, increment - 100);
+      MaxSearchTime = myTime / 30 + myIncrement;
+      AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
     }
     else { // Blitz game without increment
-      MaxSearchTime = time / 40;
-      AbsoluteMaxSearchTime = time / 8;
+      MaxSearchTime = myTime / 40;
+      AbsoluteMaxSearchTime = myTime / 8;
     }
   }
   else { // (x moves) / (y minutes)
     if(movesToGo == 1) {
-      MaxSearchTime = time / 2;
-      AbsoluteMaxSearchTime = Min(time / 2, time - 500);
+      MaxSearchTime = myTime / 2;
+      AbsoluteMaxSearchTime = Min(myTime / 2, myTime - 500);
     }
     else {
-      MaxSearchTime = time / Min(movesToGo, 20);
-      AbsoluteMaxSearchTime = Min((4 * time) / movesToGo, time / 3);
+      MaxSearchTime = myTime / Min(movesToGo, 20);
+      AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
     }
   }
   if(PonderingEnabled) {
