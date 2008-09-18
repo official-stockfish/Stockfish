@@ -259,7 +259,7 @@ namespace {
   Value apply_weight(Value v, int w);
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, ScaleFactor sf[]);
 
-  int count_1s_8bit(int b);
+  int count_1s_8bit(Bitboard b);
 
   int compute_weight(int uciWeight, int internalWeight);
   void init_safety();
@@ -1162,10 +1162,10 @@ namespace {
 
 
   // count_1s_8bit() counts the number of nonzero bits in the 8 least
-  // significant bits of an integer.  This function is used by the king
+  // significant bits of a Bitboard. This function is used by the king
   // shield evaluation.
   
-  int count_1s_8bit(int b) {
+  int count_1s_8bit(Bitboard b) {
     return int(BitCount8Bit[b & 0xFF]);
   }
 
