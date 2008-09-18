@@ -20,7 +20,9 @@
 ////
 //// Includes
 ////
+#include <fstream>
 #include <sstream>
+#include <vector>
 
 #include "benchmark.h"
 #include "search.h"
@@ -55,19 +57,20 @@ const std::string BenchmarkPositions[15] = {
 //// Functions
 ////
 
-/// benchmark() runs a simple benchmark by letting Glaurung analyze 15
-/// positions for 60 seconds each.  There are two parameters; the
-/// transposition table size and the number of search threads that should
-/// be used.  The analysis is written to a file named bench.txt.
+/// benchmark() runs a simple benchmark by letting Glaurung analyze a set
+/// of positions for a given time each.  There are four parameters; the
+/// transposition table size, the number of search threads that should
+/// be used, the time in seconds spent for each position (optional, default
+/// is 60) and an optional file name where to look for positions in fen
+/// format (default are the BenchmarkPositions defined above).
+/// The analysis is written to a file named bench.txt.
 
 void benchmark(const std::string& commandLine) {
 
-  Position pos;
-  Move moves[1] = {MOVE_NONE};
-  std::string ttSize, threads, fileName;
   std::istringstream csVal(commandLine);
   std::istringstream csStr(commandLine);
-  int val, time;
+  std::string ttSize, threads, fileName;
+  int val, secsPerPos;
 
   csStr >> ttSize;
   csVal >> val;
@@ -90,15 +93,37 @@ void benchmark(const std::string& commandLine) {
   set_option_value("Use Search Log", "true");
   set_option_value("Search Log Filename", "bench.txt");
 
-  csVal >> time; // In seconds
+  csVal >> secsPerPos;
   csVal >> fileName;
+
+  std::vector<std::string> positions;
   
   if (fileName != "default")
-      exit(0);
-
-  for (int i = 0; i < 15; i++)
   {
-      pos.from_fen(BenchmarkPositions[i]);
-      think(pos, true, false, 0, 0, 0, 0, 0, time * 1000, moves);
+      std::ifstream fenFile(fileName.c_str());
+      if (!fenFile.is_open())
+      {
+          std::cerr << "Unable to open positions file " << fileName
+                    << std::endl;
+          exit(EXIT_FAILURE);
+      }        
+      std::string pos;
+      while (fenFile.good())
+      {
+          std::getline(fenFile, pos);
+          if (!pos.empty())
+              positions.push_back(pos);
+      }
+      fenFile.close();
+  } else
+      for (int i = 0; i < 15; i++)
+          positions.push_back(std::string(BenchmarkPositions[i]));
+
+  std::vector<std::string>::iterator it;
+  for (it = positions.begin(); it != positions.end(); ++it)
+  {
+      Move moves[1] = {MOVE_NONE};
+      Position pos(*it);      
+      think(pos, true, false, 0, 0, 0, 0, 0, secsPerPos * 1000, moves);
   }
 }
