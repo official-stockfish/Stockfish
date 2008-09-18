@@ -335,10 +335,8 @@ Move MovePicker::pick_move_from_list() {
         }
       }
       if(bestIndex != -1) { // Found a good capture
-        MoveStack tmp = moves[movesPicked];
-        moves[movesPicked] = moves[bestIndex];
-        moves[bestIndex] = tmp;
-        move = moves[movesPicked++].move;
+        move = moves[bestIndex].move;
+        moves[bestIndex] = moves[movesPicked++];
         if(move != ttMove && move != mateKiller &&
            pos->move_is_legal(move, pinned))
           return move;
@@ -368,10 +366,8 @@ Move MovePicker::pick_move_from_list() {
         bestIndex = movesPicked;
 
       if(bestIndex != -1) {
-        MoveStack tmp = moves[movesPicked];
-        moves[movesPicked] = moves[bestIndex];
-        moves[bestIndex] = tmp;
-        move = moves[movesPicked++].move;
+        move = moves[bestIndex].move;
+        moves[bestIndex] = moves[movesPicked++];
         if(move != ttMove && move != mateKiller &&
            pos->move_is_legal(move, pinned))
           return move;
@@ -392,10 +388,8 @@ Move MovePicker::pick_move_from_list() {
         }
 
       if(bestIndex != -1) {
-        MoveStack tmp = moves[movesPicked];
-        moves[movesPicked] = moves[bestIndex];
-        moves[bestIndex] = tmp;
-        move = moves[movesPicked++].move;
+        move = moves[bestIndex].move;
+        moves[bestIndex] = moves[movesPicked++];
         return move;
       }
     }
@@ -431,11 +425,8 @@ Move MovePicker::pick_move_from_list() {
         bestIndex = movesPicked;
 
       if(bestIndex != -1) {
-        MoveStack tmp = moves[movesPicked];
-        moves[movesPicked] = moves[bestIndex];
-        moves[bestIndex] = tmp;
-
-        move = moves[movesPicked++].move;
+        move = moves[bestIndex].move;
+        moves[bestIndex] = moves[movesPicked++];
         // Remember to change the line below if we decide to hash the qsearch!
         // Maybe also postpone the legality check until after futility pruning?
         if(/* move != ttMove && */ pos->move_is_legal(move, pinned))
