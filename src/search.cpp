@@ -2136,62 +2136,64 @@ namespace {
   // search.
 
   void poll() {
-    int t, data;
-    static int lastInfoTime;
 
-    t = current_search_time();
+    static int lastInfoTime;
+    int t = current_search_time();
 
     //  Poll for input
-    data = Bioskey();
-    if(data) {
-      char input[256];
-      if(fgets(input, 255, stdin) == NULL)
-        strncpy(input, "quit\n", 5);
-      if(strncmp(input, "quit", 4) == 0) {
-        AbortSearch = true;
-        PonderSearch = false;
-        Quit = true;
-      }
-      else if(strncmp(input, "stop", 4) == 0) {
-        AbortSearch = true;
-        PonderSearch = false;
-      }
-      else if(strncmp(input, "ponderhit", 9) == 0)
-        ponderhit();
-    }
+    if (Bioskey())
+    {
+        // We are line oriented, don't read single chars
+        std::string command;
+        if (!std::getline(std::cin, command))
+            command = "quit";
 
+        if (command == "quit")
+        {
+            AbortSearch = true;
+            PonderSearch = false;
+            Quit = true;
+        }
+        else if(command == "stop")
+        {
+            AbortSearch = true;
+            PonderSearch = false;
+        }
+        else if(command == "ponderhit")
+            ponderhit();
+    }
     // Print search information
-    if(t < 1000)
-      lastInfoTime = 0;
-    else if(lastInfoTime > t)
-      // HACK: Must be a new search where we searched less than
-      // NodesBetweenPolls nodes during the first second of search.
-      lastInfoTime = 0;
-    else if(t - lastInfoTime >= 1000) {
-      lastInfoTime = t;
-      lock_grab(&IOLock);
-      std::cout << "info nodes " << nodes_searched() << " nps " << nps()
-                << " time " << t << " hashfull " << TT.full() << std::endl;
-      lock_release(&IOLock);
-      if(ShowCurrentLine)
-        Threads[0].printCurrentLine = true;
+    if (t < 1000)
+        lastInfoTime = 0;
+
+    else if (lastInfoTime > t)
+        // HACK: Must be a new search where we searched less than
+        // NodesBetweenPolls nodes during the first second of search.
+        lastInfoTime = 0;
+
+    else if (t - lastInfoTime >= 1000)
+    {
+        lastInfoTime = t;
+        lock_grab(&IOLock);
+        std::cout << "info nodes " << nodes_searched() << " nps " << nps()
+                  << " time " << t << " hashfull " << TT.full() << std::endl;
+        lock_release(&IOLock);
+        if (ShowCurrentLine)
+            Threads[0].printCurrentLine = true;
     }
-
     // Should we stop the search?
-    if(!PonderSearch && Iteration >= 2 &&
-       (!InfiniteSearch && (t > AbsoluteMaxSearchTime ||
-                            (RootMoveNumber == 1 &&
-                             t > MaxSearchTime + ExtraSearchTime) ||
-                            (!FailHigh && !fail_high_ply_1() && !Problem &&
-                             t > 6*(MaxSearchTime + ExtraSearchTime)))))
-      AbortSearch = true;
+    if (PonderSearch)
+        return;
 
-    if(!PonderSearch && ExactMaxTime && t >= ExactMaxTime)
-      AbortSearch = true;
+    bool overTime =     t > AbsoluteMaxSearchTime
+                     || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime)
+                     || (  !FailHigh && !fail_high_ply_1() && !Problem 
+                         && t > 6*(MaxSearchTime + ExtraSearchTime));
 
-    if(!PonderSearch && Iteration >= 3 && MaxNodes
-       && nodes_searched() >= MaxNodes)
-      AbortSearch = true;
+    if (   (Iteration >= 2 && (!InfiniteSearch && overTime))
+        || (ExactMaxTime && t >= ExactMaxTime)
+        || (Iteration >= 3 && MaxNodes && nodes_searched() >= MaxNodes))
+        AbortSearch = true;
   }
 
 
