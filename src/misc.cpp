@@ -178,8 +178,24 @@ int Bioskey()
             return 1;
         return dw;
     } else {
+        // Count the number of unread input records, including keyboard,
+        // mouse, and window-resizing input records.
         GetNumberOfConsoleInputEvents(inh, &dw);
-        return dw <= 1 ? 0 : dw;
+        if (dw <= 0)
+            return 0;
+
+        // Read data from console without removing it from the buffer
+        INPUT_RECORD rec[256];
+        DWORD recCnt;
+        if (!PeekConsoleInput(inh, rec, Min(dw, 256), &recCnt))
+            return 0;
+
+        // Search for at least one keyboard event
+        for (DWORD i = 0; i < recCnt; i++)
+            if (rec[i].EventType == KEY_EVENT)
+                return 1;
+
+        return 0;
     }
 }
 #endif
