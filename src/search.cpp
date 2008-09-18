@@ -342,7 +342,7 @@ void think(const Position &pos, bool infinite, bool ponder, int time,
   TT.set_size(get_option_value_int("Hash"));
   if(button_was_pressed("Clear Hash"))
     TT.clear();
-  PonderingEnabled = get_option_value_int("Ponder");
+  PonderingEnabled = get_option_value_bool("Ponder");
   MultiPV = get_option_value_int("MultiPV");
 
   CheckExtension[1] = Depth(get_option_value_int("Check Extension (PV nodes)"));
