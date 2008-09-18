@@ -2135,7 +2135,7 @@ namespace {
     if(data) {
       char input[256];
       if(fgets(input, 255, stdin) == NULL)
-        strcpy(input, "quit\n");
+        strncpy(input, "quit\n", 5);
       if(strncmp(input, "quit", 4) == 0) {
         AbortSearch = true;
         PonderSearch = false;
