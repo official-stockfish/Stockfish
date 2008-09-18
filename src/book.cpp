@@ -340,7 +340,7 @@ namespace {
   uint64_t book_color_key(const Position &pos);
 
   uint64_t read_integer(FILE *file, int size);
-
+  uint16_t read_small_integer(FILE *file, int size);
 }
 
 
@@ -485,10 +485,10 @@ void Book::read_entry(BookEntry& entry, int n) const {
   }
 
   entry.key = read_integer(bookFile, 8);
-  entry.move = read_integer(bookFile, 2);
-  entry.count = read_integer(bookFile, 2);
-  entry.n = read_integer(bookFile, 2);
-  entry.sum = read_integer(bookFile, 2);
+  entry.move = read_small_integer(bookFile, 2);
+  entry.count = read_small_integer(bookFile, 2);
+  entry.n = read_small_integer(bookFile, 2);
+  entry.sum = read_small_integer(bookFile, 2);
 }
 
 
@@ -555,7 +555,7 @@ namespace {
   
 
   uint64_t read_integer(FILE *file, int size) {
-    uint64_t n = 0ULL;;
+    uint64_t n = 0ULL;
     int i;
     int b;
 
@@ -573,6 +573,14 @@ namespace {
       n = (n << 8) | b;
     }
     return n;
+  }
+
+  uint16_t read_small_integer(FILE *file, int size) {
+
+      assert(size > 0 && size <= 5); // 16 bit integer
+      uint64_t n = read_integer(file, size);
+      assert(n == (uint16_t)n);
+      return (uint16_t)n;      
   }
 
 }
