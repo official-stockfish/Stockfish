@@ -189,7 +189,7 @@ Move move_from_san(Position &pos, const std::string &movestr) {
     }
   *cc = '\0';
 
-  int left = 0, right = strlen(str) - 1;
+  size_t left = 0, right = strlen(str) - 1;
   PieceType pt = NO_PIECE_TYPE, promotion;
   Square to;
   File fromFile = FILE_NONE;
@@ -276,7 +276,7 @@ const std::string line_to_san(const Position &pos, Move line[], int startColumn,
   UndoInfo u;
   std::stringstream s;
   std::string moveStr;
-  int length, maxLength;
+  size_t length, maxLength;
 
   length = 0;
   maxLength = 80 - startColumn;
