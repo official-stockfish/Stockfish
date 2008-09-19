@@ -343,18 +343,16 @@ Square first_1(Bitboard b) {
 
 Square pop_1st_bit(Bitboard *bb) {
 
-  uint32_t  t = uint32_t(*bb);
-  uint32_t* p = t ? (uint32_t*)bb : (uint32_t*)bb + 1; // Little endian only?
-  uint32_t  b = t ? t : *p;
+  uint32_t  a = uint32_t(*bb);
+  uint32_t* ptr = a ? (uint32_t*)bb : (uint32_t*)bb + 1; // Little endian only?
+  uint32_t  b = a ? a : *ptr;
+  uint32_t  c = ~(b ^ (b - 1));
 
-  *p = b & (b -1);
+  *ptr = b & c; // clear the bit
+  if (a)
+     c = ~c;
 
-  if (t)
-     b ^= (b - 1);
-  else
-     b = ~(b ^ (b - 1));
-
-  return Square(BitTable[(b * 0x783a9b23) >> 26]);
+  return Square(BitTable[(c * 0x783a9b23) >> 26]);
 }
 
 #else
