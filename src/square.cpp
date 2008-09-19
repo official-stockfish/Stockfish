@@ -22,7 +22,6 @@
 ////
 
 #include <cassert>
-#include <cstdio>
 #include <string>
 
 #include "square.h"

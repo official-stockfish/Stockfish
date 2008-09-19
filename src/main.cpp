@@ -21,7 +21,6 @@
 //// Includes
 ////
 
-#include <cstdlib>
 #include <iostream>
 
 #include "benchmark.h"
@@ -48,8 +47,6 @@ using std::string;
 int main(int argc, char *argv[]) {
 
   // Disable IO buffering
-  setbuf(stdin, NULL);
-  setbuf(stdout, NULL);
   std::cout.rdbuf()->pubsetbuf(NULL, 0);
   std::cin.rdbuf()->pubsetbuf(NULL, 0);
 
