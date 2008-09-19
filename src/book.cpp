@@ -29,7 +29,6 @@
 ////
 
 #include <cassert>
-#include <cstdio>
 
 #include "book.h"
 #include "mersenne.h"
@@ -339,8 +338,9 @@ namespace {
   uint64_t book_ep_key(const Position &pos);
   uint64_t book_color_key(const Position &pos);
 
-  uint64_t read_integer(FILE *file, int size);
-  uint16_t read_small_integer(FILE *file, int size);
+  uint16_t read_integer16(std::ifstream& file);
+  uint64_t read_integer64(std::ifstream& file);
+  uint64_t read_integer(std::ifstream& file, int size);
 }
 
 
@@ -351,27 +351,26 @@ namespace {
 
 /// Constructor
 
-Book::Book() {
-  bookFile = NULL;
-  bookSize = 0;
-}
+Book::Book() : bookSize(0) {}
 
 
 /// Book::open() opens a book file with a given file name.
 
 void Book::open(const std::string &fName) {
+
   fileName = fName;
-  bookFile = fopen(fileName.c_str(), "rb");
-  if(bookFile != NULL) {
-    if(fseek(bookFile, 0, SEEK_END) == -1) {
+  bookFile.open(fileName.c_str(), std::ifstream::in | std::ifstream::binary);
+  if (!bookFile.is_open())
+      return;
+
+  bookFile.seekg(0, std::ios::end);
+  bookSize = bookFile.tellg() / 16;
+  bookFile.seekg(0, std::ios::beg);
+
+  if (!bookFile.good())
+  {
       std::cerr << "Failed to open book file " << fileName << std::endl;
       exit(EXIT_FAILURE);
-    }
-    bookSize = ftell(bookFile) / 16;
-    if(bookSize == -1) {
-      std::cerr << "Failed to open book file " << fileName << std::endl;
-      exit(EXIT_FAILURE);
-    }
   }
 }
 
@@ -379,17 +378,17 @@ void Book::open(const std::string &fName) {
 /// Book::close() closes the currently open book file.
 
 void Book::close() {
-  if(bookFile != NULL && fclose(bookFile) == EOF) {
-    std::cerr << "Failed to close book file" << std::endl;
-    exit(EXIT_FAILURE);
-  }
+
+  if (bookFile.is_open())
+      bookFile.close();
 }
 
 
 /// Book::is_open() tests whether a book file has been opened.
 
 bool Book::is_open() const {
-  return bookFile != NULL && bookSize != 0;
+  
+  return bookFile.is_open() && bookSize != 0;
 }
 
 
@@ -397,7 +396,8 @@ bool Book::is_open() const {
 /// or the empty string if no book is open.
 
 const std::string Book::file_name() const {
-  return this->is_open()? fileName : "";
+
+  return bookFile.is_open() ? fileName : "";
 }
   
 
@@ -476,19 +476,21 @@ int Book::find_key(uint64_t key) const {
 /// file.  The book entry is copied to the first input parameter.
 
 void Book::read_entry(BookEntry& entry, int n) const {
-  assert(n >= 0 && n < bookSize);
-  assert(bookFile != NULL);
 
-  if(fseek(bookFile, n*16, SEEK_SET) == -1) {
+  assert(n >= 0 && n < bookSize);
+  assert(bookFile.is_open());
+
+  bookFile.seekg(n*16, std::ios_base::beg);
+  if (!bookFile.good())
+  {
     std::cerr << "Failed to read book entry at index " << n << std::endl;
     exit(EXIT_FAILURE);
   }
-
-  entry.key = read_integer(bookFile, 8);
-  entry.move = read_small_integer(bookFile, 2);
-  entry.count = read_small_integer(bookFile, 2);
-  entry.n = read_small_integer(bookFile, 2);
-  entry.sum = read_small_integer(bookFile, 2);
+  entry.key = read_integer64(bookFile);
+  entry.move = read_integer16(bookFile);
+  entry.count = read_integer16(bookFile);
+  entry.n = read_integer16(bookFile);
+  entry.sum = read_integer16(bookFile);
 }
 
 
@@ -554,33 +556,36 @@ namespace {
   }
   
 
-  uint64_t read_integer(FILE *file, int size) {
-    uint64_t n = 0ULL;
-    int i;
-    int b;
+  uint16_t read_integer16(std::ifstream& file) {
+    
+    uint64_t n = read_integer(file, 2);
+    assert(n == (uint16_t)n);
+    return (uint16_t)n;      
+  }
 
-    assert(file != NULL);
-    assert(size > 0 && size <= 8);
 
-    for(i = 0; i < size; i++) {
-      b = fgetc(file);
-      if(b == EOF) {
+  uint64_t read_integer64(std::ifstream& file) {
+    
+    return read_integer(file, 8);      
+  }
+
+
+  uint64_t read_integer(std::ifstream& file, int size) {
+
+    char buf[8];
+    file.read(buf, size);
+
+    if (!file.good())
+    {
         std::cerr << "Failed to read " << size << " bytes from book file"
                   << std::endl;
         exit(EXIT_FAILURE);
-      }
-      assert(b >= 0 && b < 256);
-      n = (n << 8) | b;
     }
+    // Numbers are stored in little endian format
+    uint64_t n = 0ULL;
+    for (int i = 0; i < size; i++)
+        n = (n << 8) + (unsigned char)buf[i];
+
     return n;
   }
-
-  uint16_t read_small_integer(FILE *file, int size) {
-
-      assert(size > 0 && size <= 5); // 16 bit integer
-      uint64_t n = read_integer(file, size);
-      assert(n == (uint16_t)n);
-      return (uint16_t)n;      
-  }
-
 }

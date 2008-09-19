@@ -32,6 +32,7 @@
 //// Includes
 ////
 
+#include <fstream>
 #include <string>
 
 #include "move.h"
@@ -74,7 +75,7 @@ private:
   void read_entry(BookEntry &entry, int n) const;
 
   std::string fileName;
-  FILE *bookFile;
+  mutable std::ifstream bookFile;
   int bookSize;
 };
 
