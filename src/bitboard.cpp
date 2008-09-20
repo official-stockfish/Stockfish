@@ -339,7 +339,7 @@ Square first_1(Bitboard b) {
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
-#if defined(USE_32BIT_ATTACKS)
+#if defined(USE_32BIT_ATTACKS) && defined(_WIN32)
 
 Square pop_1st_bit(Bitboard *bb) {
 
