@@ -1156,7 +1156,12 @@ namespace {
     else
       ev = apply_scale_factor(ev, sf[BLACK]);
 
-    Value result = Value(int((mv * ph + ev * (128 - ph)) / 128));
+    // Superlinear interpolator
+    int sli_ph = int(ph);
+    sli_ph -= (64 - sli_ph) / 4;
+    sli_ph = Min(PHASE_MIDGAME, Max(PHASE_ENDGAME, sli_ph)); // ceiling
+
+    Value result = Value(int((mv * sli_ph + ev * (128 - sli_ph)) / 128));
     return Value(int(result) & ~(GrainSize - 1));
   }
 
