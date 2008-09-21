@@ -21,6 +21,16 @@
 //// Includes
 ////
 
+#ifdef _MSC_VER
+    #include <intrin.h>
+    #ifdef _WIN64
+        #pragma intrinsic(_BitScanForward64)
+    #else
+        #pragma intrinsic(_BitScanForward)
+    #endif
+    #define USING_INTRINSICS
+#endif
+
 #include <iostream>
 
 #include "bitboard.h"
@@ -339,20 +349,30 @@ Square first_1(Bitboard b) {
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
-#if defined(USE_32BIT_ATTACKS) && defined(_WIN32)
+#if defined(USE_32BIT_ATTACKS) && defined(_MSC_VER)
 
-Square pop_1st_bit(Bitboard *bb) {
+// On 32bit system compiled with MSVC this verion seems
+// slightly faster then the standard one.
 
-  uint32_t  a = uint32_t(*bb);
-  uint32_t* ptr = a ? (uint32_t*)bb : (uint32_t*)bb + 1; // Little endian only?
-  uint32_t  b = a ? a : *ptr;
-  uint32_t  c = ~(b ^ (b - 1));
+Square pop_1st_bit(Bitboard *b) {
 
-  *ptr = b & c; // clear the bit
-  if (a)
-     c = ~c;
+    unsigned long index;
+    uint32_t *l, *h;
 
-  return Square(BitTable[(c * 0x783a9b23) >> 26]);
+    if (*(l = (uint32_t*)b) != 0)
+    {
+        _BitScanForward(&index, *l);
+        *l &= ~(1 << index);
+    } 
+    else if (*(h = (uint32_t*)b + 1) != 0)
+    {
+        _BitScanForward(&index, *h);
+        *h &= ~(1 << index);
+        index += 32;
+    } else
+        return SQ_NONE;
+
+    return Square(index);
 }
 
 #else
