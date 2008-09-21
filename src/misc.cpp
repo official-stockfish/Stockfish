@@ -69,26 +69,21 @@ void dbg_print_hit_rate() {
 /// the constant EngineVersion (defined in misc.h) is empty.
 
 const std::string engine_name() {
-  if(EngineVersion == "") {
-    static const char monthNames[12][4] = {
-      "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
-    };
-    const char *dateString = __DATE__;
-    std::stringstream s;
-    int month = 0, day = 0;
 
-    for(int i = 0; i < 12; i++)
-      if(strncmp(dateString, monthNames[i], 3) == 0)
-        month = i + 1;
-    day = atoi(dateString+4);
+  if (EngineVersion.empty())
+  {      
+      std::string date(__DATE__); // From compiler, format is "Sep 21 2008"
+      std::string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
 
-    s << "Glaurung " << (dateString+9) << std::setfill('0') << std::setw(2)
-      << month << std::setfill('0') << std::setw(2) << day;
+      size_t mon = 1 + months.find(date.substr(0, 3)) / 4;
 
-    return s.str();
-  }
-  else
-    return "Glaurung " + EngineVersion;
+      std::stringstream s;
+      s << "Glaurung " << date.substr(date.length() - 2) << std::setfill('0')
+        << std::setw(2) << mon << date.substr(4, 2);
+
+      return s.str();
+  } else
+      return "Glaurung " + EngineVersion;
 }
 
 

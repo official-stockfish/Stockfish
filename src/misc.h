@@ -36,7 +36,7 @@
 /// Version number.  If this is left empty, the current date (in the format
 /// YYMMDD) is used as a version number.
 
-const std::string EngineVersion = "2.1";
+const std::string EngineVersion = "";
 
 
 ////
