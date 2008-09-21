@@ -71,19 +71,19 @@ void dbg_print_hit_rate() {
 const std::string engine_name() {
 
   if (EngineVersion.empty())
-  {      
+  {
       std::string date(__DATE__); // From compiler, format is "Sep 21 2008"
       std::string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
 
       size_t mon = 1 + months.find(date.substr(0, 3)) / 4;
 
       std::stringstream s;
-      s << "Glaurung " << date.substr(date.length() - 2) << std::setfill('0')
+      s << "Glaurung clone " << date.substr(date.length() - 2) << std::setfill('0')
         << std::setw(2) << mon << date.substr(4, 2);
 
       return s.str();
   } else
-      return "Glaurung " + EngineVersion;
+      return "Glaurung clone " + EngineVersion;
 }
 
 
