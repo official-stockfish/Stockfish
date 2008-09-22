@@ -44,123 +44,136 @@ namespace {
   const int GrainSize = 4;
 
   // Evaluation weights
-  int WeightMobilityMidgame = 0x100;
-  int WeightMobilityEndgame = 0x100;
+  int WeightMobilityMidgame      = 0x100;
+  int WeightMobilityEndgame      = 0x100;
   int WeightPawnStructureMidgame = 0x100;
   int WeightPawnStructureEndgame = 0x100;
-  int WeightPassedPawnsMidgame = 0x100;
-  int WeightPassedPawnsEndgame = 0x100;
+  int WeightPassedPawnsMidgame   = 0x100;
+  int WeightPassedPawnsEndgame   = 0x100;
   int WeightKingSafety[2] = { 0x100, 0x100 };
 
   // Internal evaluation weights.  These are applied on top of the evaluation
   // weights read from UCI parameters.  The purpose is to be able to change
   // the evaluation weights while keeping the default values of the UCI
   // parameters at 100, which looks prettier.
-  const int WeightMobilityMidgameInternal = 0x100;
-  const int WeightMobilityEndgameInternal = 0x100;
+  const int WeightMobilityMidgameInternal      = 0x100;
+  const int WeightMobilityEndgameInternal      = 0x100;
   const int WeightPawnStructureMidgameInternal = 0x100;
   const int WeightPawnStructureEndgameInternal = 0x100;
-  const int WeightPassedPawnsMidgameInternal = 0x100;
-  const int WeightPassedPawnsEndgameInternal = 0x100;
-  const int WeightKingSafetyInternal = 0x100;
+  const int WeightPassedPawnsMidgameInternal   = 0x100;
+  const int WeightPassedPawnsEndgameInternal   = 0x100;
+  const int WeightKingSafetyInternal           = 0x100;
+
+  // Visually better to define tables constants
+  typedef Value V;
 
   // Knight mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly piecess.
   const Value MidgameKnightMobilityBonus[] = {
-    Value(-30), Value(-20), Value(-10), Value(0), Value(10),
-    Value(20), Value(25), Value(30), Value(30)
+  //    0       1      2     3      4      5      6      7      8
+    V(-30), V(-20),V(-10), V(0), V(10), V(20), V(25), V(30), V(30)
   };
 
   const Value EndgameKnightMobilityBonus[] = {
-    Value(-30), Value(-20), Value(-10), Value(0), Value(10),
-    Value(20), Value(25), Value(30), Value(30)
+  //    0       1      2     3      4      5      6      7      8
+    V(-30), V(-20),V(-10), V(0), V(10), V(20), V(25), V(30), V(30)
   };
 
   // Bishop mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces.  X-ray attacks through
   // queens are also included.
   const Value MidgameBishopMobilityBonus[] = {
-    Value(-30), Value(-15), Value(0), Value(15), Value(30), Value(45),
-    Value(58), Value(66), Value(72), Value(76), Value(78), Value(80),
-    Value(81), Value(82), Value(83), Value(83)
+  //    0       1      2      3      4      5      6      7
+    V(-30), V(-15),  V(0), V(15), V(30), V(45), V(58), V(66),
+  //    8       9     10     11     12     13     14     15
+    V( 72), V( 76), V(78), V(80), V(81), V(82), V(83), V(83)
   };
 
   const Value EndgameBishopMobilityBonus[] = {
-    Value(-30), Value(-15), Value(0), Value(15), Value(30), Value(45),
-    Value(58), Value(66), Value(72), Value(76), Value(78), Value(80),
-    Value(81), Value(82), Value(83), Value(83)
+  //    0       1      2      3      4      5      6      7
+    V(-30), V(-15),  V(0), V(15), V(30), V(45), V(58), V(66),
+  //    8       9     10     11     12     13     14     15
+    V( 72), V( 76), V(78), V(80), V(81), V(82), V(83), V(83)
   };
 
   // Rook mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces.  X-ray attacks through
   // queens and rooks are also included.
   const Value MidgameRookMobilityBonus[] = {
-    Value(-18), Value(-12), Value(-6), Value(0), Value(6), Value(12),
-    Value(16), Value(21), Value(24), Value(27), Value(28), Value(29),
-    Value(30), Value(31), Value(32), Value(33)
+  //    0       1      2      3      4      5      6      7
+    V(-18), V(-12), V(-6),  V(0),  V(6), V(12), V(16), V(21),
+  //    8       9     10     11     12     13     14     15
+    V( 24), V( 27), V(28), V(29), V(30), V(31), V(32), V(33)
   };
   
   const Value EndgameRookMobilityBonus[] = {
-    Value(-30), Value(-18), Value(-6), Value(6), Value(18), Value(30),
-    Value(42), Value(54), Value(66), Value(74), Value(78), Value(80),
-    Value(81), Value(82), Value(83), Value(83)
+  //    0       1      2      3      4      5      6      7
+    V(-30), V(-18), V(-6),  V(6), V(18), V(30), V(42), V(54),
+  //    8       9     10     11     12     13     14     15
+    V( 66), V( 74), V(78), V(80), V(81), V(82), V(83), V(83)
   };
 
   // Queen mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces.
   const Value MidgameQueenMobilityBonus[] = {
-    Value(-10), Value(-8), Value(-6), Value(-4), Value(-2), Value(0), Value(2),
-    Value(4), Value(6), Value(8), Value(10), Value(12), Value(13), Value(14),
-    Value(15), Value(16), Value(16), Value(16), Value(16), Value(16),
-    Value(16), Value(16), Value(16), Value(16), Value(16), Value(16),
-    Value(16), Value(16), Value(16), Value(16), Value(16), Value(16)
+  //    0      1      2      3      4      5      6      7
+    V(-10), V(-8), V(-6), V(-4), V(-2), V( 0), V( 2), V( 4),
+  //    8      9     10     11     12     13     14     15
+    V(  6), V( 8), V(10), V(12), V(13), V(14), V(15), V(16),
+  //   16     17     18     19     20     21     22     23
+    V( 16), V(16), V(16), V(16), V(16), V(16), V(16), V(16),
+  //   24     25     26     27     28     29     30     31
+    V( 16), V(16), V(16), V(16), V(16), V(16), V(16), V(16)
   };
 
   const Value EndgameQueenMobilityBonus[] = {
-    Value(-20), Value(-15), Value(-10), Value(-5), Value(0), Value(5),
-    Value(10), Value(15), Value(19), Value(23), Value(27), Value(29),
-    Value(30), Value(30), Value(30), Value(30), Value(30), Value(30),
-    Value(30), Value(30), Value(30), Value(30), Value(30), Value(30),
-    Value(30), Value(30), Value(30), Value(30), Value(30), Value(30),
-    Value(30), Value(30)
+  //    0      1      2      3      4      5      6      7
+    V(-20),V(-15),V(-10), V(-5), V( 0), V( 5), V(10), V(15),
+  //    8      9     10     11     12     13     14     15
+    V( 19), V(23), V(27), V(29), V(30), V(30), V(30), V(30),
+  //   16     17     18     19     20     21     22     23
+    V( 30), V(30), V(30), V(30), V(30), V(30), V(30), V(30),
+  //   24     25     26     27     28     29     30     31
+    V( 30), V(30), V(30), V(30), V(30), V(30), V(30), V(30)
   };
-
 
   // Outpost bonuses for knights and bishops, indexed by square (from white's
   // point of view).
   const Value KnightOutpostBonus[64] = {
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),
-    Value(0),Value(0),Value(5),Value(10),Value(10),Value(5),Value(0),Value(0),
-    Value(0),Value(5),Value(20),Value(30),Value(30),Value(20),Value(5),Value(0),
-    Value(0),Value(10),Value(30),Value(40),Value(40),Value(30),Value(10),Value(0),
-    Value(0),Value(5),Value(20),Value(20),Value(20),Value(20),Value(5),Value(0),
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0)
+  //  A     B     C     D     E     F     G     H
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 1
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 2
+    V(0), V(0), V(5),V(10),V(10), V(5), V(0), V(0), // 3
+    V(0), V(5),V(20),V(30),V(30),V(20), V(5), V(0), // 4
+    V(0),V(10),V(30),V(40),V(40),V(30),V(10), V(0), // 5
+    V(0), V(5),V(20),V(20),V(20),V(20), V(5), V(0), // 6
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
   };
 
   const Value BishopOutpostBonus[64] = {
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),
-    Value(0),Value(0),Value(5),Value(5),Value(5),Value(5),Value(0),Value(0),
-    Value(0),Value(5),Value(10),Value(10),Value(10),Value(10),Value(5),Value(0),
-    Value(0),Value(10),Value(20),Value(20),Value(20),Value(20),Value(10),Value(0),
-    Value(0),Value(5),Value(8),Value(8),Value(8),Value(8),Value(5),Value(0),
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),
-    Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0),Value(0)
+  //  A     B     C     D     E     F     G     H
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 1
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 2
+    V(0), V(0), V(5), V(5), V(5), V(5), V(0), V(0), // 3
+    V(0), V(5),V(10),V(10),V(10),V(10), V(5), V(0), // 4
+    V(0),V(10),V(20),V(20),V(20),V(20),V(10), V(0), // 5
+    V(0), V(5), V(8), V(8), V(8), V(8), V(5), V(0), // 6
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
   };
 
   // Bonus for unstoppable passed pawns:
   const Value UnstoppablePawnValue = Value(0x500);
 
   // Rooks and queens on the 7th rank:
-  const Value MidgameRookOn7thBonus = Value(50);
-  const Value EndgameRookOn7thBonus = Value(100);
+  const Value MidgameRookOn7thBonus  = Value(50);
+  const Value EndgameRookOn7thBonus  = Value(100);
   const Value MidgameQueenOn7thBonus = Value(25);
   const Value EndgameQueenOn7thBonus = Value(50);
 
   // Rooks on open files:
-  const Value RookOpenFileBonus = Value(40);
+  const Value RookOpenFileBonus     = Value(40);
   const Value RookHalfOpenFileBonus = Value(20);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
@@ -187,7 +200,6 @@ namespace {
     ((1ULL << SQ_A1) | (1ULL << SQ_H1)),
     ((1ULL << SQ_A8) | (1ULL << SQ_H8))
   };
-
   
   /// King safety constants and variables.  The king safety scores are taken
   /// from the array SafetyTable[].  Various little "meta-bonuses" measuring
@@ -195,19 +207,19 @@ namespace {
   /// as an index to SafetyTable[].
 
   // Attack weights for each piece type.
-  const int QueenAttackWeight = 5;
-  const int RookAttackWeight = 3;
+  const int QueenAttackWeight  = 5;
+  const int RookAttackWeight   = 3;
   const int BishopAttackWeight = 2;
   const int KnightAttackWeight = 2;
 
   // Bonuses for safe checks for each piece type.  
   int QueenContactCheckBonus = 4;
-  int RookContactCheckBonus = 2;
-  int QueenCheckBonus = 2;
-  int RookCheckBonus = 1;
-  int BishopCheckBonus = 1;
-  int KnightCheckBonus = 1;
-  int DiscoveredCheckBonus = 3;
+  int RookContactCheckBonus  = 2;
+  int QueenCheckBonus        = 2;
+  int RookCheckBonus         = 1;
+  int BishopCheckBonus       = 1;
+  int KnightCheckBonus       = 1;
+  int DiscoveredCheckBonus   = 3;
 
   // Scan for queen contact mates?
   const bool QueenContactMates = true;
@@ -218,19 +230,19 @@ namespace {
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
   const int InitKingDanger[64] = {
-    2, 0, 2, 5, 5, 2, 0, 2,
-    2, 2, 4, 8, 8, 4, 2, 2,
-    7, 10, 12, 12, 12, 12, 10, 7,
+     2,  0,  2,  5,  5,  2,  0,  2,
+     2,  2,  4,  8,  8,  4,  2,  2,
+     7, 10, 12, 12, 12, 12, 10,  7,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15
   };
 
   // SafetyTable[] contains the actual king safety scores.  It is initialized
   // in init_safety().
   Value SafetyTable[100];
-
 
   // Pawn and material hash tables, indexed by the current thread id:
   PawnInfoTable *PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
