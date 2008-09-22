@@ -501,27 +501,27 @@ Value quick_evaluate(const Position &pos) {
 /// init_eval() initializes various tables used by the evaluation function.
 
 void init_eval(int threads) {
+
   assert(threads <= THREAD_MAX);
-  
-  for(int i = 0; i < threads; i++) {
-    if(PawnTable[i] == NULL)
-      PawnTable[i] = new PawnInfoTable(PawnTableSize);
-    if(MaterialTable[i] == NULL)
-      MaterialTable[i] = new MaterialInfoTable(MaterialTableSize);
-  }
-  for(int i = threads; i < THREAD_MAX; i++) {
-    if(PawnTable[i] != NULL) {
-      delete PawnTable[i];
-      PawnTable[i] = NULL;
+
+  for (int i = 0; i < THREAD_MAX; i++)
+  {
+    if (i >= threads)
+    {
+        delete PawnTable[i];
+        delete MaterialTable[i];
+        PawnTable[i] = NULL;
+        MaterialTable[i] = NULL;
+        continue;
     }
-    if(MaterialTable[i] != NULL) {
-      delete MaterialTable[i];
-      MaterialTable[i] = NULL;
-    }
+    if (!PawnTable[i])
+        PawnTable[i] = new PawnInfoTable(PawnTableSize);
+    if (!MaterialTable[i])
+        MaterialTable[i] = new MaterialInfoTable(MaterialTableSize);
   }
 
-  for(Bitboard b = 0ULL; b < 256ULL; b++)
-    BitCount8Bit[b] = count_1s(b);
+  for (Bitboard b = 0ULL; b < 256ULL; b++)
+      BitCount8Bit[b] = count_1s(b);
 }
 
 
