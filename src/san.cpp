@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -48,7 +48,7 @@ namespace {
 
 
   /// Functions
-  
+
   Ambiguity move_ambiguity(Position &pos, Move m);
   const std::string time_string(int milliseconds);
   const std::string score_string(Value v);
@@ -152,7 +152,7 @@ const std::string move_to_san(Position &pos, Move m) {
 
 Move move_from_san(Position &pos, const std::string &movestr) {
   assert(pos.is_ok());
-  
+
   MovePicker mp = MovePicker(pos, false, MOVE_NONE, MOVE_NONE, MOVE_NONE,
                              MOVE_NONE, OnePly);
 
@@ -180,7 +180,7 @@ Move move_from_san(Position &pos, const std::string &movestr) {
   int i;
 
   // Initialize str[] by making a copy of movestr with the characters
-  // 'x', '=', '+' and '#' removed.  
+  // 'x', '=', '+' and '#' removed.
   cc = str;
   for(i=0, c=cstr; i<10 && *c!='\0' && *c!='\n' && *c!=' '; i++, c++)
     if(!strchr("x=+#", *c)) {
@@ -237,7 +237,7 @@ Move move_from_san(Position &pos, const std::string &movestr) {
   // Look for a matching move:
   Move m, move = MOVE_NONE;
   int matches = 0;
-  
+
   while((m = mp.get_next_move()) != MOVE_NONE) {
     bool match = true;
     if(pos.type_of_piece_on(move_from(m)) != pt)
@@ -255,7 +255,7 @@ Move move_from_san(Position &pos, const std::string &movestr) {
       matches++;
     }
   }
-  
+
   if(matches == 1)
     return move;
   else
@@ -391,7 +391,7 @@ namespace {
       s << hours << ':';
     s << std::setw(2) << std::setfill('0') << minutes << ':';
     s << std::setw(2) << std::setfill('0') << seconds;
-    
+
     return s.str();
   }
 
@@ -413,5 +413,5 @@ namespace {
     }
     return s.str();
   }
-  
+
 }

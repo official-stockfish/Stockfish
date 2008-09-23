@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -105,7 +105,7 @@ namespace {
   //    8       9     10     11     12     13     14     15
     V( 24), V( 27), V(28), V(29), V(30), V(31), V(32), V(33)
   };
-  
+
   const Value EndgameRookMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
     V(-30), V(-18), V(-6),  V(6), V(18), V(30), V(42), V(54),
@@ -200,7 +200,7 @@ namespace {
     ((1ULL << SQ_A1) | (1ULL << SQ_H1)),
     ((1ULL << SQ_A8) | (1ULL << SQ_H8))
   };
-  
+
   /// King safety constants and variables.  The king safety scores are taken
   /// from the array SafetyTable[].  Various little "meta-bonuses" measuring
   /// the strength of the attack are added up into an integer, which is used
@@ -212,7 +212,7 @@ namespace {
   const int BishopAttackWeight = 2;
   const int KnightAttackWeight = 2;
 
-  // Bonuses for safe checks for each piece type.  
+  // Bonuses for safe checks for each piece type.
   int QueenContactCheckBonus = 4;
   int RookContactCheckBonus  = 2;
   int QueenCheckBonus        = 2;
@@ -268,7 +268,7 @@ namespace {
   void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
                                     EvalInfo &ei);
 
-  Value apply_weight(Value v, int w);
+  inline Value apply_weight(Value v, int w);
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, ScaleFactor sf[]);
 
   int count_1s_8bit(Bitboard b);
@@ -352,7 +352,7 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
       s = pos.knight_list(c, i);
       evaluate_knight(pos, s, c, ei);
     }
-    
+
     // Bishops
     for(int i = 0; i < pos.bishop_count(c); i++) {
       s = pos.bishop_list(c, i);
@@ -390,8 +390,8 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
     }
 
     ei.attackedBy[c][0] =
-      ei.attackedBy[c][PAWN] | ei.attackedBy[c][KNIGHT] 
-      | ei.attackedBy[c][BISHOP] | ei.attackedBy[c][ROOK] 
+      ei.attackedBy[c][PAWN] | ei.attackedBy[c][KNIGHT]
+      | ei.attackedBy[c][BISHOP] | ei.attackedBy[c][ROOK]
       | ei.attackedBy[c][QUEEN] | ei.attackedBy[c][KING];
   }
 
@@ -420,7 +420,7 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
         ei.pi->kingside_storm_value(BLACK);
     else if(square_file(pos.king_square(WHITE)) <= FILE_D &&
             square_file(pos.king_square(BLACK)) >= FILE_E)
-      ei.mgValue += 
+      ei.mgValue +=
         ei.pi->kingside_storm_value(WHITE) -
         ei.pi->queenside_storm_value(BLACK);
   }
@@ -483,7 +483,7 @@ Value quick_evaluate(const Position &pos) {
   Value mgValue, egValue;
   ScaleFactor factor[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
   Phase phase;
-  
+
   assert(pos.is_ok());
 
   stm = pos.side_to_move();
@@ -496,7 +496,7 @@ Value quick_evaluate(const Position &pos) {
 
   return Sign[stm] * value;
 }
-  
+
 
 /// init_eval() initializes various tables used by the evaluation function.
 
@@ -573,7 +573,7 @@ namespace {
 
   // evaluate_knight() assigns bonuses and penalties to a knight of a given
   // color on a given square.
-  
+
   void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei) {
 
     Color them = opposite_color(us);
@@ -587,7 +587,7 @@ namespace {
       Bitboard bb = (b & ei.attackedBy[them][KING]);
       if(bb) ei.attacked[us] += count_1s_max_15(bb);
     }
-        
+
     // Mobility
     int mob = count_1s_max_15(b & ~p.pieces_of_color(us));
     ei.mgMobility += Sign[us] * MidgameKnightMobilityBonus[mob];
@@ -596,7 +596,7 @@ namespace {
     // Knight outposts:
     if(p.square_is_weak(s, them)) {
       Value v, bonus;
-      
+
       // Initial bonus based on square:
       v = bonus = KnightOutpostBonus[relative_square(us, s)];
 
@@ -619,13 +619,13 @@ namespace {
 
   // evaluate_bishop() assigns bonuses and penalties to a bishop of a given
   // color on a given square.
-  
+
   void evaluate_bishop(const Position &p, Square s, Color us, EvalInfo &ei) {
 
     Color them = opposite_color(us);
     Bitboard b =
       bishop_attacks_bb(s, p.occupied_squares() & ~p.queens(us));
-                                   
+
     ei.attackedBy[us][BISHOP] |= b;
 
     // King attack
@@ -644,7 +644,7 @@ namespace {
     // Bishop outposts:
     if(p.square_is_weak(s, them)) {
       Value v, bonus;
-      
+
       // Initial bonus based on square:
       v = bonus = BishopOutpostBonus[relative_square(us, s)];
 
@@ -661,17 +661,17 @@ namespace {
 
       ei.mgValue += Sign[us] * bonus;
       ei.egValue += Sign[us] * bonus;
-    }    
+    }
   }
-  
+
 
   // evaluate_rook() assigns bonuses and penalties to a rook of a given
   // color on a given square.
-  
+
   void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei) {
 
     Color them = opposite_color(us);
-    
+
     // Open and half-open files:
     File f = square_file(s);
     if(ei.pi->file_is_half_open(us, f)) {
@@ -741,7 +741,7 @@ namespace {
 
   // evaluate_queen() assigns bonuses and penalties to a queen of a given
   // color on a given square.
-  
+
   void evaluate_queen(const Position &p, Square s, Color us, EvalInfo &ei) {
 
     Color them = opposite_color(us);
@@ -763,7 +763,7 @@ namespace {
       Bitboard bb = (b & ei.attackedBy[them][KING]);
       if(bb) ei.attacked[us] += count_1s_max_15(bb);
     }
-    
+
     // Mobility
     int mob = count_1s(b & ~p.pieces_of_color(us));
     ei.mgMobility += Sign[us] * MidgameQueenMobilityBonus[mob];
@@ -773,9 +773,9 @@ namespace {
 
   // evaluate_king() assigns bonuses and penalties to a king of a given
   // color on a given square.
-  
+
   void evaluate_king(const Position &p, Square s, Color us, EvalInfo &ei) {
-    
+
     int shelter = 0, sign = Sign[us];
 
     // King shelter.
@@ -788,7 +788,7 @@ namespace {
     }
 
     // King safety.  This is quite complicated, and is almost certainly far
-    // from optimally tuned.  
+    // from optimally tuned.
     Color them = opposite_color(us);
     if(p.queen_count(them) >= 1 && ei.attackCount[them] >= 2
        && p.non_pawn_material(them) >= QueenValueMidgame + RookValueMidgame
@@ -796,7 +796,7 @@ namespace {
 
       // Is it the attackers turn to move?
       bool sente = (them == p.side_to_move());
-      
+
       // Find the attacked squares around the king which has no defenders
       // apart from the king itself:
       Bitboard undefended =
@@ -869,7 +869,7 @@ namespace {
           }
         }
       }
-      
+
       // Analyse safe distance checks:
       if(QueenCheckBonus > 0 || RookCheckBonus > 0) {
         b = p.rook_attacks(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
@@ -1079,7 +1079,7 @@ namespace {
   // evaluate_trapped_bishop_a7h7() determines whether a bishop on a7/h7
   // (a2/h2 for black) is trapped by enemy pawns, and assigns a penalty
   // if it is.
-  
+
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
                                     EvalInfo &ei) {
     Piece pawn = pawn_of_color(opposite_color(us));
@@ -1109,7 +1109,7 @@ namespace {
   // (a8/h8 for black) is trapped by a friendly pawn on b2/g2 (b7/g7 for
   // black), and assigns a penalty if it is.  This pattern can obviously
   // only occur in Chess960 games.
-  
+
   void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
                                     EvalInfo &ei) {
     Piece pawn = pawn_of_color(us);
@@ -1139,7 +1139,7 @@ namespace {
         penalty = TrappedBishopA1H1Penalty;
       else
         penalty = TrappedBishopA1H1Penalty / 2;
-      
+
       ei.mgValue -= Sign[us] * penalty;
       ei.egValue -= Sign[us] * penalty;
     }
@@ -1157,7 +1157,7 @@ namespace {
   // scale_by_game_phase interpolates between a middle game and an endgame
   // score, based on game phase.  It also scales the return value by a
   // ScaleFactor array.
-  
+
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, ScaleFactor sf[]) {
     assert(mv > -VALUE_INFINITE && mv < VALUE_INFINITE);
     assert(ev > -VALUE_INFINITE && ev < VALUE_INFINITE);
@@ -1181,7 +1181,7 @@ namespace {
   // count_1s_8bit() counts the number of nonzero bits in the 8 least
   // significant bits of a Bitboard. This function is used by the king
   // shield evaluation.
-  
+
   int count_1s_8bit(Bitboard b) {
     return int(BitCount8Bit[b & 0xFF]);
   }
@@ -1194,15 +1194,15 @@ namespace {
     uciWeight = (uciWeight * 0x100) / 100;
     return (uciWeight * internalWeight) / 0x100;
   }
-  
+
 
   // init_safety() initizes the king safety evaluation, based on UCI
   // parameters.  It is called from read_weights().
-  
+
   void init_safety() {
     double a, b;
     int maxSlope, peak, i, j;
-    
+
     QueenContactCheckBonus = get_option_value_int("Queen Contact Check Bonus");
     RookContactCheckBonus = get_option_value_int("Rook Contact Check Bonus");
     QueenCheckBonus = get_option_value_int("Queen Check Bonus");
@@ -1216,7 +1216,7 @@ namespace {
     b = get_option_value_int("King Safety X Intercept") * 1.0;
     maxSlope = get_option_value_int("King Safety Max Slope");
     peak = (get_option_value_int("King Safety Max Value") * 256) / 100;
-    
+
     for(i = 0; i < 100; i++) {
       if(i < b) SafetyTable[i] = Value(0);
       else if(get_option_value_string("King Safety Curve") == "Quadratic")
@@ -1234,5 +1234,5 @@ namespace {
       if(SafetyTable[i]  > Value(peak))
         SafetyTable[i] = Value(peak);
   }
-  
+
 }

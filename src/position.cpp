@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -101,7 +101,7 @@ void Position::from_fen(const std::string &fen) {
       case 'p': this->put_piece(BP, square); file++; break;
       case '/': file = FILE_A; rank--; break;
       case ' ': break;
-      default: 
+      default:
         std::cout << "Error in FEN at character " << i << std::endl;
         return;
       }
@@ -138,7 +138,7 @@ void Position::from_fen(const std::string &fen) {
     else if(fen[i] >= 'A' && fen[i] <= 'H') {
       File rookFile, kingFile = FILE_NONE;
       for(Square square = SQ_B1; square <= SQ_G1; square++)
-        if(this->piece_on(square) == WK) 
+        if(this->piece_on(square) == WK)
           kingFile = square_file(square);
       if(kingFile == FILE_NONE) {
         std::cout << "Error in FEN at character " << i << std::endl;
@@ -158,7 +158,7 @@ void Position::from_fen(const std::string &fen) {
     else if(fen[i] >= 'a' && fen[i] <= 'h') {
       File rookFile, kingFile = FILE_NONE;
       for(Square square = SQ_B8; square <= SQ_G8; square++)
-        if(this->piece_on(square) == BK) 
+        if(this->piece_on(square) == BK)
           kingFile = square_file(square);
       if(kingFile == FILE_NONE) {
         std::cout << "Error in FEN at character " << i << std::endl;
@@ -194,9 +194,9 @@ void Position::from_fen(const std::string &fen) {
 
   for(Square sq = SQ_A1; sq <= SQ_H8; sq++)
     castleRightsMask[sq] = ALL_CASTLES;
-  castleRightsMask[make_square(initialKFile, RANK_1)] ^= 
+  castleRightsMask[make_square(initialKFile, RANK_1)] ^=
     (WHITE_OO|WHITE_OOO);
-  castleRightsMask[make_square(initialKFile, RANK_8)] ^= 
+  castleRightsMask[make_square(initialKFile, RANK_8)] ^=
     (BLACK_OO|BLACK_OOO);
   castleRightsMask[make_square(initialKRFile, RANK_1)] ^= WHITE_OO;
   castleRightsMask[make_square(initialKRFile, RANK_8)] ^= BLACK_OO;
@@ -260,8 +260,8 @@ const std::string Position::to_fen() const {
 /// the standard output.
 
 void Position::print() const {
-  char pieceStrings[][8] = 
-    {"| ? ", "| P ", "| N ", "| B ", "| R ", "| Q ", "| K ", "| ? ", 
+  char pieceStrings[][8] =
+    {"| ? ", "| P ", "| N ", "| B ", "| R ", "| Q ", "| K ", "| ? ",
      "| ? ", "|=P=", "|=N=", "|=B=", "|=R=", "|=Q=", "|=K="
     };
 
@@ -277,7 +277,7 @@ void Position::print() const {
     }
     std::cout << "|\n";
   }
-  std::cout << "+---+---+---+---+---+---+---+---+\n"; 
+  std::cout << "+---+---+---+---+---+---+---+---+\n";
   std::cout << this->to_fen() << std::endl;
   std::cout << key << std::endl;
 }
@@ -345,7 +345,7 @@ Bitboard Position::discovered_check_candidates(Color c) const {
       dc |= (squares_between(s, ksq) & b2);
     }
   }
-  
+
   sliders = this->bishops_and_queens(c);
   if(sliders & BishopPseudoAttacks[ksq]) {
     b2 = this->bishop_attacks(ksq) & this->pieces_of_color(c);
@@ -358,7 +358,7 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
   return dc;
 }
-    
+
 
 /// Position::square_is_attacked() checks whether the given side attacks the
 /// given square.
@@ -413,7 +413,7 @@ bool Position::piece_attacks_square(Square f, Square t) const {
 
   return false;
 }
-    
+
 
 /// Position::find_checkers() computes the checkersBB bitboard, which
 /// contains a nonzero bit for each checking piece (0, 1 or 2).  It
@@ -427,7 +427,7 @@ void Position::find_checkers() {
 }
 
 
-/// Position::move_is_legal() tests whether a pseudo-legal move is legal.  
+/// Position::move_is_legal() tests whether a pseudo-legal move is legal.
 /// There are two versions of this function:  One which takes only a
 /// move as input, and one which takes a move and a bitboard of pinned
 /// pieces.  The latter function is faster, and should always be preferred
@@ -480,15 +480,15 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
       (!(rook_attacks_bb(ksq, b) & this->rooks_and_queens(them)) &&
        !(bishop_attacks_bb(ksq, b) & this->bishops_and_queens(them)));
   }
-  
-  // If the moving piece is a king, check whether the destination 
+
+  // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
   if(from == ksq) return !(this->square_is_attacked(move_to(m), them));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   if(!bit_is_set(pinned, from)) return true;
-  if(direction_between_squares(from, ksq) == 
+  if(direction_between_squares(from, ksq) ==
      direction_between_squares(move_to(m), ksq))
     return true;
 
@@ -534,7 +534,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Discovered check?
     else if(bit_is_set(dcCandidates, from) &&
-            direction_between_squares(from, ksq) != 
+            direction_between_squares(from, ksq) !=
             direction_between_squares(to, ksq))
       return true;
     // Promotion with check?
@@ -565,7 +565,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
       clear_bit(&b, from); clear_bit(&b, capsq); set_bit(&b, to);
       return
-        ((rook_attacks_bb(ksq, b) & this->rooks_and_queens(us)) || 
+        ((rook_attacks_bb(ksq, b) & this->rooks_and_queens(us)) ||
          (bishop_attacks_bb(ksq, b) & this->bishops_and_queens(us)));
     }
     return false;
@@ -603,7 +603,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   case KING:
     // Discovered check?
     if(bit_is_set(dcCandidates, from) &&
-       direction_between_squares(from, ksq) != 
+       direction_between_squares(from, ksq) !=
        direction_between_squares(to, ksq))
       return true;
     // Castling with check?
@@ -627,7 +627,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
       return bit_is_set(rook_attacks_bb(rto, b), ksq);
     }
-        
+
     return false;
 
   default:
@@ -678,7 +678,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
 
 
-/// Position::backup() is called when making a move.  All information 
+/// Position::backup() is called when making a move.  All information
 /// necessary to restore the position when the move is later unmade
 /// is saved to an UndoInfo object.  The function Position::restore
 /// does the reverse operation:  When one does a backup followed by
@@ -865,7 +865,7 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
     castleRights &= castleRightsMask[from];
     castleRights &= castleRightsMask[to];
     key ^= zobCastle[castleRights];
-    
+
     // Update checkers bitboard:
     checkersBB = EmptyBoardBB;
     Square ksq = this->king_square(them);
@@ -1033,8 +1033,8 @@ void Position::do_castle_move(Move m) {
 }
 
 
-/// Position::do_promotion_move() is a private method used to make a promotion 
-/// move.  It is called from the main Position::do_move function.  The 
+/// Position::do_promotion_move() is a private method used to make a promotion
+/// move.  It is called from the main Position::do_move function.  The
 /// UndoInfo object, which has been initialized in Position::do_move, is
 /// used to store the captured piece (if any).
 
@@ -1058,7 +1058,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   assert(this->color_of_piece_on(to) == them || this->square_is_empty(to));
 
   capture = this->type_of_piece_on(to);
-  
+
   if(capture) {
     assert(capture != KING);
 
@@ -1137,7 +1137,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
 
   // Update material:
   npMaterial[us] += piece_value_midgame(promotion);
-  
+
   // Clear the en passant square:
   if(epSquare != SQ_NONE) {
     key ^= zobEp[epSquare];
@@ -1151,7 +1151,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
 
   // Reset rule 50 counter:
   rule50 = 0;
-  
+
   // Update checkers BB:
   checkersBB = attacks_to(this->king_square(them), us);
 }
@@ -1165,7 +1165,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
 void Position::do_ep_move(Move m) {
   Color us, them;
   Square from, to, capsq;
-  
+
   assert(this->is_ok());
   assert(move_is_ok(m));
   assert(move_is_ep(m));
@@ -1340,7 +1340,7 @@ void Position::undo_castle_move(Move m) {
   assert(move_is_ok(m));
   assert(move_is_castle(m));
 
-  // When we have arrived here, some work has already been done by 
+  // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
   us = this->side_to_move();
@@ -1409,7 +1409,7 @@ void Position::undo_promotion_move(Move m, const UndoInfo &u) {
   assert(move_is_ok(m));
   assert(move_promotion(m));
 
-  // When we have arrived here, some work has already been done by 
+  // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
   us = this->side_to_move();
@@ -1428,7 +1428,7 @@ void Position::undo_promotion_move(Move m, const UndoInfo &u) {
   clear_bit(&(byColorBB[us]), to);
   clear_bit(&(byTypeBB[promotion]), to);
   clear_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
-  
+
   // Insert pawn at source square:
   set_bit(&(byColorBB[us]), from);
   set_bit(&(byTypeBB[PAWN]), from);
@@ -1488,7 +1488,7 @@ void Position::undo_ep_move(Move m) {
   assert(move_is_ok(m));
   assert(move_is_ep(m));
 
-  // When we have arrived here, some work has already been done by 
+  // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
   us = this->side_to_move();
@@ -1540,7 +1540,7 @@ void Position::undo_ep_move(Move m) {
 void Position::do_null_move(UndoInfo &u) {
   assert(this->is_ok());
   assert(!this->is_check());
-  
+
   // Back up the information necessary to undo the null move to the supplied
   // UndoInfo object.  In the case of a null move, the only thing we need to
   // remember is the last move made and the en passant square.
@@ -1562,7 +1562,7 @@ void Position::do_null_move(UndoInfo &u) {
 
   mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
-  
+
   assert(this->is_ok());
 }
 
@@ -1572,7 +1572,7 @@ void Position::do_null_move(UndoInfo &u) {
 void Position::undo_null_move(const UndoInfo &u) {
   assert(this->is_ok());
   assert(!this->is_check());
-  
+
   // Restore information from the supplied UndoInfo object:
   lastMove = u.lastMove;
   epSquare = u.epSquare;
@@ -1587,7 +1587,7 @@ void Position::undo_null_move(const UndoInfo &u) {
 
   mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
-  
+
   assert(this->is_ok());
 }
 
@@ -1673,7 +1673,7 @@ int Position::see(Square from, Square to) const {
     // before beginning the next iteration:
     lastCapturingPieceValue = seeValues[pt];
     c = opposite_color(c);
-    
+
     // Stop after a king capture:
     if(pt == KING && (attackers & this->pieces_of_color(c))) {
       assert(n < 32);
@@ -1718,7 +1718,7 @@ void Position::clear() {
   }
 
   checkersBB = EmptyBoardBB;
-  
+
   lastMove = MOVE_NONE;
 
   sideToMove = WHITE;
@@ -1741,7 +1741,7 @@ void Position::clear() {
 void Position::reset_game_ply() {
   gamePly = 0;
 }
- 
+
 
 /// Position::put_piece() puts a piece on the given square of the board,
 /// updating the board array, bitboards, and piece counts.
@@ -1765,7 +1765,7 @@ void Position::put_piece(Piece p, Square s) {
 }
 
 
-/// Position::allow_oo() gives the given side the right to castle kingside. 
+/// Position::allow_oo() gives the given side the right to castle kingside.
 /// Used when setting castling rights during parsing of FEN strings.
 
 void Position::allow_oo(Color c) {
@@ -1793,7 +1793,7 @@ Key Position::compute_key() const {
     if(this->square_is_occupied(s))
       result ^=
         zobrist[this->color_of_piece_on(s)][this->type_of_piece_on(s)][s];
-  
+
   if(this->ep_square() != SQ_NONE)
     result ^= zobEp[this->ep_square()];
   result ^= zobCastle[castleRights];
@@ -1803,10 +1803,10 @@ Key Position::compute_key() const {
 }
 
 
-/// Position::compute_pawn_key() computes the hash key of the position.  The 
-/// hash key is usually updated incrementally as moves are made and unmade, 
-/// the compute_pawn_key() function is only used when a new position is set 
-/// up, and to verify the correctness of the pawn hash key when running in 
+/// Position::compute_pawn_key() computes the hash key of the position.  The
+/// hash key is usually updated incrementally as moves are made and unmade,
+/// the compute_pawn_key() function is only used when a new position is set
+/// up, and to verify the correctness of the pawn hash key when running in
 /// debug mode.
 
 Key Position::compute_pawn_key() const {
@@ -1841,7 +1841,7 @@ Key Position::compute_material_key() const {
     }
   return result;
 }
-     
+
 
 /// Position::compute_mg_value() and Position::compute_eg_value() compute the
 /// incremental scores for the middle game and the endgame.  These functions
@@ -1919,7 +1919,7 @@ bool Position::is_mate() {
                                MOVE_NONE, Depth(0));
     return mp.get_next_move() == MOVE_NONE;
   }
-  else    
+  else
     return false;
 }
 
@@ -1931,10 +1931,10 @@ bool Position::is_mate() {
 bool Position::is_draw() const {
   // Draw by material?
   if(!this->pawns() &&
-     this->non_pawn_material(WHITE) + this->non_pawn_material(BLACK) 
+     this->non_pawn_material(WHITE) + this->non_pawn_material(BLACK)
      <= BishopValueMidgame)
     return true;
-  
+
   // Draw by the 50 moves rule?
   if(rule50 > 100 || (rule50 == 100 && !this->is_check()))
     return true;
@@ -1943,7 +1943,7 @@ bool Position::is_draw() const {
   for(int i = 2; i < Min(gamePly, rule50); i += 2)
     if(history[gamePly - i] == key)
       return true;
-  
+
   return false;
 }
 
@@ -1964,7 +1964,7 @@ bool Position::has_mate_threat(Color c) {
 
   if(this->is_check())
     return false;
-  
+
   // If the input color is not equal to the side to move, do a null move
   if(c != stm) this->do_null_move(u1);
 
@@ -1998,15 +1998,15 @@ void Position::init_zobrist() {
     for(int j = 0; j < 8; j++)
       for(int k = 0; k < 64; k++)
         zobrist[i][j][k] = Key(genrand_int64());
-  
+
   for(int i = 0; i < 64; i++)
     zobEp[i] = Key(genrand_int64());
-  
+
   for(int i = 0; i < 16; i++)
     zobCastle[i] = genrand_int64();
-  
+
   zobSideToMove = genrand_int64();
-  
+
   for(int i = 0; i < 2; i++)
     for(int j = 0; j < 8; j++)
       for(int k = 0; k < 16; k++)
@@ -2099,7 +2099,7 @@ void Position::flipped_copy(const Position &pos) {
 
   assert(this->is_ok());
 }
-  
+
 
 /// Position::is_ok() performs some consitency checks for the position object.
 /// This is meant to be helpful when debugging.
@@ -2144,7 +2144,7 @@ bool Position::is_ok() const {
     if(kingCount[0] != 1 || kingCount[1] != 1)
       return false;
   }
-  
+
   // Can the side to move capture the opponent's king?
   if(debugKingCapture) {
     Color us = this->side_to_move();
@@ -2197,7 +2197,7 @@ bool Position::is_ok() const {
   // Material hash key OK?
   if(debugMaterialKey && materialKey != this->compute_material_key())
     return false;
-  
+
   // Incremental eval OK?
   if(debugIncrementalEval) {
     if(mgValue != this->compute_mg_value())
@@ -2232,6 +2232,6 @@ bool Position::is_ok() const {
             return false;
         }
   }
-    
+
   return true;
 }

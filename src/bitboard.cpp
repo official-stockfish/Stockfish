@@ -284,7 +284,7 @@ namespace {
 #if defined(USE_COMPACT_ROOK_ATTACKS)
   void init_file_and_rank_attacks();
 #endif
-};
+}
 
 
 ////
@@ -363,7 +363,7 @@ Square pop_1st_bit(Bitboard *b) {
     {
         _BitScanForward(&index, *l);
         *l &= ~(1 << index);
-    } 
+    }
     else if (*(h = (uint32_t*)b + 1) != 0)
     {
         _BitScanForward(&index, *h);

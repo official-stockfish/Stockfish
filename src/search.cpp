@@ -69,16 +69,16 @@ namespace {
 
   public:
     RootMoveList(Position &pos, Move searchMoves[]);
-    Move get_move(int moveNum) const;
-    Value get_move_score(int moveNum) const;
-    void set_move_score(int moveNum, Value score);
-    void set_move_nodes(int moveNum, int64_t nodes);
+    inline Move get_move(int moveNum) const;
+    inline Value get_move_score(int moveNum) const;
+    inline void set_move_score(int moveNum, Value score);
+    inline void set_move_nodes(int moveNum, int64_t nodes);
     void set_move_pv(int moveNum, const Move pv[]);
-    Move get_move_pv(int moveNum, int i) const;
-    int64_t get_move_cumulative_nodes(int moveNum) const;
-    int move_count() const;
+    inline Move get_move_pv(int moveNum, int i) const;
+    inline int64_t get_move_cumulative_nodes(int moveNum) const;
+    inline int move_count() const;
     Move scan_for_easy_move() const;
-    void sort();
+    inline void sort();
     void sort_multipv(int n);
 
   private:
@@ -416,7 +416,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   int myTime = time[side_to_move];
   int myIncrement = increment[side_to_move];
   int oppTime = time[1 - side_to_move];
-  
+
   TimeAdvantage = myTime - oppTime;
 
   if(!movesToGo) { // Sudden death time control
@@ -2184,7 +2184,7 @@ namespace {
 
     bool overTime =     t > AbsoluteMaxSearchTime
                      || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime)
-                     || (  !FailHigh && !fail_high_ply_1() && !Problem 
+                     || (  !FailHigh && !fail_high_ply_1() && !Problem
                          && t > 6*(MaxSearchTime + ExtraSearchTime));
 
     if (   (Iteration >= 2 && (!InfiniteSearch && overTime))

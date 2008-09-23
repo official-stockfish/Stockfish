@@ -72,7 +72,7 @@ public:
   int full();
 
 private:
-  TTEntry* first_entry(const Position &pos) const;
+  inline TTEntry* first_entry(const Position &pos) const;
 
   unsigned size;
   int writes;

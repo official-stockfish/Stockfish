@@ -35,7 +35,7 @@ OBJS = bitboard.o color.o pawns.o material.o endgame.o evaluate.o main.o \
 
 all: $(EXE) .depend
 
-clean: 
+clean:
 	$(RM) *.o .depend glaurung
 
 
@@ -43,9 +43,9 @@ clean:
 ### Compiler:
 ###
 
-CXX = g++
+# CXX = g++
 # CXX = g++-4.2
-# CXX = icpc
+CXX = icpc
 
 
 ###
@@ -80,6 +80,10 @@ CXXFLAGS += -Wall -g
 
 CXXFLAGS += -O3 -fno-exceptions -fomit-frame-pointer -fno-rtti -fstrict-aliasing
 
+# Disable most annoying warnings for the Intel C++ compiler
+
+CXXFLAGS += -wd383,869,981
+
 
 # Compiler optimization flags for the Intel C++ compiler in Mac OS X:
 
@@ -88,16 +92,16 @@ CXXFLAGS += -O3 -fno-exceptions -fomit-frame-pointer -fno-rtti -fstrict-aliasing
 
 # Profiler guided optimization with the Intel C++ compiler.  To use it, first
 # create the directory ./profdata if it does not already exist, and delete its
-# contents if it does exist.  Then compile with -prof_gen, and run the 
+# contents if it does exist.  Then compile with -prof_gen, and run the
 # resulting binary for a while (for instance, do ./glaurung bench 128 1, and
-# wait 15 minutes for the benchmark to complete).  Then do a 'make clean', and 
+# wait 15 minutes for the benchmark to complete).  Then do a 'make clean', and
 # recompile with -prof_use.
 
-# CXXFLAGS += -prof_gen -prof_dir ./profdata
+# CXXFLAGS += -prof_gen -prof_dir profdata
 # CXXFLAGS += -prof_use -prof_dir ./profdata
 
 
-# Profiler guided optimization with GCC.  I've never been able to make this 
+# Profiler guided optimization with GCC.  I've never been able to make this
 # work.
 
 # CXXFLAGS += -fprofile-generate
@@ -125,7 +129,7 @@ LDFLAGS += -lm -lpthread
 # LDFLAGS += -arch x86_64
 
 
-# Backwards compatibility with Mac OS X 10.4 when compiling under 10.5 with 
+# Backwards compatibility with Mac OS X 10.4 when compiling under 10.5 with
 # GCC 4.0.  I haven't found a way to make it work with GCC 4.2.
 
 # CXXFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk

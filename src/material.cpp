@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Glaurung is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -49,14 +49,14 @@ namespace {
   Key KNPKMaterialKey, KKNPMaterialKey;
   Key KPKPMaterialKey;
 
-};
+}
 
 
 ////
 //// Functions
 ////
 
-/// MaterialInfo::init() is called during program initialization.  It 
+/// MaterialInfo::init() is called during program initialization.  It
 /// precomputes material hash keys for a few basic endgames, in order
 /// to make it easy to recognize such endgames when they occur.
 
@@ -179,7 +179,7 @@ void MaterialInfoTable::clear() {
 /// MaterialInfoTable::get_material_info() takes a position object as input,
 /// computes or looks up a MaterialInfo object, and returns a pointer to it.
 /// If the material configuration is not already present in the table, it
-/// is stored there, so we don't have to recompute everything when the 
+/// is stored there, so we don't have to recompute everything when the
 /// same material configuration occurs again.
 
 MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
@@ -187,7 +187,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
   int index = key & (size - 1);
   MaterialInfo *mi = entries + index;
 
-  // If mi->key matches the position's material hash key, it means that we 
+  // If mi->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
   // return the information we found the last time instead of recomputing it:
   if(mi->key == key)
@@ -350,11 +350,11 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
   }
 
   // Evaluate the material balance.
-  
+
   Color c;
   int sign;
   Value egValue = Value(0), mgValue = Value(0);
-  
+
   for(c = WHITE, sign = 1; c <= BLACK; c++, sign = -sign) {
 
     // No pawns makes it difficult to win, even with a material advantage:
@@ -376,16 +376,16 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
         }
       }
     }
-    
+
     // Bishop pair:
     if(pos.bishop_count(c) >= 2) {
       mgValue += sign * BishopPairMidgameBonus;
       egValue += sign * BishopPairEndgameBonus;
     }
 
-    // Knights are stronger when there are many pawns on the board.  The 
+    // Knights are stronger when there are many pawns on the board.  The
     // formula is taken from Larry Kaufman's paper "The Evaluation of Material
-    // Imbalances in Chess": 
+    // Imbalances in Chess":
     // http://mywebpages.comcast.net/danheisman/Articles/evaluation_of_material_imbalance.htm
     mgValue += sign * Value(pos.knight_count(c)*(pos.pawn_count(c)-5)*16);
     egValue += sign * Value(pos.knight_count(c)*(pos.pawn_count(c)-5)*16);
@@ -396,7 +396,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
       mgValue -= sign * v;
       egValue -= sign * v;
     }
-      
+
   }
 
   mi->mgValue = int16_t(mgValue);
