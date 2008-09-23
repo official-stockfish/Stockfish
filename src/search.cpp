@@ -1122,9 +1122,7 @@ namespace {
         }
     }
     // Null move search not allowed, try razoring
-    else if (   depth < RazorDepth
-             && approximateEval < beta - RazorMargin
-             && evaluate(pos, ei, threadID) < beta - RazorMargin)
+    else if (depth < RazorDepth && approximateEval < beta - RazorMargin)
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
         if (v < beta)
