@@ -25,6 +25,18 @@
 //// Defines
 ////
 
+// Comment following define if you prefer manually adjust
+// platform macros defined below
+#define AUTO_CONFIGURATION
+
+
+// Check for 64 bits for different compilers: Intel, MSVC and gcc
+#if defined(__x86_64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
+#define IS_64BIT
+#endif
+
+#if !defined(AUTO_CONFIGURATION) || defined(IS_64BIT)
+
 //#define USE_COMPACT_ROOK_ATTACKS
 //#define USE_32BIT_ATTACKS 
 #define USE_FOLDED_BITSCAN
@@ -33,7 +45,13 @@
 //#define BITCOUNT_SWAR_32
 //#define BITCOUNT_LOOP
 
+#else
 
+#define USE_32BIT_ATTACKS 
+#define USE_FOLDED_BITSCAN
+#define BITCOUNT_SWAR_32
+
+#endif
 
 ////
 //// Includes
