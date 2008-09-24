@@ -574,16 +574,19 @@ namespace {
   // evaluate_common() computes terms common to all pieces attack
 
   int evaluate_common(const Position&p, const Bitboard& b, Color us, EvalInfo& ei,
-                       int AttackWeight, const Value* mgBonus, const Value* egBonus) {
+                       int AttackWeight, const Value* mgBonus, const Value* egBonus,
+                       Square s = SQ_NONE, const Value* OutpostBonus = NULL) {
 
     Color them = opposite_color(us);
 
     // King attack
-    if(b & ei.attackZone[us]) {
+    if (b & ei.attackZone[us])
+    {
       ei.attackCount[us]++;
       ei.attackWeight[us] += AttackWeight;
       Bitboard bb = (b & ei.attackedBy[them][KING]);
-      if(bb) ei.attacked[us] += count_1s_max_15(bb);
+      if (bb)
+          ei.attacked[us] += count_1s_max_15(bb);
     }
 
     // Mobility
@@ -591,43 +594,40 @@ namespace {
     ei.mgMobility += Sign[us] * mgBonus[mob];
     ei.egMobility += Sign[us] * egBonus[mob];
 
+    // Bishop and Knight outposts
+    if (!OutpostBonus || !p.square_is_weak(s, them))
+        return mob;
+
+    // Initial bonus based on square
+    Value v, bonus;
+    v = bonus = OutpostBonus[relative_square(us, s)];
+
+    // Increase bonus if supported by pawn, especially if the opponent has
+    // no minor piece which can exchange the outpost piece
+    if (v && (p.pawn_attacks(them, s) & p.pawns(us)))
+    {
+        bonus += v / 2;
+        if (   p.knight_count(them) == 0
+            && (SquaresByColorBB[square_color(s)] & p.bishops(them)) == EmptyBoardBB)
+            bonus += v;
+    }
+    ei.mgValue += Sign[us] * bonus;
+    ei.egValue += Sign[us] * bonus;
     return mob;
   }
+
 
   // evaluate_knight() assigns bonuses and penalties to a knight of a given
   // color on a given square.
 
   void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    Color them = opposite_color(us);
     Bitboard b = p.knight_attacks(s);
     ei.attackedBy[us][KNIGHT] |= b;
 
-    // King attack and mobility
-    evaluate_common(p, b, us, ei, KnightAttackWeight,
-                    MidgameKnightMobilityBonus, EndgameKnightMobilityBonus);
-
-    // Knight outposts:
-    if(p.square_is_weak(s, them)) {
-      Value v, bonus;
-
-      // Initial bonus based on square:
-      v = bonus = KnightOutpostBonus[relative_square(us, s)];
-
-      // Increase bonus if supported by pawn, especially if the opponent has
-      // no minor piece which can exchange the outpost piece:
-      if(v && p.pawn_attacks(them, s) & p.pawns(us)) {
-        bonus += v/2;
-        if(p.knight_count(them) == 0 &&
-           (SquaresByColorBB[square_color(s)] &
-            p.bishops(them)) == EmptyBoardBB) {
-          bonus += v;
-        }
-      }
-
-      ei.mgValue += Sign[us] * bonus;
-      ei.egValue += Sign[us] * bonus;
-    }
+    // King attack, mobility and outposts
+    evaluate_common(p, b, us, ei, KnightAttackWeight, MidgameKnightMobilityBonus,
+                    EndgameKnightMobilityBonus, s, KnightOutpostBonus);
   }
 
 
@@ -636,37 +636,12 @@ namespace {
 
   void evaluate_bishop(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    Color them = opposite_color(us);
-    Bitboard b =
-      bishop_attacks_bb(s, p.occupied_squares() & ~p.queens(us));
-
+    Bitboard b = bishop_attacks_bb(s, p.occupied_squares() & ~p.queens(us));
     ei.attackedBy[us][BISHOP] |= b;
 
-    // King attack and mobility
-    evaluate_common(p, b, us, ei, BishopAttackWeight,
-                    MidgameBishopMobilityBonus, EndgameBishopMobilityBonus);
-
-    // Bishop outposts:
-    if(p.square_is_weak(s, them)) {
-      Value v, bonus;
-
-      // Initial bonus based on square:
-      v = bonus = BishopOutpostBonus[relative_square(us, s)];
-
-      // Increase bonus if supported by pawn, especially if the opponent has
-      // no minor piece which can exchange the outpost piece:
-      if(v && p.pawn_attacks(them, s) & p.pawns(us)) {
-        bonus += v/2;
-        if(p.knight_count(them) == 0 &&
-           (SquaresByColorBB[square_color(s)] &
-            p.bishops(them)) == EmptyBoardBB) {
-          bonus += v;
-        }
-      }
-
-      ei.mgValue += Sign[us] * bonus;
-      ei.egValue += Sign[us] * bonus;
-    }
+    // King attack, mobility and outposts
+    evaluate_common(p, b, us, ei, BishopAttackWeight, MidgameBishopMobilityBonus,
+                    EndgameBishopMobilityBonus, s, BishopOutpostBonus);
   }
 
 
@@ -698,13 +673,12 @@ namespace {
     }
 
     //Bitboard b = p.rook_attacks(s);
-    Bitboard b =
-      rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
+    Bitboard b = rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
     ei.attackedBy[us][ROOK] |= b;
 
     // King attack and mobility
-    int mob = evaluate_common(p, b, us, ei, RookAttackWeight,
-                              MidgameRookMobilityBonus, EndgameRookMobilityBonus);
+    int mob = evaluate_common(p, b, us, ei, RookAttackWeight, MidgameRookMobilityBonus,
+                              EndgameRookMobilityBonus);
 
     // Penalize rooks which are trapped inside a king which has lost the
     // right to castle:
@@ -753,8 +727,8 @@ namespace {
     ei.attackedBy[us][QUEEN] |= b;
 
     // King attack and mobility
-    evaluate_common(p, b, us, ei, QueenAttackWeight,
-                    MidgameQueenMobilityBonus, EndgameQueenMobilityBonus);
+    evaluate_common(p, b, us, ei, QueenAttackWeight, MidgameQueenMobilityBonus,
+                    EndgameQueenMobilityBonus);
   }
 
 
