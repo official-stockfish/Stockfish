@@ -1053,7 +1053,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   from = move_from(m);
   to = move_to(m);
 
-  assert(pawn_rank(us, to) == RANK_8);
+  assert(relative_rank(us, to) == RANK_8);
   assert(this->piece_on(from) == pawn_of_color(us));
   assert(this->color_of_piece_on(to) == them || this->square_is_empty(to));
 
@@ -1179,7 +1179,7 @@ void Position::do_ep_move(Move m) {
   capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
 
   assert(to == epSquare);
-  assert(pawn_rank(us, to) == RANK_6);
+  assert(relative_rank(us, to) == RANK_6);
   assert(this->piece_on(to) == EMPTY);
   assert(this->piece_on(from) == pawn_of_color(us));
   assert(this->piece_on(capsq) == pawn_of_color(them));
@@ -1418,7 +1418,7 @@ void Position::undo_promotion_move(Move m, const UndoInfo &u) {
   from = move_from(m);
   to = move_to(m);
 
-  assert(pawn_rank(us, to) == RANK_8);
+  assert(relative_rank(us, to) == RANK_8);
   assert(this->piece_on(from) == EMPTY);
 
   // Remove promoted piece:
@@ -1500,7 +1500,7 @@ void Position::undo_ep_move(Move m) {
   capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
 
   assert(to == this->ep_square());
-  assert(pawn_rank(us, to) == RANK_6);
+  assert(relative_rank(us, to) == RANK_6);
   assert(this->piece_on(to) == pawn_of_color(us));
   assert(this->piece_on(from) == EMPTY);
   assert(this->piece_on(capsq) == EMPTY);
@@ -2182,7 +2182,7 @@ bool Position::is_ok() const {
   if(this->ep_square() != SQ_NONE) {
     // The en passant square must be on rank 6, from the point of view of the
     // side to move.
-    if(pawn_rank(this->side_to_move(), this->ep_square()) != RANK_6)
+    if(relative_rank(this->side_to_move(), this->ep_square()) != RANK_6)
       return false;
   }
 

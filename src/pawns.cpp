@@ -364,8 +364,8 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         ev += ChainEndgameBonus[f];
       }
       if(candidate) {
-        mv += CandidateMidgameBonus[pawn_rank(us, s)];
-        ev += CandidateEndgameBonus[pawn_rank(us, s)];
+        mv += CandidateMidgameBonus[relative_rank(us, s)];
+        ev += CandidateEndgameBonus[relative_rank(us, s)];
       }
 
       mgValue[us] += mv;

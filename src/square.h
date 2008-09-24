@@ -129,7 +129,7 @@ inline Square relative_square(Color c, Square s) {
   return Square(int(s) ^ (int(c) * FlipMask));
 }
 
-inline Rank pawn_rank(Color c, Square s) {
+inline Rank relative_rank(Color c, Square s) {
   return square_rank(relative_square(c, s));
 }
 

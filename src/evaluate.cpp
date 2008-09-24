@@ -650,28 +650,6 @@ namespace {
 
   void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    Color them = opposite_color(us);
-
-    // Open and half-open files:
-    File f = square_file(s);
-    if(ei.pi->file_is_half_open(us, f)) {
-      if(ei.pi->file_is_half_open(them, f)) {
-        ei.mgValue += Sign[us] * RookOpenFileBonus;
-        ei.egValue += Sign[us] * RookOpenFileBonus;
-      }
-      else {
-        ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
-        ei.egValue += Sign[us] * RookHalfOpenFileBonus;
-      }
-    }
-
-    // Rook on 7th rank:
-    if(pawn_rank(us, s) == RANK_7 &&
-       pawn_rank(us, p.king_square(them)) == RANK_8) {
-      ei.mgValue += Sign[us] * MidgameRookOn7thBonus;
-      ei.egValue += Sign[us] * EndgameRookOn7thBonus;
-    }
-
     //Bitboard b = p.rook_attacks(s);
     Bitboard b = rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
     ei.attackedBy[us][ROOK] |= b;
@@ -680,31 +658,55 @@ namespace {
     int mob = evaluate_common(p, b, us, ei, RookAttackWeight, MidgameRookMobilityBonus,
                               EndgameRookMobilityBonus);
 
-    // Penalize rooks which are trapped inside a king which has lost the
-    // right to castle:
-    if(mob <= 6 && !ei.pi->file_is_half_open(us, f)) {
-      Square ksq = p.king_square(us);
-      if(square_file(ksq) >= FILE_E && square_file(s) > square_file(ksq) &&
-         (pawn_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s))) {
-        // Is there a half-open file between the king and the edge of the
-        // board?
-        if(!(ei.pi->has_open_file_to_right(us, square_file(ksq)))) {
-          ei.mgValue -= p.can_castle(us)?
-            Sign[us] * ((TrappedRookPenalty - mob * 16) / 2) :
-            Sign[us] * (TrappedRookPenalty - mob * 16);
+    // Rook on 7th rank
+    Color them = opposite_color(us);
+
+    if (   relative_rank(us, s) == RANK_7
+        && relative_rank(us, p.king_square(them)) == RANK_8)
+    {
+        ei.mgValue += Sign[us] * MidgameRookOn7thBonus;
+        ei.egValue += Sign[us] * EndgameRookOn7thBonus;
+    }
+
+    // Open and half-open files
+    File f = square_file(s);
+    if (ei.pi->file_is_half_open(us, f))
+    {
+        if (ei.pi->file_is_half_open(them, f))
+        {
+            ei.mgValue += Sign[us] * RookOpenFileBonus;
+            ei.egValue += Sign[us] * RookOpenFileBonus;
         }
-      }
-      else if(square_file(ksq) <= FILE_D && square_file(s) < square_file(ksq)
-              && (pawn_rank(us, ksq) == RANK_1 ||
-                  square_rank(ksq) == square_rank(s))) {
-        // Is there a half-open file between the king and the edge of the
-        // board?
-        if(!(ei.pi->has_open_file_to_left(us, square_file(ksq)))) {
-          ei.mgValue -= p.can_castle(us)?
-            Sign[us] * ((TrappedRookPenalty - mob * 16) / 2) :
-            Sign[us] * (TrappedRookPenalty - mob * 16);
+        else
+        {
+            ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
+            ei.egValue += Sign[us] * RookHalfOpenFileBonus;
         }
-      }
+    }
+
+    // Penalize rooks which are trapped inside a king. Penalize more if
+    // king has lost right to castle
+    if (mob > 6 || ei.pi->file_is_half_open(us, f))
+        return;
+    
+    Square ksq = p.king_square(us);
+    if (    square_file(ksq) >= FILE_E
+        &&  square_file(s) > square_file(ksq)
+        && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+    {
+        // Is there a half-open file between the king and the edge of the board?
+        if (!ei.pi->has_open_file_to_right(us, square_file(ksq)))
+            ei.mgValue -= p.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                          : Sign[us] *  (TrappedRookPenalty - mob * 16);
+    }
+    else if (    square_file(ksq) <= FILE_D
+             &&  square_file(s) < square_file(ksq)
+             && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+    {
+        // Is there a half-open file between the king and the edge of the board?
+        if (!ei.pi->has_open_file_to_left(us, square_file(ksq)))
+            ei.mgValue -= p.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                          : Sign[us] * (TrappedRookPenalty - mob * 16);
     }
   }
 
@@ -714,21 +716,22 @@ namespace {
 
   void evaluate_queen(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    Color them = opposite_color(us);
-
-    // Queen on 7th rank:
-    if(pawn_rank(us, s) == RANK_7 &&
-       pawn_rank(us, p.king_square(them)) == RANK_8) {
-      ei.mgValue += Sign[us] * MidgameQueenOn7thBonus;
-      ei.egValue += Sign[us] * EndgameQueenOn7thBonus;
-    }
-
     Bitboard b = p.queen_attacks(s);
     ei.attackedBy[us][QUEEN] |= b;
 
     // King attack and mobility
     evaluate_common(p, b, us, ei, QueenAttackWeight, MidgameQueenMobilityBonus,
                     EndgameQueenMobilityBonus);
+
+    // Queen on 7th rank
+    Color them = opposite_color(us);
+
+    if (   relative_rank(us, s) == RANK_7
+        && relative_rank(us, p.king_square(them)) == RANK_8)
+    {
+        ei.mgValue += Sign[us] * MidgameQueenOn7thBonus;
+        ei.egValue += Sign[us] * EndgameQueenOn7thBonus;
+    }
   }
 
 
@@ -740,7 +743,7 @@ namespace {
     int shelter = 0, sign = Sign[us];
 
     // King shelter.
-    if(pawn_rank(us, s) <= RANK_4) {
+    if(relative_rank(us, s) <= RANK_4) {
       Bitboard pawns = p.pawns(us) & this_and_neighboring_files_bb(s);
       Rank r = square_rank(s);
       for(int i = 0; i < 3; i++)
@@ -912,7 +915,7 @@ namespace {
         assert(pos.piece_on(s) == pawn_of_color(us));
         assert(pos.pawn_is_passed(us, s));
 
-        int r = int(pawn_rank(us, s) - RANK_2);
+        int r = int(relative_rank(us, s) - RANK_2);
         int tr = Max(0, r * (r-1));
         Square blockSq = s + pawn_push(us);
 
@@ -977,7 +980,7 @@ namespace {
             + ((us == pos.side_to_move())? 0 : 1);
 
           if(d < 0) {
-            int mtg = RANK_8 - pawn_rank(us, s);
+            int mtg = RANK_8 - relative_rank(us, s);
             int blockerCount =
               count_1s_max_15(squares_in_front_of(us,s)&pos.occupied_squares());
             mtg += blockerCount;

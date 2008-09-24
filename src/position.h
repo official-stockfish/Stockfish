@@ -718,7 +718,7 @@ inline bool Position::move_is_pawn_push_to_7th(Move m) const {
   Color c = this->side_to_move();
   return 
     this->piece_on(move_from(m)) == pawn_of_color(c) &&
-    pawn_rank(c, move_to(m)) == RANK_7;
+    relative_rank(c, move_to(m)) == RANK_7;
 }
 
 inline bool Position::move_is_passed_pawn_push(Move m) const {

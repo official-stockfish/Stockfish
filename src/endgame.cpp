@@ -464,7 +464,7 @@ ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
       // If the defending king has distance 1 to the promotion square or
       // is placed somewhere in front of the pawn, it's a draw.
       if(square_distance(kingSq, queeningSq) <= 1 ||
-         pawn_rank(strongerSide, kingSq) >= rank)
+         relative_rank(strongerSide, kingSq) >= rank)
         return ScaleFactor(0);
     }
   }
@@ -485,8 +485,8 @@ ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
   assert(pos.pawn_count(weakerSide) >= 1);
 
   Square kingSq = pos.king_square(weakerSide);
-  if(pawn_rank(weakerSide, kingSq) <= RANK_2 &&
-     pawn_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4 &&
+  if(relative_rank(weakerSide, kingSq) <= RANK_2 &&
+     relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4 &&
      (pos.rooks(weakerSide) & relative_rank_bb(weakerSide, RANK_3)) &&
      (pos.pawns(weakerSide) & relative_rank_bb(weakerSide, RANK_2)) &&
      (pos.king_attacks(kingSq) & pos.pawns(weakerSide))) {
@@ -626,10 +626,10 @@ ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
      pos.pawn_is_passed(strongerSide, wpsq2))
     return SCALE_FACTOR_NONE;
 
-  Rank r = Max(pawn_rank(strongerSide, wpsq1), pawn_rank(strongerSide, wpsq2));
+  Rank r = Max(relative_rank(strongerSide, wpsq1), relative_rank(strongerSide, wpsq2));
 
   if(file_distance(bksq, wpsq1) <= 1 && file_distance(bksq, wpsq2) <= 1
-     && pawn_rank(strongerSide, bksq) > r) {
+     && relative_rank(strongerSide, bksq) > r) {
     switch(r) {
 
     case RANK_2: return ScaleFactor(10);
@@ -707,9 +707,9 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
 
   // Case 1: Defending king blocks the pawn, and cannot be driven away.
   if(square_file(weakerKingSq) == square_file(pawnSq)
-     && pawn_rank(strongerSide, pawnSq) < pawn_rank(strongerSide, weakerKingSq)
+     && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
      && (square_color(weakerKingSq) != square_color(strongerBishopSq)
-         || pawn_rank(strongerSide, weakerKingSq) <= RANK_6))
+         || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
     return ScaleFactor(0);
 
   // Case 2: Opposite colored bishops.
@@ -725,7 +725,7 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
     // These rules are probably not perfect, but in practice they work
     // reasonably well.
     
-    if(pawn_rank(strongerSide, pawnSq) <= RANK_5)
+    if(relative_rank(strongerSide, pawnSq) <= RANK_5)
       return ScaleFactor(0);
     else {
       Bitboard ray =
@@ -759,9 +759,9 @@ ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
   Square weakerKingSq = pos.king_square(weakerSide);
       
   if(square_file(weakerKingSq) == square_file(pawnSq)
-     && pawn_rank(strongerSide, pawnSq) < pawn_rank(strongerSide, weakerKingSq)
+     && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
      && (square_color(weakerKingSq) != square_color(strongerBishopSq)
-         || pawn_rank(strongerSide, weakerKingSq) <= RANK_6))
+         || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
     return ScaleFactor(0);
 
   return SCALE_FACTOR_NONE;

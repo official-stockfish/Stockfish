@@ -391,7 +391,7 @@ int generate_evasions(const Position &pos, MoveStack *mlist) {
     b1 = pos.pawn_attacks(them, checksq) & pos.pawns(us) & ~pinned;
     while(b1) {
       from = pop_1st_bit(&b1);
-      if(pawn_rank(us, checksq) == RANK_8) {
+      if(relative_rank(us, checksq) == RANK_8) {
         mlist[n++].move = make_promotion_move(from, checksq, QUEEN);
         mlist[n++].move = make_promotion_move(from, checksq, ROOK);
         mlist[n++].move = make_promotion_move(from, checksq, BISHOP);

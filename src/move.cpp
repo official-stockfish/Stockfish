@@ -81,9 +81,9 @@ Move move_from_string(const Position &pos, const std::string &str) {
       SquareDelta delta = (to > from)? DELTA_E : DELTA_W;
       Square s;
       for(s = from + delta;
-          pawn_rank(us, s) == RANK_1 && pos.piece_on(s) != rook_of_color(us);
+          relative_rank(us, s) == RANK_1 && pos.piece_on(s) != rook_of_color(us);
           s += delta);
-      if(pawn_rank(us, s) == RANK_1 && pos.piece_on(s) == rook_of_color(us))
+      if(relative_rank(us, s) == RANK_1 && pos.piece_on(s) == rook_of_color(us))
         return make_castle_move(from, s);
     }
   }
