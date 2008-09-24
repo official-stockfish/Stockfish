@@ -328,19 +328,19 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   // Initialize king attack bitboards and king attack zones for both sides:
   ei.attackedBy[WHITE][KING] = pos.king_attacks(pos.king_square(WHITE));
   ei.attackedBy[BLACK][KING] = pos.king_attacks(pos.king_square(BLACK));
-  ei.attackZone[WHITE] =
+  ei.kingZone[WHITE] =
     ei.attackedBy[BLACK][KING] | (ei.attackedBy[BLACK][KING] >> 8);
-  ei.attackZone[BLACK] =
+  ei.kingZone[BLACK] =
     ei.attackedBy[WHITE][KING] | (ei.attackedBy[WHITE][KING] << 8);
 
   // Initialize pawn attack bitboards for both sides:
   ei.attackedBy[WHITE][PAWN] =
     ((pos.pawns(WHITE) << 9) & ~FileABB) | ((pos.pawns(WHITE) << 7) & ~FileHBB);
-  ei.attackCount[WHITE] +=
+  ei.kingAttackersCount[WHITE] +=
     count_1s_max_15(ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING])/2;
   ei.attackedBy[BLACK][PAWN] =
     ((pos.pawns(BLACK) >> 7) & ~FileABB) | ((pos.pawns(BLACK) >> 9) & ~FileHBB);
-  ei.attackCount[BLACK] +=
+  ei.kingAttackersCount[BLACK] +=
     count_1s_max_15(ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING])/2;
 
   // Evaluate pieces:
@@ -580,13 +580,13 @@ namespace {
     Color them = opposite_color(us);
 
     // King attack
-    if (b & ei.attackZone[us])
+    if (b & ei.kingZone[us])
     {
-      ei.attackCount[us]++;
-      ei.attackWeight[us] += AttackWeight;
+      ei.kingAttackersCount[us]++;
+      ei.kingAttackersWeight[us] += AttackWeight;
       Bitboard bb = (b & ei.attackedBy[them][KING]);
       if (bb)
-          ei.attacked[us] += count_1s_max_15(bb);
+          ei.kingZoneAttacksCount[us] += count_1s_max_15(bb);
     }
 
     // Mobility
@@ -690,6 +690,7 @@ namespace {
         return;
     
     Square ksq = p.king_square(us);
+
     if (    square_file(ksq) >= FILE_E
         &&  square_file(s) > square_file(ksq)
         && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
@@ -754,9 +755,9 @@ namespace {
     // King safety.  This is quite complicated, and is almost certainly far
     // from optimally tuned.
     Color them = opposite_color(us);
-    if(p.queen_count(them) >= 1 && ei.attackCount[them] >= 2
+    if(p.queen_count(them) >= 1 && ei.kingAttackersCount[them] >= 2
        && p.non_pawn_material(them) >= QueenValueMidgame + RookValueMidgame
-       && ei.attacked[them]) {
+       && ei.kingZoneAttacksCount[them]) {
 
       // Is it the attackers turn to move?
       bool sente = (them == p.side_to_move());
@@ -776,8 +777,8 @@ namespace {
       // undefended squares around the king, the square of the king, and the
       // quality of the pawn shelter.
       int attackUnits =
-        Min((ei.attackCount[them] * ei.attackWeight[them]) / 2, 25)
-        + (ei.attacked[them] + count_1s_max_15(undefended)) * 3
+        Min((ei.kingAttackersCount[them] * ei.kingAttackersWeight[them]) / 2, 25)
+        + (ei.kingZoneAttacksCount[them] + count_1s_max_15(undefended)) * 3
         + InitKingDanger[relative_square(us, s)] - shelter / 32;
 
       // Analyse safe queen contact checks:

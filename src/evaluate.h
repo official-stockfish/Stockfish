@@ -56,31 +56,31 @@ struct EvalInfo {
   Bitboard attackedBy[2][8];
   Bitboard attacked_by(Color c) const { return attackedBy[c][0]; }
   Bitboard attacked_by(Color c, PieceType pt) const { return attackedBy[c][pt]; }
-  // attackZone[color] is the zone around the enemy king which is considered
+
+  // kingZone[color] is the zone around the enemy king which is considered
   // by the king safety evaluation.  This consists of the squares directly
   // adjacent to the king, and the three (or two, for a king on an edge file)
   // squares two ranks in front of the king.  For instance, if black's king
-  // is on g8, attackZone[WHITE] is a bitboard containing the squares f8, h8,
+  // is on g8, kingZone[WHITE] is a bitboard containing the squares f8, h8,
   // f7, g7, h7, f6, g6 and h6.
-  Bitboard attackZone[2];
+  Bitboard kingZone[2];
 
-  // attackCount[color] is the number of pieces of the given color which
+  // kingAttackersCount[color] is the number of pieces of the given color which
   // attack a square adjacent to the enemy king.
-  int attackCount[2];
+  int kingAttackersCount[2];
 
-  // attackWeight[color] is the sum of the "weight" of the pieces of the given
-  // color which attack a square adjacent to the enemy king.  The weights of
-  // the individual piece types are given by the variables QueenAttackWeight,
-  // RookAttackWeight, BishopAttackWeight and KnightAttackWeight in
-  // evaluate.cpp.
-  int attackWeight[2];
+  // kingAttackersWeight[color] is the sum of the "weight" of the pieces of the
+  // given color which attack a square adjacent to the enemy king.  The weights
+  // of the individual piece types are given by the variables QueenAttackWeight,
+  // RookAttackWeight, BishopAttackWeight and KnightAttackWeight in evaluate.cpp
+  int kingAttackersWeight[2];
 
-  // attacked[color] is the number of enemy piece attacks to squares directly
+  // kingZoneAttacksCount[color] is the number of attacks to squares directly
   // adjacent to the king of the given color.  Pieces which attack more
   // than one square are counted multiple times.  For instance, if black's
   // king is on g8 and there's a white knight on g5, this knight adds
-  // 2 to attacked[BLACK].
-  int attacked[2];
+  // 2 to kingZoneAttacksCount[BLACK].
+  int kingZoneAttacksCount[2];
 
   // mateThreat[color] is a move for the given side which gives a direct mate.
   Move mateThreat[2];
