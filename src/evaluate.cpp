@@ -571,6 +571,29 @@ void read_weights(Color sideToMove) {
 
 namespace {
 
+  // evaluate_common() computes terms common to all pieces attack
+
+  int evaluate_common(const Position&p, const Bitboard& b, Color us, EvalInfo& ei,
+                       int AttackWeight, const Value* mgBonus, const Value* egBonus) {
+
+    Color them = opposite_color(us);
+
+    // King attack
+    if(b & ei.attackZone[us]) {
+      ei.attackCount[us]++;
+      ei.attackWeight[us] += AttackWeight;
+      Bitboard bb = (b & ei.attackedBy[them][KING]);
+      if(bb) ei.attacked[us] += count_1s_max_15(bb);
+    }
+
+    // Mobility
+    int mob = count_1s_max_15(b & ~p.pieces_of_color(us));
+    ei.mgMobility += Sign[us] * mgBonus[mob];
+    ei.egMobility += Sign[us] * egBonus[mob];
+
+    return mob;
+  }
+
   // evaluate_knight() assigns bonuses and penalties to a knight of a given
   // color on a given square.
 
@@ -580,18 +603,9 @@ namespace {
     Bitboard b = p.knight_attacks(s);
     ei.attackedBy[us][KNIGHT] |= b;
 
-    // King attack
-    if(b & ei.attackZone[us]) {
-      ei.attackCount[us]++;
-      ei.attackWeight[us] += KnightAttackWeight;
-      Bitboard bb = (b & ei.attackedBy[them][KING]);
-      if(bb) ei.attacked[us] += count_1s_max_15(bb);
-    }
-
-    // Mobility
-    int mob = count_1s_max_15(b & ~p.pieces_of_color(us));
-    ei.mgMobility += Sign[us] * MidgameKnightMobilityBonus[mob];
-    ei.egMobility += Sign[us] * EndgameKnightMobilityBonus[mob];
+    // King attack and mobility
+    evaluate_common(p, b, us, ei, KnightAttackWeight,
+                    MidgameKnightMobilityBonus, EndgameKnightMobilityBonus);
 
     // Knight outposts:
     if(p.square_is_weak(s, them)) {
@@ -628,18 +642,9 @@ namespace {
 
     ei.attackedBy[us][BISHOP] |= b;
 
-    // King attack
-    if(b & ei.attackZone[us]) {
-      ei.attackCount[us]++;
-      ei.attackWeight[us] += BishopAttackWeight;
-      Bitboard bb = (b & ei.attackedBy[them][KING]);
-      if(bb) ei.attacked[us] += count_1s_max_15(bb);
-    }
-
-    // Mobility:
-    int mob = count_1s_max_15(b & ~p.pieces_of_color(us));
-    ei.mgMobility += Sign[us] * MidgameBishopMobilityBonus[mob];
-    ei.egMobility += Sign[us] * EndgameBishopMobilityBonus[mob];
+    // King attack and mobility
+    evaluate_common(p, b, us, ei, BishopAttackWeight,
+                    MidgameBishopMobilityBonus, EndgameBishopMobilityBonus);
 
     // Bishop outposts:
     if(p.square_is_weak(s, them)) {
@@ -697,18 +702,9 @@ namespace {
       rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
     ei.attackedBy[us][ROOK] |= b;
 
-    // King attack
-    if(b & ei.attackZone[us]) {
-      ei.attackCount[us]++;
-      ei.attackWeight[us] += RookAttackWeight;
-      Bitboard bb = (b & ei.attackedBy[them][KING]);
-      if(bb) ei.attacked[us] += count_1s_max_15(bb);
-    }
-
-    // Mobility
-    int mob = count_1s_max_15(b & ~p.pieces_of_color(us));
-    ei.mgMobility += Sign[us] * MidgameRookMobilityBonus[mob];
-    ei.egMobility += Sign[us] * EndgameRookMobilityBonus[mob];
+    // King attack and mobility
+    int mob = evaluate_common(p, b, us, ei, RookAttackWeight,
+                              MidgameRookMobilityBonus, EndgameRookMobilityBonus);
 
     // Penalize rooks which are trapped inside a king which has lost the
     // right to castle:
@@ -756,18 +752,9 @@ namespace {
     Bitboard b = p.queen_attacks(s);
     ei.attackedBy[us][QUEEN] |= b;
 
-    // King attack
-    if(b & ei.attackZone[us]) {
-      ei.attackCount[us]++;
-      ei.attackWeight[us] += QueenAttackWeight;
-      Bitboard bb = (b & ei.attackedBy[them][KING]);
-      if(bb) ei.attacked[us] += count_1s_max_15(bb);
-    }
-
-    // Mobility
-    int mob = count_1s(b & ~p.pieces_of_color(us));
-    ei.mgMobility += Sign[us] * MidgameQueenMobilityBonus[mob];
-    ei.egMobility += Sign[us] * EndgameQueenMobilityBonus[mob];
+    // King attack and mobility
+    evaluate_common(p, b, us, ei, QueenAttackWeight,
+                    MidgameQueenMobilityBonus, EndgameQueenMobilityBonus);
   }
 
 
