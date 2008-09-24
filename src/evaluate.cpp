@@ -275,6 +275,7 @@ namespace {
   int count_1s_8bit(Bitboard b);
 
   int compute_weight(int uciWeight, int internalWeight);
+  int weight_option(const std::string& opt, int weight);
   void init_safety();
 
 }
@@ -539,11 +540,6 @@ void quit_eval() {
 /// read_weights() reads evaluation weights from the corresponding UCI
 /// parameters.
 
-int weight_option(const std::string& opt, int weight) {
-
-    return compute_weight(get_option_value_int(opt), weight);
-}
-
 void read_weights(Color us) {
 
   WeightMobilityMidgame      = weight_option("Mobility (Middle Game)", WeightMobilityMidgameInternal);
@@ -681,7 +677,7 @@ namespace {
     // king has lost right to castle
     if (mob > 6 || ei.pi->file_is_half_open(us, f))
         return;
-    
+
     Square ksq = p.king_square(us);
 
     if (    square_file(ksq) >= FILE_E
@@ -1144,6 +1140,13 @@ namespace {
   int compute_weight(int uciWeight, int internalWeight) {
     uciWeight = (uciWeight * 0x100) / 100;
     return (uciWeight * internalWeight) / 0x100;
+  }
+
+
+  // helper used in read_weights()
+  int weight_option(const std::string& opt, int weight) {
+
+    return compute_weight(get_option_value_int(opt), weight);
   }
 
 
