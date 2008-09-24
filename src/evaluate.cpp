@@ -1046,26 +1046,20 @@ namespace {
 
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
                                     EvalInfo &ei) {
-    Piece pawn = pawn_of_color(opposite_color(us));
-    Square b6, b8;
 
     assert(square_is_ok(s));
     assert(pos.piece_on(s) == bishop_of_color(us));
 
-    if(square_file(s) == FILE_A) {
-      b6 = relative_square(us, SQ_B6);
-      b8 = relative_square(us, SQ_B8);
-    }
-    else {
-      b6 = relative_square(us, SQ_G6);
-      b8 = relative_square(us, SQ_G8);
-    }
+    Square b6 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B6 : SQ_G6);
+    Square b8 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B8 : SQ_G8);
 
-    if(pos.piece_on(b6) == pawn && pos.see(s, b6) < 0 && pos.see(s, b8) < 0) {
-      ei.mgValue -= Sign[us] * TrappedBishopA7H7Penalty;
-      ei.egValue -= Sign[us] * TrappedBishopA7H7Penalty;
+    if (   pos.piece_on(b6) == pawn_of_color(opposite_color(us))
+        && pos.see(s, b6) < 0
+        && pos.see(s, b8) < 0)
+    {
+        ei.mgValue -= Sign[us] * TrappedBishopA7H7Penalty;
+        ei.egValue -= Sign[us] * TrappedBishopA7H7Penalty;
     }
-
   }
 
 
@@ -1123,21 +1117,20 @@ namespace {
   // ScaleFactor array.
 
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, ScaleFactor sf[]) {
+
     assert(mv > -VALUE_INFINITE && mv < VALUE_INFINITE);
     assert(ev > -VALUE_INFINITE && ev < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
-    if(ev > Value(0))
-      ev = apply_scale_factor(ev, sf[WHITE]);
-    else
-      ev = apply_scale_factor(ev, sf[BLACK]);
+    ev = apply_scale_factor(ev, sf[(ev > Value(0) ? WHITE : BLACK)]);
 
-    // Superlinear interpolator
-    int sli_ph = int(ph);
-    sli_ph -= (64 - sli_ph) / 4;
-    sli_ph = Min(PHASE_MIDGAME, Max(PHASE_ENDGAME, sli_ph)); // ceiling
+    // Linearized sigmoid interpolator
+    int sph = int(ph);
+    sph -= (64 - sph) / 4;
+    sph = Min(PHASE_MIDGAME, Max(PHASE_ENDGAME, sph));
 
-    Value result = Value(int((mv * sli_ph + ev * (128 - sli_ph)) / 128));
+    Value result = Value(int((mv * sph + ev * (128 - sph)) / 128));
+
     return Value(int(result) & ~(GrainSize - 1));
   }
 
@@ -1164,39 +1157,42 @@ namespace {
   // parameters.  It is called from read_weights().
 
   void init_safety() {
-    double a, b;
-    int maxSlope, peak, i, j;
 
     QueenContactCheckBonus = get_option_value_int("Queen Contact Check Bonus");
-    RookContactCheckBonus = get_option_value_int("Rook Contact Check Bonus");
-    QueenCheckBonus = get_option_value_int("Queen Check Bonus");
-    RookCheckBonus = get_option_value_int("Rook Check Bonus");
-    BishopCheckBonus = get_option_value_int("Bishop Check Bonus");
-    KnightCheckBonus = get_option_value_int("Knight Check Bonus");
-    DiscoveredCheckBonus = get_option_value_int("Discovered Check Bonus");
-    MateThreatBonus = get_option_value_int("Mate Threat Bonus");
+    RookContactCheckBonus  = get_option_value_int("Rook Contact Check Bonus");
+    QueenCheckBonus        = get_option_value_int("Queen Check Bonus");
+    RookCheckBonus         = get_option_value_int("Rook Check Bonus");
+    BishopCheckBonus       = get_option_value_int("Bishop Check Bonus");
+    KnightCheckBonus       = get_option_value_int("Knight Check Bonus");
+    DiscoveredCheckBonus   = get_option_value_int("Discovered Check Bonus");
+    MateThreatBonus        = get_option_value_int("Mate Threat Bonus");
 
-    a = get_option_value_int("King Safety Coefficient") / 100.0;
-    b = get_option_value_int("King Safety X Intercept") * 1.0;
-    maxSlope = get_option_value_int("King Safety Max Slope");
-    peak = (get_option_value_int("King Safety Max Value") * 256) / 100;
+    int maxSlope = get_option_value_int("King Safety Max Slope");
+    int peak     = get_option_value_int("King Safety Max Value") * 256 / 100;
+    double a     = get_option_value_int("King Safety Coefficient") / 100.0;
+    double b     = get_option_value_int("King Safety X Intercept");
+    bool quad    = (get_option_value_string("King Safety Curve") == "Quadratic");
+    bool linear  = (get_option_value_string("King Safety Curve") == "Linear");
 
-    for(i = 0; i < 100; i++) {
-      if(i < b) SafetyTable[i] = Value(0);
-      else if(get_option_value_string("King Safety Curve") == "Quadratic")
-        SafetyTable[i] = Value((int)(a * (i - b) * (i - b)));
-      else if(get_option_value_string("King Safety Curve") == "Linear")
-        SafetyTable[i] = Value((int)(100 * a * (i - b)));
+    for (int i = 0; i < 100; i++)
+    {
+        if (i < b)
+            SafetyTable[i] = Value(0);
+        else if(quad)
+            SafetyTable[i] = Value((int)(a * (i - b) * (i - b)));
+        else if(linear)
+            SafetyTable[i] = Value((int)(100 * a * (i - b)));
     }
 
-    for(i = 0; i < 100; i++)
-      if(SafetyTable[i+1] - SafetyTable[i] > maxSlope) {
-        for(j = i + 1; j < 100; j++)
-          SafetyTable[j] = SafetyTable[j-1] + Value(maxSlope);
-      }
-    for(i = 0; i < 100; i++)
-      if(SafetyTable[i]  > Value(peak))
-        SafetyTable[i] = Value(peak);
+    for (int i = 0; i < 100; i++)
+    {
+        if (SafetyTable[i+1] - SafetyTable[i] > maxSlope)
+            for (int j = i + 1; j < 100; j++)
+                SafetyTable[j] = SafetyTable[j-1] + Value(maxSlope);
+
+        if (SafetyTable[i]  > Value(peak))
+            SafetyTable[i] = Value(peak);
+    }
   }
 
 }
