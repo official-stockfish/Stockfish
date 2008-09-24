@@ -63,6 +63,7 @@ namespace {
   const int WeightPassedPawnsMidgameInternal   = 0x100;
   const int WeightPassedPawnsEndgameInternal   = 0x100;
   const int WeightKingSafetyInternal           = 0x100;
+  const int WeightKingOppSafetyInternal        = 0x100;
 
   // Visually better to define tables constants
   typedef Value V;
@@ -538,32 +539,24 @@ void quit_eval() {
 /// read_weights() reads evaluation weights from the corresponding UCI
 /// parameters.
 
-void read_weights(Color sideToMove) {
-  WeightMobilityMidgame =
-    compute_weight(get_option_value_int("Mobility (Middle Game)"),
-                   WeightMobilityMidgameInternal);
-  WeightMobilityEndgame =
-    compute_weight(get_option_value_int("Mobility (Endgame)"),
-                   WeightMobilityEndgameInternal);
-  WeightPawnStructureMidgame =
-    compute_weight(get_option_value_int("Pawn Structure (Middle Game)"),
-                   WeightPawnStructureMidgameInternal);
-  WeightPawnStructureEndgame =
-    compute_weight(get_option_value_int("Pawn Structure (Endgame)"),
-                   WeightPawnStructureEndgameInternal);
-  WeightPassedPawnsMidgame =
-    compute_weight(get_option_value_int("Passed Pawns (Middle Game)"),
-                   WeightPassedPawnsMidgameInternal);
-  WeightPassedPawnsEndgame =
-    compute_weight(get_option_value_int("Passed Pawns (Endgame)"),
-                   WeightPassedPawnsEndgameInternal);
-  WeightKingSafety[sideToMove] =
-    compute_weight(get_option_value_int("Cowardice"), WeightKingSafetyInternal);
-  WeightKingSafety[opposite_color(sideToMove)] =
-    compute_weight(get_option_value_int("Aggressiveness"),
-                   WeightKingSafetyInternal);
-  WeightKingSafety[opposite_color(sideToMove)] =
-    (get_option_value_int("Aggressiveness") * 0x100) / 100;
+int weight_option(const std::string& opt, int weight) {
+
+    return compute_weight(get_option_value_int(opt), weight);
+}
+
+void read_weights(Color us) {
+
+  WeightMobilityMidgame      = weight_option("Mobility (Middle Game)", WeightMobilityMidgameInternal);
+  WeightMobilityEndgame      = weight_option("Mobility (Endgame)", WeightMobilityEndgameInternal);
+  WeightPawnStructureMidgame = weight_option("Pawn Structure (Middle Game)", WeightPawnStructureMidgameInternal);
+  WeightPawnStructureEndgame = weight_option("Pawn Structure (Endgame)", WeightPawnStructureEndgameInternal);
+  WeightPassedPawnsMidgame   = weight_option("Passed Pawns (Middle Game)", WeightPassedPawnsMidgameInternal);
+  WeightPassedPawnsEndgame   = weight_option("Passed Pawns (Endgame)", WeightPassedPawnsEndgameInternal);
+
+  Color them = opposite_color(us);
+
+  WeightKingSafety[us]   = weight_option("Cowardice", WeightKingSafetyInternal);
+  WeightKingSafety[them] = weight_option("Aggressiveness", WeightKingOppSafetyInternal);
 
   init_safety();
 }
