@@ -65,22 +65,23 @@ struct EvalInfo {
   // f7, g7, h7, f6, g6 and h6.
   Bitboard kingZone[2];
 
-  // kingAttackersCount[color] is the number of pieces of the given color which
-  // attack a square adjacent to the enemy king.
+  // kingAttackersCount[color] is the number of pieces of the given color
+  // which attack a square in the kingZone of the enemy king.
   int kingAttackersCount[2];
 
   // kingAttackersWeight[color] is the sum of the "weight" of the pieces of the
-  // given color which attack a square adjacent to the enemy king.  The weights
-  // of the individual piece types are given by the variables QueenAttackWeight,
-  // RookAttackWeight, BishopAttackWeight and KnightAttackWeight in evaluate.cpp
+  // given color which attack a square in the kingZone of the enemy king. The
+  // weights of the individual piece types are given by the variables
+  // QueenAttackWeight, RookAttackWeight, BishopAttackWeight and
+  // KnightAttackWeight in evaluate.cpp
   int kingAttackersWeight[2];
 
-  // kingZoneAttacksCount[color] is the number of attacks to squares directly
-  // adjacent to the king of the given color.  Pieces which attack more
-  // than one square are counted multiple times.  For instance, if black's
+  // kingAdjacentZoneAttacksCount[color] is the number of attacks to squares
+  // directly adjacent to the king of the given color. Pieces which attack
+  // more than one square are counted multiple times. For instance, if black's
   // king is on g8 and there's a white knight on g5, this knight adds
-  // 2 to kingZoneAttacksCount[BLACK].
-  int kingZoneAttacksCount[2];
+  // 2 to kingAdjacentZoneAttacksCount[BLACK].
+  int kingAdjacentZoneAttacksCount[2];
 
   // mateThreat[color] is a move for the given side which gives a direct mate.
   Move mateThreat[2];

@@ -501,9 +501,11 @@ void init_eval(int threads) {
 /// quit_eval() releases heap-allocated memory at program termination.
 
 void quit_eval() {
-  for(int i = 0; i < THREAD_MAX; i++) {
-    delete PawnTable[i];
-    delete MaterialTable[i];
+
+  for (int i = 0; i < THREAD_MAX; i++)
+  {
+      delete PawnTable[i];
+      delete MaterialTable[i];
   }
 }
 
@@ -542,11 +544,11 @@ namespace {
     // King attack
     if (b & ei.kingZone[us])
     {
-      ei.kingAttackersCount[us]++;
-      ei.kingAttackersWeight[us] += AttackWeight;
-      Bitboard bb = (b & ei.attackedBy[them][KING]);
-      if (bb)
-          ei.kingZoneAttacksCount[us] += count_1s_max_15(bb);
+        ei.kingAttackersCount[us]++;
+        ei.kingAttackersWeight[us] += AttackWeight;
+        Bitboard bb = (b & ei.attackedBy[them][KING]);
+        if (bb)
+            ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15(bb);
     }
 
     // Mobility
@@ -717,7 +719,7 @@ namespace {
     Color them = opposite_color(us);
     if(p.queen_count(them) >= 1 && ei.kingAttackersCount[them] >= 2
        && p.non_pawn_material(them) >= QueenValueMidgame + RookValueMidgame
-       && ei.kingZoneAttacksCount[them]) {
+       && ei.kingAdjacentZoneAttacksCount[them]) {
 
       // Is it the attackers turn to move?
       bool sente = (them == p.side_to_move());
@@ -738,7 +740,7 @@ namespace {
       // quality of the pawn shelter.
       int attackUnits =
         Min((ei.kingAttackersCount[them] * ei.kingAttackersWeight[them]) / 2, 25)
-        + (ei.kingZoneAttacksCount[them] + count_1s_max_15(undefended)) * 3
+        + (ei.kingAdjacentZoneAttacksCount[them] + count_1s_max_15(undefended)) * 3
         + InitKingDanger[relative_square(us, s)] - shelter / 32;
 
       // Analyse safe queen contact checks:
