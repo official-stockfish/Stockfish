@@ -270,7 +270,7 @@ namespace {
                                     EvalInfo &ei);
 
   inline Value apply_weight(Value v, int w);
-  Value scale_by_game_phase(Value mv, Value ev, Phase ph, ScaleFactor sf[]);
+  Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
 
   int count_1s_8bit(Bitboard b);
 
@@ -456,22 +456,18 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
 /// we should add scores from the pawn and material hash tables?
 
 Value quick_evaluate(const Position &pos) {
-  Color stm;
-  Value mgValue, egValue;
-  ScaleFactor factor[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
-  Phase phase;
 
   assert(pos.is_ok());
 
-  stm = pos.side_to_move();
+  static const
+  ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};  
 
-  mgValue = pos.mg_value();
-  egValue = pos.eg_value();
-  phase = pos.game_phase();
+  Value mgv = pos.mg_value();
+  Value egv = pos.eg_value();
+  Phase ph = pos.game_phase();
+  Color stm = pos.side_to_move();
 
-  Value value = scale_by_game_phase(mgValue, egValue, phase, factor);
-
-  return Sign[stm] * value;
+  return Sign[stm] * scale_by_game_phase(mgv, egv, ph, sf);
 }
 
 
@@ -1081,7 +1077,7 @@ namespace {
   // score, based on game phase.  It also scales the return value by a
   // ScaleFactor array.
 
-  Value scale_by_game_phase(Value mv, Value ev, Phase ph, ScaleFactor sf[]) {
+  Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]) {
 
     assert(mv > -VALUE_INFINITE && mv < VALUE_INFINITE);
     assert(ev > -VALUE_INFINITE && ev < VALUE_INFINITE);
