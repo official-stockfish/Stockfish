@@ -419,36 +419,26 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
       && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && ei.egValue > Value(0))
           || (factor[BLACK] == SCALE_FACTOR_NORMAL && ei.egValue < Value(0))))
   {
-    if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == 2*BishopValueMidgame)
-    {
-      // Only the two bishops
-      if (pos.pawn_count(WHITE) + pos.pawn_count(BLACK) == 1)
+      ScaleFactor sf;
+
+      // Only the two bishops ?
+      if (   pos.non_pawn_material(WHITE) == BishopValueMidgame
+          && pos.non_pawn_material(BLACK) == BishopValueMidgame)
       {
-        // KBP vs KB with only a single pawn; almost certainly a draw.
-        if (factor[WHITE] == SCALE_FACTOR_NORMAL)
-            factor[WHITE] = ScaleFactor(8);
-        if (factor[BLACK] == SCALE_FACTOR_NORMAL)
-            factor[BLACK] = ScaleFactor(8);
+          // Check for KBP vs KB with only a single pawn that is almost
+          // certainly a draw or at least two pawns.
+          bool one_pawn = (pos.pawn_count(WHITE) + pos.pawn_count(BLACK) == 1);
+          sf = one_pawn ? ScaleFactor(8) : ScaleFactor(32);
       }
       else
-      {
-        // At least two pawns
-        if (factor[WHITE] == SCALE_FACTOR_NORMAL)
-            factor[WHITE] = ScaleFactor(32);
-        if (factor[BLACK] == SCALE_FACTOR_NORMAL)
-            factor[BLACK] = ScaleFactor(32);
-      }
-    }
-    else
-    {
-      // Endgame with opposite-colored bishops, but also other pieces.
-      // Still a bit drawish, but not as drawish as with only the two
-      // bishops.
+          // Endgame with opposite-colored bishops, but also other pieces. Still
+          // a bit drawish, but not as drawish as with only the two bishops.
+           sf = ScaleFactor(50);
+
       if (factor[WHITE] == SCALE_FACTOR_NORMAL)
-          factor[WHITE] = ScaleFactor(50);
+          factor[WHITE] = sf;
       if (factor[BLACK] == SCALE_FACTOR_NORMAL)
-          factor[BLACK] = ScaleFactor(50);
-    }
+          factor[BLACK] = sf;
   }
 
   // Interpolate between the middle game and the endgame score, and
