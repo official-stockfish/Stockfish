@@ -64,8 +64,10 @@ const int MaxGameLength = 220;
 
 enum CastleRights {
   NO_CASTLES = 0, 
-  WHITE_OO = 1, BLACK_OO = 2, 
-  WHITE_OOO = 4, BLACK_OOO = 8,
+  WHITE_OO = 1,
+  BLACK_OO = 2, 
+  WHITE_OOO = 4,
+  BLACK_OOO = 8,
   ALL_CASTLES = 15
 };
 
@@ -117,7 +119,7 @@ class Position {
 
 public:
   // Constructors
-  Position();
+  Position() {};
   Position(const Position &pos);
   Position(const std::string &fen);
 
@@ -235,6 +237,7 @@ public:
   bool move_is_check(Move m) const;
   bool move_is_check(Move m, Bitboard dcCandidates) const;
   bool move_is_capture(Move m) const;
+  bool move_is_deep_pawn_push(Move m) const;
   bool move_is_pawn_push_to_7th(Move m) const;
   bool move_is_passed_pawn_push(Move m) const;
   bool move_was_passed_pawn_push(Move m) const;
@@ -375,27 +378,27 @@ inline Piece Position::piece_on(Square s) const {
 }
 
 inline Color Position::color_of_piece_on(Square s) const {
-  return color_of_piece(this->piece_on(s));
+  return color_of_piece(piece_on(s));
 }
 
 inline PieceType Position::type_of_piece_on(Square s) const {
-  return type_of_piece(this->piece_on(s));
+  return type_of_piece(piece_on(s));
 }
 
 inline bool Position::square_is_empty(Square s) const {
-  return this->piece_on(s) == EMPTY;
+  return piece_on(s) == EMPTY;
 }
 
 inline bool Position::square_is_occupied(Square s) const {
-  return !this->square_is_empty(s);
+  return !square_is_empty(s);
 }
 
 inline Value Position::midgame_value_of_piece_on(Square s) const {
-  return piece_value_midgame(this->piece_on(s));
+  return piece_value_midgame(piece_on(s));
 }
 
 inline Value Position::endgame_value_of_piece_on(Square s) const {
-  return piece_value_endgame(this->piece_on(s));
+  return piece_value_endgame(piece_on(s));
 }
 
 inline Color Position::side_to_move() const {
@@ -407,7 +410,7 @@ inline Bitboard Position::occupied_squares() const {
 }
 
 inline Bitboard Position::empty_squares() const {
-  return ~(this->occupied_squares());
+  return ~(occupied_squares());
 }
 
 inline Bitboard Position::pieces_of_color(Color c) const {
@@ -418,81 +421,80 @@ inline Bitboard Position::pieces_of_type(PieceType pt) const {
   return byTypeBB[pt];
 }
 
-inline Bitboard Position::pieces_of_color_and_type(Color c, PieceType pt)
-  const {
-  return this->pieces_of_color(c) & this->pieces_of_type(pt);
+inline Bitboard Position::pieces_of_color_and_type(Color c, PieceType pt) const {
+  return pieces_of_color(c) & pieces_of_type(pt);
 }
 
 inline Bitboard Position::pawns() const {
-  return this->pieces_of_type(PAWN);
+  return pieces_of_type(PAWN);
 }
 
 inline Bitboard Position::knights() const {
-  return this->pieces_of_type(KNIGHT);
+  return pieces_of_type(KNIGHT);
 }
 
 inline Bitboard Position::bishops() const {
-  return this->pieces_of_type(BISHOP);
+  return pieces_of_type(BISHOP);
 }
 
 inline Bitboard Position::rooks() const {
-  return this->pieces_of_type(ROOK);
+  return pieces_of_type(ROOK);
 }
 
 inline Bitboard Position::queens() const {
-  return this->pieces_of_type(QUEEN);
+  return pieces_of_type(QUEEN);
 }
 
 inline Bitboard Position::kings() const {
-  return this->pieces_of_type(KING);
+  return pieces_of_type(KING);
 }
 
 inline Bitboard Position::rooks_and_queens() const {
-  return this->rooks() | this->queens();
+  return rooks() | queens();
 }
 
 inline Bitboard Position::bishops_and_queens() const {
-  return this->bishops() | this->queens();
+  return bishops() | queens();
 }
 
 inline Bitboard Position::sliders() const {
-  return this->bishops() | this->queens() | this->rooks();
+  return bishops() | queens() | rooks();
 }
 
 inline Bitboard Position::pawns(Color c) const {
-  return this->pieces_of_color_and_type(c, PAWN);
+  return pieces_of_color_and_type(c, PAWN);
 }
 
 inline Bitboard Position::knights(Color c) const {
-  return this->pieces_of_color_and_type(c, KNIGHT);
+  return pieces_of_color_and_type(c, KNIGHT);
 }
 
 inline Bitboard Position::bishops(Color c) const {
-  return this->pieces_of_color_and_type(c, BISHOP);
+  return pieces_of_color_and_type(c, BISHOP);
 }
 
 inline Bitboard Position::rooks(Color c) const {
-  return this->pieces_of_color_and_type(c, ROOK);
+  return pieces_of_color_and_type(c, ROOK);
 }
 
 inline Bitboard Position::queens(Color c) const {
-  return this->pieces_of_color_and_type(c, QUEEN);
+  return pieces_of_color_and_type(c, QUEEN);
 }
 
 inline Bitboard Position::kings(Color c) const {
-  return this->pieces_of_color_and_type(c, KING);
+  return pieces_of_color_and_type(c, KING);
 }
 
 inline Bitboard Position::rooks_and_queens(Color c) const {
-  return this->rooks_and_queens() & this->pieces_of_color(c);
+  return rooks_and_queens() & pieces_of_color(c);
 }
 
 inline Bitboard Position::bishops_and_queens(Color c) const {
-  return this->bishops_and_queens() & this->pieces_of_color(c);
+  return bishops_and_queens() & pieces_of_color(c);
 }
 
 inline Bitboard Position::sliders_of_color(Color c) const {
-  return this->sliders() & this->pieces_of_color(c);
+  return sliders() & pieces_of_color(c);
 }
 
 inline int Position::piece_count(Color c, PieceType pt) const {
@@ -500,23 +502,23 @@ inline int Position::piece_count(Color c, PieceType pt) const {
 }
 
 inline int Position::pawn_count(Color c) const {
-  return this->piece_count(c, PAWN);
+  return piece_count(c, PAWN);
 }
 
 inline int Position::knight_count(Color c) const {
-  return this->piece_count(c, KNIGHT);
+  return piece_count(c, KNIGHT);
 }
 
 inline int Position::bishop_count(Color c) const {
-  return this->piece_count(c, BISHOP);
+  return piece_count(c, BISHOP);
 }
 
 inline int Position::rook_count(Color c) const {
-  return this->piece_count(c, ROOK);
+  return piece_count(c, ROOK);
 }
 
 inline int Position::queen_count(Color c) const {
-  return this->piece_count(c, QUEEN);
+  return piece_count(c, QUEEN);
 }
 
 inline Square Position::piece_list(Color c, PieceType pt, int index) const {
@@ -524,23 +526,23 @@ inline Square Position::piece_list(Color c, PieceType pt, int index) const {
 }
 
 inline Square Position::pawn_list(Color c, int index) const {
-  return this->piece_list(c, PAWN, index);
+  return piece_list(c, PAWN, index);
 }
 
 inline Square Position::knight_list(Color c, int index) const {
-  return this->piece_list(c, KNIGHT, index);
+  return piece_list(c, KNIGHT, index);
 }
 
 inline Square Position::bishop_list(Color c, int index) const {
-  return this->piece_list(c, BISHOP, index);
+  return piece_list(c, BISHOP, index);
 }
 
 inline Square Position::rook_list(Color c, int index) const {
-  return this->piece_list(c, ROOK, index);
+  return piece_list(c, ROOK, index);
 }
 
 inline Square Position::queen_list(Color c, int index) const {
-  return this->piece_list(c, QUEEN, index);
+  return piece_list(c, QUEEN, index);
 }
 
 inline Square Position::ep_square() const {
@@ -576,11 +578,11 @@ inline Bitboard Position::pawn_attacks(Color c, Square s) const {
 }
 
 inline Bitboard Position::white_pawn_attacks(Square s) const {
-  return this->pawn_attacks(WHITE, s);
+  return pawn_attacks(WHITE, s);
 }
 
 inline Bitboard Position::black_pawn_attacks(Square s) const {
-  return this->pawn_attacks(BLACK, s);
+  return pawn_attacks(BLACK, s);
 }
 
 inline Bitboard Position::knight_attacks(Square s) const {
@@ -588,15 +590,15 @@ inline Bitboard Position::knight_attacks(Square s) const {
 }
 
 inline Bitboard Position::rook_attacks(Square s) const {
-  return rook_attacks_bb(s, this->occupied_squares());
+  return rook_attacks_bb(s, occupied_squares());
 }
 
 inline Bitboard Position::bishop_attacks(Square s) const {
-  return bishop_attacks_bb(s, this->occupied_squares());
+  return bishop_attacks_bb(s, occupied_squares());
 }
 
 inline Bitboard Position::queen_attacks(Square s) const {
-  return this->rook_attacks(s) | this->bishop_attacks(s);
+  return rook_attacks(s) | bishop_attacks(s);
 }
 
 inline Bitboard Position::king_attacks(Square s) const {
@@ -608,59 +610,59 @@ inline Bitboard Position::checkers() const {
 }
 
 inline bool Position::is_check() const {
-  return this->checkers() != EmptyBoardBB;
+  return checkers() != EmptyBoardBB;
 }
 
 inline bool Position::white_pawn_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->white_pawn_attacks(f), t);
+  return bit_is_set(white_pawn_attacks(f), t);
 }
 
 inline bool Position::black_pawn_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->black_pawn_attacks(f), t);
+  return bit_is_set(black_pawn_attacks(f), t);
 }
 
 inline bool Position::knight_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->knight_attacks(f), t);
+  return bit_is_set(knight_attacks(f), t);
 }
 
 inline bool Position::bishop_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->bishop_attacks(f), t);
+  return bit_is_set(bishop_attacks(f), t);
 }
 
 inline bool Position::rook_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->rook_attacks(f), t);
+  return bit_is_set(rook_attacks(f), t);
 }
 
 inline bool Position::queen_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->queen_attacks(f), t);
+  return bit_is_set(queen_attacks(f), t);
 }
 
 inline bool Position::king_attacks_square(Square f, Square t) const {
-  return bit_is_set(this->king_attacks(f), t);
+  return bit_is_set(king_attacks(f), t);
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
-  return !(this->pawns(opposite_color(c)) & passed_pawn_mask(c, s));
+  return !(pawns(opposite_color(c)) & passed_pawn_mask(c, s));
 }
 
 inline bool Position::pawn_is_isolated(Color c, Square s) const {
-  return !(this->pawns(c) & neighboring_files_bb(s));
+  return !(pawns(c) & neighboring_files_bb(s));
 }
 
 inline bool Position::pawn_is_doubled(Color c, Square s) const {
-  return this->pawns(c) & squares_behind(c, s);
+  return pawns(c) & squares_behind(c, s);
 }
 
 inline bool Position::file_is_open(File f) const {
-  return !(this->pawns() & file_bb(f));
+  return !(pawns() & file_bb(f));
 }
 
 inline bool Position::file_is_half_open(Color c, File f) const {
-  return !(this->pawns(c) & file_bb(f));
+  return !(pawns(c) & file_bb(f));
 }
 
 inline bool Position::square_is_weak(Square s, Color c) const {
-  return !(this->pawns(c) & outpost_mask(opposite_color(c), s));
+  return !(pawns(c) & outpost_mask(opposite_color(c), s));
 }
                                 
 inline Key Position::get_key() const {
@@ -700,55 +702,67 @@ inline Phase Position::game_phase() const {
   // The purpose of the Value(325) terms below is to make sure the difference
   // between MidgameLimit and EndgameLimit is a power of 2, which should make
   // the division at the end of the function a bit faster.
+  static const Value MidgameLimit =  2 * QueenValueMidgame
+                                   + 2 * RookValueMidgame
+                                   + 6 * BishopValueMidgame
+                                   + Value(325);
 
-  static const Value MidgameLimit =
-    2*QueenValueMidgame+2*RookValueMidgame+6*BishopValueMidgame+Value(325);
-  static const Value EndgameLimit = 4*RookValueMidgame-Value(325);
-  Value npm = this->non_pawn_material(WHITE) + this->non_pawn_material(BLACK);
+  static const Value EndgameLimit = 4 * RookValueMidgame - Value(325);
+
+  Value npm = non_pawn_material(WHITE) + non_pawn_material(BLACK);
   
-  if(npm >= MidgameLimit)
-    return PHASE_MIDGAME;
+  if (npm >= MidgameLimit)
+      return PHASE_MIDGAME;
   else if(npm <= EndgameLimit)
-    return PHASE_ENDGAME;
+      return PHASE_ENDGAME;
   else
-    return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
+      return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
+}
+
+inline bool Position::move_is_deep_pawn_push(Move m) const {
+
+  Color c = side_to_move();
+  return   piece_on(move_from(m)) == pawn_of_color(c)
+        && relative_rank(c, move_to(m)) > RANK_4;
 }
 
 inline bool Position::move_is_pawn_push_to_7th(Move m) const {
-  Color c = this->side_to_move();
-  return 
-    this->piece_on(move_from(m)) == pawn_of_color(c) &&
-    relative_rank(c, move_to(m)) == RANK_7;
+
+  Color c = side_to_move();
+  return   piece_on(move_from(m)) == pawn_of_color(c)
+        && relative_rank(c, move_to(m)) == RANK_7;
 }
 
 inline bool Position::move_is_passed_pawn_push(Move m) const {
-  Color c = this->side_to_move();
-  return 
-    this->piece_on(move_from(m)) == pawn_of_color(c) &&
-    this->pawn_is_passed(c, move_to(m));
+
+  Color c = side_to_move();
+  return   piece_on(move_from(m)) == pawn_of_color(c)
+        && pawn_is_passed(c, move_to(m));
 }
- 
+
 inline bool Position::move_was_passed_pawn_push(Move m) const {
-  Color c = opposite_color(this->side_to_move());
-  return 
-    this->piece_on(move_to(m)) == pawn_of_color(c) &&
-    this->pawn_is_passed(c, move_to(m));
+
+  Color c = opposite_color(side_to_move());
+  return   piece_on(move_to(m)) == pawn_of_color(c)
+        && pawn_is_passed(c, move_to(m));
 }
 
 inline int Position::rule_50_counter() const {
+
   return rule50;
 }
 
 inline bool Position::opposite_colored_bishops() const {
-  return
-    this->bishop_count(WHITE) == 1 && this->bishop_count(BLACK) == 1 &&
-    square_color(this->bishop_list(WHITE, 0)) !=
-    square_color(this->bishop_list(BLACK, 0));
+
+  return   bishop_count(WHITE) == 1
+        && bishop_count(BLACK) == 1
+        && square_color(bishop_list(WHITE, 0)) != square_color(bishop_list(BLACK, 0));
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {
-  return this->pawns(c) & relative_rank_bb(c, RANK_7);
+
+  return pawns(c) & relative_rank_bb(c, RANK_7);
 }
-                        
+                   
 
 #endif // !defined(POSITION_H_INCLUDED)

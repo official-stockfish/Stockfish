@@ -55,14 +55,12 @@ Value Position::EgPieceSquareTable[16][64];
 
 /// Constructors
 
-Position::Position() { }  // Do we really need this one?
-
 Position::Position(const Position &pos) {
-  this->copy(pos);
+  copy(pos);
 }
 
 Position::Position(const std::string &fen) {
-  this->from_fen(fen);
+  from_fen(fen);
 }
 
 
@@ -71,59 +69,56 @@ Position::Position(const std::string &fen) {
 /// correct (this is assumed to be the responsibility of the GUI).
 
 void Position::from_fen(const std::string &fen) {
-  File file;
-  Rank rank;
-  int i;
 
-  this->clear();
+  static const std::string piecesStr = "KQRBNPkqrbnp";
+  static const Piece pieces[] = { WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP };
+
+  clear();
 
   // Board
-  rank = RANK_8;
-  file = FILE_A;
-  for(i = 0; fen[i] != ' '; i++) {
-    if(isdigit(fen[i]))
-      // Skip the given number of files
-      file += (fen[i] - '1' + 1);
-    else {
-      Square square = make_square(file, rank);
-      switch(fen[i]) {
-      case 'K': this->put_piece(WK, square); file++; break;
-      case 'Q': this->put_piece(WQ, square); file++; break;
-      case 'R': this->put_piece(WR, square); file++; break;
-      case 'B': this->put_piece(WB, square); file++; break;
-      case 'N': this->put_piece(WN, square); file++; break;
-      case 'P': this->put_piece(WP, square); file++; break;
-      case 'k': this->put_piece(BK, square); file++; break;
-      case 'q': this->put_piece(BQ, square); file++; break;
-      case 'r': this->put_piece(BR, square); file++; break;
-      case 'b': this->put_piece(BB, square); file++; break;
-      case 'n': this->put_piece(BN, square); file++; break;
-      case 'p': this->put_piece(BP, square); file++; break;
-      case '/': file = FILE_A; rank--; break;
-      case ' ': break;
-      default:
-        std::cout << "Error in FEN at character " << i << std::endl;
-        return;
+  Rank rank = RANK_8;
+  File file = FILE_A;
+  size_t i = 0;
+  for ( ; fen[i] != ' '; i++)
+  {
+      if (isdigit(fen[i]))
+      {
+          // Skip the given number of files
+          file += (fen[i] - '1' + 1);
+          continue;
       }
-    }
+      else if (fen[i] == '/')
+      {
+          file = FILE_A;
+          rank--;
+          continue;
+      }
+      size_t idx = piecesStr.find(fen[i]);
+      if (idx == std::string::npos)
+      {
+           std::cout << "Error in FEN at character " << i << std::endl;
+           return;
+      }
+      Square square = make_square(file, rank);
+      put_piece(pieces[idx], square);
+      file++;
   }
 
   // Side to move
   i++;
-  if(fen[i] == 'w')
-    sideToMove = WHITE;
-  else if(fen[i] == 'b')
-    sideToMove = BLACK;
-  else {
-    std::cout << "Error in FEN at character " << i << std::endl;
-    return;
+  if (fen[i] != 'w' && fen[i] == 'b')
+  {
+      std::cout << "Error in FEN at character " << i << std::endl;
+      return;
   }
+  sideToMove = (fen[i] == 'w' ? WHITE : BLACK);
 
   // Castling rights:
   i++;
-  if(fen[i] != ' ') {
-    std::cout << "Error in FEN at character " << i << std::endl;
-    return;
+  if (fen[i] != ' ')
+  {
+      std::cout << "Error in FEN at character " << i << std::endl;
+      return;
   }
 
   i++;
@@ -131,14 +126,14 @@ void Position::from_fen(const std::string &fen) {
     if(fen[i] == '-') {
       i++; break;
     }
-    else if(fen[i] == 'K') this->allow_oo(WHITE);
-    else if(fen[i] == 'Q') this->allow_ooo(WHITE);
-    else if(fen[i] == 'k') this->allow_oo(BLACK);
-    else if(fen[i] == 'q') this->allow_ooo(BLACK);
+    else if(fen[i] == 'K') allow_oo(WHITE);
+    else if(fen[i] == 'Q') allow_ooo(WHITE);
+    else if(fen[i] == 'k') allow_oo(BLACK);
+    else if(fen[i] == 'q') allow_ooo(BLACK);
     else if(fen[i] >= 'A' && fen[i] <= 'H') {
       File rookFile, kingFile = FILE_NONE;
       for(Square square = SQ_B1; square <= SQ_G1; square++)
-        if(this->piece_on(square) == WK)
+        if(piece_on(square) == WK)
           kingFile = square_file(square);
       if(kingFile == FILE_NONE) {
         std::cout << "Error in FEN at character " << i << std::endl;
@@ -147,18 +142,18 @@ void Position::from_fen(const std::string &fen) {
       initialKFile = kingFile;
       rookFile = File(fen[i] - 'A') + FILE_A;
       if(rookFile < initialKFile) {
-        this->allow_ooo(WHITE);
+        allow_ooo(WHITE);
         initialQRFile = rookFile;
       }
       else {
-        this->allow_oo(WHITE);
+        allow_oo(WHITE);
         initialKRFile = rookFile;
       }
     }
     else if(fen[i] >= 'a' && fen[i] <= 'h') {
       File rookFile, kingFile = FILE_NONE;
       for(Square square = SQ_B8; square <= SQ_G8; square++)
-        if(this->piece_on(square) == BK)
+        if(piece_on(square) == BK)
           kingFile = square_file(square);
       if(kingFile == FILE_NONE) {
         std::cout << "Error in FEN at character " << i << std::endl;
@@ -167,11 +162,11 @@ void Position::from_fen(const std::string &fen) {
       initialKFile = kingFile;
       rookFile = File(fen[i] - 'a') + FILE_A;
       if(rookFile < initialKFile) {
-        this->allow_ooo(BLACK);
+        allow_ooo(BLACK);
         initialQRFile = rookFile;
       }
       else {
-        this->allow_oo(BLACK);
+        allow_oo(BLACK);
         initialKRFile = rookFile;
       }
     }
@@ -182,36 +177,36 @@ void Position::from_fen(const std::string &fen) {
     i++;
   }
 
-  while(fen[i] == ' ')
-    i++;
+  // Skip blanks
+  while (fen[i] == ' ')
+      i++;
 
   // En passant square
-  if(i < int(fen.length()) - 2)
-    if(fen[i] >= 'a' && fen[i] <= 'h' && (fen[i+1] == '3' || fen[i+1] == '6'))
+  if (    i < fen.length() - 2
+      && (fen[i] >= 'a' && fen[i] <= 'h')
+      && (fen[i+1] == '3' || fen[i+1] == '6'))
       epSquare = square_from_string(fen.substr(i, 2));
 
   // Various initialisation
+  for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
+      castleRightsMask[sq] = ALL_CASTLES;
 
-  for(Square sq = SQ_A1; sq <= SQ_H8; sq++)
-    castleRightsMask[sq] = ALL_CASTLES;
-  castleRightsMask[make_square(initialKFile, RANK_1)] ^=
-    (WHITE_OO|WHITE_OOO);
-  castleRightsMask[make_square(initialKFile, RANK_8)] ^=
-    (BLACK_OO|BLACK_OOO);
+  castleRightsMask[make_square(initialKFile,  RANK_1)] ^= (WHITE_OO|WHITE_OOO);
+  castleRightsMask[make_square(initialKFile,  RANK_8)] ^= (BLACK_OO|BLACK_OOO);
   castleRightsMask[make_square(initialKRFile, RANK_1)] ^= WHITE_OO;
   castleRightsMask[make_square(initialKRFile, RANK_8)] ^= BLACK_OO;
   castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
-  this->find_checkers();
+  find_checkers();
 
-  key = this->compute_key();
-  pawnKey = this->compute_pawn_key();
-  materialKey = this->compute_material_key();
-  mgValue = this->compute_mg_value();
-  egValue = this->compute_eg_value();
-  npMaterial[WHITE] = this->compute_non_pawn_material(WHITE);
-  npMaterial[BLACK] = this->compute_non_pawn_material(BLACK);
+  key = compute_key();
+  pawnKey = compute_pawn_key();
+  materialKey = compute_material_key();
+  mgValue = compute_mg_value();
+  egValue = compute_eg_value();
+  npMaterial[WHITE] = compute_non_pawn_material(WHITE);
+  npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
 
 
@@ -227,9 +222,9 @@ const std::string Position::to_fen() const {
     skip = 0;
     for(File file = FILE_A; file <= FILE_H; file++) {
       Square square = make_square(file, rank);
-      if(this->square_is_occupied(square)) {
+      if(square_is_occupied(square)) {
         if(skip > 0) result += (char)skip + '0';
-        result += pieceLetters[this->piece_on(square)];
+        result += pieceLetters[piece_on(square)];
         skip = 0;
       }
       else skip++;
@@ -242,15 +237,15 @@ const std::string Position::to_fen() const {
   result += ' ';
   if(castleRights == NO_CASTLES) result += '-';
   else {
-    if(this->can_castle_kingside(WHITE)) result += 'K';
-    if(this->can_castle_queenside(WHITE)) result += 'Q';
-    if(this->can_castle_kingside(BLACK)) result += 'k';
-    if(this->can_castle_queenside(BLACK)) result += 'q';
+    if(can_castle_kingside(WHITE)) result += 'K';
+    if(can_castle_queenside(WHITE)) result += 'Q';
+    if(can_castle_kingside(BLACK)) result += 'k';
+    if(can_castle_queenside(BLACK)) result += 'q';
   }
 
   result += ' ';
-  if(this->ep_square() == SQ_NONE) result += '-';
-  else result += square_to_string(this->ep_square());
+  if(ep_square() == SQ_NONE) result += '-';
+  else result += square_to_string(ep_square());
 
   return result;
 }
@@ -269,7 +264,7 @@ void Position::print() const {
     std::cout << "+---+---+---+---+---+---+---+---+\n";
     for(File file = FILE_A; file <= FILE_H; file++) {
       Square sq = make_square(file, rank);
-      Piece piece = this->piece_on(sq);
+      Piece piece = piece_on(sq);
       if(piece == EMPTY)
         std::cout << ((square_color(sq) == WHITE)? "|   " : "| . ");
       else
@@ -278,7 +273,7 @@ void Position::print() const {
     std::cout << "|\n";
   }
   std::cout << "+---+---+---+---+---+---+---+---+\n";
-  std::cout << this->to_fen() << std::endl;
+  std::cout << to_fen() << std::endl;
   std::cout << key << std::endl;
 }
 
@@ -295,15 +290,15 @@ void Position::copy(const Position &pos) {
 
 Bitboard Position::pinned_pieces(Color c) const {
   Bitboard b1, b2, pinned, pinners, sliders;
-  Square ksq = this->king_square(c), s;
+  Square ksq = king_square(c), s;
   Color them = opposite_color(c);
 
   pinned = EmptyBoardBB;
-  b1 = this->occupied_squares();
+  b1 = occupied_squares();
 
-  sliders = this->rooks_and_queens(them) & ~this->checkers();
+  sliders = rooks_and_queens(them) & ~checkers();
   if(sliders & RookPseudoAttacks[ksq]) {
-    b2 = this->rook_attacks(ksq) & this->pieces_of_color(c);
+    b2 = rook_attacks(ksq) & pieces_of_color(c);
     pinners = rook_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(pinners) {
       s = pop_1st_bit(&pinners);
@@ -311,9 +306,9 @@ Bitboard Position::pinned_pieces(Color c) const {
     }
   }
 
-  sliders = this->bishops_and_queens(them) & ~this->checkers();
+  sliders = bishops_and_queens(them) & ~checkers();
   if(sliders & BishopPseudoAttacks[ksq]) {
-    b2 = this->bishop_attacks(ksq) & this->pieces_of_color(c);
+    b2 = bishop_attacks(ksq) & pieces_of_color(c);
     pinners = bishop_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(pinners) {
       s = pop_1st_bit(&pinners);
@@ -331,14 +326,14 @@ Bitboard Position::pinned_pieces(Color c) const {
 
 Bitboard Position::discovered_check_candidates(Color c) const {
   Bitboard b1, b2, dc, checkers, sliders;
-  Square ksq = this->king_square(opposite_color(c)), s;
+  Square ksq = king_square(opposite_color(c)), s;
 
   dc = EmptyBoardBB;
-  b1 = this->occupied_squares();
+  b1 = occupied_squares();
 
-  sliders = this->rooks_and_queens(c);
+  sliders = rooks_and_queens(c);
   if(sliders & RookPseudoAttacks[ksq]) {
-    b2 = this->rook_attacks(ksq) & this->pieces_of_color(c);
+    b2 = rook_attacks(ksq) & pieces_of_color(c);
     checkers = rook_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(checkers) {
       s = pop_1st_bit(&checkers);
@@ -346,9 +341,9 @@ Bitboard Position::discovered_check_candidates(Color c) const {
     }
   }
 
-  sliders = this->bishops_and_queens(c);
+  sliders = bishops_and_queens(c);
   if(sliders & BishopPseudoAttacks[ksq]) {
-    b2 = this->bishop_attacks(ksq) & this->pieces_of_color(c);
+    b2 = bishop_attacks(ksq) & pieces_of_color(c);
     checkers = bishop_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(checkers) {
       s = pop_1st_bit(&checkers);
@@ -365,11 +360,11 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
 bool Position::square_is_attacked(Square s, Color c) const {
   return
-    (this->pawn_attacks(opposite_color(c), s) & this->pawns(c)) ||
-    (this->knight_attacks(s) & this->knights(c)) ||
-    (this->king_attacks(s) & this->kings(c)) ||
-    (this->rook_attacks(s) & this->rooks_and_queens(c)) ||
-    (this->bishop_attacks(s) & this->bishops_and_queens(c));
+    (pawn_attacks(opposite_color(c), s) & pawns(c)) ||
+    (knight_attacks(s) & knights(c)) ||
+    (king_attacks(s) & kings(c)) ||
+    (rook_attacks(s) & rooks_and_queens(c)) ||
+    (bishop_attacks(s) & bishops_and_queens(c));
 }
 
 
@@ -380,16 +375,16 @@ bool Position::square_is_attacked(Square s, Color c) const {
 
 Bitboard Position::attacks_to(Square s) const {
   return
-    (this->black_pawn_attacks(s) & this->pawns(WHITE)) |
-    (this->white_pawn_attacks(s) & this->pawns(BLACK)) |
-    (this->knight_attacks(s) & this->pieces_of_type(KNIGHT)) |
-    (this->rook_attacks(s) & this->rooks_and_queens()) |
-    (this->bishop_attacks(s) & this->bishops_and_queens()) |
-    (this->king_attacks(s) & this->pieces_of_type(KING));
+    (black_pawn_attacks(s) & pawns(WHITE)) |
+    (white_pawn_attacks(s) & pawns(BLACK)) |
+    (knight_attacks(s) & pieces_of_type(KNIGHT)) |
+    (rook_attacks(s) & rooks_and_queens()) |
+    (bishop_attacks(s) & bishops_and_queens()) |
+    (king_attacks(s) & pieces_of_type(KING));
 }
 
 Bitboard Position::attacks_to(Square s, Color c) const {
-  return this->attacks_to(s) & this->pieces_of_color(c);
+  return attacks_to(s) & pieces_of_color(c);
 }
 
 
@@ -400,14 +395,14 @@ bool Position::piece_attacks_square(Square f, Square t) const {
   assert(square_is_ok(f));
   assert(square_is_ok(t));
 
-  switch(this->piece_on(f)) {
-  case WP: return this->white_pawn_attacks_square(f, t);
-  case BP: return this->black_pawn_attacks_square(f, t);
-  case WN: case BN: return this->knight_attacks_square(f, t);
-  case WB: case BB: return this->bishop_attacks_square(f, t);
-  case WR: case BR: return this->rook_attacks_square(f, t);
-  case WQ: case BQ: return this->queen_attacks_square(f, t);
-  case WK: case BK: return this->king_attacks_square(f, t);
+  switch(piece_on(f)) {
+  case WP: return white_pawn_attacks_square(f, t);
+  case BP: return black_pawn_attacks_square(f, t);
+  case WN: case BN: return knight_attacks_square(f, t);
+  case WB: case BB: return bishop_attacks_square(f, t);
+  case WR: case BR: return rook_attacks_square(f, t);
+  case WQ: case BQ: return queen_attacks_square(f, t);
+  case WK: case BK: return king_attacks_square(f, t);
   default: return false;
   }
 
@@ -422,8 +417,8 @@ bool Position::piece_attacks_square(Square f, Square t) const {
 /// played, like in non-bitboard versions of Glaurung.
 
 void Position::find_checkers() {
-  checkersBB = attacks_to(this->king_square(this->side_to_move()),
-                          opposite_color(this->side_to_move()));
+  checkersBB = attacks_to(king_square(side_to_move()),
+                          opposite_color(side_to_move()));
 }
 
 
@@ -434,7 +429,7 @@ void Position::find_checkers() {
 /// when a pinned piece bitboard has already been computed.
 
 bool Position::move_is_legal(Move m)  const {
-  return this->move_is_legal(m, this->pinned_pieces(this->side_to_move()));
+  return move_is_legal(m, pinned_pieces(side_to_move()));
 }
 
 
@@ -442,25 +437,25 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
   Color us, them;
   Square ksq, from;
 
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
-  assert(pinned == this->pinned_pieces(this->side_to_move()));
+  assert(pinned == pinned_pieces(side_to_move()));
 
   // If we're in check, all pseudo-legal moves are legal, because our
   // check evasion generator only generates true legal moves.
-  if(this->is_check()) return true;
+  if(is_check()) return true;
 
   // Castling moves are checked for legality during move generation.
   if(move_is_castle(m)) return true;
 
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   from = move_from(m);
-  ksq = this->king_square(us);
+  ksq = king_square(us);
 
-  assert(this->color_of_piece_on(from) == us);
-  assert(this->piece_on(ksq) == king_of_color(us));
+  assert(color_of_piece_on(from) == us);
+  assert(piece_on(ksq) == king_of_color(us));
 
   // En passant captures are a tricky special case.  Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
@@ -468,22 +463,22 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
   if(move_is_ep(m)) {
     Square to = move_to(m);
     Square capsq = make_square(square_file(to), square_rank(from));
-    Bitboard b = this->occupied_squares();
+    Bitboard b = occupied_squares();
 
-    assert(to == this->ep_square());
-    assert(this->piece_on(from) == pawn_of_color(us));
-    assert(this->piece_on(capsq) == pawn_of_color(them));
-    assert(this->piece_on(to) == EMPTY);
+    assert(to == ep_square());
+    assert(piece_on(from) == pawn_of_color(us));
+    assert(piece_on(capsq) == pawn_of_color(them));
+    assert(piece_on(to) == EMPTY);
 
     clear_bit(&b, from); clear_bit(&b, capsq); set_bit(&b, to);
     return
-      (!(rook_attacks_bb(ksq, b) & this->rooks_and_queens(them)) &&
-       !(bishop_attacks_bb(ksq, b) & this->bishops_and_queens(them)));
+      (!(rook_attacks_bb(ksq, b) & rooks_and_queens(them)) &&
+       !(bishop_attacks_bb(ksq, b) & bishops_and_queens(them)));
   }
 
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
-  if(from == ksq) return !(this->square_is_attacked(move_to(m), them));
+  if(from == ksq) return !(square_is_attacked(move_to(m), them));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -503,8 +498,8 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
 /// when a discovered check candidates bitboard has already been computed.
 
 bool Position::move_is_check(Move m) const {
-  Bitboard dc = this->discovered_check_candidates(this->side_to_move());
-  return this->move_is_check(m, dc);
+  Bitboard dc = discovered_check_candidates(side_to_move());
+  return move_is_check(m, dc);
 }
 
 
@@ -512,25 +507,25 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   Color us, them;
   Square ksq, from, to;
 
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
   assert(dcCandidates ==
-         this->discovered_check_candidates(this->side_to_move()));
+         discovered_check_candidates(side_to_move()));
 
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   from = move_from(m);
   to = move_to(m);
-  ksq = this->king_square(them);
-  assert(this->color_of_piece_on(from) == us);
-  assert(this->piece_on(ksq) == king_of_color(them));
+  ksq = king_square(them);
+  assert(color_of_piece_on(from) == us);
+  assert(piece_on(ksq) == king_of_color(them));
 
   // Proceed according to the type of the moving piece:
-  switch(this->type_of_piece_on(from)) {
+  switch(type_of_piece_on(from)) {
   case PAWN:
     // Normal check?
-    if(bit_is_set(this->pawn_attacks(them, ksq), to))
+    if(bit_is_set(pawn_attacks(them, ksq), to))
       return true;
     // Discovered check?
     else if(bit_is_set(dcCandidates, from) &&
@@ -539,12 +534,12 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Promotion with check?
     else if(move_promotion(m)) {
-      Bitboard b = this->occupied_squares();
+      Bitboard b = occupied_squares();
       clear_bit(&b, from);
 
       switch(move_promotion(m)) {
       case KNIGHT:
-        return this->knight_attacks_square(to, ksq);
+        return knight_attacks_square(to, ksq);
       case BISHOP:
         return bit_is_set(bishop_attacks_bb(to, b), ksq);
       case ROOK:
@@ -561,12 +556,12 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
     // captured pawn.
     else if(move_is_ep(m)) {
       Square capsq = make_square(square_file(to), square_rank(from));
-      Bitboard b = this->occupied_squares();
+      Bitboard b = occupied_squares();
 
       clear_bit(&b, from); clear_bit(&b, capsq); set_bit(&b, to);
       return
-        ((rook_attacks_bb(ksq, b) & this->rooks_and_queens(us)) ||
-         (bishop_attacks_bb(ksq, b) & this->bishops_and_queens(us)));
+        ((rook_attacks_bb(ksq, b) & rooks_and_queens(us)) ||
+         (bishop_attacks_bb(ksq, b) & bishops_and_queens(us)));
     }
     return false;
 
@@ -576,7 +571,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Normal check?
     else
-      return bit_is_set(this->knight_attacks(ksq), to);
+      return bit_is_set(knight_attacks(ksq), to);
 
   case BISHOP:
     // Discovered check?
@@ -584,7 +579,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Normal check?
     else
-      return bit_is_set(this->bishop_attacks(ksq), to);
+      return bit_is_set(bishop_attacks(ksq), to);
 
   case ROOK:
     // Discovered check?
@@ -592,13 +587,13 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Normal check?
     else
-      return bit_is_set(this->rook_attacks(ksq), to);
+      return bit_is_set(rook_attacks(ksq), to);
 
   case QUEEN:
     // Discovered checks are impossible!
     assert(!bit_is_set(dcCandidates, from));
     // Normal check?
-    return bit_is_set(this->queen_attacks(ksq), to);
+    return bit_is_set(queen_attacks(ksq), to);
 
   case KING:
     // Discovered check?
@@ -609,7 +604,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
     // Castling with check?
     if(move_is_castle(m)) {
       Square kfrom, kto, rfrom, rto;
-      Bitboard b = this->occupied_squares();
+      Bitboard b = occupied_squares();
 
       kfrom = from;
       rfrom = to;
@@ -645,7 +640,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
 bool Position::move_is_capture(Move m) const {
   return
-    this->color_of_piece_on(move_to(m)) == opposite_color(this->side_to_move())
+    color_of_piece_on(move_to(m)) == opposite_color(side_to_move())
     || move_is_ep(m);
 }
 
@@ -660,16 +655,16 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
   Square f = move_from(m), t = move_to(m);
 
-  assert(this->square_is_occupied(f));
+  assert(square_is_occupied(f));
 
-  switch(this->piece_on(f)) {
-  case WP: return this->white_pawn_attacks_square(t, s);
-  case BP: return this->black_pawn_attacks_square(t, s);
-  case WN: case BN: return this->knight_attacks_square(t, s);
-  case WB: case BB: return this->bishop_attacks_square(t, s);
-  case WR: case BR: return this->rook_attacks_square(t, s);
-  case WQ: case BQ: return this->queen_attacks_square(t, s);
-  case WK: case BK: return this->king_attacks_square(t, s);
+  switch(piece_on(f)) {
+  case WP: return white_pawn_attacks_square(t, s);
+  case BP: return black_pawn_attacks_square(t, s);
+  case WN: case BN: return knight_attacks_square(t, s);
+  case WB: case BB: return bishop_attacks_square(t, s);
+  case WR: case BR: return rook_attacks_square(t, s);
+  case WQ: case BQ: return queen_attacks_square(t, s);
+  case WK: case BK: return king_attacks_square(t, s);
   default: assert(false);
   }
 
@@ -727,16 +722,16 @@ void Position::restore(const UndoInfo &u) {
 /// member variable in the position object.
 
 void Position::do_move(Move m, UndoInfo &u) {
-  this->do_move(m, u, this->discovered_check_candidates(this->side_to_move()));
+  do_move(m, u, discovered_check_candidates(side_to_move()));
 }
 
 void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
 
   // Back up the necessary information to our UndoInfo object (except the
   // captured piece, which is taken care of later:
-  this->backup(u);
+  backup(u);
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws:
@@ -747,27 +742,27 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
   rule50++;
 
   if(move_is_castle(m))
-    this->do_castle_move(m);
+    do_castle_move(m);
   else if(move_promotion(m))
-    this->do_promotion_move(m, u);
+    do_promotion_move(m, u);
   else if(move_is_ep(m))
-    this->do_ep_move(m);
+    do_ep_move(m);
   else {
     Color us, them;
     Square from, to;
     PieceType piece, capture;
 
-    us = this->side_to_move();
+    us = side_to_move();
     them = opposite_color(us);
 
     from = move_from(m);
     to = move_to(m);
 
-    assert(this->color_of_piece_on(from) == us);
-    assert(this->color_of_piece_on(to) == them || this->piece_on(to) == EMPTY);
+    assert(color_of_piece_on(from) == us);
+    assert(color_of_piece_on(to) == them || piece_on(to) == EMPTY);
 
-    piece = this->type_of_piece_on(from);
-    capture = this->type_of_piece_on(to);
+    piece = type_of_piece_on(from);
+    capture = type_of_piece_on(to);
 
     if(capture) {
       assert(capture != KING);
@@ -784,8 +779,8 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
         pawnKey ^= zobrist[them][PAWN][to];
 
       // Update incremental scores:
-      mgValue -= this->mg_pst(them, capture, to);
-      egValue -= this->eg_pst(them, capture, to);
+      mgValue -= mg_pst(them, capture, to);
+      egValue -= eg_pst(them, capture, to);
 
       // Update material:
       if(capture != PAWN)
@@ -824,10 +819,10 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
     key ^= zobrist[us][piece][from] ^ zobrist[us][piece][to];
 
     // Update incremental scores:
-    mgValue -= this->mg_pst(us, piece, from);
-    mgValue += this->mg_pst(us, piece, to);
-    egValue -= this->eg_pst(us, piece, from);
-    egValue += this->eg_pst(us, piece, to);
+    mgValue -= mg_pst(us, piece, from);
+    mgValue += mg_pst(us, piece, to);
+    egValue -= eg_pst(us, piece, from);
+    egValue += eg_pst(us, piece, to);
 
     // If the moving piece was a king, update the king square:
     if(piece == KING)
@@ -842,10 +837,10 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
     }
     if(piece == PAWN) {
       if(abs(int(to) - int(from)) == 16) {
-        if((us == WHITE && (this->white_pawn_attacks(from + DELTA_N) &
-                            this->pawns(BLACK))) ||
-           (us == BLACK && (this->black_pawn_attacks(from + DELTA_S) &
-                            this->pawns(WHITE)))) {
+        if((us == WHITE && (white_pawn_attacks(from + DELTA_N) &
+                            pawns(BLACK))) ||
+           (us == BLACK && (black_pawn_attacks(from + DELTA_S) &
+                            pawns(WHITE)))) {
           epSquare = Square((int(from) + int(to)) / 2);
           key ^= zobEp[epSquare];
         }
@@ -868,54 +863,54 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
 
     // Update checkers bitboard:
     checkersBB = EmptyBoardBB;
-    Square ksq = this->king_square(them);
+    Square ksq = king_square(them);
 
     switch(piece) {
 
     case PAWN:
-      if(bit_is_set(this->pawn_attacks(them, ksq), to))
+      if(bit_is_set(pawn_attacks(them, ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          ((this->rook_attacks(ksq) & this->rooks_and_queens(us)) |
-           (this->bishop_attacks(ksq) & this->bishops_and_queens(us)));
+          ((rook_attacks(ksq) & rooks_and_queens(us)) |
+           (bishop_attacks(ksq) & bishops_and_queens(us)));
       break;
 
     case KNIGHT:
-      if(bit_is_set(this->knight_attacks(ksq), to))
+      if(bit_is_set(knight_attacks(ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          ((this->rook_attacks(ksq) & this->rooks_and_queens(us)) |
-           (this->bishop_attacks(ksq) & this->bishops_and_queens(us)));
+          ((rook_attacks(ksq) & rooks_and_queens(us)) |
+           (bishop_attacks(ksq) & bishops_and_queens(us)));
       break;
 
     case BISHOP:
-      if(bit_is_set(this->bishop_attacks(ksq), to))
+      if(bit_is_set(bishop_attacks(ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          (this->rook_attacks(ksq) & this->rooks_and_queens(us));
+          (rook_attacks(ksq) & rooks_and_queens(us));
       break;
 
     case ROOK:
-      if(bit_is_set(this->rook_attacks(ksq), to))
+      if(bit_is_set(rook_attacks(ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          (this->bishop_attacks(ksq) & this->bishops_and_queens(us));
+          (bishop_attacks(ksq) & bishops_and_queens(us));
       break;
 
     case QUEEN:
-      if(bit_is_set(this->queen_attacks(ksq), to))
+      if(bit_is_set(queen_attacks(ksq), to))
         set_bit(&checkersBB, to);
       break;
 
     case KING:
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          ((this->rook_attacks(ksq) & this->rooks_and_queens(us)) |
-           (this->bishop_attacks(ksq) & this->bishops_and_queens(us)));
+          ((rook_attacks(ksq) & rooks_and_queens(us)) |
+           (bishop_attacks(ksq) & bishops_and_queens(us)));
       break;
 
     default:
@@ -932,7 +927,7 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
   mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
-  assert(this->is_ok());
+  assert(is_ok());
 }
 
 
@@ -945,19 +940,19 @@ void Position::do_castle_move(Move m) {
   Color us, them;
   Square kfrom, kto, rfrom, rto;
 
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
   assert(move_is_castle(m));
 
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   // Find source squares for king and rook:
   kfrom = move_from(m);
   rfrom = move_to(m);  // HACK: See comment at beginning of function.
 
-  assert(this->piece_on(kfrom) == king_of_color(us));
-  assert(this->piece_on(rfrom) == rook_of_color(us));
+  assert(piece_on(kfrom) == king_of_color(us));
+  assert(piece_on(rfrom) == rook_of_color(us));
 
   // Find destination squares for king and rook:
   if(rfrom > kfrom) { // O-O
@@ -1001,14 +996,14 @@ void Position::do_castle_move(Move m) {
   index[rto] = tmp;
 
   // Update incremental scores:
-  mgValue -= this->mg_pst(us, KING, kfrom);
-  mgValue += this->mg_pst(us, KING, kto);
-  egValue -= this->eg_pst(us, KING, kfrom);
-  egValue += this->eg_pst(us, KING, kto);
-  mgValue -= this->mg_pst(us, ROOK, rfrom);
-  mgValue += this->mg_pst(us, ROOK, rto);
-  egValue -= this->eg_pst(us, ROOK, rfrom);
-  egValue += this->eg_pst(us, ROOK, rto);
+  mgValue -= mg_pst(us, KING, kfrom);
+  mgValue += mg_pst(us, KING, kto);
+  egValue -= eg_pst(us, KING, kfrom);
+  egValue += eg_pst(us, KING, kto);
+  mgValue -= mg_pst(us, ROOK, rfrom);
+  mgValue += mg_pst(us, ROOK, rto);
+  egValue -= eg_pst(us, ROOK, rfrom);
+  egValue += eg_pst(us, ROOK, rto);
 
   // Update hash key:
   key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
@@ -1029,7 +1024,7 @@ void Position::do_castle_move(Move m) {
   rule50 = 0;
 
   // Update checkers BB:
-  checkersBB = attacks_to(this->king_square(them), us);
+  checkersBB = attacks_to(king_square(them), us);
 }
 
 
@@ -1043,21 +1038,21 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   Square from, to;
   PieceType capture, promotion;
 
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
   assert(move_promotion(m));
 
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   from = move_from(m);
   to = move_to(m);
 
   assert(relative_rank(us, to) == RANK_8);
-  assert(this->piece_on(from) == pawn_of_color(us));
-  assert(this->color_of_piece_on(to) == them || this->square_is_empty(to));
+  assert(piece_on(from) == pawn_of_color(us));
+  assert(color_of_piece_on(to) == them || square_is_empty(to));
 
-  capture = this->type_of_piece_on(to);
+  capture = type_of_piece_on(to);
 
   if(capture) {
     assert(capture != KING);
@@ -1070,8 +1065,8 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
     key ^= zobrist[them][capture][to];
 
     // Update incremental scores:
-    mgValue -= this->mg_pst(them, capture, to);
-    egValue -= this->eg_pst(them, capture, to);
+    mgValue -= mg_pst(them, capture, to);
+    egValue -= eg_pst(them, capture, to);
 
     // Update material.  Because our move is a promotion, we know that the
     // captured piece is not a pawn.
@@ -1130,10 +1125,10 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   index[to] = pieceCount[us][promotion] - 1;
 
   // Update incremental scores:
-  mgValue -= this->mg_pst(us, PAWN, from);
-  mgValue += this->mg_pst(us, promotion, to);
-  egValue -= this->eg_pst(us, PAWN, from);
-  egValue += this->eg_pst(us, promotion, to);
+  mgValue -= mg_pst(us, PAWN, from);
+  mgValue += mg_pst(us, promotion, to);
+  egValue -= eg_pst(us, PAWN, from);
+  egValue += eg_pst(us, promotion, to);
 
   // Update material:
   npMaterial[us] += piece_value_midgame(promotion);
@@ -1153,7 +1148,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   rule50 = 0;
 
   // Update checkers BB:
-  checkersBB = attacks_to(this->king_square(them), us);
+  checkersBB = attacks_to(king_square(them), us);
 }
 
 
@@ -1166,11 +1161,11 @@ void Position::do_ep_move(Move m) {
   Color us, them;
   Square from, to, capsq;
 
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
   assert(move_is_ep(m));
 
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   // Find from, to and capture squares:
@@ -1180,9 +1175,9 @@ void Position::do_ep_move(Move m) {
 
   assert(to == epSquare);
   assert(relative_rank(us, to) == RANK_6);
-  assert(this->piece_on(to) == EMPTY);
-  assert(this->piece_on(from) == pawn_of_color(us));
-  assert(this->piece_on(capsq) == pawn_of_color(them));
+  assert(piece_on(to) == EMPTY);
+  assert(piece_on(from) == pawn_of_color(us));
+  assert(piece_on(capsq) == pawn_of_color(them));
 
   // Remove captured piece:
   clear_bit(&(byColorBB[them]), capsq);
@@ -1225,12 +1220,12 @@ void Position::do_ep_move(Move m) {
   pawnKey ^= zobrist[them][PAWN][capsq];
 
   // Update incremental scores:
-  mgValue -= this->mg_pst(them, PAWN, capsq);
-  mgValue -= this->mg_pst(us, PAWN, from);
-  mgValue += this->mg_pst(us, PAWN, to);
-  egValue -= this->eg_pst(them, PAWN, capsq);
-  egValue -= this->eg_pst(us, PAWN, from);
-  egValue += this->eg_pst(us, PAWN, to);
+  mgValue -= mg_pst(them, PAWN, capsq);
+  mgValue -= mg_pst(us, PAWN, from);
+  mgValue += mg_pst(us, PAWN, to);
+  egValue -= eg_pst(them, PAWN, capsq);
+  egValue -= eg_pst(us, PAWN, from);
+  egValue += eg_pst(us, PAWN, to);
 
   // Reset en passant square:
   epSquare = SQ_NONE;
@@ -1239,7 +1234,7 @@ void Position::do_ep_move(Move m) {
   rule50 = 0;
 
   // Update checkers BB:
-  checkersBB = attacks_to(this->king_square(them), us);
+  checkersBB = attacks_to(king_square(them), us);
 }
 
 
@@ -1249,7 +1244,7 @@ void Position::do_ep_move(Move m) {
 /// object as the earlier call to Position::do_move.
 
 void Position::undo_move(Move m, const UndoInfo &u) {
-  assert(this->is_ok());
+  assert(is_ok());
   assert(move_is_ok(m));
 
   gamePly--;
@@ -1257,30 +1252,30 @@ void Position::undo_move(Move m, const UndoInfo &u) {
 
   // Restore information from our UndoInfo object (except the captured piece,
   // which is taken care of later):
-  this->restore(u);
+  restore(u);
 
   if(move_is_castle(m))
-    this->undo_castle_move(m);
+    undo_castle_move(m);
   else if(move_promotion(m))
-    this->undo_promotion_move(m, u);
+    undo_promotion_move(m, u);
   else if(move_is_ep(m))
-    this->undo_ep_move(m);
+    undo_ep_move(m);
   else {
     Color us, them;
     Square from, to;
     PieceType piece, capture;
 
-    us = this->side_to_move();
+    us = side_to_move();
     them = opposite_color(us);
 
     from = move_from(m);
     to = move_to(m);
 
-    assert(this->piece_on(from) == EMPTY);
+    assert(piece_on(from) == EMPTY);
     assert(color_of_piece_on(to) == us);
 
     // Put the piece back at the source square:
-    piece = this->type_of_piece_on(to);
+    piece = type_of_piece_on(to);
     set_bit(&(byColorBB[us]), from);
     set_bit(&(byTypeBB[piece]), from);
     set_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
@@ -1324,7 +1319,7 @@ void Position::undo_move(Move m, const UndoInfo &u) {
       board[to] = EMPTY;
   }
 
-  assert(this->is_ok());
+  assert(is_ok());
 }
 
 
@@ -1343,7 +1338,7 @@ void Position::undo_castle_move(Move m) {
   // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   // Find source squares for king and rook:
@@ -1360,8 +1355,8 @@ void Position::undo_castle_move(Move m) {
     rto = relative_square(us, SQ_D1);
   }
 
-  assert(this->piece_on(kto) == king_of_color(us));
-  assert(this->piece_on(rto) == rook_of_color(us));
+  assert(piece_on(kto) == king_of_color(us));
+  assert(piece_on(rto) == rook_of_color(us));
 
   // Remove pieces from destination squares:
   clear_bit(&(byColorBB[us]), kto);
@@ -1412,18 +1407,18 @@ void Position::undo_promotion_move(Move m, const UndoInfo &u) {
   // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   from = move_from(m);
   to = move_to(m);
 
   assert(relative_rank(us, to) == RANK_8);
-  assert(this->piece_on(from) == EMPTY);
+  assert(piece_on(from) == EMPTY);
 
   // Remove promoted piece:
   promotion = move_promotion(m);
-  assert(this->piece_on(to)==piece_of_color_and_type(us, promotion));
+  assert(piece_on(to)==piece_of_color_and_type(us, promotion));
   assert(promotion >= KNIGHT && promotion <= QUEEN);
   clear_bit(&(byColorBB[us]), to);
   clear_bit(&(byTypeBB[promotion]), to);
@@ -1491,7 +1486,7 @@ void Position::undo_ep_move(Move m) {
   // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
-  us = this->side_to_move();
+  us = side_to_move();
   them = opposite_color(us);
 
   // Find from, to and captures squares:
@@ -1499,11 +1494,11 @@ void Position::undo_ep_move(Move m) {
   to = move_to(m);
   capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
 
-  assert(to == this->ep_square());
+  assert(to == ep_square());
   assert(relative_rank(us, to) == RANK_6);
-  assert(this->piece_on(to) == pawn_of_color(us));
-  assert(this->piece_on(from) == EMPTY);
-  assert(this->piece_on(capsq) == EMPTY);
+  assert(piece_on(to) == pawn_of_color(us));
+  assert(piece_on(from) == EMPTY);
+  assert(piece_on(capsq) == EMPTY);
 
   // Replace captured piece:
   set_bit(&(byColorBB[them]), capsq);
@@ -1538,8 +1533,8 @@ void Position::undo_ep_move(Move m) {
 /// and updates the hash key without executing any move on the board.
 
 void Position::do_null_move(UndoInfo &u) {
-  assert(this->is_ok());
-  assert(!this->is_check());
+  assert(is_ok());
+  assert(!is_check());
 
   // Back up the information necessary to undo the null move to the supplied
   // UndoInfo object.  In the case of a null move, the only thing we need to
@@ -1563,15 +1558,15 @@ void Position::do_null_move(UndoInfo &u) {
   mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
-  assert(this->is_ok());
+  assert(is_ok());
 }
 
 
 /// Position::undo_null_move() unmakes a "null move".
 
 void Position::undo_null_move(const UndoInfo &u) {
-  assert(this->is_ok());
-  assert(!this->is_check());
+  assert(is_ok());
+  assert(!is_check());
 
   // Restore information from the supplied UndoInfo object:
   lastMove = u.lastMove;
@@ -1588,7 +1583,7 @@ void Position::undo_null_move(const UndoInfo &u) {
   mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
-  assert(this->is_ok());
+  assert(is_ok());
 }
 
 
@@ -1611,28 +1606,28 @@ int Position::see(Square from, Square to) const {
   assert(square_is_ok(to));
 
   // Initialize colors:
-  us = this->color_of_piece_on(from);
+  us = color_of_piece_on(from);
   them = opposite_color(us);
 
   // Initialize pieces:
-  piece = this->piece_on(from);
-  capture = this->piece_on(to);
+  piece = piece_on(from);
+  capture = piece_on(to);
 
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it:
-  occ = this->occupied_squares();
+  occ = occupied_squares();
   clear_bit(&occ, from);
   attackers =
-    (rook_attacks_bb(to, occ) & this->rooks_and_queens()) |
-    (bishop_attacks_bb(to, occ) & this->bishops_and_queens()) |
-    (this->knight_attacks(to) & this->knights()) |
-    (this->king_attacks(to) & this->kings()) |
-    (this->white_pawn_attacks(to) & this->pawns(BLACK)) |
-    (this->black_pawn_attacks(to) & this->pawns(WHITE));
+    (rook_attacks_bb(to, occ) & rooks_and_queens()) |
+    (bishop_attacks_bb(to, occ) & bishops_and_queens()) |
+    (knight_attacks(to) & knights()) |
+    (king_attacks(to) & kings()) |
+    (white_pawn_attacks(to) & pawns(BLACK)) |
+    (black_pawn_attacks(to) & pawns(WHITE));
   attackers &= occ;
 
   // If the opponent has no attackers, we are finished:
-  if((attackers & this->pieces_of_color(them)) == EmptyBoardBB)
+  if((attackers & pieces_of_color(them)) == EmptyBoardBB)
     return seeValues[capture];
 
   // The destination square is defended, which makes things rather more
@@ -1652,16 +1647,16 @@ int Position::see(Square from, Square to) const {
     // Locate the least valuable attacker for the side to move.  The loop
     // below looks like it is potentially infinite, but it isn't.  We know
     // that the side to move still has at least one attacker left.
-    for(pt = PAWN; !(attackers&this->pieces_of_color_and_type(c, pt)); pt++)
+    for(pt = PAWN; !(attackers&pieces_of_color_and_type(c, pt)); pt++)
       assert(pt < KING);
 
     // Remove the attacker we just found from the 'attackers' bitboard,
     // and scan for new X-ray attacks behind the attacker:
-    b = attackers & this->pieces_of_color_and_type(c, pt);
+    b = attackers & pieces_of_color_and_type(c, pt);
     occ ^= (b & -b);
     attackers |=
-      (rook_attacks_bb(to, occ) & this->rooks_and_queens()) |
-      (bishop_attacks_bb(to, occ) & this->bishops_and_queens());
+      (rook_attacks_bb(to, occ) & rooks_and_queens()) |
+      (bishop_attacks_bb(to, occ) & bishops_and_queens());
     attackers &= occ;
 
     // Add the new entry to the swap list:
@@ -1675,12 +1670,12 @@ int Position::see(Square from, Square to) const {
     c = opposite_color(c);
 
     // Stop after a king capture:
-    if(pt == KING && (attackers & this->pieces_of_color(c))) {
+    if(pt == KING && (attackers & pieces_of_color(c))) {
       assert(n < 32);
       swapList[n++] = 100;
       break;
     }
-  } while(attackers & this->pieces_of_color(c));
+  } while(attackers & pieces_of_color(c));
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move:
@@ -1692,7 +1687,7 @@ int Position::see(Square from, Square to) const {
 
 int Position::see(Move m) const {
   assert(move_is_ok(m));
-  return this->see(move_from(m), move_to(m));
+  return see(move_from(m), move_to(m));
 }
 
 
@@ -1790,14 +1785,14 @@ Key Position::compute_key() const {
   Key result = Key(0ULL);
 
   for(Square s = SQ_A1; s <= SQ_H8; s++)
-    if(this->square_is_occupied(s))
+    if(square_is_occupied(s))
       result ^=
-        zobrist[this->color_of_piece_on(s)][this->type_of_piece_on(s)][s];
+        zobrist[color_of_piece_on(s)][type_of_piece_on(s)][s];
 
-  if(this->ep_square() != SQ_NONE)
-    result ^= zobEp[this->ep_square()];
+  if(ep_square() != SQ_NONE)
+    result ^= zobEp[ep_square()];
   result ^= zobCastle[castleRights];
-  if(this->side_to_move() == BLACK) result ^= zobSideToMove;
+  if(side_to_move() == BLACK) result ^= zobSideToMove;
 
   return result;
 }
@@ -1815,7 +1810,7 @@ Key Position::compute_pawn_key() const {
   Square s;
 
   for(Color c = WHITE; c <= BLACK; c++) {
-    b = this->pawns(c);
+    b = pawns(c);
     while(b) {
       s = pop_1st_bit(&b);
       result ^= zobrist[c][PAWN][s];
@@ -1835,7 +1830,7 @@ Key Position::compute_material_key() const {
   Key result = Key(0ULL);
   for(Color c = WHITE; c <= BLACK; c++)
     for(PieceType pt = PAWN; pt <= QUEEN; pt++) {
-      int count = this->piece_count(c, pt);
+      int count = piece_count(c, pt);
       for(int i = 0; i <= count; i++)
         result ^= zobMaterial[c][pt][i];
     }
@@ -1856,14 +1851,14 @@ Value Position::compute_mg_value() const {
 
   for(Color c = WHITE; c <= BLACK; c++)
     for(PieceType pt = PAWN; pt <= KING; pt++) {
-      b = this->pieces_of_color_and_type(c, pt);
+      b = pieces_of_color_and_type(c, pt);
       while(b) {
         s = pop_1st_bit(&b);
-        assert(this->piece_on(s) == piece_of_color_and_type(c, pt));
-        result += this->mg_pst(c, pt, s);
+        assert(piece_on(s) == piece_of_color_and_type(c, pt));
+        result += mg_pst(c, pt, s);
       }
     }
-  result += (this->side_to_move() == WHITE)?
+  result += (side_to_move() == WHITE)?
     (TempoValueMidgame / 2) : -(TempoValueMidgame / 2);
   return result;
 }
@@ -1875,14 +1870,14 @@ Value Position::compute_eg_value() const {
 
   for(Color c = WHITE; c <= BLACK; c++)
     for(PieceType pt = PAWN; pt <= KING; pt++) {
-      b = this->pieces_of_color_and_type(c, pt);
+      b = pieces_of_color_and_type(c, pt);
       while(b) {
         s = pop_1st_bit(&b);
-        assert(this->piece_on(s) == piece_of_color_and_type(c, pt));
-        result += this->eg_pst(c, pt, s);
+        assert(piece_on(s) == piece_of_color_and_type(c, pt));
+        result += eg_pst(c, pt, s);
       }
     }
-  result += (this->side_to_move() == WHITE)?
+  result += (side_to_move() == WHITE)?
     (TempoValueEndgame / 2) : -(TempoValueEndgame / 2);
   return result;
 }
@@ -1898,10 +1893,10 @@ Value Position::compute_non_pawn_material(Color c) const {
   Square s;
 
   for(PieceType pt = KNIGHT; pt <= QUEEN; pt++) {
-    Bitboard b = this->pieces_of_color_and_type(c, pt);
+    Bitboard b = pieces_of_color_and_type(c, pt);
     while(b) {
       s = pop_1st_bit(&b);
-      assert(this->piece_on(s) == piece_of_color_and_type(c, pt));
+      assert(piece_on(s) == piece_of_color_and_type(c, pt));
       result += piece_value_midgame(pt);
     }
   }
@@ -1914,7 +1909,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 /// slow, and shouldn't be used frequently inside the search.
 
 bool Position::is_mate() {
-  if(this->is_check()) {
+  if(is_check()) {
     MovePicker mp = MovePicker(*this, false, MOVE_NONE, MOVE_NONE, MOVE_NONE,
                                MOVE_NONE, Depth(0));
     return mp.get_next_move() == MOVE_NONE;
@@ -1930,13 +1925,13 @@ bool Position::is_mate() {
 
 bool Position::is_draw() const {
   // Draw by material?
-  if(!this->pawns() &&
-     this->non_pawn_material(WHITE) + this->non_pawn_material(BLACK)
+  if(!pawns() &&
+     non_pawn_material(WHITE) + non_pawn_material(BLACK)
      <= BishopValueMidgame)
     return true;
 
   // Draw by the 50 moves rule?
-  if(rule50 > 100 || (rule50 == 100 && !this->is_check()))
+  if(rule50 > 100 || (rule50 == 100 && !is_check()))
     return true;
 
   // Draw by repetition?
@@ -1954,7 +1949,7 @@ bool Position::is_draw() const {
 
 bool Position::has_mate_threat(Color c) {
   UndoInfo u1, u2;
-  Color stm = this->side_to_move();
+  Color stm = side_to_move();
 
   // The following lines are useless and silly, but prevents gcc from
   // emitting a stupid warning stating that u1.lastMove and u1.epSquare might
@@ -1962,11 +1957,11 @@ bool Position::has_mate_threat(Color c) {
   u1.lastMove = lastMove;
   u1.epSquare = epSquare;
 
-  if(this->is_check())
+  if(is_check())
     return false;
 
   // If the input color is not equal to the side to move, do a null move
-  if(c != stm) this->do_null_move(u1);
+  if(c != stm) do_null_move(u1);
 
   MoveStack mlist[120];
   int count;
@@ -1977,13 +1972,13 @@ bool Position::has_mate_threat(Color c) {
 
   // Loop through the moves, and see if one of them is mate.
   for(int i = 0; i < count; i++) {
-    this->do_move(mlist[i].move, u2);
-    if(this->is_mate()) result = true;
-    this->undo_move(mlist[i].move, u2);
+    do_move(mlist[i].move, u2);
+    if(is_mate()) result = true;
+    undo_move(mlist[i].move, u2);
   }
 
   // Undo null move, if necessary
-  if(c != stm) this->undo_null_move(u1);
+  if(c != stm) undo_null_move(u1);
 
   return result;
 }
@@ -2048,21 +2043,21 @@ void Position::init_piece_square_tables() {
 void Position::flipped_copy(const Position &pos) {
   assert(pos.is_ok());
 
-  this->clear();
+  clear();
 
   // Board
   for(Square s = SQ_A1; s <= SQ_H8; s++)
     if(!pos.square_is_empty(s))
-      this->put_piece(Piece(int(pos.piece_on(s)) ^ 8), flip_square(s));
+      put_piece(Piece(int(pos.piece_on(s)) ^ 8), flip_square(s));
 
   // Side to move
   sideToMove = opposite_color(pos.side_to_move());
 
   // Castling rights
-  if(pos.can_castle_kingside(WHITE)) this->allow_oo(BLACK);
-  if(pos.can_castle_queenside(WHITE)) this->allow_ooo(BLACK);
-  if(pos.can_castle_kingside(BLACK)) this->allow_oo(WHITE);
-  if(pos.can_castle_queenside(BLACK)) this->allow_ooo(WHITE);
+  if(pos.can_castle_kingside(WHITE)) allow_oo(BLACK);
+  if(pos.can_castle_queenside(WHITE)) allow_ooo(BLACK);
+  if(pos.can_castle_kingside(BLACK)) allow_oo(WHITE);
+  if(pos.can_castle_queenside(BLACK)) allow_ooo(WHITE);
 
   initialKFile = pos.initialKFile;
   initialKRFile = pos.initialKRFile;
@@ -2082,22 +2077,22 @@ void Position::flipped_copy(const Position &pos) {
     epSquare = flip_square(pos.epSquare);
 
   // Checkers
-  this->find_checkers();
+  find_checkers();
 
   // Hash keys
-  key = this->compute_key();
-  pawnKey = this->compute_pawn_key();
-  materialKey = this->compute_material_key();
+  key = compute_key();
+  pawnKey = compute_pawn_key();
+  materialKey = compute_material_key();
 
   // Incremental scores
-  mgValue = this->compute_mg_value();
-  egValue = this->compute_eg_value();
+  mgValue = compute_mg_value();
+  egValue = compute_eg_value();
 
   // Material
-  npMaterial[WHITE] = this->compute_non_pawn_material(WHITE);
-  npMaterial[BLACK] = this->compute_non_pawn_material(BLACK);
+  npMaterial[WHITE] = compute_non_pawn_material(WHITE);
+  npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 
-  assert(this->is_ok());
+  assert(is_ok());
 }
 
 
@@ -2120,13 +2115,13 @@ bool Position::is_ok() const {
   static const bool debugPieceList = false;
 
   // Side to move OK?
-  if(!color_is_ok(this->side_to_move()))
+  if(!color_is_ok(side_to_move()))
     return false;
 
   // Are the king squares in the position correct?
-  if(this->piece_on(this->king_square(WHITE)) != WK)
+  if(piece_on(king_square(WHITE)) != WK)
     return false;
-  if(this->piece_on(this->king_square(BLACK)) != BK)
+  if(piece_on(king_square(BLACK)) != BK)
     return false;
 
   // Castle files OK?
@@ -2139,18 +2134,18 @@ bool Position::is_ok() const {
   if(debugKingCount) {
     int kingCount[2] = {0, 0};
     for(Square s = SQ_A1; s <= SQ_H8; s++)
-      if(this->type_of_piece_on(s) == KING)
-        kingCount[this->color_of_piece_on(s)]++;
+      if(type_of_piece_on(s) == KING)
+        kingCount[color_of_piece_on(s)]++;
     if(kingCount[0] != 1 || kingCount[1] != 1)
       return false;
   }
 
   // Can the side to move capture the opponent's king?
   if(debugKingCapture) {
-    Color us = this->side_to_move();
+    Color us = side_to_move();
     Color them = opposite_color(us);
-    Square ksq = this->king_square(them);
-    if(this->square_is_attacked(ksq, us))
+    Square ksq = king_square(them);
+    if(square_is_attacked(ksq, us))
       return false;
   }
 
@@ -2161,48 +2156,48 @@ bool Position::is_ok() const {
   // Bitboards OK?
   if(debugBitboards) {
     // The intersection of the white and black pieces must be empty:
-    if((this->pieces_of_color(WHITE) & this->pieces_of_color(BLACK))
+    if((pieces_of_color(WHITE) & pieces_of_color(BLACK))
        != EmptyBoardBB)
       return false;
 
     // The union of the white and black pieces must be equal to all
     // occupied squares:
-    if((this->pieces_of_color(WHITE) | this->pieces_of_color(BLACK))
-       != this->occupied_squares())
+    if((pieces_of_color(WHITE) | pieces_of_color(BLACK))
+       != occupied_squares())
       return false;
 
     // Separate piece type bitboards must have empty intersections:
     for(PieceType p1 = PAWN; p1 <= KING; p1++)
       for(PieceType p2 = PAWN; p2 <= KING; p2++)
-        if(p1 != p2 && (this->pieces_of_type(p1) & this->pieces_of_type(p2)))
+        if(p1 != p2 && (pieces_of_type(p1) & pieces_of_type(p2)))
           return false;
   }
 
   // En passant square OK?
-  if(this->ep_square() != SQ_NONE) {
+  if(ep_square() != SQ_NONE) {
     // The en passant square must be on rank 6, from the point of view of the
     // side to move.
-    if(relative_rank(this->side_to_move(), this->ep_square()) != RANK_6)
+    if(relative_rank(side_to_move(), ep_square()) != RANK_6)
       return false;
   }
 
   // Hash key OK?
-  if(debugKey && key != this->compute_key())
+  if(debugKey && key != compute_key())
     return false;
 
   // Pawn hash key OK?
-  if(debugPawnKey && pawnKey != this->compute_pawn_key())
+  if(debugPawnKey && pawnKey != compute_pawn_key())
     return false;
 
   // Material hash key OK?
-  if(debugMaterialKey && materialKey != this->compute_material_key())
+  if(debugMaterialKey && materialKey != compute_material_key())
     return false;
 
   // Incremental eval OK?
   if(debugIncrementalEval) {
-    if(mgValue != this->compute_mg_value())
+    if(mgValue != compute_mg_value())
       return false;
-    if(egValue != this->compute_eg_value())
+    if(egValue != compute_eg_value())
       return false;
   }
 
@@ -2218,17 +2213,17 @@ bool Position::is_ok() const {
   if(debugPieceCounts)
     for(Color c = WHITE; c <= BLACK; c++)
       for(PieceType pt = PAWN; pt <= KING; pt++)
-        if(pieceCount[c][pt] != count_1s(this->pieces_of_color_and_type(c, pt)))
+        if(pieceCount[c][pt] != count_1s(pieces_of_color_and_type(c, pt)))
           return false;
 
   if(debugPieceList) {
     for(Color c = WHITE; c <= BLACK; c++)
       for(PieceType pt = PAWN; pt <= KING; pt++)
         for(int i = 0; i < pieceCount[c][pt]; i++) {
-          if(this->piece_on(this->piece_list(c, pt, i)) !=
+          if(piece_on(piece_list(c, pt, i)) !=
              piece_of_color_and_type(c, pt))
             return false;
-          if(index[this->piece_list(c, pt, i)] != i)
+          if(index[piece_list(c, pt, i)] != i)
             return false;
         }
   }
