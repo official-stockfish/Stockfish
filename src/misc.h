@@ -64,5 +64,6 @@ extern long dbg_cnt1;
 extern void dbg_print_hit_rate();
 
 #define dbg_hit_on(x) { dbg_cnt0++; if (x) dbg_cnt1++; }
+#define dbg_hit_on_c(c, x) { if (c) dbg_hit_on(x) }
 
 #endif // !defined(MISC_H_INCLUDED)
