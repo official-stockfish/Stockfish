@@ -106,7 +106,7 @@ void Position::from_fen(const std::string &fen) {
 
   // Side to move
   i++;
-  if (fen[i] != 'w' && fen[i] == 'b')
+  if (fen[i] != 'w' && fen[i] != 'b')
   {
       std::cout << "Error in FEN at character " << i << std::endl;
       return;
