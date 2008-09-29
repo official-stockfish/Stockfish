@@ -70,7 +70,7 @@ Position::Position(const std::string &fen) {
 
 void Position::from_fen(const std::string &fen) {
 
-  static const std::string piecesStr = "KQRBNPkqrbnp";
+  static const std::string pieceLetters = "KQRBNPkqrbnp";
   static const Piece pieces[] = { WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP };
 
   clear();
@@ -93,7 +93,7 @@ void Position::from_fen(const std::string &fen) {
           rank--;
           continue;
       }
-      size_t idx = piecesStr.find(fen[i]);
+      size_t idx = pieceLetters.find(fen[i]);
       if (idx == std::string::npos)
       {
            std::cout << "Error in FEN at character " << i << std::endl;
@@ -214,40 +214,50 @@ void Position::from_fen(const std::string &fen) {
 /// probably only useful for debugging.
 
 const std::string Position::to_fen() const {
-  char pieceLetters[] = " PNBRQK  pnbrqk";
-  std::string result;
+
+  static const std::string pieceLetters = " PNBRQK  pnbrqk";
+  std::string fen;
   int skip;
 
-  for(Rank rank = RANK_8; rank >= RANK_1; rank--) {
-    skip = 0;
-    for(File file = FILE_A; file <= FILE_H; file++) {
-      Square square = make_square(file, rank);
-      if(square_is_occupied(square)) {
-        if(skip > 0) result += (char)skip + '0';
-        result += pieceLetters[piece_on(square)];
-        skip = 0;
+  for (Rank rank = RANK_8; rank >= RANK_1; rank--)
+  {
+      skip = 0;
+      for (File file = FILE_A; file <= FILE_H; file++)
+      {
+          Square sq = make_square(file, rank);
+          if (!square_is_occupied(sq))
+          {   skip++;
+              continue;
+          }
+          if (skip > 0)
+          {
+              fen += (char)skip + '0';
+              skip = 0;
+          }
+          fen += pieceLetters[piece_on(sq)];         
       }
-      else skip++;
-    }
-    if(skip > 0) result += (char)skip + '0';
-    result += (rank > RANK_1)? '/' : ' ';
+      if (skip > 0)
+          fen += (char)skip + '0';
+
+      fen += (rank > RANK_1 ? '/' : ' ');
   }
+  fen += (sideToMove == WHITE ? 'w' : 'b') + ' ';
+  if (castleRights != NO_CASTLES)
+  {
+    if (can_castle_kingside(WHITE))  fen += 'K';
+    if (can_castle_queenside(WHITE)) fen += 'Q';
+    if (can_castle_kingside(BLACK))  fen += 'k';
+    if (can_castle_queenside(BLACK)) fen += 'q';
+  } else
+      fen += '-';
 
-  result += (sideToMove == WHITE)? 'w' : 'b';
-  result += ' ';
-  if(castleRights == NO_CASTLES) result += '-';
-  else {
-    if(can_castle_kingside(WHITE)) result += 'K';
-    if(can_castle_queenside(WHITE)) result += 'Q';
-    if(can_castle_kingside(BLACK)) result += 'k';
-    if(can_castle_queenside(BLACK)) result += 'q';
-  }
+  fen += ' ';
+  if (ep_square() != SQ_NONE)
+      fen += square_to_string(ep_square());
+  else
+      fen += '-';
 
-  result += ' ';
-  if(ep_square() == SQ_NONE) result += '-';
-  else result += square_to_string(ep_square());
-
-  return result;
+  return fen;
 }
 
 
