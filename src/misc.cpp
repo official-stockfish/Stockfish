@@ -78,8 +78,10 @@ const std::string engine_name() {
       size_t mon = 1 + months.find(date.substr(0, 3)) / 4;
 
       std::stringstream s;
+      std::string day = (date[4] == ' ' ? date.substr(5, 1) : date.substr(4, 2));
+
       s << "Glaurung clone " << date.substr(date.length() - 2) << std::setfill('0')
-        << std::setw(2) << mon << date.substr(4, 2);
+        << std::setw(2) << mon << std::setw(2) << day;
 
       return s.str();
   } else
