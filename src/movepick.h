@@ -44,9 +44,24 @@
 class MovePicker {
 
 public:
+
+  enum MovegenPhase {
+    PH_TT_MOVE,        // Transposition table move
+    PH_MATE_KILLER,    // Mate killer from the current ply
+    PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
+    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE valuse <= 0
+    PH_KILLER_1,       // Killer move 1 from the current ply (not used yet).
+    PH_KILLER_2,       // Killer move 2 from the current ply (not used yet).
+    PH_NONCAPTURES,    // Non-captures and underpromotions
+    PH_EVASIONS,       // Check evasions
+    PH_QCAPTURES,      // Captures in quiescence search
+    PH_QCHECKS,        // Checks in quiescence search
+    PH_STOP
+  };
+
   MovePicker(Position &p, bool pvnode, Move ttm, Move mk, Move k1, Move k2,
              Depth dpth);
-  Move get_next_move();
+  Move get_next_move(MovegenPhase* moveType = NULL);
   Move get_next_move(Lock &lock);
   int number_of_moves() const;
   int current_move_score() const;

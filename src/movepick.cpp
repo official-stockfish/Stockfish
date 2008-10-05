@@ -36,26 +36,9 @@
 
 namespace {
 
-  /// Types
-
-  enum MovegenPhase {
-    PH_TT_MOVE,        // Transposition table move
-    PH_MATE_KILLER,    // Mate killer from the current ply
-    PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
-    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE valuse <= 0
-    PH_KILLER_1,       // Killer move 1 from the current ply (not used yet).
-    PH_KILLER_2,       // Killer move 2 from the current ply (not used yet).
-    PH_NONCAPTURES,    // Non-captures and underpromotions
-    PH_EVASIONS,       // Check evasions
-    PH_QCAPTURES,      // Captures in quiescence search
-    PH_QCHECKS,        // Checks in quiescence search
-    PH_STOP
-  };
-
-
   /// Variables
 
-  MovegenPhase PhaseTable[32];
+  MovePicker::MovegenPhase PhaseTable[32];
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
@@ -109,7 +92,7 @@ MovePicker::MovePicker(Position &p, bool pvnode, Move ttm, Move mk,
 /// class.  It returns a new legal move every time it is called, until there
 /// are no more moves left of the types we are interested in.
 
-Move MovePicker::get_next_move() {
+Move MovePicker::get_next_move(MovegenPhase* moveType) {
   Move move;
 
   while(true) {
@@ -123,6 +106,9 @@ Move MovePicker::get_next_move() {
 
     // Next phase:
     phaseIndex++;
+    if (moveType)
+        *moveType = PhaseTable[phaseIndex];
+
     switch(PhaseTable[phaseIndex]) {
 
     case PH_TT_MOVE:
