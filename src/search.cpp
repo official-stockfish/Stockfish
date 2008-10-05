@@ -1147,6 +1147,7 @@ namespace {
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     Value futilityValue = VALUE_NONE;
+    MovePicker::MovegenPhase moveType;
     bool isCheck = pos.is_check();
     bool useFutilityPruning =   UseFutilityPruning
                              && depth < SelectiveDepth
@@ -1155,14 +1156,14 @@ namespace {
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
     while (   bestValue < beta
-           && (move = mp.get_next_move()) != MOVE_NONE
+           && (move = mp.get_next_move(&moveType)) != MOVE_NONE
            && !thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool moveIsCapture = pos.move_is_capture(move);
+      bool moveIsGoodCapture = (moveType == MovePicker::PH_GOOD_CAPTURES);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1174,7 +1175,7 @@ namespace {
       // Futility pruning
       if (    useFutilityPruning
           &&  ext == Depth(0)
-          && !moveIsCapture
+          && !moveIsGoodCapture
           && !moveIsPassedPawnPush
           && !move_promotion(move))
       {
@@ -1206,7 +1207,7 @@ namespace {
       if (   depth >= 2*OnePly
           && ext == Depth(0)
           && moveCount >= LMRNonPVMoves
-          && !moveIsCapture
+          && !moveIsGoodCapture
           && !move_promotion(move)
           && !moveIsPassedPawnPush
           && !move_is_castle(move)
@@ -2020,7 +2021,6 @@ namespace {
     assert(threat == MOVE_NONE || move_is_ok(threat));
     assert(!move_promotion(m));
     assert(!pos.move_is_check(m));
-    assert(!pos.move_is_capture(m));
     assert(!pos.move_is_passed_pawn_push(m));
     assert(d >= OnePly);
 
