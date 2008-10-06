@@ -38,13 +38,15 @@ namespace {
 
   /// Variables
 
-  MovePicker::MovegenPhase PhaseTable[32];
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
   int QsearchWithoutChecksPhaseIndex;
 
 }
+
+// Static array definition
+MovePicker::MovegenPhase MovePicker::PhaseTable[32];
 
 
 ////
@@ -92,7 +94,7 @@ MovePicker::MovePicker(Position &p, bool pvnode, Move ttm, Move mk,
 /// class.  It returns a new legal move every time it is called, until there
 /// are no more moves left of the types we are interested in.
 
-Move MovePicker::get_next_move(MovegenPhase* moveType) {
+Move MovePicker::get_next_move() {
   Move move;
 
   while(true) {
@@ -106,9 +108,6 @@ Move MovePicker::get_next_move(MovegenPhase* moveType) {
 
     // Next phase:
     phaseIndex++;
-    if (moveType)
-        *moveType = PhaseTable[phaseIndex];
-
     switch(PhaseTable[phaseIndex]) {
 
     case PH_TT_MOVE:

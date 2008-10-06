@@ -1147,7 +1147,6 @@ namespace {
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     Value futilityValue = VALUE_NONE;
-    MovePicker::MovegenPhase moveType;
     bool isCheck = pos.is_check();
     bool useFutilityPruning =   UseFutilityPruning
                              && depth < SelectiveDepth
@@ -1156,14 +1155,14 @@ namespace {
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
     while (   bestValue < beta
-           && (move = mp.get_next_move(&moveType)) != MOVE_NONE
+           && (move = mp.get_next_move()) != MOVE_NONE
            && !thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool moveIsGoodCapture = (moveType == MovePicker::PH_GOOD_CAPTURES);
+      bool moveIsGoodCapture = (mp.current_move_type() == MovePicker::PH_GOOD_CAPTURES);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
