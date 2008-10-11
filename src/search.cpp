@@ -2172,6 +2172,12 @@ namespace {
     {
         lastInfoTime = t;
         lock_grab(&IOLock);
+        if (dbg_show_mean)
+            dbg_print_mean();
+
+        if (dbg_show_hit_rate)
+            dbg_print_hit_rate();
+
         std::cout << "info nodes " << nodes_searched() << " nps " << nps()
                   << " time " << t << " hashfull " << TT.full() << std::endl;
         lock_release(&IOLock);

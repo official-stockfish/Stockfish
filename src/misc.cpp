@@ -51,6 +51,9 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp);
 long dbg_cnt0 = 0;
 long dbg_cnt1 = 0;
 
+bool dbg_show_mean = false;
+bool dbg_show_hit_rate = false;
+
 
 ////
 //// Functions
@@ -61,6 +64,12 @@ void dbg_print_hit_rate() {
   std::cout << "Total " << dbg_cnt0 << " Hit " << dbg_cnt1
             << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1)
             << std::endl;
+}
+
+void dbg_print_mean() {
+
+  std::cout << "Total " << dbg_cnt0 << " Mean "
+            << (float)dbg_cnt1 / (dbg_cnt0 ? dbg_cnt0 : 1) << std::endl;
 }
 
 /// engine_name() returns the full name of the current Glaurung version.
