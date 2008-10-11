@@ -1162,7 +1162,7 @@ namespace {
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool moveIsGoodCapture = (mp.current_move_type() == MovePicker::PH_GOOD_CAPTURES);
+      bool moveIsCapture = pos.move_is_capture(move);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1174,7 +1174,7 @@ namespace {
       // Futility pruning
       if (    useFutilityPruning
           &&  ext == Depth(0)
-          && !moveIsGoodCapture
+          && !moveIsCapture
           && !moveIsPassedPawnPush
           && !move_promotion(move))
       {
@@ -1206,7 +1206,7 @@ namespace {
       if (   depth >= 2*OnePly
           && ext == Depth(0)
           && moveCount >= LMRNonPVMoves
-          && !moveIsGoodCapture
+          && !moveIsCapture
           && !move_promotion(move)
           && !moveIsPassedPawnPush
           && !move_is_castle(move)
@@ -2020,6 +2020,7 @@ namespace {
     assert(threat == MOVE_NONE || move_is_ok(threat));
     assert(!move_promotion(m));
     assert(!pos.move_is_check(m));
+    assert(!pos.move_is_capture(m));
     assert(!pos.move_is_passed_pawn_push(m));
     assert(d >= OnePly);
 
