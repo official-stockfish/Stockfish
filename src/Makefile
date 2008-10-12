@@ -78,7 +78,7 @@ CXXFLAGS += -Wall -g
 # General optimization flags.  Note that -O2 might be faster than -O3 on some
 # systems; this requires testing.
 
-CXXFLAGS += -O3 -fno-exceptions -fomit-frame-pointer -fno-rtti -fstrict-aliasing
+CXXFLAGS += -O3 -fno-exceptions -fomit-frame-pointer -fno-rtti -fno-strict-aliasing
 
 # Disable most annoying warnings for the Intel C++ compiler
 

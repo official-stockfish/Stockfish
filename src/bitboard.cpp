@@ -349,30 +349,39 @@ Square first_1(Bitboard b) {
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
-#if defined(USE_32BIT_ATTACKS) && defined(_MSC_VER)
+#if defined(USE_32BIT_ATTACKS)
 
-// On 32bit system compiled with MSVC this verion seems
-// slightly faster then the standard one.
+// Use type-punning
+union b_union {
 
-Square pop_1st_bit(Bitboard *b) {
+    Bitboard b;
+    struct {
+        uint32_t l;
+        uint32_t h;
+    };
+};
 
-    unsigned long index;
-    uint32_t *l, *h;
+// WARNING: Needs -fno-strict-aliasing compiler option
+Square pop_1st_bit(Bitboard *bb) {
 
-    if (*(l = (uint32_t*)b) != 0)
-    {
-        _BitScanForward(&index, *l);
-        *l &= ~(1 << index);
-    }
-    else if (*(h = (uint32_t*)b + 1) != 0)
-    {
-        _BitScanForward(&index, *h);
-        *h &= ~(1 << index);
-        index += 32;
-    } else
-        return SQ_NONE;
+  b_union u;
+  uint32_t b;
 
-    return Square(index);
+  u.b = *bb;
+
+  if (u.l)
+  {
+      b = u.l;
+      *((uint32_t*)bb) = b & (b - 1);
+      b ^= (b - 1);
+  }
+  else
+  {
+      b = u.h;
+      *((uint32_t*)bb+1) = b & (b - 1); // Little endian only?
+      b = ~(b ^ (b - 1));
+  }
+  return Square(BitTable[(b * 0x783a9b23) >> 26]);
 }
 
 #else
