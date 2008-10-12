@@ -38,6 +38,7 @@ namespace {
 
   /// Variables
 
+  MovePicker::MovegenPhase PhaseTable[32];  
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
@@ -45,8 +46,6 @@ namespace {
 
 }
 
-// Static array definition
-MovePicker::MovegenPhase MovePicker::PhaseTable[32];
 
 
 ////
@@ -440,6 +439,9 @@ Move MovePicker::pick_move_from_list() {
   return MOVE_NONE;
 }
 
+MovePicker::MovegenPhase MovePicker::current_move_type() const {
+  return PhaseTable[phaseIndex];
+}
 
 /// MovePicker::init_phase_table() initializes the PhaseTable[],
 /// MainSearchPhaseIndex, EvasionPhaseIndex, QsearchWithChecksPhaseIndex

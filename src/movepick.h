@@ -81,7 +81,6 @@ private:
   Move ttMove, mateKiller, killer1, killer2;
   Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];
-  static MovegenPhase PhaseTable[32];
   bool pvNode;
   Depth depth;
   int phaseIndex;
@@ -98,10 +97,6 @@ private:
 /// MovePicker::discovered_check_candidates() returns a bitboard containing
 /// all pieces which can possibly give discovered check.  This bitboard is
 /// computed by the constructor function.
-
-inline MovePicker::MovegenPhase MovePicker::current_move_type() const {
-  return PhaseTable[phaseIndex];
-}
 
 inline Bitboard MovePicker::discovered_check_candidates() const {
   return dc;
