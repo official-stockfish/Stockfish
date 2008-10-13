@@ -72,9 +72,9 @@ void dbg_print_mean() {
             << (float)dbg_cnt1 / (dbg_cnt0 ? dbg_cnt0 : 1) << std::endl;
 }
 
-/// engine_name() returns the full name of the current Glaurung version.
-/// This will be either "Glaurung YYMMDD" (where YYMMDD is the date when the
-/// program was compiled) or "Glaurung <version number>", depending on whether
+/// engine_name() returns the full name of the current Stockfish version.
+/// This will be either "Stockfish YYMMDD" (where YYMMDD is the date when the
+/// program was compiled) or "Stockfish <version number>", depending on whether
 /// the constant EngineVersion (defined in misc.h) is empty.
 
 const std::string engine_name() {
@@ -89,12 +89,12 @@ const std::string engine_name() {
       std::stringstream s;
       std::string day = (date[4] == ' ' ? date.substr(5, 1) : date.substr(4, 2));
 
-      s << "Glaurung clone " << date.substr(date.length() - 2) << std::setfill('0')
+      s << "Stockfish " << date.substr(date.length() - 2) << std::setfill('0')
         << std::setw(2) << mon << std::setw(2) << day;
 
       return s.str();
   } else
-      return "Glaurung clone " + EngineVersion;
+      return "Stockfish " + EngineVersion;
 }
 
 
