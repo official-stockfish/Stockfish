@@ -152,6 +152,12 @@ namespace {
   Depth RazorDepth = 4*OnePly;
   Value RazorMargin = Value(0x300);
 
+  // Last seconds noise filtering (LSN)
+  bool UseLSNFiltering = false;
+  bool looseOnTime = false;
+  int LSNTime = 4 * 1000; // In milliseconds
+  Value LSNValue = Value(0x200);
+
   // Extensions.  Array index 0 is used at non-PV nodes, index 1 at PV nodes.
   Depth CheckExtension[2] = {OnePly, OnePly};
   Depth SingleReplyExtension[2] = {OnePly / 2, OnePly / 2};
@@ -220,7 +226,7 @@ namespace {
 
   /// Functions
 
-  void id_loop(const Position &pos, Move searchMoves[]);
+  Value id_loop(const Position &pos, Move searchMoves[]);
   Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml);
   Value search_pv(Position &pos, SearchStack ss[], Value alpha, Value beta,
                   Depth depth, int ply, int threadID);
@@ -394,6 +400,10 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   RazorDepth = (get_option_value_int("Maximum Razoring Depth") + 1) * OnePly;
   RazorMargin = value_from_centipawns(get_option_value_int("Razoring Margin"));
 
+  UseLSNFiltering = get_option_value_bool("LSN filtering");
+  LSNTime = get_option_value_int("LSN Time Margin (sec)") * 1000;
+  LSNValue = value_from_centipawns(get_option_value_int("LSN Value Margin"));
+
   MinimumSplitDepth = get_option_value_int("Minimum Split Depth") * OnePly;
   MaxThreadsPerSplitPoint =
     get_option_value_int("Maximum Number of Threads per Split Point");
@@ -468,7 +478,21 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
 
   // We're ready to start thinking.  Call the iterative deepening loop
   // function:
-  id_loop(pos, searchMoves);
+  if (!looseOnTime)
+  {
+      Value v = id_loop(pos, searchMoves);
+      looseOnTime = (   UseLSNFiltering
+                     && myTime < LSNTime
+                     && myIncrement == 0
+                     && v < -LSNValue);
+  }
+  else
+  {
+      looseOnTime = false; // reset for next match
+      while (SearchStartTime + myTime + 1000 > get_system_time())
+          ; // wait here
+      id_loop(pos, searchMoves); // to fail gracefully
+  }
 
   if(UseLogFile)
     LogFile.close();
@@ -570,7 +594,7 @@ namespace {
   // been consumed, the user stops the search, or the maximum search depth is
   // reached.
 
-  void id_loop(const Position &pos, Move searchMoves[]) {
+  Value id_loop(const Position &pos, Move searchMoves[]) {
     Position p(pos);
     SearchStack ss[PLY_MAX_PLUS_2];
 
@@ -694,6 +718,7 @@ namespace {
       LogFile << "Ponder move: " << move_to_san(p, ss[0].pv[1]) << '\n';
       LogFile << std::endl;
     }
+    return rml.get_move_score(0);
   }
 
 
