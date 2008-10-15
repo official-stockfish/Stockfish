@@ -87,6 +87,7 @@ private:
   int numOfMoves, numOfBadCaptures;
   int movesPicked, badCapturesPicked;
   bool finished;
+  bool All_zero;
 };
 
 

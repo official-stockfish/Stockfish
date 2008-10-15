@@ -247,35 +247,35 @@ void MovePicker::score_captures() {
 
 void MovePicker::score_noncaptures() {
 
-  bool all_zero = true;
+  All_zero = true;
   for (int i = 0; i < numOfMoves; i++)
   {
       Move m = moves[i].move;
       if (m == killer1)
       {
           moves[i].score = HistoryMax + 2;
-          all_zero = false;
+          All_zero = false;
       }
       else if (m == killer2)
       {
           moves[i].score = HistoryMax + 1;
-          all_zero = false;
+          All_zero = false;
       }
       else
       {
           moves[i].score = H.move_ordering_score(pos->piece_on(move_from(m)), m);
-          if (all_zero && moves[i].score != 0)
-              all_zero = false;
+          if (All_zero && moves[i].score != 0)
+              All_zero = false;
       }
   }
-  if (!all_zero)
-      return;
+  //if (!all_zero)
+  //    return;
 
   // If we don't have at least one history score then
   // try to order using psq tables difference between 
   // from square and to square.
-  for (int i = 0; i < numOfMoves; i++)
-      moves[i].score = pos->mg_pst_delta(moves[i].move);
+  //for (int i = 0; i < numOfMoves; i++)
+  //    moves[i].score = pos->mg_pst_delta(moves[i].move);
 }
 
 void MovePicker::score_evasions() {
@@ -359,7 +359,7 @@ Move MovePicker::pick_move_from_list() {
       // the entire move list for the best move.  If many moves have already
       // been searched and it is not a PV node, we are probably failing low
       // anyway, so we just pick the first move from the list.
-      if(pvNode || movesPicked < 12) {
+      if(!All_zero && (pvNode || movesPicked < 12)) {
         bestIndex = -1;
         for(int i = movesPicked; i < numOfMoves; i++)
           if(moves[i].score > bestScore) {
