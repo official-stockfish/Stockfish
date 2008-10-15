@@ -278,6 +278,7 @@ public:
   Value eg_value() const;
   Value non_pawn_material(Color c) const;
   Phase game_phase() const;
+  Value mg_pst_delta(Move m) const;
 
   // Game termination checks
   bool is_mate();
@@ -679,6 +680,11 @@ inline Key Position::get_material_key() const {
 
 inline Value Position::mg_pst(Color c, PieceType pt, Square s) const {
   return MgPieceSquareTable[piece_of_color_and_type(c, pt)][s];
+}
+
+inline Value Position::mg_pst_delta(Move m) const {
+  return MgPieceSquareTable[piece_on(move_from(m))][move_to(m)]
+        -MgPieceSquareTable[piece_on(move_from(m))][move_from(m)];
 }
 
 inline Value Position::eg_pst(Color c, PieceType pt, Square s) const {

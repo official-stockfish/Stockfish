@@ -246,15 +246,36 @@ void MovePicker::score_captures() {
 }
 
 void MovePicker::score_noncaptures() {
-  for(int i = 0; i < numOfMoves; i++) {
-    Move m = moves[i].move;
-    if(m == killer1)
-      moves[i].score = HistoryMax + 2;
-    else if(m == killer2)
-      moves[i].score = HistoryMax + 1;
-    else
-      moves[i].score = H.move_ordering_score(pos->piece_on(move_from(m)), m);
+
+  bool all_zero = true;
+  for (int i = 0; i < numOfMoves; i++)
+  {
+      Move m = moves[i].move;
+      if (m == killer1)
+      {
+          moves[i].score = HistoryMax + 2;
+          all_zero = false;
+      }
+      else if (m == killer2)
+      {
+          moves[i].score = HistoryMax + 1;
+          all_zero = false;
+      }
+      else
+      {
+          moves[i].score = H.move_ordering_score(pos->piece_on(move_from(m)), m);
+          if (all_zero && moves[i].score != 0)
+              all_zero = false;
+      }
   }
+  if (!all_zero)
+      return;
+
+  // If we don't have at least one history score then
+  // try to order using psq tables difference between 
+  // from square and to square.
+  for (int i = 0; i < numOfMoves; i++)
+      moves[i].score = pos->mg_pst_delta(moves[i].move);
 }
 
 void MovePicker::score_evasions() {
