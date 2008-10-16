@@ -59,8 +59,7 @@ public:
     PH_STOP
   };
 
-  MovePicker(Position &p, bool pvnode, Move ttm, Move mk, Move k1, Move k2,
-             Depth dpth);
+  MovePicker(const Position& p, bool pvnode, Move ttm, Move mk, Move k1, Move k2, Depth d);
   Move get_next_move();
   Move get_next_move(Lock &lock);
   int number_of_moves() const;
@@ -77,7 +76,7 @@ private:
   void score_qcaptures();
   Move pick_move_from_list();
   
-  Position *pos;
+  const Position& pos;
   Move ttMove, mateKiller, killer1, killer2;
   Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];

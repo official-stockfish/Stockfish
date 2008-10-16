@@ -60,15 +60,14 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(Position &p, bool pvnode, Move ttm, Move mk,
-                       Move k1, Move k2, Depth dpth) {
-  pos = &p;
+MovePicker::MovePicker(const Position& p, bool pvnode, Move ttm, Move mk,
+                       Move k1, Move k2, Depth d) : pos(p) {  
   pvNode = pvnode;
   ttMove = ttm;
   mateKiller = (mk == ttm)? MOVE_NONE : mk;
   killer1 = k1;
   killer2 = k2;
-  depth = dpth;
+  depth = d;
   movesPicked = 0;
   numOfMoves = 0;
   numOfBadCaptures = 0;
@@ -116,7 +115,7 @@ Move MovePicker::get_next_move() {
         if (ttMove != MOVE_NONE)
         {
             assert(move_is_ok(ttMove));
-            if (generate_move_if_legal(*pos, ttMove, pinned) != MOVE_NONE)
+            if (generate_move_if_legal(pos, ttMove, pinned) != MOVE_NONE)
                 return ttMove;
         }
         break;
@@ -125,13 +124,13 @@ Move MovePicker::get_next_move() {
         if (mateKiller != MOVE_NONE)
         {
             assert(move_is_ok(mateKiller));
-            if (generate_move_if_legal(*pos, mateKiller, pinned) != MOVE_NONE)
+            if (generate_move_if_legal(pos, mateKiller, pinned) != MOVE_NONE)
                 return ttMove;
         }
         break;
 
     case PH_GOOD_CAPTURES:      
-        numOfMoves = generate_captures(*pos, moves);
+        numOfMoves = generate_captures(pos, moves);
         score_captures();
         movesPicked = 0;
         break;
@@ -141,26 +140,26 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_NONCAPTURES:
-        numOfMoves = generate_noncaptures(*pos, moves);
+        numOfMoves = generate_noncaptures(pos, moves);
         score_noncaptures();
         movesPicked = 0;
         break;
 
     case PH_EVASIONS:
-        assert(pos->is_check());      
-        numOfMoves = generate_evasions(*pos, moves);
+        assert(pos.is_check());      
+        numOfMoves = generate_evasions(pos, moves);
         score_evasions();
         movesPicked = 0;
         break;
 
     case PH_QCAPTURES:      
-        numOfMoves = generate_captures(*pos, moves);
+        numOfMoves = generate_captures(pos, moves);
         score_qcaptures();
         movesPicked = 0;
         break;
 
     case PH_QCHECKS:
-        numOfMoves = generate_checks(*pos, moves, dc);
+        numOfMoves = generate_checks(pos, moves, dc);
         movesPicked = 0;
         break;
 
@@ -216,12 +215,12 @@ void MovePicker::score_captures() {
   for (int i = 0; i < numOfMoves; i++)
   {
       Move m = moves[i].move;
-      moves[i].score = pos->see(m);
+      moves[i].score = pos.see(m);
       if (moves[i].score >= 0)
       {
           moves[i].score = move_promotion(m) ? QueenValueMidgame
-                          : int(pos->midgame_value_of_piece_on(move_to(m)))
-                           -int(pos->type_of_piece_on(move_from(m)));
+                          : int(pos.midgame_value_of_piece_on(move_to(m)))
+                           -int(pos.type_of_piece_on(move_from(m)));
           // FIXME second term seems wrong !
       }
   }
@@ -237,13 +236,13 @@ void MovePicker::score_noncaptures() {
       else if (m == killer2)
           moves[i].score = HistoryMax + 1;
       else
-          moves[i].score = H.move_ordering_score(pos->piece_on(move_from(m)), m);
+          moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), m);
 
       // Ensure moves in history are always sorted as first
       if (moves[i].score > 0)
           moves[i].score += 1000;
 
-      moves[i].score += pos->mg_pst_delta(moves[i].move);
+      moves[i].score += pos.mg_pst_delta(moves[i].move);
   }
 }
 
@@ -254,14 +253,14 @@ void MovePicker::score_evasions() {
       Move m = moves[i].move;
       if (m == ttMove)
           moves[i].score = 2*HistoryMax;
-      else if (!pos->square_is_empty(move_to(m)))
+      else if (!pos.square_is_empty(move_to(m)))
       {
-          moves[i].score = pos->see(m);
+          moves[i].score = pos.see(m);
           if (moves[i].score >= 0)
               moves[i].score += HistoryMax;          
       }
       else
-          moves[i].score = H.move_ordering_score(pos->piece_on(move_from(m)), m);
+          moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), m);
   }
   // FIXME try psqt also here
 }
@@ -273,8 +272,8 @@ void MovePicker::score_qcaptures() {
   {
       Move m = moves[i].move;
       moves[i].score = move_promotion(m) ? QueenValueMidgame
-                      : int(pos->midgame_value_of_piece_on(move_to(m)))
-                       -int(pos->midgame_value_of_piece_on(move_to(m))) / 64;
+                      : int(pos.midgame_value_of_piece_on(move_to(m)))
+                       -int(pos.midgame_value_of_piece_on(move_to(m))) / 64;
       // FIXME Why second term like that ???
   }
 }
@@ -297,7 +296,7 @@ Move MovePicker::pick_move_from_list() {
   switch (PhaseTable[phaseIndex]) {
 
   case PH_GOOD_CAPTURES:
-      assert(!pos->is_check());
+      assert(!pos.is_check());
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
@@ -324,14 +323,14 @@ Move MovePicker::pick_move_from_list() {
               moves[bestIndex] = moves[movesPicked++];
               if (   move != ttMove
                   && move != mateKiller
-                  && pos->move_is_legal(move, pinned))
+                  && pos.move_is_legal(move, pinned))
                   return move;
           }
       }
       break;
 
   case PH_NONCAPTURES:
-      assert(!pos->is_check());
+      assert(!pos.is_check());
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
@@ -358,14 +357,14 @@ Move MovePicker::pick_move_from_list() {
               moves[bestIndex] = moves[movesPicked++];
               if (   move != ttMove
                   && move != mateKiller
-                  && pos->move_is_legal(move, pinned))
+                  && pos.move_is_legal(move, pinned))
                   return move;
          }
     }
     break;
 
   case PH_EVASIONS:
-      assert(pos->is_check());
+      assert(pos.is_check());
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
@@ -388,7 +387,7 @@ Move MovePicker::pick_move_from_list() {
       break;
 
   case PH_BAD_CAPTURES:
-      assert(!pos->is_check());
+      assert(!pos.is_check());
       assert(badCapturesPicked >= 0);
       // It's probably a good idea to use SEE move ordering here, instead
       // of just picking the first move.  FIXME
@@ -397,13 +396,13 @@ Move MovePicker::pick_move_from_list() {
           move = badCaptures[badCapturesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
-              && pos->move_is_legal(move, pinned))
+              && pos.move_is_legal(move, pinned))
               return move;
       }
       break;
 
   case PH_QCAPTURES:
-      assert(!pos->is_check());
+      assert(!pos.is_check());
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
@@ -427,14 +426,14 @@ Move MovePicker::pick_move_from_list() {
               // Remember to change the line below if we decide to hash the qsearch!
               // Maybe also postpone the legality check until after futility pruning?
               // FIXME !!!
-              if (/* move != ttMove && */ pos->move_is_legal(move, pinned))
+              if (/* move != ttMove && */ pos.move_is_legal(move, pinned))
                   return move;
           }
       }
       break;
 
   case PH_QCHECKS:
-      assert(!pos->is_check());
+      assert(!pos.is_check());
       assert(movesPicked >= 0);
       // Perhaps we should do something better than just picking the first
       // move here?  FIXME
@@ -443,7 +442,7 @@ Move MovePicker::pick_move_from_list() {
           move = moves[movesPicked++].move;
           // Remember to change the line below if we decide to hash the qsearch!
           // FIXME !!!
-          if (/* move != ttMove && */ pos->move_is_legal(move, pinned))
+          if (/* move != ttMove && */ pos.move_is_legal(move, pinned))
               return move;
       }
       break;
