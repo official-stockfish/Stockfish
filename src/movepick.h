@@ -94,6 +94,15 @@ private:
 //// Inline functions
 ////
 
+/// MovePicker::number_of_moves() simply returns the numOfMoves member
+/// variable. It is intended to be used in positions where the side to move
+/// is in check, for detecting checkmates or situations where there is only
+/// a single reply to check.
+
+inline int MovePicker::number_of_moves() const {
+  return numOfMoves;
+}
+
 /// MovePicker::discovered_check_candidates() returns a bitboard containing
 /// all pieces which can possibly give discovered check.  This bitboard is
 /// computed by the constructor function.
