@@ -257,6 +257,7 @@ void MovePicker::score_noncaptures() {
       else
           moves[i].score = H.move_ordering_score(pos->piece_on(move_from(m)), m);
 
+      // Ensure moves in history are always sorted as first
       if (moves[i].score > 0)
           moves[i].score += 1000;
 
