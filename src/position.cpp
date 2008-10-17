@@ -48,10 +48,20 @@ Key Position::zobSideToMove;
 Value Position::MgPieceSquareTable[16][64];
 Value Position::EgPieceSquareTable[16][64];
 
+Piece_attacks_fn piece_attacks_fn[7];
 
 ////
 //// Functions
 ////
+
+void init_piece_attacks_fn() {
+
+  piece_attacks_fn[KNIGHT] = &Position::knight_attacks;
+  piece_attacks_fn[BISHOP] = &Position::bishop_attacks;
+  piece_attacks_fn[ROOK]   = &Position::rook_attacks;
+  piece_attacks_fn[QUEEN]  = &Position::queen_attacks;
+  piece_attacks_fn[KING]   = &Position::king_attacks;
+}
 
 /// Constructors
 

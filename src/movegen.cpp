@@ -36,10 +36,7 @@ namespace {
   int generate_black_pawn_captures(const Position&, MoveStack*);
   int generate_white_pawn_noncaptures(const Position&, MoveStack*);
   int generate_black_pawn_noncaptures(const Position&, MoveStack*);
-  int generate_knight_moves(const Position&, MoveStack*, Color side, Bitboard t);
-  int generate_bishop_moves(const Position&, MoveStack*, Color side, Bitboard t);
-  int generate_rook_moves(const Position&, MoveStack*, Color side, Bitboard t);
-  int generate_queen_moves(const Position&, MoveStack*, Color side, Bitboard t);
+  int generate_piece_moves(PieceType, const Position&, MoveStack*, Color side, Bitboard t);
   int generate_king_moves(const Position&, MoveStack*, Square from, Bitboard t);
   int generate_castle_moves(const Position&, MoveStack*, Color us);
 
@@ -68,10 +65,9 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   else
       n = generate_black_pawn_captures(pos, mlist);
 
-  n += generate_knight_moves(pos, mlist+n, us, target);
-  n += generate_bishop_moves(pos, mlist+n, us, target);
-  n += generate_rook_moves(pos, mlist+n, us, target);
-  n += generate_queen_moves(pos, mlist+n, us, target);
+  for (PieceType pce = KNIGHT; pce < KING; pce++)
+      n += generate_piece_moves(pce, pos, mlist+n, us, target);
+
   n += generate_king_moves(pos, mlist+n, pos.king_square(us), target);
   return n;
 }
@@ -94,10 +90,9 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   else
       n = generate_black_pawn_noncaptures(pos, mlist);
 
-  n += generate_knight_moves(pos, mlist+n, us, target);
-  n += generate_bishop_moves(pos, mlist+n, us, target);
-  n += generate_rook_moves(pos, mlist+n, us, target);
-  n += generate_queen_moves(pos, mlist+n, us, target);
+  for (PieceType pce = KNIGHT; pce < KING; pce++)
+      n += generate_piece_moves(pce, pos, mlist+n, us, target);
+
   n += generate_king_moves(pos, mlist+n, pos.king_square(us), target);
   n += generate_castle_moves(pos, mlist+n, us);
   return n;
@@ -1007,74 +1002,22 @@ namespace {
     return n;
   }
 
-
-  int generate_knight_moves(const Position &pos, MoveStack *mlist, 
-                            Color side, Bitboard target) {
-    Square from, to;
-    Bitboard b;
-    int i, n = 0;
-
-    for(i = 0; i < pos.knight_count(side); i++) {
-      from = pos.knight_list(side, i);
-      b = pos.knight_attacks(from) & target;
-      while(b) {
-        to = pop_1st_bit(&b);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-    return n;
-  }
-
-
-  int generate_bishop_moves(const Position &pos, MoveStack *mlist, 
-                            Color side, Bitboard target) {
-    Square from, to;
-    Bitboard b;
-    int i, n = 0;
-
-    for(i = 0; i < pos.bishop_count(side); i++) {
-      from = pos.bishop_list(side, i);
-      b = pos.bishop_attacks(from) & target;
-      while(b) {
-        to = pop_1st_bit(&b);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-    return n;
-  }
-
-
-  int generate_rook_moves(const Position &pos, MoveStack *mlist, 
-                          Color side, Bitboard target) {
-    Square from, to;
-    Bitboard b;
-    int i, n = 0;
-
-    for(i = 0; i < pos.rook_count(side); i++) {
-      from = pos.rook_list(side, i);
-      b = pos.rook_attacks(from) & target;
-      while(b) {
-        to = pop_1st_bit(&b);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-    return n;
-  }
-
-
-  int generate_queen_moves(const Position &pos, MoveStack *mlist, 
+  int generate_piece_moves(PieceType piece, const Position &pos, MoveStack *mlist, 
                            Color side, Bitboard target) {
     Square from, to;
     Bitboard b;
-    int i, n = 0;
+    Piece_attacks_fn mem_fn = piece_attacks_fn[piece];
+    int n = 0;
 
-    for(i = 0; i < pos.queen_count(side); i++) {
-      from = pos.queen_list(side, i);
-      b = pos.queen_attacks(from) & target;
-      while(b) {
-        to = pop_1st_bit(&b);
-        mlist[n++].move = make_move(from, to);
-      }
+    for (int i = 0; i < pos.piece_count(side, piece); i++)
+    {
+        from = pos.piece_list(side, piece, i);
+        b = (pos.*mem_fn)(from) & target;
+        while (b)
+        {
+            to = pop_1st_bit(&b);
+            mlist[n++].move = make_move(from, to);
+        }
     }
     return n;
   }
