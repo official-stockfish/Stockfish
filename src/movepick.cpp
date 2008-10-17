@@ -203,7 +203,7 @@ Move MovePicker::get_next_move(Lock &lock) {
 /// MovePicker::pick_move_from_list().
 
 void MovePicker::score_captures() {
-  // Winning and equal captures in the main search are ordered by MVV/LVA.
+  // Winning and equal captures in the main search are ordered by MVV.
   // Suprisingly, this appears to perform slightly better than SEE based
   // move ordering.  The reason is probably that in a position with a winning
   // capture, capturing a more valuable (but sufficiently defended) piece
@@ -216,12 +216,9 @@ void MovePicker::score_captures() {
   {
       Move m = moves[i].move;
       moves[i].score = pos.see(m);
-      if (moves[i].score >= 0)
-      {
-          moves[i].score = HistoryMax;
-          moves[i].score += move_promotion(m) ? QueenValueMidgame
-                          : pos.midgame_value_of_piece_on(move_to(m));
-      }
+      //if (moves[i].score >= 0)
+      //    moves[i].score = move_promotion(m) ? QueenValueMidgame
+      //                   : pos.midgame_value_of_piece_on(move_to(m));
   }
 }
 
@@ -266,7 +263,7 @@ void MovePicker::score_evasions() {
 
 void MovePicker::score_qcaptures() {
 
-  // Use MVV/LVA ordering
+  // Use MVV ordering
   for (int i = 0; i < numOfMoves; i++)
   {
       Move m = moves[i].move;
