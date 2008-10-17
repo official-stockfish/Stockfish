@@ -712,127 +712,99 @@ Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
       return MOVE_NONE;
 
   // Proceed according to the type of the moving piece.
-  switch(type_of_piece(pc)) {
-
+  switch (type_of_piece(pc))
+  {
   case PAWN:
-      // Pawn moves, as usual, are somewhat messy.  
-      if (us == WHITE)
+      // If the destination square is on the 8/1th rank, the move must
+      // be a promotion.
+      if (   (  (square_rank(to) == RANK_8 && us == WHITE)
+              ||(square_rank(to) == RANK_1 && us != WHITE))
+           && !move_promotion(m))
+          return MOVE_NONE;
+
+      // Proceed according to the square delta between the source and
+      // destionation squares.
+      switch (to - from)
       {
-          // If the destination square is on the 8th rank, the move must
-          //  be a promotion.
-          if (square_rank(to) == RANK_8 && !move_promotion(m))
+      case DELTA_NW:
+      case DELTA_NE:
+      case DELTA_SW:
+      case DELTA_SE:
+      // Capture. The destination square must be occupied by an enemy
+      // piece (en passant captures was handled earlier).
+          if (pos.color_of_piece_on(to) != them)
               return MOVE_NONE;
-        
-          // Proceed according to the square delta between the source and
-          // destionation squares.
-          switch (to - from)
-          {          
-          case DELTA_NW:
-          case DELTA_NE:
-          // Capture. The destination square must be occupied by an enemy
-          // piece (en passant captures was handled earlier).
-              if (pos.color_of_piece_on(to) != them)
-                  return MOVE_NONE;
-              break;
+          break;
 
-          case DELTA_N:
-          // Pawn push. The destination square must be empty.
-              if (!pos.square_is_empty(to))
-                  return MOVE_NONE;
-              break;
+      case DELTA_N:
+      case DELTA_S:
+      // Pawn push. The destination square must be empty.
+          if (!pos.square_is_empty(to))
+              return MOVE_NONE;
+          break;
 
-          case DELTA_NN:
-          // Double pawn push.  The destination square must be on the fourth
-          // rank, and both the destination square and the square between the
-          // source and destination squares must be empty.
-          if (   square_rank(to) != RANK_4
+      case DELTA_NN:
+      // Double white pawn push. The destination square must be on the fourth
+      // rank, and both the destination square and the square between the
+      // source and destination squares must be empty.
+      if (   square_rank(to) != RANK_4
+          || !pos.square_is_empty(to)
+          || !pos.square_is_empty(from + DELTA_N))
+          return MOVE_NONE;
+          break;
+
+      case DELTA_SS:
+      // Double black pawn push. The destination square must be on the fifth
+      // rank, and both the destination square and the square between the
+      // source and destination squares must be empty.
+          if (   square_rank(to) != RANK_5
               || !pos.square_is_empty(to)
-              || !pos.square_is_empty(from + DELTA_N))
+              || !pos.square_is_empty(from + DELTA_S))
               return MOVE_NONE;
-              break;
-          
-          default:
-              return MOVE_NONE;
-        }
-      }
-      else // (us == BLACK)
-      {
-          // If the destination square is on the 1th rank, the move must
-          //  be a promotion.
-          if (square_rank(to) == RANK_1 && !move_promotion(m))
-              return MOVE_NONE;
-        
-          // Proceed according to the square delta between the source and
-          // destionation squares.
-          switch (to - from)
-          {
-          case DELTA_SW:
-          case DELTA_SE:
-          // Capture. The destination square must be occupied by an enemy
-          // piece (en passant captures was handled earlier).
-              if (pos.color_of_piece_on(to) != them)
-                  return MOVE_NONE;
-              break;
-          
-          case DELTA_S:
-          // Pawn push. The destination square must be empty.
-              if (!pos.square_is_empty(to))
-                  return MOVE_NONE;
-              break;
-          
-          case DELTA_SS:
-          // Double pawn push.  The destination square must be on the fifth
-          // rank, and both the destination square and the square between the
-          // source and destination squares must be empty.
-              if (   square_rank(to) != RANK_5
-                  || !pos.square_is_empty(to)
-                  || !pos.square_is_empty(from + DELTA_S))
-                  return MOVE_NONE;
-              break;
-          
-          default:
-              return MOVE_NONE;
-          }
+          break;
+
+      default:
+          return MOVE_NONE;
       }
       // The move is pseudo-legal.  Return it if it is legal.
       return (pos.move_is_legal(m) ? m : MOVE_NONE);
       break;
 
-      case KNIGHT:
-          return (   pos.knight_attacks_square(from, to)
-                  && pos.move_is_legal(m)
-                  && !move_promotion(m) ? m : MOVE_NONE);
-          break;
-      
-      case BISHOP:
-          return (   pos.bishop_attacks_square(from, to)
-                  && pos.move_is_legal(m)
-                  && !move_promotion(m) ? m : MOVE_NONE);
-          break;
-      
-      case ROOK:
-          return (   pos.rook_attacks_square(from, to)
-                  && pos.move_is_legal(m)
-                  && !move_promotion(m) ? m : MOVE_NONE);
-          break;
-    
-      case QUEEN:
-          return (   pos.queen_attacks_square(from, to)
-                  && pos.move_is_legal(m)
-                  && !move_promotion(m) ? m : MOVE_NONE);
-          break;
+  case KNIGHT:
+      return (   pos.knight_attacks_square(from, to)
+              && pos.move_is_legal(m)
+              && !move_promotion(m) ? m : MOVE_NONE);
+      break;
+  
+  case BISHOP:
+      return (   pos.bishop_attacks_square(from, to)
+              && pos.move_is_legal(m)
+              && !move_promotion(m) ? m : MOVE_NONE);
+      break;
+  
+  case ROOK:
+      return (   pos.rook_attacks_square(from, to)
+              && pos.move_is_legal(m)
+              && !move_promotion(m) ? m : MOVE_NONE);
+      break;
 
-      case KING:
-          return (   pos.king_attacks_square(from, to)
-                  && pos.move_is_legal(m)
-                  && !move_promotion(m) ? m : MOVE_NONE);
-          break;
+  case QUEEN:
+      return (   pos.queen_attacks_square(from, to)
+              && pos.move_is_legal(m)
+              && !move_promotion(m) ? m : MOVE_NONE);
+      break;
 
-      default:
-          assert(false);
+  case KING:
+      return (   pos.king_attacks_square(from, to)
+              && pos.move_is_legal(m)
+              && !move_promotion(m) ? m : MOVE_NONE);
+      break;
+
+  default:
+      assert(false);
     }
-    assert(false);
-    return MOVE_NONE;
+  assert(false);
+  return MOVE_NONE;
 }
 
 
