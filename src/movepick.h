@@ -75,6 +75,7 @@ private:
   void score_evasions();
   void score_qcaptures();
   Move pick_move_from_list();
+  int find_best_index();
   
   const Position& pos;
   Move ttMove, mateKiller, killer1, killer2;

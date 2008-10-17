@@ -73,11 +73,11 @@ MovePicker::MovePicker(const Position& p, bool pvnode, Move ttm, Move mk,
   numOfBadCaptures = 0;
   dc = p.discovered_check_candidates(p.side_to_move());
 
-  if(p.is_check())
+  if (p.is_check())
     phaseIndex = EvasionsPhaseIndex;
-  else if(depth > Depth(0))
+  else if (depth > Depth(0))
     phaseIndex = MainSearchPhaseIndex;
-  else if(depth == Depth(0))
+  else if (depth == Depth(0))
     phaseIndex = QsearchWithChecksPhaseIndex;
   else
     phaseIndex = QsearchWithoutChecksPhaseIndex;
@@ -273,6 +273,23 @@ void MovePicker::score_qcaptures() {
 }
 
 
+/// find_best_index() loops across the moves and returns index of
+/// the highest scored one.
+
+int MovePicker::find_best_index() {
+
+  int bestScore = -10000000, bestIndex = -1;
+
+  for (int i = movesPicked; i < numOfMoves; i++)
+      if (moves[i].score > bestScore)
+      {
+          bestIndex = i;
+          bestScore = moves[i].score;
+      }
+  return bestIndex;
+}
+
+
 /// MovePicker::pick_move_from_list() picks the move with the biggest score
 /// from a list of generated moves (moves[] or badCaptures[], depending on
 /// the current move generation phase).  It takes care not to return the
@@ -283,7 +300,6 @@ void MovePicker::score_qcaptures() {
 
 Move MovePicker::pick_move_from_list() {
 
-  int bestScore = -10000000;
   int bestIndex;
   Move move;
 
@@ -294,7 +310,7 @@ Move MovePicker::pick_move_from_list() {
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
-          bestScore = -10000000;
+          int bestScore = -10000000;
           bestIndex = -1;
           for (int i = movesPicked; i < numOfMoves; i++)
           {
@@ -305,7 +321,7 @@ Move MovePicker::pick_move_from_list() {
                   badCaptures[numOfBadCaptures++] = moves[i];
                   moves[i--] = moves[--numOfMoves];
                }
-               else if (moves[i].score > bestScore)
+               else if (moves[i].score > bestScore) // FIXME >= 0 ??
                {
                    bestIndex = i;
                    bestScore = moves[i].score;
@@ -332,18 +348,7 @@ Move MovePicker::pick_move_from_list() {
           // the entire move list for the best move.  If many moves have already
           // been searched and it is not a PV node, we are probably failing low
           // anyway, so we just pick the first move from the list.
-          if (pvNode || movesPicked < 12)
-          {
-              bestScore = -10000000;
-              bestIndex = -1;
-              for (int i = movesPicked; i < numOfMoves; i++)
-                  if(moves[i].score > bestScore)
-                  {
-                      bestIndex = i;
-                      bestScore = moves[i].score;
-                  }
-          } else
-              bestIndex = movesPicked;
+          bestIndex = (pvNode || movesPicked < 12 ? find_best_index() : movesPicked);
 
           if (bestIndex != -1)
           {
@@ -362,14 +367,7 @@ Move MovePicker::pick_move_from_list() {
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
-          bestScore = -10000000;
-          bestIndex = -1;
-          for (int i = movesPicked; i < numOfMoves; i++)
-              if (moves[i].score > bestScore)
-              {
-                  bestIndex = i;
-                  bestScore = moves[i].score;
-              }
+          bestIndex = find_best_index();
 
           if (bestIndex != -1)
           {
@@ -400,18 +398,8 @@ Move MovePicker::pick_move_from_list() {
       assert(movesPicked >= 0);
       while (movesPicked < numOfMoves)
       {
-          bestScore = -10000000;
-          if (movesPicked < 4) // FIXME makes sens to score qcaps?
-          {
-              bestIndex = -1;
-              for (int i = movesPicked; i < numOfMoves; i++)
-                  if(moves[i].score > bestScore)
-                  {
-                      bestIndex = i;
-                      bestScore = moves[i].score;
-                  }
-          } else
-              bestIndex = movesPicked;
+          // FIXME makes sens to score qcaps?
+          bestIndex = (movesPicked < 4 ? find_best_index() : movesPicked);
 
           if (bestIndex != -1)
           {
