@@ -215,9 +215,9 @@ void MovePicker::score_captures() {
   {
       Move m = moves[i].move;
       moves[i].score = pos.see(m);
-      //if (moves[i].score >= 0)
-      //    moves[i].score = move_promotion(m) ? QueenValueMidgame
-      //                   : pos.midgame_value_of_piece_on(move_to(m));
+      if (moves[i].score >= 0)
+          moves[i].score = move_promotion(m) ? QueenValueMidgame
+                         : pos.midgame_value_of_piece_on(move_to(m));
   }
 }
 
