@@ -32,21 +32,16 @@
 
 namespace {
   
-  int generate_white_pawn_captures(const Position &pos, MoveStack *mlist);
-  int generate_black_pawn_captures(const Position &pos, MoveStack *mlist);
-  int generate_white_pawn_noncaptures(const Position &pos, MoveStack *mlist);
-  int generate_black_pawn_noncaptures(const Position &pos, MoveStack *mlist);
-  int generate_knight_moves(const Position &pos, MoveStack *mlist, 
-                            Color side, Bitboard target);
-  int generate_bishop_moves(const Position &pos, MoveStack *mlist, 
-                            Color side, Bitboard target);
-  int generate_rook_moves(const Position &pos, MoveStack *mlist, 
-                          Color side, Bitboard target);
-  int generate_queen_moves(const Position &pos, MoveStack *mlist, 
-                           Color side, Bitboard target);
-  int generate_king_moves(const Position &pos, MoveStack *mlist, 
-                          Square from, Bitboard target);
-  int generate_castle_moves(const Position &pos, MoveStack *mlist, Color us);
+  int generate_white_pawn_captures(const Position&, MoveStack*);
+  int generate_black_pawn_captures(const Position&, MoveStack*);
+  int generate_white_pawn_noncaptures(const Position&, MoveStack*);
+  int generate_black_pawn_noncaptures(const Position&, MoveStack*);
+  int generate_knight_moves(const Position&, MoveStack*, Color side, Bitboard t);
+  int generate_bishop_moves(const Position&, MoveStack*, Color side, Bitboard t);
+  int generate_rook_moves(const Position&, MoveStack*, Color side, Bitboard t);
+  int generate_queen_moves(const Position&, MoveStack*, Color side, Bitboard t);
+  int generate_king_moves(const Position&, MoveStack*, Square from, Bitboard t);
+  int generate_castle_moves(const Position&, MoveStack*, Color us);
 
 }
 
@@ -59,24 +54,25 @@ namespace {
 /// generate_captures generates() all pseudo-legal captures and queen
 /// promotions.  The return value is the number of moves generated.
 
-int generate_captures(const Position &pos, MoveStack *mlist) {
-  Color us = pos.side_to_move();
-  Bitboard target = pos.pieces_of_color(opposite_color(us));
-  int n = 0;
+int generate_captures(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
-  if(us == WHITE)
-    n += generate_white_pawn_captures(pos, mlist);
+  Color us = pos.side_to_move();
+  Bitboard target = pos.pieces_of_color(opposite_color(us));
+  int n;
+
+  if (us == WHITE)
+      n = generate_white_pawn_captures(pos, mlist);
   else
-    n += generate_black_pawn_captures(pos, mlist);
+      n = generate_black_pawn_captures(pos, mlist);
+
   n += generate_knight_moves(pos, mlist+n, us, target);
   n += generate_bishop_moves(pos, mlist+n, us, target);
   n += generate_rook_moves(pos, mlist+n, us, target);
   n += generate_queen_moves(pos, mlist+n, us, target);
   n += generate_king_moves(pos, mlist+n, pos.king_square(us), target);
-
   return n;
 }
 
@@ -84,25 +80,26 @@ int generate_captures(const Position &pos, MoveStack *mlist) {
 /// generate_noncaptures() generates all pseudo-legal non-captures and 
 /// underpromotions.  The return value is the number of moves generated.
 
-int generate_noncaptures(const Position &pos, MoveStack *mlist) {
-  Color us = pos.side_to_move();
-  Bitboard target = pos.empty_squares();
-  int n = 0;
+int generate_noncaptures(const Position& pos, MoveStack *mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
-  if(us == WHITE)
-    n += generate_white_pawn_noncaptures(pos, mlist);
+  Color us = pos.side_to_move();
+  Bitboard target = pos.empty_squares();
+  int n;
+
+  if (us == WHITE)
+      n = generate_white_pawn_noncaptures(pos, mlist);
   else
-    n += generate_black_pawn_noncaptures(pos, mlist);
+      n = generate_black_pawn_noncaptures(pos, mlist);
+
   n += generate_knight_moves(pos, mlist+n, us, target);
   n += generate_bishop_moves(pos, mlist+n, us, target);
   n += generate_rook_moves(pos, mlist+n, us, target);
   n += generate_queen_moves(pos, mlist+n, us, target);
   n += generate_king_moves(pos, mlist+n, pos.king_square(us), target);
   n += generate_castle_moves(pos, mlist+n, us);
-
   return n;
 }
 
@@ -111,14 +108,15 @@ int generate_noncaptures(const Position &pos, MoveStack *mlist) {
 /// checks, except castling moves (will add this later).  It returns the
 /// number of generated moves.  
 
-int generate_checks(const Position &pos, MoveStack *mlist, Bitboard dc) {
+int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
+
+  assert(pos.is_ok());
+  assert(!pos.is_check());
+
   Color us, them;
   Square ksq, from, to;
   Bitboard empty, checkSqs, b1, b2, b3;
   int n = 0;
-
-  assert(pos.is_ok());
-  assert(!pos.is_check());
 
   us = pos.side_to_move();
   them = opposite_color(us);
@@ -132,7 +130,8 @@ int generate_checks(const Position &pos, MoveStack *mlist, Bitboard dc) {
   // Pawn moves.  This is somewhat messy, and we use separate code for white
   // and black, because we can't shift by negative numbers in C/C++.  :-(
 
-  if(us == WHITE) {
+  if (us == WHITE)
+  {
     // Pawn moves which give discovered check.  This is possible only if the 
     // pawn is not on the same file as the enemy king, because we don't 
     // generate captures.
@@ -338,14 +337,15 @@ int generate_checks(const Position &pos, MoveStack *mlist, Bitboard dc) {
 /// function is very ugly, and needs cleaning up some time later.  FIXME
 
 int generate_evasions(const Position &pos, MoveStack *mlist) {
+
+  assert(pos.is_ok());
+  assert(pos.is_check());
+
   Color us, them;
   Bitboard checkers = pos.checkers();
   Bitboard pinned, b1, b2;
   Square ksq, from, to;
   int n = 0;
-
-  assert(pos.is_ok());
-  assert(pos.is_check());
 
   us = pos.side_to_move();
   them = opposite_color(us);
@@ -575,27 +575,25 @@ int generate_evasions(const Position &pos, MoveStack *mlist) {
 /// very hard to write an efficient legal move generator, but for the moment
 /// we don't need it.
 
-int generate_legal_moves(const Position &pos, MoveStack *mlist) {
+int generate_legal_moves(const Position& pos, MoveStack* mlist) {
+
   assert(pos.is_ok());
 
-  if(pos.is_check())
-    return generate_evasions(pos, mlist);
-  else {
-    int i, n;
-    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+  if (pos.is_check())
+      return generate_evasions(pos, mlist);
 
-    // Generate pseudo-legal moves:
-    n = generate_captures(pos, mlist);
-    n += generate_noncaptures(pos, mlist + n);
+  // Generate pseudo-legal moves:
+  int n = generate_captures(pos, mlist);
+  n += generate_noncaptures(pos, mlist + n);
 
-    // Remove illegal moves from the list:
-    for(i = 0; i < n; i++) {
-      if(!pos.move_is_legal(mlist[i].move, pinned))
-        mlist[i--].move = mlist[--n].move;
-    }
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
-    return n;
-  }
+  // Remove illegal moves from the list:
+  for (int i = 0; i < n; i++)
+      if (!pos.move_is_legal(mlist[i].move, pinned))
+          mlist[i--].move = mlist[--n].move;
+
+  return n;
 }
 
 
@@ -606,255 +604,235 @@ int generate_legal_moves(const Position &pos, MoveStack *mlist) {
 /// only be used when the side to move is not in check.
 
 Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
-  Color us, them;
-  Square from, to;
-  Piece pc;
 
   assert(pos.is_ok());
   assert(!pos.is_check());
   assert(move_is_ok(m));
 
-  us = pos.side_to_move();
-  them = opposite_color(us);
-  from = move_from(m);
-  pc = pos.piece_on(from);
+  Color us = pos.side_to_move();
+  Color them = opposite_color(us);
+  Square from = move_from(m);
+  Piece pc = pos.piece_on(from);
 
   // If the from square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
-  if(color_of_piece(pc) != us )
-    return MOVE_NONE;
-
-  to = move_to(m);
-
-  // En passant moves:
-  if(move_is_ep(m)) {
-
-    // The piece must be a pawn:
-    if(type_of_piece(pc) != PAWN)
+  if (color_of_piece(pc) != us)
       return MOVE_NONE;
 
-    // The destination square must be the en passant square:
-    if(to != pos.ep_square())
-      return MOVE_NONE;
+  Square to = move_to(m);
 
-    assert(pos.square_is_empty(to));
-    assert(pos.piece_on(to - pawn_push(us)) == pawn_of_color(them));
+  // En passant moves
+  if (move_is_ep(m))
+  {
+      // The piece must be a pawn and destination square must be the
+      // en passant square.
+      if (   type_of_piece(pc) != PAWN
+          || to != pos.ep_square())
+          return MOVE_NONE;
 
-    // The move is pseudo-legal.  If it is legal, return it.
-    if(pos.move_is_legal(m))
-      return m;
-    else
-      return MOVE_NONE;
+      assert(pos.square_is_empty(to));
+      assert(pos.piece_on(to - pawn_push(us)) == pawn_of_color(them));
+
+      // The move is pseudo-legal.  If it is legal, return it.
+      return (pos.move_is_legal(m) ? m : MOVE_NONE);
   }
 
-  // Castling moves:
-  else if(move_is_short_castle(m)) {
+  // Castling moves
+  if (move_is_short_castle(m))
+  {
+      // The piece must be a king and side to move must still have
+      // the right to castle kingside.
+      if (   type_of_piece(pc) != KING
+          ||!pos.can_castle_kingside(us))
+          return MOVE_NONE;
 
-    // The piece must be a king:
-    if(type_of_piece(pc) != KING)
-      return MOVE_NONE;
+      assert(from == pos.king_square(us));
+      assert(to == pos.initial_kr_square(us));
+      assert(pos.piece_on(to) == rook_of_color(us));
 
-    // The side to move must still have the right to castle kingside:
-    if(!pos.can_castle_kingside(us))
-      return MOVE_NONE;
+      Square g1 = relative_square(us, SQ_G1);
+      Square f1 = relative_square(us, SQ_F1);
+      Square s;
+      bool illegal = false;
 
-    assert(from == pos.king_square(us));
-    assert(to == pos.initial_kr_square(us));
-    assert(pos.piece_on(to) == rook_of_color(us));
+      // Check if any of the squares between king and rook
+      // is occupied or under attack.
+      for (s = Min(from, g1); s <= Max(from, g1); s++)
+          if (  (s != from && s != to && !pos.square_is_empty(s))
+              || pos.square_is_attacked(s, them))
+              illegal = true;
 
-    Square g1 = relative_square(us, SQ_G1);
-    Square f1 = relative_square(us, SQ_F1);
-    Square s;
-    bool illegal = false;
+      // Check if any of the squares between king and rook
+      // is occupied.
+      for (s = Min(to, f1); s <= Max(to, f1); s++)
+          if (s != from && s != to && !pos.square_is_empty(s))
+              illegal = true;
 
-    for(s = Min(from, g1); s <= Max(from, g1); s++)
-      if((s != from && s != to && !pos.square_is_empty(s)) ||
-         pos.square_is_attacked(s, them))
-        illegal = true;
-    for(s = Min(to, f1); s <= Max(to, f1); s++)
-      if(s != from && s != to && !pos.square_is_empty(s))
-        illegal = true;
-
-    if(!illegal)
-      return m;
-    else
-      return MOVE_NONE;
+      return (!illegal ? m : MOVE_NONE);
   }
-  else if(move_is_long_castle(m)) {
 
-    // The piece must be a king:
-    if(type_of_piece(pc) != KING)
-      return MOVE_NONE;
+  if (move_is_long_castle(m))
+  {
+      // The piece must be a king and side to move must still have
+      // the right to castle kingside.
+      if (   type_of_piece(pc) != KING
+          ||!pos.can_castle_queenside(us))
+          return MOVE_NONE;
 
-    // The side to move must still have the right to castle kingside:
-    if(!pos.can_castle_queenside(us))
-      return MOVE_NONE;
+      assert(from == pos.king_square(us));
+      assert(to == pos.initial_qr_square(us));
+      assert(pos.piece_on(to) == rook_of_color(us));
 
-    assert(from == pos.king_square(us));
-    assert(to == pos.initial_qr_square(us));
-    assert(pos.piece_on(to) == rook_of_color(us));
+      Square c1 = relative_square(us, SQ_C1);
+      Square d1 = relative_square(us, SQ_D1);
+      Square s;
+      bool illegal = false;
 
-    Square c1 = relative_square(us, SQ_C1);
-    Square d1 = relative_square(us, SQ_D1);
-    Square s;
-    bool illegal = false;
+      for (s = Min(from, c1); s <= Max(from, c1); s++)
+          if(  (s != from && s != to && !pos.square_is_empty(s))
+             || pos.square_is_attacked(s, them))
+              illegal = true;
 
-    for(s = Min(from, c1); s <= Max(from, c1); s++)
-      if((s != from && s != to && !pos.square_is_empty(s)) ||
-         pos.square_is_attacked(s, them))
-        illegal = true;
-    for(s = Min(to, d1); s <= Max(to, d1); s++)
-      if(s != from && s != to && !pos.square_is_empty(s))
-        illegal = true;
-    if(square_file(to) == FILE_B &&
-       (pos.piece_on(to + DELTA_W) == rook_of_color(them) ||
-        pos.piece_on(to + DELTA_W) == queen_of_color(them)))
-      illegal = true;
+      for (s = Min(to, d1); s <= Max(to, d1); s++)
+          if(s != from && s != to && !pos.square_is_empty(s))
+              illegal = true;
 
-    if(!illegal)
-      return m;
-    else
-      return MOVE_NONE;
+      if (   square_file(to) == FILE_B
+          && (   pos.piece_on(to + DELTA_W) == rook_of_color(them)
+              || pos.piece_on(to + DELTA_W) == queen_of_color(them)))
+          illegal = true;
+
+      return (!illegal ? m : MOVE_NONE);
   }
 
   // Normal moves
-  else {
 
-    // The destination square cannot be occupied by a friendly piece:
-    if(pos.color_of_piece_on(to) == us)
+  // The destination square cannot be occupied by a friendly piece
+  if (pos.color_of_piece_on(to) == us)
       return MOVE_NONE;
 
-    // Proceed according to the type of the moving piece.
-    switch(type_of_piece(pc)) {
+  // Proceed according to the type of the moving piece.
+  switch(type_of_piece(pc)) {
 
-    case PAWN:
+  case PAWN:
       // Pawn moves, as usual, are somewhat messy.  
-      if(us == WHITE) {
-        // If the destination square is on the 8th rank, the move must be a
-        // promotion.
-        if(square_rank(to) == RANK_8 && !move_promotion(m))
-          return MOVE_NONE;
+      if (us == WHITE)
+      {
+          // If the destination square is on the 8th rank, the move must
+          //  be a promotion.
+          if (square_rank(to) == RANK_8 && !move_promotion(m))
+              return MOVE_NONE;
         
-        // Proceed according to the square delta between the source and
-        // destionation squares.
-        switch(to - from) {
-          
-        case DELTA_NW: case DELTA_NE:
-          // Capture.  The destination square must be occupied by an enemy piece
-          // (en passant captures was handled earlier).
-          if(pos.color_of_piece_on(to) != them)
-            return MOVE_NONE;
-          break;
+          // Proceed according to the square delta between the source and
+          // destionation squares.
+          switch (to - from)
+          {          
+          case DELTA_NW:
+          case DELTA_NE:
+          // Capture. The destination square must be occupied by an enemy
+          // piece (en passant captures was handled earlier).
+              if (pos.color_of_piece_on(to) != them)
+                  return MOVE_NONE;
+              break;
 
-        case DELTA_N:
-          // Pawn push.  The destination square must be empty.
-          if(!pos.square_is_empty(to))
-            return MOVE_NONE;
-          break;
+          case DELTA_N:
+          // Pawn push. The destination square must be empty.
+              if (!pos.square_is_empty(to))
+                  return MOVE_NONE;
+              break;
 
-        case DELTA_NN:
+          case DELTA_NN:
           // Double pawn push.  The destination square must be on the fourth
           // rank, and both the destination square and the square between the
           // source and destination squares must be empty.
-          if(square_rank(to) != RANK_4 || !pos.square_is_empty(to) ||
-             !pos.square_is_empty(from + DELTA_N))
-            return MOVE_NONE;
-          break;
+          if (   square_rank(to) != RANK_4
+              || !pos.square_is_empty(to)
+              || !pos.square_is_empty(from + DELTA_N))
+              return MOVE_NONE;
+              break;
           
-        default:
-          return MOVE_NONE;
+          default:
+              return MOVE_NONE;
         }
       }
-      else { // (us == BLACK)
-        // If the destination square is on the 1st rank, the move must be a
-        // promotion.
-        if(square_rank(to) == RANK_1 && !move_promotion(m))
-          return MOVE_NONE;
+      else // (us == BLACK)
+      {
+          // If the destination square is on the 1th rank, the move must
+          //  be a promotion.
+          if (square_rank(to) == RANK_1 && !move_promotion(m))
+              return MOVE_NONE;
         
-        // Proceed according to the square delta between the source and
-        // destionation squares.
-        switch(to - from) {
+          // Proceed according to the square delta between the source and
+          // destionation squares.
+          switch (to - from)
+          {
+          case DELTA_SW:
+          case DELTA_SE:
+          // Capture. The destination square must be occupied by an enemy
+          // piece (en passant captures was handled earlier).
+              if (pos.color_of_piece_on(to) != them)
+                  return MOVE_NONE;
+              break;
           
-        case DELTA_SW: case DELTA_SE:
-          // Capture.  The destination square must be occupied by an enemy piece
-          // (en passant captures was handled earlier).
-          if(pos.color_of_piece_on(to) != them)
-            return MOVE_NONE;
-          break;
+          case DELTA_S:
+          // Pawn push. The destination square must be empty.
+              if (!pos.square_is_empty(to))
+                  return MOVE_NONE;
+              break;
           
-        case DELTA_S:
-          // Pawn push.  The destination square must be empty.
-          if(!pos.square_is_empty(to))
-            return MOVE_NONE;
-          break;
-          
-        case DELTA_SS:
+          case DELTA_SS:
           // Double pawn push.  The destination square must be on the fifth
           // rank, and both the destination square and the square between the
           // source and destination squares must be empty.
-          if(square_rank(to) != RANK_5 || !pos.square_is_empty(to) ||
-             !pos.square_is_empty(from + DELTA_S))
-            return MOVE_NONE;
-          break;
+              if (   square_rank(to) != RANK_5
+                  || !pos.square_is_empty(to)
+                  || !pos.square_is_empty(from + DELTA_S))
+                  return MOVE_NONE;
+              break;
           
-        default:
-          return MOVE_NONE;
-        }
+          default:
+              return MOVE_NONE;
+          }
       }
       // The move is pseudo-legal.  Return it if it is legal.
-      if(pos.move_is_legal(m))
-        return m;
-      else
-        return MOVE_NONE;
+      return (pos.move_is_legal(m) ? m : MOVE_NONE);
       break;
 
-    case KNIGHT:
-      if(pos.knight_attacks_square(from, to) && pos.move_is_legal(m) &&
-         !move_promotion(m))
-        return m;
-      else
-        return MOVE_NONE;
-      break;
+      case KNIGHT:
+          return (   pos.knight_attacks_square(from, to)
+                  && pos.move_is_legal(m)
+                  && !move_promotion(m) ? m : MOVE_NONE);
+          break;
       
-    case BISHOP:
-      if(pos.bishop_attacks_square(from, to) && pos.move_is_legal(m) &&
-         !move_promotion(m))
-        return m;
-      else
-        return MOVE_NONE;
-      break;
+      case BISHOP:
+          return (   pos.bishop_attacks_square(from, to)
+                  && pos.move_is_legal(m)
+                  && !move_promotion(m) ? m : MOVE_NONE);
+          break;
       
-    case ROOK:
-      if(pos.rook_attacks_square(from, to) && pos.move_is_legal(m) &&
-         !move_promotion(m))
-        return m;
-      else
-        return MOVE_NONE;
-      break;
+      case ROOK:
+          return (   pos.rook_attacks_square(from, to)
+                  && pos.move_is_legal(m)
+                  && !move_promotion(m) ? m : MOVE_NONE);
+          break;
     
-    case QUEEN:
-      if(pos.queen_attacks_square(from, to) && pos.move_is_legal(m) &&
-         !move_promotion(m))
-        return m;
-      else
-        return MOVE_NONE;
-      break;
+      case QUEEN:
+          return (   pos.queen_attacks_square(from, to)
+                  && pos.move_is_legal(m)
+                  && !move_promotion(m) ? m : MOVE_NONE);
+          break;
 
-    case KING:
-      if(pos.king_attacks_square(from, to) && pos.move_is_legal(m) &&
-         !move_promotion(m))
-        return m;
-      else
-        return MOVE_NONE;
-      break;
+      case KING:
+          return (   pos.king_attacks_square(from, to)
+                  && pos.move_is_legal(m)
+                  && !move_promotion(m) ? m : MOVE_NONE);
+          break;
 
-    default:
-      assert(false);
+      default:
+          assert(false);
     }
-  }
-
-  assert(false);
-  return MOVE_NONE;
+    assert(false);
+    return MOVE_NONE;
 }
 
 

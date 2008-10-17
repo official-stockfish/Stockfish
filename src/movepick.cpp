@@ -99,7 +99,7 @@ Move MovePicker::get_next_move() {
   while (true)
   {
     // If we already have a list of generated moves, pick the best move from
-    // the list, and return it:
+    // the list, and return it.
     move = pick_move_from_list();
     if (move != MOVE_NONE)
     {
@@ -107,7 +107,7 @@ Move MovePicker::get_next_move() {
         return move;
     }
 
-    // Next phase:
+    // Next phase
     phaseIndex++;
     switch (PhaseTable[phaseIndex]) {
 
@@ -199,8 +199,7 @@ Move MovePicker::get_next_move(Lock &lock) {
 /// MovePicker::score_captures(), MovePicker::score_noncaptures(),
 /// MovePicker::score_evasions() and MovePicker::score_qcaptures() assign a
 /// numerical move ordering score to each move in a move list.  The moves
-/// with highest scores will be picked first by
-/// MovePicker::pick_move_from_list().
+/// with highest scores will be picked first by pick_move_from_list().
 
 void MovePicker::score_captures() {
   // Winning and equal captures in the main search are ordered by MVV.
@@ -321,7 +320,7 @@ Move MovePicker::pick_move_from_list() {
                   badCaptures[numOfBadCaptures++] = moves[i];
                   moves[i--] = moves[--numOfMoves];
                }
-               else if (moves[i].score > bestScore) // FIXME >= 0 ??
+               else if (moves[i].score > bestScore)
                {
                    bestIndex = i;
                    bestScore = moves[i].score;
@@ -348,7 +347,7 @@ Move MovePicker::pick_move_from_list() {
           // the entire move list for the best move.  If many moves have already
           // been searched and it is not a PV node, we are probably failing low
           // anyway, so we just pick the first move from the list.
-          bestIndex = (pvNode || movesPicked < 12 ? find_best_index() : movesPicked);
+          bestIndex = (movesPicked < 12 || pvNode ? find_best_index() : movesPicked);
 
           if (bestIndex != -1)
           {
@@ -435,6 +434,7 @@ Move MovePicker::pick_move_from_list() {
 /// picked next move. It can be used in search to further differentiate
 /// according to the current move type: capture, non capture, escape, etc.
 MovePicker::MovegenPhase MovePicker::current_move_type() const {
+
   return PhaseTable[phaseIndex];
 }
 
