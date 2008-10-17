@@ -125,7 +125,7 @@ Move MovePicker::get_next_move() {
         {
             assert(move_is_ok(mateKiller));
             if (generate_move_if_legal(pos, mateKiller, pinned) != MOVE_NONE)
-                return ttMove;
+                return mateKiller;
         }
         break;
 
@@ -218,10 +218,9 @@ void MovePicker::score_captures() {
       moves[i].score = pos.see(m);
       if (moves[i].score >= 0)
       {
-          moves[i].score = move_promotion(m) ? QueenValueMidgame
-                          : int(pos.midgame_value_of_piece_on(move_to(m)))
-                           -int(pos.type_of_piece_on(move_from(m)));
-          // FIXME second term seems wrong !
+          moves[i].score = HistoryMax;
+          moves[i].score += move_promotion(m) ? QueenValueMidgame
+                          : pos.midgame_value_of_piece_on(move_to(m));
       }
   }
 }
@@ -267,14 +266,12 @@ void MovePicker::score_evasions() {
 
 void MovePicker::score_qcaptures() {
 
-  // Use MVV/LVA ordering.
+  // Use MVV/LVA ordering
   for (int i = 0; i < numOfMoves; i++)
   {
       Move m = moves[i].move;
       moves[i].score = move_promotion(m) ? QueenValueMidgame
-                      : int(pos.midgame_value_of_piece_on(move_to(m)))
-                       -int(pos.midgame_value_of_piece_on(move_to(m))) / 64;
-      // FIXME Why second term like that ???
+                      : pos.midgame_value_of_piece_on(move_to(m));
   }
 }
 
@@ -423,10 +420,7 @@ Move MovePicker::pick_move_from_list() {
           {
               move = moves[bestIndex].move;
               moves[bestIndex] = moves[movesPicked++];
-              // Remember to change the line below if we decide to hash the qsearch!
-              // Maybe also postpone the legality check until after futility pruning?
-              // FIXME !!!
-              if (/* move != ttMove && */ pos.move_is_legal(move, pinned))
+              if (move != ttMove && pos.move_is_legal(move, pinned))
                   return move;
           }
       }
@@ -439,10 +433,8 @@ Move MovePicker::pick_move_from_list() {
       // move here?  FIXME
       while (movesPicked < numOfMoves)
       {
-          move = moves[movesPicked++].move;
-          // Remember to change the line below if we decide to hash the qsearch!
-          // FIXME !!!
-          if (/* move != ttMove && */ pos.move_is_legal(move, pinned))
+          move = moves[movesPicked++].move;          
+          if (move != ttMove && pos.move_is_legal(move, pinned))
               return move;
       }
       break;
