@@ -712,9 +712,8 @@ Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
       return MOVE_NONE;
 
   // Proceed according to the type of the moving piece.
-  switch (type_of_piece(pc))
-  {
-  case PAWN:
+  if (type_of_piece(pc) == PAWN)
+  {  
       // If the destination square is on the 8/1th rank, the move must
       // be a promotion.
       if (   (  (square_rank(to) == RANK_8 && us == WHITE)
@@ -768,43 +767,12 @@ Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
       }
       // The move is pseudo-legal.  Return it if it is legal.
       return (pos.move_is_legal(m) ? m : MOVE_NONE);
-      break;
+  }
 
-  case KNIGHT:
-      return (   pos.knight_attacks_square(from, to)
-              && pos.move_is_legal(m)
-              && !move_promotion(m) ? m : MOVE_NONE);
-      break;
-  
-  case BISHOP:
-      return (   pos.bishop_attacks_square(from, to)
-              && pos.move_is_legal(m)
-              && !move_promotion(m) ? m : MOVE_NONE);
-      break;
-  
-  case ROOK:
-      return (   pos.rook_attacks_square(from, to)
-              && pos.move_is_legal(m)
-              && !move_promotion(m) ? m : MOVE_NONE);
-      break;
-
-  case QUEEN:
-      return (   pos.queen_attacks_square(from, to)
-              && pos.move_is_legal(m)
-              && !move_promotion(m) ? m : MOVE_NONE);
-      break;
-
-  case KING:
-      return (   pos.king_attacks_square(from, to)
-              && pos.move_is_legal(m)
-              && !move_promotion(m) ? m : MOVE_NONE);
-      break;
-
-  default:
-      assert(false);
-    }
-  assert(false);
-  return MOVE_NONE;
+  // Luckly we can handle all the other pieces in one go
+  return (   pos.piece_attacks_square(from, to)
+          && pos.move_is_legal(m)
+          && !move_promotion(m) ? m : MOVE_NONE);
 }
 
 
@@ -1039,7 +1007,7 @@ namespace {
     return n;
   }
 
-  
+
   int generate_knight_moves(const Position &pos, MoveStack *mlist, 
                             Color side, Bitboard target) {
     Square from, to;
