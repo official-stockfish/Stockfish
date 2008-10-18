@@ -970,60 +970,67 @@ namespace {
 
 
   int generate_castle_moves(const Position &pos, MoveStack *mlist, Color us) {
+
     int n = 0;
 
-    if(pos.can_castle(us)) {
-      Color them = opposite_color(us);
-      Square ksq = pos.king_square(us);
-      assert(pos.piece_on(ksq) == king_of_color(us));
-      
-      if(pos.can_castle_kingside(us)) {
-        Square rsq = pos.initial_kr_square(us);
-        Square g1 = relative_square(us, SQ_G1);
-        Square f1 = relative_square(us, SQ_F1);
-        Square s;
-        bool illegal = false;
+    if (pos.can_castle(us))
+    {
+        Color them = opposite_color(us);
+        Square ksq = pos.king_square(us);        
 
-        assert(pos.piece_on(rsq) == rook_of_color(us));
+        assert(pos.piece_on(ksq) == king_of_color(us));
 
-        for(s = Min(ksq, g1); s <= Max(ksq, g1); s++)
-          if((s != ksq && s != rsq && pos.square_is_occupied(s))
-             || pos.square_is_attacked(s, them))
-            illegal = true;
-        for(s = Min(rsq, f1); s <= Max(rsq, f1); s++)
-          if(s != ksq && s != rsq && pos.square_is_occupied(s))
-            illegal = true;
+        if (pos.can_castle_kingside(us))
+        {
+            Square rsq = pos.initial_kr_square(us);
+            Square g1 = relative_square(us, SQ_G1);
+            Square f1 = relative_square(us, SQ_F1);
+            Square s;
+            bool illegal = false;
 
-        if(!illegal)
-          mlist[n++].move = make_castle_move(ksq, rsq);
+            assert(pos.piece_on(rsq) == rook_of_color(us));
+
+            for (s = Min(ksq, g1); s <= Max(ksq, g1); s++)
+                if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
+                    || pos.square_is_attacked(s, them))
+                    illegal = true;
+
+            for (s = Min(rsq, f1); s <= Max(rsq, f1); s++)
+                if (s != ksq && s != rsq && pos.square_is_occupied(s))
+                    illegal = true;
+
+            if (!illegal)
+                mlist[n++].move = make_castle_move(ksq, rsq);
       }
 
-      if(pos.can_castle_queenside(us)) {
-        Square rsq = pos.initial_qr_square(us);
-        Square c1 = relative_square(us, SQ_C1);
-        Square d1 = relative_square(us, SQ_D1);
-        Square s;
-        bool illegal = false;
+      if (pos.can_castle_queenside(us))
+      {
+          Square rsq = pos.initial_qr_square(us);
+          Square c1 = relative_square(us, SQ_C1);
+          Square d1 = relative_square(us, SQ_D1);
+          Square s;
+          bool illegal = false;        
 
-        assert(pos.piece_on(rsq) == rook_of_color(us));
+          assert(pos.piece_on(rsq) == rook_of_color(us));
 
-        for(s = Min(ksq, c1); s <= Max(ksq, c1); s++)
-          if((s != ksq && s != rsq && pos.square_is_occupied(s))
-             || pos.square_is_attacked(s, them))
+          for (s = Min(ksq, c1); s <= Max(ksq, c1); s++)
+              if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
+                  || pos.square_is_attacked(s, them))
+                  illegal = true;
+
+          for (s = Min(rsq, d1); s <= Max(rsq, d1); s++)
+              if (s != ksq && s != rsq && pos.square_is_occupied(s))
+                  illegal = true;
+
+        if (   square_file(rsq) == FILE_B
+            && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
+                || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
             illegal = true;
-        for(s = Min(rsq, d1); s <= Max(rsq, d1); s++)
-          if(s != ksq && s != rsq && pos.square_is_occupied(s))
-            illegal = true;
-        if(square_file(rsq) == FILE_B &&
-           (pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them) ||
-            pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
-           illegal = true;
                          
-        if(!illegal)
-          mlist[n++].move = make_castle_move(ksq, rsq);
+        if (!illegal)
+            mlist[n++].move = make_castle_move(ksq, rsq);
       }
     }
-
     return n;
   }
 
