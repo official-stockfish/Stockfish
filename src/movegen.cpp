@@ -37,7 +37,6 @@ namespace {
   int generate_white_pawn_noncaptures(const Position&, MoveStack*);
   int generate_black_pawn_noncaptures(const Position&, MoveStack*);
   int generate_piece_moves(PieceType, const Position&, MoveStack*, Color side, Bitboard t);
-  int generate_king_moves(const Position&, MoveStack*, Square from, Bitboard t);
   int generate_castle_moves(const Position&, MoveStack*, Color us);
 
 }
@@ -65,10 +64,9 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   else
       n = generate_black_pawn_captures(pos, mlist);
 
-  for (PieceType pce = KNIGHT; pce < KING; pce++)
+  for (PieceType pce = KNIGHT; pce <= KING; pce++)
       n += generate_piece_moves(pce, pos, mlist+n, us, target);
 
-  n += generate_king_moves(pos, mlist+n, pos.king_square(us), target);
   return n;
 }
 
@@ -90,10 +88,9 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   else
       n = generate_black_pawn_noncaptures(pos, mlist);
 
-  for (PieceType pce = KNIGHT; pce < KING; pce++)
+  for (PieceType pce = KNIGHT; pce <= KING; pce++)
       n += generate_piece_moves(pce, pos, mlist+n, us, target);
 
-  n += generate_king_moves(pos, mlist+n, pos.king_square(us), target);
   n += generate_castle_moves(pos, mlist+n, us);
   return n;
 }
@@ -1002,6 +999,7 @@ namespace {
     return n;
   }
 
+
   int generate_piece_moves(PieceType piece, const Position &pos, MoveStack *mlist, 
                            Color side, Bitboard target) {
 
@@ -1019,21 +1017,6 @@ namespace {
             to = pop_1st_bit(&b);
             mlist[n++].move = make_move(from, to);
         }
-    }
-    return n;
-  }
-
-
-  int generate_king_moves(const Position &pos, MoveStack *mlist, 
-                          Square from, Bitboard target) {
-    Square to;
-    Bitboard b;
-    int n = 0;
-    
-    b = pos.king_attacks(from) & target;
-    while(b) {
-      to = pop_1st_bit(&b);
-      mlist[n++].move = make_move(from, to);
     }
     return n;
   }
