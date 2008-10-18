@@ -54,17 +54,14 @@ namespace {
   const PawnOffsets BlackPawnOffsets = { Rank6BB, Rank1BB, DELTA_S, DELTA_SE, DELTA_SW, BLACK,
                                          WHITE, &forward_black, &forward_left_black, &forward_right_black };
   
-  int generate_pawn_captures(const PawnOffsets& ofs, const Position& pos, MoveStack* mlist);  
-  int generate_white_pawn_noncaptures(const Position&, MoveStack*);
-  int generate_black_pawn_noncaptures(const Position&, MoveStack*);
+  int generate_pawn_captures(const PawnOffsets&, const Position&, MoveStack*);  
+  int generate_pawn_noncaptures(const PawnOffsets&, const Position&, MoveStack*);
+  int generate_pawn_checks(const PawnOffsets&, const Position&, Bitboard dc, Square ksq, MoveStack*, int n);
   int generate_piece_moves(PieceType, const Position&, MoveStack*, Color side, Bitboard t);
   int generate_castle_moves(const Position&, MoveStack*, Color us);
 
   int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
                             Bitboard dc, Square ksq, MoveStack* mlist, int n);
-
-  int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc,
-                           Square ksq, MoveStack* mlist, int n);
 }
 
 
@@ -110,9 +107,9 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   int n;
 
   if (us == WHITE)
-      n = generate_white_pawn_noncaptures(pos, mlist);
+      n = generate_pawn_noncaptures(WhitePawnOffsets, pos, mlist);
   else
-      n = generate_black_pawn_noncaptures(pos, mlist);
+      n = generate_pawn_noncaptures(BlackPawnOffsets, pos, mlist);
 
   for (PieceType pce = KNIGHT; pce <= KING; pce++)
       n += generate_piece_moves(pce, pos, mlist+n, us, target);
@@ -699,107 +696,59 @@ namespace {
   }
 
 
-  int generate_white_pawn_noncaptures(const Position &pos, MoveStack *mlist) {
+  int generate_pawn_noncaptures(const PawnOffsets& ofs, const Position& pos, MoveStack* mlist) {
 
-    Bitboard pawns = pos.pawns(WHITE);
-    Bitboard enemyPieces = pos.pieces_of_color(BLACK);
+    Bitboard pawns = pos.pawns(ofs.us);
+    Bitboard enemyPieces = pos.pieces_of_color(ofs.them);
     Bitboard emptySquares = pos.empty_squares();
     Bitboard b1, b2;
     Square sq;
     int n = 0;
 
-    // Underpromotion captures in the a1-h8 direction:
-    b1 = (pawns << 9) & ~FileABB & enemyPieces & Rank8BB;
-    while(b1) {
-      sq = pop_1st_bit(&b1);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NE, sq, ROOK);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NE, sq, BISHOP);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NE, sq, KNIGHT);
+    // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
+    b1 = ofs.forward_right(pawns) & ~FileABB & enemyPieces & ofs.Rank8BB;
+    while (b1)
+    {
+        sq = pop_1st_bit(&b1);
+        mlist[n++].move = make_promotion_move(sq - ofs.DELTA_NE, sq, ROOK);
+        mlist[n++].move = make_promotion_move(sq - ofs.DELTA_NE, sq, BISHOP);
+        mlist[n++].move = make_promotion_move(sq - ofs.DELTA_NE, sq, KNIGHT);
     }
 
-    // Underpromotion captures in the h1-a8 direction:
-    b1 = (pawns << 7) & ~FileHBB & enemyPieces & Rank8BB;
-    while(b1) {
-      sq = pop_1st_bit(&b1);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NW, sq, ROOK);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NW, sq, BISHOP);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NW, sq, KNIGHT);
+    // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
+    b1 = ofs.forward_left(pawns) & ~FileHBB & enemyPieces & ofs.Rank8BB;
+    while (b1)
+    {
+        sq = pop_1st_bit(&b1);
+        mlist[n++].move = make_promotion_move(sq - ofs.DELTA_NW, sq, ROOK);
+        mlist[n++].move = make_promotion_move(sq - ofs.DELTA_NW, sq, BISHOP);
+        mlist[n++].move = make_promotion_move(sq - ofs.DELTA_NW, sq, KNIGHT);
     }
 
-    // Single pawn pushes:
-    b1 = (pawns << 8) & emptySquares;
-    b2 = b1 & Rank8BB;
-    while(b2) {
+    // Single pawn pushes
+    b1 = ofs.forward(pawns) & emptySquares;
+    b2 = b1 & ofs.Rank8BB;
+    while (b2)
+    {
       sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_promotion_move(sq - DELTA_N, sq, ROOK);
-      mlist[n++].move = make_promotion_move(sq - DELTA_N, sq, BISHOP);
-      mlist[n++].move = make_promotion_move(sq - DELTA_N, sq, KNIGHT);
+      mlist[n++].move = make_promotion_move(sq - ofs.DELTA_N, sq, ROOK);
+      mlist[n++].move = make_promotion_move(sq - ofs.DELTA_N, sq, BISHOP);
+      mlist[n++].move = make_promotion_move(sq - ofs.DELTA_N, sq, KNIGHT);
     }
-    b2 = b1 & ~Rank8BB;
-    while(b2) {
+    b2 = b1 & ~ofs.Rank8BB;
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_move(sq - ofs.DELTA_N, sq);
+    }
+
+    // Double pawn pushes
+    b2 = (ofs.forward(b1 & ofs.Rank3BB)) & emptySquares;
+    while (b2)
+    {
       sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_N, sq);
+      mlist[n++].move = make_move(sq - ofs.DELTA_N - ofs.DELTA_N, sq);
     }
-
-    // Double pawn pushes:
-    b2 = ((b1 & Rank3BB) << 8) & emptySquares;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_N - DELTA_N, sq);
-    }
-
-    return n;
-  }
-
-
-  int generate_black_pawn_noncaptures(const Position &pos, MoveStack *mlist) {
-    Bitboard pawns = pos.pawns(BLACK);
-    Bitboard enemyPieces = pos.pieces_of_color(WHITE);
-    Bitboard emptySquares = pos.empty_squares();
-    Bitboard b1, b2;
-    Square sq;
-    int n = 0;
-
-    // Underpromotion captures in the a8-h1 direction:
-    b1 = (pawns >> 7) & ~FileABB & enemyPieces & Rank1BB;
-    while(b1) {
-      sq = pop_1st_bit(&b1);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SE, sq, ROOK);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SE, sq, BISHOP);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SE, sq, KNIGHT);
-    }
-
-    // Underpromotion captures in the h8-a1 direction:
-    b1 = (pawns >> 9) & ~FileHBB & enemyPieces & Rank1BB;
-    while(b1) {
-      sq = pop_1st_bit(&b1);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SW, sq, ROOK);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SW, sq, BISHOP);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SW, sq, KNIGHT);
-    }
-
-    // Single pawn pushes:
-    b1 = (pawns >> 8) & emptySquares;
-    b2 = b1 & Rank1BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_promotion_move(sq - DELTA_S, sq, ROOK);
-      mlist[n++].move = make_promotion_move(sq - DELTA_S, sq, BISHOP);
-      mlist[n++].move = make_promotion_move(sq - DELTA_S, sq, KNIGHT);
-    }
-    b2 = b1 & ~Rank1BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_S, sq);
-    }
-    
-    // Double pawn pushes:
-    b2 = ((b1 & Rank6BB) >> 8) & emptySquares;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_S - DELTA_S, sq);
-    }
-
     return n;
   }
 
