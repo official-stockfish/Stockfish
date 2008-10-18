@@ -152,19 +152,19 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
     // Direct checks. These are possible only for pawns on neighboring files
     // of the enemy king
 
-    b1 &= (~dc & neighboring_files_bb(ksq));
+    b1 &= (~dc & neighboring_files_bb(ksq)); // FIXME why ~dc ??
 
     // Direct checks, single pawn pushes
     b2 = (b1 << 8) & empty;
-    b3 = b2 & pos.black_pawn_attacks(ksq);
-    while(b3)
+    b3 = b2 & pos.pawn_attacks(BLACK, ksq);
+    while (b3)
     {
         to = pop_1st_bit(&b3);
         mlist[n++].move = make_move(to - DELTA_N, to);
     }
 
     // Direct checks, double pawn pushes
-    b3 = ((b2 & Rank3BB) << 8) & empty & pos.black_pawn_attacks(ksq);
+    b3 = ((b2 & Rank3BB) << 8) & empty & pos.pawn_attacks(BLACK, ksq);
     while (b3)
     {
         to = pop_1st_bit(&b3);
@@ -203,7 +203,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
     // Direct checks, single pawn pushes:
     b2 = (b1 >> 8) & empty;
-    b3 = b2 & pos.white_pawn_attacks(ksq);
+    b3 = b2 & pos.pawn_attacks(WHITE, ksq);
     while (b3)
     {
         to = pop_1st_bit(&b3);
@@ -211,7 +211,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
     }
 
     // Direct checks, double pawn pushes
-    b3 = ((b2 & Rank6BB) >> 8) & empty & pos.black_pawn_attacks(ksq);
+    b3 = ((b2 & Rank6BB) >> 8) & empty & pos.pawn_attacks(WHITE, ksq);
     while (b3)
     {
         to = pop_1st_bit(&b3);
