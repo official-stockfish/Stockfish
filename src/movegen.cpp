@@ -41,6 +41,23 @@ namespace {
 
   int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
                             Bitboard dc, Square ksq, MoveStack* mlist);
+
+  inline Bitboard next_row_white(Bitboard b) { return b << 8; }
+  inline Bitboard next_row_black(Bitboard b) { return b >> 8; }
+
+  struct PawnOffsets {
+
+      Bitboard Rank3BB;
+      Bitboard Rank8BB;
+      SquareDelta DELTA_N;
+      Color them;
+      Bitboard (*next_row_fn)(Bitboard b);
+  };
+  const PawnOffsets WhitePawnOffsets = { Rank3BB, Rank8BB, DELTA_N, BLACK, &next_row_white };
+  const PawnOffsets BlackPawnOffsets = { Rank6BB, Rank1BB, DELTA_S, WHITE, &next_row_black };
+
+  int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc,
+                           Square ksq, MoveStack* mlist);
 }
 
 
@@ -107,146 +124,45 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   assert(pos.is_ok());
   assert(!pos.is_check());
 
-  Color us, them;
-  Square ksq, from, to;
-  Bitboard empty, b1, b2, b3;
+  Color us = pos.side_to_move();
+  Square ksq = pos.king_square(opposite_color(us));
   int n = 0;
 
-  us = pos.side_to_move();
-  them = opposite_color(us);
-
-  ksq = pos.king_square(them);
-  assert(pos.piece_on(ksq) == king_of_color(them));
+  assert(pos.piece_on(ksq) == king_of_color(opposite_color(us)));
 
   dc = pos.discovered_check_candidates(us);
-  empty = pos.empty_squares();
-  
-  // Pawn moves.  This is somewhat messy, and we use separate code for white
-  // and black, because we can't shift by negative numbers in C/C++.  :-(
 
-  if (us == WHITE)
-  {
-    // Pawn moves which give discovered check. This is possible only if the 
-    // pawn is not on the same file as the enemy king, because we don't 
-    // generate captures.
+  // Pawn moves
+  if (us == WHITE)    
+     n += generate_pawn_checks(WhitePawnOffsets, pos, dc, ksq, mlist);
+  else
+     n += generate_pawn_checks(BlackPawnOffsets, pos, dc, ksq, mlist);
 
-    // Find all friendly pawns not on the enemy king's file
-    b1 = pos.pawns(us) & ~file_bb(ksq);
+  // Pieces moves
+  Bitboard b = pos.knights(us);
+  if (b)
+      n += generate_piece_checks(KNIGHT, pos, b, dc, ksq, mlist);
 
-    // Discovered checks, single pawn pushes
-    b2 = b3 = ((b1 & dc) << 8) & ~Rank8BB & empty;
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_N, to);
-    }
+  b = pos.bishops(us);
+  if (b)
+      n += generate_piece_checks(BISHOP, pos, b, dc, ksq, mlist);
 
-    // Discovered checks, double pawn pushes
-    b3 = ((b2 & Rank3BB) << 8) & empty;
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
-    }
+  b = pos.rooks(us);
+  if (b)
+      n += generate_piece_checks(ROOK, pos, b, dc, ksq, mlist);
 
-    // Direct checks. These are possible only for pawns on neighboring files
-    // of the enemy king
-
-    b1 &= (~dc & neighboring_files_bb(ksq)); // FIXME why ~dc ??
-
-    // Direct checks, single pawn pushes
-    b2 = (b1 << 8) & empty;
-    b3 = b2 & pos.pawn_attacks(BLACK, ksq);
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_N, to);
-    }
-
-    // Direct checks, double pawn pushes
-    b3 = ((b2 & Rank3BB) << 8) & empty & pos.pawn_attacks(BLACK, ksq);
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
-    }
-  }
-  else { // (us == BLACK)
-
-    // Pawn moves which give discovered check.  This is possible only if the 
-    // pawn is not on the same file as the enemy king, because we don't 
-    // generate captures.
-
-    // Find all friendly pawns not on the enemy king's file:
-    b1 = pos.pawns(us) & ~file_bb(ksq);
-
-    // Discovered checks, single pawn pushes
-    b2 = b3 = ((b1 & dc) >> 8) & ~Rank1BB & empty;
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_S, to);
-    }
-
-    // Discovered checks, double pawn pushes
-    b3 = ((b2 & Rank6BB) >> 8) & empty;
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
-    }
-
-    // Direct checks.  These are possible only for pawns on neighboring files
-    // of the enemy king
-
-    b1 &= (~dc & neighboring_files_bb(ksq));
-
-    // Direct checks, single pawn pushes:
-    b2 = (b1 >> 8) & empty;
-    b3 = b2 & pos.pawn_attacks(WHITE, ksq);
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_S, to);
-    }
-
-    // Direct checks, double pawn pushes
-    b3 = ((b2 & Rank6BB) >> 8) & empty & pos.pawn_attacks(WHITE, ksq);
-    while (b3)
-    {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
-    }
-  }
-
-  // Knight moves
-  b1 = pos.knights(us);
-  if (b1)
-      n += generate_piece_checks(KNIGHT, pos, b1, dc, ksq, mlist);
-
-  // Bishop moves
-  b1 = pos.bishops(us);
-  if (b1)
-      n += generate_piece_checks(BISHOP, pos, b1, dc, ksq, mlist);
-
-  // Rook moves
-  b1 = pos.rooks(us);
-  if (b1)
-      n += generate_piece_checks(ROOK, pos, b1, dc, ksq, mlist);
-
-  // Queen moves
-  b1 = pos.queens(us);
-  if (b1)
-      n += generate_piece_checks(QUEEN, pos, b1, dc, ksq, mlist);
+  b = pos.queens(us);
+  if (b)
+      n += generate_piece_checks(QUEEN, pos, b, dc, ksq, mlist);
 
   // King moves
-  from = pos.king_square(us);
+  Square from = pos.king_square(us);
   if (bit_is_set(dc, from))
   {
-      b1 = pos.king_attacks(from) & empty & ~QueenPseudoAttacks[ksq];
-      while (b1)
+      b = pos.king_attacks(from) & pos.empty_squares() & ~QueenPseudoAttacks[ksq];
+      while (b)
       {
-          to = pop_1st_bit(&b1);
+          Square to = pop_1st_bit(&b);
           mlist[n++].move = make_move(from, to);
       }
   }
@@ -1065,6 +981,57 @@ namespace {
             Square to = pop_1st_bit(&bb);
             mlist[n++].move = make_move(from, to);
         }
+    }
+    return n;
+  }
+
+  int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
+  {
+    // Pawn moves which give discovered check. This is possible only if the 
+    // pawn is not on the same file as the enemy king, because we don't 
+    // generate captures.
+    int n = 0;
+    Bitboard empty = pos.empty_squares();
+
+    // Find all friendly pawns not on the enemy king's file
+    Bitboard b1 = pos.pawns(pos.side_to_move()) & ~file_bb(ksq), b2, b3;
+
+    // Discovered checks, single pawn pushes
+    b2 = b3 = (ofs.next_row_fn)(b1 & dc) & ~ofs.Rank8BB & empty;
+    while (b3)
+    {
+        Square to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - ofs.DELTA_N, to);
+    }
+
+    // Discovered checks, double pawn pushes
+    b3 = (ofs.next_row_fn)(b2 & ofs.Rank3BB) & empty;
+    while (b3)
+    {
+        Square to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - ofs.DELTA_N - ofs.DELTA_N, to);
+    }
+
+    // Direct checks. These are possible only for pawns on neighboring files
+    // of the enemy king
+
+    b1 &= (~dc & neighboring_files_bb(ksq)); // FIXME why ~dc ??
+
+    // Direct checks, single pawn pushes
+    b2 = (ofs.next_row_fn)(b1) & empty;
+    b3 = b2 & pos.pawn_attacks(ofs.them, ksq);
+    while (b3)
+    {
+        Square to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - ofs.DELTA_N, to);
+    }
+
+    // Direct checks, double pawn pushes
+    b3 = (ofs.next_row_fn)(b2 & ofs.Rank3BB) & empty & pos.pawn_attacks(ofs.them, ksq);
+    while (b3)
+    {
+        Square to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - ofs.DELTA_N - ofs.DELTA_N, to);
     }
     return n;
   }
