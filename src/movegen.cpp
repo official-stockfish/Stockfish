@@ -40,7 +40,7 @@ namespace {
   int generate_castle_moves(const Position&, MoveStack*, Color us);
 
   int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
-                            Bitboard dc, Square ksq, MoveStack* mlist);
+                            Bitboard dc, Square ksq, MoveStack* mlist, int n);
 
   inline Bitboard next_row_white(Bitboard b) { return b << 8; }
   inline Bitboard next_row_black(Bitboard b) { return b >> 8; }
@@ -57,7 +57,7 @@ namespace {
   const PawnOffsets BlackPawnOffsets = { Rank6BB, Rank1BB, DELTA_S, WHITE, &next_row_black };
 
   int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc,
-                           Square ksq, MoveStack* mlist);
+                           Square ksq, MoveStack* mlist, int n);
 }
 
 
@@ -134,26 +134,26 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   // Pawn moves
   if (us == WHITE)    
-     n += generate_pawn_checks(WhitePawnOffsets, pos, dc, ksq, mlist);
+     n = generate_pawn_checks(WhitePawnOffsets, pos, dc, ksq, mlist, 0);
   else
-     n += generate_pawn_checks(BlackPawnOffsets, pos, dc, ksq, mlist);
+     n = generate_pawn_checks(BlackPawnOffsets, pos, dc, ksq, mlist, 0);
 
   // Pieces moves
   Bitboard b = pos.knights(us);
   if (b)
-      n += generate_piece_checks(KNIGHT, pos, b, dc, ksq, mlist);
+      n = generate_piece_checks(KNIGHT, pos, b, dc, ksq, mlist, n);
 
   b = pos.bishops(us);
   if (b)
-      n += generate_piece_checks(BISHOP, pos, b, dc, ksq, mlist);
+      n = generate_piece_checks(BISHOP, pos, b, dc, ksq, mlist, n);
 
   b = pos.rooks(us);
   if (b)
-      n += generate_piece_checks(ROOK, pos, b, dc, ksq, mlist);
+      n = generate_piece_checks(ROOK, pos, b, dc, ksq, mlist, n);
 
   b = pos.queens(us);
   if (b)
-      n += generate_piece_checks(QUEEN, pos, b, dc, ksq, mlist);
+      n = generate_piece_checks(QUEEN, pos, b, dc, ksq, mlist, n);
 
   // King moves
   Square from = pos.king_square(us);
@@ -951,10 +951,9 @@ namespace {
   }
 
   int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
-                          Bitboard dc, Square ksq, MoveStack* mlist) {
+                          Bitboard dc, Square ksq, MoveStack* mlist, int n) {
 
     const Piece_attacks_fn mem_fn = piece_attacks_fn[pce];
-    int n = 0;
 
     // Discovered checks
     Bitboard b = target & dc;
@@ -985,12 +984,11 @@ namespace {
     return n;
   }
 
-  int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
+  int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist, int n)
   {
     // Pawn moves which give discovered check. This is possible only if the 
     // pawn is not on the same file as the enemy king, because we don't 
     // generate captures.
-    int n = 0;
     Bitboard empty = pos.empty_squares();
 
     // Find all friendly pawns not on the enemy king's file
