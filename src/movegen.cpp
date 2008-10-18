@@ -39,6 +39,8 @@ namespace {
   int generate_piece_moves(PieceType, const Position&, MoveStack*, Color side, Bitboard t);
   int generate_castle_moves(const Position&, MoveStack*, Color us);
 
+  int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
+                            Bitboard dc, Square ksq, MoveStack* mlist);
 }
 
 
@@ -107,7 +109,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   Color us, them;
   Square ksq, from, to;
-  Bitboard empty, checkSqs, b1, b2, b3;
+  Bitboard empty, b1, b2, b3;
   int n = 0;
 
   us = pos.side_to_move();
@@ -124,45 +126,49 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   if (us == WHITE)
   {
-    // Pawn moves which give discovered check.  This is possible only if the 
+    // Pawn moves which give discovered check. This is possible only if the 
     // pawn is not on the same file as the enemy king, because we don't 
     // generate captures.
 
-    // Find all friendly pawns not on the enemy king's file:
+    // Find all friendly pawns not on the enemy king's file
     b1 = pos.pawns(us) & ~file_bb(ksq);
 
-    // Discovered checks, single pawn pushes:
+    // Discovered checks, single pawn pushes
     b2 = b3 = ((b1 & dc) << 8) & ~Rank8BB & empty;
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_N, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_N, to);
     }
 
-    // Discovered checks, double pawn pushes:
+    // Discovered checks, double pawn pushes
     b3 = ((b2 & Rank3BB) << 8) & empty;
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
     }
 
-    // Direct checks.  These are possible only for pawns on neighboring files
-    // of the enemy king:
+    // Direct checks. These are possible only for pawns on neighboring files
+    // of the enemy king
 
     b1 &= (~dc & neighboring_files_bb(ksq));
 
-    // Direct checks, single pawn pushes:
+    // Direct checks, single pawn pushes
     b2 = (b1 << 8) & empty;
     b3 = b2 & pos.black_pawn_attacks(ksq);
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_N, to);
+    while(b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_N, to);
     }
 
-    // Direct checks, double pawn pushes:
+    // Direct checks, double pawn pushes
     b3 = ((b2 & Rank3BB) << 8) & empty & pos.black_pawn_attacks(ksq);
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
     }
   }
   else { // (us == BLACK)
@@ -174,147 +180,75 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
     // Find all friendly pawns not on the enemy king's file:
     b1 = pos.pawns(us) & ~file_bb(ksq);
 
-    // Discovered checks, single pawn pushes:
+    // Discovered checks, single pawn pushes
     b2 = b3 = ((b1 & dc) >> 8) & ~Rank1BB & empty;
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_S, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_S, to);
     }
 
-    // Discovered checks, double pawn pushes:
+    // Discovered checks, double pawn pushes
     b3 = ((b2 & Rank6BB) >> 8) & empty;
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
     }
 
     // Direct checks.  These are possible only for pawns on neighboring files
-    // of the enemy king:
+    // of the enemy king
 
     b1 &= (~dc & neighboring_files_bb(ksq));
 
     // Direct checks, single pawn pushes:
     b2 = (b1 >> 8) & empty;
     b3 = b2 & pos.white_pawn_attacks(ksq);
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_S, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_S, to);
     }
 
-    // Direct checks, double pawn pushes:
+    // Direct checks, double pawn pushes
     b3 = ((b2 & Rank6BB) >> 8) & empty & pos.black_pawn_attacks(ksq);
-    while(b3) {
-      to = pop_1st_bit(&b3);
-      mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
+    while (b3)
+    {
+        to = pop_1st_bit(&b3);
+        mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
     }
   }
 
   // Knight moves
   b1 = pos.knights(us);
-  if(b1) {
-    // Discovered knight checks:
-    b2 = b1 & dc;
-    while(b2) {
-      from = pop_1st_bit(&b2);
-      b3 = pos.knight_attacks(from) & empty;
-      while(b3) {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-    
-    // Direct knight checks:
-    b2 = b1 & ~dc;
-    checkSqs = pos.knight_attacks(ksq) & empty;
-    while(b2) {
-      from = pop_1st_bit(&b2);
-      b3 = pos.knight_attacks(from) & checkSqs;
-      while(b3) {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-  }
+  if (b1)
+      n += generate_piece_checks(KNIGHT, pos, b1, dc, ksq, mlist);
 
   // Bishop moves
   b1 = pos.bishops(us);
-  if(b1) {
-    // Discovered bishop checks:
-    b2 = b1 & dc;
-    while(b2) {
-      from = pop_1st_bit(&b2);
-      b3 = pos.bishop_attacks(from) & empty;
-      while(b3) {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-    
-    // Direct bishop checks:
-    b2 = b1 & ~dc;
-    checkSqs = pos.bishop_attacks(ksq) & empty;
-    while(b2) {
-      from = pop_1st_bit(&b2);
-      b3 = pos.bishop_attacks(from) & checkSqs;
-      while(b3) {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-  }
+  if (b1)
+      n += generate_piece_checks(BISHOP, pos, b1, dc, ksq, mlist);
 
   // Rook moves
   b1 = pos.rooks(us);
-  if(b1) {
-    // Discovered rook checks:
-    b2 = b1 & dc;
-    while(b2) {
-      from = pop_1st_bit(&b2);
-      b3 = pos.rook_attacks(from) & empty;
-      while(b3) {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-    
-    // Direct rook checks:
-    b2 = b1 & ~dc;
-    checkSqs = pos.rook_attacks(ksq) & empty;
-    while(b2) {
-      from = pop_1st_bit(&b2);
-      b3 = pos.rook_attacks(from) & checkSqs;
-      while(b3) {
-        to = pop_1st_bit(&b3);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-  }
+  if (b1)
+      n += generate_piece_checks(ROOK, pos, b1, dc, ksq, mlist);
 
   // Queen moves
   b1 = pos.queens(us);
-  if(b1) {
-    // Discovered queen checks are impossible!
-
-    // Direct queen checks:
-    checkSqs = pos.queen_attacks(ksq) & empty;
-    while(b1) {
-      from = pop_1st_bit(&b1);
-      b2 = pos.queen_attacks(from) & checkSqs;
-      while(b2) {
-        to = pop_1st_bit(&b2);
-        mlist[n++].move = make_move(from, to);
-      }
-    }
-  }
+  if (b1)
+      n += generate_piece_checks(QUEEN, pos, b1, dc, ksq, mlist);
 
   // King moves
   from = pos.king_square(us);
-  if(bit_is_set(dc, from)) {
-    b1 = pos.king_attacks(from) & empty & ~QueenPseudoAttacks[ksq];
-    while(b1) {
-      to = pop_1st_bit(&b1);
-      mlist[n++].move = make_move(from, to);
-    }
+  if (bit_is_set(dc, from))
+  {
+      b1 = pos.king_attacks(from) & empty & ~QueenPseudoAttacks[ksq];
+      while (b1)
+      {
+          to = pop_1st_bit(&b1);
+          mlist[n++].move = make_move(from, to);
+      }
   }
 
   // TODO: Castling moves!
@@ -771,132 +705,145 @@ Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
 namespace {
 
   int generate_white_pawn_captures(const Position &pos, MoveStack *mlist) {
+
     Bitboard pawns = pos.pawns(WHITE);
     Bitboard enemyPieces = pos.pieces_of_color(BLACK);
-    Bitboard b1, b2;
     Square sq;
     int n = 0;
 
-    // Captures in the a1-h8 direction:
-    b1 = (pawns << 9) & ~FileABB & enemyPieces;
+    // Captures in the a1-h8 direction
+    Bitboard b1 = (pawns << 9) & ~FileABB & enemyPieces;
 
-    // Promotions:
-    b2 = b1 & Rank8BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NE, sq, QUEEN);
+    // Capturing promotions
+    Bitboard b2 = b1 & Rank8BB;
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_promotion_move(sq - DELTA_NE, sq, QUEEN);
     }
 
-    // Non-promotions:
+    // Capturing non-promotions
     b2 = b1 & ~Rank8BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_NE, sq);
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_move(sq - DELTA_NE, sq);
     }
 
-    // Captures in the h1-a8 direction:
+    // Captures in the h1-a8 direction
     b1 = (pawns << 7) & ~FileHBB & enemyPieces;
 
-    // Promotions:
+    // Capturing promotions
     b2 = b1 & Rank8BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_promotion_move(sq - DELTA_NW, sq, QUEEN);
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_promotion_move(sq - DELTA_NW, sq, QUEEN);
     }
 
-    // Non-promotions:
+    // Capturing non-promotions
     b2 = b1 & ~Rank8BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_NW, sq);
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_move(sq - DELTA_NW, sq);
     }
 
-    // Non-capturing promotions:
+    // Non-capturing promotions
     b1 = (pawns << 8) & pos.empty_squares() & Rank8BB;
-    while(b1)  {
-      sq = pop_1st_bit(&b1);
-      mlist[n++].move = make_promotion_move(sq - DELTA_N, sq, QUEEN);
-    }
-
-    // En passant captures:
-    if(pos.ep_square() != SQ_NONE) {
-      assert(square_rank(pos.ep_square()) == RANK_6);
-      b1 = pawns & pos.black_pawn_attacks(pos.ep_square());
-      assert(b1 != EmptyBoardBB);
-      while(b1) {
+    while (b1)
+    {
         sq = pop_1st_bit(&b1);
-        mlist[n++].move = make_ep_move(sq, pos.ep_square());
-      }
+        mlist[n++].move = make_promotion_move(sq - DELTA_N, sq, QUEEN);
     }
 
+    // En passant captures
+    if (pos.ep_square() != SQ_NONE)
+    {
+        assert(square_rank(pos.ep_square()) == RANK_6);
+        b1 = pawns & pos.black_pawn_attacks(pos.ep_square());
+        assert(b1 != EmptyBoardBB);
+        while (b1)
+        {
+            sq = pop_1st_bit(&b1);
+            mlist[n++].move = make_ep_move(sq, pos.ep_square());
+        }
+    }
     return n;
   }
 
 
   int generate_black_pawn_captures(const Position &pos, MoveStack *mlist) {
+
     Bitboard pawns = pos.pawns(BLACK);
     Bitboard enemyPieces = pos.pieces_of_color(WHITE);
-    Bitboard b1, b2;
     Square sq;
     int n = 0;
 
-    // Captures in the a8-h1 direction:
-    b1 = (pawns >> 7) & ~FileABB & enemyPieces;
+    // Captures in the a8-h1 direction
+    Bitboard b1 = (pawns >> 7) & ~FileABB & enemyPieces;
 
-    // Promotions:
-    b2 = b1 & Rank1BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SE, sq, QUEEN);
+    // Capturing promotions
+    Bitboard b2 = b1 & Rank1BB;
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_promotion_move(sq - DELTA_SE, sq, QUEEN);
     }
 
-    // Non-promotions:
+    // Capturing non-promotions
     b2 = b1 & ~Rank1BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_SE, sq);
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_move(sq - DELTA_SE, sq);
     }
 
-    // Captures in the h8-a1 direction:
+    // Captures in the h8-a1 direction
     b1 = (pawns >> 9) & ~FileHBB & enemyPieces;
 
-    // Promotions:
+    // Capturing promotions
     b2 = b1 & Rank1BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_promotion_move(sq - DELTA_SW, sq, QUEEN);
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_promotion_move(sq - DELTA_SW, sq, QUEEN);
     }
 
-    // Non-promotions:
+    // Capturing Non-promotions
     b2 = b1 & ~Rank1BB;
-    while(b2) {
-      sq = pop_1st_bit(&b2);
-      mlist[n++].move = make_move(sq - DELTA_SW, sq);
+    while (b2)
+    {
+        sq = pop_1st_bit(&b2);
+        mlist[n++].move = make_move(sq - DELTA_SW, sq);
     }
 
-    // Non-capturing promotions:
+    // Non-capturing promotions
     b1 = (pawns >> 8) & pos.empty_squares() & Rank1BB;
-    while(b1)  {
-      sq = pop_1st_bit(&b1);
-      mlist[n++].move = make_promotion_move(sq - DELTA_S, sq, QUEEN);
-    }
-
-    // En passant captures:
-    if(pos.ep_square() != SQ_NONE) {
-      assert(square_rank(pos.ep_square()) == RANK_3);
-      b1 = pawns & pos.white_pawn_attacks(pos.ep_square());
-      assert(b1 != EmptyBoardBB);
-      while(b1) {
+    while (b1)
+    {
         sq = pop_1st_bit(&b1);
-        mlist[n++].move = make_ep_move(sq, pos.ep_square());
-      }
+        mlist[n++].move = make_promotion_move(sq - DELTA_S, sq, QUEEN);
     }
 
+    // En passant captures
+    if (pos.ep_square() != SQ_NONE)
+    {
+        assert(square_rank(pos.ep_square()) == RANK_3);
+        b1 = pawns & pos.white_pawn_attacks(pos.ep_square());
+        assert(b1 != EmptyBoardBB);
+        while (b1)
+        {
+            sq = pop_1st_bit(&b1);
+            mlist[n++].move = make_ep_move(sq, pos.ep_square());
+        }
+    }
     return n;
   }
-    
+
 
   int generate_white_pawn_noncaptures(const Position &pos, MoveStack *mlist) {
+
     Bitboard pawns = pos.pawns(WHITE);
     Bitboard enemyPieces = pos.pieces_of_color(BLACK);
     Bitboard emptySquares = pos.empty_squares();
@@ -1077,6 +1024,41 @@ namespace {
       }
     }
 
+    return n;
+  }
+
+  int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
+                          Bitboard dc, Square ksq, MoveStack* mlist) {
+
+    const Piece_attacks_fn mem_fn = piece_attacks_fn[pce];
+    int n = 0;
+
+    // Discovered checks
+    Bitboard b = target & dc;
+    while (b)
+    {
+        Square from = pop_1st_bit(&b);
+        Bitboard bb = (pos.*mem_fn)(from) & pos.empty_squares();
+        while (bb)
+        {
+            Square to = pop_1st_bit(&bb);
+            mlist[n++].move = make_move(from, to);
+        }
+    }
+
+    // Direct checks
+    b = target & ~dc;
+    Bitboard checkSqs = (pos.*mem_fn)(ksq) & pos.empty_squares();
+    while (b)
+    {
+        Square from = pop_1st_bit(&b);
+        Bitboard bb = (pos.*mem_fn)(from) & checkSqs;
+        while (bb)
+        {
+            Square to = pop_1st_bit(&bb);
+            mlist[n++].move = make_move(from, to);
+        }
+    }
     return n;
   }
 }
