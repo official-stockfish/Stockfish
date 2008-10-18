@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
 
   // Initialization
 
-  init_piece_attacks_fn();
   init_mersenne();
   init_direction_table();
   init_bitboards();

@@ -1004,9 +1004,10 @@ namespace {
 
   int generate_piece_moves(PieceType piece, const Position &pos, MoveStack *mlist, 
                            Color side, Bitboard target) {
+
+    const Piece_attacks_fn mem_fn = piece_attacks_fn[piece];
     Square from, to;
     Bitboard b;
-    Piece_attacks_fn mem_fn = piece_attacks_fn[piece];
     int n = 0;
 
     for (int i = 0; i < pos.piece_count(side, piece); i++)
@@ -1095,5 +1096,4 @@ namespace {
 
     return n;
   }
-    
 }

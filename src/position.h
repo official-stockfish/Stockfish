@@ -372,8 +372,7 @@ private:
 
 /// An array of member functions to dispatch attacks_square
 typedef Bitboard (Position::* Piece_attacks_fn)(Square s) const;
-extern Piece_attacks_fn piece_attacks_fn[7];
-extern void init_piece_attacks_fn();
+extern const Piece_attacks_fn piece_attacks_fn[];
 
 ////
 //// Inline functions
