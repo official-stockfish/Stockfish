@@ -298,7 +298,7 @@ public:
   void reset_game_ply();
   
   // Position consistency check, for debugging
-  bool is_ok() const;
+  bool is_ok(int* failedStep = NULL) const;
 
   // Static member functions:
   static void init_zobrist();

@@ -2116,7 +2116,7 @@ void Position::flipped_copy(const Position &pos) {
 /// Position::is_ok() performs some consitency checks for the position object.
 /// This is meant to be helpful when debugging.
 
-bool Position::is_ok() const {
+bool Position::is_ok(int* failedStep) const {
 
   // What features of the position should be verified?
   static const bool debugBitboards = false;
@@ -2131,23 +2131,30 @@ bool Position::is_ok() const {
   static const bool debugPieceCounts = false;
   static const bool debugPieceList = false;
 
+  if (failedStep) *failedStep = 1;
+
   // Side to move OK?
   if(!color_is_ok(side_to_move()))
     return false;
 
   // Are the king squares in the position correct?
+  if (failedStep) (*failedStep)++;
   if(piece_on(king_square(WHITE)) != WK)
     return false;
+
+  if (failedStep) (*failedStep)++;
   if(piece_on(king_square(BLACK)) != BK)
     return false;
 
   // Castle files OK?
+  if (failedStep) (*failedStep)++;
   if(!file_is_ok(initialKRFile))
     return false;
   if(!file_is_ok(initialQRFile))
     return false;
 
   // Do both sides have exactly one king?
+  if (failedStep) (*failedStep)++;
   if(debugKingCount) {
     int kingCount[2] = {0, 0};
     for(Square s = SQ_A1; s <= SQ_H8; s++)
@@ -2158,6 +2165,7 @@ bool Position::is_ok() const {
   }
 
   // Can the side to move capture the opponent's king?
+  if (failedStep) (*failedStep)++;
   if(debugKingCapture) {
     Color us = side_to_move();
     Color them = opposite_color(us);
@@ -2167,10 +2175,12 @@ bool Position::is_ok() const {
   }
 
   // Is there more than 2 checkers?
+  if (failedStep) (*failedStep)++;
   if(debugCheckerCount && count_1s(checkersBB) > 2)
     return false;
 
   // Bitboards OK?
+  if (failedStep) (*failedStep)++;
   if(debugBitboards) {
     // The intersection of the white and black pieces must be empty:
     if((pieces_of_color(WHITE) & pieces_of_color(BLACK))
@@ -2191,6 +2201,7 @@ bool Position::is_ok() const {
   }
 
   // En passant square OK?
+  if (failedStep) (*failedStep)++;
   if(ep_square() != SQ_NONE) {
     // The en passant square must be on rank 6, from the point of view of the
     // side to move.
@@ -2199,18 +2210,22 @@ bool Position::is_ok() const {
   }
 
   // Hash key OK?
+  if (failedStep) (*failedStep)++;
   if(debugKey && key != compute_key())
     return false;
 
   // Pawn hash key OK?
+  if (failedStep) (*failedStep)++;
   if(debugPawnKey && pawnKey != compute_pawn_key())
     return false;
 
   // Material hash key OK?
+  if (failedStep) (*failedStep)++;
   if(debugMaterialKey && materialKey != compute_material_key())
     return false;
 
   // Incremental eval OK?
+  if (failedStep) (*failedStep)++;
   if(debugIncrementalEval) {
     if(mgValue != compute_mg_value())
       return false;
@@ -2219,6 +2234,7 @@ bool Position::is_ok() const {
   }
 
   // Non-pawn material OK?
+  if (failedStep) (*failedStep)++;
   if(debugNonPawnMaterial) {
     if(npMaterial[WHITE] != compute_non_pawn_material(WHITE))
       return false;
@@ -2227,12 +2243,14 @@ bool Position::is_ok() const {
   }
 
   // Piece counts OK?
+  if (failedStep) (*failedStep)++;
   if(debugPieceCounts)
     for(Color c = WHITE; c <= BLACK; c++)
       for(PieceType pt = PAWN; pt <= KING; pt++)
         if(pieceCount[c][pt] != count_1s(pieces_of_color_and_type(c, pt)))
           return false;
 
+  if (failedStep) (*failedStep)++;
   if(debugPieceList) {
     for(Color c = WHITE; c <= BLACK; c++)
       for(PieceType pt = PAWN; pt <= KING; pt++)
@@ -2244,6 +2262,6 @@ bool Position::is_ok() const {
             return false;
         }
   }
-
+  if (failedStep) *failedStep = 0;
   return true;
 }
