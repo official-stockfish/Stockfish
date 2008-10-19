@@ -1,13 +1,14 @@
 /*
-  Glaurung, a UCI chess playing engine.
-  Copyright (C) 2004-2008 Tord Romstad
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008 Marco Costalba
 
-  Glaurung is free software: you can redistribute it and/or modify
+  Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  Glaurung is distributed in the hope that it will be useful,
+  Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
@@ -301,7 +302,7 @@ History H;  // Should be made local?
 //// Functions
 ////
 
-/// think() is the external interface to Glaurung's search, and is called when
+/// think() is the external interface to Stockfish's search, and is called when
 /// the program receives the UCI 'go' command.  It initializes various
 /// search-related global variables, and calls root_search()
 

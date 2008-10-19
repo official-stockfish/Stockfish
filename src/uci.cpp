@@ -1,13 +1,14 @@
 /*
-  Glaurung, a UCI chess playing engine.
-  Copyright (C) 2004-2008 Tord Romstad
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008 Marco Costalba
 
-  Glaurung is free software: you can redistribute it and/or modify
+  Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  Glaurung is distributed in the hope that it will be useful,
+  Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
@@ -89,7 +90,7 @@ namespace {
   // get_command() waits for a command from the user, and passes
   // this command to handle_command.  get_command also intercepts
   // EOF from stdin, by translating EOF to the "quit" command.  This
-  // ensures that Glaurung exits gracefully if the GUI dies
+  // ensures that Stockfish exits gracefully if the GUI dies
   // unexpectedly.
 
   void get_command() {
@@ -124,8 +125,9 @@ namespace {
     }
     else if (token == "uci")
     {
-        std::cout << "id name " << engine_name() << std::endl;
-        std::cout << "id author Tord Romstad" << std::endl;
+        std::cout << "id name " << engine_name() << std::endl
+                  << "id author Tord Romstad, Marco Costalba"
+                  << std::endl;
         print_uci_options();
         std::cout << "uciok" << std::endl;
     }
@@ -184,7 +186,7 @@ namespace {
   }
 
 
-  // set_position() is called when Glaurung receives the "position" UCI
+  // set_position() is called when Stockfish receives the "position" UCI
   // command.  The input parameter is a UCIInputParser.  It is assumed
   // that this parser has consumed the first token of the UCI command
   // ("position"), and is ready to read the second token ("startpos"
@@ -231,7 +233,7 @@ namespace {
   }
 
 
-  // set_option() is called when Glaurung receives the "setoption" UCI
+  // set_option() is called when Stockfish receives the "setoption" UCI
   // command.  The input parameter is a UCIInputParser.  It is assumed
   // that this parser has consumed the first token of the UCI command
   // ("setoption"), and is ready to read the second token ("name", if
@@ -261,7 +263,7 @@ namespace {
   }
 
 
-  // go() is called when Glaurung receives the "go" UCI command.  The
+  // go() is called when Stockfish receives the "go" UCI command.  The
   // input parameter is a UCIInputParser.  It is assumed that this
   // parser has consumed the first token of the UCI command ("go"),
   // and is ready to read the second token.  The function sets the
