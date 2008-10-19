@@ -194,8 +194,6 @@ public:
   Bitboard sliding_attacks(Square s, Direction d) const;
   Bitboard ray_attacks(Square s, SignedDirection d) const;
   Bitboard pawn_attacks(Color c, Square s) const;
-  Bitboard white_pawn_attacks(Square s) const;
-  Bitboard black_pawn_attacks(Square s) const;
 
   template<PieceType>
   Bitboard piece_attacks(Square s) const;
@@ -576,14 +574,6 @@ inline Bitboard Position::pawn_attacks(Color c, Square s) const {
   return StepAttackBB[pawn_of_color(c)][s];
 }
 
-inline Bitboard Position::white_pawn_attacks(Square s) const {
-  return pawn_attacks(WHITE, s);
-}
-
-inline Bitboard Position::black_pawn_attacks(Square s) const {
-  return pawn_attacks(BLACK, s);
-}
-
 template<>
 inline Bitboard Position::piece_attacks<KNIGHT>(Square s) const {
   return StepAttackBB[KNIGHT][s];
@@ -618,11 +608,11 @@ inline bool Position::is_check() const {
 }
 
 inline bool Position::white_pawn_attacks_square(Square f, Square t) const {
-  return bit_is_set(white_pawn_attacks(f), t);
+  return bit_is_set(pawn_attacks(WHITE, f), t);
 }
 
 inline bool Position::black_pawn_attacks_square(Square f, Square t) const {
-  return bit_is_set(black_pawn_attacks(f), t);
+  return bit_is_set(pawn_attacks(BLACK, f), t);
 }
 
 inline bool Position::knight_attacks_square(Square f, Square t) const {

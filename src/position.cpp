@@ -385,8 +385,8 @@ bool Position::square_is_attacked(Square s, Color c) const {
 
 Bitboard Position::attacks_to(Square s) const {
   return
-    (black_pawn_attacks(s) & pawns(WHITE)) |
-    (white_pawn_attacks(s) & pawns(BLACK)) |
+    (pawn_attacks(BLACK, s) & pawns(WHITE)) |
+    (pawn_attacks(WHITE, s) & pawns(BLACK)) |
     (piece_attacks<KNIGHT>(s) & pieces_of_type(KNIGHT)) |
     (piece_attacks<ROOK>(s) & rooks_and_queens()) |
     (piece_attacks<BISHOP>(s) & bishops_and_queens()) |
@@ -847,9 +847,9 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
     }
     if(piece == PAWN) {
       if(abs(int(to) - int(from)) == 16) {
-        if((us == WHITE && (white_pawn_attacks(from + DELTA_N) &
+        if((us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) &
                             pawns(BLACK))) ||
-           (us == BLACK && (black_pawn_attacks(from + DELTA_S) &
+           (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) &
                             pawns(WHITE)))) {
           epSquare = Square((int(from) + int(to)) / 2);
           key ^= zobEp[epSquare];
@@ -1632,8 +1632,8 @@ int Position::see(Square from, Square to) const {
     (bishop_attacks_bb(to, occ) & bishops_and_queens()) |
     (piece_attacks<KNIGHT>(to) & knights()) |
     (piece_attacks<KING>(to) & kings()) |
-    (white_pawn_attacks(to) & pawns(BLACK)) |
-    (black_pawn_attacks(to) & pawns(WHITE));
+    (pawn_attacks(WHITE, to) & pawns(BLACK)) |
+    (pawn_attacks(BLACK, to) & pawns(WHITE));
   attackers &= occ;
 
   // If the opponent has no attackers, we are finished:
