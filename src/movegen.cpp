@@ -59,11 +59,17 @@ namespace {
   int generate_pawn_captures(const PawnOffsets&, const Position&, MoveStack*);  
   int generate_pawn_noncaptures(const PawnOffsets&, const Position&, MoveStack*);
   int generate_pawn_checks(const PawnOffsets&, const Position&, Bitboard, Square, MoveStack*, int);
-  int generate_piece_checks(PieceType, const Position&, Bitboard, Bitboard, Square, MoveStack*, int);
-  int generate_piece_moves(PieceType, const Position&, MoveStack*, Color, Bitboard);
   int generate_castle_moves(const Position&, MoveStack*, Color);
-  int generate_piece_blocking_evasions(PieceType, const Position&, Bitboard, Bitboard, MoveStack*, int);
   int generate_pawn_blocking_evasions(const PawnOffsets&, const Position&, Bitboard, Bitboard, MoveStack*, int);
+
+  template<PieceType>
+  int generate_piece_moves(const Position&, MoveStack*, Color, Bitboard);
+
+  template<PieceType>
+  int generate_piece_checks(const Position&, Bitboard, Bitboard, Square, MoveStack*, int);
+
+  template<PieceType>
+  int generate_piece_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*, int);
 }
 
 
@@ -89,9 +95,11 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   else
       n = generate_pawn_captures(BlackPawnOffsets, pos, mlist);
 
-  for (PieceType pce = KNIGHT; pce <= KING; pce++)
-      n += generate_piece_moves(pce, pos, mlist+n, us, target);
-
+  n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
+  n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
+  n += generate_piece_moves<ROOK>(pos, mlist+n, us, target);
+  n += generate_piece_moves<QUEEN>(pos, mlist+n, us, target);
+  n += generate_piece_moves<KING>(pos, mlist+n, us, target);
   return n;
 }
 
@@ -113,8 +121,11 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   else
       n = generate_pawn_noncaptures(BlackPawnOffsets, pos, mlist);
 
-  for (PieceType pce = KNIGHT; pce <= KING; pce++)
-      n += generate_piece_moves(pce, pos, mlist+n, us, target);
+  n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
+  n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
+  n += generate_piece_moves<ROOK>(pos, mlist+n, us, target);
+  n += generate_piece_moves<QUEEN>(pos, mlist+n, us, target);
+  n += generate_piece_moves<KING>(pos, mlist+n, us, target);
 
   n += generate_castle_moves(pos, mlist+n, us);
   return n;
@@ -147,25 +158,25 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   // Pieces moves
   Bitboard b = pos.knights(us);
   if (b)
-      n = generate_piece_checks(KNIGHT, pos, b, dc, ksq, mlist, n);
+      n = generate_piece_checks<KNIGHT>(pos, b, dc, ksq, mlist, n);
 
   b = pos.bishops(us);
   if (b)
-      n = generate_piece_checks(BISHOP, pos, b, dc, ksq, mlist, n);
+      n = generate_piece_checks<BISHOP>(pos, b, dc, ksq, mlist, n);
 
   b = pos.rooks(us);
   if (b)
-      n = generate_piece_checks(ROOK, pos, b, dc, ksq, mlist, n);
+      n = generate_piece_checks<ROOK>(pos, b, dc, ksq, mlist, n);
 
   b = pos.queens(us);
   if (b)
-      n = generate_piece_checks(QUEEN, pos, b, dc, ksq, mlist, n);
+      n = generate_piece_checks<QUEEN>(pos, b, dc, ksq, mlist, n);
 
   // King moves
   Square from = pos.king_square(us);
   if (bit_is_set(dc, from))
   {
-      b = pos.king_attacks(from) & pos.empty_squares() & ~QueenPseudoAttacks[ksq];
+      b = pos.piece_attacks<KING>(from) & pos.empty_squares() & ~QueenPseudoAttacks[ksq];
       while (b)
       {
           Square to = pop_1st_bit(&b);
@@ -198,7 +209,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
   assert(pos.piece_on(ksq) == king_of_color(us));
   
   // Generate evasions for king
-  Bitboard b1 = pos.king_attacks(ksq) & ~pos.pieces_of_color(us);
+  Bitboard b1 = pos.piece_attacks<KING>(ksq) & ~pos.pieces_of_color(us);
   Bitboard b2 = pos.occupied_squares();
   clear_bit(&b2, ksq);
 
@@ -213,9 +224,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
     // the king will remain in check on the destination square.
     if (!(   (bishop_attacks_bb(to, b2)  & pos.bishops_and_queens(them))
           || (rook_attacks_bb(to, b2)    & pos.rooks_and_queens(them))
-          || (pos.knight_attacks(to)     & pos.knights(them))
+          || (pos.piece_attacks<KNIGHT>(to)     & pos.knights(them))
           || (pos.pawn_attacks(us, to)   & pos.pawns(them))
-          || (pos.king_attacks(to)       & pos.kings(them))))
+          || (pos.piece_attacks<KING>(to)       & pos.kings(them))))
 
         mlist[n++].move = make_move(ksq, to);
   }
@@ -252,9 +263,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
       }
 
       // Pieces captures
-      b1 = (  (pos.knight_attacks(checksq) & pos.knights(us))
-            | (pos.bishop_attacks(checksq) & pos.bishops_and_queens(us))
-            | (pos.rook_attacks(checksq)   & pos.rooks_and_queens(us)) ) & not_pinned;
+      b1 = (  (pos.piece_attacks<KNIGHT>(checksq) & pos.knights(us))
+            | (pos.piece_attacks<BISHOP>(checksq) & pos.bishops_and_queens(us))
+            | (pos.piece_attacks<ROOK>(checksq)   & pos.rooks_and_queens(us)) ) & not_pinned;
 
       while (b1)
       {
@@ -280,19 +291,19 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
           // Pieces moves
           b1 = pos.knights(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions(KNIGHT, pos, b1, blockSquares, mlist, n);
+              n = generate_piece_blocking_evasions<KNIGHT>(pos, b1, blockSquares, mlist, n);
 
           b1 = pos.bishops(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions(BISHOP, pos, b1, blockSquares, mlist, n);
+              n = generate_piece_blocking_evasions<BISHOP>(pos, b1, blockSquares, mlist, n);
 
           b1 = pos.rooks(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions(ROOK, pos, b1, blockSquares, mlist, n);
+              n = generate_piece_blocking_evasions<ROOK>(pos, b1, blockSquares, mlist, n);
 
           b1 = pos.queens(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions(QUEEN, pos, b1, blockSquares, mlist, n);
+              n = generate_piece_blocking_evasions<QUEEN>(pos, b1, blockSquares, mlist, n);
     }
 
     // Finally, the ugly special case of en passant captures. An en passant
@@ -669,18 +680,18 @@ namespace {
   }
 
 
-  int generate_piece_moves(PieceType piece, const Position &pos, MoveStack *mlist, 
+  template<PieceType Piece>
+  int generate_piece_moves(const Position &pos, MoveStack *mlist, 
                            Color side, Bitboard target) {
 
-    const Piece_attacks_fn mem_fn = piece_attacks_fn[piece];
     Square from, to;
     Bitboard b;
     int n = 0;
 
-    for (int i = 0; i < pos.piece_count(side, piece); i++)
+    for (int i = 0; i < pos.piece_count(side, Piece); i++)
     {
-        from = pos.piece_list(side, piece, i);
-        b = (pos.*mem_fn)(from) & target;
+        from = pos.piece_list(side, Piece, i);
+        b = pos.piece_attacks<Piece>(from) & target;
         while (b)
         {
             to = pop_1st_bit(&b);
@@ -756,17 +767,16 @@ namespace {
     return n;
   }
 
-  int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target,
-                          Bitboard dc, Square ksq, MoveStack* mlist, int n) {
-
-    const Piece_attacks_fn mem_fn = piece_attacks_fn[pce];
+  template<PieceType Piece>
+  int generate_piece_checks(const Position& pos, Bitboard target, Bitboard dc,
+                            Square ksq, MoveStack* mlist, int n) {
 
     // Discovered checks
     Bitboard b = target & dc;
     while (b)
     {
         Square from = pop_1st_bit(&b);
-        Bitboard bb = (pos.*mem_fn)(from) & pos.empty_squares();
+        Bitboard bb = pos.piece_attacks<Piece>(from) & pos.empty_squares();
         while (bb)
         {
             Square to = pop_1st_bit(&bb);
@@ -776,11 +786,11 @@ namespace {
 
     // Direct checks
     b = target & ~dc;
-    Bitboard checkSqs = (pos.*mem_fn)(ksq) & pos.empty_squares();
+    Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
     while (b)
     {
         Square from = pop_1st_bit(&b);
-        Bitboard bb = (pos.*mem_fn)(from) & checkSqs;
+        Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
         while (bb)
         {
             Square to = pop_1st_bit(&bb);
@@ -841,15 +851,13 @@ namespace {
   }
 
 
-   int generate_piece_blocking_evasions(PieceType pce, const Position& pos, Bitboard b,
+   template<PieceType Piece>
+   int generate_piece_blocking_evasions(const Position& pos, Bitboard b,
                                         Bitboard blockSquares, MoveStack* mlist, int n) {
-
-    const Piece_attacks_fn mem_fn = piece_attacks_fn[pce];
-
     while (b)
     {
         Square from = pop_1st_bit(&b);
-        Bitboard bb = (pos.*mem_fn)(from) & blockSquares;
+        Bitboard bb = pos.piece_attacks<Piece>(from) & blockSquares;
         while (bb)
         {
             Square to = pop_1st_bit(&bb);

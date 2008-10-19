@@ -196,11 +196,9 @@ public:
   Bitboard pawn_attacks(Color c, Square s) const;
   Bitboard white_pawn_attacks(Square s) const;
   Bitboard black_pawn_attacks(Square s) const;
-  Bitboard knight_attacks(Square s) const;
-  Bitboard bishop_attacks(Square s) const;
-  Bitboard rook_attacks(Square s) const;
-  Bitboard queen_attacks(Square s) const;
-  Bitboard king_attacks(Square s) const;
+
+  template<PieceType>
+  Bitboard piece_attacks(Square s) const;
 
   // Bitboards for pinned pieces and discovered check candidates
   Bitboard discovered_check_candidates(Color c) const;
@@ -369,10 +367,6 @@ private:
   static Value EgPieceSquareTable[16][64];
 };
 
-
-/// An array of member functions to dispatch attacks_square
-typedef Bitboard (Position::* Piece_attacks_fn)(Square s) const;
-extern const Piece_attacks_fn piece_attacks_fn[];
 
 ////
 //// Inline functions
@@ -590,23 +584,28 @@ inline Bitboard Position::black_pawn_attacks(Square s) const {
   return pawn_attacks(BLACK, s);
 }
 
-inline Bitboard Position::knight_attacks(Square s) const {
+template<>
+inline Bitboard Position::piece_attacks<KNIGHT>(Square s) const {
   return StepAttackBB[KNIGHT][s];
 }
 
-inline Bitboard Position::rook_attacks(Square s) const {
-  return rook_attacks_bb(s, occupied_squares());
-}
-
-inline Bitboard Position::bishop_attacks(Square s) const {
+template<>
+inline Bitboard Position::piece_attacks<BISHOP>(Square s) const {
   return bishop_attacks_bb(s, occupied_squares());
 }
 
-inline Bitboard Position::queen_attacks(Square s) const {
-  return rook_attacks(s) | bishop_attacks(s);
+template<>
+inline Bitboard Position::piece_attacks<ROOK>(Square s) const {
+  return rook_attacks_bb(s, occupied_squares());
 }
 
-inline Bitboard Position::king_attacks(Square s) const {
+template<>
+inline Bitboard Position::piece_attacks<QUEEN>(Square s) const {
+  return piece_attacks<ROOK>(s) | piece_attacks<BISHOP>(s);
+}
+
+template<>
+inline Bitboard Position::piece_attacks<KING>(Square s) const {
   return StepAttackBB[KING][s];
 }
 
@@ -627,23 +626,23 @@ inline bool Position::black_pawn_attacks_square(Square f, Square t) const {
 }
 
 inline bool Position::knight_attacks_square(Square f, Square t) const {
-  return bit_is_set(knight_attacks(f), t);
+  return bit_is_set(piece_attacks<KNIGHT>(f), t);
 }
 
 inline bool Position::bishop_attacks_square(Square f, Square t) const {
-  return bit_is_set(bishop_attacks(f), t);
+  return bit_is_set(piece_attacks<BISHOP>(f), t);
 }
 
 inline bool Position::rook_attacks_square(Square f, Square t) const {
-  return bit_is_set(rook_attacks(f), t);
+  return bit_is_set(piece_attacks<ROOK>(f), t);
 }
 
 inline bool Position::queen_attacks_square(Square f, Square t) const {
-  return bit_is_set(queen_attacks(f), t);
+  return bit_is_set(piece_attacks<QUEEN>(f), t);
 }
 
 inline bool Position::king_attacks_square(Square f, Square t) const {
-  return bit_is_set(king_attacks(f), t);
+  return bit_is_set(piece_attacks<KING>(f), t);
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
