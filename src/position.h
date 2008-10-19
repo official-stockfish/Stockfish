@@ -171,11 +171,6 @@ public:
 
   // Number of pieces of each color and type
   int piece_count(Color c, PieceType pt) const;
-  int pawn_count(Color c) const;
-  int knight_count(Color c) const;
-  int bishop_count(Color c) const;
-  int rook_count(Color c) const;
-  int queen_count(Color c) const;
 
   // The en passant square:
   Square ep_square() const;
@@ -491,26 +486,6 @@ inline int Position::piece_count(Color c, PieceType pt) const {
   return pieceCount[c][pt];
 }
 
-inline int Position::pawn_count(Color c) const {
-  return piece_count(c, PAWN);
-}
-
-inline int Position::knight_count(Color c) const {
-  return piece_count(c, KNIGHT);
-}
-
-inline int Position::bishop_count(Color c) const {
-  return piece_count(c, BISHOP);
-}
-
-inline int Position::rook_count(Color c) const {
-  return piece_count(c, ROOK);
-}
-
-inline int Position::queen_count(Color c) const {
-  return piece_count(c, QUEEN);
-}
-
 inline Square Position::piece_list(Color c, PieceType pt, int index) const {
   return pieceList[c][pt][index];
 }
@@ -707,8 +682,8 @@ inline int Position::rule_50_counter() const {
 
 inline bool Position::opposite_colored_bishops() const {
 
-  return   bishop_count(WHITE) == 1
-        && bishop_count(BLACK) == 1        
+  return   piece_count(WHITE, BISHOP) == 1
+        && piece_count(BLACK, BISHOP) == 1        
         && square_color(piece_list(WHITE, BISHOP, 0)) != square_color(piece_list(BLACK, BISHOP, 0));
 }
 
