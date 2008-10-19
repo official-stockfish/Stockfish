@@ -406,8 +406,8 @@ bool Position::piece_attacks_square(Square f, Square t) const {
   assert(square_is_ok(t));
 
   switch(piece_on(f)) {
-  case WP: return white_pawn_attacks_square(f, t);
-  case BP: return black_pawn_attacks_square(f, t);
+  case WP: return pawn_attacks_square(WHITE, f, t);
+  case BP: return pawn_attacks_square(BLACK, f, t);
   case WN: case BN: return piece_attacks_square<KNIGHT>(f, t);
   case WB: case BB: return piece_attacks_square<BISHOP>(f, t);
   case WR: case BR: return piece_attacks_square<ROOK>(f, t);
@@ -668,8 +668,8 @@ bool Position::move_attacks_square(Move m, Square s) const {
   assert(square_is_occupied(f));
 
   switch(piece_on(f)) {
-  case WP: return white_pawn_attacks_square(t, s);
-  case BP: return black_pawn_attacks_square(t, s);
+  case WP: return pawn_attacks_square(WHITE, t, s);
+  case BP: return pawn_attacks_square(BLACK, t, s);
   case WN: case BN: return piece_attacks_square<KNIGHT>(t, s);
   case WB: case BB: return piece_attacks_square<BISHOP>(t, s);
   case WR: case BR: return piece_attacks_square<ROOK>(t, s);

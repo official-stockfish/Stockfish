@@ -213,8 +213,7 @@ public:
   Bitboard attacks_to(Square s) const;
   Bitboard attacks_to(Square s, Color c) const;
   bool is_check() const;
-  bool white_pawn_attacks_square(Square f, Square t) const;
-  bool black_pawn_attacks_square(Square f, Square t) const;
+  bool pawn_attacks_square(Color c, Square f, Square t) const;
 
   template<PieceType>
   Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
@@ -581,12 +580,8 @@ inline bool Position::is_check() const {
   return checkers() != EmptyBoardBB;
 }
 
-inline bool Position::white_pawn_attacks_square(Square f, Square t) const {
-  return bit_is_set(pawn_attacks(WHITE, f), t);
-}
-
-inline bool Position::black_pawn_attacks_square(Square f, Square t) const {
-  return bit_is_set(pawn_attacks(BLACK, f), t);
+inline bool Position::pawn_attacks_square(Color c, Square f, Square t) const {
+  return bit_is_set(pawn_attacks(c, f), t);
 }
 
 template<PieceType Piece>
