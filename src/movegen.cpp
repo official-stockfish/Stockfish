@@ -43,16 +43,17 @@ namespace {
   struct PawnOffsets {
 
       Bitboard Rank3BB, Rank8BB;
+      Rank RANK_8;
       SquareDelta DELTA_N, DELTA_NE, DELTA_NW;
       Color us, them;
       typedef Bitboard (*Shift_fn)(Bitboard b);
       Shift_fn forward, forward_left, forward_right;
   };
 
-  const PawnOffsets WhitePawnOffsets = { Rank3BB, Rank8BB, DELTA_N, DELTA_NE, DELTA_NW, WHITE, BLACK,
+  const PawnOffsets WhitePawnOffsets = { Rank3BB, Rank8BB, RANK_8, DELTA_N, DELTA_NE, DELTA_NW, WHITE, BLACK,
                                          &forward_white, forward_left_white, forward_right_white };
 
-  const PawnOffsets BlackPawnOffsets = { Rank6BB, Rank1BB, DELTA_S, DELTA_SE, DELTA_SW, BLACK, WHITE,
+  const PawnOffsets BlackPawnOffsets = { Rank6BB, Rank1BB, RANK_1, DELTA_S, DELTA_SE, DELTA_SW, BLACK, WHITE,
                                          &forward_black, &forward_left_black, &forward_right_black };
   
   int generate_pawn_captures(const PawnOffsets&, const Position&, MoveStack*);  
@@ -62,6 +63,7 @@ namespace {
   int generate_piece_moves(PieceType, const Position&, MoveStack*, Color, Bitboard);
   int generate_castle_moves(const Position&, MoveStack*, Color);
   int generate_piece_blocking_evasions(PieceType, const Position&, Bitboard, Bitboard, MoveStack*, int);
+  int generate_pawn_blocking_evasions(const PawnOffsets&, const Position&, Bitboard, Bitboard, MoveStack*, int);
 }
 
 
@@ -270,79 +272,11 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
           assert((pos.occupied_squares() & blockSquares) == EmptyBoardBB);
 
           // Pawn moves. Because a blocking evasion can never be a capture, we
-          // only generate pawn pushes.  As so often, the code for pawns is a bit
-          // ugly, and uses separate clauses for white and black pawns. :-(
+          // only generate pawn pushes.
           if (us == WHITE)
-          {
-              // Find non-pinned pawns
-              b1 = pos.pawns(WHITE) & not_pinned;
-
-              // Single pawn pushes. We don't have to AND with empty squares here,
-              // because the blocking squares will always be empty.
-              b2 = (b1 << 8) & blockSquares;
-              while(b2)
-              {
-                  to = pop_1st_bit(&b2);
-
-                  assert(pos.piece_on(to) == EMPTY);
-
-                  if (square_rank(to) == RANK_8)
-                  {
-                      mlist[n++].move = make_promotion_move(to - DELTA_N, to, QUEEN);
-                      mlist[n++].move = make_promotion_move(to - DELTA_N, to, ROOK);
-                      mlist[n++].move = make_promotion_move(to - DELTA_N, to, BISHOP);
-                      mlist[n++].move = make_promotion_move(to - DELTA_N, to, KNIGHT);
-                  } else
-                      mlist[n++].move = make_move(to - DELTA_N, to);
-              }
-
-              // Double pawn pushes
-              b2 = (((b1 << 8) & pos.empty_squares() & Rank3BB) << 8) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-                
-                  assert(pos.piece_on(to) == EMPTY);
-                  assert(square_rank(to) == RANK_4);
-
-                  mlist[n++].move = make_move(to - DELTA_N - DELTA_N, to);
-              }
-          } else { // (us == BLACK)
-
-              // Find non-pinned pawns
-              b1 = pos.pawns(BLACK) & not_pinned;
-
-              // Single pawn pushes. We don't have to AND with empty squares here,
-              // because the blocking squares will always be empty.
-              b2 = (b1 >> 8) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-
-                  assert(pos.piece_on(to) == EMPTY);
-        
-                  if (square_rank(to) == RANK_1)
-                  {
-                      mlist[n++].move = make_promotion_move(to - DELTA_S, to, QUEEN);
-                      mlist[n++].move = make_promotion_move(to - DELTA_S, to, ROOK);
-                      mlist[n++].move = make_promotion_move(to - DELTA_S, to, BISHOP);
-                      mlist[n++].move = make_promotion_move(to - DELTA_S, to, KNIGHT);
-                  } else
-                      mlist[n++].move = make_move(to - DELTA_S, to);
-              }
-
-              // Double pawn pushes
-              b2 = (((b1 >> 8) & pos.empty_squares() & Rank6BB) >> 8) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-
-                  assert(pos.piece_on(to) == EMPTY);
-                  assert(square_rank(to) == RANK_5);
-
-                  mlist[n++].move = make_move(to - DELTA_S - DELTA_S, to);
-              }
-          }
+              n = generate_pawn_blocking_evasions(WhitePawnOffsets, pos, not_pinned, blockSquares, mlist, n);
+          else
+              n = generate_pawn_blocking_evasions(BlackPawnOffsets, pos, not_pinned, blockSquares, mlist, n);
 
           // Pieces moves
           b1 = pos.knights(us) & not_pinned;
@@ -352,13 +286,11 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
           b1 = pos.bishops(us) & not_pinned;
           if (b1)
               n = generate_piece_blocking_evasions(BISHOP, pos, b1, blockSquares, mlist, n);
-          
-          // Rook moves
+
           b1 = pos.rooks(us) & not_pinned;
           if (b1)
               n = generate_piece_blocking_evasions(ROOK, pos, b1, blockSquares, mlist, n);
-          
-          // Queen moves
+
           b1 = pos.queens(us) & not_pinned;
           if (b1)
               n = generate_piece_blocking_evasions(QUEEN, pos, b1, blockSquares, mlist, n);
@@ -924,6 +856,46 @@ namespace {
             Square to = pop_1st_bit(&bb);
             mlist[n++].move = make_move(from, to);
         }
+    }
+    return n;
+  }
+
+
+  int generate_pawn_blocking_evasions(const PawnOffsets& ofs, const Position& pos, Bitboard not_pinned,
+                                      Bitboard blockSquares, MoveStack* mlist, int n) {
+    // Find non-pinned pawns
+    Bitboard b1 = pos.pawns(ofs.us) & not_pinned;
+
+    // Single pawn pushes. We don't have to AND with empty squares here,
+    // because the blocking squares will always be empty.
+    Bitboard b2 = (ofs.forward)(b1) & blockSquares;
+    while (b2)
+    {
+        Square to = pop_1st_bit(&b2);
+
+        assert(pos.piece_on(to) == EMPTY);
+
+        if (square_rank(to) == ofs.RANK_8)
+        {
+            mlist[n++].move = make_promotion_move(to - ofs.DELTA_N, to, QUEEN);
+            mlist[n++].move = make_promotion_move(to - ofs.DELTA_N, to, ROOK);
+            mlist[n++].move = make_promotion_move(to - ofs.DELTA_N, to, BISHOP);
+            mlist[n++].move = make_promotion_move(to - ofs.DELTA_N, to, KNIGHT);
+        } else
+            mlist[n++].move = make_move(to - ofs.DELTA_N, to);
+    }
+
+    // Double pawn pushes
+    b2 = (ofs.forward)((ofs.forward)(b1) & pos.empty_squares() & ofs.Rank3BB) & blockSquares;
+    while (b2)
+    {
+        Square to = pop_1st_bit(&b2);
+
+        assert(pos.piece_on(to) == EMPTY);
+        assert(ofs.us != WHITE || square_rank(to) == RANK_4);
+        assert(ofs.us != BLACK || square_rank(to) == RANK_5);
+
+        mlist[n++].move = make_move(to - ofs.DELTA_N - ofs.DELTA_N, to);
     }
     return n;
   }
