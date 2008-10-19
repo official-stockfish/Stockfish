@@ -247,7 +247,7 @@ Value KBNKEvaluationFunction::apply(const Position &pos) {
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
-  Square bishopSquare = pos.bishop_list(strongerSide, 0);
+  Square bishopSquare = pos.piece_list(strongerSide, BISHOP, 0);
 
   if(square_color(bishopSquare) == BLACK) {
     winnerKSq = flop_square(winnerKSq);
@@ -277,13 +277,13 @@ Value KPKEvaluationFunction::apply(const Position &pos) {
   if(strongerSide == WHITE) {
     wksq = pos.king_square(WHITE);
     bksq = pos.king_square(BLACK);
-    wpsq = pos.pawn_list(WHITE, 0);
+    wpsq = pos.piece_list(WHITE, PAWN, 0);
     stm = pos.side_to_move();
   }
   else {
     wksq = flip_square(pos.king_square(BLACK));
     bksq = flip_square(pos.king_square(WHITE));
-    wpsq = flip_square(pos.pawn_list(BLACK, 0));
+    wpsq = flip_square(pos.piece_list(BLACK, PAWN, 0));
     stm = opposite_color(pos.side_to_move());
   }
 
@@ -319,9 +319,9 @@ Value KRKPEvaluationFunction::apply(const Position &pos) {
   int tempo = (pos.side_to_move() == strongerSide);
 
   wksq = pos.king_square(strongerSide);
-  wrsq = pos.rook_list(strongerSide, 0);
+  wrsq = pos.piece_list(strongerSide, ROOK, 0);
   bksq = pos.king_square(weakerSide);
-  bpsq = pos.pawn_list(weakerSide, 0);
+  bpsq = pos.piece_list(weakerSide, PAWN, 0);
 
   if(strongerSide == BLACK) {
     wksq = flip_square(wksq);
@@ -388,7 +388,7 @@ Value KRKNEvaluationFunction::apply(const Position &pos) {
   assert(pos.knight_count(weakerSide) == 1);
 
   Square defendingKSq = pos.king_square(weakerSide);
-  Square nSq = pos.knight_list(weakerSide, 0);
+  Square nSq = pos.piece_list(weakerSide, KNIGHT, 0);
 
   Value result = Value(10) + mate_table(defendingKSq) +
     krkn_king_knight_distance_penalty(square_distance(defendingKSq, nSq));
@@ -434,13 +434,13 @@ ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
   // be detected even when the weaker side has some pawns.
 
   Bitboard pawns = pos.pawns(strongerSide);
-  File pawnFile = square_file(pos.pawn_list(strongerSide, 0));
+  File pawnFile = square_file(pos.piece_list(strongerSide, PAWN, 0));
 
   if((pawnFile == FILE_A || pawnFile == FILE_H) &&
      (pawns & ~file_bb(pawnFile)) == EmptyBoardBB) {
     // All pawns are on a single rook file.
 
-    Square bishopSq = pos.bishop_list(strongerSide, 0);
+    Square bishopSq = pos.piece_list(strongerSide, BISHOP, 0);
     Square queeningSq =
       relative_square(strongerSide, make_square(pawnFile, RANK_8));
     Square kingSq = pos.king_square(weakerSide);
@@ -490,7 +490,7 @@ ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
      (pos.rooks(weakerSide) & relative_rank_bb(weakerSide, RANK_3)) &&
      (pos.pawns(weakerSide) & relative_rank_bb(weakerSide, RANK_2)) &&
      (pos.piece_attacks<KING>(kingSq) & pos.pawns(weakerSide))) {
-    Square rsq = pos.rook_list(weakerSide, 0);
+    Square rsq = pos.piece_list(weakerSide, ROOK, 0);
     if(pos.pawn_attacks(strongerSide, rsq) & pos.pawns(weakerSide))
       return ScaleFactor(0);
   }
@@ -513,10 +513,10 @@ ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
   assert(pos.pawn_count(weakerSide) == 0);
 
   Square wksq = pos.king_square(strongerSide);
-  Square wrsq = pos.rook_list(strongerSide, 0);
-  Square wpsq = pos.pawn_list(strongerSide, 0);
+  Square wrsq = pos.piece_list(strongerSide, ROOK, 0);
+  Square wpsq = pos.piece_list(strongerSide, PAWN, 0);
   Square bksq = pos.king_square(weakerSide);
-  Square brsq = pos.rook_list(weakerSide, 0);
+  Square brsq = pos.piece_list(weakerSide, ROOK, 0);
 
   // Orient the board in such a way that the stronger side is white, and the
   // pawn is on the left half of the board:
@@ -617,8 +617,8 @@ ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
   assert(pos.pawn_count(weakerSide) == 1);
 
-  Square wpsq1 = pos.pawn_list(strongerSide, 0);
-  Square wpsq2 = pos.pawn_list(strongerSide, 1);
+  Square wpsq1 = pos.piece_list(strongerSide, PAWN, 0);
+  Square wpsq2 = pos.piece_list(strongerSide, PAWN, 1);
   Square bksq = pos.king_square(weakerSide);
 
   // Does the stronger side have a passed pawn?
@@ -700,9 +700,9 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
   assert(pos.bishop_count(weakerSide) == 1);
   assert(pos.pawn_count(weakerSide) == 0);
 
-  Square pawnSq = pos.pawn_list(strongerSide, 0);
-  Square strongerBishopSq = pos.bishop_list(strongerSide, 0);
-  Square weakerBishopSq = pos.bishop_list(weakerSide, 0);
+  Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
+  Square strongerBishopSq = pos.piece_list(strongerSide, BISHOP, 0);
+  Square weakerBishopSq = pos.piece_list(weakerSide, BISHOP, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
 
   // Case 1: Defending king blocks the pawn, and cannot be driven away.
@@ -754,8 +754,8 @@ ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
   assert(pos.knight_count(weakerSide) == 1);
   assert(pos.pawn_count(weakerSide) == 0);
 
-  Square pawnSq = pos.pawn_list(strongerSide, 0);
-  Square strongerBishopSq = pos.bishop_list(strongerSide, 0);
+  Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
+  Square strongerBishopSq = pos.piece_list(strongerSide, BISHOP, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
       
   if(square_file(weakerKingSq) == square_file(pawnSq)
@@ -779,7 +779,7 @@ ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.pawn_count(weakerSide) == 0);
 
-  Square pawnSq = pos.pawn_list(strongerSide, 0);
+  Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
 
   if(pawnSq == relative_square(strongerSide, SQ_A7) &&
@@ -813,13 +813,13 @@ ScaleFactor KPKPScalingFunction::apply(const Position &pos) {
   if(strongerSide == WHITE) {
     wksq = pos.king_square(WHITE);
     bksq = pos.king_square(BLACK);
-    wpsq = pos.pawn_list(WHITE, 0);
+    wpsq = pos.piece_list(WHITE, PAWN, 0);
     stm = pos.side_to_move();
   }
   else {
     wksq = flip_square(pos.king_square(BLACK));
     bksq = flip_square(pos.king_square(WHITE));
-    wpsq = flip_square(pos.pawn_list(BLACK, 0));
+    wpsq = flip_square(pos.piece_list(BLACK, PAWN, 0));
     stm = opposite_color(pos.side_to_move());
   }
 

@@ -205,13 +205,8 @@ public:
   // Checking pieces
   Bitboard checkers() const;
 
-  // Piece lists:
+  // Piece lists
   Square piece_list(Color c, PieceType pt, int index) const;
-  Square pawn_list(Color c, int index) const;
-  Square knight_list(Color c, int index) const;
-  Square bishop_list(Color c, int index) const;
-  Square rook_list(Color c, int index) const;
-  Square queen_list(Color c, int index) const;
 
   // Attack information for a given square
   bool square_is_attacked(Square s, Color c) const;
@@ -522,26 +517,6 @@ inline Square Position::piece_list(Color c, PieceType pt, int index) const {
   return pieceList[c][pt][index];
 }
 
-inline Square Position::pawn_list(Color c, int index) const {
-  return piece_list(c, PAWN, index);
-}
-
-inline Square Position::knight_list(Color c, int index) const {
-  return piece_list(c, KNIGHT, index);
-}
-
-inline Square Position::bishop_list(Color c, int index) const {
-  return piece_list(c, BISHOP, index);
-}
-
-inline Square Position::rook_list(Color c, int index) const {
-  return piece_list(c, ROOK, index);
-}
-
-inline Square Position::queen_list(Color c, int index) const {
-  return piece_list(c, QUEEN, index);
-}
-
 inline Square Position::ep_square() const {
   return epSquare;
 }
@@ -754,8 +729,8 @@ inline int Position::rule_50_counter() const {
 inline bool Position::opposite_colored_bishops() const {
 
   return   bishop_count(WHITE) == 1
-        && bishop_count(BLACK) == 1
-        && square_color(bishop_list(WHITE, 0)) != square_color(bishop_list(BLACK, 0));
+        && bishop_count(BLACK) == 1        
+        && square_color(piece_list(WHITE, BISHOP, 0)) != square_color(piece_list(BLACK, BISHOP, 0));
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {
