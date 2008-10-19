@@ -322,8 +322,8 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   ei.egValue += apply_weight(ei.pi->eg_value(), WeightPawnStructureEndgame);
 
   // Initialize king attack bitboards and king attack zones for both sides
-  ei.attackedBy[WHITE][KING] = pos.king_attacks(pos.king_square(WHITE));
-  ei.attackedBy[BLACK][KING] = pos.king_attacks(pos.king_square(BLACK));
+  ei.attackedBy[WHITE][KING] = pos.piece_attacks<KING>(pos.king_square(WHITE));
+  ei.attackedBy[BLACK][KING] = pos.piece_attacks<KING>(pos.king_square(BLACK));
   ei.kingZone[WHITE] = ei.attackedBy[BLACK][KING] | (ei.attackedBy[BLACK][KING] >> 8);
   ei.kingZone[BLACK] = ei.attackedBy[WHITE][KING] | (ei.attackedBy[WHITE][KING] << 8);
 
@@ -584,7 +584,7 @@ namespace {
 
   void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    Bitboard b = p.knight_attacks(s);
+    Bitboard b = p.piece_attacks<KNIGHT>(s);
     ei.attackedBy[us][KNIGHT] |= b;
 
     // King attack, mobility and outposts
@@ -679,7 +679,7 @@ namespace {
 
   void evaluate_queen(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    Bitboard b = p.queen_attacks(s);
+    Bitboard b = p.piece_attacks<QUEEN>(s);
     ei.attackedBy[us][QUEEN] |= b;
 
     // King attack and mobility
@@ -772,7 +772,7 @@ namespace {
           if (QueenContactMates && !p.is_check())
           {
             Bitboard escapeSquares =
-                p.king_attacks(s) & ~p.pieces_of_color(us) & ~attackedByOthers;
+                p.piece_attacks<KING>(s) & ~p.pieces_of_color(us) & ~attackedByOthers;
 
             while (b)
             {
@@ -784,7 +784,7 @@ namespace {
                     for (int i = 0; i < p.queen_count(them); i++)
                     {
                         from = p.queen_list(them, i);
-                        if (    bit_is_set(p.queen_attacks(from), to)
+                        if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
                             && !bit_is_set(p.pinned_pieces(them), from)
                             && !(rook_attacks_bb(to, occ & clear_mask_bb(from)) & p.rooks_and_queens(us))
                             && !(rook_attacks_bb(to, occ & clear_mask_bb(from)) & p.rooks_and_queens(us)))
@@ -817,7 +817,7 @@ namespace {
       // Analyse safe distance checks:
       if (QueenCheckBonus > 0 || RookCheckBonus > 0)
       {
-          b = p.rook_attacks(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.piece_attacks<ROOK>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
 
           // Queen checks
           b2 = b & ei.attacked_by(them, QUEEN);
@@ -831,7 +831,7 @@ namespace {
       }
       if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
       {
-          b = p.bishop_attacks(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.piece_attacks<BISHOP>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
 
           // Queen checks
           b2 = b & ei.attacked_by(them, QUEEN);
@@ -845,7 +845,7 @@ namespace {
       }
       if (KnightCheckBonus > 0)
       {
-          b = p.knight_attacks(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.piece_attacks<KNIGHT>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
 
           // Knight checks
           b2 = b & ei.attacked_by(them, KNIGHT);

@@ -489,7 +489,7 @@ ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
      relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4 &&
      (pos.rooks(weakerSide) & relative_rank_bb(weakerSide, RANK_3)) &&
      (pos.pawns(weakerSide) & relative_rank_bb(weakerSide, RANK_2)) &&
-     (pos.king_attacks(kingSq) & pos.pawns(weakerSide))) {
+     (pos.piece_attacks<KING>(kingSq) & pos.pawns(weakerSide))) {
     Square rsq = pos.rook_list(weakerSide, 0);
     if(pos.pawn_attacks(strongerSide, rsq) & pos.pawns(weakerSide))
       return ScaleFactor(0);
@@ -732,7 +732,7 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
         ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
       if(ray & pos.kings(weakerSide))
         return ScaleFactor(0);
-      if((pos.bishop_attacks(weakerBishopSq) & ray)
+      if((pos.piece_attacks<BISHOP>(weakerBishopSq) & ray)
          && square_distance(weakerBishopSq, pawnSq) >= 3)
         return ScaleFactor(0);
     }

@@ -48,13 +48,6 @@ Key Position::zobSideToMove;
 Value Position::MgPieceSquareTable[16][64];
 Value Position::EgPieceSquareTable[16][64];
 
-const Piece_attacks_fn piece_attacks_fn[] =
-  { 0, 0, 
-    &Position::knight_attacks,
-    &Position::bishop_attacks,
-    &Position::rook_attacks,
-    &Position::queen_attacks,
-    &Position::king_attacks };
 
 ////
 //// Functions
@@ -315,7 +308,7 @@ Bitboard Position::pinned_pieces(Color c) const {
 
   sliders = rooks_and_queens(them) & ~checkers();
   if(sliders & RookPseudoAttacks[ksq]) {
-    b2 = rook_attacks(ksq) & pieces_of_color(c);
+    b2 = piece_attacks<ROOK>(ksq) & pieces_of_color(c);
     pinners = rook_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(pinners) {
       s = pop_1st_bit(&pinners);
@@ -325,7 +318,7 @@ Bitboard Position::pinned_pieces(Color c) const {
 
   sliders = bishops_and_queens(them) & ~checkers();
   if(sliders & BishopPseudoAttacks[ksq]) {
-    b2 = bishop_attacks(ksq) & pieces_of_color(c);
+    b2 = piece_attacks<BISHOP>(ksq) & pieces_of_color(c);
     pinners = bishop_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(pinners) {
       s = pop_1st_bit(&pinners);
@@ -350,7 +343,7 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
   sliders = rooks_and_queens(c);
   if(sliders & RookPseudoAttacks[ksq]) {
-    b2 = rook_attacks(ksq) & pieces_of_color(c);
+    b2 = piece_attacks<ROOK>(ksq) & pieces_of_color(c);
     checkers = rook_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(checkers) {
       s = pop_1st_bit(&checkers);
@@ -360,7 +353,7 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
   sliders = bishops_and_queens(c);
   if(sliders & BishopPseudoAttacks[ksq]) {
-    b2 = bishop_attacks(ksq) & pieces_of_color(c);
+    b2 = piece_attacks<BISHOP>(ksq) & pieces_of_color(c);
     checkers = bishop_attacks_bb(ksq, b1 ^ b2) & sliders;
     while(checkers) {
       s = pop_1st_bit(&checkers);
@@ -378,10 +371,10 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 bool Position::square_is_attacked(Square s, Color c) const {
   return
     (pawn_attacks(opposite_color(c), s) & pawns(c)) ||
-    (knight_attacks(s) & knights(c)) ||
-    (king_attacks(s) & kings(c)) ||
-    (rook_attacks(s) & rooks_and_queens(c)) ||
-    (bishop_attacks(s) & bishops_and_queens(c));
+    (piece_attacks<KNIGHT>(s) & knights(c)) ||
+    (piece_attacks<KING>(s)   & kings(c)) ||
+    (piece_attacks<ROOK>(s)   & rooks_and_queens(c)) ||
+    (piece_attacks<BISHOP>(s) & bishops_and_queens(c));
 }
 
 
@@ -394,10 +387,10 @@ Bitboard Position::attacks_to(Square s) const {
   return
     (black_pawn_attacks(s) & pawns(WHITE)) |
     (white_pawn_attacks(s) & pawns(BLACK)) |
-    (knight_attacks(s) & pieces_of_type(KNIGHT)) |
-    (rook_attacks(s) & rooks_and_queens()) |
-    (bishop_attacks(s) & bishops_and_queens()) |
-    (king_attacks(s) & pieces_of_type(KING));
+    (piece_attacks<KNIGHT>(s) & pieces_of_type(KNIGHT)) |
+    (piece_attacks<ROOK>(s) & rooks_and_queens()) |
+    (piece_attacks<BISHOP>(s) & bishops_and_queens()) |
+    (piece_attacks<KING>(s) & pieces_of_type(KING));
 }
 
 Bitboard Position::attacks_to(Square s, Color c) const {
@@ -588,7 +581,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Normal check?
     else
-      return bit_is_set(knight_attacks(ksq), to);
+      return bit_is_set(piece_attacks<KNIGHT>(ksq), to);
 
   case BISHOP:
     // Discovered check?
@@ -596,7 +589,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Normal check?
     else
-      return bit_is_set(bishop_attacks(ksq), to);
+      return bit_is_set(piece_attacks<BISHOP>(ksq), to);
 
   case ROOK:
     // Discovered check?
@@ -604,13 +597,13 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       return true;
     // Normal check?
     else
-      return bit_is_set(rook_attacks(ksq), to);
+      return bit_is_set(piece_attacks<ROOK>(ksq), to);
 
   case QUEEN:
     // Discovered checks are impossible!
     assert(!bit_is_set(dcCandidates, from));
     // Normal check?
-    return bit_is_set(queen_attacks(ksq), to);
+    return bit_is_set(piece_attacks<QUEEN>(ksq), to);
 
   case KING:
     // Discovered check?
@@ -889,45 +882,45 @@ void Position::do_move(Move m, UndoInfo &u, Bitboard dcCandidates) {
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          ((rook_attacks(ksq) & rooks_and_queens(us)) |
-           (bishop_attacks(ksq) & bishops_and_queens(us)));
+          ((piece_attacks<ROOK>(ksq) & rooks_and_queens(us)) |
+           (piece_attacks<BISHOP>(ksq) & bishops_and_queens(us)));
       break;
 
     case KNIGHT:
-      if(bit_is_set(knight_attacks(ksq), to))
+      if(bit_is_set(piece_attacks<KNIGHT>(ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          ((rook_attacks(ksq) & rooks_and_queens(us)) |
-           (bishop_attacks(ksq) & bishops_and_queens(us)));
+          ((piece_attacks<ROOK>(ksq) & rooks_and_queens(us)) |
+           (piece_attacks<BISHOP>(ksq) & bishops_and_queens(us)));
       break;
 
     case BISHOP:
-      if(bit_is_set(bishop_attacks(ksq), to))
+      if(bit_is_set(piece_attacks<BISHOP>(ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          (rook_attacks(ksq) & rooks_and_queens(us));
+          (piece_attacks<ROOK>(ksq) & rooks_and_queens(us));
       break;
 
     case ROOK:
-      if(bit_is_set(rook_attacks(ksq), to))
+      if(bit_is_set(piece_attacks<ROOK>(ksq), to))
         set_bit(&checkersBB, to);
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          (bishop_attacks(ksq) & bishops_and_queens(us));
+          (piece_attacks<BISHOP>(ksq) & bishops_and_queens(us));
       break;
 
     case QUEEN:
-      if(bit_is_set(queen_attacks(ksq), to))
+      if(bit_is_set(piece_attacks<QUEEN>(ksq), to))
         set_bit(&checkersBB, to);
       break;
 
     case KING:
       if(bit_is_set(dcCandidates, from))
         checkersBB |=
-          ((rook_attacks(ksq) & rooks_and_queens(us)) |
-           (bishop_attacks(ksq) & bishops_and_queens(us)));
+          ((piece_attacks<ROOK>(ksq) & rooks_and_queens(us)) |
+           (piece_attacks<BISHOP>(ksq) & bishops_and_queens(us)));
       break;
 
     default:
@@ -1637,8 +1630,8 @@ int Position::see(Square from, Square to) const {
   attackers =
     (rook_attacks_bb(to, occ) & rooks_and_queens()) |
     (bishop_attacks_bb(to, occ) & bishops_and_queens()) |
-    (knight_attacks(to) & knights()) |
-    (king_attacks(to) & kings()) |
+    (piece_attacks<KNIGHT>(to) & knights()) |
+    (piece_attacks<KING>(to) & kings()) |
     (white_pawn_attacks(to) & pawns(BLACK)) |
     (black_pawn_attacks(to) & pawns(WHITE));
   attackers &= occ;
