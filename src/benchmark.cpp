@@ -34,8 +34,8 @@
 //// Variables
 ////
 
-const std::string BenchmarkPositions[16] = {
-  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+const std::string BenchmarkPositions[] = {
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r4rk1/1b2qppp/p1n1p3/1p6/1b1PN3/3BRN2/PP3PPP/R2Q2K1 b - - 7 16",
   "4r1k1/ppq3pp/3b4/2pP4/2Q1p3/4B1P1/PP5P/R5K1 b - - 0 20",
   "4rrk1/pp1n3p/3q2pQ/2p1pb2/2PP4/2P3N1/P2B2PP/4RRK1 b - - 7 19",
@@ -125,7 +125,7 @@ void benchmark(const std::string& commandLine) {
   {
       Move moves[1] = {MOVE_NONE};
       int dummy[2] = {0, 0};
-      Position pos(*it);      
+      Position pos(*it);
       think(pos, true, false, 0, dummy, dummy, 0, 0, 0, secsPerPos * 1000, moves);
   }
 }
