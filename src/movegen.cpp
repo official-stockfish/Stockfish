@@ -57,10 +57,11 @@ namespace {
   
   int generate_pawn_captures(const PawnOffsets&, const Position&, MoveStack*);  
   int generate_pawn_noncaptures(const PawnOffsets&, const Position&, MoveStack*);
-  int generate_pawn_checks(const PawnOffsets&, const Position&, Bitboard dc, Square ksq, MoveStack*, int n);
-  int generate_piece_checks(PieceType pce, const Position& pos, Bitboard target, Bitboard dc, Square ksq, MoveStack* mlist, int n);
-  int generate_piece_moves(PieceType, const Position&, MoveStack*, Color side, Bitboard t);
-  int generate_castle_moves(const Position&, MoveStack*, Color us);
+  int generate_pawn_checks(const PawnOffsets&, const Position&, Bitboard, Square, MoveStack*, int);
+  int generate_piece_checks(PieceType, const Position&, Bitboard, Bitboard, Square, MoveStack*, int);
+  int generate_piece_moves(PieceType, const Position&, MoveStack*, Color, Bitboard);
+  int generate_castle_moves(const Position&, MoveStack*, Color);
+  int generate_piece_blocking_evasions(PieceType, const Position&, Bitboard, Bitboard, MoveStack*, int);
 }
 
 
@@ -249,9 +250,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
       }
 
       // Pieces captures
-      b1 =  pos.knight_attacks(checksq) & pos.knights(us)
-          & pos.bishop_attacks(checksq) & pos.bishops_and_queens(us)
-          & pos.rook_attacks(checksq)   & pos.rooks_and_queens(us)
+      b1 =  (pos.knight_attacks(checksq) & pos.knights(us))
+          | (pos.bishop_attacks(checksq) & pos.bishops_and_queens(us))
+          | (pos.rook_attacks(checksq)   & pos.rooks_and_queens(us))
           & not_pinned;
 
       while (b1)
@@ -343,57 +344,24 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
               }
           }
 
-          // Knight moves
+          // Pieces moves
           b1 = pos.knights(us) & not_pinned;
-          while (b1)
-          {
-              from = pop_1st_bit(&b1);
-              b2 = pos.knight_attacks(from) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-                  mlist[n++].move = make_move(from, to);
-              }
-          }
-          
-          // Bishop moves
+          if (b1)
+              n = generate_piece_blocking_evasions(KNIGHT, pos, b1, blockSquares, mlist, n);
+
           b1 = pos.bishops(us) & not_pinned;
-          while (b1)
-          {
-              from = pop_1st_bit(&b1);
-              b2 = pos.bishop_attacks(from) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-                  mlist[n++].move = make_move(from, to);
-              }
-          }
+          if (b1)
+              n = generate_piece_blocking_evasions(BISHOP, pos, b1, blockSquares, mlist, n);
           
           // Rook moves
           b1 = pos.rooks(us) & not_pinned;
-          while (b1)
-          {
-              from = pop_1st_bit(&b1);
-              b2 = pos.rook_attacks(from) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-                  mlist[n++].move = make_move(from, to);
-              }
-          }
+          if (b1)
+              n = generate_piece_blocking_evasions(ROOK, pos, b1, blockSquares, mlist, n);
           
           // Queen moves
           b1 = pos.queens(us) & not_pinned;
-          while (b1)
-          {
-              from = pop_1st_bit(&b1);
-              b2 = pos.queen_attacks(from) & blockSquares;
-              while (b2)
-              {
-                  to = pop_1st_bit(&b2);
-                  mlist[n++].move = make_move(from, to);
-              }
-          }
+          if (b1)
+              n = generate_piece_blocking_evasions(QUEEN, pos, b1, blockSquares, mlist, n);
     }
 
     // Finally, the ugly special case of en passant captures. An en passant
@@ -937,6 +905,25 @@ namespace {
     {
         Square to = pop_1st_bit(&b3);
         mlist[n++].move = make_move(to - ofs.DELTA_N - ofs.DELTA_N, to);
+    }
+    return n;
+  }
+
+
+   int generate_piece_blocking_evasions(PieceType pce, const Position& pos, Bitboard b,
+                                        Bitboard blockSquares, MoveStack* mlist, int n) {
+
+    const Piece_attacks_fn mem_fn = piece_attacks_fn[pce];
+
+    while (b)
+    {
+        Square from = pop_1st_bit(&b);
+        Bitboard bb = (pos.*mem_fn)(from) & blockSquares;
+        while (bb)
+        {
+            Square to = pop_1st_bit(&bb);
+            mlist[n++].move = make_move(from, to);
+        }
     }
     return n;
   }
