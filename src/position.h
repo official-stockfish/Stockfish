@@ -213,14 +213,13 @@ public:
   Bitboard attacks_to(Square s) const;
   Bitboard attacks_to(Square s, Color c) const;
   bool is_check() const;
-  bool piece_attacks_square(Square f, Square t) const;
   bool white_pawn_attacks_square(Square f, Square t) const;
   bool black_pawn_attacks_square(Square f, Square t) const;
-  bool knight_attacks_square(Square f, Square t) const;
-  bool bishop_attacks_square(Square f, Square t) const;
-  bool rook_attacks_square(Square f, Square t) const;
-  bool queen_attacks_square(Square f, Square t) const;
-  bool king_attacks_square(Square f, Square t) const;
+
+  template<PieceType>
+  Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
+
+  bool piece_attacks_square(Square f, Square t) const; // Dispatch at run-time
 
   // Properties of moves
   bool move_is_legal(Move m) const;
@@ -590,24 +589,9 @@ inline bool Position::black_pawn_attacks_square(Square f, Square t) const {
   return bit_is_set(pawn_attacks(BLACK, f), t);
 }
 
-inline bool Position::knight_attacks_square(Square f, Square t) const {
-  return bit_is_set(piece_attacks<KNIGHT>(f), t);
-}
-
-inline bool Position::bishop_attacks_square(Square f, Square t) const {
-  return bit_is_set(piece_attacks<BISHOP>(f), t);
-}
-
-inline bool Position::rook_attacks_square(Square f, Square t) const {
-  return bit_is_set(piece_attacks<ROOK>(f), t);
-}
-
-inline bool Position::queen_attacks_square(Square f, Square t) const {
-  return bit_is_set(piece_attacks<QUEEN>(f), t);
-}
-
-inline bool Position::king_attacks_square(Square f, Square t) const {
-  return bit_is_set(piece_attacks<KING>(f), t);
+template<PieceType Piece>
+Bitboard Position::piece_attacks_square(Square f, Square t) const {
+  return bit_is_set(piece_attacks<Piece>(f), t);
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
