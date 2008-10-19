@@ -337,19 +337,19 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   for (Color c = WHITE; c <= BLACK; c++)
   {
     // Knights
-    for (int i = 0; i < pos.knight_count(c); i++)
+    for (int i = 0; i < pos.piece_count(c, KNIGHT); i++)
         evaluate_knight(pos, pos.piece_list(c, KNIGHT, i), c, ei);
 
     // Bishops
-    for (int i = 0; i < pos.bishop_count(c); i++)
+    for (int i = 0; i < pos.piece_count(c, BISHOP); i++)
         evaluate_bishop(pos, pos.piece_list(c, BISHOP, i), c, ei);
 
     // Rooks
-    for (int i = 0; i < pos.rook_count(c); i++)
+    for (int i = 0; i < pos.piece_count(c, ROOK); i++)
         evaluate_rook(pos, pos.piece_list(c, ROOK, i), c, ei);
 
     // Queens
-    for(int i = 0; i < pos.queen_count(c); i++)
+    for(int i = 0; i < pos.piece_count(c, QUEEN); i++)
         evaluate_queen(pos, pos.piece_list(c, QUEEN, i), c, ei);
 
     // Special pattern: trapped bishops on a7/h7/a2/h2
@@ -427,7 +427,7 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
       {
           // Check for KBP vs KB with only a single pawn that is almost
           // certainly a draw or at least two pawns.
-          bool one_pawn = (pos.pawn_count(WHITE) + pos.pawn_count(BLACK) == 1);
+          bool one_pawn = (pos.piece_count(WHITE, PAWN) + pos.piece_count(BLACK, PAWN) == 1);
           sf = one_pawn ? ScaleFactor(8) : ScaleFactor(32);
       }
       else
@@ -569,7 +569,7 @@ namespace {
     if (v && (p.pawn_attacks(them, s) & p.pawns(us)))
     {
         bonus += v / 2;
-        if (   p.knight_count(them) == 0
+        if (   p.piece_count(them, KNIGHT) == 0
             && (SquaresByColorBB[square_color(s)] & p.bishops(them)) == EmptyBoardBB)
             bonus += v;
     }
@@ -724,7 +724,7 @@ namespace {
     // from optimally tuned.
     Color them = opposite_color(us);
 
-    if (   p.queen_count(them) >= 1
+    if (   p.piece_count(them, QUEEN) >= 1
         && ei.kingAttackersCount[them] >= 2
         && p.non_pawn_material(them) >= QueenValueMidgame + RookValueMidgame
         && ei.kingAdjacentZoneAttacksCount[them])
@@ -781,7 +781,7 @@ namespace {
                 {
                     // We have a mate, unless the queen is pinned or there
                     // is an X-ray attack through the queen.
-                    for (int i = 0; i < p.queen_count(them); i++)
+                    for (int i = 0; i < p.piece_count(them, QUEEN); i++)
                     {
                         from = p.piece_list(them, QUEEN, i);
                         if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
@@ -994,7 +994,7 @@ namespace {
         // value if the other side has a rook or queen.
         if(square_file(s) == FILE_A || square_file(s) == FILE_H) {
           if(pos.non_pawn_material(them) == KnightValueMidgame
-             && pos.knight_count(them) == 1)
+             && pos.piece_count(them, KNIGHT) == 1)
             ebonus += ebonus / 4;
           else if(pos.rooks_and_queens(them))
             ebonus -= ebonus / 4;

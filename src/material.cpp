@@ -255,13 +255,13 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
     return mi;
   }
   else if(pos.non_pawn_material(BLACK) == Value(0) &&
-          pos.pawn_count(BLACK) == 0 &&
+          pos.piece_count(BLACK, PAWN) == 0 &&
           pos.non_pawn_material(WHITE) >= RookValueEndgame) {
     mi->evaluationFunction = &EvaluateKXK;
     return mi;
   }
   else if(pos.non_pawn_material(WHITE) == Value(0) &&
-          pos.pawn_count(WHITE) == 0 &&
+          pos.piece_count(WHITE, PAWN) == 0 &&
           pos.non_pawn_material(BLACK) >= RookValueEndgame) {
     mi->evaluationFunction = &EvaluateKKX;
     return mi;
@@ -317,33 +317,33 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
   }
 
   if(pos.non_pawn_material(WHITE) == BishopValueMidgame &&
-     pos.bishop_count(WHITE) == 1 && pos.pawn_count(WHITE) >= 1)
+     pos.piece_count(WHITE, BISHOP) == 1 && pos.piece_count(WHITE, PAWN) >= 1)
     mi->scalingFunction[WHITE] = &ScaleKBPK;
   if(pos.non_pawn_material(BLACK) == BishopValueMidgame &&
-     pos.bishop_count(BLACK) == 1 && pos.pawn_count(BLACK) >= 1)
+     pos.piece_count(BLACK, BISHOP) == 1 && pos.piece_count(BLACK, PAWN) >= 1)
     mi->scalingFunction[BLACK] = &ScaleKKBP;
 
-  if(pos.pawn_count(WHITE) == 0 &&
+  if(pos.piece_count(WHITE, PAWN) == 0 &&
      pos.non_pawn_material(WHITE) == QueenValueMidgame &&
-     pos.queen_count(WHITE) == 1 &&
-     pos.rook_count(BLACK) == 1 && pos.pawn_count(BLACK) >= 1)
+     pos.piece_count(WHITE, QUEEN) == 1 &&
+     pos.piece_count(BLACK, ROOK) == 1 && pos.piece_count(BLACK, PAWN) >= 1)
     mi->scalingFunction[WHITE] = &ScaleKQKRP;
-  else if(pos.pawn_count(BLACK) == 0 &&
+  else if(pos.piece_count(BLACK, PAWN) == 0 &&
           pos.non_pawn_material(BLACK) == QueenValueMidgame &&
-          pos.queen_count(BLACK) == 1 &&
-          pos.rook_count(WHITE) == 1 && pos.pawn_count(WHITE) >= 1)
+          pos.piece_count(BLACK, QUEEN) == 1 &&
+          pos.piece_count(WHITE, ROOK) == 1 && pos.piece_count(WHITE, PAWN) >= 1)
     mi->scalingFunction[BLACK] = &ScaleKRPKQ;
 
   if(pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0)) {
-    if(pos.pawn_count(BLACK) == 0) {
-      assert(pos.pawn_count(WHITE) >= 2);
+    if(pos.piece_count(BLACK, PAWN) == 0) {
+      assert(pos.piece_count(WHITE, PAWN) >= 2);
       mi->scalingFunction[WHITE] = &ScaleKPsK;
     }
-    else if(pos.pawn_count(WHITE) == 0) {
-      assert(pos.pawn_count(BLACK) >= 2);
+    else if(pos.piece_count(WHITE, PAWN) == 0) {
+      assert(pos.piece_count(BLACK, PAWN) >= 2);
       mi->scalingFunction[BLACK] = &ScaleKKPs;
     }
-    else if(pos.pawn_count(WHITE) == 1 && pos.pawn_count(BLACK) == 1) {
+    else if(pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1) {
       mi->scalingFunction[WHITE] = &ScaleKPKPw;
       mi->scalingFunction[BLACK] = &ScaleKPKPb;
     }
@@ -358,7 +358,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
   for(c = WHITE, sign = 1; c <= BLACK; c++, sign = -sign) {
 
     // No pawns makes it difficult to win, even with a material advantage:
-    if(pos.pawn_count(c) == 0 &&
+    if(pos.piece_count(c, PAWN) == 0 &&
        pos.non_pawn_material(c) - pos.non_pawn_material(opposite_color(c))
        <= BishopValueMidgame) {
       if(pos.non_pawn_material(c) == pos.non_pawn_material(opposite_color(c)))
@@ -366,7 +366,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
       else if(pos.non_pawn_material(c) < RookValueMidgame)
         mi->factor[c] = 0;
       else {
-        switch(pos.bishop_count(c)) {
+        switch(pos.piece_count(c, BISHOP)) {
         case 2:
           mi->factor[c] = 32; break;
         case 1:
@@ -378,7 +378,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
     }
 
     // Bishop pair:
-    if(pos.bishop_count(c) >= 2) {
+    if(pos.piece_count(c, BISHOP) >= 2) {
       mgValue += sign * BishopPairMidgameBonus;
       egValue += sign * BishopPairEndgameBonus;
     }
@@ -387,12 +387,12 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
     // formula is taken from Larry Kaufman's paper "The Evaluation of Material
     // Imbalances in Chess":
     // http://mywebpages.comcast.net/danheisman/Articles/evaluation_of_material_imbalance.htm
-    mgValue += sign * Value(pos.knight_count(c)*(pos.pawn_count(c)-5)*16);
-    egValue += sign * Value(pos.knight_count(c)*(pos.pawn_count(c)-5)*16);
+    mgValue += sign * Value(pos.piece_count(c, KNIGHT)*(pos.piece_count(c, PAWN)-5)*16);
+    egValue += sign * Value(pos.piece_count(c, KNIGHT)*(pos.piece_count(c, PAWN)-5)*16);
 
     // Redundancy of major pieces, again based on Kaufman's paper:
-    if(pos.rook_count(c) >= 1) {
-      Value v = Value((pos.rook_count(c) - 1) * 32 + pos.queen_count(c) * 16);
+    if(pos.piece_count(c, ROOK) >= 1) {
+      Value v = Value((pos.piece_count(c, ROOK) - 1) * 32 + pos.piece_count(c, QUEEN) * 16);
       mgValue -= sign * v;
       egValue -= sign * v;
     }

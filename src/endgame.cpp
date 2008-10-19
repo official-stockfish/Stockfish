@@ -212,19 +212,19 @@ KPKPScalingFunction::KPKPScalingFunction(Color c) : ScalingFunction(c) { }
 Value KXKEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.pawn_count(weakerSide) == Value(0));
+  assert(pos.piece_count(weakerSide, PAWN) == Value(0));
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
 
   Value result =
     pos.non_pawn_material(strongerSide) +
-    pos.pawn_count(strongerSide) * PawnValueEndgame +
+    pos.piece_count(strongerSide, PAWN) * PawnValueEndgame +
     mate_table(loserKSq) +
     distance_bonus(square_distance(winnerKSq, loserKSq));
 
-  if(pos.queen_count(strongerSide) > 0 || pos.rook_count(strongerSide) > 0 ||
-     pos.bishop_count(strongerSide) > 1)
+  if(pos.piece_count(strongerSide, QUEEN) > 0 || pos.piece_count(strongerSide, ROOK) > 0 ||
+     pos.piece_count(strongerSide, BISHOP) > 1)
     // TODO: check for two equal-colored bishops!
     result += VALUE_KNOWN_WIN;
 
@@ -238,12 +238,12 @@ Value KXKEvaluationFunction::apply(const Position &pos) {
 Value KBNKEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.pawn_count(weakerSide) == Value(0));
+  assert(pos.piece_count(weakerSide, PAWN) == Value(0));
   assert(pos.non_pawn_material(strongerSide) ==
          KnightValueMidgame + BishopValueMidgame);
-  assert(pos.bishop_count(strongerSide) == 1);
-  assert(pos.knight_count(strongerSide) == 1);
-  assert(pos.pawn_count(strongerSide) == 0);
+  assert(pos.piece_count(strongerSide, BISHOP) == 1);
+  assert(pos.piece_count(strongerSide, KNIGHT) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
@@ -268,8 +268,8 @@ Value KPKEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.pawn_count(strongerSide) == 1);
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(strongerSide, PAWN) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
   
   Square wksq, bksq, wpsq;
   Color stm;
@@ -311,9 +311,9 @@ Value KPKEvaluationFunction::apply(const Position &pos) {
 Value KRKPEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
-  assert(pos.pawn_count(strongerSide) == 0);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
   assert(pos.non_pawn_material(weakerSide) == 0);
-  assert(pos.pawn_count(weakerSide) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 1);
 
   Square wksq, wrsq, bksq, bpsq;
   int tempo = (pos.side_to_move() == strongerSide);
@@ -366,10 +366,10 @@ Value KRKPEvaluationFunction::apply(const Position &pos) {
 Value KRKBEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
-  assert(pos.pawn_count(strongerSide) == 0);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
   assert(pos.non_pawn_material(weakerSide) == BishopValueMidgame);
-  assert(pos.pawn_count(weakerSide) == 0);
-  assert(pos.bishop_count(weakerSide) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
+  assert(pos.piece_count(weakerSide, BISHOP) == 1);
 
   Value result = mate_table(pos.king_square(weakerSide));
   return (pos.side_to_move() == strongerSide)? result : -result;
@@ -382,10 +382,10 @@ Value KRKBEvaluationFunction::apply(const Position &pos) {
 Value KRKNEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
-  assert(pos.pawn_count(strongerSide) == 0);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
   assert(pos.non_pawn_material(weakerSide) == KnightValueMidgame);
-  assert(pos.pawn_count(weakerSide) == 0);
-  assert(pos.knight_count(weakerSide) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
+  assert(pos.piece_count(weakerSide, KNIGHT) == 1);
 
   Square defendingKSq = pos.king_square(weakerSide);
   Square nSq = pos.piece_list(weakerSide, KNIGHT, 0);
@@ -405,9 +405,9 @@ Value KRKNEvaluationFunction::apply(const Position &pos) {
 
 Value KQKREvaluationFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
-  assert(pos.pawn_count(strongerSide) == 0);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
@@ -427,8 +427,8 @@ Value KQKREvaluationFunction::apply(const Position &pos) {
 
 ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
-  assert(pos.bishop_count(strongerSide) == 1);
-  assert(pos.pawn_count(strongerSide) >= 1);
+  assert(pos.piece_count(strongerSide, BISHOP) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) >= 1);
 
   // No assertions about the material of weakerSide, because we want draws to
   // be detected even when the weaker side has some pawns.
@@ -479,10 +479,10 @@ ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
-  assert(pos.queen_count(strongerSide) == 1);
-  assert(pos.pawn_count(strongerSide) == 0);
-  assert(pos.rook_count(weakerSide) == 1);
-  assert(pos.pawn_count(weakerSide) >= 1);
+  assert(pos.piece_count(strongerSide, QUEEN) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
+  assert(pos.piece_count(weakerSide, ROOK) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) >= 1);
 
   Square kingSq = pos.king_square(weakerSide);
   if(relative_rank(weakerSide, kingSq) <= RANK_2 &&
@@ -508,9 +508,9 @@ ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
-  assert(pos.pawn_count(strongerSide) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square wksq = pos.king_square(strongerSide);
   Square wrsq = pos.piece_list(strongerSide, ROOK, 0);
@@ -613,9 +613,9 @@ ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
-  assert(pos.pawn_count(strongerSide) == 2);
+  assert(pos.piece_count(strongerSide, PAWN) == 2);
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
-  assert(pos.pawn_count(weakerSide) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 1);
 
   Square wpsq1 = pos.piece_list(strongerSide, PAWN, 0);
   Square wpsq2 = pos.piece_list(strongerSide, PAWN, 1);
@@ -651,9 +651,9 @@ ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KPsKScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == Value(0));
-  assert(pos.pawn_count(strongerSide) >= 2);
+  assert(pos.piece_count(strongerSide, PAWN) >= 2);
   assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Bitboard pawns = pos.pawns(strongerSide);
 
@@ -694,11 +694,11 @@ ScaleFactor KPsKScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
-  assert(pos.bishop_count(strongerSide) == 1);
-  assert(pos.pawn_count(strongerSide) == 1);
+  assert(pos.piece_count(strongerSide, BISHOP) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.non_pawn_material(weakerSide) == BishopValueMidgame);
-  assert(pos.bishop_count(weakerSide) == 1);
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, BISHOP) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
   Square strongerBishopSq = pos.piece_list(strongerSide, BISHOP, 0);
@@ -748,11 +748,11 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
-  assert(pos.bishop_count(strongerSide) == 1);
-  assert(pos.pawn_count(strongerSide) == 1);
+  assert(pos.piece_count(strongerSide, BISHOP) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.non_pawn_material(weakerSide) == KnightValueMidgame);
-  assert(pos.knight_count(weakerSide) == 1);
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, KNIGHT) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
   Square strongerBishopSq = pos.piece_list(strongerSide, BISHOP, 0);
@@ -774,10 +774,10 @@ ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
 
 ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame);
-  assert(pos.knight_count(strongerSide) == 1);
-  assert(pos.pawn_count(strongerSide) == 1);
+  assert(pos.piece_count(strongerSide, KNIGHT) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.pawn_count(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
@@ -804,8 +804,8 @@ ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
 ScaleFactor KPKPScalingFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.pawn_count(WHITE) == 1);
-  assert(pos.pawn_count(BLACK) == 1);
+  assert(pos.piece_count(WHITE, PAWN) == 1);
+  assert(pos.piece_count(BLACK, PAWN) == 1);
 
   Square wksq, bksq, wpsq;
   Color stm;
