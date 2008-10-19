@@ -408,11 +408,11 @@ bool Position::piece_attacks_square(Square f, Square t) const {
   switch(piece_on(f)) {
   case WP: return white_pawn_attacks_square(f, t);
   case BP: return black_pawn_attacks_square(f, t);
-  case WN: case BN: return knight_attacks_square(f, t);
-  case WB: case BB: return bishop_attacks_square(f, t);
-  case WR: case BR: return rook_attacks_square(f, t);
-  case WQ: case BQ: return queen_attacks_square(f, t);
-  case WK: case BK: return king_attacks_square(f, t);
+  case WN: case BN: return piece_attacks_square<KNIGHT>(f, t);
+  case WB: case BB: return piece_attacks_square<BISHOP>(f, t);
+  case WR: case BR: return piece_attacks_square<ROOK>(f, t);
+  case WQ: case BQ: return piece_attacks_square<QUEEN>(f, t);
+  case WK: case BK: return piece_attacks_square<KING>(f, t);
   default: return false;
   }
 
@@ -549,7 +549,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
       switch(move_promotion(m)) {
       case KNIGHT:
-        return knight_attacks_square(to, ksq);
+        return piece_attacks_square<KNIGHT>(to, ksq);
       case BISHOP:
         return bit_is_set(bishop_attacks_bb(to, b), ksq);
       case ROOK:
@@ -670,11 +670,11 @@ bool Position::move_attacks_square(Move m, Square s) const {
   switch(piece_on(f)) {
   case WP: return white_pawn_attacks_square(t, s);
   case BP: return black_pawn_attacks_square(t, s);
-  case WN: case BN: return knight_attacks_square(t, s);
-  case WB: case BB: return bishop_attacks_square(t, s);
-  case WR: case BR: return rook_attacks_square(t, s);
-  case WQ: case BQ: return queen_attacks_square(t, s);
-  case WK: case BK: return king_attacks_square(t, s);
+  case WN: case BN: return piece_attacks_square<KNIGHT>(t, s);
+  case WB: case BB: return piece_attacks_square<BISHOP>(t, s);
+  case WR: case BR: return piece_attacks_square<ROOK>(t, s);
+  case WQ: case BQ: return piece_attacks_square<QUEEN>(t, s);
+  case WK: case BK: return piece_attacks_square<KING>(t, s);
   default: assert(false);
   }
 
