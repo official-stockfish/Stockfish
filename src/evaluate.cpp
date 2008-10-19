@@ -338,19 +338,19 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   {
     // Knights
     for (int i = 0; i < pos.knight_count(c); i++)
-        evaluate_knight(pos, pos.knight_list(c, i), c, ei);
+        evaluate_knight(pos, pos.piece_list(c, KNIGHT, i), c, ei);
 
     // Bishops
     for (int i = 0; i < pos.bishop_count(c); i++)
-        evaluate_bishop(pos, pos.bishop_list(c, i), c, ei);
+        evaluate_bishop(pos, pos.piece_list(c, BISHOP, i), c, ei);
 
     // Rooks
     for (int i = 0; i < pos.rook_count(c); i++)
-        evaluate_rook(pos, pos.rook_list(c, i), c, ei);
+        evaluate_rook(pos, pos.piece_list(c, ROOK, i), c, ei);
 
     // Queens
     for(int i = 0; i < pos.queen_count(c); i++)
-        evaluate_queen(pos, pos.queen_list(c, i), c, ei);
+        evaluate_queen(pos, pos.piece_list(c, QUEEN, i), c, ei);
 
     // Special pattern: trapped bishops on a7/h7/a2/h2
     Bitboard b = pos.bishops(c) & MaskA7H7[c];
@@ -783,7 +783,7 @@ namespace {
                     // is an X-ray attack through the queen.
                     for (int i = 0; i < p.queen_count(them); i++)
                     {
-                        from = p.queen_list(them, i);
+                        from = p.piece_list(them, QUEEN, i);
                         if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
                             && !bit_is_set(p.pinned_pieces(them), from)
                             && !(rook_attacks_bb(to, occ & clear_mask_bb(from)) & p.rooks_and_queens(us))
