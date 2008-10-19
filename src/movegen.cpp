@@ -56,11 +56,19 @@ namespace {
   const PawnOffsets BlackPawnOffsets = { Rank6BB, Rank1BB, RANK_1, DELTA_S, DELTA_SE, DELTA_SW, BLACK, WHITE,
                                          &forward_black, &forward_left_black, &forward_right_black };
   
-  int generate_pawn_captures(const PawnOffsets&, const Position&, MoveStack*);  
-  int generate_pawn_noncaptures(const PawnOffsets&, const Position&, MoveStack*);
-  int generate_pawn_checks(const PawnOffsets&, const Position&, Bitboard, Square, MoveStack*, int);
   int generate_castle_moves(const Position&, MoveStack*, Color);
-  int generate_pawn_blocking_evasions(const PawnOffsets&, const Position&, Bitboard, Bitboard, MoveStack*, int);
+
+  template<Color>
+  int generate_pawn_captures(const Position&, MoveStack*);
+
+  template<Color>
+  int generate_pawn_noncaptures(const Position&, MoveStack*);
+  
+  template<Color>
+  int generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*, int);
+
+  template<Color>
+  int generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*, int);
 
   template<PieceType>
   int generate_piece_moves(const Position&, MoveStack*, Color, Bitboard);
@@ -178,9 +186,9 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   int n;
 
   if (us == WHITE)
-      n = generate_pawn_captures(WhitePawnOffsets, pos, mlist);
+      n = generate_pawn_captures<WHITE>(pos, mlist);
   else
-      n = generate_pawn_captures(BlackPawnOffsets, pos, mlist);
+      n = generate_pawn_captures<BLACK>(pos, mlist);
 
   n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
   n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
@@ -204,9 +212,9 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   int n;
 
   if (us == WHITE)
-      n = generate_pawn_noncaptures(WhitePawnOffsets, pos, mlist);
+      n = generate_pawn_noncaptures<WHITE>(pos, mlist);
   else
-      n = generate_pawn_noncaptures(BlackPawnOffsets, pos, mlist);
+      n = generate_pawn_noncaptures<BLACK>(pos, mlist);
 
   n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
   n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
@@ -238,9 +246,9 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   // Pawn moves
   if (us == WHITE)    
-     n = generate_pawn_checks(WhitePawnOffsets, pos, dc, ksq, mlist, 0);
+     n = generate_pawn_checks<WHITE>(pos, dc, ksq, mlist, 0);
   else
-     n = generate_pawn_checks(BlackPawnOffsets, pos, dc, ksq, mlist, 0);
+     n = generate_pawn_checks<BLACK>(pos, dc, ksq, mlist, 0);
 
   // Pieces moves
   Bitboard b = pos.knights(us);
@@ -362,9 +370,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
           // Pawn moves. Because a blocking evasion can never be a capture, we
           // only generate pawn pushes.
           if (us == WHITE)
-              n = generate_pawn_blocking_evasions(WhitePawnOffsets, pos, not_pinned, blockSquares, mlist, n);
+              n = generate_pawn_blocking_evasions<WHITE>(pos, not_pinned, blockSquares, mlist, n);
           else
-              n = generate_pawn_blocking_evasions(BlackPawnOffsets, pos, not_pinned, blockSquares, mlist, n);
+              n = generate_pawn_blocking_evasions<BLACK>(pos, not_pinned, blockSquares, mlist, n);
 
           // Pieces moves
           b1 = pos.knights(us) & not_pinned;
@@ -629,7 +637,10 @@ Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
 
 namespace {
 
-  int generate_pawn_captures(const PawnOffsets& ofs, const Position& pos, MoveStack* mlist) {
+  template<Color C>
+  int generate_pawn_captures(const Position& pos, MoveStack* mlist) {
+
+    static const PawnOffsets ofs = (C == WHITE ? WhitePawnOffsets : BlackPawnOffsets);
 
     Bitboard pawns = pos.pawns(ofs.us);
     Bitboard enemyPieces = pos.pieces_of_color(ofs.them);
@@ -701,7 +712,10 @@ namespace {
   }
 
 
-  int generate_pawn_noncaptures(const PawnOffsets& ofs, const Position& pos, MoveStack* mlist) {
+  template<Color C>
+  int generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {
+
+    static const PawnOffsets ofs = (C == WHITE ? WhitePawnOffsets : BlackPawnOffsets);
 
     Bitboard pawns = pos.pawns(ofs.us);
     Bitboard enemyPieces = pos.pieces_of_color(ofs.them);
@@ -824,8 +838,11 @@ namespace {
   }
 
 
-  int generate_pawn_checks(const PawnOffsets& ofs, const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist, int n)
+  template<Color C>
+  int generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist, int n)
   {
+    static const PawnOffsets ofs = (C == WHITE ? WhitePawnOffsets : BlackPawnOffsets);
+
     // Pawn moves which give discovered check. This is possible only if the 
     // pawn is not on the same file as the enemy king, because we don't 
     // generate captures.
@@ -874,9 +891,12 @@ namespace {
     return n;
   }
 
-
-  int generate_pawn_blocking_evasions(const PawnOffsets& ofs, const Position& pos, Bitboard not_pinned,
+  template<Color C>
+  int generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
                                       Bitboard blockSquares, MoveStack* mlist, int n) {
+
+    static const PawnOffsets ofs = (C == WHITE ? WhitePawnOffsets : BlackPawnOffsets);
+
     // Find non-pinned pawns
     Bitboard b1 = pos.pawns(ofs.us) & not_pinned;
 
