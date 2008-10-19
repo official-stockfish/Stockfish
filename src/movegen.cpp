@@ -252,10 +252,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
       }
 
       // Pieces captures
-      b1 =  (pos.knight_attacks(checksq) & pos.knights(us))
-          | (pos.bishop_attacks(checksq) & pos.bishops_and_queens(us))
-          | (pos.rook_attacks(checksq)   & pos.rooks_and_queens(us))
-          & not_pinned;
+      b1 = (  (pos.knight_attacks(checksq) & pos.knights(us))
+            | (pos.bishop_attacks(checksq) & pos.bishops_and_queens(us))
+            | (pos.rook_attacks(checksq)   & pos.rooks_and_queens(us)) ) & not_pinned;
 
       while (b1)
       {
