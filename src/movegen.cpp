@@ -56,7 +56,9 @@ namespace {
   int generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 
   template<PieceType>
-  int generate_piece_moves(const Position&, MoveStack*, Bitboard);
+  int generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
+  template<>
+  int generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target);
 
   template<PieceType>
   int generate_piece_checks(const Position&, Bitboard, Bitboard, Square, MoveStack*);
@@ -89,11 +91,11 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   else
       n = generate_pawn_captures<BLACK>(pos, mlist);
 
-  n += generate_piece_moves<KNIGHT>(pos, mlist+n, target);
-  n += generate_piece_moves<BISHOP>(pos, mlist+n, target);
-  n += generate_piece_moves<ROOK>(pos, mlist+n, target);
-  n += generate_piece_moves<QUEEN>(pos, mlist+n, target);
-  n += generate_piece_moves<KING>(pos, mlist+n, target);
+  n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
+  n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
+  n += generate_piece_moves<ROOK>(pos, mlist+n, us, target);
+  n += generate_piece_moves<QUEEN>(pos, mlist+n, us, target);
+  n += generate_piece_moves<KING>(pos, mlist+n, us, target);
   return n;
 }
 
@@ -115,11 +117,11 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   else
       n = generate_pawn_noncaptures<BLACK>(pos, mlist);
 
-  n += generate_piece_moves<KNIGHT>(pos, mlist+n, target);
-  n += generate_piece_moves<BISHOP>(pos, mlist+n, target);
-  n += generate_piece_moves<ROOK>(pos, mlist+n, target);
-  n += generate_piece_moves<QUEEN>(pos, mlist+n, target);
-  n += generate_piece_moves<KING>(pos, mlist+n, target);
+  n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
+  n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
+  n += generate_piece_moves<ROOK>(pos, mlist+n, us, target);
+  n += generate_piece_moves<QUEEN>(pos, mlist+n, us, target);
+  n += generate_piece_moves<KING>(pos, mlist+n, us, target);
   n += generate_castle_moves(pos, mlist+n);
   return n;
 }
@@ -536,24 +538,40 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
 namespace {
 
   template<PieceType Piece>
-  int generate_piece_moves(const Position& pos, MoveStack* mlist, Bitboard target) {
+  int generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
+    Square from, to;
+    Bitboard b;
     int n = 0;
-    Color us = pos.side_to_move();
 
     for (int i = 0; i < pos.piece_count(us, Piece); i++)
     {
-        Square from = pos.piece_list(us, Piece, i);
-        Bitboard b = pos.piece_attacks<Piece>(from) & target;
+        from = pos.piece_list(us, Piece, i);
+        b = pos.piece_attacks<Piece>(from) & target;
         while (b)
         {
-            Square to = pop_1st_bit(&b);
+            to = pop_1st_bit(&b);
             mlist[n++].move = make_move(from, to);
         }
     }
     return n;
   }
 
+  template<>
+  int generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+
+    Bitboard b;
+    Square to, from = pos.king_square(us);
+    int n = 0;
+
+    b = pos.piece_attacks<KING>(from) & target;
+    while (b)
+    {
+        to = pop_1st_bit(&b);
+        mlist[n++].move = make_move(from, to);
+    }
+    return n;
+  }
 
   template<PieceType Piece>
   int generate_piece_blocking_evasions(const Position& pos, Bitboard b,
