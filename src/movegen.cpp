@@ -6,12 +6,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -40,7 +40,7 @@ namespace {
   };
   const PawnParams WhitePawnParams = { Rank3BB, Rank8BB, RANK_8, DELTA_N, DELTA_NE, DELTA_NW, WHITE, BLACK };
   const PawnParams BlackPawnParams = { Rank6BB, Rank1BB, RANK_1, DELTA_S, DELTA_SE, DELTA_SW, BLACK, WHITE };
-  
+
   int generate_castle_moves(const Position&, MoveStack*);
 
   template<Color>
@@ -48,7 +48,7 @@ namespace {
 
   template<Color>
   int generate_pawn_noncaptures(const Position&, MoveStack*);
-  
+
   template<Color>
   int generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
 
@@ -98,7 +98,7 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
 }
 
 
-/// generate_noncaptures() generates all pseudo-legal non-captures and 
+/// generate_noncaptures() generates all pseudo-legal non-captures and
 /// underpromotions.  The return value is the number of moves generated.
 
 int generate_noncaptures(const Position& pos, MoveStack *mlist) {
@@ -127,7 +127,7 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
 
 /// generate_checks() generates all pseudo-legal non-capturing, non-promoting
 /// checks, except castling moves (will add this later).  It returns the
-/// number of generated moves.  
+/// number of generated moves.
 
 int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
@@ -143,7 +143,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   dc = pos.discovered_check_candidates(us);
 
   // Pawn moves
-  if (us == WHITE)    
+  if (us == WHITE)
      n = generate_pawn_checks<WHITE>(pos, dc, ksq, mlist);
   else
      n = generate_pawn_checks<BLACK>(pos, dc, ksq, mlist);
@@ -169,7 +169,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   n += generate_piece_checks_king(pos, pos.king_square(us), dc, ksq, mlist+n);
 
   // TODO: Castling moves!
-  
+
   return n;
 }
 
@@ -191,7 +191,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
   int n = 0;
 
   assert(pos.piece_on(ksq) == king_of_color(us));
-  
+
   // Generate evasions for king
   Bitboard b1 = pos.piece_attacks<KING>(ksq) & ~pos.pieces_of_color(us);
   Bitboard b2 = pos.occupied_squares();
@@ -199,18 +199,18 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
 
   while (b1)
   {
-    Square to = pop_1st_bit(&b1);
+    to = pop_1st_bit(&b1);
 
     // Make sure to is not attacked by the other side. This is a bit ugly,
     // because we can't use Position::square_is_attacked. Instead we use
     // the low-level bishop_attacks_bb and rook_attacks_bb with the bitboard
     // b2 (the occupied squares with the king removed) in order to test whether
     // the king will remain in check on the destination square.
-    if (!(   (bishop_attacks_bb(to, b2)  & pos.bishops_and_queens(them))
-          || (rook_attacks_bb(to, b2)    & pos.rooks_and_queens(them))
-          || (pos.piece_attacks<KNIGHT>(to)     & pos.knights(them))
-          || (pos.pawn_attacks(us, to)   & pos.pawns(them))
-          || (pos.piece_attacks<KING>(to)       & pos.kings(them))))
+    if (!(   (bishop_attacks_bb(to, b2)     & pos.bishops_and_queens(them))
+          || (rook_attacks_bb(to, b2)       & pos.rooks_and_queens(them))
+          || (pos.piece_attacks<KNIGHT>(to) & pos.knights(them))
+          || (pos.pawn_attacks(us, to)      & pos.pawns(them))
+          || (pos.piece_attacks<KING>(to)   & pos.kings(them))))
 
         mlist[n++].move = make_move(ksq, to);
   }
@@ -301,7 +301,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
         b1 = pos.pawn_attacks(them, to) & pos.pawns(us);
 
         assert(b1 != EmptyBoardBB);
-  
+
         b1 &= not_pinned;
         while (b1)
         {
@@ -317,7 +317,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
             clear_bit(&b2, checksq);
             if (!(  (bishop_attacks_bb(ksq, b2) & pos.bishops_and_queens(them))
                   ||(rook_attacks_bb(ksq, b2)   & pos.rooks_and_queens(them))))
-                
+
                  mlist[n++].move = make_ep_move(from, to);
         }
     }
@@ -470,7 +470,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
 
   // Proceed according to the type of the moving piece.
   if (type_of_piece(pc) == PAWN)
-  {  
+  {
       // If the destination square is on the 8/1th rank, the move must
       // be a promotion.
       if (   (  (square_rank(to) == RANK_8 && us == WHITE)
@@ -713,8 +713,8 @@ namespace {
   {
     static const PawnParams PP = (C == WHITE ? WhitePawnParams : BlackPawnParams);
 
-    // Pawn moves which give discovered check. This is possible only if the 
-    // pawn is not on the same file as the enemy king, because we don't 
+    // Pawn moves which give discovered check. This is possible only if the
+    // pawn is not on the same file as the enemy king, because we don't
     // generate captures.
     int n = 0;
     Bitboard empty = pos.empty_squares();
@@ -869,7 +869,7 @@ namespace {
     if (pos.can_castle(us))
     {
         Color them = opposite_color(us);
-        Square ksq = pos.king_square(us);        
+        Square ksq = pos.king_square(us);
 
         assert(pos.piece_on(ksq) == king_of_color(us));
 
@@ -902,7 +902,7 @@ namespace {
           Square c1 = relative_square(us, SQ_C1);
           Square d1 = relative_square(us, SQ_D1);
           Square s;
-          bool illegal = false;        
+          bool illegal = false;
 
           assert(pos.piece_on(rsq) == rook_of_color(us));
 
@@ -919,7 +919,7 @@ namespace {
             && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
                 || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
             illegal = true;
-                         
+
         if (!illegal)
             mlist[n++].move = make_castle_move(ksq, rsq);
       }
