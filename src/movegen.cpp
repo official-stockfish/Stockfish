@@ -41,7 +41,7 @@ namespace {
   const PawnParams WhitePawnParams = { Rank3BB, Rank8BB, RANK_8, DELTA_N, DELTA_NE, DELTA_NW, WHITE, BLACK };
   const PawnParams BlackPawnParams = { Rank6BB, Rank1BB, RANK_1, DELTA_S, DELTA_SE, DELTA_SW, BLACK, WHITE };
   
-  int generate_castle_moves(const Position&, MoveStack*, Color);
+  int generate_castle_moves(const Position&, MoveStack*);
 
   template<Color>
   int generate_pawn_captures(const Position&, MoveStack*);
@@ -50,20 +50,20 @@ namespace {
   int generate_pawn_noncaptures(const Position&, MoveStack*);
   
   template<Color>
-  int generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*, int);
+  int generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
 
   template<Color>
-  int generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*, int);
+  int generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 
   template<PieceType>
-  int generate_piece_moves(const Position&, MoveStack*, Color, Bitboard);
+  int generate_piece_moves(const Position&, MoveStack*, Bitboard);
 
   template<PieceType>
-  int generate_piece_checks(const Position&, Bitboard, Bitboard, Square, MoveStack*, int);
-  int generate_piece_checks_king(const Position&, Square, Bitboard, Square, MoveStack*, int);
+  int generate_piece_checks(const Position&, Bitboard, Bitboard, Square, MoveStack*);
+  int generate_piece_checks_king(const Position&, Square, Bitboard, Square, MoveStack*);
 
   template<PieceType>
-  int generate_piece_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*, int);
+  int generate_piece_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 }
 
 
@@ -89,11 +89,11 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   else
       n = generate_pawn_captures<BLACK>(pos, mlist);
 
-  n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
-  n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
-  n += generate_piece_moves<ROOK>(pos, mlist+n, us, target);
-  n += generate_piece_moves<QUEEN>(pos, mlist+n, us, target);
-  n += generate_piece_moves<KING>(pos, mlist+n, us, target);
+  n += generate_piece_moves<KNIGHT>(pos, mlist+n, target);
+  n += generate_piece_moves<BISHOP>(pos, mlist+n, target);
+  n += generate_piece_moves<ROOK>(pos, mlist+n, target);
+  n += generate_piece_moves<QUEEN>(pos, mlist+n, target);
+  n += generate_piece_moves<KING>(pos, mlist+n, target);
   return n;
 }
 
@@ -115,13 +115,12 @@ int generate_noncaptures(const Position& pos, MoveStack *mlist) {
   else
       n = generate_pawn_noncaptures<BLACK>(pos, mlist);
 
-  n += generate_piece_moves<KNIGHT>(pos, mlist+n, us, target);
-  n += generate_piece_moves<BISHOP>(pos, mlist+n, us, target);
-  n += generate_piece_moves<ROOK>(pos, mlist+n, us, target);
-  n += generate_piece_moves<QUEEN>(pos, mlist+n, us, target);
-  n += generate_piece_moves<KING>(pos, mlist+n, us, target);
-
-  n += generate_castle_moves(pos, mlist+n, us);
+  n += generate_piece_moves<KNIGHT>(pos, mlist+n, target);
+  n += generate_piece_moves<BISHOP>(pos, mlist+n, target);
+  n += generate_piece_moves<ROOK>(pos, mlist+n, target);
+  n += generate_piece_moves<QUEEN>(pos, mlist+n, target);
+  n += generate_piece_moves<KING>(pos, mlist+n, target);
+  n += generate_castle_moves(pos, mlist+n);
   return n;
 }
 
@@ -145,29 +144,29 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   // Pawn moves
   if (us == WHITE)    
-     n = generate_pawn_checks<WHITE>(pos, dc, ksq, mlist, 0);
+     n = generate_pawn_checks<WHITE>(pos, dc, ksq, mlist);
   else
-     n = generate_pawn_checks<BLACK>(pos, dc, ksq, mlist, 0);
+     n = generate_pawn_checks<BLACK>(pos, dc, ksq, mlist);
 
   // Pieces moves
   Bitboard b = pos.knights(us);
   if (b)
-      n = generate_piece_checks<KNIGHT>(pos, b, dc, ksq, mlist, n);
+      n += generate_piece_checks<KNIGHT>(pos, b, dc, ksq, mlist+n);
 
   b = pos.bishops(us);
   if (b)
-      n = generate_piece_checks<BISHOP>(pos, b, dc, ksq, mlist, n);
+      n += generate_piece_checks<BISHOP>(pos, b, dc, ksq, mlist+n);
 
   b = pos.rooks(us);
   if (b)
-      n = generate_piece_checks<ROOK>(pos, b, dc, ksq, mlist, n);
+      n += generate_piece_checks<ROOK>(pos, b, dc, ksq, mlist+n);
 
   b = pos.queens(us);
   if (b)
-      n = generate_piece_checks<QUEEN>(pos, b, dc, ksq, mlist, n);
+      n += generate_piece_checks<QUEEN>(pos, b, dc, ksq, mlist+n);
 
   // Hopefully we always have a king ;-)
-  n = generate_piece_checks_king(pos, pos.king_square(us), dc, ksq, mlist, n);
+  n += generate_piece_checks_king(pos, pos.king_square(us), dc, ksq, mlist+n);
 
   // TODO: Castling moves!
   
@@ -269,26 +268,26 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
           // Pawn moves. Because a blocking evasion can never be a capture, we
           // only generate pawn pushes.
           if (us == WHITE)
-              n = generate_pawn_blocking_evasions<WHITE>(pos, not_pinned, blockSquares, mlist, n);
+              n += generate_pawn_blocking_evasions<WHITE>(pos, not_pinned, blockSquares, mlist+n);
           else
-              n = generate_pawn_blocking_evasions<BLACK>(pos, not_pinned, blockSquares, mlist, n);
+              n += generate_pawn_blocking_evasions<BLACK>(pos, not_pinned, blockSquares, mlist+n);
 
           // Pieces moves
           b1 = pos.knights(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions<KNIGHT>(pos, b1, blockSquares, mlist, n);
+              n += generate_piece_blocking_evasions<KNIGHT>(pos, b1, blockSquares, mlist+n);
 
           b1 = pos.bishops(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions<BISHOP>(pos, b1, blockSquares, mlist, n);
+              n += generate_piece_blocking_evasions<BISHOP>(pos, b1, blockSquares, mlist+n);
 
           b1 = pos.rooks(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions<ROOK>(pos, b1, blockSquares, mlist, n);
+              n += generate_piece_blocking_evasions<ROOK>(pos, b1, blockSquares, mlist+n);
 
           b1 = pos.queens(us) & not_pinned;
           if (b1)
-              n = generate_piece_blocking_evasions<QUEEN>(pos, b1, blockSquares, mlist, n);
+              n += generate_piece_blocking_evasions<QUEEN>(pos, b1, blockSquares, mlist+n);
     }
 
     // Finally, the ugly special case of en passant captures. An en passant
@@ -361,7 +360,7 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 /// returned.  If not, the function returns MOVE_NONE.  This function must
 /// only be used when the side to move is not in check.
 
-Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
+Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -537,12 +536,14 @@ Move generate_move_if_legal(const Position &pos, Move m, Bitboard pinned) {
 namespace {
 
   template<PieceType Piece>
-  int generate_piece_moves(const Position &pos, MoveStack *mlist, 
-                           Color side, Bitboard target) {
+  int generate_piece_moves(const Position& pos, MoveStack* mlist, Bitboard target) {
+
     int n = 0;
-    for (int i = 0; i < pos.piece_count(side, Piece); i++)
+    Color us = pos.side_to_move();
+
+    for (int i = 0; i < pos.piece_count(us, Piece); i++)
     {
-        Square from = pos.piece_list(side, Piece, i);
+        Square from = pos.piece_list(us, Piece, i);
         Bitboard b = pos.piece_attacks<Piece>(from) & target;
         while (b)
         {
@@ -556,7 +557,8 @@ namespace {
 
   template<PieceType Piece>
   int generate_piece_blocking_evasions(const Position& pos, Bitboard b,
-                                       Bitboard blockSquares, MoveStack* mlist, int n) {
+                                       Bitboard blockSquares, MoveStack* mlist) {
+    int n = 0;
     while (b)
     {
         Square from = pop_1st_bit(&b);
@@ -707,13 +709,14 @@ namespace {
 
 
   template<Color C>
-  int generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist, int n)
+  int generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
   {
     static const PawnParams PP = (C == WHITE ? WhitePawnParams : BlackPawnParams);
 
     // Pawn moves which give discovered check. This is possible only if the 
     // pawn is not on the same file as the enemy king, because we don't 
     // generate captures.
+    int n = 0;
     Bitboard empty = pos.empty_squares();
 
     // Find all friendly pawns not on the enemy king's file
@@ -764,8 +767,9 @@ namespace {
 
   template<PieceType Piece>
   int generate_piece_checks(const Position& pos, Bitboard target, Bitboard dc,
-                            Square ksq, MoveStack* mlist, int n) {
+                            Square ksq, MoveStack* mlist) {
     // Discovered checks
+    int n = 0;
     Bitboard b = target & dc;
     while (b)
     {
@@ -794,7 +798,8 @@ namespace {
   }
 
   int generate_piece_checks_king(const Position& pos, Square from, Bitboard dc,
-                                 Square ksq, MoveStack* mlist, int n) {
+                                 Square ksq, MoveStack* mlist) {
+    int n = 0;
     if (bit_is_set(dc, from))
     {
         Bitboard b =   pos.piece_attacks<KING>(from)
@@ -812,11 +817,12 @@ namespace {
 
   template<Color C>
   int generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
-                                      Bitboard blockSquares, MoveStack* mlist, int n) {
+                                      Bitboard blockSquares, MoveStack* mlist) {
 
     static const PawnParams PP = (C == WHITE ? WhitePawnParams : BlackPawnParams);
 
     // Find non-pinned pawns
+    int n = 0;
     Bitboard b1 = pos.pawns(PP.us) & not_pinned;
 
     // Single pawn pushes. We don't have to AND with empty squares here,
@@ -855,9 +861,10 @@ namespace {
   }
 
 
-  int generate_castle_moves(const Position &pos, MoveStack *mlist, Color us) {
+  int generate_castle_moves(const Position& pos, MoveStack* mlist) {
 
     int n = 0;
+    Color us = pos.side_to_move();
 
     if (pos.can_castle(us))
     {
