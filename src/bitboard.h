@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -30,6 +30,10 @@
 // platform macros defined below
 #define AUTO_CONFIGURATION
 
+// Quiet a warning on Intel compiler
+#if !defined(__SIZEOF_INT__ )
+#define __SIZEOF_INT__ 0
+#endif
 
 // Check for 64 bits for different compilers: Intel, MSVC and gcc
 #if defined(__x86_64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
@@ -39,7 +43,7 @@
 #if !defined(AUTO_CONFIGURATION) || defined(IS_64BIT)
 
 //#define USE_COMPACT_ROOK_ATTACKS
-//#define USE_32BIT_ATTACKS 
+//#define USE_32BIT_ATTACKS
 #define USE_FOLDED_BITSCAN
 
 #define BITCOUNT_SWAR_64
@@ -48,7 +52,7 @@
 
 #else
 
-#define USE_32BIT_ATTACKS 
+#define USE_32BIT_ATTACKS
 #define USE_FOLDED_BITSCAN
 #define BITCOUNT_SWAR_32
 
@@ -93,7 +97,7 @@ const Bitboard FileHBB = 0x8080808080808080ULL;
 
 extern const Bitboard FileBB[8];
 extern const Bitboard NeighboringFilesBB[8];
-extern const Bitboard ThisAndNeighboringFilesBB[8];  
+extern const Bitboard ThisAndNeighboringFilesBB[8];
 
 const Bitboard Rank1BB = 0xFFULL;
 const Bitboard Rank2BB = 0xFF00ULL;
@@ -128,7 +132,7 @@ extern int RAttackIndex[64];
 extern Bitboard RAttacks[0x19000];
 #endif // defined(USE_COMPACT_ROOK_ATTACKS)
 
-extern const uint64_t BMult[64]; 
+extern const uint64_t BMult[64];
 extern const int BShift[64];
 extern Bitboard BMask[64];
 extern int BAttackIndex[64];
@@ -143,7 +147,7 @@ extern Bitboard QueenPseudoAttacks[64];
 //// Inline functions
 ////
 
-/// Functions for testing whether a given bit is set in a bitboard, and for 
+/// Functions for testing whether a given bit is set in a bitboard, and for
 /// setting and clearing bits.
 
 inline Bitboard set_mask_bb(Square s) {
@@ -200,7 +204,7 @@ inline Bitboard neighboring_files_bb(File f) {
 inline Bitboard neighboring_files_bb(Square s) {
   return neighboring_files_bb(square_file(s));
 }
-  
+
 
 /// this_and_neighboring_files_bb takes a file or a square as input, and
 /// returns a bitboard representing all squares on the given and neighboring
@@ -275,9 +279,9 @@ inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
   Bitboard b = blockers & RMask[s];
-  return RAttacks[RAttackIndex[s] + 
+  return RAttacks[RAttackIndex[s] +
                   (unsigned(int(b) * int(RMult[s]) ^
-                            int(b >> 32) * int(RMult[s] >> 32)) 
+                            int(b >> 32) * int(RMult[s] >> 32))
                    >> RShift[s])];
 }
 
@@ -294,9 +298,9 @@ inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
   Bitboard b = blockers & BMask[s];
-  return BAttacks[BAttackIndex[s] + 
+  return BAttacks[BAttackIndex[s] +
                   (unsigned(int(b) * int(BMult[s]) ^
-                            int(b >> 32) * int(BMult[s] >> 32)) 
+                            int(b >> 32) * int(BMult[s] >> 32))
                    >> BShift[s])];
 }
 
@@ -324,9 +328,9 @@ inline Bitboard squares_between(Square s1, Square s2) {
 }
 
 
-/// squares_in_front_of takes a color and a square as input, and returns a 
+/// squares_in_front_of takes a color and a square as input, and returns a
 /// bitboard representing all squares along the line in front of the square,
-/// from the point of view of the given color.  For instance, 
+/// from the point of view of the given color.  For instance,
 /// squares_in_front_of(BLACK, SQ_E4) returns a bitboard with the squares
 /// e3, e2 and e1 set.
 
@@ -343,8 +347,8 @@ inline Bitboard squares_behind(Color c, Square s) {
 }
 
 
-/// passed_pawn_mask takes a color and a square as input, and returns a 
-/// bitboard mask which can be used to test if a pawn of the given color on 
+/// passed_pawn_mask takes a color and a square as input, and returns a
+/// bitboard mask which can be used to test if a pawn of the given color on
 /// the given square is a passed pawn.
 
 inline Bitboard passed_pawn_mask(Color c, Square s) {
@@ -361,7 +365,7 @@ inline Bitboard outpost_mask(Color c, Square s) {
 }
 
 
-/// isolated_pawn_mask takes a square as input, and returns a bitboard mask 
+/// isolated_pawn_mask takes a square as input, and returns a bitboard mask
 /// which can be used to test whether a pawn on the given square is isolated.
 
 inline Bitboard isolated_pawn_mask(Square s) {
