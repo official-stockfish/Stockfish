@@ -60,61 +60,10 @@ namespace {
 
   template<PieceType>
   int generate_piece_checks(const Position&, Bitboard, Bitboard, Square, MoveStack*, int);
+  int generate_piece_checks_king(const Position&, Square, Bitboard, Square, MoveStack*, int);
 
   template<PieceType>
   int generate_piece_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*, int);
-
-
-  /// Templates with specializations are defined here to avoid lookup issues
-
-  template<PieceType Piece>
-  int generate_piece_checks(const Position& pos, Bitboard target, Bitboard dc,
-                            Square ksq, MoveStack* mlist, int n) {
-    // Discovered checks
-    Bitboard b = target & dc;
-    while (b)
-    {
-        Square from = pop_1st_bit(&b);
-        Bitboard bb = pos.piece_attacks<Piece>(from) & pos.empty_squares();
-        while (bb)
-        {
-            Square to = pop_1st_bit(&bb);
-            mlist[n++].move = make_move(from, to);
-        }
-    }
-    // Direct checks
-    b = target & ~dc;
-    Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
-    while (b)
-    {
-        Square from = pop_1st_bit(&b);
-        Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
-        while (bb)
-        {
-            Square to = pop_1st_bit(&bb);
-            mlist[n++].move = make_move(from, to);
-        }
-    }
-    return n;
-  }
-
-
-  template<> // Special case the King
-  int generate_piece_checks<KING>(const Position& pos, Bitboard, Bitboard dc,
-                                  Square ksq, MoveStack* mlist, int n) {
-    if (bit_is_set(dc, ksq))
-    {
-        Bitboard bb =   pos.piece_attacks<KING>(ksq)
-                      & pos.empty_squares()
-                      & ~QueenPseudoAttacks[ksq];
-        while (bb)
-        {
-            Square to = pop_1st_bit(&bb);
-            mlist[n++].move = make_move(ksq, to);
-        }
-    }
-    return n;
-  }
 }
 
 
@@ -218,7 +167,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
       n = generate_piece_checks<QUEEN>(pos, b, dc, ksq, mlist, n);
 
   // Hopefully we always have a king ;-)
-  n = generate_piece_checks<KING>(pos, b, dc, pos.king_square(us), mlist, n);
+  n = generate_piece_checks_king(pos, pos.king_square(us), dc, ksq, mlist, n);
 
   // TODO: Castling moves!
   
@@ -809,6 +758,53 @@ namespace {
     {
         Square to = pop_1st_bit(&b3);
         mlist[n++].move = make_move(to - PP.DELTA_N - PP.DELTA_N, to);
+    }
+    return n;
+  }
+
+  template<PieceType Piece>
+  int generate_piece_checks(const Position& pos, Bitboard target, Bitboard dc,
+                            Square ksq, MoveStack* mlist, int n) {
+    // Discovered checks
+    Bitboard b = target & dc;
+    while (b)
+    {
+        Square from = pop_1st_bit(&b);
+        Bitboard bb = pos.piece_attacks<Piece>(from) & pos.empty_squares();
+        while (bb)
+        {
+            Square to = pop_1st_bit(&bb);
+            mlist[n++].move = make_move(from, to);
+        }
+    }
+    // Direct checks
+    b = target & ~dc;
+    Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
+    while (b)
+    {
+        Square from = pop_1st_bit(&b);
+        Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
+        while (bb)
+        {
+            Square to = pop_1st_bit(&bb);
+            mlist[n++].move = make_move(from, to);
+        }
+    }
+    return n;
+  }
+
+  int generate_piece_checks_king(const Position& pos, Square from, Bitboard dc,
+                                 Square ksq, MoveStack* mlist, int n) {
+    if (bit_is_set(dc, from))
+    {
+        Bitboard b =   pos.piece_attacks<KING>(from)
+                     & pos.empty_squares()
+                     & ~QueenPseudoAttacks[ksq];
+        while (b)
+        {
+            Square to = pop_1st_bit(&b);
+            mlist[n++].move = make_move(from, to);
+        }
     }
     return n;
   }
