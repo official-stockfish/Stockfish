@@ -673,7 +673,7 @@ namespace {
     }
 
     // Non-capturing promotions
-    b1 = (Us == WHITE ? pawns << 8 : pawns >> 8) & pos.empty_squares() & Rank8BB;
+    b1 = (Us == WHITE ? pawns << 8 : pawns >> 8) & pos.empty_squares() & TRank8BB;
     while (b1)
     {
         sq = pop_1st_bit(&b1);
