@@ -429,7 +429,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       assert(pos.piece_on(to - pawn_push(us)) == pawn_of_color(them));
 
       // The move is pseudo-legal.  If it is legal, return it.
-      return (pos.move_is_legal(m) ? m : MOVE_NONE);
+      return (pos.move_is_legal(m, pinned) ? m : MOVE_NONE);
   }
 
   // Castling moves
@@ -561,12 +561,12 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
           return MOVE_NONE;
       }
       // The move is pseudo-legal.  Return it if it is legal.
-      return (pos.move_is_legal(m) ? m : MOVE_NONE);
+      return (pos.move_is_legal(m, pinned) ? m : MOVE_NONE);
   }
 
   // Luckly we can handle all the other pieces in one go
   return (   pos.piece_attacks_square(from, to)
-          && pos.move_is_legal(m)
+          && pos.move_is_legal(m, pinned)
           && !move_promotion(m) ? m : MOVE_NONE);
 }
 
