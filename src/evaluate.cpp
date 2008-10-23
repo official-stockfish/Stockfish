@@ -778,7 +778,7 @@ namespace {
             while (b)
             {
                 Square from, to = pop_1st_bit(&b);
-                if (!(escapeSquares & ~queen_attacks_bb(to, occ & clear_mask_bb(s))))
+                if (!(escapeSquares & ~queen_attacks_bb(to, occ & ClearMaskBB[s])))
                 {
                     // We have a mate, unless the queen is pinned or there
                     // is an X-ray attack through the queen.
@@ -787,8 +787,8 @@ namespace {
                         from = p.piece_list(them, QUEEN, i);
                         if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
                             && !bit_is_set(p.pinned_pieces(them), from)
-                            && !(rook_attacks_bb(to, occ & clear_mask_bb(from)) & p.rooks_and_queens(us))
-                            && !(rook_attacks_bb(to, occ & clear_mask_bb(from)) & p.rooks_and_queens(us)))
+                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.rooks_and_queens(us))
+                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.rooks_and_queens(us)))
                             
                             ei.mateThreat[them] = make_move(from, to);
                     }

@@ -150,26 +150,16 @@ extern Bitboard QueenPseudoAttacks[64];
 /// Functions for testing whether a given bit is set in a bitboard, and for
 /// setting and clearing bits.
 
-inline Bitboard set_mask_bb(Square s) {
-  //  return 1ULL << s;
-  return SetMaskBB[s];
-}
-
-inline Bitboard clear_mask_bb(Square s) {
-  //  return ~set_mask_bb(s);
-  return ClearMaskBB[s];
-}
-
 inline Bitboard bit_is_set(Bitboard b, Square s) {
-  return b & set_mask_bb(s);
+  return b & SetMaskBB[s];
 }
 
 inline void set_bit(Bitboard *b, Square s) {
-  *b |= set_mask_bb(s);
+  *b |= SetMaskBB[s];
 }
 
 inline void clear_bit(Bitboard *b, Square s) {
-  *b &= clear_mask_bb(s);
+  *b &= ClearMaskBB[s];
 }
 
 

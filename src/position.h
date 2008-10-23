@@ -197,6 +197,8 @@ public:
   // Bitboards for pinned pieces and discovered check candidates
   Bitboard discovered_check_candidates(Color c) const;
   Bitboard pinned_pieces(Color c) const;
+  template<PieceType Piece>
+  Bitboard pinned_pieces(Color c, Square ksq) const;
 
   // Checking pieces
   Bitboard checkers() const;
@@ -553,7 +555,7 @@ inline Bitboard Position::checkers() const {
 }
 
 inline bool Position::is_check() const {
-  return checkers() != EmptyBoardBB;
+  return checkersBB != EmptyBoardBB;
 }
 
 inline bool Position::pawn_attacks_square(Color c, Square f, Square t) const {
