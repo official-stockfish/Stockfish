@@ -25,6 +25,9 @@
 
 #include "movegen.h"
 
+// Simple macro to wrap a very common while loop, no facny, no flexibility,
+// hardcoded list name 'mlist' and from square 'from'.
+#define SERIALIZE_MOVES(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit(&b))
 
 ////
 //// Local definitions
@@ -573,18 +576,14 @@ namespace {
   template<PieceType Piece>
   MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
-    Square from, to;
+    Square from;
     Bitboard b;
 
     for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
     {
         from = pos.piece_list(us, Piece, i);
         b = pos.piece_attacks<Piece>(from) & target;
-        while (b)
-        {
-            to = pop_1st_bit(&b);
-            (*mlist++).move = make_move(from, to);
-        }
+        SERIALIZE_MOVES(b);
     }
     return mlist;
   }
@@ -593,14 +592,10 @@ namespace {
   MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
     Bitboard b;
-    Square to, from = pos.king_square(us);
+    Square from = pos.king_square(us);
 
     b = pos.piece_attacks<KING>(from) & target;
-    while (b)
-    {
-        to = pop_1st_bit(&b);
-        (*mlist++).move = make_move(from, to);
-    }
+    SERIALIZE_MOVES(b);
     return mlist;
   }
 
@@ -611,11 +606,7 @@ namespace {
     {
         Square from = pop_1st_bit(&b);
         Bitboard bb = pos.piece_attacks<Piece>(from) & blockSquares;
-        while (bb)
-        {
-            Square to = pop_1st_bit(&bb);
-            (*mlist++).move = make_move(from, to);
-        }
+        SERIALIZE_MOVES(bb);
     }
     return mlist;
   }
@@ -626,7 +617,7 @@ namespace {
           >
   MoveStack* do_generate_pawn_captures(const Position& pos, MoveStack* mlist) {    
 
-    Square sq;
+    Square to;
     Bitboard pawns = pos.pawns(Us);
     Bitboard enemyPieces = pos.pieces_of_color(Them);
 
@@ -637,16 +628,16 @@ namespace {
     Bitboard b2 = b1 & TRank8BB;
     while (b2)
     {
-        sq = pop_1st_bit(&b2);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NE, sq, QUEEN);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, QUEEN);
     }
 
     // Capturing non-promotions
     b2 = b1 & ~TRank8BB;
     while (b2)
     {
-        sq = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(sq - TDELTA_NE, sq);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_move(to - TDELTA_NE, to);
     }
 
     // Captures in the h1-a8 (h8-a1 for black) direction
@@ -656,24 +647,24 @@ namespace {
     b2 = b1 & TRank8BB;
     while (b2)
     {
-        sq = pop_1st_bit(&b2);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NW, sq, QUEEN);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, QUEEN);
     }
 
     // Capturing non-promotions
     b2 = b1 & ~TRank8BB;
     while (b2)
     {
-        sq = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(sq - TDELTA_NW, sq);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_move(to - TDELTA_NW, to);
     }
 
     // Non-capturing promotions
     b1 = (Us == WHITE ? pawns << 8 : pawns >> 8) & pos.empty_squares() & TRank8BB;
     while (b1)
     {
-        sq = pop_1st_bit(&b1);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_N, sq, QUEEN);
+        to = pop_1st_bit(&b1);
+        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
     }
 
     // En passant captures
@@ -687,8 +678,8 @@ namespace {
 
         while (b1)
         {
-            sq = pop_1st_bit(&b1);
-            (*mlist++).move = make_ep_move(sq, pos.ep_square());
+            to = pop_1st_bit(&b1);
+            (*mlist++).move = make_ep_move(to, pos.ep_square());
         }
     }
     return mlist;
@@ -703,26 +694,26 @@ namespace {
     Bitboard enemyPieces = pos.pieces_of_color(Them);
     Bitboard emptySquares = pos.empty_squares();
     Bitboard b1, b2;
-    Square sq;
+    Square to;
 
     // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
     b1 = (Us == WHITE ? pawns << 9 : pawns >> 7) & ~FileABB & enemyPieces & TRank8BB;
     while (b1)
     {
-        sq = pop_1st_bit(&b1);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NE, sq, ROOK);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NE, sq, BISHOP);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NE, sq, KNIGHT);
+        to = pop_1st_bit(&b1);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, ROOK);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, BISHOP);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, KNIGHT);
     }
 
     // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
     b1 = (Us == WHITE ? pawns << 7 : pawns >> 9) & ~FileHBB & enemyPieces & TRank8BB;
     while (b1)
     {
-        sq = pop_1st_bit(&b1);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NW, sq, ROOK);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NW, sq, BISHOP);
-        (*mlist++).move = make_promotion_move(sq - TDELTA_NW, sq, KNIGHT);
+        to = pop_1st_bit(&b1);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, ROOK);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, BISHOP);
+        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, KNIGHT);
     }
 
     // Single pawn pushes
@@ -730,24 +721,24 @@ namespace {
     b2 = b1 & TRank8BB;
     while (b2)
     {
-      sq = pop_1st_bit(&b2);
-      (*mlist++).move = make_promotion_move(sq - TDELTA_N, sq, ROOK);
-      (*mlist++).move = make_promotion_move(sq - TDELTA_N, sq, BISHOP);
-      (*mlist++).move = make_promotion_move(sq - TDELTA_N, sq, KNIGHT);
+      to = pop_1st_bit(&b2);
+      (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
+      (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
+      (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
     }
     b2 = b1 & ~TRank8BB;
     while (b2)
     {
-        sq = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(sq - TDELTA_N, sq);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_move(to - TDELTA_N, to);
     }
 
     // Double pawn pushes
     b2 = (Us == WHITE ? (b1 & TRank3BB) << 8 : (b1 & TRank3BB) >> 8) & emptySquares;
     while (b2)
     {
-      sq = pop_1st_bit(&b2);
-      (*mlist++).move = make_move(sq - TDELTA_N - TDELTA_N, sq);
+      to = pop_1st_bit(&b2);
+      (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
     }
     return mlist;
   }
@@ -816,11 +807,7 @@ namespace {
     {
         Square from = pop_1st_bit(&b);
         Bitboard bb = pos.piece_attacks<Piece>(from) & pos.empty_squares();
-        while (bb)
-        {
-            Square to = pop_1st_bit(&bb);
-            (*mlist++).move = make_move(from, to);
-        }
+        SERIALIZE_MOVES(bb);
     }
     // Direct checks
     b = target & ~dc;
@@ -829,11 +816,7 @@ namespace {
     {
         Square from = pop_1st_bit(&b);
         Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
-        while (bb)
-        {
-            Square to = pop_1st_bit(&bb);
-            (*mlist++).move = make_move(from, to);
-        }
+        SERIALIZE_MOVES(bb);
     }
     return mlist;
   }
@@ -845,11 +828,7 @@ namespace {
         Bitboard b =   pos.piece_attacks<KING>(from)
                      & pos.empty_squares()
                      & ~QueenPseudoAttacks[ksq];
-        while (b)
-        {
-            Square to = pop_1st_bit(&b);
-            (*mlist++).move = make_move(from, to);
-        }
+        SERIALIZE_MOVES(b);
     }
     return mlist;
   }
@@ -858,6 +837,8 @@ namespace {
   template<Color Us, Rank TRANK_8, Bitboard TRank3BB, SquareDelta TDELTA_N>
   MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
                                                 Bitboard blockSquares, MoveStack* mlist) {
+    Square to;
+
     // Find non-pinned pawns
     Bitboard b1 = pos.pawns(Us) & not_pinned;
 
@@ -866,7 +847,7 @@ namespace {
     Bitboard b2 = (Us == WHITE ? b1 << 8 : b1 >> 8) & blockSquares;
     while (b2)
     {
-        Square to = pop_1st_bit(&b2);
+        to = pop_1st_bit(&b2);
 
         assert(pos.piece_on(to) == EMPTY);
 
@@ -885,7 +866,7 @@ namespace {
     b2 = (Us == WHITE ? b2 << 8 : b2 >> 8) & blockSquares;;
     while (b2)
     {
-        Square to = pop_1st_bit(&b2);
+        to = pop_1st_bit(&b2);
 
         assert(pos.piece_on(to) == EMPTY);
         assert(Us != WHITE || square_rank(to) == RANK_4);
