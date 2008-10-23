@@ -62,16 +62,16 @@ namespace {
   }
 
   // Template generate_pawn_blocking_evasions() with specializations
-  template<Color Us, Bitboard, Bitboard, SquareDelta>
+  template<Color Us, Rank, Bitboard, SquareDelta>
   MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
                                                 Bitboard blockSquares, MoveStack* mlist);
   template<Color>
   inline MoveStack* generate_pawn_blocking_evasions(const Position& p, Bitboard np, Bitboard bs, MoveStack* m) {
-      return do_generate_pawn_blocking_evasions<WHITE, Rank8BB, Rank3BB, DELTA_N>(p, np, bs, m);
+      return do_generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, np, bs, m);
   }
   template<>
   inline MoveStack* generate_pawn_blocking_evasions<BLACK>(const Position& p, Bitboard np, Bitboard bs, MoveStack* m) {
-      return do_generate_pawn_blocking_evasions<BLACK, Rank1BB, Rank6BB, DELTA_S>(p, np, bs, m);
+      return do_generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, np, bs, m);
   }
 
   // Template generate_pawn_checks() with specializations
@@ -855,7 +855,7 @@ namespace {
   }
 
 
-  template<Color Us, Bitboard TRANK_8, Bitboard TRank3BB, SquareDelta TDELTA_N>
+  template<Color Us, Rank TRANK_8, Bitboard TRank3BB, SquareDelta TDELTA_N>
   MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
                                                 Bitboard blockSquares, MoveStack* mlist) {
     // Find non-pinned pawns
