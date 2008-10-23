@@ -292,6 +292,7 @@ void Position::print() const {
 /// Position::copy() creates a copy of the input position.
 
 void Position::copy(const Position &pos) {
+
   memcpy(this, &pos, sizeof(Position));
 }
 
@@ -346,7 +347,6 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
       else
           pinners &= bishop_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
 
-
       // Finally for each pinner find the corresponding pinned piece (if same color of king)
       // or discovery checker (if opposite color) among the candidates.
       while (pinners)
@@ -363,12 +363,12 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
 /// given square.
 
 bool Position::square_is_attacked(Square s, Color c) const {
-  return
-    (pawn_attacks(opposite_color(c), s) & pawns(c)) ||
-    (piece_attacks<KNIGHT>(s) & knights(c)) ||
-    (piece_attacks<KING>(s)   & kings(c)) ||
-    (piece_attacks<ROOK>(s)   & rooks_and_queens(c)) ||
-    (piece_attacks<BISHOP>(s) & bishops_and_queens(c));
+
+  return   (pawn_attacks(opposite_color(c), s) & pawns(c))
+        || (piece_attacks<KNIGHT>(s) & knights(c))
+        || (piece_attacks<KING>(s)   & kings(c))
+        || (piece_attacks<ROOK>(s)   & rooks_and_queens(c))
+        || (piece_attacks<BISHOP>(s) & bishops_and_queens(c));
 }
 
 
@@ -378,16 +378,17 @@ bool Position::square_is_attacked(Square s, Color c) const {
 /// attackers for one side.
 
 Bitboard Position::attacks_to(Square s) const {
-  return
-    (pawn_attacks(BLACK, s) & pawns(WHITE)) |
-    (pawn_attacks(WHITE, s) & pawns(BLACK)) |
-    (piece_attacks<KNIGHT>(s) & pieces_of_type(KNIGHT)) |
-    (piece_attacks<ROOK>(s) & rooks_and_queens()) |
-    (piece_attacks<BISHOP>(s) & bishops_and_queens()) |
-    (piece_attacks<KING>(s) & pieces_of_type(KING));
+
+  return  (pawn_attacks(BLACK, s)   & pawns(WHITE))
+        | (pawn_attacks(WHITE, s)   & pawns(BLACK))
+        | (piece_attacks<KNIGHT>(s) & pieces_of_type(KNIGHT))
+        | (piece_attacks<ROOK>(s)   & rooks_and_queens())
+        | (piece_attacks<BISHOP>(s) & bishops_and_queens())
+        | (piece_attacks<KING>(s)   & pieces_of_type(KING));
 }
 
 Bitboard Position::attacks_to(Square s, Color c) const {
+
   return attacks_to(s) & pieces_of_color(c);
 }
 
@@ -396,20 +397,49 @@ Bitboard Position::attacks_to(Square s, Color c) const {
 /// attacks square t.
 
 bool Position::piece_attacks_square(Square f, Square t) const {
+
   assert(square_is_ok(f));
   assert(square_is_ok(t));
 
-  switch(piece_on(f)) {
-  case WP: return pawn_attacks_square(WHITE, f, t);
-  case BP: return pawn_attacks_square(BLACK, f, t);
+  switch (piece_on(f))
+  {
+  case WP:          return pawn_attacks_square(WHITE, f, t);
+  case BP:          return pawn_attacks_square(BLACK, f, t);
   case WN: case BN: return piece_attacks_square<KNIGHT>(f, t);
   case WB: case BB: return piece_attacks_square<BISHOP>(f, t);
   case WR: case BR: return piece_attacks_square<ROOK>(f, t);
   case WQ: case BQ: return piece_attacks_square<QUEEN>(f, t);
   case WK: case BK: return piece_attacks_square<KING>(f, t);
-  default: return false;
+  default:          return false;
   }
+  return false;
+}
 
+
+/// Position::move_attacks_square() tests whether a move from the current
+/// position attacks a given square.  Only attacks by the moving piece are
+/// considered; the function does not handle X-ray attacks.
+
+bool Position::move_attacks_square(Move m, Square s) const {
+
+  assert(move_is_ok(m));
+  assert(square_is_ok(s));
+
+  Square f = move_from(m), t = move_to(m);
+
+  assert(square_is_occupied(f));
+
+  switch (piece_on(f))
+  {
+  case WP:          return pawn_attacks_square(WHITE, t, s);
+  case BP:          return pawn_attacks_square(BLACK, t, s);
+  case WN: case BN: return piece_attacks_square<KNIGHT>(t, s);
+  case WB: case BB: return piece_attacks_square<BISHOP>(t, s);
+  case WR: case BR: return piece_attacks_square<ROOK>(t, s);
+  case WQ: case BQ: return piece_attacks_square<QUEEN>(t, s);
+  case WK: case BK: return piece_attacks_square<KING>(t, s);
+  default: assert(false);
+  }
   return false;
 }
 
@@ -421,23 +451,24 @@ bool Position::piece_attacks_square(Square f, Square t) const {
 /// played, like in non-bitboard versions of Glaurung.
 
 void Position::find_checkers() {
-  checkersBB = attacks_to(king_square(side_to_move()),
-                          opposite_color(side_to_move()));
+
+  checkersBB = attacks_to(king_square(side_to_move()),opposite_color(side_to_move()));
 }
 
 
 /// Position::move_is_legal() tests whether a pseudo-legal move is legal.
 /// There are two versions of this function:  One which takes only a
 /// move as input, and one which takes a move and a bitboard of pinned
-/// pieces.  The latter function is faster, and should always be preferred
+/// pieces. The latter function is faster, and should always be preferred
 /// when a pinned piece bitboard has already been computed.
 
 bool Position::move_is_legal(Move m)  const {
+
   return move_is_legal(m, pinned_pieces(side_to_move()));
 }
 
-
 bool Position::move_is_legal(Move m, Bitboard pinned) const {
+
   Color us, them;
   Square ksq, from;
 
@@ -447,14 +478,15 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
 
   // If we're in check, all pseudo-legal moves are legal, because our
   // check evasion generator only generates true legal moves.
-  if(is_check()) return true;
+  if (is_check())
+      return true;
 
   // Castling moves are checked for legality during move generation.
-  if(move_is_castle(m)) return true;
+  if (move_is_castle(m))
+      return true;
 
   us = side_to_move();
   them = opposite_color(us);
-
   from = move_from(m);
   ksq = king_square(us);
 
@@ -463,33 +495,36 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
 
   // En passant captures are a tricky special case.  Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
-  // after the move is made:
-  if(move_is_ep(m)) {
-    Square to = move_to(m);
-    Square capsq = make_square(square_file(to), square_rank(from));
-    Bitboard b = occupied_squares();
+  // after the move is made
+  if (move_is_ep(m))
+  {
+      Square to = move_to(m);
+      Square capsq = make_square(square_file(to), square_rank(from));
+      Bitboard b = occupied_squares();
 
-    assert(to == ep_square());
-    assert(piece_on(from) == pawn_of_color(us));
-    assert(piece_on(capsq) == pawn_of_color(them));
-    assert(piece_on(to) == EMPTY);
+      assert(to == ep_square());
+      assert(piece_on(from) == pawn_of_color(us));
+      assert(piece_on(capsq) == pawn_of_color(them));
+      assert(piece_on(to) == EMPTY);
 
-    clear_bit(&b, from); clear_bit(&b, capsq); set_bit(&b, to);
-    return
-      (!(rook_attacks_bb(ksq, b) & rooks_and_queens(them)) &&
-       !(bishop_attacks_bb(ksq, b) & bishops_and_queens(them)));
+      clear_bit(&b, from);
+      clear_bit(&b, capsq);
+      set_bit(&b, to);
+
+      return   !(rook_attacks_bb(ksq, b) & rooks_and_queens(them))
+            && !(bishop_attacks_bb(ksq, b) & bishops_and_queens(them));
   }
 
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
-  if(from == ksq) return !(square_is_attacked(move_to(m), them));
+  if (from == ksq)
+      return !(square_is_attacked(move_to(m), them));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  if(!bit_is_set(pinned, from)) return true;
-  if(direction_between_squares(from, ksq) ==
-     direction_between_squares(move_to(m), ksq))
-    return true;
+  if (   !bit_is_set(pinned, from)
+      || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)))
+      return true;
 
   return false;
 }
@@ -502,138 +537,126 @@ bool Position::move_is_legal(Move m, Bitboard pinned) const {
 /// when a discovered check candidates bitboard has already been computed.
 
 bool Position::move_is_check(Move m) const {
+
   Bitboard dc = discovered_check_candidates(side_to_move());
   return move_is_check(m, dc);
 }
 
-
 bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
+
   Color us, them;
   Square ksq, from, to;
 
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(dcCandidates ==
-         discovered_check_candidates(side_to_move()));
+  assert(dcCandidates == discovered_check_candidates(side_to_move()));
 
   us = side_to_move();
   them = opposite_color(us);
-
   from = move_from(m);
   to = move_to(m);
   ksq = king_square(them);
+
   assert(color_of_piece_on(from) == us);
   assert(piece_on(ksq) == king_of_color(them));
 
-  // Proceed according to the type of the moving piece:
-  switch(type_of_piece_on(from)) {
+  // Proceed according to the type of the moving piece
+  switch (type_of_piece_on(from))
+  {
   case PAWN:
-    // Normal check?
-    if(bit_is_set(pawn_attacks(them, ksq), to))
-      return true;
-    // Discovered check?
-    else if(bit_is_set(dcCandidates, from) &&
-            direction_between_squares(from, ksq) !=
-            direction_between_squares(to, ksq))
-      return true;
-    // Promotion with check?
-    else if(move_promotion(m)) {
-      Bitboard b = occupied_squares();
-      clear_bit(&b, from);
+      
+      if (bit_is_set(pawn_attacks(them, ksq), to)) // Normal check?
+          return true;
+      
+      if (    bit_is_set(dcCandidates, from)      // Discovered check?
+          && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
+          return true;
+      
+      if (move_promotion(m)) // Promotion with check?
+      {
+          Bitboard b = occupied_squares();
+          clear_bit(&b, from);
 
-      switch(move_promotion(m)) {
-      case KNIGHT:
-        return piece_attacks_square<KNIGHT>(to, ksq);
-      case BISHOP:
-        return bit_is_set(bishop_attacks_bb(to, b), ksq);
-      case ROOK:
-        return bit_is_set(rook_attacks_bb(to, b), ksq);
-      case QUEEN:
-        return bit_is_set(queen_attacks_bb(to, b), ksq);
-      default:
-        assert(false);
+          switch (move_promotion(m))
+          {
+          case KNIGHT:
+              return bit_is_set(piece_attacks<KNIGHT>(to), ksq);
+          case BISHOP:
+              return bit_is_set(bishop_attacks_bb(to, b), ksq);
+          case ROOK:
+              return bit_is_set(rook_attacks_bb(to, b), ksq);
+          case QUEEN:
+              return bit_is_set(queen_attacks_bb(to, b), ksq);
+          default:
+              assert(false);
+          }
       }
-    }
-    // En passant capture with check?  We have already handled the case
-    // of direct checks and ordinary discovered check, the only case we
-    // need to handle is the unusual case of a discovered check through the
-    // captured pawn.
-    else if(move_is_ep(m)) {
-      Square capsq = make_square(square_file(to), square_rank(from));
-      Bitboard b = occupied_squares();
+      // En passant capture with check?  We have already handled the case
+      // of direct checks and ordinary discovered check, the only case we
+      // need to handle is the unusual case of a discovered check through the
+      // captured pawn.
+      else if (move_is_ep(m))
+      {
+          Square capsq = make_square(square_file(to), square_rank(from));
+          Bitboard b = occupied_squares();
+          clear_bit(&b, from);
+          clear_bit(&b, capsq);
+          set_bit(&b, to);
+          return  (rook_attacks_bb(ksq, b) & rooks_and_queens(us))
+                ||(bishop_attacks_bb(ksq, b) & bishops_and_queens(us));
+      }
+      return false;
 
-      clear_bit(&b, from); clear_bit(&b, capsq); set_bit(&b, to);
-      return
-        ((rook_attacks_bb(ksq, b) & rooks_and_queens(us)) ||
-         (bishop_attacks_bb(ksq, b) & bishops_and_queens(us)));
-    }
-    return false;
-
-  case KNIGHT:
-    // Discovered check?
-    if(bit_is_set(dcCandidates, from))
-      return true;
-    // Normal check?
-    else
-      return bit_is_set(piece_attacks<KNIGHT>(ksq), to);
+  case KNIGHT:    
+    return   bit_is_set(dcCandidates, from)              // Discovered check?
+          || bit_is_set(piece_attacks<KNIGHT>(ksq), to); // Normal check?
 
   case BISHOP:
-    // Discovered check?
-    if(bit_is_set(dcCandidates, from))
-      return true;
-    // Normal check?
-    else
-      return bit_is_set(piece_attacks<BISHOP>(ksq), to);
+    return   bit_is_set(dcCandidates, from)              // Discovered check?
+          || bit_is_set(piece_attacks<BISHOP>(ksq), to); // Normal check?
 
   case ROOK:
-    // Discovered check?
-    if(bit_is_set(dcCandidates, from))
-      return true;
-    // Normal check?
-    else
-      return bit_is_set(piece_attacks<ROOK>(ksq), to);
+    return   bit_is_set(dcCandidates, from)              // Discovered check?
+          || bit_is_set(piece_attacks<ROOK>(ksq), to);   // Normal check?
 
   case QUEEN:
-    // Discovered checks are impossible!
-    assert(!bit_is_set(dcCandidates, from));
-    // Normal check?
-    return bit_is_set(piece_attacks<QUEEN>(ksq), to);
+      // Discovered checks are impossible!
+      assert(!bit_is_set(dcCandidates, from));    
+      return bit_is_set(piece_attacks<QUEEN>(ksq), to);  // Normal check?
 
   case KING:
-    // Discovered check?
-    if(bit_is_set(dcCandidates, from) &&
-       direction_between_squares(from, ksq) !=
-       direction_between_squares(to, ksq))
-      return true;
-    // Castling with check?
-    if(move_is_castle(m)) {
-      Square kfrom, kto, rfrom, rto;
-      Bitboard b = occupied_squares();
+      // Discovered check?
+      if (   bit_is_set(dcCandidates, from)
+          && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
+          return true;
 
-      kfrom = from;
-      rfrom = to;
-      if(rfrom > kfrom) {
-        kto = relative_square(us, SQ_G1);
-        rto = relative_square(us, SQ_F1);
+      // Castling with check?
+      if (move_is_castle(m))
+      {
+          Square kfrom, kto, rfrom, rto;
+          Bitboard b = occupied_squares();
+          kfrom = from;
+          rfrom = to;
+
+          if (rfrom > kfrom)
+          {
+              kto = relative_square(us, SQ_G1);
+              rto = relative_square(us, SQ_F1);
+          } else {
+              kto = relative_square(us, SQ_C1);
+              rto = relative_square(us, SQ_D1);
+          }
+          clear_bit(&b, kfrom);
+          clear_bit(&b, rfrom);
+          set_bit(&b, rto);
+          set_bit(&b, kto);
+          return bit_is_set(rook_attacks_bb(rto, b), ksq);
       }
-      else {
-        kto = relative_square(us, SQ_C1);
-        rto = relative_square(us, SQ_D1);
-      }
-
-      clear_bit(&b, kfrom); clear_bit(&b, rfrom);
-      set_bit(&b, rto); set_bit(&b, kto);
-
-      return bit_is_set(rook_attacks_bb(rto, b), ksq);
-    }
-
-    return false;
+      return false;
 
   default:
-    assert(false);
-    return false;
+      assert(false);
   }
-
   assert(false);
   return false;
 }
@@ -643,38 +666,10 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 /// position is a capture.
 
 bool Position::move_is_capture(Move m) const {
-  return
-    color_of_piece_on(move_to(m)) == opposite_color(side_to_move())
-    || move_is_ep(m);
+
+  return   color_of_piece_on(move_to(m)) == opposite_color(side_to_move())
+        || move_is_ep(m);
 }
-
-
-/// Position::move_attacks_square() tests whether a move from the current
-/// position attacks a given square.  Only attacks by the moving piece are
-/// considered; the function does not handle X-ray attacks.
-
-bool Position::move_attacks_square(Move m, Square s) const {
-  assert(move_is_ok(m));
-  assert(square_is_ok(s));
-
-  Square f = move_from(m), t = move_to(m);
-
-  assert(square_is_occupied(f));
-
-  switch(piece_on(f)) {
-  case WP: return pawn_attacks_square(WHITE, t, s);
-  case BP: return pawn_attacks_square(BLACK, t, s);
-  case WN: case BN: return piece_attacks_square<KNIGHT>(t, s);
-  case WB: case BB: return piece_attacks_square<BISHOP>(t, s);
-  case WR: case BR: return piece_attacks_square<ROOK>(t, s);
-  case WQ: case BQ: return piece_attacks_square<QUEEN>(t, s);
-  case WK: case BK: return piece_attacks_square<KING>(t, s);
-  default: assert(false);
-  }
-
-  return false;
-}
-
 
 
 /// Position::backup() is called when making a move.  All information

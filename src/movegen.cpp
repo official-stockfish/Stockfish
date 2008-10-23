@@ -403,6 +403,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
   assert(pos.is_ok());
   assert(!pos.is_check());
   assert(move_is_ok(m));
+  assert(pinned == pos.pinned_pieces(pos.side_to_move()));
 
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
