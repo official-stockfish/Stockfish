@@ -576,7 +576,7 @@ namespace {
     Square from, to;
     Bitboard b;
 
-    for (int i = 0; i < pos.piece_count(us, Piece); i++)
+    for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
     {
         from = pos.piece_list(us, Piece, i);
         b = pos.piece_attacks<Piece>(from) & target;
