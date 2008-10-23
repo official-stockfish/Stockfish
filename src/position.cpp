@@ -296,50 +296,12 @@ void Position::copy(const Position &pos) {
 }
 
 
-/// Position:pinned_pieces<>() returns a bitboard of all pinned (against the
-/// king) pieces for the given color and for the given pinner type.
-template<PieceType Piece>
-Bitboard Position::pinned_pieces(Color c, Square ksq) const {
-
-  Square s;
-  Bitboard sliders, pinned = EmptyBoardBB;
-  
-  if (Piece == ROOK) // Resolved at compile time
-      sliders = rooks_and_queens(opposite_color(c)) & RookPseudoAttacks[ksq];
-  else
-      sliders = bishops_and_queens(opposite_color(c)) & BishopPseudoAttacks[ksq];
-
-  if (sliders && (sliders & ~checkersBB))
-  {
-       // Our king blockers are candidate pinned pieces
-      Bitboard candidate_pinned = piece_attacks<Piece>(ksq) & pieces_of_color(c);
-
-      // Pinners are sliders, not checkers, that give check when 
-      // candidate pinned are removed.
-      Bitboard pinners =  sliders & ~checkersBB;
-      if (Piece == ROOK)
-          pinners &= rook_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
-      else
-          pinners &= bishop_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
-
-      // Finally for each pinner find the corresponding pinned piece
-      // among the candidates.
-      while (pinners)
-      {
-          s = pop_1st_bit(&pinners);
-          pinned |= (squares_between(s, ksq) & candidate_pinned);
-      }
-  }
-  return pinned;
-}
-
-
 /// Position:pinned_pieces() returns a bitboard of all pinned (against the
 /// king) pieces for the given color.
 Bitboard Position::pinned_pieces(Color c) const {
 
   Square ksq = king_square(c);
-  return pinned_pieces<ROOK>(c, ksq) | pinned_pieces<BISHOP>(c, ksq);
+  return hidden_checks<ROOK, true>(c, ksq) | hidden_checks<BISHOP, true>(c, ksq);
 }
 
 
@@ -349,33 +311,51 @@ Bitboard Position::pinned_pieces(Color c) const {
 /// pieces.
 
 Bitboard Position::discovered_check_candidates(Color c) const {
-  Bitboard b1, b2, dc, checkers, sliders;
-  Square ksq = king_square(opposite_color(c)), s;
 
-  dc = EmptyBoardBB;
-  b1 = occupied_squares();
+  Square ksq = king_square(opposite_color(c));
+  return hidden_checks<ROOK, false>(c, ksq) | hidden_checks<BISHOP, false>(c, ksq);
+}
 
-  sliders = rooks_and_queens(c);
-  if(sliders & RookPseudoAttacks[ksq]) {
-    b2 = piece_attacks<ROOK>(ksq) & pieces_of_color(c);
-    checkers = rook_attacks_bb(ksq, b1 ^ b2) & sliders;
-    while(checkers) {
-      s = pop_1st_bit(&checkers);
-      dc |= (squares_between(s, ksq) & b2);
-    }
+
+/// Position:hidden_checks<>() returns a bitboard of all pinned (against the
+/// king) pieces for the given color and for the given pinner type. Or, when
+/// template parameter FindPinned is false, the pinned pieces of opposite color
+/// that are, indeed, the pieces candidate for a discovery check.
+template<PieceType Piece, bool FindPinned>
+Bitboard Position::hidden_checks(Color c, Square ksq) const {
+
+  Square s;
+  Bitboard sliders, result = EmptyBoardBB;
+  
+  if (Piece == ROOK) // Resolved at compile time
+      sliders = rooks_and_queens(FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq];
+  else
+      sliders = bishops_and_queens(FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq];
+
+  if (sliders && (!FindPinned || (sliders & ~checkersBB)))
+  {
+       // King blockers are candidate pinned pieces
+      Bitboard candidate_pinned = piece_attacks<Piece>(ksq) & pieces_of_color(c);
+
+      // Pinners are sliders, not checkers, that give check when 
+      // candidate pinned are removed.
+      Bitboard pinners = (FindPinned ? sliders & ~checkersBB : sliders);
+
+      if (Piece == ROOK)
+          pinners &= rook_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
+      else
+          pinners &= bishop_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
+
+
+      // Finally for each pinner find the corresponding pinned piece (if same color of king)
+      // or discovery checker (if opposite color) among the candidates.
+      while (pinners)
+      {
+          s = pop_1st_bit(&pinners);
+          result |= (squares_between(s, ksq) & candidate_pinned);
+      }
   }
-
-  sliders = bishops_and_queens(c);
-  if(sliders & BishopPseudoAttacks[ksq]) {
-    b2 = piece_attacks<BISHOP>(ksq) & pieces_of_color(c);
-    checkers = bishop_attacks_bb(ksq, b1 ^ b2) & sliders;
-    while(checkers) {
-      s = pop_1st_bit(&checkers);
-      dc |= (squares_between(s, ksq) & b2);
-    }
-  }
-
-  return dc;
+  return result;
 }
 
 

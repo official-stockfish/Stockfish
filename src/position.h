@@ -197,8 +197,6 @@ public:
   // Bitboards for pinned pieces and discovered check candidates
   Bitboard discovered_check_candidates(Color c) const;
   Bitboard pinned_pieces(Color c) const;
-  template<PieceType Piece>
-  Bitboard pinned_pieces(Color c, Square ksq) const;
 
   // Checking pieces
   Bitboard checkers() const;
@@ -306,6 +304,9 @@ private:
   void undo_promotion_move(Move m, const UndoInfo &u);
   void undo_ep_move(Move m);
   void find_checkers();
+
+  template<PieceType Piece, bool FindPinned>
+  Bitboard hidden_checks(Color c, Square ksq) const;
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;
