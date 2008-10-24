@@ -561,7 +561,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       default:
           return MOVE_NONE;
       }
-      // The move is pseudo-legal.  Return it if it is legal.
+      // The move is pseudo-legal. Return it if it is legal.
       return (pos.move_is_legal(m, pinned) ? m : MOVE_NONE);
   }
 
