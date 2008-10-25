@@ -1629,16 +1629,23 @@ int Position::see(Square from, Square to) const {
              | (pawn_attacks(WHITE, to)    & pawns(BLACK))
              | (pawn_attacks(BLACK, to)    & pawns(WHITE));
 
-  attackers &= occ; // Re-add removed piece
-
   // If the opponent has no attackers, we are finished
   if ((attackers & pieces_of_color(them)) == EmptyBoardBB)
       return seeValues[capture];
 
+  attackers &= occ; // Remove the moving piece
+
+  // If we don't have any attacker but the moving piece (common case)
+  // then we loose our piece and gain the opponent attacked one.
+  // Note that this is not perfect! It does not detect x-rays of
+  // an our piece behind an opposite one. But is a very rare case.
+  if ((attackers & pieces_of_color(us)) == EmptyBoardBB)
+      return seeValues[capture] - seeValues[piece];
+
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
   // the material gain or loss at each stop in a sequence of captures to the
-  // destianation square, where the sides alternately capture, and always
+  // destination square, where the sides alternately capture, and always
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
   int lastCapturingPieceValue = seeValues[piece];
