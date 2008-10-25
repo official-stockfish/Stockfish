@@ -456,18 +456,18 @@ void Position::find_checkers() {
 }
 
 
-/// Position::move_is_legal() tests whether a pseudo-legal move is legal.
+/// Position::pl_move_is_legal() tests whether a pseudo-legal move is legal.
 /// There are two versions of this function:  One which takes only a
 /// move as input, and one which takes a move and a bitboard of pinned
 /// pieces. The latter function is faster, and should always be preferred
 /// when a pinned piece bitboard has already been computed.
 
-bool Position::move_is_legal(Move m)  const {
+bool Position::pl_move_is_legal(Move m)  const {
 
-  return move_is_legal(m, pinned_pieces(side_to_move()));
+  return pl_move_is_legal(m, pinned_pieces(side_to_move()));
 }
 
-bool Position::move_is_legal(Move m, Bitboard pinned) const {
+bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   Color us, them;
   Square ksq, from;

@@ -161,14 +161,14 @@ Move move_from_san(Position &pos, const std::string &movestr) {
   if(movestr == "O-O-O") {
     Move m;
     while((m = mp.get_next_move()) != MOVE_NONE)
-      if(move_is_long_castle(m) && pos.move_is_legal(m))
+      if(move_is_long_castle(m) && pos.pl_move_is_legal(m))
         return m;
     return MOVE_NONE;
   }
   else if(movestr == "O-O") {
     Move m;
     while((m = mp.get_next_move()) != MOVE_NONE)
-      if(move_is_short_castle(m) && pos.move_is_legal(m))
+      if(move_is_short_castle(m) && pos.pl_move_is_legal(m))
         return m;
     return MOVE_NONE;
   }
@@ -358,7 +358,7 @@ namespace {
     n = 0;
     while((mv = mp.get_next_move()) != MOVE_NONE)
       if(move_to(mv) == to && pos.piece_on(move_from(mv)) == pc
-         && pos.move_is_legal(mv))
+         && pos.pl_move_is_legal(mv))
         moveList[n++] = mv;
     if(n == 1)
       return AMBIGUITY_NONE;

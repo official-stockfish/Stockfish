@@ -385,20 +385,20 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   // Remove illegal moves from the list
   for (int i = 0; i < n; i++)
-      if (!pos.move_is_legal(mlist[i].move, pinned))
+      if (!pos.pl_move_is_legal(mlist[i].move, pinned))
           mlist[i--].move = mlist[--n].move;
 
   return n;
 }
 
 
-/// generate_move_if_legal() takes a position and a (not necessarily
-/// pseudo-legal) move and a pinned pieces bitboard as input, and tests
-/// whether the move is legal.  If the move is legal, the move itself is
-/// returned.  If not, the function returns MOVE_NONE.  This function must
+/// move_is_legal() takes a position and a (not necessarily pseudo-legal)
+/// move and a pinned pieces bitboard as input, and tests whether
+/// the move is legal.  If the move is legal, the move itself is
+/// returned. If not, the function returns false.  This function must
 /// only be used when the side to move is not in check.
 
-Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
+bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -413,7 +413,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
   // If the from square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
   if (color_of_piece(pc) != us)
-      return MOVE_NONE;
+      return false;
 
   Square to = move_to(m);
 
@@ -424,13 +424,13 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       // en passant square.
       if (   type_of_piece(pc) != PAWN
           || to != pos.ep_square())
-          return MOVE_NONE;
+          return false;
 
       assert(pos.square_is_empty(to));
       assert(pos.piece_on(to - pawn_push(us)) == pawn_of_color(them));
 
-      // The move is pseudo-legal.  If it is legal, return it.
-      return (pos.move_is_legal(m, pinned) ? m : MOVE_NONE);
+      // The move is pseudo-legal, check if it is also legal
+      return pos.pl_move_is_legal(m, pinned);
   }
 
   // Castling moves
@@ -440,7 +440,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       // the right to castle kingside.
       if (   type_of_piece(pc) != KING
           ||!pos.can_castle_kingside(us))
-          return MOVE_NONE;
+          return false;
 
       assert(from == pos.king_square(us));
       assert(to == pos.initial_kr_square(us));
@@ -464,7 +464,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
           if (s != from && s != to && !pos.square_is_empty(s))
               illegal = true;
 
-      return (!illegal ? m : MOVE_NONE);
+      return !illegal;
   }
 
   if (move_is_long_castle(m))
@@ -473,7 +473,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       // the right to castle kingside.
       if (   type_of_piece(pc) != KING
           ||!pos.can_castle_queenside(us))
-          return MOVE_NONE;
+          return false;
 
       assert(from == pos.king_square(us));
       assert(to == pos.initial_qr_square(us));
@@ -498,14 +498,14 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
               || pos.piece_on(to + DELTA_W) == queen_of_color(them)))
           illegal = true;
 
-      return (!illegal ? m : MOVE_NONE);
+      return !illegal;
   }
 
   // Normal moves
 
   // The destination square cannot be occupied by a friendly piece
   if (pos.color_of_piece_on(to) == us)
-      return MOVE_NONE;
+      return false;
 
   // Proceed according to the type of the moving piece.
   if (type_of_piece(pc) == PAWN)
@@ -515,7 +515,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       if (   (  (square_rank(to) == RANK_8 && us == WHITE)
               ||(square_rank(to) == RANK_1 && us != WHITE))
            && !move_promotion(m))
-          return MOVE_NONE;
+          return false;
 
       // Proceed according to the square delta between the source and
       // destionation squares.
@@ -528,14 +528,14 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       // Capture. The destination square must be occupied by an enemy
       // piece (en passant captures was handled earlier).
           if (pos.color_of_piece_on(to) != them)
-              return MOVE_NONE;
+              return false;
           break;
 
       case DELTA_N:
       case DELTA_S:
       // Pawn push. The destination square must be empty.
           if (!pos.square_is_empty(to))
-              return MOVE_NONE;
+              return false;
           break;
 
       case DELTA_NN:
@@ -545,7 +545,7 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
       if (   square_rank(to) != RANK_4
           || !pos.square_is_empty(to)
           || !pos.square_is_empty(from + DELTA_N))
-          return MOVE_NONE;
+          return false;
           break;
 
       case DELTA_SS:
@@ -555,20 +555,20 @@ Move generate_move_if_legal(const Position& pos, Move m, Bitboard pinned) {
           if (   square_rank(to) != RANK_5
               || !pos.square_is_empty(to)
               || !pos.square_is_empty(from + DELTA_S))
-              return MOVE_NONE;
+              return false;
           break;
 
       default:
-          return MOVE_NONE;
+          return false;
       }
-      // The move is pseudo-legal. Return it if it is legal.
-      return (pos.move_is_legal(m, pinned) ? m : MOVE_NONE);
+      // The move is pseudo-legal, check if it is also legal
+      return pos.pl_move_is_legal(m, pinned);
   }
 
   // Luckly we can handle all the other pieces in one go
   return (   pos.piece_attacks_square(from, to)
-          && pos.move_is_legal(m, pinned)
-          && !move_promotion(m) ? m : MOVE_NONE);
+          && pos.pl_move_is_legal(m, pinned)
+          && !move_promotion(m));
 }
 
 

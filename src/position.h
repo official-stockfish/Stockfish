@@ -217,8 +217,8 @@ public:
   bool piece_attacks_square(Square f, Square t) const; // Dispatch at run-time
 
   // Properties of moves
-  bool move_is_legal(Move m) const;
-  bool move_is_legal(Move m, Bitboard pinned) const;
+  bool pl_move_is_legal(Move m) const;
+  bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool move_is_check(Move m) const;
   bool move_is_check(Move m, Bitboard dcCandidates) const;
   bool move_is_capture(Move m) const;
