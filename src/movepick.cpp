@@ -210,16 +210,20 @@ void MovePicker::score_captures() {
   // where it is possible to recapture with the hanging piece). Exchanging
   // big pieces before capturing a hanging piece probably helps to reduce
   // the subtree size.
+  Move m;
+  int seeValue;
+
   for (int i = 0; i < numOfMoves; i++)
   {
-      int seeValue = pos.see(moves[i].move);
+      m = moves[i].move;
+      seeValue = pos.see(m);
       if (seeValue >= 0)
       {
-          if (move_promotion(moves[i].move))
+          if (move_promotion(m))
               moves[i].score = QueenValueMidgame;
           else
-              moves[i].score = int(pos.midgame_value_of_piece_on(move_to(moves[i].move)))
-                              -int(pos.type_of_piece_on(move_from(moves[i].move)));
+              moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
+                              -int(pos.type_of_piece_on(move_from(m)));
       } else
           moves[i].score = seeValue;
   }
