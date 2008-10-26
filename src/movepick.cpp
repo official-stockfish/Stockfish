@@ -226,16 +226,28 @@ void MovePicker::score_captures() {
 }
 
 void MovePicker::score_noncaptures() {
+  // First score by history, when no history is available then use
+  // piece/square tables values. This seems to be better then a
+  // random choice when we don't have an history for any move.
+  Move m;
+  int hs;
 
   for (int i = 0; i < numOfMoves; i++)
   {
-      Move m = moves[i].move;
+      m = moves[i].move;
+
       if (m == killer1)
-          moves[i].score = HistoryMax + 2;
+          hs = HistoryMax + 2;
       else if (m == killer2)
-          moves[i].score = HistoryMax + 1;
+          hs = HistoryMax + 1;
       else
-         moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), m);
+          hs = H.move_ordering_score(pos.piece_on(move_from(m)), m);
+
+      // Ensure moves in history are always sorted as first
+      if (hs > 0)
+          hs += 1000;
+
+      moves[i].score = hs + pos.mg_pst_delta(m);
   }
 }
 
