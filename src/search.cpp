@@ -1997,26 +1997,35 @@ namespace {
 
   Depth extension(const Position &pos, Move m, bool pvNode,
                   bool check, bool singleReply, bool mateThreat) {
+
     Depth result = Depth(0);
 
-    if(check)
-      result += CheckExtension[pvNode];
-    if(singleReply)
-      result += SingleReplyExtension[pvNode];
-    if(pos.move_is_pawn_push_to_7th(m))
-      result += PawnPushTo7thExtension[pvNode];
-    if(pos.move_is_passed_pawn_push(m))
-      result += PassedPawnExtension[pvNode];
-    if(mateThreat)
-      result += MateThreatExtension[pvNode];
-    if(pos.midgame_value_of_piece_on(move_to(m)) >= RookValueMidgame
-       && (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
-           - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
-       && !move_promotion(m))
-      result += PawnEndgameExtension[pvNode];
-    if(pvNode && pos.move_is_capture(m)
-       && pos.type_of_piece_on(move_to(m)) != PAWN && pos.see(m) >= 0)
-      result += OnePly/2;
+    if (check)
+        result += CheckExtension[pvNode];
+
+    if (singleReply)
+        result += SingleReplyExtension[pvNode];
+
+    if (pos.move_is_pawn_push_to_7th(m))
+        result += PawnPushTo7thExtension[pvNode];
+
+    if (pos.move_is_passed_pawn_push(m))
+        result += PassedPawnExtension[pvNode];
+
+    if (mateThreat)
+        result += MateThreatExtension[pvNode];
+
+    if (   pos.midgame_value_of_piece_on(move_to(m)) >= RookValueMidgame
+        && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
+            - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
+        && !move_promotion(m))
+        result += PawnEndgameExtension[pvNode];
+    
+    if (   pvNode
+        && pos.move_is_capture(m)
+        && pos.type_of_piece_on(move_to(m)) != PAWN
+        && pos.see(m) >= 0)
+        result += OnePly/2;
 
     return Min(result, OnePly);
   }
