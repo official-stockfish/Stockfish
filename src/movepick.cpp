@@ -39,7 +39,7 @@ namespace {
 
   /// Variables
 
-  MovePicker::MovegenPhase PhaseTable[32];  
+  MovePicker::MovegenPhase PhaseTable[32];
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
@@ -62,7 +62,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, bool pvnode, Move ttm, Move mk,
-                       Move k1, Move k2, Depth d) : pos(p) {  
+                       Move k1, Move k2, Depth d) : pos(p) {
   pvNode = pvnode;
   ttMove = ttm;
   mateKiller = (mk == ttm)? MOVE_NONE : mk;
@@ -147,13 +147,13 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_EVASIONS:
-        assert(pos.is_check());      
+        assert(pos.is_check());
         numOfMoves = generate_evasions(pos, moves);
         score_evasions();
         movesPicked = 0;
         break;
 
-    case PH_QCAPTURES:      
+    case PH_QCAPTURES:
         numOfMoves = generate_captures(pos, moves);
         score_qcaptures();
         movesPicked = 0;
@@ -172,8 +172,6 @@ Move MovePicker::get_next_move() {
         return MOVE_NONE;
     }
   }
-  assert(false);
-  return MOVE_NONE;
 }
 
 
@@ -192,7 +190,7 @@ Move MovePicker::get_next_move(Lock &lock) {
    if (m == MOVE_NONE)
        finished = true;
 
-   lock_release(&lock);   
+   lock_release(&lock);
    return m;
 }
 

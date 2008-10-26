@@ -235,7 +235,7 @@ const std::string Position::to_fen() const {
               fen += (char)skip + '0';
               skip = 0;
           }
-          fen += pieceLetters[piece_on(sq)];         
+          fen += pieceLetters[piece_on(sq)];
       }
       if (skip > 0)
           fen += (char)skip + '0';
@@ -327,7 +327,7 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
 
   Square s;
   Bitboard sliders, result = EmptyBoardBB;
-  
+
   if (Piece == ROOK) // Resolved at compile time
       sliders = rooks_and_queens(FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq];
   else
@@ -338,7 +338,7 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
        // King blockers are candidate pinned pieces
       Bitboard candidate_pinned = piece_attacks<Piece>(ksq) & pieces_of_color(c);
 
-      // Pinners are sliders, not checkers, that give check when 
+      // Pinners are sliders, not checkers, that give check when
       // candidate pinned are removed.
       Bitboard pinners = (FindPinned ? sliders & ~checkersBB : sliders);
 
@@ -410,7 +410,6 @@ bool Position::piece_attacks_square(Square f, Square t) const {
   case WR: case BR: return piece_attacks_square<ROOK>(f, t);
   case WQ: case BQ: return piece_attacks_square<QUEEN>(f, t);
   case WK: case BK: return piece_attacks_square<KING>(f, t);
-  default:          return false;
   }
   return false;
 }
@@ -564,14 +563,14 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   switch (type_of_piece_on(from))
   {
   case PAWN:
-      
+
       if (bit_is_set(pawn_attacks(them, ksq), to)) // Normal check?
           return true;
-      
+
       if (    bit_is_set(dcCandidates, from)      // Discovered check?
           && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
           return true;
-      
+
       if (move_promotion(m)) // Promotion with check?
       {
           Bitboard b = occupied_squares();
@@ -607,7 +606,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       }
       return false;
 
-  case KNIGHT:    
+  case KNIGHT:
     return   bit_is_set(dcCandidates, from)              // Discovered check?
           || bit_is_set(piece_attacks<KNIGHT>(ksq), to); // Normal check?
 
@@ -621,7 +620,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
   case QUEEN:
       // Discovered checks are impossible!
-      assert(!bit_is_set(dcCandidates, from));    
+      assert(!bit_is_set(dcCandidates, from));
       return bit_is_set(piece_attacks<QUEEN>(ksq), to);  // Normal check?
 
   case KING:
@@ -1337,7 +1336,6 @@ void Position::undo_castle_move(Move m) {
   // Position::undo_move.  In particular, the side to move has been switched,
   // so the code below is correct.
   Color us = side_to_move();
-  Color them = opposite_color(us);
 
   // Find source squares for king and rook
   Square kfrom = move_from(m);
@@ -1396,7 +1394,7 @@ void Position::undo_castle_move(Move m) {
 /// Position::do_move, is used to put back the captured piece (if any).
 
 void Position::undo_promotion_move(Move m, const UndoInfo &u) {
- 
+
   Color us, them;
   Square from, to;
   PieceType capture, promotion;
@@ -2256,7 +2254,7 @@ bool Position::is_ok(int* failedStep) const {
   {
       if (mgValue != compute_mg_value())
           return false;
-  
+
       if (egValue != compute_eg_value())
           return false;
   }
