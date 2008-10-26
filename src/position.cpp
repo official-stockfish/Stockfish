@@ -1633,13 +1633,6 @@ int Position::see(Square from, Square to) const {
 
   attackers &= occ; // Remove the moving piece
 
-  // If we don't have any attacker but the moving piece (common case)
-  // then we loose our piece and gain the opponent attacked one.
-  // Note that this is not perfect! It does not detect x-rays of
-  // an our piece behind an opposite one. But is a very rare case.
-  if ((attackers & pieces_of_color(us)) == EmptyBoardBB)
-      return seeValues[capture] - seeValues[piece];
-
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
   // the material gain or loss at each stop in a sequence of captures to the
