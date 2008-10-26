@@ -207,7 +207,7 @@ void MovePicker::score_captures() {
   // capture, capturing a more valuable (but sufficiently defended) piece
   // first usually doesn't hurt.  The opponent will have to recapture, and
   // the hanging piece will still be hanging (except in the unusual cases
-  // where it is possible to recapture with the hanging piece).  Exchanging
+  // where it is possible to recapture with the hanging piece). Exchanging
   // big pieces before capturing a hanging piece probably helps to reduce
   // the subtree size.
   for (int i = 0; i < numOfMoves; i++)
@@ -278,7 +278,7 @@ void MovePicker::score_qcaptures() {
           moves[i].score = QueenValueMidgame;
       else
           moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
-                          -int(pos.midgame_value_of_piece_on(move_to(m))) / 64;
+                          -int(pos.type_of_piece_on(move_from(m)));
   }
 }
 
