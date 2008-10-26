@@ -616,7 +616,7 @@ namespace {
   template<Color Us, Color Them, Bitboard TRank8BB, SquareDelta TDELTA_NE,
            SquareDelta TDELTA_NW, SquareDelta TDELTA_N
           >
-  MoveStack* do_generate_pawn_captures(const Position& pos, MoveStack* mlist) {    
+  MoveStack* do_generate_pawn_captures(const Position& pos, MoveStack* mlist) {
 
     Square to;
     Bitboard pawns = pos.pawns(Us);
@@ -689,7 +689,7 @@ namespace {
   template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB,
            SquareDelta TDELTA_NE, SquareDelta TDELTA_NW, SquareDelta TDELTA_N
           >
-  MoveStack* do_generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {   
+  MoveStack* do_generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {
 
     Bitboard pawns = pos.pawns(Us);
     Bitboard enemyPieces = pos.pieces_of_color(Them);

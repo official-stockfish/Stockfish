@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -25,7 +25,7 @@
 #if defined(_MSC_VER)
 
 // Forcing value to bool 'true' or 'false' (performance warning)
-#pragma warning(disable: 4800) 
+#pragma warning(disable: 4800)
 
 #endif
 
@@ -48,7 +48,7 @@
 ////
 
 /// FEN string for the initial position:
-const std::string StartPosition = 
+const std::string StartPosition =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /// Maximum number of plies per game (220 should be enough, because the
@@ -64,9 +64,9 @@ const int MaxGameLength = 220;
 /// Castle rights, encoded as bit fields:
 
 enum CastleRights {
-  NO_CASTLES = 0, 
+  NO_CASTLES = 0,
   WHITE_OO = 1,
-  BLACK_OO = 2, 
+  BLACK_OO = 2,
   WHITE_OOO = 4,
   BLACK_OOO = 8,
   ALL_CASTLES = 15
@@ -92,7 +92,7 @@ struct UndoInfo {
 
 
 /// The position data structure.  A position consists of the following data:
-///    
+///
 ///    * For each piece type, a bitboard representing the squares occupied
 ///      by pieces of that type.
 ///    * For each color, a bitboard representing the squares occupiecd by
@@ -281,7 +281,7 @@ public:
 
   // Reset the gamePly variable to 0
   void reset_game_ply();
-  
+
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
 
@@ -329,7 +329,7 @@ private:
 
   // Piece counts
   int pieceCount[2][8]; // [color][pieceType]
-  
+
   // Piece lists
   Square pieceList[2][8][16]; // [color][pieceType][index]
   int index[64];
@@ -591,7 +591,7 @@ inline bool Position::file_is_half_open(Color c, File f) const {
 inline bool Position::square_is_weak(Square s, Color c) const {
   return !(pawns(c) & outpost_mask(opposite_color(c), s));
 }
-                                
+
 inline Key Position::get_key() const {
   return key;
 }
@@ -642,7 +642,7 @@ inline Phase Position::game_phase() const {
   static const Value EndgameLimit = 4 * RookValueMidgame - Value(325);
 
   Value npm = non_pawn_material(WHITE) + non_pawn_material(BLACK);
-  
+
   if (npm >= MidgameLimit)
       return PHASE_MIDGAME;
   else if(npm <= EndgameLimit)
@@ -687,7 +687,7 @@ inline int Position::rule_50_counter() const {
 inline bool Position::opposite_colored_bishops() const {
 
   return   piece_count(WHITE, BISHOP) == 1
-        && piece_count(BLACK, BISHOP) == 1        
+        && piece_count(BLACK, BISHOP) == 1
         && square_color(piece_list(WHITE, BISHOP, 0)) != square_color(piece_list(BLACK, BISHOP, 0));
 }
 
@@ -695,6 +695,6 @@ inline bool Position::has_pawn_on_7th(Color c) const {
 
   return pawns(c) & relative_rank_bb(c, RANK_7);
 }
-                   
+
 
 #endif // !defined(POSITION_H_INCLUDED)
