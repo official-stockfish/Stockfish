@@ -218,7 +218,7 @@ void MovePicker::score_captures() {
   {
       m = moves[i].move;
       seeValue = pos.see(m);
-      if (seeValue >= 0)
+      if (seeValue >= 0 && !pvNode)
       {
           if (move_promotion(m))
               moves[i].score = QueenValueMidgame;
