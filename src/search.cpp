@@ -931,7 +931,7 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool fewMoves = (depth <= OnePly && mp.number_of_moves() < 4);
+      bool lastMinuteSurprise = (depth <= OnePly && mp.current_move_type() == MovePicker::PH_GOOD_CAPTURES);
       bool singleReply = (pos.is_check() && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
@@ -943,7 +943,7 @@ namespace {
         PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
 
       // Decide the new search depth
-      Depth ext = extension(pos, move, true, moveIsCheck, singleReply || fewMoves, mateThreat);
+      Depth ext = extension(pos, move, true, moveIsCheck, singleReply || lastMinuteSurprise, mateThreat);
       Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move

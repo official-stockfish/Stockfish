@@ -7,11 +7,7 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-<<<<<<< HEAD:src/movepick.h
 
-=======
-  
->>>>>>> d3600c39a745179ed6b094b305d0645e83a1ee86:src/movepick.h
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -54,7 +50,7 @@ public:
     PH_TT_MOVE,        // Transposition table move
     PH_MATE_KILLER,    // Mate killer from the current ply
     PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
-    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE valuse <= 0
+    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
     PH_KILLER_1,       // Killer move 1 from the current ply (not used yet).
     PH_KILLER_2,       // Killer move 2 from the current ply (not used yet).
     PH_NONCAPTURES,    // Non-captures and underpromotions
