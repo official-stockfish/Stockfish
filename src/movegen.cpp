@@ -306,26 +306,26 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
           // Pawn moves. Because a blocking evasion can never be a capture, we
           // only generate pawn pushes.
           if (us == WHITE)
-              generate_pawn_blocking_evasions<WHITE>(pos, not_pinned, blockSquares, mlist);
+              mlist = generate_pawn_blocking_evasions<WHITE>(pos, not_pinned, blockSquares, mlist);
           else
-              generate_pawn_blocking_evasions<BLACK>(pos, not_pinned, blockSquares, mlist);
+              mlist = generate_pawn_blocking_evasions<BLACK>(pos, not_pinned, blockSquares, mlist);
 
           // Pieces moves
           b1 = pos.knights(us) & not_pinned;
           if (b1)
-              generate_piece_blocking_evasions<KNIGHT>(pos, b1, blockSquares, mlist);
+              mlist = generate_piece_blocking_evasions<KNIGHT>(pos, b1, blockSquares, mlist);
 
           b1 = pos.bishops(us) & not_pinned;
           if (b1)
-              generate_piece_blocking_evasions<BISHOP>(pos, b1, blockSquares, mlist);
+              mlist = generate_piece_blocking_evasions<BISHOP>(pos, b1, blockSquares, mlist);
 
           b1 = pos.rooks(us) & not_pinned;
           if (b1)
-              generate_piece_blocking_evasions<ROOK>(pos, b1, blockSquares, mlist);
+              mlist = generate_piece_blocking_evasions<ROOK>(pos, b1, blockSquares, mlist);
 
           b1 = pos.queens(us) & not_pinned;
           if (b1)
-              generate_piece_blocking_evasions<QUEEN>(pos, b1, blockSquares, mlist);
+              mlist = generate_piece_blocking_evasions<QUEEN>(pos, b1, blockSquares, mlist);
     }
 
     // Finally, the ugly special case of en passant captures. An en passant
