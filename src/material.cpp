@@ -37,20 +37,28 @@ namespace {
   const Value BishopPairMidgameBonus = Value(100);
   const Value BishopPairEndgameBonus = Value(100);
 
-  Key KRPKRMaterialKey, KRKRPMaterialKey;
-  Key KNNKMaterialKey,  KKNNMaterialKey;
-  Key KBPKBMaterialKey, KBKBPMaterialKey;
-  Key KBPKNMaterialKey, KNKBPMaterialKey;
-  Key KNPKMaterialKey,  KKNPMaterialKey;
-  Key KPKPMaterialKey;
-  Key KRPPKRPMaterialKey, KRPKRPPMaterialKey;
+  Key KNNKMaterialKey, KKNNMaterialKey;
+
+  struct ScalingInfo
+  {
+      Color col;
+      ScalingFunction* fun;
+  };
 
   std::map<Key, EndgameEvaluationFunction*> EEFmap;
+  std::map<Key, ScalingInfo> ESFmap;
 
-  void EEFAdd(Key k, EndgameEvaluationFunction* f) {
+  void add(Key k, EndgameEvaluationFunction* f) {
 
       EEFmap.insert(std::pair<Key, EndgameEvaluationFunction*>(k, f));
   }
+
+  void add(Key k, Color c, ScalingFunction* f) {
+
+      ScalingInfo s = {c, f};
+      ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
+  }
+
 }
 
 
@@ -69,80 +77,42 @@ void MaterialInfo::init() {
 
   static const Color W = WHITE;
   static const Color B = BLACK;
-  
-  EEFAdd(z[W][PAWN][1], &EvaluateKPK);
-  EEFAdd(z[B][PAWN][1], &EvaluateKKP);
 
-  EEFAdd(z[W][BISHOP][1] ^ z[W][KNIGHT][1], &EvaluateKBNK);
-  EEFAdd(z[B][BISHOP][1] ^ z[B][KNIGHT][1], &EvaluateKKBN);
-  EEFAdd(z[W][ROOK][1]   ^ z[B][PAWN][1],   &EvaluateKRKP);
-  EEFAdd(z[W][PAWN][1]   ^ z[B][ROOK][1],   &EvaluateKPKR);
-  EEFAdd(z[W][ROOK][1]   ^ z[B][BISHOP][1], &EvaluateKRKB);
-  EEFAdd(z[W][BISHOP][1] ^ z[B][ROOK][1],   &EvaluateKBKR);
-  EEFAdd(z[W][ROOK][1]   ^ z[B][KNIGHT][1], &EvaluateKRKN);
-  EEFAdd(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
-  EEFAdd(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
-  EEFAdd(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
+  KNNKMaterialKey = z[W][KNIGHT][1] ^ z[W][KNIGHT][2];
+  KKNNMaterialKey = z[B][KNIGHT][1] ^ z[B][KNIGHT][2];
 
-  KRPKRMaterialKey = z[W][ROOK][1]
-                   ^ z[W][PAWN][1]
-                   ^ z[B][ROOK][1];
+  add(z[W][PAWN][1], &EvaluateKPK);
+  add(z[B][PAWN][1], &EvaluateKKP);
 
-  KRKRPMaterialKey = z[W][ROOK][1]
-                   ^ z[B][ROOK][1]
-                   ^ z[B][PAWN][1];
+  add(z[W][BISHOP][1] ^ z[W][KNIGHT][1], &EvaluateKBNK);
+  add(z[B][BISHOP][1] ^ z[B][KNIGHT][1], &EvaluateKKBN);
+  add(z[W][ROOK][1]   ^ z[B][PAWN][1],   &EvaluateKRKP);
+  add(z[W][PAWN][1]   ^ z[B][ROOK][1],   &EvaluateKPKR);
+  add(z[W][ROOK][1]   ^ z[B][BISHOP][1], &EvaluateKRKB);
+  add(z[W][BISHOP][1] ^ z[B][ROOK][1],   &EvaluateKBKR);
+  add(z[W][ROOK][1]   ^ z[B][KNIGHT][1], &EvaluateKRKN);
+  add(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
+  add(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
+  add(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
 
-  KRPPKRPMaterialKey =
-    z[W][ROOK][1] ^
-    z[W][PAWN][1] ^
-    z[W][PAWN][2] ^
-    z[B][ROOK][1] ^
-    z[B][PAWN][1];
-  KRPKRPPMaterialKey =
-    z[W][ROOK][1] ^
-    z[W][PAWN][1] ^
-    z[B][ROOK][1] ^
-    z[B][PAWN][1] ^
-    z[B][PAWN][2];
-  KNNKMaterialKey =
-    z[W][KNIGHT][1] ^
-    z[W][KNIGHT][2];
-  KKNNMaterialKey =
-    z[B][KNIGHT][1] ^
-    z[B][KNIGHT][2];
-  KBPKBMaterialKey =
-    z[W][BISHOP][1] ^
-    z[W][PAWN][1] ^
-    z[B][BISHOP][1];
-  KBKBPMaterialKey =
-    z[W][BISHOP][1] ^
-    z[B][BISHOP][1] ^
-    z[B][PAWN][1];
-  KBPKNMaterialKey =
-    z[W][BISHOP][1] ^
-    z[W][PAWN][1] ^
-    z[B][KNIGHT][1];
-  KNKBPMaterialKey =
-    z[W][KNIGHT][1] ^
-    z[B][BISHOP][1] ^
-    z[B][PAWN][1];
-  KNPKMaterialKey =
-    z[W][KNIGHT][1] ^
-    z[W][PAWN][1];
-  KKNPMaterialKey =
-    z[B][KNIGHT][1] ^
-    z[B][PAWN][1];
-  KPKPMaterialKey =
-    z[W][PAWN][1] ^
-    z[B][PAWN][1];
+  add(z[W][KNIGHT][1] ^ z[W][PAWN][1], W, &ScaleKNPK);
+  add(z[B][KNIGHT][1] ^ z[B][PAWN][1], B, &ScaleKKNP);
 
+  add(z[W][ROOK][1]   ^ z[W][PAWN][1]   ^ z[B][ROOK][1]  , W, &ScaleKRPKR);
+  add(z[W][ROOK][1]   ^ z[B][ROOK][1]   ^ z[B][PAWN][1]  , B, &ScaleKRKRP);
+  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][BISHOP][1], W, &ScaleKBPKB);
+  add(z[W][BISHOP][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKBKBP);
+  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][KNIGHT][1], W, &ScaleKBPKN);
+  add(z[W][KNIGHT][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKNKBP);
 
+  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[W][PAWN][2] ^ z[B][ROOK][1] ^ z[B][PAWN][1], W, &ScaleKRPPKRP);
+  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[B][ROOK][1] ^ z[B][PAWN][1] ^ z[B][PAWN][2], B, &ScaleKRPKRPP);
 }
 
 
-/// Constructor for the MaterialInfoTable class.
+/// Constructor for the MaterialInfoTable class
 
-MaterialInfoTable::MaterialInfoTable(unsigned numOfEntries) {
+MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
 
   size = numOfEntries;
   entries = new MaterialInfo[size];
@@ -156,7 +126,7 @@ MaterialInfoTable::MaterialInfoTable(unsigned numOfEntries) {
 }
 
 
-/// Destructor for the MaterialInfoTable class.
+/// Destructor for the MaterialInfoTable class
 
 MaterialInfoTable::~MaterialInfoTable() {
 
@@ -179,11 +149,11 @@ void MaterialInfoTable::clear() {
 /// is stored there, so we don't have to recompute everything when the
 /// same material configuration occurs again.
 
-MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
+MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
 
   Key key = pos.get_material_key();
   int index = key & (size - 1);
-  MaterialInfo *mi = entries + index;
+  MaterialInfo* mi = entries + index;
 
   // If mi->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
@@ -195,8 +165,8 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
   mi->clear();
   mi->key = key;
 
-  // A special case before looking for a specialized evaluation function:
-  // KNN vs K is a draw:
+  // A special case before looking for a specialized evaluation function
+  // KNN vs K is a draw
   if (key == KNNKMaterialKey || key == KKNNMaterialKey)
   {
     mi->factor[WHITE] = mi->factor[BLACK] = 0;
@@ -233,112 +203,92 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
 
-  if(key == KRPKRMaterialKey) {
-    mi->scalingFunction[WHITE] = &ScaleKRPKR;
-    return mi;
-  }
-  if(key == KRKRPMaterialKey) {
-    mi->scalingFunction[BLACK] = &ScaleKRKRP;
-    return mi;
-  }
-  if(key == KRPPKRPMaterialKey) {
-    mi->scalingFunction[WHITE] = &ScaleKRPPKRP;
-    return mi;
-  }
-  else if(key == KRPKRPPMaterialKey) {
-    mi->scalingFunction[BLACK] = &ScaleKRPKRPP;
-    return mi;
-  }
-  if(key == KBPKBMaterialKey) {
-    mi->scalingFunction[WHITE] = &ScaleKBPKB;
-    return mi;
-  }
-  if(key == KBKBPMaterialKey) {
-    mi->scalingFunction[BLACK] = &ScaleKBKBP;
-    return mi;
-  }
-  if(key == KBPKNMaterialKey) {
-    mi->scalingFunction[WHITE] = &ScaleKBPKN;
-    return mi;
-  }
-  if(key == KNKBPMaterialKey) {
-    mi->scalingFunction[BLACK] = &ScaleKNKBP;
-    return mi;
-  }
-  if(key == KNPKMaterialKey) {
-    mi->scalingFunction[WHITE] = &ScaleKNPK;
-    return mi;
-  }
-  if(key == KKNPMaterialKey) {
-    mi->scalingFunction[BLACK] = &ScaleKKNP;
-    return mi;
+  if (ESFmap.find(key) != ESFmap.end())
+  {
+      mi->scalingFunction[ESFmap[key].col] = ESFmap[key].fun;
+      return mi;
   }
 
-  if(pos.non_pawn_material(WHITE) == BishopValueMidgame &&
-     pos.piece_count(WHITE, BISHOP) == 1 && pos.piece_count(WHITE, PAWN) >= 1)
-    mi->scalingFunction[WHITE] = &ScaleKBPK;
-  if(pos.non_pawn_material(BLACK) == BishopValueMidgame &&
-     pos.piece_count(BLACK, BISHOP) == 1 && pos.piece_count(BLACK, PAWN) >= 1)
-    mi->scalingFunction[BLACK] = &ScaleKKBP;
+  if (   pos.non_pawn_material(WHITE) == BishopValueMidgame
+      && pos.piece_count(WHITE, BISHOP) == 1
+      && pos.piece_count(WHITE, PAWN) >= 1)
+      mi->scalingFunction[WHITE] = &ScaleKBPK;
 
-  if(pos.piece_count(WHITE, PAWN) == 0 &&
-     pos.non_pawn_material(WHITE) == QueenValueMidgame &&
-     pos.piece_count(WHITE, QUEEN) == 1 &&
-     pos.piece_count(BLACK, ROOK) == 1 && pos.piece_count(BLACK, PAWN) >= 1)
-    mi->scalingFunction[WHITE] = &ScaleKQKRP;
-  else if(pos.piece_count(BLACK, PAWN) == 0 &&
-          pos.non_pawn_material(BLACK) == QueenValueMidgame &&
-          pos.piece_count(BLACK, QUEEN) == 1 &&
-          pos.piece_count(WHITE, ROOK) == 1 && pos.piece_count(WHITE, PAWN) >= 1)
-    mi->scalingFunction[BLACK] = &ScaleKRPKQ;
+  if (   pos.non_pawn_material(BLACK) == BishopValueMidgame
+      && pos.piece_count(BLACK, BISHOP) == 1
+      && pos.piece_count(BLACK, PAWN) >= 1)
+      mi->scalingFunction[BLACK] = &ScaleKKBP;
 
-  if(pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0)) {
-    if(pos.piece_count(BLACK, PAWN) == 0) {
-      assert(pos.piece_count(WHITE, PAWN) >= 2);
-      mi->scalingFunction[WHITE] = &ScaleKPsK;
-    }
-    else if(pos.piece_count(WHITE, PAWN) == 0) {
-      assert(pos.piece_count(BLACK, PAWN) >= 2);
-      mi->scalingFunction[BLACK] = &ScaleKKPs;
-    }
-    else if(pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1) {
-      mi->scalingFunction[WHITE] = &ScaleKPKPw;
-      mi->scalingFunction[BLACK] = &ScaleKPKPb;
-    }
+  if (   pos.piece_count(WHITE, PAWN) == 0
+      && pos.non_pawn_material(WHITE) == QueenValueMidgame
+      && pos.piece_count(WHITE, QUEEN) == 1
+      && pos.piece_count(BLACK, ROOK) == 1
+      && pos.piece_count(BLACK, PAWN) >= 1)
+      mi->scalingFunction[WHITE] = &ScaleKQKRP;
+
+  else if (   pos.piece_count(BLACK, PAWN) == 0
+           && pos.non_pawn_material(BLACK) == QueenValueMidgame
+           && pos.piece_count(BLACK, QUEEN) == 1
+           && pos.piece_count(WHITE, ROOK) == 1
+           && pos.piece_count(WHITE, PAWN) >= 1)
+      mi->scalingFunction[BLACK] = &ScaleKRPKQ;
+
+  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0))
+  {
+      if (pos.piece_count(BLACK, PAWN) == 0)
+      {
+          assert(pos.piece_count(WHITE, PAWN) >= 2);
+          mi->scalingFunction[WHITE] = &ScaleKPsK;
+      }
+      else if (pos.piece_count(WHITE, PAWN) == 0)
+      {
+          assert(pos.piece_count(BLACK, PAWN) >= 2);
+          mi->scalingFunction[BLACK] = &ScaleKKPs;
+      }
+      else if (pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1)
+      {
+          mi->scalingFunction[WHITE] = &ScaleKPKPw;
+          mi->scalingFunction[BLACK] = &ScaleKPKPb;
+      }
   }
 
-  // Evaluate the material balance.
+  // Evaluate the material balance
 
   Color c;
   int sign;
-  Value egValue = Value(0), mgValue = Value(0);
+  Value egValue = Value(0);
+  Value mgValue = Value(0);
 
-  for(c = WHITE, sign = 1; c <= BLACK; c++, sign = -sign) {
-
-    // No pawns makes it difficult to win, even with a material advantage:
-    if(pos.piece_count(c, PAWN) == 0 &&
-       pos.non_pawn_material(c) - pos.non_pawn_material(opposite_color(c))
-       <= BishopValueMidgame) {
-      if(pos.non_pawn_material(c) == pos.non_pawn_material(opposite_color(c)))
-        mi->factor[c] = 0;
-      else if(pos.non_pawn_material(c) < RookValueMidgame)
-        mi->factor[c] = 0;
-      else {
-        switch(pos.piece_count(c, BISHOP)) {
-        case 2:
-          mi->factor[c] = 32; break;
-        case 1:
-          mi->factor[c] = 12; break;
-        case 0:
-          mi->factor[c] = 6; break;
+  for (c = WHITE, sign = 1; c <= BLACK; c++, sign = -sign)
+  {
+    // No pawns makes it difficult to win, even with a material advantage
+    if (   pos.piece_count(c, PAWN) == 0
+        && pos.non_pawn_material(c) - pos.non_pawn_material(opposite_color(c)) <= BishopValueMidgame)
+    {
+        if (   pos.non_pawn_material(c) == pos.non_pawn_material(opposite_color(c))
+            || pos.non_pawn_material(c) < RookValueMidgame)
+            mi->factor[c] = 0;
+        else
+        {
+            switch (pos.piece_count(c, BISHOP)) {
+            case 2:
+                mi->factor[c] = 32;
+                break;
+            case 1:
+                mi->factor[c] = 12;
+                break;
+            case 0:
+                mi->factor[c] = 6;
+                break;
+            }
         }
-      }
     }
 
-    // Bishop pair:
-    if(pos.piece_count(c, BISHOP) >= 2) {
-      mgValue += sign * BishopPairMidgameBonus;
-      egValue += sign * BishopPairEndgameBonus;
+    // Bishop pair
+    if (pos.piece_count(c, BISHOP) >= 2)
+    {
+        mgValue += sign * BishopPairMidgameBonus;
+        egValue += sign * BishopPairEndgameBonus;
     }
 
     // Knights are stronger when there are many pawns on the board.  The
@@ -349,16 +299,15 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
     egValue += sign * Value(pos.piece_count(c, KNIGHT)*(pos.piece_count(c, PAWN)-5)*16);
 
     // Redundancy of major pieces, again based on Kaufman's paper:
-    if(pos.piece_count(c, ROOK) >= 1) {
-      Value v = Value((pos.piece_count(c, ROOK) - 1) * 32 + pos.piece_count(c, QUEEN) * 16);
-      mgValue -= sign * v;
-      egValue -= sign * v;
+    if (pos.piece_count(c, ROOK) >= 1)
+    {
+        Value v = Value((pos.piece_count(c, ROOK) - 1) * 32 + pos.piece_count(c, QUEEN) * 16);
+        mgValue -= sign * v;
+        egValue -= sign * v;
     }
-
   }
 
   mi->mgValue = int16_t(mgValue);
   mi->egValue = int16_t(egValue);
-
   return mi;
 }
