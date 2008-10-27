@@ -437,7 +437,6 @@ bool Position::move_attacks_square(Move m, Square s) const {
   case WR: case BR: return piece_attacks_square<ROOK>(t, s);
   case WQ: case BQ: return piece_attacks_square<QUEEN>(t, s);
   case WK: case BK: return piece_attacks_square<KING>(t, s);
-  default: assert(false);
   }
   return false;
 }
@@ -446,12 +445,13 @@ bool Position::move_attacks_square(Move m, Square s) const {
 /// Position::find_checkers() computes the checkersBB bitboard, which
 /// contains a nonzero bit for each checking piece (0, 1 or 2).  It
 /// currently works by calling Position::attacks_to, which is probably
-/// inefficient.  Consider rewriting this function to use the last move
+/// inefficient. Consider rewriting this function to use the last move
 /// played, like in non-bitboard versions of Glaurung.
 
 void Position::find_checkers() {
 
-  checkersBB = attacks_to(king_square(side_to_move()),opposite_color(side_to_move()));
+  Color us = side_to_move();
+  checkersBB = attacks_to(king_square(us), opposite_color(us));
 }
 
 
@@ -468,9 +468,6 @@ bool Position::pl_move_is_legal(Move m)  const {
 
 bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
-  Color us, them;
-  Square ksq, from;
-
   assert(is_ok());
   assert(move_is_ok(m));
   assert(pinned == pinned_pieces(side_to_move()));
@@ -484,10 +481,10 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   if (move_is_castle(m))
       return true;
 
-  us = side_to_move();
-  them = opposite_color(us);
-  from = move_from(m);
-  ksq = king_square(us);
+  Color us = side_to_move();
+  Color them = opposite_color(us);
+  Square from = move_from(m);
+  Square ksq = king_square(us);
 
   assert(color_of_piece_on(from) == us);
   assert(piece_on(ksq) == king_of_color(us));
@@ -521,11 +518,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  if (   !bit_is_set(pinned, from)
-      || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)))
-      return true;
-
-  return false;
+  return (   !bit_is_set(pinned, from)
+          || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)));
 }
 
 
@@ -543,18 +537,15 @@ bool Position::move_is_check(Move m) const {
 
 bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
-  Color us, them;
-  Square ksq, from, to;
-
   assert(is_ok());
   assert(move_is_ok(m));
   assert(dcCandidates == discovered_check_candidates(side_to_move()));
 
-  us = side_to_move();
-  them = opposite_color(us);
-  from = move_from(m);
-  to = move_to(m);
-  ksq = king_square(them);
+  Color us = side_to_move();
+  Color them = opposite_color(us);
+  Square from = move_from(m);
+  Square to = move_to(m);
+  Square ksq = king_square(them);
 
   assert(color_of_piece_on(from) == us);
   assert(piece_on(ksq) == king_of_color(them));
@@ -652,9 +643,6 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
           return bit_is_set(rook_attacks_bb(rto, b), ksq);
       }
       return false;
-
-  default:
-      assert(false);
   }
   assert(false);
   return false;
@@ -666,8 +654,10 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
 bool Position::move_is_capture(Move m) const {
 
-  return   color_of_piece_on(move_to(m)) == opposite_color(side_to_move())
-        || move_is_ep(m);
+  return (   !square_is_empty(move_to(m))
+          && (color_of_piece_on(move_to(m)) == opposite_color(side_to_move()))
+         )
+         || move_is_ep(m);
 }
 
 
@@ -681,16 +671,16 @@ bool Position::move_is_capture(Move m) const {
 void Position::backup(UndoInfo& u) const {
 
   u.castleRights = castleRights;
-  u.epSquare = epSquare;
-  u.checkersBB = checkersBB;
-  u.key = key;
-  u.pawnKey = pawnKey;
-  u.materialKey = materialKey;
-  u.rule50 = rule50;
-  u.lastMove = lastMove;
-  u.capture = NO_PIECE_TYPE;
-  u.mgValue = mgValue;
-  u.egValue = egValue;
+  u.epSquare     = epSquare;
+  u.checkersBB   = checkersBB;
+  u.key          = key;
+  u.pawnKey      = pawnKey;
+  u.materialKey  = materialKey;
+  u.rule50       = rule50;
+  u.lastMove     = lastMove;
+  u.mgValue      = mgValue;
+  u.egValue      = egValue;
+  u.capture      = NO_PIECE_TYPE;
 }
 
 
@@ -700,25 +690,24 @@ void Position::backup(UndoInfo& u) const {
 void Position::restore(const UndoInfo& u) {
 
   castleRights = u.castleRights;
-  epSquare = u.epSquare;
-  checkersBB = u.checkersBB;
-  key = u.key;
-  pawnKey = u.pawnKey;
-  materialKey = u.materialKey;
-  rule50 = u.rule50;
-  lastMove = u.lastMove;
+  epSquare     = u.epSquare;
+  checkersBB   = u.checkersBB;
+  key          = u.key;
+  pawnKey      = u.pawnKey;
+  materialKey  = u.materialKey;
+  rule50       = u.rule50;
+  lastMove     = u.lastMove;
+  mgValue     = u.mgValue;
+  egValue     = u.egValue;
   // u.capture is restored in undo_move()
-  mgValue = u.mgValue;
-  egValue = u.egValue;
 }
 
-
 /// Position::do_move() makes a move, and backs up all information necessary
-/// to undo the move to an UndoInfo object.  The move is assumed to be legal.
+/// to undo the move to an UndoInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
 /// There are two versions of this function, one which takes only the move and
 /// the UndoInfo as input, and one which takes a third parameter, a bitboard of
-/// discovered check candidates.  The second version is faster, because knowing
+/// discovered check candidates. The second version is faster, because knowing
 /// the discovered check candidates makes it easier to update the checkersBB
 /// member variable in the position object.
 
@@ -765,42 +754,8 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
 
     if (capture)
     {
-        assert(capture != KING);
-
-        // Remove captured piece
-        clear_bit(&(byColorBB[them]), to);
-        clear_bit(&(byTypeBB[capture]), to);
-
-        // Update hash key
-        key ^= zobrist[them][capture][to];
-
-        // If the captured piece was a pawn, update pawn hash key
-        if (capture == PAWN)
-            pawnKey ^= zobrist[them][PAWN][to];
-
-        // Update incremental scores
-        mgValue -= mg_pst(them, capture, to);
-        egValue -= eg_pst(them, capture, to);
-
-        // Update material
-        if (capture != PAWN)
-            npMaterial[them] -= piece_value_midgame(capture);
-
-        // Update material hash key
-        materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
-
-        // Update piece count
-        pieceCount[them][capture]--;
-
-        // Update piece list
-        pieceList[them][capture][index[to]] = pieceList[them][capture][pieceCount[them][capture]];
-        index[pieceList[them][capture][index[to]]] = index[to];
-
-        // Remember the captured piece, in order to be able to undo the move correctly
-        u.capture = capture;
-
-        // Reset rule 50 counter
-        rule50 = 0;
+      u.capture = capture;
+      do_capture_move(m, capture, them, to);
     }
 
     // Move the piece
@@ -931,8 +886,51 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
 }
 
 
+/// Position::do_capture_move() is a private method used to update captured
+/// piece info. It is called from the main Position::do_move function.
+
+void Position::do_capture_move(Move m, PieceType capture, Color them, Square to) {
+
+    assert(capture != KING);
+
+    // Remove captured piece
+    clear_bit(&(byColorBB[them]), to);
+    clear_bit(&(byTypeBB[capture]), to);
+
+    // Update hash key
+    key ^= zobrist[them][capture][to];
+
+    // If the captured piece was a pawn, update pawn hash key
+    if (capture == PAWN)
+        pawnKey ^= zobrist[them][PAWN][to];
+
+    // Update incremental scores
+    mgValue -= mg_pst(them, capture, to);
+    egValue -= eg_pst(them, capture, to);
+
+    assert(!move_promotion(m) || capture != PAWN);
+
+    // Update material
+    if (capture != PAWN)
+        npMaterial[them] -= piece_value_midgame(capture);
+
+    // Update material hash key
+    materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
+
+    // Update piece count
+    pieceCount[them][capture]--;
+
+    // Update piece list
+    pieceList[them][capture][index[to]] = pieceList[them][capture][pieceCount[them][capture]];
+    index[pieceList[them][capture][index[to]]] = index[to];
+
+    // Reset rule 50 counter
+    rule50 = 0;
+}
+
+
 /// Position::do_castle_move() is a private method used to make a castling
-/// move.  It is called from the main Position::do_move function.  Note that
+/// move. It is called from the main Position::do_move function. Note that
 /// castling moves are encoded as "king captures friendly rook" moves, for
 /// instance white short castling in a non-Chess960 game is encoded as e1h1.
 
@@ -1056,36 +1054,8 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
 
   if (capture)
   {
-    assert(capture != KING);
-
-    // Remove captured piece
-    clear_bit(&(byColorBB[them]), to);
-    clear_bit(&(byTypeBB[capture]), to);
-
-    // Update hash key
-    key ^= zobrist[them][capture][to];
-
-    // Update incremental scores
-    mgValue -= mg_pst(them, capture, to);
-    egValue -= eg_pst(them, capture, to);
-
-    // Update material. Because our move is a promotion, we know that the
-    // captured piece is not a pawn.
-    assert(capture != PAWN);
-    npMaterial[them] -= piece_value_midgame(capture);
-
-    // Update material hash key
-    materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
-
-    // Update piece count
-    pieceCount[them][capture]--;
-
-    // Update piece list
-    pieceList[them][capture][index[to]] = pieceList[them][capture][pieceCount[them][capture]];
-    index[pieceList[them][capture][index[to]]] = index[to];
-
-    // Remember the captured piece, in order to be able to undo the move correctly
     u.capture = capture;
+    do_capture_move(m, capture, them, to);
   }
 
   // Remove pawn
