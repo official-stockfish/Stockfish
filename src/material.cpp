@@ -23,6 +23,7 @@
 ////
 
 #include <cassert>
+#include <map>
 
 #include "material.h"
 
@@ -36,20 +37,20 @@ namespace {
   const Value BishopPairMidgameBonus = Value(100);
   const Value BishopPairEndgameBonus = Value(100);
 
-  Key KPKMaterialKey, KKPMaterialKey;
-  Key KBNKMaterialKey, KKBNMaterialKey;
-  Key KRKPMaterialKey, KPKRMaterialKey;
-  Key KRKBMaterialKey, KBKRMaterialKey;
-  Key KRKNMaterialKey, KNKRMaterialKey;
-  Key KQKRMaterialKey, KRKQMaterialKey;
   Key KRPKRMaterialKey, KRKRPMaterialKey;
-  Key KRPPKRPMaterialKey, KRPKRPPMaterialKey;
-  Key KNNKMaterialKey, KKNNMaterialKey;
+  Key KNNKMaterialKey,  KKNNMaterialKey;
   Key KBPKBMaterialKey, KBKBPMaterialKey;
   Key KBPKNMaterialKey, KNKBPMaterialKey;
-  Key KNPKMaterialKey, KKNPMaterialKey;
+  Key KNPKMaterialKey,  KKNPMaterialKey;
   Key KPKPMaterialKey;
+  Key KRPPKRPMaterialKey, KRPKRPPMaterialKey;
 
+  std::map<Key, EndgameEvaluationFunction*> EEFmap;
+
+  void EEFAdd(Key k, EndgameEvaluationFunction* f) {
+
+      EEFmap.insert(std::pair<Key, EndgameEvaluationFunction*>(k, f));
+  }
 }
 
 
@@ -57,114 +58,108 @@ namespace {
 //// Functions
 ////
 
-/// MaterialInfo::init() is called during program initialization.  It
+/// MaterialInfo::init() is called during program initialization. It
 /// precomputes material hash keys for a few basic endgames, in order
 /// to make it easy to recognize such endgames when they occur.
 
 void MaterialInfo::init() {
-  KPKMaterialKey = Position::zobMaterial[WHITE][PAWN][1];
-  KKPMaterialKey = Position::zobMaterial[BLACK][PAWN][1];
-  KBNKMaterialKey =
-    Position::zobMaterial[WHITE][BISHOP][1] ^
-    Position::zobMaterial[WHITE][KNIGHT][1];
-  KKBNMaterialKey =
-    Position::zobMaterial[BLACK][BISHOP][1] ^
-    Position::zobMaterial[BLACK][KNIGHT][1];
-  KRKPMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
-  KPKRMaterialKey =
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[BLACK][ROOK][1];
-  KRKBMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[BLACK][BISHOP][1];
-  KBKRMaterialKey =
-    Position::zobMaterial[WHITE][BISHOP][1] ^
-    Position::zobMaterial[BLACK][ROOK][1];
-  KRKNMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[BLACK][KNIGHT][1];
-  KNKRMaterialKey =
-    Position::zobMaterial[WHITE][KNIGHT][1] ^
-    Position::zobMaterial[BLACK][ROOK][1];
-  KQKRMaterialKey =
-    Position::zobMaterial[WHITE][QUEEN][1] ^
-    Position::zobMaterial[BLACK][ROOK][1];
-  KRKQMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[BLACK][QUEEN][1];
-  KRPKRMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[BLACK][ROOK][1];
-  KRKRPMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[BLACK][ROOK][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
+
+  typedef Key ZM[2][8][16];
+  const ZM& z = Position::zobMaterial;
+
+  static const Color W = WHITE;
+  static const Color B = BLACK;
+  
+  EEFAdd(z[W][PAWN][1], &EvaluateKPK);
+  EEFAdd(z[B][PAWN][1], &EvaluateKKP);
+
+  EEFAdd(z[W][BISHOP][1] ^ z[W][KNIGHT][1], &EvaluateKBNK);
+  EEFAdd(z[B][BISHOP][1] ^ z[B][KNIGHT][1], &EvaluateKKBN);
+  EEFAdd(z[W][ROOK][1]   ^ z[B][PAWN][1],   &EvaluateKRKP);
+  EEFAdd(z[W][PAWN][1]   ^ z[B][ROOK][1],   &EvaluateKPKR);
+  EEFAdd(z[W][ROOK][1]   ^ z[B][BISHOP][1], &EvaluateKRKB);
+  EEFAdd(z[W][BISHOP][1] ^ z[B][ROOK][1],   &EvaluateKBKR);
+  EEFAdd(z[W][ROOK][1]   ^ z[B][KNIGHT][1], &EvaluateKRKN);
+  EEFAdd(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
+  EEFAdd(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
+  EEFAdd(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
+
+  KRPKRMaterialKey = z[W][ROOK][1]
+                   ^ z[W][PAWN][1]
+                   ^ z[B][ROOK][1];
+
+  KRKRPMaterialKey = z[W][ROOK][1]
+                   ^ z[B][ROOK][1]
+                   ^ z[B][PAWN][1];
+
   KRPPKRPMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[WHITE][PAWN][2] ^
-    Position::zobMaterial[BLACK][ROOK][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
+    z[W][ROOK][1] ^
+    z[W][PAWN][1] ^
+    z[W][PAWN][2] ^
+    z[B][ROOK][1] ^
+    z[B][PAWN][1];
   KRPKRPPMaterialKey =
-    Position::zobMaterial[WHITE][ROOK][1] ^
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[BLACK][ROOK][1] ^
-    Position::zobMaterial[BLACK][PAWN][1] ^
-    Position::zobMaterial[BLACK][PAWN][2];
+    z[W][ROOK][1] ^
+    z[W][PAWN][1] ^
+    z[B][ROOK][1] ^
+    z[B][PAWN][1] ^
+    z[B][PAWN][2];
   KNNKMaterialKey =
-    Position::zobMaterial[WHITE][KNIGHT][1] ^
-    Position::zobMaterial[WHITE][KNIGHT][2];
+    z[W][KNIGHT][1] ^
+    z[W][KNIGHT][2];
   KKNNMaterialKey =
-    Position::zobMaterial[BLACK][KNIGHT][1] ^
-    Position::zobMaterial[BLACK][KNIGHT][2];
+    z[B][KNIGHT][1] ^
+    z[B][KNIGHT][2];
   KBPKBMaterialKey =
-    Position::zobMaterial[WHITE][BISHOP][1] ^
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[BLACK][BISHOP][1];
+    z[W][BISHOP][1] ^
+    z[W][PAWN][1] ^
+    z[B][BISHOP][1];
   KBKBPMaterialKey =
-    Position::zobMaterial[WHITE][BISHOP][1] ^
-    Position::zobMaterial[BLACK][BISHOP][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
+    z[W][BISHOP][1] ^
+    z[B][BISHOP][1] ^
+    z[B][PAWN][1];
   KBPKNMaterialKey =
-    Position::zobMaterial[WHITE][BISHOP][1] ^
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[BLACK][KNIGHT][1];
+    z[W][BISHOP][1] ^
+    z[W][PAWN][1] ^
+    z[B][KNIGHT][1];
   KNKBPMaterialKey =
-    Position::zobMaterial[WHITE][KNIGHT][1] ^
-    Position::zobMaterial[BLACK][BISHOP][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
+    z[W][KNIGHT][1] ^
+    z[B][BISHOP][1] ^
+    z[B][PAWN][1];
   KNPKMaterialKey =
-    Position::zobMaterial[WHITE][KNIGHT][1] ^
-    Position::zobMaterial[WHITE][PAWN][1];
+    z[W][KNIGHT][1] ^
+    z[W][PAWN][1];
   KKNPMaterialKey =
-    Position::zobMaterial[BLACK][KNIGHT][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
+    z[B][KNIGHT][1] ^
+    z[B][PAWN][1];
   KPKPMaterialKey =
-    Position::zobMaterial[WHITE][PAWN][1] ^
-    Position::zobMaterial[BLACK][PAWN][1];
+    z[W][PAWN][1] ^
+    z[B][PAWN][1];
+
+
 }
 
 
 /// Constructor for the MaterialInfoTable class.
 
 MaterialInfoTable::MaterialInfoTable(unsigned numOfEntries) {
+
   size = numOfEntries;
   entries = new MaterialInfo[size];
-  if(entries == NULL) {
-    std::cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
-              << " bytes for material hash table." << std::endl;
-    exit(EXIT_FAILURE);
+  if (!entries)
+  {
+      std::cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
+                << " bytes for material hash table." << std::endl;
+      exit(EXIT_FAILURE);
   }
-  this->clear();
+  clear();
 }
 
 
 /// Destructor for the MaterialInfoTable class.
 
 MaterialInfoTable::~MaterialInfoTable() {
+
   delete [] entries;
 }
 
@@ -173,6 +168,7 @@ MaterialInfoTable::~MaterialInfoTable() {
 /// all entries to 0.
 
 void MaterialInfoTable::clear() {
+
   memset(entries, 0, size * sizeof(MaterialInfo));
 }
 
@@ -184,6 +180,7 @@ void MaterialInfoTable::clear() {
 /// same material configuration occurs again.
 
 MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
+
   Key key = pos.get_material_key();
   int index = key & (size - 1);
   MaterialInfo *mi = entries + index;
@@ -200,76 +197,36 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position &pos) {
 
   // A special case before looking for a specialized evaluation function:
   // KNN vs K is a draw:
-  if(key == KNNKMaterialKey || key == KKNNMaterialKey) {
+  if (key == KNNKMaterialKey || key == KKNNMaterialKey)
+  {
     mi->factor[WHITE] = mi->factor[BLACK] = 0;
     return mi;
   }
 
   // Let's look if we have a specialized evaluation function for this
-  // particular material configuration:
-  if(key == KPKMaterialKey) {
-    mi->evaluationFunction = &EvaluateKPK;
-    return mi;
+  // particular material configuration
+  if (EEFmap.find(key) != EEFmap.end())
+  {
+      mi->evaluationFunction = EEFmap[key];
+      return mi;
   }
-  else if(key == KKPMaterialKey) {
-    mi->evaluationFunction = &EvaluateKKP;
-    return mi;
+  else if (   pos.non_pawn_material(BLACK) == Value(0)
+           && pos.piece_count(BLACK, PAWN) == 0
+           && pos.non_pawn_material(WHITE) >= RookValueEndgame)
+  {
+      mi->evaluationFunction = &EvaluateKXK;
+      return mi;
   }
-  else if(key == KBNKMaterialKey) {
-    mi->evaluationFunction = &EvaluateKBNK;
-    return mi;
-  }
-  else if(key == KKBNMaterialKey) {
-    mi->evaluationFunction = &EvaluateKKBN;
-    return mi;
-  }
-  else if(key == KRKPMaterialKey) {
-    mi->evaluationFunction = &EvaluateKRKP;
-    return mi;
-  }
-  else if(key == KPKRMaterialKey) {
-    mi->evaluationFunction = &EvaluateKPKR;
-    return mi;
-  }
-  else if(key == KRKBMaterialKey) {
-    mi->evaluationFunction = &EvaluateKRKB;
-    return mi;
-  }
-  else if(key == KBKRMaterialKey) {
-    mi->evaluationFunction = &EvaluateKBKR;
-    return mi;
-  }
-  else if(key == KRKNMaterialKey) {
-    mi->evaluationFunction = &EvaluateKRKN;
-    return mi;
-  }
-  else if(key == KNKRMaterialKey) {
-    mi->evaluationFunction = &EvaluateKNKR;
-    return mi;
-  }
-  else if(key == KQKRMaterialKey) {
-    mi->evaluationFunction = &EvaluateKQKR;
-    return mi;
-  }
-  else if(key == KRKQMaterialKey) {
-    mi->evaluationFunction = &EvaluateKRKQ;
-    return mi;
-  }
-  else if(pos.non_pawn_material(BLACK) == Value(0) &&
-          pos.piece_count(BLACK, PAWN) == 0 &&
-          pos.non_pawn_material(WHITE) >= RookValueEndgame) {
-    mi->evaluationFunction = &EvaluateKXK;
-    return mi;
-  }
-  else if(pos.non_pawn_material(WHITE) == Value(0) &&
-          pos.piece_count(WHITE, PAWN) == 0 &&
-          pos.non_pawn_material(BLACK) >= RookValueEndgame) {
-    mi->evaluationFunction = &EvaluateKKX;
-    return mi;
+  else if (   pos.non_pawn_material(WHITE) == Value(0)
+           && pos.piece_count(WHITE, PAWN) == 0
+           && pos.non_pawn_material(BLACK) >= RookValueEndgame)
+  {
+      mi->evaluationFunction = &EvaluateKKX;
+      return mi;
   }
 
   // OK, we didn't find any special evaluation function for the current
-  // material configuration.  Is there a suitable scaling function?
+  // material configuration. Is there a suitable scaling function?
   //
   // The code below is rather messy, and it could easily get worse later,
   // if we decide to add more special cases.  We face problems when there
