@@ -25,6 +25,7 @@
 #include <cassert>
 #include <map>
 
+#include "lock.h"
 #include "material.h"
 
 
@@ -48,6 +49,9 @@ namespace {
   std::map<Key, EndgameEvaluationFunction*> EEFmap;
   std::map<Key, ScalingInfo> ESFmap;
 
+  Lock EEFmapLock;
+  Lock ESFmapLock;
+
   void add(Key k, EndgameEvaluationFunction* f) {
 
       EEFmap.insert(std::pair<Key, EndgameEvaluationFunction*>(k, f));
@@ -57,6 +61,34 @@ namespace {
 
       ScalingInfo s = {c, f};
       ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
+  }
+
+  // STL map are not guaranteed to be thread safe even
+  // for read-access so we need this two helpers to access them.
+  EndgameEvaluationFunction* getEEF(Key key) {
+
+      EndgameEvaluationFunction* f = NULL;
+
+      lock_grab(&EEFmapLock);
+      
+      if (EEFmap.find(key) != EEFmap.end())
+          f = EEFmap[key];
+
+      lock_release(&EEFmapLock);
+      return f;
+  }
+
+  ScalingInfo getESF(Key key) {
+
+      ScalingInfo si = {WHITE, NULL};
+
+      lock_grab(&ESFmapLock);
+
+      if (ESFmap.find(key) != ESFmap.end())
+          si = ESFmap[key];
+
+      lock_release(&ESFmapLock);
+      return si;
   }
 
 }
@@ -71,6 +103,10 @@ namespace {
 /// to make it easy to recognize such endgames when they occur.
 
 void MaterialInfo::init() {
+
+  // Initialize std::map access locks
+  lock_init(&EEFmapLock, NULL);
+  lock_init(&ESFmapLock, NULL);
 
   typedef Key ZM[2][8][16];
   const ZM& z = Position::zobMaterial;
@@ -157,16 +193,16 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
 
   // If mi->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
-  // return the information we found the last time instead of recomputing it:
-  if(mi->key == key)
+  // return the information we found the last time instead of recomputing it.
+  if (mi->key == key)
     return mi;
 
-  // Clear the MaterialInfo object, and set its key:
+  // Clear the MaterialInfo object, and set its key
   mi->clear();
   mi->key = key;
 
   // A special case before looking for a specialized evaluation function
-  // KNN vs K is a draw
+  // KNN vs K is a draw.
   if (key == KNNKMaterialKey || key == KKNNMaterialKey)
   {
     mi->factor[WHITE] = mi->factor[BLACK] = 0;
@@ -174,12 +210,10 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   }
 
   // Let's look if we have a specialized evaluation function for this
-  // particular material configuration
-  if (EEFmap.find(key) != EEFmap.end())
-  {
-      mi->evaluationFunction = EEFmap[key];
+  // particular material configuration.
+  if ((mi->evaluationFunction = getEEF(key)) != NULL)
       return mi;
-  }
+
   else if (   pos.non_pawn_material(BLACK) == Value(0)
            && pos.piece_count(BLACK, PAWN) == 0
            && pos.non_pawn_material(WHITE) >= RookValueEndgame)
@@ -202,10 +236,10 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   // if we decide to add more special cases.  We face problems when there
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
-
-  if (ESFmap.find(key) != ESFmap.end())
+  ScalingInfo si = getESF(key);
+  if (si.fun != NULL)
   {
-      mi->scalingFunction[ESFmap[key].col] = ESFmap[key].fun;
+      mi->scalingFunction[si.col] = si.fun;
       return mi;
   }
 
