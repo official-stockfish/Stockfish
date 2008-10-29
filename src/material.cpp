@@ -70,9 +70,10 @@ namespace {
       EndgameEvaluationFunction* f = NULL;
 
       lock_grab(&EEFmapLock);
-      
-      if (EEFmap.find(key) != EEFmap.end())
-          f = EEFmap[key];
+
+      std::map<Key, EndgameEvaluationFunction*>::iterator it(EEFmap.find(key));
+      if (it != EEFmap.end())
+          f = it->second;
 
       lock_release(&EEFmapLock);
       return f;
@@ -84,8 +85,9 @@ namespace {
 
       lock_grab(&ESFmapLock);
 
-      if (ESFmap.find(key) != ESFmap.end())
-          si = ESFmap[key];
+      std::map<Key, ScalingInfo>::iterator it(ESFmap.find(key));
+      if (it != ESFmap.end())
+          si = it->second;
 
       lock_release(&ESFmapLock);
       return si;
