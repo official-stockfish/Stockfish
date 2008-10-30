@@ -310,29 +310,33 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
            int time[], int increment[], int movesToGo, int maxDepth,
            int maxNodes, int maxTime, Move searchMoves[]) {
 
-  // Look for a book move:
-  if(!infinite && !ponder && get_option_value_bool("OwnBook")) {
-    Move bookMove;
-    if(get_option_value_string("Book File") != OpeningBook.file_name()) {
-      OpeningBook.close();
-      OpeningBook.open("book.bin");
-    }
-    bookMove = OpeningBook.get_move(pos);
-    if(bookMove != MOVE_NONE) {
-      std::cout << "bestmove " << bookMove << std::endl;
-      return;
-    }
+  // Look for a book move
+  if (!infinite && !ponder && get_option_value_bool("OwnBook"))
+  {
+      Move bookMove;
+      if (get_option_value_string("Book File") != OpeningBook.file_name())
+      {
+          OpeningBook.close();
+          OpeningBook.open("book.bin");
+      }
+      bookMove = OpeningBook.get_move(pos);
+      if (bookMove != MOVE_NONE)
+      {
+          std::cout << "bestmove " << bookMove << std::endl;
+          return;
+      }
   }
 
-  // Initialize global search variables:
+  // Initialize global search variables
   Idle = false;
   SearchStartTime = get_system_time();
   BestRootMove = MOVE_NONE;
   PonderMove = MOVE_NONE;
   EasyMove = MOVE_NONE;
-  for(int i = 0; i < THREAD_MAX; i++) {
-    Threads[i].nodes = 0ULL;
-    Threads[i].failHighPly1 = false;
+  for (int i = 0; i < THREAD_MAX; i++)
+  {
+      Threads[i].nodes = 0ULL;
+      Threads[i].failHighPly1 = false;
   }
   NodesSincePoll = 0;
   InfiniteSearch = infinite;
@@ -344,59 +348,49 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   Problem = false;
   ExactMaxTime = maxTime;
 
-  // Read UCI option values:
+  // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
-  if(button_was_pressed("Clear Hash"))
-    TT.clear();
+  if (button_was_pressed("Clear Hash"))
+      TT.clear();
+
   PonderingEnabled = get_option_value_bool("Ponder");
   MultiPV = get_option_value_int("MultiPV");
 
   CheckExtension[1] = Depth(get_option_value_int("Check Extension (PV nodes)"));
-  CheckExtension[0] =
-    Depth(get_option_value_int("Check Extension (non-PV nodes)"));
-  SingleReplyExtension[1] = Depth(get_option_value_int("Single Reply Extension (PV nodes)"));
-  SingleReplyExtension[0] =
-    Depth(get_option_value_int("Single Reply Extension (non-PV nodes)"));
-  PawnPushTo7thExtension[1] =
-    Depth(get_option_value_int("Pawn Push to 7th Extension (PV nodes)"));
-  PawnPushTo7thExtension[0] =
-    Depth(get_option_value_int("Pawn Push to 7th Extension (non-PV nodes)"));
-  PassedPawnExtension[1] =
-    Depth(get_option_value_int("Passed Pawn Extension (PV nodes)"));
-  PassedPawnExtension[0] =
-    Depth(get_option_value_int("Passed Pawn Extension (non-PV nodes)"));
-  PawnEndgameExtension[1] =
-    Depth(get_option_value_int("Pawn Endgame Extension (PV nodes)"));
-  PawnEndgameExtension[0] =
-    Depth(get_option_value_int("Pawn Endgame Extension (non-PV nodes)"));
-  MateThreatExtension[1] =
-    Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
-  MateThreatExtension[0] =
-    Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
+  CheckExtension[0] = Depth(get_option_value_int("Check Extension (non-PV nodes)"));
 
-  LMRPVMoves = get_option_value_int("Full Depth Moves (PV nodes)") + 1;
-  LMRNonPVMoves = get_option_value_int("Full Depth Moves (non-PV nodes)") + 1;
-  ThreatDepth = get_option_value_int("Threat Depth") * OnePly;
+  SingleReplyExtension[1] = Depth(get_option_value_int("Single Reply Extension (PV nodes)"));
+  SingleReplyExtension[0] = Depth(get_option_value_int("Single Reply Extension (non-PV nodes)"));
+
+  PawnPushTo7thExtension[1] = Depth(get_option_value_int("Pawn Push to 7th Extension (PV nodes)"));
+  PawnPushTo7thExtension[0] = Depth(get_option_value_int("Pawn Push to 7th Extension (non-PV nodes)"));
+
+  PassedPawnExtension[1] = Depth(get_option_value_int("Passed Pawn Extension (PV nodes)"));
+  PassedPawnExtension[0] = Depth(get_option_value_int("Passed Pawn Extension (non-PV nodes)"));
+
+  PawnEndgameExtension[1] = Depth(get_option_value_int("Pawn Endgame Extension (PV nodes)"));
+  PawnEndgameExtension[0] = Depth(get_option_value_int("Pawn Endgame Extension (non-PV nodes)"));
+
+  MateThreatExtension[1] = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
+  MateThreatExtension[0] = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
+
+  LMRPVMoves     = get_option_value_int("Full Depth Moves (PV nodes)") + 1;
+  LMRNonPVMoves  = get_option_value_int("Full Depth Moves (non-PV nodes)") + 1;
+  ThreatDepth    = get_option_value_int("Threat Depth") * OnePly;
   SelectiveDepth = get_option_value_int("Selective Plies") * OnePly;
 
   Chess960 = get_option_value_bool("UCI_Chess960");
   ShowCurrentLine = get_option_value_bool("UCI_ShowCurrLine");
   UseLogFile = get_option_value_bool("Use Search Log");
-  if(UseLogFile)
-    LogFile.open(get_option_value_string("Search Log Filename").c_str(),
-                 std::ios::out | std::ios::app);
+  if (UseLogFile)
+      LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
 
-  UseQSearchFutilityPruning =
-    get_option_value_bool("Futility Pruning (Quiescence Search)");
-  UseFutilityPruning =
-    get_option_value_bool("Futility Pruning (Main Search)");
+  UseQSearchFutilityPruning = get_option_value_bool("Futility Pruning (Quiescence Search)");
+  UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
 
-  FutilityMargin0 =
-    value_from_centipawns(get_option_value_int("Futility Margin 0"));
-  FutilityMargin1 =
-    value_from_centipawns(get_option_value_int("Futility Margin 1"));
-  FutilityMargin2 =
-    value_from_centipawns(get_option_value_int("Futility Margin 2"));
+  FutilityMargin0 = value_from_centipawns(get_option_value_int("Futility Margin 0"));
+  FutilityMargin1 = value_from_centipawns(get_option_value_int("Futility Margin 1"));
+  FutilityMargin2 = value_from_centipawns(get_option_value_int("Futility Margin 2"));
 
   RazorDepth = (get_option_value_int("Maximum Razoring Depth") + 1) * OnePly;
   RazorMargin = value_from_centipawns(get_option_value_int("Razoring Margin"));
@@ -406,22 +400,22 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   LSNValue = value_from_centipawns(get_option_value_int("LSN Value Margin"));
 
   MinimumSplitDepth = get_option_value_int("Minimum Split Depth") * OnePly;
-  MaxThreadsPerSplitPoint =
-    get_option_value_int("Maximum Number of Threads per Split Point");
+  MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
 
   read_weights(pos.side_to_move());
 
   int newActiveThreads = get_option_value_int("Threads");
-  if(newActiveThreads != ActiveThreads) {
-    ActiveThreads = newActiveThreads;
-    init_eval(ActiveThreads);
+  if (newActiveThreads != ActiveThreads)
+  {
+      ActiveThreads = newActiveThreads;
+      init_eval(ActiveThreads);
   }
 
   // Wake up sleeping threads:
   wake_sleeping_threads();
 
-  for(int i = 1; i < ActiveThreads; i++)
-    assert(thread_is_available(i, 0));
+  for (int i = 1; i < ActiveThreads; i++)
+      assert(thread_is_available(i, 0));
 
   // Set thinking time:
   int myTime = time[side_to_move];
@@ -430,52 +424,59 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
 
   TimeAdvantage = myTime - oppTime;
 
-  if(!movesToGo) { // Sudden death time control
-    if(increment) {
-      MaxSearchTime = myTime / 30 + myIncrement;
-      AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
-    }
-    else { // Blitz game without increment
-      MaxSearchTime = myTime / 40;
-      AbsoluteMaxSearchTime = myTime / 8;
-    }
+  if (!movesToGo) // Sudden death time control
+  { 
+      if (increment)
+      {
+          MaxSearchTime = myTime / 30 + myIncrement;
+          AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
+      } else { // Blitz game without increment
+          MaxSearchTime = myTime / 40;
+          AbsoluteMaxSearchTime = myTime / 8;
+      }
   }
-  else { // (x moves) / (y minutes)
-    if(movesToGo == 1) {
-      MaxSearchTime = myTime / 2;
-      AbsoluteMaxSearchTime = Min(myTime / 2, myTime - 500);
-    }
-    else {
-      MaxSearchTime = myTime / Min(movesToGo, 20);
-      AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
-    }
+  else // (x moves) / (y minutes)
+  {
+      if (movesToGo == 1)
+      {
+          MaxSearchTime = myTime / 2;
+          AbsoluteMaxSearchTime = Min(myTime / 2, myTime - 500);
+      } else {
+          MaxSearchTime = myTime / Min(movesToGo, 20);
+          AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
+      }
   }
-  if(PonderingEnabled) {
-    MaxSearchTime += MaxSearchTime / 4;
-    MaxSearchTime = Min(MaxSearchTime, AbsoluteMaxSearchTime);
+
+  if (PonderingEnabled)
+  {
+      MaxSearchTime += MaxSearchTime / 4;
+      MaxSearchTime = Min(MaxSearchTime, AbsoluteMaxSearchTime);
   }
 
   // Fixed depth or fixed number of nodes?
   MaxDepth = maxDepth;
-  if(MaxDepth)
-    InfiniteSearch = true; // HACK
+  if (MaxDepth)
+      InfiniteSearch = true; // HACK
 
   MaxNodes = maxNodes;
-  if(MaxNodes) {
-    NodesBetweenPolls = Min(MaxNodes, 30000);
-    InfiniteSearch = true; // HACK
+  if (MaxNodes)
+  {
+      NodesBetweenPolls = Min(MaxNodes, 30000);
+      InfiniteSearch = true; // HACK
   }
   else
-    NodesBetweenPolls = 30000;
+      NodesBetweenPolls = 30000;
 
 
   // Write information to search log file:
-  if(UseLogFile) {
-    LogFile << "Searching: " << pos.to_fen() << '\n';
-    LogFile << "infinite: " << infinite << " ponder: " << ponder
-            << " time: " << myTime << " increment: " << myIncrement
-            << " moves to go: " << movesToGo << '\n';
-  }
+  if (UseLogFile)
+      LogFile << "Searching: " << pos.to_fen() << std::endl
+              << "infinite: " << infinite
+              << " ponder: " << ponder
+              << " time: " << myTime
+              << " increment: " << myIncrement
+              << " moves to go: " << movesToGo << std::endl;
+
 
   // We're ready to start thinking.  Call the iterative deepening loop
   // function:
@@ -495,16 +496,16 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
       id_loop(pos, searchMoves); // to fail gracefully
   }
 
-  if(UseLogFile)
-    LogFile.close();
+  if (UseLogFile)
+      LogFile.close();
 
-  if(Quit) {
-    OpeningBook.close();
-    stop_threads();
-    quit_eval();
-    exit(0);
+  if (Quit)
+  {
+      OpeningBook.close();
+      stop_threads();
+      quit_eval();
+      exit(0);
   }
-
   Idle = true;
 }
 
@@ -514,13 +515,15 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
 /// objects.
 
 void init_threads() {
+
   volatile int i;
+
 #if !defined(_MSC_VER)
   pthread_t pthread[1];
 #endif
 
-  for(i = 0; i < THREAD_MAX; i++)
-    Threads[i].activeSplitPoints = 0;
+  for (i = 0; i < THREAD_MAX; i++)
+      Threads[i].activeSplitPoints = 0;
 
   // Initialize global locks:
   lock_init(&MPLock, NULL);
@@ -532,31 +535,31 @@ void init_threads() {
   pthread_mutex_init(&WaitLock, NULL);
   pthread_cond_init(&WaitCond, NULL);
 #else
-  for(i = 0; i < THREAD_MAX; i++)
-    SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
+  for (i = 0; i < THREAD_MAX; i++)
+      SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
 #endif
 
-  // All threads except the main thread should be initialized to idle state:
-  for(i = 1; i < THREAD_MAX; i++) {
-    Threads[i].stop = false;
-    Threads[i].workIsWaiting = false;
-    Threads[i].idle = true;
-    Threads[i].running = false;
+  // All threads except the main thread should be initialized to idle state
+  for (i = 1; i < THREAD_MAX; i++)
+  {
+      Threads[i].stop = false;
+      Threads[i].workIsWaiting = false;
+      Threads[i].idle = true;
+      Threads[i].running = false;
   }
 
-  // Launch the helper threads:
-  for(i = 1; i < THREAD_MAX; i++) {
+  // Launch the helper threads
+  for(i = 1; i < THREAD_MAX; i++)
+  {
 #if !defined(_MSC_VER)
-    pthread_create(pthread, NULL, init_thread, (void*)(&i));
+      pthread_create(pthread, NULL, init_thread, (void*)(&i));
 #else
-    {
       DWORD iID[1];
       CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, iID);
-    }
 #endif
 
-    // Wait until the thread has finished launching:
-    while(!Threads[i].running);
+      // Wait until the thread has finished launching:
+      while (!Threads[i].running);
   }
 }
 
@@ -565,13 +568,15 @@ void init_threads() {
 /// helper threads exit cleanly.
 
 void stop_threads() {
+
   ActiveThreads = THREAD_MAX;  // HACK
   Idle = false;  // HACK
   wake_sleeping_threads();
   AllThreadsShouldExit = true;
-  for(int i = 1; i < THREAD_MAX; i++) {
-    Threads[i].stop = true;
-    while(Threads[i].running);
+  for (int i = 1; i < THREAD_MAX; i++)
+  {
+      Threads[i].stop = true;
+      while(Threads[i].running);
   }
   destroy_split_point_stack();
 }
@@ -581,9 +586,10 @@ void stop_threads() {
 /// the current search.
 
 int64_t nodes_searched() {
+
   int64_t result = 0ULL;
-  for(int i = 0; i < ActiveThreads; i++)
-    result += Threads[i].nodes;
+  for (int i = 0; i < ActiveThreads; i++)
+      result += Threads[i].nodes;
   return result;
 }
 
@@ -596,6 +602,7 @@ namespace {
   // reached.
 
   Value id_loop(const Position &pos, Move searchMoves[]) {
+
     Position p(pos);
     SearchStack ss[PLY_MAX_PLUS_2];
 
@@ -614,110 +621,112 @@ namespace {
     EasyMove = rml.scan_for_easy_move();
 
     // Iterative deepening loop
-    while(!AbortSearch && Iteration < PLY_MAX) {
+    while (!AbortSearch && Iteration < PLY_MAX)
+    {
+        // Initialize iteration
+        rml.sort();
+        Iteration++;
+        BestMoveChangesByIteration[Iteration] = 0;
+        if (Iteration <= 5)
+            ExtraSearchTime = 0;
 
-      // Initialize iteration
-      rml.sort();
-      Iteration++;
-      BestMoveChangesByIteration[Iteration] = 0;
-      if(Iteration <= 5)
-        ExtraSearchTime = 0;
+        std::cout << "info depth " << Iteration << std::endl;
 
-      std::cout << "info depth " << Iteration << std::endl;
+        // Search to the current depth
+        ValueByIteration[Iteration] = root_search(p, ss, rml);
 
-      // Search to the current depth
-      ValueByIteration[Iteration] = root_search(p, ss, rml);
+        // Erase the easy move if it differs from the new best move
+        if (ss[0].pv[0] != EasyMove)
+            EasyMove = MOVE_NONE;
 
-      // Erase the easy move if it differs from the new best move
-      if(ss[0].pv[0] != EasyMove)
-        EasyMove = MOVE_NONE;
+        Problem = false;
 
-      Problem = false;
+        if (!InfiniteSearch)
+        {
+            // Time to stop?
+            bool stopSearch = false;
 
-      if(!InfiniteSearch) {
-        // Time to stop?
-        bool stopSearch = false;
+            // Stop search early if there is only a single legal move:
+            if (Iteration >= 6 && rml.move_count() == 1)
+                stopSearch = true;
 
-        // Stop search early if there is only a single legal move:
-        if(Iteration >= 6 && rml.move_count() == 1)
-          stopSearch = true;
+            // Stop search early when the last two iterations returned a mate score
+            if (  Iteration >= 6
+                && abs(ValueByIteration[Iteration]) >= abs(VALUE_MATE) - 100
+                && abs(ValueByIteration[Iteration-1]) >= abs(VALUE_MATE) - 100)
+                stopSearch = true;
 
-        // Stop search early when the last two iterations returned a mate
-        // score:
-        if(Iteration >= 6
-           && abs(ValueByIteration[Iteration]) >= abs(VALUE_MATE) - 100
-           && abs(ValueByIteration[Iteration-1]) >= abs(VALUE_MATE) - 100)
-          stopSearch = true;
+            // Stop search early if one move seems to be much better than the rest
+            int64_t nodes = nodes_searched();
+            if (   Iteration >= 8
+                && EasyMove == ss[0].pv[0]
+                && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
+                       && current_search_time() > MaxSearchTime / 16)
+                    ||(   rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100
+                       && current_search_time() > MaxSearchTime / 32)))
+                stopSearch = true;
 
-        // Stop search early if one move seems to be much better than the
-        // rest:
-        int64_t nodes = nodes_searched();
-        if(Iteration >= 8 && EasyMove == ss[0].pv[0] &&
-           ((rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100 &&
-             current_search_time() > MaxSearchTime / 16) ||
-            (rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100 &&
-             current_search_time() > MaxSearchTime / 32)))
-          stopSearch = true;
+            // Add some extra time if the best move has changed during the last two iterations
+            if (Iteration > 5 && Iteration <= 50)
+                ExtraSearchTime = BestMoveChangesByIteration[Iteration]   * (MaxSearchTime / 2)
+                                + BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
 
-        // Add some extra time if the best move has changed during the last
-        // two iterations:
-        if(Iteration > 5 && Iteration <= 50)
-          ExtraSearchTime =
-            BestMoveChangesByIteration[Iteration] * (MaxSearchTime / 2) +
-            BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
+            // If we need some more and we are in time advantage take it
+            if (ExtraSearchTime > 0 && TimeAdvantage > 2 * MaxSearchTime)
+                ExtraSearchTime += MaxSearchTime / 2;
 
-        // If we need some more and we are in time advantage take it.
-        if (ExtraSearchTime > 0 && TimeAdvantage > 2 * MaxSearchTime)
-            ExtraSearchTime += MaxSearchTime / 2;
+            // Stop search if most of MaxSearchTime is consumed at the end of the
+            // iteration.  We probably don't have enough time to search the first
+            // move at the next iteration anyway.
+            if (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*90) / 128)
+                stopSearch = true;
 
-        // Stop search if most of MaxSearchTime is consumed at the end of the
-        // iteration.  We probably don't have enough time to search the first
-        // move at the next iteration anyway.
-        if(current_search_time() > ((MaxSearchTime + ExtraSearchTime)*90) / 128)
-          stopSearch = true;
-
-        if(stopSearch) {
-          if(!PonderSearch)
-            break;
-          else
-            StopOnPonderhit = true;
+            if (stopSearch)
+            {
+                if (!PonderSearch)
+                    break;
+                else
+                    StopOnPonderhit = true;
+            }
         }
-      }
+        // Write PV to transposition table, in case the relevant entries have
+        // been overwritten during the search:
+        TT.insert_pv(p, ss[0].pv);
 
-      // Write PV to transposition table, in case the relevant entries have
-      // been overwritten during the search:
-      TT.insert_pv(p, ss[0].pv);
-
-      if(MaxDepth && Iteration >= MaxDepth)
-        break;
+        if (MaxDepth && Iteration >= MaxDepth)
+            break;
     }
 
     rml.sort();
 
     // If we are pondering, we shouldn't print the best move before we
     // are told to do so
-    if(PonderSearch)
-      wait_for_stop_or_ponderhit();
+    if (PonderSearch)
+        wait_for_stop_or_ponderhit();
     else
-      // Print final search statistics
-      std::cout << "info nodes " << nodes_searched() << " nps " << nps()
-                << " time " << current_search_time()
-                << " hashfull " << TT.full() << std::endl;
+        // Print final search statistics
+        std::cout << "info nodes " << nodes_searched()
+                  << " nps " << nps()
+                  << " time " << current_search_time()
+                  << " hashfull " << TT.full() << std::endl;
 
-    // Print the best move and the ponder move to the standard output:
+    // Print the best move and the ponder move to the standard output
     std::cout << "bestmove " << ss[0].pv[0];
-    if(ss[0].pv[1] != MOVE_NONE)
-      std::cout << " ponder " << ss[0].pv[1];
+    if (ss[0].pv[1] != MOVE_NONE)
+        std::cout << " ponder " << ss[0].pv[1];
+
     std::cout << std::endl;
 
-    if(UseLogFile) {
-      UndoInfo u;
-      LogFile << "Nodes: " << nodes_searched() << '\n';
-      LogFile << "Nodes/second: " << nps() << '\n';
-      LogFile << "Best move: " << move_to_san(p, ss[0].pv[0]) << '\n';
-      p.do_move(ss[0].pv[0], u);
-      LogFile << "Ponder move: " << move_to_san(p, ss[0].pv[1]) << '\n';
-      LogFile << std::endl;
+    if (UseLogFile)
+    {
+        UndoInfo u;
+        LogFile << "Nodes: " << nodes_searched() << std::endl
+                << "Nodes/second: " << nps() << std::endl
+                << "Best move: " << move_to_san(p, ss[0].pv[0]) << std::endl;
+
+        p.do_move(ss[0].pv[0], u);
+        LogFile << "Ponder move: " << move_to_san(p, ss[0].pv[1])
+                << std::endl << std::endl;
     }
     return rml.get_move_score(0);
   }
@@ -729,134 +738,147 @@ namespace {
   // and prints some information to the standard output.
 
   Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml) {
-    Value alpha = -VALUE_INFINITE, beta = VALUE_INFINITE, value;
+
+    Value alpha = -VALUE_INFINITE;
+    Value beta = VALUE_INFINITE, value;
     Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
 
-    // Loop through all the moves in the root move list:
-    for(int i = 0; i <  rml.move_count() && !AbortSearch; i++) {
-      int64_t nodes;
-      Move move;
-      UndoInfo u;
-      Depth ext, newDepth;
+    // Loop through all the moves in the root move list
+    for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
+    {
+        int64_t nodes;
+        Move move;
+        UndoInfo u;
+        Depth ext, newDepth;
 
-      RootMoveNumber = i + 1;
-      FailHigh = false;
+        RootMoveNumber = i + 1;
+        FailHigh = false;
 
-      // Remember the node count before the move is searched.  The node counts
-      // are used to sort the root moves at the next iteration.
-      nodes = nodes_searched();
+        // Remember the node count before the move is searched. The node counts
+        // are used to sort the root moves at the next iteration.
+        nodes = nodes_searched();
 
-      // Pick the next root move, and print the move and the move number to
-      // the standard output:
-      move = ss[0].currentMove = rml.get_move(i);
-      if(current_search_time() >= 1000)
-        std::cout << "info currmove " << move
-                  << " currmovenumber " << i + 1 << std::endl;
+        // Pick the next root move, and print the move and the move number to
+        // the standard output.
+        move = ss[0].currentMove = rml.get_move(i);
+        if (current_search_time() >= 1000)
+            std::cout << "info currmove " << move
+                      << " currmovenumber " << i + 1 << std::endl;
 
-      // Decide search depth for this move:
-      ext = extension(pos, move, true, pos.move_is_check(move), false, false);
-      newDepth = (Iteration-2)*OnePly + ext + InitialDepth;
+        // Decide search depth for this move
+        ext = extension(pos, move, true, pos.move_is_check(move), false, false);
+        newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
-      // Make the move, and search it.
-      pos.do_move(move, u, dcCandidates);
+        // Make the move, and search it
+        pos.do_move(move, u, dcCandidates);
 
-      if(i < MultiPV) {
-        value = -search_pv(pos, ss, -beta, VALUE_INFINITE, newDepth, 1, 0);
-        // If the value has dropped a lot compared to the last iteration,
-        // set the boolean variable Problem to true.  This variable is used
-        // for time managment:  When Problem is true, we try to complete the
-        // current iteration before playing a move.
-        Problem = (Iteration >= 2 &&
-                   value <= ValueByIteration[Iteration-1] - ProblemMargin);
-        if(Problem && StopOnPonderhit)
-          StopOnPonderhit = false;
-      }
-      else {
-        value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
-        if(value > alpha) {
-          // Fail high!  Set the boolean variable FailHigh to true, and
-          // re-search the move with a big window.  The variable FailHigh is
-          // used for time managment:  We try to avoid aborting the search
-          // prematurely during a fail high research.
-          FailHigh = true;
-          value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+        if (i < MultiPV)
+        {
+            value = -search_pv(pos, ss, -beta, VALUE_INFINITE, newDepth, 1, 0);
+            // If the value has dropped a lot compared to the last iteration,
+            // set the boolean variable Problem to true. This variable is used
+            // for time managment: When Problem is true, we try to complete the
+            // current iteration before playing a move.
+            Problem = (Iteration >= 2 && value <= ValueByIteration[Iteration-1] - ProblemMargin);
+
+            if (Problem && StopOnPonderhit)
+                StopOnPonderhit = false;
+        } 
+        else
+        {
+            value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
+            if (value > alpha)
+            {
+                // Fail high! Set the boolean variable FailHigh to true, and
+                // re-search the move with a big window. The variable FailHigh is
+                // used for time managment: We try to avoid aborting the search
+                // prematurely during a fail high research.
+                FailHigh = true;
+                value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+            }
         }
-      }
 
-      pos.undo_move(move, u);
+        pos.undo_move(move, u);
 
-      // Finished searching the move.  If AbortSearch is true, the search
-      // was aborted because the user interrupted the search or because we
-      // ran out of time.  In this case, the return value of the search cannot
-      // be trusted, and we break out of the loop without updating the best
-      // move and/or PV:
-      if(AbortSearch)
-        break;
+        // Finished searching the move. If AbortSearch is true, the search
+        // was aborted because the user interrupted the search or because we
+        // ran out of time. In this case, the return value of the search cannot
+        // be trusted, and we break out of the loop without updating the best
+        // move and/or PV:
+        if (AbortSearch)
+            break;
 
-      // Remember the node count for this move.  The node counts are used to
-      // sort the root moves at the next iteration.
-      rml.set_move_nodes(i, nodes_searched() - nodes);
+        // Remember the node count for this move. The node counts are used to
+        // sort the root moves at the next iteration.
+        rml.set_move_nodes(i, nodes_searched() - nodes);
 
-      assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
+        assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
 
-      if(value <= alpha && i >= MultiPV)
-        rml.set_move_score(i, -VALUE_INFINITE);
-      else {
-        // New best move!
+        if (value <= alpha && i >= MultiPV)
+            rml.set_move_score(i, -VALUE_INFINITE);
+        else
+        {
+            // New best move!
 
-        // Update PV:
-        rml.set_move_score(i, value);
-        update_pv(ss, 0);
-        rml.set_move_pv(i, ss[0].pv);
+            // Update PV
+            rml.set_move_score(i, value);
+            update_pv(ss, 0);
+            rml.set_move_pv(i, ss[0].pv);
 
-        if(MultiPV == 1) {
-          // We record how often the best move has been changed in each
-          // iteration.  This information is used for time managment:  When
-          // the best move changes frequently, we allocate some more time.
-          if(i > 0)
-            BestMoveChangesByIteration[Iteration]++;
+            if (MultiPV == 1)
+            {
+                // We record how often the best move has been changed in each
+                // iteration. This information is used for time managment: When
+                // the best move changes frequently, we allocate some more time.
+                if (i > 0)
+                    BestMoveChangesByIteration[Iteration]++;
 
-          // Print search information to the standard output:
-          std::cout << "info depth " << Iteration
-                    << " score " << value_to_string(value)
-                    << " time " << current_search_time()
-                    << " nodes " << nodes_searched()
-                    << " nps " << nps()
-                    << " pv ";
-          for(int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
-            std::cout << ss[0].pv[j] << " ";
-          std::cout << std::endl;
+                // Print search information to the standard output:
+                std::cout << "info depth " << Iteration
+                          << " score " << value_to_string(value)
+                          << " time " << current_search_time()
+                          << " nodes " << nodes_searched()
+                          << " nps " << nps()
+                          << " pv ";
 
-          if(UseLogFile)
-            LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                                 nodes_searched(), value, ss[0].pv)
-                    << std::endl;
+                for (int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
+                    std::cout << ss[0].pv[j] << " ";
 
-          alpha = value;
+                std::cout << std::endl;
 
-          // Reset the global variable Problem to false if the value isn't too
-          // far below the final value from the last iteration.
-          if(value > ValueByIteration[Iteration - 1] - NoProblemMargin)
-            Problem = false;
+                if (UseLogFile)
+                    LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value, ss[0].pv)
+                            << std::endl;
+
+                alpha = value;
+
+                // Reset the global variable Problem to false if the value isn't too
+                // far below the final value from the last iteration.
+                if (value > ValueByIteration[Iteration - 1] - NoProblemMargin)
+                    Problem = false;
+            }
+            else // MultiPV > 1
+            {
+                rml.sort_multipv(i);
+                for (int j = 0; j < Min(MultiPV, rml.move_count()); j++)
+                {
+                    int k;
+                    std::cout << "info multipv " << j + 1
+                              << " score " << value_to_string(rml.get_move_score(j))
+                              << " depth " << ((j <= i)? Iteration : Iteration - 1)
+                              << " time " << current_search_time()
+                              << " nodes " << nodes_searched()
+                              << " nps " << nps()
+                              << " pv ";
+
+                    for (k = 0; rml.get_move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
+                        std::cout << rml.get_move_pv(j, k) << " ";
+
+                    std::cout << std::endl;
+                }
+                alpha = rml.get_move_score(Min(i, MultiPV-1));
+            }
         }
-        else { // MultiPV > 1
-          rml.sort_multipv(i);
-          for(int j = 0; j < Min(MultiPV, rml.move_count()); j++) {
-            int k;
-            std::cout << "info multipv " << j + 1
-                      << " score " << value_to_string(rml.get_move_score(j))
-                      << " depth " << ((j <= i)? Iteration : Iteration - 1)
-                      << " time " << current_search_time()
-                      << " nodes " << nodes_searched()
-                      << " nps " << nps()
-                      << " pv ";
-            for(k = 0; rml.get_move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
-              std::cout << rml.get_move_pv(j, k) << " ";
-            std::cout << std::endl;
-          }
-          alpha = rml.get_move_score(Min(i, MultiPV-1));
-        }
-      }
     }
     return alpha;
   }
