@@ -678,7 +678,7 @@ namespace {
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration.  We probably don't have enough time to search the first
             // move at the next iteration anyway.
-            if (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*90) / 128)
+            if (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*80) / 128)
                 stopSearch = true;
 
             if (stopSearch)
@@ -2249,7 +2249,7 @@ namespace {
     bool overTime =     t > AbsoluteMaxSearchTime
                      || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime)
                      || (  !FailHigh && !fail_high_ply_1() && !Problem
-                         && t > 10*(MaxSearchTime + ExtraSearchTime));
+                         && t > 6*(MaxSearchTime + ExtraSearchTime));
 
     if (   (Iteration >= 2 && (!InfiniteSearch && overTime))
         || (ExactMaxTime && t >= ExactMaxTime)
