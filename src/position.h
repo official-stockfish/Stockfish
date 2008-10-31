@@ -117,6 +117,7 @@ struct UndoInfo {
 class Position {
 
   friend class MaterialInfo;
+  friend class EndgameFunctions;
 
 public:
   // Constructors

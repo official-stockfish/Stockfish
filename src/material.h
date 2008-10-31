@@ -69,6 +69,12 @@ private:
 };
 
 
+/// Stores the endgame evaluation functions maps. Should be per thread
+/// because STL is not thread safe and locks are expensive.
+
+class EndgameFunctions;
+
+
 /// The MaterialInfoTable class represents a pawn hash table.  It is basically
 /// just an array of MaterialInfo objects and a few methods for accessing these
 /// objects.  The most important method is get_material_info, which looks up a
@@ -85,6 +91,7 @@ public:
 private:
   unsigned size;
   MaterialInfo *entries;
+  EndgameFunctions* funcs;
 };
 
 

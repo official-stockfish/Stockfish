@@ -25,7 +25,6 @@
 #include <cassert>
 #include <map>
 
-#include "lock.h"
 #include "material.h"
 
 
@@ -46,54 +45,26 @@ namespace {
       ScalingFunction* fun;
   };
 
+}
+
+////
+//// Classes
+////
+
+class EndgameFunctions {
+
+public:
+  EndgameFunctions();
+  EndgameEvaluationFunction* getEEF(Key key);
+  ScalingInfo getESF(Key key);
+
+private:
+  void add(Key k, EndgameEvaluationFunction* f);
+  void add(Key k, Color c, ScalingFunction* f);
+
   std::map<Key, EndgameEvaluationFunction*> EEFmap;
   std::map<Key, ScalingInfo> ESFmap;
-
-  Lock EEFmapLock;
-  Lock ESFmapLock;
-
-  void add(Key k, EndgameEvaluationFunction* f) {
-
-      EEFmap.insert(std::pair<Key, EndgameEvaluationFunction*>(k, f));
-  }
-
-  void add(Key k, Color c, ScalingFunction* f) {
-
-      ScalingInfo s = {c, f};
-      ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
-  }
-
-  // STL map are not guaranteed to be thread safe even
-  // for read-access so we need this two helpers to access them.
-  EndgameEvaluationFunction* getEEF(Key key) {
-
-      EndgameEvaluationFunction* f = NULL;
-
-      lock_grab(&EEFmapLock);
-
-      std::map<Key, EndgameEvaluationFunction*>::iterator it(EEFmap.find(key));
-      if (it != EEFmap.end())
-          f = it->second;
-
-      lock_release(&EEFmapLock);
-      return f;
-  }
-
-  ScalingInfo getESF(Key key) {
-
-      ScalingInfo si = {WHITE, NULL};
-
-      lock_grab(&ESFmapLock);
-
-      std::map<Key, ScalingInfo>::iterator it(ESFmap.find(key));
-      if (it != ESFmap.end())
-          si = it->second;
-
-      lock_release(&ESFmapLock);
-      return si;
-  }
-
-}
+};
 
 
 ////
@@ -106,45 +77,11 @@ namespace {
 
 void MaterialInfo::init() {
 
-  // Initialize std::map access locks
-  lock_init(&EEFmapLock, NULL);
-  lock_init(&ESFmapLock, NULL);
-
   typedef Key ZM[2][8][16];
   const ZM& z = Position::zobMaterial;
 
-  static const Color W = WHITE;
-  static const Color B = BLACK;
-
-  KNNKMaterialKey = z[W][KNIGHT][1] ^ z[W][KNIGHT][2];
-  KKNNMaterialKey = z[B][KNIGHT][1] ^ z[B][KNIGHT][2];
-
-  add(z[W][PAWN][1], &EvaluateKPK);
-  add(z[B][PAWN][1], &EvaluateKKP);
-
-  add(z[W][BISHOP][1] ^ z[W][KNIGHT][1], &EvaluateKBNK);
-  add(z[B][BISHOP][1] ^ z[B][KNIGHT][1], &EvaluateKKBN);
-  add(z[W][ROOK][1]   ^ z[B][PAWN][1],   &EvaluateKRKP);
-  add(z[W][PAWN][1]   ^ z[B][ROOK][1],   &EvaluateKPKR);
-  add(z[W][ROOK][1]   ^ z[B][BISHOP][1], &EvaluateKRKB);
-  add(z[W][BISHOP][1] ^ z[B][ROOK][1],   &EvaluateKBKR);
-  add(z[W][ROOK][1]   ^ z[B][KNIGHT][1], &EvaluateKRKN);
-  add(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
-  add(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
-  add(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
-
-  add(z[W][KNIGHT][1] ^ z[W][PAWN][1], W, &ScaleKNPK);
-  add(z[B][KNIGHT][1] ^ z[B][PAWN][1], B, &ScaleKKNP);
-
-  add(z[W][ROOK][1]   ^ z[W][PAWN][1]   ^ z[B][ROOK][1]  , W, &ScaleKRPKR);
-  add(z[W][ROOK][1]   ^ z[B][ROOK][1]   ^ z[B][PAWN][1]  , B, &ScaleKRKRP);
-  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][BISHOP][1], W, &ScaleKBPKB);
-  add(z[W][BISHOP][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKBKBP);
-  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][KNIGHT][1], W, &ScaleKBPKN);
-  add(z[W][KNIGHT][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKNKBP);
-
-  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[W][PAWN][2] ^ z[B][ROOK][1] ^ z[B][PAWN][1], W, &ScaleKRPPKRP);
-  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[B][ROOK][1] ^ z[B][PAWN][1] ^ z[B][PAWN][2], B, &ScaleKRPKRPP);
+  KNNKMaterialKey = z[WHITE][KNIGHT][1] ^ z[WHITE][KNIGHT][2];
+  KKNNMaterialKey = z[BLACK][KNIGHT][1] ^ z[BLACK][KNIGHT][2];
 }
 
 
@@ -154,7 +91,8 @@ MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
 
   size = numOfEntries;
   entries = new MaterialInfo[size];
-  if (!entries)
+  funcs = new EndgameFunctions();
+  if (!entries || !funcs)
   {
       std::cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
                 << " bytes for material hash table." << std::endl;
@@ -169,6 +107,7 @@ MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
 MaterialInfoTable::~MaterialInfoTable() {
 
   delete [] entries;
+  delete funcs;
 }
 
 
@@ -213,7 +152,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
 
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration.
-  if ((mi->evaluationFunction = getEEF(key)) != NULL)
+  if ((mi->evaluationFunction = funcs->getEEF(key)) != NULL)
       return mi;
 
   else if (   pos.non_pawn_material(BLACK) == Value(0)
@@ -238,7 +177,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   // if we decide to add more special cases.  We face problems when there
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
-  ScalingInfo si = getESF(key);
+  ScalingInfo si = funcs->getESF(key);
   if (si.fun != NULL)
   {
       mi->scalingFunction[si.col] = si.fun;
@@ -346,4 +285,80 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   mi->mgValue = int16_t(mgValue);
   mi->egValue = int16_t(egValue);
   return mi;
+}
+
+
+/// EndgameFunctions members definition. This helper class is used to
+/// store the maps of end game and scaling functions that MaterialInfoTable
+/// will query for each key. The maps are constant, and are populated only
+/// at construction. Being per thread avoids to use locks to access them.
+
+EndgameFunctions::EndgameFunctions() {
+
+  typedef Key ZM[2][8][16];
+  const ZM& z = Position::zobMaterial;
+
+  static const Color W = WHITE;
+  static const Color B = BLACK;
+
+  KNNKMaterialKey = z[W][KNIGHT][1] ^ z[W][KNIGHT][2];
+  KKNNMaterialKey = z[B][KNIGHT][1] ^ z[B][KNIGHT][2];
+
+  add(z[W][PAWN][1], &EvaluateKPK);
+  add(z[B][PAWN][1], &EvaluateKKP);
+
+  add(z[W][BISHOP][1] ^ z[W][KNIGHT][1], &EvaluateKBNK);
+  add(z[B][BISHOP][1] ^ z[B][KNIGHT][1], &EvaluateKKBN);
+  add(z[W][ROOK][1]   ^ z[B][PAWN][1],   &EvaluateKRKP);
+  add(z[W][PAWN][1]   ^ z[B][ROOK][1],   &EvaluateKPKR);
+  add(z[W][ROOK][1]   ^ z[B][BISHOP][1], &EvaluateKRKB);
+  add(z[W][BISHOP][1] ^ z[B][ROOK][1],   &EvaluateKBKR);
+  add(z[W][ROOK][1]   ^ z[B][KNIGHT][1], &EvaluateKRKN);
+  add(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
+  add(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
+  add(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
+
+  add(z[W][KNIGHT][1] ^ z[W][PAWN][1], W, &ScaleKNPK);
+  add(z[B][KNIGHT][1] ^ z[B][PAWN][1], B, &ScaleKKNP);
+
+  add(z[W][ROOK][1]   ^ z[W][PAWN][1]   ^ z[B][ROOK][1]  , W, &ScaleKRPKR);
+  add(z[W][ROOK][1]   ^ z[B][ROOK][1]   ^ z[B][PAWN][1]  , B, &ScaleKRKRP);
+  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][BISHOP][1], W, &ScaleKBPKB);
+  add(z[W][BISHOP][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKBKBP);
+  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][KNIGHT][1], W, &ScaleKBPKN);
+  add(z[W][KNIGHT][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKNKBP);
+
+  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[W][PAWN][2] ^ z[B][ROOK][1] ^ z[B][PAWN][1], W, &ScaleKRPPKRP);
+  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[B][ROOK][1] ^ z[B][PAWN][1] ^ z[B][PAWN][2], B, &ScaleKRPKRPP);
+}
+
+void EndgameFunctions::add(Key k, EndgameEvaluationFunction* f) {
+
+  EEFmap.insert(std::pair<Key, EndgameEvaluationFunction*>(k, f));
+}
+
+void EndgameFunctions::add(Key k, Color c, ScalingFunction* f) {
+
+  ScalingInfo s = {c, f};
+  ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
+}
+
+EndgameEvaluationFunction* EndgameFunctions::getEEF(Key key) {
+
+  EndgameEvaluationFunction* f = NULL;
+  std::map<Key, EndgameEvaluationFunction*>::iterator it(EEFmap.find(key));
+  if (it != EEFmap.end())
+      f = it->second;
+
+  return f;
+}
+
+ScalingInfo EndgameFunctions::getESF(Key key) {
+
+  ScalingInfo si = {WHITE, NULL};
+  std::map<Key, ScalingInfo>::iterator it(ESFmap.find(key));
+  if (it != ESFmap.end())
+      si = it->second;
+
+  return si;
 }
