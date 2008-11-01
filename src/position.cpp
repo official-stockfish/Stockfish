@@ -410,6 +410,7 @@ bool Position::piece_attacks_square(Square f, Square t) const {
   case WR: case BR: return piece_attacks_square<ROOK>(f, t);
   case WQ: case BQ: return piece_attacks_square<QUEEN>(f, t);
   case WK: case BK: return piece_attacks_square<KING>(f, t);
+  default: break;
   }
   return false;
 }
@@ -437,6 +438,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   case WR: case BR: return piece_attacks_square<ROOK>(t, s);
   case WQ: case BQ: return piece_attacks_square<QUEEN>(t, s);
   case WK: case BK: return piece_attacks_square<KING>(t, s);
+  default: break;
   }
   return false;
 }
@@ -643,6 +645,9 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
           return bit_is_set(rook_attacks_bb(rto, b), ksq);
       }
       return false;
+
+  default: // NO_PIECE_TYPE
+      break;
   }
   assert(false);
   return false;
