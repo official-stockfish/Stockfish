@@ -206,27 +206,22 @@ void MovePicker::score_captures() {
   // Suprisingly, this appears to perform slightly better than SEE based
   // move ordering.  The reason is probably that in a position with a winning
   // capture, capturing a more valuable (but sufficiently defended) piece
-  // first usually doesn't hurt.  The opponent will have to recapture, and
+  // first usually doesn't hurt. The opponent will have to recapture, and
   // the hanging piece will still be hanging (except in the unusual cases
   // where it is possible to recapture with the hanging piece). Exchanging
   // big pieces before capturing a hanging piece probably helps to reduce
-  // the subtree size.
+  // the subtree size. Instead of calculating SEE here to filter out 
+  // loosing captures, we delay the filtering in pick_move_from_list()
   Move m;
-  int seeValue;
 
   for (int i = 0; i < numOfMoves; i++)
   {
       m = moves[i].move;
-      seeValue = pos.see(m);
-      if (seeValue >= 0)
-      {
-          if (move_promotion(m))
-              moves[i].score = QueenValueMidgame;
-          else
-              moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
-                              -int(pos.type_of_piece_on(move_from(m)));
-      } else
-          moves[i].score = seeValue;
+      if (move_promotion(m))
+          moves[i].score = QueenValueMidgame;
+      else
+          moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
+                          -int(pos.type_of_piece_on(move_from(m)));
   }
 }
 
@@ -325,26 +320,21 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          int bestScore = -10000000;
-          bestIndex = -1;
-          for (int i = movesPicked; i < numOfMoves; i++)
+          bestIndex = find_best_index();
+
+          if (bestIndex != -1) // Found a possibly good capture
           {
-              if (moves[i].score < 0)
+              move = moves[bestIndex].move;
+              int seeValue = pos.see(move);
+              if (seeValue < 0)
               {
                   // Losing capture, move it to the badCaptures[] array
                   assert(numOfBadCaptures < 63);
-                  badCaptures[numOfBadCaptures++] = moves[i];
-                  moves[i--] = moves[--numOfMoves];
+                  moves[bestIndex].score = seeValue;
+                  badCaptures[numOfBadCaptures++] = moves[bestIndex];
+                  moves[bestIndex] = moves[--numOfMoves];
+                  continue;
               }
-              else if (moves[i].score > bestScore)
-              {
-                  bestIndex = i;
-                  bestScore = moves[i].score;
-              }
-          }
-          if (bestIndex != -1) // Found a good capture
-          {
-              move = moves[bestIndex].move;
               moves[bestIndex] = moves[movesPicked++];
               if (   move != ttMove
                   && move != mateKiller
