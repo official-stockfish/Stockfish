@@ -59,7 +59,6 @@ int main(int argc, char *argv[]) {
   init_uci_options();
   Position::init_zobrist();
   Position::init_piece_square_tables();
-  MaterialInfo::init();
   MovePicker::init_phase_table();
   init_eval(1);
   init_bitbases();

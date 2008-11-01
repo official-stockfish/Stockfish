@@ -35,7 +35,7 @@
 ////
 
 /// MaterialInfo is a class which contains various information about a
-/// material configuration.  It contains a material balance evaluation,
+/// material configuration. It contains a material balance evaluation,
 /// a function pointer to a special endgame evaluation function (which in
 /// most cases is NULL, meaning that the standard evaluation function will
 /// be used), and "scale factors" for black and white.
@@ -51,11 +51,9 @@ class MaterialInfo {
 public:
   Value mg_value() const;
   Value eg_value() const;
-  ScaleFactor scale_factor(const Position &pos, Color c) const;
+  ScaleFactor scale_factor(const Position& pos, Color c) const;
   bool specialized_eval_exists() const;
-  Value evaluate(const Position &pos) const;
-
-  static void init();
+  Value evaluate(const Position& pos) const;
 
 private:
   void clear();
@@ -64,20 +62,22 @@ private:
   int16_t mgValue;
   int16_t egValue;
   uint8_t factor[2];
-  EndgameEvaluationFunction *evaluationFunction;
-  ScalingFunction *scalingFunction[2];
+  EndgameEvaluationFunction* evaluationFunction;
+  ScalingFunction* scalingFunction[2];
 };
 
 
-/// Stores the endgame evaluation functions maps. Should be per thread
-/// because STL is not thread safe and locks are expensive.
+/// EndgameFunctions class stores the endgame evaluation functions std::map.
+/// Because STL library is not thread safe even for read access, the maps,
+/// although with identical content, are replicated for each thread. This
+/// is faster then using locks with an unique set of global maps.
 
 class EndgameFunctions;
 
 
-/// The MaterialInfoTable class represents a pawn hash table.  It is basically
+/// The MaterialInfoTable class represents a pawn hash table. It is basically
 /// just an array of MaterialInfo objects and a few methods for accessing these
-/// objects.  The most important method is get_material_info, which looks up a
+/// objects. The most important method is get_material_info, which looks up a
 /// position in the table and returns a pointer to a MaterialInfo object.
 
 class MaterialInfoTable {
@@ -86,11 +86,11 @@ public:
   MaterialInfoTable(unsigned numOfEntries);
   ~MaterialInfoTable();
   void clear();
-  MaterialInfo *get_material_info(const Position &pos);
+  MaterialInfo* get_material_info(const Position& pos);
 
 private:
   unsigned size;
-  MaterialInfo *entries;
+  MaterialInfo* entries;
   EndgameFunctions* funcs;
 };
 
@@ -103,10 +103,12 @@ private:
 /// material balance evaluation for the middle game and the endgame.
 
 inline Value MaterialInfo::mg_value() const {
+
   return Value(mgValue);
 }
 
 inline Value MaterialInfo::eg_value() const {
+
   return Value(egValue);
 }
 
@@ -115,6 +117,7 @@ inline Value MaterialInfo::eg_value() const {
 /// with all slots at their default values.
 
 inline void MaterialInfo::clear() {
+
   mgValue = egValue = 0;
   factor[WHITE] = factor[BLACK] = uint8_t(SCALE_FACTOR_NORMAL);
   evaluationFunction = NULL;
@@ -125,16 +128,17 @@ inline void MaterialInfo::clear() {
 /// MaterialInfo::scale_factor takes a position and a color as input, and
 /// returns a scale factor for the given color.  We have to provide the
 /// position in addition to the color, because the scale factor need not
-/// be a constant:  It can also be a function which should be applied to
-/// the position.  For instance, in KBP vs K endgames, a scaling function
+/// to be a constant: It can also be a function which should be applied to
+/// the position. For instance, in KBP vs K endgames, a scaling function
 /// which checks for draws with rook pawns and wrong-colored bishops.
 
-inline ScaleFactor MaterialInfo::scale_factor(const Position &pos, Color c)
-  const {
-  if(scalingFunction[c] != NULL) {
-    ScaleFactor sf = scalingFunction[c]->apply(pos);
-    if(sf != SCALE_FACTOR_NONE)
-      return sf;
+inline ScaleFactor MaterialInfo::scale_factor(const Position& pos, Color c) const {
+
+  if (scalingFunction[c] != NULL)
+  {
+      ScaleFactor sf = scalingFunction[c]->apply(pos);
+      if (sf != SCALE_FACTOR_NONE)
+          return sf;
   }
   return ScaleFactor(factor[c]);
 }
@@ -145,15 +149,17 @@ inline ScaleFactor MaterialInfo::scale_factor(const Position &pos, Color c)
 /// or if the normal evaluation function should be used.
 
 inline bool MaterialInfo::specialized_eval_exists() const {
+
   return evaluationFunction != NULL;
 }
 
 
-/// MaterialInfo::evaluate applies a specialized evaluation function to a
-/// given position object.  It should only be called when
-/// this->specialized_eval_exists() returns 'true'.
+/// MaterialInfo::evaluate applies a specialized evaluation function
+/// to a given position object.  It should only be called when
+/// specialized_eval_exists() returns 'true'.
 
-inline Value MaterialInfo::evaluate(const Position &pos) const {
+inline Value MaterialInfo::evaluate(const Position& pos) const {
+
   return evaluationFunction->apply(pos);
 }
 

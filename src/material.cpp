@@ -39,28 +39,32 @@ namespace {
 
   Key KNNKMaterialKey, KKNNMaterialKey;
 
-  struct ScalingInfo
-  {
-      Color col;
-      ScalingFunction* fun;
-  };
-
 }
 
 ////
 //// Classes
 ////
 
+
+/// See header for a class description. It is declared here to avoid
+/// to include <map> in the header file.
+
 class EndgameFunctions {
 
 public:
   EndgameFunctions();
-  EndgameEvaluationFunction* getEEF(Key key);
-  ScalingInfo getESF(Key key);
+  EndgameEvaluationFunction* getEEF(Key key) const;
+  ScalingFunction* getESF(Key key, Color* c) const;
 
 private:
   void add(Key k, EndgameEvaluationFunction* f);
   void add(Key k, Color c, ScalingFunction* f);
+
+  struct ScalingInfo
+  {
+      Color col;
+      ScalingFunction* fun;
+  };
 
   std::map<Key, EndgameEvaluationFunction*> EEFmap;
   std::map<Key, ScalingInfo> ESFmap;
@@ -70,19 +74,6 @@ private:
 ////
 //// Functions
 ////
-
-/// MaterialInfo::init() is called during program initialization. It
-/// precomputes material hash keys for a few basic endgames, in order
-/// to make it easy to recognize such endgames when they occur.
-
-void MaterialInfo::init() {
-
-  typedef Key ZM[2][8][16];
-  const ZM& z = Position::zobMaterial;
-
-  KNNKMaterialKey = z[WHITE][KNIGHT][1] ^ z[WHITE][KNIGHT][2];
-  KKNNMaterialKey = z[BLACK][KNIGHT][1] ^ z[BLACK][KNIGHT][2];
-}
 
 
 /// Constructor for the MaterialInfoTable class
@@ -126,7 +117,7 @@ void MaterialInfoTable::clear() {
 /// is stored there, so we don't have to recompute everything when the
 /// same material configuration occurs again.
 
-MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
+MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   Key key = pos.get_material_key();
   int index = key & (size - 1);
@@ -136,7 +127,7 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   // have analysed this material configuration before, and we can simply
   // return the information we found the last time instead of recomputing it.
   if (mi->key == key)
-    return mi;
+      return mi;
 
   // Clear the MaterialInfo object, and set its key
   mi->clear();
@@ -146,8 +137,8 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   // KNN vs K is a draw.
   if (key == KNNKMaterialKey || key == KKNNMaterialKey)
   {
-    mi->factor[WHITE] = mi->factor[BLACK] = 0;
-    return mi;
+      mi->factor[WHITE] = mi->factor[BLACK] = 0;
+      return mi;
   }
 
   // Let's look if we have a specialized evaluation function for this
@@ -177,10 +168,12 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
   // if we decide to add more special cases.  We face problems when there
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
-  ScalingInfo si = funcs->getESF(key);
-  if (si.fun != NULL)
+  Color c;
+  ScalingFunction* sf;
+
+  if ((sf = funcs->getESF(key, &c)) != NULL)
   {
-      mi->scalingFunction[si.col] = si.fun;
+      mi->scalingFunction[c] = sf;
       return mi;
   }
 
@@ -229,7 +222,6 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
 
   // Evaluate the material balance
 
-  Color c;
   int sign;
   Value egValue = Value(0);
   Value mgValue = Value(0);
@@ -281,17 +273,16 @@ MaterialInfo *MaterialInfoTable::get_material_info(const Position& pos) {
         egValue -= sign * v;
     }
   }
-
   mi->mgValue = int16_t(mgValue);
   mi->egValue = int16_t(egValue);
   return mi;
 }
 
 
-/// EndgameFunctions members definition. This helper class is used to
-/// store the maps of end game and scaling functions that MaterialInfoTable
-/// will query for each key. The maps are constant, and are populated only
-/// at construction. Being per thread avoids to use locks to access them.
+/// EndgameFunctions member definitions. This class is used to store the maps
+/// of end game and scaling functions that MaterialInfoTable will query for 
+/// each key. The maps are constant and are populated only at construction,
+/// but are per-thread instead of globals to avoid expensive locks.
 
 EndgameFunctions::EndgameFunctions() {
 
@@ -343,22 +334,18 @@ void EndgameFunctions::add(Key k, Color c, ScalingFunction* f) {
   ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
 }
 
-EndgameEvaluationFunction* EndgameFunctions::getEEF(Key key) {
+EndgameEvaluationFunction* EndgameFunctions::getEEF(Key key) const {
 
-  EndgameEvaluationFunction* f = NULL;
-  std::map<Key, EndgameEvaluationFunction*>::iterator it(EEFmap.find(key));
-  if (it != EEFmap.end())
-      f = it->second;
-
-  return f;
+  std::map<Key, EndgameEvaluationFunction*>::const_iterator it(EEFmap.find(key));
+  return (it != EEFmap.end() ? it->second : NULL);
 }
 
-ScalingInfo EndgameFunctions::getESF(Key key) {
+ScalingFunction* EndgameFunctions::getESF(Key key, Color* c) const {
 
-  ScalingInfo si = {WHITE, NULL};
-  std::map<Key, ScalingInfo>::iterator it(ESFmap.find(key));
-  if (it != ESFmap.end())
-      si = it->second;
+  std::map<Key, ScalingInfo>::const_iterator it(ESFmap.find(key));
+  if (it == ESFmap.end())
+      return NULL;
 
-  return si;
+  *c = it->second.col;
+  return it->second.fun;
 }
