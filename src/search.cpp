@@ -894,12 +894,8 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
-    EvalInfo ei;
-
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    Value oldAlpha = alpha;
-
     if (AbortSearch || thread_should_stop(threadID))
         return Value(0);
 
@@ -911,19 +907,21 @@ namespace {
     if (pos.is_draw())
         return VALUE_DRAW;
 
+    EvalInfo ei;
+
     if (ply >= PLY_MAX - 1)
         return evaluate(pos, ei, threadID);
 
     // Mate distance pruning
+    Value oldAlpha = alpha;
     alpha = Max(value_mated_in(ply), alpha);
     beta = Min(value_mate_in(ply+1), beta);
     if (alpha >= beta)
         return alpha;
 
-    // Transposition table lookup.  At PV nodes, we don't use the TT for
+    // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
     const TTEntry* tte = TT.retrieve(pos);
-
     Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Go with internal iterative deepening if we don't have a TT move
@@ -934,7 +932,7 @@ namespace {
     }
 
     // Initialize a MovePicker object for the current position, and prepare
-    // to search all moves:
+    // to search all moves
     MovePicker mp = MovePicker(pos, true, ttMove, ss[ply].mateKiller,
                                ss[ply].killer1, ss[ply].killer2, depth);
 
@@ -942,6 +940,7 @@ namespace {
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
+    bool isCheck = pos.is_check();
     bool mateThreat =   MateThreatExtension[1] > Depth(0)
                      && pos.has_mate_threat(opposite_color(pos.side_to_move()));
 
@@ -953,15 +952,19 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool singleReply = (pos.is_check() && mp.number_of_moves() == 1);
+      bool singleReply = (isCheck && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
       bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
-      ss[ply].currentMoveCaptureValue = move_is_ep(move) ?
-        PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
+      if (moveIsCapture)
+          ss[ply].currentMoveCaptureValue =  pos.midgame_value_of_piece_on(move_to(move));
+      else if (move_is_ep(move))
+          ss[ply].currentMoveCaptureValue =  PawnValueMidgame;
+      else
+          ss[ply].currentMoveCaptureValue =  Value(0);
 
       // Decide the new search depth
       Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat);
@@ -1051,7 +1054,7 @@ namespace {
     // All legal moves have been searched.  A special case: If there were
     // no legal moves, it must be mate or stalemate:
     if (moveCount == 0)
-        return (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
+        return (isCheck ? value_mated_in(ply) : VALUE_DRAW);
 
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
@@ -1118,7 +1121,6 @@ namespace {
 
     // Transposition table lookup
     const TTEntry* tte = TT.retrieve(pos);
-
     Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
@@ -1129,10 +1131,11 @@ namespace {
 
     Value approximateEval = quick_evaluate(pos);
     bool mateThreat = false;
+    bool isCheck = pos.is_check();
 
     // Null move search
     if (    allowNullmove
-        && !pos.is_check()
+        && !isCheck
         &&  ok_to_do_nullmove(pos)
         &&  approximateEval >= beta - NullMoveMargin)
     {
@@ -1196,7 +1199,6 @@ namespace {
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     Value futilityValue = VALUE_NONE;
-    bool isCheck = pos.is_check();
     bool useFutilityPruning =   UseFutilityPruning
                              && depth < SelectiveDepth
                              && !isCheck;
@@ -1302,7 +1304,7 @@ namespace {
     }
 
     // All legal moves have been searched.  A special case: If there were
-    // no legal moves, it must be mate or stalemate:
+    // no legal moves, it must be mate or stalemate.
     if (moveCount == 0)
         return (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
@@ -1361,7 +1363,7 @@ namespace {
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
         return value_from_tt(tte->value(), ply);
 
-    // Evaluate the position statically:
+    // Evaluate the position statically
     Value staticValue = evaluate(pos, ei, threadID);
 
     if (ply == PLY_MAX - 1)
