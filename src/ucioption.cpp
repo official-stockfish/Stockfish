@@ -127,7 +127,7 @@ namespace {
     o.push_back(Option("Futility Margin 2", 300, 0, 1000));
     o.push_back(Option("Maximum Razoring Depth", 3, 0, 4));
     o.push_back(Option("Razoring Margin", 300, 150, 600));
-    o.push_back(Option("LSN filtering", true));
+    o.push_back(Option("LSN filtering", false));
     o.push_back(Option("LSN Time Margin (sec)", 4, 1, 10));
     o.push_back(Option("LSN Value Margin", 200, 100, 600));
     o.push_back(Option("Randomness", 0, 0, 10));
