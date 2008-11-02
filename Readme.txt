@@ -1,9 +1,9 @@
 1. Introduction
 ---------------
 
-Stockfish is a free UCI chess engine derived from Glaurung. It is not
-a complete chess program, but requires some UCI compatible GUI (like
-XBoard with PolyGlot, eboard, Jos�, Arena, Sigma Chess, Shredder,
+Stockfish is a free UCI chess engine derived from Glaurung 2.1. It is
+not a complete chess program, but requires some UCI compatible GUI
+(like XBoard with PolyGlot, eboard, Jos�, Arena, Sigma Chess, Shredder,
 Chess Partner, or Fritz) in order to be used comfortably.  Read the
 documentation for your GUI of choice for information about how to use
 Stockfish with your GUI.
@@ -20,7 +20,7 @@ cores on your computer.
 2. Files
 --------
 
-This distribution of Glaurung consists of the following files:
+This distribution of Stockfish consists of the following files:
 
   * Readme.txt, the file you are currently reading.
 
@@ -28,8 +28,8 @@ This distribution of Glaurung consists of the following files:
     License.
 
   * src/, a subdirectory containing the full source code, including a
-    Makefile that can be used to compile Glaurung on Unix-like
-    systems.  For further information about how to compile Glaurung
+    Makefile that can be used to compile Stockfish on Unix-like
+    systems.  For further information about how to compile Stockfish
     yourself, read section 4 below.
 
   * polyglot.ini, for using Stockfish with Fabien Letouzey's PolyGlot

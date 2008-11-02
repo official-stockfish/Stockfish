@@ -960,11 +960,11 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       if (moveIsCapture)
-          ss[ply].currentMoveCaptureValue =  pos.midgame_value_of_piece_on(move_to(move));
+          ss[ply].currentMoveCaptureValue = pos.midgame_value_of_piece_on(move_to(move));
       else if (move_is_ep(move))
-          ss[ply].currentMoveCaptureValue =  PawnValueMidgame;
+          ss[ply].currentMoveCaptureValue = PawnValueMidgame;
       else
-          ss[ply].currentMoveCaptureValue =  Value(0);
+          ss[ply].currentMoveCaptureValue = Value(0);
 
       // Decide the new search depth
       Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat);
