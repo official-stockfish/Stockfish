@@ -253,19 +253,24 @@ void MovePicker::score_noncaptures() {
 
 void MovePicker::score_evasions() {
 
-  for (int i = 0; i < numOfMoves; i++)
-  {
-      Move m = moves[i].move;
-      if (m == ttMove)
-          moves[i].score = 2*HistoryMax;
-      else if (!pos.square_is_empty(move_to(m)))
-      {
-          int seeScore = pos.see(m);
-          moves[i].score = (seeScore >= 0)? seeScore + HistoryMax : seeScore;
-      } else
-          moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), m);
+  Move m;
+  int hs;
+
+  // Use MVV/LVA ordering
+   for (int i = 0; i < numOfMoves; i++)
+   {
+      m = moves[i].move;
+
+       if (m == ttMove)
+          hs = 2*HistoryMax;
+       else if (!pos.square_is_empty(move_to(m)))
+          hs = int(pos.midgame_value_of_piece_on(move_to(m)))
+              -int(pos.type_of_piece_on(move_from(m))) + HistoryMax;
+      else
+          hs = H.move_ordering_score(pos.piece_on(move_from(m)), m);
+
+      moves[i].score = hs;
   }
-  // FIXME try psqt also here
 }
 
 void MovePicker::score_qcaptures() {
