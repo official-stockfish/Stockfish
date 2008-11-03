@@ -144,9 +144,8 @@ const TTEntry* TranspositionTable::retrieve(const Position &pos) const {
 
   TTEntry *tte = first_entry(pos);
 
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 4; i++, tte++)
   {
-      tte += i;
       if (tte->key() == pos.get_key())
           return tte;
   }
