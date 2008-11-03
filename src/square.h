@@ -25,6 +25,7 @@
 //// Includes
 ////
 
+#include <cstdlib> // for abs()
 #include <string>
 
 #include "color.h"

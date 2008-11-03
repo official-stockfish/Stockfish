@@ -23,6 +23,7 @@
 ////
 
 #include <cassert>
+#include <cstring>
 #include <map>
 
 #include "material.h"

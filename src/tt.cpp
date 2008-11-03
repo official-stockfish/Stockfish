@@ -24,6 +24,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstring>
 
 #include "tt.h"
 
