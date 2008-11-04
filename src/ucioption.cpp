@@ -176,7 +176,7 @@ namespace {
   template<typename T>
   T get_option_value(const std::string& optionName) {
 
-      T ret;
+      T ret = T();
       Options::iterator it = option_with_name(optionName);
 
       if (it != options.end())
