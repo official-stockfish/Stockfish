@@ -144,7 +144,7 @@ namespace {
   bool UseFutilityPruning = true;
 
   // Margins for futility pruning in the quiescence search, at frontier
-  // nodes, and at pre-frontier nodes:
+  // nodes, and at pre-frontier nodes
   Value FutilityMargin0 = Value(0x80);
   Value FutilityMargin1 = Value(0x100);
   Value FutilityMargin2 = Value(0x300);
@@ -167,21 +167,22 @@ namespace {
   Depth PawnEndgameExtension[2] = {OnePly, OnePly};
   Depth MateThreatExtension[2] = {Depth(0), Depth(0)};
 
-  // Search depth at iteration 1:
+  // Search depth at iteration 1
   const Depth InitialDepth = OnePly /*+ OnePly/2*/;
 
   // Node counters
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
 
-  // Iteration counter:
+  // Iteration counter
   int Iteration;
+  bool LastIterations;
 
   // Scores and number of times the best move changed for each iteration:
   Value ValueByIteration[PLY_MAX_PLUS_2];
   int BestMoveChangesByIteration[PLY_MAX_PLUS_2];
 
-  // MultiPV mode:
+  // MultiPV mode
   int MultiPV = 1;
 
   // Time managment variables
@@ -617,6 +618,7 @@ namespace {
     ValueByIteration[0] = Value(0);
     ValueByIteration[1] = rml.get_move_score(0);
     Iteration = 1;
+    LastIterations = false;
 
     EasyMove = rml.scan_for_easy_move();
 
@@ -674,6 +676,9 @@ namespace {
             // If we need some more and we are in time advantage take it
             if (ExtraSearchTime > 0 && TimeAdvantage > 2 * MaxSearchTime)
                 ExtraSearchTime += MaxSearchTime / 2;
+
+            // Try to guess if the current iteration is the last one or the last two
+            LastIterations = (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*58) / 128);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration.  We probably don't have enough time to search the first
