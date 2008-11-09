@@ -1148,7 +1148,8 @@ namespace {
 
         UndoInfo u;
         pos.do_null_move(u);
-        Value nullValue = -search(pos, ss, -(beta-1), depth-4*OnePly, ply+1, false, threadID);
+        int R = (depth > 7 ? 4 : 3);
+        Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
         pos.undo_null_move(u);
 
         if (nullValue >= beta)
