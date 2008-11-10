@@ -124,12 +124,14 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
         *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
         return;
     }
-    if (   i == 0  // already is (replace == tte+i), common case
-        || replace->generation() < (tte+i)->generation())
+    if (i == 0)  // replace would be a no-op in this common case
         continue;
 
-    if (    replace->generation() > (tte+i)->generation()
-        || (tte+i)->depth() < replace->depth())
+    int c1 = (replace->generation() == generation ?  2 : 0);
+    int c2 = ((tte+i)->generation() == generation ? -2 : 0);
+    int c3 = ((tte+i)->depth() < replace->depth() ?  1 : 0);
+
+    if (c1 + c2 + c3 > 0)
         replace = tte+i;
   }
   *replace = TTEntry(pos.get_key(), v, type, d, m, generation);
