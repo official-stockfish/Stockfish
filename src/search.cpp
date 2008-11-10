@@ -2174,8 +2174,11 @@ namespace {
     H.success(pos.piece_on(move_from(m)), m, depth);
 
     for (int i = 0; i < moveCount - 1; i++)
-        if (ok_to_history(pos, movesSearched[i]) && m != movesSearched[i])
+    {
+        assert(m != movesSearched[i]);
+        if (ok_to_history(pos, movesSearched[i]))
             H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
+    }
   }
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
