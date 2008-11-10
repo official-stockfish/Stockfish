@@ -2155,13 +2155,11 @@ namespace {
 
 
   // ok_to_history() returns true if a move m can be stored
-  // in history. Should be a non capturing move.
+  // in history. Should be a non capturing move nor a promotion.
 
   bool ok_to_history(const Position& pos, Move m) {
 
-    return    pos.square_is_empty(move_to(m))
-          && !move_promotion(m)
-          && !move_is_ep(m);
+    return !pos.move_is_capture(m) && !move_promotion(m);
   }
 
 
