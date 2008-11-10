@@ -108,31 +108,31 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
   TTEntry *tte, *replace;
 
   tte = replace = first_entry(pos);
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 4; i++, tte++)
   {
-    if (!(tte+i)->key()) // still empty
+    if (!tte->key()) // still empty
     {
-        *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
+        *tte = TTEntry(pos.get_key(), v, type, d, m, generation);
         writes++;
         return;
     }
-    if ((tte+i)->key() == pos.get_key()) // overwrite old
+    else if (tte->key() == pos.get_key()) // overwrite old
     {
         if (m == MOVE_NONE)
-            m = (tte+i)->move();
+            m = tte->move();
 
-        *(tte+i) = TTEntry(pos.get_key(), v, type, d, m, generation);
+        *tte = TTEntry(pos.get_key(), v, type, d, m, generation);
         return;
     }
-    if (i == 0)  // replace would be a no-op in this common case
+    else if (i == 0)  // replace would be a no-op in this common case
         continue;
 
     int c1 = (replace->generation() == generation ?  2 : 0);
-    int c2 = ((tte+i)->generation() == generation ? -2 : 0);
-    int c3 = ((tte+i)->depth() < replace->depth() ?  1 : 0);
+    int c2 = (tte->generation() == generation ? -2 : 0);
+    int c3 = (tte->depth() < replace->depth() ?  1 : 0);
 
     if (c1 + c2 + c3 > 0)
-        replace = tte+i;
+        replace = tte;
   }
   *replace = TTEntry(pos.get_key(), v, type, d, m, generation);
   writes++;
