@@ -1469,6 +1469,18 @@ namespace {
     // Update transposition table
     TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_EXACT);
 
+    // Update killers only for good check moves
+    Move m = ss[ply].currentMove;
+    if (alpha >= beta && ok_to_history(pos, m)) // Only non capture moves are considered
+    {
+        // Wrong to update history when depth is <= 0
+
+        if (m != ss[ply].killer1)
+        {
+            ss[ply].killer2 = ss[ply].killer1;
+            ss[ply].killer1 = m;
+        }
+    }
     return bestValue;
   }
 
