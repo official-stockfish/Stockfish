@@ -1394,6 +1394,8 @@ namespace {
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     bool isCheck = pos.is_check();
+    bool pvNode = (beta - alpha != 1);
+    bool enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
@@ -1414,8 +1416,8 @@ namespace {
           && !moveIsCheck
           && !move_promotion(move)
           && !moveIsPassedPawnPush
-          &&  beta - alpha == 1
-          &&  pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame)
+          && !pvNode
+          &&  enoughMaterial)
       {
           Value futilityValue = staticValue
                               + Max(pos.midgame_value_of_piece_on(move_to(move)),
@@ -1431,9 +1433,10 @@ namespace {
           }
       }
 
-      // Don't search captures and checks with negative SEE values.
+      // Don't search captures and checks with negative SEE values
       if (   !isCheck
           && !move_promotion(move)
+          && !pvNode
           && (pos.midgame_value_of_piece_on(move_from(move)) >
               pos.midgame_value_of_piece_on(move_to(move)))
           &&  pos.see(move) < 0)
