@@ -372,7 +372,7 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          bestIndex = find_best_index();
+          bestIndex = find_best_index(&capSquares, capSqValues);
 
           if (bestIndex != -1) // Found a good capture
           {
