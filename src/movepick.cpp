@@ -212,6 +212,8 @@ void MovePicker::score_captures() {
   // where it is possible to recapture with the hanging piece). Exchanging
   // big pieces before capturing a hanging piece probably helps to reduce
   // the subtree size.
+  // While scoring captures it moves all captures with negative SEE values
+  // to the badCaptures[] array.
   Move m;
   int seeValue;
 
@@ -226,8 +228,15 @@ void MovePicker::score_captures() {
           else
               moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
                               -int(pos.type_of_piece_on(move_from(m)));
-      } else
+      }
+      else
+      {
+          // Losing capture, move it to the badCaptures[] array
+          assert(numOfBadCaptures < 63);
           moves[i].score = seeValue;
+          badCaptures[numOfBadCaptures++] = moves[i];
+          moves[i--] = moves[--numOfMoves];
+      }
   }
 }
 
@@ -350,9 +359,6 @@ int MovePicker::find_best_index(Bitboard* squares, int values[]) {
 /// from a list of generated moves (moves[] or badCaptures[], depending on
 /// the current move generation phase).  It takes care not to return the
 /// transposition table move if that has already been serched previously.
-/// While picking captures in the PH_GOOD_CAPTURES phase (i.e. while picking
-/// non-losing captures in the main search), it moves all captures with
-/// negative SEE values to the badCaptures[] array.
 
 Move MovePicker::pick_move_from_list() {
 
@@ -366,23 +372,8 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          int bestScore = -10000000;
-          bestIndex = -1;
-          for (int i = movesPicked; i < numOfMoves; i++)
-          {
-              if (moves[i].score < 0)
-              {
-                  // Losing capture, move it to the badCaptures[] array
-                  assert(numOfBadCaptures < 63);
-                  badCaptures[numOfBadCaptures++] = moves[i];
-                  moves[i--] = moves[--numOfMoves];
-              }
-              else if (moves[i].score > bestScore)
-              {
-                  bestIndex = i;
-                  bestScore = moves[i].score;
-              }
-          }
+          bestIndex = find_best_index();
+
           if (bestIndex != -1) // Found a good capture
           {
               move = moves[bestIndex].move;
