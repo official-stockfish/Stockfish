@@ -134,6 +134,7 @@ Move MovePicker::get_next_move() {
     case PH_GOOD_CAPTURES:
         numOfMoves = generate_captures(pos, moves);
         score_captures();
+        capSquares = EmptyBoardBB;
         movesPicked = 0;
         break;
 
@@ -289,7 +290,10 @@ void MovePicker::score_qcaptures() {
 
 
 /// find_best_index() loops across the moves and returns index of
-/// the highest scored one.
+/// the highest scored one. There is also a second version that
+/// lowers the priority of moves that attack the same square,
+/// so that if the best move that attack a square fails the next
+/// move picked attacks a different square if any, not the same one.
 
 int MovePicker::find_best_index() {
 
@@ -301,6 +305,43 @@ int MovePicker::find_best_index() {
           bestIndex = i;
           bestScore = moves[i].score;
       }
+  return bestIndex;
+}
+
+int MovePicker::find_best_index(Bitboard* squares, int values[]) {
+
+  int hs;
+  Move m;
+  Square to;
+  int bestScore = -10000000, bestIndex = -1;
+
+  for (int i = movesPicked; i < numOfMoves; i++)
+  {
+      m = moves[i].move;
+      to = move_to(m);
+      
+      if (!bit_is_set(*squares, to))
+      {
+          // Init at first use
+          set_bit(squares, to);
+          values[to] = 0;
+      }
+
+      hs = moves[i].score - values[to];
+      if (hs > bestScore)
+      {
+          bestIndex = i;
+          bestScore = hs;
+      }
+  }
+
+  if (bestIndex != -1)
+  {
+      // Raise value of the picked square, so next attack
+      // to the same square will get low priority.
+      to = move_to(moves[bestIndex].move);
+      values[to] += 0xB00;
+  }
   return bestIndex;
 }
 
