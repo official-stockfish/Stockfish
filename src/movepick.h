@@ -85,8 +85,6 @@ private:
   Move ttMove, mateKiller, killer1, killer2;
   Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];
-  Bitboard capSquares;
-  int capSqValues[64];
   bool pvNode;
   Depth depth;
   int phaseIndex;

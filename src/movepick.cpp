@@ -145,7 +145,6 @@ Move MovePicker::get_next_move() {
     case PH_GOOD_CAPTURES:
         numOfMoves = generate_captures(pos, moves);
         score_captures();
-        capSquares = EmptyBoardBB;
         movesPicked = 0;
         break;
 
@@ -383,7 +382,7 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          bestIndex = find_best_index(&capSquares, capSqValues);
+          bestIndex = find_best_index();
 
           if (bestIndex != -1) // Found a good capture
           {
