@@ -251,6 +251,7 @@ namespace {
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool ok_to_history(const Position &pos, Move m);
   void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
+  void update_killers(Move m, SearchStack& ss);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -1079,11 +1080,7 @@ namespace {
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
             update_history(pos, m, depth, movesSearched, moveCount);
-            if (m != ss[ply].killers[0])
-            {
-                ss[ply].killers[1] = ss[ply].killers[0];
-                ss[ply].killers[0] = m;
-            }
+            update_killers(m, ss[ply]); 
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
     }
@@ -1329,11 +1326,7 @@ namespace {
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
             update_history(pos, m, depth, movesSearched, moveCount);
-            if (m != ss[ply].killers[0])
-            {
-                ss[ply].killers[1] = ss[ply].killers[0];
-                ss[ply].killers[0] = m;
-            }
+            update_killers(m, ss[ply]);
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
     }
@@ -1478,12 +1471,7 @@ namespace {
     if (alpha >= beta && ok_to_history(pos, m)) // Only non capture moves are considered
     {
         // Wrong to update history when depth is <= 0
-
-        if (m != ss[ply].killers[0])
-        {
-            ss[ply].killers[1] = ss[ply].killers[0];
-            ss[ply].killers[0] = m;
-        }
+        update_killers(m, ss[ply]);
     }
     return bestValue;
   }
@@ -1939,10 +1927,11 @@ namespace {
 
     ss[ply].pv[ply] = ss[ply].pv[ply+1] = ss[ply].currentMove = MOVE_NONE;
     ss[ply+2].mateKiller = MOVE_NONE;
-    ss[ply+2].killers[0] = ss[ply+2].killers[1] = MOVE_NONE;
     ss[ply].threatMove = MOVE_NONE;
     ss[ply].reduction = Depth(0);
     ss[ply].currentMoveCaptureValue = Value(0);
+    for (int j = 0; j < KILLER_MAX; j++)
+        ss[ply+2].killers[j] = MOVE_NONE;
 
     if(Threads[threadID].printCurrentLine)
       print_current_line(ss, ply, threadID);
@@ -2204,6 +2193,21 @@ namespace {
         if (ok_to_history(pos, movesSearched[i]))
             H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
     }
+  }
+
+
+  // update_killers() add a good move that produced a beta-cutoff
+  // among the killer moves of that ply.
+
+  void update_killers(Move m, SearchStack& ss) {
+
+    if (m == ss.killers[0])
+        return;
+
+    for (int i = KILLER_MAX - 1; i > 0; i--)
+        ss.killers[i] = ss.killers[i - 1]; 
+ 
+    ss.killers[0] = m;    
   }
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
