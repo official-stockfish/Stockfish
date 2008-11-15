@@ -41,6 +41,7 @@
 
 const int PLY_MAX = 100;
 const int PLY_MAX_PLUS_2 = 102;
+const int KILLER_MAX = 4;
 
 
 ////
@@ -56,8 +57,9 @@ struct SearchStack {
   Move pv[PLY_MAX];
   Move currentMove;
   Value currentMoveCaptureValue;
-  Move mateKiller, killer1, killer2;
+  Move mateKiller;
   Move threatMove;
+  Move killers[KILLER_MAX];
   Depth reduction;
 };
 
@@ -66,10 +68,9 @@ struct SearchStack {
 //// Global variables
 ////
 
+extern SearchStack EmptySearchStack;
 extern TranspositionTable TT;
-
 extern int ActiveThreads;
-
 extern Lock SMPLock;
 
 // Perhaps better to make H local, and pass as parameter to MovePicker?

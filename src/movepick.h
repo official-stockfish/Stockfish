@@ -28,6 +28,7 @@
 #include "depth.h"
 #include "lock.h"
 #include "position.h"
+#include "search.h"
 
 
 ////
@@ -62,7 +63,7 @@ public:
     PH_STOP
   };
 
-  MovePicker(const Position& p, bool pvnode, Move ttm, Move mk, Move k1, Move k2, Depth d, EvalInfo* ei = NULL);
+  MovePicker(const Position& p, bool pvnode, Move ttm, const SearchStack& ss, Depth d, EvalInfo* ei = NULL);
   Move get_next_move();
   Move get_next_move(Lock &lock);
   int number_of_moves() const;

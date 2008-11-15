@@ -154,8 +154,7 @@ const std::string move_to_san(Position &pos, Move m) {
 Move move_from_san(Position &pos, const std::string &movestr) {
   assert(pos.is_ok());
 
-  MovePicker mp = MovePicker(pos, false, MOVE_NONE, MOVE_NONE, MOVE_NONE,
-                             MOVE_NONE, OnePly);
+  MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
 
   // Castling moves
   if(movestr == "O-O-O") {
@@ -350,8 +349,7 @@ namespace {
     if(type_of_piece(pc) == KING)
       return AMBIGUITY_NONE;
 
-    MovePicker mp = MovePicker(pos, false, MOVE_NONE, MOVE_NONE, MOVE_NONE,
-                               MOVE_NONE, OnePly);
+    MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
     Move mv, moveList[8];
     int i, j, n;
 

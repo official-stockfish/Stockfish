@@ -1914,8 +1914,7 @@ bool Position::is_mate() {
 
   if (is_check())
   {
-      MovePicker mp = MovePicker(*this, false, MOVE_NONE, MOVE_NONE,
-                                 MOVE_NONE, MOVE_NONE, Depth(0));
+      MovePicker mp = MovePicker(*this, false, MOVE_NONE, EmptySearchStack, Depth(0));
       return mp.get_next_move() == MOVE_NONE;
   }
   return false;

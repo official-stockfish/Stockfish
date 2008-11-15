@@ -66,12 +66,12 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
-                       Move mk, Move k1, Move k2, Depth d, EvalInfo* ei) : pos(p) {
+                       const SearchStack& ss, Depth d, EvalInfo* ei) : pos(p) {
   pvNode = pv;
   ttMove = ttm;
-  mateKiller = (mk == ttm)? MOVE_NONE : mk;
-  killer1 = k1;
-  killer2 = k2;
+  mateKiller = (ss.mateKiller == ttm)? MOVE_NONE : ss.mateKiller;
+  killer1 = ss.killers[0];
+  killer2 = ss.killers[0];
   depth = d;
   movesPicked = 0;
   numOfMoves = 0;

@@ -238,6 +238,7 @@ namespace {
                 Depth depth, int ply, int threadID);
   void sp_search(SplitPoint *sp, int threadID);
   void sp_search_pv(SplitPoint *sp, int threadID);
+  void init_search_stack(SearchStack ss);
   void init_search_stack(SearchStack ss[]);
   void init_node(const Position &pos, SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
@@ -297,6 +298,9 @@ int ActiveThreads = 1;
 Lock IOLock;
 
 History H;  // Should be made local?
+
+// The empty search stack
+SearchStack EmptySearchStack;
 
 
 ////
@@ -562,6 +566,9 @@ void init_threads() {
       // Wait until the thread has finished launching:
       while (!Threads[i].running);
   }
+
+  // Init also the empty search stack
+  init_search_stack(EmptySearchStack);
 }
 
 
@@ -938,8 +945,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    MovePicker mp = MovePicker(pos, true, ttMove, ss[ply].mateKiller,
-                               ss[ply].killer1, ss[ply].killer2, depth);
+    MovePicker mp = MovePicker(pos, true, ttMove, ss[ply], depth);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -992,8 +998,8 @@ namespace {
             && !move_promotion(move)
             && !moveIsPassedPawnPush
             && !move_is_castle(move)
-            &&  move != ss[ply].killer1
-            &&  move != ss[ply].killer2)
+            &&  move != ss[ply].killers[0]
+            &&  move != ss[ply].killers[1])
         {
             ss[ply].reduction = OnePly;
             value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true, threadID);
@@ -1075,10 +1081,10 @@ namespace {
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
             update_history(pos, m, depth, movesSearched, moveCount);
-            if (m != ss[ply].killer1)
+            if (m != ss[ply].killers[0])
             {
-                ss[ply].killer2 = ss[ply].killer1;
-                ss[ply].killer1 = m;
+                ss[ply].killers[1] = ss[ply].killers[0];
+                ss[ply].killers[0] = m;
             }
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
@@ -1197,8 +1203,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves:
-    MovePicker mp = MovePicker(pos, false, ttMove, ss[ply].mateKiller,
-                               ss[ply].killer1, ss[ply].killer2, depth);
+    MovePicker mp = MovePicker(pos, false, ttMove, ss[ply], depth);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1267,8 +1272,8 @@ namespace {
           && !move_promotion(move)
           && !moveIsPassedPawnPush
           && !move_is_castle(move)
-          &&  move != ss[ply].killer1
-          &&  move != ss[ply].killer2)
+          &&  move != ss[ply].killers[0]
+          &&  move != ss[ply].killers[1])
       {
           ss[ply].reduction = OnePly;
           value = -search(pos, ss, -(beta-1), newDepth-OnePly, ply+1, true, threadID);
@@ -1327,10 +1332,10 @@ namespace {
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
             update_history(pos, m, depth, movesSearched, moveCount);
-            if (m != ss[ply].killer1)
+            if (m != ss[ply].killers[0])
             {
-                ss[ply].killer2 = ss[ply].killer1;
-                ss[ply].killer1 = m;
+                ss[ply].killers[1] = ss[ply].killers[0];
+                ss[ply].killers[0] = m;
             }
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
@@ -1388,8 +1393,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, false, MOVE_NONE, MOVE_NONE, MOVE_NONE,
-                               MOVE_NONE, depth, &ei);
+    MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, depth, &ei);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();
@@ -1478,10 +1482,10 @@ namespace {
     {
         // Wrong to update history when depth is <= 0
 
-        if (m != ss[ply].killer1)
+        if (m != ss[ply].killers[0])
         {
-            ss[ply].killer2 = ss[ply].killer1;
-            ss[ply].killer1 = m;
+            ss[ply].killers[1] = ss[ply].killers[0];
+            ss[ply].killers[0] = m;
         }
     }
     return bestValue;
@@ -1552,8 +1556,8 @@ namespace {
           && !moveIsPassedPawnPush
           && !move_promotion(move)
           && !move_is_castle(move)
-          &&  move != ss[sp->ply].killer1
-          &&  move != ss[sp->ply].killer2)
+          &&  move != ss[sp->ply].killers[0]
+          &&  move != ss[sp->ply].killers[1])
       {
           ss[sp->ply].reduction = OnePly;
           value = -search(pos, ss, -(sp->beta-1), newDepth - OnePly, sp->ply+1, true, threadID);
@@ -1660,8 +1664,8 @@ namespace {
           && !moveIsPassedPawnPush
           && !move_promotion(move)
           && !move_is_castle(move)
-          &&  move != ss[sp->ply].killer1
-          &&  move != ss[sp->ply].killer2)
+          &&  move != ss[sp->ply].killers[0]
+          &&  move != ss[sp->ply].killers[1])
       {
           ss[sp->ply].reduction = OnePly;
           value = -search(pos, ss, -sp->alpha, newDepth - OnePly, sp->ply+1, true, threadID);
@@ -1892,17 +1896,28 @@ namespace {
 
   // init_search_stack() initializes a search stack at the beginning of a
   // new search from the root.
+  void init_search_stack(SearchStack ss) {
+
+    ss.pv[0] = MOVE_NONE;
+    ss.pv[1] = MOVE_NONE;
+    ss.currentMove = MOVE_NONE;
+    ss.threatMove = MOVE_NONE;
+    ss.reduction = Depth(0);
+    for (int j = 0; j < KILLER_MAX; j++)
+        ss.killers[j] = MOVE_NONE;    
+  }
 
   void init_search_stack(SearchStack ss[]) {
-    for(int i = 0; i < 3; i++) {
-      ss[i].pv[i] = MOVE_NONE;
-      ss[i].pv[i+1] = MOVE_NONE;
-      ss[i].currentMove = MOVE_NONE;
-      ss[i].mateKiller = MOVE_NONE;
-      ss[i].killer1 = MOVE_NONE;
-      ss[i].killer2 = MOVE_NONE;
-      ss[i].threatMove = MOVE_NONE;
-      ss[i].reduction = Depth(0);
+
+    for (int i = 0; i < 3; i++)
+    {
+        ss[i].pv[i] = MOVE_NONE;
+        ss[i].pv[i+1] = MOVE_NONE;
+        ss[i].currentMove = MOVE_NONE;
+        ss[i].threatMove = MOVE_NONE;
+        ss[i].reduction = Depth(0);
+        for (int j = 0; j < KILLER_MAX; j++)
+            ss[i].killers[j] = MOVE_NONE;
     }
   }
 
@@ -1929,7 +1944,7 @@ namespace {
 
     ss[ply].pv[ply] = ss[ply].pv[ply+1] = ss[ply].currentMove = MOVE_NONE;
     ss[ply+2].mateKiller = MOVE_NONE;
-    ss[ply+2].killer1 = ss[ply+2].killer2 = MOVE_NONE;
+    ss[ply+2].killers[0] = ss[ply+2].killers[1] = MOVE_NONE;
     ss[ply].threatMove = MOVE_NONE;
     ss[ply].reduction = Depth(0);
     ss[ply].currentMoveCaptureValue = Value(0);
