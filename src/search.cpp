@@ -1389,7 +1389,7 @@ namespace {
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
     MovePicker mp = MovePicker(pos, false, MOVE_NONE, MOVE_NONE, MOVE_NONE,
-                               MOVE_NONE, depth);
+                               MOVE_NONE, depth, &ei);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();

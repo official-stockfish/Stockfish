@@ -174,13 +174,13 @@ public:
   // Number of pieces of each color and type
   int piece_count(Color c, PieceType pt) const;
 
-  // The en passant square:
+  // The en passant square
   Square ep_square() const;
 
   // Current king position for each color
   Square king_square(Color c) const;
 
-  // Castling rights.
+  // Castling rights
   bool can_castle_kingside(Color c) const;
   bool can_castle_queenside(Color c) const;
   bool can_castle(Color c) const;

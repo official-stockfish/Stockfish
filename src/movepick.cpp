@@ -26,6 +26,7 @@
 #include <cassert>
 
 #include "history.h"
+#include "evaluate.h"
 #include "movegen.h"
 #include "movepick.h"
 #include "search.h"
@@ -44,7 +45,9 @@ namespace {
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
+  int QsearchNoCapturesPhaseIndex;
   int QsearchWithoutChecksPhaseIndex;
+  int NoMovesPhaseIndex;
 
 }
 
@@ -62,9 +65,9 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, bool pvnode, Move ttm, Move mk,
-                       Move k1, Move k2, Depth d) : pos(p) {
-  pvNode = pvnode;
+MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
+                       Move mk, Move k1, Move k2, Depth d, EvalInfo* ei) : pos(p) {
+  pvNode = pv;
   ttMove = ttm;
   mateKiller = (mk == ttm)? MOVE_NONE : mk;
   killer1 = k1;
@@ -73,17 +76,25 @@ MovePicker::MovePicker(const Position& p, bool pvnode, Move ttm, Move mk,
   movesPicked = 0;
   numOfMoves = 0;
   numOfBadCaptures = 0;
-  dc = p.discovered_check_candidates(p.side_to_move());
+
+  // With EvalInfo we are able to know how many captures are possible before
+  // generating them. So avoid generating them in case we know are zero.
+  Color us = pos.side_to_move();
+  Color them = opposite_color(us);
+  bool noAttacks = ei && (ei->attackedBy[us][0] & pos.pieces_of_color(them)) == 0;
+  bool noCaptures = noAttacks && (pos.ep_square() == SQ_NONE) && !pos.has_pawn_on_7th(us);
 
   if (p.is_check())
-    phaseIndex = EvasionsPhaseIndex;
+      phaseIndex = EvasionsPhaseIndex;
   else if (depth > Depth(0))
-    phaseIndex = MainSearchPhaseIndex;
+      phaseIndex = MainSearchPhaseIndex;
   else if (depth == Depth(0))
-    phaseIndex = QsearchWithChecksPhaseIndex;
+      phaseIndex = (noCaptures ? QsearchNoCapturesPhaseIndex : QsearchWithChecksPhaseIndex);
   else
-    phaseIndex = QsearchWithoutChecksPhaseIndex;
+      phaseIndex = (noCaptures ? NoMovesPhaseIndex : QsearchWithoutChecksPhaseIndex);
 
+
+  dc = p.discovered_check_candidates(us);
   pinned = p.pinned_pieces(p.side_to_move());
 
   finished = false;
@@ -493,8 +504,9 @@ MovePicker::MovegenPhase MovePicker::current_move_type() const {
 
 /// MovePicker::init_phase_table() initializes the PhaseTable[],
 /// MainSearchPhaseIndex, EvasionPhaseIndex, QsearchWithChecksPhaseIndex
-/// and QsearchWithoutChecksPhaseIndex variables. It is only called once
-/// during program startup, and never again while the program is running.
+/// QsearchNoCapturesPhaseIndex, QsearchWithoutChecksPhaseIndex and
+/// NoMovesPhaseIndex variables. It is only called once during program
+/// startup, and never again while the program is running.
 
 void MovePicker::init_phase_table() {
 
@@ -523,8 +535,17 @@ void MovePicker::init_phase_table() {
   PhaseTable[i++] = PH_QCHECKS;
   PhaseTable[i++] = PH_STOP;
 
+  // Quiescence search with checks only and no captures
+  QsearchNoCapturesPhaseIndex = i - 1;
+  PhaseTable[i++] = PH_QCHECKS;
+  PhaseTable[i++] = PH_STOP;
+
   // Quiescence search without checks
   QsearchWithoutChecksPhaseIndex = i - 1;
   PhaseTable[i++] = PH_QCAPTURES;
+  PhaseTable[i++] = PH_STOP;
+
+  // Do not generate any move
+  NoMovesPhaseIndex = i - 1;
   PhaseTable[i++] = PH_STOP;
 }
