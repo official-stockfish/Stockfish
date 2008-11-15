@@ -128,7 +128,7 @@ public:
   // Text input/output
   void from_fen(const std::string &fen);
   const std::string to_fen() const;
-  void print() const;
+  void print(Move m = MOVE_NONE) const;
 
   // Copying
   void copy(const Position &pos);

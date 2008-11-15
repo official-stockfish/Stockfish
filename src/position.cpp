@@ -31,6 +31,7 @@
 #include "movepick.h"
 #include "position.h"
 #include "psqtab.h"
+#include "san.h"
 #include "ucioption.h"
 
 
@@ -263,28 +264,35 @@ const std::string Position::to_fen() const {
 
 
 /// Position::print() prints an ASCII representation of the position to
-/// the standard output.
+/// the standard output. If a move is given then also the san is print.
 
-void Position::print() const {
-  char pieceStrings[][8] =
-    {"| ? ", "| P ", "| N ", "| B ", "| R ", "| Q ", "| K ", "| ? ",
-     "| ? ", "|=P=", "|=N=", "|=B=", "|=R=", "|=Q=", "|=K="
-    };
+void Position::print(Move m) const {
 
-  for(Rank rank = RANK_8; rank >= RANK_1; rank--) {
-    std::cout << "+---+---+---+---+---+---+---+---+\n";
-    for(File file = FILE_A; file <= FILE_H; file++) {
-      Square sq = make_square(file, rank);
-      Piece piece = piece_on(sq);
-      if(piece == EMPTY)
-        std::cout << ((square_color(sq) == WHITE)? "|   " : "| . ");
-      else
-        std::cout << pieceStrings[piece];
-    }
-    std::cout << "|\n";
+  static const std::string pieceLetters = " PNBRQK  PNBRQK .";
+
+  std::cout << std::endl;
+  if (m != MOVE_NONE)
+  {
+      Position p(*this);
+      std::cout << "Move is: " << move_to_san(p, m) << std::endl;
   }
-  std::cout << "+---+---+---+---+---+---+---+---+\n";
-  std::cout << to_fen() << std::endl;
+  for (Rank rank = RANK_8; rank >= RANK_1; rank--)
+  {
+      std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
+      for (File file = FILE_A; file <= FILE_H; file++)
+      {
+          Square sq = make_square(file, rank);
+          Piece piece = piece_on(sq);
+          if (piece == EMPTY && square_color(sq) == WHITE)
+              piece = NO_PIECE;
+
+          char col = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
+          std::cout << '|' << col << pieceLetters[piece] << col;
+      }
+      std::cout << '|' << std::endl;
+  }
+  std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
+  std::cout << "Fen is: " << to_fen() << std::endl;
   std::cout << key << std::endl;
 }
 
