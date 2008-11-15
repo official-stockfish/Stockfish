@@ -78,11 +78,14 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   numOfBadCaptures = 0;
 
   // With EvalInfo we are able to know how many captures are possible before
-  // generating them. So avoid generating them in case we know are zero.
+  // generating them. So avoid generating in case we know are zero.
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
-  bool noAttacks = ei && (ei->attackedBy[us][0] & pos.pieces_of_color(them)) == 0;
-  bool noCaptures = noAttacks && (pos.ep_square() == SQ_NONE) && !pos.has_pawn_on_7th(us);
+  bool noCaptures =    ei
+                   && (ei->attackedBy[us][0] & pos.pieces_of_color(them)) == 0
+                   && !ei->mi->specialized_eval_exists()
+                   && (pos.ep_square() == SQ_NONE)
+                   && !pos.has_pawn_on_7th(us);
 
   if (p.is_check())
       phaseIndex = EvasionsPhaseIndex;
@@ -92,7 +95,6 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
       phaseIndex = (noCaptures ? QsearchNoCapturesPhaseIndex : QsearchWithChecksPhaseIndex);
   else
       phaseIndex = (noCaptures ? NoMovesPhaseIndex : QsearchWithoutChecksPhaseIndex);
-
 
   dc = p.discovered_check_candidates(us);
   pinned = p.pinned_pieces(p.side_to_move());
