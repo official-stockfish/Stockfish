@@ -243,7 +243,7 @@ const std::string Position::to_fen() const {
 
       fen += (rank > RANK_1 ? '/' : ' ');
   }
-  fen += (sideToMove == WHITE ? 'w' : 'b') + ' ';
+  fen += (sideToMove == WHITE ? "w " : "b ");
   if (castleRights != NO_CASTLES)
   {
     if (can_castle_kingside(WHITE))  fen += 'K';
@@ -291,9 +291,9 @@ void Position::print(Move m) const {
       }
       std::cout << '|' << std::endl;
   }
-  std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
-  std::cout << "Fen is: " << to_fen() << std::endl;
-  std::cout << key << std::endl;
+  std::cout << "+---+---+---+---+---+---+---+---+" << std::endl
+            << "Fen is: " << to_fen() << std::endl
+            << "Key is: " << key << std::endl;
 }
 
 
