@@ -244,14 +244,13 @@ namespace {
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack *pss, SearchStack ss[], int ply);
   bool connected_moves(const Position &pos, Move m1, Move m2);
-  Depth extension(const Position &pos, Move m, bool pvNode, bool check,
-                  bool singleReply, bool mateThreat);
+  bool move_is_killer(Move m, const SearchStack& ss);
+  Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat);
   bool ok_to_do_nullmove(const Position &pos);
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool ok_to_history(const Position &pos, Move m);
-  void update_history(const Position& pos, Move m, Depth depth,
-                      Move movesSearched[], int moveCount);
+  void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -998,8 +997,7 @@ namespace {
             && !move_promotion(move)
             && !moveIsPassedPawnPush
             && !move_is_castle(move)
-            &&  move != ss[ply].killers[0]
-            &&  move != ss[ply].killers[1])
+            && !move_is_killer(move, ss[ply]))
         {
             ss[ply].reduction = OnePly;
             value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true, threadID);
@@ -1272,8 +1270,7 @@ namespace {
           && !move_promotion(move)
           && !moveIsPassedPawnPush
           && !move_is_castle(move)
-          &&  move != ss[ply].killers[0]
-          &&  move != ss[ply].killers[1])
+          && !move_is_killer(move, ss[ply]))
       {
           ss[ply].reduction = OnePly;
           value = -search(pos, ss, -(beta-1), newDepth-OnePly, ply+1, true, threadID);
@@ -1556,8 +1553,7 @@ namespace {
           && !moveIsPassedPawnPush
           && !move_promotion(move)
           && !move_is_castle(move)
-          &&  move != ss[sp->ply].killers[0]
-          &&  move != ss[sp->ply].killers[1])
+          && !move_is_killer(move, ss[sp->ply]))
       {
           ss[sp->ply].reduction = OnePly;
           value = -search(pos, ss, -(sp->beta-1), newDepth - OnePly, sp->ply+1, true, threadID);
@@ -1664,8 +1660,7 @@ namespace {
           && !moveIsPassedPawnPush
           && !move_promotion(move)
           && !move_is_castle(move)
-          &&  move != ss[sp->ply].killers[0]
-          &&  move != ss[sp->ply].killers[1])
+          && !move_is_killer(move, ss[sp->ply]))
       {
           ss[sp->ply].reduction = OnePly;
           value = -search(pos, ss, -sp->alpha, newDepth - OnePly, sp->ply+1, true, threadID);
@@ -2047,6 +2042,20 @@ namespace {
     }
 
     return false;
+  }
+
+
+  // move_is_killer() checks if the given move is among the
+  // killer moves of that ply.
+
+  bool move_is_killer(Move m, const SearchStack& ss) {
+    
+      const Move* k = ss.killers;
+      for (int i = 0; i < KILLER_MAX; i++, k++)
+          if (*k == m)
+              return true;
+
+      return false;
   }
 
 
