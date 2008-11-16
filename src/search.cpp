@@ -1430,7 +1430,6 @@ namespace {
       // Don't search captures and checks with negative SEE values
       if (   !isCheck
           && !move_promotion(move)
-          && !pvNode
           && (pos.midgame_value_of_piece_on(move_from(move)) >
               pos.midgame_value_of_piece_on(move_to(move)))
           &&  pos.see(move) < 0)
