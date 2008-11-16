@@ -41,7 +41,7 @@
 
 const int PLY_MAX = 100;
 const int PLY_MAX_PLUS_2 = 102;
-const int KILLER_MAX = 4;
+const int KILLER_MAX = 2;
 
 
 ////
