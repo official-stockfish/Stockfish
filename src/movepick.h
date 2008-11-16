@@ -80,7 +80,7 @@ private:
   void score_qcaptures();
   Move pick_move_from_list();
   int find_best_index();
-  int MovePicker::find_best_index(Bitboard* squares, int values[]);
+  int find_best_index(Bitboard* squares, int values[]);
 
   const Position& pos;
   Move ttMove, mateKiller, killer1, killer2;

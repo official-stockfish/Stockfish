@@ -238,7 +238,7 @@ namespace {
                 Depth depth, int ply, int threadID);
   void sp_search(SplitPoint *sp, int threadID);
   void sp_search_pv(SplitPoint *sp, int threadID);
-  void init_search_stack(SearchStack ss);
+  void init_search_stack(SearchStack& ss);
   void init_search_stack(SearchStack ss[]);
   void init_node(const Position &pos, SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
@@ -430,7 +430,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   TimeAdvantage = myTime - oppTime;
 
   if (!movesToGo) // Sudden death time control
-  { 
+  {
       if (increment)
       {
           MaxSearchTime = myTime / 30 + myIncrement;
@@ -795,7 +795,7 @@ namespace {
 
             if (Problem && StopOnPonderhit)
                 StopOnPonderhit = false;
-        } 
+        }
         else
         {
             value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
@@ -1080,7 +1080,7 @@ namespace {
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
             update_history(pos, m, depth, movesSearched, moveCount);
-            update_killers(m, ss[ply]); 
+            update_killers(m, ss[ply]);
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
     }
@@ -1879,7 +1879,7 @@ namespace {
 
   // init_search_stack() initializes a search stack at the beginning of a
   // new search from the root.
-  void init_search_stack(SearchStack ss) {
+  void init_search_stack(SearchStack& ss) {
 
     ss.pv[0] = MOVE_NONE;
     ss.pv[1] = MOVE_NONE;
@@ -1887,7 +1887,7 @@ namespace {
     ss.threatMove = MOVE_NONE;
     ss.reduction = Depth(0);
     for (int j = 0; j < KILLER_MAX; j++)
-        ss.killers[j] = MOVE_NONE;    
+        ss.killers[j] = MOVE_NONE;
   }
 
   void init_search_stack(SearchStack ss[]) {
@@ -2038,7 +2038,7 @@ namespace {
   // killer moves of that ply.
 
   bool move_is_killer(Move m, const SearchStack& ss) {
-    
+
       const Move* k = ss.killers;
       for (int i = 0; i < KILLER_MAX; i++, k++)
           if (*k == m)
@@ -2077,7 +2077,7 @@ namespace {
             - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
         && !move_promotion(m))
         result += PawnEndgameExtension[pvNode];
-    
+
     if (   pvNode
         && pos.move_is_capture(m)
         && pos.type_of_piece_on(move_to(m)) != PAWN
@@ -2205,9 +2205,9 @@ namespace {
         return;
 
     for (int i = KILLER_MAX - 1; i > 0; i--)
-        ss.killers[i] = ss.killers[i - 1]; 
- 
-    ss.killers[0] = m;    
+        ss.killers[i] = ss.killers[i - 1];
+
+    ss.killers[0] = m;
   }
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
