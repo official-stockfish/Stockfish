@@ -39,6 +39,8 @@
 //// Variables
 ////
 
+extern SearchStack EmptySearchStack;
+
 int Position::castleRightsMask[64];
 
 Key Position::zobrist[2][8][64];

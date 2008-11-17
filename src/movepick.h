@@ -28,7 +28,6 @@
 #include "depth.h"
 #include "lock.h"
 #include "position.h"
-#include "search.h"
 
 
 ////
@@ -36,6 +35,7 @@
 ////
 
 struct EvalInfo;
+struct SearchStack;
 
 /// MovePicker is a class which is used to pick one legal move at a time from
 /// the current position.  It is initialized with a Position object and a few

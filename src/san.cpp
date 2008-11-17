@@ -31,6 +31,7 @@
 #include "movepick.h"
 #include "san.h"
 
+extern SearchStack EmptySearchStack;
 
 ////
 //// Local definitions
