@@ -71,7 +71,7 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   ttMove = ttm;
   mateKiller = (ss.mateKiller == ttm)? MOVE_NONE : ss.mateKiller;
   killer1 = ss.killers[0];
-  killer2 = ss.killers[0];
+  killer2 = ss.killers[1];
   depth = d;
   movesPicked = 0;
   numOfMoves = 0;
