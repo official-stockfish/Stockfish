@@ -71,16 +71,18 @@ int main(int argc, char *argv[]) {
   // Process command line arguments
   if (argc >= 2 && string(argv[1]) == "bench")
   {
-      if (argc < 4 || argc > 6)
+      if (argc < 4 || argc > 7)
       {
         std::cout << "Usage: glaurung bench <hash size> <threads> "
-                  << "[time = 60s] [fen positions file = default]"
+                  << "[time = 60s] [fen positions file = default] "
+                  << "[time or depth limited = time]"
                   << std::endl;
         exit(0);
       }
       string time = argc > 4 ? argv[4] : "60";
       string fen = argc > 5 ? argv[5] : "default";
-      benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen);
+      string dt = argc > 6 ? argv[6] : "time";
+      benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + dt);
       return 0;
   }
 

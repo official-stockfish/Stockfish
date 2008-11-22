@@ -431,7 +431,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
 
   if (!movesToGo) // Sudden death time control
   {
-      if (increment)
+      if (myIncrement)
       {
           MaxSearchTime = myTime / 30 + myIncrement;
           AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);

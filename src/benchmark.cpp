@@ -71,8 +71,8 @@ void benchmark(const std::string& commandLine) {
 
   std::istringstream csVal(commandLine);
   std::istringstream csStr(commandLine);
-  std::string ttSize, threads, fileName;
-  int val, secsPerPos;
+  std::string ttSize, threads, fileName, timeOrDepth;
+  int val, secsPerPos, maxDepth = 0;
 
   csStr >> ttSize;
   csVal >> val;
@@ -97,6 +97,15 @@ void benchmark(const std::string& commandLine) {
 
   csVal >> secsPerPos;
   csVal >> fileName;
+  csVal >> timeOrDepth;
+
+  if (timeOrDepth == "time")
+      secsPerPos *= 1000;
+  else
+  {
+      maxDepth = secsPerPos;
+      secsPerPos = 0;
+  }
 
   std::vector<std::string> positions;
   
@@ -121,12 +130,18 @@ void benchmark(const std::string& commandLine) {
       for (int i = 0; i < 16; i++)
           positions.push_back(std::string(BenchmarkPositions[i]));
 
+  int startTime = get_system_time();
   std::vector<std::string>::iterator it;
-  for (it = positions.begin(); it != positions.end(); ++it)
+  int cnt = 1;
+  for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
   {
       Move moves[1] = {MOVE_NONE};
       int dummy[2] = {0, 0};
       Position pos(*it);
-      think(pos, true, false, 0, dummy, dummy, 0, 0, 0, secsPerPos * 1000, moves);
+      std::cout << "\nProcessing position " << cnt << '/' << positions.size() << std::endl << std::endl;
+      think(pos, true, false, 0, dummy, dummy, 0, maxDepth, 0, secsPerPos, moves);
   }
+  std::cout << "\n\nBenchmarking finished. Processing time (ms) " << get_system_time() - startTime
+            << std::endl << "Press any key to exit\n";
+  std::cin >> fileName;
 }
