@@ -71,8 +71,8 @@ void benchmark(const std::string& commandLine) {
 
   std::istringstream csVal(commandLine);
   std::istringstream csStr(commandLine);
-  std::string ttSize, threads, fileName, timeOrDepth;
-  int val, secsPerPos, maxDepth = 0;
+  std::string ttSize, threads, fileName, limitType;
+  int val, secsPerPos, maxDepth, maxNodes;
 
   csStr >> ttSize;
   csVal >> val;
@@ -95,17 +95,18 @@ void benchmark(const std::string& commandLine) {
   set_option_value("Use Search Log", "true");
   set_option_value("Search Log Filename", "bench.txt");
 
-  csVal >> secsPerPos;
+  csVal >> val;
   csVal >> fileName;
-  csVal >> timeOrDepth;
+  csVal >> limitType;
 
-  if (timeOrDepth == "time")
-      secsPerPos *= 1000;
+  secsPerPos = maxDepth = maxNodes = 0;
+
+  if (limitType == "time")
+      secsPerPos = val * 1000;
+  else if (limitType == "depth")
+      maxDepth = val;
   else
-  {
-      maxDepth = secsPerPos;
-      secsPerPos = 0;
-  }
+      maxNodes = val;
 
   std::vector<std::string> positions;
   
@@ -139,7 +140,7 @@ void benchmark(const std::string& commandLine) {
       int dummy[2] = {0, 0};
       Position pos(*it);
       std::cout << "\nProcessing position " << cnt << '/' << positions.size() << std::endl << std::endl;
-      think(pos, true, false, 0, dummy, dummy, 0, maxDepth, 0, secsPerPos, moves);
+      think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves);
   }
   std::cout << "\n\nBenchmarking finished. Processing time (ms) " << get_system_time() - startTime
             << std::endl << "Press any key to exit\n";

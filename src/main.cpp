@@ -75,14 +75,14 @@ int main(int argc, char *argv[]) {
       {
         std::cout << "Usage: glaurung bench <hash size> <threads> "
                   << "[time = 60s] [fen positions file = default] "
-                  << "[time or depth limited = time]"
+                  << "[time, depth or node limited = time]"
                   << std::endl;
         exit(0);
       }
       string time = argc > 4 ? argv[4] : "60";
       string fen = argc > 5 ? argv[5] : "default";
-      string dt = argc > 6 ? argv[6] : "time";
-      benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + dt);
+      string lim = argc > 6 ? argv[6] : "time";
+      benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + lim);
       return 0;
   }
 
