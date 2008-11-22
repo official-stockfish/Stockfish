@@ -60,21 +60,21 @@ extern int Bioskey();
 ////
 //// Debug
 ////
+extern bool dbg_show_mean;
+extern bool dbg_show_hit_rate;
+
 extern long dbg_cnt0;
 extern long dbg_cnt1;
 
-inline void dbg_hit_on(bool b) { dbg_cnt0++; if (b) dbg_cnt1++; }
+inline void dbg_hit_on(bool b) { dbg_show_hit_rate = true; dbg_cnt0++; if (b) dbg_cnt1++; }
 inline void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }
 
-inline void dbg_before() { dbg_cnt0++; }
-inline void dbg_after() { dbg_cnt1++; }
+inline void dbg_before() { dbg_show_hit_rate = true; dbg_cnt0++; }
+inline void dbg_after() { dbg_show_hit_rate = true; dbg_cnt1++; }
 
 inline void dbg_mean_of(int v) { dbg_cnt0++; dbg_cnt1 += v; }
 
 extern void dbg_print_hit_rate();
 extern void dbg_print_mean();
-
-extern bool dbg_show_mean;
-extern bool dbg_show_hit_rate;
 
 #endif // !defined(MISC_H_INCLUDED)
