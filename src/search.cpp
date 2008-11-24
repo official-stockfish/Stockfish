@@ -245,7 +245,7 @@ namespace {
   void sp_update_pv(SearchStack *pss, SearchStack ss[], int ply);
   bool connected_moves(const Position &pos, Move m1, Move m2);
   bool move_is_killer(Move m, const SearchStack& ss);
-  Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat);
+  Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat, bool* extendable);
   bool ok_to_do_nullmove(const Position &pos);
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -778,7 +778,8 @@ namespace {
                       << " currmovenumber " << i + 1 << std::endl;
 
         // Decide search depth for this move
-        ext = extension(pos, move, true, pos.move_is_check(move), false, false);
+        bool dummy;
+        ext = extension(pos, move, true, pos.move_is_check(move), false, false, &dummy);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
@@ -978,7 +979,8 @@ namespace {
           ss[ply].currentMoveCaptureValue = Value(0);
 
       // Decide the new search depth
-      Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat);
+      bool extendable;
+      Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat, &extendable);
       Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move
@@ -992,7 +994,7 @@ namespace {
         // Try to reduce non-pv search depth by one ply if move seems not problematic,
         // if the move fails high will be re-searched at full depth.
         if (    depth >= 2*OnePly
-            &&  ext == Depth(0)
+            && !extendable
             &&  moveCount >= LMRPVMoves
             && !moveIsCapture
             && !move_promotion(move)
@@ -1225,12 +1227,13 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
-      Depth ext = extension(pos, move, false, moveIsCheck, singleReply, mateThreat);
+      bool extendable;
+      Depth ext = extension(pos, move, false, moveIsCheck, singleReply, mateThreat, &extendable);
       Depth newDepth = depth - OnePly + ext;
 
       // Futility pruning
       if (    useFutilityPruning
-          &&  ext == Depth(0)
+          && !extendable
           && !moveIsCapture
           && !moveIsPassedPawnPush
           && !move_promotion(move))
@@ -1261,7 +1264,7 @@ namespace {
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
       if (   depth >= 2*OnePly
-          && ext == Depth(0)
+          && !extendable
           && moveCount >= LMRNonPVMoves
           && !moveIsCapture
           && !move_promotion(move)
@@ -1515,12 +1518,13 @@ namespace {
       ss[sp->ply].currentMove = move;
 
       // Decide the new search depth.
-      Depth ext = extension(pos, move, false, moveIsCheck, false, false);
+      bool extendable;
+      Depth ext = extension(pos, move, false, moveIsCheck, false, false, &extendable);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Prune?
       if (    useFutilityPruning
-          &&  ext == Depth(0)
+          && !extendable
           && !moveIsCapture
           && !moveIsPassedPawnPush
           && !move_promotion(move)
@@ -1534,7 +1538,7 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
-      if (    ext == Depth(0)
+      if (   !extendable
           &&  moveCount >= LMRNonPVMoves
           && !moveIsCapture
           && !moveIsPassedPawnPush
@@ -1632,7 +1636,8 @@ namespace {
       ss[sp->ply].currentMove = move;
 
       // Decide the new search depth.
-      Depth ext = extension(pos, move, true, moveIsCheck, false, false);
+      bool extendable;
+      Depth ext = extension(pos, move, true, moveIsCheck, false, false, &extendable);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
@@ -1641,7 +1646,7 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
-      if (    ext == Depth(0)
+      if (   !extendable
           &&  moveCount >= LMRPVMoves
           && !moveIsCapture
           && !moveIsPassedPawnPush
@@ -1923,7 +1928,6 @@ namespace {
         NodesSincePoll = 0;
       }
     }
-
     ss[ply].pv[ply] = ss[ply].pv[ply+1] = ss[ply].currentMove = MOVE_NONE;
     ss[ply+2].mateKiller = MOVE_NONE;
     ss[ply].threatMove = MOVE_NONE;
@@ -2052,9 +2056,10 @@ namespace {
   // particular) are searched with bigger depth than ordinary moves.
 
   Depth extension(const Position &pos, Move m, bool pvNode,
-                  bool check, bool singleReply, bool mateThreat) {
+                  bool check, bool singleReply, bool mateThreat, bool* extendable) {
 
     Depth result = Depth(0);
+    *extendable = check || singleReply || mateThreat;
 
     if (check)
         result += CheckExtension[pvNode];
@@ -2062,26 +2067,37 @@ namespace {
     if (singleReply)
         result += SingleReplyExtension[pvNode];
 
-    if (pos.move_is_pawn_push_to_7th(m))
-        result += PawnPushTo7thExtension[pvNode];
-
-    if (pos.move_is_passed_pawn_push(m))
-        result += PassedPawnExtension[pvNode];
-
     if (mateThreat)
         result += MateThreatExtension[pvNode];
+
+    if (pos.move_is_pawn_push_to_7th(m))
+    {
+        result += PawnPushTo7thExtension[pvNode];
+        *extendable = true;
+    }
+    if (pos.move_is_passed_pawn_push(m))
+    {
+        result += PassedPawnExtension[pvNode];
+        *extendable = true;
+    }
 
     if (   pos.midgame_value_of_piece_on(move_to(m)) >= RookValueMidgame
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
         && !move_promotion(m))
+    {
         result += PawnEndgameExtension[pvNode];
+        *extendable = true;
+    }
 
     if (   pvNode
         && pos.move_is_capture(m)
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && pos.see(m) >= 0)
+    {
         result += OnePly/2;
+        *extendable = true;
+    }
 
     return Min(result, OnePly);
   }
