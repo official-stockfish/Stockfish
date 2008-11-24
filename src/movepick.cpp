@@ -292,7 +292,6 @@ void MovePicker::score_evasions() {
       } else
           moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), m);
   }
-  // FIXME try psqt also here
 }
 
 void MovePicker::score_qcaptures() {

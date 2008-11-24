@@ -122,15 +122,16 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   Bitboard target = pos.pieces_of_color(opposite_color(us));
   MoveStack* mlist_start = mlist;
 
+  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
+  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
+  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
+  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
+
   if (us == WHITE)
       mlist = generate_pawn_captures<WHITE>(pos, mlist);
   else
       mlist = generate_pawn_captures<BLACK>(pos, mlist);
 
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
   return int(mlist - mlist_start);
 }
