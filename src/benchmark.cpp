@@ -134,6 +134,7 @@ void benchmark(const std::string& commandLine) {
   int startTime = get_system_time();
   std::vector<std::string>::iterator it;
   int cnt = 1;
+  int64_t totalNodes = 0;
   for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
   {
       Move moves[1] = {MOVE_NONE};
@@ -141,8 +142,10 @@ void benchmark(const std::string& commandLine) {
       Position pos(*it);
       std::cout << "\nProcessing position " << cnt << '/' << positions.size() << std::endl << std::endl;
       think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves);
+      totalNodes += nodes_searched();
   }
-  std::cout << "\n\nBenchmarking finished. Processing time (ms) " << get_system_time() - startTime
-            << std::endl << "Press any key to exit\n";
+  std::cout << "\nProcessing time (ms) " << get_system_time() - startTime << std::endl
+            << "Nodes searched " << totalNodes << std::endl
+            << "Press any key to exit" << std::endl;
   std::cin >> fileName;
 }
