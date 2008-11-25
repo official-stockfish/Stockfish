@@ -436,7 +436,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
           MaxSearchTime = myTime / 30 + myIncrement;
           AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
       } else { // Blitz game without increment
-          MaxSearchTime = myTime / 40;
+          MaxSearchTime = myTime / 30;
           AbsoluteMaxSearchTime = myTime / 8;
       }
   }
