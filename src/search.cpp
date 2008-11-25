@@ -245,7 +245,7 @@ namespace {
   void sp_update_pv(SearchStack *pss, SearchStack ss[], int ply);
   bool connected_moves(const Position &pos, Move m1, Move m2);
   bool move_is_killer(Move m, const SearchStack& ss);
-  Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat, bool* extendable);
+  Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat, bool* dangerous);
   bool ok_to_do_nullmove(const Position &pos);
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -778,8 +778,8 @@ namespace {
                       << " currmovenumber " << i + 1 << std::endl;
 
         // Decide search depth for this move
-        bool dummy;
-        ext = extension(pos, move, true, pos.move_is_check(move), false, false, &dummy);
+        bool dangerous;
+        ext = extension(pos, move, true, pos.move_is_check(move), false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
@@ -953,8 +953,7 @@ namespace {
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     bool isCheck = pos.is_check();
-    bool mateThreat =   MateThreatExtension[1] > Depth(0)
-                     && pos.has_mate_threat(opposite_color(pos.side_to_move()));
+    bool mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
@@ -967,7 +966,6 @@ namespace {
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
-      bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
@@ -979,8 +977,8 @@ namespace {
           ss[ply].currentMoveCaptureValue = Value(0);
 
       // Decide the new search depth
-      bool extendable;
-      Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat, &extendable);
+      bool dangerous;
+      Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat, &dangerous);
       Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move
@@ -994,11 +992,10 @@ namespace {
         // Try to reduce non-pv search depth by one ply if move seems not problematic,
         // if the move fails high will be re-searched at full depth.
         if (    depth >= 2*OnePly
-            && !extendable
             &&  moveCount >= LMRPVMoves
+            && !dangerous
             && !moveIsCapture
             && !move_promotion(move)
-            && !moveIsPassedPawnPush
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
@@ -1222,20 +1219,18 @@ namespace {
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
-      bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
-      bool extendable;
-      Depth ext = extension(pos, move, false, moveIsCheck, singleReply, mateThreat, &extendable);
+      bool dangerous;
+      Depth ext = extension(pos, move, false, moveIsCheck, singleReply, mateThreat, &dangerous);
       Depth newDepth = depth - OnePly + ext;
 
       // Futility pruning
       if (    useFutilityPruning
-          && !extendable
+          && !dangerous
           && !moveIsCapture
-          && !moveIsPassedPawnPush
           && !move_promotion(move))
       {
           if (   moveCount >= 2 + int(depth)
@@ -1263,12 +1258,11 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
-      if (   depth >= 2*OnePly
-          && !extendable
-          && moveCount >= LMRNonPVMoves
+      if (    depth >= 2*OnePly
+          &&  moveCount >= LMRNonPVMoves
+          && !dangerous
           && !moveIsCapture
           && !move_promotion(move)
-          && !moveIsPassedPawnPush
           && !move_is_castle(move)
           && !move_is_killer(move, ss[ply]))
       {
@@ -1401,20 +1395,17 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
-
       moveCount++;
       ss[ply].currentMove = move;
 
       // Futility pruning
       if (    UseQSearchFutilityPruning
+          &&  enoughMaterial
           && !isCheck
-          && !moveIsCheck
-          && !move_promotion(move)
-          && !moveIsPassedPawnPush
           && !pvNode
-          &&  enoughMaterial)
+          && !move_promotion(move)
+          && !pos.move_is_check(move, dcCandidates)
+          && !pos.move_is_passed_pawn_push(move))
       {
           Value futilityValue = staticValue
                               + Max(pos.midgame_value_of_piece_on(move_to(move)),
@@ -1509,7 +1500,6 @@ namespace {
 
       bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
-      bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       lock_grab(&(sp->lock));
       int moveCount = ++sp->moves;
@@ -1518,15 +1508,14 @@ namespace {
       ss[sp->ply].currentMove = move;
 
       // Decide the new search depth.
-      bool extendable;
-      Depth ext = extension(pos, move, false, moveIsCheck, false, false, &extendable);
+      bool dangerous;
+      Depth ext = extension(pos, move, false, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Prune?
       if (    useFutilityPruning
-          && !extendable
+          && !dangerous
           && !moveIsCapture
-          && !moveIsPassedPawnPush
           && !move_promotion(move)
           &&  moveCount >= 2 + int(sp->depth)
           &&  ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth))
@@ -1538,10 +1527,9 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
-      if (   !extendable
+      if (   !dangerous
           &&  moveCount >= LMRNonPVMoves
           && !moveIsCapture
-          && !moveIsPassedPawnPush
           && !move_promotion(move)
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
@@ -1622,7 +1610,6 @@ namespace {
     {
       bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
-      bool moveIsPassedPawnPush = pos.move_is_passed_pawn_push(move);
 
       assert(move_is_ok(move));
 
@@ -1636,8 +1623,8 @@ namespace {
       ss[sp->ply].currentMove = move;
 
       // Decide the new search depth.
-      bool extendable;
-      Depth ext = extension(pos, move, true, moveIsCheck, false, false, &extendable);
+      bool dangerous;
+      Depth ext = extension(pos, move, true, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
@@ -1646,10 +1633,9 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
-      if (   !extendable
+      if (   !dangerous
           &&  moveCount >= LMRPVMoves
           && !moveIsCapture
-          && !moveIsPassedPawnPush
           && !move_promotion(move)
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
@@ -2053,13 +2039,16 @@ namespace {
 
   // extension() decides whether a move should be searched with normal depth,
   // or with extended depth.  Certain classes of moves (checking moves, in
-  // particular) are searched with bigger depth than ordinary moves.
+  // particular) are searched with bigger depth than ordinary moves and in
+  // any case are marked as 'dangerous'. Note that also if a move is not
+  // extended, as example because the corresponding UCI option is set to zero,
+  // the move is marked as 'dangerous' so, at least, we avoid to prune it.
 
-  Depth extension(const Position &pos, Move m, bool pvNode,
-                  bool check, bool singleReply, bool mateThreat, bool* extendable) {
+  Depth extension(const Position &pos, Move m, bool pvNode, bool check,
+                  bool singleReply, bool mateThreat, bool* dangerous) {
 
     Depth result = Depth(0);
-    *extendable = check || singleReply || mateThreat;
+    *dangerous = check || singleReply || mateThreat;
 
     if (check)
         result += CheckExtension[pvNode];
@@ -2073,12 +2062,12 @@ namespace {
     if (pos.move_is_pawn_push_to_7th(m))
     {
         result += PawnPushTo7thExtension[pvNode];
-        *extendable = true;
+        *dangerous = true;
     }
     if (pos.move_is_passed_pawn_push(m))
     {
         result += PassedPawnExtension[pvNode];
-        *extendable = true;
+        *dangerous = true;
     }
 
     if (   pos.midgame_value_of_piece_on(move_to(m)) >= RookValueMidgame
@@ -2087,7 +2076,7 @@ namespace {
         && !move_promotion(m))
     {
         result += PawnEndgameExtension[pvNode];
-        *extendable = true;
+        *dangerous = true;
     }
 
     if (   pvNode
@@ -2096,7 +2085,7 @@ namespace {
         && pos.see(m) >= 0)
     {
         result += OnePly/2;
-        *extendable = true;
+        *dangerous = true;
     }
 
     return Min(result, OnePly);
