@@ -83,7 +83,7 @@ private:
   int find_best_index(Bitboard* squares, int values[]);
 
   const Position& pos;
-  Move ttMove, mateKiller, killer1, killer2, threatMove;
+  Move ttMove, mateKiller, killer1, killer2;
   Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];
   bool pvNode;

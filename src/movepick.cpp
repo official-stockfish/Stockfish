@@ -72,7 +72,6 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   mateKiller = (ss.mateKiller == ttm)? MOVE_NONE : ss.mateKiller;
   killer1 = ss.killers[0];
   killer2 = ss.killers[1];
-  threatMove = ss.threatMove;
   depth = d;
   movesPicked = 0;
   numOfMoves = 0;
@@ -270,11 +269,6 @@ void MovePicker::score_noncaptures() {
           hs = HistoryMax + 1;
       else
           hs = H.move_ordering_score(pos.piece_on(move_from(m)), m);
-
-      // If the null move was refuted by a capture then give a
-      // bonus if we move away the captured piece.
-      if (threatMove != MOVE_NONE && move_from(m) == move_to(threatMove))
-          hs *= 3;
 
       // Ensure history is always preferred to pst
       if (hs > 0)
