@@ -188,7 +188,7 @@ namespace {
   // Time managment variables
   int SearchStartTime;
   int MaxNodes, MaxDepth;
-  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, TimeAdvantage;
+  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime;
   Move BestRootMove, PonderMove, EasyMove;
   int RootMoveNumber;
   bool InfiniteSearch;
@@ -426,8 +426,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   int myTime = time[side_to_move];
   int myIncrement = increment[side_to_move];
   int oppTime = time[1 - side_to_move];
-
-  TimeAdvantage = myTime - oppTime;
 
   if (!movesToGo) // Sudden death time control
   {
@@ -679,10 +677,6 @@ namespace {
             if (Iteration > 5 && Iteration <= 50)
                 ExtraSearchTime = BestMoveChangesByIteration[Iteration]   * (MaxSearchTime / 2)
                                 + BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
-
-            // If we need some more and we are in time advantage take it
-            if (ExtraSearchTime > 0 && TimeAdvantage > 2 * MaxSearchTime)
-                ExtraSearchTime += MaxSearchTime / 2;
 
             // Try to guess if the current iteration is the last one or the last two
             LastIterations = (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*58) / 128);
