@@ -72,7 +72,7 @@ const SquareDelta PawnPush[2] = {
 
 static const char PieceChars[] = " pnbrqk";
 
-char piece_type_to_char(PieceType pt, bool upcase = false) {
+char piece_type_to_char(PieceType pt, bool upcase) {
   return upcase? toupper(PieceChars[pt]) : PieceChars[pt];
 }
 
