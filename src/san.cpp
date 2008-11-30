@@ -51,7 +51,7 @@ namespace {
 
   /// Functions
 
-  Ambiguity move_ambiguity(Position &pos, Move m);
+  Ambiguity move_ambiguity(const Position& pos, Move m);
   const std::string time_string(int milliseconds);
   const std::string score_string(Value v);
 }
@@ -65,85 +65,80 @@ namespace {
 /// that the move is a legal move from the position.  The return value is
 /// a string containing the move in short algebraic notation.
 
-const std::string move_to_san(Position &pos, Move m) {
-  std::string str;
+const std::string move_to_san(const Position& pos, Move m) {
 
   assert(pos.is_ok());
   assert(move_is_ok(m));
 
-  if(m == MOVE_NONE) {
-    str = "(none)";
-    return str;
-  }
-  else if(m == MOVE_NULL) {
-    str = "(null)";
-    return str;
-  }
-  else if(move_is_long_castle(m))
-    str = "O-O-O";
-  else if(move_is_short_castle(m))
-    str = "O-O";
-  else {
-    Square from, to;
-    Piece pc;
+  std::string san = "";
 
-    from = move_from(m);
-    to = move_to(m);
-    pc = pos.piece_on(move_from(m));
+  if (m == MOVE_NONE)
+      return "(none)";
+  else if (m == MOVE_NULL)
+      return "(null)";
+  else if (move_is_long_castle(m))
+      san = "O-O-O";
+  else if (move_is_short_castle(m))
+      san = "O-O";
+  else
+  {
+      Square from = move_from(m);
+      Square to = move_to(m);
+      Piece pc = pos.piece_on(move_from(m));
 
-    str = "";
-
-    if(type_of_piece(pc) == PAWN) {
-      if(pos.move_is_capture(m))
-        str += file_to_char(square_file(move_from(m)));
-    }
-    else {
-      str += piece_type_to_char(type_of_piece(pc), true);
-
-      Ambiguity amb = move_ambiguity(pos, m);
-      switch(amb) {
-
-      case AMBIGUITY_NONE:
-        break;
-
-      case AMBIGUITY_FILE:
-        str += file_to_char(square_file(from));
-        break;
-
-      case AMBIGUITY_RANK:
-        str += rank_to_char(square_rank(from));
-        break;
-
-      case AMBIGUITY_BOTH:
-        str += square_to_string(from);
-        break;
-
-      default:
-        assert(false);
+      if (type_of_piece(pc) == PAWN)
+      {
+          if (pos.move_is_capture(m))
+              san += file_to_char(square_file(move_from(m)));
       }
-    }
+      else
+      {
+          san += piece_type_to_char(type_of_piece(pc), true);
 
-    if(pos.move_is_capture(m))
-      str += "x";
+          switch (move_ambiguity(pos, m)) {
 
-    str += square_to_string(move_to(m));
+          case AMBIGUITY_NONE:
+            break;
 
-    if(move_promotion(m)) {
-      str += "=";
-      str += piece_type_to_char(move_promotion(m), true);
-    }
+          case AMBIGUITY_FILE:
+            san += file_to_char(square_file(from));
+            break;
+
+          case AMBIGUITY_RANK:
+            san += rank_to_char(square_rank(from));
+            break;
+
+          case AMBIGUITY_BOTH:
+            san += square_to_string(from);
+            break;
+
+          default:
+            assert(false);
+          }
+      }
+
+      if (pos.move_is_capture(m))
+          san += "x";
+
+      san += square_to_string(move_to(m));
+
+      if (move_promotion(m))
+      {
+          san += '=';
+          san += piece_type_to_char(move_promotion(m), true);
+      }
   }
 
   // Is the move check?  We don't use pos.move_is_check(m) here, because
   // Position::move_is_check doesn't detect all checks (not castling moves,
   // promotions and en passant captures).
   UndoInfo u;
-  pos.do_move(m, u);
-  if(pos.is_check())
-    str += pos.is_mate()? "#" : "+";
-  pos.undo_move(m, u);
+  Position p(pos);
+  p.do_move(m, u);
+  if (p.is_check())
+      san += p.is_mate()? "#" : "+";
 
-  return str;
+  return san;
 }
 
 
@@ -152,24 +147,29 @@ const std::string move_to_san(Position &pos, Move m) {
 /// the move is returned.  On failure (i.e. if the string is unparsable, or
 /// if the move is illegal or ambiguous), MOVE_NONE is returned.
 
-Move move_from_san(Position &pos, const std::string &movestr) {
+Move move_from_san(const Position& pos, const std::string& movestr) {
+
   assert(pos.is_ok());
 
   MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
 
   // Castling moves
-  if(movestr == "O-O-O") {
-    Move m;
-    while((m = mp.get_next_move()) != MOVE_NONE)
-      if(move_is_long_castle(m) && pos.pl_move_is_legal(m))
-        return m;
-    return MOVE_NONE;
+  if (movestr == "O-O-O")
+  {
+      Move m;
+      while ((m = mp.get_next_move()) != MOVE_NONE)
+          if (move_is_long_castle(m) && pos.pl_move_is_legal(m))
+              return m;
+
+      return MOVE_NONE;
   }
-  else if(movestr == "O-O") {
-    Move m;
-    while((m = mp.get_next_move()) != MOVE_NONE)
-      if(move_is_short_castle(m) && pos.pl_move_is_legal(m))
-        return m;
+  else if (movestr == "O-O")
+  {
+      Move m;
+      while ((m = mp.get_next_move()) != MOVE_NONE)
+          if(move_is_short_castle(m) && pos.pl_move_is_legal(m))
+              return m;
+
     return MOVE_NONE;
   }
 
@@ -271,8 +271,8 @@ Move move_from_san(Position &pos, const std::string &movestr) {
 /// length of 80 characters.  After a line break, 'startColumn' spaces are
 /// inserted at the beginning of the new line.
 
-const std::string line_to_san(const Position &pos, Move line[], int startColumn,
-                              bool breakLines) {
+const std::string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines) {
+
   Position p = Position(pos);
   UndoInfo u;
   std::stringstream s;
@@ -307,7 +307,7 @@ const std::string line_to_san(const Position &pos, Move line[], int startColumn,
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
 
-const std::string pretty_pv(const Position &pos, int time, int depth,
+const std::string pretty_pv(const Position& pos, int time, int depth,
                             uint64_t nodes, Value score, Move pv[]) {
   std::stringstream s;
 
@@ -337,44 +337,42 @@ const std::string pretty_pv(const Position &pos, int time, int depth,
 
 namespace {
 
-  Ambiguity move_ambiguity(Position &pos, Move m) {
-    Square from, to;
-    Piece pc;
+  Ambiguity move_ambiguity(const Position& pos, Move m) {
 
-    from = move_from(m);
-    to = move_to(m);
-    pc = pos.piece_on(from);
+    Square from = move_from(m);
+    Square to = move_to(m);
+    Piece pc = pos.piece_on(from);
 
     // King moves are never ambiguous, because there is never two kings of
     // the same color.
-    if(type_of_piece(pc) == KING)
-      return AMBIGUITY_NONE;
+    if (type_of_piece(pc) == KING)
+        return AMBIGUITY_NONE;
 
     MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
     Move mv, moveList[8];
-    int i, j, n;
 
-    n = 0;
-    while((mv = mp.get_next_move()) != MOVE_NONE)
-      if(move_to(mv) == to && pos.piece_on(move_from(mv)) == pc
-         && pos.pl_move_is_legal(mv))
-        moveList[n++] = mv;
-    if(n == 1)
-      return AMBIGUITY_NONE;
+    int n = 0;
+    while ((mv = mp.get_next_move()) != MOVE_NONE)
+        if (move_to(mv) == to && pos.piece_on(move_from(mv)) == pc && pos.pl_move_is_legal(mv))
+            moveList[n++] = mv;
 
-    j = 0;
-    for(i = 0; i < n; i++)
-      if(square_file(move_from(moveList[i])) == square_file(from))
-        j++;
-    if(j == 1)
-      return AMBIGUITY_FILE;
+    if (n == 1)
+        return AMBIGUITY_NONE;
 
-    j = 0;
-    for(i = 0; i < n; i++)
-      if(square_rank(move_from(moveList[i])) == square_rank(from))
-        j++;
-    if(j == 1)
-      return AMBIGUITY_RANK;
+    int f = 0, r = 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (square_file(move_from(moveList[i])) == square_file(from))
+            f++;
+
+        if (square_rank(move_from(moveList[i])) == square_rank(from))
+            r++;
+    }
+    if (f == 1)
+        return AMBIGUITY_FILE;
+
+    if (r == 1)
+        return AMBIGUITY_RANK;
 
     return AMBIGUITY_BOTH;
   }
