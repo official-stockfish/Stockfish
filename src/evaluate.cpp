@@ -1120,13 +1120,7 @@ namespace {
 
     ev = apply_scale_factor(ev, sf[(ev > Value(0) ? WHITE : BLACK)]);
 
-    // Linearized sigmoid interpolator
-    int sph = int(ph);
-    sph -= (64 - sph) / 4;
-    sph = Min(PHASE_MIDGAME, Max(PHASE_ENDGAME, sph));
-
-    Value result = Value(int((mv * sph + ev * (128 - sph)) / 128));
-
+    Value result = Value(int((mv * ph + ev * (128 - ph)) / 128));
     return Value(int(result) & ~(GrainSize - 1));
   }
 
