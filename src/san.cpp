@@ -62,7 +62,7 @@ namespace {
 ////
 
 /// move_to_san() takes a position and a move as input, where it is assumed
-/// that the move is a legal move from the position.  The return value is
+/// that the move is a legal move from the position. The return value is
 /// a string containing the move in short algebraic notation.
 
 const std::string move_to_san(const Position& pos, Move m) {
@@ -82,53 +82,40 @@ const std::string move_to_san(const Position& pos, Move m) {
       san = "O-O";
   else
   {
-      Square from = move_from(m);
-      Square to = move_to(m);
       Piece pc = pos.piece_on(move_from(m));
-
-      if (type_of_piece(pc) == PAWN)
-      {
-          if (pos.move_is_capture(m))
-              san += file_to_char(square_file(move_from(m)));
-      }
-      else
+      if (type_of_piece(pc) != PAWN)
       {
           san += piece_type_to_char(type_of_piece(pc), true);
-
+          Square from = move_from(m);
           switch (move_ambiguity(pos, m)) {
-
           case AMBIGUITY_NONE:
             break;
-
           case AMBIGUITY_FILE:
             san += file_to_char(square_file(from));
             break;
-
           case AMBIGUITY_RANK:
             san += rank_to_char(square_rank(from));
             break;
-
           case AMBIGUITY_BOTH:
             san += square_to_string(from);
             break;
-
           default:
             assert(false);
           }
       }
-
       if (pos.move_is_capture(m))
+      {
+          if (type_of_piece(pc) == PAWN)
+              san += file_to_char(square_file(move_from(m)));
           san += "x";
-
+      }
       san += square_to_string(move_to(m));
-
       if (move_promotion(m))
       {
           san += '=';
           san += piece_type_to_char(move_promotion(m), true);
       }
   }
-
   // Is the move check?  We don't use pos.move_is_check(m) here, because
   // Position::move_is_check doesn't detect all checks (not castling moves,
   // promotions and en passant captures).
@@ -143,7 +130,7 @@ const std::string move_to_san(const Position& pos, Move m) {
 
 
 /// move_from_san() takes a position and a string as input, and tries to
-/// interpret the string as a move in short algebraic notation.  On success,
+/// interpret the string as a move in short algebraic notation. On success,
 /// the move is returned.  On failure (i.e. if the string is unparsable, or
 /// if the move is illegal or ambiguous), MOVE_NONE is returned.
 
@@ -167,7 +154,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
   {
       Move m;
       while ((m = mp.get_next_move()) != MOVE_NONE)
-          if(move_is_short_castle(m) && pos.pl_move_is_legal(m))
+          if (move_is_short_castle(m) && pos.pl_move_is_legal(m))
               return m;
 
     return MOVE_NONE;
@@ -273,32 +260,29 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
 
 const std::string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines) {
 
-  Position p = Position(pos);
   UndoInfo u;
   std::stringstream s;
   std::string moveStr;
-  size_t length, maxLength;
+  size_t length = 0;
+  size_t maxLength = 80 - startColumn;
+  Position p(pos);
 
-  length = 0;
-  maxLength = 80 - startColumn;
+  for (int i = 0; line[i] != MOVE_NONE; i++)
+  {
+      moveStr = move_to_san(p, line[i]);
+      length += moveStr.length() + 1;
+      if (breakLines && length > maxLength)
+      {
+          s << '\n' << std::setw(startColumn) << ' ';
+          length = moveStr.length() + 1;
+      }
+      s << moveStr << ' ';
 
-  for(int i = 0; line[i] != MOVE_NONE; i++) {
-    moveStr = move_to_san(p, line[i]);
-    length += moveStr.length() + 1;
-    if(breakLines && length > maxLength) {
-      s << "\n";
-      for(int j = 0; j < startColumn; j++)
-        s << " ";
-      length = moveStr.length() + 1;
-    }
-    s << moveStr << " ";
-
-    if(line[i] == MOVE_NULL)
-      p.do_null_move(u);
-    else
-      p.do_move(line[i], u);
+      if (line[i] == MOVE_NULL)
+          p.do_null_move(u);
+      else
+          p.do_move(line[i], u);
   }
-
   return s.str();
 }
 
@@ -312,21 +296,21 @@ const std::string pretty_pv(const Position& pos, int time, int depth,
   std::stringstream s;
 
   // Depth
-  s << std::setw(2) << std::setfill(' ') << depth << "  ";
+  s << std::setw(2) << depth << "  ";
 
   // Score
   s << std::setw(8) << score_string(score);
 
   // Time
-  s << std::setw(8) << std::setfill(' ') << time_string(time) << " ";
+  s << std::setw(8) << time_string(time) << " ";
 
   // Nodes
-  if(nodes < 1000000ULL)
-    s << std::setw(8) << std::setfill(' ') << nodes << " ";
-  else if(nodes < 1000000000ULL)
-    s << std::setw(7) << std::setfill(' ') << nodes/1000ULL << 'k' << " ";
+  if (nodes < 1000000ULL)
+    s << std::setw(8) << nodes << " ";
+  else if (nodes < 1000000000ULL)
+    s << std::setw(7) << nodes/1000ULL << 'k' << " ";
   else
-    s << std::setw(7) << std::setfill(' ') << nodes/1000000ULL << 'M' << " ";
+    s << std::setw(7) << nodes/1000000ULL << 'M' << " ";
 
   // PV
   s << line_to_san(pos, pv, 30, true);
@@ -379,37 +363,38 @@ namespace {
 
 
   const std::string time_string(int milliseconds) {
+
     std::stringstream s;
+    s << std::setfill('0');
 
-    int hours = milliseconds / (1000 * 60 * 60);
-    int minutes = (milliseconds - hours*1000*60*60) / (60*1000);
-    int seconds = (milliseconds - hours*1000*60*60 - minutes*60*1000) / 1000;
+    int hours = milliseconds / (1000*60*60);
+    int minutes = (milliseconds - hours*1000*60*60) / (1000*60);
+    int seconds = (milliseconds - hours*1000*60*60 - minutes*1000*60) / 1000;
 
-    if(hours)
-      s << hours << ':';
-    s << std::setw(2) << std::setfill('0') << minutes << ':';
-    s << std::setw(2) << std::setfill('0') << seconds;
+    if (hours)
+        s << hours << ':';
 
+    s << std::setw(2) << minutes << ':' << std::setw(2) << seconds;
     return s.str();
   }
 
 
   const std::string score_string(Value v) {
+
     std::stringstream s;
 
-    if(abs(v) >= VALUE_MATE - 200) {
-      if(v < 0)
-        s << "-#" << (VALUE_MATE + v) / 2;
-      else
+    if (v >= VALUE_MATE - 200)
         s << "#" << (VALUE_MATE - v + 1) / 2;
-    }
-    else {
-      float floatScore = float(v) / float(PawnValueMidgame);
-      if(v >= 0)
-        s << '+';
-      s << std::setprecision(2) << std::fixed << floatScore;
+    else if(v <= -VALUE_MATE + 200)
+        s << "-#" << (VALUE_MATE + v) / 2;
+    else
+    {
+        float floatScore = float(v) / float(PawnValueMidgame);
+        if (v >= 0)
+            s << '+';
+
+        s << std::setprecision(2) << std::fixed << floatScore;
     }
     return s.str();
   }
-
 }
