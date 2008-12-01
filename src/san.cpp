@@ -141,7 +141,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
   MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
 
   // Castling moves
-  if (movestr == "O-O-O")
+  if (movestr == "O-O-O" || movestr == "O-O-O+")
   {
       Move m;
       while ((m = mp.get_next_move()) != MOVE_NONE)
@@ -150,7 +150,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
 
       return MOVE_NONE;
   }
-  else if (movestr == "O-O")
+  else if (movestr == "O-O" || movestr == "O-O+")
   {
       Move m;
       while ((m = mp.get_next_move()) != MOVE_NONE)
@@ -160,94 +160,124 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
     return MOVE_NONE;
   }
 
-  // Normal moves
-  const char *cstr = movestr.c_str();
-  const char *c;
-  char *cc;
-  char str[10];
-  int i;
-
-  // Initialize str[] by making a copy of movestr with the characters
-  // 'x', '=', '+' and '#' removed.
-  cc = str;
-  for(i=0, c=cstr; i<10 && *c!='\0' && *c!='\n' && *c!=' '; i++, c++)
-    if(!strchr("x=+#", *c)) {
-      *cc = strchr("nrq", *c)? toupper(*c) : *c;
-      cc++;
-    }
-  *cc = '\0';
-
-  size_t left = 0, right = strlen(str) - 1;
-  PieceType pt = NO_PIECE_TYPE, promotion;
+  // Normal moves. We use a simple FSM to parse the san string.
+  enum { START, TO_FILE, TO_RANK, PROMOTION_OR_CHECK, PROMOTION, CHECK, END };
+  static const std::string pieceLetters = "KQRBN";
+  PieceType pt = NO_PIECE_TYPE, promotion = NO_PIECE_TYPE;
+  File fromFile = FILE_NONE, toFile = FILE_NONE;
+  Rank fromRank = RANK_NONE, toRank = RANK_NONE;
   Square to;
-  File fromFile = FILE_NONE;
-  Rank fromRank = RANK_NONE;
+  int state = START;
 
-  // Promotion?
-  if(strchr("BNRQ", str[right])) {
-    promotion = piece_type_from_char(str[right]);
-    right--;
+  for (size_t i = 0; i < movestr.length(); i++)
+  {
+      char type, c = movestr[i];
+      if (pieceLetters.find(c) != -1)
+          type = 'P';
+      else if (c >= 'a' && c <= 'h')
+          type = 'F';
+      else if (c >= '1' && c <= '8')
+          type = 'R';
+      else
+          type = c;
+
+      switch (type) {
+      case 'P':
+          if (state == START)
+          {
+              pt = piece_type_from_char(c);
+              state = TO_FILE;
+          }
+          else if (state == PROMOTION)
+          {
+              promotion = piece_type_from_char(c);
+              state = (i < movestr.length() - 1) ? CHECK : END;
+          }
+          else
+              return MOVE_NONE;
+          break;
+      case 'F':
+          if (state == START)
+          {
+              pt = PAWN;
+              fromFile = toFile = file_from_char(c);
+              state = TO_RANK;
+          }
+          else if (state == TO_FILE)
+          {
+              toFile = file_from_char(c);
+              state = TO_RANK;
+          }
+          else if (state == TO_RANK && toFile != FILE_NONE)
+          {
+              // Previous file was for disambiguation
+              fromFile = toFile;
+              toFile = file_from_char(c);
+          }
+          else
+              return MOVE_NONE;
+          break;
+      case 'R':
+          if (state == TO_RANK)
+          {
+              toRank = rank_from_char(c);
+              state = (i < movestr.length() - 1) ? PROMOTION_OR_CHECK : END;
+          }
+          else if (state == TO_FILE && fromRank == FILE_NONE)
+          {
+              // It's a disambiguation rank instead of a file
+              fromRank = rank_from_char(c);
+          }
+          else
+              return MOVE_NONE;
+          break;
+      case 'x': case 'X':
+          if (state == TO_RANK)
+          {
+              // Previous file was for disambiguation, or it's a pawn capture
+              fromFile = toFile;
+              state = TO_FILE;
+          }
+          else if (state != TO_FILE)
+              return MOVE_NONE;
+          break;
+      case '=':
+          if (state == PROMOTION_OR_CHECK)
+              state = PROMOTION;
+          else
+              return MOVE_NONE;
+          break;
+      case '+': case '#':
+          if (state == PROMOTION_OR_CHECK || state == CHECK)
+              state = END;
+          else
+              return MOVE_NONE;
+          break;
+      default:
+          return MOVE_NONE;
+          break;
+      }
   }
-  else
-    promotion = NO_PIECE_TYPE;
 
-  // Find the moving piece:
-  if(left < right) {
-    if(strchr("BNRQK", str[left])) {
-      pt = piece_type_from_char(str[left]);
-      left++;
-    }
-    else
-      pt = PAWN;
-  }
-
-  // Find the to square:
-  if(left < right) {
-    if(str[right] < '1' || str[right] > '8' ||
-       str[right-1] < 'a' || str[right-1] > 'h')
+  if (state != END)
       return MOVE_NONE;
-    to = make_square(file_from_char(str[right-1]), rank_from_char(str[right]));
-    right -= 2;
-  }
-  else
-    return MOVE_NONE;
 
-  // Find the file and/or rank of the from square:
-  if(left <= right) {
-    if(strchr("abcdefgh", str[left])) {
-      fromFile = file_from_char(str[left]);
-      left++;
-    }
-    if(strchr("12345678", str[left]))
-      fromRank = rank_from_char(str[left]);
-  }
-
-  // Look for a matching move:
-  Move m, move = MOVE_NONE;
+  // Look for a matching move
+  Move m, move;
+  to = make_square(toFile, toRank);
   int matches = 0;
 
-  while((m = mp.get_next_move()) != MOVE_NONE) {
-    bool match = true;
-    if(pos.type_of_piece_on(move_from(m)) != pt)
-      match = false;
-    else if(move_to(m) != to)
-      match = false;
-    else if(move_promotion(m) != promotion)
-      match = false;
-    else if(fromFile != FILE_NONE && fromFile != square_file(move_from(m)))
-      match = false;
-    else if(fromRank != RANK_NONE && fromRank != square_rank(move_from(m)))
-      match = false;
-    if(match) {
-      move = m;
-      matches++;
-    }
-  }
-
-  if(matches == 1)
-    return move;
-  else
-    return MOVE_NONE;
+  while ((m = mp.get_next_move()) != MOVE_NONE)
+      if (   pos.type_of_piece_on(move_from(m)) == pt
+          && move_to(m) == to
+          && move_promotion(m) == promotion
+          && (fromFile == FILE_NONE || fromFile == square_file(move_from(m)))
+          && (fromRank == RANK_NONE || fromRank == square_rank(move_from(m))))
+      {
+          move = m;
+          matches++;
+      }
+  return (matches == 1 ? move : MOVE_NONE);
 }
 
 
