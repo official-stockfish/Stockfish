@@ -52,6 +52,7 @@ Key Position::zobSideToMove;
 Value Position::MgPieceSquareTable[16][64];
 Value Position::EgPieceSquareTable[16][64];
 
+static bool RequestPending = false;
 
 ////
 //// Functions
@@ -272,6 +273,13 @@ void Position::print(Move m) const {
 
   static const std::string pieceLetters = " PNBRQK  PNBRQK .";
 
+  // Check for reentrancy, as example when called from inside
+  // MovePicker that is used also here in move_to_san()
+  if (RequestPending)
+      return;
+
+  RequestPending = true;
+
   std::cout << std::endl;
   if (m != MOVE_NONE)
   {
@@ -296,6 +304,8 @@ void Position::print(Move m) const {
   std::cout << "+---+---+---+---+---+---+---+---+" << std::endl
             << "Fen is: " << to_fen() << std::endl
             << "Key is: " << key << std::endl;
+
+  RequestPending = false;
 }
 
 
