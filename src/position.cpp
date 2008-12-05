@@ -675,9 +675,11 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
 
 /// Position::move_is_capture() tests whether a move from the current
-/// position is a capture.
+/// position is a capture. Move must not be MOVE_NONE.
 
 bool Position::move_is_capture(Move m) const {
+
+  assert(m != MOVE_NONE);
 
   return (   !square_is_empty(move_to(m))
           && (color_of_piece_on(move_to(m)) == opposite_color(side_to_move()))
