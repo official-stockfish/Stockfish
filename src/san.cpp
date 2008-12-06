@@ -223,7 +223,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
               toRank = rank_from_char(c);
               state = (i < movestr.length() - 1) ? PROMOTION_OR_CHECK : END;
           }
-          else if (state == TO_FILE && fromRank == FILE_NONE)
+          else if (state == TO_FILE && fromRank == RANK_NONE)
           {
               // It's a disambiguation rank instead of a file
               fromRank = rank_from_char(c);
@@ -263,7 +263,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
       return MOVE_NONE;
 
   // Look for a matching move
-  Move m, move;
+  Move m, move = MOVE_NONE;
   to = make_square(toFile, toRank);
   int matches = 0;
 
