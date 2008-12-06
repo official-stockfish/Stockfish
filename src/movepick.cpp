@@ -228,29 +228,18 @@ void MovePicker::score_captures() {
   // to the badCaptures[] array.
   Move m;
   int seeValue;
-  Square from, to;
 
   for (int i = 0; i < numOfMoves; i++)
   {
       m = moves[i].move;
-      from = move_from(m);
-      to = move_to(m);
-
-      bool hxl = ( int(pos.midgame_value_of_piece_on(from))
-                  -int(pos.midgame_value_of_piece_on(to)) > 0)
-                || pos.type_of_piece_on(from) == KING;
-
-      // Avoid calling see() for LxH and equal captures because
-      // SEE is always >= 0 and we order for MVV/LVA anyway.
-      seeValue = (hxl ? pos.see(m) : 0);
-
+      seeValue = pos.see(m);
       if (seeValue >= 0)
       {
           if (move_promotion(m))
               moves[i].score = QueenValueMidgame;
           else
-              moves[i].score = int(pos.midgame_value_of_piece_on(to))
-                              -int(pos.type_of_piece_on(from));
+              moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
+                              -int(pos.type_of_piece_on(move_from(m)));
       }
       else
       {
