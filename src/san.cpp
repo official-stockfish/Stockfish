@@ -172,7 +172,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
   for (size_t i = 0; i < movestr.length(); i++)
   {
       char type, c = movestr[i];
-      if (pieceLetters.find(c) != -1)
+      if (pieceLetters.find(c) != std::string::npos)
           type = 'P';
       else if (c >= 'a' && c <= 'h')
           type = 'F';
