@@ -133,6 +133,9 @@ namespace {
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x300);
 
+  // Use null capture pruning?
+  const bool UseNullCapturePruning = false;
+
   // Pruning criterions.  See the code and comments in ok_to_prune() to
   // understand their precise meaning.
   const bool PruneEscapeMoves = false;
@@ -1130,6 +1133,7 @@ namespace {
 
     Value approximateEval = quick_evaluate(pos);
     bool mateThreat = false;
+    bool nullCapturePruning = false;
     bool isCheck = pos.is_check();
 
     // Null move search
@@ -1143,7 +1147,20 @@ namespace {
         UndoInfo u;
         pos.do_null_move(u);
         int R = (depth > 7 ? 4 : 3);
+
         Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
+
+        // Check for a null capture artifact, if the value without the null capture
+        // is above beta then mark the node as a suspicious failed low. We will verify
+        // later if we are really under threat.
+        if (   UseNullCapturePruning
+            && nullValue < beta
+            && depth < 5 * OnePly
+            && ss[ply + 1].currentMove != MOVE_NONE
+            && pos.move_is_capture(ss[ply + 1].currentMove)
+            && pos.see(ss[ply + 1].currentMove) * PawnValueMidgame + nullValue > beta)
+            nullCapturePruning = true;
+
         pos.undo_null_move(u);
 
         if (nullValue >= beta)
@@ -1170,6 +1187,26 @@ namespace {
                 && ss[ply - 1].reduction
                 && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
                 return beta - 1;
+
+            if (nullCapturePruning && !mateThreat)
+            {
+                // The null move failed low due to a suspicious capture. Verify if
+                // position is really dangerous or we are facing a null capture
+                // artifact due to the side to move change. So search this
+                // position with a reduced depth and see if we still fail low.
+                Move tm = ss[ply].threatMove;
+
+                assert(tm != MOVE_NONE);
+
+                Value v = search(pos, ss, beta, depth-3*OnePly, ply, false, threadID);
+                if (v >= beta)
+                    return beta;
+
+                // Restore stack and update ttMove if was empty
+                ss[ply].threatMove = tm;
+                if (ttMove == MOVE_NONE)
+                    ttMove = ss[ply].pv[ply];
+            }
         }
     }
     // Null move search not allowed, try razoring
