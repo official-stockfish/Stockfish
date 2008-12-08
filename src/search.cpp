@@ -393,6 +393,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
 
+  UseNullDrivenIID = get_option_value_bool("Null driven IID");
   UseQSearchFutilityPruning = get_option_value_bool("Futility Pruning (Quiescence Search)");
   UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
 
