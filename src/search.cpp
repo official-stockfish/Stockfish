@@ -106,6 +106,9 @@ namespace {
   const bool UseIIDAtPVNodes = true;
   const bool UseIIDAtNonPVNodes = false;
 
+  // Use null move driven internal iterative deepening?
+  bool UseNullDrivenIID = true;
+
   // Internal iterative deepening margin.  At Non-PV moves, when
   // UseIIDAtNonPVNodes is true, we do an internal iterative deepening search
   // when the static evaluation is at most IIDMargin below beta.
@@ -132,9 +135,6 @@ namespace {
   // Null move margin.  A null move search will not be done if the approximate
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x300);
-
-  // Use null capture pruning?
-  const bool UseNullCapturePruning = false;
 
   // Pruning criterions.  See the code and comments in ok_to_prune() to
   // understand their precise meaning.
@@ -1127,13 +1127,13 @@ namespace {
 
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
     {
-        ss[ply].currentMove = ttMove; // can be MOVE_NONE ?
+        ss[ply].currentMove = ttMove; // can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
     }
 
     Value approximateEval = quick_evaluate(pos);
     bool mateThreat = false;
-    bool nullCapturePruning = false;
+    bool nullDrivenIID = false;
     bool isCheck = pos.is_check();
 
     // Null move search
@@ -1151,15 +1151,16 @@ namespace {
         Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
 
         // Check for a null capture artifact, if the value without the null capture
-        // is above beta then mark the node as a suspicious failed low. We will verify
-        // later if we are really under threat.
-        if (   UseNullCapturePruning
+        // is above beta then there is a good possibility that this is a cut-node.
+        // We will do an IID later to find a ttMove.
+        if (   UseNullDrivenIID
             && nullValue < beta
-            && depth < 5 * OnePly
+            && depth > 6 * OnePly
+            && ttMove == MOVE_NONE
             && ss[ply + 1].currentMove != MOVE_NONE
             && pos.move_is_capture(ss[ply + 1].currentMove)
-            && pos.see(ss[ply + 1].currentMove) * PawnValueMidgame + nullValue > beta)
-            nullCapturePruning = true;
+            && pos.see(ss[ply + 1].currentMove) * PawnValueMidgame + nullValue > beta - IIDMargin)
+            nullDrivenIID = true;
 
         pos.undo_null_move(u);
 
@@ -1180,33 +1181,15 @@ namespace {
             // low score (which will cause the reduced move to fail high in the
             // parent node, which will trigger a re-search with full depth).
             if (nullValue == value_mated_in(ply + 2))
+            {
                 mateThreat = true;
-
+                nullDrivenIID = false;
+            }
             ss[ply].threatMove = ss[ply + 1].currentMove;
             if (   depth < ThreatDepth
                 && ss[ply - 1].reduction
                 && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
                 return beta - 1;
-
-            if (nullCapturePruning && !mateThreat)
-            {
-                // The null move failed low due to a suspicious capture. Verify if
-                // position is really dangerous or we are facing a null capture
-                // artifact due to the side to move change. So search this
-                // position with a reduced depth and see if we still fail low.
-                Move tm = ss[ply].threatMove;
-
-                assert(tm != MOVE_NONE);
-
-                Value v = search(pos, ss, beta, depth-3*OnePly, ply, false, threadID);
-                if (v >= beta)
-                    return beta;
-
-                // Restore stack and update ttMove if was empty
-                ss[ply].threatMove = tm;
-                if (ttMove == MOVE_NONE)
-                    ttMove = ss[ply].pv[ply];
-            }
         }
     }
     // Null move search not allowed, try razoring
@@ -1224,6 +1207,19 @@ namespace {
     {
         search(pos, ss, beta, Min(depth/2, depth-2*OnePly), ply, false, threadID);
         ttMove = ss[ply].pv[ply];
+    }
+    else if (nullDrivenIID)
+    {
+        // The null move failed low due to a suspicious capture. Perhaps we
+        // are facing a null capture artifact due to the side to move change
+        // and this is a cut-node. So it's a good time to search for a ttMove.
+        Move tm = ss[ply].threatMove;
+
+        assert(tm != MOVE_NONE);
+
+        search(pos, ss, beta, Min(depth/2, depth-3*OnePly), ply, false, threadID);
+        ttMove = ss[ply].pv[ply];
+        ss[ply].threatMove = tm;
     }
 
     // Initialize a MovePicker object for the current position, and prepare
