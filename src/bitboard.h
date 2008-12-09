@@ -236,6 +236,19 @@ inline Bitboard in_front_bb(Color c, Square s) {
 }
 
 
+/// behind_bb() takes a color and a rank or square as input, and returns a
+/// bitboard representing all the squares on all ranks behind of the rank
+/// (or square), from the given color's point of view.
+
+inline Bitboard behind_bb(Color c, Rank r) {
+  return InFrontBB[opposite_color(c)][r];
+}
+
+inline Bitboard behind_bb(Color c, Square s) {
+  return in_front_bb(opposite_color(c), square_rank(s));
+}
+
+
 /// ray_bb() gives a bitboard representing all squares along the ray in a
 /// given direction from a given square.
 

@@ -300,7 +300,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
             || isolated
             || chain
             || (pos.pawn_attacks(us, s) & theirPawns)
-            || (ourPawns & in_front_bb(them, r) & neighboring_files_bb(f)))
+            || (ourPawns & behind_bb(us, r) & neighboring_files_bb(f)))
             backward = false;
         else
         {
@@ -324,8 +324,8 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         // Test for candidate passed pawn
         candidate =    !passed
                      && pos.file_is_half_open(them, f)
-                     && (  count_1s_max_15(neighboring_files_bb(f) & (in_front_bb(them, r) | rank_bb(r)) & ourPawns)
-                         - count_1s_max_15(neighboring_files_bb(f) &  in_front_bb(us, r)                 & theirPawns)
+                     && (  count_1s_max_15(neighboring_files_bb(f) & (behind_bb(us, r) | rank_bb(r)) & ourPawns)
+                         - count_1s_max_15(neighboring_files_bb(f) & in_front_bb(us, r)              & theirPawns)
                          >= 0);
 
         // In order to prevent doubled passed pawns from receiving a too big
