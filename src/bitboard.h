@@ -113,8 +113,8 @@ extern const Bitboard RankBB[8];
 extern const Bitboard RelativeRankBB[2][8];
 extern const Bitboard InFrontBB[2][8];
 
-extern Bitboard SetMaskBB[64];
-extern Bitboard ClearMaskBB[64];
+extern Bitboard SetMaskBB[65];
+extern Bitboard ClearMaskBB[65];
 
 extern Bitboard StepAttackBB[16][64];
 extern Bitboard RayBB[64][8];

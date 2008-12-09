@@ -253,6 +253,7 @@ public:
   // Static exchange evaluation
   int see(Square from, Square to) const;
   int see(Move m) const;
+  int see(Square to) const;
 
   // Accessing hash keys
   Key get_key() const;

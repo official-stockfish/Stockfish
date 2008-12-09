@@ -1582,10 +1582,16 @@ void Position::undo_null_move(const UndoInfo &u) {
 
 
 /// Position::see() is a static exchange evaluator:  It tries to estimate the
-/// material gain or loss resulting from a move.  There are two versions of
-/// this function: One which takes a move as input, and one which takes a
-/// 'from' and a 'to' square.  The function does not yet understand promotions
-/// or en passant captures.
+/// material gain or loss resulting from a move.  There are three versions of
+/// this function: One which takes a destination square as input, one takes a
+/// move, and one which takes a 'from' and a 'to' square.  The function does
+/// not yet understand promotions or en passant captures.
+
+int Position::see(Square to) const {
+
+  assert(square_is_ok(to));
+  return see(SQ_NONE, to);
+}
 
 int Position::see(Move m) const {
 
@@ -1595,18 +1601,22 @@ int Position::see(Move m) const {
 
 int Position::see(Square from, Square to) const {
 
-  // Approximate material values, with pawn = 1
+  // Material values
   static const int seeValues[18] = {
-    0, 1, 3, 3, 5, 10, 100, 0, 0, 1, 3, 3, 5, 10, 100, 0, 0, 0
+    0, PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+       RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10, 0,
+    0, PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+       RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10, 0,
+    0, 0
   };
 
   Bitboard attackers, occ, b;
 
-  assert(square_is_ok(from));
+  assert(square_is_ok(from) || from == SQ_NONE);
   assert(square_is_ok(to));
 
   // Initialize colors
-  Color us = color_of_piece_on(from);
+  Color us = (from != SQ_NONE ? color_of_piece_on(from) : opposite_color(color_of_piece_on(to)));
   Color them = opposite_color(us);
 
   // Initialize pieces
@@ -1616,15 +1626,34 @@ int Position::see(Square from, Square to) const {
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
   occ = occupied_squares();
-  clear_bit(&occ, from);
-  attackers =  (rook_attacks_bb(to, occ)   & rooks_and_queens())
-             | (bishop_attacks_bb(to, occ) & bishops_and_queens())
-             | (piece_attacks<KNIGHT>(to)  & knights())
-             | (piece_attacks<KING>(to)    & kings())
-             | (pawn_attacks(WHITE, to)    & pawns(BLACK))
-             | (pawn_attacks(BLACK, to)    & pawns(WHITE));
+  while (true)
+  {
+      clear_bit(&occ, from);
+      attackers =  (rook_attacks_bb(to, occ)   & rooks_and_queens())
+                 | (bishop_attacks_bb(to, occ) & bishops_and_queens())
+                 | (piece_attacks<KNIGHT>(to)  & knights())
+                 | (piece_attacks<KING>(to)    & kings())
+                 | (pawn_attacks(WHITE, to)    & pawns(BLACK))
+                 | (pawn_attacks(BLACK, to)    & pawns(WHITE));
 
-  // If the opponent has no attackers, we are finished
+      if (from != SQ_NONE)
+          break;
+
+      // If we don't have any attacker we are finished
+      if ((attackers & pieces_of_color(us)) == EmptyBoardBB)
+          return 0;
+
+      // Locate the least valuable attacker to the destination square
+      // and use it to initialize from square.
+      PieceType pt;
+      for (pt = PAWN; !(attackers & pieces_of_color_and_type(us, pt)); pt++)
+          assert(pt < KING);
+
+      from = first_1(attackers & pieces_of_color_and_type(us, pt));
+      piece = piece_on(from);
+  }
+
+  // If the opponent has no attackers we are finished
   if ((attackers & pieces_of_color(them)) == EmptyBoardBB)
       return seeValues[capture];
 

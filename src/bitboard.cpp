@@ -250,8 +250,8 @@ Bitboard BMask[64];
 int BAttackIndex[64];
 Bitboard BAttacks[0x1480];
 
-Bitboard SetMaskBB[64];
-Bitboard ClearMaskBB[64];
+Bitboard SetMaskBB[65];
+Bitboard ClearMaskBB[65];
 
 Bitboard StepAttackBB[16][64];
 Bitboard RayBB[64][8];
@@ -433,6 +433,8 @@ namespace {
   // be necessary to touch any of them.
 
   void init_masks() {
+    SetMaskBB[SQ_NONE] = 0ULL;
+    ClearMaskBB[SQ_NONE] = ~SetMaskBB[SQ_NONE];
     for(Square s = SQ_A1; s <= SQ_H8; s++) {
       SetMaskBB[s] = (1ULL << s);
       ClearMaskBB[s] = ~SetMaskBB[s];
