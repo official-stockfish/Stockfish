@@ -1160,7 +1160,7 @@ namespace {
             && ttMove == MOVE_NONE
             && ss[ply + 1].currentMove != MOVE_NONE
             && pos.move_is_capture(ss[ply + 1].currentMove)
-            && pos.see(ss[ply + 1].currentMove) * PawnValueMidgame + nullValue > beta - IIDMargin)
+            && pos.see(ss[ply + 1].currentMove) + nullValue >= beta)
             nullDrivenIID = true;
 
         pos.undo_null_move(u);
@@ -1176,9 +1176,9 @@ namespace {
                 return beta;
         } else {
             // The null move failed low, which means that we may be faced with
-            // some kind of threat.  If the previous move was reduced, check if
+            // some kind of threat. If the previous move was reduced, check if
             // the move that refuted the null move was somehow connected to the
-            // move which was reduced.  If a connection is found, return a fail
+            // move which was reduced. If a connection is found, return a fail
             // low score (which will cause the reduced move to fail high in the
             // parent node, which will trigger a re-search with full depth).
             if (nullValue == value_mated_in(ply + 2))
@@ -1217,8 +1217,9 @@ namespace {
         Move tm = ss[ply].threatMove;
 
         assert(tm != MOVE_NONE);
+        assert(ttMove == MOVE_NONE);
 
-        search(pos, ss, beta, Min(depth/2, depth-3*OnePly), ply, false, threadID);
+        search(pos, ss, beta, depth/2, ply, false, threadID);
         ttMove = ss[ply].pv[ply];
         ss[ply].threatMove = tm;
     }
