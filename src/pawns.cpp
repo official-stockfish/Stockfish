@@ -244,15 +244,15 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
             // pawns on h6, g5, black pawns on h7, g6, f7).
 
             // Kingside and queenside pawn storms
-            bool outPost = (outpost_mask(us, s) & theirPawns);
-            bool passed = (passed_pawn_mask(us, s) & theirPawns);
             int KBonus = KStormTable[relative_square(us, s)];
             int QBonus = QStormTable[relative_square(us, s)];
+            bool outPost = (KBonus > 0 && (outpost_mask(us, s) & theirPawns));
+            bool passed = (QBonus > 0 && (passed_pawn_mask(us, s) & theirPawns));
 
             switch (f) {
 
             case FILE_A:
-                QBonus += passed * QBonus / 4;
+                QBonus += passed * QBonus / 2;
                 break;
 
             case FILE_B:
