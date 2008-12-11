@@ -1139,6 +1139,7 @@ namespace {
 
     // Null move search
     if (    allowNullmove
+        &&  depth > OnePly
         && !isCheck
         &&  ok_to_do_nullmove(pos)
         &&  approximateEval >= beta - NullMoveMargin)
