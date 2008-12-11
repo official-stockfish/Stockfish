@@ -107,7 +107,7 @@ namespace {
   const bool UseIIDAtNonPVNodes = false;
 
   // Use null move driven internal iterative deepening?
-  bool UseNullDrivenIID = true;
+  bool UseNullDrivenIID = false;
 
   // Internal iterative deepening margin.  At Non-PV moves, when
   // UseIIDAtNonPVNodes is true, we do an internal iterative deepening search

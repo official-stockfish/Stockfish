@@ -120,7 +120,7 @@ namespace {
     o.push_back(Option("Full Depth Moves (non-PV nodes)", 3, 1, 100));
     o.push_back(Option("Threat Depth", 5, 0, 100));
     o.push_back(Option("Selective Plies", 7, 0, 10));
-    o.push_back(Option("Null driven IID", true));
+    o.push_back(Option("Null driven IID", false));
     o.push_back(Option("Futility Pruning (Main Search)", true));
     o.push_back(Option("Futility Pruning (Quiescence Search)", true));
     o.push_back(Option("Futility Margin 0", 50, 0, 1000));
