@@ -2158,31 +2158,34 @@ namespace {
     tto = move_to(threat);
 
     // Case 1: Castling moves are never pruned.
-    if(move_is_castle(m))
-      return false;
+    if (move_is_castle(m))
+        return false;
 
     // Case 2: Don't prune moves which move the threatened piece
-    if(!PruneEscapeMoves && threat != MOVE_NONE && mfrom == tto)
-      return false;
+    if (!PruneEscapeMoves && threat != MOVE_NONE && mfrom == tto)
+        return false;
 
     // Case 3: If the threatened piece has value less than or equal to the
     // value of the threatening piece, don't prune move which defend it.
-    if(!PruneDefendingMoves && threat != MOVE_NONE
-       && (piece_value_midgame(pos.piece_on(tfrom))
-           >= piece_value_midgame(pos.piece_on(tto)))
-       && pos.move_attacks_square(m, tto))
+    if (   !PruneDefendingMoves
+        && threat != MOVE_NONE
+        && pos.type_of_piece_on(tto) != NO_PIECE_TYPE
+        && (   pos.midgame_value_of_piece_on(tfrom) >= pos.midgame_value_of_piece_on(tto)
+            || pos.type_of_piece_on(tfrom) == KING)
+        && pos.move_attacks_square(m, tto))
       return false;
 
     // Case 4: Don't prune moves with good history.
-    if(!H.ok_to_prune(pos.piece_on(move_from(m)), m, d))
-      return false;
+    if (!H.ok_to_prune(pos.piece_on(move_from(m)), m, d))
+        return false;
 
     // Case 5: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
-    if(!PruneBlockingMoves && threat != MOVE_NONE
-       && piece_is_slider(pos.piece_on(tfrom))
-       && bit_is_set(squares_between(tfrom, tto), mto) && pos.see(m) >= 0)
-      return false;
+    if (  !PruneBlockingMoves
+        && threat != MOVE_NONE
+        && piece_is_slider(pos.piece_on(tfrom))
+        && bit_is_set(squares_between(tfrom, tto), mto) && pos.see(m) >= 0)
+            return false;
 
     return true;
   }
