@@ -729,6 +729,12 @@ namespace {
 
     if (UseLogFile)
     {
+        if (dbg_show_mean)
+            dbg_print_mean(LogFile);
+
+        if (dbg_show_hit_rate)
+            dbg_print_hit_rate(LogFile);
+
         UndoInfo u;
         LogFile << "Nodes: " << nodes_searched() << std::endl
                 << "Nodes/second: " << nps() << std::endl

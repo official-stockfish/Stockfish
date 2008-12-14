@@ -37,6 +37,7 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp);
 
 #endif
 
+#include <cassert>
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
@@ -62,6 +63,42 @@ bool dbg_show_hit_rate = false;
 ////
 //// Functions
 ////
+
+void dbg_hit_on(bool b) {
+
+    assert(!dbg_show_mean);
+    dbg_show_hit_rate = true;
+    dbg_cnt0++;
+    if (b)
+        dbg_cnt1++;
+}
+
+void dbg_hit_on_c(bool c, bool b) {
+
+    if (c)
+        dbg_hit_on(b);
+}
+
+void dbg_before() {
+
+    assert(!dbg_show_mean);
+    dbg_show_hit_rate = true;
+    dbg_cnt0++;
+}
+
+void dbg_after() {
+
+    assert(!dbg_show_mean);
+    dbg_show_hit_rate = true;
+    dbg_cnt1++;
+}
+
+void dbg_mean_of(int v) {
+
+    assert(!dbg_show_hit_rate);
+    dbg_cnt0++;
+    dbg_cnt1 += v;
+}
 
 void dbg_print_hit_rate() {
 
