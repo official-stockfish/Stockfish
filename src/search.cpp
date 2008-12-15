@@ -1183,7 +1183,7 @@ namespace {
 
         UndoInfo u;
         pos.do_null_move(u);
-        int R = (depth > 7 ? 4 : 3);
+        int R = (depth >= 4 * OnePly ? 4 : 3); // Null move dynamic reduction
 
         Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
 
