@@ -47,6 +47,23 @@ namespace {
 
   /// Types
 
+  // The BetaCounterType class is used to order moves at ply one.
+  // Apart for the first one that has its score, following moves
+  // normally have score -VALUE_INFINITE, so are ordered according
+  // to the number of beta cutoffs occurred under their subtree during
+  // the last iteration.
+
+  struct BetaCounterType {
+
+    BetaCounterType();
+    void clear();
+    void add(Color us, Depth d, int threadID);
+    void read(Color us, int64_t& our, int64_t& their);
+
+    int64_t hits[THREAD_MAX][2];
+  };
+
+
   // The RootMove class is used for moves at the root at the tree.  For each
   // root move, we store a score, a node count, and a PV (really a refutation
   // in the case of moves which fail low).
@@ -60,6 +77,7 @@ namespace {
     Value score;
     int64_t nodes, cumulativeNodes;
     Move pv[PLY_MAX_PLUS_2];
+    int64_t ourBeta, theirBeta;
   };
 
 
@@ -74,6 +92,7 @@ namespace {
     inline Value get_move_score(int moveNum) const;
     inline void set_move_score(int moveNum, Value score);
     inline void set_move_nodes(int moveNum, int64_t nodes);
+    inline void set_beta_counters(int moveNum, int64_t our, int64_t their);
     void set_move_pv(int moveNum, const Move pv[]);
     inline Move get_move_pv(int moveNum, int i) const;
     inline int64_t get_move_cumulative_nodes(int moveNum) const;
@@ -177,9 +196,10 @@ namespace {
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
 
-  // Iteration counter
+  // Iteration counters
   int Iteration;
   bool LastIterations;
+  BetaCounterType BetaCounter;
 
   // Scores and number of times the best move changed for each iteration:
   Value ValueByIteration[PLY_MAX_PLUS_2];
@@ -774,6 +794,9 @@ namespace {
         // are used to sort the root moves at the next iteration.
         nodes = nodes_searched();
 
+        // Reset beta cut-off counters
+        BetaCounter.clear();
+
         // Pick the next root move, and print the move and the move number to
         // the standard output.
         move = ss[0].currentMove = rml.get_move(i);
@@ -828,6 +851,11 @@ namespace {
         // Remember the node count for this move. The node counts are used to
         // sort the root moves at the next iteration.
         rml.set_move_nodes(i, nodes_searched() - nodes);
+
+        // Remember the beta-cutoff statistics
+        int64_t our, their;
+        BetaCounter.read(pos.side_to_move(), our, their);
+        rml.set_beta_counters(i, our, their);
 
         assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
 
@@ -1079,6 +1107,7 @@ namespace {
 
     else if (bestValue >= beta)
     {
+        BetaCounter.add(pos.side_to_move(), depth, threadID);
         Move m = ss[ply].pv[ply];
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
@@ -1355,6 +1384,7 @@ namespace {
         TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_UPPER);
     else
     {
+        BetaCounter.add(pos.side_to_move(), depth, threadID);
         Move m = ss[ply].pv[ply];
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
@@ -1753,6 +1783,32 @@ namespace {
     lock_release(&(sp->lock));
   }
 
+  /// The BetaCounterType class
+
+  BetaCounterType::BetaCounterType() { clear(); }
+
+  void BetaCounterType::clear() {
+
+    for (int i = 0; i < THREAD_MAX; i++)
+        hits[i][WHITE] = hits[i][BLACK] = 0ULL;
+  }
+
+  void BetaCounterType::add(Color us, Depth d, int threadID) {
+
+    // Weighted count based on depth
+    hits[threadID][us] += int(d);
+  }
+
+  void BetaCounterType::read(Color us, int64_t& our, int64_t& their) {
+
+    our = their = 0UL;
+    for (int i = 0; i < THREAD_MAX; i++)
+    {
+        our += hits[i][us];
+        their += hits[i][opposite_color(us)];
+    }
+  }
+
 
   /// The RootMove class
 
@@ -1772,7 +1828,7 @@ namespace {
     if (score != m.score)
         return (score < m.score);
 
-    return nodes <= m.nodes;
+    return theirBeta <= m.theirBeta;
   }
 
   /// The RootMoveList class
@@ -1833,6 +1889,11 @@ namespace {
   inline void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
     moves[moveNum].nodes = nodes;
     moves[moveNum].cumulativeNodes += nodes;
+  }
+
+  inline void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
+    moves[moveNum].ourBeta = our;
+    moves[moveNum].theirBeta = their;
   }
 
   void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
