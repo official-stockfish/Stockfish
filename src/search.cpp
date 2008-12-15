@@ -267,6 +267,7 @@ namespace {
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack *pss, SearchStack ss[], int ply);
   bool connected_moves(const Position &pos, Move m1, Move m2);
+  bool value_is_mate(Value value);
   bool move_is_killer(Move m, const SearchStack& ss);
   Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat, bool* dangerous);
   bool ok_to_do_nullmove(const Position &pos);
@@ -1176,6 +1177,7 @@ namespace {
     if (    allowNullmove
         &&  depth > OnePly
         && !isCheck
+        && !value_is_mate(beta)
         &&  ok_to_do_nullmove(pos)
         &&  approximateEval >= beta - NullMoveMargin)
     {
@@ -1201,7 +1203,11 @@ namespace {
 
         pos.undo_null_move(u);
 
-        if (nullValue >= beta)
+        if (value_is_mate(nullValue))
+        {
+            /* Do not return unproven mates */
+        }
+        else if (nullValue >= beta)
         {
             if (depth < 6 * OnePly)
                 return beta;
@@ -1298,10 +1304,12 @@ namespace {
           && !moveIsCapture
           && !move_promotion(move))
       {
+          // History pruning. See ok_to_prune() definition.
           if (   moveCount >= 2 + int(depth)
               && ok_to_prune(pos, move, ss[ply].threatMove, depth))
               continue;
 
+          // Value based pruning.
           if (depth < 3 * OnePly && approximateEval < beta)
           {
               if (futilityValue == VALUE_NONE)
@@ -2117,6 +2125,18 @@ namespace {
     }
 
     return false;
+  }
+
+
+  // value_is_mate() checks if the given value is a mate one
+  // eventually compensated for the ply.
+
+  bool value_is_mate(Value value) {
+
+    assert(abs(value) <= VALUE_INFINITE);
+
+    return   value <= value_mated_in(PLY_MAX)
+          || value >= value_mate_in(PLY_MAX);
   }
 
 
