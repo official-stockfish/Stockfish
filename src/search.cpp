@@ -1195,6 +1195,7 @@ namespace {
         if (   UseNullDrivenIID
             && nullValue < beta
             && depth > 6 * OnePly
+            &&!value_is_mate(nullValue)
             && ttMove == MOVE_NONE
             && ss[ply + 1].currentMove != MOVE_NONE
             && pos.move_is_capture(ss[ply + 1].currentMove)
@@ -1236,8 +1237,10 @@ namespace {
         }
     }
     // Null move search not allowed, try razoring
-    else if (  (approximateEval < beta - RazorMargin && depth < RazorDepth)
-             ||(approximateEval < beta - PawnValueMidgame && depth <= OnePly))
+    else if (   !isCheck
+             && !value_is_mate(beta)
+             && (  (approximateEval < beta - RazorMargin && depth < RazorDepth)
+                 ||(approximateEval < beta - PawnValueMidgame && depth <= OnePly)))
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
         if (v < beta)
@@ -1454,12 +1457,12 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, depth, &ei);
+    bool pvNode = (beta - alpha != 1);
+    MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, &ei);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     bool isCheck = pos.is_check();
-    bool pvNode = (beta - alpha != 1);
     bool enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
