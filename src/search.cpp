@@ -1487,6 +1487,7 @@ namespace {
           Value futilityValue = staticValue
                               + Max(pos.midgame_value_of_piece_on(move_to(move)),
                                     pos.endgame_value_of_piece_on(move_to(move)))
+                              + (move_is_ep(move) ? PawnValueEndgame : Value(0))
                               + FutilityMargin0
                               + ei.futilityMargin;
 
