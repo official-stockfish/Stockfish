@@ -1439,14 +1439,15 @@ namespace {
         return value_from_tt(tte->value(), ply);
 
     // Evaluate the position statically
-    Value staticValue = evaluate(pos, ei, threadID);
+    bool isCheck = pos.is_check();
+    Value staticValue = (isCheck ? -VALUE_INFINITE : evaluate(pos, ei, threadID));
 
     if (ply == PLY_MAX - 1)
-        return staticValue;
+        return evaluate(pos, ei, threadID);
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.
-    Value bestValue = (pos.is_check() ? -VALUE_INFINITE : staticValue);
+    Value bestValue = staticValue;
 
     if (bestValue >= beta)
         return bestValue;
@@ -1458,11 +1459,10 @@ namespace {
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
     bool pvNode = (beta - alpha != 1);
-    MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, &ei);
+    MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, isCheck ? NULL : &ei);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();
-    bool isCheck = pos.is_check();
     bool enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
