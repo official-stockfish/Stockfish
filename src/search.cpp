@@ -1003,9 +1003,8 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       if (moveIsCapture)
-          ss[ply].currentMoveCaptureValue = pos.midgame_value_of_piece_on(move_to(move));
-      else if (move_is_ep(move))
-          ss[ply].currentMoveCaptureValue = PawnValueMidgame;
+          ss[ply].currentMoveCaptureValue =
+          move_is_ep(move)? PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
       else
           ss[ply].currentMoveCaptureValue = Value(0);
 
@@ -1691,8 +1690,11 @@ namespace {
 
       assert(move_is_ok(move));
 
-      ss[sp->ply].currentMoveCaptureValue = move_is_ep(move)?
-        PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
+      if (moveIsCapture)
+          ss[sp->ply].currentMoveCaptureValue =
+          move_is_ep(move)? PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
+      else
+          ss[sp->ply].currentMoveCaptureValue = Value(0);
 
       lock_grab(&(sp->lock));
       int moveCount = ++sp->moves;
