@@ -2170,6 +2170,8 @@ namespace {
   Depth extension(const Position &pos, Move m, bool pvNode, bool check,
                   bool singleReply, bool mateThreat, bool* dangerous) {
 
+    assert(m != MOVE_NONE);
+
     Depth result = Depth(0);
     *dangerous = check || singleReply || mateThreat;
 
@@ -2193,10 +2195,12 @@ namespace {
         *dangerous = true;
     }
 
-    if (   pos.midgame_value_of_piece_on(move_to(m)) >= RookValueMidgame
+    if (   pos.move_is_capture(m)
+        && pos.type_of_piece_on(move_to(m)) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
-        && !move_promotion(m))
+        && !move_promotion(m)
+        && !move_is_ep(m))
     {
         result += PawnEndgameExtension[pvNode];
         *dangerous = true;
@@ -2262,7 +2266,7 @@ namespace {
     // value of the threatening piece, don't prune move which defend it.
     if (   !PruneDefendingMoves
         && threat != MOVE_NONE
-        && pos.type_of_piece_on(tto) != NO_PIECE_TYPE
+        && pos.move_is_capture(threat)
         && (   pos.midgame_value_of_piece_on(tfrom) >= pos.midgame_value_of_piece_on(tto)
             || pos.type_of_piece_on(tfrom) == KING)
         && pos.move_attacks_square(m, tto))
