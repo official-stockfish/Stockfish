@@ -1236,8 +1236,7 @@ namespace {
         }
     }
     // Null move search not allowed, try razoring
-    else if (   !isCheck
-             && !value_is_mate(beta)
+    else if (   !value_is_mate(beta)
              && (  (approximateEval < beta - RazorMargin && depth < RazorDepth)
                  ||(approximateEval < beta - PawnValueMidgame && depth <= OnePly)))
     {
