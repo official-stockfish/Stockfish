@@ -940,15 +940,16 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
-    // Initialize, and make an early exit in case of an aborted search,
-    // an instant draw, maximum ply reached, etc.
-    if (AbortSearch || thread_should_stop(threadID))
-        return Value(0);
-
     if (depth < OnePly)
         return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
 
+    // Initialize, and make an early exit in case of an aborted search,
+    // an instant draw, maximum ply reached, etc.
     init_node(pos, ss, ply, threadID);
+
+    // After init_node() that calls poll()
+    if (AbortSearch || thread_should_stop(threadID))
+        return Value(0);
 
     if (pos.is_draw())
         return VALUE_DRAW;
@@ -1132,20 +1133,21 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
-    EvalInfo ei;
-
-    // Initialize, and make an early exit in case of an aborted search,
-    // an instant draw, maximum ply reached, etc.
-    if (AbortSearch || thread_should_stop(threadID))
-        return Value(0);
-
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
 
+    // Initialize, and make an early exit in case of an aborted search,
+    // an instant draw, maximum ply reached, etc.
     init_node(pos, ss, ply, threadID);
+
+    // After init_node() that calls poll()
+    if (AbortSearch || thread_should_stop(threadID))
+        return Value(0);
 
     if (pos.is_draw())
         return VALUE_DRAW;
+
+    EvalInfo ei;
 
     if (ply >= PLY_MAX - 1)
         return evaluate(pos, ei, threadID);
@@ -1189,8 +1191,8 @@ namespace {
         Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
 
         // Check for a null capture artifact, if the value without the null capture
-        // is above beta then there is a good possibility that this is a cut-node.
-        // We will do an IID later to find a ttMove.
+        // is above beta then mark the node as a suspicious failed low. We will verify
+        // later if we are really under threat.
         if (   UseNullDrivenIID
             && nullValue < beta
             && depth > 6 * OnePly
@@ -1256,7 +1258,9 @@ namespace {
     {
         // The null move failed low due to a suspicious capture. Perhaps we
         // are facing a null capture artifact due to the side to move change
-        // and this is a cut-node. So it's a good time to search for a ttMove.
+        // and this position should fail high. So do a normal search with a
+        // reduced depth to get a good ttMove to use in the following full
+        // depth search.
         Move tm = ss[ply].threatMove;
 
         assert(tm != MOVE_NONE);
@@ -1419,14 +1423,13 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
-    EvalInfo ei;
-
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
+    init_node(pos, ss, ply, threadID);
+
+    // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
         return Value(0);
-
-    init_node(pos, ss, ply, threadID);
 
     if (pos.is_draw())
         return VALUE_DRAW;
@@ -1437,6 +1440,7 @@ namespace {
         return value_from_tt(tte->value(), ply);
 
     // Evaluate the position statically
+    EvalInfo ei;
     bool isCheck = pos.is_check();
     Value staticValue = (isCheck ? -VALUE_INFINITE : evaluate(pos, ei, threadID));
 
