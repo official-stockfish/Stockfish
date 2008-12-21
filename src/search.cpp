@@ -1237,11 +1237,11 @@ namespace {
     }
     // Null move search not allowed, try razoring
     else if (   !value_is_mate(beta)
-             && (  (approximateEval < beta - RazorMargin && depth < RazorDepth)
-                 ||(approximateEval < beta - PawnValueMidgame && depth <= OnePly)))
+             && approximateEval < beta - RazorMargin
+             && depth < RazorDepth)
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
-        if (v < beta)
+        if (v < beta - RazorMargin / 2)
             return v;
     }
 
