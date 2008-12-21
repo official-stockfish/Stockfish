@@ -161,6 +161,22 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       mi->evaluationFunction = &EvaluateKKX;
       return mi;
   }
+  else if (   pos.pawns() == EmptyBoardBB
+           && pos.rooks() == EmptyBoardBB
+           && pos.queens() == EmptyBoardBB)
+  {
+      // Minor piece endgame with at least one minor piece per side,
+      // and no pawns.
+      assert(pos.knights(WHITE) | pos.bishops(WHITE));
+      assert(pos.knights(BLACK) | pos.bishops(BLACK));
+
+      if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
+          && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)
+      {
+          mi->evaluationFunction = &EvaluateKmmKm;
+          return mi;
+      }
+  }
 
   // OK, we didn't find any special evaluation function for the current
   // material configuration. Is there a suitable scaling function?
@@ -309,6 +325,8 @@ EndgameFunctions::EndgameFunctions() {
   add(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
   add(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
   add(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
+  add(z[W][BISHOP][2] ^ z[B][KNIGHT][1], &EvaluateKBBKN);
+  add(z[W][KNIGHT][1] ^ z[B][BISHOP][2], &EvaluateKNKBB);
 
   add(z[W][KNIGHT][1] ^ z[W][PAWN][1], W, &ScaleKNPK);
   add(z[B][KNIGHT][1] ^ z[B][PAWN][1], B, &ScaleKKNP);

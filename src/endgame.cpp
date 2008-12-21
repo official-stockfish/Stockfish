@@ -62,6 +62,13 @@ KRKNEvaluationFunction EvaluateKNKR = KRKNEvaluationFunction(BLACK);
 KQKREvaluationFunction EvaluateKQKR = KQKREvaluationFunction(WHITE);
 KQKREvaluationFunction EvaluateKRKQ = KQKREvaluationFunction(BLACK);
 
+// KBB vs KN:
+KBBKNEvaluationFunction EvaluateKBBKN = KBBKNEvaluationFunction(WHITE);
+KBBKNEvaluationFunction EvaluateKNKBB = KBBKNEvaluationFunction(BLACK);
+
+// K and two minors vs K and one or two minors:
+KmmKmEvaluationFunction EvaluateKmmKm = KmmKmEvaluationFunction(WHITE);
+
 
 /// Scaling functions
 
@@ -187,6 +194,8 @@ KRKPEvaluationFunction::KRKPEvaluationFunction(Color c) : EndgameEvaluationFunct
 KRKBEvaluationFunction::KRKBEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
 KRKNEvaluationFunction::KRKNEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
 KQKREvaluationFunction::KQKREvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
+KBBKNEvaluationFunction::KBBKNEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
+KmmKmEvaluationFunction::KmmKmEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
 
 
 ScalingFunction::ScalingFunction(Color c) {
@@ -420,6 +429,36 @@ Value KQKREvaluationFunction::apply(const Position &pos) {
 }
 
 
+Value KBBKNEvaluationFunction::apply(const Position &pos) {
+  assert(pos.piece_count(strongerSide, BISHOP) == 2);
+  assert(pos.non_pawn_material(strongerSide) == 2*BishopValueMidgame);
+  assert(pos.piece_count(weakerSide, KNIGHT) == 1);
+  assert(pos.non_pawn_material(weakerSide) == KnightValueMidgame);
+  assert(pos.pawns() == EmptyBoardBB);
+
+  Value result = BishopValueEndgame;
+  Square wksq = pos.king_square(strongerSide);
+  Square bksq = pos.king_square(weakerSide);
+  Square nsq = pos.piece_list(weakerSide, KNIGHT, 0);
+
+  // Bonus for attacking king close to defending king
+  result += distance_bonus(square_distance(wksq, bksq));
+
+  // Bonus for driving the defending king and knight apart
+  result += Value(square_distance(bksq, nsq) * 32);
+
+  // Bonus for restricting the knight's mobility
+  result += Value((8 - count_1s_max_15(pos.piece_attacks<KNIGHT>(nsq))) * 8);
+
+  return (strongerSide == pos.side_to_move())? result : -result;
+}
+
+
+Value KmmKmEvaluationFunction::apply(const Position &pos) {
+  return Value(0);
+}
+
+
 /// KBPKScalingFunction scales endgames where the stronger side has king,
 /// bishop and one or more pawns.  It checks for draws with rook pawns and a
 /// bishop of the wrong color.  If such a draw is detected, ScaleFactor(0) is
@@ -603,6 +642,16 @@ ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
       ScaleFactor(SCALE_FACTOR_MAX
                   - (8 * square_distance(wpsq, queeningSq) +
                      2 * square_distance(wksq, queeningSq)));
+
+  // If the pawn is not far advanced, and the defending king is somewhere in
+  // the pawn's path, it's probably a draw:
+  if(r <= RANK_4 && bksq > wpsq) {
+    if(square_file(bksq) == square_file(wpsq))
+      return ScaleFactor(10);
+    if(abs(square_file(bksq) - square_file(wpsq)) == 1
+       && square_distance(wksq, bksq) > 2)
+      return ScaleFactor(24 - 2 * square_distance(wksq, bksq));
+  }
 
   return SCALE_FACTOR_NONE;
 }
