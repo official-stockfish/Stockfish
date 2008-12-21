@@ -237,6 +237,18 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       }
   }
 
+  // Compute the space weight
+  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >=
+      2*QueenValueMidgame + 4*RookValueMidgame + 2*KnightValueMidgame)
+  {
+      int minorPieceCount =  pos.piece_count(WHITE, KNIGHT)
+                           + pos.piece_count(BLACK, KNIGHT)
+                           + pos.piece_count(WHITE, BISHOP)
+                           + pos.piece_count(BLACK, BISHOP);
+
+      mi->spaceWeight = minorPieceCount * minorPieceCount;
+  }
+
   // Evaluate the material balance
 
   int sign;

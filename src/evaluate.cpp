@@ -52,6 +52,7 @@ namespace {
   int WeightPassedPawnsMidgame   = 0x100;
   int WeightPassedPawnsEndgame   = 0x100;
   int WeightKingSafety[2] = { 0x100, 0x100 };
+  int WeightSpace;
 
   // Internal evaluation weights.  These are applied on top of the evaluation
   // weights read from UCI parameters.  The purpose is to be able to change
@@ -65,6 +66,7 @@ namespace {
   const int WeightPassedPawnsEndgameInternal   = 0x100;
   const int WeightKingSafetyInternal           = 0x100;
   const int WeightKingOppSafetyInternal        = 0x100;
+  const int WeightSpaceInternal                = 0x30;
 
   // Visually better to define tables constants
   typedef Value V;
@@ -203,6 +205,19 @@ namespace {
     ((1ULL << SQ_A8) | (1ULL << SQ_H8))
   };
 
+  // The SpaceMask[color] contains area of the board which is consdered by
+  // the space evaluation.  In the middle game, each side is given a bonus
+  // based on how many squares inside this area are safe and available for
+  // friendly minor pieces.
+  const Bitboard SpaceMask[2] = {
+    (1ULL<<SQ_C2) | (1ULL<<SQ_D2) | (1ULL<<SQ_E2) | (1ULL<<SQ_F2) |
+    (1ULL<<SQ_C3) | (1ULL<<SQ_D3) | (1ULL<<SQ_E3) | (1ULL<<SQ_F3) |
+    (1ULL<<SQ_C4) | (1ULL<<SQ_D4) | (1ULL<<SQ_E4) | (1ULL<<SQ_F4),
+    (1ULL<<SQ_C7) | (1ULL<<SQ_D7) | (1ULL<<SQ_E7) | (1ULL<<SQ_F7) |
+    (1ULL<<SQ_C6) | (1ULL<<SQ_D6) | (1ULL<<SQ_E6) | (1ULL<<SQ_F6) |
+    (1ULL<<SQ_C5) | (1ULL<<SQ_D5) | (1ULL<<SQ_E5) | (1ULL<<SQ_F5)
+  };
+
   /// King safety constants and variables.  The king safety scores are taken
   /// from the array SafetyTable[].  Various little "meta-bonuses" measuring
   /// the strength of the attack are added up into an integer, which is used
@@ -246,18 +261,18 @@ namespace {
   // in init_safety().
   Value SafetyTable[100];
 
-  // Pawn and material hash tables, indexed by the current thread id:
+  // Pawn and material hash tables, indexed by the current thread id
   PawnInfoTable *PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   MaterialInfoTable *MaterialTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-  // Sizes of pawn and material hash tables:
+  // Sizes of pawn and material hash tables
   const int PawnTableSize = 16384;
   const int MaterialTableSize = 1024;
 
   // Array which gives the number of nonzero bits in an 8-bit integer:
   uint8_t BitCount8Bit[256];
 
-  // Function prototypes:
+  // Function prototypes
   void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei);
   void evaluate_bishop(const Position &p, Square s, Color us, EvalInfo &ei);
   void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei);
@@ -270,6 +285,7 @@ namespace {
   void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
                                     EvalInfo &ei);
 
+  void evaluate_space(const Position &p, Color us, EvalInfo &ei);
   inline Value apply_weight(Value v, int w);
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
 
@@ -407,6 +423,13 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
 
         ei.mgValue += ei.pi->kingside_storm_value(WHITE)
                     - ei.pi->queenside_storm_value(BLACK);
+
+    // Evaluate space for both sides
+    if (ei.mi->space_weight() > 0)
+    {
+        evaluate_space(pos, WHITE, ei);
+        evaluate_space(pos, BLACK, ei);
+    }
   }
 
   // Mobility
@@ -414,7 +437,7 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   ei.egValue += apply_weight(ei.egMobility, WeightMobilityEndgame);
 
   // If we don't already have an unusual scale factor, check for opposite
-  // colored bishop endgames, and use a lower scale for those:
+  // colored bishop endgames, and use a lower scale for those
   if (   phase < PHASE_MIDGAME
       && pos.opposite_colored_bishops()
       && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && ei.egValue > Value(0))
@@ -527,6 +550,7 @@ void read_weights(Color us) {
 
   WeightKingSafety[us]   = weight_option("Cowardice", WeightKingSafetyInternal);
   WeightKingSafety[them] = weight_option("Aggressiveness", WeightKingOppSafetyInternal);
+  WeightSpace = weight_option("Space", WeightSpaceInternal);
 
   init_safety();
 }
@@ -1101,14 +1125,54 @@ namespace {
   }
 
 
-  // apply_weight applies an evaluation weight to a value.
+  // evaluate_space() computes the space evaluation for a given side. The
+  // space evaluation is a simple bonus based on the number of safe squares
+  // available for minor pieces on the central four files on ranks 2--4. Safe
+  // squares one, two or three squares behind a friendly pawn are counted
+  // twice. Finally, the space bonus is scaled by a weight taken from the
+  // material hash table.
+
+  void evaluate_space(const Position &pos, Color us, EvalInfo &ei) {
+
+    Color them = opposite_color(us);
+
+    // Find the safe squares for our pieces inside the area defined by
+    // SpaceMask[us].  A square is unsafe it is attacked by an enemy
+    // pawn, or if it is undefended and attacked by an enemy piece.
+
+    Bitboard safeSquares =
+      SpaceMask[us] & ~pos.pawns(us) & ~ei.attacked_by(them, PAWN)
+      & ~(~ei.attacked_by(us) & ei.attacked_by(them));
+
+    // Find all squares which are at most three squares behind some friendly
+    // pawn.
+    Bitboard behindFriendlyPawns = pos.pawns(us);
+    if(us == WHITE) {
+      behindFriendlyPawns |= (behindFriendlyPawns >> 8);
+      behindFriendlyPawns |= (behindFriendlyPawns >> 16);
+    }
+    else {
+      behindFriendlyPawns |= (behindFriendlyPawns << 8);
+      behindFriendlyPawns |= (behindFriendlyPawns << 16);
+    }
+
+    int space =
+      count_1s_max_15(safeSquares)
+      + count_1s_max_15(behindFriendlyPawns & safeSquares);
+
+    ei.mgValue += Sign[us] *
+      apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
+  }
+
+
+  // apply_weight() applies an evaluation weight to a value
 
   inline Value apply_weight(Value v, int w) {
     return (v*w) / 0x100;
   }
 
 
-  // scale_by_game_phase interpolates between a middle game and an endgame
+  // scale_by_game_phase() interpolates between a middle game and an endgame
   // score, based on game phase.  It also scales the return value by a
   // ScaleFactor array.
 

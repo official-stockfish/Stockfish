@@ -85,6 +85,7 @@ namespace {
     o.push_back(Option("Pawn Structure (Endgame)", 100, 0, 200));
     o.push_back(Option("Passed Pawns (Middle Game)", 100, 0, 200));
     o.push_back(Option("Passed Pawns (Endgame)", 100, 0, 200));
+    o.push_back(Option("Space", 100, 0, 200));
     o.push_back(Option("Aggressiveness", 100, 0, 200));
     o.push_back(Option("Cowardice", 100, 0, 200));
     o.push_back(Option("King Safety Curve", "Quadratic", COMBO));
