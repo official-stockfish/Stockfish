@@ -2284,7 +2284,8 @@ namespace {
     if (  !PruneBlockingMoves
         && threat != MOVE_NONE
         && piece_is_slider(pos.piece_on(tfrom))
-        && bit_is_set(squares_between(tfrom, tto), mto) && pos.see(m) >= 0)
+        && bit_is_set(squares_between(tfrom, tto), mto)
+        && pos.see(m) >= 0)
             return false;
 
     return true;

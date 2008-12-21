@@ -1626,6 +1626,21 @@ int Position::see(Square from, Square to) const {
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
   occ = occupied_squares();
+
+  // Handle enpassant moves
+  if (ep_square() == to && type_of_piece_on(from) == PAWN)
+  {
+      assert(capture == EMPTY);
+
+      Square capQq = (side_to_move() == WHITE)? (to - DELTA_N) : (to - DELTA_S);
+      capture = piece_on(capQq);
+
+      assert(type_of_piece_on(capQq) == PAWN);
+
+      // Remove the captured pawn
+      clear_bit(&occ, capQq);
+  }
+
   while (true)
   {
       clear_bit(&occ, from);
