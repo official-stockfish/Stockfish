@@ -96,9 +96,6 @@ namespace {
     Value(80), Value(180), Value(0), Value( 0)
   };
 
-  // Evaluate pawn storms?
-  const bool EvaluatePawnStorms = true;
-
   // Pawn storm tables for positions with opposite castling:
   const int QStormTable[64] = {
     0,  0,  0,  0, 0, 0, 0, 0,
@@ -204,13 +201,12 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
     Bitboard pawns = ourPawns;
 
     // Initialize pawn storm scores by giving bonuses for open files
-    if (EvaluatePawnStorms)
-        for(File f = FILE_A; f <= FILE_H; f++)
-            if(pos.file_is_half_open(us, f))
-            {
-                pi->ksStormValue[us] += KStormOpenFileBonus[f];
-                pi->qsStormValue[us] += QStormOpenFileBonus[f];
-            }
+    for (File f = FILE_A; f <= FILE_H; f++)
+        if (pos.file_is_half_open(us, f))
+        {
+            pi->ksStormValue[us] += KStormOpenFileBonus[f];
+            pi->qsStormValue[us] += QStormOpenFileBonus[f];
+        }
 
     // Loop through all pawns of the current color and score each pawn
     while (pawns)
@@ -230,57 +226,54 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         isolated = pos.pawn_is_isolated(us, s);
         doubled = pos.pawn_is_doubled(us, s);
 
-        if (EvaluatePawnStorms)
-        {
-            // We calculate kingside and queenside pawn storm scores
-            // for both colors. These are used when evaluating middle
-            // game positions with opposite side castling.
-            //
-            // Each pawn is given a base score given by a piece square table
-            // (KStormTable[] or QStormTable[]). This score is increased if
-            // there are enemy pawns on adjacent files in front of the pawn.
-            // This is because we want to be able to open files against the
-            // enemy king, and to avoid blocking the pawn structure (e.g. white
-            // pawns on h6, g5, black pawns on h7, g6, f7).
+        // We calculate kingside and queenside pawn storm scores
+        // for both colors. These are used when evaluating middle
+        // game positions with opposite side castling.
+        //
+        // Each pawn is given a base score given by a piece square table
+        // (KStormTable[] or QStormTable[]). This score is increased if
+        // there are enemy pawns on adjacent files in front of the pawn.
+        // This is because we want to be able to open files against the
+        // enemy king, and to avoid blocking the pawn structure (e.g. white
+        // pawns on h6, g5, black pawns on h7, g6, f7).
 
-            // Kingside and queenside pawn storms
-            int KBonus = KStormTable[relative_square(us, s)];
-            int QBonus = QStormTable[relative_square(us, s)];
-            bool outPost = (KBonus > 0 && (outpost_mask(us, s) & theirPawns));
-            bool passed = (QBonus > 0 && (passed_pawn_mask(us, s) & theirPawns));
+        // Kingside and queenside pawn storms
+        int KBonus = KStormTable[relative_square(us, s)];
+        int QBonus = QStormTable[relative_square(us, s)];
+        bool outPostFlag = (KBonus > 0 && (outpost_mask(us, s) & theirPawns));
+        bool passedFlag = (QBonus > 0 && (passed_pawn_mask(us, s) & theirPawns));
 
-            switch (f) {
+        switch (f) {
 
-            case FILE_A:
-                QBonus += passed * QBonus / 2;
-                break;
+        case FILE_A:
+            QBonus += passedFlag * QBonus / 2;
+            break;
 
-            case FILE_B:
-                QBonus += passed * (QBonus / 2 + QBonus / 4);
-                break;
+        case FILE_B:
+            QBonus += passedFlag * (QBonus / 2 + QBonus / 4);
+            break;
 
-            case FILE_C:
-                QBonus += passed * QBonus / 2;
-                break;
+        case FILE_C:
+            QBonus += passedFlag * QBonus / 2;
+            break;
 
-            case FILE_F:
-                KBonus += outPost * KBonus / 4;
-                break;
+        case FILE_F:
+            KBonus += outPostFlag * KBonus / 4;
+            break;
 
-            case FILE_G:
-                KBonus += outPost * (KBonus / 2 + KBonus / 4);
-                break;
+        case FILE_G:
+            KBonus += outPostFlag * (KBonus / 2 + KBonus / 4);
+            break;
 
-            case FILE_H:
-                KBonus += outPost * KBonus / 2;
-                break;
+        case FILE_H:
+            KBonus += outPostFlag * KBonus / 2;
+            break;
 
-            default:
-                break;
-            }
-            pi->ksStormValue[us] += KBonus;
-            pi->qsStormValue[us] += QBonus;
+        default:
+            break;
         }
+        pi->ksStormValue[us] += KBonus;
+        pi->qsStormValue[us] += QBonus;
 
         // Member of a pawn chain (but not the backward one)? We could speed up
         // the test a little by introducing an array of masks indexed by color

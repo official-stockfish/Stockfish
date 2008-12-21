@@ -133,9 +133,6 @@ namespace {
   // when the static evaluation is at most IIDMargin below beta.
   const Value IIDMargin = Value(0x100);
 
-  // Use easy moves?
-  const bool UseEasyMove = true;
-
   // Easy move margin.  An easy move candidate must be at least this much
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
