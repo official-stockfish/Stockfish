@@ -637,7 +637,6 @@ namespace {
 
   void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei) {
 
-    //Bitboard b = p.rook_attacks(s);
     Bitboard b = rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
     ei.attackedBy[us][ROOK] |= b;
 
@@ -768,14 +767,14 @@ namespace {
       Bitboard occ = p.occupied_squares(), b, b2;
 
       // Initialize the 'attackUnits' variable, which is used later on as an
-      // index to the SafetyTable[] array.  The initial is based on the number
-      // and types of the attacking pieces, the number of attacked and
+      // index to the SafetyTable[] array.  The initial value is based on the
+      // number and types of the attacking pieces, the number of attacked and
       // undefended squares around the king, the square of the king, and the
       // quality of the pawn shelter.
       int attackUnits =
             Min((ei.kingAttackersCount[them] * ei.kingAttackersWeight[them]) / 2, 25)
           + (ei.kingAdjacentZoneAttacksCount[them] + count_1s_max_15(undefended)) * 3
-          + InitKingDanger[relative_square(us, s)] - shelter / 32;
+          + InitKingDanger[relative_square(us, s)] - (shelter >> 5);
 
       // Analyse safe queen contact checks
       b = undefended & ei.attacked_by(them, QUEEN) & ~p.pieces_of_color(them);
