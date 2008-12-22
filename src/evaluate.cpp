@@ -936,6 +936,13 @@ namespace {
           b2 = squares_in_front_of(us, s);
           b3 = b2 & ei.attacked_by(them);
           b4 = b2 & ei.attacked_by(us);
+
+          // If there is an enemy rook or queen attacking the pawn from behind,
+          // add all X-ray attacks by the rook or queen.
+          if(bit_is_set(ei.attacked_by(them,ROOK)|ei.attacked_by(them,QUEEN),s)
+             && squares_behind(us, s) & pos.rooks_and_queens(them))
+            b3 = b2;
+
           if((b2 & pos.pieces_of_color(them)) == EmptyBoardBB) {
             // There are no enemy pieces in the pawn's path!  Are any of the
             // squares in the pawn's path attacked by the enemy?
