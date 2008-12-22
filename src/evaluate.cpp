@@ -64,8 +64,8 @@ namespace {
   const int WeightPawnStructureEndgameInternal = 0x100;
   const int WeightPassedPawnsMidgameInternal   = 0x100;
   const int WeightPassedPawnsEndgameInternal   = 0x100;
-  const int WeightKingSafetyInternal           = 0x100;
-  const int WeightKingOppSafetyInternal        = 0x100;
+  const int WeightKingSafetyInternal           = 0x110;
+  const int WeightKingOppSafetyInternal        = 0x110;
   const int WeightSpaceInternal                = 0x30;
 
   // Visually better to define tables constants
@@ -230,8 +230,7 @@ namespace {
   const int KnightAttackWeight = 2;
 
   // Bonuses for safe checks for each piece type.
-  int QueenContactCheckBonus = 4;
-  int RookContactCheckBonus  = 2;
+  int QueenContactCheckBonus = 3;
   int QueenCheckBonus        = 2;
   int RookCheckBonus         = 1;
   int BishopCheckBonus       = 1;
@@ -820,25 +819,8 @@ namespace {
           }
         }
       }
-      // Analyse safe rook contact checks:
-      if (RookContactCheckBonus)
-      {
-          b = undefended & ei.attacked_by(them, ROOK) & ~p.pieces_of_color(them);
-          if (b)
-          {
-              Bitboard attackedByOthers =
-                    ei.attacked_by(them, PAWN)   | ei.attacked_by(them, KNIGHT)
-                  | ei.attacked_by(them, BISHOP) | ei.attacked_by(them, QUEEN);
 
-              b &= attackedByOthers;
-              if (b)
-              {
-                  int count = count_1s_max_15(b);
-                  attackUnits += (RookContactCheckBonus * count * (sente? 2 : 1));
-              }
-          }
-      }
-      // Analyse safe distance checks:
+      // Analyse safe distance checks
       if (QueenCheckBonus > 0 || RookCheckBonus > 0)
       {
           b = p.piece_attacks<ROOK>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
@@ -1219,7 +1201,6 @@ namespace {
   void init_safety() {
 
     QueenContactCheckBonus = get_option_value_int("Queen Contact Check Bonus");
-    RookContactCheckBonus  = get_option_value_int("Rook Contact Check Bonus");
     QueenCheckBonus        = get_option_value_int("Queen Check Bonus");
     RookCheckBonus         = get_option_value_int("Rook Check Bonus");
     BishopCheckBonus       = get_option_value_int("Bishop Check Bonus");

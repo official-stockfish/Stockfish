@@ -97,8 +97,7 @@ namespace {
     o.push_back(Option("King Safety X Intercept", 0, 0, 20));
     o.push_back(Option("King Safety Max Slope", 30, 10, 100));
     o.push_back(Option("King Safety Max Value", 500, 100, 1000));
-    o.push_back(Option("Queen Contact Check Bonus", 4, 0, 8));
-    o.push_back(Option("Rook Contact Check Bonus", 2, 0, 4));
+    o.push_back(Option("Queen Contact Check Bonus", 3, 0, 8));
     o.push_back(Option("Queen Check Bonus", 2, 0, 4));
     o.push_back(Option("Rook Check Bonus", 1, 0, 4));
     o.push_back(Option("Bishop Check Bonus", 1, 0, 4));
