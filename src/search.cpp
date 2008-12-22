@@ -1073,7 +1073,9 @@ namespace {
           // If we are at ply 1, and we are searching the first root move at
           // ply 0, set the 'Problem' variable if the score has dropped a lot
           // (from the computer's point of view) since the previous iteration:
-          if (Iteration >= 2 && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
+          if (   ply == 1
+              && Iteration >= 2
+              && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
               Problem = true;
       }
 
@@ -1775,8 +1777,10 @@ namespace {
         }
         // If we are at ply 1, and we are searching the first root move at
         // ply 0, set the 'Problem' variable if the score has dropped a lot
-        // (from the computer's point of view) since the previous iteration:
-        if (Iteration >= 2 && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
+        // (from the computer's point of view) since the previous iteration.
+        if (   sp->ply == 1
+            && Iteration >= 2
+            && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
             Problem = true;
       }
       lock_release(&(sp->lock));
@@ -1785,7 +1789,7 @@ namespace {
     lock_grab(&(sp->lock));
 
     // If this is the master thread and we have been asked to stop because of
-    // a beta cutoff higher up in the tree, stop all slave threads:
+    // a beta cutoff higher up in the tree, stop all slave threads.
     if (sp->master == threadID && thread_should_stop(threadID))
         for (int i = 0; i < ActiveThreads; i++)
             if (sp->slaves[i])
