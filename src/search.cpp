@@ -1035,7 +1035,7 @@ namespace {
         else
             value = alpha + 1; // Just to trigger next condition
 
-        if (value > alpha) // Go with full depth pv search
+        if (value > alpha) // Go with full depth non-pv search
         {
             ss[ply].reduction = Depth(0);
             value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
