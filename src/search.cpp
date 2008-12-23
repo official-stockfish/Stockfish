@@ -166,7 +166,7 @@ namespace {
   // nodes, and at pre-frontier nodes
   Value FutilityMargin0 = Value(0x80);
   Value FutilityMargin1 = Value(0x100);
-  Value FutilityMargin2 = Value(0x300);
+  Value FutilityMargin2 = Value(0x200);
 
   // Razoring
   Depth RazorDepth = 4*OnePly;
@@ -1308,18 +1308,18 @@ namespace {
           && !moveIsCapture
           && !move_promotion(move))
       {
-          // History pruning. See ok_to_prune() definition.
+          // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(depth)
               && ok_to_prune(pos, move, ss[ply].threatMove, depth))
               continue;
 
-          // Value based pruning.
-          if (depth < 3 * OnePly && approximateEval < beta)
+          // Value based pruning
+          if (depth < 6 * OnePly && approximateEval < beta)
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                + (depth < 2 * OnePly ? FutilityMargin1 : FutilityMargin2);
-
+                                + (depth < 2 * OnePly ? FutilityMargin1
+                                                      : FutilityMargin2 + (depth - 2*OnePly) * 32);
               if (futilityValue < beta)
               {
                   if (futilityValue > bestValue)
