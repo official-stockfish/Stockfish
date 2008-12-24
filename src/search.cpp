@@ -1314,12 +1314,14 @@ namespace {
               continue;
 
           // Value based pruning
-          if (depth < 6 * OnePly && approximateEval < beta)
+          if (depth < 7 * OnePly && approximateEval < beta)
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                + (depth < 2 * OnePly ? FutilityMargin1
-                                                      : FutilityMargin2 + (depth - 2*OnePly) * 32);
+                                + (depth < 2 * OnePly ? FutilityMargin1 :
+                                + (depth < 6 * OnePly ? FutilityMargin2 + (depth - 2*OnePly) * 32
+                                                      : FutilityMargin2 + (depth - 2*OnePly) * 64));
+
               if (futilityValue < beta)
               {
                   if (futilityValue > bestValue)
