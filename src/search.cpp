@@ -167,6 +167,8 @@ namespace {
   Value FutilityMargin0 = Value(0x80);
   Value FutilityMargin1 = Value(0x100);
   Value FutilityMargin2 = Value(0x200);
+  const Value FutilityMargins[6] = { Value(0x120), Value(0x220), Value(0x250),
+                                     Value(0x280), Value(0x320), Value(0x360) };
 
   // Razoring
   Depth RazorDepth = 4*OnePly;
@@ -1321,9 +1323,8 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                + (depth < 2 * OnePly ? FutilityMargin1 :
-                                + (depth < 6 * OnePly ? FutilityMargin2 + (depth - 2*OnePly) * 32
-                                                      : FutilityMargin2 + (depth - 2*OnePly) * 64));
+                                 + FutilityMargins[int(depth)/2 - 1]
+                                 + 32 * (depth & 1);
 
               if (futilityValue < beta)
               {
