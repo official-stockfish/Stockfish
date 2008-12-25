@@ -165,8 +165,8 @@ namespace {
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes
   Value FutilityMarginQS = Value(0x80);
-  Value FutilityMargins[6] = { Value(0x120), Value(0x220), Value(0x250),
-                               Value(0x280), Value(0x320), Value(0x360) };
+  Value FutilityMargins[6] = { Value(0x100), Value(0x200), Value(0x250),
+                               Value(0x2A0), Value(0x340), Value(0x3A0) };
 
   // Razoring
   Depth RazorDepth = 4*OnePly;
