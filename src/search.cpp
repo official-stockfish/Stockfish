@@ -162,13 +162,11 @@ namespace {
   bool UseQSearchFutilityPruning = true;
   bool UseFutilityPruning = true;
 
-  // Margins for futility pruning in the quiescence search, at frontier
-  // nodes, and at pre-frontier nodes
-  Value FutilityMargin0 = Value(0x80);
-  Value FutilityMargin1 = Value(0x100);
-  Value FutilityMargin2 = Value(0x200);
-  const Value FutilityMargins[6] = { Value(0x120), Value(0x220), Value(0x250),
-                                     Value(0x280), Value(0x320), Value(0x360) };
+  // Margins for futility pruning in the quiescence search, and at frontier
+  // and near frontier nodes
+  Value FutilityMarginQS = Value(0x80);
+  Value FutilityMargins[6] = { Value(0x120), Value(0x220), Value(0x250),
+                               Value(0x280), Value(0x320), Value(0x360) };
 
   // Razoring
   Depth RazorDepth = 4*OnePly;
@@ -417,9 +415,10 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   UseQSearchFutilityPruning = get_option_value_bool("Futility Pruning (Quiescence Search)");
   UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
 
-  FutilityMargin0 = value_from_centipawns(get_option_value_int("Futility Margin 0"));
-  FutilityMargin1 = value_from_centipawns(get_option_value_int("Futility Margin 1"));
-  FutilityMargin2 = value_from_centipawns(get_option_value_int("Futility Margin 2"));
+  FutilityMarginQS = value_from_centipawns(get_option_value_int("Futility Margin (Quiescence Search)"));
+  int fmScale = get_option_value_int("Futility Margin (Main Serach)");
+  for (int i = 0; i < 6; i++)
+      FutilityMargins[i] = (FutilityMargins[i] * fmScale) / 100;
 
   RazorDepth = (get_option_value_int("Maximum Razoring Depth") + 1) * OnePly;
   RazorMargin = value_from_centipawns(get_option_value_int("Razoring Margin"));
@@ -1495,7 +1494,7 @@ namespace {
                               + Max(pos.midgame_value_of_piece_on(move_to(move)),
                                     pos.endgame_value_of_piece_on(move_to(move)))
                               + (move_is_ep(move) ? PawnValueEndgame : Value(0))
-                              + FutilityMargin0
+                              + FutilityMarginQS
                               + ei.futilityMargin;
 
           if (futilityValue < alpha)
