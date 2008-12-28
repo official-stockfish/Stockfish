@@ -124,7 +124,7 @@ namespace {
     o.push_back(Option("Futility Pruning (Main Search)", true));
     o.push_back(Option("Futility Pruning (Quiescence Search)", true));
     o.push_back(Option("Futility Margin (Quiescence Search)", 50, 0, 1000));
-    o.push_back(Option("Futility Margin (Main Serach)", 100, 0, 1000));
+    o.push_back(Option("Futility Margin Scale Factor (Main Search)", 100, 0, 1000));
     o.push_back(Option("Maximum Razoring Depth", 3, 0, 4));
     o.push_back(Option("Razoring Margin", 300, 150, 600));
     o.push_back(Option("LSN filtering", true));

@@ -169,6 +169,7 @@ namespace {
                                Value(0x2A0), Value(0x340), Value(0x3A0) };
 
   // Razoring
+  const bool RazorAtDepthOne = false;
   Depth RazorDepth = 4*OnePly;
   Value RazorMargin = Value(0x300);
 
@@ -416,7 +417,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
 
   FutilityMarginQS = value_from_centipawns(get_option_value_int("Futility Margin (Quiescence Search)"));
-  int fmScale = get_option_value_int("Futility Margin (Main Serach)");
+  int fmScale = get_option_value_int("Futility Margin Scale Factor (Main Search)");
   for (int i = 0; i < 6; i++)
       FutilityMargins[i] = (FutilityMargins[i] * fmScale) / 100;
 
@@ -1241,12 +1242,14 @@ namespace {
     else if (   !value_is_mate(beta)
              && approximateEval < beta - RazorMargin
              && depth < RazorDepth
-             && depth > OnePly
+             && (RazorAtDepthOne || depth > OnePly)
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
-        if (v < beta - RazorMargin / 2 - int(depth - OnePly) * RazorMargin / 8)
+        if (   (v < beta - RazorMargin - RazorMargin / 4)
+            || (depth <= 2*OnePly && v < beta - RazorMargin)
+            || (depth <=   OnePly && v < beta - RazorMargin / 2))
             return v;
     }
 
