@@ -183,7 +183,9 @@ namespace {
       {
           std::istringstream ss(it->currentValue);
           ss >> ret;
-      }
+      } else
+          assert(false);
+
       return ret;
   }
 
