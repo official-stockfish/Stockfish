@@ -1241,14 +1241,14 @@ namespace {
     else if (   !value_is_mate(beta)
              && approximateEval < beta - RazorMargin
              && depth < RazorDepth
-             && (RazorAtDepthOne || depth >= 2*OnePly)
+             && (RazorAtDepthOne || depth > OnePly)
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
         if (   (v < beta - RazorMargin - RazorMargin / 4)
-            || (depth < 3*OnePly && v < beta - RazorMargin)
-            || (depth < 2*OnePly && v < beta - RazorMargin / 2))
+            || (depth <= 2*OnePly && v < beta - RazorMargin)
+            || (depth <=   OnePly && v < beta - RazorMargin / 2))
             return v;
     }
 
