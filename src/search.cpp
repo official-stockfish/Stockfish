@@ -449,7 +449,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   // Set thinking time:
   int myTime = time[side_to_move];
   int myIncrement = increment[side_to_move];
-  int oppTime = time[1 - side_to_move];
 
   if (!movesToGo) // Sudden death time control
   {
