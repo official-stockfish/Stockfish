@@ -2195,15 +2195,18 @@ namespace {
     if (mateThreat)
         result += MateThreatExtension[pvNode];
 
-    if (pos.move_is_pawn_push_to_7th(m))
+    if (pos.type_of_piece_on(move_from(m)) == PAWN)
     {
-        result += PawnPushTo7thExtension[pvNode];
-        *dangerous = true;
-    }
-    if (pos.move_is_passed_pawn_push(m))
-    {
-        result += PassedPawnExtension[pvNode];
-        *dangerous = true;
+        if (pos.move_is_pawn_push_to_7th(m))
+        {
+            result += PawnPushTo7thExtension[pvNode];
+            *dangerous = true;
+        }
+        if (pos.move_is_passed_pawn_push(m))
+        {
+            result += PassedPawnExtension[pvNode];
+            *dangerous = true;
+        }
     }
 
     if (   pos.move_is_capture(m)
