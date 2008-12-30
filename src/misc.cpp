@@ -96,6 +96,7 @@ void dbg_after() {
 void dbg_mean_of(int v) {
 
     assert(!dbg_show_hit_rate);
+    dbg_show_mean = true;
     dbg_cnt0++;
     dbg_cnt1 += v;
 }
