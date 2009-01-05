@@ -575,8 +575,11 @@ namespace {
             ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15(bb);
     }
 
+    // Remove squares protected by enemy pawns
+    Bitboard bb = (b & ~ei.attackedBy[them][PAWN]);
+
     // Mobility
-    int mob = count_1s_max_15(b & ~p.pieces_of_color(us));
+    int mob = count_1s_max_15(bb & ~p.pieces_of_color(us));
     ei.mgMobility += Sign[us] * mgBonus[mob];
     ei.egMobility += Sign[us] * egBonus[mob];
 
