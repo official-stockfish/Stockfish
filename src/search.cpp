@@ -1247,8 +1247,8 @@ namespace {
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
         if (   (v < beta - RazorMargin - RazorMargin / 4)
-            || (depth <= 2*OnePly && v < beta - RazorMargin)
-            || (depth <=   OnePly && v < beta - RazorMargin / 2))
+            || (depth < 3*OnePly && v < beta - RazorMargin)
+            || (depth < 2*OnePly && v < beta - RazorMargin / 2))
             return v;
     }
 
