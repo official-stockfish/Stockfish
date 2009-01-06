@@ -937,7 +937,7 @@ namespace {
             ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
 
             // If the pawn is free to advance, increase bonus
-            if (pos.square_is_empty(blockSq))
+            if (tr != 0 && pos.square_is_empty(blockSq))
             {
                 b2 = squares_in_front_of(us, s);
                 b3 = b2 & ei.attacked_by(them);
