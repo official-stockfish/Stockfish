@@ -1018,8 +1018,8 @@ namespace {
             // value if the other side has a rook or queen.
             if (square_file(s) == FILE_A || square_file(s) == FILE_H)
             {
-                if(   pos.non_pawn_material(them) == KnightValueMidgame // FIXME should be <= ???
-                   && pos.piece_count(them, KNIGHT) == 1)
+                if(   pos.non_pawn_material(them) <= KnightValueMidgame
+                   && pos.piece_count(them, KNIGHT) <= 1)
                     ebonus += ebonus / 4;
                 else if(pos.rooks_and_queens(them))
                     ebonus -= ebonus / 4;
