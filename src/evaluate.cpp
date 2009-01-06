@@ -1067,7 +1067,6 @@ namespace {
 
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
                                     EvalInfo &ei) {
-
     assert(square_is_ok(s));
     assert(pos.piece_on(s) == bishop_of_color(us));
 
@@ -1098,31 +1097,33 @@ namespace {
     assert(square_is_ok(s));
     assert(pos.piece_on(s) == bishop_of_color(us));
 
-    if(square_file(s) == FILE_A) {
-      b2 = relative_square(us, SQ_B2);
-      b3 = relative_square(us, SQ_B3);
-      c3 = relative_square(us, SQ_C3);
+    if (square_file(s) == FILE_A)
+    {
+        b2 = relative_square(us, SQ_B2);
+        b3 = relative_square(us, SQ_B3);
+        c3 = relative_square(us, SQ_C3);
     }
-    else {
-      b2 = relative_square(us, SQ_G2);
-      b3 = relative_square(us, SQ_G3);
-      c3 = relative_square(us, SQ_F3);
-    }
-
-    if(pos.piece_on(b2) == pawn) {
-      Value penalty;
-
-      if(!pos.square_is_empty(b3))
-        penalty = 2*TrappedBishopA1H1Penalty;
-      else if(pos.piece_on(c3) == pawn)
-        penalty = TrappedBishopA1H1Penalty;
-      else
-        penalty = TrappedBishopA1H1Penalty / 2;
-
-      ei.mgValue -= Sign[us] * penalty;
-      ei.egValue -= Sign[us] * penalty;
+    else
+    {
+        b2 = relative_square(us, SQ_G2);
+        b3 = relative_square(us, SQ_G3);
+        c3 = relative_square(us, SQ_F3);
     }
 
+    if (pos.piece_on(b2) == pawn)
+    {
+        Value penalty;
+
+        if (!pos.square_is_empty(b3))
+            penalty = 2*TrappedBishopA1H1Penalty;
+        else if (pos.piece_on(c3) == pawn)
+            penalty = TrappedBishopA1H1Penalty;
+        else
+            penalty = TrappedBishopA1H1Penalty / 2;
+
+        ei.mgValue -= Sign[us] * penalty;
+        ei.egValue -= Sign[us] * penalty;
+    }
   }
 
 
@@ -1138,31 +1139,32 @@ namespace {
     Color them = opposite_color(us);
 
     // Find the safe squares for our pieces inside the area defined by
-    // SpaceMask[us].  A square is unsafe it is attacked by an enemy
+    // SpaceMask[us]. A square is unsafe it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
 
-    Bitboard safeSquares =
-      SpaceMask[us] & ~pos.pawns(us) & ~ei.attacked_by(them, PAWN)
-      & ~(~ei.attacked_by(us) & ei.attacked_by(them));
+    Bitboard safeSquares =   SpaceMask[us]
+                          & ~pos.pawns(us)
+                          & ~ei.attacked_by(them, PAWN)
+                          & ~(~ei.attacked_by(us) & ei.attacked_by(them));
 
     // Find all squares which are at most three squares behind some friendly
     // pawn.
     Bitboard behindFriendlyPawns = pos.pawns(us);
-    if(us == WHITE) {
-      behindFriendlyPawns |= (behindFriendlyPawns >> 8);
-      behindFriendlyPawns |= (behindFriendlyPawns >> 16);
+    if (us == WHITE)
+    {
+        behindFriendlyPawns |= (behindFriendlyPawns >> 8);
+        behindFriendlyPawns |= (behindFriendlyPawns >> 16);
     }
-    else {
-      behindFriendlyPawns |= (behindFriendlyPawns << 8);
-      behindFriendlyPawns |= (behindFriendlyPawns << 16);
+    else
+    {
+        behindFriendlyPawns |= (behindFriendlyPawns << 8);
+        behindFriendlyPawns |= (behindFriendlyPawns << 16);
     }
 
-    int space =
-      count_1s_max_15(safeSquares)
-      + count_1s_max_15(behindFriendlyPawns & safeSquares);
+    int space =  count_1s_max_15(safeSquares)
+               + count_1s_max_15(behindFriendlyPawns & safeSquares);
 
-    ei.mgValue += Sign[us] *
-      apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
+    ei.mgValue += Sign[us] * apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
   }
 
 
@@ -1203,6 +1205,7 @@ namespace {
   // an UCI-configurable weight with an internal weight.
 
   int compute_weight(int uciWeight, int internalWeight) {
+
     uciWeight = (uciWeight * 0x100) / 100;
     return (uciWeight * internalWeight) / 0x100;
   }
@@ -1255,5 +1258,4 @@ namespace {
             SafetyTable[i] = Value(peak);
     }
   }
-
 }
