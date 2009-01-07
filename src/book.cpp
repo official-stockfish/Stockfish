@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -317,22 +317,22 @@ namespace {
 
 
   /// Indices to the Random64[] array
-  
+
   const int RandomPiece = 0;
   const int RandomCastle = 768;
   const int RandomEnPassant = 772;
   const int RandomTurn = 780;
 
-  
+
   /// Convert pieces to the range 0..1
-  
+
   const int PieceTo12[] = {
     0, 0, 2, 4, 6, 8, 10, 0, 0, 1, 3, 5, 7, 9, 11
   };
 
 
   /// Prototypes
-  
+
   uint64_t book_key(const Position &pos);
   uint64_t book_piece_key(Piece p, Square s);
   uint64_t book_castle_key(const Position &pos);
@@ -388,7 +388,7 @@ void Book::close() {
 /// Book::is_open() tests whether a book file has been opened.
 
 bool Book::is_open() const {
-  
+
   return bookFile.is_open() && bookSize != 0;
 }
 
@@ -400,7 +400,7 @@ const std::string Book::file_name() const {
 
   return bookFile.is_open() ? fileName : "";
 }
-  
+
 
 /// Book::get_move() gets a book move for a given position.  Returns
 /// MOVE_NONE if no book move is found.
@@ -524,7 +524,7 @@ namespace {
 
     return result;
   }
-        
+
 
   uint64_t book_piece_key(Piece p, Square s) {
     return Random64[RandomPiece + (PieceTo12[int(p)]^1)*64 + int(s)];
@@ -545,29 +545,29 @@ namespace {
     return result;
   }
 
-  
+
   uint64_t book_ep_key(const Position &pos) {
     return (pos.ep_square() == SQ_NONE)?
       0ULL : Random64[RandomEnPassant + square_file(pos.ep_square())];
   }
 
-  
+
   uint64_t book_color_key(const Position &pos) {
     return (pos.side_to_move() == WHITE)? Random64[RandomTurn] : 0ULL;
   }
-  
+
 
   uint16_t read_integer16(std::ifstream& file) {
-    
+
     uint64_t n = read_integer(file, 2);
     assert(n == (uint16_t)n);
-    return (uint16_t)n;      
+    return (uint16_t)n;
   }
 
 
   uint64_t read_integer64(std::ifstream& file) {
-    
-    return read_integer(file, 8);      
+
+    return read_integer(file, 8);
   }
 
 

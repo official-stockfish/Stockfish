@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -53,11 +53,11 @@ namespace {
     Bitboard wk_attacks() const;
     Bitboard bk_attacks() const;
     Bitboard pawn_attacks() const;
-    
+
     Square whiteKingSquare, blackKingSquare, pawnSquare;
     Color sideToMove;
   };
-    
+
 
   Result *Bitbase;
   const int IndexMax = 2*24*64*64;
@@ -69,7 +69,7 @@ namespace {
   Result classify_btm(const KPKPosition &p);
   int compute_index(Square wksq, Square bksq, Square psq, Color stm);
   int compress_result(Result r);
-  
+
 }
 
 
@@ -113,7 +113,7 @@ namespace {
     return compute_index(whiteKingSquare, blackKingSquare, pawnSquare,
                          sideToMove);
   }
-    
+
 
   bool KPKPosition::is_legal() const {
     if(whiteKingSquare == pawnSquare || whiteKingSquare == blackKingSquare ||
@@ -137,7 +137,7 @@ namespace {
     if(sideToMove == BLACK) {
       Bitboard wka = this->wk_attacks();
       Bitboard bka = this->bk_attacks();
-    
+
       // Case 1: Stalemate
       if((bka & ~(wka | this->pawn_attacks())) == EmptyBoardBB)
         return true;
@@ -166,7 +166,7 @@ namespace {
       (square_distance(blackKingSquare, pawnSquare+DELTA_N) > 1 ||
        bit_is_set(this->wk_attacks(), pawnSquare+DELTA_N));
   }
-    
+
 
   Bitboard KPKPosition::wk_attacks() const {
     return StepAttackBB[WK][whiteKingSquare];
@@ -204,7 +204,7 @@ namespace {
   bool next_iteration() {
     KPKPosition p;
     int previousUnknownCount = UnknownCount;
-    
+
     for(int i = 0; i < IndexMax; i++)
       if(Bitbase[i] == RESULT_UNKNOWN) {
         p.from_index(i);
@@ -231,7 +231,7 @@ namespace {
     bool unknownFound = false;
     Bitboard b;
     Square s;
-    
+
     // King moves
     b = p.wk_attacks();
     while(b) {
@@ -260,14 +260,14 @@ namespace {
                                    BLACK)]) {
       case RESULT_LOSS:
         return RESULT_WIN;
-        
+
       case RESULT_UNKNOWN:
         unknownFound = true;
         break;
-          
+
       case RESULT_DRAW: case RESULT_INVALID:
         break;
-        
+
       default:
         assert(false);
       }
@@ -279,20 +279,20 @@ namespace {
                                      BLACK)]) {
         case RESULT_LOSS:
           return RESULT_WIN;
-          
+
         case RESULT_UNKNOWN:
           unknownFound = true;
           break;
-          
+
         case RESULT_DRAW: case RESULT_INVALID:
           break;
-          
+
         default:
           assert(false);
         }
       }
     }
-    
+
     return unknownFound? RESULT_UNKNOWN : RESULT_DRAW;
   }
 
@@ -345,5 +345,5 @@ namespace {
   int compress_result(Result r) {
     return (r == RESULT_WIN || r == RESULT_LOSS)? 1 : 0;
   }
-      
-}  
+
+}

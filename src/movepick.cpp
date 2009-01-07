@@ -340,7 +340,7 @@ int MovePicker::find_best_index(Bitboard* squares, int values[]) {
   {
       m = moves[i].move;
       to = move_to(m);
-      
+
       if (!bit_is_set(*squares, to))
       {
           // Init at first use

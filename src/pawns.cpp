@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -72,13 +72,13 @@ namespace {
     Value(32), Value(32), Value(32), Value(28)
   };
 
-  // Pawn chain membership bonus by file, middle game. 
+  // Pawn chain membership bonus by file, middle game.
   const Value ChainMidgameBonus[8] = {
     Value(14), Value(16), Value(17), Value(18),
     Value(18), Value(17), Value(16), Value(14)
   };
 
-  // Pawn chain membership bonus by file, endgame. 
+  // Pawn chain membership bonus by file, endgame.
   const Value ChainEndgameBonus[8] = {
     Value(16), Value(16), Value(16), Value(16),
     Value(16), Value(16), Value(16), Value(16)
@@ -107,7 +107,7 @@ namespace {
    31, 40, 40, 31, 0, 0, 0, 0,
     0,  0,  0,  0, 0, 0, 0, 0
   };
-  
+
   const int KStormTable[64] = {
     0, 0, 0, 0,  0,  0,  0,  0,
     0, 0, 0,-4,-13,-22,-27,-27,
@@ -167,7 +167,7 @@ void PawnInfoTable::clear() {
 
 
 /// PawnInfoTable::get_pawn_info() takes a position object as input, computes
-/// a PawnInfo object, and returns a pointer to it.  The result is also 
+/// a PawnInfo object, and returns a pointer to it.  The result is also
 /// stored in a hash table, so we don't have to recompute everything when
 /// the same pawn structure occurs again.
 
@@ -179,7 +179,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
   int index = int(key & (size - 1));
   PawnInfo *pi = entries + index;
 
-  // If pi->key matches the position's pawn hash key, it means that we 
+  // If pi->key matches the position's pawn hash key, it means that we
   // have analysed this pawn structure before, and we can simply return the
   // information we found the last time instead of recomputing it
   if (pi->key == key)
@@ -370,7 +370,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
 
         mgValue[us] += mv;
         egValue[us] += ev;
-        
+
         // If the pawn is passed, set the square of the pawn in the passedPawns
         // bitboard
         if (passed)

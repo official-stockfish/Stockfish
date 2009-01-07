@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -53,7 +53,7 @@ const std::string BenchmarkPositions[] = {
   "4k2r/1pb2ppp/1p2p3/1R1p4/3P4/2r1PN2/P4PPP/1R4K1 b  - 3 22",
   "3q2k1/pb3p1p/4pbp1/2r5/PpN2N2/1P2P2P/5PP1/Q2R2K1 b - - 4 26"
 };
-  
+
 
 ////
 //// Functions
@@ -88,7 +88,7 @@ void benchmark(const std::string& commandLine) {
       std::cerr << "The number of threads must be between 1 and " << THREAD_MAX
                 << std::endl;
       exit(EXIT_FAILURE);
-  }  
+  }
   set_option_value("Hash", ttSize);
   set_option_value("Threads", threads);
   set_option_value("OwnBook", "false");
@@ -109,7 +109,7 @@ void benchmark(const std::string& commandLine) {
       maxNodes = val;
 
   std::vector<std::string> positions;
-  
+
   if (fileName != "default")
   {
       std::ifstream fenFile(fileName.c_str());
@@ -118,7 +118,7 @@ void benchmark(const std::string& commandLine) {
           std::cerr << "Unable to open positions file " << fileName
                     << std::endl;
           exit(EXIT_FAILURE);
-      }        
+      }
       std::string pos;
       while (fenFile.good())
       {

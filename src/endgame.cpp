@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -153,7 +153,7 @@ namespace {
   const int KRKNKingKnightDistancePenalty[8] = { 0, 0, 4, 10, 20, 32, 48, 70 };
 
   // Various inline functions for accessing the above arrays:
-  
+
   inline Value mate_table(Square s) {
     return Value(MateTable[s]);
   }
@@ -174,7 +174,7 @@ namespace {
   int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm);
 
 }
-    
+
 
 ////
 //// Functions
@@ -244,7 +244,7 @@ Value KXKEvaluationFunction::apply(const Position &pos) {
 
 /// Mate with KBN vs K.  This is similar to KX vs K, but we have to drive the
 /// defending king towards a corner square of the right color.
-                  
+
 Value KBNKEvaluationFunction::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
@@ -280,7 +280,7 @@ Value KPKEvaluationFunction::apply(const Position &pos) {
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.piece_count(weakerSide, PAWN) == 0);
-  
+
   Square wksq, bksq, wpsq;
   Color stm;
 
@@ -421,7 +421,7 @@ Value KQKREvaluationFunction::apply(const Position &pos) {
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
-  
+
   Value result = QueenValueEndgame - RookValueEndgame +
     mate_table(loserKSq) + distance_bonus(square_distance(winnerKSq, loserKSq));
 
@@ -764,9 +764,9 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
 
   // Case 2: Opposite colored bishops.
   if(square_color(strongerBishopSq) != square_color(weakerBishopSq)) {
-    
+
     // We assume that the position is drawn in the following three situations:
-    //  
+    //
     //   a. The pawn is on rank 5 or further back.
     //   b. The defending king is somewhere in the pawn's path.
     //   c. The defending bishop attacks some square along the pawn's path,
@@ -774,7 +774,7 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
     //
     // These rules are probably not perfect, but in practice they work
     // reasonably well.
-    
+
     if(relative_rank(strongerSide, pawnSq) <= RANK_5)
       return ScaleFactor(0);
     else {
@@ -807,7 +807,7 @@ ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
   Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
   Square strongerBishopSq = pos.piece_list(strongerSide, BISHOP, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
-      
+
   if(square_file(weakerKingSq) == square_file(pawnSq)
      && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
      && (square_color(weakerKingSq) != square_color(strongerBishopSq)
@@ -909,9 +909,9 @@ namespace {
   int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm) {
     int wp = int(square_file(wpsq)) + (int(square_rank(wpsq)) - 1) * 4;
     int index = int(stm) + 2*int(bksq) + 128*int(wksq) + 8192*wp;
-    
+
     assert(index >= 0 && index < 24576*8);
     return KPKBitbase[index/8] & (1 << (index&7));
   }
-  
+
 }

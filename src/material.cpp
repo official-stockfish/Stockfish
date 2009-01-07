@@ -309,7 +309,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
 
 /// EndgameFunctions member definitions. This class is used to store the maps
-/// of end game and scaling functions that MaterialInfoTable will query for 
+/// of end game and scaling functions that MaterialInfoTable will query for
 /// each key. The maps are constant and are populated only at construction,
 /// but are per-thread instead of globals to avoid expensive locks.
 
