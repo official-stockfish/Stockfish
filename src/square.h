@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -46,7 +46,7 @@ enum Square {
   SQ_A7, SQ_B7, SQ_C7, SQ_D7, SQ_E7, SQ_F7, SQ_G7, SQ_H7,
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
   SQ_NONE
-}; 
+};
 
 enum File {
   FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NONE
@@ -73,7 +73,7 @@ const int FlipMask = 070;
 const int FlopMask = 07;
 
 
-//// 
+////
 //// Inline functions
 ////
 
@@ -160,7 +160,7 @@ inline int square_distance(Square s1, Square s2) {
 }
 
 
-//// 
+////
 //// Prototypes
 ////
 

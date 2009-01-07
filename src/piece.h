@@ -7,12 +7,12 @@
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-  
+
   Stockfish is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -21,7 +21,7 @@
 #if !defined(PIECE_H_INCLUDED)
 #define PIECE_H_INCLUDED
 
-//// 
+////
 //// Includes
 ////
 
@@ -30,7 +30,7 @@
 #include "square.h"
 
 
-//// 
+////
 //// Types
 ////
 
@@ -54,11 +54,11 @@ const PieceType PieceTypeMin = PAWN;
 const PieceType PieceTypeMax = KING;
 
 extern const int SlidingArray[18];
-extern const SquareDelta Directions[16][16];   
+extern const SquareDelta Directions[16][16];
 extern const SquareDelta PawnPush[2];
 
 
-//// 
+////
 //// Inline functions
 ////
 
@@ -118,7 +118,7 @@ inline int piece_type_is_slider(PieceType pt) {
 inline SquareDelta pawn_push(Color c) {
   return PawnPush[c];
 }
-  
+
 
 ////
 //// Prototypes
