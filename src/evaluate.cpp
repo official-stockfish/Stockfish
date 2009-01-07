@@ -559,17 +559,24 @@ namespace {
 
   // evaluate_common() computes terms common to all pieces attack
 
-  int evaluate_common(const Position&p, const Bitboard& b, Color us, EvalInfo& ei,
-                       int AttackWeight, const Value* mgBonus, const Value* egBonus,
-                       Square s = SQ_NONE, const Value* OutpostBonus = NULL) {
+  template<PieceType Piece>
+  int evaluate_common(const Position& p, const Bitboard& b, Color us, EvalInfo& ei, Square s = SQ_NONE) {
+
+    static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
+    static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
+    static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
+    static const Value* OutpostBonus[] = { 0, 0, KnightOutpostBonus, BishopOutpostBonus, 0, 0 };
 
     Color them = opposite_color(us);
+
+    // Update attack info
+    ei.attackedBy[us][Piece] |= b;
 
     // King attack
     if (b & ei.kingZone[us])
     {
         ei.kingAttackersCount[us]++;
-        ei.kingAttackersWeight[us] += AttackWeight;
+        ei.kingAttackersWeight[us] += AttackWeight[Piece];
         Bitboard bb = (b & ei.attackedBy[them][KING]);
         if (bb)
             ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15(bb);
@@ -580,16 +587,17 @@ namespace {
 
     // Mobility
     int mob = count_1s_max_15(bb & ~p.pieces_of_color(us));
-    ei.mgMobility += Sign[us] * mgBonus[mob];
-    ei.egMobility += Sign[us] * egBonus[mob];
+    ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
+    ei.egMobility += Sign[us] * EgBonus[Piece][mob];
 
     // Bishop and Knight outposts
-    if (!OutpostBonus || !p.square_is_weak(s, them))
+    if (  (Piece != BISHOP && Piece != KNIGHT) // compile time condition
+        || !p.square_is_weak(s, them))
         return mob;
 
     // Initial bonus based on square
     Value v, bonus;
-    v = bonus = OutpostBonus[relative_square(us, s)];
+    v = bonus = OutpostBonus[Piece][relative_square(us, s)];
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
@@ -609,42 +617,34 @@ namespace {
   // evaluate_knight() assigns bonuses and penalties to a knight of a given
   // color on a given square.
 
-  void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei) {
+  void evaluate_knight(const Position& p, Square s, Color us, EvalInfo& ei) {
 
-    Bitboard b = p.piece_attacks<KNIGHT>(s);
-    ei.attackedBy[us][KNIGHT] |= b;
-
-    // King attack, mobility and outposts
-    evaluate_common(p, b, us, ei, KnightAttackWeight, MidgameKnightMobilityBonus,
-                    EndgameKnightMobilityBonus, s, KnightOutpostBonus);
+    // Attacks, mobility and outposts
+    evaluate_common<KNIGHT>(p, p.piece_attacks<KNIGHT>(s), us, ei, s);
   }
 
 
   // evaluate_bishop() assigns bonuses and penalties to a bishop of a given
   // color on a given square.
 
-  void evaluate_bishop(const Position &p, Square s, Color us, EvalInfo &ei) {
+  void evaluate_bishop(const Position& p, Square s, Color us, EvalInfo& ei) {
 
     Bitboard b = bishop_attacks_bb(s, p.occupied_squares() & ~p.queens(us));
-    ei.attackedBy[us][BISHOP] |= b;
 
-    // King attack, mobility and outposts
-    evaluate_common(p, b, us, ei, BishopAttackWeight, MidgameBishopMobilityBonus,
-                    EndgameBishopMobilityBonus, s, BishopOutpostBonus);
+    // Attacks, mobility and outposts
+    evaluate_common<BISHOP>(p, b, us, ei, s);
   }
 
 
   // evaluate_rook() assigns bonuses and penalties to a rook of a given
   // color on a given square.
 
-  void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei) {
+  void evaluate_rook(const Position& p, Square s, Color us, EvalInfo& ei) {
 
     Bitboard b = rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
-    ei.attackedBy[us][ROOK] |= b;
 
-    // King attack and mobility
-    int mob = evaluate_common(p, b, us, ei, RookAttackWeight, MidgameRookMobilityBonus,
-                              EndgameRookMobilityBonus);
+    // Attacks and mobility
+    int mob = evaluate_common<ROOK>(p, b, us, ei);
 
     // Rook on 7th rank
     Color them = opposite_color(us);
@@ -703,14 +703,10 @@ namespace {
   // evaluate_queen() assigns bonuses and penalties to a queen of a given
   // color on a given square.
 
-  void evaluate_queen(const Position &p, Square s, Color us, EvalInfo &ei) {
+  void evaluate_queen(const Position& p, Square s, Color us, EvalInfo& ei) {
 
-    Bitboard b = p.piece_attacks<QUEEN>(s);
-    ei.attackedBy[us][QUEEN] |= b;
-
-    // King attack and mobility
-    evaluate_common(p, b, us, ei, QueenAttackWeight, MidgameQueenMobilityBonus,
-                    EndgameQueenMobilityBonus);
+    // Attacks and mobility
+    evaluate_common<QUEEN>(p, p.piece_attacks<QUEEN>(s), us, ei);
 
     // Queen on 7th rank
     Color them = opposite_color(us);
@@ -731,7 +727,7 @@ namespace {
   // evaluate_king() assigns bonuses and penalties to a king of a given
   // color on a given square.
 
-  void evaluate_king(const Position &p, Square s, Color us, EvalInfo &ei) {
+  void evaluate_king(const Position& p, Square s, Color us, EvalInfo& ei) {
 
     int shelter = 0, sign = Sign[us];
 
