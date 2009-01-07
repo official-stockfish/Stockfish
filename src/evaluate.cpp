@@ -483,7 +483,7 @@ Value quick_evaluate(const Position &pos) {
   assert(pos.is_ok());
 
   static const
-  ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};  
+  ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
 
   Value mgv = pos.mg_value();
   Value egv = pos.eg_value();
@@ -814,7 +814,7 @@ namespace {
                             && !bit_is_set(p.pinned_pieces(them), from)
                             && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.rooks_and_queens(us))
                             && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.rooks_and_queens(us)))
-                            
+
                             ei.mateThreat[them] = make_move(from, to);
                     }
                 }
@@ -932,50 +932,53 @@ namespace {
             Value ebonus = Value(10 + r * r * 10);
 
             // Adjust bonus based on king proximity
-            ebonus -= Value(square_distance(ourKingSq, blockSq) * 3 * tr);
-            ebonus -= Value(square_distance(ourKingSq, blockSq + pawn_push(us)) * 1 * tr);
-            ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
-
-            // If the pawn is free to advance, increase bonus
-            if (tr != 0 && pos.square_is_empty(blockSq))
+            if (tr != 0)
             {
-                b2 = squares_in_front_of(us, s);
-                b3 = b2 & ei.attacked_by(them);
-                b4 = b2 & ei.attacked_by(us);
+                ebonus -= Value(square_distance(ourKingSq, blockSq) * 3 * tr);
+                ebonus -= Value(square_distance(ourKingSq, blockSq + pawn_push(us)) * 1 * tr);
+                ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
 
-                // If there is an enemy rook or queen attacking the pawn from behind,
-                // add all X-ray attacks by the rook or queen.
-                if (    bit_is_set(ei.attacked_by(them,ROOK) | ei.attacked_by(them,QUEEN),s)
-                    && (squares_behind(us, s) & pos.rooks_and_queens(them)))
-                    b3 = b2;
-
-                if ((b2 & pos.pieces_of_color(them)) == EmptyBoardBB)
+                // If the pawn is free to advance, increase bonus
+                if (pos.square_is_empty(blockSq))
                 {
-                    // There are no enemy pieces in the pawn's path! Are any of the
-                    // squares in the pawn's path attacked by the enemy?
-                    if (b3 == EmptyBoardBB)
-                        // No enemy attacks, huge bonus!
-                        ebonus += Value(tr * (b2 == b4 ? 17 : 15));
+                    b2 = squares_in_front_of(us, s);
+                    b3 = b2 & ei.attacked_by(them);
+                    b4 = b2 & ei.attacked_by(us);
+
+                    // If there is an enemy rook or queen attacking the pawn from behind,
+                    // add all X-ray attacks by the rook or queen.
+                    if (    bit_is_set(ei.attacked_by(them,ROOK) | ei.attacked_by(them,QUEEN),s)
+                        && (squares_behind(us, s) & pos.rooks_and_queens(them)))
+                        b3 = b2;
+
+                    if ((b2 & pos.pieces_of_color(them)) == EmptyBoardBB)
+                    {
+                        // There are no enemy pieces in the pawn's path! Are any of the
+                        // squares in the pawn's path attacked by the enemy?
+                        if (b3 == EmptyBoardBB)
+                            // No enemy attacks, huge bonus!
+                            ebonus += Value(tr * (b2 == b4 ? 17 : 15));
+                        else
+                            // OK, there are enemy attacks. Are those squares which are
+                            // attacked by the enemy also attacked by us?  If yes, big bonus
+                            // (but smaller than when there are no enemy attacks), if no,
+                            // somewhat smaller bonus.
+                            ebonus += Value(tr * ((b3 & b4) == b3 ? 13 : 8));
+                    }
                     else
-                        // OK, there are enemy attacks. Are those squares which are
-                        // attacked by the enemy also attacked by us?  If yes, big bonus
-                        // (but smaller than when there are no enemy attacks), if no,
-                        // somewhat smaller bonus.
-                        ebonus += Value(tr * ((b3 & b4) == b3 ? 13 : 8));
+                    {
+                        // There are some enemy pieces in the pawn's path. While this is
+                        // sad, we still assign a moderate bonus if all squares in the path
+                        // which are either occupied by or attacked by enemy pieces are
+                        // also attacked by us.
+                        if (((b3 | (b2 & pos.pieces_of_color(them))) & ~b4) == EmptyBoardBB)
+                            ebonus += Value(tr * 6);
+                    }
+                    // At last, add a small bonus when there are no *friendly* pieces
+                    // in the pawn's path.
+                    if ((b2 & pos.pieces_of_color(us)) == EmptyBoardBB)
+                        ebonus += Value(tr);
                 }
-                else
-                {
-                    // There are some enemy pieces in the pawn's path. While this is
-                    // sad, we still assign a moderate bonus if all squares in the path
-                    // which are either occupied by or attacked by enemy pieces are
-                    // also attacked by us.
-                    if (((b3 | (b2 & pos.pieces_of_color(them))) & ~b4) == EmptyBoardBB)
-                        ebonus += Value(tr * 6);
-                }
-                // At last, add a small bonus when there are no *friendly* pieces
-                // in the pawn's path.
-                if ((b2 & pos.pieces_of_color(us)) == EmptyBoardBB)
-                    ebonus += Value(tr);
             }
 
             // If the pawn is supported by a friendly pawn, increase bonus
