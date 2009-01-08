@@ -143,7 +143,8 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   }
 
   // Let's look if we have a specialized evaluation function for this
-  // particular material configuration.
+  // particular material configuration. First we look for a fixed
+  // configuration one, then a generic one if previous search failed.
   if ((mi->evaluationFunction = funcs->getEEF(key)) != NULL)
       return mi;
 

@@ -34,73 +34,73 @@
 
 /// Evaluation functions
 
-// Generic "mate lone king" eval:
+// Generic "mate lone king" eval
 KXKEvaluationFunction EvaluateKXK = KXKEvaluationFunction(WHITE);
 KXKEvaluationFunction EvaluateKKX = KXKEvaluationFunction(BLACK);
 
-// KBN vs K:
+// KBN vs K
 KBNKEvaluationFunction EvaluateKBNK = KBNKEvaluationFunction(WHITE);
 KBNKEvaluationFunction EvaluateKKBN = KBNKEvaluationFunction(BLACK);
 
-// KP vs K:
+// KP vs K
 KPKEvaluationFunction EvaluateKPK = KPKEvaluationFunction(WHITE);
 KPKEvaluationFunction EvaluateKKP = KPKEvaluationFunction(BLACK);
 
-// KR vs KP:
+// KR vs KP
 KRKPEvaluationFunction EvaluateKRKP = KRKPEvaluationFunction(WHITE);
 KRKPEvaluationFunction EvaluateKPKR = KRKPEvaluationFunction(BLACK);
 
-// KR vs KB:
+// KR vs KB
 KRKBEvaluationFunction EvaluateKRKB = KRKBEvaluationFunction(WHITE);
 KRKBEvaluationFunction EvaluateKBKR = KRKBEvaluationFunction(BLACK);
 
-// KR vs KN:
+// KR vs KN
 KRKNEvaluationFunction EvaluateKRKN = KRKNEvaluationFunction(WHITE);
 KRKNEvaluationFunction EvaluateKNKR = KRKNEvaluationFunction(BLACK);
 
-// KQ vs KR:
+// KQ vs KR
 KQKREvaluationFunction EvaluateKQKR = KQKREvaluationFunction(WHITE);
 KQKREvaluationFunction EvaluateKRKQ = KQKREvaluationFunction(BLACK);
 
-// KBB vs KN:
+// KBB vs KN
 KBBKNEvaluationFunction EvaluateKBBKN = KBBKNEvaluationFunction(WHITE);
 KBBKNEvaluationFunction EvaluateKNKBB = KBBKNEvaluationFunction(BLACK);
 
-// K and two minors vs K and one or two minors:
+// K and two minors vs K and one or two minors
 KmmKmEvaluationFunction EvaluateKmmKm = KmmKmEvaluationFunction(WHITE);
 
 
 /// Scaling functions
 
-// KBP vs K:
+// KBP vs K
 KBPKScalingFunction ScaleKBPK = KBPKScalingFunction(WHITE);
 KBPKScalingFunction ScaleKKBP = KBPKScalingFunction(BLACK);
 
-// KQ vs KRP:
+// KQ vs KRP
 KQKRPScalingFunction ScaleKQKRP = KQKRPScalingFunction(WHITE);
 KQKRPScalingFunction ScaleKRPKQ = KQKRPScalingFunction(BLACK);
 
-// KRP vs KR:
+// KRP vs KR
 KRPKRScalingFunction ScaleKRPKR = KRPKRScalingFunction(WHITE);
 KRPKRScalingFunction ScaleKRKRP = KRPKRScalingFunction(BLACK);
 
-// KRPP vs KRP:
+// KRPP vs KRP
 KRPPKRPScalingFunction ScaleKRPPKRP = KRPPKRPScalingFunction(WHITE);
 KRPPKRPScalingFunction ScaleKRPKRPP = KRPPKRPScalingFunction(BLACK);
 
-// King and pawns vs king:
+// King and pawns vs king
 KPsKScalingFunction ScaleKPsK = KPsKScalingFunction(WHITE);
 KPsKScalingFunction ScaleKKPs = KPsKScalingFunction(BLACK);
 
-// KBP vs KB:
+// KBP vs KB
 KBPKBScalingFunction ScaleKBPKB = KBPKBScalingFunction(WHITE);
 KBPKBScalingFunction ScaleKBKBP = KBPKBScalingFunction(BLACK);
 
-// KBP vs KN:
+// KBP vs KN
 KBPKNScalingFunction ScaleKBPKN = KBPKNScalingFunction(WHITE);
 KBPKNScalingFunction ScaleKNKBP = KBPKNScalingFunction(BLACK);
 
-// KNP vs K:
+// KNP vs K
 KNPKScalingFunction ScaleKNPK = KNPKScalingFunction(WHITE);
 KNPKScalingFunction ScaleKKNP = KNPKScalingFunction(BLACK);
 
@@ -116,20 +116,20 @@ KPKPScalingFunction ScaleKPKPb = KPKPScalingFunction(BLACK);
 namespace {
 
   // Table used to drive the defending king towards the edge of the board
-  // in KX vs K and KQ vs KR endgames:
+  // in KX vs K and KQ vs KR endgames.
   const uint8_t MateTable[64] = {
     100, 90, 80, 70, 70, 80, 90, 100,
-    90, 70, 60, 50, 50, 60, 70, 90,
-    80, 60, 40, 30, 30, 40, 60, 80,
-    70, 50, 30, 20, 20, 30, 50, 70,
-    70, 50, 30, 20, 20, 30, 50, 70,
-    80, 60, 40, 30, 30, 40, 60, 80,
-    90, 70, 60, 50, 50, 60, 70, 90,
+     90, 70, 60, 50, 50, 60, 70,  90,
+     80, 60, 40, 30, 30, 40, 60,  80,
+     70, 50, 30, 20, 20, 30, 50,  70,
+     70, 50, 30, 20, 20, 30, 50,  70,
+     80, 60, 40, 30, 30, 40, 60,  80,
+     90, 70, 60, 50, 50, 60, 70,  90,
     100, 90, 80, 70, 70, 80, 90, 100,
   };
 
   // Table used to drive the defending king towards a corner square of the
-  // right color in KBN vs K endgames:
+  // right color in KBN vs K endgames.
   const uint8_t KBNKMateTable[64] = {
     200, 190, 180, 170, 160, 150, 140, 130,
     190, 180, 170, 160, 150, 140, 130, 140,
@@ -142,18 +142,17 @@ namespace {
   };
 
   // The attacking side is given a descending bonus based on distance between
-  // the two kings in basic endgames:
-  const int DistanceBonus[8] = {0, 0, 100, 80, 60, 40, 20, 10};
+  // the two kings in basic endgames.
+  const int DistanceBonus[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
 
-  // Bitbase for KP vs K:
+  // Bitbase for KP vs K
   uint8_t KPKBitbase[24576];
 
   // Penalty for big distance between king and knight for the defending king
-  // and knight in KR vs KN endgames:
+  // and knight in KR vs KN endgames.
   const int KRKNKingKnightDistancePenalty[8] = { 0, 0, 4, 10, 20, 32, 48, 70 };
 
-  // Various inline functions for accessing the above arrays:
-
+  // Various inline functions for accessing the above arrays
   inline Value mate_table(Square s) {
     return Value(MateTable[s]);
   }
@@ -170,7 +169,7 @@ namespace {
     return Value(KRKNKingKnightDistancePenalty[d]);
   }
 
-  // Function for probing the KP vs K bitbase:
+  // Function for probing the KP vs K bitbase
   int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm);
 
 }
@@ -182,44 +181,42 @@ namespace {
 
 /// Constructors
 
-EndgameEvaluationFunction::EndgameEvaluationFunction(Color c) {
-  strongerSide = c;
+EndgameEvaluationFunction::EndgameEvaluationFunction(Color c) : strongerSide(c) {
   weakerSide = opposite_color(strongerSide);
 }
 
-KXKEvaluationFunction::KXKEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KBNKEvaluationFunction::KBNKEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KPKEvaluationFunction::KPKEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KRKPEvaluationFunction::KRKPEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KRKBEvaluationFunction::KRKBEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KRKNEvaluationFunction::KRKNEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KQKREvaluationFunction::KQKREvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KBBKNEvaluationFunction::KBBKNEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
-KmmKmEvaluationFunction::KmmKmEvaluationFunction(Color c) : EndgameEvaluationFunction(c) { }
+KXKEvaluationFunction::KXKEvaluationFunction(Color c)     : EndgameEvaluationFunction(c) {}
+KBNKEvaluationFunction::KBNKEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
+KPKEvaluationFunction::KPKEvaluationFunction(Color c)     : EndgameEvaluationFunction(c) {}
+KRKPEvaluationFunction::KRKPEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
+KRKBEvaluationFunction::KRKBEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
+KRKNEvaluationFunction::KRKNEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
+KQKREvaluationFunction::KQKREvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
+KBBKNEvaluationFunction::KBBKNEvaluationFunction(Color c) : EndgameEvaluationFunction(c) {}
+KmmKmEvaluationFunction::KmmKmEvaluationFunction(Color c) : EndgameEvaluationFunction(c) {}
 
 
-ScalingFunction::ScalingFunction(Color c) {
-  strongerSide = c;
+ScalingFunction::ScalingFunction(Color c) : strongerSide(c) {
   weakerSide = opposite_color(c);
 }
 
-KBPKScalingFunction::KBPKScalingFunction(Color c) : ScalingFunction(c) { }
-KQKRPScalingFunction::KQKRPScalingFunction(Color c) : ScalingFunction(c) { }
-KRPKRScalingFunction::KRPKRScalingFunction(Color c) : ScalingFunction(c) { }
-KRPPKRPScalingFunction::KRPPKRPScalingFunction(Color c) : ScalingFunction(c) { }
-KPsKScalingFunction::KPsKScalingFunction(Color c) : ScalingFunction(c) { }
-KBPKBScalingFunction::KBPKBScalingFunction(Color c) : ScalingFunction(c) { }
-KBPKNScalingFunction::KBPKNScalingFunction(Color c) : ScalingFunction(c) { }
-KNPKScalingFunction::KNPKScalingFunction(Color c) : ScalingFunction(c) { }
-KPKPScalingFunction::KPKPScalingFunction(Color c) : ScalingFunction(c) { }
+KBPKScalingFunction::KBPKScalingFunction(Color c)       : ScalingFunction(c) {}
+KQKRPScalingFunction::KQKRPScalingFunction(Color c)     : ScalingFunction(c) {}
+KRPKRScalingFunction::KRPKRScalingFunction(Color c)     : ScalingFunction(c) {}
+KRPPKRPScalingFunction::KRPPKRPScalingFunction(Color c) : ScalingFunction(c) {}
+KPsKScalingFunction::KPsKScalingFunction(Color c)       : ScalingFunction(c) {}
+KBPKBScalingFunction::KBPKBScalingFunction(Color c)     : ScalingFunction(c) {}
+KBPKNScalingFunction::KBPKNScalingFunction(Color c)     : ScalingFunction(c) {}
+KNPKScalingFunction::KNPKScalingFunction(Color c)       : ScalingFunction(c) {}
+KPKPScalingFunction::KPKPScalingFunction(Color c)       : ScalingFunction(c) {}
 
 
-/// Mate with KX vs K.  This function is used to evaluate positions with
-/// King and plenty of material vs a lone king.  It simply gives the
+/// Mate with KX vs K. This function is used to evaluate positions with
+/// King and plenty of material vs a lone king. It simply gives the
 /// attacking side a bonus for driving the defending king towards the edge
 /// of the board, and for keeping the distance between the two kings small.
 
-Value KXKEvaluationFunction::apply(const Position &pos) {
+Value KXKEvaluationFunction::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(weakerSide, PAWN) == Value(0));
@@ -227,30 +224,29 @@ Value KXKEvaluationFunction::apply(const Position &pos) {
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
 
-  Value result =
-    pos.non_pawn_material(strongerSide) +
-    pos.piece_count(strongerSide, PAWN) * PawnValueEndgame +
-    mate_table(loserKSq) +
-    distance_bonus(square_distance(winnerKSq, loserKSq));
+  Value result =   pos.non_pawn_material(strongerSide)
+                 + pos.piece_count(strongerSide, PAWN) * PawnValueEndgame
+                 + mate_table(loserKSq)
+                 + distance_bonus(square_distance(winnerKSq, loserKSq));
 
-  if(pos.piece_count(strongerSide, QUEEN) > 0 || pos.piece_count(strongerSide, ROOK) > 0 ||
-     pos.piece_count(strongerSide, BISHOP) > 1)
-    // TODO: check for two equal-colored bishops!
-    result += VALUE_KNOWN_WIN;
+  if (   pos.piece_count(strongerSide, QUEEN) > 0
+      || pos.piece_count(strongerSide, ROOK) > 0
+      || pos.piece_count(strongerSide, BISHOP) > 1)
+      // TODO: check for two equal-colored bishops!
+      result += VALUE_KNOWN_WIN;
 
-  return (strongerSide == pos.side_to_move())? result : -result;
+  return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
 
-/// Mate with KBN vs K.  This is similar to KX vs K, but we have to drive the
+/// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
 /// defending king towards a corner square of the right color.
 
-Value KBNKEvaluationFunction::apply(const Position &pos) {
+Value KBNKEvaluationFunction::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(weakerSide, PAWN) == Value(0));
-  assert(pos.non_pawn_material(strongerSide) ==
-         KnightValueMidgame + BishopValueMidgame);
+  assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame + BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
   assert(pos.piece_count(strongerSide, KNIGHT) == 1);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -259,22 +255,23 @@ Value KBNKEvaluationFunction::apply(const Position &pos) {
   Square loserKSq = pos.king_square(weakerSide);
   Square bishopSquare = pos.piece_list(strongerSide, BISHOP, 0);
 
-  if(square_color(bishopSquare) == BLACK) {
-    winnerKSq = flop_square(winnerKSq);
-    loserKSq = flop_square(loserKSq);
+  if (square_color(bishopSquare) == BLACK)
+  {
+      winnerKSq = flop_square(winnerKSq);
+      loserKSq = flop_square(loserKSq);
   }
 
-  Value result =
-    VALUE_KNOWN_WIN + distance_bonus(square_distance(winnerKSq, loserKSq)) +
-    kbnk_mate_table(loserKSq);
+  Value result =  VALUE_KNOWN_WIN
+                + distance_bonus(square_distance(winnerKSq, loserKSq))
+                + kbnk_mate_table(loserKSq);
 
-  return (strongerSide == pos.side_to_move())? result : -result;
+  return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
 
-/// KP vs K.  This endgame is evaluated with the help of a bitbase.
+/// KP vs K. This endgame is evaluated with the help of a bitbase.
 
-Value KPKEvaluationFunction::apply(const Position &pos) {
+Value KPKEvaluationFunction::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.non_pawn_material(weakerSide) == Value(0));
@@ -284,41 +281,45 @@ Value KPKEvaluationFunction::apply(const Position &pos) {
   Square wksq, bksq, wpsq;
   Color stm;
 
-  if(strongerSide == WHITE) {
-    wksq = pos.king_square(WHITE);
-    bksq = pos.king_square(BLACK);
-    wpsq = pos.piece_list(WHITE, PAWN, 0);
-    stm = pos.side_to_move();
+  if (strongerSide == WHITE)
+  {
+      wksq = pos.king_square(WHITE);
+      bksq = pos.king_square(BLACK);
+      wpsq = pos.piece_list(WHITE, PAWN, 0);
+      stm = pos.side_to_move();
   }
-  else {
-    wksq = flip_square(pos.king_square(BLACK));
-    bksq = flip_square(pos.king_square(WHITE));
-    wpsq = flip_square(pos.piece_list(BLACK, PAWN, 0));
-    stm = opposite_color(pos.side_to_move());
+  else
+  {
+      wksq = flip_square(pos.king_square(BLACK));
+      bksq = flip_square(pos.king_square(WHITE));
+      wpsq = flip_square(pos.piece_list(BLACK, PAWN, 0));
+      stm = opposite_color(pos.side_to_move());
   }
 
-  if(square_file(wpsq) >= FILE_E) {
+  if (square_file(wpsq) >= FILE_E)
+  {
     wksq = flop_square(wksq);
     bksq = flop_square(bksq);
     wpsq = flop_square(wpsq);
   }
 
-  if(probe_kpk(wksq, wpsq, bksq, stm)) {
-    Value result =
-      VALUE_KNOWN_WIN + PawnValueEndgame + Value(square_rank(wpsq));
-    return (strongerSide == pos.side_to_move())? result : -result;
-  }
+  if (!probe_kpk(wksq, wpsq, bksq, stm))
+      return VALUE_DRAW;
 
-  return VALUE_DRAW;
+  Value result =  VALUE_KNOWN_WIN
+                + PawnValueEndgame
+                + Value(square_rank(wpsq));
+
+  return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
 
-/// KR vs KP.  This is a somewhat tricky endgame to evaluate precisely without
-/// a bitbase.  The function below returns drawish scores when the pawn is
+/// KR vs KP. This is a somewhat tricky endgame to evaluate precisely without
+/// a bitbase. The function below returns drawish scores when the pawn is
 /// far advanced with support of the king, while the attacking king is far
 /// away.
 
-Value KRKPEvaluationFunction::apply(const Position &pos) {
+Value KRKPEvaluationFunction::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -333,47 +334,49 @@ Value KRKPEvaluationFunction::apply(const Position &pos) {
   bksq = pos.king_square(weakerSide);
   bpsq = pos.piece_list(weakerSide, PAWN, 0);
 
-  if(strongerSide == BLACK) {
-    wksq = flip_square(wksq);
-    wrsq = flip_square(wrsq);
-    bksq = flip_square(bksq);
-    bpsq = flip_square(bpsq);
+  if (strongerSide == BLACK)
+  {
+      wksq = flip_square(wksq);
+      wrsq = flip_square(wrsq);
+      bksq = flip_square(bksq);
+      bpsq = flip_square(bpsq);
   }
 
   Square queeningSq = make_square(square_file(bpsq), RANK_1);
   Value result;
 
-  // If the stronger side's king is in front of the pawn, it's a win:
-  if(wksq < bpsq && square_file(wksq) == square_file(bpsq))
-    result = RookValueEndgame - Value(square_distance(wksq, bpsq));
+  // If the stronger side's king is in front of the pawn, it's a win
+  if (wksq < bpsq && square_file(wksq) == square_file(bpsq))
+      result = RookValueEndgame - Value(square_distance(wksq, bpsq));
 
   // If the weaker side's king is too far from the pawn and the rook,
-  // it's a win:
-  else if(square_distance(bksq, bpsq) - (tempo^1) >= 3 &&
-          square_distance(bksq, wrsq) >= 3)
-    result = RookValueEndgame - Value(square_distance(wksq, bpsq));
+  // it's a win
+  else if (   square_distance(bksq, bpsq) - (tempo^1) >= 3
+           && square_distance(bksq, wrsq) >= 3)
+      result = RookValueEndgame - Value(square_distance(wksq, bpsq));
 
   // If the pawn is far advanced and supported by the defending king,
-  // the position is drawish:
-  else if(square_rank(bksq) <= RANK_3 && square_distance(bksq, bpsq) == 1 &&
-          square_rank(wksq) >= RANK_4 &&
-          square_distance(wksq, bpsq) - tempo > 2)
-    result = Value(80 - square_distance(wksq, bpsq) * 8);
+  // the position is drawish
+  else if (   square_rank(bksq) <= RANK_3
+           && square_distance(bksq, bpsq) == 1
+           && square_rank(wksq) >= RANK_4
+           && square_distance(wksq, bpsq) - tempo > 2)
+      result = Value(80 - square_distance(wksq, bpsq) * 8);
 
   else
-    result = Value(200)
-      - Value(square_distance(wksq, bpsq + DELTA_S) * 8)
-      + Value(square_distance(bksq, bpsq + DELTA_S) * 8)
-      + Value(square_distance(bpsq, queeningSq) * 8);
+      result =  Value(200)
+              - Value(square_distance(wksq, bpsq + DELTA_S) * 8)
+              + Value(square_distance(bksq, bpsq + DELTA_S) * 8)
+              + Value(square_distance(bpsq, queeningSq) * 8);
 
-  return (strongerSide == pos.side_to_move())? result : -result;
+  return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
 
-/// KR vs KB.  This is very simple, and always returns drawish scores.  The
+/// KR vs KB. This is very simple, and always returns drawish scores.  The
 /// score is slightly bigger when the defending king is close to the edge.
 
-Value KRKBEvaluationFunction::apply(const Position &pos) {
+Value KRKBEvaluationFunction::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -382,14 +385,14 @@ Value KRKBEvaluationFunction::apply(const Position &pos) {
   assert(pos.piece_count(weakerSide, BISHOP) == 1);
 
   Value result = mate_table(pos.king_square(weakerSide));
-  return (pos.side_to_move() == strongerSide)? result : -result;
+  return (pos.side_to_move() == strongerSide ? result : -result);
 }
 
 
 /// KR vs KN.  The attacking side has slightly better winning chances than
 /// in KR vs KB, particularly if the king and the knight are far apart.
 
-Value KRKNEvaluationFunction::apply(const Position &pos) {
+Value KRKNEvaluationFunction::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -413,7 +416,8 @@ Value KRKNEvaluationFunction::apply(const Position &pos) {
 /// for the defending side in the search, this is usually sufficient to be
 /// able to win KQ vs KR.
 
-Value KQKREvaluationFunction::apply(const Position &pos) {
+Value KQKREvaluationFunction::apply(const Position& pos) {
+
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
@@ -422,14 +426,17 @@ Value KQKREvaluationFunction::apply(const Position &pos) {
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
 
-  Value result = QueenValueEndgame - RookValueEndgame +
-    mate_table(loserKSq) + distance_bonus(square_distance(winnerKSq, loserKSq));
+  Value result =  QueenValueEndgame
+                - RookValueEndgame
+                + mate_table(loserKSq)
+                + distance_bonus(square_distance(winnerKSq, loserKSq));
 
   return (strongerSide == pos.side_to_move())? result : -result;
 }
 
 
-Value KBBKNEvaluationFunction::apply(const Position &pos) {
+Value KBBKNEvaluationFunction::apply(const Position& pos) {
+
   assert(pos.piece_count(strongerSide, BISHOP) == 2);
   assert(pos.non_pawn_material(strongerSide) == 2*BishopValueMidgame);
   assert(pos.piece_count(weakerSide, KNIGHT) == 1);
@@ -450,7 +457,7 @@ Value KBBKNEvaluationFunction::apply(const Position &pos) {
   // Bonus for restricting the knight's mobility
   result += Value((8 - count_1s_max_15(pos.piece_attacks<KNIGHT>(nsq))) * 8);
 
-  return (strongerSide == pos.side_to_move())? result : -result;
+  return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
 
@@ -460,12 +467,13 @@ Value KmmKmEvaluationFunction::apply(const Position &pos) {
 
 
 /// KBPKScalingFunction scales endgames where the stronger side has king,
-/// bishop and one or more pawns.  It checks for draws with rook pawns and a
-/// bishop of the wrong color.  If such a draw is detected, ScaleFactor(0) is
-/// returned.  If not, the return value is SCALE_FACTOR_NONE, i.e. no scaling
+/// bishop and one or more pawns. It checks for draws with rook pawns and a
+/// bishop of the wrong color. If such a draw is detected, ScaleFactor(0) is
+/// returned. If not, the return value is SCALE_FACTOR_NONE, i.e. no scaling
 /// will be used.
 
-ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
+ScaleFactor KBPKScalingFunction::apply(const Position& pos) {
+
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
   assert(pos.piece_count(strongerSide, PAWN) >= 1);
@@ -476,37 +484,39 @@ ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
   Bitboard pawns = pos.pawns(strongerSide);
   File pawnFile = square_file(pos.piece_list(strongerSide, PAWN, 0));
 
-  if((pawnFile == FILE_A || pawnFile == FILE_H) &&
-     (pawns & ~file_bb(pawnFile)) == EmptyBoardBB) {
-    // All pawns are on a single rook file.
+  // All pawns are on a single rook file ?
+  if (   (pawnFile == FILE_A || pawnFile == FILE_H)
+      && (pawns & ~file_bb(pawnFile)) == EmptyBoardBB)
+  {
+      Square bishopSq = pos.piece_list(strongerSide, BISHOP, 0);
+      Square queeningSq = relative_square(strongerSide, make_square(pawnFile, RANK_8));
+      Square kingSq = pos.king_square(weakerSide);
 
-    Square bishopSq = pos.piece_list(strongerSide, BISHOP, 0);
-    Square queeningSq =
-      relative_square(strongerSide, make_square(pawnFile, RANK_8));
-    Square kingSq = pos.king_square(weakerSide);
+      if (   square_color(queeningSq) != square_color(bishopSq)
+          && file_distance(square_file(kingSq), pawnFile) <= 1)
+      {
+          // The bishop has the wrong color, and the defending king is on the
+          // file of the pawn(s) or the neighboring file. Find the rank of the
+          // frontmost pawn.
 
-    if(square_color(queeningSq) != square_color(bishopSq) &&
-       file_distance(square_file(kingSq), pawnFile) <= 1) {
-      // The bishop has the wrong color, and the defending king is on the
-      // file of the pawn(s) or the neighboring file.  Find the rank of the
-      // frontmost pawn:
-
-      Rank rank;
-      if(strongerSide == WHITE) {
-        for(rank = RANK_7; (rank_bb(rank) & pawns) == EmptyBoardBB; rank--);
-        assert(rank >= RANK_2 && rank <= RANK_7);
+          Rank rank;
+          if (strongerSide == WHITE)
+          {
+              for (rank = RANK_7; (rank_bb(rank) & pawns) == EmptyBoardBB; rank--) {}
+              assert(rank >= RANK_2 && rank <= RANK_7);
+          }
+          else
+          {
+              for(rank = RANK_2; (rank_bb(rank) & pawns) == EmptyBoardBB; rank++) {}
+              rank = Rank(rank^7);  // HACK to get the relative rank
+              assert(rank >= RANK_2 && rank <= RANK_7);
+          }
+          // If the defending king has distance 1 to the promotion square or
+          // is placed somewhere in front of the pawn, it's a draw.
+          if (   square_distance(kingSq, queeningSq) <= 1
+              || relative_rank(strongerSide, kingSq) >= rank)
+              return ScaleFactor(0);
       }
-      else {
-        for(rank = RANK_2; (rank_bb(rank) & pawns) == EmptyBoardBB; rank++);
-        rank = Rank(rank^7);  // HACK
-        assert(rank >= RANK_2 && rank <= RANK_7);
-      }
-      // If the defending king has distance 1 to the promotion square or
-      // is placed somewhere in front of the pawn, it's a draw.
-      if(square_distance(kingSq, queeningSq) <= 1 ||
-         relative_rank(strongerSide, kingSq) >= rank)
-        return ScaleFactor(0);
-    }
   }
   return SCALE_FACTOR_NONE;
 }
@@ -517,7 +527,8 @@ ScaleFactor KBPKScalingFunction::apply(const Position &pos) {
 /// It tests for fortress draws with a rook on the third rank defended by
 /// a pawn.
 
-ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
+ScaleFactor KQKRPScalingFunction::apply(const Position& pos) {
+
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, QUEEN) == 1);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -525,22 +536,23 @@ ScaleFactor KQKRPScalingFunction::apply(const Position &pos) {
   assert(pos.piece_count(weakerSide, PAWN) >= 1);
 
   Square kingSq = pos.king_square(weakerSide);
-  if(relative_rank(weakerSide, kingSq) <= RANK_2 &&
-     relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4 &&
-     (pos.rooks(weakerSide) & relative_rank_bb(weakerSide, RANK_3)) &&
-     (pos.pawns(weakerSide) & relative_rank_bb(weakerSide, RANK_2)) &&
-     (pos.piece_attacks<KING>(kingSq) & pos.pawns(weakerSide))) {
-    Square rsq = pos.piece_list(weakerSide, ROOK, 0);
-    if(pos.pawn_attacks(strongerSide, rsq) & pos.pawns(weakerSide))
-      return ScaleFactor(0);
+  if (   relative_rank(weakerSide, kingSq) <= RANK_2
+      && relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4
+      && (pos.rooks(weakerSide) & relative_rank_bb(weakerSide, RANK_3))
+      && (pos.pawns(weakerSide) & relative_rank_bb(weakerSide, RANK_2))
+      && (pos.piece_attacks<KING>(kingSq) & pos.pawns(weakerSide)))
+  {
+      Square rsq = pos.piece_list(weakerSide, ROOK, 0);
+      if (pos.pawn_attacks(strongerSide, rsq) & pos.pawns(weakerSide))
+          return ScaleFactor(0);
   }
   return SCALE_FACTOR_NONE;
 }
 
 
-/// KRPKRScalingFunction scales KRP vs KR endgames.  This function knows a
+/// KRPKRScalingFunction scales KRP vs KR endgames. This function knows a
 /// handful of the most important classes of drawn positions, but is far
-/// from perfect.  It would probably be a good idea to add more knowledge
+/// from perfect. It would probably be a good idea to add more knowledge
 /// in the future.
 ///
 /// It would also be nice to rewrite the actual code for this function,
