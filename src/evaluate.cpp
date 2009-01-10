@@ -586,7 +586,9 @@ namespace {
     Bitboard bb = (b & ~ei.attackedBy[them][PAWN]);
 
     // Mobility
-    int mob = count_1s_max_15(bb & ~p.pieces_of_color(us));
+    int mob = (Piece != QUEEN ? count_1s_max_15(bb & ~p.pieces_of_color(us))
+                              : count_1s(bb & ~p.pieces_of_color(us)));
+
     ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
     ei.egMobility += Sign[us] * EgBonus[Piece][mob];
 
