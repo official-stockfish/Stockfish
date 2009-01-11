@@ -395,23 +395,23 @@ inline int count_1s_max_15(Bitboard b) {
 
 inline int count_1s(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v = v - ((v >> 1) & 0x55555555);
-  w = w - ((w >> 1) & 0x55555555);
+  v -= (v >> 1) & 0x55555555;
+  w -= (w >> 1) & 0x55555555;
   v += w;
-  v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-  v = (v + (v >> 4)) & 0x0F0F0F0F;
-  v = (v * 0x01010101) >> 24; // mul is fast on amd procs
-  return int(v);
+  v = ((v >> 2) & 0x33333333) + (v & 0x33333333);
+  v = ((v >> 4) + v) & 0x0F0F0F0F;
+  v *= 0x01010101; // mul is fast on amd procs
+  return int(v >> 24);
 }
 
 inline int count_1s_max_15(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v = v - ((v >> 1) & 0x55555555);
-  w = w - ((w >> 1) & 0x55555555);
+  v -= (v >> 1) & 0x55555555;
+  w -= (w >> 1) & 0x55555555;
   v += w;
-  v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-  v = (v * 0x11111111) >> 28;
-  return int(v);
+  v = ((v >> 2) & 0x33333333) + (v & 0x33333333);
+  v *= 0x11111111;
+  return int(v >> 28);
 }
 
 #elif defined(BITCOUNT_SWAR_64)
