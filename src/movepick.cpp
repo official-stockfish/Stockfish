@@ -318,9 +318,11 @@ void MovePicker::score_qcaptures() {
 
 int MovePicker::find_best_index() {
 
-  int bestScore = -10000000, bestIndex = -1;
+  assert(movesPicked < numOfMoves);
 
-  for (int i = movesPicked; i < numOfMoves; i++)
+  int bestIndex = movesPicked, bestScore = moves[movesPicked].score;
+
+  for (int i = movesPicked + 1; i < numOfMoves; i++)
       if (moves[i].score > bestScore)
       {
           bestIndex = i;
@@ -330,6 +332,8 @@ int MovePicker::find_best_index() {
 }
 
 int MovePicker::find_best_index(Bitboard* squares, int values[]) {
+
+  assert(movesPicked < numOfMoves);
 
   int hs;
   Move m;
@@ -378,6 +382,7 @@ Move MovePicker::pick_move_from_list() {
   Move move;
 
   switch (PhaseTable[phaseIndex]) {
+
   case PH_GOOD_CAPTURES:
       assert(!pos.is_check());
       assert(movesPicked >= 0);
@@ -385,16 +390,12 @@ Move MovePicker::pick_move_from_list() {
       while (movesPicked < numOfMoves)
       {
           bestIndex = find_best_index();
-
-          if (bestIndex != -1) // Found a good capture
-          {
-              move = moves[bestIndex].move;
-              moves[bestIndex] = moves[movesPicked++];
-              if (   move != ttMove
-                  && move != mateKiller
-                  && pos.pl_move_is_legal(move, pinned))
-                  return move;
-          }
+          move = moves[bestIndex].move;
+          moves[bestIndex] = moves[movesPicked++];
+          if (   move != ttMove
+              && move != mateKiller
+              && pos.pl_move_is_legal(move, pinned))
+              return move;
       }
       break;
 
@@ -409,16 +410,12 @@ Move MovePicker::pick_move_from_list() {
           // been searched and it is not a PV node, we are probably failing low
           // anyway, so we just pick the first move from the list.
           bestIndex = (pvNode || movesPicked < 12) ? find_best_index() : movesPicked;
-
-          if (bestIndex != -1)
-          {
-              move = moves[bestIndex].move;
-              moves[bestIndex] = moves[movesPicked++];
-              if (   move != ttMove
-                  && move != mateKiller
-                  && pos.pl_move_is_legal(move, pinned))
-                  return move;
-          }
+          move = moves[bestIndex].move;
+          moves[bestIndex] = moves[movesPicked++];
+          if (   move != ttMove
+              && move != mateKiller
+              && pos.pl_move_is_legal(move, pinned))
+              return move;
       }
       break;
 
@@ -429,13 +426,9 @@ Move MovePicker::pick_move_from_list() {
       while (movesPicked < numOfMoves)
       {
           bestIndex = find_best_index();
-
-          if (bestIndex != -1)
-          {
-              move = moves[bestIndex].move;
-              moves[bestIndex] = moves[movesPicked++];
-              return move;
-          }
+          move = moves[bestIndex].move;
+          moves[bestIndex] = moves[movesPicked++];
+          return move;
     }
     break;
 
@@ -460,16 +453,12 @@ Move MovePicker::pick_move_from_list() {
       while (movesPicked < numOfMoves)
       {
           bestIndex = (movesPicked < 4 ? find_best_index() : movesPicked);
-
-          if (bestIndex != -1)
-          {
-              move = moves[bestIndex].move;
-              moves[bestIndex] = moves[movesPicked++];
-              // Remember to change the line below if we decide to hash the qsearch!
-              // Maybe also postpone the legality check until after futility pruning?
-              if (/* move != ttMove && */ pos.pl_move_is_legal(move, pinned))
-                  return move;
-          }
+          move = moves[bestIndex].move;
+          moves[bestIndex] = moves[movesPicked++];
+          // Remember to change the line below if we decide to hash the qsearch!
+          // Maybe also postpone the legality check until after futility pruning?
+          if (/* move != ttMove && */ pos.pl_move_is_legal(move, pinned))
+              return move;
       }
       break;
 
