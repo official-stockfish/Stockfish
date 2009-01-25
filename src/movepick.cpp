@@ -151,7 +151,7 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_BAD_CAPTURES:
-        badCapturesPicked = 0;
+        movesPicked = 0;
         break;
 
     case PH_NONCAPTURES:
@@ -434,12 +434,12 @@ Move MovePicker::pick_move_from_list() {
 
   case PH_BAD_CAPTURES:
       assert(!pos.is_check());
-      assert(badCapturesPicked >= 0);
+      assert(movesPicked >= 0);
       // It's probably a good idea to use SEE move ordering here, instead
       // of just picking the first move.  FIXME
-      while (badCapturesPicked < numOfBadCaptures)
+      while (movesPicked < numOfBadCaptures)
       {
-          move = badCaptures[badCapturesPicked++].move;
+          move = badCaptures[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
               && pos.pl_move_is_legal(move, pinned))

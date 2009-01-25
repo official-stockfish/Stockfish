@@ -90,7 +90,7 @@ private:
   Depth depth;
   int phaseIndex;
   int numOfMoves, numOfBadCaptures;
-  int movesPicked, badCapturesPicked;
+  int movesPicked;
   bool finished;
 };
 
