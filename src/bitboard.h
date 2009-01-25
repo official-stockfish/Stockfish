@@ -395,21 +395,23 @@ inline int count_1s_max_15(Bitboard b) {
 
 inline int count_1s(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -= (v >> 1) & 0x55555555;
+  v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
-  v += w;
-  v = ((v >> 2) & 0x33333333) + (v & 0x33333333);
-  v = ((v >> 4) + v) & 0x0F0F0F0F;
+  v = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
+  w = ((w >> 2) & 0x33333333) + (w & 0x33333333);
+  v = ((v >> 4) + v) & 0x0F0F0F0F; // 0-8 in 8 bits
+  v += (((w >> 4) + w) & 0x0F0F0F0F);  // 0-16 in 8 bits
   v *= 0x01010101; // mul is fast on amd procs
   return int(v >> 24);
 }
 
 inline int count_1s_max_15(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -= (v >> 1) & 0x55555555;
+  v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
-  v += w;
-  v = ((v >> 2) & 0x33333333) + (v & 0x33333333);
+  v = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
+  w = ((w >> 2) & 0x33333333) + (w & 0x33333333);
+  v += w; // 0-8 in 4 bits
   v *= 0x11111111;
   return int(v >> 28);
 }
