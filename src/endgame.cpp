@@ -559,6 +559,7 @@ ScaleFactor KQKRPScalingFunction::apply(const Position& pos) {
 /// which is mostly copied from Glaurung 1.x, and not very pretty.
 
 ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
@@ -571,20 +572,22 @@ ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
   Square brsq = pos.piece_list(weakerSide, ROOK, 0);
 
   // Orient the board in such a way that the stronger side is white, and the
-  // pawn is on the left half of the board:
-  if(strongerSide == BLACK) {
-    wksq = flip_square(wksq);
-    wrsq = flip_square(wrsq);
-    wpsq = flip_square(wpsq);
-    bksq = flip_square(bksq);
-    brsq = flip_square(brsq);
+  // pawn is on the left half of the board.
+  if (strongerSide == BLACK)
+  {
+      wksq = flip_square(wksq);
+      wrsq = flip_square(wrsq);
+      wpsq = flip_square(wpsq);
+      bksq = flip_square(bksq);
+      brsq = flip_square(brsq);
   }
-  if(square_file(wpsq) > FILE_D) {
-    wksq = flop_square(wksq);
-    wrsq = flop_square(wrsq);
-    wpsq = flop_square(wpsq);
-    bksq = flop_square(bksq);
-    brsq = flop_square(brsq);
+  if (square_file(wpsq) > FILE_D)
+  {
+      wksq = flop_square(wksq);
+      wrsq = flop_square(wrsq);
+      wpsq = flop_square(wpsq);
+      bksq = flop_square(bksq);
+      brsq = flop_square(brsq);
   }
 
   File f = square_file(wpsq);
@@ -593,87 +596,88 @@ ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
   int tempo = (pos.side_to_move() == strongerSide);
 
   // If the pawn is not too far advanced and the defending king defends the
-  // queening square, use the third-rank defence:
-  if(r <= RANK_5 && square_distance(bksq, queeningSq) <= 1 && wksq <= SQ_H5 &&
-     (square_rank(brsq) == RANK_6 || (r <= RANK_3 &&
-                                      square_rank(wrsq) != RANK_6)))
-    return ScaleFactor(0);
+  // queening square, use the third-rank defence.
+  if (   r <= RANK_5
+      && square_distance(bksq, queeningSq) <= 1
+      && wksq <= SQ_H5
+      && (square_rank(brsq) == RANK_6 || (r <= RANK_3 && square_rank(wrsq) != RANK_6)))
+      return ScaleFactor(0);
 
   // The defending side saves a draw by checking from behind in case the pawn
   // has advanced to the 6th rank with the king behind.
-  if(r == RANK_6 && square_distance(bksq, queeningSq) <= 1 &&
-     square_rank(wksq) + tempo <= RANK_6 &&
-     (square_rank(brsq) == RANK_1 ||
-      (!tempo && abs(square_file(brsq) - f) >= 3)))
-    return ScaleFactor(0);
+  if (   r == RANK_6
+      && square_distance(bksq, queeningSq) <= 1
+      && square_rank(wksq) + tempo <= RANK_6
+      && (square_rank(brsq) == RANK_1 || (!tempo && abs(square_file(brsq) - f) >= 3)))
+      return ScaleFactor(0);
 
-  if(r >= RANK_6 && bksq == queeningSq && square_rank(brsq) == RANK_1 &&
-     (!tempo || square_distance(wksq, wpsq) >= 2))
-    return ScaleFactor(0);
+  if (   r >= RANK_6
+      && bksq == queeningSq
+      && square_rank(brsq) == RANK_1
+      && (!tempo || square_distance(wksq, wpsq) >= 2))
+      return ScaleFactor(0);
 
   // White pawn on a7 and rook on a8 is a draw if black's king is on g7 or h7
   // and the black rook is behind the pawn.
-  if(wpsq == SQ_A7 && wrsq == SQ_A8 && (bksq == SQ_H7 || bksq == SQ_G7) &&
-     square_file(brsq) == FILE_A &&
-     (square_rank(brsq) <= RANK_3 || square_file(wksq) >= FILE_D ||
-      square_rank(wksq) <= RANK_5))
-    return ScaleFactor(0);
+  if (   wpsq == SQ_A7
+      && wrsq == SQ_A8
+      && (bksq == SQ_H7 || bksq == SQ_G7)
+      && square_file(brsq) == FILE_A
+      && (square_rank(brsq) <= RANK_3 || square_file(wksq) >= FILE_D || square_rank(wksq) <= RANK_5))
+      return ScaleFactor(0);
 
   // If the defending king blocks the pawn and the attacking king is too far
   // away, it's a draw.
-  if(r <= RANK_5 && bksq == wpsq + DELTA_N &&
-     square_distance(wksq, wpsq) - tempo >= 2 &&
-     square_distance(wksq, brsq) - tempo >= 2)
-    return ScaleFactor(0);
+  if (   r <= RANK_5
+      && bksq == wpsq + DELTA_N
+      && square_distance(wksq, wpsq) - tempo >= 2
+      && square_distance(wksq, brsq) - tempo >= 2)
+      return ScaleFactor(0);
 
   // Pawn on the 7th rank supported by the rook from behind usually wins if the
   // attacking king is closer to the queening square than the defending king,
-  // and the defending king cannot gain tempi by threatening the attacking
-  // rook.
-  if(r == RANK_7 && f != FILE_A && square_file(wrsq) == f
-     && wrsq != queeningSq
-     && (square_distance(wksq, queeningSq) <
-         square_distance(bksq, queeningSq) - 2 + tempo)
-     && (square_distance(wksq, queeningSq) <
-         square_distance(bksq, wrsq) + tempo))
-    return ScaleFactor(SCALE_FACTOR_MAX
-                       - 2 * square_distance(wksq, queeningSq));
+  // and the defending king cannot gain tempi by threatening the attacking rook.
+  if (   r == RANK_7
+      && f != FILE_A
+      && square_file(wrsq) == f
+      && wrsq != queeningSq
+      && (square_distance(wksq, queeningSq) < square_distance(bksq, queeningSq) - 2 + tempo)
+      && (square_distance(wksq, queeningSq) < square_distance(bksq, wrsq) + tempo))
+      return ScaleFactor(SCALE_FACTOR_MAX - 2 * square_distance(wksq, queeningSq));
 
-  // Similar to the above, but with the pawn further back:
-  if(f != FILE_A && square_file(wrsq) == f && wrsq < wpsq
-     && (square_distance(wksq, queeningSq) <
-         square_distance(bksq, queeningSq) - 2 + tempo)
-     && (square_distance(wksq, wpsq + DELTA_N) <
-         square_distance(bksq, wpsq + DELTA_N) - 2 + tempo)
-     && (square_distance(bksq, wrsq) + tempo >= 3
-         || (square_distance(wksq, queeningSq) <
-             square_distance(bksq, wrsq) + tempo
-             && (square_distance(wksq, wpsq + DELTA_N) <
-                 square_distance(bksq, wrsq) + tempo))))
-    return
-      ScaleFactor(SCALE_FACTOR_MAX
-                  - (8 * square_distance(wpsq, queeningSq) +
-                     2 * square_distance(wksq, queeningSq)));
+  // Similar to the above, but with the pawn further back
+  if (   f != FILE_A
+      && square_file(wrsq) == f
+      && wrsq < wpsq
+      && (square_distance(wksq, queeningSq) < square_distance(bksq, queeningSq) - 2 + tempo)
+      && (square_distance(wksq, wpsq + DELTA_N) < square_distance(bksq, wpsq + DELTA_N) - 2 + tempo)
+      && (  square_distance(bksq, wrsq) + tempo >= 3
+          || (    square_distance(wksq, queeningSq) < square_distance(bksq, wrsq) + tempo
+              && (square_distance(wksq, wpsq + DELTA_N) < square_distance(bksq, wrsq) + tempo))))
+      return ScaleFactor(  SCALE_FACTOR_MAX
+                         - (8 * square_distance(wpsq, queeningSq)
+                         + 2 * square_distance(wksq, queeningSq)));
 
   // If the pawn is not far advanced, and the defending king is somewhere in
-  // the pawn's path, it's probably a draw:
-  if(r <= RANK_4 && bksq > wpsq) {
-    if(square_file(bksq) == square_file(wpsq))
-      return ScaleFactor(10);
-    if(abs(square_file(bksq) - square_file(wpsq)) == 1
-       && square_distance(wksq, bksq) > 2)
-      return ScaleFactor(24 - 2 * square_distance(wksq, bksq));
+  // the pawn's path, it's probably a draw.
+  if (r <= RANK_4 && bksq > wpsq)
+  {
+      if (square_file(bksq) == square_file(wpsq))
+          return ScaleFactor(10);
+      if (   abs(square_file(bksq) - square_file(wpsq)) == 1
+          && square_distance(wksq, bksq) > 2)
+          return ScaleFactor(24 - 2 * square_distance(wksq, bksq));
   }
-
   return SCALE_FACTOR_NONE;
 }
 
 
-/// KRPPKRPScalingFunction scales KRPP vs KRP endgames.  There is only a
-/// single pattern:  If the stronger side has no pawns and the defending king
+/// KRPPKRPScalingFunction scales KRPP vs KRP endgames. There is only a
+/// single pattern: If the stronger side has no pawns and the defending king
 /// is actively placed, the position is drawish.
 
 ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 2);
   assert(pos.non_pawn_material(weakerSide) == RookValueMidgame);
@@ -684,34 +688,35 @@ ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
   Square bksq = pos.king_square(weakerSide);
 
   // Does the stronger side have a passed pawn?
-  if(pos.pawn_is_passed(strongerSide, wpsq1) ||
-     pos.pawn_is_passed(strongerSide, wpsq2))
-    return SCALE_FACTOR_NONE;
+  if (   pos.pawn_is_passed(strongerSide, wpsq1)
+      || pos.pawn_is_passed(strongerSide, wpsq2))
+      return SCALE_FACTOR_NONE;
 
   Rank r = Max(relative_rank(strongerSide, wpsq1), relative_rank(strongerSide, wpsq2));
 
-  if(file_distance(bksq, wpsq1) <= 1 && file_distance(bksq, wpsq2) <= 1
-     && relative_rank(strongerSide, bksq) > r) {
-    switch(r) {
-
-    case RANK_2: return ScaleFactor(10);
-    case RANK_3: return ScaleFactor(10);
-    case RANK_4: return ScaleFactor(15);
-    case RANK_5: return ScaleFactor(20);
-    case RANK_6: return ScaleFactor(40);
-    default: assert(false);
-
-    }
+  if (   file_distance(bksq, wpsq1) <= 1
+      && file_distance(bksq, wpsq2) <= 1
+      && relative_rank(strongerSide, bksq) > r)
+  {
+      switch (r) {
+      case RANK_2: return ScaleFactor(10);
+      case RANK_3: return ScaleFactor(10);
+      case RANK_4: return ScaleFactor(15);
+      case RANK_5: return ScaleFactor(20);
+      case RANK_6: return ScaleFactor(40);
+      default: assert(false);
+      }
   }
   return SCALE_FACTOR_NONE;
 }
 
 
 /// KPsKScalingFunction scales endgames with king and two or more pawns
-/// against king.  There is just a single rule here:  If all pawns are on
+/// against king. There is just a single rule here: If all pawns are on
 /// the same rook file and are blocked by the defending king, it's a draw.
 
 ScaleFactor KPsKScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.piece_count(strongerSide, PAWN) >= 2);
   assert(pos.non_pawn_material(weakerSide) == Value(0));
@@ -720,41 +725,44 @@ ScaleFactor KPsKScalingFunction::apply(const Position &pos) {
   Bitboard pawns = pos.pawns(strongerSide);
 
   // Are all pawns on the 'a' file?
-  if((pawns & ~FileABB) == EmptyBoardBB) {
-    // Does the defending king block the pawns?
-    Square ksq = pos.king_square(weakerSide);
-    if(square_distance(ksq, relative_square(strongerSide, SQ_A8)) <= 1)
-      return ScaleFactor(0);
-    else if(square_file(ksq) == FILE_A &&
-       (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB)
-      return ScaleFactor(0);
-    else
-      return SCALE_FACTOR_NONE;
+  if ((pawns & ~FileABB) == EmptyBoardBB)
+  {
+      // Does the defending king block the pawns?
+      Square ksq = pos.king_square(weakerSide);
+      if (square_distance(ksq, relative_square(strongerSide, SQ_A8)) <= 1)
+          return ScaleFactor(0);
+      else if(   square_file(ksq) == FILE_A
+              && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB)
+          return ScaleFactor(0);
+      else
+          return SCALE_FACTOR_NONE;
   }
   // Are all pawns on the 'h' file?
-  else if((pawns & ~FileHBB) == EmptyBoardBB) {
+  else if ((pawns & ~FileHBB) == EmptyBoardBB)
+  {
     // Does the defending king block the pawns?
     Square ksq = pos.king_square(weakerSide);
-    if(square_distance(ksq, relative_square(strongerSide, SQ_H8)) <= 1)
-      return ScaleFactor(0);
-    else if(square_file(ksq) == FILE_H &&
-       (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB)
-      return ScaleFactor(0);
+    if (square_distance(ksq, relative_square(strongerSide, SQ_H8)) <= 1)
+        return ScaleFactor(0);
+    else if (   square_file(ksq) == FILE_H
+             && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB)
+        return ScaleFactor(0);
     else
-      return SCALE_FACTOR_NONE;
+        return SCALE_FACTOR_NONE;
   }
   else
-    return SCALE_FACTOR_NONE;
+      return SCALE_FACTOR_NONE;
 }
 
 
-/// KBPKBScalingFunction scales KBP vs KB endgames.  There are two rules:
+/// KBPKBScalingFunction scales KBP vs KB endgames. There are two rules:
 /// If the defending king is somewhere along the path of the pawn, and the
 /// square of the king is not of the same color as the stronger side's bishop,
-/// it's a draw.  If the two bishops have opposite color, it's almost always
+/// it's a draw. If the two bishops have opposite color, it's almost always
 /// a draw.
 
 ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
@@ -767,48 +775,49 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
   Square weakerBishopSq = pos.piece_list(weakerSide, BISHOP, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
 
-  // Case 1: Defending king blocks the pawn, and cannot be driven away.
-  if(square_file(weakerKingSq) == square_file(pawnSq)
-     && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
-     && (square_color(weakerKingSq) != square_color(strongerBishopSq)
-         || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
-    return ScaleFactor(0);
-
-  // Case 2: Opposite colored bishops.
-  if(square_color(strongerBishopSq) != square_color(weakerBishopSq)) {
-
-    // We assume that the position is drawn in the following three situations:
-    //
-    //   a. The pawn is on rank 5 or further back.
-    //   b. The defending king is somewhere in the pawn's path.
-    //   c. The defending bishop attacks some square along the pawn's path,
-    //      and is at least three squares away from the pawn.
-    //
-    // These rules are probably not perfect, but in practice they work
-    // reasonably well.
-
-    if(relative_rank(strongerSide, pawnSq) <= RANK_5)
+  // Case 1: Defending king blocks the pawn, and cannot be driven away
+  if (   square_file(weakerKingSq) == square_file(pawnSq)
+      && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
+      && (   square_color(weakerKingSq) != square_color(strongerBishopSq)
+          || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
       return ScaleFactor(0);
-    else {
-      Bitboard ray =
-        ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
-      if(ray & pos.kings(weakerSide))
-        return ScaleFactor(0);
-      if((pos.piece_attacks<BISHOP>(weakerBishopSq) & ray)
-         && square_distance(weakerBishopSq, pawnSq) >= 3)
-        return ScaleFactor(0);
-    }
+
+  // Case 2: Opposite colored bishops
+  if (square_color(strongerBishopSq) != square_color(weakerBishopSq))
+  {
+      // We assume that the position is drawn in the following three situations:
+      //
+      //   a. The pawn is on rank 5 or further back.
+      //   b. The defending king is somewhere in the pawn's path.
+      //   c. The defending bishop attacks some square along the pawn's path,
+      //      and is at least three squares away from the pawn.
+      //
+      // These rules are probably not perfect, but in practice they work
+      // reasonably well.
+
+      if (relative_rank(strongerSide, pawnSq) <= RANK_5)
+          return ScaleFactor(0);
+      else
+      {
+          Bitboard ray = ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
+          if (ray & pos.kings(weakerSide))
+              return ScaleFactor(0);
+          if(  (pos.piece_attacks<BISHOP>(weakerBishopSq) & ray)
+             && square_distance(weakerBishopSq, pawnSq) >= 3)
+              return ScaleFactor(0);
+      }
   }
   return SCALE_FACTOR_NONE;
 }
 
 
-/// KBPKNScalingFunction scales KBP vs KN endgames.  There is a single rule:
+/// KBPKNScalingFunction scales KBP vs KN endgames. There is a single rule:
 /// If the defending king is somewhere along the path of the pawn, and the
 /// square of the king is not of the same color as the stronger side's bishop,
 /// it's a draw.
 
 ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
@@ -820,21 +829,22 @@ ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
   Square strongerBishopSq = pos.piece_list(strongerSide, BISHOP, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
 
-  if(square_file(weakerKingSq) == square_file(pawnSq)
-     && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
-     && (square_color(weakerKingSq) != square_color(strongerBishopSq)
-         || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
-    return ScaleFactor(0);
+  if (   square_file(weakerKingSq) == square_file(pawnSq)
+      && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
+      && (   square_color(weakerKingSq) != square_color(strongerBishopSq)
+          || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
+      return ScaleFactor(0);
 
   return SCALE_FACTOR_NONE;
 }
 
 
-/// KNPKScalingFunction scales KNP vs K endgames.  There is a single rule:
+/// KNPKScalingFunction scales KNP vs K endgames. There is a single rule:
 /// If the pawn is a rook pawn on the 7th rank and the defending king prevents
 /// the pawn from advancing, the position is drawn.
 
 ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame);
   assert(pos.piece_count(strongerSide, KNIGHT) == 1);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
@@ -844,26 +854,27 @@ ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
   Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
   Square weakerKingSq = pos.king_square(weakerSide);
 
-  if(pawnSq == relative_square(strongerSide, SQ_A7) &&
-     square_distance(weakerKingSq, relative_square(strongerSide, SQ_A8)) <= 1)
-    return ScaleFactor(0);
+  if (   pawnSq == relative_square(strongerSide, SQ_A7)
+      && square_distance(weakerKingSq, relative_square(strongerSide, SQ_A8)) <= 1)
+      return ScaleFactor(0);
 
-  if(pawnSq == relative_square(strongerSide, SQ_H7) &&
-     square_distance(weakerKingSq, relative_square(strongerSide, SQ_H8)) <= 1)
-    return ScaleFactor(0);
+  if (   pawnSq == relative_square(strongerSide, SQ_H7)
+      && square_distance(weakerKingSq, relative_square(strongerSide, SQ_H8)) <= 1)
+      return ScaleFactor(0);
 
   return SCALE_FACTOR_NONE;
 }
 
 
-/// KPKPScalingFunction scales KP vs KP endgames.  This is done by removing
-/// the weakest side's pawn and probing the KP vs K bitbase:  If the weakest
+/// KPKPScalingFunction scales KP vs KP endgames. This is done by removing
+/// the weakest side's pawn and probing the KP vs K bitbase: If the weakest
 /// side has a draw without the pawn, she probably has at least a draw with
-/// the pawn as well.  The exception is when the stronger side's pawn is far
+/// the pawn as well. The exception is when the stronger side's pawn is far
 /// advanced and not on a rook file; in this case it is often possible to win
 /// (e.g. 8/4k3/3p4/3P4/6K1/8/8/8 w - - 0 1).
 
 ScaleFactor KPKPScalingFunction::apply(const Position &pos) {
+
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(WHITE, PAWN) == 1);
@@ -872,36 +883,40 @@ ScaleFactor KPKPScalingFunction::apply(const Position &pos) {
   Square wksq, bksq, wpsq;
   Color stm;
 
-  if(strongerSide == WHITE) {
-    wksq = pos.king_square(WHITE);
-    bksq = pos.king_square(BLACK);
-    wpsq = pos.piece_list(WHITE, PAWN, 0);
-    stm = pos.side_to_move();
+  if (strongerSide == WHITE)
+  {
+      wksq = pos.king_square(WHITE);
+      bksq = pos.king_square(BLACK);
+      wpsq = pos.piece_list(WHITE, PAWN, 0);
+      stm = pos.side_to_move();
   }
-  else {
-    wksq = flip_square(pos.king_square(BLACK));
-    bksq = flip_square(pos.king_square(WHITE));
-    wpsq = flip_square(pos.piece_list(BLACK, PAWN, 0));
-    stm = opposite_color(pos.side_to_move());
+  else
+  {
+      wksq = flip_square(pos.king_square(BLACK));
+      bksq = flip_square(pos.king_square(WHITE));
+      wpsq = flip_square(pos.piece_list(BLACK, PAWN, 0));
+      stm = opposite_color(pos.side_to_move());
   }
 
-  if(square_file(wpsq) >= FILE_E) {
-    wksq = flop_square(wksq);
-    bksq = flop_square(bksq);
-    wpsq = flop_square(wpsq);
+  if (square_file(wpsq) >= FILE_E)
+  {
+      wksq = flop_square(wksq);
+      bksq = flop_square(bksq);
+      wpsq = flop_square(wpsq);
   }
 
   // If the pawn has advanced to the fifth rank or further, and is not a
   // rook pawn, it's too dangerous to assume that it's at least a draw.
-  if(square_rank(wpsq) >= RANK_5 && square_file(wpsq) != FILE_A)
-    return SCALE_FACTOR_NONE;
+  if (   square_rank(wpsq) >= RANK_5
+      && square_file(wpsq) != FILE_A)
+      return SCALE_FACTOR_NONE;
 
-  // Probe the KPK bitbase with the weakest side's pawn removed.  If it's a
+  // Probe the KPK bitbase with the weakest side's pawn removed. If it's a
   // draw, it's probably at least a draw even with the pawn.
-  if(probe_kpk(wksq, wpsq, bksq, stm))
-    return SCALE_FACTOR_NONE;
+  if (probe_kpk(wksq, wpsq, bksq, stm))
+      return SCALE_FACTOR_NONE;
   else
-    return ScaleFactor(0);
+      return ScaleFactor(0);
 }
 
 
@@ -919,11 +934,11 @@ namespace {
   // Probe the KP vs K bitbase:
 
   int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm) {
+
     int wp = int(square_file(wpsq)) + (int(square_rank(wpsq)) - 1) * 4;
     int index = int(stm) + 2*int(bksq) + 128*int(wksq) + 8192*wp;
 
     assert(index >= 0 && index < 24576*8);
     return KPKBitbase[index/8] & (1 << (index&7));
   }
-
 }
