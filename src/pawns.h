@@ -121,9 +121,10 @@ inline bool PawnInfo::has_open_file_to_right(Color c, File f) const {
 
 inline void PawnInfo::clear() {
 
-  Key k = key;
-  memset(this, 0, sizeof(PawnInfo));
-  key = k;
+  passedPawns = EmptyBoardBB;
+  mgValue = egValue = 0;
+  ksStormValue[WHITE] = ksStormValue[BLACK] = 0;
+  qsStormValue[WHITE] = qsStormValue[BLACK] = 0;
   halfOpenFiles[WHITE] = halfOpenFiles[BLACK] = 0xFF;
 }
 
