@@ -50,12 +50,8 @@ inline Color opposite_color(Color c) {
   return Color(int(c) ^ 1);
 }
 
-
-////
-//// Prototypes
-////
-
-extern bool color_is_ok(Color c);
-
+inline bool color_is_ok(Color c) {
+  return c == WHITE || c == BLACK;
+}
 
 #endif // !defined(COLOR_H_INCLUDED)
