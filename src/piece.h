@@ -47,15 +47,43 @@ enum Piece {
 
 
 ////
-//// Constants and variables
+//// Constants
 ////
 
 const PieceType PieceTypeMin = PAWN;
 const PieceType PieceTypeMax = KING;
 
-extern const int SlidingArray[18];
-extern const SquareDelta Directions[16][16];
-extern const SquareDelta PawnPush[2];
+const int SlidingArray[18] = {
+  0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0
+};
+
+const SquareDelta Directions[16][16] = {
+  {DELTA_ZERO},
+  {DELTA_NW, DELTA_NE, DELTA_ZERO},
+  {DELTA_SSW, DELTA_SSE, DELTA_SWW, DELTA_SEE,
+   DELTA_NWW, DELTA_NEE, DELTA_NNW, DELTA_NNE, DELTA_ZERO},
+  {DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
+  {DELTA_S, DELTA_E, DELTA_W, DELTA_N, DELTA_ZERO},
+  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
+   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
+  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
+   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
+  {DELTA_ZERO},
+  {DELTA_ZERO},
+  {DELTA_SW, DELTA_SE, DELTA_ZERO},
+  {DELTA_SSW, DELTA_SSE, DELTA_SWW, DELTA_SEE,
+   DELTA_NWW, DELTA_NEE, DELTA_NNW, DELTA_NNE, DELTA_ZERO},
+  {DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
+  {DELTA_S, DELTA_E, DELTA_W, DELTA_N, DELTA_ZERO},
+  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
+   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
+  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
+   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
+};
+
+const SquareDelta PawnPush[2] = {
+  DELTA_N, DELTA_S
+};
 
 
 ////
@@ -119,6 +147,14 @@ inline SquareDelta pawn_push(Color c) {
   return PawnPush[c];
 }
 
+inline bool piece_type_is_ok(PieceType pc) {
+  return pc >= PAWN && pc <= KING;
+}
+
+inline bool piece_is_ok(Piece pc) {
+  return piece_type_is_ok(type_of_piece(pc)) && color_is_ok(color_of_piece(pc));
+}
+
 
 ////
 //// Prototypes
@@ -126,8 +162,6 @@ inline SquareDelta pawn_push(Color c) {
 
 extern char piece_type_to_char(PieceType pt, bool upcase = false);
 extern PieceType piece_type_from_char(char c);
-extern bool piece_is_ok(Piece pc);
-extern bool piece_type_is_ok(PieceType pt);
 
 
 #endif // !defined(PIECE_H_INCLUDED)
