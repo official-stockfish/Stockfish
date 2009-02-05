@@ -36,13 +36,16 @@
 namespace {
 
   enum CastlingSide {
-    KING_SIDE = 1,
-    QUEEN_SIDE = 2
+    KING_SIDE,
+    QUEEN_SIDE
   };
 
-  // Functions
-  MoveStack* generate_castle_moves(const Position&, MoveStack*, unsigned = (KING_SIDE | QUEEN_SIDE));
-  bool castling_is_check(const Position& pos, CastlingSide side);
+  // Function
+  bool castling_is_check(const Position&, CastlingSide);
+
+  // Template
+  template<CastlingSide Side>
+  MoveStack* generate_castle_moves(const Position&, MoveStack*);
 
   // Template generate_pawn_captures() with specializations
   template<Color, Color, Bitboard, SquareDelta, SquareDelta, SquareDelta>
@@ -165,7 +168,8 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
   mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
-  mlist = generate_castle_moves(pos, mlist);
+  mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
+  mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
   return int(mlist - mlist_start);
 }
 
@@ -216,12 +220,12 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   if (   pos.can_castle_queenside(us)
       && (square_rank(ksq) == square_rank(pos.king_square(us)) || square_file(ksq) == FILE_D)
       && castling_is_check(pos, QUEEN_SIDE))
-      mlist = generate_castle_moves(pos, mlist, QUEEN_SIDE);
+      mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
 
   if (   pos.can_castle_kingside(us)
       && (square_rank(ksq) == square_rank(pos.king_square(us)) || square_file(ksq) == FILE_F)
       && castling_is_check(pos, KING_SIDE))
-      mlist = generate_castle_moves(pos, mlist, KING_SIDE);
+      mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
 
   return int(mlist - mlist_start);
 }
@@ -893,69 +897,45 @@ namespace {
     return mlist;
   }
 
-  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, unsigned side) {
+  template<CastlingSide Side>
+  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist) {
 
     Color us = pos.side_to_move();
 
-    if (pos.can_castle_kingside(us) && (side & KING_SIDE))
+    if (  (Side == KING_SIDE && pos.can_castle_kingside(us))
+        ||(Side == QUEEN_SIDE && pos.can_castle_queenside(us)))
     {
         Color them = opposite_color(us);
         Square ksq = pos.king_square(us);
 
         assert(pos.piece_on(ksq) == king_of_color(us));
 
-        Square rsq = pos.initial_kr_square(us);
-        Square g1 = relative_square(us, SQ_G1);
-        Square f1 = relative_square(us, SQ_F1);
+        Square rsq = (Side == KING_SIDE ? pos.initial_kr_square(us) : pos.initial_qr_square(us));
+        Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
+        Square s2 = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
         Square s;
         bool illegal = false;
 
         assert(pos.piece_on(rsq) == rook_of_color(us));
 
-        for (s = Min(ksq, g1); s <= Max(ksq, g1); s++)
+        // It is a bit complicated to correctly handle Chess960
+        for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
             if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
                 || pos.square_is_attacked(s, them))
                 illegal = true;
 
-        for (s = Min(rsq, f1); s <= Max(rsq, f1); s++)
+        for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)
             if (s != ksq && s != rsq && pos.square_is_occupied(s))
                 illegal = true;
+
+        if (   Side == QUEEN_SIDE
+            && square_file(rsq) == FILE_B
+            && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
+                || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
+            illegal = true;
 
         if (!illegal)
             (*mlist++).move = make_castle_move(ksq, rsq);
-    }
-
-    if (pos.can_castle_queenside(us) && (side & QUEEN_SIDE))
-    {
-        Color them = opposite_color(us);
-        Square ksq = pos.king_square(us);
-
-        assert(pos.piece_on(ksq) == king_of_color(us));
-
-        Square rsq = pos.initial_qr_square(us);
-        Square c1 = relative_square(us, SQ_C1);
-        Square d1 = relative_square(us, SQ_D1);
-        Square s;
-        bool illegal = false;
-
-        assert(pos.piece_on(rsq) == rook_of_color(us));
-
-        for (s = Min(ksq, c1); s <= Max(ksq, c1); s++)
-            if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
-                || pos.square_is_attacked(s, them))
-                illegal = true;
-
-        for (s = Min(rsq, d1); s <= Max(rsq, d1); s++)
-            if (s != ksq && s != rsq && pos.square_is_occupied(s))
-                illegal = true;
-
-      if (   square_file(rsq) == FILE_B
-          && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
-              || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
-          illegal = true;
-
-      if (!illegal)
-          (*mlist++).move = make_castle_move(ksq, rsq);
     }
     return mlist;
   }
