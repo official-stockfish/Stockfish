@@ -35,8 +35,14 @@
 
 namespace {
 
-  // Function
-  MoveStack* generate_castle_moves(const Position&, MoveStack*);
+  enum CastlingSide {
+    KING_SIDE = 1,
+    QUEEN_SIDE = 2
+  };
+
+  // Functions
+  MoveStack* generate_castle_moves(const Position&, MoveStack*, unsigned = (KING_SIDE | QUEEN_SIDE));
+  bool castling_is_check(const Position& pos, CastlingSide side);
 
   // Template generate_pawn_captures() with specializations
   template<Color, Color, Bitboard, SquareDelta, SquareDelta, SquareDelta>
@@ -165,8 +171,7 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
 
 
 /// generate_checks() generates all pseudo-legal non-capturing, non-promoting
-/// checks, except castling moves (will add this later).  It returns the
-/// number of generated moves.
+/// checks. It returns the number of generated moves.
 
 int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
@@ -207,7 +212,16 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   // Hopefully we always have a king ;-)
   mlist = generate_piece_checks_king(pos, pos.king_square(us), dc, ksq, mlist);
 
-  // TODO: Castling moves!
+  // Castling moves that give check. Very rare but nice to have!
+  if (   pos.can_castle_queenside(us)
+      && (square_rank(ksq) == square_rank(pos.king_square(us)) || square_file(ksq) == FILE_D)
+      && castling_is_check(pos, QUEEN_SIDE))
+      mlist = generate_castle_moves(pos, mlist, QUEEN_SIDE);
+
+  if (   pos.can_castle_kingside(us)
+      && (square_rank(ksq) == square_rank(pos.king_square(us)) || square_file(ksq) == FILE_F)
+      && castling_is_check(pos, KING_SIDE))
+      mlist = generate_castle_moves(pos, mlist, KING_SIDE);
 
   return int(mlist - mlist_start);
 }
@@ -879,70 +893,84 @@ namespace {
     return mlist;
   }
 
-
-  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist) {
+  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, unsigned side) {
 
     Color us = pos.side_to_move();
 
-    if (pos.can_castle(us))
+    if (pos.can_castle_kingside(us) && (side & KING_SIDE))
     {
         Color them = opposite_color(us);
         Square ksq = pos.king_square(us);
 
         assert(pos.piece_on(ksq) == king_of_color(us));
 
-        if (pos.can_castle_kingside(us))
-        {
-            Square rsq = pos.initial_kr_square(us);
-            Square g1 = relative_square(us, SQ_G1);
-            Square f1 = relative_square(us, SQ_F1);
-            Square s;
-            bool illegal = false;
+        Square rsq = pos.initial_kr_square(us);
+        Square g1 = relative_square(us, SQ_G1);
+        Square f1 = relative_square(us, SQ_F1);
+        Square s;
+        bool illegal = false;
 
-            assert(pos.piece_on(rsq) == rook_of_color(us));
+        assert(pos.piece_on(rsq) == rook_of_color(us));
 
-            for (s = Min(ksq, g1); s <= Max(ksq, g1); s++)
-                if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
-                    || pos.square_is_attacked(s, them))
-                    illegal = true;
+        for (s = Min(ksq, g1); s <= Max(ksq, g1); s++)
+            if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
+                || pos.square_is_attacked(s, them))
+                illegal = true;
 
-            for (s = Min(rsq, f1); s <= Max(rsq, f1); s++)
-                if (s != ksq && s != rsq && pos.square_is_occupied(s))
-                    illegal = true;
-
-            if (!illegal)
-                (*mlist++).move = make_castle_move(ksq, rsq);
-      }
-
-      if (pos.can_castle_queenside(us))
-      {
-          Square rsq = pos.initial_qr_square(us);
-          Square c1 = relative_square(us, SQ_C1);
-          Square d1 = relative_square(us, SQ_D1);
-          Square s;
-          bool illegal = false;
-
-          assert(pos.piece_on(rsq) == rook_of_color(us));
-
-          for (s = Min(ksq, c1); s <= Max(ksq, c1); s++)
-              if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
-                  || pos.square_is_attacked(s, them))
-                  illegal = true;
-
-          for (s = Min(rsq, d1); s <= Max(rsq, d1); s++)
-              if (s != ksq && s != rsq && pos.square_is_occupied(s))
-                  illegal = true;
-
-        if (   square_file(rsq) == FILE_B
-            && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
-                || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
-            illegal = true;
+        for (s = Min(rsq, f1); s <= Max(rsq, f1); s++)
+            if (s != ksq && s != rsq && pos.square_is_occupied(s))
+                illegal = true;
 
         if (!illegal)
             (*mlist++).move = make_castle_move(ksq, rsq);
-      }
+    }
+
+    if (pos.can_castle_queenside(us) && (side & QUEEN_SIDE))
+    {
+        Color them = opposite_color(us);
+        Square ksq = pos.king_square(us);
+
+        assert(pos.piece_on(ksq) == king_of_color(us));
+
+        Square rsq = pos.initial_qr_square(us);
+        Square c1 = relative_square(us, SQ_C1);
+        Square d1 = relative_square(us, SQ_D1);
+        Square s;
+        bool illegal = false;
+
+        assert(pos.piece_on(rsq) == rook_of_color(us));
+
+        for (s = Min(ksq, c1); s <= Max(ksq, c1); s++)
+            if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
+                || pos.square_is_attacked(s, them))
+                illegal = true;
+
+        for (s = Min(rsq, d1); s <= Max(rsq, d1); s++)
+            if (s != ksq && s != rsq && pos.square_is_occupied(s))
+                illegal = true;
+
+      if (   square_file(rsq) == FILE_B
+          && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
+              || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
+          illegal = true;
+
+      if (!illegal)
+          (*mlist++).move = make_castle_move(ksq, rsq);
     }
     return mlist;
   }
 
+  bool castling_is_check(const Position& pos, CastlingSide side) {
+
+    // After castling opponent king is attacked by the castled rook?
+    File rookFile = (side == QUEEN_SIDE ? FILE_D : FILE_F);
+    Color us = pos.side_to_move();
+    Square ksq = pos.king_square(us);
+    Bitboard occ = pos.occupied_squares(), oppKingBB = EmptyBoardBB;
+
+    set_bit(&oppKingBB, pos.king_square(opposite_color(us)));
+    clear_bit(&occ, ksq); // Remove our king from the board
+    Square rsq = make_square(rookFile, square_rank(ksq));
+    return (rook_attacks_bb(rsq, occ) & oppKingBB);
+  }
 }
