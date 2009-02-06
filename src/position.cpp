@@ -60,11 +60,11 @@ static bool RequestPending = false;
 
 /// Constructors
 
-Position::Position(const Position &pos) {
+Position::Position(const Position& pos) {
   copy(pos);
 }
 
-Position::Position(const std::string &fen) {
+Position::Position(const std::string& fen) {
   from_fen(fen);
 }
 
@@ -73,7 +73,7 @@ Position::Position(const std::string &fen) {
 /// string. This function is not very robust - make sure that input FENs are
 /// correct (this is assumed to be the responsibility of the GUI).
 
-void Position::from_fen(const std::string &fen) {
+void Position::from_fen(const std::string& fen) {
 
   static const std::string pieceLetters = "KQRBNPkqrbnp";
   static const Piece pieces[] = { WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP };
@@ -1967,7 +1967,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 /// side to move is checkmated. Note that this function is currently very
 /// slow, and shouldn't be used frequently inside the search.
 
-bool Position::is_mate() {
+bool Position::is_mate() const {
 
   if (is_check())
   {

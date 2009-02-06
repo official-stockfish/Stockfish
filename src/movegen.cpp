@@ -233,7 +233,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
 /// generate_evasions() generates all check evasions when the side to move is
 /// in check.  Unlike the other move generation functions, this one generates
-/// only legal moves.  It returns the number of generated moves.  This
+/// only legal moves.  It returns the number of generated moves. This
 /// function is very ugly, and needs cleaning up some time later.  FIXME
 
 int generate_evasions(const Position& pos, MoveStack* mlist) {
@@ -384,8 +384,8 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
 
 
 /// generate_legal_moves() computes a complete list of legal moves in the
-/// current position.  This function is not very fast, and should be used
-/// only in situations where performance is unimportant.  It wouldn't be
+/// current position. This function is not very fast, and should be used
+/// only in situations where performance is unimportant. It wouldn't be
 /// very hard to write an efficient legal move generator, but for the moment
 /// we don't need it.
 
@@ -741,10 +741,10 @@ namespace {
     b2 = b1 & TRank8BB;
     while (b2)
     {
-      to = pop_1st_bit(&b2);
-      (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
-      (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
-      (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
+        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
+        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
     }
     b2 = b1 & ~TRank8BB;
     while (b2)
@@ -757,8 +757,8 @@ namespace {
     b2 = (Us == WHITE ? (b1 & TRank3BB) << 8 : (b1 & TRank3BB) >> 8) & emptySquares;
     while (b2)
     {
-      to = pop_1st_bit(&b2);
-      (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
+        to = pop_1st_bit(&b2);
+        (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
     }
     return mlist;
   }
@@ -775,8 +775,8 @@ namespace {
     // Find all friendly pawns not on the enemy king's file
     Bitboard b1 = pos.pawns(Us) & ~file_bb(ksq), b2, b3;
 
-    // Discovered checks, single pawn pushes
-    b2 = b3 = (Us == WHITE ? (b1 & dc) << 8 : (b1 & dc) >> 8) & ~TRank8BB & empty;
+    // Discovered checks, single pawn pushes, no promotions
+    b2 = b3 = (Us == WHITE ? (b1 & dc) << 8 : (b1 & dc) >> 8) & empty & ~TRank8BB;
     while (b3)
     {
         Square to = pop_1st_bit(&b3);
@@ -793,8 +793,7 @@ namespace {
 
     // Direct checks. These are possible only for pawns on neighboring files
     // of the enemy king
-
-    b1 &= (~dc & neighboring_files_bb(ksq)); // FIXME why ~dc ??
+    b1 &= (~dc & neighboring_files_bb(ksq));
 
     // Direct checks, single pawn pushes
     b2 = (Us == WHITE ? b1 << 8 : b1 >> 8) & empty;

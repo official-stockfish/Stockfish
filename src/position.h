@@ -122,11 +122,11 @@ class Position {
 public:
   // Constructors
   Position() {};
-  Position(const Position &pos);
-  Position(const std::string &fen);
+  Position(const Position& pos);
+  Position(const std::string& fen);
 
   // Text input/output
-  void from_fen(const std::string &fen);
+  void from_fen(const std::string& fen);
   const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;
 
@@ -268,7 +268,7 @@ public:
   Value mg_pst_delta(Move m) const;
 
   // Game termination checks
-  bool is_mate();
+  bool is_mate() const;
   bool is_draw() const;
 
   // Check if one side threatens a mate in one
