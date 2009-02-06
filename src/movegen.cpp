@@ -945,11 +945,10 @@ namespace {
     File rookFile = (side == QUEEN_SIDE ? FILE_D : FILE_F);
     Color us = pos.side_to_move();
     Square ksq = pos.king_square(us);
-    Bitboard occ = pos.occupied_squares(), oppKingBB = EmptyBoardBB;
+    Bitboard occ = pos.occupied_squares();
 
-    set_bit(&oppKingBB, pos.king_square(opposite_color(us)));
     clear_bit(&occ, ksq); // Remove our king from the board
     Square rsq = make_square(rookFile, square_rank(ksq));
-    return (rook_attacks_bb(rsq, occ) & oppKingBB);
+    return bit_is_set(rook_attacks_bb(rsq, occ), pos.king_square(opposite_color(us)));
   }
 }
