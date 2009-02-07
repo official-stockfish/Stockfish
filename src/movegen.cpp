@@ -249,34 +249,51 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
 
   assert(pos.piece_on(ksq) == king_of_color(us));
 
-  // Generate evasions for king
-  Bitboard b1 = pos.piece_attacks<KING>(ksq) & ~pos.pieces_of_color(us);
+  // The bitboard of occupied pieces without our king
   Bitboard b2 = pos.occupied_squares();
   clear_bit(&b2, ksq);
 
+  // Find squares attacked by slider checkers, we will
+  // remove them from king evasions set so to avoid a couple
+  // of cycles in the slow king evasions legality check loop.
+  Bitboard checkers = pos.checkers();
+  Bitboard checkersAttacks = EmptyBoardBB;
+  Bitboard b = checkers & (pos.queens() | pos.bishops());
+  while (b)
+  {
+      from = pop_1st_bit(&b);
+      checkersAttacks |= bishop_attacks_bb(from, b2);
+  }
+
+  b = checkers & (pos.queens() | pos.rooks());
+  while (b)
+  {
+      from = pop_1st_bit(&b);
+      checkersAttacks |= rook_attacks_bb(from, b2);
+  }
+
+  // Generate evasions for king
+  Bitboard b1 = pos.piece_attacks<KING>(ksq) & ~pos.pieces_of_color(us) & ~checkersAttacks;
   while (b1)
   {
-    to = pop_1st_bit(&b1);
+      to = pop_1st_bit(&b1);
 
-    // Make sure 'to' is not attacked by the other side. This is a bit ugly,
-    // because we can't use Position::square_is_attacked. Instead we use
-    // the low-level bishop_attacks_bb and rook_attacks_bb with the bitboard
-    // b2 (the occupied squares with the king removed) in order to test whether
-    // the king will remain in check on the destination square.
-    if (!(   (pos.piece_attacks<KNIGHT>(to) & pos.knights(them))
-          || (pos.pawn_attacks(us, to)      & pos.pawns(them))
-          || (bishop_attacks_bb(to, b2)     & pos.bishops_and_queens(them))
-          || (rook_attacks_bb(to, b2)       & pos.rooks_and_queens(them))
-          || (pos.piece_attacks<KING>(to)   & pos.kings(them))))
-
-        (*mlist++).move = make_move(ksq, to);
+      // Make sure 'to' is not attacked by the other side. This is a bit ugly,
+      // because we can't use Position::square_is_attacked. Instead we use
+      // the low-level bishop_attacks_bb and rook_attacks_bb with the bitboard
+      // b2 (the occupied squares with the king removed) in order to test whether
+      // the king will remain in check on the destination square.
+      if (!(   (pos.piece_attacks<KNIGHT>(to) & pos.knights(them))
+            || (pos.pawn_attacks(us, to)      & pos.pawns(them))
+            || (bishop_attacks_bb(to, b2)     & pos.bishops_and_queens(them))
+            || (rook_attacks_bb(to, b2)       & pos.rooks_and_queens(them))
+            || (pos.piece_attacks<KING>(to)   & pos.kings(them))))
+          (*mlist++).move = make_move(ksq, to);
   }
 
   // Generate evasions for other pieces only if not double check. We use a
   // simple bit twiddling hack here rather than calling count_1s in order to
   // save some time (we know that pos.checkers() has at most two nonzero bits).
-  Bitboard checkers = pos.checkers();
-
   if (!(checkers & (checkers - 1))) // Only one bit set?
   {
       Square checksq = first_1(checkers);
