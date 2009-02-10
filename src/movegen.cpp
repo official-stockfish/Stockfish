@@ -40,10 +40,10 @@ namespace {
     QUEEN_SIDE
   };
 
-  static const bool CAPTURE = true;
-  static const bool NON_CAPTURE = false;
+  const bool CAPTURE = true;
+  const bool NON_CAPTURE = false;
 
-  // Function
+  // Functions
   bool castling_is_check(const Position&, CastlingSide);
 
   // Helper templates
@@ -102,7 +102,7 @@ namespace {
 
   template<>
   inline MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us,
-                                                    Bitboard np, Bitboard bs) {
+                                                           Bitboard np, Bitboard bs) {
     if (us == WHITE)
         return generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, np, bs, m);
     else
