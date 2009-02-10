@@ -107,7 +107,6 @@ namespace {
 
   template<PieceType>
   MoveStack* generate_piece_checks(const Position&, Bitboard, Bitboard, Square, MoveStack*);
-  MoveStack* generate_piece_checks_king(const Position&, Square, Bitboard, Square, MoveStack*);
 
   template<PieceType>
   MoveStack* generate_piece_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
@@ -214,7 +213,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
       mlist = generate_piece_checks<QUEEN>(pos, b, dc, ksq, mlist);
 
   // Hopefully we always have a king ;-)
-  mlist = generate_piece_checks_king(pos, pos.king_square(us), dc, ksq, mlist);
+  mlist = generate_piece_checks<KING>(pos, pos.kings(us), dc, ksq, mlist);
 
   // Castling moves that give check. Very rare but nice to have!
   if (   pos.can_castle_queenside(us)
@@ -784,7 +783,7 @@ namespace {
   template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB, SquareDelta TDELTA_N>
   MoveStack* do_generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
   {
-    // Pawn moves which give discovered check. This is possible only if the
+    // Pawn moves which gives discovered check. This is possible only if the
     // pawn is not on the same file as the enemy king, because we don't
     // generate captures.
     Bitboard empty = pos.empty_squares();
@@ -843,8 +842,15 @@ namespace {
     {
         Square from = pop_1st_bit(&b);
         Bitboard bb = pos.piece_attacks<Piece>(from) & pos.empty_squares();
+        if (Piece == KING)
+            bb &= ~QueenPseudoAttacks[ksq];
+
         SERIALIZE_MOVES(bb);
     }
+
+    if (Piece == KING)
+        return mlist;
+
     // Direct checks
     b = target & ~dc;
     Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
@@ -856,19 +862,6 @@ namespace {
     }
     return mlist;
   }
-
-  MoveStack* generate_piece_checks_king(const Position& pos, Square from, Bitboard dc,
-                                        Square ksq, MoveStack* mlist) {
-    if (bit_is_set(dc, from))
-    {
-        Bitboard b =   pos.piece_attacks<KING>(from)
-                     & pos.empty_squares()
-                     & ~QueenPseudoAttacks[ksq];
-        SERIALIZE_MOVES(b);
-    }
-    return mlist;
-  }
-
 
   template<Color Us, Rank TRANK_8, Bitboard TRank3BB, SquareDelta TDELTA_N>
   MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
