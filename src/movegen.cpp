@@ -40,43 +40,29 @@ namespace {
     QUEEN_SIDE
   };
 
+  static const bool CAPTURE = true;
+  static const bool NON_CAPTURE = false;
+
   // Function
   bool castling_is_check(const Position&, CastlingSide);
 
-  // Templates
+  // Main templates
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position&, MoveStack*);
+
   template<PieceType>
   MoveStack* generate_piece_checks(const Position&, MoveStack*, Color us, Bitboard, Square);
+
+  // Helper templates
   template<Color Us, Rank, Bitboard, SquareDelta>
   MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
                                                 Bitboard blockSquares, MoveStack* mlist);
 
-  // Template generate_pawn_captures() with specializations
   template<Color, Color, Bitboard, SquareDelta, SquareDelta, SquareDelta>
   MoveStack* do_generate_pawn_captures(const Position& pos, MoveStack* mlist);
 
-  template<Color>
-  inline MoveStack* generate_pawn_captures(const Position& p, MoveStack* m) {
-      return do_generate_pawn_captures<WHITE, BLACK, Rank8BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m);
-  }
-  template<>
-  inline MoveStack* generate_pawn_captures<BLACK>(const Position& p, MoveStack* m) {
-      return do_generate_pawn_captures<BLACK, WHITE, Rank1BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m);
-  }
-
-  // Template generate_pawn_noncaptures() with specializations
   template<Color, Color, Bitboard, Bitboard, SquareDelta, SquareDelta, SquareDelta>
   MoveStack* do_generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
-
-  template<Color>
-  inline MoveStack* generate_pawn_noncaptures(const Position& p, MoveStack* m) {
-      return do_generate_pawn_noncaptures<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m);
-  }
-  template<>
-  inline MoveStack* generate_pawn_noncaptures<BLACK>(const Position& p, MoveStack* m) {
-      return do_generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m);
-  }
 
   // Template generate_pawn_checks() with specializations
   template<Color, Color, Bitboard, Bitboard, SquareDelta>
@@ -97,9 +83,23 @@ namespace {
   template<>
   MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target);
 
+  template<PieceType Piece, bool Capture>
+  inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us) {
+
+      assert(Piece == PAWN);
+
+      if (Capture)
+          return (us == WHITE ? do_generate_pawn_captures<WHITE, BLACK, Rank8BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
+                              : do_generate_pawn_captures<BLACK, WHITE, Rank1BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
+      else
+          return (us == WHITE ? do_generate_pawn_noncaptures<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
+                              : do_generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
+  }
+
   // Template generate_piece_blocking_evasions() with specializations
   template<PieceType>
   MoveStack* generate_piece_blocking_evasions(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
+
   template<>
   MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard np, Bitboard bs);
 }
@@ -126,12 +126,7 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-
-  if (us == WHITE)
-      mlist = generate_pawn_captures<WHITE>(pos, mlist);
-  else
-      mlist = generate_pawn_captures<BLACK>(pos, mlist);
-
+  mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
   return int(mlist - mlist_start);
 }
@@ -149,11 +144,7 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
   Bitboard target = pos.empty_squares();
   MoveStack* mlist_start = mlist;
 
-  if (us == WHITE)
-      mlist = generate_pawn_noncaptures<WHITE>(pos, mlist);
-  else
-      mlist = generate_pawn_noncaptures<BLACK>(pos, mlist);
-
+  mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
