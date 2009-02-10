@@ -43,9 +43,14 @@ namespace {
   // Function
   bool castling_is_check(const Position&, CastlingSide);
 
-  // Template
+  // Templates
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position&, MoveStack*);
+  template<PieceType>
+  MoveStack* generate_piece_checks(const Position&, MoveStack*, Color us, Bitboard, Square);
+  template<Color Us, Rank, Bitboard, SquareDelta>
+  MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
+                                                Bitboard blockSquares, MoveStack* mlist);
 
   // Template generate_pawn_captures() with specializations
   template<Color, Color, Bitboard, SquareDelta, SquareDelta, SquareDelta>
@@ -73,19 +78,6 @@ namespace {
       return do_generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m);
   }
 
-  // Template generate_pawn_blocking_evasions() with specializations
-  template<Color Us, Rank, Bitboard, SquareDelta>
-  MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
-                                                Bitboard blockSquares, MoveStack* mlist);
-  template<Color>
-  inline MoveStack* generate_pawn_blocking_evasions(const Position& p, MoveStack* m, Bitboard np, Bitboard bs) {
-      return do_generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, np, bs, m);
-  }
-  template<>
-  inline MoveStack* generate_pawn_blocking_evasions<BLACK>(const Position& p, MoveStack* m, Bitboard np, Bitboard bs) {
-      return do_generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, np, bs, m);
-  }
-
   // Template generate_pawn_checks() with specializations
   template<Color, Color, Bitboard, Bitboard, SquareDelta>
   MoveStack* do_generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
@@ -99,17 +91,17 @@ namespace {
       return do_generate_pawn_checks<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_S>(p, dc, ksq, m);
   }
 
-  // non-pawn templates
+  // Template generate_piece_moves() with specializations
   template<PieceType>
   MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
   template<>
   MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target);
 
+  // Template generate_piece_blocking_evasions() with specializations
   template<PieceType>
-  MoveStack* generate_piece_checks(const Position&, MoveStack*, Color us, Bitboard, Square);
-
-  template<PieceType>
-  MoveStack* generate_piece_blocking_evasions(const Position&, MoveStack*, Bitboard, Bitboard);
+  MoveStack* generate_piece_blocking_evasions(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
+  template<>
+  MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard np, Bitboard bs);
 }
 
 
@@ -323,29 +315,12 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
 
           assert((pos.occupied_squares() & blockSquares) == EmptyBoardBB);
 
-          // Pawn moves. Because a blocking evasion can never be a capture, we
-          // only generate pawn pushes.
-          if (us == WHITE)
-              mlist = generate_pawn_blocking_evasions<WHITE>(pos, mlist, not_pinned, blockSquares);
-          else
-              mlist = generate_pawn_blocking_evasions<BLACK>(pos, mlist, not_pinned, blockSquares);
-
           // Pieces moves
-          b1 = pos.knights(us) & not_pinned;
-          if (b1)
-              mlist = generate_piece_blocking_evasions<KNIGHT>(pos, mlist, b1, blockSquares);
-
-          b1 = pos.bishops(us) & not_pinned;
-          if (b1)
-              mlist = generate_piece_blocking_evasions<BISHOP>(pos, mlist, b1, blockSquares);
-
-          b1 = pos.rooks(us) & not_pinned;
-          if (b1)
-              mlist = generate_piece_blocking_evasions<ROOK>(pos, mlist, b1, blockSquares);
-
-          b1 = pos.queens(us) & not_pinned;
-          if (b1)
-              mlist = generate_piece_blocking_evasions<QUEEN>(pos, mlist, b1, blockSquares);
+          mlist = generate_piece_blocking_evasions<PAWN>(pos, mlist, us, not_pinned, blockSquares);
+          mlist = generate_piece_blocking_evasions<KNIGHT>(pos, mlist, us, not_pinned, blockSquares);
+          mlist = generate_piece_blocking_evasions<BISHOP>(pos, mlist, us, not_pinned, blockSquares);
+          mlist = generate_piece_blocking_evasions<ROOK>(pos, mlist, us, not_pinned, blockSquares);
+          mlist = generate_piece_blocking_evasions<QUEEN>(pos, mlist, us, not_pinned, blockSquares);
     }
 
     // Finally, the ugly special case of en passant captures. An en passant
@@ -621,8 +596,10 @@ namespace {
   }
 
   template<PieceType Piece>
-  MoveStack* generate_piece_blocking_evasions(const Position& pos, MoveStack* mlist,
-                                              Bitboard b, Bitboard blockSquares) {
+  MoveStack* generate_piece_blocking_evasions(const Position& pos, MoveStack* mlist, Color us,
+                                              Bitboard not_pinned, Bitboard blockSquares) {
+
+    Bitboard b = pos.pieces_of_color_and_type(us, Piece) & not_pinned;
     while (b)
     {
         Square from = pop_1st_bit(&b);
@@ -632,6 +609,14 @@ namespace {
     return mlist;
   }
 
+  template<>
+  MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us,
+                                                    Bitboard np, Bitboard bs) {
+    if (us == WHITE)
+        return do_generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, np, bs, m);
+    else
+        return do_generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, np, bs, m);
+  }
 
   template<Color Us, Color Them, Bitboard TRank8BB, SquareDelta TDELTA_NE,
            SquareDelta TDELTA_NW, SquareDelta TDELTA_N
