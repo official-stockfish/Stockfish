@@ -46,40 +46,40 @@ namespace {
   // Function
   bool castling_is_check(const Position&, CastlingSide);
 
-  // Main templates
-  template<CastlingSide Side>
-  MoveStack* generate_castle_moves(const Position&, MoveStack*);
-
-  template<PieceType>
-  MoveStack* generate_piece_checks(const Position&, MoveStack*, Color us, Bitboard, Square);
-
   // Helper templates
+  template<CastlingSide Side>
+  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist);
+
   template<Color Us, Rank, Bitboard, SquareDelta>
-  MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
-                                                Bitboard blockSquares, MoveStack* mlist);
+  MoveStack* generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 
   template<Color, Color, Bitboard, SquareDelta, SquareDelta, SquareDelta>
-  MoveStack* do_generate_pawn_captures(const Position& pos, MoveStack* mlist);
+  MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist);
 
   template<Color, Color, Bitboard, Bitboard, SquareDelta, SquareDelta, SquareDelta>
-  MoveStack* do_generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
+  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
 
-  // Template generate_pawn_checks() with specializations
   template<Color, Color, Bitboard, Bitboard, SquareDelta>
-  MoveStack* do_generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
+  MoveStack* generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
 
-  template<Color>
-  inline MoveStack* generate_pawn_checks(const Position& p, MoveStack* m, Bitboard dc, Square ksq) {
-      return do_generate_pawn_checks<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_N>(p, dc, ksq, m);
-  }
+  // Template generate_piece_checks() with specializations
+  template<PieceType>
+  MoveStack* generate_piece_checks(const Position&, MoveStack*, Color, Bitboard, Square);
+
   template<>
-  inline MoveStack* generate_pawn_checks<BLACK>(const Position& p, MoveStack* m, Bitboard dc, Square ksq) {
-      return do_generate_pawn_checks<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_S>(p, dc, ksq, m);
+  inline MoveStack* generate_piece_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
+
+    if (us == WHITE)
+        return generate_pawn_checks<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_N>(p, dc, ksq, m);
+    else
+        return generate_pawn_checks<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_S>(p, dc, ksq, m);
+
   }
 
   // Template generate_piece_moves() with specializations
   template<PieceType>
   MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
+
   template<>
   MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target);
 
@@ -89,11 +89,11 @@ namespace {
       assert(Piece == PAWN);
 
       if (Capture)
-          return (us == WHITE ? do_generate_pawn_captures<WHITE, BLACK, Rank8BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
-                              : do_generate_pawn_captures<BLACK, WHITE, Rank1BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
+          return (us == WHITE ? generate_pawn_captures<WHITE, BLACK, Rank8BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
+                              : generate_pawn_captures<BLACK, WHITE, Rank1BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
       else
-          return (us == WHITE ? do_generate_pawn_noncaptures<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
-                              : do_generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
+          return (us == WHITE ? generate_pawn_noncaptures<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
+                              : generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
   }
 
   // Template generate_piece_blocking_evasions() with specializations
@@ -101,7 +101,13 @@ namespace {
   MoveStack* generate_piece_blocking_evasions(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
 
   template<>
-  MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard np, Bitboard bs);
+  inline MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us,
+                                                    Bitboard np, Bitboard bs) {
+    if (us == WHITE)
+        return generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, np, bs, m);
+    else
+        return generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, np, bs, m);
+  }
 }
 
 
@@ -170,13 +176,8 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   assert(pos.piece_on(ksq) == king_of_color(opposite_color(us)));
 
-  // Pawn moves
-  if (us == WHITE)
-     mlist = generate_pawn_checks<WHITE>(pos, mlist, dc, ksq);
-  else
-     mlist = generate_pawn_checks<BLACK>(pos, mlist, dc, ksq);
-
   // Pieces moves
+  mlist = generate_piece_checks<PAWN>(pos, mlist, us, dc, ksq);
   mlist = generate_piece_checks<KNIGHT>(pos, mlist, us, dc, ksq);
   mlist = generate_piece_checks<BISHOP>(pos, mlist, us, dc, ksq);
   mlist = generate_piece_checks<ROOK>(pos, mlist, us, dc, ksq);
@@ -600,19 +601,10 @@ namespace {
     return mlist;
   }
 
-  template<>
-  MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us,
-                                                    Bitboard np, Bitboard bs) {
-    if (us == WHITE)
-        return do_generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, np, bs, m);
-    else
-        return do_generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, np, bs, m);
-  }
-
   template<Color Us, Color Them, Bitboard TRank8BB, SquareDelta TDELTA_NE,
            SquareDelta TDELTA_NW, SquareDelta TDELTA_N
           >
-  MoveStack* do_generate_pawn_captures(const Position& pos, MoveStack* mlist) {
+  MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist) {
 
     Square to;
     Bitboard pawns = pos.pawns(Us);
@@ -685,7 +677,7 @@ namespace {
   template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB,
            SquareDelta TDELTA_NE, SquareDelta TDELTA_NW, SquareDelta TDELTA_N
           >
-  MoveStack* do_generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {
+  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {
 
     Bitboard pawns = pos.pawns(Us);
     Bitboard enemyPieces = pos.pieces_of_color(Them);
@@ -742,7 +734,7 @@ namespace {
 
 
   template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB, SquareDelta TDELTA_N>
-  MoveStack* do_generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
+  MoveStack* generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
   {
     // Find all friendly pawns not on the enemy king's file
     Bitboard b1, b2, b3;
@@ -831,8 +823,8 @@ namespace {
   }
 
   template<Color Us, Rank TRANK_8, Bitboard TRank3BB, SquareDelta TDELTA_N>
-  MoveStack* do_generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
-                                                Bitboard blockSquares, MoveStack* mlist) {
+  MoveStack* generate_pawn_blocking_evasions(const Position& pos, Bitboard not_pinned,
+                                             Bitboard blockSquares, MoveStack* mlist) {
     Square to;
 
     // Find non-pinned pawns
