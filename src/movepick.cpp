@@ -162,7 +162,7 @@ Move MovePicker::get_next_move() {
 
     case PH_EVASIONS:
         assert(pos.is_check());
-        numOfMoves = generate_evasions(pos, moves);
+        numOfMoves = generate_evasions(pos, moves, pinned);
         score_evasions();
         movesPicked = 0;
         break;

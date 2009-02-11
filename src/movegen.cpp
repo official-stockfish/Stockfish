@@ -204,7 +204,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 /// only legal moves.  It returns the number of generated moves. This
 /// function is very ugly, and needs cleaning up some time later.  FIXME
 
-int generate_evasions(const Position& pos, MoveStack* mlist) {
+int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
@@ -265,11 +265,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
   if (!(checkers & (checkers - 1))) // Only one bit set?
   {
       Square checksq = first_1(checkers);
+      Bitboard not_pinned = ~pinned;
 
       assert(pos.color_of_piece_on(checksq) == them);
-
-      // Find pinned pieces
-      Bitboard not_pinned = ~pos.pinned_pieces(us);
 
       // Generate captures of the checking piece
 
@@ -361,14 +359,14 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+
   if (pos.is_check())
-      return generate_evasions(pos, mlist);
+      return generate_evasions(pos, mlist, pinned);
 
   // Generate pseudo-legal moves
   int n = generate_captures(pos, mlist);
   n += generate_noncaptures(pos, mlist + n);
-
-  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
   // Remove illegal moves from the list
   for (int i = 0; i < n; i++)
