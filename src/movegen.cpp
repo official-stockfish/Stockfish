@@ -322,25 +322,19 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
         to = pos.ep_square();
         b1 = pos.pawn_attacks(them, to) & pos.pawns(us);
 
-        assert(b1 != EmptyBoardBB);
+        // The checking pawn cannot be a discovered (bishop) check candidate
+        // otherwise we were in check also before last double push move.
+        assert(!bit_is_set(pos.discovered_check_candidates(them), checksq));
+        assert(count_1s(b1) == 1 || count_1s(b1) == 2);
 
         b1 &= ~pinned;
         while (b1)
         {
             from = pop_1st_bit(&b1);
-
-            // Before generating the move, we have to make sure it is legal.
-            // This is somewhat tricky, because the two disappearing pawns may
-            // cause new "discovered checks".  We test this by removing the
-            // two relevant bits from the occupied squares bitboard, and using
-            // the low-level bitboard functions for bishop and rook attacks.
-            b2 = pos.occupied_squares();
-            clear_bit(&b2, from);
-            clear_bit(&b2, checksq);
-            if (!(  (bishop_attacks_bb(ksq, b2) & pos.bishops_and_queens(them))
-                  ||(rook_attacks_bb(ksq, b2)   & pos.rooks_and_queens(them))))
-
-                 (*mlist++).move = make_ep_move(from, to);
+            // Move is always legal because checking pawn is not a discovered
+            // check candidate and our capturing pawn has been already tested
+            // against pinned pieces.
+            (*mlist++).move = make_ep_move(from, to);
         }
     }
   }
