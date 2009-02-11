@@ -223,7 +223,8 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
   // Find squares attacked by slider checkers, we will
   // remove them from king evasions set so to avoid a couple
-  // of cycles in the slow king evasions legality check loop.
+  // of cycles in the slow king evasions legality check loop
+  // and to be able to use square_is_attacked().
   Bitboard checkers = pos.checkers();
   Bitboard checkersAttacks = EmptyBoardBB;
   Bitboard b = checkers & (pos.queens() | pos.bishops());
@@ -245,17 +246,9 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
   while (b1)
   {
       to = pop_1st_bit(&b1);
-
-      // Make sure 'to' is not attacked by the other side. This is a bit ugly,
-      // because we can't use Position::square_is_attacked. Instead we use
-      // the low-level bishop_attacks_bb and rook_attacks_bb with the bitboard
-      // b2 (the occupied squares with the king removed) in order to test whether
-      // the king will remain in check on the destination square.
-      if (!(   (pos.piece_attacks<KNIGHT>(to) & pos.knights(them))
-            || (pos.pawn_attacks(us, to)      & pos.pawns(them))
-            || (bishop_attacks_bb(to, b2)     & pos.bishops_and_queens(them))
-            || (rook_attacks_bb(to, b2)       & pos.rooks_and_queens(them))
-            || (pos.piece_attacks<KING>(to)   & pos.kings(them))))
+      // Note that we can use square_is_attacked() only because we
+      // have already removed sliders checkers.
+      if (!pos.square_is_attacked(to, them))
           (*mlist++).move = make_move(ksq, to);
   }
 
