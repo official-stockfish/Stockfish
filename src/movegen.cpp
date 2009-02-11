@@ -851,7 +851,7 @@ namespace {
 
     // Double pawn pushes
     b2 = (Us == WHITE ? b1 << 8 : b1 >> 8) & pos.empty_squares() & TRank3BB;
-    b2 = (Us == WHITE ? b2 << 8 : b2 >> 8) & blockSquares;;
+    b2 = (Us == WHITE ? b2 << 8 : b2 >> 8) & blockSquares;
     while (b2)
     {
         to = pop_1st_bit(&b2);
