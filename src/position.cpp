@@ -128,8 +128,10 @@ void Position::from_fen(const std::string& fen) {
 
   i++;
   while(strchr("KQkqabcdefghABCDEFGH-", fen[i])) {
-    if(fen[i] == '-') {
-      i++; break;
+    if (fen[i] == '-')
+    {
+      i++;
+      break;
     }
     else if(fen[i] == 'K') allow_oo(WHITE);
     else if(fen[i] == 'Q') allow_ooo(WHITE);
@@ -314,25 +316,6 @@ void Position::print(Move m) const {
 void Position::copy(const Position &pos) {
 
   memcpy(this, &pos, sizeof(Position));
-}
-
-
-/// Position::update_checkers() updates checkers info, used in do_move()
-template<PieceType Piece>
-inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from,
-                                      Square to, Bitboard dcCandidates) {
-
-  if (Piece != KING && bit_is_set(piece_attacks<Piece>(ksq), to))
-      set_bit(pCheckersBB, to);
-
-  if (Piece != QUEEN && bit_is_set(dcCandidates, from))
-  {
-      if (Piece != ROOK)
-          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(side_to_move()));
-
-      if (Piece != BISHOP)
-          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(side_to_move()));
-  }
 }
 
 
@@ -729,6 +712,27 @@ void Position::restore(const UndoInfo& u) {
   // u.capture is restored in undo_move()
 }
 
+
+/// Position::update_checkers() is a private method to udpate chekers info
+
+template<PieceType Piece>
+inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from,
+                                      Square to, Bitboard dcCandidates) {
+
+  if (Piece != KING && bit_is_set(piece_attacks<Piece>(ksq), to))
+      set_bit(pCheckersBB, to);
+
+  if (Piece != QUEEN && bit_is_set(dcCandidates, from))
+  {
+      if (Piece != ROOK)
+          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(side_to_move()));
+
+      if (Piece != BISHOP)
+          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(side_to_move()));
+  }
+}
+
+
 /// Position::do_move() makes a move, and backs up all information necessary
 /// to undo the move to an UndoInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
@@ -851,33 +855,13 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
     Square ksq = king_square(them);
     switch (piece)
     {
-    case PAWN:
-        update_checkers<PAWN>(&checkersBB, ksq, from, to, dcCandidates);
-        break;
-
-    case KNIGHT:
-        update_checkers<KNIGHT>(&checkersBB, ksq, from, to, dcCandidates);
-        break;
-
-    case BISHOP:
-        update_checkers<BISHOP>(&checkersBB, ksq, from, to, dcCandidates);
-        break;
-
-    case ROOK:
-        update_checkers<ROOK>(&checkersBB, ksq, from, to, dcCandidates);
-        break;
-
-    case QUEEN:
-        update_checkers<QUEEN>(&checkersBB, ksq, from, to, dcCandidates);
-        break;
-
-    case KING:
-        update_checkers<KING>(&checkersBB, ksq, from, to, dcCandidates);
-        break;
-
-    default:
-      assert(false);
-      break;
+    case PAWN:   update_checkers<PAWN>(&checkersBB, ksq, from, to, dcCandidates);   break;
+    case KNIGHT: update_checkers<KNIGHT>(&checkersBB, ksq, from, to, dcCandidates); break;
+    case BISHOP: update_checkers<BISHOP>(&checkersBB, ksq, from, to, dcCandidates); break;
+    case ROOK:   update_checkers<ROOK>(&checkersBB, ksq, from, to, dcCandidates);   break;
+    case QUEEN:  update_checkers<QUEEN>(&checkersBB, ksq, from, to, dcCandidates);  break;
+    case KING:   update_checkers<KING>(&checkersBB, ksq, from, to, dcCandidates);   break;
+    default: assert(false); break;
     }
   }
 
@@ -891,6 +875,7 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
 
   assert(is_ok());
 }
+
 
 /// Position::do_capture_move() is a private method used to update captured
 /// piece info. It is called from the main Position::do_move function.
@@ -1013,7 +998,7 @@ void Position::do_castle_move(Move m) {
   key ^= zobrist[us][ROOK][rfrom] ^ zobrist[us][ROOK][rto];
 
   // Clear en passant square
-  if(epSquare != SQ_NONE)
+  if (epSquare != SQ_NONE)
   {
       key ^= zobEp[epSquare];
       epSquare = SQ_NONE;
@@ -1211,8 +1196,8 @@ void Position::do_ep_move(Move m) {
 }
 
 
-/// Position::undo_move() unmakes a move.  When it returns, the position should
-/// be restored to exactly the same state as before the move was made.  It is
+/// Position::undo_move() unmakes a move. When it returns, the position should
+/// be restored to exactly the same state as before the move was made. It is
 /// important that Position::undo_move is called with the same move and UndoInfo
 /// object as the earlier call to Position::do_move.
 
@@ -1502,7 +1487,7 @@ void Position::undo_ep_move(Move m) {
 /// Position::do_null_move makes() a "null move": It switches the side to move
 /// and updates the hash key without executing any move on the board.
 
-void Position::do_null_move(UndoInfo &u) {
+void Position::do_null_move(UndoInfo& u) {
 
   assert(is_ok());
   assert(!is_check());
@@ -1560,11 +1545,11 @@ void Position::undo_null_move(const UndoInfo &u) {
 }
 
 
-/// Position::see() is a static exchange evaluator:  It tries to estimate the
+/// Position::see() is a static exchange evaluator: It tries to estimate the
 /// material gain or loss resulting from a move.  There are three versions of
 /// this function: One which takes a destination square as input, one takes a
-/// move, and one which takes a 'from' and a 'to' square.  The function does
-/// not yet understand promotions or en passant captures.
+/// move, and one which takes a 'from' and a 'to' square. The function does
+/// not yet understand promotions captures.
 
 int Position::see(Square to) const {
 
@@ -1606,8 +1591,8 @@ int Position::see(Square from, Square to) const {
   // removed, but possibly an X-ray attacker added behind it.
   occ = occupied_squares();
 
-  // Handle enpassant moves
-  if (ep_square() == to && type_of_piece_on(from) == PAWN)
+  // Handle en passant moves
+  if (epSquare == to && type_of_piece_on(from) == PAWN)
   {
       assert(capture == EMPTY);
 
@@ -1747,7 +1732,7 @@ void Position::clear() {
 }
 
 
-/// Position::reset_game_ply() simply sets gamePly to 0.  It is used from the
+/// Position::reset_game_ply() simply sets gamePly to 0. It is used from the
 /// UCI interface code, whenever a non-reversible move is made in a
 /// 'position fen <fen> moves m1 m2 ...' command.  This makes it possible
 /// for the program to handle games of arbitrary length, as long as the GUI
@@ -1824,7 +1809,7 @@ Key Position::compute_key() const {
 }
 
 
-/// Position::compute_pawn_key() computes the hash key of the position.  The
+/// Position::compute_pawn_key() computes the hash key of the position. The
 /// hash key is usually updated incrementally as moves are made and unmade,
 /// the compute_pawn_key() function is only used when a new position is set
 /// up, and to verify the correctness of the pawn hash key when running in
@@ -1870,7 +1855,7 @@ Key Position::compute_material_key() const {
 
 
 /// Position::compute_mg_value() and Position::compute_eg_value() compute the
-/// incremental scores for the middle game and the endgame.  These functions
+/// incremental scores for the middle game and the endgame. These functions
 /// are used to initialize the incremental scores when a new position is set
 /// up, and to verify that the scores are correctly updated by do_move
 /// and undo_move when the program is running in debug mode.
@@ -1919,7 +1904,7 @@ Value Position::compute_eg_value() const {
 
 
 /// Position::compute_non_pawn_material() computes the total non-pawn middle
-/// game material score for the given side.  Material scores are updated
+/// game material score for the given side. Material scores are updated
 /// incrementally during the search, this function is only used while
 /// initializing a new Position object.
 
@@ -1958,7 +1943,7 @@ bool Position::is_mate() const {
 
 
 /// Position::is_draw() tests whether the position is drawn by material,
-/// repetition, or the 50 moves rule.  It does not detect stalemates, this
+/// repetition, or the 50 moves rule. It does not detect stalemates, this
 /// must be done by the search.
 
 bool Position::is_draw() const {
@@ -2084,7 +2069,7 @@ void Position::init_piece_square_tables() {
 
 
 /// Position::flipped_copy() makes a copy of the input position, but with
-/// the white and black sides reversed.  This is only useful for debugging,
+/// the white and black sides reversed. This is only useful for debugging,
 /// especially for finding evaluation symmetry bugs.
 
 void Position::flipped_copy(const Position &pos) {
@@ -2195,7 +2180,7 @@ bool Position::is_ok(int* failedStep) const {
           if (type_of_piece_on(s) == KING)
               kingCount[color_of_piece_on(s)]++;
 
-      if(kingCount[0] != 1 || kingCount[1] != 1)
+      if (kingCount[0] != 1 || kingCount[1] != 1)
           return false;
   }
 
@@ -2275,10 +2260,10 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugNonPawnMaterial)
   {
-      if(npMaterial[WHITE] != compute_non_pawn_material(WHITE))
+      if (npMaterial[WHITE] != compute_non_pawn_material(WHITE))
           return false;
 
-      if(npMaterial[BLACK] != compute_non_pawn_material(BLACK))
+      if (npMaterial[BLACK] != compute_non_pawn_material(BLACK))
           return false;
   }
 
