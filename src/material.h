@@ -63,8 +63,8 @@ private:
   int16_t mgValue;
   int16_t egValue;
   uint8_t factor[2];
-  EndgameEvaluationFunction* evaluationFunction;
-  ScalingFunction* scalingFunction[2];
+  EndgameEvaluationFunctionBase* evaluationFunction;
+  EndgameScalingFunctionBase* scalingFunction[2];
   uint8_t spaceWeight;
 };
 

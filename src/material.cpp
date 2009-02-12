@@ -54,20 +54,20 @@ class EndgameFunctions {
 
 public:
   EndgameFunctions();
-  EndgameEvaluationFunction* getEEF(Key key) const;
-  ScalingFunction* getESF(Key key, Color* c) const;
+  EndgameEvaluationFunctionBase* getEEF(Key key) const;
+  EndgameScalingFunctionBase* getESF(Key key, Color* c) const;
 
 private:
-  void add(Key k, EndgameEvaluationFunction* f);
-  void add(Key k, Color c, ScalingFunction* f);
+  void add(Key k, EndgameEvaluationFunctionBase* f);
+  void add(Key k, Color c, EndgameScalingFunctionBase* f);
 
   struct ScalingInfo
   {
       Color col;
-      ScalingFunction* fun;
+      EndgameScalingFunctionBase* fun;
   };
 
-  std::map<Key, EndgameEvaluationFunction*> EEFmap;
+  std::map<Key, EndgameEvaluationFunctionBase*> EEFmap;
   std::map<Key, ScalingInfo> ESFmap;
 };
 
@@ -187,7 +187,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
   Color c;
-  ScalingFunction* sf;
+  EndgameScalingFunctionBase* sf;
 
   if ((sf = funcs->getESF(key, &c)) != NULL)
   {
@@ -355,24 +355,24 @@ EndgameFunctions::EndgameFunctions() {
   add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[B][ROOK][1] ^ z[B][PAWN][1] ^ z[B][PAWN][2], B, &ScaleKRPKRPP);
 }
 
-void EndgameFunctions::add(Key k, EndgameEvaluationFunction* f) {
+void EndgameFunctions::add(Key k, EndgameEvaluationFunctionBase* f) {
 
-  EEFmap.insert(std::pair<Key, EndgameEvaluationFunction*>(k, f));
+  EEFmap.insert(std::pair<Key, EndgameEvaluationFunctionBase*>(k, f));
 }
 
-void EndgameFunctions::add(Key k, Color c, ScalingFunction* f) {
+void EndgameFunctions::add(Key k, Color c, EndgameScalingFunctionBase* f) {
 
   ScalingInfo s = {c, f};
   ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
 }
 
-EndgameEvaluationFunction* EndgameFunctions::getEEF(Key key) const {
+EndgameEvaluationFunctionBase* EndgameFunctions::getEEF(Key key) const {
 
-  std::map<Key, EndgameEvaluationFunction*>::const_iterator it(EEFmap.find(key));
+  std::map<Key, EndgameEvaluationFunctionBase*>::const_iterator it(EEFmap.find(key));
   return (it != EEFmap.end() ? it->second : NULL);
 }
 
-ScalingFunction* EndgameFunctions::getESF(Key key, Color* c) const {
+EndgameScalingFunctionBase* EndgameFunctions::getESF(Key key, Color* c) const {
 
   std::map<Key, ScalingInfo>::const_iterator it(ESFmap.find(key));
   if (it == ESFmap.end())

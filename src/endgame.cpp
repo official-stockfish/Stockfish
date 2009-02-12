@@ -51,41 +51,15 @@ EvaluationFunction<KBBKN> EvaluateKBBKN(WHITE), EvaluateKNKBB(BLACK); // KBB vs 
 
 /// Scaling functions
 
-// KBP vs K
-KBPKScalingFunction ScaleKBPK = KBPKScalingFunction(WHITE);
-KBPKScalingFunction ScaleKKBP = KBPKScalingFunction(BLACK);
-
-// KQ vs KRP
-KQKRPScalingFunction ScaleKQKRP = KQKRPScalingFunction(WHITE);
-KQKRPScalingFunction ScaleKRPKQ = KQKRPScalingFunction(BLACK);
-
-// KRP vs KR
-KRPKRScalingFunction ScaleKRPKR = KRPKRScalingFunction(WHITE);
-KRPKRScalingFunction ScaleKRKRP = KRPKRScalingFunction(BLACK);
-
-// KRPP vs KRP
-KRPPKRPScalingFunction ScaleKRPPKRP = KRPPKRPScalingFunction(WHITE);
-KRPPKRPScalingFunction ScaleKRPKRPP = KRPPKRPScalingFunction(BLACK);
-
-// King and pawns vs king
-KPsKScalingFunction ScaleKPsK = KPsKScalingFunction(WHITE);
-KPsKScalingFunction ScaleKKPs = KPsKScalingFunction(BLACK);
-
-// KBP vs KB
-KBPKBScalingFunction ScaleKBPKB = KBPKBScalingFunction(WHITE);
-KBPKBScalingFunction ScaleKBKBP = KBPKBScalingFunction(BLACK);
-
-// KBP vs KN
-KBPKNScalingFunction ScaleKBPKN = KBPKNScalingFunction(WHITE);
-KBPKNScalingFunction ScaleKNKBP = KBPKNScalingFunction(BLACK);
-
-// KNP vs K
-KNPKScalingFunction ScaleKNPK = KNPKScalingFunction(WHITE);
-KNPKScalingFunction ScaleKKNP = KNPKScalingFunction(BLACK);
-
-// KPKP
-KPKPScalingFunction ScaleKPKPw = KPKPScalingFunction(WHITE);
-KPKPScalingFunction ScaleKPKPb = KPKPScalingFunction(BLACK);
+ScalingFunction<KBPK> ScaleKBPK(WHITE), ScaleKKBP(BLACK);    // KBP vs K
+ScalingFunction<KQKRP> ScaleKQKRP(WHITE), ScaleKRPKQ(BLACK); // KQ vs KRP
+ScalingFunction<KRPKR> ScaleKRPKR(WHITE), ScaleKRKRP(BLACK); // KRP vs KR
+ScalingFunction<KRPPKRP> ScaleKRPPKRP(WHITE), ScaleKRPKRPP(BLACK); // KRPP vs KRP
+ScalingFunction<KPsK> ScaleKPsK(WHITE), ScaleKKPs(BLACK);    // King and pawns vs king
+ScalingFunction<KBPKB> ScaleKBPKB(WHITE), ScaleKBKBP(BLACK); // KBP vs KB
+ScalingFunction<KBPKN> ScaleKBPKN(WHITE), ScaleKNKBP(BLACK); // KBP vs KN
+ScalingFunction<KNPK> ScaleKNPK(WHITE), ScaleKKNP(BLACK);    // KNP vs K
+ScalingFunction<KPKP> ScaleKPKPw(WHITE), ScaleKPKPb(BLACK);  // KPKP
 
 
 ////
@@ -157,27 +131,6 @@ namespace {
 ////
 //// Functions
 ////
-
-/// Constructors
-
-EndgameEvaluationFunction::EndgameEvaluationFunction(Color c) : strongerSide(c) {
-  weakerSide = opposite_color(strongerSide);
-}
-
-ScalingFunction::ScalingFunction(Color c) : strongerSide(c) {
-  weakerSide = opposite_color(c);
-}
-
-KBPKScalingFunction::KBPKScalingFunction(Color c)       : ScalingFunction(c) {}
-KQKRPScalingFunction::KQKRPScalingFunction(Color c)     : ScalingFunction(c) {}
-KRPKRScalingFunction::KRPKRScalingFunction(Color c)     : ScalingFunction(c) {}
-KRPPKRPScalingFunction::KRPPKRPScalingFunction(Color c) : ScalingFunction(c) {}
-KPsKScalingFunction::KPsKScalingFunction(Color c)       : ScalingFunction(c) {}
-KBPKBScalingFunction::KBPKBScalingFunction(Color c)     : ScalingFunction(c) {}
-KBPKNScalingFunction::KBPKNScalingFunction(Color c)     : ScalingFunction(c) {}
-KNPKScalingFunction::KNPKScalingFunction(Color c)       : ScalingFunction(c) {}
-KPKPScalingFunction::KPKPScalingFunction(Color c)       : ScalingFunction(c) {}
-
 
 /// Mate with KX vs K. This function is used to evaluate positions with
 /// King and plenty of material vs a lone king. It simply gives the
@@ -439,8 +392,8 @@ Value EvaluationFunction<KmmKm>::apply(const Position &pos) {
 /// bishop of the wrong color. If such a draw is detected, ScaleFactor(0) is
 /// returned. If not, the return value is SCALE_FACTOR_NONE, i.e. no scaling
 /// will be used.
-
-ScaleFactor KBPKScalingFunction::apply(const Position& pos) {
+template<>
+ScaleFactor ScalingFunction<KBPK>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -494,8 +447,8 @@ ScaleFactor KBPKScalingFunction::apply(const Position& pos) {
 /// king and queen, while the weaker side has at least a rook and a pawn.
 /// It tests for fortress draws with a rook on the third rank defended by
 /// a pawn.
-
-ScaleFactor KQKRPScalingFunction::apply(const Position& pos) {
+template<>
+ScaleFactor ScalingFunction<KQKRP>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, QUEEN) == 1);
@@ -525,8 +478,8 @@ ScaleFactor KQKRPScalingFunction::apply(const Position& pos) {
 ///
 /// It would also be nice to rewrite the actual code for this function,
 /// which is mostly copied from Glaurung 1.x, and not very pretty.
-
-ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KRPKR>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
@@ -643,8 +596,8 @@ ScaleFactor KRPKRScalingFunction::apply(const Position &pos) {
 /// KRPPKRPScalingFunction scales KRPP vs KRP endgames. There is only a
 /// single pattern: If the stronger side has no pawns and the defending king
 /// is actively placed, the position is drawish.
-
-ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KRPPKRP>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 2);
@@ -682,8 +635,8 @@ ScaleFactor KRPPKRPScalingFunction::apply(const Position &pos) {
 /// KPsKScalingFunction scales endgames with king and two or more pawns
 /// against king. There is just a single rule here: If all pawns are on
 /// the same rook file and are blocked by the defending king, it's a draw.
-
-ScaleFactor KPsKScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KPsK>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.piece_count(strongerSide, PAWN) >= 2);
@@ -728,8 +681,8 @@ ScaleFactor KPsKScalingFunction::apply(const Position &pos) {
 /// square of the king is not of the same color as the stronger side's bishop,
 /// it's a draw. If the two bishops have opposite color, it's almost always
 /// a draw.
-
-ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KBPKB>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -783,8 +736,8 @@ ScaleFactor KBPKBScalingFunction::apply(const Position &pos) {
 /// If the defending king is somewhere along the path of the pawn, and the
 /// square of the king is not of the same color as the stronger side's bishop,
 /// it's a draw.
-
-ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KBPKN>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -810,8 +763,8 @@ ScaleFactor KBPKNScalingFunction::apply(const Position &pos) {
 /// KNPKScalingFunction scales KNP vs K endgames. There is a single rule:
 /// If the pawn is a rook pawn on the 7th rank and the defending king prevents
 /// the pawn from advancing, the position is drawn.
-
-ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KNPK>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame);
   assert(pos.piece_count(strongerSide, KNIGHT) == 1);
@@ -840,8 +793,8 @@ ScaleFactor KNPKScalingFunction::apply(const Position &pos) {
 /// the pawn as well. The exception is when the stronger side's pawn is far
 /// advanced and not on a rook file; in this case it is often possible to win
 /// (e.g. 8/4k3/3p4/3P4/6K1/8/8/8 w - - 0 1).
-
-ScaleFactor KPKPScalingFunction::apply(const Position &pos) {
+template<>
+ScaleFactor ScalingFunction<KPKP>::apply(const Position &pos) {
 
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.non_pawn_material(weakerSide) == Value(0));

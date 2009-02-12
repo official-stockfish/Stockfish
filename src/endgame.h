@@ -34,23 +34,9 @@
 //// Types
 ////
 
-/// Abstract base class for all special endgame evaluation functions
-
-class EndgameEvaluationFunction {
-public:
-  EndgameEvaluationFunction(Color c);
-  virtual ~EndgameEvaluationFunction() { }
-
-  virtual Value apply(const Position &pos) = 0;
-
-protected:
-  Color strongerSide, weakerSide;
-};
-
-
-/// Template subclass for various concrete endgames
-
 enum EndgameType {
+
+    // Evaluation functions
     KXK,   // Generic "mate lone king" eval
     KBNK,  // KBN vs K
     KPK,   // KP vs K
@@ -59,93 +45,49 @@ enum EndgameType {
     KRKN,  // KR vs KN
     KQKR,  // KQ vs KR
     KBBKN, // KBB vs KN
-    KmmKm  // K and two minors vs K and one or two minors
+    KmmKm, // K and two minors vs K and one or two minors
+
+    // Scaling functions
+    KBPK,    // KBP vs K
+    KQKRP,   // KQ vs KRP
+    KRPKR,   // KRP vs KR
+    KRPPKRP, // KRPP vs KRP
+    KPsK,    // King and pawns vs king
+    KBPKB,   // KBP vs KB
+    KBPKN,   // KBP vs KN
+    KNPK,    // KNP vs K
+    KPKP     // KP vs KP
 };
 
-template<EndgameType>
-class EvaluationFunction : public EndgameEvaluationFunction {
+/// Template abstract base class for all special endgame functions
+
+template<typename T>
+class EndgameFunctionBase {
 public:
-  explicit EvaluationFunction(Color c): EndgameEvaluationFunction(c) {}
-  Value apply(const Position& pos);
-};
-
-/// Abstract base class for all evaluation scaling functions:
-
-class ScalingFunction {
-public:
-  ScalingFunction(Color c);
-  virtual ~ScalingFunction() { }
-
-  virtual ScaleFactor apply(const Position &pos) =0;
+  EndgameFunctionBase(Color c) : strongerSide(c) { weakerSide = opposite_color(strongerSide); }
+  virtual ~EndgameFunctionBase() {}
+  virtual T apply(const Position&) = 0;
 
 protected:
   Color strongerSide, weakerSide;
 };
 
+typedef EndgameFunctionBase<Value> EndgameEvaluationFunctionBase;
+typedef EndgameFunctionBase<ScaleFactor> EndgameScalingFunctionBase;
 
-/// Subclasses for various concrete endgames:
 
-// KBP vs K:
-class KBPKScalingFunction : public ScalingFunction {
-public:
-  KBPKScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
+/// Templates subclass for various concrete endgames
+
+template<EndgameType>
+struct EvaluationFunction : public EndgameEvaluationFunctionBase {
+  explicit EvaluationFunction(Color c): EndgameEvaluationFunctionBase(c) {}
+  Value apply(const Position&);
 };
 
-// KQ vs KRP:
-class KQKRPScalingFunction: public ScalingFunction {
-public:
-  KQKRPScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// KRP vs KR:
-class KRPKRScalingFunction : public ScalingFunction {
-public:
-  KRPKRScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// KRPP vs KRP:
-class KRPPKRPScalingFunction : public ScalingFunction {
-public:
-  KRPPKRPScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// King and pawns vs king:
-class KPsKScalingFunction : public ScalingFunction {
-public:
-  KPsKScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// KBP vs KB:
-class KBPKBScalingFunction : public ScalingFunction {
-public:
-  KBPKBScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// KBP vs KN:
-class KBPKNScalingFunction : public ScalingFunction {
-public:
-  KBPKNScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// KNP vs K:
-class KNPKScalingFunction : public ScalingFunction {
-public:
-  KNPKScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
-};
-
-// KP vs KP:
-class KPKPScalingFunction : public ScalingFunction {
-public:
-  KPKPScalingFunction(Color c);
-  ScaleFactor apply(const Position &pos);
+template<EndgameType>
+struct ScalingFunction : public EndgameScalingFunctionBase {
+  explicit ScalingFunction(Color c) : EndgameScalingFunctionBase(c) {}
+  ScaleFactor apply(const Position&);
 };
 
 
@@ -163,33 +105,15 @@ extern EvaluationFunction<KQKR> EvaluateKQKR, EvaluateKRKQ;    // KQ vs KR
 extern EvaluationFunction<KBBKN> EvaluateKBBKN, EvaluateKNKBB; // KBB vs KN
 extern EvaluationFunction<KmmKm> EvaluateKmmKm; // K and two minors vs K and one or two minors:
 
-// KBP vs K:
-extern KBPKScalingFunction ScaleKBPK, ScaleKKBP;
-
-// KQ vs KRP:
-extern KQKRPScalingFunction ScaleKQKRP, ScaleKRPKQ;
-
-// KRP vs KR:
-extern KRPKRScalingFunction ScaleKRPKR, ScaleKRKRP;
-
-// KRPP vs KRP:
-extern KRPPKRPScalingFunction ScaleKRPPKRP, ScaleKRPKRPP;
-
-// King and pawns vs king:
-extern KPsKScalingFunction ScaleKPsK, ScaleKKPs;
-
-// KBP vs KB:
-extern KBPKBScalingFunction ScaleKBPKB, ScaleKBKBP;
-
-// KBP vs KN:
-extern KBPKNScalingFunction ScaleKBPKN, ScaleKNKBP;
-
-// KNP vs K:
-extern KNPKScalingFunction ScaleKNPK, ScaleKKNP;
-
-// KP vs KP:
-extern KPKPScalingFunction ScaleKPKPw, ScaleKPKPb;
-
+extern ScalingFunction<KBPK> ScaleKBPK, ScaleKKBP;    // KBP vs K
+extern ScalingFunction<KQKRP> ScaleKQKRP, ScaleKRPKQ; // KQ vs KRP
+extern ScalingFunction<KRPKR> ScaleKRPKR, ScaleKRKRP; // KRP vs KR
+extern ScalingFunction<KRPPKRP> ScaleKRPPKRP, ScaleKRPKRPP; // KRPP vs KRP
+extern ScalingFunction<KPsK> ScaleKPsK, ScaleKKPs;    // King and pawns vs king
+extern ScalingFunction<KBPKB> ScaleKBPKB, ScaleKBKBP; // KBP vs KB
+extern ScalingFunction<KBPKN> ScaleKBPKN, ScaleKNKBP; // KBP vs KN
+extern ScalingFunction<KNPK> ScaleKNPK, ScaleKKNP;    // KNP vs K
+extern ScalingFunction<KPKP> ScaleKPKPw, ScaleKPKPb;  // KP vs KP
 
 ////
 //// Prototypes
