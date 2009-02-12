@@ -34,85 +34,40 @@
 //// Types
 ////
 
-/// Abstract base class for all special endgame evaluation functions:
+/// Abstract base class for all special endgame evaluation functions
 
 class EndgameEvaluationFunction {
 public:
   EndgameEvaluationFunction(Color c);
   virtual ~EndgameEvaluationFunction() { }
 
-  virtual Value apply(const Position &pos) =0;
+  virtual Value apply(const Position &pos) = 0;
 
 protected:
   Color strongerSide, weakerSide;
 };
 
 
-/// Subclasses for various concrete endgames:
+/// Template subclass for various concrete endgames
 
-// Generic "mate lone king" eval:
-class KXKEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KXKEvaluationFunction(Color c);
-  Value apply(const Position &pos);
+enum EndgameType {
+    KXK,   // Generic "mate lone king" eval
+    KBNK,  // KBN vs K
+    KPK,   // KP vs K
+    KRKP,  // KR vs KP
+    KRKB,  // KR vs KB
+    KRKN,  // KR vs KN
+    KQKR,  // KQ vs KR
+    KBBKN, // KBB vs KN
+    KmmKm  // K and two minors vs K and one or two minors
 };
 
-// KBN vs K:
-class KBNKEvaluationFunction : public EndgameEvaluationFunction {
+template<EndgameType>
+class EvaluationFunction : public EndgameEvaluationFunction {
 public:
-  KBNKEvaluationFunction(Color c);
-  Value apply(const Position &pos);
+  explicit EvaluationFunction(Color c): EndgameEvaluationFunction(c) {}
+  Value apply(const Position& pos);
 };
-
-// KP vs K:
-class KPKEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KPKEvaluationFunction(Color c);
-  Value apply(const Position &pos);
-};
-
-// KR vs KP:
-class KRKPEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KRKPEvaluationFunction(Color c);
-  Value apply(const Position &pos);
-};
-
-// KR vs KB:
-class KRKBEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KRKBEvaluationFunction(Color c);
-  Value apply(const Position &pos);
-};
-
-// KR vs KN:
-class KRKNEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KRKNEvaluationFunction(Color c);
-  Value apply(const Position &pos);
-};
-
-// KQ vs KR:
-class KQKREvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KQKREvaluationFunction(Color c);
-  Value apply(const Position &pos);
-};
-
-// KBB vs KN:
-class KBBKNEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KBBKNEvaluationFunction(Color C);
-  Value apply(const Position &pos);
-};
-
-// K and two minors vs K and one or two minors:
-class KmmKmEvaluationFunction : public EndgameEvaluationFunction {
-public:
-  KmmKmEvaluationFunction(Color c);
-  Value apply(const Position &pos);
-};
-
 
 /// Abstract base class for all evaluation scaling functions:
 
@@ -198,32 +153,15 @@ public:
 //// Constants and variables
 ////
 
-// Generic "mate lone king" eval:
-extern KXKEvaluationFunction EvaluateKXK, EvaluateKKX;
-
-// KBN vs K:
-extern KBNKEvaluationFunction EvaluateKBNK, EvaluateKKBN;
-
-// KP vs K:
-extern KPKEvaluationFunction EvaluateKPK, EvaluateKKP;
-
-// KR vs KP:
-extern KRKPEvaluationFunction EvaluateKRKP, EvaluateKPKR;
-
-// KR vs KB:
-extern KRKBEvaluationFunction EvaluateKRKB, EvaluateKBKR;
-
-// KR vs KN:
-extern KRKNEvaluationFunction EvaluateKRKN, EvaluateKNKR;
-
-// KQ vs KR:
-extern KQKREvaluationFunction EvaluateKQKR, EvaluateKRKQ;
-
-// KBB vs KN:
-extern KBBKNEvaluationFunction EvaluateKBBKN, EvaluateKNKBB;
-
-// K and two minors vs K and one or two minors:
-extern KmmKmEvaluationFunction EvaluateKmmKm;
+extern EvaluationFunction<KXK> EvaluateKXK, EvaluateKKX;       // Generic "mate lone king" eval
+extern EvaluationFunction<KBNK> EvaluateKBNK, EvaluateKKBN;    // KBN vs K
+extern EvaluationFunction<KPK> EvaluateKPK, EvaluateKKP;       // KP vs K
+extern EvaluationFunction<KRKP> EvaluateKRKP, EvaluateKPKR;    // KR vs KP
+extern EvaluationFunction<KRKB> EvaluateKRKB, EvaluateKBKR;    // KR vs KB
+extern EvaluationFunction<KRKN> EvaluateKRKN, EvaluateKNKR;    // KR vs KN
+extern EvaluationFunction<KQKR> EvaluateKQKR, EvaluateKRKQ;    // KQ vs KR
+extern EvaluationFunction<KBBKN> EvaluateKBBKN, EvaluateKNKBB; // KBB vs KN
+extern EvaluationFunction<KmmKm> EvaluateKmmKm; // K and two minors vs K and one or two minors:
 
 // KBP vs K:
 extern KBPKScalingFunction ScaleKBPK, ScaleKKBP;

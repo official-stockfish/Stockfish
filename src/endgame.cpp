@@ -35,39 +35,18 @@
 /// Evaluation functions
 
 // Generic "mate lone king" eval
-KXKEvaluationFunction EvaluateKXK = KXKEvaluationFunction(WHITE);
-KXKEvaluationFunction EvaluateKKX = KXKEvaluationFunction(BLACK);
-
-// KBN vs K
-KBNKEvaluationFunction EvaluateKBNK = KBNKEvaluationFunction(WHITE);
-KBNKEvaluationFunction EvaluateKKBN = KBNKEvaluationFunction(BLACK);
-
-// KP vs K
-KPKEvaluationFunction EvaluateKPK = KPKEvaluationFunction(WHITE);
-KPKEvaluationFunction EvaluateKKP = KPKEvaluationFunction(BLACK);
-
-// KR vs KP
-KRKPEvaluationFunction EvaluateKRKP = KRKPEvaluationFunction(WHITE);
-KRKPEvaluationFunction EvaluateKPKR = KRKPEvaluationFunction(BLACK);
-
-// KR vs KB
-KRKBEvaluationFunction EvaluateKRKB = KRKBEvaluationFunction(WHITE);
-KRKBEvaluationFunction EvaluateKBKR = KRKBEvaluationFunction(BLACK);
-
-// KR vs KN
-KRKNEvaluationFunction EvaluateKRKN = KRKNEvaluationFunction(WHITE);
-KRKNEvaluationFunction EvaluateKNKR = KRKNEvaluationFunction(BLACK);
-
-// KQ vs KR
-KQKREvaluationFunction EvaluateKQKR = KQKREvaluationFunction(WHITE);
-KQKREvaluationFunction EvaluateKRKQ = KQKREvaluationFunction(BLACK);
-
-// KBB vs KN
-KBBKNEvaluationFunction EvaluateKBBKN = KBBKNEvaluationFunction(WHITE);
-KBBKNEvaluationFunction EvaluateKNKBB = KBBKNEvaluationFunction(BLACK);
+EvaluationFunction<KXK> EvaluateKXK(WHITE), EvaluateKKX(BLACK);
 
 // K and two minors vs K and one or two minors
-KmmKmEvaluationFunction EvaluateKmmKm = KmmKmEvaluationFunction(WHITE);
+EvaluationFunction<KmmKm> EvaluateKmmKm(WHITE);
+
+EvaluationFunction<KBNK> EvaluateKBNK(WHITE), EvaluateKKBN(BLACK); // KBN vs K
+EvaluationFunction<KPK> EvaluateKPK(WHITE), EvaluateKKP(BLACK);    // KP vs K
+EvaluationFunction<KRKP> EvaluateKRKP(WHITE), EvaluateKPKR(BLACK); // KR vs KP
+EvaluationFunction<KRKB> EvaluateKRKB(WHITE), EvaluateKBKR(BLACK); // KR vs KB
+EvaluationFunction<KRKN> EvaluateKRKN(WHITE), EvaluateKNKR(BLACK); // KR vs KN
+EvaluationFunction<KQKR> EvaluateKQKR(WHITE), EvaluateKRKQ(BLACK); // KQ vs KR
+EvaluationFunction<KBBKN> EvaluateKBBKN(WHITE), EvaluateKNKBB(BLACK); // KBB vs KN
 
 
 /// Scaling functions
@@ -185,17 +164,6 @@ EndgameEvaluationFunction::EndgameEvaluationFunction(Color c) : strongerSide(c) 
   weakerSide = opposite_color(strongerSide);
 }
 
-KXKEvaluationFunction::KXKEvaluationFunction(Color c)     : EndgameEvaluationFunction(c) {}
-KBNKEvaluationFunction::KBNKEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
-KPKEvaluationFunction::KPKEvaluationFunction(Color c)     : EndgameEvaluationFunction(c) {}
-KRKPEvaluationFunction::KRKPEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
-KRKBEvaluationFunction::KRKBEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
-KRKNEvaluationFunction::KRKNEvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
-KQKREvaluationFunction::KQKREvaluationFunction(Color c)   : EndgameEvaluationFunction(c) {}
-KBBKNEvaluationFunction::KBBKNEvaluationFunction(Color c) : EndgameEvaluationFunction(c) {}
-KmmKmEvaluationFunction::KmmKmEvaluationFunction(Color c) : EndgameEvaluationFunction(c) {}
-
-
 ScalingFunction::ScalingFunction(Color c) : strongerSide(c) {
   weakerSide = opposite_color(c);
 }
@@ -215,8 +183,8 @@ KPKPScalingFunction::KPKPScalingFunction(Color c)       : ScalingFunction(c) {}
 /// King and plenty of material vs a lone king. It simply gives the
 /// attacking side a bonus for driving the defending king towards the edge
 /// of the board, and for keeping the distance between the two kings small.
-
-Value KXKEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KXK>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(weakerSide, PAWN) == Value(0));
@@ -241,8 +209,8 @@ Value KXKEvaluationFunction::apply(const Position& pos) {
 
 /// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
 /// defending king towards a corner square of the right color.
-
-Value KBNKEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KBNK>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(weakerSide, PAWN) == Value(0));
@@ -270,8 +238,8 @@ Value KBNKEvaluationFunction::apply(const Position& pos) {
 
 
 /// KP vs K. This endgame is evaluated with the help of a bitbase.
-
-Value KPKEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KPK>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == Value(0));
   assert(pos.non_pawn_material(weakerSide) == Value(0));
@@ -318,8 +286,8 @@ Value KPKEvaluationFunction::apply(const Position& pos) {
 /// a bitbase. The function below returns drawish scores when the pawn is
 /// far advanced with support of the king, while the attacking king is far
 /// away.
-
-Value KRKPEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KRKP>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -375,8 +343,8 @@ Value KRKPEvaluationFunction::apply(const Position& pos) {
 
 /// KR vs KB. This is very simple, and always returns drawish scores.  The
 /// score is slightly bigger when the defending king is close to the edge.
-
-Value KRKBEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KRKB>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -391,8 +359,8 @@ Value KRKBEvaluationFunction::apply(const Position& pos) {
 
 /// KR vs KN.  The attacking side has slightly better winning chances than
 /// in KR vs KB, particularly if the king and the knight are far apart.
-
-Value KRKNEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KRKN>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -415,8 +383,8 @@ Value KRKNEvaluationFunction::apply(const Position& pos) {
 /// defending king towards the edge.  If we also take care to avoid null move
 /// for the defending side in the search, this is usually sufficient to be
 /// able to win KQ vs KR.
-
-Value KQKREvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KQKR>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -434,8 +402,8 @@ Value KQKREvaluationFunction::apply(const Position& pos) {
   return (strongerSide == pos.side_to_move())? result : -result;
 }
 
-
-Value KBBKNEvaluationFunction::apply(const Position& pos) {
+template<>
+Value EvaluationFunction<KBBKN>::apply(const Position& pos) {
 
   assert(pos.piece_count(strongerSide, BISHOP) == 2);
   assert(pos.non_pawn_material(strongerSide) == 2*BishopValueMidgame);
@@ -460,8 +428,8 @@ Value KBBKNEvaluationFunction::apply(const Position& pos) {
   return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
-
-Value KmmKmEvaluationFunction::apply(const Position &pos) {
+template<>
+Value EvaluationFunction<KmmKm>::apply(const Position &pos) {
   return Value(0);
 }
 
