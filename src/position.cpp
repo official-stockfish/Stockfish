@@ -317,6 +317,25 @@ void Position::copy(const Position &pos) {
 }
 
 
+/// Position::update_checkers() updates checkers info, used in do_move()
+template<PieceType Piece>
+inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from,
+                                      Square to, Bitboard dcCandidates) {
+
+  if (Piece != KING && bit_is_set(piece_attacks<Piece>(ksq), to))
+      set_bit(pCheckersBB, to);
+
+  if (Piece != QUEEN && bit_is_set(dcCandidates, from))
+  {
+      if (Piece != ROOK)
+          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(side_to_move()));
+
+      if (Piece != BISHOP)
+          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(side_to_move()));
+  }
+}
+
+
 /// Position:pinned_pieces() returns a bitboard of all pinned (against the
 /// king) pieces for the given color.
 Bitboard Position::pinned_pieces(Color c) const {
@@ -710,22 +729,6 @@ void Position::restore(const UndoInfo& u) {
   // u.capture is restored in undo_move()
 }
 
-template<PieceType Piece>
-inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates) {
-
-  if (Piece != KING && bit_is_set(piece_attacks<Piece>(ksq), to))
-      set_bit(pCheckersBB, to);
-
-  if (Piece != QUEEN && bit_is_set(dcCandidates, from))
-  {
-      if (Piece != ROOK)
-          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(side_to_move()));
-
-      if (Piece != BISHOP)
-          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(side_to_move()));
-  }
-}
-
 /// Position::do_move() makes a move, and backs up all information necessary
 /// to undo the move to an UndoInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
@@ -849,12 +852,7 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
     switch (piece)
     {
     case PAWN:
-        if (bit_is_set(pawn_attacks(them, ksq), to))
-            set_bit(&checkersBB, to);
-
-        if (bit_is_set(dcCandidates, from))
-            checkersBB |= ( (piece_attacks<ROOK>(ksq) & rooks_and_queens(us))
-                           |(piece_attacks<BISHOP>(ksq) & bishops_and_queens(us)));
+        update_checkers<PAWN>(&checkersBB, ksq, from, to, dcCandidates);
         break;
 
     case KNIGHT:
