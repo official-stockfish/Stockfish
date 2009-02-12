@@ -40,8 +40,10 @@ namespace {
     QUEEN_SIDE
   };
 
-  const bool CAPTURE = true;
-  const bool NON_CAPTURE = false;
+  enum MoveType {
+    CAPTURE,
+    NON_CAPTURE
+  };
 
   // Functions
   bool castling_is_check(const Position&, CastlingSide);
@@ -81,14 +83,14 @@ namespace {
   MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
 
   template<>
-  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target);
+  MoveStack* generate_piece_moves<KING>(const Position&, MoveStack*, Color, Bitboard);
 
-  template<PieceType Piece, bool Capture>
+  template<PieceType Piece, MoveType Type>
   inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us) {
 
       assert(Piece == PAWN);
 
-      if (Capture)
+      if (Type == CAPTURE)
           return (us == WHITE ? generate_pawn_captures<WHITE, BLACK, Rank8BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
                               : generate_pawn_captures<BLACK, WHITE, Rank1BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
       else
@@ -96,17 +98,16 @@ namespace {
                               : generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
   }
 
-  // Template generate_piece_blocking_evasions() with specializations
   template<PieceType>
-  MoveStack* generate_piece_blocking_evasions(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
+  MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
 
   template<>
-  inline MoveStack* generate_piece_blocking_evasions<PAWN>(const Position& p, MoveStack* m, Color us,
-                                                           Bitboard pnd, Bitboard bs) {
+  inline MoveStack* generate_piece_moves<PAWN>(const Position& p, MoveStack* m,
+                                               Color us, Bitboard t, Bitboard pnd) {
     if (us == WHITE)
-        return generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, pnd, bs, m);
+        return generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, pnd, t, m);
     else
-        return generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, pnd, bs, m);
+        return generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, pnd, t, m);
   }
 }
 
@@ -299,11 +300,11 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
           if (blockSquares != EmptyBoardBB)
           {
               // Pieces moves
-              mlist = generate_piece_blocking_evasions<PAWN>(pos, mlist, us, pinned, blockSquares);
-              mlist = generate_piece_blocking_evasions<KNIGHT>(pos, mlist, us, pinned, blockSquares);
-              mlist = generate_piece_blocking_evasions<BISHOP>(pos, mlist, us, pinned, blockSquares);
-              mlist = generate_piece_blocking_evasions<ROOK>(pos, mlist, us, pinned, blockSquares);
-              mlist = generate_piece_blocking_evasions<QUEEN>(pos, mlist, us, pinned, blockSquares);
+              mlist = generate_piece_moves<PAWN>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<BISHOP>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<ROOK>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<QUEEN>(pos, mlist, us, blockSquares, pinned);
           }
       }
 
@@ -562,20 +563,9 @@ namespace {
     return mlist;
   }
 
-  template<>
-  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
-
-    Bitboard b;
-    Square from = pos.king_square(us);
-
-    b = pos.piece_attacks<KING>(from) & target;
-    SERIALIZE_MOVES(b);
-    return mlist;
-  }
-
   template<PieceType Piece>
-  MoveStack* generate_piece_blocking_evasions(const Position& pos, MoveStack* mlist, Color us,
-                                              Bitboard pinned, Bitboard blockSquares) {
+  MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist,
+                                  Color us, Bitboard target, Bitboard pinned) {
     Square from;
     Bitboard b;
 
@@ -585,9 +575,20 @@ namespace {
         if (pinned && bit_is_set(pinned, from))
             continue;
 
-        b = pos.piece_attacks<Piece>(from) & blockSquares;
+        b = pos.piece_attacks<Piece>(from) & target;
         SERIALIZE_MOVES(b);
     }
+    return mlist;
+  }
+
+  template<>
+  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+
+    Bitboard b;
+    Square from = pos.king_square(us);
+
+    b = pos.piece_attacks<KING>(from) & target;
+    SERIALIZE_MOVES(b);
     return mlist;
   }
 
