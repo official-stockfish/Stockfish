@@ -86,8 +86,8 @@ struct UndoInfo {
   Key key, pawnKey, materialKey;
   int rule50;
   Move lastMove;
-  PieceType capture;
   Value mgValue, egValue;
+  PieceType capture;
 };
 
 
@@ -307,6 +307,9 @@ private:
   void undo_promotion_move(Move m, const UndoInfo &u);
   void undo_ep_move(Move m);
   void find_checkers();
+
+  template<PieceType Piece>
+  void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
 
   template<PieceType Piece, bool FindPinned>
   Bitboard hidden_checks(Color c, Square ksq) const;

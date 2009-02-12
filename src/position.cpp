@@ -710,6 +710,22 @@ void Position::restore(const UndoInfo& u) {
   // u.capture is restored in undo_move()
 }
 
+template<PieceType Piece>
+inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates) {
+
+  if (Piece != KING && bit_is_set(piece_attacks<Piece>(ksq), to))
+      set_bit(pCheckersBB, to);
+
+  if (Piece != QUEEN && bit_is_set(dcCandidates, from))
+  {
+      if (Piece != ROOK)
+          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(side_to_move()));
+
+      if (Piece != BISHOP)
+          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(side_to_move()));
+  }
+}
+
 /// Position::do_move() makes a move, and backs up all information necessary
 /// to undo the move to an UndoInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
@@ -789,33 +805,34 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
     if (piece == KING)
         kingSquare[us] = to;
 
-    // If the move was a double pawn push, set the en passant square.
-    // This code is a bit ugly right now, and should be cleaned up later.
-    // FIXME
+    // Reset en passant square
     if (epSquare != SQ_NONE)
     {
         key ^= zobEp[epSquare];
         epSquare = SQ_NONE;
     }
+
+    // If the moving piece was a pawn do some special extra work
     if (piece == PAWN)
     {
-        if (abs(int(to) - int(from)) == 16)
-        {
-            if(   (   us == WHITE
-                   && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
-               || (   us == BLACK
-                   && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
-            {
-                epSquare = Square((int(from) + int(to)) / 2);
-                key ^= zobEp[epSquare];
-            }
-        }
         // Reset rule 50 draw counter
         rule50 = 0;
 
         // Update pawn hash key
         pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
+
+        // Set en passant square, only if moved pawn can be captured
+        if (abs(int(to) - int(from)) == 16)
+        {
+            if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
+                || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
+            {
+                epSquare = Square((int(from) + int(to)) / 2);
+                key ^= zobEp[epSquare];
+            }
+        }
     }
+
     // Update piece lists
     pieceList[us][piece][index[from]] = to;
     index[to] = index[from];
@@ -826,7 +843,7 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
     castleRights &= castleRightsMask[to];
     key ^= zobCastle[castleRights];
 
-    // Update checkers bitboard
+    // Update checkers bitboard, piece must be already moved
     checkersBB = EmptyBoardBB;
     Square ksq = king_square(them);
     switch (piece)
@@ -841,39 +858,23 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
         break;
 
     case KNIGHT:
-        if (bit_is_set(piece_attacks<KNIGHT>(ksq), to))
-            set_bit(&checkersBB, to);
-
-        if (bit_is_set(dcCandidates, from))
-            checkersBB |= ( (piece_attacks<ROOK>(ksq) & rooks_and_queens(us))
-                           |(piece_attacks<BISHOP>(ksq) & bishops_and_queens(us)));
+        update_checkers<KNIGHT>(&checkersBB, ksq, from, to, dcCandidates);
         break;
 
     case BISHOP:
-        if  (bit_is_set(piece_attacks<BISHOP>(ksq), to))
-            set_bit(&checkersBB, to);
-
-        if (bit_is_set(dcCandidates, from))
-            checkersBB |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(us));
+        update_checkers<BISHOP>(&checkersBB, ksq, from, to, dcCandidates);
         break;
 
     case ROOK:
-        if (bit_is_set(piece_attacks<ROOK>(ksq), to))
-            set_bit(&checkersBB, to);
-
-        if (bit_is_set(dcCandidates, from))
-            checkersBB |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(us));
+        update_checkers<ROOK>(&checkersBB, ksq, from, to, dcCandidates);
         break;
 
     case QUEEN:
-        if (bit_is_set(piece_attacks<QUEEN>(ksq), to))
-            set_bit(&checkersBB, to);
+        update_checkers<QUEEN>(&checkersBB, ksq, from, to, dcCandidates);
         break;
 
     case KING:
-        if (bit_is_set(dcCandidates, from))
-            checkersBB |= ( (piece_attacks<ROOK>(ksq) & rooks_and_queens(us))
-                           |(piece_attacks<BISHOP>(ksq) & bishops_and_queens(us)));
+        update_checkers<KING>(&checkersBB, ksq, from, to, dcCandidates);
         break;
 
     default:
@@ -892,7 +893,6 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
 
   assert(is_ok());
 }
-
 
 /// Position::do_capture_move() is a private method used to update captured
 /// piece info. It is called from the main Position::do_move function.
