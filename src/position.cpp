@@ -379,19 +379,6 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
 }
 
 
-/// Position::square_is_attacked() checks whether the given side attacks the
-/// given square.
-
-bool Position::square_is_attacked(Square s, Color c) const {
-
-  return   (pawn_attacks(opposite_color(c), s) & pawns(c))
-        || (piece_attacks<KNIGHT>(s) & knights(c))
-        || (piece_attacks<KING>(s)   & kings(c))
-        || (piece_attacks<ROOK>(s)   & rooks_and_queens(c))
-        || (piece_attacks<BISHOP>(s) & bishops_and_queens(c));
-}
-
-
 /// Position::attacks_to() computes a bitboard containing all pieces which
 /// attacks a given square. There are two versions of this function: One
 /// which finds attackers of both colors, and one which only finds the
@@ -406,12 +393,6 @@ Bitboard Position::attacks_to(Square s) const {
         | (piece_attacks<BISHOP>(s) & bishops_and_queens())
         | (piece_attacks<KING>(s)   & pieces_of_type(KING));
 }
-
-Bitboard Position::attacks_to(Square s, Color c) const {
-
-  return attacks_to(s) & pieces_of_color(c);
-}
-
 
 /// Position::piece_attacks_square() tests whether the piece on square f
 /// attacks square t.

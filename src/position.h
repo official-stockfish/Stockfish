@@ -571,6 +571,16 @@ Bitboard Position::piece_attacks_square(Square f, Square t) const {
   return bit_is_set(piece_attacks<Piece>(f), t);
 }
 
+inline Bitboard Position::attacks_to(Square s, Color c) const {
+
+  return attacks_to(s) & pieces_of_color(c);
+}
+
+inline bool Position::square_is_attacked(Square s, Color c) const {
+
+  return attacks_to(s, c) != EmptyBoardBB;
+}
+
 inline bool Position::pawn_is_passed(Color c, Square s) const {
   return !(pawns(opposite_color(c)) & passed_pawn_mask(c, s));
 }

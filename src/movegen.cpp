@@ -78,7 +78,7 @@ namespace {
 
   }
 
-  // Template generate_piece_moves() with specializations
+  // Template generate_piece_moves() with specializations and overloads
   template<PieceType>
   MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
 
@@ -299,7 +299,6 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
           if (blockSquares != EmptyBoardBB)
           {
-              // Pieces moves
               mlist = generate_piece_moves<PAWN>(pos, mlist, us, blockSquares, pinned);
               mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, blockSquares, pinned);
               mlist = generate_piece_moves<BISHOP>(pos, mlist, us, blockSquares, pinned);
