@@ -420,30 +420,44 @@ bool Position::piece_attacks_square(Square f, Square t) const {
 
 
 /// Position::move_attacks_square() tests whether a move from the current
-/// position attacks a given square.  Only attacks by the moving piece are
-/// considered; the function does not handle X-ray attacks.
+/// position attacks a given square.
 
 bool Position::move_attacks_square(Move m, Square s) const {
 
   assert(move_is_ok(m));
   assert(square_is_ok(s));
 
+  bool is_attack;
   Square f = move_from(m), t = move_to(m);
 
   assert(square_is_occupied(f));
 
   switch (piece_on(f))
   {
-  case WP:          return pawn_attacks_square(WHITE, t, s);
-  case BP:          return pawn_attacks_square(BLACK, t, s);
-  case WN: case BN: return piece_attacks_square<KNIGHT>(t, s);
-  case WB: case BB: return piece_attacks_square<BISHOP>(t, s);
-  case WR: case BR: return piece_attacks_square<ROOK>(t, s);
-  case WQ: case BQ: return piece_attacks_square<QUEEN>(t, s);
-  case WK: case BK: return piece_attacks_square<KING>(t, s);
+  case WP:          is_attack = pawn_attacks_square(WHITE, t, s); break;
+  case BP:          is_attack = pawn_attacks_square(BLACK, t, s); break;
+  case WN: case BN: is_attack = piece_attacks_square<KNIGHT>(t, s); break;
+  case WB: case BB: is_attack = piece_attacks_square<BISHOP>(t, s); break;
+  case WR: case BR: is_attack = piece_attacks_square<ROOK>(t, s); break;
+  case WQ: case BQ: is_attack = piece_attacks_square<QUEEN>(t, s); break;
+  case WK: case BK: is_attack = piece_attacks_square<KING>(t, s); break;
   default: break;
   }
-  return false;
+
+  if (is_attack)
+      return true;
+
+  // Move the piece and scan for X-ray attacks behind it
+  Bitboard occ = occupied_squares();
+  Color us = color_of_piece_on(f);
+  clear_bit(&occ, f);
+  set_bit(&occ, t);
+  Bitboard xray = ( (rook_attacks_bb(s, occ) & rooks_and_queens())
+                   |(bishop_attacks_bb(s, occ) & bishops_and_queens())) & pieces_of_color(us);
+
+  // If we have attacks we need to verify that are caused by our move
+  // and are not already existent ones.
+  return xray && (xray ^ (xray & piece_attacks<QUEEN>(s)));
 }
 
 
