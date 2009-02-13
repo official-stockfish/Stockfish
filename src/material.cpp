@@ -24,6 +24,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <sstream>
 #include <map>
 
 #include "material.h"
@@ -58,8 +59,9 @@ public:
   EndgameScalingFunctionBase* getESF(Key key, Color* c) const;
 
 private:
-  void add(Key k, EndgameEvaluationFunctionBase* f);
-  void add(Key k, Color c, EndgameScalingFunctionBase* f);
+  void add(const std::string& keyCode, EndgameEvaluationFunctionBase* f);
+  void add(const std::string& keyCode, Color c, EndgameScalingFunctionBase* f);
+  Key buildKey(const std::string& keyCode);
 
   struct ScalingInfo
   {
@@ -316,54 +318,68 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
 EndgameFunctions::EndgameFunctions() {
 
-  typedef Key ZM[2][8][16];
-  const ZM& z = Position::zobMaterial;
+  KNNKMaterialKey = buildKey("KNNK");
+  KKNNMaterialKey = buildKey("KKNN");
 
-  static const Color W = WHITE;
-  static const Color B = BLACK;
+  add("KPK",   &EvaluateKPK);
+  add("KKP",   &EvaluateKKP);
+  add("KBNK",  &EvaluateKBNK);
+  add("KKBN",  &EvaluateKKBN);
+  add("KRKP",  &EvaluateKRKP);
+  add("KPKR",  &EvaluateKPKR);
+  add("KRKB",  &EvaluateKRKB);
+  add("KBKR",  &EvaluateKBKR);
+  add("KRKN",  &EvaluateKRKN);
+  add("KNKR",  &EvaluateKNKR);
+  add("KQKR",  &EvaluateKQKR);
+  add("KRKQ",  &EvaluateKRKQ);
+  add("KBBKN", &EvaluateKBBKN);
+  add("KNKBB", &EvaluateKNKBB);
 
-  KNNKMaterialKey = z[W][KNIGHT][1] ^ z[W][KNIGHT][2];
-  KKNNMaterialKey = z[B][KNIGHT][1] ^ z[B][KNIGHT][2];
-
-  add(z[W][PAWN][1], &EvaluateKPK);
-  add(z[B][PAWN][1], &EvaluateKKP);
-
-  add(z[W][BISHOP][1] ^ z[W][KNIGHT][1], &EvaluateKBNK);
-  add(z[B][BISHOP][1] ^ z[B][KNIGHT][1], &EvaluateKKBN);
-  add(z[W][ROOK][1]   ^ z[B][PAWN][1],   &EvaluateKRKP);
-  add(z[W][PAWN][1]   ^ z[B][ROOK][1],   &EvaluateKPKR);
-  add(z[W][ROOK][1]   ^ z[B][BISHOP][1], &EvaluateKRKB);
-  add(z[W][BISHOP][1] ^ z[B][ROOK][1],   &EvaluateKBKR);
-  add(z[W][ROOK][1]   ^ z[B][KNIGHT][1], &EvaluateKRKN);
-  add(z[W][KNIGHT][1] ^ z[B][ROOK][1],   &EvaluateKNKR);
-  add(z[W][QUEEN][1]  ^ z[B][ROOK][1],   &EvaluateKQKR);
-  add(z[W][ROOK][1]   ^ z[B][QUEEN][1],  &EvaluateKRKQ);
-  add(z[W][BISHOP][2] ^ z[B][KNIGHT][1], &EvaluateKBBKN);
-  add(z[W][KNIGHT][1] ^ z[B][BISHOP][2], &EvaluateKNKBB);
-
-  add(z[W][KNIGHT][1] ^ z[W][PAWN][1], W, &ScaleKNPK);
-  add(z[B][KNIGHT][1] ^ z[B][PAWN][1], B, &ScaleKKNP);
-
-  add(z[W][ROOK][1]   ^ z[W][PAWN][1]   ^ z[B][ROOK][1]  , W, &ScaleKRPKR);
-  add(z[W][ROOK][1]   ^ z[B][ROOK][1]   ^ z[B][PAWN][1]  , B, &ScaleKRKRP);
-  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][BISHOP][1], W, &ScaleKBPKB);
-  add(z[W][BISHOP][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKBKBP);
-  add(z[W][BISHOP][1] ^ z[W][PAWN][1]   ^ z[B][KNIGHT][1], W, &ScaleKBPKN);
-  add(z[W][KNIGHT][1] ^ z[B][BISHOP][1] ^ z[B][PAWN][1]  , B, &ScaleKNKBP);
-
-  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[W][PAWN][2] ^ z[B][ROOK][1] ^ z[B][PAWN][1], W, &ScaleKRPPKRP);
-  add(z[W][ROOK][1] ^ z[W][PAWN][1] ^ z[B][ROOK][1] ^ z[B][PAWN][1] ^ z[B][PAWN][2], B, &ScaleKRPKRPP);
+  add("KNPK",    WHITE, &ScaleKNPK);
+  add("KKNP",    BLACK, &ScaleKKNP);
+  add("KRPKR",   WHITE, &ScaleKRPKR);
+  add("KRKRP",   BLACK, &ScaleKRKRP);
+  add("KBPKB",   WHITE, &ScaleKBPKB);
+  add("KBKBP",   BLACK, &ScaleKBKBP);
+  add("KBPKN",   WHITE, &ScaleKBPKN);
+  add("KNKBP",   BLACK, &ScaleKNKBP);
+  add("KRPPKRP", WHITE, &ScaleKRPPKRP);
+  add("KRPKRPP", BLACK, &ScaleKRPKRPP);
+  add("KRPPKRP", WHITE, &ScaleKRPPKRP);
+  add("KRPKRPP", BLACK, &ScaleKRPKRPP);
 }
 
-void EndgameFunctions::add(Key k, EndgameEvaluationFunctionBase* f) {
+Key EndgameFunctions::buildKey(const std::string& keyCode) {
 
-  EEFmap.insert(std::pair<Key, EndgameEvaluationFunctionBase*>(k, f));
+    assert(keyCode.length() > 0 && keyCode[0] == 'K');
+    assert(keyCode.length() < 8);
+
+    std::stringstream s;
+    bool upcase = false;
+
+    // Build up a fen substring with the given pieces, note
+    // that the fen string could be of an illegal position.
+    for (size_t i = 0; i < keyCode.length(); i++)
+    {
+        if (keyCode[i] == 'K')
+            upcase = !upcase;
+
+        s << char(upcase? toupper(keyCode[i]) : tolower(keyCode[i]));
+    }
+    s << 8 - keyCode.length() << "/8/8/8/8/8/8/8 w -";
+    return Position(s.str()).get_material_key();
 }
 
-void EndgameFunctions::add(Key k, Color c, EndgameScalingFunctionBase* f) {
+void EndgameFunctions::add(const std::string& keyCode, EndgameEvaluationFunctionBase* f) {
+
+  EEFmap.insert(std::pair<Key, EndgameEvaluationFunctionBase*>(buildKey(keyCode), f));
+}
+
+void EndgameFunctions::add(const std::string& keyCode, Color c, EndgameScalingFunctionBase* f) {
 
   ScalingInfo s = {c, f};
-  ESFmap.insert(std::pair<Key, ScalingInfo>(k, s));
+  ESFmap.insert(std::pair<Key, ScalingInfo>(buildKey(keyCode), s));
 }
 
 EndgameEvaluationFunctionBase* EndgameFunctions::getEEF(Key key) const {

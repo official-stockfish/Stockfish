@@ -118,7 +118,7 @@ void Position::from_fen(const std::string& fen) {
   }
   sideToMove = (fen[i] == 'w' ? WHITE : BLACK);
 
-  // Castling rights:
+  // Castling rights
   i++;
   if (fen[i] != ' ')
   {
