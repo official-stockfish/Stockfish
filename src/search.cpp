@@ -267,7 +267,7 @@ namespace {
   bool connected_moves(const Position &pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, const SearchStack& ss);
-  Depth extension(const Position &pos, Move m, bool pvNode, bool check, bool singleReply, bool mateThreat, bool* dangerous);
+  Depth extension(const Position &pos, Move m, bool pvNode, bool capture, bool check, bool singleReply, bool mateThreat, bool* dangerous);
   bool ok_to_do_nullmove(const Position &pos);
   bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -805,7 +805,7 @@ namespace {
 
         // Decide search depth for this move
         bool dangerous;
-        ext = extension(pos, move, true, pos.move_is_check(move), false, false, &dangerous);
+        ext = extension(pos, move, true, pos.move_is_capture(move), pos.move_is_check(move), false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
@@ -1009,7 +1009,7 @@ namespace {
 
       // Decide the new search depth
       bool dangerous;
-      Depth ext = extension(pos, move, true, moveIsCheck, singleReply, mateThreat, &dangerous);
+      Depth ext = extension(pos, move, true, moveIsCapture, moveIsCheck, singleReply, mateThreat, &dangerous);
       Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move
@@ -1305,7 +1305,7 @@ namespace {
 
       // Decide the new search depth
       bool dangerous;
-      Depth ext = extension(pos, move, false, moveIsCheck, singleReply, mateThreat, &dangerous);
+      Depth ext = extension(pos, move, false, moveIsCapture, moveIsCheck, singleReply, mateThreat, &dangerous);
       Depth newDepth = depth - OnePly + ext;
 
       // Futility pruning
@@ -1595,7 +1595,7 @@ namespace {
 
       // Decide the new search depth.
       bool dangerous;
-      Depth ext = extension(pos, move, false, moveIsCheck, false, false, &dangerous);
+      Depth ext = extension(pos, move, false, moveIsCapture, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Prune?
@@ -1713,7 +1713,7 @@ namespace {
 
       // Decide the new search depth.
       bool dangerous;
-      Depth ext = extension(pos, move, true, moveIsCheck, false, false, &dangerous);
+      Depth ext = extension(pos, move, true, moveIsCapture, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
@@ -2178,7 +2178,7 @@ namespace {
   // extended, as example because the corresponding UCI option is set to zero,
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
 
-  Depth extension(const Position &pos, Move m, bool pvNode, bool check,
+  Depth extension(const Position& pos, Move m, bool pvNode, bool capture, bool check,
                   bool singleReply, bool mateThreat, bool* dangerous) {
 
     assert(m != MOVE_NONE);
@@ -2209,7 +2209,7 @@ namespace {
         }
     }
 
-    if (   pos.move_is_capture(m)
+    if (   capture
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
@@ -2221,7 +2221,7 @@ namespace {
     }
 
     if (   pvNode
-        && pos.move_is_capture(m)
+        && capture
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && pos.see(m) >= 0)
     {
