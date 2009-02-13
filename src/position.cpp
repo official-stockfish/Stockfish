@@ -665,7 +665,7 @@ bool Position::move_is_capture(Move m) const {
   assert(m != MOVE_NONE);
 
   return (   !square_is_empty(move_to(m))
-          && (color_of_piece_on(move_to(m)) == opposite_color(side_to_move()))
+          && (color_of_piece_on(move_to(m)) != color_of_piece_on(move_from(m)))
          )
          || move_is_ep(m);
 }
