@@ -175,7 +175,7 @@ int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
   Square ksq = pos.king_square(opposite_color(us));
   MoveStack* mlist_start = mlist;
 
-  assert(pos.piece_on(ksq) == king_of_color(opposite_color(us)));
+  assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
 
   // Pieces moves
   mlist = generate_piece_checks<PAWN>(pos, mlist, us, dc, ksq);
@@ -215,7 +215,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
   Square ksq = pos.king_square(us);
   MoveStack* mlist_start = mlist;
 
-  assert(pos.piece_on(ksq) == king_of_color(us));
+  assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
 
   // The bitboard of occupied pieces without our king
   Bitboard b_noKing = pos.occupied_squares();
@@ -400,7 +400,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
           return false;
 
       assert(pos.square_is_empty(to));
-      assert(pos.piece_on(to - pawn_push(us)) == pawn_of_color(them));
+      assert(pos.piece_on(to - pawn_push(us)) == piece_of_color_and_type(them, PAWN));
 
       // The move is pseudo-legal, check if it is also legal
       return pos.pl_move_is_legal(m, pinned);
@@ -417,7 +417,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
       assert(from == pos.king_square(us));
       assert(to == pos.initial_kr_square(us));
-      assert(pos.piece_on(to) == rook_of_color(us));
+      assert(pos.piece_on(to) == piece_of_color_and_type(us, ROOK));
 
       Square g1 = relative_square(us, SQ_G1);
       Square f1 = relative_square(us, SQ_F1);
@@ -450,7 +450,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
       assert(from == pos.king_square(us));
       assert(to == pos.initial_qr_square(us));
-      assert(pos.piece_on(to) == rook_of_color(us));
+      assert(pos.piece_on(to) == piece_of_color_and_type(us, ROOK));
 
       Square c1 = relative_square(us, SQ_C1);
       Square d1 = relative_square(us, SQ_D1);
@@ -866,7 +866,7 @@ namespace {
         Color them = opposite_color(us);
         Square ksq = pos.king_square(us);
 
-        assert(pos.piece_on(ksq) == king_of_color(us));
+        assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
 
         Square rsq = (Side == KING_SIDE ? pos.initial_kr_square(us) : pos.initial_qr_square(us));
         Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
@@ -874,7 +874,7 @@ namespace {
         Square s;
         bool illegal = false;
 
-        assert(pos.piece_on(rsq) == rook_of_color(us));
+        assert(pos.piece_on(rsq) == piece_of_color_and_type(us, ROOK));
 
         // It is a bit complicated to correctly handle Chess960
         for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)

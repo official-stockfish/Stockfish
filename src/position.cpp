@@ -493,7 +493,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   Square ksq = king_square(us);
 
   assert(color_of_piece_on(from) == us);
-  assert(piece_on(ksq) == king_of_color(us));
+  assert(piece_on(ksq) == piece_of_color_and_type(us, KING));
 
   // En passant captures are a tricky special case.  Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
@@ -505,8 +505,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       Bitboard b = occupied_squares();
 
       assert(to == ep_square());
-      assert(piece_on(from) == pawn_of_color(us));
-      assert(piece_on(capsq) == pawn_of_color(them));
+      assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
+      assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
       assert(piece_on(to) == EMPTY);
 
       clear_bit(&b, from);
@@ -554,7 +554,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   Square ksq = king_square(them);
 
   assert(color_of_piece_on(from) == us);
-  assert(piece_on(ksq) == king_of_color(them));
+  assert(piece_on(ksq) == piece_of_color_and_type(them, KING));
 
   // Proceed according to the type of the moving piece
   switch (type_of_piece_on(from))
@@ -940,8 +940,8 @@ void Position::do_castle_move(Move m) {
   Square rfrom = move_to(m);  // HACK: See comment at beginning of function
   Square kto, rto;
 
-  assert(piece_on(kfrom) == king_of_color(us));
-  assert(piece_on(rfrom) == rook_of_color(us));
+  assert(piece_on(kfrom) == piece_of_color_and_type(us, KING));
+  assert(piece_on(rfrom) == piece_of_color_and_type(us, ROOK));
 
   // Find destination squares for king and rook
   if (rfrom > kfrom) // O-O
@@ -1039,7 +1039,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   to = move_to(m);
 
   assert(relative_rank(us, to) == RANK_8);
-  assert(piece_on(from) == pawn_of_color(us));
+  assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
   assert(color_of_piece_on(to) == them || square_is_empty(to));
 
   capture = type_of_piece_on(to);
@@ -1136,8 +1136,8 @@ void Position::do_ep_move(Move m) {
   assert(to == epSquare);
   assert(relative_rank(us, to) == RANK_6);
   assert(piece_on(to) == EMPTY);
-  assert(piece_on(from) == pawn_of_color(us));
-  assert(piece_on(capsq) == pawn_of_color(them));
+  assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
+  assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
   // Remove captured piece
   clear_bit(&(byColorBB[them]), capsq);
@@ -1314,8 +1314,8 @@ void Position::undo_castle_move(Move m) {
       rto = relative_square(us, SQ_D1);
   }
 
-  assert(piece_on(kto) == king_of_color(us));
-  assert(piece_on(rto) == rook_of_color(us));
+  assert(piece_on(kto) == piece_of_color_and_type(us, KING));
+  assert(piece_on(rto) == piece_of_color_and_type(us, ROOK));
 
   // Remove pieces from destination squares
   clear_bit(&(byColorBB[us]), kto);
@@ -1452,7 +1452,7 @@ void Position::undo_ep_move(Move m) {
 
   assert(to == ep_square());
   assert(relative_rank(us, to) == RANK_6);
-  assert(piece_on(to) == pawn_of_color(us));
+  assert(piece_on(to) == piece_of_color_and_type(us, PAWN));
   assert(piece_on(from) == EMPTY);
   assert(piece_on(capsq) == EMPTY);
 

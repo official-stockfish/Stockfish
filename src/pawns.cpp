@@ -216,7 +216,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         File f = square_file(s);
         Rank r = square_rank(s);
 
-        assert(pos.piece_on(s) == pawn_of_color(us));
+        assert(pos.piece_on(s) == piece_of_color_and_type(us, PAWN));
 
         // The file containing the pawn is not half open
         pi->halfOpenFiles[us] &= ~(1 << f);

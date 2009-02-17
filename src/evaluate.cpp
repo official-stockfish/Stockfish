@@ -926,7 +926,7 @@ namespace {
         {
             Square s = pop_1st_bit(&b);
 
-            assert(pos.piece_on(s) == pawn_of_color(us));
+            assert(pos.piece_on(s) == piece_of_color_and_type(us, PAWN));
             assert(pos.pawn_is_passed(us, s));
 
             int r = int(relative_rank(us, s) - RANK_2);
@@ -1077,7 +1077,7 @@ namespace {
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
                                     EvalInfo &ei) {
     assert(square_is_ok(s));
-    assert(pos.piece_on(s) == bishop_of_color(us));
+    assert(pos.piece_on(s) == piece_of_color_and_type(us, BISHOP));
 
     Square b6 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B6 : SQ_G6);
     Square b8 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B8 : SQ_G8);
@@ -1104,7 +1104,7 @@ namespace {
 
     assert(Chess960);
     assert(square_is_ok(s));
-    assert(pos.piece_on(s) == bishop_of_color(us));
+    assert(pos.piece_on(s) == piece_of_color_and_type(us, BISHOP));
 
     if (square_file(s) == FILE_A)
     {
