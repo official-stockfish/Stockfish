@@ -2113,7 +2113,7 @@ namespace {
 
     // Case 4: The destination square for m2 is attacked by the moving piece
     // in m1:
-    if(pos.piece_attacks_square(t1, t2))
+    if(pos.piece_attacks_square(pos.piece_on(t1), t1, t2))
       return true;
 
     // Case 5: Discovered check, checking piece is the piece moved in m1:

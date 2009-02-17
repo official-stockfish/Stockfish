@@ -215,7 +215,7 @@ public:
   template<PieceType>
   Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
 
-  bool piece_attacks_square(Square f, Square t) const; // Dispatch at run-time
+  bool piece_attacks_square(Piece p, Square f, Square t) const; // Dispatch at run-time
 
   // Properties of moves
   bool pl_move_is_legal(Move m) const;
