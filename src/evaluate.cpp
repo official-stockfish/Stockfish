@@ -1074,7 +1074,7 @@ namespace {
     Square b6 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B6 : SQ_G6);
     Square b8 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B8 : SQ_G8);
 
-    if (   pos.piece_on(b6) == pawn_of_color(opposite_color(us))
+    if (   pos.piece_on(b6) == piece_of_color_and_type(opposite_color(us), PAWN)
         && pos.see(s, b6) < 0
         && pos.see(s, b8) < 0)
     {
@@ -1091,7 +1091,7 @@ namespace {
 
   void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
                                     EvalInfo &ei) {
-    Piece pawn = pawn_of_color(us);
+    Piece pawn = piece_of_color_and_type(us, PAWN);
     Square b2, b3, c3;
 
     assert(Chess960);

@@ -467,8 +467,8 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
               illegal = true;
 
       if (   square_file(to) == FILE_B
-          && (   pos.piece_on(to + DELTA_W) == rook_of_color(them)
-              || pos.piece_on(to + DELTA_W) == queen_of_color(them)))
+          && (   pos.piece_on(to + DELTA_W) == piece_of_color_and_type(them, ROOK)
+              || pos.piece_on(to + DELTA_W) == piece_of_color_and_type(them, QUEEN)))
           illegal = true;
 
       return !illegal;
@@ -888,8 +888,8 @@ namespace {
 
         if (   Side == QUEEN_SIDE
             && square_file(rsq) == FILE_B
-            && (   pos.piece_on(relative_square(us, SQ_A1)) == rook_of_color(them)
-                || pos.piece_on(relative_square(us, SQ_A1)) == queen_of_color(them)))
+            && (   pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, ROOK)
+                || pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, QUEEN)))
             illegal = true;
 
         if (!illegal)

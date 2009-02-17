@@ -984,8 +984,8 @@ void Position::do_castle_move(Move m) {
 
   // Update board array
   board[kfrom] = board[rfrom] = EMPTY;
-  board[kto] = king_of_color(us);
-  board[rto] = rook_of_color(us);
+  board[kto] = piece_of_color_and_type(us, KING);
+  board[rto] = piece_of_color_and_type(us, ROOK);
 
   // Update king square
   kingSquare[us] = kto;
@@ -1348,8 +1348,8 @@ void Position::undo_castle_move(Move m) {
 
   // Update board
   board[rto] = board[kto] = EMPTY;
-  board[rfrom] = rook_of_color(us);
-  board[kfrom] = king_of_color(us);
+  board[rfrom] = piece_of_color_and_type(us, ROOK);
+  board[kfrom] = piece_of_color_and_type(us, KING);
 
   // Update king square
   kingSquare[us] = kfrom;
@@ -1400,7 +1400,7 @@ void Position::undo_promotion_move(Move m, const UndoInfo &u) {
   set_bit(&(byColorBB[us]), from);
   set_bit(&(byTypeBB[PAWN]), from);
   set_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
-  board[from] = pawn_of_color(us);
+  board[from] = piece_of_color_and_type(us, PAWN);
 
   // Update material
   npMaterial[us] -= piece_value_midgame(promotion);
@@ -1473,7 +1473,7 @@ void Position::undo_ep_move(Move m) {
   set_bit(&(byColorBB[them]), capsq);
   set_bit(&(byTypeBB[PAWN]), capsq);
   set_bit(&(byTypeBB[0]), capsq);
-  board[capsq] = pawn_of_color(them);
+  board[capsq] = piece_of_color_and_type(them, PAWN);
 
   // Remove moving piece from destination square
   clear_bit(&(byColorBB[us]), to);
@@ -1485,7 +1485,7 @@ void Position::undo_ep_move(Move m) {
   set_bit(&(byColorBB[us]), from);
   set_bit(&(byTypeBB[PAWN]), from);
   set_bit(&(byTypeBB[0]), from);
-  board[from] = pawn_of_color(us);
+  board[from] = piece_of_color_and_type(us, PAWN);
 
   // Update piece list:
   pieceList[us][PAWN][index[to]] = from;

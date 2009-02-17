@@ -72,13 +72,13 @@ Move move_from_string(const Position& pos, const std::string& str) {
     }
   }
 
-  if (piece == king_of_color(us))
+  if (piece == piece_of_color_and_type(us, KING))
   {
       // Is this a castling move? A king move is assumed to be a castling
       // move if the destination square is occupied by a friendly rook, or
       // if the distance between the source and destination squares is more
       // than 1.
-      if (pos.piece_on(to) == rook_of_color(us))
+      if (pos.piece_on(to) == piece_of_color_and_type(us, ROOK))
           return make_castle_move(from, to);
 
       else if (square_distance(from, to) > 1)
@@ -87,13 +87,13 @@ Move move_from_string(const Position& pos, const std::string& str) {
           // internal "king captures rook" representation.
           SquareDelta delta = (to > from ? DELTA_E : DELTA_W);
           Square s = from + delta;
-          while (relative_rank(us, s) == RANK_1 && pos.piece_on(s) != rook_of_color(us))
+          while (relative_rank(us, s) == RANK_1 && pos.piece_on(s) != piece_of_color_and_type(us, ROOK))
               s += delta;
 
           return (relative_rank(us, s) == RANK_1 ? make_castle_move(from, s) : MOVE_NONE);
       }
   }
-  else if (piece == pawn_of_color(us))
+  else if (piece == piece_of_color_and_type(us, PAWN))
   {
       // En passant move? We assume that a pawn move is an en passant move
       // without further testing if the destination square is epSquare.

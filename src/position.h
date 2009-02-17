@@ -529,12 +529,12 @@ inline Square Position::initial_qr_square(Color c) const {
 }
 
 inline Bitboard Position::pawn_attacks(Color c, Square s) const {
-  return StepAttackBB[pawn_of_color(c)][s];
+  return StepAttackBB[piece_of_color_and_type(c, PAWN)][s];
 }
 
 template<>
 inline Bitboard Position::piece_attacks<PAWN>(Square s) const {
-  return StepAttackBB[pawn_of_color(opposite_color(sideToMove))][s];
+  return StepAttackBB[piece_of_color_and_type(opposite_color(sideToMove), PAWN)][s];
 }
 
 template<>
@@ -675,28 +675,28 @@ inline Phase Position::game_phase() const {
 inline bool Position::move_is_deep_pawn_push(Move m) const {
 
   Color c = side_to_move();
-  return   piece_on(move_from(m)) == pawn_of_color(c)
+  return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
         && relative_rank(c, move_to(m)) > RANK_4;
 }
 
 inline bool Position::move_is_pawn_push_to_7th(Move m) const {
 
   Color c = side_to_move();
-  return   piece_on(move_from(m)) == pawn_of_color(c)
+  return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
         && relative_rank(c, move_to(m)) == RANK_7;
 }
 
 inline bool Position::move_is_passed_pawn_push(Move m) const {
 
   Color c = side_to_move();
-  return   piece_on(move_from(m)) == pawn_of_color(c)
+  return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
         && pawn_is_passed(c, move_to(m));
 }
 
 inline bool Position::move_was_passed_pawn_push(Move m) const {
 
   Color c = opposite_color(side_to_move());
-  return   piece_on(move_to(m)) == pawn_of_color(c)
+  return   piece_on(move_to(m)) == piece_of_color_and_type(c, PAWN)
         && pawn_is_passed(c, move_to(m));
 }
 

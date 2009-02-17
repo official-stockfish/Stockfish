@@ -111,30 +111,6 @@ inline Piece piece_of_color_and_type(Color c, PieceType pt) {
   return Piece((int(c) << 3) | int(pt));
 }
 
-inline Piece pawn_of_color(Color c) {
-  return piece_of_color_and_type(c, PAWN);
-}
-
-inline Piece knight_of_color(Color c) {
-  return piece_of_color_and_type(c, KNIGHT);
-}
-
-inline Piece bishop_of_color(Color c) {
-  return piece_of_color_and_type(c, BISHOP);
-}
-
-inline Piece rook_of_color(Color c) {
-  return piece_of_color_and_type(c, ROOK);
-}
-
-inline Piece queen_of_color(Color c) {
-  return piece_of_color_and_type(c, QUEEN);
-}
-
-inline Piece king_of_color(Color c) {
-  return piece_of_color_and_type(c, KING);
-}
-
 inline int piece_is_slider(Piece p) {
   return SlidingArray[int(p)];
 }
