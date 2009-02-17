@@ -272,11 +272,11 @@ namespace {
   uint8_t BitCount8Bit[256];
 
   // Function prototypes
-  void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_bishop(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_queen(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_king(const Position &p, Square s, Color us, EvalInfo &ei);
+  void evaluate_knight(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei);
+  void evaluate_bishop(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei);
+  void evaluate_rook(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei);
+  void evaluate_queen(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei);
+  void evaluate_king(const Position& p, Square s, Color us, EvalInfo& ei);
 
   void evaluate_passed_pawns(const Position &pos, EvalInfo &ei);
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
@@ -352,21 +352,23 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   // Evaluate pieces
   for (Color c = WHITE; c <= BLACK; c++)
   {
+    Bitboard pinned = pos.pinned_pieces(c);
+
     // Knights
     for (int i = 0; i < pos.piece_count(c, KNIGHT); i++)
-        evaluate_knight(pos, pos.piece_list(c, KNIGHT, i), c, ei);
+        evaluate_knight(pos, pos.piece_list(c, KNIGHT, i), c, pinned, ei);
 
     // Bishops
     for (int i = 0; i < pos.piece_count(c, BISHOP); i++)
-        evaluate_bishop(pos, pos.piece_list(c, BISHOP, i), c, ei);
+        evaluate_bishop(pos, pos.piece_list(c, BISHOP, i), c, pinned, ei);
 
     // Rooks
     for (int i = 0; i < pos.piece_count(c, ROOK); i++)
-        evaluate_rook(pos, pos.piece_list(c, ROOK, i), c, ei);
+        evaluate_rook(pos, pos.piece_list(c, ROOK, i), c, pinned, ei);
 
     // Queens
     for(int i = 0; i < pos.piece_count(c, QUEEN); i++)
-        evaluate_queen(pos, pos.piece_list(c, QUEEN, i), c, ei);
+        evaluate_queen(pos, pos.piece_list(c, QUEEN, i), c, pinned, ei);
 
     // Special pattern: trapped bishops on a7/h7/a2/h2
     Bitboard b = pos.bishops(c) & MaskA7H7[c];
@@ -560,13 +562,14 @@ namespace {
   // evaluate_common() computes terms common to all pieces attack
 
   template<PieceType Piece>
-  int evaluate_common(const Position& p, const Bitboard& b, Color us, EvalInfo& ei, Square s = SQ_NONE) {
+  int evaluate_common(const Position& p, const Bitboard& b, Color us, Bitboard pinned, EvalInfo& ei, Square s = SQ_NONE) {
 
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
     static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
     static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
     static const Value* OutpostBonus[] = { 0, 0, KnightOutpostBonus, BishopOutpostBonus, 0, 0 };
 
+    int mob;
     Color them = opposite_color(us);
 
     // Update attack info
@@ -582,15 +585,20 @@ namespace {
             ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15(bb);
     }
 
-    // Remove squares protected by enemy pawns
-    Bitboard bb = (b & ~ei.attackedBy[them][PAWN]);
+    if (pinned && bit_is_set(pinned, s))
+        mob = 0;
+    else
+    {
+        // Remove squares protected by enemy pawns
+        Bitboard bb = (b & ~ei.attackedBy[them][PAWN]);
 
-    // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15(bb & ~p.pieces_of_color(us))
+        // Mobility
+        mob = (Piece != QUEEN ? count_1s_max_15(bb & ~p.pieces_of_color(us))
                               : count_1s(bb & ~p.pieces_of_color(us)));
 
-    ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
-    ei.egMobility += Sign[us] * EgBonus[Piece][mob];
+        ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
+        ei.egMobility += Sign[us] * EgBonus[Piece][mob];
+    }
 
     // Bishop and Knight outposts
     if (  (Piece != BISHOP && Piece != KNIGHT) // compile time condition
@@ -619,34 +627,34 @@ namespace {
   // evaluate_knight() assigns bonuses and penalties to a knight of a given
   // color on a given square.
 
-  void evaluate_knight(const Position& p, Square s, Color us, EvalInfo& ei) {
+  void evaluate_knight(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei) {
 
     // Attacks, mobility and outposts
-    evaluate_common<KNIGHT>(p, p.piece_attacks<KNIGHT>(s), us, ei, s);
+    evaluate_common<KNIGHT>(p, p.piece_attacks<KNIGHT>(s), us, pinned, ei, s);
   }
 
 
   // evaluate_bishop() assigns bonuses and penalties to a bishop of a given
   // color on a given square.
 
-  void evaluate_bishop(const Position& p, Square s, Color us, EvalInfo& ei) {
+  void evaluate_bishop(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei) {
 
     Bitboard b = bishop_attacks_bb(s, p.occupied_squares() & ~p.queens(us));
 
     // Attacks, mobility and outposts
-    evaluate_common<BISHOP>(p, b, us, ei, s);
+    evaluate_common<BISHOP>(p, b, us, pinned, ei, s);
   }
 
 
   // evaluate_rook() assigns bonuses and penalties to a rook of a given
   // color on a given square.
 
-  void evaluate_rook(const Position& p, Square s, Color us, EvalInfo& ei) {
+  void evaluate_rook(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei) {
 
     Bitboard b = rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
 
     // Attacks and mobility
-    int mob = evaluate_common<ROOK>(p, b, us, ei);
+    int mob = evaluate_common<ROOK>(p, b, us, pinned, ei);
 
     // Rook on 7th rank
     Color them = opposite_color(us);
@@ -705,10 +713,10 @@ namespace {
   // evaluate_queen() assigns bonuses and penalties to a queen of a given
   // color on a given square.
 
-  void evaluate_queen(const Position& p, Square s, Color us, EvalInfo& ei) {
+  void evaluate_queen(const Position& p, Square s, Color us, Bitboard pinned, EvalInfo& ei) {
 
     // Attacks and mobility
-    evaluate_common<QUEEN>(p, p.piece_attacks<QUEEN>(s), us, ei);
+    evaluate_common<QUEEN>(p, p.piece_attacks<QUEEN>(s), us, pinned, ei);
 
     // Queen on 7th rank
     Color them = opposite_color(us);
