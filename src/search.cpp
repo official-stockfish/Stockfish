@@ -291,8 +291,7 @@ namespace {
   bool idle_thread_exists(int master);
   bool split(const Position &pos, SearchStack *ss, int ply,
              Value *alpha, Value *beta, Value *bestValue, Depth depth,
-             int *moves, MovePicker *mp, Bitboard dcCandidates, int master,
-             bool pvNode);
+             int *moves, MovePicker *mp, int master, bool pvNode);
   void wake_sleeping_threads();
 
 #if !defined(_MSC_VER)
@@ -776,7 +775,6 @@ namespace {
 
     Value alpha = -VALUE_INFINITE;
     Value beta = VALUE_INFINITE, value;
-    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
 
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
@@ -984,7 +982,6 @@ namespace {
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
     Color us = pos.side_to_move();
-    Bitboard dcCandidates = pos.discovered_check_candidates(us);
     bool isCheck = pos.is_check();
     bool mateThreat = pos.has_mate_threat(opposite_color(us));
 
@@ -1090,7 +1087,7 @@ namespace {
           && !AbortSearch
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &alpha, &beta, &bestValue, depth,
-                   &moveCount, &mp, dcCandidates, threadID, true))
+                   &moveCount, &mp, threadID, true))
           break;
     }
 
@@ -1284,7 +1281,6 @@ namespace {
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
-    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
     Value futilityValue = VALUE_NONE;
     bool useFutilityPruning =   UseFutilityPruning
                              && depth < SelectiveDepth
@@ -1386,7 +1382,7 @@ namespace {
           && !AbortSearch
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &beta, &beta, &bestValue, depth, &moveCount,
-                   &mp, dcCandidates, threadID, false))
+                   &mp, threadID, false))
         break;
     }
 
@@ -1472,7 +1468,6 @@ namespace {
     Move move;
     int moveCount = 0;
     Color us = pos.side_to_move();
-    Bitboard dcCandidates = pos.discovered_check_candidates(us);
     bool enoughMaterial = pos.non_pawn_material(us) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
@@ -1585,7 +1580,6 @@ namespace {
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
       assert(move_is_ok(move));
-      assert(pos.discovered_check_candidates(pos.side_to_move()) == sp->dcCandidates);
 
       bool moveIsCheck = pos.move_is_check(move);
       bool moveIsCapture = pos.move_is_capture(move);
@@ -1697,8 +1691,6 @@ namespace {
            && !thread_should_stop(threadID)
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
-      assert(pos.discovered_check_candidates(pos.side_to_move()) == sp->dcCandidates);
-
       bool moveIsCheck = pos.move_is_check(move);
       bool moveIsCapture = pos.move_is_capture(move);
 
@@ -2680,8 +2672,7 @@ namespace {
 
   bool split(const Position &p, SearchStack *sstck, int ply,
              Value *alpha, Value *beta, Value *bestValue,
-             Depth depth, int *moves,
-             MovePicker *mp, Bitboard dcCandidates, int master, bool pvNode) {
+             Depth depth, int *moves, MovePicker *mp, int master, bool pvNode) {
     assert(p.is_ok());
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -2717,7 +2708,6 @@ namespace {
     splitPoint->alpha = pvNode? *alpha : (*beta - 1);
     splitPoint->beta = *beta;
     splitPoint->pvNode = pvNode;
-    splitPoint->dcCandidates = dcCandidates;
     splitPoint->bestValue = *bestValue;
     splitPoint->master = master;
     splitPoint->mp = mp;
