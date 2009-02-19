@@ -748,21 +748,15 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 /// Position::do_move() makes a move, and backs up all information necessary
 /// to undo the move to an UndoInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
-/// There are two versions of this function, one which takes only the move and
-/// the UndoInfo as input, and one which takes a third parameter, a bitboard of
-/// discovered check candidates. The second version is faster, because knowing
-/// the discovered check candidates makes it easier to update the checkersBB
-/// member variable in the position object.
 
 void Position::do_move(Move m, UndoInfo& u) {
 
-  do_move(m, u, discovered_check_candidates(side_to_move()));
-}
-
-void Position::do_move(Move m, UndoInfo& u, Bitboard dc) {
-
   assert(is_ok());
   assert(move_is_ok(m));
+
+  // Get now the current (pre-move) dc candidates that we will use
+  // in update_checkers().
+  Bitboard oldDcCandidates = discovered_check_candidates(side_to_move());
 
   // Back up the necessary information to our UndoInfo object (except the
   // captured piece, which is taken care of later.
@@ -871,12 +865,12 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dc) {
     Square ksq = king_square(them);
     switch (piece)
     {
-    case PAWN:   update_checkers<PAWN>(&checkersBB, ksq, from, to, dc);   break;
-    case KNIGHT: update_checkers<KNIGHT>(&checkersBB, ksq, from, to, dc); break;
-    case BISHOP: update_checkers<BISHOP>(&checkersBB, ksq, from, to, dc); break;
-    case ROOK:   update_checkers<ROOK>(&checkersBB, ksq, from, to, dc);   break;
-    case QUEEN:  update_checkers<QUEEN>(&checkersBB, ksq, from, to, dc);  break;
-    case KING:   update_checkers<KING>(&checkersBB, ksq, from, to, dc);   break;
+    case PAWN:   update_checkers<PAWN>(&checkersBB, ksq, from, to, oldDcCandidates);   break;
+    case KNIGHT: update_checkers<KNIGHT>(&checkersBB, ksq, from, to, oldDcCandidates); break;
+    case BISHOP: update_checkers<BISHOP>(&checkersBB, ksq, from, to, oldDcCandidates); break;
+    case ROOK:   update_checkers<ROOK>(&checkersBB, ksq, from, to, oldDcCandidates);   break;
+    case QUEEN:  update_checkers<QUEEN>(&checkersBB, ksq, from, to, oldDcCandidates);  break;
+    case KING:   update_checkers<KING>(&checkersBB, ksq, from, to, oldDcCandidates);   break;
     default: assert(false); break;
     }
   }

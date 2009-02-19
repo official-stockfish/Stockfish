@@ -809,7 +809,7 @@ namespace {
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
-        pos.do_move(move, u, dcCandidates);
+        pos.do_move(move, u);
 
         if (i < MultiPV)
         {
@@ -983,9 +983,10 @@ namespace {
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
-    Bitboard dcCandidates = mp.discovered_check_candidates();
+    Color us = pos.side_to_move();
+    Bitboard dcCandidates = pos.discovered_check_candidates(us);
     bool isCheck = pos.is_check();
-    bool mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
+    bool mateThreat = pos.has_mate_threat(opposite_color(us));
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
@@ -1014,7 +1015,7 @@ namespace {
 
       // Make and search the move
       UndoInfo u;
-      pos.do_move(move, u, dcCandidates);
+      pos.do_move(move, u);
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1283,7 +1284,7 @@ namespace {
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
-    Bitboard dcCandidates = mp.discovered_check_candidates();
+    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
     Value futilityValue = VALUE_NONE;
     bool useFutilityPruning =   UseFutilityPruning
                              && depth < SelectiveDepth
@@ -1338,7 +1339,7 @@ namespace {
 
       // Make and search the move
       UndoInfo u;
-      pos.do_move(move, u, dcCandidates);
+      pos.do_move(move, u);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1470,8 +1471,9 @@ namespace {
     MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, isCheck ? NULL : &ei);
     Move move;
     int moveCount = 0;
-    Bitboard dcCandidates = mp.discovered_check_candidates();
-    bool enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
+    Color us = pos.side_to_move();
+    Bitboard dcCandidates = pos.discovered_check_candidates(us);
+    bool enoughMaterial = pos.non_pawn_material(us) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
@@ -1517,7 +1519,7 @@ namespace {
 
       // Make and search the move.
       UndoInfo u;
-      pos.do_move(move, u, dcCandidates);
+      pos.do_move(move, u);
       Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move, u);
 
@@ -1610,7 +1612,7 @@ namespace {
 
       // Make and search the move.
       UndoInfo u;
-      pos.do_move(move, u, sp->dcCandidates);
+      pos.do_move(move, u);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1721,7 +1723,7 @@ namespace {
 
       // Make and search the move.
       UndoInfo u;
-      pos.do_move(move, u, sp->dcCandidates);
+      pos.do_move(move, u);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.

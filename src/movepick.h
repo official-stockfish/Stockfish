@@ -69,7 +69,6 @@ public:
   int number_of_moves() const;
   int current_move_score() const;
   MovegenPhase current_move_type() const;
-  Bitboard discovered_check_candidates() const;
 
   static void init_phase_table();
 
@@ -84,7 +83,6 @@ private:
 
   const Position& pos;
   Move ttMove, mateKiller, killer1, killer2;
-  Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];
   bool pvNode;
   Depth depth;
@@ -107,14 +105,6 @@ private:
 inline int MovePicker::number_of_moves() const {
 
   return numOfMoves;
-}
-
-/// MovePicker::discovered_check_candidates() returns a bitboard containing
-/// all pieces which can possibly give discovered check.  This bitboard is
-/// computed by the constructor function.
-
-inline Bitboard MovePicker::discovered_check_candidates() const {
-  return dc;
 }
 
 #endif // !defined(MOVEPICK_H_INCLUDED)

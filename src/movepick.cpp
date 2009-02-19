@@ -96,9 +96,6 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   else
       phaseIndex = (noCaptures ? NoMovesPhaseIndex : QsearchWithoutChecksPhaseIndex);
 
-  dc = p.discovered_check_candidates(us);
-  pinned = p.pinned_pieces(p.side_to_move());
-
   finished = false;
 }
 

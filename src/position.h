@@ -244,7 +244,6 @@ public:
   void backup(UndoInfo &u) const;
   void restore(const UndoInfo &u);
   void do_move(Move m, UndoInfo &u);
-  void do_move(Move m, UndoInfo &u, Bitboard dcCandidates);
   void undo_move(Move m, const UndoInfo &u);
   void do_null_move(UndoInfo &u);
   void undo_null_move(const UndoInfo &u);
