@@ -478,22 +478,12 @@ void Position::find_checkers() {
 }
 
 
-/// Position::pl_move_is_legal() tests whether a pseudo-legal move is legal.
-/// There are two versions of this function:  One which takes only a
-/// move as input, and one which takes a move and a bitboard of pinned
-/// pieces. The latter function is faster, and should always be preferred
-/// when a pinned piece bitboard has already been computed.
+/// Position::pl_move_is_legal() tests whether a pseudo-legal move is legal
 
-bool Position::pl_move_is_legal(Move m)  const {
-
-  return pl_move_is_legal(m, pinned_pieces(side_to_move()));
-}
-
-bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
+bool Position::pl_move_is_legal(Move m) const {
 
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(pinned == pinned_pieces(side_to_move()));
 
   // If we're in check, all pseudo-legal moves are legal, because our
   // check evasion generator only generates true legal moves.
@@ -541,7 +531,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return (   !bit_is_set(pinned, from)
+  return (   !bit_is_set(pinned_pieces(us), from)
           || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)));
 }
 

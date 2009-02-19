@@ -360,7 +360,7 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   // Remove illegal moves from the list
   for (int i = 0; i < n; i++)
-      if (!pos.pl_move_is_legal(mlist[i].move, pinned))
+      if (!pos.pl_move_is_legal(mlist[i].move))
           mlist[i--].move = mlist[--n].move;
 
   return n;
@@ -405,7 +405,7 @@ bool move_is_legal(const Position& pos, const Move m) {
       assert(pos.piece_on(to - pawn_push(us)) == piece_of_color_and_type(them, PAWN));
 
       // The move is pseudo-legal, check if it is also legal
-      return pos.pl_move_is_legal(m, pinned);
+      return pos.pl_move_is_legal(m);
   }
 
   // Castling moves
@@ -537,12 +537,12 @@ bool move_is_legal(const Position& pos, const Move m) {
           return false;
       }
       // The move is pseudo-legal, check if it is also legal
-      return pos.pl_move_is_legal(m, pinned);
+      return pos.pl_move_is_legal(m);
   }
 
   // Luckly we can handle all the other pieces in one go
   return (   pos.piece_attacks_square(pos.piece_on(from), from, to)
-          && pos.pl_move_is_legal(m, pinned)
+          && pos.pl_move_is_legal(m)
           && !move_promotion(m));
 }
 

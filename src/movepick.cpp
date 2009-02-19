@@ -394,7 +394,7 @@ Move MovePicker::pick_move_from_list() {
           moves[bestIndex] = moves[movesPicked++];
           if (   move != ttMove
               && move != mateKiller
-              && pos.pl_move_is_legal(move, pinned))
+              && pos.pl_move_is_legal(move))
               return move;
       }
       break;
@@ -414,7 +414,7 @@ Move MovePicker::pick_move_from_list() {
           moves[bestIndex] = moves[movesPicked++];
           if (   move != ttMove
               && move != mateKiller
-              && pos.pl_move_is_legal(move, pinned))
+              && pos.pl_move_is_legal(move))
               return move;
       }
       break;
@@ -442,7 +442,7 @@ Move MovePicker::pick_move_from_list() {
           move = badCaptures[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
-              && pos.pl_move_is_legal(move, pinned))
+              && pos.pl_move_is_legal(move))
               return move;
       }
       break;
@@ -457,7 +457,7 @@ Move MovePicker::pick_move_from_list() {
           moves[bestIndex] = moves[movesPicked++];
           // Remember to change the line below if we decide to hash the qsearch!
           // Maybe also postpone the legality check until after futility pruning?
-          if (/* move != ttMove && */ pos.pl_move_is_legal(move, pinned))
+          if (/* move != ttMove && */ pos.pl_move_is_legal(move))
               return move;
       }
       break;
@@ -471,7 +471,7 @@ Move MovePicker::pick_move_from_list() {
       {
           move = moves[movesPicked++].move;
           // Remember to change the line below if we decide to hash the qsearch!
-          if (/* move != ttMove && */ pos.pl_move_is_legal(move, pinned))
+          if (/* move != ttMove && */ pos.pl_move_is_legal(move))
               return move;
       }
       break;
