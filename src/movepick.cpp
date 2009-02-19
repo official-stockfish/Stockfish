@@ -130,7 +130,7 @@ Move MovePicker::get_next_move() {
         if (ttMove != MOVE_NONE)
         {
             assert(move_is_ok(ttMove));
-            if (move_is_legal(pos, ttMove, pinned))
+            if (move_is_legal(pos, ttMove))
                 return ttMove;
         }
         break;
@@ -139,7 +139,7 @@ Move MovePicker::get_next_move() {
         if (mateKiller != MOVE_NONE)
         {
             assert(move_is_ok(mateKiller));
-            if (move_is_legal(pos, mateKiller, pinned))
+            if (move_is_legal(pos, mateKiller))
                 return mateKiller;
        }
        break;
@@ -162,7 +162,7 @@ Move MovePicker::get_next_move() {
 
     case PH_EVASIONS:
         assert(pos.is_check());
-        numOfMoves = generate_evasions(pos, moves, pinned);
+        numOfMoves = generate_evasions(pos, moves);
         score_evasions();
         movesPicked = 0;
         break;
@@ -174,7 +174,7 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_QCHECKS:
-        numOfMoves = generate_checks(pos, moves, dc);
+        numOfMoves = generate_checks(pos, moves);
         movesPicked = 0;
         break;
 
