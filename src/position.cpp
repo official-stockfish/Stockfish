@@ -323,29 +323,42 @@ void Position::copy(const Position &pos) {
 /// king) pieces for the given color.
 Bitboard Position::pinned_pieces(Color c) const {
 
+  if (pinned[c] != ~EmptyBoardBB)
+      return pinned[c];
+
+  Bitboard p1, p2;
   Square ksq = king_square(c);
-  return hidden_checks<ROOK, true>(c, ksq) | hidden_checks<BISHOP, true>(c, ksq);
+  pinned[c] = hidden_checks<ROOK, true>(c, ksq, p1) | hidden_checks<BISHOP, true>(c, ksq, p2);
+  pinners[c] = p1 | p2;
+  return pinned[c];
 }
 
+Bitboard Position::pinned_pieces(Color c, Bitboard& p) const {
 
-/// Position:discovered_check_candidates() returns a bitboard containing all
-/// pieces for the given side which are candidates for giving a discovered
-/// check.  The code is almost the same as the function for finding pinned
-/// pieces.
+  if (pinned[c] == ~EmptyBoardBB)
+      pinned_pieces(c);
+
+  p = pinners[c];
+  return pinned[c];
+}
 
 Bitboard Position::discovered_check_candidates(Color c) const {
 
-  Square ksq = king_square(opposite_color(c));
-  return hidden_checks<ROOK, false>(c, ksq) | hidden_checks<BISHOP, false>(c, ksq);
-}
+  if (dcCandidates[c] != ~EmptyBoardBB)
+      return dcCandidates[c];
 
+  Bitboard dummy;
+  Square ksq = king_square(opposite_color(c));
+  dcCandidates[c] = hidden_checks<ROOK, false>(c, ksq, dummy) | hidden_checks<BISHOP, false>(c, ksq, dummy);
+  return dcCandidates[c];
+}
 
 /// Position:hidden_checks<>() returns a bitboard of all pinned (against the
 /// king) pieces for the given color and for the given pinner type. Or, when
 /// template parameter FindPinned is false, the pinned pieces of opposite color
 /// that are, indeed, the pieces candidate for a discovery check.
 template<PieceType Piece, bool FindPinned>
-Bitboard Position::hidden_checks(Color c, Square ksq) const {
+Bitboard Position::hidden_checks(Color c, Square ksq, Bitboard& pinners) const {
 
   Square s;
   Bitboard sliders, result = EmptyBoardBB;
@@ -362,7 +375,7 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
 
       // Pinners are sliders, not checkers, that give check when
       // candidate pinned are removed.
-      Bitboard pinners = (FindPinned ? sliders & ~checkersBB : sliders);
+      pinners = (FindPinned ? sliders & ~checkersBB : sliders);
 
       if (Piece == ROOK)
           pinners &= rook_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
@@ -371,12 +384,16 @@ Bitboard Position::hidden_checks(Color c, Square ksq) const {
 
       // Finally for each pinner find the corresponding pinned piece (if same color of king)
       // or discovery checker (if opposite color) among the candidates.
-      while (pinners)
+      Bitboard p = pinners;
+      while (p)
       {
-          s = pop_1st_bit(&pinners);
+          s = pop_1st_bit(&p);
           result |= (squares_between(s, ksq) & candidate_pinned);
       }
   }
+  else
+      pinners = EmptyBoardBB;
+
   return result;
 }
 
@@ -692,6 +709,13 @@ void Position::backup(UndoInfo& u) const {
   u.mgValue      = mgValue;
   u.egValue      = egValue;
   u.capture      = NO_PIECE_TYPE;
+
+  for (Color c = WHITE; c <= BLACK; c++)
+  {
+      u.pinners[c]      = pinners[c];
+      u.pinned[c]       = pinned[c];
+      u.dcCandidates[c] = dcCandidates[c];
+  }
 }
 
 
@@ -711,6 +735,13 @@ void Position::restore(const UndoInfo& u) {
   mgValue     = u.mgValue;
   egValue     = u.egValue;
   // u.capture is restored in undo_move()
+
+  for (Color c = WHITE; c <= BLACK; c++)
+  {
+      pinners[c]      = u.pinners[c];
+      pinned[c]       = u.pinned[c];
+      dcCandidates[c] = u.dcCandidates[c];
+  }
 }
 
 
@@ -748,7 +779,7 @@ void Position::do_move(Move m, UndoInfo& u) {
   do_move(m, u, discovered_check_candidates(side_to_move()));
 }
 
-void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
+void Position::do_move(Move m, UndoInfo& u, Bitboard dc) {
 
   assert(is_ok());
   assert(move_is_ok(m));
@@ -764,6 +795,10 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
   rule50++;
+
+  // Reset pinned bitboard and its friends
+  for (Color c = WHITE; c <= BLACK; c++)
+      pinners[c] = pinned[c] = dcCandidates[c] = ~EmptyBoardBB;
 
   if (move_is_castle(m))
       do_castle_move(m);
@@ -856,12 +891,12 @@ void Position::do_move(Move m, UndoInfo& u, Bitboard dcCandidates) {
     Square ksq = king_square(them);
     switch (piece)
     {
-    case PAWN:   update_checkers<PAWN>(&checkersBB, ksq, from, to, dcCandidates);   break;
-    case KNIGHT: update_checkers<KNIGHT>(&checkersBB, ksq, from, to, dcCandidates); break;
-    case BISHOP: update_checkers<BISHOP>(&checkersBB, ksq, from, to, dcCandidates); break;
-    case ROOK:   update_checkers<ROOK>(&checkersBB, ksq, from, to, dcCandidates);   break;
-    case QUEEN:  update_checkers<QUEEN>(&checkersBB, ksq, from, to, dcCandidates);  break;
-    case KING:   update_checkers<KING>(&checkersBB, ksq, from, to, dcCandidates);   break;
+    case PAWN:   update_checkers<PAWN>(&checkersBB, ksq, from, to, dc);   break;
+    case KNIGHT: update_checkers<KNIGHT>(&checkersBB, ksq, from, to, dc); break;
+    case BISHOP: update_checkers<BISHOP>(&checkersBB, ksq, from, to, dc); break;
+    case ROOK:   update_checkers<ROOK>(&checkersBB, ksq, from, to, dc);   break;
+    case QUEEN:  update_checkers<QUEEN>(&checkersBB, ksq, from, to, dc);  break;
+    case KING:   update_checkers<KING>(&checkersBB, ksq, from, to, dc);   break;
     default: assert(false); break;
     }
   }
@@ -1719,6 +1754,8 @@ void Position::clear() {
   }
 
   checkersBB = EmptyBoardBB;
+  for (Color c = WHITE; c <= BLACK; c++)
+      pinners[c] = pinned[c] = dcCandidates[c] = ~EmptyBoardBB;
 
   lastMove = MOVE_NONE;
 

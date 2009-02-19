@@ -82,7 +82,7 @@ enum CastleRights {
 struct UndoInfo {
   int castleRights;
   Square epSquare;
-  Bitboard checkersBB;
+  Bitboard checkersBB, pinners[2], pinned[2], dcCandidates[2];
   Key key, pawnKey, materialKey;
   int rule50;
   Move lastMove;
@@ -197,6 +197,7 @@ public:
 
   // Bitboards for pinned pieces and discovered check candidates
   Bitboard discovered_check_candidates(Color c) const;
+  Bitboard pinned_pieces(Color c, Bitboard& p) const;
   Bitboard pinned_pieces(Color c) const;
 
   // Checking pieces
@@ -312,7 +313,7 @@ private:
   void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
 
   template<PieceType Piece, bool FindPinned>
-  Bitboard hidden_checks(Color c, Square ksq) const;
+  Bitboard hidden_checks(Color c, Square ksq, Bitboard& pinners) const;
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;
@@ -329,6 +330,7 @@ private:
   // Bitboards
   Bitboard byColorBB[2], byTypeBB[8];
   Bitboard checkersBB;
+  mutable Bitboard pinners[2], pinned[2], dcCandidates[2];
 
   // Board
   Piece board[64];
