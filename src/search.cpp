@@ -996,7 +996,7 @@ namespace {
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
-      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
+      bool moveIsCheck = pos.move_is_check(move);
       bool moveIsCapture = pos.move_is_capture(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1298,7 +1298,7 @@ namespace {
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
-      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
+      bool moveIsCheck = pos.move_is_check(move);
       bool moveIsCapture = pos.move_is_capture(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1489,7 +1489,7 @@ namespace {
           && !isCheck
           && !pvNode
           && !move_promotion(move)
-          && !pos.move_is_check(move, dcCandidates)
+          && !pos.move_is_check(move)
           && !pos.move_is_passed_pawn_push(move))
       {
           Value futilityValue = staticValue
@@ -1583,8 +1583,9 @@ namespace {
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
       assert(move_is_ok(move));
+      assert(pos.discovered_check_candidates(pos.side_to_move()) == sp->dcCandidates);
 
-      bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
+      bool moveIsCheck = pos.move_is_check(move);
       bool moveIsCapture = pos.move_is_capture(move);
 
       lock_grab(&(sp->lock));
@@ -1694,7 +1695,9 @@ namespace {
            && !thread_should_stop(threadID)
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
-      bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
+      assert(pos.discovered_check_candidates(pos.side_to_move()) == sp->dcCandidates);
+
+      bool moveIsCheck = pos.move_is_check(move);
       bool moveIsCapture = pos.move_is_capture(move);
 
       assert(move_is_ok(move));

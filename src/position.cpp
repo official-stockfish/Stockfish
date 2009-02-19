@@ -536,29 +536,19 @@ bool Position::pl_move_is_legal(Move m) const {
 }
 
 
-/// Position::move_is_check() tests whether a pseudo-legal move is a check.
-/// There are two versions of this function:  One which takes only a move as
-/// input, and one which takes a move and a bitboard of discovered check
-/// candidates.  The latter function is faster, and should always be preferred
-/// when a discovered check candidates bitboard has already been computed.
+/// Position::move_is_check() tests whether a pseudo-legal move is a check
 
 bool Position::move_is_check(Move m) const {
 
-  Bitboard dc = discovered_check_candidates(side_to_move());
-  return move_is_check(m, dc);
-}
-
-bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
-
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(dcCandidates == discovered_check_candidates(side_to_move()));
 
   Color us = side_to_move();
   Color them = opposite_color(us);
   Square from = move_from(m);
   Square to = move_to(m);
   Square ksq = king_square(them);
+  Bitboard dcCandidates = discovered_check_candidates(us);
 
   assert(color_of_piece_on(from) == us);
   assert(piece_on(ksq) == piece_of_color_and_type(them, KING));

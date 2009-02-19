@@ -221,7 +221,6 @@ public:
   // Properties of moves
   bool pl_move_is_legal(Move m) const;
   bool move_is_check(Move m) const;
-  bool move_is_check(Move m, Bitboard dcCandidates) const;
   bool move_is_capture(Move m) const;
   bool move_is_deep_pawn_push(Move m) const;
   bool move_is_pawn_push_to_7th(Move m) const;
