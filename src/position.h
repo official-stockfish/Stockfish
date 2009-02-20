@@ -74,17 +74,16 @@ enum CastleRights {
 
 
 /// The UndoInfo struct stores information we need to restore a Position
-/// object to its previous state when we retract a move.  Whenever a move
+/// object to its previous state when we retract a move. Whenever a move
 /// is made on the board (by calling Position::do_move), an UndoInfo object
-/// must be passed as a parameter.  When the move is unmade (by calling
+/// must be passed as a parameter. When the move is unmade (by calling
 /// Position::undo_move), the same UndoInfo object must be passed again.
 
 struct UndoInfo {
-  int castleRights;
-  Square epSquare;
-  Bitboard checkersBB, pinners[2], pinned[2], dcCandidates[2];
+  Bitboard pinners[2], pinned[2], dcCandidates[2], checkersBB;
   Key key, pawnKey, materialKey;
-  int rule50;
+  int castleRights, rule50;
+  Square epSquare;
   Move lastMove;
   Value mgValue, egValue;
   PieceType capture;
@@ -326,8 +325,6 @@ private:
 
   // Bitboards
   Bitboard byColorBB[2], byTypeBB[8];
-  Bitboard checkersBB;
-  mutable Bitboard pinners[2], pinned[2], dcCandidates[2];
 
   // Board
   Piece board[64];
@@ -340,16 +337,21 @@ private:
   int index[64];
 
   // Other info
-  Color sideToMove;
-  int castleRights;
-  File initialKFile, initialKRFile, initialQRFile;
-  Square epSquare;
   Square kingSquare[2];
-  Move lastMove;
-  Key key, pawnKey, materialKey, history[MaxGameLength];
-  int rule50, gamePly;
-  Value mgValue, egValue;
+  Color sideToMove;
+  int gamePly;
+  Key history[MaxGameLength];
   Value npMaterial[2];
+  File initialKFile, initialKRFile, initialQRFile;
+
+  // Info backed up in do_move()
+  mutable Bitboard pinners[2], pinned[2], dcCandidates[2];
+  Bitboard checkersBB;
+  Key key, pawnKey, materialKey;
+  int castleRights, rule50;
+  Square epSquare;
+  Move lastMove;
+  Value mgValue, egValue;
 
   // Static variables
   static int castleRightsMask[64];

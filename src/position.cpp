@@ -678,24 +678,23 @@ bool Position::move_is_capture(Move m) const {
 
 void Position::backup(UndoInfo& u) const {
 
-  u.castleRights = castleRights;
-  u.epSquare     = epSquare;
-  u.checkersBB   = checkersBB;
-  u.key          = key;
-  u.pawnKey      = pawnKey;
-  u.materialKey  = materialKey;
-  u.rule50       = rule50;
-  u.lastMove     = lastMove;
-  u.mgValue      = mgValue;
-  u.egValue      = egValue;
-  u.capture      = NO_PIECE_TYPE;
-
   for (Color c = WHITE; c <= BLACK; c++)
   {
       u.pinners[c]      = pinners[c];
       u.pinned[c]       = pinned[c];
       u.dcCandidates[c] = dcCandidates[c];
   }
+  u.checkersBB   = checkersBB;
+  u.key          = key;
+  u.pawnKey      = pawnKey;
+  u.materialKey  = materialKey;
+  u.castleRights = castleRights;
+  u.rule50       = rule50;
+  u.epSquare     = epSquare;
+  u.lastMove     = lastMove;
+  u.mgValue      = mgValue;
+  u.egValue      = egValue;
+  u.capture      = NO_PIECE_TYPE;
 }
 
 
@@ -704,24 +703,23 @@ void Position::backup(UndoInfo& u) const {
 
 void Position::restore(const UndoInfo& u) {
 
-  castleRights = u.castleRights;
-  epSquare     = u.epSquare;
-  checkersBB   = u.checkersBB;
-  key          = u.key;
-  pawnKey      = u.pawnKey;
-  materialKey  = u.materialKey;
-  rule50       = u.rule50;
-  lastMove     = u.lastMove;
-  mgValue     = u.mgValue;
-  egValue     = u.egValue;
-  // u.capture is restored in undo_move()
-
   for (Color c = WHITE; c <= BLACK; c++)
   {
       pinners[c]      = u.pinners[c];
       pinned[c]       = u.pinned[c];
       dcCandidates[c] = u.dcCandidates[c];
   }
+  checkersBB   = u.checkersBB;
+  key          = u.key;
+  pawnKey      = u.pawnKey;
+  materialKey  = u.materialKey;
+  castleRights = u.castleRights;
+  rule50       = u.rule50;
+  epSquare     = u.epSquare;
+  lastMove     = u.lastMove;
+  mgValue     = u.mgValue;
+  egValue     = u.egValue;
+  // u.capture is restored in undo_move()
 }
 
 
