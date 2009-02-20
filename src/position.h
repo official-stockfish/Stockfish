@@ -319,9 +319,8 @@ private:
       MidGame,
       EndGame
   };
-  Value mg_pst(Color c, PieceType pt, Square s) const;
-  Value eg_pst(Color c, PieceType pt, Square s) const;
-  Value compute_value(GamePhase p) const;
+  template<GamePhase> Value pst(Color c, PieceType pt, Square s) const;
+  template<GamePhase> Value compute_value() const;
   Value compute_non_pawn_material(Color c) const;
 
   // Bitboards
@@ -633,17 +632,15 @@ inline Key Position::get_material_key() const {
   return materialKey;
 }
 
-inline Value Position::mg_pst(Color c, PieceType pt, Square s) const {
-  return MgPieceSquareTable[piece_of_color_and_type(c, pt)][s];
+template<Position::GamePhase Phase>
+inline Value Position::pst(Color c, PieceType pt, Square s) const {
+  return (Phase == MidGame ? MgPieceSquareTable[piece_of_color_and_type(c, pt)][s]
+                           : EgPieceSquareTable[piece_of_color_and_type(c, pt)][s]);
 }
 
 inline Value Position::mg_pst_delta(Move m) const {
   return MgPieceSquareTable[piece_on(move_from(m))][move_to(m)]
         -MgPieceSquareTable[piece_on(move_from(m))][move_from(m)];
-}
-
-inline Value Position::eg_pst(Color c, PieceType pt, Square s) const {
-  return EgPieceSquareTable[piece_of_color_and_type(c, pt)][s];
 }
 
 inline Value Position::mg_value() const {

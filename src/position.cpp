@@ -210,8 +210,8 @@ void Position::from_fen(const std::string& fen) {
   key = compute_key();
   pawnKey = compute_pawn_key();
   materialKey = compute_material_key();
-  mgValue = compute_value(MidGame);
-  egValue = compute_value(EndGame);
+  mgValue = compute_value<MidGame>();
+  egValue = compute_value<EndGame>();
   npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
@@ -758,10 +758,10 @@ void Position::do_move(Move m, UndoInfo& u) {
     key ^= zobrist[us][piece][from] ^ zobrist[us][piece][to];
 
     // Update incremental scores
-    mgValue -= mg_pst(us, piece, from);
-    mgValue += mg_pst(us, piece, to);
-    egValue -= eg_pst(us, piece, from);
-    egValue += eg_pst(us, piece, to);
+    mgValue -= pst<MidGame>(us, piece, from);
+    mgValue += pst<MidGame>(us, piece, to);
+    egValue -= pst<EndGame>(us, piece, from);
+    egValue += pst<EndGame>(us, piece, to);
 
     // If the moving piece was a king, update the king square
     if (piece == KING)
@@ -851,8 +851,8 @@ void Position::do_capture_move(Move m, PieceType capture, Color them, Square to)
         pawnKey ^= zobrist[them][PAWN][to];
 
     // Update incremental scores
-    mgValue -= mg_pst(them, capture, to);
-    egValue -= eg_pst(them, capture, to);
+    mgValue -= pst<MidGame>(them, capture, to);
+    egValue -= pst<EndGame>(them, capture, to);
 
     assert(!move_promotion(m) || capture != PAWN);
 
@@ -939,14 +939,14 @@ void Position::do_castle_move(Move m) {
   index[rto] = tmp;
 
   // Update incremental scores
-  mgValue -= mg_pst(us, KING, kfrom);
-  mgValue += mg_pst(us, KING, kto);
-  egValue -= eg_pst(us, KING, kfrom);
-  egValue += eg_pst(us, KING, kto);
-  mgValue -= mg_pst(us, ROOK, rfrom);
-  mgValue += mg_pst(us, ROOK, rto);
-  egValue -= eg_pst(us, ROOK, rfrom);
-  egValue += eg_pst(us, ROOK, rto);
+  mgValue -= pst<MidGame>(us, KING, kfrom);
+  mgValue += pst<MidGame>(us, KING, kto);
+  egValue -= pst<EndGame>(us, KING, kfrom);
+  egValue += pst<EndGame>(us, KING, kto);
+  mgValue -= pst<MidGame>(us, ROOK, rfrom);
+  mgValue += pst<MidGame>(us, ROOK, rto);
+  egValue -= pst<EndGame>(us, ROOK, rfrom);
+  egValue += pst<EndGame>(us, ROOK, rto);
 
   // Update hash key
   key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
@@ -1039,10 +1039,10 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
   index[to] = pieceCount[us][promotion] - 1;
 
   // Update incremental scores
-  mgValue -= mg_pst(us, PAWN, from);
-  mgValue += mg_pst(us, promotion, to);
-  egValue -= eg_pst(us, PAWN, from);
-  egValue += eg_pst(us, promotion, to);
+  mgValue -= pst<MidGame>(us, PAWN, from);
+  mgValue += pst<MidGame>(us, promotion, to);
+  egValue -= pst<EndGame>(us, PAWN, from);
+  egValue += pst<EndGame>(us, promotion, to);
 
   // Update material
   npMaterial[us] += piece_value_midgame(promotion);
@@ -1133,12 +1133,12 @@ void Position::do_ep_move(Move m) {
   pawnKey ^= zobrist[them][PAWN][capsq];
 
   // Update incremental scores
-  mgValue -= mg_pst(them, PAWN, capsq);
-  mgValue -= mg_pst(us, PAWN, from);
-  mgValue += mg_pst(us, PAWN, to);
-  egValue -= eg_pst(them, PAWN, capsq);
-  egValue -= eg_pst(us, PAWN, from);
-  egValue += eg_pst(us, PAWN, to);
+  mgValue -= pst<MidGame>(them, PAWN, capsq);
+  mgValue -= pst<MidGame>(us, PAWN, from);
+  mgValue += pst<MidGame>(us, PAWN, to);
+  egValue -= pst<EndGame>(them, PAWN, capsq);
+  egValue -= pst<EndGame>(us, PAWN, from);
+  egValue += pst<EndGame>(us, PAWN, to);
 
   // Reset en passant square
   epSquare = SQ_NONE;
@@ -1811,13 +1811,12 @@ Key Position::compute_material_key() const {
 }
 
 
-/// Position::compute_mg_value() and Position::compute_eg_value() compute the
-/// incremental scores for the middle game and the endgame. These functions
-/// are used to initialize the incremental scores when a new position is set
-/// up, and to verify that the scores are correctly updated by do_move
-/// and undo_move when the program is running in debug mode.
-
-Value Position::compute_value(GamePhase p) const {
+/// Position::compute_value() compute the incremental scores for the middle
+/// game and the endgame. These functions are used to initialize the incremental
+/// scores when a new position is set up, and to verify that the scores are correctly
+/// updated by do_move and undo_move when the program is running in debug mode.
+template<Position::GamePhase Phase>
+Value Position::compute_value() const {
 
   Value result = Value(0);
   Bitboard b;
@@ -1831,11 +1830,11 @@ Value Position::compute_value(GamePhase p) const {
           {
               s = pop_1st_bit(&b);
               assert(piece_on(s) == piece_of_color_and_type(c, pt));
-              result += (p == MidGame ? mg_pst(c, pt, s) : eg_pst(c, pt, s));
+              result += pst<Phase>(c, pt, s);
           }
       }
 
-  const Value TempoValue = (p == MidGame ? TempoValueMidgame : TempoValueEndgame);
+  const Value TempoValue = (Phase == MidGame ? TempoValueMidgame : TempoValueEndgame);
   result += (side_to_move() == WHITE)? TempoValue / 2 : -TempoValue / 2;
   return result;
 }
@@ -2057,8 +2056,8 @@ void Position::flipped_copy(const Position &pos) {
   materialKey = compute_material_key();
 
   // Incremental scores
-  mgValue = compute_value(MidGame);
-  egValue = compute_value(EndGame);
+  mgValue = compute_value<MidGame>();
+  egValue = compute_value<EndGame>();
 
   // Material
   npMaterial[WHITE] = compute_non_pawn_material(WHITE);
@@ -2187,10 +2186,10 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugIncrementalEval)
   {
-      if (mgValue != compute_value(MidGame))
+      if (mgValue != compute_value<MidGame>())
           return false;
 
-      if (egValue != compute_value(EndGame))
+      if (egValue != compute_value<EndGame>())
           return false;
   }
 
