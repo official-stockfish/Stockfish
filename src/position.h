@@ -315,10 +315,13 @@ private:
   Key compute_material_key() const;
 
   // Computing incremental evaluation scores and material counts
+  enum GamePhase {
+      MidGame,
+      EndGame
+  };
   Value mg_pst(Color c, PieceType pt, Square s) const;
   Value eg_pst(Color c, PieceType pt, Square s) const;
-  Value compute_mg_value() const;
-  Value compute_eg_value() const;
+  Value compute_value(GamePhase p) const;
   Value compute_non_pawn_material(Color c) const;
 
   // Bitboards

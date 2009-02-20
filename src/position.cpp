@@ -210,8 +210,8 @@ void Position::from_fen(const std::string& fen) {
   key = compute_key();
   pawnKey = compute_pawn_key();
   materialKey = compute_material_key();
-  mgValue = compute_mg_value();
-  egValue = compute_eg_value();
+  mgValue = compute_value(MidGame);
+  egValue = compute_value(EndGame);
   npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
@@ -1817,7 +1817,7 @@ Key Position::compute_material_key() const {
 /// up, and to verify that the scores are correctly updated by do_move
 /// and undo_move when the program is running in debug mode.
 
-Value Position::compute_mg_value() const {
+Value Position::compute_value(GamePhase p) const {
 
   Value result = Value(0);
   Bitboard b;
@@ -1831,31 +1831,12 @@ Value Position::compute_mg_value() const {
           {
               s = pop_1st_bit(&b);
               assert(piece_on(s) == piece_of_color_and_type(c, pt));
-              result += mg_pst(c, pt, s);
+              result += (p == MidGame ? mg_pst(c, pt, s) : eg_pst(c, pt, s));
           }
       }
-  result += (side_to_move() == WHITE)? TempoValueMidgame / 2 : -TempoValueMidgame / 2;
-  return result;
-}
 
-Value Position::compute_eg_value() const {
-
-  Value result = Value(0);
-  Bitboard b;
-  Square s;
-
-  for (Color c = WHITE; c <= BLACK; c++)
-    for (PieceType pt = PAWN; pt <= KING; pt++)
-    {
-        b = pieces_of_color_and_type(c, pt);
-        while(b)
-        {
-            s = pop_1st_bit(&b);
-            assert(piece_on(s) == piece_of_color_and_type(c, pt));
-            result += eg_pst(c, pt, s);
-        }
-    }
-  result += (side_to_move() == WHITE)? TempoValueEndgame / 2 : -TempoValueEndgame / 2;
+  const Value TempoValue = (p == MidGame ? TempoValueMidgame : TempoValueEndgame);
+  result += (side_to_move() == WHITE)? TempoValue / 2 : -TempoValue / 2;
   return result;
 }
 
@@ -2076,8 +2057,8 @@ void Position::flipped_copy(const Position &pos) {
   materialKey = compute_material_key();
 
   // Incremental scores
-  mgValue = compute_mg_value();
-  egValue = compute_eg_value();
+  mgValue = compute_value(MidGame);
+  egValue = compute_value(EndGame);
 
   // Material
   npMaterial[WHITE] = compute_non_pawn_material(WHITE);
@@ -2206,10 +2187,10 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugIncrementalEval)
   {
-      if (mgValue != compute_mg_value())
+      if (mgValue != compute_value(MidGame))
           return false;
 
-      if (egValue != compute_eg_value())
+      if (egValue != compute_value(EndGame))
           return false;
   }
 
