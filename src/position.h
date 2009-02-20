@@ -240,8 +240,6 @@ public:
   bool square_is_weak(Square s, Color c) const;
 
   // Doing and undoing moves
-  void backup(UndoInfo &u) const;
-  void restore(const UndoInfo &u);
   void do_move(Move m, UndoInfo &u);
   void undo_move(Move m, const UndoInfo &u);
   void do_null_move(UndoInfo &u);
@@ -345,13 +343,19 @@ private:
   File initialKFile, initialKRFile, initialQRFile;
 
   // Info backed up in do_move()
-  mutable Bitboard pinners[2], pinned[2], dcCandidates[2];
-  Bitboard checkersBB;
-  Key key, pawnKey, materialKey;
-  int castleRights, rule50;
-  Square epSquare;
-  Move lastMove;
-  Value mgValue, egValue;
+  union {
+      UndoInfo undoInfoUnion;
+      struct { // Must have the same layout of UndoInfo
+          mutable Bitboard pinners[2], pinned[2], dcCandidates[2];
+          Bitboard checkersBB;
+          Key key, pawnKey, materialKey;
+          int castleRights, rule50;
+          Square epSquare;
+          Move lastMove;
+          Value mgValue, egValue;
+          PieceType capture;
+      };
+  };
 
   // Static variables
   static int castleRightsMask[64];

@@ -669,60 +669,6 @@ bool Position::move_is_capture(Move m) const {
 }
 
 
-/// Position::backup() is called when making a move. All information
-/// necessary to restore the position when the move is later unmade
-/// is saved to an UndoInfo object. The function Position::restore
-/// does the reverse operation:  When one does a backup followed by
-/// a restore with the same UndoInfo object, the position is restored
-/// to the state before backup was called.
-
-void Position::backup(UndoInfo& u) const {
-
-  for (Color c = WHITE; c <= BLACK; c++)
-  {
-      u.pinners[c]      = pinners[c];
-      u.pinned[c]       = pinned[c];
-      u.dcCandidates[c] = dcCandidates[c];
-  }
-  u.checkersBB   = checkersBB;
-  u.key          = key;
-  u.pawnKey      = pawnKey;
-  u.materialKey  = materialKey;
-  u.castleRights = castleRights;
-  u.rule50       = rule50;
-  u.epSquare     = epSquare;
-  u.lastMove     = lastMove;
-  u.mgValue      = mgValue;
-  u.egValue      = egValue;
-  u.capture      = NO_PIECE_TYPE;
-}
-
-
-/// Position::restore() is called when unmaking a move.  It copies back
-/// the information backed up during a previous call to Position::backup.
-
-void Position::restore(const UndoInfo& u) {
-
-  for (Color c = WHITE; c <= BLACK; c++)
-  {
-      pinners[c]      = u.pinners[c];
-      pinned[c]       = u.pinned[c];
-      dcCandidates[c] = u.dcCandidates[c];
-  }
-  checkersBB   = u.checkersBB;
-  key          = u.key;
-  pawnKey      = u.pawnKey;
-  materialKey  = u.materialKey;
-  castleRights = u.castleRights;
-  rule50       = u.rule50;
-  epSquare     = u.epSquare;
-  lastMove     = u.lastMove;
-  mgValue     = u.mgValue;
-  egValue     = u.egValue;
-  // u.capture is restored in undo_move()
-}
-
-
 /// Position::update_checkers() is a private method to udpate chekers info
 
 template<PieceType Piece>
@@ -758,7 +704,8 @@ void Position::do_move(Move m, UndoInfo& u) {
 
   // Back up the necessary information to our UndoInfo object (except the
   // captured piece, which is taken care of later.
-  backup(u);
+  u = undoInfoUnion;
+  u.capture = NO_PIECE_TYPE;
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
@@ -1219,7 +1166,7 @@ void Position::undo_move(Move m, const UndoInfo &u) {
 
   // Restore information from our UndoInfo object (except the captured piece,
   // which is taken care of later)
-  restore(u);
+  undoInfoUnion = u;
 
   if (move_is_castle(m))
       undo_castle_move(m);
