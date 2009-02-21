@@ -349,8 +349,6 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
-  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
-
   if (pos.is_check())
       return generate_evasions(pos, mlist);
 
@@ -383,7 +381,6 @@ bool move_is_legal(const Position& pos, const Move m) {
   Color them = opposite_color(us);
   Square from = move_from(m);
   Piece pc = pos.piece_on(from);
-  Bitboard pinned = pos.pinned_pieces(us);
 
   // If the from square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
