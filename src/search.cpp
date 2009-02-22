@@ -753,12 +753,12 @@ namespace {
         if (dbg_show_hit_rate)
             dbg_print_hit_rate(LogFile);
 
-        UndoInfo u;
+        StateInfo st;
         LogFile << "Nodes: " << nodes_searched() << std::endl
                 << "Nodes/second: " << nps() << std::endl
                 << "Best move: " << move_to_san(p, ss[0].pv[0]) << std::endl;
 
-        p.do_move(ss[0].pv[0], u);
+        p.do_move(ss[0].pv[0], st);
         LogFile << "Ponder move: " << move_to_san(p, ss[0].pv[1])
                 << std::endl << std::endl;
     }
@@ -781,7 +781,7 @@ namespace {
     {
         int64_t nodes;
         Move move;
-        UndoInfo u;
+        StateInfo st;
         Depth ext, newDepth;
 
         RootMoveNumber = i + 1;
@@ -807,7 +807,7 @@ namespace {
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
-        pos.do_move(move, u);
+        pos.do_move(move, st);
 
         if (i < MultiPV)
         {
@@ -1011,8 +1011,8 @@ namespace {
       Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move
-      UndoInfo u;
-      pos.do_move(move, u);
+      StateInfo st;
+      pos.do_move(move, st);
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1182,8 +1182,8 @@ namespace {
     {
         ss[ply].currentMove = MOVE_NULL;
 
-        UndoInfo u;
-        pos.do_null_move(u);
+        StateInfo st;
+        pos.do_null_move(st);
         int R = (depth >= 4 * OnePly ? 4 : 3); // Null move dynamic reduction
 
         Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
@@ -1334,8 +1334,8 @@ namespace {
       }
 
       // Make and search the move
-      UndoInfo u;
-      pos.do_move(move, u);
+      StateInfo st;
+      pos.do_move(move, st);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1513,8 +1513,8 @@ namespace {
           continue;
 
       // Make and search the move.
-      UndoInfo u;
-      pos.do_move(move, u);
+      StateInfo st;
+      pos.do_move(move, st);
       Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
@@ -1605,8 +1605,8 @@ namespace {
         continue;
 
       // Make and search the move.
-      UndoInfo u;
-      pos.do_move(move, u);
+      StateInfo st;
+      pos.do_move(move, st);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1714,8 +1714,8 @@ namespace {
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
-      UndoInfo u;
-      pos.do_move(move, u);
+      StateInfo st;
+      pos.do_move(move, st);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1876,12 +1876,12 @@ namespace {
         if (includeMove)
         {
             // Find a quick score for the move
-            UndoInfo u;
+            StateInfo st;
             SearchStack ss[PLY_MAX_PLUS_2];
 
             moves[count].move = mlist[i].move;
             moves[count].nodes = 0ULL;
-            pos.do_move(moves[count].move, u);
+            pos.do_move(moves[count].move, st);
             moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE,
                                           Depth(0), 1, 0);
             pos.undo_move(moves[count].move);

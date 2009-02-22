@@ -73,13 +73,12 @@ enum CastleRights {
 };
 
 
-/// The UndoInfo struct stores information we need to restore a Position
+/// The StateInfo struct stores information we need to restore a Position
 /// object to its previous state when we retract a move. Whenever a move
-/// is made on the board (by calling Position::do_move), an UndoInfo object
-/// must be passed as a parameter. When the move is unmade (by calling
-/// Position::undo_move), the same UndoInfo object must be passed again.
+/// is made on the board (by calling Position::do_move), an StateInfo object
+/// must be passed as a parameter.
 
-struct UndoInfo {
+struct StateInfo {
   Bitboard pinners[2], pinned[2], dcCandidates[2], checkersBB;
   Key key, pawnKey, materialKey;
   int castleRights, rule50;
@@ -87,7 +86,7 @@ struct UndoInfo {
   Move lastMove;
   Value mgValue, egValue;
   PieceType capture;
-  UndoInfo* previous;
+  StateInfo* previous;
 };
 
 
@@ -241,9 +240,9 @@ public:
   bool square_is_weak(Square s, Color c) const;
 
   // Doing and undoing moves
-  void do_move(Move m, UndoInfo &u);
+  void do_move(Move m, StateInfo& st);
   void undo_move(Move m);
-  void do_null_move(UndoInfo &u);
+  void do_null_move(StateInfo& st);
   void undo_null_move();
 
   // Static exchange evaluation
@@ -344,22 +343,8 @@ private:
   Key history[MaxGameLength];
   Value npMaterial[2];
   File initialKFile, initialKRFile, initialQRFile;
-
-  // Info backed up in do_move()
-  union {
-      UndoInfo undoInfoUnion;
-      struct { // Must have the same layout of UndoInfo
-          mutable Bitboard pinners[2], pinned[2], dcCandidates[2];
-          Bitboard checkersBB;
-          Key key, pawnKey, materialKey;
-          int castleRights, rule50;
-          Square epSquare;
-          Move lastMove;
-          Value mgValue, egValue;
-          PieceType capture;
-          UndoInfo* previous;
-      } st;
-  };
+  StateInfo startState;
+  StateInfo* st;
 
   // Static variables
   static int castleRightsMask[64];
@@ -510,7 +495,7 @@ inline Square Position::piece_list(Color c, PieceType pt, int index) const {
 }
 
 inline Square Position::ep_square() const {
-  return st.epSquare;
+  return st->epSquare;
 }
 
 inline Square Position::king_square(Color c) const {
@@ -518,11 +503,11 @@ inline Square Position::king_square(Color c) const {
 }
 
 inline bool Position::can_castle_kingside(Color side) const {
-  return st.castleRights & (1+int(side));
+  return st->castleRights & (1+int(side));
 }
 
 inline bool Position::can_castle_queenside(Color side) const {
-  return st.castleRights & (4+4*int(side));
+  return st->castleRights & (4+4*int(side));
 }
 
 inline bool Position::can_castle(Color side) const {
@@ -572,11 +557,11 @@ inline Bitboard Position::piece_attacks<KING>(Square s) const {
 }
 
 inline Bitboard Position::checkers() const {
-  return st.checkersBB;
+  return st->checkersBB;
 }
 
 inline bool Position::is_check() const {
-  return st.checkersBB != EmptyBoardBB;
+  return st->checkersBB != EmptyBoardBB;
 }
 
 inline bool Position::pawn_attacks_square(Color c, Square f, Square t) const {
@@ -623,15 +608,15 @@ inline bool Position::square_is_weak(Square s, Color c) const {
 }
 
 inline Key Position::get_key() const {
-  return st.key;
+  return st->key;
 }
 
 inline Key Position::get_pawn_key() const {
-  return st.pawnKey;
+  return st->pawnKey;
 }
 
 inline Key Position::get_material_key() const {
-  return st.materialKey;
+  return st->materialKey;
 }
 
 template<Position::GamePhase Phase>
@@ -646,11 +631,11 @@ inline Value Position::mg_pst_delta(Move m) const {
 }
 
 inline Value Position::mg_value() const {
-  return st.mgValue;
+  return st->mgValue;
 }
 
 inline Value Position::eg_value() const {
-  return st.egValue;
+  return st->egValue;
 }
 
 inline Value Position::non_pawn_material(Color c) const {
@@ -709,7 +694,7 @@ inline bool Position::move_was_passed_pawn_push(Move m) const {
 
 inline int Position::rule_50_counter() const {
 
-  return st.rule50;
+  return st->rule50;
 }
 
 inline bool Position::opposite_colored_bishops() const {

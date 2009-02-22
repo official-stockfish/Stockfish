@@ -177,13 +177,13 @@ void TranspositionTable::new_search() {
 
 void TranspositionTable::insert_pv(const Position &pos, Move pv[]) {
 
-  UndoInfo u;
+  StateInfo st;
   Position p(pos);
 
   for (int i = 0; pv[i] != MOVE_NONE; i++)
   {
     store(p, VALUE_NONE, Depth(0), pv[i], VALUE_TYPE_NONE);
-    p.do_move(pv[i], u);
+    p.do_move(pv[i], st);
   }
 }
 

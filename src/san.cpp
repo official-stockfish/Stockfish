@@ -119,9 +119,9 @@ const std::string move_to_san(const Position& pos, Move m) {
   // Is the move check?  We don't use pos.move_is_check(m) here, because
   // Position::move_is_check doesn't detect all checks (not castling moves,
   // promotions and en passant captures).
-  UndoInfo u;
+  StateInfo st;
   Position p(pos);
-  p.do_move(m, u);
+  p.do_move(m, st);
   if (p.is_check())
       san += p.is_mate()? "#" : "+";
 
@@ -290,7 +290,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
 
 const std::string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines) {
 
-  UndoInfo u;
+  StateInfo st;
   std::stringstream s;
   std::string moveStr;
   size_t length = 0;
@@ -309,9 +309,9 @@ const std::string line_to_san(const Position& pos, Move line[], int startColumn,
       s << moveStr << ' ';
 
       if (line[i] == MOVE_NULL)
-          p.do_null_move(u);
+          p.do_null_move(st);
       else
-          p.do_move(line[i], u);
+          p.do_move(line[i], st);
   }
   return s.str();
 }

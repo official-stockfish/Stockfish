@@ -192,7 +192,7 @@ void Position::from_fen(const std::string& fen) {
   if (    i < fen.length() - 2
       && (fen[i] >= 'a' && fen[i] <= 'h')
       && (fen[i+1] == '3' || fen[i+1] == '6'))
-      st.epSquare = square_from_string(fen.substr(i, 2));
+      st->epSquare = square_from_string(fen.substr(i, 2));
 
   // Various initialisation
   for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
@@ -207,11 +207,11 @@ void Position::from_fen(const std::string& fen) {
 
   find_checkers();
 
-  st.key = compute_key();
-  st.pawnKey = compute_pawn_key();
-  st.materialKey = compute_material_key();
-  st.mgValue = compute_value<MidGame>();
-  st.egValue = compute_value<EndGame>();
+  st->key = compute_key();
+  st->pawnKey = compute_pawn_key();
+  st->materialKey = compute_material_key();
+  st->mgValue = compute_value<MidGame>();
+  st->egValue = compute_value<EndGame>();
   npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
@@ -249,7 +249,7 @@ const std::string Position::to_fen() const {
       fen += (rank > RANK_1 ? '/' : ' ');
   }
   fen += (sideToMove == WHITE ? "w " : "b ");
-  if (st.castleRights != NO_CASTLES)
+  if (st->castleRights != NO_CASTLES)
   {
     if (can_castle_kingside(WHITE))  fen += 'K';
     if (can_castle_queenside(WHITE)) fen += 'Q';
@@ -305,7 +305,7 @@ void Position::print(Move m) const {
   }
   std::cout << "+---+---+---+---+---+---+---+---+" << std::endl
             << "Fen is: " << to_fen() << std::endl
-            << "Key is: " << st.key << std::endl;
+            << "Key is: " << st->key << std::endl;
 
   RequestPending = false;
 }
@@ -323,34 +323,34 @@ void Position::copy(const Position &pos) {
 /// king) pieces for the given color.
 Bitboard Position::pinned_pieces(Color c) const {
 
-  if (st.pinned[c] != ~EmptyBoardBB)
-      return st.pinned[c];
+  if (st->pinned[c] != ~EmptyBoardBB)
+      return st->pinned[c];
 
   Bitboard p1, p2;
   Square ksq = king_square(c);
-  st.pinned[c] = hidden_checks<ROOK, true>(c, ksq, p1) | hidden_checks<BISHOP, true>(c, ksq, p2);
-  st.pinners[c] = p1 | p2;
-  return st.pinned[c];
+  st->pinned[c] = hidden_checks<ROOK, true>(c, ksq, p1) | hidden_checks<BISHOP, true>(c, ksq, p2);
+  st->pinners[c] = p1 | p2;
+  return st->pinned[c];
 }
 
 Bitboard Position::pinned_pieces(Color c, Bitboard& p) const {
 
-  if (st.pinned[c] == ~EmptyBoardBB)
+  if (st->pinned[c] == ~EmptyBoardBB)
       pinned_pieces(c);
 
-  p = st.pinners[c];
-  return st.pinned[c];
+  p = st->pinners[c];
+  return st->pinned[c];
 }
 
 Bitboard Position::discovered_check_candidates(Color c) const {
 
-  if (st.dcCandidates[c] != ~EmptyBoardBB)
-      return st.dcCandidates[c];
+  if (st->dcCandidates[c] != ~EmptyBoardBB)
+      return st->dcCandidates[c];
 
   Bitboard dummy;
   Square ksq = king_square(opposite_color(c));
-  st.dcCandidates[c] = hidden_checks<ROOK, false>(c, ksq, dummy) | hidden_checks<BISHOP, false>(c, ksq, dummy);
-  return st.dcCandidates[c];
+  st->dcCandidates[c] = hidden_checks<ROOK, false>(c, ksq, dummy) | hidden_checks<BISHOP, false>(c, ksq, dummy);
+  return st->dcCandidates[c];
 }
 
 /// Position:hidden_checks<>() returns a bitboard of all pinned (against the
@@ -368,14 +368,14 @@ Bitboard Position::hidden_checks(Color c, Square ksq, Bitboard& pinners) const {
   else
       sliders = bishops_and_queens(FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq];
 
-  if (sliders && (!FindPinned || (sliders & ~st.checkersBB)))
+  if (sliders && (!FindPinned || (sliders & ~st->checkersBB)))
   {
        // King blockers are candidate pinned pieces
       Bitboard candidate_pinned = piece_attacks<Piece>(ksq) & pieces_of_color(c);
 
       // Pinners are sliders, not checkers, that give check when
       // candidate pinned are removed.
-      pinners = (FindPinned ? sliders & ~st.checkersBB : sliders);
+      pinners = (FindPinned ? sliders & ~st->checkersBB : sliders);
 
       if (Piece == ROOK)
           pinners &= rook_attacks_bb(ksq, occupied_squares() ^ candidate_pinned);
@@ -474,7 +474,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 void Position::find_checkers() {
 
   Color us = side_to_move();
-  st.checkersBB = attacks_to(king_square(us), opposite_color(us));
+  st->checkersBB = attacks_to(king_square(us), opposite_color(us));
 }
 
 
@@ -689,11 +689,11 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 }
 
 
-/// Position::do_move() makes a move, and backs up all information necessary
-/// to undo the move to an UndoInfo object. The move is assumed to be legal.
+/// Position::do_move() makes a move, and saves all information necessary
+/// to a StateInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
 
-void Position::do_move(Move m, UndoInfo& u) {
+void Position::do_move(Move m, StateInfo& newSt) {
 
   assert(is_ok());
   assert(move_is_ok(m));
@@ -702,23 +702,26 @@ void Position::do_move(Move m, UndoInfo& u) {
   // in update_checkers().
   Bitboard oldDcCandidates = discovered_check_candidates(side_to_move());
 
-  // Back up the necessary information to our UndoInfo object (except the
+  // Copy the old state to our new StateInfo object (except the
   // captured piece, which is taken care of later.
-  u = undoInfoUnion;
-  u.capture = NO_PIECE_TYPE;
-  st.previous = &u;
+  // TODO do not copy pinners and checkersBB because are recalculated
+  // anyway.
+  newSt = *st;
+  newSt.capture = NO_PIECE_TYPE;
+  newSt.previous = st;
+  st = &newSt;
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[gamePly] = st.key;
+  history[gamePly] = st->key;
 
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
-  st.rule50++;
+  st->rule50++;
 
   // Reset pinned bitboard and its friends
   for (Color c = WHITE; c <= BLACK; c++)
-      st.pinners[c] = st.pinned[c] = st.dcCandidates[c] = ~EmptyBoardBB;
+      st->pinners[c] = st->pinned[c] = st->dcCandidates[c] = ~EmptyBoardBB;
 
   if (move_is_castle(m))
       do_castle_move(m);
@@ -738,13 +741,10 @@ void Position::do_move(Move m, UndoInfo& u) {
 
     PieceType piece = type_of_piece_on(from);
 
-    st.capture = type_of_piece_on(to);
+    st->capture = type_of_piece_on(to);
 
-    if (st.capture)
-    {
-      u.capture = st.capture;
-      do_capture_move(m, st.capture, them, to);
-    }
+    if (st->capture)
+      do_capture_move(m, st->capture, them, to);
 
     // Move the piece
     clear_bit(&(byColorBB[us]), from);
@@ -757,33 +757,33 @@ void Position::do_move(Move m, UndoInfo& u) {
     board[from] = EMPTY;
 
     // Update hash key
-    st.key ^= zobrist[us][piece][from] ^ zobrist[us][piece][to];
+    st->key ^= zobrist[us][piece][from] ^ zobrist[us][piece][to];
 
     // Update incremental scores
-    st.mgValue -= pst<MidGame>(us, piece, from);
-    st.mgValue += pst<MidGame>(us, piece, to);
-    st.egValue -= pst<EndGame>(us, piece, from);
-    st.egValue += pst<EndGame>(us, piece, to);
+    st->mgValue -= pst<MidGame>(us, piece, from);
+    st->mgValue += pst<MidGame>(us, piece, to);
+    st->egValue -= pst<EndGame>(us, piece, from);
+    st->egValue += pst<EndGame>(us, piece, to);
 
     // If the moving piece was a king, update the king square
     if (piece == KING)
         kingSquare[us] = to;
 
     // Reset en passant square
-    if (st.epSquare != SQ_NONE)
+    if (st->epSquare != SQ_NONE)
     {
-        st.key ^= zobEp[st.epSquare];
-        st.epSquare = SQ_NONE;
+        st->key ^= zobEp[st->epSquare];
+        st->epSquare = SQ_NONE;
     }
 
     // If the moving piece was a pawn do some special extra work
     if (piece == PAWN)
     {
         // Reset rule 50 draw counter
-        st.rule50 = 0;
+        st->rule50 = 0;
 
         // Update pawn hash key
-        st.pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
+        st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
 
         // Set en passant square, only if moved pawn can be captured
         if (abs(int(to) - int(from)) == 16)
@@ -791,8 +791,8 @@ void Position::do_move(Move m, UndoInfo& u) {
             if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
                 || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
             {
-                st.epSquare = Square((int(from) + int(to)) / 2);
-                st.key ^= zobEp[st.epSquare];
+                st->epSquare = Square((int(from) + int(to)) / 2);
+                st->key ^= zobEp[st->epSquare];
             }
         }
     }
@@ -802,33 +802,33 @@ void Position::do_move(Move m, UndoInfo& u) {
     index[to] = index[from];
 
     // Update castle rights
-    st.key ^= zobCastle[st.castleRights];
-    st.castleRights &= castleRightsMask[from];
-    st.castleRights &= castleRightsMask[to];
-    st.key ^= zobCastle[st.castleRights];
+    st->key ^= zobCastle[st->castleRights];
+    st->castleRights &= castleRightsMask[from];
+    st->castleRights &= castleRightsMask[to];
+    st->key ^= zobCastle[st->castleRights];
 
     // Update checkers bitboard, piece must be already moved
-    st.checkersBB = EmptyBoardBB;
+    st->checkersBB = EmptyBoardBB;
     Square ksq = king_square(them);
     switch (piece)
     {
-    case PAWN:   update_checkers<PAWN>(&st.checkersBB, ksq, from, to, oldDcCandidates);   break;
-    case KNIGHT: update_checkers<KNIGHT>(&st.checkersBB, ksq, from, to, oldDcCandidates); break;
-    case BISHOP: update_checkers<BISHOP>(&st.checkersBB, ksq, from, to, oldDcCandidates); break;
-    case ROOK:   update_checkers<ROOK>(&st.checkersBB, ksq, from, to, oldDcCandidates);   break;
-    case QUEEN:  update_checkers<QUEEN>(&st.checkersBB, ksq, from, to, oldDcCandidates);  break;
-    case KING:   update_checkers<KING>(&st.checkersBB, ksq, from, to, oldDcCandidates);   break;
+    case PAWN:   update_checkers<PAWN>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
+    case KNIGHT: update_checkers<KNIGHT>(&st->checkersBB, ksq, from, to, oldDcCandidates); break;
+    case BISHOP: update_checkers<BISHOP>(&st->checkersBB, ksq, from, to, oldDcCandidates); break;
+    case ROOK:   update_checkers<ROOK>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
+    case QUEEN:  update_checkers<QUEEN>(&st->checkersBB, ksq, from, to, oldDcCandidates);  break;
+    case KING:   update_checkers<KING>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
     default: assert(false); break;
     }
   }
 
   // Finish
-  st.key ^= zobSideToMove;
+  st->key ^= zobSideToMove;
   sideToMove = opposite_color(sideToMove);
   gamePly++;
 
-  st.mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st.egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
+  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
   assert(is_ok());
 }
@@ -846,15 +846,15 @@ void Position::do_capture_move(Move m, PieceType capture, Color them, Square to)
     clear_bit(&(byTypeBB[capture]), to);
 
     // Update hash key
-    st.key ^= zobrist[them][capture][to];
+    st->key ^= zobrist[them][capture][to];
 
     // If the captured piece was a pawn, update pawn hash key
     if (capture == PAWN)
-        st.pawnKey ^= zobrist[them][PAWN][to];
+        st->pawnKey ^= zobrist[them][PAWN][to];
 
     // Update incremental scores
-    st.mgValue -= pst<MidGame>(them, capture, to);
-    st.egValue -= pst<EndGame>(them, capture, to);
+    st->mgValue -= pst<MidGame>(them, capture, to);
+    st->egValue -= pst<EndGame>(them, capture, to);
 
     assert(!move_promotion(m) || capture != PAWN);
 
@@ -863,7 +863,7 @@ void Position::do_capture_move(Move m, PieceType capture, Color them, Square to)
         npMaterial[them] -= piece_value_midgame(capture);
 
     // Update material hash key
-    st.materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
+    st->materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
 
     // Update piece count
     pieceCount[them][capture]--;
@@ -873,7 +873,7 @@ void Position::do_capture_move(Move m, PieceType capture, Color them, Square to)
     index[pieceList[them][capture][index[to]]] = index[to];
 
     // Reset rule 50 counter
-    st.rule50 = 0;
+    st->rule50 = 0;
 }
 
 
@@ -941,43 +941,41 @@ void Position::do_castle_move(Move m) {
   index[rto] = tmp;
 
   // Update incremental scores
-  st.mgValue -= pst<MidGame>(us, KING, kfrom);
-  st.mgValue += pst<MidGame>(us, KING, kto);
-  st.egValue -= pst<EndGame>(us, KING, kfrom);
-  st.egValue += pst<EndGame>(us, KING, kto);
-  st.mgValue -= pst<MidGame>(us, ROOK, rfrom);
-  st.mgValue += pst<MidGame>(us, ROOK, rto);
-  st.egValue -= pst<EndGame>(us, ROOK, rfrom);
-  st.egValue += pst<EndGame>(us, ROOK, rto);
+  st->mgValue -= pst<MidGame>(us, KING, kfrom);
+  st->mgValue += pst<MidGame>(us, KING, kto);
+  st->egValue -= pst<EndGame>(us, KING, kfrom);
+  st->egValue += pst<EndGame>(us, KING, kto);
+  st->mgValue -= pst<MidGame>(us, ROOK, rfrom);
+  st->mgValue += pst<MidGame>(us, ROOK, rto);
+  st->egValue -= pst<EndGame>(us, ROOK, rfrom);
+  st->egValue += pst<EndGame>(us, ROOK, rto);
 
   // Update hash key
-  st.key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
-  st.key ^= zobrist[us][ROOK][rfrom] ^ zobrist[us][ROOK][rto];
+  st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
+  st->key ^= zobrist[us][ROOK][rfrom] ^ zobrist[us][ROOK][rto];
 
   // Clear en passant square
-  if (st.epSquare != SQ_NONE)
+  if (st->epSquare != SQ_NONE)
   {
-      st.key ^= zobEp[st.epSquare];
-      st.epSquare = SQ_NONE;
+      st->key ^= zobEp[st->epSquare];
+      st->epSquare = SQ_NONE;
   }
 
   // Update castling rights
-  st.key ^= zobCastle[st.castleRights];
-  st.castleRights &= castleRightsMask[kfrom];
-  st.key ^= zobCastle[st.castleRights];
+  st->key ^= zobCastle[st->castleRights];
+  st->castleRights &= castleRightsMask[kfrom];
+  st->key ^= zobCastle[st->castleRights];
 
   // Reset rule 50 counter
-  st.rule50 = 0;
+  st->rule50 = 0;
 
   // Update checkers BB
-  st.checkersBB = attacks_to(king_square(them), us);
+  st->checkersBB = attacks_to(king_square(them), us);
 }
 
 
 /// Position::do_promotion_move() is a private method used to make a promotion
-/// move. It is called from the main Position::do_move function. The
-/// UndoInfo object, which has been initialized in Position::do_move, is
-/// used to store the captured piece (if any).
+/// move. It is called from the main Position::do_move function.
 
 void Position::do_promotion_move(Move m) {
 
@@ -998,13 +996,10 @@ void Position::do_promotion_move(Move m) {
   assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
   assert(color_of_piece_on(to) == them || square_is_empty(to));
 
-  st.capture = type_of_piece_on(to);
+  st->capture = type_of_piece_on(to);
 
-  if (st.capture)
-  {
-    st.previous->capture = st.capture;
-    do_capture_move(m, st.capture, them, to);
-  }
+  if (st->capture)
+    do_capture_move(m, st->capture, them, to);
 
   // Remove pawn
   clear_bit(&(byColorBB[us]), from);
@@ -1021,14 +1016,14 @@ void Position::do_promotion_move(Move m) {
   board[to] = piece_of_color_and_type(us, promotion);
 
   // Update hash key
-  st.key ^= zobrist[us][PAWN][from] ^ zobrist[us][promotion][to];
+  st->key ^= zobrist[us][PAWN][from] ^ zobrist[us][promotion][to];
 
   // Update pawn hash key
-  st.pawnKey ^= zobrist[us][PAWN][from];
+  st->pawnKey ^= zobrist[us][PAWN][from];
 
   // Update material key
-  st.materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
-  st.materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
+  st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
+  st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
 
   // Update piece counts
   pieceCount[us][PAWN]--;
@@ -1041,38 +1036,36 @@ void Position::do_promotion_move(Move m) {
   index[to] = pieceCount[us][promotion] - 1;
 
   // Update incremental scores
-  st.mgValue -= pst<MidGame>(us, PAWN, from);
-  st.mgValue += pst<MidGame>(us, promotion, to);
-  st.egValue -= pst<EndGame>(us, PAWN, from);
-  st.egValue += pst<EndGame>(us, promotion, to);
+  st->mgValue -= pst<MidGame>(us, PAWN, from);
+  st->mgValue += pst<MidGame>(us, promotion, to);
+  st->egValue -= pst<EndGame>(us, PAWN, from);
+  st->egValue += pst<EndGame>(us, promotion, to);
 
   // Update material
   npMaterial[us] += piece_value_midgame(promotion);
 
   // Clear the en passant square
-  if (st.epSquare != SQ_NONE)
+  if (st->epSquare != SQ_NONE)
   {
-      st.key ^= zobEp[st.epSquare];
-      st.epSquare = SQ_NONE;
+      st->key ^= zobEp[st->epSquare];
+      st->epSquare = SQ_NONE;
   }
 
   // Update castle rights
-  st.key ^= zobCastle[st.castleRights];
-  st.castleRights &= castleRightsMask[to];
-  st.key ^= zobCastle[st.castleRights];
+  st->key ^= zobCastle[st->castleRights];
+  st->castleRights &= castleRightsMask[to];
+  st->key ^= zobCastle[st->castleRights];
 
   // Reset rule 50 counter
-  st.rule50 = 0;
+  st->rule50 = 0;
 
   // Update checkers BB
-  st.checkersBB = attacks_to(king_square(them), us);
+  st->checkersBB = attacks_to(king_square(them), us);
 }
 
 
 /// Position::do_ep_move() is a private method used to make an en passant
-/// capture. It is called from the main Position::do_move function. Because
-/// the captured piece is always a pawn, we don't need to pass an UndoInfo
-/// object in which to store the captured piece.
+/// capture. It is called from the main Position::do_move function.
 
 void Position::do_ep_move(Move m) {
 
@@ -1089,7 +1082,7 @@ void Position::do_ep_move(Move m) {
   to = move_to(m);
   capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
 
-  assert(to == st.epSquare);
+  assert(to == st->epSquare);
   assert(relative_rank(us, to) == RANK_6);
   assert(piece_on(to) == EMPTY);
   assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
@@ -1114,7 +1107,7 @@ void Position::do_ep_move(Move m) {
   board[from] = EMPTY;
 
   // Update material hash key
-  st.materialKey ^= zobMaterial[them][PAWN][pieceCount[them][PAWN]];
+  st->materialKey ^= zobMaterial[them][PAWN][pieceCount[them][PAWN]];
 
   // Update piece count
   pieceCount[them][PAWN]--;
@@ -1126,37 +1119,35 @@ void Position::do_ep_move(Move m) {
   index[pieceList[them][PAWN][index[capsq]]] = index[capsq];
 
   // Update hash key
-  st.key ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
-  st.key ^= zobrist[them][PAWN][capsq];
-  st.key ^= zobEp[st.epSquare];
+  st->key ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
+  st->key ^= zobrist[them][PAWN][capsq];
+  st->key ^= zobEp[st->epSquare];
 
   // Update pawn hash key
-  st.pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
-  st.pawnKey ^= zobrist[them][PAWN][capsq];
+  st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
+  st->pawnKey ^= zobrist[them][PAWN][capsq];
 
   // Update incremental scores
-  st.mgValue -= pst<MidGame>(them, PAWN, capsq);
-  st.mgValue -= pst<MidGame>(us, PAWN, from);
-  st.mgValue += pst<MidGame>(us, PAWN, to);
-  st.egValue -= pst<EndGame>(them, PAWN, capsq);
-  st.egValue -= pst<EndGame>(us, PAWN, from);
-  st.egValue += pst<EndGame>(us, PAWN, to);
+  st->mgValue -= pst<MidGame>(them, PAWN, capsq);
+  st->mgValue -= pst<MidGame>(us, PAWN, from);
+  st->mgValue += pst<MidGame>(us, PAWN, to);
+  st->egValue -= pst<EndGame>(them, PAWN, capsq);
+  st->egValue -= pst<EndGame>(us, PAWN, from);
+  st->egValue += pst<EndGame>(us, PAWN, to);
 
   // Reset en passant square
-  st.epSquare = SQ_NONE;
+  st->epSquare = SQ_NONE;
 
   // Reset rule 50 counter
-  st.rule50 = 0;
+  st->rule50 = 0;
 
   // Update checkers BB
-  st.checkersBB = attacks_to(king_square(them), us);
+  st->checkersBB = attacks_to(king_square(them), us);
 }
 
 
 /// Position::undo_move() unmakes a move. When it returns, the position should
-/// be restored to exactly the same state as before the move was made. It is
-/// important that Position::undo_move is called with the same move and UndoInfo
-/// object as the earlier call to Position::do_move.
+/// be restored to exactly the same state as before the move was made.
 
 void Position::undo_move(Move m) {
 
@@ -1165,10 +1156,6 @@ void Position::undo_move(Move m) {
 
   gamePly--;
   sideToMove = opposite_color(sideToMove);
-
-  // Restore information from our UndoInfo object (except the captured piece,
-  // which is taken care of later)
-  undoInfoUnion = *(st.previous);
 
   if (move_is_castle(m))
       undo_castle_move(m);
@@ -1210,29 +1197,32 @@ void Position::undo_move(Move m) {
       pieceList[us][piece][index[to]] = from;
       index[from] = index[to];
 
-      if (st.capture)
+      if (st->capture)
       {
           assert(capture != KING);
 
           // Replace the captured piece
           set_bit(&(byColorBB[them]), to);
-          set_bit(&(byTypeBB[st.capture]), to);
+          set_bit(&(byTypeBB[st->capture]), to);
           set_bit(&(byTypeBB[0]), to);
-          board[to] = piece_of_color_and_type(them, st.capture);
+          board[to] = piece_of_color_and_type(them, st->capture);
 
           // Update material
-          if (st.capture != PAWN)
-              npMaterial[them] += piece_value_midgame(st.capture);
+          if (st->capture != PAWN)
+              npMaterial[them] += piece_value_midgame(st->capture);
 
           // Update piece list
-          pieceList[them][st.capture][pieceCount[them][st.capture]] = to;
-          index[to] = pieceCount[them][st.capture];
+          pieceList[them][st->capture][pieceCount[them][st->capture]] = to;
+          index[to] = pieceCount[them][st->capture];
 
           // Update piece count
-          pieceCount[them][st.capture]++;
+          pieceCount[them][st->capture]++;
       } else
           board[to] = EMPTY;
   }
+
+  // Finally point out state pointer back to the previous state
+  st = st->previous;
 
   assert(is_ok());
 }
@@ -1306,8 +1296,7 @@ void Position::undo_castle_move(Move m) {
 
 /// Position::undo_promotion_move() is a private method used to unmake a
 /// promotion move. It is called from the main Position::do_move
-/// function. The UndoInfo object, which has been initialized in
-/// Position::do_move, is used to put back the captured piece (if any).
+/// function.
 
 void Position::undo_promotion_move(Move m) {
 
@@ -1357,36 +1346,34 @@ void Position::undo_promotion_move(Move m) {
   pieceCount[us][promotion]--;
   pieceCount[us][PAWN]++;
 
-  if (st.capture)
+  if (st->capture)
   {
       assert(capture != KING);
 
       // Insert captured piece:
       set_bit(&(byColorBB[them]), to);
-      set_bit(&(byTypeBB[st.capture]), to);
+      set_bit(&(byTypeBB[st->capture]), to);
       set_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
-      board[to] = piece_of_color_and_type(them, st.capture);
+      board[to] = piece_of_color_and_type(them, st->capture);
 
       // Update material. Because the move is a promotion move, we know
       // that the captured piece cannot be a pawn.
       assert(capture != PAWN);
-      npMaterial[them] += piece_value_midgame(st.capture);
+      npMaterial[them] += piece_value_midgame(st->capture);
 
       // Update piece list
-      pieceList[them][st.capture][pieceCount[them][st.capture]] = to;
-      index[to] = pieceCount[them][st.capture];
+      pieceList[them][st->capture][pieceCount[them][st->capture]] = to;
+      index[to] = pieceCount[them][st->capture];
 
       // Update piece count
-      pieceCount[them][st.capture]++;
+      pieceCount[them][st->capture]++;
   } else
       board[to] = EMPTY;
 }
 
 
 /// Position::undo_ep_move() is a private method used to unmake an en passant
-/// capture. It is called from the main Position::undo_move function.  Because
-/// the captured piece is always a pawn, we don't need to pass an UndoInfo
-/// object from which to retrieve the captured piece.
+/// capture. It is called from the main Position::undo_move function.
 
 void Position::undo_ep_move(Move m) {
 
@@ -1440,35 +1427,35 @@ void Position::undo_ep_move(Move m) {
 /// Position::do_null_move makes() a "null move": It switches the side to move
 /// and updates the hash key without executing any move on the board.
 
-void Position::do_null_move(UndoInfo& u) {
+void Position::do_null_move(StateInfo& newSt) {
 
   assert(is_ok());
   assert(!is_check());
 
   // Back up the information necessary to undo the null move to the supplied
-  // UndoInfo object. In the case of a null move, the only thing we need to
+  // StateInfo object. In the case of a null move, the only thing we need to
   // remember is the last move made and the en passant square.
-  u.lastMove = st.lastMove;
-  u.epSquare = st.epSquare;
-  u.previous = st.previous;
-  st.previous = &u;
+  newSt.lastMove = st->lastMove;
+  newSt.epSquare = st->epSquare;
+  newSt.previous = st->previous;
+  st->previous = &newSt;
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[gamePly] = st.key;
+  history[gamePly] = st->key;
 
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
-  if (st.epSquare != SQ_NONE)
-      st.key ^= zobEp[st.epSquare];
+  if (st->epSquare != SQ_NONE)
+      st->key ^= zobEp[st->epSquare];
 
-  st.epSquare = SQ_NONE;
-  st.rule50++;
+  st->epSquare = SQ_NONE;
+  st->rule50++;
   gamePly++;
-  st.key ^= zobSideToMove;
+  st->key ^= zobSideToMove;
 
-  st.mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st.egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
+  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
   assert(is_ok());
 }
@@ -1481,22 +1468,22 @@ void Position::undo_null_move() {
   assert(is_ok());
   assert(!is_check());
 
-  // Restore information from the our UndoInfo object
-  st.lastMove = st.previous->lastMove;
-  st.epSquare = st.previous->epSquare;
-  st.previous = st.previous->previous;
+  // Restore information from the our StateInfo object
+  st->lastMove = st->previous->lastMove;
+  st->epSquare = st->previous->epSquare;
+  st->previous = st->previous->previous;
 
-  if (st.epSquare != SQ_NONE)
-      st.key ^= zobEp[st.epSquare];
+  if (st->epSquare != SQ_NONE)
+      st->key ^= zobEp[st->epSquare];
 
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
-  st.rule50--;
+  st->rule50--;
   gamePly--;
-  st.key ^= zobSideToMove;
+  st->key ^= zobSideToMove;
 
-  st.mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st.egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
+  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
   assert(is_ok());
 }
@@ -1549,7 +1536,7 @@ int Position::see(Square from, Square to) const {
   occ = occupied_squares();
 
   // Handle en passant moves
-  if (st.epSquare == to && type_of_piece_on(from) == PAWN)
+  if (st->epSquare == to && type_of_piece_on(from) == PAWN)
   {
       assert(capture == EMPTY);
 
@@ -1657,6 +1644,9 @@ int Position::see(Square from, Square to) const {
 
 void Position::clear() {
 
+  st = &startState;
+  st->previous = NULL; // We should never dereference this
+
   for (int i = 0; i < 64; i++)
   {
       board[i] = EMPTY;
@@ -1674,21 +1664,21 @@ void Position::clear() {
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
   }
 
-  st.checkersBB = EmptyBoardBB;
+  st->checkersBB = EmptyBoardBB;
   for (Color c = WHITE; c <= BLACK; c++)
-      st.pinners[c] = st.pinned[c] = st.dcCandidates[c] = ~EmptyBoardBB;
-
-  st.lastMove = MOVE_NONE;
+      st->pinners[c] = st->pinned[c] = st->dcCandidates[c] = ~EmptyBoardBB;
 
   sideToMove = WHITE;
-  st.castleRights = NO_CASTLES;
+  gamePly = 0;
   initialKFile = FILE_E;
   initialKRFile = FILE_H;
   initialQRFile = FILE_A;
-  st.epSquare = SQ_NONE;
-  st.rule50 = 0;
-  st.previous = NULL;
-  gamePly = 0;
+
+  st->lastMove = MOVE_NONE;
+  st->castleRights = NO_CASTLES;
+  st->epSquare = SQ_NONE;
+  st->rule50 = 0;
+  st->previous = NULL;
 }
 
 
@@ -1732,7 +1722,7 @@ void Position::put_piece(Piece p, Square s) {
 
 void Position::allow_oo(Color c) {
 
-  st.castleRights |= (1 + int(c));
+  st->castleRights |= (1 + int(c));
 }
 
 
@@ -1741,7 +1731,7 @@ void Position::allow_oo(Color c) {
 
 void Position::allow_ooo(Color c) {
 
-  st.castleRights |= (4 + 4*int(c));
+  st->castleRights |= (4 + 4*int(c));
 }
 
 
@@ -1761,7 +1751,7 @@ Key Position::compute_key() const {
   if (ep_square() != SQ_NONE)
       result ^= zobEp[ep_square()];
 
-  result ^= zobCastle[st.castleRights];
+  result ^= zobCastle[st->castleRights];
   if (side_to_move() == BLACK)
       result ^= zobSideToMove;
 
@@ -1894,12 +1884,12 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by the 50 moves rule?
-  if (st.rule50 > 100 || (st.rule50 == 100 && !is_check()))
+  if (st->rule50 > 100 || (st->rule50 == 100 && !is_check()))
       return true;
 
   // Draw by repetition?
-  for (int i = 2; i < Min(gamePly, st.rule50); i += 2)
-      if (history[gamePly - i] == st.key)
+  for (int i = 2; i < Min(gamePly, st->rule50); i += 2)
+      if (history[gamePly - i] == st->key)
           return true;
 
   return false;
@@ -1912,21 +1902,21 @@ bool Position::is_draw() const {
 
 bool Position::has_mate_threat(Color c) {
 
-  UndoInfo u1, u2;
+  StateInfo st1, st2;
   Color stm = side_to_move();
 
   // The following lines are useless and silly, but prevents gcc from
   // emitting a stupid warning stating that u1.lastMove and u1.epSquare might
   // be used uninitialized.
-  u1.lastMove = st.lastMove;
-  u1.epSquare = st.epSquare;
+  st1.lastMove = st->lastMove;
+  st1.epSquare = st->epSquare;
 
   if (is_check())
       return false;
 
   // If the input color is not equal to the side to move, do a null move
   if (c != stm)
-      do_null_move(u1);
+      do_null_move(st1);
 
   MoveStack mlist[120];
   int count;
@@ -1938,7 +1928,7 @@ bool Position::has_mate_threat(Color c) {
   // Loop through the moves, and see if one of them is mate
   for (int i = 0; i < count; i++)
   {
-      do_move(mlist[i].move, u2);
+      do_move(mlist[i].move, st2);
       if (is_mate())
           result = true;
 
@@ -2047,20 +2037,20 @@ void Position::flipped_copy(const Position &pos) {
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^=  BLACK_OOO;
 
   // En passant square
-  if (pos.st.epSquare != SQ_NONE)
-      st.epSquare = flip_square(pos.st.epSquare);
+  if (pos.st->epSquare != SQ_NONE)
+      st->epSquare = flip_square(pos.st->epSquare);
 
   // Checkers
   find_checkers();
 
   // Hash keys
-  st.key = compute_key();
-  st.pawnKey = compute_pawn_key();
-  st.materialKey = compute_material_key();
+  st->key = compute_key();
+  st->pawnKey = compute_pawn_key();
+  st->materialKey = compute_material_key();
 
   // Incremental scores
-  st.mgValue = compute_value<MidGame>();
-  st.egValue = compute_value<EndGame>();
+  st->mgValue = compute_value<MidGame>();
+  st->egValue = compute_value<EndGame>();
 
   // Material
   npMaterial[WHITE] = compute_non_pawn_material(WHITE);
@@ -2137,7 +2127,7 @@ bool Position::is_ok(int* failedStep) const {
 
   // Is there more than 2 checkers?
   if (failedStep) (*failedStep)++;
-  if (debugCheckerCount && count_1s(st.checkersBB) > 2)
+  if (debugCheckerCount && count_1s(st->checkersBB) > 2)
       return false;
 
   // Bitboards OK?
@@ -2172,27 +2162,27 @@ bool Position::is_ok(int* failedStep) const {
 
   // Hash key OK?
   if (failedStep) (*failedStep)++;
-  if (debugKey && st.key != compute_key())
+  if (debugKey && st->key != compute_key())
       return false;
 
   // Pawn hash key OK?
   if (failedStep) (*failedStep)++;
-  if (debugPawnKey && st.pawnKey != compute_pawn_key())
+  if (debugPawnKey && st->pawnKey != compute_pawn_key())
       return false;
 
   // Material hash key OK?
   if (failedStep) (*failedStep)++;
-  if (debugMaterialKey && st.materialKey != compute_material_key())
+  if (debugMaterialKey && st->materialKey != compute_material_key())
       return false;
 
   // Incremental eval OK?
   if (failedStep) (*failedStep)++;
   if (debugIncrementalEval)
   {
-      if (st.mgValue != compute_value<MidGame>())
+      if (st->mgValue != compute_value<MidGame>())
           return false;
 
-      if (st.egValue != compute_value<EndGame>())
+      if (st->egValue != compute_value<EndGame>())
           return false;
   }
 
