@@ -358,7 +358,7 @@ private:
           Value mgValue, egValue;
           PieceType capture;
           UndoInfo* previous;
-      };
+      } st;
   };
 
   // Static variables
@@ -510,7 +510,7 @@ inline Square Position::piece_list(Color c, PieceType pt, int index) const {
 }
 
 inline Square Position::ep_square() const {
-  return epSquare;
+  return st.epSquare;
 }
 
 inline Square Position::king_square(Color c) const {
@@ -518,11 +518,11 @@ inline Square Position::king_square(Color c) const {
 }
 
 inline bool Position::can_castle_kingside(Color side) const {
-  return castleRights & (1+int(side));
+  return st.castleRights & (1+int(side));
 }
 
 inline bool Position::can_castle_queenside(Color side) const {
-  return castleRights & (4+4*int(side));
+  return st.castleRights & (4+4*int(side));
 }
 
 inline bool Position::can_castle(Color side) const {
@@ -572,11 +572,11 @@ inline Bitboard Position::piece_attacks<KING>(Square s) const {
 }
 
 inline Bitboard Position::checkers() const {
-  return checkersBB;
+  return st.checkersBB;
 }
 
 inline bool Position::is_check() const {
-  return checkersBB != EmptyBoardBB;
+  return st.checkersBB != EmptyBoardBB;
 }
 
 inline bool Position::pawn_attacks_square(Color c, Square f, Square t) const {
@@ -623,15 +623,15 @@ inline bool Position::square_is_weak(Square s, Color c) const {
 }
 
 inline Key Position::get_key() const {
-  return key;
+  return st.key;
 }
 
 inline Key Position::get_pawn_key() const {
-  return pawnKey;
+  return st.pawnKey;
 }
 
 inline Key Position::get_material_key() const {
-  return materialKey;
+  return st.materialKey;
 }
 
 template<Position::GamePhase Phase>
@@ -646,11 +646,11 @@ inline Value Position::mg_pst_delta(Move m) const {
 }
 
 inline Value Position::mg_value() const {
-  return mgValue;
+  return st.mgValue;
 }
 
 inline Value Position::eg_value() const {
-  return egValue;
+  return st.egValue;
 }
 
 inline Value Position::non_pawn_material(Color c) const {
@@ -709,7 +709,7 @@ inline bool Position::move_was_passed_pawn_push(Move m) const {
 
 inline int Position::rule_50_counter() const {
 
-  return rule50;
+  return st.rule50;
 }
 
 inline bool Position::opposite_colored_bishops() const {
