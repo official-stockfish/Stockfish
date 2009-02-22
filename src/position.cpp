@@ -1445,10 +1445,12 @@ void Position::do_null_move(UndoInfo& u) {
   assert(!is_check());
 
   // Back up the information necessary to undo the null move to the supplied
-  // UndoInfo object.  In the case of a null move, the only thing we need to
+  // UndoInfo object. In the case of a null move, the only thing we need to
   // remember is the last move made and the en passant square.
   u.lastMove = lastMove;
   u.epSquare = epSquare;
+  u.previous = previous;
+  previous = &u;
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
@@ -1473,18 +1475,20 @@ void Position::do_null_move(UndoInfo& u) {
 
 /// Position::undo_null_move() unmakes a "null move".
 
-void Position::undo_null_move(const UndoInfo &u) {
+void Position::undo_null_move() {
 
   assert(is_ok());
   assert(!is_check());
 
-  // Restore information from the supplied UndoInfo object:
-  lastMove = u.lastMove;
-  epSquare = u.epSquare;
+  // Restore information from the our UndoInfo object
+  lastMove = previous->lastMove;
+  epSquare = previous->epSquare;
+  previous = previous->previous;
+
   if (epSquare != SQ_NONE)
       key ^= zobEp[epSquare];
 
-  // Update the necessary information.
+  // Update the necessary information
   sideToMove = opposite_color(sideToMove);
   rule50--;
   gamePly--;
@@ -1942,7 +1946,7 @@ bool Position::has_mate_threat(Color c) {
 
   // Undo null move, if necessary
   if (c != stm)
-      undo_null_move(u1);
+      undo_null_move();
 
   return result;
 }

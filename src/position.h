@@ -244,7 +244,7 @@ public:
   void do_move(Move m, UndoInfo &u);
   void undo_move(Move m);
   void do_null_move(UndoInfo &u);
-  void undo_null_move(const UndoInfo &u);
+  void undo_null_move();
 
   // Static exchange evaluation
   int see(Square from, Square to) const;

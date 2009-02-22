@@ -1201,7 +1201,7 @@ namespace {
             && pos.see(ss[ply + 1].currentMove) + nullValue >= beta)
             nullDrivenIID = true;
 
-        pos.undo_null_move(u);
+        pos.undo_null_move();
 
         if (value_is_mate(nullValue))
         {
