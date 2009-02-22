@@ -1199,7 +1199,7 @@ void Position::undo_move(Move m) {
 
       if (st->capture)
       {
-          assert(capture != KING);
+          assert(st->capture != KING);
 
           // Replace the captured piece
           set_bit(&(byColorBB[them]), to);
@@ -1348,7 +1348,7 @@ void Position::undo_promotion_move(Move m) {
 
   if (st->capture)
   {
-      assert(capture != KING);
+      assert(st->capture != KING);
 
       // Insert captured piece:
       set_bit(&(byColorBB[them]), to);
@@ -1358,7 +1358,7 @@ void Position::undo_promotion_move(Move m) {
 
       // Update material. Because the move is a promotion move, we know
       // that the captured piece cannot be a pawn.
-      assert(capture != PAWN);
+      assert(st->capture != PAWN);
       npMaterial[them] += piece_value_midgame(st->capture);
 
       // Update piece list
@@ -1389,7 +1389,7 @@ void Position::undo_ep_move(Move m) {
   Square to = move_to(m);
   Square capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
 
-  assert(to == ep_square());
+  assert(to == st->previous->epSquare);
   assert(relative_rank(us, to) == RANK_6);
   assert(piece_on(to) == piece_of_color_and_type(us, PAWN));
   assert(piece_on(from) == EMPTY);
