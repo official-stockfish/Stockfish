@@ -721,7 +721,7 @@ void Position::do_move(Move m, StateInfo& newSt) {
 
   // Reset pinned bitboard and its friends
   for (Color c = WHITE; c <= BLACK; c++)
-      st->pinners[c] = st->pinned[c] = st->dcCandidates[c] = ~EmptyBoardBB;
+      st->pinned[c] = st->dcCandidates[c] = ~EmptyBoardBB;
 
   if (move_is_castle(m))
       do_castle_move(m);
