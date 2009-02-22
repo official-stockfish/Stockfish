@@ -706,6 +706,7 @@ void Position::do_move(Move m, UndoInfo& u) {
   // captured piece, which is taken care of later.
   u = undoInfoUnion;
   u.capture = NO_PIECE_TYPE;
+  previous = &u;
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
@@ -722,7 +723,7 @@ void Position::do_move(Move m, UndoInfo& u) {
   if (move_is_castle(m))
       do_castle_move(m);
   else if (move_promotion(m))
-      do_promotion_move(m, u);
+      do_promotion_move(m);
   else if (move_is_ep(m))
       do_ep_move(m);
   else
@@ -977,7 +978,7 @@ void Position::do_castle_move(Move m) {
 /// UndoInfo object, which has been initialized in Position::do_move, is
 /// used to store the captured piece (if any).
 
-void Position::do_promotion_move(Move m, UndoInfo &u) {
+void Position::do_promotion_move(Move m) {
 
   Color us, them;
   Square from, to;
@@ -1000,7 +1001,7 @@ void Position::do_promotion_move(Move m, UndoInfo &u) {
 
   if (capture)
   {
-    u.capture = capture;
+    previous->capture = capture;
     do_capture_move(m, capture, them, to);
   }
 
@@ -1156,7 +1157,7 @@ void Position::do_ep_move(Move m) {
 /// important that Position::undo_move is called with the same move and UndoInfo
 /// object as the earlier call to Position::do_move.
 
-void Position::undo_move(Move m, const UndoInfo &u) {
+void Position::undo_move(Move m) {
 
   assert(is_ok());
   assert(move_is_ok(m));
@@ -1166,19 +1167,19 @@ void Position::undo_move(Move m, const UndoInfo &u) {
 
   // Restore information from our UndoInfo object (except the captured piece,
   // which is taken care of later)
-  undoInfoUnion = u;
+  undoInfoUnion = *previous;
 
   if (move_is_castle(m))
       undo_castle_move(m);
   else if (move_promotion(m))
-      undo_promotion_move(m, u);
+      undo_promotion_move(m);
   else if (move_is_ep(m))
       undo_ep_move(m);
   else
   {
       Color us, them;
       Square from, to;
-      PieceType piece, capture;
+      PieceType piece;
 
       us = side_to_move();
       them = opposite_color(us);
@@ -1207,8 +1208,6 @@ void Position::undo_move(Move m, const UndoInfo &u) {
       // Update piece list
       pieceList[us][piece][index[to]] = from;
       index[from] = index[to];
-
-      capture = u.capture;
 
       if (capture)
       {
@@ -1309,11 +1308,11 @@ void Position::undo_castle_move(Move m) {
 /// function. The UndoInfo object, which has been initialized in
 /// Position::do_move, is used to put back the captured piece (if any).
 
-void Position::undo_promotion_move(Move m, const UndoInfo &u) {
+void Position::undo_promotion_move(Move m) {
 
   Color us, them;
   Square from, to;
-  PieceType capture, promotion;
+  PieceType promotion;
 
   assert(move_is_ok(m));
   assert(move_promotion(m));
@@ -1356,8 +1355,6 @@ void Position::undo_promotion_move(Move m, const UndoInfo &u) {
   // Update piece counts
   pieceCount[us][promotion]--;
   pieceCount[us][PAWN]++;
-
-  capture = u.capture;
 
   if (capture)
   {
@@ -1686,6 +1683,7 @@ void Position::clear() {
   epSquare = SQ_NONE;
   rule50 = 0;
   gamePly = 0;
+  previous = NULL;
 }
 
 
@@ -1939,7 +1937,7 @@ bool Position::has_mate_threat(Color c) {
       if (is_mate())
           result = true;
 
-      undo_move(mlist[i].move, u2);
+      undo_move(mlist[i].move);
   }
 
   // Undo null move, if necessary

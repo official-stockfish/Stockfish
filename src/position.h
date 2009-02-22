@@ -87,6 +87,7 @@ struct UndoInfo {
   Move lastMove;
   Value mgValue, egValue;
   PieceType capture;
+  UndoInfo* previous;
 };
 
 
@@ -241,7 +242,7 @@ public:
 
   // Doing and undoing moves
   void do_move(Move m, UndoInfo &u);
-  void undo_move(Move m, const UndoInfo &u);
+  void undo_move(Move m);
   void do_null_move(UndoInfo &u);
   void undo_null_move(const UndoInfo &u);
 
@@ -296,10 +297,10 @@ private:
   // Helper functions for doing and undoing moves
   void do_capture_move(Move m, PieceType capture, Color them, Square to);
   void do_castle_move(Move m);
-  void do_promotion_move(Move m, UndoInfo &u);
+  void do_promotion_move(Move m);
   void do_ep_move(Move m);
   void undo_castle_move(Move m);
-  void undo_promotion_move(Move m, const UndoInfo &u);
+  void undo_promotion_move(Move m);
   void undo_ep_move(Move m);
   void find_checkers();
 
@@ -356,6 +357,7 @@ private:
           Move lastMove;
           Value mgValue, egValue;
           PieceType capture;
+          UndoInfo* previous;
       };
   };
 

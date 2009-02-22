@@ -835,7 +835,7 @@ namespace {
             }
         }
 
-        pos.undo_move(move, u);
+        pos.undo_move(move);
 
         // Finished searching the move. If AbortSearch is true, the search
         // was aborted because the user interrupted the search or because we
@@ -1054,7 +1054,7 @@ namespace {
           }
         }
       }
-      pos.undo_move(move, u);
+      pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
@@ -1358,7 +1358,7 @@ namespace {
           ss[ply].reduction = Depth(0);
           value = -search(pos, ss, -(beta-1), newDepth, ply+1, true, threadID);
       }
-      pos.undo_move(move, u);
+      pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
@@ -1516,7 +1516,7 @@ namespace {
       UndoInfo u;
       pos.do_move(move, u);
       Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
-      pos.undo_move(move, u);
+      pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
@@ -1628,7 +1628,7 @@ namespace {
           ss[sp->ply].reduction = Depth(0);
           value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true, threadID);
       }
-      pos.undo_move(move, u);
+      pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
@@ -1751,7 +1751,7 @@ namespace {
               Threads[threadID].failHighPly1 = false;
         }
       }
-      pos.undo_move(move, u);
+      pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
@@ -1884,7 +1884,7 @@ namespace {
             pos.do_move(moves[count].move, u);
             moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE,
                                           Depth(0), 1, 0);
-            pos.undo_move(moves[count].move, u);
+            pos.undo_move(moves[count].move);
             moves[count].pv[0] = moves[i].move;
             moves[count].pv[1] = MOVE_NONE; // FIXME
             count++;
