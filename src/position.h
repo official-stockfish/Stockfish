@@ -240,6 +240,7 @@ public:
   bool square_is_weak(Square s, Color c) const;
 
   // Doing and undoing moves
+  void setStartState(const StateInfo& st);
   void do_move(Move m, StateInfo& st);
   void undo_move(Move m);
   void do_null_move(StateInfo& st);

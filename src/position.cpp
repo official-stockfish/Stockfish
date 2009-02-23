@@ -1662,6 +1662,18 @@ int Position::see(Square from, Square to) const {
 }
 
 
+/// Position::setStartState() copies the content of the argument
+/// inside startState and makes st point to it. This is needed
+/// when the st pointee could become stale, as example because
+/// the caller is about to going out of scope.
+
+void Position::setStartState(const StateInfo& s) {
+
+  startState = s;
+  st = &startState;
+}
+
+
 /// Position::clear() erases the position object to a pristine state, with an
 /// empty board, white to move, and no castling rights.
 

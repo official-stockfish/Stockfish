@@ -22,6 +22,7 @@
 //// Includes
 ////
 
+#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -228,6 +229,9 @@ namespace {
                 if (RootPosition.rule_50_counter() == 0)
                     RootPosition.reset_game_ply();
             }
+            // Our StateInfo st is about going out of scope,
+            // so save its content before they disappear.
+            RootPosition.setStartState(st);
         }
     }
   }
@@ -320,6 +324,8 @@ namespace {
 
     if (moveTime)
         infinite = true;  // HACK
+
+    assert(RootPosition.is_ok());
 
     think(RootPosition, infinite, ponder, RootPosition.side_to_move(), time,
           inc, movesToGo, depth, nodes, moveTime, searchMoves);
