@@ -206,6 +206,7 @@ void Position::from_fen(const std::string& fen) {
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
   find_checkers();
+  find_pinned();
 
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
@@ -319,44 +320,11 @@ void Position::copy(const Position &pos) {
 }
 
 
-/// Position:pinned_pieces() returns a bitboard of all pinned (against the
-/// king) pieces for the given color.
-Bitboard Position::pinned_pieces(Color c) const {
-
-  if (st->pinned[c] != ~EmptyBoardBB)
-      return st->pinned[c];
-
-  Bitboard p1, p2;
-  Square ksq = king_square(c);
-  st->pinned[c] = hidden_checks<ROOK, true>(c, ksq, p1) | hidden_checks<BISHOP, true>(c, ksq, p2);
-  st->pinners[c] = p1 | p2;
-  return st->pinned[c];
-}
-
-Bitboard Position::pinned_pieces(Color c, Bitboard& p) const {
-
-  if (st->pinned[c] == ~EmptyBoardBB)
-      pinned_pieces(c);
-
-  p = st->pinners[c];
-  return st->pinned[c];
-}
-
-Bitboard Position::discovered_check_candidates(Color c) const {
-
-  if (st->dcCandidates[c] != ~EmptyBoardBB)
-      return st->dcCandidates[c];
-
-  Bitboard dummy;
-  Square ksq = king_square(opposite_color(c));
-  st->dcCandidates[c] = hidden_checks<ROOK, false>(c, ksq, dummy) | hidden_checks<BISHOP, false>(c, ksq, dummy);
-  return st->dcCandidates[c];
-}
-
 /// Position:hidden_checks<>() returns a bitboard of all pinned (against the
 /// king) pieces for the given color and for the given pinner type. Or, when
 /// template parameter FindPinned is false, the pinned pieces of opposite color
 /// that are, indeed, the pieces candidate for a discovery check.
+/// Note that checkersBB bitboard must be already updated.
 template<PieceType Piece, bool FindPinned>
 Bitboard Position::hidden_checks(Color c, Square ksq, Bitboard& pinners) const {
 
@@ -466,7 +434,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
 
 /// Position::find_checkers() computes the checkersBB bitboard, which
-/// contains a nonzero bit for each checking piece (0, 1 or 2).  It
+/// contains a nonzero bit for each checking piece (0, 1 or 2). It
 /// currently works by calling Position::attacks_to, which is probably
 /// inefficient. Consider rewriting this function to use the last move
 /// played, like in non-bitboard versions of Glaurung.
@@ -475,6 +443,25 @@ void Position::find_checkers() {
 
   Color us = side_to_move();
   st->checkersBB = attacks_to(king_square(us), opposite_color(us));
+}
+
+
+/// Position:find_pinned() computes the pinned, pinners and dcCandidates
+/// bitboards for both colors. Bitboard checkersBB must be already updated.
+
+void Position::find_pinned() {
+
+  Bitboard p1, p2;
+  Square ksq;
+
+  for (Color c = WHITE; c <= BLACK; c++)
+  {
+      ksq = king_square(c);
+      st->pinned[c] = hidden_checks<ROOK, true>(c, ksq, p1) | hidden_checks<BISHOP, true>(c, ksq, p2);
+      st->pinners[c] = p1 | p2;
+      ksq = king_square(opposite_color(c));
+      st->dcCandidates[c] = hidden_checks<ROOK, false>(c, ksq, p1) | hidden_checks<BISHOP, false>(c, ksq, p2);
+  }
 }
 
 
@@ -719,10 +706,6 @@ void Position::do_move(Move m, StateInfo& newSt) {
   // case of non-reversible moves is taken care of later.
   st->rule50++;
 
-  // Reset pinned bitboard and its friends
-  for (Color c = WHITE; c <= BLACK; c++)
-      st->pinned[c] = st->dcCandidates[c] = ~EmptyBoardBB;
-
   if (move_is_castle(m))
       do_castle_move(m);
   else if (move_promotion(m))
@@ -823,6 +806,7 @@ void Position::do_move(Move m, StateInfo& newSt) {
   }
 
   // Finish
+  find_pinned();
   st->key ^= zobSideToMove;
   sideToMove = opposite_color(sideToMove);
   gamePly++;

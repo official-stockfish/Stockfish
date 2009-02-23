@@ -302,6 +302,7 @@ private:
   void undo_promotion_move(Move m);
   void undo_ep_move(Move m);
   void find_checkers();
+  void find_pinned();
 
   template<PieceType Piece>
   void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
@@ -554,6 +555,19 @@ inline Bitboard Position::piece_attacks<QUEEN>(Square s) const {
 template<>
 inline Bitboard Position::piece_attacks<KING>(Square s) const {
   return StepAttackBB[KING][s];
+}
+
+inline Bitboard Position::pinned_pieces(Color c) const {
+  return st->pinned[c];
+}
+
+inline Bitboard Position::pinned_pieces(Color c, Bitboard& p) const {
+  p = st->pinners[c];
+  return st->pinned[c];
+}
+
+inline Bitboard Position::discovered_check_candidates(Color c) const {
+  return st->dcCandidates[c];
 }
 
 inline Bitboard Position::checkers() const {
