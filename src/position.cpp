@@ -23,8 +23,9 @@
 ////
 
 #include <cassert>
-#include <iostream>
+#include <cstring>
 #include <fstream>
+#include <iostream>
 
 #include "mersenne.h"
 #include "movegen.h"
@@ -1645,16 +1646,14 @@ int Position::see(Square from, Square to) const {
 void Position::clear() {
 
   st = &startState;
-  st->previous = NULL; // We should never dereference this
+  memset(st, 0, sizeof(StateInfo));
+  st->epSquare = SQ_NONE;
+
+  memset(index, 0, sizeof(int) * 64);
+  memset(byColorBB, 0, sizeof(Bitboard) * 2);
 
   for (int i = 0; i < 64; i++)
-  {
       board[i] = EMPTY;
-      index[i] = 0;
-  }
-
-  for (int i = 0; i < 2; i++)
-      byColorBB[i] = EmptyBoardBB;
 
   for (int i = 0; i < 7; i++)
   {
@@ -1664,21 +1663,11 @@ void Position::clear() {
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
   }
 
-  st->checkersBB = EmptyBoardBB;
-  for (Color c = WHITE; c <= BLACK; c++)
-      st->pinners[c] = st->pinned[c] = st->dcCandidates[c] = ~EmptyBoardBB;
-
   sideToMove = WHITE;
   gamePly = 0;
   initialKFile = FILE_E;
   initialKRFile = FILE_H;
   initialQRFile = FILE_A;
-
-  st->lastMove = MOVE_NONE;
-  st->castleRights = NO_CASTLES;
-  st->epSquare = SQ_NONE;
-  st->rule50 = 0;
-  st->previous = NULL;
 }
 
 
