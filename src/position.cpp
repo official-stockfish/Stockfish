@@ -676,6 +676,25 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 }
 
 
+/// Position::init_new_state() copies from the current state the fields
+/// that will be updated incrementally, skips the fields, like bitboards
+/// that will be recalculated form scratch anyway.
+
+void Position::init_new_state(StateInfo& newSt) {
+
+  newSt.key          = st->key;
+  newSt.pawnKey      = st->pawnKey;
+  newSt.materialKey  = st->materialKey;
+  newSt.castleRights = st->castleRights;
+  newSt.rule50       = st->rule50;
+  newSt.epSquare     = st->epSquare;
+  newSt.mgValue      = st->mgValue;
+  newSt.egValue      = st->egValue;
+  newSt.capture      = NO_PIECE_TYPE;
+  newSt.previous     = st;
+}
+
+
 /// Position::do_move() makes a move, and saves all information necessary
 /// to a StateInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
@@ -685,17 +704,14 @@ void Position::do_move(Move m, StateInfo& newSt) {
   assert(is_ok());
   assert(move_is_ok(m));
 
-  // Get now the current (pre-move) dc candidates that we will use
+  // Get now the current (before to move) dc candidates that we will use
   // in update_checkers().
   Bitboard oldDcCandidates = discovered_check_candidates(side_to_move());
 
-  // Copy the old state to our new StateInfo object (except the
-  // captured piece, which is taken care of later.
-  // TODO do not copy pinners and checkersBB because are recalculated
-  // anyway.
-  newSt = *st;
-  newSt.capture = NO_PIECE_TYPE;
-  newSt.previous = st;
+  // Copy some fields of old state to our new StateInfo object (except the
+  // captured piece, which is taken care of later) and switch state pointer
+  // to point to the new, ready to be updated, state.
+  init_new_state(newSt);
   st = &newSt;
 
   // Save the current key to the history[] array, in order to be able to

@@ -83,10 +83,10 @@ struct StateInfo {
   Key key, pawnKey, materialKey;
   int castleRights, rule50;
   Square epSquare;
-  Move lastMove;
   Value mgValue, egValue;
   PieceType capture;
   StateInfo* previous;
+  Move lastMove;
 };
 
 
@@ -294,6 +294,7 @@ private:
   void allow_ooo(Color c);
 
   // Helper functions for doing and undoing moves
+  void init_new_state(StateInfo& newSt);
   void do_capture_move(Move m, PieceType capture, Color them, Square to);
   void do_castle_move(Move m);
   void do_promotion_move(Move m);
