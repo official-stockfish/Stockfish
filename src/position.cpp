@@ -1491,7 +1491,7 @@ void Position::undo_null_move() {
 
 
 /// Position::see() is a static exchange evaluator: It tries to estimate the
-/// material gain or loss resulting from a move.  There are three versions of
+/// material gain or loss resulting from a move. There are three versions of
 /// this function: One which takes a destination square as input, one takes a
 /// move, and one which takes a 'from' and a 'to' square. The function does
 /// not yet understand promotions captures.
@@ -1528,6 +1528,11 @@ int Position::see(Square from, Square to) const {
   Color us = (from != SQ_NONE ? color_of_piece_on(from) : opposite_color(color_of_piece_on(to)));
   Color them = opposite_color(us);
 
+  // Initialize pinned and pinners bitboards
+  Bitboard pinned[2], pinners[2];
+  pinned[us] = pinned_pieces(us, pinners[us]);
+  pinned[them] = pinned_pieces(them, pinners[them]);
+
   // Initialize pieces
   Piece piece = piece_on(from);
   Piece capture = piece_on(to);
@@ -1559,6 +1564,17 @@ int Position::see(Square from, Square to) const {
                  | (piece_attacks<KING>(to)    & kings())
                  | (pawn_attacks(WHITE, to)    & pawns(BLACK))
                  | (pawn_attacks(BLACK, to)    & pawns(WHITE));
+
+      // Remove our pinned pieces from attacks if the captured piece is not
+      // a pinner, otherwise we could remove a valid "capture the pinner" attack.
+      if (pinned[us] != EmptyBoardBB && !bit_is_set(pinners[us], to))
+          attackers &= ~pinned[us];
+
+      // Remove opponent pinned pieces from attacks if the moving piece is not
+      // a pinner, otherwise we could remove a piece that is no more pinned
+      // due to our pinner piece is moving away.
+      if (pinned[them] != EmptyBoardBB && !bit_is_set(pinners[them], from))
+          attackers &= ~pinned[them];
 
       if (from != SQ_NONE)
           break;
@@ -1597,7 +1613,7 @@ int Position::see(Square from, Square to) const {
   swapList[0] = seeValues[capture];
 
   do {
-      // Locate the least valuable attacker for the side to move.  The loop
+      // Locate the least valuable attacker for the side to move. The loop
       // below looks like it is potentially infinite, but it isn't. We know
       // that the side to move still has at least one attacker left.
       for (pt = PAWN; !(attackers & pieces_of_color_and_type(c, pt)); pt++)
@@ -1621,6 +1637,12 @@ int Position::see(Square from, Square to) const {
       // before beginning the next iteration
       lastCapturingPieceValue = seeValues[pt];
       c = opposite_color(c);
+
+      // Remove pinned pieces from attackers
+      if (    pinned[c] != EmptyBoardBB
+          && !bit_is_set(pinners[c], to)
+          && !(pinners[c] & attackers))
+          attackers &= ~pinned[c];
 
       // Stop after a king capture
       if (pt == KING && (attackers & pieces_of_color(c)))
