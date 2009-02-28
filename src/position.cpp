@@ -207,7 +207,7 @@ void Position::from_fen(const std::string& fen) {
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
   find_checkers();
-  find_pinned();
+  find_hidden_checks();
 
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
@@ -446,23 +446,25 @@ void Position::find_checkers() {
   st->checkersBB = attacks_to(king_square(us), opposite_color(us));
 }
 
+/// Position:find_hidden_checks() computes the pinned, pinners and dcCandidates
+/// bitboards. There are two versions of this function. One takes a color and
+/// computes bitboards relative to that color only, the other computes both
+/// colors. Bitboard checkersBB must be already updated.
 
-/// Position:find_pinned() computes the pinned, pinners and dcCandidates
-/// bitboards for both colors. Bitboard checkersBB must be already updated.
-
-void Position::find_pinned() {
+void Position::find_hidden_checks(Color us) {
 
   Bitboard p1, p2;
-  Square ksq;
+  Color them = opposite_color(us);
+  Square ksq = king_square(them);
+  st->pinned[them] = hidden_checks<ROOK, true>(them, ksq, p1) | hidden_checks<BISHOP, true>(them, ksq, p2);
+  st->pinners[them] = p1 | p2;
+  st->dcCandidates[us] = hidden_checks<ROOK, false>(us, ksq, p1) | hidden_checks<BISHOP, false>(us, ksq, p2);
+}
+
+void Position::find_hidden_checks() {
 
   for (Color c = WHITE; c <= BLACK; c++)
-  {
-      ksq = king_square(c);
-      st->pinned[c] = hidden_checks<ROOK, true>(c, ksq, p1) | hidden_checks<BISHOP, true>(c, ksq, p2);
-      st->pinners[c] = p1 | p2;
-      ksq = king_square(opposite_color(c));
-      st->dcCandidates[c] = hidden_checks<ROOK, false>(c, ksq, p1) | hidden_checks<BISHOP, false>(c, ksq, p2);
-  }
+      find_hidden_checks(c);
 }
 
 
@@ -657,7 +659,8 @@ bool Position::move_is_capture(Move m) const {
 }
 
 
-/// Position::update_checkers() is a private method to udpate chekers info
+/// Position::update_checkers() udpates chekers info given the move. It is called
+/// in do_move() and is faster then find_checkers().
 
 template<PieceType Piece>
 inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from,
@@ -677,22 +680,47 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 }
 
 
-/// Position::init_new_state() copies from the current state the fields
-/// that will be updated incrementally, skips the fields, like bitboards
-/// that will be recalculated form scratch anyway.
+/// Position::update_hidden_checks() udpates pinned, pinners and dcCandidates
+/// bitboards incrementally, given the move. It is called in do_move and is
+/// faster then find_hidden_checks().
 
-void Position::init_new_state(StateInfo& newSt) {
+void Position::update_hidden_checks(Square from, Square to) {
 
-  newSt.key          = st->key;
-  newSt.pawnKey      = st->pawnKey;
-  newSt.materialKey  = st->materialKey;
-  newSt.castleRights = st->castleRights;
-  newSt.rule50       = st->rule50;
-  newSt.epSquare     = st->epSquare;
-  newSt.mgValue      = st->mgValue;
-  newSt.egValue      = st->egValue;
-  newSt.capture      = NO_PIECE_TYPE;
-  newSt.previous     = st;
+  Color us = sideToMove;
+  Color them = opposite_color(us);
+  Square ksq = king_square(opposite_color(us));
+
+  Bitboard moveSquares = EmptyBoardBB;
+  set_bit(&moveSquares, from);
+  set_bit(&moveSquares, to);
+
+  // Our moving piece could have been a possible pinner or hidden checker behind a dcCandidates?
+  bool checkerMoved = (st->dcCandidates[us] | st->pinners[them]) && (moveSquares & sliders());
+
+  // If we are moving from/to an opponent king attack direction and we was a possible hidden checker
+  // or there exsist some possible hidden checker on that line then recalculate the position
+  // otherwise skip because our dcCandidates and opponent pinned pieces are not changed.
+  if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerMoved || (rooks_and_queens(us)   & RookPseudoAttacks[ksq]))
+      || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerMoved || (bishops_and_queens(us) & BishopPseudoAttacks[ksq])))
+      find_hidden_checks(us);
+
+  ksq = king_square(us);
+
+  if (ksq == to)
+  {
+      find_hidden_checks(them);
+      return;
+  }
+
+  // It is possible that we have captured an opponent hidden checker?
+  Bitboard checkerCaptured = (st->dcCandidates[them] | st->pinners[us]) && st->capture;
+
+  // If we are moving from/to an our king attack direction and there was/is some possible
+  // opponent hidden checker then calculate the position otherwise skip because opponent
+  // dcCandidates and our pinned pieces are not changed.
+  if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerCaptured || (rooks_and_queens(them)   & RookPseudoAttacks[ksq]))
+      || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerCaptured || (bishops_and_queens(them) & BishopPseudoAttacks[ksq])))
+      find_hidden_checks(them);
 }
 
 
@@ -712,7 +740,9 @@ void Position::do_move(Move m, StateInfo& newSt) {
   // Copy some fields of old state to our new StateInfo object (except the
   // captured piece, which is taken care of later) and switch state pointer
   // to point to the new, ready to be updated, state.
-  init_new_state(newSt);
+  newSt = *st;
+  newSt.capture = NO_PIECE_TYPE;
+  newSt.previous = st;
   st = &newSt;
 
   // Save the current key to the history[] array, in order to be able to
@@ -820,10 +850,11 @@ void Position::do_move(Move m, StateInfo& newSt) {
     case KING:   update_checkers<KING>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
     default: assert(false); break;
     }
+
+    update_hidden_checks(from, to);
   }
 
   // Finish
-  find_pinned();
   st->key ^= zobSideToMove;
   sideToMove = opposite_color(sideToMove);
   gamePly++;
@@ -972,6 +1003,9 @@ void Position::do_castle_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  // Update hidden checks
+  find_hidden_checks();
 }
 
 
@@ -1062,6 +1096,9 @@ void Position::do_promotion_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  // Update hidden checks
+  find_hidden_checks();
 }
 
 
@@ -1144,6 +1181,9 @@ void Position::do_ep_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  // Update hidden checks
+  find_hidden_checks();
 }
 
 

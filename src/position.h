@@ -295,7 +295,6 @@ private:
   void allow_ooo(Color c);
 
   // Helper functions for doing and undoing moves
-  void init_new_state(StateInfo& newSt);
   void do_capture_move(Move m, PieceType capture, Color them, Square to);
   void do_castle_move(Move m);
   void do_promotion_move(Move m);
@@ -304,7 +303,9 @@ private:
   void undo_promotion_move(Move m);
   void undo_ep_move(Move m);
   void find_checkers();
-  void find_pinned();
+  void find_hidden_checks(Color us);
+  void find_hidden_checks();
+  void update_hidden_checks(Square from, Square to);
 
   template<PieceType Piece>
   void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
