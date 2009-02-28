@@ -288,6 +288,12 @@ public:
   static void init_piece_square_tables();
 
 private:
+
+  enum {
+      Pinned       = 1,
+      DcCandidates = 2
+  };
+
   // Initialization helper functions (used while setting up a position)
   void clear();
   void put_piece(Piece p, Square s);
@@ -303,7 +309,7 @@ private:
   void undo_promotion_move(Move m);
   void undo_ep_move(Move m);
   void find_checkers();
-  void find_hidden_checks(Color us);
+  void find_hidden_checks(Color us, unsigned int types);
   void find_hidden_checks();
   void update_hidden_checks(Square from, Square to);
 

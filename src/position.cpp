@@ -451,20 +451,24 @@ void Position::find_checkers() {
 /// computes bitboards relative to that color only, the other computes both
 /// colors. Bitboard checkersBB must be already updated.
 
-void Position::find_hidden_checks(Color us) {
+void Position::find_hidden_checks(Color us, unsigned int types) {
 
   Bitboard p1, p2;
   Color them = opposite_color(us);
   Square ksq = king_square(them);
-  st->pinned[them] = hidden_checks<ROOK, true>(them, ksq, p1) | hidden_checks<BISHOP, true>(them, ksq, p2);
-  st->pinners[them] = p1 | p2;
-  st->dcCandidates[us] = hidden_checks<ROOK, false>(us, ksq, p1) | hidden_checks<BISHOP, false>(us, ksq, p2);
+  if (types & Pinned)
+  {
+      st->pinned[them] = hidden_checks<ROOK, true>(them, ksq, p1) | hidden_checks<BISHOP, true>(them, ksq, p2);
+      st->pinners[them] = p1 | p2;
+  }
+  if (types & DcCandidates)
+      st->dcCandidates[us] = hidden_checks<ROOK, false>(us, ksq, p1) | hidden_checks<BISHOP, false>(us, ksq, p2);
 }
 
 void Position::find_hidden_checks() {
 
   for (Color c = WHITE; c <= BLACK; c++)
-      find_hidden_checks(c);
+      find_hidden_checks(c, Pinned | DcCandidates);
 }
 
 
@@ -702,13 +706,13 @@ void Position::update_hidden_checks(Square from, Square to) {
   // otherwise skip because our dcCandidates and opponent pinned pieces are not changed.
   if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerMoved || (rooks_and_queens(us)   & RookPseudoAttacks[ksq]))
       || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerMoved || (bishops_and_queens(us) & BishopPseudoAttacks[ksq])))
-      find_hidden_checks(us);
+      find_hidden_checks(us, Pinned | DcCandidates);
 
   ksq = king_square(us);
 
   if (ksq == to)
   {
-      find_hidden_checks(them);
+      find_hidden_checks(them, Pinned | DcCandidates);
       return;
   }
 
@@ -720,7 +724,18 @@ void Position::update_hidden_checks(Square from, Square to) {
   // dcCandidates and our pinned pieces are not changed.
   if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerCaptured || (rooks_and_queens(them)   & RookPseudoAttacks[ksq]))
       || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerCaptured || (bishops_and_queens(them) & BishopPseudoAttacks[ksq])))
-      find_hidden_checks(them);
+  {
+
+      // If we don't have opponent dc candidates and we are moving in the
+      // attack line then won't be dc candidates also after the move.
+      if (   st->dcCandidates[them]
+          || bit_is_set(RookPseudoAttacks[ksq], from)
+          || bit_is_set(BishopPseudoAttacks[ksq], from))
+
+          find_hidden_checks(them, Pinned | DcCandidates);
+      else
+          find_hidden_checks(them, Pinned);
+  }
 }
 
 
