@@ -725,16 +725,14 @@ void Position::update_hidden_checks(Square from, Square to) {
   if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerCaptured || (rooks_and_queens(them)   & RookPseudoAttacks[ksq]))
       || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerCaptured || (bishops_and_queens(them) & BishopPseudoAttacks[ksq])))
   {
+      find_hidden_checks(them, Pinned);
 
       // If we don't have opponent dc candidates and we are moving in the
-      // attack line then won't be dc candidates also after the move.
+      // attack line then won't be any dc candidates also after the move.
       if (   st->dcCandidates[them]
-          || bit_is_set(RookPseudoAttacks[ksq], from)
-          || bit_is_set(BishopPseudoAttacks[ksq], from))
-
-          find_hidden_checks(them, Pinned | DcCandidates);
-      else
-          find_hidden_checks(them, Pinned);
+          || (bit_is_set(RookPseudoAttacks[ksq], from) && (rooks_and_queens(them) & RookPseudoAttacks[ksq]))
+          || (bit_is_set(BishopPseudoAttacks[ksq], from) && (bishops_and_queens(them) & BishopPseudoAttacks[ksq])))
+          find_hidden_checks(them, DcCandidates);
   }
 }
 
