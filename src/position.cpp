@@ -699,14 +699,30 @@ void Position::update_hidden_checks(Square from, Square to) {
   set_bit(&moveSquares, to);
 
   // Our moving piece could have been a possible pinner or hidden checker behind a dcCandidates?
-  bool checkerMoved = (st->dcCandidates[us] | st->pinners[them]) && (moveSquares & sliders());
+  bool checkerMoved = (st->dcCandidates[us] || bit_is_set(st->pinners[them], from)) && (moveSquares & sliders());
 
   // If we are moving from/to an opponent king attack direction and we was a possible hidden checker
   // or there exsist some possible hidden checker on that line then recalculate the position
   // otherwise skip because our dcCandidates and opponent pinned pieces are not changed.
   if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerMoved || (rooks_and_queens(us)   & RookPseudoAttacks[ksq]))
       || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerMoved || (bishops_and_queens(us) & BishopPseudoAttacks[ksq])))
-      find_hidden_checks(us, Pinned | DcCandidates);
+    {
+        // If the move gives direct check and we don't have pinners/dc cadidates
+        // then we can be sure that we won't have them also after the move if
+        // we are not moving from a possible king attack direction.
+        bool outsideChecker = false;
+
+        if (   bit_is_set(st->checkersBB, to)
+            && !(bit_is_set(RookPseudoAttacks[ksq],   from) && (checkerMoved || (rooks_and_queens(us)   & RookPseudoAttacks[ksq])))
+            && !(bit_is_set(BishopPseudoAttacks[ksq], from) && (checkerMoved || (bishops_and_queens(us) & BishopPseudoAttacks[ksq]))))
+            outsideChecker = true;
+
+        if (!outsideChecker || st->pinned[them])
+            find_hidden_checks(us, Pinned);
+
+        if (!outsideChecker || st->dcCandidates[us] || bit_is_set(st->pinned[them], to))
+            find_hidden_checks(us, DcCandidates);
+  }
 
   ksq = king_square(us);
 
