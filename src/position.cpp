@@ -713,7 +713,7 @@ void Position::update_hidden_checks(Square from, Square to) {
   }
 
   // It is possible that we have captured an opponent hidden checker?
-  Bitboard checkerCaptured = (st->dcCandidates[them] | st->pinners[us]) && st->capture;
+  Bitboard checkerCaptured = st->capture && (st->dcCandidates[them] || bit_is_set(st->pinners[us], to));
 
   // If we are moving from/to an our king attack direction and there was/is some possible
   // opponent hidden checker then calculate the position otherwise skip because opponent
