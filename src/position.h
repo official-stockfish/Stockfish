@@ -79,7 +79,7 @@ enum CastleRights {
 /// must be passed as a parameter.
 
 struct StateInfo {
-  Bitboard pinners[2], pinned[2], dcCandidates[2], checkersBB;
+  Bitboard checkersBB;
   Key key, pawnKey, materialKey;
   int castleRights, rule50;
   Square epSquare;
@@ -219,7 +219,9 @@ public:
 
   // Properties of moves
   bool pl_move_is_legal(Move m) const;
+  bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool move_is_check(Move m) const;
+  bool move_is_check(Move m, Bitboard dcCandidates) const;
   bool move_is_capture(Move m) const;
   bool move_is_deep_pawn_push(Move m) const;
   bool move_is_pawn_push_to_7th(Move m) const;
@@ -242,6 +244,7 @@ public:
   // Doing and undoing moves
   void setStartState(const StateInfo& st);
   void do_move(Move m, StateInfo& st);
+  void do_move(Move m, StateInfo& st, Bitboard dcCandidates);
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
@@ -289,11 +292,6 @@ public:
 
 private:
 
-  enum {
-      Pinned       = 1,
-      DcCandidates = 2
-  };
-
   // Initialization helper functions (used while setting up a position)
   void clear();
   void put_piece(Piece p, Square s);
@@ -309,9 +307,6 @@ private:
   void undo_promotion_move(Move m);
   void undo_ep_move(Move m);
   void find_checkers();
-  void find_hidden_checks(Color us, unsigned int types);
-  void find_hidden_checks();
-  void update_hidden_checks(Square from, Square to);
 
   template<PieceType Piece>
   void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
@@ -564,19 +559,6 @@ inline Bitboard Position::piece_attacks<QUEEN>(Square s) const {
 template<>
 inline Bitboard Position::piece_attacks<KING>(Square s) const {
   return StepAttackBB[KING][s];
-}
-
-inline Bitboard Position::pinned_pieces(Color c) const {
-  return st->pinned[c];
-}
-
-inline Bitboard Position::pinned_pieces(Color c, Bitboard& p) const {
-  p = st->pinners[c];
-  return st->pinned[c];
-}
-
-inline Bitboard Position::discovered_check_candidates(Color c) const {
-  return st->dcCandidates[c];
 }
 
 inline Bitboard Position::checkers() const {

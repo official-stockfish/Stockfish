@@ -290,8 +290,8 @@ namespace {
   bool thread_is_available(int slave, int master);
   bool idle_thread_exists(int master);
   bool split(const Position &pos, SearchStack *ss, int ply,
-             Value *alpha, Value *beta, Value *bestValue, Depth depth,
-             int *moves, MovePicker *mp, int master, bool pvNode);
+             Value *alpha, Value *beta, Value *bestValue, Depth depth, int *moves,
+             MovePicker *mp, Bitboard dcCandidates, int master, bool pvNode);
   void wake_sleeping_threads();
 
 #if !defined(_MSC_VER)
@@ -775,6 +775,7 @@ namespace {
 
     Value alpha = -VALUE_INFINITE;
     Value beta = VALUE_INFINITE, value;
+    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
 
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
@@ -807,7 +808,7 @@ namespace {
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
-        pos.do_move(move, st);
+        pos.do_move(move, st, dcCandidates);
 
         if (i < MultiPV)
         {
@@ -981,6 +982,7 @@ namespace {
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
+    Bitboard dcCandidates = mp.discovered_check_candidates();
     Color us = pos.side_to_move();
     bool isCheck = pos.is_check();
     bool mateThreat = pos.has_mate_threat(opposite_color(us));
@@ -994,7 +996,7 @@ namespace {
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
-      bool moveIsCheck = pos.move_is_check(move);
+      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1012,7 +1014,7 @@ namespace {
 
       // Make and search the move
       StateInfo st;
-      pos.do_move(move, st);
+      pos.do_move(move, st, dcCandidates);
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1087,7 +1089,7 @@ namespace {
           && !AbortSearch
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &alpha, &beta, &bestValue, depth,
-                   &moveCount, &mp, threadID, true))
+                   &moveCount, &mp, dcCandidates, threadID, true))
           break;
     }
 
@@ -1281,6 +1283,7 @@ namespace {
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
+    Bitboard dcCandidates = mp.discovered_check_candidates();
     Value futilityValue = VALUE_NONE;
     bool useFutilityPruning =   UseFutilityPruning
                              && depth < SelectiveDepth
@@ -1295,7 +1298,7 @@ namespace {
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
-      bool moveIsCheck = pos.move_is_check(move);
+      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1335,7 +1338,7 @@ namespace {
 
       // Make and search the move
       StateInfo st;
-      pos.do_move(move, st);
+      pos.do_move(move, st, dcCandidates);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1382,7 +1385,7 @@ namespace {
           && !AbortSearch
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &beta, &beta, &bestValue, depth, &moveCount,
-                   &mp, threadID, false))
+                   &mp, dcCandidates, threadID, false))
         break;
     }
 
@@ -1467,6 +1470,7 @@ namespace {
     MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, isCheck ? NULL : &ei);
     Move move;
     int moveCount = 0;
+    Bitboard dcCandidates = mp.discovered_check_candidates();
     Color us = pos.side_to_move();
     bool enoughMaterial = pos.non_pawn_material(us) > RookValueMidgame;
 
@@ -1486,7 +1490,7 @@ namespace {
           && !isCheck
           && !pvNode
           && !move_promotion(move)
-          && !pos.move_is_check(move)
+          && !pos.move_is_check(move, dcCandidates)
           && !pos.move_is_passed_pawn_push(move))
       {
           Value futilityValue = staticValue
@@ -1514,7 +1518,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st);
+      pos.do_move(move, st, dcCandidates);
       Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
@@ -1581,7 +1585,7 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool moveIsCheck = pos.move_is_check(move);
+      bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
 
       lock_grab(&(sp->lock));
@@ -1606,7 +1610,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st);
+      pos.do_move(move, st, sp->dcCandidates);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1691,7 +1695,7 @@ namespace {
            && !thread_should_stop(threadID)
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
-      bool moveIsCheck = pos.move_is_check(move);
+      bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
 
       assert(move_is_ok(move));
@@ -1715,7 +1719,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st);
+      pos.do_move(move, st, sp->dcCandidates);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -2671,8 +2675,9 @@ namespace {
   // splitPoint->cpus becomes 0), split() returns true.
 
   bool split(const Position &p, SearchStack *sstck, int ply,
-             Value *alpha, Value *beta, Value *bestValue,
-             Depth depth, int *moves, MovePicker *mp, int master, bool pvNode) {
+             Value *alpha, Value *beta, Value *bestValue, Depth depth, int *moves,
+             MovePicker *mp, Bitboard dcCandidates, int master, bool pvNode) {
+
     assert(p.is_ok());
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -2708,6 +2713,7 @@ namespace {
     splitPoint->alpha = pvNode? *alpha : (*beta - 1);
     splitPoint->beta = *beta;
     splitPoint->pvNode = pvNode;
+    splitPoint->dcCandidates = dcCandidates;
     splitPoint->bestValue = *bestValue;
     splitPoint->master = master;
     splitPoint->mp = mp;

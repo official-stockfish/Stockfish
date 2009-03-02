@@ -166,14 +166,13 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
 /// generate_checks() generates all pseudo-legal non-capturing, non-promoting
 /// checks. It returns the number of generated moves.
 
-int generate_checks(const Position& pos, MoveStack* mlist) {
+int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(opposite_color(us));
-  Bitboard dc = pos.discovered_check_candidates(us);
   MoveStack* mlist_start = mlist;
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
@@ -205,7 +204,7 @@ int generate_checks(const Position& pos, MoveStack* mlist) {
 /// in check. Unlike the other move generation functions, this one generates
 /// only legal moves. It returns the number of generated moves.
 
-int generate_evasions(const Position& pos, MoveStack* mlist) {
+int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
@@ -259,7 +258,6 @@ int generate_evasions(const Position& pos, MoveStack* mlist) {
   if (!(checkers & (checkers - 1))) // Only one bit set?
   {
       Square checksq = first_1(checkers);
-      Bitboard pinned = pos.pinned_pieces(us);
 
       assert(pos.color_of_piece_on(checksq) == them);
 
@@ -349,8 +347,10 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+
   if (pos.is_check())
-      return generate_evasions(pos, mlist);
+      return generate_evasions(pos, mlist, pinned);
 
   // Generate pseudo-legal moves
   int n = generate_captures(pos, mlist);
@@ -358,7 +358,7 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   // Remove illegal moves from the list
   for (int i = 0; i < n; i++)
-      if (!pos.pl_move_is_legal(mlist[i].move))
+      if (!pos.pl_move_is_legal(mlist[i].move, pinned))
           mlist[i--].move = mlist[--n].move;
 
   return n;
@@ -371,11 +371,12 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
 /// returned. If not, the function returns false.  This function must
 /// only be used when the side to move is not in check.
 
-bool move_is_legal(const Position& pos, const Move m) {
+bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
   assert(move_is_ok(m));
+  assert(pinned == pos.pinned_pieces(pos.side_to_move()));
 
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
@@ -402,7 +403,7 @@ bool move_is_legal(const Position& pos, const Move m) {
       assert(pos.piece_on(to - pawn_push(us)) == piece_of_color_and_type(them, PAWN));
 
       // The move is pseudo-legal, check if it is also legal
-      return pos.pl_move_is_legal(m);
+      return pos.pl_move_is_legal(m, pinned);
   }
 
   // Castling moves
@@ -534,12 +535,12 @@ bool move_is_legal(const Position& pos, const Move m) {
           return false;
       }
       // The move is pseudo-legal, check if it is also legal
-      return pos.pl_move_is_legal(m);
+      return pos.pl_move_is_legal(m, pinned);
   }
 
   // Luckly we can handle all the other pieces in one go
   return (   pos.piece_attacks_square(pos.piece_on(from), from, to)
-          && pos.pl_move_is_legal(m)
+          && pos.pl_move_is_legal(m, pinned)
           && !move_promotion(m));
 }
 

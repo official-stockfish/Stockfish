@@ -207,7 +207,6 @@ void Position::from_fen(const std::string& fen) {
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
   find_checkers();
-  find_hidden_checks();
 
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
@@ -318,6 +317,29 @@ void Position::print(Move m) const {
 void Position::copy(const Position &pos) {
 
   memcpy(this, &pos, sizeof(Position));
+}
+
+
+/// Position:pinned_pieces() returns a bitboard of all pinned (against the
+/// king) pieces for the given color.
+Bitboard Position::pinned_pieces(Color c) const {
+
+  Bitboard p;
+  Square ksq = king_square(c);
+  return hidden_checks<ROOK, true>(c, ksq, p) | hidden_checks<BISHOP, true>(c, ksq, p);
+}
+
+
+/// Position:discovered_check_candidates() returns a bitboard containing all
+/// pieces for the given side which are candidates for giving a discovered
+/// check.  The code is almost the same as the function for finding pinned
+/// pieces.
+
+Bitboard Position::discovered_check_candidates(Color c) const {
+
+  Bitboard p;
+  Square ksq = king_square(opposite_color(c));
+  return hidden_checks<ROOK, false>(c, ksq, p) | hidden_checks<BISHOP, false>(c, ksq, p);
 }
 
 
@@ -446,38 +468,19 @@ void Position::find_checkers() {
   st->checkersBB = attacks_to(king_square(us), opposite_color(us));
 }
 
-/// Position:find_hidden_checks() computes the pinned, pinners and dcCandidates
-/// bitboards. There are two versions of this function. One takes a color and
-/// computes bitboards relative to that color only, the other computes both
-/// colors. Bitboard checkersBB must be already updated.
-
-void Position::find_hidden_checks(Color us, unsigned int types) {
-
-  Bitboard p1, p2;
-  Color them = opposite_color(us);
-  Square ksq = king_square(them);
-  if (types & Pinned)
-  {
-      st->pinned[them] = hidden_checks<ROOK, true>(them, ksq, p1) | hidden_checks<BISHOP, true>(them, ksq, p2);
-      st->pinners[them] = p1 | p2;
-  }
-  if (types & DcCandidates)
-      st->dcCandidates[us] = hidden_checks<ROOK, false>(us, ksq, p1) | hidden_checks<BISHOP, false>(us, ksq, p2);
-}
-
-void Position::find_hidden_checks() {
-
-  for (Color c = WHITE; c <= BLACK; c++)
-      find_hidden_checks(c, Pinned | DcCandidates);
-}
-
 
 /// Position::pl_move_is_legal() tests whether a pseudo-legal move is legal
 
 bool Position::pl_move_is_legal(Move m) const {
 
+  return pl_move_is_legal(m, pinned_pieces(side_to_move()));
+}
+
+bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
+
   assert(is_ok());
   assert(move_is_ok(m));
+  assert(pinned == pinned_pieces(side_to_move()));
 
   // If we're in check, all pseudo-legal moves are legal, because our
   // check evasion generator only generates true legal moves.
@@ -525,7 +528,7 @@ bool Position::pl_move_is_legal(Move m) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return (   !bit_is_set(pinned_pieces(us), from)
+  return (   !bit_is_set(pinned, from)
           || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)));
 }
 
@@ -534,15 +537,21 @@ bool Position::pl_move_is_legal(Move m) const {
 
 bool Position::move_is_check(Move m) const {
 
+  Bitboard dc = discovered_check_candidates(side_to_move());
+  return move_is_check(m, dc);
+}
+
+bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
+
   assert(is_ok());
   assert(move_is_ok(m));
+  assert(dcCandidates == discovered_check_candidates(side_to_move()));
 
   Color us = side_to_move();
   Color them = opposite_color(us);
   Square from = move_from(m);
   Square to = move_to(m);
   Square ksq = king_square(them);
-  Bitboard dcCandidates = discovered_check_candidates(us);
 
   assert(color_of_piece_on(from) == us);
   assert(piece_on(ksq) == piece_of_color_and_type(them, KING));
@@ -684,87 +693,19 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 }
 
 
-/// Position::update_hidden_checks() udpates pinned, pinners and dcCandidates
-/// bitboards incrementally, given the move. It is called in do_move and is
-/// faster then find_hidden_checks().
-
-void Position::update_hidden_checks(Square from, Square to) {
-
-  Color us = sideToMove;
-  Color them = opposite_color(us);
-  Square ksq = king_square(opposite_color(us));
-
-  Bitboard moveSquares = EmptyBoardBB;
-  set_bit(&moveSquares, from);
-  set_bit(&moveSquares, to);
-
-  // Our moving piece could have been a possible pinner or hidden checker behind a dcCandidates?
-  bool checkerMoved = (st->dcCandidates[us] || bit_is_set(st->pinners[them], from)) && (moveSquares & sliders());
-
-  // If we are moving from/to an opponent king attack direction and we was a possible hidden checker
-  // or there exsist some possible hidden checker on that line then recalculate the position
-  // otherwise skip because our dcCandidates and opponent pinned pieces are not changed.
-  if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerMoved || (rooks_and_queens(us)   & RookPseudoAttacks[ksq]))
-      || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerMoved || (bishops_and_queens(us) & BishopPseudoAttacks[ksq])))
-    {
-        // If the move gives direct check and we don't have pinners/dc cadidates
-        // then we can be sure that we won't have them also after the move if
-        // we are not moving from a possible king attack direction.
-        bool outsideChecker = false;
-
-        if (   bit_is_set(st->checkersBB, to)
-            && !(bit_is_set(RookPseudoAttacks[ksq],   from) && (checkerMoved || (rooks_and_queens(us)   & RookPseudoAttacks[ksq])))
-            && !(bit_is_set(BishopPseudoAttacks[ksq], from) && (checkerMoved || (bishops_and_queens(us) & BishopPseudoAttacks[ksq]))))
-            outsideChecker = true;
-
-        if (!outsideChecker || st->pinned[them])
-            find_hidden_checks(us, Pinned);
-
-        if (!outsideChecker || st->dcCandidates[us] || bit_is_set(st->pinned[them], to))
-            find_hidden_checks(us, DcCandidates);
-  }
-
-  ksq = king_square(us);
-
-  if (ksq == to)
-  {
-      find_hidden_checks(them, Pinned | DcCandidates);
-      return;
-  }
-
-  // It is possible that we have captured an opponent hidden checker?
-  Bitboard checkerCaptured = st->capture && (st->dcCandidates[them] || bit_is_set(st->pinners[us], to));
-
-  // If we are moving from/to an our king attack direction and there was/is some possible
-  // opponent hidden checker then calculate the position otherwise skip because opponent
-  // dcCandidates and our pinned pieces are not changed.
-  if (   (moveSquares & RookPseudoAttacks[ksq])   && (checkerCaptured || (rooks_and_queens(them)   & RookPseudoAttacks[ksq]))
-      || (moveSquares & BishopPseudoAttacks[ksq]) && (checkerCaptured || (bishops_and_queens(them) & BishopPseudoAttacks[ksq])))
-  {
-      find_hidden_checks(them, Pinned);
-
-      // If we don't have opponent dc candidates and we are moving in the
-      // attack line then won't be any dc candidates also after the move.
-      if (   st->dcCandidates[them]
-          || (bit_is_set(RookPseudoAttacks[ksq], from) && (rooks_and_queens(them) & RookPseudoAttacks[ksq]))
-          || (bit_is_set(BishopPseudoAttacks[ksq], from) && (bishops_and_queens(them) & BishopPseudoAttacks[ksq])))
-          find_hidden_checks(them, DcCandidates);
-  }
-}
-
-
 /// Position::do_move() makes a move, and saves all information necessary
 /// to a StateInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
 
 void Position::do_move(Move m, StateInfo& newSt) {
 
+  do_move(m, newSt, discovered_check_candidates(side_to_move()));
+}
+
+void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
+
   assert(is_ok());
   assert(move_is_ok(m));
-
-  // Get now the current (before to move) dc candidates that we will use
-  // in update_checkers().
-  Bitboard oldDcCandidates = discovered_check_candidates(side_to_move());
 
   // Copy some fields of old state to our new StateInfo object (except the
   // captured piece, which is taken care of later) and switch state pointer
@@ -871,16 +812,14 @@ void Position::do_move(Move m, StateInfo& newSt) {
     Square ksq = king_square(them);
     switch (piece)
     {
-    case PAWN:   update_checkers<PAWN>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
-    case KNIGHT: update_checkers<KNIGHT>(&st->checkersBB, ksq, from, to, oldDcCandidates); break;
-    case BISHOP: update_checkers<BISHOP>(&st->checkersBB, ksq, from, to, oldDcCandidates); break;
-    case ROOK:   update_checkers<ROOK>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
-    case QUEEN:  update_checkers<QUEEN>(&st->checkersBB, ksq, from, to, oldDcCandidates);  break;
-    case KING:   update_checkers<KING>(&st->checkersBB, ksq, from, to, oldDcCandidates);   break;
+    case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+    case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
+    case BISHOP: update_checkers<BISHOP>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
+    case ROOK:   update_checkers<ROOK>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+    case QUEEN:  update_checkers<QUEEN>(&(st->checkersBB), ksq, from, to, dcCandidates);  break;
+    case KING:   update_checkers<KING>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
     default: assert(false); break;
     }
-
-    update_hidden_checks(from, to);
   }
 
   // Finish
@@ -1032,9 +971,6 @@ void Position::do_castle_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
-
-  // Update hidden checks
-  find_hidden_checks();
 }
 
 
@@ -1125,9 +1061,6 @@ void Position::do_promotion_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
-
-  // Update hidden checks
-  find_hidden_checks();
 }
 
 
@@ -1210,9 +1143,6 @@ void Position::do_ep_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
-
-  // Update hidden checks
-  find_hidden_checks();
 }
 
 
@@ -1597,11 +1527,6 @@ int Position::see(Square from, Square to) const {
   Color us = (from != SQ_NONE ? color_of_piece_on(from) : opposite_color(color_of_piece_on(to)));
   Color them = opposite_color(us);
 
-  // Initialize pinned and pinners bitboards
-  Bitboard pinned[2], pinners[2];
-  pinned[us] = pinned_pieces(us, pinners[us]);
-  pinned[them] = pinned_pieces(them, pinners[them]);
-
   // Initialize pieces
   Piece piece = piece_on(from);
   Piece capture = piece_on(to);
@@ -1633,17 +1558,6 @@ int Position::see(Square from, Square to) const {
                  | (piece_attacks<KING>(to)    & kings())
                  | (pawn_attacks(WHITE, to)    & pawns(BLACK))
                  | (pawn_attacks(BLACK, to)    & pawns(WHITE));
-
-      // Remove our pinned pieces from attacks if the captured piece is not
-      // a pinner, otherwise we could remove a valid "capture the pinner" attack.
-      if (pinned[us] != EmptyBoardBB && !bit_is_set(pinners[us], to))
-          attackers &= ~pinned[us];
-
-      // Remove opponent pinned pieces from attacks if the moving piece is not
-      // a pinner, otherwise we could remove a piece that is no more pinned
-      // due to our pinner piece is moving away.
-      if (pinned[them] != EmptyBoardBB && !bit_is_set(pinners[them], from))
-          attackers &= ~pinned[them];
 
       if (from != SQ_NONE)
           break;
@@ -1706,12 +1620,6 @@ int Position::see(Square from, Square to) const {
       // before beginning the next iteration
       lastCapturingPieceValue = seeValues[pt];
       c = opposite_color(c);
-
-      // Remove pinned pieces from attackers
-      if (    pinned[c] != EmptyBoardBB
-          && !bit_is_set(pinners[c], to)
-          && !(pinners[c] & attackers))
-          attackers &= ~pinned[c];
 
       // Stop after a king capture
       if (pt == KING && (attackers & pieces_of_color(c)))
