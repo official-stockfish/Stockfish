@@ -707,10 +707,17 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   assert(is_ok());
   assert(move_is_ok(m));
 
-  // Copy some fields of old state to our new StateInfo object (except the
-  // captured piece, which is taken care of later) and switch state pointer
-  // to point to the new, ready to be updated, state.
-  newSt = *st;
+  // Copy some fields of old state to our new StateInfo object except the
+  // ones which are recalculated from scratch anyway, then switch our state
+  // pointer to point to the new, ready to be updated, state.
+  struct ReducedStateInfo {
+    Key key, pawnKey, materialKey;
+    int castleRights, rule50;
+    Square epSquare;
+    Value mgValue, egValue;
+  };
+
+  memcpy(&newSt, st, sizeof(ReducedStateInfo));
   newSt.capture = NO_PIECE_TYPE;
   newSt.previous = st;
   st = &newSt;

@@ -79,14 +79,15 @@ enum CastleRights {
 /// must be passed as a parameter.
 
 struct StateInfo {
-  Bitboard checkersBB;
   Key key, pawnKey, materialKey;
   int castleRights, rule50;
   Square epSquare;
   Value mgValue, egValue;
+
   PieceType capture;
-  StateInfo* previous;
+  Bitboard checkersBB;
   Move lastMove;
+  StateInfo* previous;
 };
 
 
