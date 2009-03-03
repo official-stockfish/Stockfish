@@ -259,8 +259,6 @@ namespace {
                 Depth depth, int ply, int threadID);
   void sp_search(SplitPoint *sp, int threadID);
   void sp_search_pv(SplitPoint *sp, int threadID);
-  void init_search_stack(SearchStack& ss);
-  void init_search_stack(SearchStack ss[]);
   void init_node(const Position &pos, SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack *pss, SearchStack ss[], int ply);
@@ -322,6 +320,24 @@ History H;  // Should be made local?
 
 // The empty search stack
 SearchStack EmptySearchStack;
+
+
+// SearchStack::init() initializes a search stack. Used at the beginning of a
+// new search from the root.
+void SearchStack::init(int ply) {
+
+  pv[ply] = pv[ply + 1] = MOVE_NONE;
+  currentMove = threatMove = MOVE_NONE;
+  reduction = Depth(0);
+  currentMoveCaptureValue = Value(0);
+}
+
+void SearchStack::initKillers() {
+
+  mateKiller = MOVE_NONE;
+  for (int i = 0; i < KILLER_MAX; i++)
+      killers[i] = MOVE_NONE;
+}
 
 
 ////
@@ -588,7 +604,8 @@ void init_threads() {
   }
 
   // Init also the empty search stack
-  init_search_stack(EmptySearchStack);
+  EmptySearchStack.init(0);
+  EmptySearchStack.initKillers();
 }
 
 
@@ -640,8 +657,11 @@ namespace {
     // Initialize
     TT.new_search();
     H.clear();
-    init_search_stack(ss);
-
+    for (int i = 0; i < 3; i++)
+    {
+        ss[i].init(i);
+        ss[i].initKillers();
+    }
     ValueByIteration[0] = Value(0);
     ValueByIteration[1] = rml.get_move_score(0);
     Iteration = 1;
@@ -1990,34 +2010,6 @@ namespace {
   }
 
 
-  // init_search_stack() initializes a search stack at the beginning of a
-  // new search from the root.
-  void init_search_stack(SearchStack& ss) {
-
-    ss.pv[0] = MOVE_NONE;
-    ss.pv[1] = MOVE_NONE;
-    ss.currentMove = MOVE_NONE;
-    ss.threatMove = MOVE_NONE;
-    ss.reduction = Depth(0);
-    for (int j = 0; j < KILLER_MAX; j++)
-        ss.killers[j] = MOVE_NONE;
-  }
-
-  void init_search_stack(SearchStack ss[]) {
-
-    for (int i = 0; i < 3; i++)
-    {
-        ss[i].pv[i] = MOVE_NONE;
-        ss[i].pv[i+1] = MOVE_NONE;
-        ss[i].currentMove = MOVE_NONE;
-        ss[i].threatMove = MOVE_NONE;
-        ss[i].reduction = Depth(0);
-        for (int j = 0; j < KILLER_MAX; j++)
-            ss[i].killers[j] = MOVE_NONE;
-    }
-  }
-
-
   // init_node() is called at the beginning of all the search functions
   // (search(), search_pv(), qsearch(), and so on) and initializes the search
   // stack object corresponding to the current node.  Once every
@@ -2037,13 +2029,9 @@ namespace {
         NodesSincePoll = 0;
       }
     }
-    ss[ply].pv[ply] = ss[ply].pv[ply+1] = ss[ply].currentMove = MOVE_NONE;
-    ss[ply+2].mateKiller = MOVE_NONE;
-    ss[ply].threatMove = MOVE_NONE;
-    ss[ply].reduction = Depth(0);
-    ss[ply].currentMoveCaptureValue = Value(0);
-    for (int j = 0; j < KILLER_MAX; j++)
-        ss[ply+2].killers[j] = MOVE_NONE;
+
+    ss[ply].init(ply);
+    ss[ply+2].initKillers();
 
     if(Threads[threadID].printCurrentLine)
       print_current_line(ss, ply, threadID);

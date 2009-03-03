@@ -60,6 +60,9 @@ struct SearchStack {
   Move threatMove;
   Move killers[KILLER_MAX];
   Depth reduction;
+
+  void init(int ply);
+  void initKillers();
 };
 
 
