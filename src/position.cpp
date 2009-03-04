@@ -648,7 +648,18 @@ template<PieceType Piece>
 inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from,
                                       Square to, Bitboard dcCandidates) {
 
-  if (Piece != KING && bit_is_set(piece_attacks<Piece>(ksq), to))
+  const bool Bishop = (Piece == QUEEN || Piece == BISHOP);
+  const bool Rook   = (Piece == QUEEN || Piece == ROOK);
+  const bool Slider = Bishop || Rook;
+
+  if (  (   (Bishop && bit_is_set(BishopPseudoAttacks[ksq], to))
+         || (Rook   && bit_is_set(RookPseudoAttacks[ksq], to)))
+      && bit_is_set(piece_attacks<Piece>(ksq), to)) // slow, try to early skip
+      set_bit(pCheckersBB, to);
+
+  else if (   Piece != KING
+           && !Slider
+           && bit_is_set(piece_attacks<Piece>(ksq), to))
       set_bit(pCheckersBB, to);
 
   if (Piece != QUEEN && bit_is_set(dcCandidates, from))
