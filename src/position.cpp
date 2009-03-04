@@ -358,6 +358,24 @@ Bitboard Position::hidden_checkers(Color c) const {
 }
 
 
+/// Position:pinned_pieces() returns a bitboard of all pinned (against the
+/// king) pieces for the given color.
+
+Bitboard Position::pinned_pieces(Color c) const {
+
+  return hidden_checkers<true>(c);
+}
+
+
+/// Position:discovered_check_candidates() returns a bitboard containing all
+/// pieces for the given side which are candidates for giving a discovered
+/// check.
+
+Bitboard Position::discovered_check_candidates(Color c) const {
+
+  return hidden_checkers<false>(c);
+}
+
 /// Position::attacks_to() computes a bitboard containing all pieces which
 /// attacks a given square. There are two versions of this function: One
 /// which finds attackers of both colors, and one which only finds the

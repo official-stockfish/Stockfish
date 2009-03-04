@@ -566,14 +566,6 @@ inline Bitboard Position::checkers() const {
   return st->checkersBB;
 }
 
-inline Bitboard Position::pinned_pieces(Color c) const {
-  return hidden_checkers<true>(c);
-}
-
-inline Bitboard Position::discovered_check_candidates(Color c) const {
-  return hidden_checkers<false>(c);
-}
-
 inline bool Position::is_check() const {
   return st->checkersBB != EmptyBoardBB;
 }
