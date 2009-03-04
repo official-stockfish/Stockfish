@@ -312,8 +312,8 @@ private:
   template<PieceType Piece>
   void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
 
-  template<PieceType Piece, bool FindPinned>
-  Bitboard hidden_checks(Color c, Square ksq, Bitboard& pinners) const;
+  template<bool FindPinned>
+  Bitboard hidden_checkers(Color c) const;
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;
@@ -564,6 +564,14 @@ inline Bitboard Position::piece_attacks<KING>(Square s) const {
 
 inline Bitboard Position::checkers() const {
   return st->checkersBB;
+}
+
+inline Bitboard Position::pinned_pieces(Color c) const {
+  return hidden_checkers<true>(c);
+}
+
+inline Bitboard Position::discovered_check_candidates(Color c) const {
+  return hidden_checkers<false>(c);
 }
 
 inline bool Position::is_check() const {
