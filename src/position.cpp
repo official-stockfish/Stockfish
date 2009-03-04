@@ -1208,7 +1208,7 @@ void Position::undo_move(Move m) {
           board[to] = EMPTY;
   }
 
-  // Finally point out state pointer back to the previous state
+  // Finally point our state pointer back to the previous state
   st = st->previous;
 
   assert(is_ok());
@@ -1414,7 +1414,7 @@ void Position::undo_ep_move(Move m) {
 /// Position::do_null_move makes() a "null move": It switches the side to move
 /// and updates the hash key without executing any move on the board.
 
-void Position::do_null_move(StateInfo& newSt) {
+void Position::do_null_move(StateInfo& backupSt) {
 
   assert(is_ok());
   assert(!is_check());
@@ -1422,10 +1422,12 @@ void Position::do_null_move(StateInfo& newSt) {
   // Back up the information necessary to undo the null move to the supplied
   // StateInfo object. In the case of a null move, the only thing we need to
   // remember is the last move made and the en passant square.
-  newSt.lastMove = st->lastMove;
-  newSt.epSquare = st->epSquare;
-  newSt.previous = st->previous;
-  st->previous = &newSt;
+  // Note that differently from normal case here backupSt is actually used as
+  // a backup storage not as a new state to be used.
+  backupSt.lastMove = st->lastMove;
+  backupSt.epSquare = st->epSquare;
+  backupSt.previous = st->previous;
+  st->previous = &backupSt;
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
@@ -1455,7 +1457,7 @@ void Position::undo_null_move() {
   assert(is_ok());
   assert(!is_check());
 
-  // Restore information from the our StateInfo object
+  // Restore information from the our backup StateInfo object
   st->lastMove = st->previous->lastMove;
   st->epSquare = st->previous->epSquare;
   st->previous = st->previous->previous;
