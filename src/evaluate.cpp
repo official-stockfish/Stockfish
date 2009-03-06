@@ -272,11 +272,11 @@ namespace {
   uint8_t BitCount8Bit[256];
 
   // Function prototypes
-  void evaluate_knight(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_bishop(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_rook(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_queen(const Position &p, Square s, Color us, EvalInfo &ei);
-  void evaluate_king(const Position &p, Square s, Color us, EvalInfo &ei);
+  template<PieceType Piece>
+  void evaluate_pieces(const Position& p, Color us, EvalInfo& ei);
+
+  template<>
+  void evaluate_pieces<KING>(const Position& p, Color us, EvalInfo &ei);
 
   void evaluate_passed_pawns(const Position &pos, EvalInfo &ei);
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
@@ -352,52 +352,22 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   // Evaluate pieces
   for (Color c = WHITE; c <= BLACK; c++)
   {
-    // Knights
-    for (int i = 0; i < pos.piece_count(c, KNIGHT); i++)
-        evaluate_knight(pos, pos.piece_list(c, KNIGHT, i), c, ei);
+      evaluate_pieces<KNIGHT>(pos, c, ei);
+      evaluate_pieces<BISHOP>(pos, c, ei);
+      evaluate_pieces<ROOK>(pos, c, ei);
+      evaluate_pieces<QUEEN>(pos, c, ei);
 
-    // Bishops
-    for (int i = 0; i < pos.piece_count(c, BISHOP); i++)
-        evaluate_bishop(pos, pos.piece_list(c, BISHOP, i), c, ei);
-
-    // Rooks
-    for (int i = 0; i < pos.piece_count(c, ROOK); i++)
-        evaluate_rook(pos, pos.piece_list(c, ROOK, i), c, ei);
-
-    // Queens
-    for(int i = 0; i < pos.piece_count(c, QUEEN); i++)
-        evaluate_queen(pos, pos.piece_list(c, QUEEN, i), c, ei);
-
-    // Special pattern: trapped bishops on a7/h7/a2/h2
-    Bitboard b = pos.bishops(c) & MaskA7H7[c];
-    while (b)
-    {
-        Square s = pop_1st_bit(&b);
-        evaluate_trapped_bishop_a7h7(pos, s, c, ei);
-    }
-
-    // Special pattern: trapped bishops on a1/h1/a8/h8 in Chess960:
-    if (Chess960)
-    {
-        b = pos.bishops(c) & MaskA1H1[c];
-        while (b)
-        {
-            Square s = pop_1st_bit(&b);
-            evaluate_trapped_bishop_a1h1(pos, s, c, ei);
-        }
-    }
-
-    // Sum up all attacked squares
-    ei.attackedBy[c][0] =   ei.attackedBy[c][PAWN]   | ei.attackedBy[c][KNIGHT]
-                          | ei.attackedBy[c][BISHOP] | ei.attackedBy[c][ROOK]
-                          | ei.attackedBy[c][QUEEN]  | ei.attackedBy[c][KING];
+      // Sum up all attacked squares
+      ei.attackedBy[c][0] =   ei.attackedBy[c][PAWN]   | ei.attackedBy[c][KNIGHT]
+                            | ei.attackedBy[c][BISHOP] | ei.attackedBy[c][ROOK]
+                            | ei.attackedBy[c][QUEEN]  | ei.attackedBy[c][KING];
   }
 
   // Kings.  Kings are evaluated after all other pieces for both sides,
   // because we need complete attack information for all pieces when computing
   // the king safety evaluation.
   for (Color c = WHITE; c <= BLACK; c++)
-      evaluate_king(pos, pos.king_square(c), c, ei);
+      evaluate_pieces<KING>(pos, c, ei);
 
   // Evaluate passed pawns.  We evaluate passed pawns for both sides at once,
   // because we need to know which side promotes first in positions where
@@ -616,108 +586,97 @@ namespace {
   }
 
 
-  // evaluate_knight() assigns bonuses and penalties to a knight of a given
-  // color on a given square.
+  // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given
+  // color.
 
-  void evaluate_knight(const Position& p, Square s, Color us, EvalInfo& ei) {
+  template<PieceType Piece>
+  void evaluate_pieces(const Position& pos, Color us, EvalInfo& ei) {
 
-    // Attacks, mobility and outposts
-    evaluate_common<KNIGHT>(p, p.piece_attacks<KNIGHT>(s), us, ei, s);
-  }
+    Bitboard b;
 
-
-  // evaluate_bishop() assigns bonuses and penalties to a bishop of a given
-  // color on a given square.
-
-  void evaluate_bishop(const Position& p, Square s, Color us, EvalInfo& ei) {
-
-    Bitboard b = bishop_attacks_bb(s, p.occupied_squares() & ~p.queens(us));
-
-    // Attacks, mobility and outposts
-    evaluate_common<BISHOP>(p, b, us, ei, s);
-  }
-
-
-  // evaluate_rook() assigns bonuses and penalties to a rook of a given
-  // color on a given square.
-
-  void evaluate_rook(const Position& p, Square s, Color us, EvalInfo& ei) {
-
-    Bitboard b = rook_attacks_bb(s, p.occupied_squares() & ~p.rooks_and_queens(us));
-
-    // Attacks and mobility
-    int mob = evaluate_common<ROOK>(p, b, us, ei);
-
-    // Rook on 7th rank
-    Color them = opposite_color(us);
-
-    if (   relative_rank(us, s) == RANK_7
-        && relative_rank(us, p.king_square(them)) == RANK_8)
+    for (int i = 0; i < pos.piece_count(us, Piece); i++)
     {
-        ei.mgValue += Sign[us] * MidgameRookOn7thBonus;
-        ei.egValue += Sign[us] * EndgameRookOn7thBonus;
-    }
+        Square s = pos.piece_list(us, Piece, i);
 
-    // Open and half-open files
-    File f = square_file(s);
-    if (ei.pi->file_is_half_open(us, f))
-    {
-        if (ei.pi->file_is_half_open(them, f))
+        if (Piece == KNIGHT || Piece == QUEEN)
+            b = pos.piece_attacks<Piece>(s);
+        else if (Piece == BISHOP)
+            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.queens(us));
+        else if (Piece == ROOK)
+            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.rooks_and_queens(us));
+
+        // Attacks, mobility and outposts
+        int mob = evaluate_common<Piece>(pos, b, us, ei, s);
+
+        // Special patterns: trapped bishops on a7/h7/a2/h2
+        // and trapped bishops on a1/h1/a8/h8 in Chess960.
+        if (Piece == BISHOP)
         {
-            ei.mgValue += Sign[us] * RookOpenFileBonus;
-            ei.egValue += Sign[us] * RookOpenFileBonus;
+            if (bit_is_set(MaskA7H7[us], s))
+                evaluate_trapped_bishop_a7h7(pos, s, us, ei);
+
+            if (Chess960 && bit_is_set(MaskA1H1[us], s))
+                evaluate_trapped_bishop_a1h1(pos, s, us, ei);
         }
-        else
+
+        if (Piece != ROOK && Piece != QUEEN)
+            continue;
+
+        // Queen or rook on 7th rank
+        Color them = opposite_color(us);
+
+        if (   relative_rank(us, s) == RANK_7
+            && relative_rank(us, pos.king_square(them)) == RANK_8)
         {
-            ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
-            ei.egValue += Sign[us] * RookHalfOpenFileBonus;
+            ei.mgValue += Sign[us] * (Piece == ROOK ? MidgameRookOn7thBonus : MidgameQueenOn7thBonus);
+            ei.egValue += Sign[us] * (Piece == ROOK ? EndgameRookOn7thBonus : EndgameQueenOn7thBonus);
         }
-    }
 
-    // Penalize rooks which are trapped inside a king. Penalize more if
-    // king has lost right to castle
-    if (mob > 6 || ei.pi->file_is_half_open(us, f))
-        return;
+        // Special extra evaluation for rooks
+        if (Piece != ROOK)
+            continue;
 
-    Square ksq = p.king_square(us);
+        // Open and half-open files
+        File f = square_file(s);
+        if (ei.pi->file_is_half_open(us, f))
+        {
+            if (ei.pi->file_is_half_open(them, f))
+            {
+                ei.mgValue += Sign[us] * RookOpenFileBonus;
+                ei.egValue += Sign[us] * RookOpenFileBonus;
+            }
+            else
+            {
+                ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
+                ei.egValue += Sign[us] * RookHalfOpenFileBonus;
+            }
+        }
 
-    if (    square_file(ksq) >= FILE_E
-        &&  square_file(s) > square_file(ksq)
-        && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
-    {
-        // Is there a half-open file between the king and the edge of the board?
-        if (!ei.pi->has_open_file_to_right(us, square_file(ksq)))
-            ei.mgValue -= p.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                          : Sign[us] *  (TrappedRookPenalty - mob * 16);
-    }
-    else if (    square_file(ksq) <= FILE_D
-             &&  square_file(s) < square_file(ksq)
-             && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
-    {
-        // Is there a half-open file between the king and the edge of the board?
-        if (!ei.pi->has_open_file_to_left(us, square_file(ksq)))
-            ei.mgValue -= p.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                          : Sign[us] * (TrappedRookPenalty - mob * 16);
-    }
-  }
+        // Penalize rooks which are trapped inside a king. Penalize more if
+        // king has lost right to castle.
+        if (mob > 6 || ei.pi->file_is_half_open(us, f))
+            continue;
 
+        Square ksq = pos.king_square(us);
 
-  // evaluate_queen() assigns bonuses and penalties to a queen of a given
-  // color on a given square.
-
-  void evaluate_queen(const Position& p, Square s, Color us, EvalInfo& ei) {
-
-    // Attacks and mobility
-    evaluate_common<QUEEN>(p, p.piece_attacks<QUEEN>(s), us, ei);
-
-    // Queen on 7th rank
-    Color them = opposite_color(us);
-
-    if (   relative_rank(us, s) == RANK_7
-        && relative_rank(us, p.king_square(them)) == RANK_8)
-    {
-        ei.mgValue += Sign[us] * MidgameQueenOn7thBonus;
-        ei.egValue += Sign[us] * EndgameQueenOn7thBonus;
+        if (    square_file(ksq) >= FILE_E
+            &&  square_file(s) > square_file(ksq)
+            && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+        {
+            // Is there a half-open file between the king and the edge of the board?
+            if (!ei.pi->has_open_file_to_right(us, square_file(ksq)))
+                ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                                : Sign[us] *  (TrappedRookPenalty - mob * 16);
+        }
+        else if (    square_file(ksq) <= FILE_D
+                 &&  square_file(s) < square_file(ksq)
+                 && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+        {
+            // Is there a half-open file between the king and the edge of the board?
+            if (!ei.pi->has_open_file_to_left(us, square_file(ksq)))
+                ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                                : Sign[us] * (TrappedRookPenalty - mob * 16);
+        }
     }
   }
 
@@ -726,12 +685,14 @@ namespace {
     return b >> (num << 3);
   }
 
-  // evaluate_king() assigns bonuses and penalties to a king of a given
-  // color on a given square.
+  // evaluate_pieces<KING>() assigns bonuses and penalties to a king of a given
+  // color.
 
-  void evaluate_king(const Position& p, Square s, Color us, EvalInfo& ei) {
+  template<>
+  void evaluate_pieces<KING>(const Position& p, Color us, EvalInfo& ei) {
 
     int shelter = 0, sign = Sign[us];
+    Square s = p.king_square(us);
 
     // King shelter
     if (relative_rank(us, s) <= RANK_4)
