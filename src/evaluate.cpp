@@ -593,10 +593,14 @@ namespace {
   void evaluate_pieces(const Position& pos, Color us, EvalInfo& ei) {
 
     Bitboard b;
+    Square s, ksq;
+    Color them;
+    int mob;
+    File f;
 
-    for (int i = 0; i < pos.piece_count(us, Piece); i++)
+    for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
     {
-        Square s = pos.piece_list(us, Piece, i);
+        s = pos.piece_list(us, Piece, i);
 
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.piece_attacks<Piece>(s);
@@ -606,7 +610,7 @@ namespace {
             b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.rooks_and_queens(us));
 
         // Attacks, mobility and outposts
-        int mob = evaluate_common<Piece>(pos, b, us, ei, s);
+        mob = evaluate_common<Piece>(pos, b, us, ei, s);
 
         // Special patterns: trapped bishops on a7/h7/a2/h2
         // and trapped bishops on a1/h1/a8/h8 in Chess960.
@@ -623,7 +627,7 @@ namespace {
             continue;
 
         // Queen or rook on 7th rank
-        Color them = opposite_color(us);
+        them = opposite_color(us);
 
         if (   relative_rank(us, s) == RANK_7
             && relative_rank(us, pos.king_square(them)) == RANK_8)
@@ -637,7 +641,7 @@ namespace {
             continue;
 
         // Open and half-open files
-        File f = square_file(s);
+        f = square_file(s);
         if (ei.pi->file_is_half_open(us, f))
         {
             if (ei.pi->file_is_half_open(them, f))
@@ -657,7 +661,7 @@ namespace {
         if (mob > 6 || ei.pi->file_is_half_open(us, f))
             continue;
 
-        Square ksq = pos.king_square(us);
+        ksq = pos.king_square(us);
 
         if (    square_file(ksq) >= FILE_E
             &&  square_file(s) > square_file(ksq)
