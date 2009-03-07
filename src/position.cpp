@@ -479,7 +479,6 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       return true;
 
   Color us = side_to_move();
-  Color them = opposite_color(us);
   Square from = move_from(m);
   Square ksq = king_square(us);
 
@@ -491,6 +490,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // after the move is made
   if (move_is_ep(m))
   {
+      Color them = opposite_color(us);
       Square to = move_to(m);
       Square capsq = make_square(square_file(to), square_rank(from));
       Bitboard b = occupied_squares();
@@ -511,11 +511,12 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
   if (from == ksq)
-      return !(square_is_attacked(move_to(m), them));
+      return !(square_is_attacked(move_to(m), opposite_color(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return (   !bit_is_set(pinned, from)
+  return (   !pinned
+          || !bit_is_set(pinned, from)
           || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)));
 }
 
