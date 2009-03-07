@@ -552,7 +552,8 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       if (bit_is_set(pawn_attacks(them, ksq), to)) // Normal check?
           return true;
 
-      if (    bit_is_set(dcCandidates, from)      // Discovered check?
+      if (   dcCandidates // Discovered check?
+          && bit_is_set(dcCandidates, from)
           && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
           return true;
 
@@ -591,22 +592,26 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
       }
       return false;
 
+  // Test discovered check and normal check according to piece type
   case KNIGHT:
-    return   bit_is_set(dcCandidates, from)              // Discovered check?
-          || bit_is_set(piece_attacks<KNIGHT>(ksq), to); // Normal check?
+    return   (dcCandidates && bit_is_set(dcCandidates, from))
+          || bit_is_set(piece_attacks<KNIGHT>(ksq), to);
 
   case BISHOP:
-    return   bit_is_set(dcCandidates, from)              // Discovered check?
-          || bit_is_set(piece_attacks<BISHOP>(ksq), to); // Normal check?
+    return   (dcCandidates && bit_is_set(dcCandidates, from))
+          || (   direction_between_squares(ksq, to) != DIR_NONE
+              && bit_is_set(piece_attacks<BISHOP>(ksq), to));
 
   case ROOK:
-    return   bit_is_set(dcCandidates, from)              // Discovered check?
-          || bit_is_set(piece_attacks<ROOK>(ksq), to);   // Normal check?
+    return   (dcCandidates && bit_is_set(dcCandidates, from))
+          || (   direction_between_squares(ksq, to) != DIR_NONE
+              && bit_is_set(piece_attacks<ROOK>(ksq), to));
 
   case QUEEN:
       // Discovered checks are impossible!
       assert(!bit_is_set(dcCandidates, from));
-      return bit_is_set(piece_attacks<QUEEN>(ksq), to);  // Normal check?
+      return (   direction_between_squares(ksq, to) != DIR_NONE
+              && bit_is_set(piece_attacks<QUEEN>(ksq), to));
 
   case KING:
       // Discovered check?
