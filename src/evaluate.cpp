@@ -289,7 +289,6 @@ namespace {
 
   void evaluate_space(const Position &p, Color us, EvalInfo &ei);
   inline Value apply_weight(Value v, int w);
-  Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
 
   int count_1s_8bit(Bitboard b);
 
@@ -527,6 +526,22 @@ void read_weights(Color us) {
   init_safety();
 }
 
+
+/// scale_by_game_phase() interpolates between a middle game and an endgame
+/// score, based on game phase.  It also scales the return value by a
+/// ScaleFactor array.
+
+Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]) {
+
+  assert(mv > -VALUE_INFINITE && mv < VALUE_INFINITE);
+  assert(ev > -VALUE_INFINITE && ev < VALUE_INFINITE);
+  assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
+
+  ev = apply_scale_factor(ev, sf[(ev > Value(0) ? WHITE : BLACK)]);
+
+  Value result = Value(int((mv * ph + ev * (128 - ph)) / 128));
+  return Value(int(result) & ~(GrainSize - 1));
+}
 
 namespace {
 
@@ -1141,23 +1156,6 @@ namespace {
 
   inline Value apply_weight(Value v, int w) {
     return (v*w) / 0x100;
-  }
-
-
-  // scale_by_game_phase() interpolates between a middle game and an endgame
-  // score, based on game phase.  It also scales the return value by a
-  // ScaleFactor array.
-
-  Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]) {
-
-    assert(mv > -VALUE_INFINITE && mv < VALUE_INFINITE);
-    assert(ev > -VALUE_INFINITE && ev < VALUE_INFINITE);
-    assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
-
-    ev = apply_scale_factor(ev, sf[(ev > Value(0) ? WHITE : BLACK)]);
-
-    Value result = Value(int((mv * ph + ev * (128 - ph)) / 128));
-    return Value(int(result) & ~(GrainSize - 1));
   }
 
 

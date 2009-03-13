@@ -152,6 +152,16 @@ namespace {
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x300);
 
+  //Null move search refutes move when Nullvalue >= Beta - Delta. Index is depth
+  //in full plies. Last index is 9+.
+  const Value NullMoveDeltaMidgame[] =
+    { Value(-8), Value( 6), Value(-15), Value( 9), Value(21),
+      Value(34), Value(54), Value( 59), Value(61), Value(61) };
+
+  const Value NullMoveDeltaEndgame[] =
+    { Value( 6), Value( 0), Value(-13), Value(-9), Value(-35),
+      Value(12), Value(24), Value(  9), Value( 5), Value(  5) };
+
   // Pruning criterions.  See the code and comments in ok_to_prune() to
   // understand their precise meaning.
   const bool PruneEscapeMoves = false;
@@ -1202,13 +1212,19 @@ namespace {
         &&  ok_to_do_nullmove(pos)
         &&  approximateEval >= beta - NullMoveMargin)
     {
+        //Calculate correct delta. Idea and tuning from Joona Kiiski.
+        ScaleFactor factor[2] = { SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL };
+        Phase phase = pos.game_phase();
+        int i = Min(depth / OnePly, 9);
+        Value delta = scale_by_game_phase(NullMoveDeltaMidgame[i], NullMoveDeltaEndgame[i], phase, factor);
+
         ss[ply].currentMove = MOVE_NULL;
 
         StateInfo st;
         pos.do_null_move(st);
         int R = (depth >= 4 * OnePly ? 4 : 3); // Null move dynamic reduction
 
-        Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
+        Value nullValue = -search(pos, ss, -(beta-delta-1), depth-R*OnePly, ply+1, false, threadID);
 
         // Check for a null capture artifact, if the value without the null capture
         // is above beta then mark the node as a suspicious failed low. We will verify
@@ -1229,7 +1245,7 @@ namespace {
         {
             /* Do not return unproven mates */
         }
-        else if (nullValue >= beta)
+        else if (nullValue >= beta - delta)
         {
             if (depth < 6 * OnePly)
                 return beta;

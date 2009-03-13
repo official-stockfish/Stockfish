@@ -105,6 +105,7 @@ extern Value quick_evaluate(const Position &pos);
 extern void init_eval(int threads);
 extern void quit_eval();
 extern void read_weights(Color sideToMove);
+extern Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
 
 
 #endif // !defined(EVALUATE_H_INCLUDED)
