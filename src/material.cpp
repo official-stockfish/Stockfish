@@ -36,8 +36,8 @@
 
 namespace {
 
-  const Value BishopPairMidgameBonus = Value(100);
-  const Value BishopPairEndgameBonus = Value(100);
+  const Value BishopPairMidgameBonus = Value(109);
+  const Value BishopPairEndgameBonus = Value(97);
 
   Key KNNKMaterialKey, KKNNMaterialKey;
 

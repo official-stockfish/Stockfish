@@ -58,15 +58,17 @@ namespace {
   // weights read from UCI parameters.  The purpose is to be able to change
   // the evaluation weights while keeping the default values of the UCI
   // parameters at 100, which looks prettier.
-  const int WeightMobilityMidgameInternal      = 0x100;
-  const int WeightMobilityEndgameInternal      = 0x100;
-  const int WeightPawnStructureMidgameInternal = 0x100;
-  const int WeightPawnStructureEndgameInternal = 0x100;
-  const int WeightPassedPawnsMidgameInternal   = 0x100;
-  const int WeightPassedPawnsEndgameInternal   = 0x100;
-  const int WeightKingSafetyInternal           = 0x110;
-  const int WeightKingOppSafetyInternal        = 0x110;
-  const int WeightSpaceInternal                = 0x30;
+  //
+  // Values modified by Joona Kiiski
+  const int WeightMobilityMidgameInternal      = 0x0FA;
+  const int WeightMobilityEndgameInternal      = 0x10A;
+  const int WeightPawnStructureMidgameInternal = 0x0EC;
+  const int WeightPawnStructureEndgameInternal = 0x0CD;
+  const int WeightPassedPawnsMidgameInternal   = 0x108;
+  const int WeightPassedPawnsEndgameInternal   = 0x109;
+  const int WeightKingSafetyInternal           = 0x0F7;
+  const int WeightKingOppSafetyInternal        = 0x101;
+  const int WeightSpaceInternal                = 0x02F;
 
   // Visually better to define tables constants
   typedef Value V;
@@ -167,18 +169,19 @@ namespace {
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
   };
 
-  // Bonus for unstoppable passed pawns:
+  // Bonus for unstoppable passed pawns
   const Value UnstoppablePawnValue = Value(0x500);
 
-  // Rooks and queens on the 7th rank:
-  const Value MidgameRookOn7thBonus  = Value(50);
-  const Value EndgameRookOn7thBonus  = Value(100);
-  const Value MidgameQueenOn7thBonus = Value(25);
-  const Value EndgameQueenOn7thBonus = Value(50);
+  // Rooks and queens on the 7th rank
+  const Value MidgameRookOn7thBonus  = Value(47);
+  const Value EndgameRookOn7thBonus  = Value(98);
+  const Value MidgameQueenOn7thBonus = Value(27);
+  const Value EndgameQueenOn7thBonus = Value(54);
 
-  // Rooks on open files:
-  const Value RookOpenFileBonus     = Value(40);
-  const Value RookHalfOpenFileBonus = Value(20);
+
+  // Rooks on open files
+  const Value RookOpenFileBonus = Value(43);
+  const Value RookHalfOpenFileBonus = Value(19);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
   // right to castle:

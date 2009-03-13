@@ -650,15 +650,9 @@ inline Value Position::non_pawn_material(Color c) const {
 
 inline Phase Position::game_phase() const {
 
-  // The purpose of the Value(325) terms below is to make sure the difference
-  // between MidgameLimit and EndgameLimit is a power of 2, which should make
-  // the division at the end of the function a bit faster.
-  static const Value MidgameLimit =  2 * QueenValueMidgame
-                                   + 2 * RookValueMidgame
-                                   + 6 * BishopValueMidgame
-                                   + Value(325);
-
-  static const Value EndgameLimit = 4 * RookValueMidgame - Value(325);
+  // Values modified by Joona Kiiski
+  static const Value MidgameLimit = Value(15713);
+  static const Value EndgameLimit = Value(4428);
 
   Value npm = non_pawn_material(WHITE) + non_pawn_material(BLACK);
 
