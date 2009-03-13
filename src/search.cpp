@@ -125,9 +125,6 @@ namespace {
   const bool UseIIDAtPVNodes = true;
   const bool UseIIDAtNonPVNodes = false;
 
-  // Use null move driven internal iterative deepening?
-  bool UseNullDrivenIID = false;
-
   // Internal iterative deepening margin.  At Non-PV moves, when
   // UseIIDAtNonPVNodes is true, we do an internal iterative deepening search
   // when the static evaluation is at most IIDMargin below beta.
@@ -437,7 +434,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
 
-  UseNullDrivenIID = get_option_value_bool("Null driven IID");
   UseQSearchFutilityPruning = get_option_value_bool("Futility Pruning (Quiescence Search)");
   UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
 
@@ -1201,7 +1197,6 @@ namespace {
 
     Value approximateEval = quick_evaluate(pos);
     bool mateThreat = false;
-    bool nullDrivenIID = false;
     bool isCheck = pos.is_check();
 
     // Null move search
@@ -1226,19 +1221,6 @@ namespace {
 
         Value nullValue = -search(pos, ss, -(beta-delta-1), depth-R*OnePly, ply+1, false, threadID);
 
-        // Check for a null capture artifact, if the value without the null capture
-        // is above beta then mark the node as a suspicious failed low. We will verify
-        // later if we are really under threat.
-        if (   UseNullDrivenIID
-            && nullValue < beta
-            && depth > 6 * OnePly
-            &&!value_is_mate(nullValue)
-            && ttMove == MOVE_NONE
-            && ss[ply + 1].currentMove != MOVE_NONE
-            && pos.move_is_capture(ss[ply + 1].currentMove)
-            && pos.see(ss[ply + 1].currentMove) + nullValue >= beta)
-            nullDrivenIID = true;
-
         pos.undo_null_move();
 
         if (value_is_mate(nullValue))
@@ -1262,10 +1244,8 @@ namespace {
             // low score (which will cause the reduced move to fail high in the
             // parent node, which will trigger a re-search with full depth).
             if (nullValue == value_mated_in(ply + 2))
-            {
                 mateThreat = true;
-                nullDrivenIID = false;
-            }
+
             ss[ply].threatMove = ss[ply + 1].currentMove;
             if (   depth < ThreatDepth
                 && ss[ply - 1].reduction
@@ -1294,22 +1274,6 @@ namespace {
     {
         search(pos, ss, beta, Min(depth/2, depth-2*OnePly), ply, false, threadID);
         ttMove = ss[ply].pv[ply];
-    }
-    else if (nullDrivenIID)
-    {
-        // The null move failed low due to a suspicious capture. Perhaps we
-        // are facing a null capture artifact due to the side to move change
-        // and this position should fail high. So do a normal search with a
-        // reduced depth to get a good ttMove to use in the following full
-        // depth search.
-        Move tm = ss[ply].threatMove;
-
-        assert(tm != MOVE_NONE);
-        assert(ttMove == MOVE_NONE);
-
-        search(pos, ss, beta, depth/2, ply, false, threadID);
-        ttMove = ss[ply].pv[ply];
-        ss[ply].threatMove = tm;
     }
 
     // Initialize a MovePicker object for the current position, and prepare
