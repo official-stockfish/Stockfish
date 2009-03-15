@@ -626,63 +626,63 @@ namespace {
                 evaluate_trapped_bishop_a1h1(pos, s, us, ei);
         }
 
-        if (Piece != ROOK && Piece != QUEEN)
-            continue;
-
-        // Queen or rook on 7th rank
-        them = opposite_color(us);
-
-        if (   relative_rank(us, s) == RANK_7
-            && relative_rank(us, pos.king_square(them)) == RANK_8)
+        if (Piece == ROOK || Piece == QUEEN)
         {
-            ei.mgValue += Sign[us] * (Piece == ROOK ? MidgameRookOn7thBonus : MidgameQueenOn7thBonus);
-            ei.egValue += Sign[us] * (Piece == ROOK ? EndgameRookOn7thBonus : EndgameQueenOn7thBonus);
+            // Queen or rook on 7th rank
+            them = opposite_color(us);
+
+            if (   relative_rank(us, s) == RANK_7
+                && relative_rank(us, pos.king_square(them)) == RANK_8)
+            {
+                ei.mgValue += Sign[us] * (Piece == ROOK ? MidgameRookOn7thBonus : MidgameQueenOn7thBonus);
+                ei.egValue += Sign[us] * (Piece == ROOK ? EndgameRookOn7thBonus : EndgameQueenOn7thBonus);
+            }
         }
 
         // Special extra evaluation for rooks
-        if (Piece != ROOK)
-            continue;
-
-        // Open and half-open files
-        f = square_file(s);
-        if (ei.pi->file_is_half_open(us, f))
+        if (Piece == ROOK)
         {
-            if (ei.pi->file_is_half_open(them, f))
+            // Open and half-open files
+            f = square_file(s);
+            if (ei.pi->file_is_half_open(us, f))
             {
-                ei.mgValue += Sign[us] * RookOpenFileBonus;
-                ei.egValue += Sign[us] * RookOpenFileBonus;
+                if (ei.pi->file_is_half_open(them, f))
+                {
+                    ei.mgValue += Sign[us] * RookOpenFileBonus;
+                    ei.egValue += Sign[us] * RookOpenFileBonus;
+                }
+                else
+                {
+                    ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
+                    ei.egValue += Sign[us] * RookHalfOpenFileBonus;
+                }
             }
-            else
+
+            // Penalize rooks which are trapped inside a king. Penalize more if
+            // king has lost right to castle.
+            if (mob > 6 || ei.pi->file_is_half_open(us, f))
+                continue;
+
+            ksq = pos.king_square(us);
+
+            if (    square_file(ksq) >= FILE_E
+                &&  square_file(s) > square_file(ksq)
+                && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
             {
-                ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
-                ei.egValue += Sign[us] * RookHalfOpenFileBonus;
+                // Is there a half-open file between the king and the edge of the board?
+                if (!ei.pi->has_open_file_to_right(us, square_file(ksq)))
+                    ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                                    : Sign[us] *  (TrappedRookPenalty - mob * 16);
             }
-        }
-
-        // Penalize rooks which are trapped inside a king. Penalize more if
-        // king has lost right to castle.
-        if (mob > 6 || ei.pi->file_is_half_open(us, f))
-            continue;
-
-        ksq = pos.king_square(us);
-
-        if (    square_file(ksq) >= FILE_E
-            &&  square_file(s) > square_file(ksq)
-            && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
-        {
-            // Is there a half-open file between the king and the edge of the board?
-            if (!ei.pi->has_open_file_to_right(us, square_file(ksq)))
-                ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                                : Sign[us] *  (TrappedRookPenalty - mob * 16);
-        }
-        else if (    square_file(ksq) <= FILE_D
-                 &&  square_file(s) < square_file(ksq)
-                 && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
-        {
-            // Is there a half-open file between the king and the edge of the board?
-            if (!ei.pi->has_open_file_to_left(us, square_file(ksq)))
-                ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                                : Sign[us] * (TrappedRookPenalty - mob * 16);
+            else if (    square_file(ksq) <= FILE_D
+                    &&  square_file(s) < square_file(ksq)
+                    && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+            {
+                // Is there a half-open file between the king and the edge of the board?
+                if (!ei.pi->has_open_file_to_left(us, square_file(ksq)))
+                    ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                                    : Sign[us] * (TrappedRookPenalty - mob * 16);
+            }
         }
     }
   }
