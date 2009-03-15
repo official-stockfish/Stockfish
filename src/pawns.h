@@ -58,9 +58,9 @@ private:
 
   Key key;
   Bitboard passedPawns;
-  int16_t mgValue, egValue;
-  int8_t ksStormValue[2], qsStormValue[2];
-  uint8_t halfOpenFiles[2];
+  int mgValue, egValue;
+  int ksStormValue[2], qsStormValue[2];
+  int halfOpenFiles[2];
 };
 
 
