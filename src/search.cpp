@@ -193,7 +193,6 @@ namespace {
 
   // Iteration counters
   int Iteration;
-  bool LastIterations;
   BetaCounterType BetaCounter;
 
   // Scores and number of times the best move changed for each iteration:
@@ -207,7 +206,7 @@ namespace {
   int SearchStartTime;
   int MaxNodes, MaxDepth;
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime;
-  Move BestRootMove, PonderMove, EasyMove;
+  Move EasyMove;
   int RootMoveNumber;
   bool InfiniteSearch;
   bool PonderSearch;
@@ -369,8 +368,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   // Initialize global search variables
   Idle = false;
   SearchStartTime = get_system_time();
-  BestRootMove = MOVE_NONE;
-  PonderMove = MOVE_NONE;
   EasyMove = MOVE_NONE;
   for (int i = 0; i < THREAD_MAX; i++)
   {
@@ -661,7 +658,6 @@ namespace {
     ValueByIteration[0] = Value(0);
     ValueByIteration[1] = rml.get_move_score(0);
     Iteration = 1;
-    LastIterations = false;
 
     EasyMove = rml.scan_for_easy_move();
 
@@ -715,9 +711,6 @@ namespace {
             if (Iteration > 5 && Iteration <= 50)
                 ExtraSearchTime = BestMoveChangesByIteration[Iteration]   * (MaxSearchTime / 2)
                                 + BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
-
-            // Try to guess if the current iteration is the last one or the last two
-            LastIterations = (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*58) / 128);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration.  We probably don't have enough time to search the first

@@ -1854,15 +1854,14 @@ Value Position::compute_value() const {
 Value Position::compute_non_pawn_material(Color c) const {
 
   Value result = Value(0);
-  Square s;
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
   {
       Bitboard b = pieces_of_color_and_type(c, pt);
-      while(b)
+      while (b)
       {
-          s = pop_1st_bit(&b);
-          assert(piece_on(s) == piece_of_color_and_type(c, pt));
+          assert(piece_on(first_1(b)) == piece_of_color_and_type(c, pt));
+          pop_1st_bit(&b);
           result += piece_value_midgame(pt);
       }
   }

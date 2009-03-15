@@ -65,7 +65,7 @@ private:
   uint8_t factor[2];
   EndgameEvaluationFunctionBase* evaluationFunction;
   EndgameScalingFunctionBase* scalingFunction[2];
-  uint8_t spaceWeight;
+  int spaceWeight;
 };
 
 
