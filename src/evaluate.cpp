@@ -490,7 +490,10 @@ void init_eval(int threads) {
   }
 
   for (Bitboard b = 0ULL; b < 256ULL; b++)
+  {
+      assert(count_1s(b) == int(uint8_t(count_1s(b))));
       BitCount8Bit[b] = (uint8_t)count_1s(b);
+  }
 }
 
 
