@@ -27,29 +27,30 @@
 
 #include "material.h"
 #include "pawns.h"
-#include "position.h"
 
 
 ////
 //// Types
 ////
 
+
 /// The EvalInfo struct contains various information computed and collected
-/// by the evaluation function.  An EvalInfo object is passed as one of the
+/// by the evaluation function. An EvalInfo object is passed as one of the
 /// arguments to the evaluation function, and the search can make use of its
 /// contents to make intelligent search decisions.
 ///
 /// At the moment, this is not utilized very much:  The only part of the
 /// EvalInfo object which is used by the search is futilityMargin.
+class Position;
 
 struct EvalInfo {
 
-  // Middle game and endgame evaluations:
+  // Middle game and endgame evaluations
   Value mgValue, egValue;
 
-  // Pointers to material and pawn hash table entries:
-  MaterialInfo *mi;
-  PawnInfo *pi;
+  // Pointers to material and pawn hash table entries
+  MaterialInfo* mi;
+  PawnInfo* pi;
 
   // attackedBy[color][piece type] is a bitboard representing all squares
   // attacked by a given color and piece type.  attackedBy[color][0] contains
@@ -100,8 +101,8 @@ struct EvalInfo {
 //// Prototypes
 ////
 
-extern Value evaluate(const Position &pos, EvalInfo &ei, int threadID);
-extern Value quick_evaluate(const Position &pos);
+extern Value evaluate(const Position& pos, EvalInfo& ei, int threadID);
+extern Value quick_evaluate(const Position& pos);
 extern void init_eval(int threads);
 extern void quit_eval();
 extern void read_weights(Color sideToMove);

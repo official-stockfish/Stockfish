@@ -38,8 +38,8 @@ enum Direction {
 };
 
 enum SignedDirection {
-  SIGNED_DIR_E = 0, SIGNED_DIR_W = 1,
-  SIGNED_DIR_N = 2, SIGNED_DIR_S = 3,
+  SIGNED_DIR_E  = 0, SIGNED_DIR_W  = 1,
+  SIGNED_DIR_N  = 2, SIGNED_DIR_S  = 3,
   SIGNED_DIR_NE = 4, SIGNED_DIR_SW = 5,
   SIGNED_DIR_NW = 6, SIGNED_DIR_SE = 7,
   SIGNED_DIR_NONE = 8
@@ -58,9 +58,11 @@ extern uint8_t SignedDirectionTable[64][64];
 //// Inline functions
 ////
 
-inline void operator++ (Direction &d, int) { d = Direction(int(d) + 1); }
+inline void operator++ (Direction& d, int) {
+  d = Direction(int(d) + 1);
+}
 
-inline void operator++ (SignedDirection &d, int) {
+inline void operator++ (SignedDirection& d, int) {
   d = SignedDirection(int(d) + 1);
 }
 

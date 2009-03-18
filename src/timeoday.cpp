@@ -2,21 +2,21 @@
    (c) Copyright 1992 Eric Backus
 
    This software may be used freely so long as this copyright notice is
-   left intact.  There is no warrantee on this software.
- */
+   left intact. There is no warrantee on this software.
+*/
+
 #include <windows.h>
 #include <time.h>
 #include "dos.h"
 
-
-int             gettimeofday(struct timeval * tp, struct timezone * tzp)
+int gettimeofday(struct timeval* tp, struct timezone* tzp)
 {
-    SYSTEMTIME      systime;
+    SYSTEMTIME systime;
 
-    if (tp) {
-        struct tm       tmrec;
-        time_t          theTime = time(NULL);
-
+    if (tp)
+    {
+        struct tm tmrec;
+        time_t theTime = time(NULL);
 
         tmrec = *localtime(&theTime);
         tp->tv_sec = mktime(&tmrec);

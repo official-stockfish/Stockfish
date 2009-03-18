@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
   std::cin.rdbuf()->pubsetbuf(NULL, 0);
 
   // Initialization
-
   init_mersenne();
   init_direction_table();
   init_bitboards();
@@ -73,7 +72,7 @@ int main(int argc, char *argv[]) {
   {
       if (argc < 4 || argc > 7)
       {
-        std::cout << "Usage: glaurung bench <hash size> <threads> "
+        std::cout << "Usage: stockfish bench <hash size> <threads> "
                   << "[time = 60s] [fen positions file = default] "
                   << "[time, depth or node limited = time]"
                   << std::endl;

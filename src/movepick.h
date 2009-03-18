@@ -105,7 +105,6 @@ private:
 /// a single reply to check.
 
 inline int MovePicker::number_of_moves() const {
-
   return numOfMoves;
 }
 

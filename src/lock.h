@@ -87,7 +87,7 @@ typedef pthread_mutex_t Lock;
 #else
 
 
-#  include <windows.h>
+#include <windows.h>
 
 typedef CRITICAL_SECTION Lock;
 #  define lock_init(x, y) InitializeCriticalSection(x)

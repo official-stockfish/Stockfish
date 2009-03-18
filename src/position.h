@@ -38,7 +38,6 @@
 #include "direction.h"
 #include "move.h"
 #include "piece.h"
-#include "phase.h"
 #include "square.h"
 #include "value.h"
 
@@ -61,7 +60,7 @@ const int MaxGameLength = 220;
 //// Types
 ////
 
-/// Castle rights, encoded as bit fields:
+/// Castle rights, encoded as bit fields
 
 enum CastleRights {
   NO_CASTLES = 0,
@@ -70,6 +69,12 @@ enum CastleRights {
   WHITE_OOO = 4,
   BLACK_OOO = 8,
   ALL_CASTLES = 15
+};
+
+/// Game phase
+enum Phase {
+  PHASE_ENDGAME = 0,
+  PHASE_MIDGAME = 128
 };
 
 

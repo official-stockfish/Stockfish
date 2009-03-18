@@ -25,8 +25,8 @@
 //// Includes
 ////
 
-#include "position.h"
-
+#include "bitboard.h"
+#include "value.h"
 
 ////
 //// Types
@@ -38,6 +38,7 @@
 /// to add further information in the future.  A lookup to the pawn hash table
 /// (performed by calling the get_pawn_info method in a PawnInfoTable object)
 /// returns a pointer to a PawnInfo object.
+class Position;
 
 class PawnInfo {
 
@@ -49,9 +50,9 @@ public:
   Value kingside_storm_value(Color c) const;
   Value queenside_storm_value(Color c) const;
   Bitboard passed_pawns() const;
-  bool file_is_half_open(Color c, File f) const;
-  bool has_open_file_to_left(Color c, File f) const;
-  bool has_open_file_to_right(Color c, File f) const;
+  int file_is_half_open(Color c, File f) const;
+  int has_open_file_to_left(Color c, File f) const;
+  int has_open_file_to_right(Color c, File f) const;
 
 private:
   void clear();
@@ -75,11 +76,11 @@ public:
   PawnInfoTable(unsigned numOfEntries);
   ~PawnInfoTable();
   void clear();
-  PawnInfo *get_pawn_info(const Position &pos);
+  PawnInfo* get_pawn_info(const Position& pos);
 
 private:
   unsigned size;
-  PawnInfo *entries;
+  PawnInfo* entries;
 };
 
 
@@ -107,15 +108,15 @@ inline Value PawnInfo::queenside_storm_value(Color c) const {
   return Value(qsStormValue[c]);
 }
 
-inline bool PawnInfo::file_is_half_open(Color c, File f) const {
+inline int PawnInfo::file_is_half_open(Color c, File f) const {
   return (halfOpenFiles[c] & (1 << int(f)));
 }
 
-inline bool PawnInfo::has_open_file_to_left(Color c, File f) const {
+inline int PawnInfo::has_open_file_to_left(Color c, File f) const {
   return halfOpenFiles[c] & ((1 << int(f)) - 1);
 }
 
-inline bool PawnInfo::has_open_file_to_right(Color c, File f) const {
+inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
   return halfOpenFiles[c] & ~((1 << int(f+1)) - 1);
 }
 

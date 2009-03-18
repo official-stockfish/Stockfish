@@ -26,6 +26,7 @@
 #include <cstring>
 
 #include "pawns.h"
+#include "position.h"
 
 
 ////

@@ -84,8 +84,7 @@ const Bitboard EmptyBoardBB = 0ULL;
 
 const Bitboard WhiteSquaresBB = 0x55AA55AA55AA55AAULL;
 const Bitboard BlackSquaresBB = 0xAA55AA55AA55AA55ULL;
-
-extern const Bitboard SquaresByColorBB[2];
+const Bitboard SquaresByColorBB[2] = { BlackSquaresBB, WhiteSquaresBB };
 
 const Bitboard FileABB = 0x0101010101010101ULL;
 const Bitboard FileBBB = 0x0202020202020202ULL;
@@ -96,9 +95,21 @@ const Bitboard FileFBB = 0x2020202020202020ULL;
 const Bitboard FileGBB = 0x4040404040404040ULL;
 const Bitboard FileHBB = 0x8080808080808080ULL;
 
-extern const Bitboard FileBB[8];
-extern const Bitboard NeighboringFilesBB[8];
-extern const Bitboard ThisAndNeighboringFilesBB[8];
+const Bitboard FileBB[8] = {
+  FileABB, FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB
+};
+
+const Bitboard NeighboringFilesBB[8] = {
+  FileBBB, FileABB|FileCBB, FileBBB|FileDBB, FileCBB|FileEBB,
+  FileDBB|FileFBB, FileEBB|FileGBB, FileFBB|FileHBB, FileGBB
+};
+
+const Bitboard ThisAndNeighboringFilesBB[8] = {
+  FileABB|FileBBB, FileABB|FileBBB|FileCBB,
+  FileBBB|FileCBB|FileDBB, FileCBB|FileDBB|FileEBB,
+  FileDBB|FileEBB|FileFBB, FileEBB|FileFBB|FileGBB,
+  FileFBB|FileGBB|FileHBB, FileGBB|FileHBB
+};
 
 const Bitboard Rank1BB = 0xFFULL;
 const Bitboard Rank2BB = 0xFF00ULL;
@@ -109,9 +120,35 @@ const Bitboard Rank6BB = 0xFF0000000000ULL;
 const Bitboard Rank7BB = 0xFF000000000000ULL;
 const Bitboard Rank8BB = 0xFF00000000000000ULL;
 
-extern const Bitboard RankBB[8];
-extern const Bitboard RelativeRankBB[2][8];
-extern const Bitboard InFrontBB[2][8];
+const Bitboard RankBB[8] = {
+  Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB
+};
+
+const Bitboard RelativeRankBB[2][8] = {
+  { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB },
+  { Rank8BB, Rank7BB, Rank6BB, Rank5BB, Rank4BB, Rank3BB, Rank2BB, Rank1BB }
+};
+
+const Bitboard InFrontBB[2][8] = {
+  { Rank2BB | Rank3BB | Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank3BB | Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank6BB | Rank7BB | Rank8BB,
+    Rank7BB | Rank8BB,
+    Rank8BB,
+    EmptyBoardBB
+  },
+  { EmptyBoardBB,
+    Rank1BB,
+    Rank2BB | Rank1BB,
+    Rank3BB | Rank2BB | Rank1BB,
+    Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank7BB | Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB
+  }
+};
 
 extern Bitboard SetMaskBB[65];
 extern Bitboard ClearMaskBB[65];
@@ -124,13 +161,17 @@ extern Bitboard PassedPawnMask[2][64];
 extern Bitboard OutpostMask[2][64];
 
 #if defined(USE_COMPACT_ROOK_ATTACKS)
+
 extern Bitboard RankAttacks[8][64], FileAttacks[8][64];
+
 #else
+
 extern const uint64_t RMult[64];
 extern const int RShift[64];
 extern Bitboard RMask[64];
 extern int RAttackIndex[64];
 extern Bitboard RAttacks[0x19000];
+
 #endif // defined(USE_COMPACT_ROOK_ATTACKS)
 
 extern const uint64_t BMult[64];
@@ -212,7 +253,7 @@ inline Bitboard this_and_neighboring_files_bb(Square s) {
 
 /// relative_rank_bb() takes a color and a rank as input, and returns a bitboard
 /// representing all squares on the given rank from the given color's point of
-/// view.  For instance, relative_rank_bb(WHITE, 7) gives all squares on the
+/// view. For instance, relative_rank_bb(WHITE, 7) gives all squares on the
 /// 7th rank, while relative_rank_bb(BLACK, 7) gives all squares on the 2nd
 /// rank.
 

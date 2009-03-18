@@ -139,7 +139,7 @@ const std::string move_to_string(Move move) {
 
 /// Overload the << operator, to make it easier to print moves.
 
-std::ostream &operator << (std::ostream &os, Move m) {
+std::ostream &operator << (std::ostream& os, Move m) {
 
   return os << move_to_string(m);
 }

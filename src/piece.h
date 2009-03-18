@@ -26,7 +26,6 @@
 ////
 
 #include "color.h"
-#include "misc.h"
 #include "square.h"
 
 
@@ -50,39 +49,8 @@ enum Piece {
 //// Constants
 ////
 
-const PieceType PieceTypeMin = PAWN;
-const PieceType PieceTypeMax = KING;
-
 const int SlidingArray[18] = {
   0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0
-};
-
-const SquareDelta Directions[16][16] = {
-  {DELTA_ZERO},
-  {DELTA_NW, DELTA_NE, DELTA_ZERO},
-  {DELTA_SSW, DELTA_SSE, DELTA_SWW, DELTA_SEE,
-   DELTA_NWW, DELTA_NEE, DELTA_NNW, DELTA_NNE, DELTA_ZERO},
-  {DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
-  {DELTA_S, DELTA_E, DELTA_W, DELTA_N, DELTA_ZERO},
-  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
-   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
-  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
-   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
-  {DELTA_ZERO},
-  {DELTA_ZERO},
-  {DELTA_SW, DELTA_SE, DELTA_ZERO},
-  {DELTA_SSW, DELTA_SSE, DELTA_SWW, DELTA_SEE,
-   DELTA_NWW, DELTA_NEE, DELTA_NNW, DELTA_NNE, DELTA_ZERO},
-  {DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
-  {DELTA_S, DELTA_E, DELTA_W, DELTA_N, DELTA_ZERO},
-  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
-   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
-  {DELTA_S, DELTA_E, DELTA_W, DELTA_N,
-   DELTA_SE, DELTA_SW, DELTA_NE, DELTA_NW, DELTA_ZERO},
-};
-
-const SquareDelta PawnPush[2] = {
-  DELTA_N, DELTA_S
 };
 
 
@@ -115,12 +83,12 @@ inline int piece_is_slider(Piece p) {
   return SlidingArray[int(p)];
 }
 
-inline int piece_type_is_slider(PieceType pt) {
+inline int piece_is_slider(PieceType pt) {
   return SlidingArray[int(pt)];
 }
 
 inline SquareDelta pawn_push(Color c) {
-  return PawnPush[c];
+    return (c == WHITE ? DELTA_N : DELTA_S);
 }
 
 inline bool piece_type_is_ok(PieceType pc) {
