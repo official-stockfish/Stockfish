@@ -1332,8 +1332,11 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[ply]))
       {
-          ss[ply].reduction = OnePly;
-          value = -search(pos, ss, -(beta-1), newDepth-OnePly, ply+1, true, threadID);
+          // LMR dynamic reduction
+          Depth R = (moveCount >= 3 * LMRNonPVMoves && depth >= 7*OnePly ? 2*OnePly : OnePly);
+
+          ss[ply].reduction = R;
+          value = -search(pos, ss, -(beta-1), newDepth-R, ply+1, true, threadID);
       }
       else
         value = beta; // Just to trigger next condition

@@ -141,8 +141,8 @@ Move MovePicker::get_next_move() {
             assert(move_is_ok(mateKiller));
             if (move_is_legal(pos, mateKiller, pinned))
                 return mateKiller;
-       }
-       break;
+        }
+        break;
 
     case PH_GOOD_CAPTURES:
         numOfMoves = generate_captures(pos, moves);
