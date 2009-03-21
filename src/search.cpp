@@ -1417,10 +1417,14 @@ namespace {
     if (pos.is_draw())
         return VALUE_DRAW;
 
-    // Transposition table lookup
-    const TTEntry* tte = TT.retrieve(pos);
-    if (tte && ok_to_use_TT(tte, depth, beta, ply))
-        return value_from_tt(tte->value(), ply);
+    // Transposition table lookup, only when not in PV
+    bool pvNode = (beta - alpha != 1);
+    if (!pvNode)
+    {
+        const TTEntry* tte = TT.retrieve(pos);
+        if (tte && ok_to_use_TT(tte, depth, beta, ply))
+            return value_from_tt(tte->value(), ply);
+    }
 
     // Evaluate the position statically
     EvalInfo ei;
@@ -1443,7 +1447,6 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    bool pvNode = (beta - alpha != 1);
     MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, isCheck ? NULL : &ei);
     Move move;
     int moveCount = 0;
