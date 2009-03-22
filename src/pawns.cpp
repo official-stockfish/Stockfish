@@ -120,14 +120,12 @@ namespace {
     0, 0, 0, 0,  0,  0,  0,  0
   };
 
-  // Pawn storm open file bonuses by file:
-  const int KStormOpenFileBonus[8] = {
-    45, 45, 30, 0, 0, 0, 0, 0
-  };
+  // Pawn storm open file bonuses by file
+  const int KStormOpenFileBonus[8] = { 45, 45, 30, 0, 0, 0, 0, 0 };
+  const int QStormOpenFileBonus[8] = { 0, 0, 0, 0, 0, 30, 45, 30 };
 
-  const int QStormOpenFileBonus[8] = {
-    0, 0, 0, 0, 0, 30, 45, 30
-  };
+  // Pawn storm lever bonuses by file
+  const int StormLeverBonus[8] = { 20, 20, 10, 0, 0, 10, 20, 20 };
 
 }
 
@@ -200,6 +198,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
     Bitboard ourPawns = pos.pawns(us);
     Bitboard theirPawns = pos.pawns(them);
     Bitboard pawns = ourPawns;
+    int bonus;
 
     // Initialize pawn storm scores by giving bonuses for open files
     for (File f = FILE_A; f <= FILE_H; f++)
@@ -227,54 +226,66 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         isolated = pos.pawn_is_isolated(us, s);
         doubled = pos.pawn_is_doubled(us, s);
 
-        // We calculate kingside and queenside pawn storm scores
-        // for both colors. These are used when evaluating middle
-        // game positions with opposite side castling.
+        // We calculate kingside and queenside pawn storm
+        // scores for both colors. These are used when evaluating
+        // middle game positions with opposite side castling.
         //
         // Each pawn is given a base score given by a piece square table
-        // (KStormTable[] or QStormTable[]). This score is increased if
-        // there are enemy pawns on adjacent files in front of the pawn.
-        // This is because we want to be able to open files against the
-        // enemy king, and to avoid blocking the pawn structure (e.g. white
-        // pawns on h6, g5, black pawns on h7, g6, f7).
+        // (KStormTable[] or QStormTable[]). Pawns which seem to have good
+        // chances of creating an open file by exchanging itself against an
+        // enemy pawn on an adjacent file gets an additional bonus.
 
-        // Kingside and queenside pawn storms
-        int KBonus = KStormTable[relative_square(us, s)];
-        int QBonus = QStormTable[relative_square(us, s)];
-        bool outPostFlag = (KBonus > 0 && (outpost_mask(us, s) & theirPawns));
-        bool passedFlag = (QBonus > 0 && (passed_pawn_mask(us, s) & theirPawns));
-
-        switch (f) {
-
-        case FILE_A:
-            QBonus += passedFlag * QBonus / 2;
-            break;
-
-        case FILE_B:
-            QBonus += passedFlag * (QBonus / 2 + QBonus / 4);
-            break;
-
-        case FILE_C:
-            QBonus += passedFlag * QBonus / 2;
-            break;
-
-        case FILE_F:
-            KBonus += outPostFlag * KBonus / 4;
-            break;
-
-        case FILE_G:
-            KBonus += outPostFlag * (KBonus / 2 + KBonus / 4);
-            break;
-
-        case FILE_H:
-            KBonus += outPostFlag * KBonus / 2;
-            break;
-
-        default:
-            break;
+        // Kingside pawn storms
+        bonus = KStormTable[relative_square(us, s)];
+        if (f >= FILE_F)
+        {
+            Bitboard b = outpost_mask(us, s) & theirPawns & (FileFBB | FileGBB | FileHBB);
+            while (b)
+            {
+                Square s2 = pop_1st_bit(&b);
+                if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
+                {
+                    // The enemy pawn has no pawn beside itself, which makes it
+                    // particularly vulnerable. Big bonus, especially against a
+                    // weakness on the rook file.
+                    if (square_file(s2) == FILE_H)
+                        bonus += 4*StormLeverBonus[f] - 8*square_distance(s, s2);
+                    else
+                        bonus += 2*StormLeverBonus[f] - 4*square_distance(s, s2);
+                } else
+                    // There is at least one enemy pawn beside the enemy pawn we look
+                    // at, which means that the pawn has somewhat better chances of
+                    // defending itself by advancing. Smaller bonus.
+                    bonus += StormLeverBonus[f] - 2*square_distance(s, s2);
+            }
         }
-        pi->ksStormValue[us] += KBonus;
-        pi->qsStormValue[us] += QBonus;
+        pi->ksStormValue[us] += bonus;
+
+        // Queenside pawn storms
+        bonus = QStormTable[relative_square(us, s)];
+        if (f <= FILE_C)
+        {
+            Bitboard b = outpost_mask(us, s) & theirPawns & (FileABB | FileBBB | FileCBB);
+            while (b)
+            {
+                Square s2 = pop_1st_bit(&b);
+                if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
+                {
+                    // The enemy pawn has no pawn beside itself, which makes it
+                    // particularly vulnerable. Big bonus, especially against a
+                    // weakness on the rook file.
+                    if (square_file(s2) == FILE_A)
+                        bonus += 4*StormLeverBonus[f] - 16*square_distance(s, s2);
+                    else
+                        bonus += 2*StormLeverBonus[f] - 8*square_distance(s, s2);
+                } else
+                    // There is at least one enemy pawn beside the enemy pawn we look
+                    // at, which means that the pawn has somewhat better chances of
+                    // defending itself by advancing. Smaller bonus.
+                    bonus += StormLeverBonus[f] - 4*square_distance(s, s2);
+            }
+        }
+        pi->qsStormValue[us] += bonus;
 
         // Member of a pawn chain (but not the backward one)? We could speed up
         // the test a little by introducing an array of masks indexed by color
