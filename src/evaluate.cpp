@@ -782,7 +782,7 @@ namespace {
                         if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
                             && !bit_is_set(p.pinned_pieces(them), from)
                             && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.rooks_and_queens(us))
-                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.rooks_and_queens(us)))
+                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.bishops_and_queens(us)))
 
                             ei.mateThreat[them] = make_move(from, to);
                     }
