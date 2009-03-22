@@ -342,6 +342,8 @@ EndgameFunctions::EndgameFunctions() {
   add("KRKRP",   BLACK, &ScaleKRKRP);
   add("KBPKB",   WHITE, &ScaleKBPKB);
   add("KBKBP",   BLACK, &ScaleKBKBP);
+  add("KBPPKB",  WHITE, &ScaleKBPPKB);
+  add("KBKBPP",  BLACK, &ScaleKBKBPP);
   add("KBPKN",   WHITE, &ScaleKBPKN);
   add("KNKBP",   BLACK, &ScaleKNKBP);
   add("KRPPKRP", WHITE, &ScaleKRPPKRP);

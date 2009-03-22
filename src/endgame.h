@@ -54,6 +54,7 @@ enum EndgameType {
     KRPPKRP, // KRPP vs KRP
     KPsK,    // King and pawns vs king
     KBPKB,   // KBP vs KB
+    KBPPKB,  // KBPP vs KB
     KBPKN,   // KBP vs KN
     KNPK,    // KNP vs K
     KPKP     // KP vs KP
@@ -111,6 +112,7 @@ extern ScalingFunction<KRPKR> ScaleKRPKR, ScaleKRKRP; // KRP vs KR
 extern ScalingFunction<KRPPKRP> ScaleKRPPKRP, ScaleKRPKRPP; // KRPP vs KRP
 extern ScalingFunction<KPsK> ScaleKPsK, ScaleKKPs;    // King and pawns vs king
 extern ScalingFunction<KBPKB> ScaleKBPKB, ScaleKBKBP; // KBP vs KB
+extern ScalingFunction<KBPPKB> ScaleKBPPKB, ScaleKBKBPP; // KBPP vs KB
 extern ScalingFunction<KBPKN> ScaleKBPKN, ScaleKNKBP; // KBP vs KN
 extern ScalingFunction<KNPK> ScaleKNPK, ScaleKKNP;    // KNP vs K
 extern ScalingFunction<KPKP> ScaleKPKPw, ScaleKPKPb;  // KP vs KP

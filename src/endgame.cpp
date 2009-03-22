@@ -57,6 +57,7 @@ ScalingFunction<KRPKR> ScaleKRPKR(WHITE), ScaleKRKRP(BLACK); // KRP vs KR
 ScalingFunction<KRPPKRP> ScaleKRPPKRP(WHITE), ScaleKRPKRPP(BLACK); // KRPP vs KRP
 ScalingFunction<KPsK> ScaleKPsK(WHITE), ScaleKKPs(BLACK);    // King and pawns vs king
 ScalingFunction<KBPKB> ScaleKBPKB(WHITE), ScaleKBKBP(BLACK); // KBP vs KB
+ScalingFunction<KBPPKB> ScaleKBPPKB(WHITE), ScaleKBKBPP(BLACK); // KBPP vs KB
 ScalingFunction<KBPKN> ScaleKBPKN(WHITE), ScaleKNKBP(BLACK); // KBP vs KN
 ScalingFunction<KNPK> ScaleKNPK(WHITE), ScaleKKNP(BLACK);    // KNP vs K
 ScalingFunction<KPKP> ScaleKPKPw(WHITE), ScaleKPKPb(BLACK);  // KPKP
@@ -729,6 +730,80 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position &pos) {
       }
   }
   return SCALE_FACTOR_NONE;
+}
+
+
+/// KBPPKBScalingFunction scales KBPP vs KB endgames. It detects a few basic
+/// draws with opposite-colored bishops.
+template<>
+ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) {
+
+  assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
+  assert(pos.piece_count(strongerSide, BISHOP) == 1);
+  assert(pos.piece_count(strongerSide, PAWN) == 2);
+  assert(pos.non_pawn_material(weakerSide) == BishopValueMidgame);
+  assert(pos.piece_count(weakerSide, BISHOP) == 1);
+  assert(pos.piece_count(weakerSide, PAWN) == 0);
+
+  Square wbsq = pos.piece_list(strongerSide, BISHOP, 0);
+  Square bbsq = pos.piece_list(weakerSide, BISHOP, 0);
+
+  if (square_color(wbsq) == square_color(bbsq))
+      // Not opposite-colored bishops, no scaling
+      return SCALE_FACTOR_NONE;
+
+  Square ksq = pos.king_square(weakerSide);
+  Square psq1 = pos.piece_list(strongerSide, PAWN, 0);
+  Square psq2 = pos.piece_list(strongerSide, PAWN, 1);
+  Rank r1 = square_rank(psq1);
+  Rank r2 = square_rank(psq2);
+  Square blockSq1, blockSq2;
+
+  if (relative_rank(strongerSide, psq1) > relative_rank(strongerSide, psq2))
+  {
+      blockSq1 = psq1 + pawn_push(strongerSide);
+      blockSq2 = make_square(square_file(psq2), square_rank(psq1));
+  }
+  else
+  {
+      blockSq1 = psq2 + pawn_push(strongerSide);
+      blockSq2 = make_square(square_file(psq1), square_rank(psq2));
+  }
+
+  switch (file_distance(psq1, psq2))
+  {
+  case 0:
+    // Both pawns are on the same file. Easy draw if defender firmly controls
+    // some square in the frontmost pawn's path.
+    if (   square_file(ksq) == square_file(blockSq1)
+        && relative_rank(strongerSide, ksq) >= relative_rank(strongerSide, blockSq1)
+        && square_color(ksq) != square_color(wbsq))
+        return ScaleFactor(0);
+    else
+        return SCALE_FACTOR_NONE;
+
+  case 1:
+    // Pawns on neighboring files. Draw if defender firmly controls the square
+    // in front of the frontmost pawn's path, and the square diagonally behind
+    // this square on the file of the other pawn.
+    if (   ksq == blockSq1
+        && square_color(ksq) != square_color(wbsq)
+        && (   bbsq == blockSq2
+            || (pos.piece_attacks<BISHOP>(blockSq2) & pos.bishops(weakerSide))
+            || rank_distance(r1, r2) >= 2))
+        return ScaleFactor(0);
+    else if (   ksq == blockSq2
+             && square_color(ksq) != square_color(wbsq)
+             && (   bbsq == blockSq1
+                 || (pos.piece_attacks<BISHOP>(blockSq1) & pos.bishops(weakerSide))))
+        return ScaleFactor(0);
+    else
+        return SCALE_FACTOR_NONE;
+
+  default:
+    // The pawns are not on the same file or adjacent files. No scaling.
+    return SCALE_FACTOR_NONE;
+  }
 }
 
 
