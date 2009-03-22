@@ -748,6 +748,11 @@ namespace {
                   << " hashfull " << TT.full() << std::endl;
 
     // Print the best move and the ponder move to the standard output
+    if (ss[0].pv[0] == MOVE_NONE)
+    {
+        ss[0].pv[0] = rml.get_move(0);
+        ss[0].pv[1] = MOVE_NONE;
+    }
     std::cout << "bestmove " << ss[0].pv[0];
     if (ss[0].pv[1] != MOVE_NONE)
         std::cout << " ponder " << ss[0].pv[1];
@@ -1389,6 +1394,9 @@ namespace {
         }
         TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
     }
+
+    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
+
     return bestValue;
   }
 
