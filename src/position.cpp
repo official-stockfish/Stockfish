@@ -190,7 +190,7 @@ void Position::from_fen(const std::string& fen) {
       i++;
 
   // En passant square
-  if (    i < fen.length() - 2
+  if (    i <= fen.length() - 2
       && (fen[i] >= 'a' && fen[i] <= 'h')
       && (fen[i+1] == '3' || fen[i+1] == '6'))
       st->epSquare = square_from_string(fen.substr(i, 2));
