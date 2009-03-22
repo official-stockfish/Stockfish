@@ -70,23 +70,28 @@ const std::string move_to_san(const Position& pos, Move m) {
   assert(pos.is_ok());
   assert(move_is_ok(m));
 
+  Square from, to;
+  PieceType pt;
+
+  from = move_from(m);
+  to = move_to(m);
+  pt = type_of_piece(pos.piece_on(move_from(m)));
+
   std::string san = "";
 
   if (m == MOVE_NONE)
       return "(none)";
   else if (m == MOVE_NULL)
       return "(null)";
-  else if (move_is_long_castle(m))
+  else if (move_is_long_castle(m) || (int(to - from) == -2 && pt == KING))
       san = "O-O-O";
-  else if (move_is_short_castle(m))
+  else if (move_is_short_castle(m) || (int(to - from) == 2 && pt == KING))
       san = "O-O";
   else
   {
-      Piece pc = pos.piece_on(move_from(m));
-      if (type_of_piece(pc) != PAWN)
+      if (pt != PAWN)
       {
-          san += piece_type_to_char(type_of_piece(pc), true);
-          Square from = move_from(m);
+          san += piece_type_to_char(pt, true);
           switch (move_ambiguity(pos, m)) {
           case AMBIGUITY_NONE:
             break;
@@ -105,7 +110,7 @@ const std::string move_to_san(const Position& pos, Move m) {
       }
       if (pos.move_is_capture(m))
       {
-          if (type_of_piece(pc) == PAWN)
+          if (pt == PAWN)
               san += file_to_char(square_file(move_from(m)));
           san += "x";
       }
