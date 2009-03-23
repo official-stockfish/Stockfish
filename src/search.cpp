@@ -1333,7 +1333,7 @@ namespace {
           && !move_is_killer(move, ss[ply]))
       {
           // LMR dynamic reduction
-          Depth R = (moveCount >= 3 * LMRNonPVMoves && depth >= 7*OnePly ? 2*OnePly : OnePly);
+          Depth R = (moveCount >= 2 * LMRNonPVMoves && depth > 7*OnePly ? 2*OnePly : OnePly);
 
           ss[ply].reduction = R;
           value = -search(pos, ss, -(beta-1), newDepth-R, ply+1, true, threadID);
