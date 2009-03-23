@@ -182,7 +182,7 @@ void TranspositionTable::insert_pv(const Position &pos, Move pv[]) {
 
   for (int i = 0; pv[i] != MOVE_NONE; i++)
   {
-    store(p, VALUE_NONE, Depth(0), pv[i], VALUE_TYPE_NONE);
+    store(p, VALUE_NONE, Depth(-127*OnePly), pv[i], VALUE_TYPE_NONE);
     p.do_move(pv[i], st);
   }
 }
