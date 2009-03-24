@@ -121,6 +121,9 @@ namespace {
   // Depth limit for selective search:
   Depth SelectiveDepth = 7*OnePly;
 
+  // Use dynamic LMR?
+  const bool UseDynamicLMR = false;
+
   // Use internal iterative deepening?
   const bool UseIIDAtPVNodes = true;
   const bool UseIIDAtNonPVNodes = false;
@@ -1333,7 +1336,9 @@ namespace {
           && !move_is_killer(move, ss[ply]))
       {
           // LMR dynamic reduction
-          Depth R = (moveCount >= 2 * LMRNonPVMoves && depth > 7*OnePly ? 2*OnePly : OnePly);
+          Depth R =    UseDynamicLMR
+                    && moveCount >= 2 * LMRNonPVMoves
+                    && depth > 7*OnePly ? 2*OnePly : OnePly;
 
           ss[ply].reduction = R;
           value = -search(pos, ss, -(beta-1), newDepth-R, ply+1, true, threadID);
