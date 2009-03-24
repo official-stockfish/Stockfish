@@ -393,7 +393,7 @@ namespace {
 
   void init_ray_bitboards() {
     int d[8] = {1, -1, 16, -16, 17, -17, 15, -15};
-    for(int i = 0; i < 128; i = i + 9 & ~8) {
+    for(int i = 0; i < 128; i = (i + 9) & ~8) {
       for(int j = 0; j < 8; j++) {
         RayBB[(i&7)|((i>>4)<<3)][j] = EmptyBoardBB;
         for(int k = i + d[j]; (k & 0x88) == 0; k += d[j])
@@ -479,8 +479,15 @@ namespace {
     for(i = 0; i < 64; i++) {
       attackIndex[i] = index;
       mask[i] = sliding_attacks(i, 0ULL, 4, deltas, 1, 6, 1, 6);
+
+#if defined(USE_32BIT_ATTACKS)
+      j = (1 << (32 - shift[i]));
+#else
       j = (1 << (64 - shift[i]));
+#endif
+
       for(k = 0; k < j; k++) {
+
 #if defined(USE_32BIT_ATTACKS)
         b = index_to_bitboard(k, mask[i]);
         attacks[index +
