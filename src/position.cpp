@@ -1960,26 +1960,26 @@ bool Position::has_mate_threat(Color c) {
 
 void Position::init_zobrist() {
 
-  for (int i = 0; i < 2; i++)
-      for (int j = 0; j < 8; j++)
-          for (int k = 0; k < 64; k++)
-              zobrist[i][j][k] = Key(genrand_int64());
+  for(Piece p = WP; p <= BK; p++)
+      for(Square s = SQ_A1; s <= SQ_H8; s++)
+          zobrist[color_of_piece(p)][type_of_piece(p)][s] = genrand_int64();
 
-  for (int i = 0; i < 64; i++)
-      zobEp[i] = Key(genrand_int64());
+  zobEp[0] = 0ULL;
+  for(int i = 1; i < 64; i++)
+      zobEp[i] = genrand_int64();
 
-  for (int i = 0; i < 16; i++)
-      zobCastle[i] = genrand_int64();
+  for(int i = 15; i >= 0; i--)
+      zobCastle[(i&8) | (i&1) | ((i&2) << 1) | ((i&4) >> 1)] = genrand_int64();
 
   zobSideToMove = genrand_int64();
 
   for (int i = 0; i < 2; i++)
       for (int j = 0; j < 8; j++)
           for (int k = 0; k < 16; k++)
-              zobMaterial[i][j][k] = (k > 0)? Key(genrand_int64()) : Key(0LL);
+              zobMaterial[i][j][k] = (k > 0)? genrand_int64() : 0LL;
 
   for (int i = 0; i < 16; i++)
-      zobMaterial[0][KING][i] = zobMaterial[1][KING][i] = Key(0ULL);
+      zobMaterial[0][KING][i] = zobMaterial[1][KING][i] = 0ULL;
 }
 
 
