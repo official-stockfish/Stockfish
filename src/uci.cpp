@@ -170,7 +170,7 @@ namespace {
     }
     else if (token == "key")
     {
-        std::cout << "key: " << RootPosition.get_key()
+        std::cout << "key: " << std::hex << RootPosition.get_key()
                   << " material key: " << RootPosition.get_material_key()
                   << " pawn key: " << RootPosition.get_pawn_key()
                   << std::endl;
