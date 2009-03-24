@@ -2412,7 +2412,7 @@ namespace {
                      || (  !FailHigh && !fail_high_ply_1() && !Problem
                          && t > 6*(MaxSearchTime + ExtraSearchTime));
 
-    if (   (Iteration >= 2 && (!InfiniteSearch && overTime))
+    if (   (Iteration >= 3 && (!InfiniteSearch && overTime))
         || (ExactMaxTime && t >= ExactMaxTime)
         || (Iteration >= 3 && MaxNodes && nodes_searched() >= MaxNodes))
         AbortSearch = true;
@@ -2426,7 +2426,7 @@ namespace {
   void ponderhit() {
     int t = current_search_time();
     PonderSearch = false;
-    if(Iteration >= 2 &&
+    if(Iteration >= 3 &&
        (!InfiniteSearch && (StopOnPonderhit ||
                             t > AbsoluteMaxSearchTime ||
                             (RootMoveNumber == 1 &&
