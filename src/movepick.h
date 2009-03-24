@@ -63,7 +63,7 @@ public:
     PH_STOP
   };
 
-  MovePicker(const Position& p, bool pvnode, Move ttm, const SearchStack& ss, Depth d, EvalInfo* ei = NULL);
+  MovePicker(const Position& p, bool pvnode, Move ttm, const SearchStack& ss, Depth d);
   Move get_next_move();
   Move get_next_move(Lock &lock);
   int number_of_moves() const;

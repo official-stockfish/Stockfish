@@ -45,7 +45,7 @@ public:
   Depth depth() const { return Depth(depth_); }
   Move move() const { return Move(data & 0x7FFFF); }
   Value value() const { return Value(value_); }
-  ValueType type() const { return ValueType((data >> 20) & 3); }
+  ValueType type() const { return ValueType((data >> 20) & 7); }
   int generation() const { return (data >> 23); }
 
 private:
@@ -67,7 +67,7 @@ public:
   void set_size(unsigned mbSize);
   void clear();
   void store(const Position &pos, Value v, Depth d, Move m, ValueType type);
-  const TTEntry* retrieve(const Position &pos) const;
+  TTEntry* retrieve(const Position &pos) const;
   void new_search();
   void insert_pv(const Position &pos, Move pv[]);
   int full();

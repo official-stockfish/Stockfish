@@ -1434,18 +1434,38 @@ namespace {
         return VALUE_DRAW;
 
     // Transposition table lookup, only when not in PV
+    TTEntry* tte = NULL;
     bool pvNode = (beta - alpha != 1);
     if (!pvNode)
     {
-        const TTEntry* tte = TT.retrieve(pos);
+        tte = TT.retrieve(pos);
         if (tte && ok_to_use_TT(tte, depth, beta, ply))
+        {
+            assert(tte->type() != VALUE_TYPE_EVAL);
+
             return value_from_tt(tte->value(), ply);
+        }
     }
 
     // Evaluate the position statically
     EvalInfo ei;
+    Value staticValue;
     bool isCheck = pos.is_check();
-    Value staticValue = (isCheck ? -VALUE_INFINITE : evaluate(pos, ei, threadID));
+
+    if (isCheck)
+        staticValue = -VALUE_INFINITE;
+
+    else if (tte && tte->type() == VALUE_TYPE_EVAL)
+    {
+        // Use the cached evaluation score if possible
+        assert(tte->value() == evaluate(pos, ei, threadID));
+        assert(ei.futilityMargin == Value(0));
+
+        staticValue = tte->value();
+        ei.futilityMargin = Value(0); // manually initialize futilityMargin
+    }
+    else
+        staticValue = evaluate(pos, ei, threadID);
 
     if (ply == PLY_MAX - 1)
         return evaluate(pos, ei, threadID);
@@ -1460,6 +1480,11 @@ namespace {
         TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_EXACT);
         return bestValue;
     }
+    else if (!isCheck && !tte && ei.futilityMargin == 0)
+    {
+        // Store the score to avoid a future costly evaluation() call
+        TT.store(pos, value_to_tt(bestValue, ply), Depth(-127*OnePly), MOVE_NONE, VALUE_TYPE_EVAL);
+    }
 
     if (bestValue > alpha)
         alpha = bestValue;
@@ -1467,7 +1492,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth, isCheck ? NULL : &ei);
+    MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();

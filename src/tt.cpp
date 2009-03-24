@@ -137,7 +137,7 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
 /// transposition table. Returns a pointer to the TTEntry or NULL
 /// if position is not found.
 
-const TTEntry* TranspositionTable::retrieve(const Position &pos) const {
+TTEntry* TranspositionTable::retrieve(const Position &pos) const {
 
   TTEntry *tte = first_entry(pos);
 

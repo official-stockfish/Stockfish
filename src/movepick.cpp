@@ -66,7 +66,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
-                       const SearchStack& ss, Depth d, EvalInfo* ei) : pos(p) {
+                       const SearchStack& ss, Depth d) : pos(p) {
   pvNode = pv;
   ttMove = ttm;
   mateKiller = (ss.mateKiller == ttm)? MOVE_NONE : ss.mateKiller;
@@ -81,20 +81,15 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   // generating them. So avoid generating in case we know are zero.
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
-  bool noCaptures =    ei
-                   && (ei->attackedBy[us][0] & pos.pieces_of_color(them)) == 0
-                   && !ei->mi->specialized_eval_exists()
-                   && (pos.ep_square() == SQ_NONE)
-                   && !pos.has_pawn_on_7th(us);
 
   if (p.is_check())
       phaseIndex = EvasionsPhaseIndex;
   else if (depth > Depth(0))
       phaseIndex = MainSearchPhaseIndex;
   else if (depth == Depth(0))
-      phaseIndex = (noCaptures ? QsearchNoCapturesPhaseIndex : QsearchWithChecksPhaseIndex);
+      phaseIndex = QsearchWithChecksPhaseIndex;
   else
-      phaseIndex = (noCaptures ? NoMovesPhaseIndex : QsearchWithoutChecksPhaseIndex);
+      phaseIndex = QsearchWithoutChecksPhaseIndex;
 
   dc = p.discovered_check_candidates(us);
   pinned = p.pinned_pieces(us);
