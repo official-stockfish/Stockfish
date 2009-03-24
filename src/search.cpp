@@ -1450,7 +1450,11 @@ namespace {
     Value bestValue = staticValue;
 
     if (bestValue >= beta)
+    {
+        // Update transposition table before to leave
+        TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_EXACT);
         return bestValue;
+    }
 
     if (bestValue > alpha)
         alpha = bestValue;
@@ -1533,9 +1537,6 @@ namespace {
         return value_mated_in(ply);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
-
-    // Update transposition table
-    TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_EXACT);
 
     // Update killers only for good check moves
     Move m = ss[ply].currentMove;
