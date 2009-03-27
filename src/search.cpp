@@ -1476,14 +1476,11 @@ namespace {
 
     if (bestValue >= beta)
     {
-        // Update transposition table before to leave
-        TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_EXACT);
-        return bestValue;
-    }
-    else if (!isCheck && !tte && ei.futilityMargin == 0)
-    {
         // Store the score to avoid a future costly evaluation() call
-        TT.store(pos, value_to_tt(bestValue, ply), Depth(-127*OnePly), MOVE_NONE, VALUE_TYPE_EVAL);
+        if (!isCheck && !tte && ei.futilityMargin == 0)
+            TT.store(pos, value_to_tt(bestValue, ply), Depth(-127*OnePly), MOVE_NONE, VALUE_TYPE_EVAL);
+
+        return bestValue;
     }
 
     if (bestValue > alpha)
@@ -1567,6 +1564,16 @@ namespace {
         return value_mated_in(ply);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
+
+    // Update transposition table
+    if (!pvNode)
+    {
+        Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
+        if (bestValue < beta)
+            TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_UPPER);
+        else
+            TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_LOWER);
+    }
 
     // Update killers only for good check moves
     Move m = ss[ply].currentMove;
