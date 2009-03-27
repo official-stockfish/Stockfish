@@ -45,9 +45,7 @@ namespace {
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
-  int QsearchNoCapturesPhaseIndex;
   int QsearchWithoutChecksPhaseIndex;
-  int NoMovesPhaseIndex;
 
 }
 
@@ -77,11 +75,6 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   numOfMoves = 0;
   numOfBadCaptures = 0;
 
-  // With EvalInfo we are able to know how many captures are possible before
-  // generating them. So avoid generating in case we know are zero.
-  Color us = pos.side_to_move();
-  Color them = opposite_color(us);
-
   if (p.is_check())
       phaseIndex = EvasionsPhaseIndex;
   else if (depth > Depth(0))
@@ -90,6 +83,8 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
       phaseIndex = QsearchWithChecksPhaseIndex;
   else
       phaseIndex = QsearchWithoutChecksPhaseIndex;
+
+  Color us = pos.side_to_move();
 
   dc = p.discovered_check_candidates(us);
   pinned = p.pinned_pieces(us);
@@ -520,17 +515,9 @@ void MovePicker::init_phase_table() {
   PhaseTable[i++] = PH_QCHECKS;
   PhaseTable[i++] = PH_STOP;
 
-  // Quiescence search with checks only and no captures
-  QsearchNoCapturesPhaseIndex = i - 1;
-  PhaseTable[i++] = PH_QCHECKS;
-  PhaseTable[i++] = PH_STOP;
-
   // Quiescence search without checks
   QsearchWithoutChecksPhaseIndex = i - 1;
   PhaseTable[i++] = PH_QCAPTURES;
   PhaseTable[i++] = PH_STOP;
 
-  // Do not generate any move
-  NoMovesPhaseIndex = i - 1;
-  PhaseTable[i++] = PH_STOP;
 }
