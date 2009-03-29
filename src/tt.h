@@ -43,7 +43,7 @@ public:
   TTEntry(Key k, Value v, ValueType t, Depth d, Move m, int generation);
   Key key() const { return key_; }
   Depth depth() const { return Depth(depth_); }
-  Move move() const { return Move(data & 0x7FFFF); }
+  Move move() const { return Move(data & 0x1FFFF); }
   Value value() const { return Value(value_); }
   ValueType type() const { return ValueType((data >> 20) & 7); }
   int generation() const { return (data >> 23); }

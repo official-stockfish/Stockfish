@@ -206,5 +206,5 @@ TTEntry::TTEntry() {
 
 TTEntry::TTEntry(Key k, Value v, ValueType t, Depth d, Move m,
                  int generation) :
-  key_ (k), data((m & 0x7FFFF) | (t << 20) | (generation << 23)),
+  key_ (k), data((m & 0x1FFFF) | (t << 20) | (generation << 23)),
   value_(int16_t(v)), depth_(int16_t(d)) {}
