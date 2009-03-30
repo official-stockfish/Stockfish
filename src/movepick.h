@@ -47,6 +47,8 @@ struct SearchStack;
 
 class MovePicker {
 
+  MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
+
 public:
 
   enum MovegenPhase {

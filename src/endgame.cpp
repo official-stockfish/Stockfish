@@ -383,7 +383,7 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) {
 }
 
 template<>
-Value EvaluationFunction<KmmKm>::apply(const Position &pos) {
+Value EvaluationFunction<KmmKm>::apply(const Position&) {
   return Value(0);
 }
 

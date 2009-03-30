@@ -104,7 +104,7 @@ inline bool piece_is_ok(Piece pc) {
 //// Prototypes
 ////
 
-extern int piece_type_to_char(PieceType pt, bool upcase = false);
+extern char piece_type_to_char(PieceType pt, bool upcase = false);
 extern PieceType piece_type_from_char(char c);
 
 

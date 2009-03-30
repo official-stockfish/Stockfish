@@ -755,7 +755,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     st->capture = type_of_piece_on(to);
 
     if (st->capture)
-      do_capture_move(m, st->capture, them, to);
+      do_capture_move(st->capture, them, to);
 
     // Move the piece
     clear_bit(&(byColorBB[us]), from);
@@ -848,7 +848,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 /// Position::do_capture_move() is a private method used to update captured
 /// piece info. It is called from the main Position::do_move function.
 
-void Position::do_capture_move(Move m, PieceType capture, Color them, Square to) {
+void Position::do_capture_move(PieceType capture, Color them, Square to) {
 
     assert(capture != KING);
 
@@ -1010,7 +1010,7 @@ void Position::do_promotion_move(Move m) {
   st->capture = type_of_piece_on(to);
 
   if (st->capture)
-    do_capture_move(m, st->capture, them, to);
+    do_capture_move(st->capture, them, to);
 
   // Remove pawn
   clear_bit(&(byColorBB[us]), from);

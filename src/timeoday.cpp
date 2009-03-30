@@ -9,7 +9,7 @@
 #include <time.h>
 #include "dos.h"
 
-int gettimeofday(struct timeval* tp, struct timezone* tzp)
+int gettimeofday(struct timeval* tp, struct timezone*)
 {
     SYSTEMTIME systime;
 

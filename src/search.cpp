@@ -258,7 +258,7 @@ namespace {
                 Depth depth, int ply, int threadID);
   void sp_search(SplitPoint *sp, int threadID);
   void sp_search_pv(SplitPoint *sp, int threadID);
-  void init_node(const Position &pos, SearchStack ss[], int ply, int threadID);
+  void init_node(SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack *pss, SearchStack ss[], int ply);
   bool connected_moves(const Position &pos, Move m1, Move m2);
@@ -959,7 +959,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(pos, ss, ply, threadID);
+    init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1155,7 +1155,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(pos, ss, ply, threadID);
+    init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1424,7 +1424,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(pos, ss, ply, threadID);
+    init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1451,6 +1451,7 @@ namespace {
     EvalInfo ei;
     Value staticValue;
     bool isCheck = pos.is_check();
+    ei.futilityMargin = Value(0); // Manually initialize futilityMargin
 
     if (isCheck)
         staticValue = -VALUE_INFINITE;
@@ -1462,7 +1463,6 @@ namespace {
         assert(ei.futilityMargin == Value(0));
 
         staticValue = tte->value();
-        ei.futilityMargin = Value(0); // manually initialize futilityMargin
     }
     else
         staticValue = evaluate(pos, ei, threadID);
@@ -2025,7 +2025,7 @@ namespace {
   // NodesBetweenPolls nodes, init_node() also calls poll(), which polls
   // for user input and checks whether it is time to stop the search.
 
-  void init_node(const Position &pos, SearchStack ss[], int ply, int threadID) {
+  void init_node(SearchStack ss[], int ply, int threadID) {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 

@@ -35,8 +35,8 @@
 
 static const char PieceChars[] = " pnbrqk";
 
-int piece_type_to_char(PieceType pt, bool upcase) {
-  return upcase? toupper(PieceChars[pt]) : PieceChars[pt];
+char piece_type_to_char(PieceType pt, bool upcase) {
+  return char(upcase? toupper(PieceChars[pt]) : PieceChars[pt]);
 }
 
 PieceType piece_type_from_char(char c) {

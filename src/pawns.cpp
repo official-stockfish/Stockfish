@@ -121,8 +121,8 @@ namespace {
   };
 
   // Pawn storm open file bonuses by file
-  const int KStormOpenFileBonus[8] = { 45, 45, 30, 0, 0, 0, 0, 0 };
-  const int QStormOpenFileBonus[8] = { 0, 0, 0, 0, 0, 30, 45, 30 };
+  const int16_t KStormOpenFileBonus[8] = { 45, 45, 30, 0, 0, 0, 0, 0 };
+  const int16_t QStormOpenFileBonus[8] = { 0, 0, 0, 0, 0, 30, 45, 30 };
 
   // Pawn storm lever bonuses by file
   const int StormLeverBonus[8] = { 20, 20, 10, 0, 0, 10, 20, 20 };
