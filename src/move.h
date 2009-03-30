@@ -38,10 +38,22 @@
 
 class Position;
 
+/// A move needs 17 bits to be stored
+///
+/// bit  0- 5: destination square (from 0 to 63)
+/// bit  6-11: origin square (from 0 to 63)
+/// bit 12-14: promotion piece type
+/// bit    15: en passant flag
+/// bit    16: castle flag
+///
+/// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in
+/// because in any normal move destination square is always different
+/// from origin square while MOVE_NONE and MOVE_NULL have the same
+/// origin and destination square, 0 and 1 respectively.
+
 enum Move {
   MOVE_NONE = 0,
-  MOVE_NULL = 65,
-  MOVE_MAX = 0xFFFFFF
+  MOVE_NULL = 65
 };
 
 
@@ -56,11 +68,11 @@ struct MoveStack {
 ////
 
 inline Square move_from(Move m) {
-  return Square((int(m) >> 6) & 077);
+  return Square((int(m) >> 6) & 0x3F);
 }
 
 inline Square move_to(Move m) {
-  return Square(m & 077);
+  return Square(m & 0x3F);
 }
 
 inline PieceType move_promotion(Move m) {
