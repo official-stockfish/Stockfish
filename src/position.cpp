@@ -1618,7 +1618,7 @@ int Position::see(Square from, Square to) const {
       // Remove the attacker we just found from the 'attackers' bitboard,
       // and scan for new X-ray attacks behind the attacker.
       b = attackers & pieces_of_color_and_type(c, pt);
-      occ ^= (b & -b);
+      occ ^= (b & (~b + 1));
       attackers |=  (rook_attacks_bb(to, occ) & rooks_and_queens())
                   | (bishop_attacks_bb(to, occ) & bishops_and_queens());
 
