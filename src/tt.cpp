@@ -101,7 +101,8 @@ void TranspositionTable::clear() {
 /// the least valuable of the four entries in a cluster.  A TTEntry t1 is
 /// considered to be more valuable than a TTEntry t2 if t1 is from the
 /// current search and t2 is from a previous search, or if the depth of t1
-/// is bigger than the depth of t2.
+/// is bigger than the depth of t2. A TTEntry of type VALUE_TYPE_EVAL
+/// never replaces another entry for the same position.
 
 TTEntry* TranspositionTable::store(const Position &pos, Value v, Depth d,
                                Move m, ValueType type) {
@@ -112,6 +113,11 @@ TTEntry* TranspositionTable::store(const Position &pos, Value v, Depth d,
   {
     if (!tte->key() || tte->key() == pos.get_key()) // empty or overwrite old
     {
+        // Do not overwrite position entry when VALUE_TYPE_EVAL
+        if (   tte->key()
+            && type == VALUE_TYPE_EVAL)
+            return NULL;
+
         if (m == MOVE_NONE)
             m = tte->move();
 
