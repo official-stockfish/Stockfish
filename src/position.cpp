@@ -867,8 +867,6 @@ void Position::do_capture_move(PieceType capture, Color them, Square to) {
     st->mgValue -= pst<MidGame>(them, capture, to);
     st->egValue -= pst<EndGame>(them, capture, to);
 
-    assert(!move_promotion(m) || capture != PAWN);
-
     // Update material
     if (capture != PAWN)
         npMaterial[them] -= piece_value_midgame(capture);
