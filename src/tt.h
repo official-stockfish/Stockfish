@@ -46,7 +46,8 @@
 /// the 32 bits of the data field are so defined
 ///
 /// bit  0-16: move
-/// bit 17-19: not used
+/// bit    17: stored value equals static value
+/// bit 18-19: not used
 /// bit 20-22: value type
 /// bit 23-31: generation
 
@@ -61,6 +62,8 @@ public:
   Value value() const { return Value(value_); }
   ValueType type() const { return ValueType((data >> 20) & 7); }
   int generation() const { return (data >> 23); }
+  bool staticValue() const { return ((data >> 17) & 1); }
+  void setStaticValue() { data |= (1 << 17); }
 
 private:
   Key key_;
@@ -80,7 +83,7 @@ public:
   ~TranspositionTable();
   void set_size(unsigned mbSize);
   void clear();
-  void store(const Position &pos, Value v, Depth d, Move m, ValueType type);
+  TTEntry* store(const Position &pos, Value v, Depth d, Move m, ValueType type);
   TTEntry* retrieve(const Position &pos) const;
   void new_search();
   void insert_pv(const Position &pos, Move pv[]);

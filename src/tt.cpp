@@ -103,7 +103,7 @@ void TranspositionTable::clear() {
 /// current search and t2 is from a previous search, or if the depth of t1
 /// is bigger than the depth of t2.
 
-void TranspositionTable::store(const Position &pos, Value v, Depth d,
+TTEntry* TranspositionTable::store(const Position &pos, Value v, Depth d,
                                Move m, ValueType type) {
   TTEntry *tte, *replace;
 
@@ -116,7 +116,7 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
             m = tte->move();
 
         *tte = TTEntry(pos.get_key(), v, type, d, m, generation);
-        return;
+        return tte;
     }
     else if (i == 0)  // replace would be a no-op in this common case
         continue;
@@ -130,6 +130,7 @@ void TranspositionTable::store(const Position &pos, Value v, Depth d,
   }
   *replace = TTEntry(pos.get_key(), v, type, d, m, generation);
   writes++;
+  return replace;
 }
 
 
