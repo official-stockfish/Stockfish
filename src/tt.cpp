@@ -104,7 +104,7 @@ void TranspositionTable::clear() {
 /// is bigger than the depth of t2. A TTEntry of type VALUE_TYPE_EVAL
 /// never replaces another entry for the same position.
 
-TTEntry* TranspositionTable::store(const Position &pos, Value v, Depth d,
+void TranspositionTable::store(const Position &pos, Value v, Depth d,
                                Move m, ValueType type) {
   TTEntry *tte, *replace;
 
@@ -116,13 +116,13 @@ TTEntry* TranspositionTable::store(const Position &pos, Value v, Depth d,
         // Do not overwrite position entry when VALUE_TYPE_EVAL
         if (   tte->key()
             && type == VALUE_TYPE_EVAL)
-            return NULL;
+            return;
 
         if (m == MOVE_NONE)
             m = tte->move();
 
         *tte = TTEntry(pos.get_key(), v, type, d, m, generation);
-        return tte;
+        return;
     }
     else if (i == 0)  // replace would be a no-op in this common case
         continue;
@@ -136,7 +136,6 @@ TTEntry* TranspositionTable::store(const Position &pos, Value v, Depth d,
   }
   *replace = TTEntry(pos.get_key(), v, type, d, m, generation);
   writes++;
-  return replace;
 }
 
 

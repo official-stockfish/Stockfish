@@ -1455,7 +1455,7 @@ namespace {
     if (isCheck)
         staticValue = -VALUE_INFINITE;
 
-    else if (tte && (tte->type() == VALUE_TYPE_EVAL || tte->staticValue()))
+    else if (tte && tte->type() == VALUE_TYPE_EVAL)
     {
         // Use the cached evaluation score if possible
         assert(tte->value() == evaluate(pos, ei, threadID));
@@ -1569,21 +1569,10 @@ namespace {
     if (!pvNode)
     {
         Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
-        Value v = value_to_tt(bestValue, ply);
-        TTEntry* e;
         if (bestValue < beta)
-            e = TT.store(pos, v, d, MOVE_NONE, VALUE_TYPE_UPPER);
+            TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_UPPER);
         else
-            e = TT.store(pos, v, d, MOVE_NONE, VALUE_TYPE_LOWER);
-
-        assert(e && e == TT.retrieve(pos));
-        assert(!e->staticValue());
-
-        // If the just stored value happens to be equal to the static evaluation
-        // score then set the flag, so to avoid calling evaluation() next time we
-        // hit this position.
-        if (staticValue == v && !ei.futilityMargin)
-            e->setStaticValue();
+            TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_LOWER);
     }
 
     // Update killers only for good check moves
