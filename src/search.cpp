@@ -325,7 +325,6 @@ void SearchStack::init(int ply) {
   pv[ply] = pv[ply + 1] = MOVE_NONE;
   currentMove = threatMove = MOVE_NONE;
   reduction = Depth(0);
-  currentMoveCaptureValue = Value(0);
 }
 
 void SearchStack::initKillers() {
@@ -1014,12 +1013,6 @@ namespace {
       bool moveIsCapture = pos.move_is_capture(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
-
-      if (moveIsCapture)
-          ss[ply].currentMoveCaptureValue =
-          move_is_ep(move)? PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
-      else
-          ss[ply].currentMoveCaptureValue = Value(0);
 
       // Decide the new search depth
       bool dangerous;
@@ -1720,12 +1713,6 @@ namespace {
       bool moveIsCapture = pos.move_is_capture(move);
 
       assert(move_is_ok(move));
-
-      if (moveIsCapture)
-          ss[sp->ply].currentMoveCaptureValue =
-          move_is_ep(move)? PawnValueMidgame : pos.midgame_value_of_piece_on(move_to(move));
-      else
-          ss[sp->ply].currentMoveCaptureValue = Value(0);
 
       lock_grab(&(sp->lock));
       int moveCount = ++sp->moves;

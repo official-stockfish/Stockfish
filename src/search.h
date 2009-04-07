@@ -55,7 +55,6 @@ const int KILLER_MAX = 2;
 struct SearchStack {
   Move pv[PLY_MAX];
   Move currentMove;
-  Value currentMoveCaptureValue;
   Move mateKiller;
   Move threatMove;
   Move killers[KILLER_MAX];
