@@ -193,8 +193,8 @@ namespace {
               //remaining depth:  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value RazorMargins[6] = { Value(0x180), Value(0x300), Value(0x300), Value(0x3C0), Value(0x3C0), Value(0x3C0) };
 
-               //remaining depth:     1 ply            1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
-  const Value RazorApprMargins[6] = { Value(0x100000), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
+               //remaining depth:     1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
+  const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
 
   // Last seconds noise filtering (LSN)
   bool UseLSNFiltering;
