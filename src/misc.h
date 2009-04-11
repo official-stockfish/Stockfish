@@ -47,6 +47,7 @@ const std::string EngineVersion = "";
 
 #define Min(x, y) (((x) < (y))? (x) : (y))
 #define Max(x, y) (((x) < (y))? (y) : (x))
+#define Abs(a) (((a) < 0) ? -(a) : (a))
 
 
 ////
