@@ -167,13 +167,6 @@ namespace {
      return ss.str();
   }
 
-  // We want conversion from a bool value to be "true" or "false",
-  // not "1" or "0", so add a specialization for bool type.
-  template<>
-  std::string stringify<bool>(const bool& v) {
-
-    return v ? "true" : "false";
-  }
 
   // get_option_value implements the various get_option_value_<type>
   // functions defined later, because only the option value
@@ -191,19 +184,6 @@ namespace {
       return ret;
   }
 
-  // Unfortunatly we need a specialization to convert "false" and "true"
-  // to proper bool values. The culprit is that we use a non standard way
-  // to store a bool value in a string, in particular we use "false" and
-  // "true" instead of "0" and "1" due to how UCI protocol works.
-
-  template<>
-  bool get_option_value<bool>(const std::string& optionName) {
-
-      if (options.find(optionName) == options.end())
-          return false;
-
-      return options[optionName].currentValue == "true";
-  }
 }
 
 ////
@@ -258,24 +238,27 @@ void print_uci_options() {
 
   for (std::vector<Option>::const_iterator it = vec.begin(); it != vec.end(); ++it)
   {
-      std::cout << "option name " << it->name
-                << " type "       << optionTypeName[it->type];
+      std::cout << "\noption name " << it->name
+                << " type "         << optionTypeName[it->type];
 
-      if (it->type != BUTTON)
-      {
+      if (it->type == BUTTON)
+          continue;
+
+      if (it->type == CHECK)
+          std::cout << " default " << (it->defaultValue == "1" ? "true" : "false");
+      else
           std::cout << " default " << it->defaultValue;
 
-          if (it->type == SPIN)
-              std::cout << " min " << it->minValue
-                        << " max " << it->maxValue;
+      if (it->type == SPIN)
+          std::cout << " min " << it->minValue
+                    << " max " << it->maxValue;
 
-          else if (it->type == COMBO)
-              for (ComboValues::const_iterator itc = it->comboValues.begin();
-                  itc != it->comboValues.end(); ++itc)
-                      std::cout << " var " << *itc;
-      }
-      std::cout << std::endl;
+      else if (it->type == COMBO)
+          for (ComboValues::const_iterator itc = it->comboValues.begin();
+              itc != it->comboValues.end(); ++itc)
+              std::cout << " var " << *itc;
   }
+  std::cout << std::endl;
 }
 
 
@@ -315,8 +298,16 @@ const std::string get_option_value_string(const std::string& optionName) {
 void set_option_value(const std::string& optionName,
                       const std::string& newValue) {
 
+  // UCI protocol uses "true" and "false" instead of "1" and "0", so convert
+  // newValue according to standard C++ convention before to store it.
+  std::string v(newValue);
+  if (v == "true")
+      v = "1";
+  else if (v == "false")
+      v = "0";
+
   if (options.find(optionName) != options.end())
-      options[optionName].currentValue = newValue;
+      options[optionName].currentValue = v;
   else
       std::cout << "No such option: " << optionName << std::endl;
 }
