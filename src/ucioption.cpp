@@ -22,6 +22,7 @@
 //// Includes
 ////
 
+#include <algorithm>
 #include <cassert>
 #include <map>
 #include <string>
@@ -56,15 +57,18 @@ namespace {
 
   struct Option {
 
-    std::string defaultValue, currentValue;
+    std::string name, defaultValue, currentValue;
     OptionType type;
     int minValue, maxValue;
     ComboValues comboValues;
+    size_t idx;
 
     Option();
     Option(const std::string& defaultValue, OptionType = STRING);
     Option(bool defaultValue, OptionType = CHECK);
     Option(int defaultValue, int minValue, int maxValue);
+
+    bool operator<(const Option& o) { return this->idx < o.idx; }
   };
 
   typedef std::map<std::string, Option> Options;
@@ -142,6 +146,10 @@ namespace {
     o["MultiPV"] = Option(1, 1, 500);
     o["UCI_ShowCurrLine"] = Option(false);
     o["UCI_Chess960"] = Option(false);
+
+    // Any option should know its name so to be easily printed
+    for (Options::iterator it = o.begin(); it != o.end(); ++it)
+        it->second.name = it->first;
   }
 
   ///
@@ -240,23 +248,30 @@ void print_uci_options() {
     "spin", "combo", "check", "string", "button"
   };
 
+  // Build up a vector out of the options map and sort it according to idx
+  // field, that is the chronological insertion order in options map.
+  std::vector<Option> vec;
   for (Options::const_iterator it = options.begin(); it != options.end(); ++it)
+      vec.push_back(it->second);
+
+  std::sort(vec.begin(), vec.end());
+
+  for (std::vector<Option>::const_iterator it = vec.begin(); it != vec.end(); ++it)
   {
-      const Option& o = it->second;
-      std::cout << "option name " << it->first
-                << " type "       << optionTypeName[o.type];
+      std::cout << "option name " << it->name
+                << " type "       << optionTypeName[it->type];
 
-      if (o.type != BUTTON)
+      if (it->type != BUTTON)
       {
-          std::cout << " default " << o.defaultValue;
+          std::cout << " default " << it->defaultValue;
 
-          if (o.type == SPIN)
-              std::cout << " min " << o.minValue
-                        << " max " << o.maxValue;
+          if (it->type == SPIN)
+              std::cout << " min " << it->minValue
+                        << " max " << it->maxValue;
 
-          else if (o.type == COMBO)
-              for (ComboValues::const_iterator itc = o.comboValues.begin();
-                  itc != o.comboValues.end(); ++itc)
+          else if (it->type == COMBO)
+              for (ComboValues::const_iterator itc = it->comboValues.begin();
+                  itc != it->comboValues.end(); ++itc)
                       std::cout << " var " << *itc;
       }
       std::cout << std::endl;
@@ -337,12 +352,12 @@ namespace {
   Option::Option() {} // To allow insertion in a std::map
 
   Option::Option(const std::string& def, OptionType t)
-  : defaultValue(def), currentValue(def), type(t), minValue(0), maxValue(0) {}
+  : defaultValue(def), currentValue(def), type(t), idx(options.size()), minValue(0), maxValue(0) {}
 
   Option::Option(bool def, OptionType t)
-  : defaultValue(stringify(def)), currentValue(stringify(def)), type(t), minValue(0), maxValue(0) {}
+  : defaultValue(stringify(def)), currentValue(stringify(def)), type(t), idx(options.size()), minValue(0), maxValue(0) {}
 
   Option::Option(int def, int minv, int maxv)
-  : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), minValue(minv), maxValue(maxv) {}
+  : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), idx(options.size()), minValue(minv), maxValue(maxv) {}
 
 }
