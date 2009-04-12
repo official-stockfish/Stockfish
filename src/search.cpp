@@ -891,7 +891,7 @@ namespace {
 
   Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml, Value alpha, Value beta) {
 
-    Value bestValue = -VALUE_INFINITE;
+    //FIXME: Implement bestValue
     Value oldAlpha = alpha;
     Value value;
     Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
@@ -899,7 +899,7 @@ namespace {
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
     {
-        if (alpha >= beta) { //Aspiration window failed high, ignore rest of the moves!
+        if (alpha >= beta) {
           rml.set_move_score(i, -VALUE_INFINITE);
           //Leave node-counters and beta-counters as they are.
           continue;
@@ -982,7 +982,7 @@ namespace {
 
         assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
 
-        if (value <= bestValue && i >= MultiPV)
+        if (value <= alpha && i >= MultiPV)
             rml.set_move_score(i, -VALUE_INFINITE);
         else
         {
@@ -1018,12 +1018,8 @@ namespace {
                     LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value, ss[0].pv)
                             << std::endl;
 
-                if (value > bestValue)
-                {
-                  bestValue = value;
-                  if (value > alpha)
-                    alpha = value;
-                }
+                if (value > alpha)
+                  alpha = value;
 
                 // Reset the global variable Problem to false if the value isn't too
                 // far below the final value from the last iteration.
@@ -1050,17 +1046,16 @@ namespace {
                     std::cout << std::endl;
                 }
                 alpha = rml.get_move_score(Min(i, MultiPV-1));
-                bestValue = alpha; //In MultiPV-mode bestValue and alpha are always same thing.
             }
         }
 
-        if (bestValue <= oldAlpha)
+        if (alpha <= oldAlpha)
           FailLow = true;
         else
           FailLow = false;
 
     }
-    return bestValue;
+    return alpha;
   }
 
 
