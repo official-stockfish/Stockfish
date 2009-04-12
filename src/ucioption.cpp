@@ -59,9 +59,9 @@ namespace {
 
     std::string name, defaultValue, currentValue;
     OptionType type;
+    size_t idx;
     int minValue, maxValue;
     ComboValues comboValues;
-    size_t idx;
 
     Option();
     Option(const char* defaultValue, OptionType = STRING);
