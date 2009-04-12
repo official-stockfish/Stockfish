@@ -68,7 +68,7 @@ namespace {
     Option(bool defaultValue, OptionType = CHECK);
     Option(int defaultValue, int minValue, int maxValue);
 
-    bool operator<(const Option& o) { return this->idx < o.idx; }
+    bool operator<(const Option& o) const { return this->idx < o.idx; }
   };
 
   typedef std::map<std::string, Option> Options;
