@@ -259,7 +259,7 @@ namespace {
   // Time managment variables
   int SearchStartTime;
   int MaxNodes, MaxDepth;
-  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime;
+  int MaxSearchTime, AbsoluteMaxSearchTime, EmergencyMaxSearchTime, ExtraSearchTime;
   Move EasyMove;
   int RootMoveNumber;
   bool InfiniteSearch;
@@ -520,9 +520,11 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
       {
           MaxSearchTime = myTime / 30 + myIncrement;
           AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
+          EmergencyMaxSearchTime = Max(myTime / 2, myIncrement - 100);
       } else { // Blitz game without increment
           MaxSearchTime = myTime / 30;
           AbsoluteMaxSearchTime = myTime / 8;
+          EmergencyMaxSearchTime = myTime / 4;
       }
   }
   else // (x moves) / (y minutes)
@@ -531,9 +533,11 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
       {
           MaxSearchTime = myTime / 2;
           AbsoluteMaxSearchTime = Min(myTime / 2, myTime - 500);
+          EmergencyMaxSearchTime = myTime - 500;
       } else {
           MaxSearchTime = myTime / Min(movesToGo, 20);
           AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
+          EmergencyMaxSearchTime = Min((8 * myTime) / movesToGo, myTime / 2);
       }
   }
 
@@ -700,6 +704,9 @@ namespace {
     Position p(pos);
     SearchStack ss[PLY_MAX_PLUS_2];
 
+    Value alpha;
+    Value beta;
+
     // searchMoves are verified, copied, scored and sorted
     RootMoveList rml(p, searchMoves);
 
@@ -729,9 +736,6 @@ namespace {
         std::cout << "info depth " << Iteration << std::endl;
 
         //Calculate dynamic search window based on previous iterations.
-        Value alpha;
-        Value beta;
-
         if (MultiPV == 1 && Iteration >= 6) {
           Value prevDelta1 = IterationInfo[Iteration - 1].speculated_value() - IterationInfo[Iteration - 2].speculated_value();
           Value prevDelta2 = IterationInfo[Iteration - 2].speculated_value() - IterationInfo[Iteration - 3].speculated_value();
@@ -750,12 +754,13 @@ namespace {
 
         // Search to the current depth
         Value value = root_search(p, ss, rml, alpha, beta);
-        if (AbortSearch)
-          break; //Value cannot be trusted. Break out immediately!
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search:
         TT.insert_pv(p, ss[0].pv);
+
+        if (AbortSearch)
+          break; //Value cannot be trusted. Break out immediately!
 
         //Save info about search result
         Value speculated_value = value;
@@ -826,7 +831,6 @@ namespace {
 
             if (stopSearch)
             {
-                //FIXME: Implement fail-low emergency measures
                 if (!PonderSearch)
                     break;
                 else
@@ -836,6 +840,34 @@ namespace {
 
         if (MaxDepth && Iteration >= MaxDepth)
             break;
+    }
+
+    if (FailLow)
+    {
+      //Here we face the rare, but extremely difficult case:
+      //Our aspiration search has failed low and we've run out of time!
+      //So we have no move to play!
+      //Now use the emergency time and try as quickly as possible to
+      //find even one playable move.
+
+      //FIXME: this is only for grepping logs purpose. Remove me when we are sure that this stuff really works!!
+      if (AbortSearch)
+        std::cout << "info depth " << 999 << std::endl;
+      else
+        std::cout << "info depth " << 998 << std::endl;
+
+      //Prepare variables for emergency search
+      AbortSearch = false;
+      FailLow = false;
+      AbsoluteMaxSearchTime = EmergencyMaxSearchTime;
+      MaxSearchTime = EmergencyMaxSearchTime;
+      ExtraSearchTime = 0;
+      rml.sort();
+
+      std::cout << "info depth " << Iteration << std::endl;
+
+     //Cause we failed low, it's _likely_ that we couldn't get over alpha anyway.
+      root_search(p, ss, rml, -VALUE_INFINITE, alpha);
     }
 
     rml.sort();
@@ -891,7 +923,6 @@ namespace {
 
   Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml, Value alpha, Value beta) {
 
-    //FIXME: Implement bestValue
     Value oldAlpha = alpha;
     Value value;
     Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
