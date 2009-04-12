@@ -64,7 +64,7 @@ namespace {
     size_t idx;
 
     Option();
-    Option(const std::string& defaultValue, OptionType = STRING);
+    Option(const char* defaultValue, OptionType = STRING);
     Option(bool defaultValue, OptionType = CHECK);
     Option(int defaultValue, int minValue, int maxValue);
 
@@ -342,7 +342,7 @@ namespace {
 
   Option::Option() {} // To allow insertion in a std::map
 
-  Option::Option(const std::string& def, OptionType t)
+  Option::Option(const char* def, OptionType t)
   : defaultValue(def), currentValue(def), type(t), idx(options.size()), minValue(0), maxValue(0) {}
 
   Option::Option(bool def, OptionType t)
