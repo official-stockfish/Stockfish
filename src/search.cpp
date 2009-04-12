@@ -326,6 +326,7 @@ namespace {
   void update_killers(Move m, SearchStack& ss);
 
   bool fail_high_ply_1();
+  bool aspiration_fail_high_ply_1();
   int current_search_time();
   int nps();
   void poll();
@@ -428,6 +429,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   {
       Threads[i].nodes = 0ULL;
       Threads[i].failHighPly1 = false;
+      Threads[i].aspirationFailHighPly1 = false;
   }
   NodesSincePoll = 0;
   InfiniteSearch = infinite;
@@ -891,7 +893,6 @@ namespace {
 
   Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml, Value alpha, Value beta) {
 
-    //FIXME: Implement bestValue
     Value oldAlpha = alpha;
     Value value;
     Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
@@ -1166,19 +1167,29 @@ namespace {
         {
             ss[ply].reduction = Depth(0);
             value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
-            if (value > alpha && value < beta)
+            if (value > alpha /*&& value < beta*/)
             {
                 // When the search fails high at ply 1 while searching the first
                 // move at the root, set the flag failHighPly1. This is used for
                 // time managment:  We don't want to stop the search early in
                 // such cases, because resolving the fail high at ply 1 could
                 // result in a big drop in score at the root.
-                if (ply == 1 && RootMoveNumber == 1)
+                if (ply == 1 && RootMoveNumber == 1) {
                     Threads[threadID].failHighPly1 = true;
+                    if (value >= beta) {
+                      Threads[threadID].aspirationFailHighPly1 = true;
+                    }
+                }
 
                 // A fail high occurred. Re-search at full window (pv search)
                 value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
                 Threads[threadID].failHighPly1 = false;
+                //FIXME: Current implementation of Problem code is not completely thread-safe.
+                //If poll is called before pv is updated, we lose this move.
+                //(failHighPly1 also suffers from same kind of problems though. There is also a small
+                //fraction of time when failHighPly1 and Problem are _both_ false, though we
+                //are facing bad problems. If we are very unlucky search is terminated).
+                Threads[threadID].aspirationFailHighPly1 = false;
           }
         }
       }
@@ -1868,18 +1879,23 @@ namespace {
           ss[sp->ply].reduction = Depth(0);
           value = -search(pos, ss, -sp->alpha, newDepth, sp->ply+1, true, threadID);
 
-          if (value > sp->alpha && value < sp->beta)
+          if (value > sp->alpha /*&& value < sp->beta*/)
           {
               // When the search fails high at ply 1 while searching the first
               // move at the root, set the flag failHighPly1.  This is used for
               // time managment:  We don't want to stop the search early in
               // such cases, because resolving the fail high at ply 1 could
               // result in a big drop in score at the root.
-              if (sp->ply == 1 && RootMoveNumber == 1)
+              if (sp->ply == 1 && RootMoveNumber == 1) {
                   Threads[threadID].failHighPly1 = true;
+                  if (value >= sp->beta) {
+                    Threads[threadID].aspirationFailHighPly1 = true;
+                  }
+              }
 
               value = -search_pv(pos, ss, -sp->beta, -sp->alpha, newDepth, sp->ply+1, threadID);
               Threads[threadID].failHighPly1 = false;
+              Threads[threadID].aspirationFailHighPly1 = false;
         }
       }
       pos.undo_move(move);
@@ -2466,6 +2482,13 @@ namespace {
     return false;
   }
 
+  bool aspiration_fail_high_ply_1() {
+    for(int i = 0; i < ActiveThreads; i++)
+      if(Threads[i].aspirationFailHighPly1)
+        return true;
+    return false;
+  }
+
 
   // current_search_time() returns the number of milliseconds which have passed
   // since the beginning of the current search.
@@ -2544,8 +2567,8 @@ namespace {
         return;
 
     bool overTime =     t > AbsoluteMaxSearchTime
-                     || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime && !FailLow) //FIXME: BUG??
-                     || (  !FailHigh && !FailLow && !fail_high_ply_1() && !Problem
+                     || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime && !FailLow && !aspiration_fail_high_ply_1())
+                     || (  !FailHigh && !FailLow && !fail_high_ply_1() && !aspiration_fail_high_ply_1() && !Problem
                          && t > 6*(MaxSearchTime + ExtraSearchTime));
 
     if (   (Iteration >= 3 && (!InfiniteSearch && overTime))
