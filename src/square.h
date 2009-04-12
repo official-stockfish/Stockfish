@@ -164,7 +164,7 @@ inline File file_from_char(char c) {
 }
 
 inline char file_to_char(File f) {
-  return char(f - FILE_A) + 'a';
+  return char(f - FILE_A + 'a');
 }
 
 inline Rank rank_from_char(char c) {
@@ -172,7 +172,7 @@ inline Rank rank_from_char(char c) {
 }
 
 inline char rank_to_char(Rank r) {
-  return char(r - RANK_1) + '1';
+  return char(r - RANK_1 + '1');
 }
 
 inline Square square_from_string(const std::string& str) {
