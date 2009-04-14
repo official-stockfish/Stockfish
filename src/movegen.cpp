@@ -64,6 +64,20 @@ namespace {
   template<Color, Color, Bitboard, Bitboard, SquareDelta>
   MoveStack* generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
 
+  template<Color Us, SquareDelta Direction>
+  inline Bitboard move_pawns(Bitboard p) {
+
+    if (Direction == DELTA_N)
+        return Us == WHITE ? p << 8 : p >> 8;
+    else if (Direction == DELTA_NE)
+        return Us == WHITE ? p << 9 : p >> 7;
+    else if (Direction == DELTA_NW)
+        return Us == WHITE ? p << 7 : p >> 9;
+
+    assert(false);
+    return p;
+  }
+
   // Template generate_piece_checks() with specializations
   template<PieceType>
   MoveStack* generate_piece_checks(const Position&, MoveStack*, Color, Bitboard, Square);
@@ -601,7 +615,7 @@ namespace {
     Bitboard enemyPieces = pos.pieces_of_color(Them);
 
     // Captures in the a1-h8 (a8-h1 for black) direction
-    Bitboard b1 = (Us == WHITE ? pawns << 9 : pawns >> 7) & ~FileABB & enemyPieces;
+    Bitboard b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces;
 
     // Capturing promotions
     Bitboard b2 = b1 & TRank8BB;
@@ -620,7 +634,7 @@ namespace {
     }
 
     // Captures in the h1-a8 (h8-a1 for black) direction
-    b1 = (Us == WHITE ? pawns << 7 : pawns >> 9) & ~FileHBB & enemyPieces;
+    b1 = move_pawns<Us, DELTA_NW>(pawns) & ~FileHBB & enemyPieces;
 
     // Capturing promotions
     b2 = b1 & TRank8BB;
@@ -639,7 +653,7 @@ namespace {
     }
 
     // Non-capturing promotions
-    b1 = (Us == WHITE ? pawns << 8 : pawns >> 8) & pos.empty_squares() & TRank8BB;
+    b1 = move_pawns<Us, DELTA_N>(pawns) & pos.empty_squares() & TRank8BB;
     while (b1)
     {
         to = pop_1st_bit(&b1);
@@ -676,7 +690,7 @@ namespace {
     Square to;
 
     // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
-    b1 = (Us == WHITE ? pawns << 9 : pawns >> 7) & ~FileABB & enemyPieces & TRank8BB;
+    b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces & TRank8BB;
     while (b1)
     {
         to = pop_1st_bit(&b1);
@@ -686,7 +700,7 @@ namespace {
     }
 
     // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
-    b1 = (Us == WHITE ? pawns << 7 : pawns >> 9) & ~FileHBB & enemyPieces & TRank8BB;
+    b1 = move_pawns<Us, DELTA_NW>(pawns) & ~FileHBB & enemyPieces & TRank8BB;
     while (b1)
     {
         to = pop_1st_bit(&b1);
@@ -696,7 +710,7 @@ namespace {
     }
 
     // Single pawn pushes
-    b1 = (Us == WHITE ? pawns << 8 : pawns >> 8) & emptySquares;
+    b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares;
     b2 = b1 & TRank8BB;
     while (b2)
     {
@@ -713,7 +727,7 @@ namespace {
     }
 
     // Double pawn pushes
-    b2 = (Us == WHITE ? (b1 & TRank3BB) << 8 : (b1 & TRank3BB) >> 8) & emptySquares;
+    b2 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
     while (b2)
     {
         to = pop_1st_bit(&b2);
@@ -738,7 +752,7 @@ namespace {
         b1 = pos.pawns(Us) & ~file_bb(ksq);
 
         // Discovered checks, single pawn pushes, no promotions
-        b2 = b3 = (Us == WHITE ? (b1 & dc) << 8 : (b1 & dc) >> 8) & empty & ~TRank8BB;
+        b2 = b3 = move_pawns<Us, DELTA_N>(b1 & dc) & empty & ~TRank8BB;
         while (b3)
         {
             Square to = pop_1st_bit(&b3);
@@ -746,7 +760,7 @@ namespace {
         }
 
         // Discovered checks, double pawn pushes
-        b3 = (Us == WHITE ? (b2 & TRank3BB) << 8 : (b2 & TRank3BB) >> 8) & empty;
+        b3 = move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty;
         while (b3)
         {
             Square to = pop_1st_bit(&b3);
@@ -759,7 +773,7 @@ namespace {
     b1 = pos.pawns(Us) & neighboring_files_bb(ksq) & ~dc;
 
     // Direct checks, single pawn pushes
-    b2 = (Us == WHITE ? b1 << 8 : b1 >> 8) & empty;
+    b2 = move_pawns<Us, DELTA_N>(b1) & empty;
     b3 = b2 & pos.pawn_attacks(Them, ksq);
     while (b3)
     {
@@ -768,9 +782,7 @@ namespace {
     }
 
     // Direct checks, double pawn pushes
-    b3 =  (Us == WHITE ? (b2 & TRank3BB) << 8 : (b2 & TRank3BB) >> 8)
-        & empty
-        & pos.pawn_attacks(Them, ksq);
+    b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.pawn_attacks(Them, ksq);
     while (b3)
     {
         Square to = pop_1st_bit(&b3);
@@ -817,12 +829,12 @@ namespace {
                                              Bitboard blockSquares, MoveStack* mlist) {
     Square to;
 
-    // Find non-pinned pawns
-    Bitboard b1 = pos.pawns(Us) & ~pinned;
+    // Find non-pinned pawns and push them one square
+    Bitboard b1 = move_pawns<Us, DELTA_N>(pos.pawns(Us) & ~pinned);
 
-    // Single pawn pushes. We don't have to AND with empty squares here,
+    // We don't have to AND with empty squares here,
     // because the blocking squares will always be empty.
-    Bitboard b2 = (Us == WHITE ? b1 << 8 : b1 >> 8) & blockSquares;
+    Bitboard b2 = b1 & blockSquares;
     while (b2)
     {
         to = pop_1st_bit(&b2);
@@ -840,8 +852,8 @@ namespace {
     }
 
     // Double pawn pushes
-    b2 = (Us == WHITE ? b1 << 8 : b1 >> 8) & pos.empty_squares() & TRank3BB;
-    b2 = (Us == WHITE ? b2 << 8 : b2 >> 8) & blockSquares;
+    b2 = b1 & pos.empty_squares() & TRank3BB;
+    b2 = move_pawns<Us, DELTA_N>(b2) & blockSquares;
     while (b2)
     {
         to = pop_1st_bit(&b2);
