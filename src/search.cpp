@@ -712,12 +712,13 @@ namespace {
 
         // Search to the current depth
         Value value = root_search(p, ss, rml, alpha, beta);
-        if (AbortSearch)
-            break; // Value cannot be trusted. Break out immediately!
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
         TT.insert_pv(p, ss[0].pv);
+
+        if (AbortSearch)
+            break; // Value cannot be trusted. Break out immediately!
 
         //Save info about search result
         Value speculatedValue;
@@ -857,7 +858,6 @@ namespace {
 
   Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml, Value alpha, Value beta) {
 
-    //FIXME: Implement bestValue
     Value oldAlpha = alpha;
     Value value;
     Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
@@ -2507,7 +2507,7 @@ namespace {
         return;
 
     bool overTime =     t > AbsoluteMaxSearchTime
-                     || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime && !FailLow) //FIXME: BUG??
+                     || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime && !FailLow) //FIXME: We are not checking any problem flags, BUG?
                      || (  !FailHigh && !FailLow && !fail_high_ply_1() && !Problem
                          && t > 6*(MaxSearchTime + ExtraSearchTime));
 
