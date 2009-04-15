@@ -67,7 +67,6 @@ struct Thread {
   int activeSplitPoints;
   uint64_t nodes;
   bool failHighPly1;
-  bool aspirationFailHighPly1;
   volatile bool stop;
   volatile bool running;
   volatile bool idle;
