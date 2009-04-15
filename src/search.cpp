@@ -47,57 +47,24 @@ namespace {
 
   /// Types
 
-  //The IterationInfoType is used to store search history
-  //iteration by iteration.
+  // IterationInfoType stores search results for each iteration
   //
-  //Because we use relatively small (dynamic) aspiration window,
-  //there happens many fail highs and fail lows in root. And
-  //because we don't do researches in those cases, "value" stored
-  //here is not necessarily exact. Instead in case of fail high/low
-  //we guess what the right value might be and store our guess
-  //as "speculated value" and then move on...
+  // Because we use relatively small (dynamic) aspiration window,
+  // there happens many fail highs and fail lows in root. And
+  // because we don't do researches in those cases, "value" stored
+  // here is not necessarily exact. Instead in case of fail high/low
+  // we guess what the right value might be and store our guess
+  // as a "speculated value" and then move on. Speculated values are
+  // used just to calculate aspiration window width, so also if are
+  // not exact is not big a problem.
 
-  class IterationInfoType {
-    private:
-      Value _value;
-      Value _speculatedValue;
-      bool _failHigh;
-      bool _failLow;
-    public:
-      IterationInfoType() {
-        clear();
-      }
+  struct IterationInfoType {
 
-      inline void clear() {
-        set(Value(0));
-      }
+    IterationInfoType(Value v = Value(0), Value sv = Value(0), bool fh = false, bool fl = false)
+    : value(v), speculatedValue(sv), failHigh(fh), failLow(fl) {}
 
-      inline void set(Value v) {
-        set(v, v, false, false);
-      }
-
-      inline void set(Value v, Value specV, bool fHigh, bool fLow) {
-        _value = v;
-        _speculatedValue = specV;
-        _failHigh = fHigh;
-        _failLow = fLow;
-      }
-
-      inline Value value() {
-        return _value;
-      }
-
-      inline Value speculated_value() {
-        return _speculatedValue;
-      }
-
-      inline bool fail_high() {
-        return _failHigh;
-      }
-
-      inline bool fail_low() {
-        return _failLow;
-      }
+    Value value, speculatedValue;
+    bool failHigh, failLow;
   };
 
 
@@ -301,14 +268,10 @@ namespace {
   /// Functions
 
   Value id_loop(const Position &pos, Move searchMoves[]);
-  Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml,
-                    Value alpha, Value beta);
-  Value search_pv(Position &pos, SearchStack ss[], Value alpha, Value beta,
-                  Depth depth, int ply, int threadID);
-  Value search(Position &pos, SearchStack ss[], Value beta,
-               Depth depth, int ply, bool allowNullmove, int threadID);
-  Value qsearch(Position &pos, SearchStack ss[], Value alpha, Value beta,
-                Depth depth, int ply, int threadID);
+  Value root_search(Position &pos, SearchStack ss[], RootMoveList &rml, Value alpha, Value beta);
+  Value search_pv(Position &pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
+  Value search(Position &pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID);
+  Value qsearch(Position &pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint *sp, int threadID);
   void sp_search_pv(SplitPoint *sp, int threadID);
   void init_node(SearchStack ss[], int ply, int threadID);
@@ -711,7 +674,7 @@ namespace {
         ss[i].init(i);
         ss[i].initKillers();
     }
-    IterationInfo[1].set(rml.get_move_score(0));
+    IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
     Iteration = 1;
 
     EasyMove = rml.scan_for_easy_move();
@@ -728,59 +691,60 @@ namespace {
 
         std::cout << "info depth " << Iteration << std::endl;
 
-        //Calculate dynamic search window based on previous iterations.
-        Value alpha;
-        Value beta;
+        // Calculate dynamic search window based on previous iterations
+        Value alpha, beta;
 
-        if (MultiPV == 1 && Iteration >= 6) {
-          Value prevDelta1 = IterationInfo[Iteration - 1].speculated_value() - IterationInfo[Iteration - 2].speculated_value();
-          Value prevDelta2 = IterationInfo[Iteration - 2].speculated_value() - IterationInfo[Iteration - 3].speculated_value();
+        if (MultiPV == 1 && Iteration >= 6)
+        {
+            int prevDelta1 = IterationInfo[Iteration - 1].speculatedValue - IterationInfo[Iteration - 2].speculatedValue;
+            int prevDelta2 = IterationInfo[Iteration - 2].speculatedValue - IterationInfo[Iteration - 3].speculatedValue;
 
-          Value delta = Max((2 * Abs(prevDelta1) + Abs(prevDelta2)) , ProblemMargin);
+            int delta = Max(2 * abs(prevDelta1) + abs(prevDelta2), ProblemMargin);
 
-          alpha = IterationInfo[Iteration - 1].value() - delta;
-          beta  = IterationInfo[Iteration - 1].value() + delta;
-          if (alpha < - VALUE_INFINITE) alpha = - VALUE_INFINITE;
-          if (beta  >   VALUE_INFINITE) beta = VALUE_INFINITE;
-
-        } else {
-          alpha = - VALUE_INFINITE;
-          beta  =   VALUE_INFINITE;
+            alpha = Max(IterationInfo[Iteration - 1].value - delta, -VALUE_INFINITE);
+            beta  = Min(IterationInfo[Iteration - 1].value + delta,  VALUE_INFINITE);
+        }
+        else
+        {
+            alpha = - VALUE_INFINITE;
+            beta  =   VALUE_INFINITE;
         }
 
         // Search to the current depth
         Value value = root_search(p, ss, rml, alpha, beta);
         if (AbortSearch)
-          break; //Value cannot be trusted. Break out immediately!
+            break; // Value cannot be trusted. Break out immediately!
 
         // Write PV to transposition table, in case the relevant entries have
-        // been overwritten during the search:
+        // been overwritten during the search.
         TT.insert_pv(p, ss[0].pv);
 
         //Save info about search result
-        Value speculated_value = value;
+        Value speculatedValue;
         bool fHigh = false;
         bool fLow = false;
+        Value delta = value - IterationInfo[Iteration - 1].value;
 
-        Value prev_value = IterationInfo[Iteration - 1].value();
-        Value delta = value - prev_value;
+        if (value >= beta)
+        {
+            assert(delta > 0);
 
-        if (value >= beta) {
-          fHigh = true;
-          speculated_value = prev_value + 2 * delta;
-          BestMoveChangesByIteration[Iteration] += 2; //This is used to tell time management to allocate more time
-        } else if (value <= alpha) {
-          fLow = true;
-          speculated_value = prev_value + 2 * delta;
-          BestMoveChangesByIteration[Iteration] += 3; //This is used to tell time management to allocate more time
-        } else {
-          //nothing
+            fHigh = true;
+            speculatedValue = value + delta;
+            BestMoveChangesByIteration[Iteration] += 2; // Allocate more time
         }
+        else if (value <= alpha)
+        {
+            assert(delta < 0);
 
-        if (speculated_value < - VALUE_INFINITE) speculated_value = - VALUE_INFINITE;
-        if (speculated_value >   VALUE_INFINITE) speculated_value =   VALUE_INFINITE;
+            fLow = true;
+            speculatedValue = value + delta;
+            BestMoveChangesByIteration[Iteration] += 3; // Allocate more time
+        } else
+            speculatedValue = value;
 
-        IterationInfo[Iteration].set(value, speculated_value, fHigh, fLow);
+        speculatedValue = Min(Max(speculatedValue, -VALUE_INFINITE), VALUE_INFINITE);
+        IterationInfo[Iteration] = IterationInfoType(value, speculatedValue, fHigh, fLow);
 
         // Erase the easy move if it differs from the new best move
         if (ss[0].pv[0] != EasyMove)
@@ -799,13 +763,15 @@ namespace {
 
             // Stop search early when the last two iterations returned a mate score
             if (  Iteration >= 6
-                && abs(IterationInfo[Iteration].value()) >= abs(VALUE_MATE) - 100
-                && abs(IterationInfo[Iteration-1].value()) >= abs(VALUE_MATE) - 100)
+                && abs(IterationInfo[Iteration].value) >= abs(VALUE_MATE) - 100
+                && abs(IterationInfo[Iteration-1].value) >= abs(VALUE_MATE) - 100)
                 stopSearch = true;
 
             // Stop search early if one move seems to be much better than the rest
             int64_t nodes = nodes_searched();
-            if (   Iteration >= 8 && !fLow && !fHigh
+            if (   Iteration >= 8
+                && !fLow
+                && !fHigh
                 && EasyMove == ss[0].pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
                        && current_search_time() > MaxSearchTime / 16)
@@ -899,12 +865,11 @@ namespace {
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
     {
-        if (alpha >= beta) {
-          rml.set_move_score(i, -VALUE_INFINITE);
-          //Leave node-counters and beta-counters as they are.
-          continue;
+        if (alpha >= beta)
+        {
+            rml.set_move_score(i, -VALUE_INFINITE);
+            continue; // Leave node-counters and beta-counters as they are
         }
-
         int64_t nodes;
         Move move;
         StateInfo st;
@@ -942,7 +907,7 @@ namespace {
             // set the boolean variable Problem to true. This variable is used
             // for time managment: When Problem is true, we try to complete the
             // current iteration before playing a move.
-            Problem = (Iteration >= 2 && value <= IterationInfo[Iteration-1].value() - ProblemMargin);
+            Problem = (Iteration >= 2 && value <= IterationInfo[Iteration-1].value - ProblemMargin);
 
             if (Problem && StopOnPonderhit)
                 StopOnPonderhit = false;
@@ -967,7 +932,7 @@ namespace {
         // was aborted because the user interrupted the search or because we
         // ran out of time. In this case, the return value of the search cannot
         // be trusted, and we break out of the loop without updating the best
-        // move and/or PV:
+        // move and/or PV.
         if (AbortSearch)
             break;
 
@@ -1019,11 +984,11 @@ namespace {
                             << std::endl;
 
                 if (value > alpha)
-                  alpha = value;
+                    alpha = value;
 
                 // Reset the global variable Problem to false if the value isn't too
                 // far below the final value from the last iteration.
-                if (value > IterationInfo[Iteration - 1].value() - NoProblemMargin)
+                if (value > IterationInfo[Iteration - 1].value - NoProblemMargin)
                     Problem = false;
             }
             else // MultiPV > 1
@@ -1047,13 +1012,11 @@ namespace {
                 }
                 alpha = rml.get_move_score(Min(i, MultiPV-1));
             }
-        }
+        } // New best move case
 
-        if (alpha <= oldAlpha)
-          FailLow = true;
-        else
-          FailLow = false;
+        assert(alpha >= oldAlpha);
 
+        FailLow = (alpha == oldAlpha);
     }
     return alpha;
   }
@@ -1202,7 +1165,7 @@ namespace {
           // (from the computer's point of view) since the previous iteration:
           if (   ply == 1
               && Iteration >= 2
-              && -value <= IterationInfo[Iteration-1].value() - ProblemMargin)
+              && -value <= IterationInfo[Iteration-1].value - ProblemMargin)
               Problem = true;
       }
 
@@ -1915,7 +1878,7 @@ namespace {
         // (from the computer's point of view) since the previous iteration.
         if (   sp->ply == 1
             && Iteration >= 2
-            && -value <= IterationInfo[Iteration-1].value() - ProblemMargin)
+            && -value <= IterationInfo[Iteration-1].value - ProblemMargin)
             Problem = true;
       }
       lock_release(&(sp->lock));
