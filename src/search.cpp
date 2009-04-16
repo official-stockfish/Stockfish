@@ -60,11 +60,10 @@ namespace {
 
   struct IterationInfoType {
 
-    IterationInfoType(Value v = Value(0), Value sv = Value(0), bool fh = false, bool fl = false)
-    : value(v), speculatedValue(sv), failHigh(fh), failLow(fl) {}
+    IterationInfoType(Value v = Value(0), Value sv = Value(0))
+    : value(v), speculatedValue(sv) {}
 
     Value value, speculatedValue;
-    bool failHigh, failLow;
   };
 
 
@@ -736,6 +735,7 @@ namespace {
         }
         else if (value <= alpha)
         {
+            assert(value == alpha);
             assert(delta < 0);
 
             fLow = true;
@@ -745,7 +745,7 @@ namespace {
             speculatedValue = value;
 
         speculatedValue = Min(Max(speculatedValue, -VALUE_INFINITE), VALUE_INFINITE);
-        IterationInfo[Iteration] = IterationInfoType(value, speculatedValue, fHigh, fLow);
+        IterationInfo[Iteration] = IterationInfoType(value, speculatedValue);
 
         // Erase the easy move if it differs from the new best move
         if (ss[0].pv[0] != EasyMove)
@@ -867,8 +867,11 @@ namespace {
     {
         if (alpha >= beta)
         {
+            // We failed high, invalidate and skip next moves, leave node-counters
+            // and beta-counters as they are and quickly return, we will try to do
+            // a research at the next iteration with a bigger aspiration window.
             rml.set_move_score(i, -VALUE_INFINITE);
-            continue; // Leave node-counters and beta-counters as they are
+            continue;
         }
         int64_t nodes;
         Move move;
@@ -951,7 +954,7 @@ namespace {
             rml.set_move_score(i, -VALUE_INFINITE);
         else
         {
-            // New best move!
+            // PV move or new best move!
 
             // Update PV
             rml.set_move_score(i, value);
