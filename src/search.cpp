@@ -1516,6 +1516,7 @@ namespace {
             return value_from_tt(tte->value(), ply);
         }
     }
+    Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Evaluate the position statically
     EvalInfo ei;
@@ -1559,7 +1560,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, pvNode, MOVE_NONE, EmptySearchStack, depth);
+    MovePicker mp = MovePicker(pos, pvNode, ttMove, EmptySearchStack, depth);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();
@@ -1636,22 +1637,20 @@ namespace {
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     // Update transposition table
+    Move m = ss[ply].pv[ply];
     if (!pvNode)
     {
         Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
         if (bestValue < beta)
             TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_UPPER);
         else
-            TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_LOWER);
+            TT.store(pos, value_to_tt(bestValue, ply), d, m, VALUE_TYPE_LOWER);
     }
 
     // Update killers only for good check moves
-    Move m = ss[ply].currentMove;
     if (alpha >= beta && ok_to_history(pos, m)) // Only non capture moves are considered
-    {
-        // Wrong to update history when depth is <= 0
         update_killers(m, ss[ply]);
-    }
+
     return bestValue;
   }
 

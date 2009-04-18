@@ -50,7 +50,6 @@ namespace {
 }
 
 
-
 ////
 //// Functions
 ////
@@ -445,9 +444,9 @@ Move MovePicker::pick_move_from_list() {
           bestIndex = (movesPicked < 4 ? find_best_index() : movesPicked);
           move = moves[bestIndex].move;
           moves[bestIndex] = moves[movesPicked++];
-          // Remember to change the line below if we decide to hash the qsearch!
-          // Maybe also postpone the legality check until after futility pruning?
-          if (/* move != ttMove && */ pos.pl_move_is_legal(move, pinned))
+          // Maybe postpone the legality check until after futility pruning?
+          if (   move != ttMove
+              && pos.pl_move_is_legal(move, pinned))
               return move;
       }
       break;
@@ -460,8 +459,8 @@ Move MovePicker::pick_move_from_list() {
       while (movesPicked < numOfMoves)
       {
           move = moves[movesPicked++].move;
-          // Remember to change the line below if we decide to hash the qsearch!
-          if (/* move != ttMove && */ pos.pl_move_is_legal(move, pinned))
+          if (   move != ttMove
+              && pos.pl_move_is_legal(move, pinned))
               return move;
       }
       break;
@@ -473,20 +472,10 @@ Move MovePicker::pick_move_from_list() {
 }
 
 
-/// MovePicker::current_move_type() returns the type of the just
-/// picked next move. It can be used in search to further differentiate
-/// according to the current move type: capture, non capture, escape, etc.
-MovePicker::MovegenPhase MovePicker::current_move_type() const {
-
-  return PhaseTable[phaseIndex];
-}
-
-
 /// MovePicker::init_phase_table() initializes the PhaseTable[],
 /// MainSearchPhaseIndex, EvasionPhaseIndex, QsearchWithChecksPhaseIndex
-/// QsearchNoCapturesPhaseIndex, QsearchWithoutChecksPhaseIndex and
-/// NoMovesPhaseIndex variables. It is only called once during program
-/// startup, and never again while the program is running.
+/// and QsearchWithoutChecksPhaseIndex. It is only called once during
+/// program startup, and never again while the program is running.
 
 void MovePicker::init_phase_table() {
 
@@ -511,12 +500,14 @@ void MovePicker::init_phase_table() {
 
   // Quiescence search with checks
   QsearchWithChecksPhaseIndex = i - 1;
+  PhaseTable[i++] = PH_TT_MOVE;
   PhaseTable[i++] = PH_QCAPTURES;
   PhaseTable[i++] = PH_QCHECKS;
   PhaseTable[i++] = PH_STOP;
 
   // Quiescence search without checks
   QsearchWithoutChecksPhaseIndex = i - 1;
+  PhaseTable[i++] = PH_TT_MOVE;
   PhaseTable[i++] = PH_QCAPTURES;
   PhaseTable[i++] = PH_STOP;
 

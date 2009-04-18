@@ -70,7 +70,6 @@ public:
   Move get_next_move(Lock &lock);
   int number_of_moves() const;
   int current_move_score() const;
-  MovegenPhase current_move_type() const;
   Bitboard discovered_check_candidates() const;
 
   static void init_phase_table();
