@@ -300,16 +300,14 @@ void MovePicker::score_qcaptures() {
 
 
 /// find_best_index() loops across the moves and returns index of
-/// the highest scored one. There is also a second version that
-/// lowers the priority of moves that attack the same square,
-/// so that if the best move that attack a square fails the next
-/// move picked attacks a different square if any, not the same one.
+/// the highest scored one.
 
-int MovePicker::find_best_index() {
+int MovePicker::find_best_index() const {
 
   assert(movesPicked < numOfMoves);
 
-  int bestIndex = movesPicked, bestScore = moves[movesPicked].score;
+  int bestIndex = movesPicked;
+  int bestScore = moves[movesPicked].score;
 
   for (int i = movesPicked + 1; i < numOfMoves; i++)
       if (moves[i].score > bestScore)
@@ -317,45 +315,6 @@ int MovePicker::find_best_index() {
           bestIndex = i;
           bestScore = moves[i].score;
       }
-  return bestIndex;
-}
-
-int MovePicker::find_best_index(Bitboard* squares, int values[]) {
-
-  assert(movesPicked < numOfMoves);
-
-  int hs;
-  Move m;
-  Square to;
-  int bestScore = -10000000, bestIndex = -1;
-
-  for (int i = movesPicked; i < numOfMoves; i++)
-  {
-      m = moves[i].move;
-      to = move_to(m);
-
-      if (!bit_is_set(*squares, to))
-      {
-          // Init at first use
-          set_bit(squares, to);
-          values[to] = 0;
-      }
-
-      hs = moves[i].score - values[to];
-      if (hs > bestScore)
-      {
-          bestIndex = i;
-          bestScore = hs;
-      }
-  }
-
-  if (bestIndex != -1)
-  {
-      // Raise value of the picked square, so next attack
-      // to the same square will get low priority.
-      to = move_to(moves[bestIndex].move);
-      values[to] += 0xB00;
-  }
   return bestIndex;
 }
 
@@ -510,5 +469,4 @@ void MovePicker::init_phase_table() {
   PhaseTable[i++] = PH_TT_MOVE;
   PhaseTable[i++] = PH_QCAPTURES;
   PhaseTable[i++] = PH_STOP;
-
 }
