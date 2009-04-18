@@ -815,6 +815,9 @@ namespace {
         return mlist;
 
     Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
+    if (!checkSqs)
+        return mlist;
+
     while (b)
     {
         Square from = pop_1st_bit(&b);
