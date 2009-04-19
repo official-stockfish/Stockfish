@@ -73,9 +73,8 @@ namespace {
         return Us == WHITE ? p << 9 : p >> 7;
     else if (Direction == DELTA_NW)
         return Us == WHITE ? p << 7 : p >> 9;
-
-    assert(false);
-    return p;
+    else
+        return p;
   }
 
   // Template generate_piece_checks() with specializations
@@ -821,6 +820,11 @@ namespace {
     while (b)
     {
         Square from = pop_1st_bit(&b);
+        if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
+            || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
+            || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
+            continue;
+
         Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
         SERIALIZE_MOVES(bb);
     }
