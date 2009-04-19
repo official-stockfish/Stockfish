@@ -37,7 +37,7 @@ OBJS = bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 all: $(EXE) .depend
 
 clean:
-	$(RM) *.o .depend glaurung
+	$(RM) *.o .depend stockfish
 
 
 ###
@@ -94,7 +94,7 @@ CXXFLAGS += -wd383,869,981
 # Profiler guided optimization with the Intel C++ compiler.  To use it, first
 # create the directory ./profdata if it does not already exist, and delete its
 # contents if it does exist.  Then compile with -prof_gen, and run the
-# resulting binary for a while (for instance, do ./glaurung bench 128 1, and
+# resulting binary for a while (for instance, do ./stockfish bench 128 1, and
 # wait 15 minutes for the benchmark to complete).  Then do a 'make clean', and
 # recompile with -prof_use.
 
