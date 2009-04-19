@@ -1867,21 +1867,6 @@ Value Position::compute_non_pawn_material(Color c) const {
 }
 
 
-/// Position::is_mate() returns true or false depending on whether the
-/// side to move is checkmated. Note that this function is currently very
-/// slow, and shouldn't be used frequently inside the search.
-
-bool Position::is_mate() const {
-
-  if (is_check())
-  {
-      MovePicker mp = MovePicker(*this, false, MOVE_NONE, EmptySearchStack, Depth(0));
-      return mp.get_next_move() == MOVE_NONE;
-  }
-  return false;
-}
-
-
 /// Position::is_draw() tests whether the position is drawn by material,
 /// repetition, or the 50 moves rule. It does not detect stalemates, this
 /// must be done by the search.
@@ -1903,6 +1888,17 @@ bool Position::is_draw() const {
           return true;
 
   return false;
+}
+
+
+/// Position::is_mate() returns true or false depending on whether the
+/// side to move is checkmated.
+
+bool Position::is_mate() const {
+
+  MoveStack moves[256];
+
+  return is_check() && !generate_evasions(*this, moves, pinned_pieces(sideToMove));
 }
 
 
