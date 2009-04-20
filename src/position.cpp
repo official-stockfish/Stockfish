@@ -1903,19 +1903,12 @@ bool Position::is_mate() const {
 
 
 /// Position::has_mate_threat() tests whether a given color has a mate in one
-/// from the current position. This function is quite slow, but it doesn't
-/// matter, because it is currently only called from PV nodes, which are rare.
+/// from the current position.
 
 bool Position::has_mate_threat(Color c) {
 
   StateInfo st1, st2;
   Color stm = side_to_move();
-
-  // The following lines are useless and silly, but prevents gcc from
-  // emitting a stupid warning stating that u1.lastMove and u1.epSquare might
-  // be used uninitialized.
-  st1.lastMove = st->lastMove;
-  st1.epSquare = st->epSquare;
 
   if (is_check())
       return false;
@@ -1927,18 +1920,26 @@ bool Position::has_mate_threat(Color c) {
   MoveStack mlist[120];
   int count;
   bool result = false;
+  Bitboard dc = discovered_check_candidates(sideToMove);
+  Bitboard pinned = pinned_pieces(sideToMove);
 
-  // Generate legal moves
-  count = generate_legal_moves(*this, mlist);
+  // Generate pseudo-legal non-capture and capture check moves
+  count = generate_non_capture_checks(*this, mlist, dc);
+  count += generate_captures(*this, mlist + count);
 
   // Loop through the moves, and see if one of them is mate
   for (int i = 0; i < count; i++)
   {
-      do_move(mlist[i].move, st2);
+      Move move = mlist[i].move;
+
+      if (!pl_move_is_legal(move, pinned))
+          continue;
+
+      do_move(move, st2);
       if (is_mate())
           result = true;
 
-      undo_move(mlist[i].move);
+      undo_move(move);
   }
 
   // Undo null move, if necessary

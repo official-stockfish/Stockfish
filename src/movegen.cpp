@@ -176,10 +176,10 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
 }
 
 
-/// generate_checks() generates all pseudo-legal non-capturing, non-promoting
-/// checks. It returns the number of generated moves.
+/// generate_non_capture_checks() generates all pseudo-legal non-capturing,
+/// non-promoting checks. It returns the number of generated moves.
 
-int generate_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
+int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());

@@ -163,7 +163,7 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_QCHECKS:
-        numOfMoves = generate_checks(pos, moves, dc);
+        numOfMoves = generate_non_capture_checks(pos, moves, dc);
         movesPicked = 0;
         break;
 
