@@ -38,7 +38,7 @@
 //// Variables
 ////
 
-bool Chess960 = false;
+bool Chess960;
 
 
 ////

@@ -129,18 +129,17 @@ namespace {
   };
 
 
-  /// Constants and variables
+  /// Constants and variables initialized from UCI options
 
   // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV
-  // nodes:
-  int LMRPVMoves = 15;
-  int LMRNonPVMoves = 4;
+  // nodes
+  int LMRPVMoves, LMRNonPVMoves;
 
-  // Depth limit for use of dynamic threat detection:
-  Depth ThreatDepth = 5*OnePly;
+  // Depth limit for use of dynamic threat detection
+  Depth ThreatDepth;
 
-  // Depth limit for selective search:
-  Depth SelectiveDepth = 7*OnePly;
+  // Depth limit for selective search
+  Depth SelectiveDepth;
 
   // Use internal iterative deepening?
   const bool UseIIDAtPVNodes = true;
@@ -177,33 +176,28 @@ namespace {
   const bool PruneBlockingMoves = false;
 
   // Use futility pruning?
-  bool UseQSearchFutilityPruning = true;
-  bool UseFutilityPruning = true;
+  bool UseQSearchFutilityPruning, UseFutilityPruning;
 
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes
-  Value FutilityMarginQS = Value(0x80);
+  Value FutilityMarginQS;
   Value FutilityMargins[6] = { Value(0x100), Value(0x200), Value(0x250),
                                Value(0x2A0), Value(0x340), Value(0x3A0) };
 
   // Razoring
   const bool RazorAtDepthOne = false;
-  Depth RazorDepth = 4*OnePly;
-  Value RazorMargin = Value(0x300);
+  Depth RazorDepth;
+  Value RazorMargin;
 
   // Last seconds noise filtering (LSN)
-  bool UseLSNFiltering = false;
+  bool UseLSNFiltering;
   bool looseOnTime = false;
-  int LSNTime = 4 * 1000; // In milliseconds
-  Value LSNValue = Value(0x200);
+  int LSNTime; // In milliseconds
+  Value LSNValue;
 
-  // Extensions.  Array index 0 is used at non-PV nodes, index 1 at PV nodes.
-  Depth CheckExtension[2] = {OnePly, OnePly};
-  Depth SingleReplyExtension[2] = {OnePly / 2, OnePly / 2};
-  Depth PawnPushTo7thExtension[2] = {OnePly / 2, OnePly / 2};
-  Depth PassedPawnExtension[2] = {Depth(0), Depth(0)};
-  Depth PawnEndgameExtension[2] = {OnePly, OnePly};
-  Depth MateThreatExtension[2] = {Depth(0), Depth(0)};
+  // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
+  Depth CheckExtension[2], SingleReplyExtension[2], PawnPushTo7thExtension[2];
+  Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly /*+ OnePly/2*/;
@@ -221,7 +215,7 @@ namespace {
   int BestMoveChangesByIteration[PLY_MAX_PLUS_2];
 
   // MultiPV mode
-  int MultiPV = 1;
+  int MultiPV;
 
   // Time managment variables
   int SearchStartTime;
@@ -241,15 +235,15 @@ namespace {
   int ExactMaxTime;
 
   // Show current line?
-  bool ShowCurrentLine = false;
+  bool ShowCurrentLine;
 
   // Log file
-  bool UseLogFile = false;
+  bool UseLogFile;
   std::ofstream LogFile;
 
   // MP related variables
-  Depth MinimumSplitDepth = 4*OnePly;
-  int MaxThreadsPerSplitPoint = 4;
+  Depth MinimumSplitDepth;
+  int MaxThreadsPerSplitPoint;
   Thread Threads[THREAD_MAX];
   Lock MPLock;
   bool AllThreadsShouldExit = false;
