@@ -718,5 +718,14 @@ inline bool Position::has_pawn_on_7th(Color c) const {
   return pawns(c) & relative_rank_bb(c, RANK_7);
 }
 
+inline bool Position::move_is_capture(Move m) const {
+
+  // Move must not be MOVE_NONE !
+
+  return (   !square_is_empty(move_to(m))
+          && (color_of_piece_on(move_to(m)) != color_of_piece_on(move_from(m)))
+         )
+         || move_is_ep(m);
+}
 
 #endif // !defined(POSITION_H_INCLUDED)
