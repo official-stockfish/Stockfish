@@ -45,13 +45,19 @@ int gettimeofday(struct timeval * tp, struct timezone * tzp);
 
 #include "misc.h"
 
+using namespace std;
+
+/// Version number. If this is left empty, the current date (in the format
+/// YYMMDD) is used as a version number.
+
+static const string EngineVersion = "";
+static const string AppName = "Stockfish";
+static const string AppTag  = "";
+
 
 ////
 //// Variables
 ////
-
-static const std::string AppName = "Stockfish";
-static const std::string AppTag  = "";
 
 long dbg_cnt0 = 0;
 long dbg_cnt1 = 0;
@@ -103,28 +109,26 @@ void dbg_mean_of(int v) {
 
 void dbg_print_hit_rate() {
 
-  std::cout << "Total " << dbg_cnt0 << " Hit " << dbg_cnt1
-            << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1)
-            << std::endl;
+  cout << "Total " << dbg_cnt0 << " Hit " << dbg_cnt1
+       << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1) << endl;
 }
 
 void dbg_print_mean() {
 
-  std::cout << "Total " << dbg_cnt0 << " Mean "
-            << (float)dbg_cnt1 / (dbg_cnt0 ? dbg_cnt0 : 1) << std::endl;
+  cout << "Total " << dbg_cnt0 << " Mean "
+       << (float)dbg_cnt1 / (dbg_cnt0 ? dbg_cnt0 : 1) << endl;
 }
 
-void dbg_print_hit_rate(std::ofstream& logFile) {
+void dbg_print_hit_rate(ofstream& logFile) {
 
   logFile << "Total " << dbg_cnt0 << " Hit " << dbg_cnt1
-          << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1)
-          << std::endl;
+          << " hit rate (%) " << (dbg_cnt1*100)/(dbg_cnt0 ? dbg_cnt0 : 1) << endl;
 }
 
-void dbg_print_mean(std::ofstream& logFile) {
+void dbg_print_mean(ofstream& logFile) {
 
   logFile << "Total " << dbg_cnt0 << " Mean "
-          << (float)dbg_cnt1 / (dbg_cnt0 ? dbg_cnt0 : 1) << std::endl;
+          << (float)dbg_cnt1 / (dbg_cnt0 ? dbg_cnt0 : 1) << endl;
 }
 
 /// engine_name() returns the full name of the current Stockfish version.
@@ -132,26 +136,25 @@ void dbg_print_mean(std::ofstream& logFile) {
 /// program was compiled) or "Stockfish <version number>", depending on whether
 /// the constant EngineVersion (defined in misc.h) is empty.
 
-const std::string engine_name() {
+const string engine_name() {
 
-  if (EngineVersion.empty())
-  {
-      std::string date(__DATE__); // From compiler, format is "Sep 21 2008"
-      std::string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-
-      size_t mon = 1 + months.find(date.substr(0, 3)) / 4;
-
-      std::stringstream s;
-      std::string day = (date[4] == ' ' ? date.substr(5, 1) : date.substr(4, 2));
-
-      std::string name = AppName + " " + AppTag + " ";
-
-      s << name << date.substr(date.length() - 2) << std::setfill('0')
-        << std::setw(2) << mon << std::setw(2) << day;
-
-      return s.str();
-  } else
+  if (!EngineVersion.empty())
       return "Stockfish " + EngineVersion;
+
+  string date(__DATE__); // From compiler, format is "Sep 21 2008"
+  string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+
+  size_t mon = 1 + months.find(date.substr(0, 3)) / 4;
+
+  stringstream s;
+  string day = (date[4] == ' ' ? date.substr(5, 1) : date.substr(4, 2));
+
+  string name = AppName + " " + AppTag + " ";
+
+  s << name << date.substr(date.length() - 2) << setfill('0')
+    << setw(2) << mon << setw(2) << day;
+
+  return s.str();
 }
 
 

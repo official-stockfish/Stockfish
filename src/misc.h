@@ -31,17 +31,6 @@
 
 
 ////
-//// Constants
-////
-
-
-/// Version number.  If this is left empty, the current date (in the format
-/// YYMMDD) is used as a version number.
-
-const std::string EngineVersion = "";
-
-
-////
 //// Macros
 ////
 
