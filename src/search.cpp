@@ -1375,7 +1375,7 @@ namespace {
               continue;
 
           // Value based pruning
-          if (depth < 7 * OnePly && approximateEval < beta)
+          if (approximateEval < beta)
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
