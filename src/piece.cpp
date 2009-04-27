@@ -22,10 +22,11 @@
 //// Includes
 ////
 
-#include <cstring>
+#include <string>
 
 #include "piece.h"
 
+using namespace std;
 
 ////
 //// Functions
@@ -33,13 +34,16 @@
 
 /// Translating piece types to/from English piece letters
 
-static const char PieceChars[] = " pnbrqk";
+static const string PieceChars(" pnbrqk PNBRQK");
 
 char piece_type_to_char(PieceType pt, bool upcase) {
-  return char(upcase? toupper(PieceChars[pt]) : PieceChars[pt]);
+
+  return PieceChars[pt + upcase * 7];
 }
 
 PieceType piece_type_from_char(char c) {
-  const char* ch = strchr(PieceChars, tolower(c));
-  return ch? PieceType(ch - PieceChars) : NO_PIECE_TYPE;
+
+  size_t idx = PieceChars.find(c);
+
+  return idx != string::npos ? PieceType(idx % 7) : NO_PIECE_TYPE;
 }
