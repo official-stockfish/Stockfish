@@ -74,6 +74,13 @@ inline SignedDirection signed_direction_between_squares(Square s1, Square s2) {
   return SignedDirection(SignedDirectionTable[s1][s2]);
 }
 
+inline bool direction_is_diagonal(Square s1, Square s2) {
+  return DirectionTable[s1][s2] & 2;
+}
+
+inline bool direction_is_straight(Square s1, Square s2) {
+  return DirectionTable[s1][s2] < 2;
+}
 
 ////
 //// Prototypes

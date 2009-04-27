@@ -599,19 +599,17 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
 
   case BISHOP:
     return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || (   direction_between_squares(ksq, to) != DIR_NONE
-              && bit_is_set(piece_attacks<BISHOP>(ksq), to));
+          || (direction_is_diagonal(ksq, to) && bit_is_set(piece_attacks<BISHOP>(ksq), to));
 
   case ROOK:
     return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || (   direction_between_squares(ksq, to) != DIR_NONE
-              && bit_is_set(piece_attacks<ROOK>(ksq), to));
+          || (direction_is_straight(ksq, to) && bit_is_set(piece_attacks<ROOK>(ksq), to));
 
   case QUEEN:
       // Discovered checks are impossible!
       assert(!bit_is_set(dcCandidates, from));
-      return (   direction_between_squares(ksq, to) != DIR_NONE
-              && bit_is_set(piece_attacks<QUEEN>(ksq), to));
+      return (   (direction_is_straight(ksq, to) && bit_is_set(piece_attacks<ROOK>(ksq), to))
+              || (direction_is_diagonal(ksq, to) && bit_is_set(piece_attacks<BISHOP>(ksq), to)));
 
   case KING:
       // Discovered check?
