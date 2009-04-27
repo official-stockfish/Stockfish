@@ -58,7 +58,7 @@ TranspositionTable::~TranspositionTable() {
 
 void TranspositionTable::set_size(unsigned mbSize) {
 
-  assert(mbSize >= 4 && mbSize <= 1024);
+  assert(mbSize >= 4 && mbSize <= 4096);
 
   unsigned newSize = 1024;
 
