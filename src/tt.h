@@ -53,8 +53,11 @@
 class TTEntry {
 
 public:
-  TTEntry();
-  TTEntry(Key k, Value v, ValueType t, Depth d, Move m, int generation);
+  TTEntry() {}
+  TTEntry(Key k, Value v, ValueType t, Depth d, Move m, int generation)
+        : key_ (k), data((m & 0x1FFFF) | (t << 20) | (generation << 23)),
+          value_(int16_t(v)), depth_(int16_t(d)) {}
+
   Key key() const { return key_; }
   Depth depth() const { return Depth(depth_); }
   Move move() const { return Move(data & 0x1FFFF); }
@@ -76,32 +79,22 @@ private:
 class TranspositionTable {
 
 public:
-  TranspositionTable(unsigned mbSize);
+  TranspositionTable();
   ~TranspositionTable();
   void set_size(unsigned mbSize);
   void clear();
-  void store(const Position &pos, Value v, Depth d, Move m, ValueType type);
-  TTEntry* retrieve(const Position &pos) const;
+  void store(const Position& pos, Value v, ValueType type, Depth d, Move m);
+  TTEntry* retrieve(const Position& pos) const;
   void new_search();
-  void insert_pv(const Position &pos, Move pv[]);
-  int full();
+  void insert_pv(const Position& pos, Move pv[]);
+  int full() const;
 
 private:
-  inline TTEntry* first_entry(const Position &pos) const;
+  inline TTEntry* first_entry(const Position& pos) const;
 
-  unsigned size;
-  int writes;
+  unsigned size, writes;
   TTEntry* entries;
   uint8_t generation;
 };
-
-
-////
-//// Constants and variables
-////
-
-// Default transposition table size, in megabytes:
-const int TTDefaultSize = 32;
-
 
 #endif // !defined(TT_H_INCLUDED)

@@ -315,7 +315,7 @@ namespace {
 ////
 
 // The main transposition table
-TranspositionTable TT = TranspositionTable(TTDefaultSize);
+TranspositionTable TT;
 
 
 // Number of active threads:
@@ -1191,7 +1191,7 @@ namespace {
         return bestValue;
 
     if (bestValue <= oldAlpha)
-        TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_UPPER);
+        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
 
     else if (bestValue >= beta)
     {
@@ -1202,10 +1202,10 @@ namespace {
             update_history(pos, m, depth, movesSearched, moveCount);
             update_killers(m, ss[ply]);
         }
-        TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
+        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
     }
     else
-        TT.store(pos, value_to_tt(bestValue, ply), depth, ss[ply].pv[ply], VALUE_TYPE_EXACT);
+        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
 
     return bestValue;
   }
@@ -1455,7 +1455,7 @@ namespace {
         return bestValue;
 
     if (bestValue < beta)
-        TT.store(pos, value_to_tt(bestValue, ply), depth, MOVE_NONE, VALUE_TYPE_UPPER);
+        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
     else
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
@@ -1465,7 +1465,7 @@ namespace {
             update_history(pos, m, depth, movesSearched, moveCount);
             update_killers(m, ss[ply]);
         }
-        TT.store(pos, value_to_tt(bestValue, ply), depth, m, VALUE_TYPE_LOWER);
+        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -1544,7 +1544,7 @@ namespace {
     {
         // Store the score to avoid a future costly evaluation() call
         if (!isCheck && !tte && ei.futilityMargin == 0)
-            TT.store(pos, value_to_tt(bestValue, ply), Depth(-127*OnePly), MOVE_NONE, VALUE_TYPE_EVAL);
+            TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
 
         return bestValue;
     }
@@ -1637,9 +1637,9 @@ namespace {
     {
         Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
         if (bestValue < beta)
-            TT.store(pos, value_to_tt(bestValue, ply), d, MOVE_NONE, VALUE_TYPE_UPPER);
+            TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE);
         else
-            TT.store(pos, value_to_tt(bestValue, ply), d, m, VALUE_TYPE_LOWER);
+            TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, m);
     }
 
     // Update killers only for good check moves
