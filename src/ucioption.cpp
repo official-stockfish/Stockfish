@@ -125,7 +125,6 @@ namespace {
     o["Full Depth Moves (PV nodes)"] = Option(14, 1, 100);
     o["Full Depth Moves (non-PV nodes)"] = Option(3, 1, 100);
     o["Threat Depth"] = Option(5, 0, 100);
-    o["Selective Plies"] = Option(7, 0, 10);
     o["Futility Pruning (Main Search)"] = Option(true);
     o["Futility Pruning (Quiescence Search)"] = Option(true);
     o["Futility Margin (Quiescence Search)"] = Option(50, 0, 1000);

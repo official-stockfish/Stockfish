@@ -139,7 +139,7 @@ namespace {
   Depth ThreatDepth;
 
   // Depth limit for selective search
-  Depth SelectiveDepth;
+  const Depth SelectiveDepth = 7*OnePly;
 
   // Use internal iterative deepening?
   const bool UseIIDAtPVNodes = true;
@@ -426,7 +426,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   LMRPVMoves     = get_option_value_int("Full Depth Moves (PV nodes)") + 1;
   LMRNonPVMoves  = get_option_value_int("Full Depth Moves (non-PV nodes)") + 1;
   ThreatDepth    = get_option_value_int("Threat Depth") * OnePly;
-  SelectiveDepth = get_option_value_int("Selective Plies") * OnePly;
 
   Chess960 = get_option_value_bool("UCI_Chess960");
   ShowCurrentLine = get_option_value_bool("UCI_ShowCurrLine");
