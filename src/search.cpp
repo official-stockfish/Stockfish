@@ -180,14 +180,20 @@ namespace {
 
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes
-  Value FutilityMarginQS;
-  Value FutilityMargins[6] = { Value(0x100), Value(0x200), Value(0x250),
-                               Value(0x2A0), Value(0x340), Value(0x3A0) };
+  const Value FutilityMarginQS = Value(0x80);
 
-  // Razoring
-  const bool RazorAtDepthOne = false;
-  Depth RazorDepth;
-  Value RazorMargin;
+   // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
+   const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
+  //                                   4 ply         4.5 ply       5 ply         5.5 ply       6 ply         6.5 ply
+                                      Value(0x2A0), Value(0x2C0), Value(0x340), Value(0x360), Value(0x3A0), Value(0x3C0) };
+   // Razoring
+   const Depth RazorDepth = 4*OnePly;
+
+  // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
+  const Value RazorMargins[6]     = { Value(0x180), Value(0x300), Value(0x300), Value(0x3C0), Value(0x3C0), Value(0x3C0) };
+
+  // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
+   const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
 
   // Last seconds noise filtering (LSN)
   bool UseLSNFiltering;
@@ -435,14 +441,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
 
   UseQSearchFutilityPruning = get_option_value_bool("Futility Pruning (Quiescence Search)");
   UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
-
-  FutilityMarginQS = value_from_centipawns(get_option_value_int("Futility Margin (Quiescence Search)"));
-  int fmScale = get_option_value_int("Futility Margin Scale Factor (Main Search)");
-  for (int i = 0; i < 6; i++)
-      FutilityMargins[i] = (FutilityMargins[i] * fmScale) / 100;
-
-  RazorDepth = (get_option_value_int("Maximum Razoring Depth") + 1) * OnePly;
-  RazorMargin = value_from_centipawns(get_option_value_int("Razoring Margin"));
 
   UseLSNFiltering = get_option_value_bool("LSN filtering");
   LSNTime = get_option_value_int("LSN Time Margin (sec)") * 1000;
@@ -1309,17 +1307,14 @@ namespace {
     }
     // Null move search not allowed, try razoring
     else if (   !value_is_mate(beta)
-             && approximateEval < beta - RazorMargin
              && depth < RazorDepth
-             && (RazorAtDepthOne || depth > OnePly)
+             && approximateEval < beta - RazorApprMargins[int(depth) - 2]
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
-        if (   (v < beta - RazorMargin - RazorMargin / 4)
-            || (depth <= 2*OnePly && v < beta - RazorMargin)
-            || (depth <=   OnePly && v < beta - RazorMargin / 2))
-            return v;
+        if (v < beta - RazorMargins[int(depth) - 2])
+          return v;
     }
 
     // Go with internal iterative deepening if we don't have a TT move
@@ -1378,8 +1373,7 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + FutilityMargins[int(depth)/2 - 1]
-                                 + 32 * (depth & 1);
+                                 + FutilityMargins[int(depth) - 2];
 
               if (futilityValue < beta)
               {

@@ -127,10 +127,6 @@ namespace {
     o["Threat Depth"] = Option(5, 0, 100);
     o["Futility Pruning (Main Search)"] = Option(true);
     o["Futility Pruning (Quiescence Search)"] = Option(true);
-    o["Futility Margin (Quiescence Search)"] = Option(50, 0, 1000);
-    o["Futility Margin Scale Factor (Main Search)"] = Option(100, 0, 1000);
-    o["Maximum Razoring Depth"] = Option(3, 0, 4);
-    o["Razoring Margin"] = Option(300, 150, 600);
     o["LSN filtering"] = Option(true);
     o["LSN Time Margin (sec)"] = Option(4, 1, 10);
     o["LSN Value Margin"] = Option(200, 100, 600);
