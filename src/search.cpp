@@ -1921,7 +1921,7 @@ namespace {
   // Constructor
 
   RootMove::RootMove() {
-    nodes = cumulativeNodes = 0ULL;
+    nodes = cumulativeNodes = ourBeta = theirBeta = 0ULL;
   }
 
   // RootMove::operator<() is the comparison function used when
@@ -1957,22 +1957,20 @@ namespace {
         for (int k = 0; !includeMove && searchMoves[k] != MOVE_NONE; k++)
             includeMove = (searchMoves[k] == mlist[i].move);
 
-        if (includeMove)
-        {
-            // Find a quick score for the move
-            StateInfo st;
-            SearchStack ss[PLY_MAX_PLUS_2];
+        if (!includeMove)
+            continue;
 
-            moves[count].move = mlist[i].move;
-            moves[count].nodes = 0ULL;
-            pos.do_move(moves[count].move, st);
-            moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE,
-                                          Depth(0), 1, 0);
-            pos.undo_move(moves[count].move);
-            moves[count].pv[0] = moves[i].move;
-            moves[count].pv[1] = MOVE_NONE; // FIXME
-            count++;
-        }
+        // Find a quick score for the move
+        StateInfo st;
+        SearchStack ss[PLY_MAX_PLUS_2];
+
+        moves[count].move = mlist[i].move;
+        pos.do_move(moves[count].move, st);
+        moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
+        pos.undo_move(moves[count].move);
+        moves[count].pv[0] = moves[count].move;
+        moves[count].pv[1] = MOVE_NONE; // FIXME
+        count++;
     }
     sort();
   }
