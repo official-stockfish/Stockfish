@@ -1309,6 +1309,7 @@ namespace {
     else if (   !value_is_mate(beta)
              && depth < RazorDepth
              && approximateEval < beta - RazorApprMargins[int(depth) - 2]
+             && ss[ply - 1].currentMove != MOVE_NULL
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
