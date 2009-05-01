@@ -62,6 +62,9 @@ struct MoveStack {
   int score;
 };
 
+// Note that operator< is set up such that std::sort() will sort in descending order
+inline bool operator<(const MoveStack& f, const MoveStack& s) { return s.score < f.score; }
+
 
 ////
 //// Inline functions

@@ -23,6 +23,7 @@
 //// Includes
 ////
 
+#include <algorithm>
 #include <cassert>
 
 #include "history.h"
@@ -136,6 +137,7 @@ Move MovePicker::get_next_move() {
     case PH_GOOD_CAPTURES:
         numOfMoves = generate_captures(pos, moves);
         score_captures();
+        std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
         break;
 
@@ -146,6 +148,7 @@ Move MovePicker::get_next_move() {
     case PH_NONCAPTURES:
         numOfMoves = generate_noncaptures(pos, moves);
         score_noncaptures();
+        std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
         break;
 
@@ -153,12 +156,14 @@ Move MovePicker::get_next_move() {
         assert(pos.is_check());
         numOfMoves = generate_evasions(pos, moves, pinned);
         score_evasions();
+        std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
         break;
 
     case PH_QCAPTURES:
         numOfMoves = generate_captures(pos, moves);
         score_qcaptures();
+        std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
         break;
 
@@ -299,26 +304,6 @@ void MovePicker::score_qcaptures() {
 }
 
 
-/// find_best_index() loops across the moves and returns index of
-/// the highest scored one.
-
-int MovePicker::find_best_index() const {
-
-  assert(movesPicked < numOfMoves);
-
-  int bestIndex = movesPicked;
-  int bestScore = moves[movesPicked].score;
-
-  for (int i = movesPicked + 1; i < numOfMoves; i++)
-      if (moves[i].score > bestScore)
-      {
-          bestIndex = i;
-          bestScore = moves[i].score;
-      }
-  return bestIndex;
-}
-
-
 /// MovePicker::pick_move_from_list() picks the move with the biggest score
 /// from a list of generated moves (moves[] or badCaptures[], depending on
 /// the current move generation phase).  It takes care not to return the
@@ -326,7 +311,6 @@ int MovePicker::find_best_index() const {
 
 Move MovePicker::pick_move_from_list() {
 
-  int bestIndex;
   Move move;
 
   switch (PhaseTable[phaseIndex]) {
@@ -337,9 +321,7 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          bestIndex = find_best_index();
-          move = moves[bestIndex].move;
-          moves[bestIndex] = moves[movesPicked++];
+          move = moves[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
               && pos.pl_move_is_legal(move, pinned))
@@ -353,13 +335,7 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          // If this is a PV node or we have only picked a few moves, scan
-          // the entire move list for the best move.  If many moves have already
-          // been searched and it is not a PV node, we are probably failing low
-          // anyway, so we just pick the first move from the list.
-          bestIndex = (pvNode || movesPicked < 12) ? find_best_index() : movesPicked;
-          move = moves[bestIndex].move;
-          moves[bestIndex] = moves[movesPicked++];
+          move = moves[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
               && pos.pl_move_is_legal(move, pinned))
@@ -373,9 +349,7 @@ Move MovePicker::pick_move_from_list() {
 
       while (movesPicked < numOfMoves)
       {
-          bestIndex = find_best_index();
-          move = moves[bestIndex].move;
-          moves[bestIndex] = moves[movesPicked++];
+          move = moves[movesPicked++].move;
           return move;
     }
     break;
@@ -398,11 +372,10 @@ Move MovePicker::pick_move_from_list() {
   case PH_QCAPTURES:
       assert(!pos.is_check());
       assert(movesPicked >= 0);
+
       while (movesPicked < numOfMoves)
       {
-          bestIndex = (movesPicked < 4 ? find_best_index() : movesPicked);
-          move = moves[bestIndex].move;
-          moves[bestIndex] = moves[movesPicked++];
+          move = moves[movesPicked++].move;
           // Maybe postpone the legality check until after futility pruning?
           if (   move != ttMove
               && pos.pl_move_is_legal(move, pinned))
