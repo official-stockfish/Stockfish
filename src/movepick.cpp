@@ -142,6 +142,7 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_BAD_CAPTURES:
+        // It's probably a good idea to use SEE move ordering here. FIXME
         movesPicked = 0;
         break;
 
@@ -168,6 +169,7 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_QCHECKS:
+        // Perhaps we should order moves move here?  FIXME
         numOfMoves = generate_non_capture_checks(pos, moves, dc);
         movesPicked = 0;
         break;
@@ -311,31 +313,17 @@ void MovePicker::score_qcaptures() {
 
 Move MovePicker::pick_move_from_list() {
 
-  Move move;
+  assert(movesPicked >= 0);
+  assert(!pos.is_check() || PhaseTable[phaseIndex] == PH_EVASIONS || PhaseTable[phaseIndex] == PH_STOP);
+  assert( pos.is_check() || PhaseTable[phaseIndex] != PH_EVASIONS);
 
   switch (PhaseTable[phaseIndex]) {
 
   case PH_GOOD_CAPTURES:
-      assert(!pos.is_check());
-      assert(movesPicked >= 0);
-
-      while (movesPicked < numOfMoves)
-      {
-          move = moves[movesPicked++].move;
-          if (   move != ttMove
-              && move != mateKiller
-              && pos.pl_move_is_legal(move, pinned))
-              return move;
-      }
-      break;
-
   case PH_NONCAPTURES:
-      assert(!pos.is_check());
-      assert(movesPicked >= 0);
-
       while (movesPicked < numOfMoves)
       {
-          move = moves[movesPicked++].move;
+          Move move = moves[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
               && pos.pl_move_is_legal(move, pinned))
@@ -344,24 +332,15 @@ Move MovePicker::pick_move_from_list() {
       break;
 
   case PH_EVASIONS:
-      assert(pos.is_check());
-      assert(movesPicked >= 0);
+      if (movesPicked < numOfMoves)
+          return moves[movesPicked++].move;
 
-      while (movesPicked < numOfMoves)
-      {
-          move = moves[movesPicked++].move;
-          return move;
-    }
-    break;
+      break;
 
   case PH_BAD_CAPTURES:
-      assert(!pos.is_check());
-      assert(movesPicked >= 0);
-      // It's probably a good idea to use SEE move ordering here, instead
-      // of just picking the first move.  FIXME
       while (movesPicked < numOfBadCaptures)
       {
-          move = badCaptures[movesPicked++].move;
+          Move move = badCaptures[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
               && pos.pl_move_is_legal(move, pinned))
@@ -370,27 +349,11 @@ Move MovePicker::pick_move_from_list() {
       break;
 
   case PH_QCAPTURES:
-      assert(!pos.is_check());
-      assert(movesPicked >= 0);
-
-      while (movesPicked < numOfMoves)
-      {
-          move = moves[movesPicked++].move;
-          // Maybe postpone the legality check until after futility pruning?
-          if (   move != ttMove
-              && pos.pl_move_is_legal(move, pinned))
-              return move;
-      }
-      break;
-
   case PH_QCHECKS:
-      assert(!pos.is_check());
-      assert(movesPicked >= 0);
-      // Perhaps we should do something better than just picking the first
-      // move here?  FIXME
       while (movesPicked < numOfMoves)
       {
-          move = moves[movesPicked++].move;
+          Move move = moves[movesPicked++].move;
+          // Maybe postpone the legality check until after futility pruning?
           if (   move != ttMove
               && pos.pl_move_is_legal(move, pinned))
               return move;
