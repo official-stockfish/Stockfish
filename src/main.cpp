@@ -17,6 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// To profile with callgrind uncomment following line
+//#define USE_CALLGRIND
 
 ////
 //// Includes
@@ -38,6 +40,10 @@
 #include "thread.h"
 #include "uci.h"
 #include "ucioption.h"
+
+#ifdef USE_CALLGRIND
+#include <valgrind/callgrind.h>
+#endif
 
 using std::string;
 
@@ -62,6 +68,10 @@ int main(int argc, char *argv[]) {
   init_eval(1);
   init_bitbases();
   init_threads();
+
+#ifdef USE_CALLGRIND
+  CALLGRIND_START_INSTRUMENTATION;
+#endif
 
   // Make random number generation less deterministic, for book moves
   for (int i = abs(get_system_time() % 10000); i > 0; i--)
