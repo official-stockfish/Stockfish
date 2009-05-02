@@ -251,11 +251,13 @@ namespace {
     if (token == "name")
     {
         uip >> name;
-        uip >> token;
-        while (!uip.eof() && token != "value")
+        while (!uip.eof())
         {
-          name += (" " + token);
-          uip >> token;
+            uip >> token;
+            if (token == "value")
+                break;
+
+            name += (" " + token);
         }
         if (token == "value")
         {
