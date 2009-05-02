@@ -83,14 +83,14 @@ public:
   ~TranspositionTable();
   void set_size(unsigned mbSize);
   void clear();
-  void store(const Position& pos, Value v, ValueType type, Depth d, Move m);
-  TTEntry* retrieve(const Position& pos) const;
+  void store(const Key posKey, Value v, ValueType type, Depth d, Move m);
+  TTEntry* retrieve(const Key posKey) const;
   void new_search();
   void insert_pv(const Position& pos, Move pv[]);
   int full() const;
 
 private:
-  inline TTEntry* first_entry(const Position& pos) const;
+  inline TTEntry* first_entry(const Key posKey) const;
 
   unsigned size, writes;
   TTEntry* entries;

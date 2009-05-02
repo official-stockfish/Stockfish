@@ -97,14 +97,14 @@ void TranspositionTable::clear() {
 /// is bigger than the depth of t2. A TTEntry of type VALUE_TYPE_EVAL
 /// never replaces another entry for the same position.
 
-void TranspositionTable::store(const Position& p, Value v, ValueType t, Depth d, Move m) {
+void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m) {
 
   TTEntry *tte, *replace;
 
-  tte = replace = first_entry(p);
+  tte = replace = first_entry(posKey);
   for (int i = 0; i < 4; i++, tte++)
   {
-      if (!tte->key() || tte->key() == p.get_key()) // empty or overwrite old
+      if (!tte->key() || tte->key() == posKey) // empty or overwrite old
       {
           // Do not overwrite when new type is VALUE_TYPE_EVAL
           if (tte->key() && t == VALUE_TYPE_EVAL)
@@ -113,7 +113,7 @@ void TranspositionTable::store(const Position& p, Value v, ValueType t, Depth d,
           if (m == MOVE_NONE)
               m = tte->move();
 
-          *tte = TTEntry(p.get_key(), v, t, d, m, generation);
+          *tte = TTEntry(posKey, v, t, d, m, generation);
           return;
       }
       else if (i == 0)  // replace would be a no-op in this common case
@@ -126,7 +126,7 @@ void TranspositionTable::store(const Position& p, Value v, ValueType t, Depth d,
       if (c1 + c2 + c3 > 0)
           replace = tte;
   }
-  *replace = TTEntry(p.get_key(), v, t, d, m, generation);
+  *replace = TTEntry(posKey, v, t, d, m, generation);
   writes++;
 }
 
@@ -135,12 +135,12 @@ void TranspositionTable::store(const Position& p, Value v, ValueType t, Depth d,
 /// transposition table. Returns a pointer to the TTEntry or NULL
 /// if position is not found.
 
-TTEntry* TranspositionTable::retrieve(const Position& pos) const {
+TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
-  TTEntry *tte = first_entry(pos);
+  TTEntry *tte = first_entry(posKey);
 
   for (int i = 0; i < 4; i++, tte++)
-      if (tte->key() == pos.get_key())
+      if (tte->key() == posKey)
           return tte;
 
   return NULL;
@@ -150,9 +150,9 @@ TTEntry* TranspositionTable::retrieve(const Position& pos) const {
 /// TranspositionTable::first_entry returns a pointer to the first
 /// entry of a cluster given a position.
 
-inline TTEntry* TranspositionTable::first_entry(const Position& pos) const {
+inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 
-  return entries + (int(pos.get_key() & (size - 1)) << 2);
+  return entries + (int(posKey & (size - 1)) << 2);
 }
 
 /// TranspositionTable::new_search() is called at the beginning of every new
@@ -179,7 +179,7 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 
   for (int i = 0; pv[i] != MOVE_NONE; i++)
   {
-      store(p, VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i]);
+      store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i]);
       p.do_move(pv[i], st);
   }
 }

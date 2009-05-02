@@ -1055,7 +1055,7 @@ namespace {
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
-    const TTEntry* tte = TT.retrieve(pos);
+    const TTEntry* tte = TT.retrieve(pos.get_key());
     Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Go with internal iterative deepening if we don't have a TT move
@@ -1188,7 +1188,7 @@ namespace {
         return bestValue;
 
     if (bestValue <= oldAlpha)
-        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
 
     else if (bestValue >= beta)
     {
@@ -1199,10 +1199,10 @@ namespace {
             update_history(pos, m, depth, movesSearched, moveCount);
             update_killers(m, ss[ply]);
         }
-        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
     }
     else
-        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
 
     return bestValue;
   }
@@ -1244,7 +1244,7 @@ namespace {
         return beta - 1;
 
     // Transposition table lookup
-    const TTEntry* tte = TT.retrieve(pos);
+    const TTEntry* tte = TT.retrieve(pos.get_key());
     Move ttMove = (tte ? tte->move() : MOVE_NONE);
 
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
@@ -1449,7 +1449,7 @@ namespace {
         return bestValue;
 
     if (bestValue < beta)
-        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
     else
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
@@ -1459,7 +1459,7 @@ namespace {
             update_history(pos, m, depth, movesSearched, moveCount);
             update_killers(m, ss[ply]);
         }
-        TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -1497,7 +1497,7 @@ namespace {
     bool pvNode = (beta - alpha != 1);
     if (!pvNode)
     {
-        tte = TT.retrieve(pos);
+        tte = TT.retrieve(pos.get_key());
         if (tte && ok_to_use_TT(tte, depth, beta, ply))
         {
             assert(tte->type() != VALUE_TYPE_EVAL);
@@ -1538,7 +1538,7 @@ namespace {
     {
         // Store the score to avoid a future costly evaluation() call
         if (!isCheck && !tte && ei.futilityMargin == 0)
-            TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
 
         return bestValue;
     }
@@ -1631,9 +1631,9 @@ namespace {
     {
         Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
         if (bestValue < beta)
-            TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE);
         else
-            TT.store(pos, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, m);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, m);
     }
 
     // Update killers only for good check moves
