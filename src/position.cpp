@@ -460,7 +460,9 @@ void Position::find_checkers() {
 
 bool Position::pl_move_is_legal(Move m) const {
 
-  return pl_move_is_legal(m, pinned_pieces(side_to_move()));
+  // If we're in check, all pseudo-legal moves are legal, because our
+  // check evasion generator only generates true legal moves.
+  return is_check() || pl_move_is_legal(m, pinned_pieces(side_to_move()));
 }
 
 bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
@@ -468,11 +470,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(is_ok());
   assert(move_is_ok(m));
   assert(pinned == pinned_pieces(side_to_move()));
-
-  // If we're in check, all pseudo-legal moves are legal, because our
-  // check evasion generator only generates true legal moves.
-  if (is_check())
-      return true;
+  assert(!is_check());
 
   // Castling moves are checked for legality during move generation.
   if (move_is_castle(m))
