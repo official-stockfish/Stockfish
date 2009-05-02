@@ -127,7 +127,7 @@ namespace {
     o["Threat Depth"] = Option(5, 0, 100);
     o["Futility Pruning (Main Search)"] = Option(true);
     o["Futility Pruning (Quiescence Search)"] = Option(true);
-    o["LSN filtering"] = Option(false);
+    o["LSN filtering"] = Option(true);
     o["LSN Time Margin (sec)"] = Option(4, 1, 10);
     o["LSN Value Margin"] = Option(200, 100, 600);
     o["Randomness"] = Option(0, 0, 10);
