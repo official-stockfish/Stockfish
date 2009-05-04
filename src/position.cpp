@@ -1511,7 +1511,7 @@ int Position::see(Square from, Square to) const {
     0, 0
   };
 
-  Bitboard attackers, occ, b;
+  Bitboard attackers, stmAttackers, occ, b;
 
   assert(square_is_ok(from) || from == SQ_NONE);
   assert(square_is_ok(to));
@@ -1535,7 +1535,6 @@ int Position::see(Square from, Square to) const {
 
       Square capQq = (side_to_move() == WHITE)? (to - DELTA_N) : (to - DELTA_S);
       capture = piece_on(capQq);
-
       assert(type_of_piece_on(capQq) == PAWN);
 
       // Remove the captured pawn
@@ -1570,7 +1569,8 @@ int Position::see(Square from, Square to) const {
   }
 
   // If the opponent has no attackers we are finished
-  if ((attackers & pieces_of_color(them)) == EmptyBoardBB)
+  stmAttackers = attackers & pieces_of_color(them);
+  if (!stmAttackers)
       return seeValues[capture];
 
   attackers &= occ; // Remove the moving piece
@@ -1592,12 +1592,12 @@ int Position::see(Square from, Square to) const {
       // Locate the least valuable attacker for the side to move. The loop
       // below looks like it is potentially infinite, but it isn't. We know
       // that the side to move still has at least one attacker left.
-      for (pt = PAWN; !(attackers & pieces_of_color_and_type(c, pt)); pt++)
+      for (pt = PAWN; !(stmAttackers & pieces_of_type(pt)); pt++)
           assert(pt < KING);
 
       // Remove the attacker we just found from the 'attackers' bitboard,
       // and scan for new X-ray attacks behind the attacker.
-      b = attackers & pieces_of_color_and_type(c, pt);
+      b = stmAttackers & pieces_of_type(pt);
       occ ^= (b & (~b + 1));
       attackers |=  (rook_attacks_bb(to, occ) & rooks_and_queens())
                   | (bishop_attacks_bb(to, occ) & bishops_and_queens());
@@ -1613,15 +1613,16 @@ int Position::see(Square from, Square to) const {
       // before beginning the next iteration
       lastCapturingPieceValue = seeValues[pt];
       c = opposite_color(c);
+      stmAttackers = attackers & pieces_of_color(c);
 
       // Stop after a king capture
-      if (pt == KING && (attackers & pieces_of_color(c)))
+      if (pt == KING && stmAttackers)
       {
           assert(n < 32);
           swapList[n++] = 100;
           break;
       }
-  } while (attackers & pieces_of_color(c));
+  } while (stmAttackers);
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move
