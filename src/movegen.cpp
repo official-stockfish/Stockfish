@@ -496,6 +496,11 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   // Proceed according to the type of the moving piece.
   if (type_of_piece(pc) == PAWN)
   {
+      // Move direction must be compatible with pawn color
+      int direction = to - from;
+      if ((us == WHITE) != (direction > 0))
+          return false;
+
       // If the destination square is on the 8/1th rank, the move must
       // be a promotion.
       if (   (  (square_rank(to) == RANK_8 && us == WHITE)
@@ -505,7 +510,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
       // Proceed according to the square delta between the source and
       // destionation squares.
-      switch (to - from)
+      switch (direction)
       {
       case DELTA_NW:
       case DELTA_NE:
