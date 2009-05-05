@@ -722,10 +722,7 @@ inline bool Position::move_is_capture(Move m) const {
 
   // Move must not be MOVE_NONE !
 
-  return (   !square_is_empty(move_to(m))
-          && (color_of_piece_on(move_to(m)) != color_of_piece_on(move_from(m)))
-         )
-         || move_is_ep(m);
+  return (!square_is_empty(move_to(m)) && !move_is_castle(m)) || move_is_ep(m);
 }
 
 #endif // !defined(POSITION_H_INCLUDED)
