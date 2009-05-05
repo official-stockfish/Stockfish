@@ -83,11 +83,11 @@ inline PieceType move_promotion(Move m) {
 }
 
 inline bool move_is_ep(Move m) {
-  return bool((int(m) >> 15) & 1);
+  return bool(m & (1 << 15));
 }
 
 inline bool move_is_castle(Move m) {
-  return bool((int(m) >> 16) & 1);
+  return bool(m & (1 << 16));
 }
 
 inline bool move_is_short_castle(Move m) {
