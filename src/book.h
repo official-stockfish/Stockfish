@@ -52,31 +52,24 @@ struct BookEntry {
   uint16_t sum;
 };
 
-class Book {
+class Book : private std::ifstream {
 
 public:
-  // Constructors
-  Book();
-
-  // Open and close book files
   void open(const std::string& fName);
   void close();
-
-  // Testing if a book is opened
-  bool is_open() const;
-
-  // The file name of the currently active book
   const std::string file_name() const;
-
-  // Get a book move for a given position
-  Move get_move(const Position& pos) const;
+  Move get_move(const Position& pos);
 
 private:
-  int find_key(uint64_t key) const;
-  void read_entry(BookEntry& entry, int n) const;
+  Book& operator>>(uint64_t& n) { n = read_integer(8); return *this; }
+  Book& operator>>(uint16_t& n) { n = (uint16_t)read_integer(2); return *this; }
+  void operator>>(BookEntry& e) { *this >> e.key >> e.move >> e.count >> e.n >> e.sum; }
+
+  uint64_t read_integer(int size);
+  void read_entry(BookEntry& e, int n);
+  int find_key(uint64_t key);
 
   std::string fileName;
-  mutable std::ifstream bookFile;
   int bookSize;
 };
 

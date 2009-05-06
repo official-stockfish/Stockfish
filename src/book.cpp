@@ -35,6 +35,7 @@
 #include "mersenne.h"
 #include "movegen.h"
 
+using namespace std;
 
 ////
 //// Global variables
@@ -53,7 +54,7 @@ namespace {
   const int EntrySize = 16;
 
 
-  /// Random numbers from PolyGlot, used to compute book hash keys.
+  /// Random numbers from PolyGlot, used to compute book hash keys
 
   const uint64_t Random64[781] = {
     0x9D39247E33776D41ULL, 0x2AF7398005AAA5C7ULL, 0x44DB015024623547ULL,
@@ -335,10 +336,6 @@ namespace {
   uint64_t book_castle_key(const Position& pos);
   uint64_t book_ep_key(const Position& pos);
   uint64_t book_color_key(const Position& pos);
-
-  uint16_t read_integer16(std::ifstream& file);
-  uint64_t read_integer64(std::ifstream& file);
-  uint64_t read_integer(std::ifstream& file, int size);
 }
 
 
@@ -347,55 +344,43 @@ namespace {
 ////
 
 
-/// Constructor
-
-Book::Book() : bookSize(0) {}
-
-
 /// Book::open() opens a book file with a given file name
 
-void Book::open(const std::string& fName) {
+void Book::open(const string& fName) {
 
   fileName = fName;
-  bookFile.open(fileName.c_str(), std::ifstream::in | std::ifstream::binary);
-  if (!bookFile.is_open())
+  ifstream::open(fileName.c_str(), ifstream::in | ifstream::binary);
+  if (!is_open())
       return;
 
-  // get the book size in number of entries
-  bookFile.seekg(0, std::ios::end);
-  bookSize = bookFile.tellg() / EntrySize;
-  bookFile.seekg(0, std::ios::beg);
+  // Get the book size in number of entries
+  seekg(0, ios::end);
+  bookSize = tellg() / EntrySize;
+  seekg(0, ios::beg);
 
-  if (!bookFile.good())
+  if (!good())
   {
-      std::cerr << "Failed to open book file " << fileName << std::endl;
-      bookFile.close();
+      cerr << "Failed to open book file " << fileName << endl;
+      close();
       exit(EXIT_FAILURE);
   }
 }
 
 
-/// Book::close() closes the currently open book file
+/// Book::close() closes the file only if it is open, otherwise
+/// we can end up in a little mess due to how std::ifstream works.
 
 void Book::close() {
 
-  if (bookFile.is_open())
-      bookFile.close();
-}
-
-
-/// Book::is_open() tests whether a book file has been opened.
-
-bool Book::is_open() const {
-
-  return bookFile.is_open() && bookSize != 0;
+  if (is_open())
+      ifstream::close();
 }
 
 
 /// Book::file_name() returns the file name of the currently active book,
 /// or the empty string if no book is open.
 
-const std::string Book::file_name() const {
+const string Book::file_name() const {
 
   return is_open() ? fileName : "";
 }
@@ -404,9 +389,9 @@ const std::string Book::file_name() const {
 /// Book::get_move() gets a book move for a given position. Returns
 /// MOVE_NONE if no book move is found.
 
-Move Book::get_move(const Position& pos) const {
+Move Book::get_move(const Position& pos) {
 
-  if (!is_open())
+  if (!is_open() || bookSize == 0)
       return MOVE_NONE;
 
   int bookMove = 0, scoresSum = 0;
@@ -414,9 +399,9 @@ Move Book::get_move(const Position& pos) const {
   BookEntry entry;
 
   // Choose a book move among the possible moves for the given position
-  for (int i = find_key(key); i < bookSize; i++)
+  for (int idx = find_key(key); idx < bookSize; idx++)
   {
-      read_entry(entry, i);
+      read_entry(entry, idx);
       if (entry.key != key)
           break;
 
@@ -449,7 +434,7 @@ Move Book::get_move(const Position& pos) const {
 /// entry with the same key as the input is returned. When the key is not
 /// found in the book file, bookSize is returned.
 
-int Book::find_key(uint64_t key) const {
+int Book::find_key(uint64_t key) {
 
   int left, right, mid;
   BookEntry entry;
@@ -460,7 +445,7 @@ int Book::find_key(uint64_t key) const {
 
   assert(left <= right);
 
-  while(left < right)
+  while (left < right)
   {
       mid = (left + right) / 2;
 
@@ -472,6 +457,7 @@ int Book::find_key(uint64_t key) const {
       else
           left = mid + 1;
   }
+
   assert(left == right);
 
   read_entry(entry, left);
@@ -483,23 +469,36 @@ int Book::find_key(uint64_t key) const {
 /// input, and looks up the opening book entry at the given index in the book
 /// file. The book entry is copied to the first input parameter.
 
-void Book::read_entry(BookEntry& entry, int n) const {
+void Book::read_entry(BookEntry& entry, int idx) {
 
-  assert(n >= 0 && n < bookSize);
+  assert(idx >= 0 && idx < bookSize);
   assert(is_open());
 
-  bookFile.seekg(n * EntrySize, std::ios_base::beg);
-  if (!bookFile.good())
+  seekg(idx * EntrySize, ios_base::beg);
+  *this >> entry;
+  if (!good())
   {
-      std::cerr << "Failed to read book entry at index " << n << std::endl;
-      bookFile.close();
+      cerr << "Failed to read book entry at index " << idx << endl;
+      close();
       exit(EXIT_FAILURE);
   }
-  entry.key   = read_integer64(bookFile);
-  entry.move  = read_integer16(bookFile);
-  entry.count = read_integer16(bookFile);
-  entry.n     = read_integer16(bookFile);
-  entry.sum   = read_integer16(bookFile);
+}
+
+
+/// Book::read_integer() reads size chars from the file stream
+/// and converts them in an integer number.
+
+uint64_t Book::read_integer(int size) {
+
+  char buf[8];
+  read(buf, size);
+
+  // Numbers are stored on disk as a binary byte stream
+  uint64_t n = 0ULL;
+  for (int i = 0; i < size; i++)
+      n = (n << 8) + (unsigned char)buf[i];
+
+  return n;
 }
 
 
@@ -517,7 +516,7 @@ namespace {
     {
         Bitboard b = pos.pieces_of_color(c);
 
-        while (b != EmptyBoardBB)
+        while (b)
         {
             Square s = pop_1st_bit(&b);
             Piece p = pos.piece_on(s);
@@ -528,7 +527,6 @@ namespace {
             result ^= book_piece_key(p, s);
         }
     }
-
     result ^= book_castle_key(pos);
     result ^= book_ep_key(pos);
     result ^= book_color_key(pos);
@@ -572,40 +570,5 @@ namespace {
 
   uint64_t book_color_key(const Position& pos) {
     return (pos.side_to_move() == WHITE ? Random64[RandomTurn] : 0ULL);
-  }
-
-
-  uint16_t read_integer16(std::ifstream& file) {
-
-    uint64_t n = read_integer(file, 2);
-    assert(n == (uint16_t)n);
-    return (uint16_t)n;
-  }
-
-
-  uint64_t read_integer64(std::ifstream& file) {
-
-    return read_integer(file, 8);
-  }
-
-
-  uint64_t read_integer(std::ifstream& file, int size) {
-
-    char buf[8];
-    file.read(buf, size);
-
-    if (!file.good())
-    {
-        std::cerr << "Failed to read " << size << " bytes from book file" << std::endl;
-        file.close();
-        exit(EXIT_FAILURE);
-    }
-
-    // Numbers are stored on disk in big endian format
-    uint64_t n = 0ULL;
-    for (int i = 0; i < size; i++)
-        n = (n << 8) + (unsigned char)buf[i];
-
-    return n;
   }
 }
