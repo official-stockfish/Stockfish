@@ -59,7 +59,7 @@ public:
   Book();
 
   // Open and close book files
-  void open(const std::string &fName);
+  void open(const std::string& fName);
   void close();
 
   // Testing if a book is opened
@@ -69,11 +69,11 @@ public:
   const std::string file_name() const;
 
   // Get a book move for a given position
-  Move get_move(const Position &pos) const;
+  Move get_move(const Position& pos) const;
 
 private:
   int find_key(uint64_t key) const;
-  void read_entry(BookEntry &entry, int n) const;
+  void read_entry(BookEntry& entry, int n) const;
 
   std::string fileName;
   mutable std::ifstream bookFile;

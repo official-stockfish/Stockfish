@@ -49,6 +49,10 @@ Book OpeningBook;
 
 namespace {
 
+  /// Book entry size in bytes
+  const int EntrySize = 16;
+
+
   /// Random numbers from PolyGlot, used to compute book hash keys.
 
   const uint64_t Random64[781] = {
@@ -318,26 +322,19 @@ namespace {
 
   /// Indices to the Random64[] array
 
-  const int RandomPiece = 0;
-  const int RandomCastle = 768;
+  const int RandomPiece     = 0;
+  const int RandomCastle    = 768;
   const int RandomEnPassant = 772;
-  const int RandomTurn = 780;
-
-
-  /// Convert pieces to the range 0..1
-
-  const int PieceTo12[] = {
-    0, 0, 2, 4, 6, 8, 10, 0, 0, 1, 3, 5, 7, 9, 11
-  };
+  const int RandomTurn      = 780;
 
 
   /// Prototypes
 
-  uint64_t book_key(const Position &pos);
+  uint64_t book_key(const Position& pos);
   uint64_t book_piece_key(Piece p, Square s);
-  uint64_t book_castle_key(const Position &pos);
-  uint64_t book_ep_key(const Position &pos);
-  uint64_t book_color_key(const Position &pos);
+  uint64_t book_castle_key(const Position& pos);
+  uint64_t book_ep_key(const Position& pos);
+  uint64_t book_color_key(const Position& pos);
 
   uint16_t read_integer16(std::ifstream& file);
   uint64_t read_integer64(std::ifstream& file);
@@ -355,28 +352,30 @@ namespace {
 Book::Book() : bookSize(0) {}
 
 
-/// Book::open() opens a book file with a given file name.
+/// Book::open() opens a book file with a given file name
 
-void Book::open(const std::string &fName) {
+void Book::open(const std::string& fName) {
 
   fileName = fName;
   bookFile.open(fileName.c_str(), std::ifstream::in | std::ifstream::binary);
   if (!bookFile.is_open())
       return;
 
+  // get the book size in number of entries
   bookFile.seekg(0, std::ios::end);
-  bookSize = bookFile.tellg() / 16;
+  bookSize = bookFile.tellg() / EntrySize;
   bookFile.seekg(0, std::ios::beg);
 
   if (!bookFile.good())
   {
       std::cerr << "Failed to open book file " << fileName << std::endl;
+      bookFile.close();
       exit(EXIT_FAILURE);
   }
 }
 
 
-/// Book::close() closes the currently open book file.
+/// Book::close() closes the currently open book file
 
 void Book::close() {
 
@@ -398,51 +397,60 @@ bool Book::is_open() const {
 
 const std::string Book::file_name() const {
 
-  return bookFile.is_open() ? fileName : "";
+  return is_open() ? fileName : "";
 }
 
 
-/// Book::get_move() gets a book move for a given position.  Returns
+/// Book::get_move() gets a book move for a given position. Returns
 /// MOVE_NONE if no book move is found.
 
-Move Book::get_move(const Position &pos) const {
-  if(this->is_open()) {
-    int bestMove = 0, bestScore = 0, move, score;
-    uint64_t key = book_key(pos);
-    BookEntry entry;
+Move Book::get_move(const Position& pos) const {
 
-    for(int i = this->find_key(key); i < bookSize; i++) {
-      this->read_entry(entry, i);
-      if(entry.key != key)
-        break;
-      move = entry.move;
-      score = entry.count;
+  if (!is_open())
+      return MOVE_NONE;
+
+  int bookMove = 0, scoresSum = 0;
+  uint64_t key = book_key(pos);
+  BookEntry entry;
+
+  // Choose a book move among the possible moves for the given position
+  for (int i = find_key(key); i < bookSize; i++)
+  {
+      read_entry(entry, i);
+      if (entry.key != key)
+          break;
+
+      int score = entry.count;
+
       assert(score > 0);
 
-      bestScore += score;
-      if(int(genrand_int32() % bestScore) < score)
-        bestMove = move;
-    }
-
-    if(bestMove != 0) {
-      MoveStack moves[256];
-      int n, j;
-      n = generate_legal_moves(pos, moves);
-      for(j = 0; j < n; j++)
-        if((int(moves[j].move) & 07777) == bestMove)
-          return moves[j].move;
-    }
+      // Choose book move according to its score. If a move has a very
+      // high score it has more probability to be choosen then a one with
+      // lower score. Note that first entry is always chosen.
+      scoresSum += score;
+      if (int(genrand_int32() % scoresSum) < score)
+          bookMove = entry.move;
   }
+  if (!bookMove)
+      return MOVE_NONE;
+
+  MoveStack moves[256];
+  int n = generate_legal_moves(pos, moves);
+  for (int j = 0; j < n; j++)
+      if ((int(moves[j].move) & 07777) == bookMove)
+          return moves[j].move;
+
   return MOVE_NONE;
 }
 
 
 /// Book::find_key() takes a book key as input, and does a binary search
-/// through the book file for the given key.  The index to the first book
-/// entry with the same key as the input is returned.  When the key is not
+/// through the book file for the given key. The index to the first book
+/// entry with the same key as the input is returned. When the key is not
 /// found in the book file, bookSize is returned.
 
 int Book::find_key(uint64_t key) const {
+
   int left, right, mid;
   BookEntry entry;
 
@@ -452,46 +460,46 @@ int Book::find_key(uint64_t key) const {
 
   assert(left <= right);
 
-  while(left < right) {
-    mid = (left + right) / 2;
-    assert(mid >= left && mid < right);
+  while(left < right)
+  {
+      mid = (left + right) / 2;
 
-    this->read_entry(entry, mid);
+      assert(mid >= left && mid < right);
 
-    if(key <= entry.key)
-      right = mid;
-    else
-      left = mid + 1;
+      read_entry(entry, mid);
+      if (key <= entry.key)
+          right = mid;
+      else
+          left = mid + 1;
   }
-
   assert(left == right);
 
-  this->read_entry(entry, left);
-
+  read_entry(entry, left);
   return (entry.key == key)? left : bookSize;
 }
 
 
 /// Book::read_entry() takes a BookEntry reference and an integer index as
 /// input, and looks up the opening book entry at the given index in the book
-/// file.  The book entry is copied to the first input parameter.
+/// file. The book entry is copied to the first input parameter.
 
 void Book::read_entry(BookEntry& entry, int n) const {
 
   assert(n >= 0 && n < bookSize);
-  assert(bookFile.is_open());
+  assert(is_open());
 
-  bookFile.seekg(n*16, std::ios_base::beg);
+  bookFile.seekg(n * EntrySize, std::ios_base::beg);
   if (!bookFile.good())
   {
-    std::cerr << "Failed to read book entry at index " << n << std::endl;
-    exit(EXIT_FAILURE);
+      std::cerr << "Failed to read book entry at index " << n << std::endl;
+      bookFile.close();
+      exit(EXIT_FAILURE);
   }
-  entry.key = read_integer64(bookFile);
-  entry.move = read_integer16(bookFile);
+  entry.key   = read_integer64(bookFile);
+  entry.move  = read_integer16(bookFile);
   entry.count = read_integer16(bookFile);
-  entry.n = read_integer16(bookFile);
-  entry.sum = read_integer16(bookFile);
+  entry.n     = read_integer16(bookFile);
+  entry.sum   = read_integer16(bookFile);
 }
 
 
@@ -501,59 +509,69 @@ void Book::read_entry(BookEntry& entry, int n) const {
 
 namespace {
 
-  uint64_t book_key(const Position &pos) {
+  uint64_t book_key(const Position& pos) {
+
     uint64_t result = 0ULL;
 
-    for(Color c = WHITE; c <= BLACK; c++) {
-      Bitboard b = pos.pieces_of_color(c);
-      Square s;
-      Piece p;
-      while(b != EmptyBoardBB) {
-        s = pop_1st_bit(&b);
-        p = pos.piece_on(s);
-        assert(piece_is_ok(p));
-        assert(color_of_piece(p) == c);
+    for (Color c = WHITE; c <= BLACK; c++)
+    {
+        Bitboard b = pos.pieces_of_color(c);
 
-        result ^= book_piece_key(p, s);
-      }
+        while (b != EmptyBoardBB)
+        {
+            Square s = pop_1st_bit(&b);
+            Piece p = pos.piece_on(s);
+
+            assert(piece_is_ok(p));
+            assert(color_of_piece(p) == c);
+
+            result ^= book_piece_key(p, s);
+        }
     }
 
     result ^= book_castle_key(pos);
     result ^= book_ep_key(pos);
     result ^= book_color_key(pos);
-
     return result;
   }
 
 
   uint64_t book_piece_key(Piece p, Square s) {
-    return Random64[RandomPiece + (PieceTo12[int(p)]^1)*64 + int(s)];
+
+    /// Convert pieces to the range 0..11
+    static const int PieceTo12[] = { 0, 0, 2, 4, 6, 8, 10, 0, 0, 1, 3, 5, 7, 9, 11 };
+
+    return Random64[RandomPiece + (PieceTo12[int(p)]^1) * 64 + int(s)];
   }
 
 
-  uint64_t book_castle_key(const Position &pos) {
+  uint64_t book_castle_key(const Position& pos) {
+
     uint64_t result = 0ULL;
 
-    if(pos.can_castle_kingside(WHITE))
-      result ^= Random64[RandomCastle+0];
-    if(pos.can_castle_queenside(WHITE))
-      result ^= Random64[RandomCastle+1];
-    if(pos.can_castle_kingside(BLACK))
-      result ^= Random64[RandomCastle+2];
-    if(pos.can_castle_queenside(BLACK))
-      result ^= Random64[RandomCastle+3];
+    if (pos.can_castle_kingside(WHITE))
+        result ^= Random64[RandomCastle+0];
+
+    if (pos.can_castle_queenside(WHITE))
+        result ^= Random64[RandomCastle+1];
+
+    if (pos.can_castle_kingside(BLACK))
+        result ^= Random64[RandomCastle+2];
+
+    if (pos.can_castle_queenside(BLACK))
+        result ^= Random64[RandomCastle+3];
+
     return result;
   }
 
 
-  uint64_t book_ep_key(const Position &pos) {
-    return (pos.ep_square() == SQ_NONE)?
-      0ULL : Random64[RandomEnPassant + square_file(pos.ep_square())];
+  uint64_t book_ep_key(const Position& pos) {
+    return (pos.ep_square() == SQ_NONE ? 0ULL : Random64[RandomEnPassant + square_file(pos.ep_square())]);
   }
 
 
-  uint64_t book_color_key(const Position &pos) {
-    return (pos.side_to_move() == WHITE)? Random64[RandomTurn] : 0ULL;
+  uint64_t book_color_key(const Position& pos) {
+    return (pos.side_to_move() == WHITE ? Random64[RandomTurn] : 0ULL);
   }
 
 
@@ -578,11 +596,12 @@ namespace {
 
     if (!file.good())
     {
-        std::cerr << "Failed to read " << size << " bytes from book file"
-                  << std::endl;
+        std::cerr << "Failed to read " << size << " bytes from book file" << std::endl;
+        file.close();
         exit(EXIT_FAILURE);
     }
-    // Numbers are stored in little endian format
+
+    // Numbers are stored on disk in big endian format
     uint64_t n = 0ULL;
     for (int i = 0; i < size; i++)
         n = (n << 8) + (unsigned char)buf[i];

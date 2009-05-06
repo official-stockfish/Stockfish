@@ -38,6 +38,7 @@
 #  include <windows.h>
 #  include <time.h>
 #  include "dos.h"
+
 static int gettimeofday(struct timeval* tp, struct timezone*)
 {
     SYSTEMTIME systime;
