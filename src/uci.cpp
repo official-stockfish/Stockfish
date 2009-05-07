@@ -119,7 +119,6 @@ namespace {
 
     if (token == "quit")
     {
-        OpeningBook.close();
         stop_threads();
         quit_eval();
         exit(0);

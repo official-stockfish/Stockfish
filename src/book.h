@@ -53,8 +53,8 @@ struct BookEntry {
 };
 
 class Book : private std::ifstream {
-
 public:
+  ~Book();
   void open(const std::string& fName);
   void close();
   const std::string file_name() const;

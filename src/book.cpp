@@ -344,9 +344,20 @@ namespace {
 ////
 
 
+/// Destructor. Be sure file is closed before we leave.
+
+Book::~Book() {
+
+  close();
+}
+
+
 /// Book::open() opens a book file with a given file name
 
 void Book::open(const string& fName) {
+
+  // Close old file before opening the new
+  close();
 
   fileName = fName;
   ifstream::open(fileName.c_str(), ifstream::in | ifstream::binary);
@@ -361,7 +372,6 @@ void Book::open(const string& fName) {
   if (!good())
   {
       cerr << "Failed to open book file " << fileName << endl;
-      close();
       exit(EXIT_FAILURE);
   }
 }
@@ -479,7 +489,6 @@ void Book::read_entry(BookEntry& entry, int idx) {
   if (!good())
   {
       cerr << "Failed to read book entry at index " << idx << endl;
-      close();
       exit(EXIT_FAILURE);
   }
 }

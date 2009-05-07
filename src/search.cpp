@@ -371,10 +371,8 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   {
       Move bookMove;
       if (get_option_value_string("Book File") != OpeningBook.file_name())
-      {
-          OpeningBook.close();
           OpeningBook.open("book.bin");
-      }
+
       bookMove = OpeningBook.get_move(pos);
       if (bookMove != MOVE_NONE)
       {
@@ -545,7 +543,6 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
 
   if (Quit)
   {
-      OpeningBook.close();
       stop_threads();
       quit_eval();
       exit(0);
@@ -2561,7 +2558,6 @@ namespace {
         command = "quit";
 
       if(command == "quit") {
-        OpeningBook.close();
         stop_threads();
         quit_eval();
         exit(0);
