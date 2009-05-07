@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008 Marco Costalba
+  Copyright (C) 2008-2009 Marco Costalba
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 
   // Print copyright notice
   cout << engine_name() << ".  Copyright (C) "
-       << "2004-2008 Tord Romstad, Marco Costalba. " << endl;
+       << "2004-2009 Tord Romstad, Marco Costalba. " << endl;
 
   // Enter UCI mode
   uci_main_loop();
