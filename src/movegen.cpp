@@ -56,10 +56,13 @@ namespace {
   template<Color Us, Rank, Bitboard, SquareDelta>
   MoveStack* generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 
-  template<Color, Color, Bitboard, SquareDelta, SquareDelta, SquareDelta>
+  template<Color Us>
   MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist);
 
-  template<Color, Color, Bitboard, Bitboard, SquareDelta, SquareDelta, SquareDelta>
+  template<Color Us, SquareDelta Diagonal>
+  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces);
+
+  template<Color Us>
   MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
 
   template<Color, Color, Bitboard, Bitboard, SquareDelta>
@@ -105,11 +108,11 @@ namespace {
       assert(Piece == PAWN);
 
       if (Type == CAPTURE)
-          return (us == WHITE ? generate_pawn_captures<WHITE, BLACK, Rank8BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
-                              : generate_pawn_captures<BLACK, WHITE, Rank1BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
+          return (us == WHITE ? generate_pawn_captures<WHITE>(p, m)
+                              : generate_pawn_captures<BLACK>(p, m));
       else
-          return (us == WHITE ? generate_pawn_noncaptures<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_NE, DELTA_NW, DELTA_N>(p, m)
-                              : generate_pawn_noncaptures<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_SE, DELTA_SW, DELTA_S>(p, m));
+          return (us == WHITE ? generate_pawn_noncaptures<WHITE>(p, m)
+                              : generate_pawn_noncaptures<BLACK>(p, m));
   }
 
   template<PieceType>
@@ -610,24 +613,27 @@ namespace {
     return mlist;
   }
 
-  template<Color Us, Color Them, Bitboard TRank8BB, SquareDelta TDELTA_NE,
-           SquareDelta TDELTA_NW, SquareDelta TDELTA_N
-          >
-  MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist) {
+  template<Color Us, SquareDelta Diagonal>
+  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces) {
+
+    // Calculate our parametrized parameters at compile time
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TFileABB = (Diagonal == DELTA_NE ? FileABB : FileHBB);
+    const SquareDelta TDELTA_NE = (Us == WHITE ? DELTA_NE : DELTA_SE);
+    const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
+    const SquareDelta TTDELTA_NE = (Diagonal == DELTA_NE ? TDELTA_NE : TDELTA_NW);
 
     Square to;
-    Bitboard pawns = pos.pawns(Us);
-    Bitboard enemyPieces = pos.pieces_of_color(Them);
 
-    // Captures in the a1-h8 (a8-h1 for black) direction
-    Bitboard b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces;
+    // Captures in the a1-h8 (a8-h1 for black) diagonal or in the h1-a8 (h8-a1 for black)
+    Bitboard b1 = move_pawns<Us, Diagonal>(pawns) & ~TFileABB & enemyPieces;
 
     // Capturing promotions
     Bitboard b2 = b1 & TRank8BB;
     while (b2)
     {
         to = pop_1st_bit(&b2);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, QUEEN);
+        (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, QUEEN);
     }
 
     // Capturing non-promotions
@@ -635,30 +641,29 @@ namespace {
     while (b2)
     {
         to = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(to - TDELTA_NE, to);
+        (*mlist++).move = make_move(to - TTDELTA_NE, to);
     }
+    return mlist;
+  }
 
-    // Captures in the h1-a8 (h8-a1 for black) direction
-    b1 = move_pawns<Us, DELTA_NW>(pawns) & ~FileHBB & enemyPieces;
+  template<Color Us>
+  MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist) {
 
-    // Capturing promotions
-    b2 = b1 & TRank8BB;
-    while (b2)
-    {
-        to = pop_1st_bit(&b2);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, QUEEN);
-    }
+    // Calculate our parametrized parameters at compile time
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
-    // Capturing non-promotions
-    b2 = b1 & ~TRank8BB;
-    while (b2)
-    {
-        to = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(to - TDELTA_NW, to);
-    }
+    Square to;
+    Bitboard pawns = pos.pawns(Us);
+    Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
+
+    // Standard captures and capturing promotions in both directions
+    mlist = generate_pawn_captures_diagonal<Us, DELTA_NE>(mlist, pawns, enemyPieces);
+    mlist = generate_pawn_captures_diagonal<Us, DELTA_NW>(mlist, pawns, enemyPieces);
 
     // Non-capturing promotions
-    b1 = move_pawns<Us, DELTA_N>(pawns) & pos.empty_squares() & TRank8BB;
+    Bitboard b1 = move_pawns<Us, DELTA_N>(pawns) & pos.empty_squares() & TRank8BB;
     while (b1)
     {
         to = pop_1st_bit(&b1);
@@ -683,16 +688,21 @@ namespace {
     return mlist;
   }
 
-  template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB,
-           SquareDelta TDELTA_NE, SquareDelta TDELTA_NW, SquareDelta TDELTA_N
-          >
+  template<Color Us>
   MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {
 
-    Bitboard pawns = pos.pawns(Us);
-    Bitboard enemyPieces = pos.pieces_of_color(Them);
-    Bitboard emptySquares = pos.empty_squares();
+    // Calculate our parametrized parameters at compile time
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    const SquareDelta TDELTA_NE = (Us == WHITE ? DELTA_NE : DELTA_SE);
+    const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
+    const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
+
     Bitboard b1, b2;
     Square to;
+    Bitboard pawns = pos.pawns(Us);
+    Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
+    Bitboard emptySquares = pos.empty_squares();
 
     // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
     b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces & TRank8BB;
@@ -745,7 +755,6 @@ namespace {
   template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB, SquareDelta TDELTA_N>
   MoveStack* generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
   {
-    // Find all friendly pawns not on the enemy king's file
     Bitboard b1, b2, b3;
     Bitboard empty = pos.empty_squares();
 
