@@ -90,7 +90,7 @@ MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
   {
       std::cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
                 << " bytes for material hash table." << std::endl;
-      exit(EXIT_FAILURE);
+      Application::exit_with_failure();
   }
   clear();
 }

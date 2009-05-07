@@ -20,32 +20,24 @@
 // To profile with callgrind uncomment following line
 //#define USE_CALLGRIND
 
+
 ////
 //// Includes
 ////
 
 #include <iostream>
+#include <string>
 
 #include "benchmark.h"
-#include "bitboard.h"
-#include "direction.h"
-#include "endgame.h"
-#include "evaluate.h"
-#include "material.h"
-#include "mersenne.h"
 #include "misc.h"
-#include "movepick.h"
-#include "position.h"
-#include "search.h"
-#include "thread.h"
 #include "uci.h"
-#include "ucioption.h"
 
 #ifdef USE_CALLGRIND
 #include <valgrind/callgrind.h>
 #endif
 
-using std::string;
+using namespace std;
+
 
 ////
 //// Functions
@@ -54,54 +46,38 @@ using std::string;
 int main(int argc, char *argv[]) {
 
   // Disable IO buffering
-  std::cout.rdbuf()->pubsetbuf(NULL, 0);
-  std::cin.rdbuf()->pubsetbuf(NULL, 0);
+  cout.rdbuf()->pubsetbuf(NULL, 0);
+  cin.rdbuf()->pubsetbuf(NULL, 0);
 
-  // Initialization
-  init_mersenne();
-  init_direction_table();
-  init_bitboards();
-  init_uci_options();
-  Position::init_zobrist();
-  Position::init_piece_square_tables();
-  MovePicker::init_phase_table();
-  init_eval(1);
-  init_bitbases();
-  init_threads();
+  // Initialization through global resources manager
+  Application::initialize();
 
 #ifdef USE_CALLGRIND
   CALLGRIND_START_INSTRUMENTATION;
 #endif
 
-  // Make random number generation less deterministic, for book moves
-  for (int i = abs(get_system_time() % 10000); i > 0; i--)
-      genrand_int32();
-
-  // Process command line arguments
-  if (argc >= 2 && string(argv[1]) == "bench")
+  // Process command line arguments if any
+  if (argc > 1)
   {
-      if (argc < 4 || argc > 7)
+      if (string(argv[1]) != "bench" || argc < 4 || argc > 7)
+          cout << "Usage: stockfish bench <hash size> <threads> "
+               << "[time = 60s] [fen positions file = default] "
+               << "[time, depth or node limited = time]" << endl;
+      else
       {
-        std::cout << "Usage: stockfish bench <hash size> <threads> "
-                  << "[time = 60s] [fen positions file = default] "
-                  << "[time, depth or node limited = time]"
-                  << std::endl;
-        exit(0);
+          string time = argc > 4 ? argv[4] : "60";
+          string fen = argc > 5 ? argv[5] : "default";
+          string lim = argc > 6 ? argv[6] : "time";
+          benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + lim);
       }
-      string time = argc > 4 ? argv[4] : "60";
-      string fen = argc > 5 ? argv[5] : "default";
-      string lim = argc > 6 ? argv[6] : "time";
-      benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + lim);
       return 0;
   }
 
   // Print copyright notice
-  std::cout << engine_name() << ".  Copyright (C) "
-            << "2004-2008 Tord Romstad, Marco Costalba. "
-            << std::endl;
+  cout << engine_name() << ".  Copyright (C) "
+       << "2004-2008 Tord Romstad, Marco Costalba. " << endl;
 
   // Enter UCI mode
   uci_main_loop();
-
   return 0;
 }

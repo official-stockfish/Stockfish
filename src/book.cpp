@@ -372,7 +372,7 @@ void Book::open(const string& fName) {
   if (!good())
   {
       cerr << "Failed to open book file " << fileName << endl;
-      exit(EXIT_FAILURE);
+      Application::exit_with_failure();
   }
 }
 
@@ -489,7 +489,7 @@ void Book::read_entry(BookEntry& entry, int idx) {
   if (!good())
   {
       cerr << "Failed to read book entry at index " << idx << endl;
-      exit(EXIT_FAILURE);
+      Application::exit_with_failure();
   }
 }
 

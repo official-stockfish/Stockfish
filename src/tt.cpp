@@ -69,7 +69,7 @@ void TranspositionTable::set_size(unsigned mbSize) {
       {
           std::cerr << "Failed to allocate " << mbSize
                     << " MB for transposition table." << std::endl;
-          exit(EXIT_FAILURE);
+          Application::exit_with_failure();
       }
       clear();
   }

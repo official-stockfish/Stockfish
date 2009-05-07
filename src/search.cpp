@@ -359,10 +359,11 @@ void SearchStack::initKillers() {
 ////
 
 /// think() is the external interface to Stockfish's search, and is called when
-/// the program receives the UCI 'go' command.  It initializes various
-/// search-related global variables, and calls root_search()
+/// the program receives the UCI 'go' command. It initializes various
+/// search-related global variables, and calls root_search(). It returns false
+/// when a quit command is received during the search.
 
-void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
+bool think(const Position &pos, bool infinite, bool ponder, int side_to_move,
            int time[], int increment[], int movesToGo, int maxDepth,
            int maxNodes, int maxTime, Move searchMoves[]) {
 
@@ -377,7 +378,7 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
       if (bookMove != MOVE_NONE)
       {
           std::cout << "bestmove " << bookMove << std::endl;
-          return;
+          return true;
       }
   }
 
@@ -541,13 +542,8 @@ void think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.close();
 
-  if (Quit)
-  {
-      stop_threads();
-      quit_eval();
-      exit(0);
-  }
   Idle = true;
+  return !Quit;
 }
 
 
@@ -2454,6 +2450,7 @@ namespace {
             AbortSearch = true;
             PonderSearch = false;
             Quit = true;
+            return;
         }
         else if(command == "stop")
         {
@@ -2551,19 +2548,21 @@ namespace {
   // after which the bestmove and pondermove will be printed (in id_loop()).
 
   void wait_for_stop_or_ponderhit() {
+
     std::string command;
 
-    while(true) {
-      if(!std::getline(std::cin, command))
-        command = "quit";
+    while (true)
+    {
+        if (!std::getline(std::cin, command))
+            command = "quit";
 
-      if(command == "quit") {
-        stop_threads();
-        quit_eval();
-        exit(0);
-      }
-      else if(command == "ponderhit" || command == "stop")
-        break;
+        if (command == "quit")
+        {
+            Quit = true;
+            break;
+        }
+        else if(command == "ponderhit" || command == "stop")
+            break;
     }
   }
 

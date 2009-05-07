@@ -79,15 +79,14 @@ void benchmark(const std::string& commandLine) {
   if (val < 4 || val > 1024)
   {
       std::cerr << "The hash table size must be between 4 and 1024" << std::endl;
-      exit(EXIT_FAILURE);
+      Application::exit_with_failure();
   }
   csStr >> threads;
   csVal >> val;
   if (val < 1 || val > THREAD_MAX)
   {
-      std::cerr << "The number of threads must be between 1 and " << THREAD_MAX
-                << std::endl;
-      exit(EXIT_FAILURE);
+      std::cerr << "The number of threads must be between 1 and " << THREAD_MAX << std::endl;
+      Application::exit_with_failure();
   }
   set_option_value("Hash", ttSize);
   set_option_value("Threads", threads);
@@ -115,9 +114,8 @@ void benchmark(const std::string& commandLine) {
       std::ifstream fenFile(fileName.c_str());
       if (!fenFile.is_open())
       {
-          std::cerr << "Unable to open positions file " << fileName
-                    << std::endl;
-          exit(EXIT_FAILURE);
+          std::cerr << "Unable to open positions file " << fileName << std::endl;
+          Application::exit_with_failure();
       }
       std::string pos;
       while (fenFile.good())
@@ -141,7 +139,8 @@ void benchmark(const std::string& commandLine) {
       int dummy[2] = {0, 0};
       Position pos(*it);
       std::cout << "\nProcessing position " << cnt << '/' << positions.size() << std::endl << std::endl;
-      think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves);
+      if (!think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
+          break;
       totalNodes += nodes_searched();
   }
   std::cout << "\nProcessing time (ms) " << get_system_time() - startTime << std::endl

@@ -144,7 +144,7 @@ PawnInfoTable::PawnInfoTable(unsigned numOfEntries) {
   {
       std::cerr << "Failed to allocate " << (numOfEntries * sizeof(PawnInfo))
                 << " bytes for pawn hash table." << std::endl;
-      exit(EXIT_FAILURE);
+      Application::exit_with_failure();
   }
   clear();
 }

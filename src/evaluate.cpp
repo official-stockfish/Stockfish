@@ -505,6 +505,8 @@ void quit_eval() {
   {
       delete PawnTable[i];
       delete MaterialTable[i];
+      PawnTable[i] = NULL;
+      MaterialTable[i] = NULL;
   }
 }
 

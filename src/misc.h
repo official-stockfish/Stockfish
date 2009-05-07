@@ -29,6 +29,7 @@
 #include <fstream>
 #include <string>
 
+#include "application.h"
 
 ////
 //// Macros
@@ -46,6 +47,7 @@ extern const std::string engine_name();
 extern int get_system_time();
 extern int cpu_count();
 extern int Bioskey();
+
 
 ////
 //// Debug

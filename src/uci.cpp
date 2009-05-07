@@ -56,11 +56,10 @@ namespace {
   Position RootPosition;
 
   // Local functions
-  void get_command();
-  void handle_command(const std::string &command);
-  void set_option(UCIInputParser &uip);
-  void set_position(UCIInputParser &uip);
-  void go(UCIInputParser &uip);
+  bool handle_command(const std::string& command);
+  void set_option(UCIInputParser& uip);
+  void set_position(UCIInputParser& uip);
+  bool go(UCIInputParser& uip);
 }
 
 
@@ -68,17 +67,25 @@ namespace {
 //// Functions
 ////
 
-/// uci_main_loop() is the only global function in this file.  It is
+/// uci_main_loop() is the only global function in this file. It is
 /// called immediately after the program has finished initializing.
 /// The program remains in this loop until it receives the "quit" UCI
-/// command.
+/// command. It waits for a command from the user, and passes this
+/// command to handle_command and also intercepts EOF from stdin,
+/// by translating EOF to the "quit" command. This ensures that Stockfish
+/// exits gracefully if the GUI dies unexpectedly.
 
 void uci_main_loop() {
 
   RootPosition.from_fen(StartPosition);
+  std::string command;
 
-  while (1)
-      get_command();
+  do {
+      // Wait for a command from stdin
+      if (!std::getline(std::cin, command))
+          command = "quit";
+
+  } while (handle_command(command));
 }
 
 
@@ -88,29 +95,12 @@ void uci_main_loop() {
 
 namespace {
 
-  // get_command() waits for a command from the user, and passes
-  // this command to handle_command.  get_command also intercepts
-  // EOF from stdin, by translating EOF to the "quit" command.  This
-  // ensures that Stockfish exits gracefully if the GUI dies
-  // unexpectedly.
-
-  void get_command() {
-
-    std::string command;
-
-    if (!std::getline(std::cin, command))
-        command = "quit";
-
-    handle_command(command);
-  }
-
-
   // handle_command() takes a text string as input, uses a
   // UCIInputParser object to parse this text string as a UCI command,
-  // and calls the appropriate functions.  In addition to the UCI
+  // and calls the appropriate functions. In addition to the UCI
   // commands, the function also supports a few debug commands.
 
-  void handle_command(const std::string &command) {
+  bool handle_command(const std::string& command) {
 
     UCIInputParser uip(command);
     std::string token;
@@ -118,12 +108,12 @@ namespace {
     uip >> token; // operator >> skips any whitespace
 
     if (token == "quit")
-    {
-        stop_threads();
-        quit_eval();
-        exit(0);
-    }
-    else if (token == "uci")
+        return false;
+
+    if (token == "go")
+        return go(uip);
+
+    if (token == "uci")
     {
         std::cout << "id name " << engine_name() << std::endl
                   << "id author Tord Romstad, Marco Costalba"
@@ -143,8 +133,6 @@ namespace {
         set_position(uip);
     else if (token == "setoption")
         set_option(uip);
-    else if (token == "go")
-        go(uip);
 
     // The remaining commands are for debugging purposes only.
     // Perhaps they should be removed later in order to reduce the
@@ -183,6 +171,7 @@ namespace {
             std::cout << token << std::endl;
         }
     }
+    return true;
   }
 
 
@@ -192,7 +181,7 @@ namespace {
   // ("position"), and is ready to read the second token ("startpos"
   // or "fen", if the input is well-formed).
 
-  void set_position(UCIInputParser &uip) {
+  void set_position(UCIInputParser& uip) {
 
     std::string token;
 
@@ -242,7 +231,7 @@ namespace {
   // ("setoption"), and is ready to read the second token ("name", if
   // the input is well-formed).
 
-  void set_option(UCIInputParser &uip) {
+  void set_option(UCIInputParser& uip) {
 
     std::string token, name;
 
@@ -269,14 +258,15 @@ namespace {
 
 
   // go() is called when Stockfish receives the "go" UCI command.  The
-  // input parameter is a UCIInputParser.  It is assumed that this
+  // input parameter is a UCIInputParser. It is assumed that this
   // parser has consumed the first token of the UCI command ("go"),
-  // and is ready to read the second token.  The function sets the
+  // and is ready to read the second token. The function sets the
   // thinking time and other parameters from the input string, and
   // calls think() (defined in search.cpp) with the appropriate
-  // parameters.
+  // parameters. Returns false if a quit command is received while
+  // thinking, returns true otherwise.
 
-  void go(UCIInputParser &uip) {
+  bool go(UCIInputParser& uip) {
 
     std::string token;
 
@@ -328,7 +318,7 @@ namespace {
 
     assert(RootPosition.is_ok());
 
-    think(RootPosition, infinite, ponder, RootPosition.side_to_move(), time,
-          inc, movesToGo, depth, nodes, moveTime, searchMoves);
+    return think(RootPosition, infinite, ponder, RootPosition.side_to_move(), time,
+                 inc, movesToGo, depth, nodes, moveTime, searchMoves);
   }
 }
