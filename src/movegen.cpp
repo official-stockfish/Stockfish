@@ -65,7 +65,7 @@ namespace {
   template<Color Us>
   MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
 
-  template<Color, Color, Bitboard, Bitboard, SquareDelta>
+  template<Color Us>
   MoveStack* generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
 
   template<Color Us, SquareDelta Direction>
@@ -88,11 +88,8 @@ namespace {
   template<>
   inline MoveStack* generate_piece_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
 
-    if (us == WHITE)
-        return generate_pawn_checks<WHITE, BLACK, Rank8BB, Rank3BB, DELTA_N>(p, dc, ksq, m);
-    else
-        return generate_pawn_checks<BLACK, WHITE, Rank1BB, Rank6BB, DELTA_S>(p, dc, ksq, m);
-
+    return (us == WHITE ? generate_pawn_checks<WHITE>(p, dc, ksq, m)
+                        : generate_pawn_checks<BLACK>(p, dc, ksq, m));
   }
 
   // Template generate_piece_moves() with specializations and overloads
@@ -752,18 +749,25 @@ namespace {
   }
 
 
-  template<Color Us, Color Them, Bitboard TRank8BB, Bitboard TRank3BB, SquareDelta TDELTA_N>
+  template<Color Us>
   MoveStack* generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
   {
+    // Calculate our parametrized parameters at compile time
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
+
     Bitboard b1, b2, b3;
     Bitboard empty = pos.empty_squares();
+    Bitboard pawns = pos.pawns(Us);
 
-    if (dc != EmptyBoardBB)
+    if (dc & pawns)
     {
         // Pawn moves which gives discovered check. This is possible only if the
         // pawn is not on the same file as the enemy king, because we don't
         // generate captures.
-        b1 = pos.pawns(Us) & ~file_bb(ksq);
+        b1 = pawns & ~file_bb(ksq);
 
         // Discovered checks, single pawn pushes, no promotions
         b2 = b3 = move_pawns<Us, DELTA_N>(b1 & dc) & empty & ~TRank8BB;
@@ -784,7 +788,7 @@ namespace {
 
     // Direct checks. These are possible only for pawns on neighboring files
     // of the enemy king.
-    b1 = pos.pawns(Us) & neighboring_files_bb(ksq) & ~dc;
+    b1 = pawns & neighboring_files_bb(ksq) & ~dc;
 
     // Direct checks, single pawn pushes
     b2 = move_pawns<Us, DELTA_N>(b1) & empty;
