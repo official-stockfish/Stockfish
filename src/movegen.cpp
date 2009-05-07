@@ -53,7 +53,7 @@ namespace {
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist);
 
-  template<Color Us, Rank, Bitboard, SquareDelta>
+  template<Color Us>
   MoveStack* generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 
   template<Color Us>
@@ -118,10 +118,9 @@ namespace {
   template<>
   inline MoveStack* generate_piece_moves<PAWN>(const Position& p, MoveStack* m,
                                                Color us, Bitboard t, Bitboard pnd) {
-    if (us == WHITE)
-        return generate_pawn_blocking_evasions<WHITE, RANK_8, Rank3BB, DELTA_N>(p, pnd, t, m);
-    else
-        return generate_pawn_blocking_evasions<BLACK, RANK_1, Rank6BB, DELTA_S>(p, pnd, t, m);
+
+    return (us == WHITE ? generate_pawn_blocking_evasions<WHITE>(p, pnd, t, m)
+                        : generate_pawn_blocking_evasions<BLACK>(p, pnd, t, m));
   }
 }
 
@@ -850,9 +849,15 @@ namespace {
     return mlist;
   }
 
-  template<Color Us, Rank TRANK_8, Bitboard TRank3BB, SquareDelta TDELTA_N>
+  template<Color Us>
   MoveStack* generate_pawn_blocking_evasions(const Position& pos, Bitboard pinned,
                                              Bitboard blockSquares, MoveStack* mlist) {
+
+    // Calculate our parametrized parameters at compile time
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
+
     Square to;
 
     // Find non-pinned pawns and push them one square
@@ -867,7 +872,7 @@ namespace {
 
         assert(pos.piece_on(to) == EMPTY);
 
-        if (square_rank(to) == TRANK_8)
+        if (square_rank(to) == TRank8BB)
         {
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
