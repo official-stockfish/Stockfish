@@ -756,13 +756,15 @@ namespace {
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
+    const SquareDelta TDELTA_S = (Us == WHITE ? DELTA_S : DELTA_N);
 
     Bitboard b1, b2, b3;
-    Bitboard empty = pos.empty_squares();
     Bitboard pawns = pos.pawns(Us);
 
     if (dc & pawns)
     {
+         Bitboard empty = pos.empty_squares();
+
         // Pawn moves which gives discovered check. This is possible only if the
         // pawn is not on the same file as the enemy king, because we don't
         // generate captures.
@@ -786,10 +788,15 @@ namespace {
     }
 
     // Direct checks. These are possible only for pawns on neighboring files
-    // of the enemy king.
+    // and in the two ranks that, after the push, are in front of the enemy king.
     b1 = pawns & neighboring_files_bb(ksq) & ~dc;
+    b2 = rank_bb(ksq + 2 * TDELTA_S) | rank_bb(ksq + 3 * TDELTA_S);
+    b1 &= b2;
+    if (!b1)
+        return mlist;
 
     // Direct checks, single pawn pushes
+    Bitboard empty = pos.empty_squares();
     b2 = move_pawns<Us, DELTA_N>(b1) & empty;
     b3 = b2 & pos.pawn_attacks(Them, ksq);
     while (b3)
