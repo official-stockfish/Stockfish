@@ -835,23 +835,23 @@ namespace {
 
     // Direct checks
     b = target & ~dc;
-    if (Piece == KING || !b)
-        return mlist;
-
-    Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
-    if (!checkSqs)
-        return mlist;
-
-    while (b)
+    if (Piece != KING || b)
     {
-        Square from = pop_1st_bit(&b);
-        if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
-            || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
-            || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
-            continue;
+        Bitboard checkSqs = pos.piece_attacks<Piece>(ksq) & pos.empty_squares();
+        if (!checkSqs)
+            return mlist;
 
-        Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
-        SERIALIZE_MOVES(bb);
+        while (b)
+        {
+            Square from = pop_1st_bit(&b);
+            if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
+                || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
+                || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
+                continue;
+
+            Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
+            SERIALIZE_MOVES(bb);
+        }
     }
     return mlist;
   }

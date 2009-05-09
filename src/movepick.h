@@ -37,6 +37,8 @@
 struct EvalInfo;
 struct SearchStack;
 
+extern SearchStack EmptySearchStack;
+
 /// MovePicker is a class which is used to pick one legal move at a time from
 /// the current position.  It is initialized with a Position object and a few
 /// moves we have reason to believe are good.  The most important method is

@@ -24,7 +24,7 @@
 
 EXE = stockfish
 
-OBJS = bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
+OBJS = application.o bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 	misc.o move.o movegen.o history.o movepick.o search.o piece.o \
 	position.o direction.o tt.o value.o uci.o ucioption.o \
 	mersenne.o book.o bitbase.o san.o benchmark.o

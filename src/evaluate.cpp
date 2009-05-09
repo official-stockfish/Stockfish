@@ -571,25 +571,25 @@ namespace {
     ei.egMobility += Sign[us] * EgBonus[Piece][mob];
 
     // Bishop and Knight outposts
-    if (  (Piece != BISHOP && Piece != KNIGHT) // compile time condition
-        || !p.square_is_weak(s, them))
-        return mob;
-
-    // Initial bonus based on square
-    Value v, bonus;
-    v = bonus = OutpostBonus[Piece][relative_square(us, s)];
-
-    // Increase bonus if supported by pawn, especially if the opponent has
-    // no minor piece which can exchange the outpost piece
-    if (v && (p.pawn_attacks(them, s) & p.pawns(us)))
+    if (   (Piece == BISHOP || Piece == KNIGHT) // compile time condition
+        && p.square_is_weak(s, them))
     {
-        bonus += v / 2;
-        if (   p.piece_count(them, KNIGHT) == 0
-            && (SquaresByColorBB[square_color(s)] & p.bishops(them)) == EmptyBoardBB)
-            bonus += v;
+        // Initial bonus based on square
+        Value v, bonus;
+        v = bonus = OutpostBonus[Piece][relative_square(us, s)];
+
+        // Increase bonus if supported by pawn, especially if the opponent has
+        // no minor piece which can exchange the outpost piece
+        if (v && (p.pawn_attacks(them, s) & p.pawns(us)))
+        {
+            bonus += v / 2;
+            if (   p.piece_count(them, KNIGHT) == 0
+                   && (SquaresByColorBB[square_color(s)] & p.bishops(them)) == EmptyBoardBB)
+                bonus += v;
+        }
+        ei.mgValue += Sign[us] * bonus;
+        ei.egValue += Sign[us] * bonus;
     }
-    ei.mgValue += Sign[us] * bonus;
-    ei.egValue += Sign[us] * bonus;
     return mob;
   }
 
