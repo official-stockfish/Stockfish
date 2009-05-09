@@ -538,22 +538,19 @@ void read_weights(Color us) {
 
 namespace {
 
-  // evaluate_common() computes terms common to all pieces attack
+  // evaluate_mobility() computes mobility and attacks for every piece
 
   template<PieceType Piece, bool HasPopCnt>
-  int evaluate_common(const Position& p, const Bitboard& b, Color us, EvalInfo& ei, Square s = SQ_NONE) {
+  int evaluate_mobility(const Position& p, const Bitboard& b, Color us, Color them, EvalInfo& ei) {
 
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
     static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
     static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
-    static const Value* OutpostBonus[] = { 0, 0, KnightOutpostBonus, BishopOutpostBonus, 0, 0 };
-
-    Color them = opposite_color(us);
 
     // Update attack info
     ei.attackedBy[us][Piece] |= b;
 
-    // King attack
+    // King attacks
     if (b & ei.kingZone[us])
     {
         ei.kingAttackersCount[us]++;
@@ -572,28 +569,31 @@ namespace {
 
     ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
     ei.egMobility += Sign[us] * EgBonus[Piece][mob];
-
-    // Bishop and Knight outposts
-    if (   (Piece == BISHOP || Piece == KNIGHT) // compile time condition
-        && p.square_is_weak(s, them))
-    {
-        // Initial bonus based on square
-        Value v, bonus;
-        v = bonus = OutpostBonus[Piece][relative_square(us, s)];
-
-        // Increase bonus if supported by pawn, especially if the opponent has
-        // no minor piece which can exchange the outpost piece
-        if (v && (p.pawn_attacks(them, s) & p.pawns(us)))
-        {
-            bonus += v / 2;
-            if (   p.piece_count(them, KNIGHT) == 0
-                   && (SquaresByColorBB[square_color(s)] & p.bishops(them)) == EmptyBoardBB)
-                bonus += v;
-        }
-        ei.mgValue += Sign[us] * bonus;
-        ei.egValue += Sign[us] * bonus;
-    }
     return mob;
+  }
+
+
+  // evaluate_outposts() evaluates bishop and knight outposts squares
+
+  template<PieceType Piece>
+  void evaluate_outposts(const Position& p, Color us, Color them, EvalInfo& ei, Square s) {
+
+    // Initial bonus based on square
+    Value bonus = (Piece == BISHOP ? BishopOutpostBonus[relative_square(us, s)]
+                                   : KnightOutpostBonus[relative_square(us, s)]);
+
+    // Increase bonus if supported by pawn, especially if the opponent has
+    // no minor piece which can exchange the outpost piece
+    if (bonus && (p.pawn_attacks(them, s) & p.pawns(us)))
+    {
+        if (    p.knights(them) == EmptyBoardBB
+            && (SquaresByColorBB[square_color(s)] & p.bishops(them)) == EmptyBoardBB)
+            bonus += bonus + bonus / 2;
+        else
+            bonus += bonus / 2;
+    }
+    ei.mgValue += Sign[us] * bonus;
+    ei.egValue += Sign[us] * bonus;
   }
 
 
@@ -605,9 +605,9 @@ namespace {
 
     Bitboard b;
     Square s, ksq;
-    Color them;
     int mob;
     File f;
+    Color them = opposite_color(us);
 
     for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
     {
@@ -619,9 +619,15 @@ namespace {
             b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.queens(us));
         else if (Piece == ROOK)
             b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.rooks_and_queens(us));
+        else
+            assert(false);
 
-        // Attacks, mobility and outposts
-        mob = evaluate_common<Piece, HasPopCnt>(pos, b, us, ei, s);
+        // Attacks and mobility
+        mob = evaluate_mobility<Piece, HasPopCnt>(pos, b, us, them, ei);
+
+        // Bishop and knight outposts squares
+        if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, them))
+            evaluate_outposts<Piece>(pos, us, them, ei, s);
 
         // Special patterns: trapped bishops on a7/h7/a2/h2
         // and trapped bishops on a1/h1/a8/h8 in Chess960.
@@ -637,8 +643,6 @@ namespace {
         if (Piece == ROOK || Piece == QUEEN)
         {
             // Queen or rook on 7th rank
-            them = opposite_color(us);
-
             if (   relative_rank(us, s) == RANK_7
                 && relative_rank(us, pos.king_square(them)) == RANK_8)
             {
@@ -728,7 +732,7 @@ namespace {
         ei.mgValue += sign * Value(shelter);
     }
 
-    // King safety.  This is quite complicated, and is almost certainly far
+    // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
     Color them = opposite_color(us);
 
@@ -989,7 +993,7 @@ namespace {
                     }
                 }
             }
-            // Rook pawns are a special case:  They are sometimes worse, and
+            // Rook pawns are a special case: They are sometimes worse, and
             // sometimes better than other passed pawns. It is difficult to find
             // good rules for determining whether they are good or bad. For now,
             // we try the following: Increase the value for rook pawns if the
@@ -997,10 +1001,10 @@ namespace {
             // value if the other side has a rook or queen.
             if (square_file(s) == FILE_A || square_file(s) == FILE_H)
             {
-                if(   pos.non_pawn_material(them) <= KnightValueMidgame
-                   && pos.piece_count(them, KNIGHT) <= 1)
+                if (   pos.non_pawn_material(them) <= KnightValueMidgame
+                    && pos.piece_count(them, KNIGHT) <= 1)
                     ebonus += ebonus / 4;
-                else if(pos.rooks_and_queens(them))
+                else if (pos.rooks_and_queens(them))
                     ebonus -= ebonus / 4;
             }
 
@@ -1012,9 +1016,9 @@ namespace {
 
     // Does either side have an unstoppable passed pawn?
     if (hasUnstoppable[WHITE] && !hasUnstoppable[BLACK])
-       ei.egValue += UnstoppablePawnValue - Value(0x40 * movesToGo[WHITE]);
+        ei.egValue += UnstoppablePawnValue - Value(0x40 * movesToGo[WHITE]);
     else if (hasUnstoppable[BLACK] && !hasUnstoppable[WHITE])
-       ei.egValue -= UnstoppablePawnValue - Value(0x40 * movesToGo[BLACK]);
+        ei.egValue -= UnstoppablePawnValue - Value(0x40 * movesToGo[BLACK]);
     else if (hasUnstoppable[BLACK] && hasUnstoppable[WHITE])
     {
         // Both sides have unstoppable pawns! Try to find out who queens
