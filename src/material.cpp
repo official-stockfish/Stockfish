@@ -29,6 +29,7 @@
 
 #include "material.h"
 
+using std::string;
 
 ////
 //// Local definitions
@@ -59,9 +60,9 @@ public:
   EndgameScalingFunctionBase* getESF(Key key, Color* c) const;
 
 private:
-  void add(const std::string& keyCode, EndgameEvaluationFunctionBase* f);
-  void add(const std::string& keyCode, Color c, EndgameScalingFunctionBase* f);
-  Key buildKey(const std::string& keyCode);
+  void add(const string& keyCode, EndgameEvaluationFunctionBase* f);
+  void add(const string& keyCode, Color c, EndgameScalingFunctionBase* f);
+  Key buildKey(const string& keyCode);
 
   struct ScalingInfo
   {
@@ -352,7 +353,7 @@ EndgameFunctions::EndgameFunctions() {
   add("KRPKRPP", BLACK, &ScaleKRPKRPP);
 }
 
-Key EndgameFunctions::buildKey(const std::string& keyCode) {
+Key EndgameFunctions::buildKey(const string& keyCode) {
 
     assert(keyCode.length() > 0 && keyCode[0] == 'K');
     assert(keyCode.length() < 8);
@@ -373,12 +374,12 @@ Key EndgameFunctions::buildKey(const std::string& keyCode) {
     return Position(s.str()).get_material_key();
 }
 
-void EndgameFunctions::add(const std::string& keyCode, EndgameEvaluationFunctionBase* f) {
+void EndgameFunctions::add(const string& keyCode, EndgameEvaluationFunctionBase* f) {
 
   EEFmap.insert(std::pair<Key, EndgameEvaluationFunctionBase*>(buildKey(keyCode), f));
 }
 
-void EndgameFunctions::add(const std::string& keyCode, Color c, EndgameScalingFunctionBase* f) {
+void EndgameFunctions::add(const string& keyCode, Color c, EndgameScalingFunctionBase* f) {
 
   ScalingInfo s = {c, f};
   ESFmap.insert(std::pair<Key, ScalingInfo>(buildKey(keyCode), s));

@@ -31,6 +31,7 @@
 #include "movepick.h"
 #include "san.h"
 
+using std::string;
 
 ////
 //// Local definitions
@@ -51,8 +52,8 @@ namespace {
   /// Functions
 
   Ambiguity move_ambiguity(const Position& pos, Move m);
-  const std::string time_string(int milliseconds);
-  const std::string score_string(Value v);
+  const string time_string(int milliseconds);
+  const string score_string(Value v);
 }
 
 
@@ -64,7 +65,7 @@ namespace {
 /// that the move is a legal move from the position. The return value is
 /// a string containing the move in short algebraic notation.
 
-const std::string move_to_san(const Position& pos, Move m) {
+const string move_to_san(const Position& pos, Move m) {
 
   assert(pos.is_ok());
   assert(move_is_ok(m));
@@ -76,7 +77,7 @@ const std::string move_to_san(const Position& pos, Move m) {
   to = move_to(m);
   pt = type_of_piece(pos.piece_on(move_from(m)));
 
-  std::string san = "";
+  string san = "";
 
   if (m == MOVE_NONE)
       return "(none)";
@@ -138,7 +139,7 @@ const std::string move_to_san(const Position& pos, Move m) {
 /// the move is returned.  On failure (i.e. if the string is unparsable, or
 /// if the move is illegal or ambiguous), MOVE_NONE is returned.
 
-Move move_from_san(const Position& pos, const std::string& movestr) {
+Move move_from_san(const Position& pos, const string& movestr) {
 
   assert(pos.is_ok());
 
@@ -166,7 +167,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
 
   // Normal moves. We use a simple FSM to parse the san string.
   enum { START, TO_FILE, TO_RANK, PROMOTION_OR_CHECK, PROMOTION, CHECK, END };
-  static const std::string pieceLetters = "KQRBN";
+  static const string pieceLetters = "KQRBN";
   PieceType pt = NO_PIECE_TYPE, promotion = NO_PIECE_TYPE;
   File fromFile = FILE_NONE, toFile = FILE_NONE;
   Rank fromRank = RANK_NONE, toRank = RANK_NONE;
@@ -176,7 +177,7 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
   for (size_t i = 0; i < movestr.length(); i++)
   {
       char type, c = movestr[i];
-      if (pieceLetters.find(c) != std::string::npos)
+      if (pieceLetters.find(c) != string::npos)
           type = 'P';
       else if (c >= 'a' && c <= 'h')
           type = 'F';
@@ -292,11 +293,11 @@ Move move_from_san(const Position& pos, const std::string& movestr) {
 /// length of 80 characters.  After a line break, 'startColumn' spaces are
 /// inserted at the beginning of the new line.
 
-const std::string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines) {
+const string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines) {
 
   StateInfo st;
   std::stringstream s;
-  std::string moveStr;
+  string moveStr;
   size_t length = 0;
   size_t maxLength = 80 - startColumn;
   Position p(pos);
@@ -325,8 +326,8 @@ const std::string line_to_san(const Position& pos, Move line[], int startColumn,
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
 
-const std::string pretty_pv(const Position& pos, int time, int depth,
-                            uint64_t nodes, Value score, Move pv[]) {
+const string pretty_pv(const Position& pos, int time, int depth,
+                       uint64_t nodes, Value score, Move pv[]) {
   std::stringstream s;
 
   // Depth
@@ -396,7 +397,7 @@ namespace {
   }
 
 
-  const std::string time_string(int milliseconds) {
+  const string time_string(int milliseconds) {
 
     std::stringstream s;
     s << std::setfill('0');
@@ -413,7 +414,7 @@ namespace {
   }
 
 
-  const std::string score_string(Value v) {
+  const string score_string(Value v) {
 
     std::stringstream s;
 

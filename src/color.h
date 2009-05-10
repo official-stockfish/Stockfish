@@ -37,7 +37,6 @@ enum Color {
 //// Inline functions
 ////
 
-inline Color operator+ (Color c, int i) { return Color(int(c) + i); }
 inline void operator++ (Color &c, int) { c = Color(int(c) + 1); }
 
 inline Color opposite_color(Color c) {

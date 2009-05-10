@@ -81,6 +81,8 @@ static const string AppTag  = "";
 //// Variables
 ////
 
+bool Chess960;
+
 uint64_t dbg_cnt0 = 0;
 uint64_t dbg_cnt1 = 0;
 

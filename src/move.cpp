@@ -27,7 +27,6 @@
 #include "move.h"
 #include "piece.h"
 #include "position.h"
-#include "ucioption.h"
 
 
 ////

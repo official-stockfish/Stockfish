@@ -30,12 +30,13 @@
 #include "thread.h"
 #include "ucioption.h"
 
+using namespace std;
 
 ////
 //// Variables
 ////
 
-const std::string BenchmarkPositions[] = {
+const string BenchmarkPositions[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r4rk1/1b2qppp/p1n1p3/1p6/1b1PN3/3BRN2/PP3PPP/R2Q2K1 b - - 7 16",
   "4r1k1/ppq3pp/3b4/2pP4/2Q1p3/4B1P1/PP5P/R5K1 b - - 0 20",
@@ -67,25 +68,25 @@ const std::string BenchmarkPositions[] = {
 /// format (default are the BenchmarkPositions defined above).
 /// The analysis is written to a file named bench.txt.
 
-void benchmark(const std::string& commandLine) {
+void benchmark(const string& commandLine) {
 
-  std::istringstream csVal(commandLine);
-  std::istringstream csStr(commandLine);
-  std::string ttSize, threads, fileName, limitType;
+  istringstream csVal(commandLine);
+  istringstream csStr(commandLine);
+  string ttSize, threads, fileName, limitType;
   int val, secsPerPos, maxDepth, maxNodes;
 
   csStr >> ttSize;
   csVal >> val;
   if (val < 4 || val > 1024)
   {
-      std::cerr << "The hash table size must be between 4 and 1024" << std::endl;
+      cerr << "The hash table size must be between 4 and 1024" << endl;
       Application::exit_with_failure();
   }
   csStr >> threads;
   csVal >> val;
   if (val < 1 || val > THREAD_MAX)
   {
-      std::cerr << "The number of threads must be between 1 and " << THREAD_MAX << std::endl;
+      cerr << "The number of threads must be between 1 and " << THREAD_MAX << endl;
       Application::exit_with_failure();
   }
   set_option_value("Hash", ttSize);
@@ -107,30 +108,30 @@ void benchmark(const std::string& commandLine) {
   else
       maxNodes = val;
 
-  std::vector<std::string> positions;
+  vector<string> positions;
 
   if (fileName != "default")
   {
-      std::ifstream fenFile(fileName.c_str());
+      ifstream fenFile(fileName.c_str());
       if (!fenFile.is_open())
       {
-          std::cerr << "Unable to open positions file " << fileName << std::endl;
+          cerr << "Unable to open positions file " << fileName << endl;
           Application::exit_with_failure();
       }
-      std::string pos;
+      string pos;
       while (fenFile.good())
       {
-          std::getline(fenFile, pos);
+          getline(fenFile, pos);
           if (!pos.empty())
               positions.push_back(pos);
       }
       fenFile.close();
   } else
       for (int i = 0; i < 16; i++)
-          positions.push_back(std::string(BenchmarkPositions[i]));
+          positions.push_back(string(BenchmarkPositions[i]));
 
   int startTime = get_system_time();
-  std::vector<std::string>::iterator it;
+  vector<string>::iterator it;
   int cnt = 1;
   int64_t totalNodes = 0;
   for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
@@ -138,13 +139,12 @@ void benchmark(const std::string& commandLine) {
       Move moves[1] = {MOVE_NONE};
       int dummy[2] = {0, 0};
       Position pos(*it);
-      std::cout << "\nProcessing position " << cnt << '/' << positions.size() << std::endl << std::endl;
+      cout << "\nProcessing position " << cnt << '/' << positions.size() << endl << endl;
       if (!think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
           break;
       totalNodes += nodes_searched();
   }
-  std::cout << "\nProcessing time (ms) " << get_system_time() - startTime << std::endl
-            << "Nodes searched " << totalNodes << std::endl
-            << "Press any key to exit" << std::endl;
-  std::cin >> fileName;
+  cout << "\nProcessing time (ms) " << get_system_time() - startTime
+       << "\nNodes searched " << totalNodes << "\nPress any key to exit" << endl;
+  cin >> fileName;
 }

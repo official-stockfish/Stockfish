@@ -35,6 +35,8 @@
 #include "san.h"
 #include "ucioption.h"
 
+using std::string;
+
 
 ////
 //// Variables
@@ -63,7 +65,7 @@ Position::Position(const Position& pos) {
   copy(pos);
 }
 
-Position::Position(const std::string& fen) {
+Position::Position(const string& fen) {
   from_fen(fen);
 }
 
@@ -72,9 +74,9 @@ Position::Position(const std::string& fen) {
 /// string. This function is not very robust - make sure that input FENs are
 /// correct (this is assumed to be the responsibility of the GUI).
 
-void Position::from_fen(const std::string& fen) {
+void Position::from_fen(const string& fen) {
 
-  static const std::string pieceLetters = "KQRBNPkqrbnp";
+  static const string pieceLetters = "KQRBNPkqrbnp";
   static const Piece pieces[] = { WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP };
 
   clear();
@@ -98,7 +100,7 @@ void Position::from_fen(const std::string& fen) {
           continue;
       }
       size_t idx = pieceLetters.find(fen[i]);
-      if (idx == std::string::npos)
+      if (idx == string::npos)
       {
            std::cout << "Error in FEN at character " << i << std::endl;
            return;
@@ -219,10 +221,10 @@ void Position::from_fen(const std::string& fen) {
 /// Position::to_fen() converts the position object to a FEN string. This is
 /// probably only useful for debugging.
 
-const std::string Position::to_fen() const {
+const string Position::to_fen() const {
 
-  static const std::string pieceLetters = " PNBRQK  pnbrqk";
-  std::string fen;
+  static const string pieceLetters = " PNBRQK  pnbrqk";
+  string fen;
   int skip;
 
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
@@ -272,7 +274,7 @@ const std::string Position::to_fen() const {
 
 void Position::print(Move m) const {
 
-  static const std::string pieceLetters = " PNBRQK  PNBRQK .";
+  static const string pieceLetters = " PNBRQK  PNBRQK .";
 
   // Check for reentrancy, as example when called from inside
   // MovePicker that is used also here in move_to_san()
@@ -284,7 +286,7 @@ void Position::print(Move m) const {
   std::cout << std::endl;
   if (m != MOVE_NONE)
   {
-      std::string col = (color_of_piece_on(move_from(m)) == BLACK ? ".." : "");
+      string col = (color_of_piece_on(move_from(m)) == BLACK ? ".." : "");
       std::cout << "Move is: " << col << move_to_san(*this, m) << std::endl;
   }
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)

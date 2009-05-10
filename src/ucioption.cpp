@@ -33,13 +33,7 @@
 #include "thread.h"
 #include "ucioption.h"
 
-
-////
-//// Variables
-////
-
-bool Chess960;
-
+using std::string;
 
 ////
 //// Local definitions
@@ -53,11 +47,11 @@ namespace {
 
   enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON };
 
-  typedef std::vector<std::string> ComboValues;
+  typedef std::vector<string> ComboValues;
 
   struct Option {
 
-    std::string name, defaultValue, currentValue;
+    string name, defaultValue, currentValue;
     OptionType type;
     size_t idx;
     int minValue, maxValue;
@@ -71,7 +65,7 @@ namespace {
     bool operator<(const Option& o) const { return this->idx < o.idx; }
   };
 
-  typedef std::map<std::string, Option> Options;
+  typedef std::map<string, Option> Options;
 
   ///
   /// Constants
@@ -155,7 +149,7 @@ namespace {
 
   // stringify converts a value of type T to a std::string
   template<typename T>
-  std::string stringify(const T& v) {
+  string stringify(const T& v) {
 
      std::ostringstream ss;
      ss << v;
@@ -168,7 +162,7 @@ namespace {
   // type changes a template seems a proper solution.
 
   template<typename T>
-  T get_option_value(const std::string& optionName) {
+  T get_option_value(const string& optionName) {
 
       T ret = T();
       if (options.find(optionName) == options.end())
@@ -245,9 +239,7 @@ void print_uci_options() {
           std::cout << " default " << it->defaultValue;
 
       if (it->type == SPIN)
-          std::cout << " min " << it->minValue
-                    << " max " << it->maxValue;
-
+          std::cout << " min " << it->minValue << " max " << it->maxValue;
       else if (it->type == COMBO)
           for (ComboValues::const_iterator itc = it->comboValues.begin();
               itc != it->comboValues.end(); ++itc)
@@ -260,7 +252,7 @@ void print_uci_options() {
 /// get_option_value_bool() returns the current value of a UCI parameter of
 /// type "check".
 
-bool get_option_value_bool(const std::string& optionName) {
+bool get_option_value_bool(const string& optionName) {
 
   return get_option_value<bool>(optionName);
 }
@@ -271,7 +263,7 @@ bool get_option_value_bool(const std::string& optionName) {
 /// it could also be used with a "combo" parameter, where all the available
 /// values are integers.
 
-int get_option_value_int(const std::string& optionName) {
+int get_option_value_int(const string& optionName) {
 
   return get_option_value<int>(optionName);
 }
@@ -280,9 +272,9 @@ int get_option_value_int(const std::string& optionName) {
 /// get_option_value_string() returns the current value of a UCI parameter as
 /// a string. It is used with parameters of type "combo" and "string".
 
-const std::string get_option_value_string(const std::string& optionName) {
+string get_option_value_string(const string& optionName) {
 
-   return get_option_value<std::string>(optionName);
+   return get_option_value<string>(optionName);
 }
 
 
@@ -290,28 +282,27 @@ const std::string get_option_value_string(const std::string& optionName) {
 /// the function does not check that the new value is legal for the given
 /// parameter: This is assumed to be the responsibility of the GUI.
 
-void set_option_value(const std::string& optionName,
-                      const std::string& newValue) {
+void set_option_value(const string& name, const string& value) {
 
   // UCI protocol uses "true" and "false" instead of "1" and "0", so convert
-  // newValue according to standard C++ convention before to store it.
-  std::string v(newValue);
+  // value according to standard C++ convention before to store it.
+  string v(value);
   if (v == "true")
       v = "1";
   else if (v == "false")
       v = "0";
 
-  if (options.find(optionName) != options.end())
-      options[optionName].currentValue = v;
+  if (options.find(name) != options.end())
+      options[name].currentValue = v;
   else
-      std::cout << "No such option: " << optionName << std::endl;
+      std::cout << "No such option: " << name << std::endl;
 }
 
 
 /// push_button() is used to tell the engine that a UCI parameter of type
 /// "button" has been selected:
 
-void push_button(const std::string& buttonName) {
+void push_button(const string& buttonName) {
 
   set_option_value(buttonName, "true");
 }
@@ -321,7 +312,7 @@ void push_button(const std::string& buttonName) {
 /// been selected since the last time the function was called, in this case
 /// it also resets the button.
 
-bool button_was_pressed(const std::string& buttonName) {
+bool button_was_pressed(const string& buttonName) {
 
   if (!get_option_value<bool>(buttonName))
 	  return false;
