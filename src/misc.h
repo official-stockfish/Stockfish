@@ -30,6 +30,7 @@
 #include <string>
 
 #include "application.h"
+#include "types.h"
 
 ////
 //// Macros
@@ -56,8 +57,8 @@ extern int Bioskey();
 extern bool dbg_show_mean;
 extern bool dbg_show_hit_rate;
 
-extern long dbg_cnt0;
-extern long dbg_cnt1;
+extern uint64_t dbg_cnt0;
+extern uint64_t dbg_cnt1;
 
 extern void dbg_hit_on(bool b);
 extern void dbg_hit_on_c(bool c, bool b);
