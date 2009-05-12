@@ -302,7 +302,7 @@ union b_union {
     struct {
         uint32_t l;
         uint32_t h;
-    };
+    } dw;
 };
 
 // WARNING: Needs -fno-strict-aliasing compiler option
@@ -313,15 +313,15 @@ Square pop_1st_bit(Bitboard *bb) {
 
   u.b = *bb;
 
-  if (u.l)
+  if (u.dw.l)
   {
-      b = u.l;
+      b = u.dw.l;
       *((uint32_t*)bb) = b & (b - 1);
       b ^= (b - 1);
   }
   else
   {
-      b = u.h;
+      b = u.dw.h;
       *((uint32_t*)bb+1) = b & (b - 1); // Little endian only?
       b = ~(b ^ (b - 1));
   }
