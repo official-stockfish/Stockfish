@@ -264,7 +264,7 @@ void MovePicker::score_noncaptures() {
       else if (m == killer2)
           hs = HistoryMax + 1;
       else
-          hs = H.move_ordering_score(pos.piece_on(move_from(m)), m);
+          hs = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
 
       // Ensure history is always preferred to pst
       if (hs > 0)
@@ -287,7 +287,7 @@ void MovePicker::score_evasions() {
           int seeScore = pos.see(m);
           moves[i].score = (seeScore >= 0)? seeScore + HistoryMax : seeScore;
       } else
-          moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), m);
+          moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
   }
 }
 

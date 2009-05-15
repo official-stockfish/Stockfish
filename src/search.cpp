@@ -2332,7 +2332,7 @@ namespace {
       return false;
 
     // Case 4: Don't prune moves with good history.
-    if (!H.ok_to_prune(pos.piece_on(move_from(m)), m, d))
+    if (!H.ok_to_prune(pos.piece_on(mfrom), mto, d))
         return false;
 
     // Case 5: If the moving piece in the threatened move is a slider, don't
@@ -2379,13 +2379,13 @@ namespace {
   void update_history(const Position& pos, Move m, Depth depth,
                       Move movesSearched[], int moveCount) {
 
-    H.success(pos.piece_on(move_from(m)), m, depth);
+    H.success(pos.piece_on(move_from(m)), move_to(m), depth);
 
     for (int i = 0; i < moveCount - 1; i++)
     {
         assert(m != movesSearched[i]);
         if (ok_to_history(pos, movesSearched[i]))
-            H.failure(pos.piece_on(move_from(movesSearched[i])), movesSearched[i]);
+            H.failure(pos.piece_on(move_from(movesSearched[i])), move_to(movesSearched[i]));
     }
   }
 

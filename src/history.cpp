@@ -32,14 +32,13 @@
 //// Functions
 ////
 
+
 /// Constructor
 
-History::History() {
-  this->clear();
-}
+History::History() { clear(); }
 
 
-/// History::clear() clears the history tables.
+/// History::clear() clears the history tables
 
 void History::clear() {
   memset(history, 0, 2 * 8 * 64 * sizeof(int));
@@ -48,55 +47,59 @@ void History::clear() {
 }
 
 
-/// History::success() registers a move as being successful.  This is done
+/// History::success() registers a move as being successful. This is done
 /// whenever a non-capturing move causes a beta cutoff in the main search.
-/// The three parameters are the moving piece, the move itself, and the
-/// search depth.
+/// The three parameters are the moving piece, the destination square, and
+/// the search depth.
 
-void History::success(Piece p, Move m, Depth d) {
+void History::success(Piece p, Square to, Depth d) {
+
   assert(piece_is_ok(p));
-  assert(move_is_ok(m));
+  assert(square_is_ok(to));
 
-  history[p][move_to(m)] += int(d) * int(d);
-  successCount[p][move_to(m)]++;
+  history[p][to] += int(d) * int(d);
+  successCount[p][to]++;
 
-  // Prevent history overflow:
-  if(history[p][move_to(m)] >= HistoryMax)
-    for(int i = 0; i < 16; i++)
-      for(int j = 0; j < 64; j++)
-        history[i][j] /= 2;
+  // Prevent history overflow
+  if (history[p][to] >= HistoryMax)
+      for (int i = 0; i < 16; i++)
+          for (int j = 0; j < 64; j++)
+              history[i][j] /= 2;
 }
 
 
-/// History::failure() registers a move as being unsuccessful.  The function is
+/// History::failure() registers a move as being unsuccessful. The function is
 /// called for each non-capturing move which failed to produce a beta cutoff
 /// at a node where a beta cutoff was finally found.
 
-void History::failure(Piece p, Move m) {
-  assert(piece_is_ok(p));
-  assert(move_is_ok(m));
+void History::failure(Piece p, Square to) {
 
-  failureCount[p][move_to(m)]++;
+  assert(piece_is_ok(p));
+  assert(square_is_ok(to));
+
+  failureCount[p][to]++;
 }
 
 
 /// History::move_ordering_score() returns an integer value used to order the
 /// non-capturing moves in the MovePicker class.
 
-int History::move_ordering_score(Piece p, Move m) const {
-  assert(piece_is_ok(p));
-  assert(move_is_ok(m));
+int History::move_ordering_score(Piece p, Square to) const {
 
-  return history[p][move_to(m)];
+  assert(piece_is_ok(p));
+  assert(square_is_ok(to));
+
+  return history[p][to];
 }
 
 
 /// History::ok_to_prune() decides whether a move has been sufficiently
 /// unsuccessful that it makes sense to prune it entirely.
 
-bool History::ok_to_prune(Piece p, Move m, Depth d) const {
-  assert(piece_is_ok(p));
-  assert(move_is_ok(m));
+bool History::ok_to_prune(Piece p, Square to, Depth d) const {
 
-  return (int(d) * successCount[p][move_to(m)] < failureCount[p][move_to(m)]);
+  assert(piece_is_ok(p));
+  assert(square_is_ok(to));
+
+  return (int(d) * successCount[p][to] < failureCount[p][to]);
 }
