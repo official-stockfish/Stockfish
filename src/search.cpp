@@ -890,6 +890,10 @@ namespace {
 
         if (i < MultiPV)
         {
+            // Aspiration window is disabled in multi-pv case
+            if (MultiPV > 1)
+                alpha = -VALUE_INFINITE;
+
             value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
             // If the value has dropped a lot compared to the last iteration,
             // set the boolean variable Problem to true. This variable is used
