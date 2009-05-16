@@ -72,7 +72,8 @@ namespace {
   // Apart for the first one that has its score, following moves
   // normally have score -VALUE_INFINITE, so are ordered according
   // to the number of beta cutoffs occurred under their subtree during
-  // the last iteration.
+  // the last iteration. The counters are per thread variables to avoid
+  // concurrent accessing under SMP case.
 
   struct BetaCounterType {
 
@@ -80,8 +81,6 @@ namespace {
     void clear();
     void add(Color us, Depth d, int threadID);
     void read(Color us, int64_t& our, int64_t& their);
-
-    int64_t hits[THREAD_MAX][2];
   };
 
 
@@ -1894,13 +1893,13 @@ namespace {
   void BetaCounterType::clear() {
 
     for (int i = 0; i < THREAD_MAX; i++)
-        hits[i][WHITE] = hits[i][BLACK] = 0ULL;
+        Threads[i].betaCutOffs[WHITE] = Threads[i].betaCutOffs[BLACK] = 0ULL;
   }
 
   void BetaCounterType::add(Color us, Depth d, int threadID) {
 
     // Weighted count based on depth
-    hits[threadID][us] += int(d);
+    Threads[threadID].betaCutOffs[us] += unsigned(d);
   }
 
   void BetaCounterType::read(Color us, int64_t& our, int64_t& their) {
@@ -1908,8 +1907,8 @@ namespace {
     our = their = 0UL;
     for (int i = 0; i < THREAD_MAX; i++)
     {
-        our += hits[i][us];
-        their += hits[i][opposite_color(us)];
+        our += Threads[i].betaCutOffs[us];
+        their += Threads[i].betaCutOffs[opposite_color(us)];
     }
   }
 

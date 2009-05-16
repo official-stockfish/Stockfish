@@ -66,13 +66,14 @@ struct Thread {
   SplitPoint *splitPoint;
   int activeSplitPoints;
   uint64_t nodes;
+  uint64_t betaCutOffs[2];
   bool failHighPly1;
   volatile bool stop;
   volatile bool running;
   volatile bool idle;
   volatile bool workIsWaiting;
   volatile bool printCurrentLine;
-  unsigned char pad[64];
+  unsigned char pad[64]; // set some distance among local data for each thread
 };
 
 
