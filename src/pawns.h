@@ -53,12 +53,16 @@ public:
   int file_is_half_open(Color c, File f) const;
   int has_open_file_to_left(Color c, File f) const;
   int has_open_file_to_right(Color c, File f) const;
+  int kingShelter(Color c, Square ksq) const;
+  void setKingShelter(Color c, Square ksq, int value);
 
 private:
   void clear();
 
   Key key;
   Bitboard passedPawns;
+  Square kingSquares[2];
+  int16_t kingShelters[2];
   int16_t mgValue, egValue;
   int16_t ksStormValue[2], qsStormValue[2];
   uint8_t halfOpenFiles[2];
@@ -120,6 +124,15 @@ inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
   return halfOpenFiles[c] & ~((1 << int(f+1)) - 1);
 }
 
+inline int PawnInfo::kingShelter(Color c, Square ksq) const {
+  return (kingSquares[c] == ksq ?  kingShelters[c] : -1);
+}
+
+inline void PawnInfo::setKingShelter(Color c, Square ksq, int value) {
+  kingSquares[c] = ksq;
+  kingShelters[c] = (int16_t)value;
+}
+
 inline void PawnInfo::clear() {
 
   passedPawns = EmptyBoardBB;
@@ -127,6 +140,7 @@ inline void PawnInfo::clear() {
   ksStormValue[WHITE] = ksStormValue[BLACK] = 0;
   qsStormValue[WHITE] = qsStormValue[BLACK] = 0;
   halfOpenFiles[WHITE] = halfOpenFiles[BLACK] = 0xFF;
+  kingSquares[WHITE] = kingSquares[BLACK] = SQ_NONE;
 }
 
 

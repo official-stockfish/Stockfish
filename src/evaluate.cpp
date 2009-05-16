@@ -709,11 +709,19 @@ namespace {
     // King shelter
     if (relative_rank(us, s) <= RANK_4)
     {
-        Bitboard pawns = p.pawns(us) & this_and_neighboring_files_bb(s);
-        Rank r = square_rank(s);
-        for (int i = 1; i < 4; i++)
-            shelter += count_1s_8bit(shiftRowsDown(pawns, r+i*sign)) * (128>>i);
+        // Shelter cache lookup
+        shelter = ei.pi->kingShelter(us, s);
+        if (shelter == -1)
+        {
+            shelter = 0;
+            Bitboard pawns = p.pawns(us) & this_and_neighboring_files_bb(s);
+            Rank r = square_rank(s);
+            for (int i = 1; i < 4; i++)
+                shelter += count_1s_8bit(shiftRowsDown(pawns, r+i*sign)) * (128>>i);
 
+            // Cache shelter value in pawn info
+            ei.pi->setKingShelter(us, s, shelter);
+        }
         ei.mgValue += sign * Value(shelter);
     }
 
