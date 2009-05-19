@@ -283,8 +283,6 @@ namespace {
   inline Value apply_weight(Value v, int w);
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
 
-  int count_1s_8bit(Bitboard b);
-
   int compute_weight(int uciWeight, int internalWeight);
   int weight_option(const std::string& opt, int weight);
   void init_safety();
@@ -709,7 +707,7 @@ namespace {
             Bitboard pawns = p.pawns(us) & this_and_neighboring_files_bb(s);
             Rank r = square_rank(s);
             for (int i = 1; i < 4; i++)
-                shelter += count_1s_8bit(shiftRowsDown(pawns, r+i*sign)) * (128>>i);
+                shelter += BitCount8Bit[shiftRowsDown(pawns, r+i*sign) & 0xFF] * (128 >> i);
 
             // Cache shelter value in pawn info
             ei.pi->setKingShelter(us, s, shelter);
@@ -1163,15 +1161,6 @@ namespace {
 
     Value result = Value(int((mv * ph + ev * (128 - ph)) / 128));
     return Value(int(result) & ~(GrainSize - 1));
-  }
-
-
-  // count_1s_8bit() counts the number of nonzero bits in the 8 least
-  // significant bits of a Bitboard. This function is used by the king
-  // shield evaluation.
-
-  int count_1s_8bit(Bitboard b) {
-    return int(BitCount8Bit[b & 0xFF]);
   }
 
 
