@@ -44,14 +44,11 @@ namespace {
   // Evaluation grain size, must be a power of 2.
   const int GrainSize = 4;
 
-  // Evaluation weights
-  int WeightMobilityMidgame      = 0x100;
-  int WeightMobilityEndgame      = 0x100;
-  int WeightPawnStructureMidgame = 0x100;
-  int WeightPawnStructureEndgame = 0x100;
-  int WeightPassedPawnsMidgame   = 0x100;
-  int WeightPassedPawnsEndgame   = 0x100;
-  int WeightKingSafety[2] = { 0x100, 0x100 };
+  // Evaluation weights, initialized from UCI options
+  int WeightMobilityMidgame, WeightMobilityEndgame;
+  int WeightPawnStructureMidgame, WeightPawnStructureEndgame;
+  int WeightPassedPawnsMidgame, WeightPassedPawnsEndgame;
+  int WeightKingSafety[2];
   int WeightSpace;
 
   // Internal evaluation weights.  These are applied on top of the evaluation
@@ -232,19 +229,15 @@ namespace {
   const int BishopAttackWeight = 2;
   const int KnightAttackWeight = 2;
 
-  // Bonuses for safe checks for each piece type.
-  int QueenContactCheckBonus = 3;
-  int QueenCheckBonus        = 2;
-  int RookCheckBonus         = 1;
-  int BishopCheckBonus       = 1;
-  int KnightCheckBonus       = 1;
-  int DiscoveredCheckBonus   = 3;
+  // Bonuses for safe checks, initialized from UCI options
+  int QueenContactCheckBonus, DiscoveredCheckBonus;
+  int QueenCheckBonus, RookCheckBonus, BishopCheckBonus, KnightCheckBonus;
 
   // Scan for queen contact mates?
   const bool QueenContactMates = true;
 
-  // Bonus for having a mate threat.
-  int MateThreatBonus = 3;
+  // Bonus for having a mate threat, initialized from UCI options
+  int MateThreatBonus;
 
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
