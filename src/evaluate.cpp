@@ -39,9 +39,9 @@
 
 namespace {
 
-  const int Sign[2] = {1, -1};
+  const int Sign[2] = { 1, -1 };
 
-  // Evaluation grain size, must be a power of 2.
+  // Evaluation grain size, must be a power of 2
   const int GrainSize = 4;
 
   // Evaluation weights, initialized from UCI options
@@ -51,8 +51,8 @@ namespace {
   int WeightKingSafety[2];
   int WeightSpace;
 
-  // Internal evaluation weights.  These are applied on top of the evaluation
-  // weights read from UCI parameters.  The purpose is to be able to change
+  // Internal evaluation weights. These are applied on top of the evaluation
+  // weights read from UCI parameters. The purpose is to be able to change
   // the evaluation weights while keeping the default values of the UCI
   // parameters at 100, which looks prettier.
   //
@@ -83,7 +83,7 @@ namespace {
   };
 
   // Bishop mobility bonus in middle game and endgame, indexed by the number
-  // of attacked squares not occupied by friendly pieces.  X-ray attacks through
+  // of attacked squares not occupied by friendly pieces. X-ray attacks through
   // queens are also included.
   const Value MidgameBishopMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
@@ -100,7 +100,7 @@ namespace {
   };
 
   // Rook mobility bonus in middle game and endgame, indexed by the number
-  // of attacked squares not occupied by friendly pieces.  X-ray attacks through
+  // of attacked squares not occupied by friendly pieces. X-ray attacks through
   // queens and rooks are also included.
   const Value MidgameRookMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
@@ -175,38 +175,37 @@ namespace {
   const Value MidgameQueenOn7thBonus = Value(27);
   const Value EndgameQueenOn7thBonus = Value(54);
 
-
   // Rooks on open files
   const Value RookOpenFileBonus = Value(43);
   const Value RookHalfOpenFileBonus = Value(19);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
-  // right to castle:
+  // right to castle.
   const Value TrappedRookPenalty = Value(180);
 
   // Penalty for a bishop on a7/h7 (a2/h2 for black) which is trapped by
-  // enemy pawns:
+  // enemy pawns.
   const Value TrappedBishopA7H7Penalty = Value(300);
 
-  // Bitboard masks for detecting trapped bishops on a7/h7 (a2/h2 for black):
+  // Bitboard masks for detecting trapped bishops on a7/h7 (a2/h2 for black)
   const Bitboard MaskA7H7[2] = {
     ((1ULL << SQ_A7) | (1ULL << SQ_H7)),
     ((1ULL << SQ_A2) | (1ULL << SQ_H2))
   };
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
-  // a friendly pawn on b2/g2 (b7/g7 for black).  This can obviously only
+  // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
   // happen in Chess960 games.
   const Value TrappedBishopA1H1Penalty = Value(100);
 
-  // Bitboard masks for detecting trapped bishops on a1/h1 (a8/h8 for black):
+  // Bitboard masks for detecting trapped bishops on a1/h1 (a8/h8 for black)
   const Bitboard MaskA1H1[2] = {
     ((1ULL << SQ_A1) | (1ULL << SQ_H1)),
     ((1ULL << SQ_A8) | (1ULL << SQ_H8))
   };
 
   // The SpaceMask[color] contains area of the board which is consdered by
-  // the space evaluation.  In the middle game, each side is given a bonus
+  // the space evaluation. In the middle game, each side is given a bonus
   // based on how many squares inside this area are safe and available for
   // friendly minor pieces.
   const Bitboard SpaceMask[2] = {
@@ -218,12 +217,12 @@ namespace {
     (1ULL<<SQ_C5) | (1ULL<<SQ_D5) | (1ULL<<SQ_E5) | (1ULL<<SQ_F5)
   };
 
-  /// King safety constants and variables.  The king safety scores are taken
-  /// from the array SafetyTable[].  Various little "meta-bonuses" measuring
+  /// King safety constants and variables. The king safety scores are taken
+  /// from the array SafetyTable[]. Various little "meta-bonuses" measuring
   /// the strength of the attack are added up into an integer, which is used
   /// as an index to SafetyTable[].
 
-  // Attack weights for each piece type.
+  // Attack weights for each piece type
   const int QueenAttackWeight  = 5;
   const int RookAttackWeight   = 3;
   const int BishopAttackWeight = 2;
@@ -252,19 +251,19 @@ namespace {
     15, 15, 15, 15, 15, 15, 15, 15
   };
 
-  // SafetyTable[] contains the actual king safety scores.  It is initialized
+  // SafetyTable[] contains the actual king safety scores. It is initialized
   // in init_safety().
   Value SafetyTable[100];
 
   // Pawn and material hash tables, indexed by the current thread id
-  PawnInfoTable *PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  MaterialInfoTable *MaterialTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  PawnInfoTable* PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  MaterialInfoTable* MaterialTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   // Sizes of pawn and material hash tables
   const int PawnTableSize = 16384;
   const int MaterialTableSize = 1024;
 
-  // Array which gives the number of nonzero bits in an 8-bit integer:
+  // Array which gives the number of nonzero bits in an 8-bit integer
   uint8_t BitCount8Bit[256];
 
   // Function prototypes
