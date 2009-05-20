@@ -69,12 +69,8 @@ private:
 /// the effect that parts of the search tree which have been searched
 /// recently have a bigger importance for move ordering than the moves which
 /// have been searched a long time ago.
-///
-/// Note that HistoryMax should probably be changed whenever the constant
-/// OnePly in depth.h is changed. This is somewhat annoying. Perhaps it
-/// would be better to scale down the history table at regular intervals?
 
-const int HistoryMax = 50000;
+const int HistoryMax = 25000 * OnePly;
 
 
 #endif // !defined(HISTORY_H_INCLUDED)

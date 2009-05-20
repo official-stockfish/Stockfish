@@ -35,9 +35,6 @@ enum Depth {
 //// Constants
 ////
 
-/// Note: If OnePly is changed, the constant HistoryMax in history.h should
-/// probably also be changed.
-
 const Depth OnePly = Depth(2);
 
 
