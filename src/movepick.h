@@ -40,8 +40,8 @@ struct SearchStack;
 extern SearchStack EmptySearchStack;
 
 /// MovePicker is a class which is used to pick one legal move at a time from
-/// the current position.  It is initialized with a Position object and a few
-/// moves we have reason to believe are good.  The most important method is
+/// the current position. It is initialized with a Position object and a few
+/// moves we have reason to believe are good. The most important method is
 /// MovePicker::pick_next_move(), which returns a new legal move each time it
 /// is called, until there are no legal moves left, when MOVE_NONE is returned.
 /// In order to improve the efficiency of the alpha beta algorithm, MovePicker
@@ -49,7 +49,7 @@ extern SearchStack EmptySearchStack;
 
 class MovePicker {
 
-  MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
+  MovePicker& operator=(const MovePicker&); // silence a warning under MSVC
 
 public:
 
@@ -63,15 +63,14 @@ public:
     PH_NONCAPTURES,    // Non-captures and underpromotions
     PH_EVASIONS,       // Check evasions
     PH_QCAPTURES,      // Captures in quiescence search
-    PH_QCHECKS,        // Checks in quiescence search
+    PH_QCHECKS,        // Non-capture checks in quiescence search
     PH_STOP
   };
 
   MovePicker(const Position& p, bool pvnode, Move ttm, const SearchStack& ss, Depth d);
   Move get_next_move();
-  Move get_next_move(Lock &lock);
+  Move get_next_move(Lock& lock);
   int number_of_moves() const;
-  int current_move_score() const;
   Bitboard discovered_check_candidates() const;
 
   static void init_phase_table();
@@ -110,7 +109,7 @@ inline int MovePicker::number_of_moves() const {
 }
 
 /// MovePicker::discovered_check_candidates() returns a bitboard containing
-/// all pieces which can possibly give discovered check.  This bitboard is
+/// all pieces which can possibly give discovered check. This bitboard is
 /// computed by the constructor function.
 
 inline Bitboard MovePicker::discovered_check_candidates() const {

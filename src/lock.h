@@ -23,7 +23,7 @@
 
 
 // x86 assembly language locks or OS spin locks may perform faster than
-// mutex locks on some platforms.  On my machine, mutexes seem to be the
+// mutex locks on some platforms. On my machine, mutexes seem to be the
 // best.
 
 //#define ASM_LOCK

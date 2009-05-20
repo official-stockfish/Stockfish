@@ -33,9 +33,9 @@
 ////
 
 /// PawnInfo is a class which contains various information about a pawn
-/// structure.  Currently, it only includes a middle game and an end game
-/// pawn structure evaluation, and a bitboard of passed pawns.  We may want
-/// to add further information in the future.  A lookup to the pawn hash table
+/// structure. Currently, it only includes a middle game and an end game
+/// pawn structure evaluation, and a bitboard of passed pawns. We may want
+/// to add further information in the future. A lookup to the pawn hash table
 /// (performed by calling the get_pawn_info method in a PawnInfoTable object)
 /// returns a pointer to a PawnInfo object.
 class Position;

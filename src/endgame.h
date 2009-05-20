@@ -65,7 +65,7 @@ enum EndgameType {
 template<typename T>
 class EndgameFunctionBase {
 public:
-  EndgameFunctionBase(Color c) : strongerSide(c) { weakerSide = opposite_color(strongerSide); }
+  EndgameFunctionBase(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
   virtual ~EndgameFunctionBase() {}
   virtual T apply(const Position&) = 0;
 

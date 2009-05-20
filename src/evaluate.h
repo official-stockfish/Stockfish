@@ -39,7 +39,7 @@
 /// arguments to the evaluation function, and the search can make use of its
 /// contents to make intelligent search decisions.
 ///
-/// At the moment, this is not utilized very much:  The only part of the
+/// At the moment, this is not utilized very much: The only part of the
 /// EvalInfo object which is used by the search is futilityMargin.
 class Position;
 
@@ -53,16 +53,16 @@ struct EvalInfo {
   PawnInfo* pi;
 
   // attackedBy[color][piece type] is a bitboard representing all squares
-  // attacked by a given color and piece type.  attackedBy[color][0] contains
+  // attacked by a given color and piece type, attackedBy[color][0] contains
   // all squares attacked by the given color.
   Bitboard attackedBy[2][8];
   Bitboard attacked_by(Color c) const { return attackedBy[c][0]; }
   Bitboard attacked_by(Color c, PieceType pt) const { return attackedBy[c][pt]; }
 
   // kingZone[color] is the zone around the enemy king which is considered
-  // by the king safety evaluation.  This consists of the squares directly
+  // by the king safety evaluation. This consists of the squares directly
   // adjacent to the king, and the three (or two, for a king on an edge file)
-  // squares two ranks in front of the king.  For instance, if black's king
+  // squares two ranks in front of the king. For instance, if black's king
   // is on g8, kingZone[WHITE] is a bitboard containing the squares f8, h8,
   // f7, g7, h7, f6, g6 and h6.
   Bitboard kingZone[2];
@@ -91,7 +91,7 @@ struct EvalInfo {
   // Middle game and endgame mobility scores.
   Value mgMobility, egMobility;
 
-  // Extra futility margin.  This is added to the standard futility margin
+  // Extra futility margin. This is added to the standard futility margin
   // in the quiescence search.
   Value futilityMargin;
 };
