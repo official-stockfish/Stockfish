@@ -38,6 +38,7 @@
 #include "uci.h"
 #include "ucioption.h"
 
+using namespace std;
 
 ////
 //// Local definitions:
@@ -45,18 +46,18 @@
 
 namespace {
 
-  // UCIInputParser is a class for parsing UCI input.  The class
+  // UCIInputParser is a class for parsing UCI input. The class
   // is actually a string stream built on a given input string.
 
-  typedef std::istringstream UCIInputParser;
+  typedef istringstream UCIInputParser;
 
-  // The root position.  This is set up when the user (or in practice, the GUI)
-  // sends the "position" UCI command.  The root position is sent to the think()
+  // The root position. This is set up when the user (or in practice, the GUI)
+  // sends the "position" UCI command. The root position is sent to the think()
   // function when the program receives the "go" command.
   Position RootPosition;
 
   // Local functions
-  bool handle_command(const std::string& command);
+  bool handle_command(const string& command);
   void set_option(UCIInputParser& uip);
   void set_position(UCIInputParser& uip);
   bool go(UCIInputParser& uip);
@@ -78,11 +79,11 @@ namespace {
 void uci_main_loop() {
 
   RootPosition.from_fen(StartPosition);
-  std::string command;
+  string command;
 
   do {
       // Wait for a command from stdin
-      if (!std::getline(std::cin, command))
+      if (!getline(cin, command))
           command = "quit";
 
   } while (handle_command(command));
@@ -100,12 +101,12 @@ namespace {
   // and calls the appropriate functions. In addition to the UCI
   // commands, the function also supports a few debug commands.
 
-  bool handle_command(const std::string& command) {
+  bool handle_command(const string& command) {
 
     UCIInputParser uip(command);
-    std::string token;
+    string token;
 
-    uip >> token; // operator >> skips any whitespace
+    uip >> token; // operator>>() skips any whitespace
 
     if (token == "quit")
         return false;
@@ -115,11 +116,10 @@ namespace {
 
     if (token == "uci")
     {
-        std::cout << "id name " << engine_name() << std::endl
-                  << "id author Tord Romstad, Marco Costalba"
-                  << std::endl;
+        cout << "id name " << engine_name()
+             << "\nid author Tord Romstad, Marco Costalba\n";
         print_uci_options();
-        std::cout << "uciok" << std::endl;
+        cout << "uciok" << endl;
     }
     else if (token == "ucinewgame")
     {
@@ -128,7 +128,7 @@ namespace {
         RootPosition.from_fen(StartPosition);
     }
     else if (token == "isready")
-        std::cout << "readyok" << std::endl;
+        cout << "readyok" << endl;
     else if (token == "position")
         set_position(uip);
     else if (token == "setoption")
@@ -147,28 +147,21 @@ namespace {
     else if (token == "eval")
     {
         EvalInfo ei;
-        std::cout << "Incremental mg: " << RootPosition.mg_value()
-                  << std::endl;
-        std::cout << "Incremental eg: " << RootPosition.eg_value()
-                  << std::endl;
-        std::cout << "Full eval: "
-                  << evaluate(RootPosition, ei, 0)
-                  << std::endl;
+        cout << "Incremental mg: " << RootPosition.mg_value()
+             << "\nIncremental eg: " << RootPosition.eg_value()
+             << "\nFull eval: " << evaluate(RootPosition, ei, 0) << endl;
     }
     else if (token == "key")
-    {
-        std::cout << "key: " << std::hex << RootPosition.get_key()
-                  << " material key: " << RootPosition.get_material_key()
-                  << " pawn key: " << RootPosition.get_pawn_key()
-                  << std::endl;
-    }
+        cout << "key: " << hex << RootPosition.get_key()
+             << "\nmaterial key: " << RootPosition.get_material_key()
+             << "\npawn key: " << RootPosition.get_pawn_key() << endl;
     else
     {
-        std::cout << "Unknown command: " << command << std::endl;
+        cout << "Unknown command: " << command << endl;
         while (!uip.eof())
         {
             uip >> token;
-            std::cout << token << std::endl;
+            cout << token << endl;
         }
     }
     return true;
@@ -176,27 +169,27 @@ namespace {
 
 
   // set_position() is called when Stockfish receives the "position" UCI
-  // command.  The input parameter is a UCIInputParser.  It is assumed
+  // command. The input parameter is a UCIInputParser. It is assumed
   // that this parser has consumed the first token of the UCI command
   // ("position"), and is ready to read the second token ("startpos"
   // or "fen", if the input is well-formed).
 
   void set_position(UCIInputParser& uip) {
 
-    std::string token;
+    string token;
 
-    uip >> token; // operator >> skips any whitespace
+    uip >> token; // operator>>() skips any whitespace
 
     if (token == "startpos")
         RootPosition.from_fen(StartPosition);
     else if (token == "fen")
     {
-        std::string fen;
+        string fen;
         while (token != "moves" && !uip.eof())
         {
-          uip >> token;
-          fen += token;
-          fen += ' ';
+            uip >> token;
+            fen += token;
+            fen += ' ';
         }
         RootPosition.from_fen(fen);
     }
@@ -226,14 +219,14 @@ namespace {
 
 
   // set_option() is called when Stockfish receives the "setoption" UCI
-  // command.  The input parameter is a UCIInputParser.  It is assumed
+  // command. The input parameter is a UCIInputParser. It is assumed
   // that this parser has consumed the first token of the UCI command
   // ("setoption"), and is ready to read the second token ("name", if
   // the input is well-formed).
 
   void set_option(UCIInputParser& uip) {
 
-    std::string token, name;
+    string token, name;
 
     uip >> token;
     if (token == "name")
@@ -249,7 +242,7 @@ namespace {
         }
         if (token == "value")
         {
-            std::getline(uip, token); // reads until end of line
+            getline(uip, token); // reads until end of line
             set_option_value(name, token);
         } else
             push_button(name);
@@ -257,7 +250,7 @@ namespace {
   }
 
 
-  // go() is called when Stockfish receives the "go" UCI command.  The
+  // go() is called when Stockfish receives the "go" UCI command. The
   // input parameter is a UCIInputParser. It is assumed that this
   // parser has consumed the first token of the UCI command ("go"),
   // and is ready to read the second token. The function sets the
@@ -268,7 +261,7 @@ namespace {
 
   bool go(UCIInputParser& uip) {
 
-    std::string token;
+    string token;
 
     int time[2] = {0, 0}, inc[2] = {0, 0};
     int movesToGo = 0, depth = 0, nodes = 0, moveTime = 0;
@@ -318,7 +311,8 @@ namespace {
 
     assert(RootPosition.is_ok());
 
-    return think(RootPosition, infinite, ponder, RootPosition.side_to_move(), time,
-                 inc, movesToGo, depth, nodes, moveTime, searchMoves);
+    return think(RootPosition, infinite, ponder, RootPosition.side_to_move(),
+                 time, inc, movesToGo, depth, nodes, moveTime, searchMoves);
   }
+
 }
