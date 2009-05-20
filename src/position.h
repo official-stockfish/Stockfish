@@ -21,7 +21,7 @@
 #if !defined(POSITION_H_INCLUDED)
 #define POSITION_H_INCLUDED
 
-// Disable a silly and noisy warning from MSVC compiler
+// Disable some silly and noisy warning from MSVC compiler
 #if defined(_MSC_VER)
 
 // Forcing value to bool 'true' or 'false' (performance warning)
@@ -50,13 +50,12 @@
 //// Constants
 ////
 
-/// FEN string for the initial position:
-const std::string StartPosition =
-  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+/// FEN string for the initial position
+const std::string StartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /// Maximum number of plies per game (220 should be enough, because the
 /// maximum search depth is 100, and during position setup we reset the
-/// move counter for every non-reversible move):
+/// move counter for every non-reversible move).
 const int MaxGameLength = 220;
 
 
@@ -67,11 +66,11 @@ const int MaxGameLength = 220;
 /// Castle rights, encoded as bit fields
 
 enum CastleRights {
-  NO_CASTLES = 0,
-  WHITE_OO = 1,
-  BLACK_OO = 2,
-  WHITE_OOO = 4,
-  BLACK_OOO = 8,
+  NO_CASTLES  = 0,
+  WHITE_OO    = 1,
+  BLACK_OO    = 2,
+  WHITE_OOO   = 4,
+  BLACK_OOO   = 8,
   ALL_CASTLES = 15
 };
 
@@ -95,31 +94,29 @@ struct StateInfo {
 
   PieceType capture;
   Bitboard checkersBB;
-  Move lastMove;
   StateInfo* previous;
 };
 
 
-/// The position data structure.  A position consists of the following data:
+/// The position data structure. A position consists of the following data:
 ///
 ///    * For each piece type, a bitboard representing the squares occupied
 ///      by pieces of that type.
-///    * For each color, a bitboard representing the squares occupiecd by
+///    * For each color, a bitboard representing the squares occupied by
 ///      pieces of that color.
 ///    * A bitboard of all occupied squares.
 ///    * A bitboard of all checking pieces.
 ///    * A 64-entry array of pieces, indexed by the squares of the board.
 ///    * The current side to move.
 ///    * Information about the castling rights for both sides.
-///    * The initial files of the kings and both pairs of rooks.  This is
+///    * The initial files of the kings and both pairs of rooks. This is
 ///      used to implement the Chess960 castling rules.
 ///    * The en passant square (which is SQ_NONE if no en passant capture is
 ///      possible).
 ///    * The squares of the kings for both sides.
-///    * The last move played.
 ///    * Hash keys for the position itself, the current pawn structure, and
 ///      the current material situation.
-///    * Hash keys for all previous positions in the game (for detecting
+///    * Hash keys for all previous positions in the game for detecting
 ///      repetition draws.
 ///    * A counter for detecting 50 move rule draws.
 
