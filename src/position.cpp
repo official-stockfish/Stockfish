@@ -1080,21 +1080,17 @@ void Position::do_ep_move(Move m) {
   assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
   assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
-  // Remove captured piece
+  // Remove captured pawn
   clear_bit(&(byColorBB[them]), capsq);
   clear_bit(&(byTypeBB[PAWN]), capsq);
   clear_bit(&(byTypeBB[0]), capsq); // HACK: byTypeBB[0] == occupied squares
   board[capsq] = EMPTY;
 
-  // Remove moving piece from source square
-  clear_bit(&(byColorBB[us]), from);
-  clear_bit(&(byTypeBB[PAWN]), from);
-  clear_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
-
-  // Put moving piece on destination square
-  set_bit(&(byColorBB[us]), to);
-  set_bit(&(byTypeBB[PAWN]), to);
-  set_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
+  // Move capturing pawn
+  Bitboard move_bb = make_move_bb(from, to);
+  do_move_bb(&(byColorBB[us]), move_bb);
+  do_move_bb(&(byTypeBB[PAWN]), move_bb);
+  do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
   board[to] = board[from];
   board[from] = EMPTY;
 
@@ -1371,22 +1367,18 @@ void Position::undo_ep_move(Move m) {
   assert(piece_on(from) == EMPTY);
   assert(piece_on(capsq) == EMPTY);
 
-  // Replace captured piece
+  // Restore captured pawn
   set_bit(&(byColorBB[them]), capsq);
   set_bit(&(byTypeBB[PAWN]), capsq);
   set_bit(&(byTypeBB[0]), capsq);
   board[capsq] = piece_of_color_and_type(them, PAWN);
 
-  // Remove moving piece from destination square
-  clear_bit(&(byColorBB[us]), to);
-  clear_bit(&(byTypeBB[PAWN]), to);
-  clear_bit(&(byTypeBB[0]), to);
+  // Move capturing pawn back to source square
+  Bitboard move_bb = make_move_bb(to, from);
+  do_move_bb(&(byColorBB[us]), move_bb);
+  do_move_bb(&(byTypeBB[PAWN]), move_bb);
+  do_move_bb(&(byTypeBB[0]), move_bb);
   board[to] = EMPTY;
-
-  // Replace moving piece at source square
-  set_bit(&(byColorBB[us]), from);
-  set_bit(&(byTypeBB[PAWN]), from);
-  set_bit(&(byTypeBB[0]), from);
   board[from] = piece_of_color_and_type(us, PAWN);
 
   // Update piece list
