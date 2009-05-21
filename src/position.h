@@ -494,10 +494,6 @@ inline Bitboard Position::bishops_and_queens(Color c) const {
   return bishops_and_queens() & pieces_of_color(c);
 }
 
-inline Bitboard Position::sliders_of_color(Color c) const {
-  return sliders() & pieces_of_color(c);
-}
-
 inline int Position::piece_count(Color c, PieceType pt) const {
   return pieceCount[c][pt];
 }
@@ -538,14 +534,14 @@ inline Bitboard Position::pawn_attacks(Color c, Square s) const {
   return StepAttackBB[piece_of_color_and_type(c, PAWN)][s];
 }
 
-template<>
-inline Bitboard Position::piece_attacks<PAWN>(Square s) const {
-  return StepAttackBB[piece_of_color_and_type(opposite_color(sideToMove), PAWN)][s];
+template<PieceType Piece> // Knight and King
+inline Bitboard Position::piece_attacks(Square s) const {
+  return StepAttackBB[Piece][s];
 }
 
 template<>
-inline Bitboard Position::piece_attacks<KNIGHT>(Square s) const {
-  return StepAttackBB[KNIGHT][s];
+inline Bitboard Position::piece_attacks<PAWN>(Square s) const {
+  return StepAttackBB[piece_of_color_and_type(opposite_color(sideToMove), PAWN)][s];
 }
 
 template<>
@@ -561,11 +557,6 @@ inline Bitboard Position::piece_attacks<ROOK>(Square s) const {
 template<>
 inline Bitboard Position::piece_attacks<QUEEN>(Square s) const {
   return piece_attacks<ROOK>(s) | piece_attacks<BISHOP>(s);
-}
-
-template<>
-inline Bitboard Position::piece_attacks<KING>(Square s) const {
-  return StepAttackBB[KING][s];
 }
 
 inline Bitboard Position::checkers() const {
