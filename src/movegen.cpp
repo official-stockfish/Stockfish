@@ -24,6 +24,7 @@
 
 #include <cassert>
 
+#include "bitcount.h"
 #include "movegen.h"
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,
@@ -333,7 +334,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
           // The checking pawn cannot be a discovered (bishop) check candidate
           // otherwise we were in check also before last double push move.
           assert(!bit_is_set(pos.discovered_check_candidates(them), checksq));
-          assert(count_1s(b1) == 1 || count_1s(b1) == 2);
+          assert(count_1s<false>(b1) == 1 || count_1s<false>(b1) == 2);
 
           b1 &= ~pinned;
           while (b1)

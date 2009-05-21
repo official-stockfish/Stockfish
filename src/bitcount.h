@@ -48,7 +48,7 @@
 
 // Select type of intrinsic bit count instruction to use
 
-#if defined(_MSC_VER) // Microsoft compiler
+#if defined(_MSC_VER) && defined(_WIN64) // Microsoft compiler
 
 #include <intrin.h>
 

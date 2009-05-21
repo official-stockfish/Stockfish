@@ -18,7 +18,7 @@
 */
 
 // To profile with callgrind uncomment following line
-#define USE_CALLGRIND
+//#define USE_CALLGRIND
 
 
 ////
