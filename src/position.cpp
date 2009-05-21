@@ -27,6 +27,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "bitcount.h"
 #include "mersenne.h"
 #include "movegen.h"
 #include "movepick.h"
@@ -2090,7 +2091,7 @@ bool Position::is_ok(int* failedStep) const {
 
   // Is there more than 2 checkers?
   if (failedStep) (*failedStep)++;
-  if (debugCheckerCount && count_1s(st->checkersBB) > 2)
+  if (debugCheckerCount && count_1s<false>(st->checkersBB) > 2)
       return false;
 
   // Bitboards OK?
@@ -2165,7 +2166,7 @@ bool Position::is_ok(int* failedStep) const {
   if (debugPieceCounts)
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
-              if (pieceCount[c][pt] != count_1s(pieces_of_color_and_type(c, pt)))
+              if (pieceCount[c][pt] != count_1s<false>(pieces_of_color_and_type(c, pt)))
                   return false;
 
   if (failedStep) (*failedStep)++;
