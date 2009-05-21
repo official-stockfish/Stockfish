@@ -1413,11 +1413,13 @@ void Position::do_null_move(StateInfo& backupSt) {
   assert(!is_check());
 
   // Back up the information necessary to undo the null move to the supplied
-  // StateInfo object. In the case of a null move, the only thing we need to
-  // remember is the en passant square.
+  // StateInfo object.
   // Note that differently from normal case here backupSt is actually used as
   // a backup storage not as a new state to be used.
   backupSt.epSquare = st->epSquare;
+  backupSt.key = st->key;
+  backupSt.mgValue = st->mgValue;
+  backupSt.egValue = st->egValue;
   backupSt.previous = st->previous;
   st->previous = &backupSt;
 
@@ -1451,19 +1453,15 @@ void Position::undo_null_move() {
 
   // Restore information from the our backup StateInfo object
   st->epSquare = st->previous->epSquare;
+  st->key = st->previous->key;
+  st->mgValue = st->previous->mgValue;
+  st->egValue = st->previous->egValue;
   st->previous = st->previous->previous;
-
-  if (st->epSquare != SQ_NONE)
-      st->key ^= zobEp[st->epSquare];
 
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
   st->rule50--;
   gamePly--;
-  st->key ^= zobSideToMove;
-
-  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 
   assert(is_ok());
 }
