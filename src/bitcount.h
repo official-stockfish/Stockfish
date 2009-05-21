@@ -159,4 +159,9 @@ inline int count_1s_max_15(Bitboard b) {
 }
 
 
+// Global variable initialized at startup that is set to true if
+// CPU on which application runs support POPCNT intrinsic.
+
+const bool CpuHasPOPCNT = cpu_has_popcnt();
+
 #endif // !defined(BITCOUNT_H_INCLUDED)

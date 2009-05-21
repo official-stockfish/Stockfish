@@ -268,11 +268,14 @@ namespace {
   uint8_t BitCount8Bit[256];
 
   // Function prototypes
-  template<PieceType Piece>
+  template<bool HasPopCnt>
+  Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID);
+
+  template<PieceType Piece, bool HasPopCnt>
   void evaluate_pieces(const Position& p, Color us, EvalInfo& ei);
 
   template<>
-  void evaluate_pieces<KING>(const Position& p, Color us, EvalInfo &ei);
+  void evaluate_pieces<KING, false>(const Position& p, Color us, EvalInfo &ei);
 
   void evaluate_passed_pawns(const Position &pos, EvalInfo &ei);
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
@@ -295,11 +298,19 @@ namespace {
 //// Functions
 ////
 
-/// evaluate() is the main evaluation function.  It always computes two
+/// evaluate() is the main evaluation function. It always computes two
 /// values, an endgame score and a middle game score, and interpolates
 /// between them based on the remaining material.
+Value evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
-Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
+    return CpuHasPOPCNT ? do_evaluate<true>(pos, ei, threadID)
+                        : do_evaluate<false>(pos, ei, threadID);
+}
+
+namespace {
+
+template<bool HasPopCnt>
+Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   assert(pos.is_ok());
   assert(threadID >= 0 && threadID < THREAD_MAX);
@@ -346,10 +357,10 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   // Evaluate pieces
   for (Color c = WHITE; c <= BLACK; c++)
   {
-      evaluate_pieces<KNIGHT>(pos, c, ei);
-      evaluate_pieces<BISHOP>(pos, c, ei);
-      evaluate_pieces<ROOK>(pos, c, ei);
-      evaluate_pieces<QUEEN>(pos, c, ei);
+      evaluate_pieces<KNIGHT, HasPopCnt>(pos, c, ei);
+      evaluate_pieces<BISHOP, HasPopCnt>(pos, c, ei);
+      evaluate_pieces<ROOK,   HasPopCnt>(pos, c, ei);
+      evaluate_pieces<QUEEN,  HasPopCnt>(pos, c, ei);
 
       // Sum up all attacked squares
       ei.attackedBy[c][0] =   ei.attackedBy[c][PAWN]   | ei.attackedBy[c][KNIGHT]
@@ -361,7 +372,7 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   // because we need complete attack information for all pieces when computing
   // the king safety evaluation.
   for (Color c = WHITE; c <= BLACK; c++)
-      evaluate_pieces<KING>(pos, c, ei);
+      evaluate_pieces<KING, false>(pos, c, ei);
 
   // Evaluate passed pawns.  We evaluate passed pawns for both sides at once,
   // because we need to know which side promotes first in positions where
@@ -437,6 +448,7 @@ Value evaluate(const Position &pos, EvalInfo &ei, int threadID) {
   return (ei.mateThreat[stm] == MOVE_NONE ? v : 8 * QueenValueMidgame - v);
 }
 
+} // namespace
 
 /// quick_evaluate() does a very approximate evaluation of the current position.
 /// It currently considers only material and piece square table scores.  Perhaps
@@ -528,7 +540,7 @@ namespace {
 
   // evaluate_common() computes terms common to all pieces attack
 
-  template<PieceType Piece>
+  template<PieceType Piece, bool HasPopCnt>
   int evaluate_common(const Position& p, const Bitboard& b, Color us, EvalInfo& ei, Square s = SQ_NONE) {
 
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
@@ -548,15 +560,15 @@ namespace {
         ei.kingAttackersWeight[us] += AttackWeight[Piece];
         Bitboard bb = (b & ei.attackedBy[them][KING]);
         if (bb)
-            ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15<false>(bb);
+            ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15<HasPopCnt>(bb);
     }
 
     // Remove squares protected by enemy pawns
     Bitboard bb = (b & ~ei.attackedBy[them][PAWN]);
 
     // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<false>(bb & ~p.pieces_of_color(us))
-                              : count_1s<false>(bb & ~p.pieces_of_color(us)));
+    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(bb & ~p.pieces_of_color(us))
+                              : count_1s<HasPopCnt>(bb & ~p.pieces_of_color(us)));
 
     ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
     ei.egMobility += Sign[us] * EgBonus[Piece][mob];
@@ -588,7 +600,7 @@ namespace {
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given
   // color.
 
-  template<PieceType Piece>
+  template<PieceType Piece, bool HasPopCnt>
   void evaluate_pieces(const Position& pos, Color us, EvalInfo& ei) {
 
     Bitboard b;
@@ -609,7 +621,7 @@ namespace {
             b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.rooks_and_queens(us));
 
         // Attacks, mobility and outposts
-        mob = evaluate_common<Piece>(pos, b, us, ei, s);
+        mob = evaluate_common<Piece, HasPopCnt>(pos, b, us, ei, s);
 
         // Special patterns: trapped bishops on a7/h7/a2/h2
         // and trapped bishops on a1/h1/a8/h8 in Chess960.
@@ -692,7 +704,7 @@ namespace {
   // color.
 
   template<>
-  void evaluate_pieces<KING>(const Position& p, Color us, EvalInfo& ei) {
+  void evaluate_pieces<KING, false>(const Position& p, Color us, EvalInfo& ei) {
 
     int shelter = 0, sign = Sign[us];
     Square s = p.king_square(us);
