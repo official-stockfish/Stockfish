@@ -29,6 +29,7 @@
 #include <string>
 
 #include "benchmark.h"
+#include "bitcount.h"
 #include "misc.h"
 #include "uci.h"
 
@@ -76,6 +77,9 @@ int main(int argc, char *argv[]) {
   // Print copyright notice
   cout << engine_name() << ".  Copyright (C) "
        << "2004-2009 Tord Romstad, Marco Costalba. " << endl;
+
+  // FIXME ONLY FOR DEBUG, REMOVE BEFORE RELEASE
+  cout << "Support for POPCNT is " << CpuHasPOPCNT << endl;
 
   // Enter UCI mode
   uci_main_loop();
