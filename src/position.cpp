@@ -213,8 +213,8 @@ void Position::from_fen(const string& fen) {
   st->materialKey = compute_material_key();
   st->mgValue = compute_value<MidGame>();
   st->egValue = compute_value<EndGame>();
-  npMaterial[WHITE] = compute_non_pawn_material(WHITE);
-  npMaterial[BLACK] = compute_non_pawn_material(BLACK);
+  st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
+  st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
 
 
@@ -377,9 +377,7 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 }
 
 /// Position::attacks_to() computes a bitboard containing all pieces which
-/// attacks a given square. There are two versions of this function: One
-/// which finds attackers of both colors, and one which only finds the
-/// attackers for one side.
+/// attacks a given square.
 
 Bitboard Position::attacks_to(Square s) const {
 
@@ -658,6 +656,7 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
   const bool Rook   = (Piece == QUEEN || Piece == ROOK);
   const bool Slider = Bishop || Rook;
 
+  // Direct checks
   if (  (   (Bishop && bit_is_set(BishopPseudoAttacks[ksq], to))
          || (Rook   && bit_is_set(RookPseudoAttacks[ksq], to)))
       && bit_is_set(piece_attacks<Piece>(ksq), to)) // slow, try to early skip
@@ -668,6 +667,7 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
            && bit_is_set(piece_attacks<Piece>(ksq), to))
       set_bit(pCheckersBB, to);
 
+  // Discovery checks
   if (Piece != QUEEN && bit_is_set(dcCandidates, from))
   {
       if (Piece != ROOK)
@@ -701,6 +701,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     int castleRights, rule50;
     Square epSquare;
     Value mgValue, egValue;
+    Value npMaterial[2];
   };
 
   memcpy(&newSt, st, sizeof(ReducedStateInfo));
@@ -851,7 +852,7 @@ void Position::do_capture_move(PieceType capture, Color them, Square to) {
 
     // Update material
     if (capture != PAWN)
-        npMaterial[them] -= piece_value_midgame(capture);
+        st->npMaterial[them] -= piece_value_midgame(capture);
 
     // Update material hash key
     st->materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
@@ -990,7 +991,7 @@ void Position::do_promotion_move(Move m) {
   st->capture = type_of_piece_on(to);
 
   if (st->capture)
-    do_capture_move(st->capture, them, to);
+      do_capture_move(st->capture, them, to);
 
   // Remove pawn
   clear_bit(&(byColorBB[us]), from);
@@ -1033,7 +1034,7 @@ void Position::do_promotion_move(Move m) {
   st->egValue += pst<EndGame>(us, promotion, to);
 
   // Update material
-  npMaterial[us] += piece_value_midgame(promotion);
+  st->npMaterial[us] += piece_value_midgame(promotion);
 
   // Clear the en passant square
   if (st->epSquare != SQ_NONE)
@@ -1198,10 +1199,6 @@ void Position::undo_move(Move m) {
           set_bit(&(byTypeBB[0]), to);
           board[to] = piece_of_color_and_type(them, st->capture);
 
-          // Update material
-          if (st->capture != PAWN)
-              npMaterial[them] += piece_value_midgame(st->capture);
-
           // Update piece list
           pieceList[them][st->capture][pieceCount[them][st->capture]] = to;
           index[to] = pieceCount[them][st->capture];
@@ -1323,9 +1320,6 @@ void Position::undo_promotion_move(Move m) {
   set_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
   board[from] = piece_of_color_and_type(us, PAWN);
 
-  // Update material
-  npMaterial[us] -= piece_value_midgame(promotion);
-
   // Update piece list
   pieceList[us][PAWN][pieceCount[us][PAWN]] = from;
   index[from] = pieceCount[us][PAWN];
@@ -1346,11 +1340,6 @@ void Position::undo_promotion_move(Move m) {
       set_bit(&(byTypeBB[st->capture]), to);
       set_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
       board[to] = piece_of_color_and_type(them, st->capture);
-
-      // Update material. Because the move is a promotion move, we know
-      // that the captured piece cannot be a pawn.
-      assert(st->capture != PAWN);
-      npMaterial[them] += piece_value_midgame(st->capture);
 
       // Update piece list
       pieceList[them][st->capture][pieceCount[them][st->capture]] = to;
@@ -1404,13 +1393,13 @@ void Position::undo_ep_move(Move m) {
   set_bit(&(byTypeBB[0]), from);
   board[from] = piece_of_color_and_type(us, PAWN);
 
-  // Update piece list:
+  // Update piece list
   pieceList[us][PAWN][index[to]] = from;
   index[from] = index[to];
   pieceList[them][PAWN][pieceCount[them][PAWN]] = capsq;
   index[capsq] = pieceCount[them][PAWN];
 
-  // Update piece count:
+  // Update piece count
   pieceCount[them][PAWN]++;
 }
 
@@ -2041,8 +2030,8 @@ void Position::flipped_copy(const Position &pos) {
   st->egValue = compute_value<EndGame>();
 
   // Material
-  npMaterial[WHITE] = compute_non_pawn_material(WHITE);
-  npMaterial[BLACK] = compute_non_pawn_material(BLACK);
+  st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
+  st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 
   assert(is_ok());
 }
@@ -2178,10 +2167,10 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugNonPawnMaterial)
   {
-      if (npMaterial[WHITE] != compute_non_pawn_material(WHITE))
+      if (st->npMaterial[WHITE] != compute_non_pawn_material(WHITE))
           return false;
 
-      if (npMaterial[BLACK] != compute_non_pawn_material(BLACK))
+      if (st->npMaterial[BLACK] != compute_non_pawn_material(BLACK))
           return false;
   }
 

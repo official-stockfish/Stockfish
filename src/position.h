@@ -91,6 +91,7 @@ struct StateInfo {
   int castleRights, rule50;
   Square epSquare;
   Value mgValue, egValue;
+  Value npMaterial[2];
 
   PieceType capture;
   Bitboard checkersBB;
@@ -353,7 +354,6 @@ private:
   Color sideToMove;
   int gamePly;
   Key history[MaxGameLength];
-  Value npMaterial[2];
   File initialKFile, initialKRFile, initialQRFile;
   StateInfo startState;
   StateInfo* st;
@@ -651,7 +651,7 @@ inline Value Position::eg_value() const {
 }
 
 inline Value Position::non_pawn_material(Color c) const {
-  return npMaterial[c];
+  return st->npMaterial[c];
 }
 
 inline Phase Position::game_phase() const {
