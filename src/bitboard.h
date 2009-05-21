@@ -205,6 +205,17 @@ inline void clear_bit(Bitboard *b, Square s) {
 }
 
 
+/// Functions used to update a bitboard after a move. This is faster
+/// then calling a sequence of clear_bit() + set_bit()
+
+inline Bitboard make_move_bb(Square from, Square to) {
+  return SetMaskBB[from] | SetMaskBB[to];
+}
+
+inline void do_move_bb(Bitboard *b, Bitboard move_bb) {
+  *b ^= move_bb;
+}
+
 /// rank_bb() and file_bb() gives a bitboard containing all squares on a given
 /// file or rank.  It is also possible to pass a square as input to these
 /// functions.

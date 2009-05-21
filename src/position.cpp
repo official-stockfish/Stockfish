@@ -741,12 +741,11 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       do_capture_move(st->capture, them, to);
 
     // Move the piece
-    clear_bit(&(byColorBB[us]), from);
-    clear_bit(&(byTypeBB[piece]), from);
-    clear_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
-    set_bit(&(byColorBB[us]), to);
-    set_bit(&(byTypeBB[piece]), to);
-    set_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
+    Bitboard move_bb = make_move_bb(from, to);
+    do_move_bb(&(byColorBB[us]), move_bb);
+    do_move_bb(&(byTypeBB[piece]), move_bb);
+    do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
+
     board[to] = board[from];
     board[from] = EMPTY;
 
@@ -838,6 +837,7 @@ void Position::do_capture_move(PieceType capture, Color them, Square to) {
     // Remove captured piece
     clear_bit(&(byColorBB[them]), to);
     clear_bit(&(byTypeBB[capture]), to);
+    clear_bit(&(byTypeBB[0]), to);
 
     // Update hash key
     st->key ^= zobrist[them][capture][to];
@@ -1170,16 +1170,12 @@ void Position::undo_move(Move m) {
       assert(color_of_piece_on(to) == us);
 
       // Put the piece back at the source square
+      Bitboard move_bb = make_move_bb(to, from);
       piece = type_of_piece_on(to);
-      set_bit(&(byColorBB[us]), from);
-      set_bit(&(byTypeBB[piece]), from);
-      set_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
+      do_move_bb(&(byColorBB[us]), move_bb);
+      do_move_bb(&(byTypeBB[piece]), move_bb);
+      do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
       board[from] = piece_of_color_and_type(us, piece);
-
-      // Clear the destination square
-      clear_bit(&(byColorBB[us]), to);
-      clear_bit(&(byTypeBB[piece]), to);
-      clear_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
 
       // If the moving piece was a king, update the king square
       if (piece == KING)
@@ -1193,7 +1189,7 @@ void Position::undo_move(Move m) {
       {
           assert(st->capture != KING);
 
-          // Replace the captured piece
+          // Restore the captured piece
           set_bit(&(byColorBB[them]), to);
           set_bit(&(byTypeBB[st->capture]), to);
           set_bit(&(byTypeBB[0]), to);
