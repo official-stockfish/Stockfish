@@ -75,11 +75,11 @@ int main(int argc, char *argv[]) {
   }
 
   // Print copyright notice
-  cout << engine_name() << ".  Copyright (C) "
+  cout << engine_name() << ". Copyright (C) "
        << "2004-2009 Tord Romstad, Marco Costalba. " << endl;
 
-  // FIXME ONLY FOR DEBUG, REMOVE BEFORE RELEASE
-  cout << "Support for POPCNT is " << CpuHasPOPCNT << endl;
+  if (CpuHasPOPCNT)
+      cout << "Good! CPU has hardware POPCNT. We will use it." << endl;
 
   // Enter UCI mode
   uci_main_loop();

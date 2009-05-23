@@ -22,6 +22,12 @@
 #if !defined(BITCOUNT_H_INCLUDED)
 #define BITCOUNT_H_INCLUDED
 
+// To disable POPCNT support uncomment following line. You should do it only
+// in PGO compiling to exercise the default fallback path. Don't forget to
+// re-comment the line for the final optimized compile though ;-)
+//#define DISABLE_POPCNT_SUPPORT
+
+
 #include "bitboard.h"
 
 
@@ -160,8 +166,21 @@ inline int count_1s_max_15(Bitboard b) {
 
 
 // Global variable initialized at startup that is set to true if
-// CPU on which application runs support POPCNT intrinsic.
-
+// CPU on which application runs supports POPCNT intrinsic. Unless
+// DISABLE_POPCNT_SUPPORT is defined.
+#if defined(DISABLE_POPCNT_SUPPORT)
+const bool CpuHasPOPCNT = false;
+#else
 const bool CpuHasPOPCNT = cpu_has_popcnt();
+#endif
+
+
+// Global variable used to print info about the use of 64 optimized
+// functions to verify that a 64bit compile has been correctly built.
+#if defined(BITCOUNT_SWAR_64)
+const bool CpuHas64BitPath = true;
+#else
+const bool CpuHas64BitPath = false;
+#endif
 
 #endif // !defined(BITCOUNT_H_INCLUDED)
