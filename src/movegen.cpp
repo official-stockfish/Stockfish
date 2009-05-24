@@ -29,7 +29,7 @@
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,
 // hardcoded list name 'mlist' and from square 'from'.
-#define SERIALIZE_MOVES(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit(&b))
+#define SERIALIZE_MOVES(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit<false>(&b))
 
 ////
 //// Local definitions
