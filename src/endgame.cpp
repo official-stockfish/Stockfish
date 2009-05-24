@@ -378,7 +378,7 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) {
   result += Value(square_distance(bksq, nsq) * 32);
 
   // Bonus for restricting the knight's mobility
-  result += Value((8 - count_1s_max_15<false>(pos.piece_attacks<KNIGHT>(nsq))) * 8);
+  result += Value((8 - count_1s_max_15(pos.piece_attacks<KNIGHT>(nsq))) * 8);
 
   return (strongerSide == pos.side_to_move() ? result : -result);
 }

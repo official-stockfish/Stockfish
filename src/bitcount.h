@@ -86,8 +86,8 @@ inline bool cpu_has_popcnt() {
 
 inline bool cpu_has_popcnt() { return false; }
 
-#define POPCNT_INTRINSIC(x) sw_count_1s(x)
-#define BITSCAN_INTRINSIC(idx, x) sw_count_1s(x) // dummy
+#define POPCNT_INTRINSIC(x) count_1s(x)
+#define BITSCAN_INTRINSIC(idx, x) count_1s(x) // dummy
 
 #endif
 
@@ -96,19 +96,19 @@ inline bool cpu_has_popcnt() { return false; }
 
 #if defined(BITCOUNT_LOOP)
 
-inline int sw_count_1s(Bitboard b) {
+inline int count_1s(Bitboard b) {
   int r;
   for(r = 0; b; r++, b &= b - 1);
   return r;
 }
 
-inline int sw_count_1s_max_15(Bitboard b) {
+inline int count_1s_max_15(Bitboard b) {
   return count_1s(b);
 }
 
 #elif defined(BITCOUNT_SWAR_32)
 
-inline int sw_count_1s(Bitboard b) {
+inline int count_1s(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
@@ -120,7 +120,7 @@ inline int sw_count_1s(Bitboard b) {
   return int(v >> 24);
 }
 
-inline int sw_count_1s_max_15(Bitboard b) {
+inline int count_1s_max_15(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
@@ -133,7 +133,7 @@ inline int sw_count_1s_max_15(Bitboard b) {
 
 #elif defined(BITCOUNT_SWAR_64)
 
-inline int sw_count_1s(Bitboard b) {
+inline int count_1s(Bitboard b) {
   b -= ((b>>1) & 0x5555555555555555ULL);
   b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
   b = ((b>>4) + b) & 0x0F0F0F0F0F0F0F0FULL;
@@ -141,7 +141,7 @@ inline int sw_count_1s(Bitboard b) {
   return int(b >> 56);
 }
 
-inline int sw_count_1s_max_15(Bitboard b) {
+inline int count_1s_max_15(Bitboard b) {
   b -= (b>>1) & 0x5555555555555555ULL;
   b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
   b *= 0x1111111111111111ULL;
@@ -158,33 +158,14 @@ inline int sw_count_1s_max_15(Bitboard b) {
 template<bool UseIntrinsic>
 inline int count_1s(Bitboard b) {
 
-  return UseIntrinsic ? POPCNT_INTRINSIC(b) : sw_count_1s(b);
+  return UseIntrinsic ? POPCNT_INTRINSIC(b) : count_1s(b);
 }
 
 template<bool UseIntrinsic>
 inline int count_1s_max_15(Bitboard b) {
 
-  return UseIntrinsic ? POPCNT_INTRINSIC(b) : sw_count_1s_max_15(b);
+  return UseIntrinsic ? POPCNT_INTRINSIC(b) : count_1s_max_15(b);
 }
-
-
-// Global variable initialized at startup that is set to true if
-// CPU on which application runs supports POPCNT intrinsic. Unless
-// DISABLE_POPCNT_SUPPORT is defined.
-#if defined(DISABLE_POPCNT_SUPPORT)
-const bool CpuHasPOPCNT = false;
-#else
-const bool CpuHasPOPCNT = cpu_has_popcnt();
-#endif
-
-
-// Global variable used to print info about the use of 64 optimized
-// functions to verify that a 64bit compile has been correctly built.
-#if defined(BITCOUNT_SWAR_64)
-const bool CpuHas64BitPath = true;
-#else
-const bool CpuHas64BitPath = false;
-#endif
 
 
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
@@ -206,5 +187,24 @@ inline Square pop_1st_bit<true>(Bitboard *b) {
   *b &= (bb - 1);
   return Square(idx);
 }
+
+
+// Global variable initialized at startup that is set to true if
+// CPU on which application runs supports POPCNT intrinsic. Unless
+// DISABLE_POPCNT_SUPPORT is defined.
+#if defined(DISABLE_POPCNT_SUPPORT)
+const bool CpuHasPOPCNT = false;
+#else
+const bool CpuHasPOPCNT = cpu_has_popcnt();
+#endif
+
+
+// Global variable used to print info about the use of 64 optimized
+// functions to verify that a 64bit compile has been correctly built.
+#if defined(BITCOUNT_SWAR_64)
+const bool CpuHas64BitPath = true;
+#else
+const bool CpuHas64BitPath = false;
+#endif
 
 #endif // !defined(BITCOUNT_H_INCLUDED)
