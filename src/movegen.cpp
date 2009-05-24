@@ -29,7 +29,7 @@
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,
 // hardcoded list name 'mlist' and from square 'from'.
-#define SERIALIZE_MOVES(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit<false>(&b))
+#define SERIALIZE_MOVES(b, bsf) while (b) (*mlist++).move = make_move(from, pop_1st_bit<bsf>(&b))
 
 ////
 //// Local definitions
@@ -83,22 +83,22 @@ namespace {
   }
 
   // Template generate_piece_checks() with specializations
-  template<PieceType>
+  template<PieceType, bool HasBSF>
   MoveStack* generate_piece_checks(const Position&, MoveStack*, Color, Bitboard, Square);
 
   template<>
-  inline MoveStack* generate_piece_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
+  inline MoveStack* generate_piece_checks<PAWN, false>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
 
     return (us == WHITE ? generate_pawn_checks<WHITE>(p, dc, ksq, m)
                         : generate_pawn_checks<BLACK>(p, dc, ksq, m));
   }
 
   // Template generate_piece_moves() with specializations and overloads
-  template<PieceType>
+  template<PieceType, bool HasBSF>
   MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
 
   template<>
-  MoveStack* generate_piece_moves<KING>(const Position&, MoveStack*, Color, Bitboard);
+  MoveStack* generate_piece_moves<KING, false>(const Position&, MoveStack*, Color, Bitboard);
 
   template<PieceType Piece, MoveType Type>
   inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us) {
@@ -113,12 +113,12 @@ namespace {
                               : generate_pawn_noncaptures<BLACK>(p, m));
   }
 
-  template<PieceType>
+  template<PieceType, bool HasBSF>
   MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
 
   template<>
-  inline MoveStack* generate_piece_moves<PAWN>(const Position& p, MoveStack* m,
-                                               Color us, Bitboard t, Bitboard pnd) {
+  inline MoveStack* generate_piece_moves<PAWN, false>(const Position& p, MoveStack* m,
+                                                      Color us, Bitboard t, Bitboard pnd) {
 
     return (us == WHITE ? generate_pawn_blocking_evasions<WHITE>(p, pnd, t, m)
                         : generate_pawn_blocking_evasions<BLACK>(p, pnd, t, m));
@@ -133,7 +133,7 @@ namespace {
 
 /// generate_captures generates() all pseudo-legal captures and queen
 /// promotions.  The return value is the number of moves generated.
-
+template<bool HasBSF>
 int generate_captures(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
@@ -143,19 +143,25 @@ int generate_captures(const Position& pos, MoveStack* mlist) {
   Bitboard target = pos.pieces_of_color(opposite_color(us));
   MoveStack* mlist_start = mlist;
 
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
+  mlist = generate_piece_moves<QUEEN,  HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<ROOK,   HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<BISHOP, HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<KNIGHT, HasBSF>(pos, mlist, us, target);
   mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us);
-  mlist = generate_piece_moves<KING>(pos, mlist, us, target);
+  mlist = generate_piece_moves<KING, false>(pos, mlist, us, target);
   return int(mlist - mlist_start);
+}
+
+int generate_captures(const Position& pos, MoveStack* mlist) {
+
+    return CpuHasPOPCNT ? generate_captures<true>(pos, mlist)
+                        : generate_captures<false>(pos, mlist);
 }
 
 
 /// generate_noncaptures() generates all pseudo-legal non-captures and
 /// underpromotions. The return value is the number of moves generated.
-
+template<bool HasBSF>
 int generate_noncaptures(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
@@ -166,20 +172,26 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
   MoveStack* mlist_start = mlist;
 
   mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us);
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
-  mlist = generate_piece_moves<KING>(pos, mlist, us, target);
+  mlist = generate_piece_moves<KNIGHT, HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<BISHOP, HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<ROOK,   HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<QUEEN,  HasBSF>(pos, mlist, us, target);
+  mlist = generate_piece_moves<KING,   false>(pos, mlist, us, target);
   mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
   mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
   return int(mlist - mlist_start);
 }
 
+int generate_noncaptures(const Position& pos, MoveStack* mlist) {
+
+    return CpuHasPOPCNT ? generate_noncaptures<true>(pos, mlist)
+                        : generate_noncaptures<false>(pos, mlist);
+}
+
 
 /// generate_non_capture_checks() generates all pseudo-legal non-capturing,
 /// non-promoting checks. It returns the number of generated moves.
-
+template<bool HasBSF>
 int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   assert(pos.is_ok());
@@ -192,12 +204,12 @@ int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
 
   // Pieces moves
-  mlist = generate_piece_checks<PAWN>(pos, mlist, us, dc, ksq);
-  mlist = generate_piece_checks<KNIGHT>(pos, mlist, us, dc, ksq);
-  mlist = generate_piece_checks<BISHOP>(pos, mlist, us, dc, ksq);
-  mlist = generate_piece_checks<ROOK>(pos, mlist, us, dc, ksq);
-  mlist = generate_piece_checks<QUEEN>(pos, mlist, us, dc, ksq);
-  mlist = generate_piece_checks<KING>(pos, mlist, us, dc, ksq);
+  mlist = generate_piece_checks<PAWN, false>(pos, mlist, us, dc, ksq);
+  mlist = generate_piece_checks<KNIGHT, HasBSF>(pos, mlist, us, dc, ksq);
+  mlist = generate_piece_checks<BISHOP, HasBSF>(pos, mlist, us, dc, ksq);
+  mlist = generate_piece_checks<ROOK,   HasBSF>(pos, mlist, us, dc, ksq);
+  mlist = generate_piece_checks<QUEEN,  HasBSF>(pos, mlist, us, dc, ksq);
+  mlist = generate_piece_checks<KING, false>(pos, mlist, us, dc, ksq);
 
   // Castling moves that give check. Very rare but nice to have!
   if (   pos.can_castle_queenside(us)
@@ -213,11 +225,17 @@ int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard 
   return int(mlist - mlist_start);
 }
 
+int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
+
+    return CpuHasPOPCNT ? generate_non_capture_checks<true>(pos, mlist, dc)
+                        : generate_non_capture_checks<false>(pos, mlist, dc);
+}
+
 
 /// generate_evasions() generates all check evasions when the side to move is
 /// in check. Unlike the other move generation functions, this one generates
 /// only legal moves. It returns the number of generated moves.
-
+template<bool HasBSF>
 int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
   assert(pos.is_ok());
@@ -313,11 +331,11 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
           if (blockSquares != EmptyBoardBB)
           {
-              mlist = generate_piece_moves<PAWN>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_moves<BISHOP>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_moves<ROOK>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_moves<QUEEN>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<PAWN, false>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<KNIGHT, HasBSF>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<BISHOP, HasBSF>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<ROOK,   HasBSF>(pos, mlist, us, blockSquares, pinned);
+              mlist = generate_piece_moves<QUEEN,  HasBSF>(pos, mlist, us, blockSquares, pinned);
           }
       }
 
@@ -348,6 +366,12 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
       }
   }
   return int(mlist - mlist_start);
+}
+
+int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
+
+    return CpuHasPOPCNT ? generate_evasions<true>(pos, mlist, pinned)
+                        : generate_evasions<false>(pos, mlist, pinned);
 }
 
 
@@ -566,7 +590,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
 namespace {
 
-  template<PieceType Piece>
+  template<PieceType Piece, bool HasBSF>
   MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
     Square from;
@@ -576,12 +600,12 @@ namespace {
     {
         from = pos.piece_list(us, Piece, i);
         b = pos.piece_attacks<Piece>(from) & target;
-        SERIALIZE_MOVES(b);
+        SERIALIZE_MOVES(b, HasBSF);
     }
     return mlist;
   }
 
-  template<PieceType Piece>
+  template<PieceType Piece, bool HasBSF>
   MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist,
                                   Color us, Bitboard target, Bitboard pinned) {
     Square from;
@@ -594,19 +618,19 @@ namespace {
             continue;
 
         b = pos.piece_attacks<Piece>(from) & target;
-        SERIALIZE_MOVES(b);
+        SERIALIZE_MOVES(b, HasBSF);
     }
     return mlist;
   }
 
   template<>
-  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+  MoveStack* generate_piece_moves<KING, false>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
     Bitboard b;
     Square from = pos.king_square(us);
 
     b = pos.piece_attacks<KING>(from) & target;
-    SERIALIZE_MOVES(b);
+    SERIALIZE_MOVES(b, false);
     return mlist;
   }
 
@@ -816,7 +840,7 @@ namespace {
     return mlist;
   }
 
-  template<PieceType Piece>
+  template<PieceType Piece, bool HasBSF>
   MoveStack* generate_piece_checks(const Position& pos, MoveStack* mlist, Color us,
                                    Bitboard dc, Square ksq) {
 
@@ -831,7 +855,7 @@ namespace {
         if (Piece == KING)
             bb &= ~QueenPseudoAttacks[ksq];
 
-        SERIALIZE_MOVES(bb);
+        SERIALIZE_MOVES(bb, HasBSF);
     }
 
     // Direct checks
@@ -851,7 +875,7 @@ namespace {
                 continue;
 
             Bitboard bb = pos.piece_attacks<Piece>(from) & checkSqs;
-            SERIALIZE_MOVES(bb);
+            SERIALIZE_MOVES(bb, HasBSF);
         }
     }
     return mlist;
