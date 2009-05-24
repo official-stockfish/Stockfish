@@ -262,14 +262,14 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
   Bitboard b = checkers & (pos.queens() | pos.bishops());
   while (b)
   {
-      from = pop_1st_bit(&b);
+      from = pop_1st_bit<HasBSF>(&b);
       checkersAttacks |= bishop_attacks_bb(from, b_noKing);
   }
 
   b = checkers & (pos.queens() | pos.rooks());
   while (b)
   {
-      from = pop_1st_bit(&b);
+      from = pop_1st_bit<HasBSF>(&b);
       checkersAttacks |= rook_attacks_bb(from, b_noKing);
   }
 
@@ -277,7 +277,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
   Bitboard b1 = pos.piece_attacks<KING>(ksq) & ~pos.pieces_of_color(us) & ~checkersAttacks;
   while (b1)
   {
-      to = pop_1st_bit(&b1);
+      to = pop_1st_bit<HasBSF>(&b1);
       // Note that we can use square_is_attacked() only because we
       // have already removed slider checkers.
       if (!pos.square_is_attacked(to, them))
@@ -299,7 +299,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
       b1 = pos.pawn_attacks(them, checksq) & pos.pawns(us) & ~pinned;
       while (b1)
       {
-          from = pop_1st_bit(&b1);
+          from = pop_1st_bit<HasBSF>(&b1);
           if (relative_rank(us, checksq) == RANK_8)
           {
               (*mlist++).move = make_promotion_move(from, checksq, QUEEN);
@@ -317,7 +317,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
       while (b1)
       {
-          from = pop_1st_bit(&b1);
+          from = pop_1st_bit<HasBSF>(&b1);
           (*mlist++).move = make_move(from, checksq);
       }
 
@@ -357,7 +357,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
           b1 &= ~pinned;
           while (b1)
           {
-              from = pop_1st_bit(&b1);
+              from = pop_1st_bit<HasBSF>(&b1);
               // Move is always legal because checking pawn is not a discovered
               // check candidate and our capturing pawn has been already tested
               // against pinned pieces.
@@ -850,7 +850,7 @@ namespace {
     Bitboard b = target & dc;
     while (b)
     {
-        Square from = pop_1st_bit(&b);
+        Square from = pop_1st_bit<HasBSF>(&b);
         Bitboard bb = pos.piece_attacks<Piece>(from) & pos.empty_squares();
         if (Piece == KING)
             bb &= ~QueenPseudoAttacks[ksq];
@@ -868,7 +868,7 @@ namespace {
 
         while (b)
         {
-            Square from = pop_1st_bit(&b);
+            Square from = pop_1st_bit<HasBSF>(&b);
             if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
                 || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
                 || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
