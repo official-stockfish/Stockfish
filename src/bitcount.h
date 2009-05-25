@@ -66,7 +66,6 @@ inline bool cpu_has_popcnt() {
 }
 
 #define POPCNT_INTRINSIC(x) __popcnt64(x)
-#define BITSCAN_INTRINSIC(idx, x) _BitScanForward64(idx, x)
 
 #elif defined(__INTEL_COMPILER) && (defined(__x86_64) || defined(_M_X64)) // Intel compiler
 
@@ -80,14 +79,12 @@ inline bool cpu_has_popcnt() {
 }
 
 #define POPCNT_INTRINSIC(x) _mm_popcnt_u64(x)
-#define BITSCAN_INTRINSIC(idx, x) _BitScanForward64(idx, x)
 
 #else // Safe fallback for unsupported compilers
 
 inline bool cpu_has_popcnt() { return false; }
 
 #define POPCNT_INTRINSIC(x) count_1s(x)
-#define BITSCAN_INTRINSIC(idx, x) count_1s(x) // dummy
 
 #endif
 
@@ -165,27 +162,6 @@ template<bool UseIntrinsic>
 inline int count_1s_max_15(Bitboard b) {
 
   return UseIntrinsic ? POPCNT_INTRINSIC(b) : count_1s_max_15(b);
-}
-
-
-/// pop_1st_bit() finds and clears the least significant nonzero bit in a
-/// nonzero bitboard. If template parameter is true an intrinsic is called,
-/// otherwise we fallback on a software implementation.
-
-template<bool UseIntrinsic>
-inline Square pop_1st_bit(Bitboard *b) {
-
-  return pop_1st_bit(b);
-}
-
-template<>
-inline Square pop_1st_bit<true>(Bitboard *b) {
-
-  unsigned long idx;
-  Bitboard bb = *b;
-  BITSCAN_INTRINSIC(&idx, bb);
-  *b &= (bb - 1);
-  return Square(idx);
 }
 
 
