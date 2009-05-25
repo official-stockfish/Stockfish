@@ -392,7 +392,6 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   assert(pinned == pos.pinned_pieces(pos.side_to_move()));
 
   Color us = pos.side_to_move();
-  Color them = opposite_color(us);
   Square from = move_from(m);
   Piece pc = pos.piece_on(from);
 
@@ -401,6 +400,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   if (color_of_piece(pc) != us)
       return false;
 
+  Color them = opposite_color(us);
   Square to = move_to(m);
 
   // En passant moves

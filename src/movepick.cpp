@@ -74,6 +74,7 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
   movesPicked = 0;
   numOfMoves = 0;
   numOfBadCaptures = 0;
+  checkKillers = checkLegal = false;
 
   if (p.is_check())
       phaseIndex = EvasionsPhaseIndex;
@@ -139,17 +140,29 @@ Move MovePicker::get_next_move() {
         score_captures();
         std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
+        checkLegal = true;
+        break;
+
+    case PH_KILLERS:
+        movesPicked = numOfMoves = 0;
+        checkLegal = false;
+        if (killer1 != MOVE_NONE && move_is_legal(pos, killer1, pinned) && !pos.move_is_capture(killer1))
+            moves[numOfMoves++].move = killer1;
+        if (killer2 != MOVE_NONE && move_is_legal(pos, killer2, pinned) && !pos.move_is_capture(killer2) )
+            moves[numOfMoves++].move = killer2;
+        break;
+
+    case PH_NONCAPTURES:
+        checkKillers = (numOfMoves != 0); // previous phase is PH_KILLERS
+        numOfMoves = generate_noncaptures(pos, moves);
+        score_noncaptures();
+        std::sort(moves, moves + numOfMoves);
+        movesPicked = 0;
+        checkLegal = true;
         break;
 
     case PH_BAD_CAPTURES:
         // It's probably a good idea to use SEE move ordering here. FIXME
-        movesPicked = 0;
-        break;
-
-    case PH_NONCAPTURES:
-        numOfMoves = generate_noncaptures(pos, moves);
-        score_noncaptures();
-        std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
         break;
 
@@ -258,13 +271,7 @@ void MovePicker::score_noncaptures() {
   for (int i = 0; i < numOfMoves; i++)
   {
       m = moves[i].move;
-
-      if (m == killer1)
-          hs = HistoryMax + 2;
-      else if (m == killer2)
-          hs = HistoryMax + 1;
-      else
-          hs = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
+      hs = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
 
       // Ensure history is always preferred to pst
       if (hs > 0)
@@ -320,13 +327,15 @@ Move MovePicker::pick_move_from_list() {
   switch (PhaseTable[phaseIndex]) {
 
   case PH_GOOD_CAPTURES:
+  case PH_KILLERS:
   case PH_NONCAPTURES:
       while (movesPicked < numOfMoves)
       {
           Move move = moves[movesPicked++].move;
           if (   move != ttMove
               && move != mateKiller
-              && pos.pl_move_is_legal(move, pinned))
+              && (!checkKillers || (move != killer1 && move != killer2))
+              && (!checkLegal || pos.pl_move_is_legal(move, pinned)))
               return move;
       }
       break;
@@ -381,9 +390,7 @@ void MovePicker::init_phase_table() {
   PhaseTable[i++] = PH_TT_MOVE;
   PhaseTable[i++] = PH_MATE_KILLER;
   PhaseTable[i++] = PH_GOOD_CAPTURES;
-  // PH_KILLER_1 and PH_KILLER_2 are not yet used.
-  // PhaseTable[i++] = PH_KILLER_1;
-  // PhaseTable[i++] = PH_KILLER_2;
+  PhaseTable[i++] = PH_KILLERS;
   PhaseTable[i++] = PH_NONCAPTURES;
   PhaseTable[i++] = PH_BAD_CAPTURES;
   PhaseTable[i++] = PH_STOP;

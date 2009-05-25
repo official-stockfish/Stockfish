@@ -57,10 +57,9 @@ public:
     PH_TT_MOVE,        // Transposition table move
     PH_MATE_KILLER,    // Mate killer from the current ply
     PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
-    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
-    PH_KILLER_1,       // Killer move 1 from the current ply (not used yet).
-    PH_KILLER_2,       // Killer move 2 from the current ply (not used yet).
+    PH_KILLERS,        // Killer moves from the current ply
     PH_NONCAPTURES,    // Non-captures and underpromotions
+    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
     PH_EVASIONS,       // Check evasions
     PH_QCAPTURES,      // Captures in quiescence search
     PH_QCHECKS,        // Non-capture checks in quiescence search
@@ -91,6 +90,7 @@ private:
   int phaseIndex;
   int numOfMoves, numOfBadCaptures;
   int movesPicked;
+  bool checkKillers, checkLegal;
   bool finished;
 };
 
