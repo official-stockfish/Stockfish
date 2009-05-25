@@ -22,7 +22,6 @@
 #if !defined(BITBOARD_H_INCLUDED)
 #define BITBOARD_H_INCLUDED
 
-
 ////
 //// Defines
 ////
@@ -47,15 +46,10 @@
 //#define USE_32BIT_ATTACKS
 #define USE_FOLDED_BITSCAN
 
-#define BITCOUNT_SWAR_64
-//#define BITCOUNT_SWAR_32
-//#define BITCOUNT_LOOP
-
 #else
 
 #define USE_32BIT_ATTACKS
 #define USE_FOLDED_BITSCAN
-#define BITCOUNT_SWAR_32
 
 #endif
 
@@ -427,65 +421,6 @@ inline Bitboard outpost_mask(Color c, Square s) {
 inline Bitboard isolated_pawn_mask(Square s) {
   return neighboring_files_bb(s);
 }
-
-
-/// count_1s() counts the number of nonzero bits in a bitboard.
-
-#if defined(BITCOUNT_LOOP)
-
-inline int count_1s(Bitboard b) {
-  int r;
-  for(r = 0; b; r++, b &= b - 1);
-  return r;
-}
-
-inline int count_1s_max_15(Bitboard b) {
-  return count_1s(b);
-}
-
-#elif defined(BITCOUNT_SWAR_32)
-
-inline int count_1s(Bitboard b) {
-  unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
-  w -= (w >> 1) & 0x55555555;
-  v = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
-  w = ((w >> 2) & 0x33333333) + (w & 0x33333333);
-  v = ((v >> 4) + v) & 0x0F0F0F0F; // 0-8 in 8 bits
-  v += (((w >> 4) + w) & 0x0F0F0F0F);  // 0-16 in 8 bits
-  v *= 0x01010101; // mul is fast on amd procs
-  return int(v >> 24);
-}
-
-inline int count_1s_max_15(Bitboard b) {
-  unsigned w = unsigned(b >> 32), v = unsigned(b);
-  v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
-  w -= (w >> 1) & 0x55555555;
-  v = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
-  w = ((w >> 2) & 0x33333333) + (w & 0x33333333);
-  v += w; // 0-8 in 4 bits
-  v *= 0x11111111;
-  return int(v >> 28);
-}
-
-#elif defined(BITCOUNT_SWAR_64)
-
-inline int count_1s(Bitboard b) {
-  b -= ((b>>1) & 0x5555555555555555ULL);
-  b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
-  b = ((b>>4) + b) & 0x0F0F0F0F0F0F0F0FULL;
-  b *= 0x0101010101010101ULL;
-  return int(b >> 56);
-}
-
-inline int count_1s_max_15(Bitboard b) {
-  b -= (b>>1) & 0x5555555555555555ULL;
-  b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
-  b *= 0x1111111111111111ULL;
-  return int(b >> 60);
-}
-
-#endif // BITCOUNT
 
 
 ////

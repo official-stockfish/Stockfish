@@ -65,6 +65,7 @@ static int gettimeofday(struct timeval* tp, struct timezone*)
 #include <iostream>
 #include <sstream>
 
+#include "bitcount.h"
 #include "misc.h"
 
 using namespace std;
@@ -162,8 +163,10 @@ void dbg_print_mean(ofstream& logFile) {
 
 const string engine_name() {
 
+  const string cpu64(CpuHas64BitPath ? " 64bit" : "");
+
   if (!EngineVersion.empty())
-      return "Stockfish " + EngineVersion;
+      return AppName+ " " + EngineVersion + cpu64;
 
   string date(__DATE__); // From compiler, format is "Sep 21 2008"
   string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
@@ -176,7 +179,7 @@ const string engine_name() {
   string name = AppName + " " + AppTag + " ";
 
   s << name << date.substr(date.length() - 2) << setfill('0')
-    << setw(2) << mon << setw(2) << day;
+    << setw(2) << mon << setw(2) << day << cpu64;
 
   return s.str();
 }

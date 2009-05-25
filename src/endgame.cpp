@@ -25,6 +25,7 @@
 #include <cassert>
 
 #include "bitbase.h"
+#include "bitcount.h"
 #include "endgame.h"
 
 

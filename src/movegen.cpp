@@ -24,6 +24,7 @@
 
 #include <cassert>
 
+#include "bitcount.h"
 #include "movegen.h"
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,

@@ -25,6 +25,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "bitcount.h"
 #include "pawns.h"
 #include "position.h"
 

@@ -35,6 +35,7 @@
 #include <iostream>
 
 #include "bitboard.h"
+#include "bitcount.h"
 #include "direction.h"
 
 
@@ -339,7 +340,7 @@ Square pop_1st_bit(Bitboard *b) {
 
 #endif
 
-#else
+#else // defined(USE_FOLDED_BITSCAN)
 
 static const int BitTable[64] = {
   0, 1, 2, 7, 3, 13, 8, 19, 4, 25, 14, 28, 9, 34, 20, 40, 5, 17, 26, 38, 15,

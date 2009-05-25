@@ -27,6 +27,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "bitcount.h"
 #include "mersenne.h"
 #include "movegen.h"
 #include "movepick.h"
