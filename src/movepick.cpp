@@ -162,7 +162,9 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_BAD_CAPTURES:
-        // It's probably a good idea to use SEE move ordering here. FIXME
+        // Bad captures SEE value is already calculated by score_captures()
+        // so just sort them to get SEE move ordering.
+        std::sort(badCaptures, badCaptures + numOfBadCaptures);
         movesPicked = 0;
         break;
 
