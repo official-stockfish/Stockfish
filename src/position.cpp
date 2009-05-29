@@ -315,9 +315,10 @@ void Position::print(Move m) const {
 
 /// Position::copy() creates a copy of the input position.
 
-void Position::copy(const Position &pos) {
+void Position::copy(const Position& pos) {
 
   memcpy(this, &pos, sizeof(Position));
+  saveState(); // detach and copy state info
 }
 
 
@@ -1607,15 +1608,16 @@ int Position::see(Square from, Square to) const {
 }
 
 
-/// Position::setStartState() copies the content of the argument
+/// Position::saveState() copies the content of the current state
 /// inside startState and makes st point to it. This is needed
 /// when the st pointee could become stale, as example because
 /// the caller is about to going out of scope.
 
-void Position::setStartState(const StateInfo& s) {
+void Position::saveState() {
 
-  startState = s;
+  startState = *st;
   st = &startState;
+  st->previous = NULL; // as a safe guard
 }
 
 
@@ -1966,7 +1968,7 @@ void Position::init_piece_square_tables() {
 /// the white and black sides reversed. This is only useful for debugging,
 /// especially for finding evaluation symmetry bugs.
 
-void Position::flipped_copy(const Position &pos) {
+void Position::flipped_copy(const Position& pos) {
 
   assert(pos.is_ok());
 

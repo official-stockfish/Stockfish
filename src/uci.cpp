@@ -210,9 +210,9 @@ namespace {
                 if (RootPosition.rule_50_counter() == 0)
                     RootPosition.reset_game_ply();
             }
-            // Our StateInfo st is about going out of scope,
-            // so save its content before they disappear.
-            RootPosition.setStartState(st);
+            // Our StateInfo st is about going out of scope so copy
+            // its content inside RootPosition before they disappear.
+            RootPosition.saveState();
         }
     }
   }
