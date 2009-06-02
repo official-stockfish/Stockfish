@@ -332,9 +332,6 @@ Lock IOLock;
 
 History H;  // Should be made local?
 
-// The empty search stack
-SearchStack EmptySearchStack;
-
 
 // SearchStack::init() initializes a search stack. Used at the beginning of a
 // new search from the root.
@@ -597,10 +594,6 @@ void init_threads() {
       // Wait until the thread has finished launching:
       while (!Threads[i].running);
   }
-
-  // Init also the empty search stack
-  EmptySearchStack.init(0);
-  EmptySearchStack.initKillers();
 }
 
 
@@ -1063,7 +1056,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    MovePicker mp = MovePicker(pos, true, ttMove, ss[ply], depth);
+    MovePicker mp = MovePicker(pos, true, ttMove, depth, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1324,7 +1317,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves:
-    MovePicker mp = MovePicker(pos, false, ttMove, ss[ply], depth);
+    MovePicker mp = MovePicker(pos, false, ttMove, depth, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1545,7 +1538,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, pvNode, ttMove, EmptySearchStack, depth);
+    MovePicker mp = MovePicker(pos, pvNode, ttMove, depth);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();

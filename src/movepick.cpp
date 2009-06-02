@@ -63,13 +63,18 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, bool pv, Move ttm,
-                       const SearchStack& ss, Depth d) : pos(p) {
+MovePicker::MovePicker(const Position& p, bool pv, Move ttm, Depth d, SearchStack* ss) : pos(p) {
+
   pvNode = pv;
   ttMove = ttm;
-  mateKiller = (ss.mateKiller == ttm)? MOVE_NONE : ss.mateKiller;
-  killer1 = ss.killers[0];
-  killer2 = ss.killers[1];
+  if (ss)
+  {
+      mateKiller = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
+      killer1 = ss->killers[0];
+      killer2 = ss->killers[1];
+  } else
+      mateKiller = killer1 = killer2 = MOVE_NONE;
+
   depth = d;
   movesPicked = 0;
   numOfMoves = 0;

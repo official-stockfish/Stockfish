@@ -37,8 +37,6 @@
 struct EvalInfo;
 struct SearchStack;
 
-extern SearchStack EmptySearchStack;
-
 /// MovePicker is a class which is used to pick one legal move at a time from
 /// the current position. It is initialized with a Position object and a few
 /// moves we have reason to believe are good. The most important method is
@@ -66,7 +64,7 @@ public:
     PH_STOP
   };
 
-  MovePicker(const Position& p, bool pvnode, Move ttm, const SearchStack& ss, Depth d);
+  MovePicker(const Position& p, bool pvnode, Move ttm, Depth d, SearchStack* ss = NULL);
   Move get_next_move();
   Move get_next_move(Lock& lock);
   int number_of_moves() const;

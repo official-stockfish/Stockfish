@@ -143,7 +143,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
 
   assert(pos.is_ok());
 
-  MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
+  MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly);
 
   // Castling moves
   if (movestr == "O-O-O" || movestr == "O-O-O+")
@@ -367,7 +367,7 @@ namespace {
     if (type_of_piece(pc) == KING)
         return AMBIGUITY_NONE;
 
-    MovePicker mp = MovePicker(pos, false, MOVE_NONE, EmptySearchStack, OnePly);
+    MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly);
     Move mv, moveList[8];
 
     int n = 0;

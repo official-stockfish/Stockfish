@@ -69,7 +69,6 @@ struct SearchStack {
 //// Global variables
 ////
 
-extern SearchStack EmptySearchStack;
 extern TranspositionTable TT;
 extern int ActiveThreads;
 extern Lock SMPLock;
