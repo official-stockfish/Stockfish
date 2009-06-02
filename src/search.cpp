@@ -207,9 +207,6 @@ namespace {
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly /*+ OnePly/2*/;
 
-  // History tables
-  History H;
-
   // Node counters
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
@@ -284,10 +281,10 @@ namespace {
   bool move_is_killer(Move m, const SearchStack& ss);
   Depth extension(const Position &pos, Move m, bool pvNode, bool capture, bool check, bool singleReply, bool mateThreat, bool* dangerous);
   bool ok_to_do_nullmove(const Position &pos);
-  bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d);
+  bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d, const History& H);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool ok_to_history(const Position &pos, Move m);
-  void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
+  void update_history(const Position& pos, Move m, Depth depth, History& H, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
 
   bool fail_high_ply_1();
@@ -645,7 +642,9 @@ namespace {
 
     // Initialize
     TT.new_search();
-    H.clear();
+    for (int i = 0; i < THREAD_MAX; i++)
+        Threads[i].H.clear();
+
     for (int i = 0; i < 3; i++)
     {
         ss[i].init(i);
@@ -1057,7 +1056,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    MovePicker mp = MovePicker(pos, true, ttMove, depth, H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, true, ttMove, depth, Threads[threadID].H, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1186,7 +1185,7 @@ namespace {
         Move m = ss[ply].pv[ply];
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
-            update_history(pos, m, depth, movesSearched, moveCount);
+            update_history(pos, m, depth, Threads[threadID].H, movesSearched, moveCount);
             update_killers(m, ss[ply]);
         }
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
@@ -1318,7 +1317,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves:
-    MovePicker mp = MovePicker(pos, false, ttMove, depth, H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, false, ttMove, depth, Threads[threadID].H, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1356,7 +1355,7 @@ namespace {
       {
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(depth)
-              && ok_to_prune(pos, move, ss[ply].threatMove, depth))
+              && ok_to_prune(pos, move, ss[ply].threatMove, depth, Threads[threadID].H))
               continue;
 
           // Value based pruning
@@ -1446,7 +1445,7 @@ namespace {
         Move m = ss[ply].pv[ply];
         if (ok_to_history(pos, m)) // Only non capture moves are considered
         {
-            update_history(pos, m, depth, movesSearched, moveCount);
+            update_history(pos, m, depth, Threads[threadID].H, movesSearched, moveCount);
             update_killers(m, ss[ply]);
         }
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
@@ -1539,7 +1538,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, pvNode, ttMove, depth, H);
+    MovePicker mp = MovePicker(pos, pvNode, ttMove, depth, Threads[threadID].H);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();
@@ -1682,7 +1681,7 @@ namespace {
           && !moveIsCapture
           && !move_promotion(move)
           &&  moveCount >= 2 + int(sp->depth)
-          &&  ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth))
+          &&  ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth, Threads[threadID].H))
         continue;
 
       // Make and search the move.
@@ -2290,7 +2289,7 @@ namespace {
   // non-tactical moves late in the move list close to the leaves are
   // candidates for pruning.
 
-  bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d) {
+  bool ok_to_prune(const Position &pos, Move m, Move threat, Depth d, const History& H) {
     Square mfrom, mto, tfrom, tto;
 
     assert(move_is_ok(m));
@@ -2369,7 +2368,7 @@ namespace {
   // update_history() registers a good move that produced a beta-cutoff
   // in history and marks as failures all the other moves of that ply.
 
-  void update_history(const Position& pos, Move m, Depth depth,
+  void update_history(const Position& pos, Move m, Depth depth, History& H,
                       Move movesSearched[], int moveCount) {
 
     H.success(pos.piece_on(move_from(m)), move_to(m), depth);
