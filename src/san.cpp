@@ -28,6 +28,7 @@
 #include <string>
 #include <sstream>
 
+#include "history.h"
 #include "movepick.h"
 #include "san.h"
 
@@ -143,7 +144,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
 
   assert(pos.is_ok());
 
-  MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly);
+  MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly, History());
 
   // Castling moves
   if (movestr == "O-O-O" || movestr == "O-O-O+")
@@ -367,7 +368,7 @@ namespace {
     if (type_of_piece(pc) == KING)
         return AMBIGUITY_NONE;
 
-    MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly);
+    MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly, History());
     Move mv, moveList[8];
 
     int n = 0;

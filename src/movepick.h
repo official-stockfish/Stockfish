@@ -26,6 +26,7 @@
 ////
 
 #include "depth.h"
+#include "history.h"
 #include "lock.h"
 #include "position.h"
 
@@ -64,7 +65,7 @@ public:
     PH_STOP
   };
 
-  MovePicker(const Position& p, bool pvnode, Move ttm, Depth d, SearchStack* ss = NULL);
+  MovePicker(const Position& p, bool pvnode, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
   Move get_next_move();
   Move get_next_move(Lock& lock);
   int number_of_moves() const;
@@ -80,6 +81,7 @@ private:
   Move pick_move_from_list();
 
   const Position& pos;
+  const History& H;
   Move ttMove, mateKiller, killer1, killer2;
   Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];

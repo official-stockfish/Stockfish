@@ -63,7 +63,8 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, bool pv, Move ttm, Depth d, SearchStack* ss) : pos(p) {
+MovePicker::MovePicker(const Position& p, bool pv, Move ttm, Depth d,
+                       const History& h, SearchStack* ss) : pos(p), H(h) {
 
   pvNode = pv;
   ttMove = ttm;

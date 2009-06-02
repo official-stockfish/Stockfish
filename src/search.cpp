@@ -207,6 +207,9 @@ namespace {
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly /*+ OnePly/2*/;
 
+  // History tables
+  History H;
+
   // Node counters
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
@@ -329,8 +332,6 @@ int ActiveThreads = 1;
 // Locks.  In principle, there is no need for IOLock to be a global variable,
 // but it could turn out to be useful for debugging.
 Lock IOLock;
-
-History H;  // Should be made local?
 
 
 // SearchStack::init() initializes a search stack. Used at the beginning of a
@@ -1056,7 +1057,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    MovePicker mp = MovePicker(pos, true, ttMove, depth, &ss[ply]);
+    MovePicker mp = MovePicker(pos, true, ttMove, depth, H, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1317,7 +1318,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves:
-    MovePicker mp = MovePicker(pos, false, ttMove, depth, &ss[ply]);
+    MovePicker mp = MovePicker(pos, false, ttMove, depth, H, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1538,7 +1539,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, pvNode, ttMove, depth);
+    MovePicker mp = MovePicker(pos, pvNode, ttMove, depth, H);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();

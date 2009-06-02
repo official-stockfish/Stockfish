@@ -73,9 +73,6 @@ extern TranspositionTable TT;
 extern int ActiveThreads;
 extern Lock SMPLock;
 
-// Perhaps better to make H local, and pass as parameter to MovePicker?
-extern History H;
-
 
 ////
 //// Prototypes
