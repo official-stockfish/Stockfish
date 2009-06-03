@@ -128,14 +128,7 @@ namespace {
   };
 
 
-  /// Constants and variables initialized from UCI options
-
-  // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV
-  // nodes
-  int LMRPVMoves, LMRNonPVMoves;
-
-  // Depth limit for use of dynamic threat detection
-  Depth ThreatDepth;
+  /// Constants
 
   // Depth limit for selective search
   const Depth SelectiveDepth = 7*OnePly;
@@ -174,25 +167,32 @@ namespace {
   const bool PruneDefendingMoves = false;
   const bool PruneBlockingMoves = false;
 
-  // Use futility pruning?
-  bool UseQSearchFutilityPruning, UseFutilityPruning;
-
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes
   const Value FutilityMarginQS = Value(0x80);
 
-   // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
-   const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
+  // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
+  const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
   //                                   4 ply         4.5 ply       5 ply         5.5 ply       6 ply         6.5 ply
                                       Value(0x2A0), Value(0x2C0), Value(0x340), Value(0x360), Value(0x3A0), Value(0x3C0) };
-   // Razoring
-   const Depth RazorDepth = 4*OnePly;
+  // Razoring
+  const Depth RazorDepth = 4*OnePly;
 
   // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value RazorMargins[6]     = { Value(0x180), Value(0x300), Value(0x300), Value(0x3C0), Value(0x3C0), Value(0x3C0) };
 
   // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
-   const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
+  const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
+
+
+  /// Variables initialized from UCI options
+
+  // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV
+  // nodes
+  int LMRPVMoves, LMRNonPVMoves;
+
+  // Depth limit for use of dynamic threat detection
+  Depth ThreatDepth;
 
   // Last seconds noise filtering (LSN)
   bool UseLSNFiltering;
@@ -207,15 +207,15 @@ namespace {
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly /*+ OnePly/2*/;
 
-  // Node counters
+  // Node counters, used only by thread[0]
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
 
   // Iteration counters
   int Iteration;
-  BetaCounterType BetaCounter;
+  BetaCounterType BetaCounter; // does not have internal data
 
-  // Scores and number of times the best move changed for each iteration:
+  // Scores and number of times the best move changed for each iteration
   IterationInfoType IterationInfo[PLY_MAX_PLUS_2];
   int BestMoveChangesByIteration[PLY_MAX_PLUS_2];
 
@@ -431,9 +431,6 @@ bool think(const Position &pos, bool infinite, bool ponder, int side_to_move,
   UseLogFile = get_option_value_bool("Use Search Log");
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
-
-  UseQSearchFutilityPruning = get_option_value_bool("Futility Pruning (Quiescence Search)");
-  UseFutilityPruning = get_option_value_bool("Futility Pruning (Main Search)");
 
   UseLSNFiltering = get_option_value_bool("LSN filtering");
   LSNTime = get_option_value_int("LSN Time Margin (sec)") * 1000;
@@ -1324,8 +1321,7 @@ namespace {
     Value value, bestValue = -VALUE_INFINITE;
     Bitboard dcCandidates = mp.discovered_check_candidates();
     Value futilityValue = VALUE_NONE;
-    bool useFutilityPruning =   UseFutilityPruning
-                             && depth < SelectiveDepth
+    bool useFutilityPruning =   depth < SelectiveDepth
                              && !isCheck;
 
     // Loop through all legal moves until no moves remain or a beta cutoff
@@ -1556,8 +1552,7 @@ namespace {
       ss[ply].currentMove = move;
 
       // Futility pruning
-      if (    UseQSearchFutilityPruning
-          &&  enoughMaterial
+      if (   enoughMaterial
           && !isCheck
           && !pvNode
           && !move_promotion(move)
@@ -1651,8 +1646,7 @@ namespace {
     Value value;
     Move move;
     bool isCheck = pos.is_check();
-    bool useFutilityPruning =    UseFutilityPruning
-                              && sp->depth < SelectiveDepth
+    bool useFutilityPruning =     sp->depth < SelectiveDepth
                               && !isCheck;
 
     while (    sp->bestValue < sp->beta
