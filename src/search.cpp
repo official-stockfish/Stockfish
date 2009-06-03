@@ -130,8 +130,11 @@ namespace {
 
   /// Constants
 
+  // Search depth at iteration 1
+  const Depth InitialDepth = OnePly /*+ OnePly/2*/;
+
   // Depth limit for selective search
-  const Depth SelectiveDepth = 7*OnePly;
+  const Depth SelectiveDepth = 7 * OnePly;
 
   // Use internal iterative deepening?
   const bool UseIIDAtPVNodes = true;
@@ -187,12 +190,11 @@ namespace {
 
   /// Variables initialized from UCI options
 
-  // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV
-  // nodes
-  int LMRPVMoves, LMRNonPVMoves;
+  // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV nodes
+  int LMRPVMoves, LMRNonPVMoves; // heavy SMP read access for the latter
 
   // Depth limit for use of dynamic threat detection
-  Depth ThreatDepth;
+  Depth ThreatDepth; // heavy SMP read access
 
   // Last seconds noise filtering (LSN)
   bool UseLSNFiltering;
@@ -201,19 +203,13 @@ namespace {
   Value LSNValue;
 
   // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
+  // There is heavy SMP read access on these arrays
   Depth CheckExtension[2], SingleReplyExtension[2], PawnPushTo7thExtension[2];
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
-  // Search depth at iteration 1
-  const Depth InitialDepth = OnePly /*+ OnePly/2*/;
-
-  // Node counters, used only by thread[0]
-  int NodesSincePoll;
-  int NodesBetweenPolls = 30000;
-
   // Iteration counters
   int Iteration;
-  BetaCounterType BetaCounter; // does not have internal data
+  BetaCounterType BetaCounter; // has per-thread internal data
 
   // Scores and number of times the best move changed for each iteration
   IterationInfoType IterationInfo[PLY_MAX_PLUS_2];
@@ -231,7 +227,7 @@ namespace {
   bool InfiniteSearch;
   bool PonderSearch;
   bool StopOnPonderhit;
-  bool AbortSearch;
+  bool AbortSearch; // heavy SMP read access
   bool Quit;
   bool FailHigh;
   bool FailLow;
@@ -262,6 +258,11 @@ namespace {
 #else
   HANDLE SitIdleEvent[THREAD_MAX];
 #endif
+
+  // Node counters, used only by thread[0] but try to keep in different
+  // cache lines (64 bytes each) from the heavy SMP read accessed variables.
+  int NodesSincePoll;
+  int NodesBetweenPolls = 30000;
 
 
   /// Functions
