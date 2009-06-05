@@ -274,8 +274,8 @@ namespace {
   template<PieceType Piece, bool HasPopCnt>
   void evaluate_pieces(const Position& p, Color us, EvalInfo& ei);
 
-  template<>
-  void evaluate_pieces<KING, false>(const Position& p, Color us, EvalInfo &ei);
+  template<bool HasPopCnt>
+  void evaluate_king(const Position& p, Color us, EvalInfo &ei);
 
   void evaluate_passed_pawns(const Position &pos, EvalInfo &ei);
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
@@ -368,11 +368,11 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
                             | ei.attackedBy[c][QUEEN]  | ei.attackedBy[c][KING];
   }
 
-  // Kings.  Kings are evaluated after all other pieces for both sides,
+  // Kings. Kings are evaluated after all other pieces for both sides,
   // because we need complete attack information for all pieces when computing
   // the king safety evaluation.
   for (Color c = WHITE; c <= BLACK; c++)
-      evaluate_pieces<KING, false>(pos, c, ei);
+      evaluate_king<HasPopCnt>(pos, c, ei);
 
   // Evaluate passed pawns.  We evaluate passed pawns for both sides at once,
   // because we need to know which side promotes first in positions where
@@ -704,11 +704,10 @@ namespace {
     return b >> (num << 3);
   }
 
-  // evaluate_pieces<KING>() assigns bonuses and penalties to a king of a given
-  // color.
+  // evaluate_king<>() assigns bonuses and penalties to a king of a given color.
 
-  template<>
-  void evaluate_pieces<KING, false>(const Position& p, Color us, EvalInfo& ei) {
+  template<bool HasPopCnt>
+  void evaluate_king(const Position& p, Color us, EvalInfo& ei) {
 
     int shelter = 0, sign = Sign[us];
     Square s = p.king_square(us);
@@ -761,7 +760,7 @@ namespace {
       // quality of the pawn shelter.
       int attackUnits =
             Min((ei.kingAttackersCount[them] * ei.kingAttackersWeight[them]) / 2, 25)
-          + (ei.kingAdjacentZoneAttacksCount[them] + count_1s_max_15(undefended)) * 3
+          + (ei.kingAdjacentZoneAttacksCount[them] + count_1s_max_15<HasPopCnt>(undefended)) * 3
           + InitKingDanger[relative_square(us, s)] - (shelter >> 5);
 
       // Analyse safe queen contact checks
@@ -777,7 +776,7 @@ namespace {
         {
           // The bitboard b now contains the squares available for safe queen
           // contact checks.
-          int count = count_1s_max_15(b);
+          int count = count_1s_max_15<HasPopCnt>(b);
           attackUnits += QueenContactCheckBonus * count * (sente ? 2 : 1);
 
           // Is there a mate threat?
@@ -817,12 +816,12 @@ namespace {
           // Queen checks
           b2 = b & ei.attacked_by(them, QUEEN);
           if( b2)
-              attackUnits += QueenCheckBonus * count_1s_max_15(b2);
+              attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
 
           // Rook checks
           b2 = b & ei.attacked_by(them, ROOK);
           if (b2)
-              attackUnits += RookCheckBonus * count_1s_max_15(b2);
+              attackUnits += RookCheckBonus * count_1s_max_15<HasPopCnt>(b2);
       }
       if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
       {
@@ -831,12 +830,12 @@ namespace {
           // Queen checks
           b2 = b & ei.attacked_by(them, QUEEN);
           if (b2)
-              attackUnits += QueenCheckBonus * count_1s_max_15(b2);
+              attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
 
           // Bishop checks
           b2 = b & ei.attacked_by(them, BISHOP);
           if (b2)
-              attackUnits += BishopCheckBonus * count_1s_max_15(b2);
+              attackUnits += BishopCheckBonus * count_1s_max_15<HasPopCnt>(b2);
       }
       if (KnightCheckBonus > 0)
       {
@@ -845,7 +844,7 @@ namespace {
           // Knight checks
           b2 = b & ei.attacked_by(them, KNIGHT);
           if (b2)
-              attackUnits += KnightCheckBonus * count_1s_max_15(b2);
+              attackUnits += KnightCheckBonus * count_1s_max_15<HasPopCnt>(b2);
       }
 
       // Analyse discovered checks (only for non-pawns right now, consider
@@ -854,7 +853,7 @@ namespace {
       {
         b = p.discovered_check_candidates(them) & ~p.pawns();
         if (b)
-          attackUnits += DiscoveredCheckBonus * count_1s_max_15(b) * (sente? 2 : 1);
+          attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente? 2 : 1);
       }
 
       // Has a mate threat been found?  We don't do anything here if the
