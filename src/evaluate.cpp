@@ -170,13 +170,13 @@ namespace {
   // Bonus for unstoppable passed pawns
   const Value UnstoppablePawnValue = Value(0x500);
 
-  // Rooks and queens on the 7th rank
+  // Rooks and queens on the 7th rank (modified by Joona Kiiski)
   const Value MidgameRookOn7thBonus  = Value(47);
   const Value EndgameRookOn7thBonus  = Value(98);
   const Value MidgameQueenOn7thBonus = Value(27);
   const Value EndgameQueenOn7thBonus = Value(54);
 
-  // Rooks on open files
+  // Rooks on open files (modified by Joona Kiiski)
   const Value RookOpenFileBonus = Value(43);
   const Value RookHalfOpenFileBonus = Value(19);
 

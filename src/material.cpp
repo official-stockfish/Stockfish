@@ -37,6 +37,7 @@ using std::string;
 
 namespace {
 
+  // Values modified by Joona Kiiski
   const Value BishopPairMidgameBonus = Value(109);
   const Value BishopPairEndgameBonus = Value(97);
 
