@@ -23,7 +23,6 @@
 ////
 
 #include <cassert>
-#include <cstring>
 #include <sstream>
 #include <map>
 
@@ -94,7 +93,6 @@ MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
                 << " bytes for material hash table." << std::endl;
       Application::exit_with_failure();
   }
-  clear();
 }
 
 
@@ -102,17 +100,8 @@ MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
 
 MaterialInfoTable::~MaterialInfoTable() {
 
-  delete [] entries;
   delete funcs;
-}
-
-
-/// MaterialInfoTable::clear() clears a material hash table by setting
-/// all entries to 0.
-
-void MaterialInfoTable::clear() {
-
-  memset(entries, 0, size * sizeof(MaterialInfo));
+  delete [] entries;
 }
 
 

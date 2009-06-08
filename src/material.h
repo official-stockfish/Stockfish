@@ -49,6 +49,8 @@ class MaterialInfo {
   friend class MaterialInfoTable;
 
 public:
+  MaterialInfo() : key(0) { clear(); }
+
   Value mg_value() const;
   Value eg_value() const;
   ScaleFactor scale_factor(const Position& pos, Color c) const;
@@ -87,7 +89,6 @@ class MaterialInfoTable {
 public:
   MaterialInfoTable(unsigned numOfEntries);
   ~MaterialInfoTable();
-  void clear();
   MaterialInfo* get_material_info(const Position& pos);
 
 private:
@@ -116,15 +117,15 @@ inline Value MaterialInfo::eg_value() const {
 
 
 /// MaterialInfo::clear() resets a MaterialInfo object to an empty state,
-/// with all slots at their default values.
+/// with all slots at their default values but the key.
 
 inline void MaterialInfo::clear() {
 
   mgValue = egValue = 0;
   factor[WHITE] = factor[BLACK] = uint8_t(SCALE_FACTOR_NORMAL);
-  spaceWeight = 0;
   evaluationFunction = NULL;
   scalingFunction[WHITE] = scalingFunction[BLACK] = NULL;
+  spaceWeight = 0;
 }
 
 
