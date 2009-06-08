@@ -45,6 +45,8 @@ class PawnInfo {
   friend class PawnInfoTable;
 
 public:
+  PawnInfo() : key(0) { clear(); }
+
   Value mg_value() const;
   Value eg_value() const;
   Value kingside_storm_value(Color c) const;
@@ -61,13 +63,12 @@ private:
 
   Key key;
   Bitboard passedPawns;
-  Square kingSquares[2];
-  int16_t kingShelters[2];
   int16_t mgValue, egValue;
   int16_t ksStormValue[2], qsStormValue[2];
   uint8_t halfOpenFiles[2];
+  Square kingSquares[2];
+  int16_t kingShelters[2];
 };
-
 
 /// The PawnInfoTable class represents a pawn hash table.  It is basically
 /// just an array of PawnInfo objects and a few methods for accessing these
@@ -79,7 +80,6 @@ class PawnInfoTable {
 public:
   PawnInfoTable(unsigned numOfEntries);
   ~PawnInfoTable();
-  void clear();
   PawnInfo* get_pawn_info(const Position& pos);
 
 private:

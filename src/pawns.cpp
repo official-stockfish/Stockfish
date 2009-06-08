@@ -23,7 +23,6 @@
 ////
 
 #include <cassert>
-#include <cstring>
 
 #include "bitcount.h"
 #include "pawns.h"
@@ -147,7 +146,6 @@ PawnInfoTable::PawnInfoTable(unsigned numOfEntries) {
                 << " bytes for pawn hash table." << std::endl;
       Application::exit_with_failure();
   }
-  clear();
 }
 
 
@@ -155,14 +153,6 @@ PawnInfoTable::PawnInfoTable(unsigned numOfEntries) {
 
 PawnInfoTable::~PawnInfoTable() {
   delete [] entries;
-}
-
-
-/// PawnInfoTable::clear() clears the pawn hash table by setting all
-/// entries to 0.
-
-void PawnInfoTable::clear() {
-  memset(entries, 0, size * sizeof(PawnInfo));
 }
 
 
