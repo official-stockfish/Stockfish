@@ -40,8 +40,6 @@ using std::string;
 
 namespace {
 
-  /// Types
-
   enum Ambiguity {
     AMBIGUITY_NONE,
     AMBIGUITY_FILE,
@@ -49,8 +47,7 @@ namespace {
     AMBIGUITY_BOTH
   };
 
-
-  /// Functions
+  const History H; // used as dummy argument for MovePicker c'tor
 
   Ambiguity move_ambiguity(const Position& pos, Move m);
   const string time_string(int milliseconds);
@@ -144,7 +141,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
 
   assert(pos.is_ok());
 
-  MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly, History());
+  MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly, H);
 
   // Castling moves
   if (movestr == "O-O-O" || movestr == "O-O-O+")
@@ -368,7 +365,7 @@ namespace {
     if (type_of_piece(pc) == KING)
         return AMBIGUITY_NONE;
 
-    MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly, History());
+    MovePicker mp = MovePicker(pos, false, MOVE_NONE, OnePly, H);
     Move mv, moveList[8];
 
     int n = 0;
