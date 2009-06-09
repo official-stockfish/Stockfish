@@ -29,7 +29,7 @@
 
 
 ////
-//// Variables
+//// Constants modified by Joona Kiiski
 ////
 
 static const Value MP = PawnValueMidgame;
@@ -43,57 +43,57 @@ static const int MgPST[][64] = {
   {// Pawn
    // A      B      C      D      E      F      G      H
         0,     0,     0,     0,     0,     0,     0,     0,
-    MP-38, MP-12, MP- 0, MP+12, MP+12, MP- 0, MP-12, MP-38,
-    MP-38, MP-12, MP+ 6, MP+38, MP+38, MP+ 6, MP-12, MP-38,
-    MP-38, MP-12, MP+16, MP+64, MP+64, MP+16, MP-12, MP-38,
-    MP-38, MP-12, MP+16, MP+38, MP+38, MP+16, MP-12, MP-38,
-    MP-38, MP-12, MP+ 6, MP+12, MP+12, MP+ 6, MP-12, MP-38,
-    MP-38, MP-12, MP- 0, MP+12, MP+12, MP- 0, MP-12, MP-38,
+    MP-34, MP-12, MP- 2, MP+ 8, MP+ 8, MP- 2, MP-12, MP-34,
+    MP-34, MP-12, MP+ 3, MP+30, MP+30, MP+ 3, MP-12, MP-34,
+    MP-34, MP-12, MP+11, MP+52, MP+52, MP+11, MP-12, MP-34,
+    MP-34, MP-12, MP+11, MP+30, MP+30, MP+11, MP-12, MP-34,
+    MP-34, MP-12, MP+ 3, MP+ 8, MP+ 8, MP+ 3, MP-12, MP-34,
+    MP-34, MP-12, MP- 2, MP+ 8, MP+ 8, MP- 2, MP-12, MP-34,
         0,     0,     0,     0,     0,     0,     0,     0
   },
   {// Knight
    //  A      B       C      D      E      F      G       H
-    MK-128, MK-102, MK-76, MK-64, MK-64, MK-76, MK-102, MK-128,
-    MK- 89, MK- 64, MK-38, MK-25, MK-25, MK-38, MK- 64, MK- 89,
-    MK- 51, MK- 25, MK- 0, MK+12, MK+12, MK- 0, MK- 25, MK- 51,
-    MK- 25, MK-  0, MK+25, MK+38, MK+38, MK+25, MK-  0, MK- 25,
-    MK- 12, MK+ 12, MK+38, MK+51, MK+51, MK+38, MK+ 12, MK- 12,
-    MK- 12, MK+ 12, MK+38, MK+51, MK+51, MK+38, MK+ 12, MK- 12,
-    MK- 51, MK- 25, MK- 0, MK+12, MK+12, MK- 0, MK- 25, MK- 51,
-    MK-182, MK- 64, MK-38, MK-25, MK-25, MK-38, MK- 64, MK-182
+    MK-136, MK-108, MK-81, MK-68, MK-68, MK-81, MK-108, MK-136,
+    MK- 94, MK- 68, MK-40, MK-26, MK-26, MK-40, MK- 68, MK- 94,
+    MK- 54, MK- 26, MK+ 0, MK+12, MK+12, MK+ 0, MK- 26, MK- 54,
+    MK- 26, MK+  0, MK+26, MK+40, MK+40, MK+26, MK+  0, MK- 26,
+    MK- 12, MK+ 12, MK+40, MK+54, MK+54, MK+40, MK+ 12, MK- 12,
+    MK- 12, MK+ 12, MK+40, MK+54, MK+54, MK+40, MK+ 12, MK- 12,
+    MK- 54, MK- 26, MK+ 0, MK+12, MK+12, MK+ 0, MK- 26, MK- 54,
+    MK-194, MK- 68, MK-40, MK-26, MK-26, MK-40, MK- 68, MK-194
   },
   {// Bishop
    // A      B      C      D      E      F      G      H
-    MB-46, MB-46, MB-40, MB-35, MB-35, MB-40, MB-46, MB-46,
-    MB-20, MB- 0, MB- 5, MB- 0, MB- 0, MB- 5, MB- 0, MB-20,
-    MB-15, MB- 5, MB+10, MB+ 5, MB+ 5, MB+10, MB- 5, MB-15,
-    MB-10, MB- 0, MB+ 5, MB+20, MB+20, MB+ 5, MB- 0, MB-10,
-    MB-10, MB- 0, MB+ 5, MB+20, MB+20, MB+ 5, MB- 0, MB-10,
-    MB-15, MB- 5, MB+10, MB+ 5, MB+ 5, MB+10, MB- 5, MB-15,
-    MB-20, MB- 0, MB- 5, MB- 0, MB- 0, MB- 5, MB- 0, MB-20,
-    MB-20, MB-20, MB-15, MB-10, MB-10, MB-15, MB-20, MB-20
+    MB-41, MB-41, MB-36, MB-31, MB-31, MB-36, MB-41, MB-41,
+    MB-18, MB- 1, MB- 5, MB- 1, MB- 1, MB- 5, MB- 1, MB-18,
+    MB-14, MB- 5, MB+ 7, MB+ 3, MB+ 3, MB+ 7, MB- 5, MB-14,
+    MB- 9, MB- 1, MB+ 3, MB+16, MB+16, MB+ 3, MB- 1, MB- 9,
+    MB- 9, MB- 1, MB+ 3, MB+16, MB+16, MB+ 3, MB- 1, MB- 9,
+    MB-14, MB- 5, MB+ 7, MB+ 3, MB+ 3, MB+ 7, MB- 5, MB-14,
+    MB-18, MB- 1, MB- 5, MB- 1, MB- 1, MB- 5, MB- 1, MB-18,
+    MB-18, MB-18, MB-14, MB- 9, MB- 9, MB-14, MB-18, MB-18
   },
   {// Rook
-   // A      B      C     D     E     F     G      H
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18,
-    MR-18, MR-10, MR-3, MR+4, MR+4, MR-3, MR-10, MR-18
+   // A      B     C     D     E     F     G      H
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
+    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14
   },
   {// Queen
-   //A   B   C   D   E   F   G   H
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ,
-    MQ, MQ, MQ, MQ, MQ, MQ, MQ, MQ
+   // A      B      C      D      E      F      G      H
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
+    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12
   },
   {// King
    //A    B    C    D    E    F    G    H
@@ -117,59 +117,59 @@ static const Value EQ = QueenValueEndgame;
 static const int EgPST[][64] = {
   { },
   {// Pawn
-   //A   B   C   D   E   F   G   H
-     0,  0,  0,  0,  0,  0,  0,  0,
-    EP, EP, EP, EP, EP, EP, EP, EP,
-    EP, EP, EP, EP, EP, EP, EP, EP,
-    EP, EP, EP, EP, EP, EP, EP, EP,
-    EP, EP, EP, EP, EP, EP, EP, EP,
-    EP, EP, EP, EP, EP, EP, EP, EP,
-    EP, EP, EP, EP, EP, EP, EP, EP,
-     0,  0,  0,  0,  0,  0,  0,  0
+   // A     B     C     D     E     F     G     H
+       0,    0,    0,    0,    0,    0,    0,    0,
+    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+       0,    0,    0,    0,    0,    0,    0,    0
   },
   {// Knight
    // A       B      C      D      E      F      G      H
-    EK-102, EK-76, EK-51, EK-38, EK-38, EK-51, EK-76, EK-102,
-    EK- 76, EK-51, EK-25, EK-12, EK-12, EK-25, EK-51, EK-76,
-    EK- 51, EK-25, EK- 0, EK+12, EK+12, EK- 0, EK-25, EK-51,
-    EK- 38, EK-12, EK+12, EK+25, EK+25, EK+12, EK-12, EK-38,
-    EK- 38, EK-12, EK+12, EK+25, EK+25, EK+12, EK-12, EK-38,
-    EK- 51, EK-25, EK- 0, EK+12, EK+12, EK- 0, EK-25, EK-51,
-    EK- 76, EK-51, EK-25, EK-12, EK-12, EK-25, EK-51, EK-76,
-    EK-102, EK-76, EK-51, EK-38, EK-38, EK-51, EK-76, EK-102
+    EK-104, EK-79, EK-55, EK-42, EK-42, EK-55, EK-79, EK-104,
+    EK- 79, EK-55, EK-30, EK-17, EK-17, EK-30, EK-55, EK- 79,
+    EK- 55, EK-30, EK- 6, EK+ 5, EK+ 5, EK- 6, EK-30, EK- 55,
+    EK- 42, EK-17, EK+ 5, EK+18, EK+18, EK+ 5, EK-17, EK- 42,
+    EK- 42, EK-17, EK+ 5, EK+18, EK+18, EK+ 5, EK-17, EK- 42,
+    EK- 55, EK-30, EK- 6, EK+ 5, EK+ 5, EK- 6, EK-30, EK- 55,
+    EK- 79, EK-55, EK-30, EK-17, EK-17, EK-30, EK-55, EK- 79,
+    EK-104, EK-79, EK-55, EK-42, EK-42, EK-55, EK-79, EK-104
   },
   {// Bishop
    // A      B      C      D      E      F      G      H
-    EB-46, EB-30, EB-23, EB-15, EB-15, EB-23, EB-30, EB-46,
-    EB-30, EB-15, EB- 7, EB- 0, EB- 0, EB- 7, EB-15, EB-30,
-    EB-23, EB- 7, EB- 0, EB+ 7, EB+ 7, EB- 0, EB- 7, EB-23,
-    EB-15, EB- 0, EB+ 7, EB+15, EB+15, EB+ 7, EB- 0, EB-15,
-    EB-15, EB- 0, EB+ 7, EB+15, EB+15, EB+ 7, EB- 0, EB-15,
-    EB-23, EB- 7, EB- 0, EB+ 7, EB+ 7, EB- 0, EB- 7, EB-23,
-    EB-30, EB-15, EB- 7, EB- 0, EB- 0, EB- 7, EB-15, EB-30,
-    EB-46, EB-30, EB-23, EB-15, EB-15, EB-23, EB-30, EB-46
+    EB-56, EB-39, EB-32, EB-23, EB-23, EB-32, EB-39, EB-56,
+    EB-39, EB-23, EB-15, EB- 8, EB- 8, EB-15, EB-23, EB-39,
+    EB-32, EB-15, EB- 8, EB- 1, EB- 1, EB- 8, EB-15, EB-32,
+    EB-23, EB- 8, EB- 1, EB+ 7, EB+ 7, EB- 1, EB- 8, EB-23,
+    EB-23, EB- 8, EB- 1, EB+ 7, EB+ 7, EB- 1, EB- 8, EB-23,
+    EB-32, EB-15, EB- 8, EB- 1, EB- 1, EB- 8, EB-15, EB-32,
+    EB-39, EB-23, EB-15, EB- 8, EB- 8, EB-15, EB-23, EB-39,
+    EB-56, EB-39, EB-32, EB-23, EB-23, EB-32, EB-39, EB-56
   },
   {// Rook
    // A     B     C     D     E     F     G     H
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3,
-    ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3, ER-3
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
+    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1
   },
   {// Queen
    // A      B      C      D      E      F      G      H
-    EQ-61, EQ-40, EQ-30, EQ-20, EQ-20, EQ-30, EQ-40, EQ-61,
-    EQ-40, EQ-20, EQ-10, EQ- 0, EQ- 0, EQ-10, EQ-20, EQ-40,
-    EQ-30, EQ-10, EQ- 0, EQ+10, EQ+10, EQ- 0, EQ-10, EQ-30,
-    EQ-20, EQ- 0, EQ+10, EQ+20, EQ+20, EQ+10, EQ- 0, EQ-20,
-    EQ-20, EQ- 0, EQ+10, EQ+20, EQ+20, EQ+10, EQ- 0, EQ-20,
-    EQ-30, EQ-10, EQ- 0, EQ+10, EQ+10, EQ- 0, EQ-10, EQ-30,
-    EQ-40, EQ-20, EQ-10, EQ- 0, EQ- 0, EQ-10, EQ-20, EQ-40,
-    EQ-61, EQ-40, EQ-30, EQ-20, EQ-20, EQ-30, EQ-40, EQ-61
+    EQ-77, EQ-51, EQ-39, EQ-27, EQ-27, EQ-39, EQ-51, EQ-77,
+    EQ-51, EQ-27, EQ-15, EQ- 3, EQ- 3, EQ-15, EQ-27, EQ-51,
+    EQ-39, EQ-15, EQ- 3, EQ+ 9, EQ+ 9, EQ- 3, EQ-15, EQ-39,
+    EQ-27, EQ- 3, EQ+ 9, EQ+21, EQ+21, EQ+ 9, EQ- 3, EQ-27,
+    EQ-27, EQ- 3, EQ+ 9, EQ+21, EQ+21, EQ+ 9, EQ- 3, EQ-27,
+    EQ-39, EQ-15, EQ- 3, EQ+ 9, EQ+ 9, EQ- 3, EQ-15, EQ-39,
+    EQ-51, EQ-27, EQ-15, EQ- 3, EQ- 3, EQ-15, EQ-27, EQ-51,
+    EQ-77, EQ-51, EQ-39, EQ-27, EQ-27, EQ-39, EQ-51, EQ-77
   },
   {// King
    //A    B    C    D    E    F    G    H
