@@ -32,7 +32,9 @@
 #include "evaluate.h"
 #include "history.h"
 #include "misc.h"
+#include "movegen.h"
 #include "movepick.h"
+#include "lock.h"
 #include "san.h"
 #include "search.h"
 #include "thread.h"
@@ -243,10 +245,12 @@ namespace {
   std::ofstream LogFile;
 
   // MP related variables
+  int ActiveThreads = 1;
   Depth MinimumSplitDepth;
   int MaxThreadsPerSplitPoint;
   Thread Threads[THREAD_MAX];
   Lock MPLock;
+  Lock IOLock;
   bool AllThreadsShouldExit = false;
   const int MaxActiveSplitPoints = 8;
   SplitPoint SplitPointStack[THREAD_MAX][MaxActiveSplitPoints];
@@ -263,6 +267,9 @@ namespace {
   // cache lines (64 bytes each) from the heavy SMP read accessed variables.
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
+
+   // The main transposition table
+   TranspositionTable TT;
 
 
   /// Functions
@@ -313,39 +320,6 @@ namespace {
   DWORD WINAPI init_thread(LPVOID threadID);
 #endif
 
-}
-
-
-////
-//// Global variables
-////
-
-// The main transposition table
-TranspositionTable TT;
-
-
-// Number of active threads:
-int ActiveThreads = 1;
-
-// Locks.  In principle, there is no need for IOLock to be a global variable,
-// but it could turn out to be useful for debugging.
-Lock IOLock;
-
-
-// SearchStack::init() initializes a search stack. Used at the beginning of a
-// new search from the root.
-void SearchStack::init(int ply) {
-
-  pv[ply] = pv[ply + 1] = MOVE_NONE;
-  currentMove = threatMove = MOVE_NONE;
-  reduction = Depth(0);
-}
-
-void SearchStack::initKillers() {
-
-  mateKiller = MOVE_NONE;
-  for (int i = 0; i < KILLER_MAX; i++)
-      killers[i] = MOVE_NONE;
 }
 
 
@@ -449,7 +423,7 @@ bool think(const Position &pos, bool infinite, bool ponder, int side_to_move,
       init_eval(ActiveThreads);
   }
 
-  // Wake up sleeping threads:
+  // Wake up sleeping threads
   wake_sleeping_threads();
 
   for (int i = 1; i < ActiveThreads; i++)
@@ -622,6 +596,22 @@ int64_t nodes_searched() {
   return result;
 }
 
+
+// SearchStack::init() initializes a search stack. Used at the beginning of a
+// new search from the root.
+void SearchStack::init(int ply) {
+
+  pv[ply] = pv[ply + 1] = MOVE_NONE;
+  currentMove = threatMove = MOVE_NONE;
+  reduction = Depth(0);
+}
+
+void SearchStack::initKillers() {
+
+  mateKiller = MOVE_NONE;
+  for (int i = 0; i < KILLER_MAX; i++)
+      killers[i] = MOVE_NONE;
+}
 
 namespace {
 

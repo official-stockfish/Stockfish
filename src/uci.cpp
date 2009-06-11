@@ -123,7 +123,7 @@ namespace {
     }
     else if (token == "ucinewgame")
     {
-        TT.clear();
+        push_button("Clear Hash");
         Position::init_piece_square_tables();
         RootPosition.from_fen(StartPosition);
     }

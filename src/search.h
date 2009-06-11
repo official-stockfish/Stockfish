@@ -26,12 +26,7 @@
 ////
 
 #include "depth.h"
-#include "history.h"
-#include "lock.h"
-#include "movegen.h"
-#include "position.h"
-#include "tt.h"
-#include "value.h"
+#include "move.h"
 
 
 ////
@@ -63,15 +58,6 @@ struct SearchStack {
   void init(int ply);
   void initKillers();
 };
-
-
-////
-//// Global variables
-////
-
-extern TranspositionTable TT;
-extern int ActiveThreads;
-extern Lock SMPLock;
 
 
 ////
