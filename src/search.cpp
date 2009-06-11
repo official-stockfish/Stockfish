@@ -1054,7 +1054,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    MovePicker mp = MovePicker(pos, true, ttMove, depth, Threads[threadID].H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, ttMove, depth, Threads[threadID].H, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1315,7 +1315,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves:
-    MovePicker mp = MovePicker(pos, false, ttMove, depth, Threads[threadID].H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, ttMove, depth, Threads[threadID].H, &ss[ply]);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1535,7 +1535,7 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, pvNode, ttMove, depth, Threads[threadID].H);
+    MovePicker mp = MovePicker(pos, ttMove, depth, Threads[threadID].H);
     Move move;
     int moveCount = 0;
     Bitboard dcCandidates = mp.discovered_check_candidates();

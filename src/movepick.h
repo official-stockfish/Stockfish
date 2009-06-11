@@ -65,7 +65,7 @@ public:
     PH_STOP
   };
 
-  MovePicker(const Position& p, bool pvnode, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
+  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
   Move get_next_move();
   Move get_next_move(Lock& lock);
   int number_of_moves() const;
@@ -85,8 +85,6 @@ private:
   Move ttMove, mateKiller, killer1, killer2;
   Bitboard pinned, dc;
   MoveStack moves[256], badCaptures[64];
-  bool pvNode;
-  Depth depth;
   int phaseIndex;
   int numOfMoves, numOfBadCaptures;
   int movesPicked;

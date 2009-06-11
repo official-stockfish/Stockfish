@@ -63,10 +63,8 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, bool pv, Move ttm, Depth d,
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const History& h, SearchStack* ss) : pos(p), H(h) {
-
-  pvNode = pv;
   ttMove = ttm;
   if (ss)
   {
@@ -76,17 +74,14 @@ MovePicker::MovePicker(const Position& p, bool pv, Move ttm, Depth d,
   } else
       mateKiller = killer1 = killer2 = MOVE_NONE;
 
-  depth = d;
-  movesPicked = 0;
-  numOfMoves = 0;
-  numOfBadCaptures = 0;
-  checkKillers = checkLegal = false;
+  movesPicked = numOfMoves = numOfBadCaptures = 0;
+  checkKillers = checkLegal = finished = false;
 
   if (p.is_check())
       phaseIndex = EvasionsPhaseIndex;
-  else if (depth > Depth(0))
+  else if (d > Depth(0))
       phaseIndex = MainSearchPhaseIndex;
-  else if (depth == Depth(0))
+  else if (d == Depth(0))
       phaseIndex = QsearchWithChecksPhaseIndex;
   else
       phaseIndex = QsearchWithoutChecksPhaseIndex;
