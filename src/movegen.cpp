@@ -132,7 +132,7 @@ namespace {
 
 
 /// generate_captures generates() all pseudo-legal captures and queen
-/// promotions.  The return value is the number of moves generated.
+/// promotions. The return value is the number of moves generated.
 
 int generate_captures(const Position& pos, MoveStack* mlist) {
 
@@ -791,9 +791,11 @@ namespace {
     // Direct checks. These are possible only for pawns on neighboring files
     // and in the two ranks that, after the push, are in front of the enemy king.
     b1 = pawns & neighboring_files_bb(ksq) & ~dc;
-    b2 = rank_bb(ksq + 2 * TDELTA_S) | rank_bb(ksq + 3 * TDELTA_S);
-    b1 &= b2;
-    if (!b1)
+
+    // We can get false positives if (ksq + x) is not in [0,63] range but
+    // is not a problem, they will be filtered out later.
+    b2 = b1 & (rank_bb(ksq + 2 * TDELTA_S) | rank_bb(ksq + 3 * TDELTA_S));
+    if (!b2)
         return mlist;
 
     // Direct checks, single pawn pushes
