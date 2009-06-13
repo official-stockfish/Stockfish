@@ -189,6 +189,9 @@ namespace {
   // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
 
+  // The main transposition table
+  TranspositionTable TT;
+
 
   /// Variables initialized by UCI options
 
@@ -267,9 +270,6 @@ namespace {
   // cache lines (64 bytes each) from the heavy SMP read accessed variables.
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
-
-   // The main transposition table
-   TranspositionTable TT;
 
 
   /// Functions

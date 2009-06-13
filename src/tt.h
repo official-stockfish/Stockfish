@@ -92,7 +92,13 @@ public:
 private:
   inline TTEntry* first_entry(const Key posKey) const;
 
-  unsigned size, writes;
+  // Be sure 'writes' is at least one cacheline away
+  // from read only variables.
+  unsigned char pad_before[64 - sizeof(unsigned)];
+  unsigned writes; // heavy SMP read/write access here
+  unsigned char pad_after[64];
+
+  unsigned size;
   TTEntry* entries;
   uint8_t generation;
 };
