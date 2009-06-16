@@ -68,6 +68,8 @@ namespace {
   const int WeightKingOppSafetyInternal        = 0x101;
   const int WeightSpaceInternal                = 0x02F;
 
+  // Mobility and outposts bonus modified by Joona Kiiski
+  //
   // Visually better to define tables constants
   typedef Value V;
 
@@ -75,12 +77,12 @@ namespace {
   // of attacked squares not occupied by friendly piecess.
   const Value MidgameKnightMobilityBonus[] = {
   //    0       1      2     3      4      5      6      7      8
-    V(-30), V(-20),V(-10), V(0), V(10), V(20), V(25), V(30), V(30)
+    V(-38), V(-25),V(-12), V(0), V(12), V(25), V(31), V(38), V(38)
   };
 
   const Value EndgameKnightMobilityBonus[] = {
   //    0       1      2     3      4      5      6      7      8
-    V(-30), V(-20),V(-10), V(0), V(10), V(20), V(25), V(30), V(30)
+    V(-33), V(-23),V(-13), V(-3), V(7), V(17), V(22), V(27), V(27)
   };
 
   // Bishop mobility bonus in middle game and endgame, indexed by the number
@@ -88,16 +90,16 @@ namespace {
   // queens are also included.
   const Value MidgameBishopMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
-    V(-30), V(-15),  V(0), V(15), V(30), V(45), V(58), V(66),
+    V(-25), V(-11),  V(3), V(17), V(31), V(45), V(57), V(65),
   //    8       9     10     11     12     13     14     15
-    V( 72), V( 76), V(78), V(80), V(81), V(82), V(83), V(83)
+    V( 71), V( 74), V(76), V(78), V(79), V(80), V(81), V(81)
   };
 
   const Value EndgameBishopMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
-    V(-30), V(-15),  V(0), V(15), V(30), V(45), V(58), V(66),
+    V(-30), V(-16), V(-2), V(12), V(26), V(40), V(52), V(60),
   //    8       9     10     11     12     13     14     15
-    V( 72), V( 76), V(78), V(80), V(81), V(82), V(83), V(83)
+    V( 65), V( 69), V(71), V(73), V(74), V(75), V(76), V(76)
   };
 
   // Rook mobility bonus in middle game and endgame, indexed by the number
@@ -105,40 +107,40 @@ namespace {
   // queens and rooks are also included.
   const Value MidgameRookMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
-    V(-18), V(-12), V(-6),  V(0),  V(6), V(12), V(16), V(21),
+    V(-20), V(-14), V(-8), V(-2),  V(4), V(10), V(14), V(19),
   //    8       9     10     11     12     13     14     15
-    V( 24), V( 27), V(28), V(29), V(30), V(31), V(32), V(33)
+    V( 23), V( 26), V(27), V(28), V(29), V(30), V(31), V(32)
   };
 
   const Value EndgameRookMobilityBonus[] = {
   //    0       1      2      3      4      5      6      7
-    V(-30), V(-18), V(-6),  V(6), V(18), V(30), V(42), V(54),
+    V(-36), V(-19), V(-3), V(13), V(29), V(46), V(62), V(79),
   //    8       9     10     11     12     13     14     15
-    V( 66), V( 74), V(78), V(80), V(81), V(82), V(83), V(83)
+    V( 95), V(106),V(111),V(114),V(116),V(117),V(118),V(118)
   };
 
   // Queen mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces.
   const Value MidgameQueenMobilityBonus[] = {
   //    0      1      2      3      4      5      6      7
-    V(-10), V(-8), V(-6), V(-4), V(-2), V( 0), V( 2), V( 4),
+    V(-10), V(-8), V(-6), V(-3), V(-1), V( 1), V( 3), V( 5),
   //    8      9     10     11     12     13     14     15
-    V(  6), V( 8), V(10), V(12), V(13), V(14), V(15), V(16),
+    V(  8), V(10), V(12), V(15), V(16), V(17), V(18), V(20),
   //   16     17     18     19     20     21     22     23
-    V( 16), V(16), V(16), V(16), V(16), V(16), V(16), V(16),
+    V( 20), V(20), V(20), V(20), V(20), V(20), V(20), V(20),
   //   24     25     26     27     28     29     30     31
-    V( 16), V(16), V(16), V(16), V(16), V(16), V(16), V(16)
+    V( 20), V(20), V(20), V(20), V(20), V(20), V(20), V(20)
   };
 
   const Value EndgameQueenMobilityBonus[] = {
   //    0      1      2      3      4      5      6      7
-    V(-20),V(-15),V(-10), V(-5), V( 0), V( 5), V(10), V(15),
+    V(-18),V(-13), V(-7), V(-2), V( 3), V (8), V(13), V(19),
   //    8      9     10     11     12     13     14     15
-    V( 19), V(23), V(27), V(29), V(30), V(30), V(30), V(30),
+    V( 23), V(27), V(32), V(34), V(35), V(35), V(35), V(35),
   //   16     17     18     19     20     21     22     23
-    V( 30), V(30), V(30), V(30), V(30), V(30), V(30), V(30),
+    V( 35), V(35), V(35), V(35), V(35), V(35), V(35), V(35),
   //   24     25     26     27     28     29     30     31
-    V( 30), V(30), V(30), V(30), V(30), V(30), V(30), V(30)
+    V( 35), V(35), V(35), V(35), V(35), V(35), V(35), V(35)
   };
 
   // Outpost bonuses for knights and bishops, indexed by square (from white's
@@ -147,10 +149,10 @@ namespace {
   //  A     B     C     D     E     F     G     H
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 1
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 2
-    V(0), V(0), V(5),V(10),V(10), V(5), V(0), V(0), // 3
-    V(0), V(5),V(20),V(30),V(30),V(20), V(5), V(0), // 4
-    V(0),V(10),V(30),V(40),V(40),V(30),V(10), V(0), // 5
-    V(0), V(5),V(20),V(20),V(20),V(20), V(5), V(0), // 6
+    V(0), V(0), V(4), V(8), V(8), V(4), V(0), V(0), // 3
+    V(0), V(4),V(17),V(26),V(26),V(17), V(4), V(0), // 4
+    V(0), V(8),V(26),V(35),V(35),V(26), V(8), V(0), // 5
+    V(0), V(4),V(17),V(17),V(17),V(17), V(4), V(0), // 6
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
   };
@@ -161,7 +163,7 @@ namespace {
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 2
     V(0), V(0), V(5), V(5), V(5), V(5), V(0), V(0), // 3
     V(0), V(5),V(10),V(10),V(10),V(10), V(5), V(0), // 4
-    V(0),V(10),V(20),V(20),V(20),V(20),V(10), V(0), // 5
+    V(0),V(10),V(21),V(21),V(21),V(21),V(10), V(0), // 5
     V(0), V(5), V(8), V(8), V(8), V(8), V(5), V(0), // 6
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
