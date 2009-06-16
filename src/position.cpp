@@ -1594,7 +1594,7 @@ int Position::see(Square from, Square to) const {
       if (pt == KING && stmAttackers)
       {
           assert(n < 32);
-          swapList[n++] = 100;
+          swapList[n++] = QueenValueMidgame*10;
           break;
       }
   } while (stmAttackers);
