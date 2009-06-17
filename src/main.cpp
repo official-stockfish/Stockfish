@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
   }
 
   // Print copyright notice
-  cout << engine_name() << ". Copyright (C) "
-       << "2004-2009 Tord Romstad, Marco Costalba. " << endl;
+  cout << engine_name()
+       << ". By Tord Romstad, Marco Costalba, Joona Kiiski." << endl;
 
   if (CpuHasPOPCNT)
       cout << "Good! CPU has hardware POPCNT. We will use it." << endl;

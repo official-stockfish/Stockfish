@@ -117,7 +117,7 @@ namespace {
     if (token == "uci")
     {
         cout << "id name " << engine_name()
-             << "\nid author Tord Romstad, Marco Costalba\n";
+             << "\nid author Tord Romstad, Marco Costalba, Joona Kiiski\n";
         print_uci_options();
         cout << "uciok" << endl;
     }
