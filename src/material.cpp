@@ -143,14 +143,14 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   else if (   pos.non_pawn_material(BLACK) == Value(0)
            && pos.piece_count(BLACK, PAWN) == 0
-           && pos.non_pawn_material(WHITE) >= RookValueEndgame)
+           && pos.non_pawn_material(WHITE) >= RookValueMidgame)
   {
       mi->evaluationFunction = &EvaluateKXK;
       return mi;
   }
   else if (   pos.non_pawn_material(WHITE) == Value(0)
            && pos.piece_count(WHITE, PAWN) == 0
-           && pos.non_pawn_material(BLACK) >= RookValueEndgame)
+           && pos.non_pawn_material(BLACK) >= RookValueMidgame)
   {
       mi->evaluationFunction = &EvaluateKKX;
       return mi;
