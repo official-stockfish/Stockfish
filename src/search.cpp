@@ -657,7 +657,7 @@ namespace {
         // Calculate dynamic search window based on previous iterations
         Value alpha, beta;
 
-        if (MultiPV == 1 && Iteration >= 6)
+        if (MultiPV == 1 && Iteration >= 6 && abs(IterationInfo[Iteration - 1].value) < VALUE_KNOWN_WIN)
         {
             int prevDelta1 = IterationInfo[Iteration - 1].speculatedValue - IterationInfo[Iteration - 2].speculatedValue;
             int prevDelta2 = IterationInfo[Iteration - 2].speculatedValue - IterationInfo[Iteration - 3].speculatedValue;
