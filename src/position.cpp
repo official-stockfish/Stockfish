@@ -796,11 +796,14 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     pieceList[us][piece][index[from]] = to;
     index[to] = index[from];
 
-    // Update castle rights
-    st->key ^= zobCastle[st->castleRights];
-    st->castleRights &= castleRightsMask[from];
-    st->castleRights &= castleRightsMask[to];
-    st->key ^= zobCastle[st->castleRights];
+    // Update castle rights, try to shortcut a common case
+    if ((castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
+    {
+        st->key ^= zobCastle[st->castleRights];
+        st->castleRights &= castleRightsMask[from];
+        st->castleRights &= castleRightsMask[to];
+        st->key ^= zobCastle[st->castleRights];
+    }
 
     // Update checkers bitboard, piece must be already moved
     st->checkersBB = EmptyBoardBB;
