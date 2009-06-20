@@ -59,7 +59,7 @@ public:
   Value evaluate(const Position& pos) const;
 
 private:
-  void clear();
+  inline void clear();
 
   Key key;
   int16_t mgValue;

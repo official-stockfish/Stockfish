@@ -59,7 +59,7 @@ public:
   void setKingShelter(Color c, Square ksq, int value);
 
 private:
-  void clear();
+  inline void clear();
 
   Key key;
   Bitboard passedPawns;
