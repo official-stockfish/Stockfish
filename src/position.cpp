@@ -555,12 +555,12 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
           && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
           return true;
 
-      if (move_promotion(m)) // Promotion with check?
+      if (move_is_promotion(m)) // Promotion with check?
       {
           Bitboard b = occupied_squares();
           clear_bit(&b, from);
 
-          switch (move_promotion(m))
+          switch (move_promotion_piece(m))
           {
           case KNIGHT:
               return bit_is_set(piece_attacks<KNIGHT>(to), ksq);
@@ -721,7 +721,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   if (move_is_castle(m))
       do_castle_move(m);
-  else if (move_promotion(m))
+  else if (move_is_promotion(m))
       do_promotion_move(m);
   else if (move_is_ep(m))
       do_ep_move(m);
@@ -1005,7 +1005,7 @@ void Position::do_promotion_move(Move m) {
   board[from] = EMPTY;
 
   // Insert promoted piece
-  promotion = move_promotion(m);
+  promotion = move_promotion_piece(m);
   assert(promotion >= KNIGHT && promotion <= QUEEN);
   set_bit(&(byColorBB[us]), to);
   set_bit(&(byTypeBB[promotion]), to);
@@ -1152,7 +1152,7 @@ void Position::undo_move(Move m) {
 
   if (move_is_castle(m))
       undo_castle_move(m);
-  else if (move_promotion(m))
+  else if (move_is_promotion(m))
       undo_promotion_move(m);
   else if (move_is_ep(m))
       undo_ep_move(m);
@@ -1304,7 +1304,7 @@ void Position::undo_promotion_move(Move m) {
   assert(piece_on(from) == EMPTY);
 
   // Remove promoted piece
-  promotion = move_promotion(m);
+  promotion = move_promotion_piece(m);
   assert(piece_on(to)==piece_of_color_and_type(us, promotion));
   assert(promotion >= KNIGHT && promotion <= QUEEN);
   clear_bit(&(byColorBB[us]), to);

@@ -247,7 +247,7 @@ void MovePicker::score_captures() {
       seeValue = pos.see(m);
       if (seeValue >= 0)
       {
-          if (move_promotion(m))
+          if (move_is_promotion(m))
               moves[i].score = QueenValueMidgame;
           else
               moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
@@ -307,7 +307,7 @@ void MovePicker::score_qcaptures() {
   for (int i = 0; i < numOfMoves; i++)
   {
       Move m = moves[i].move;
-      if (move_promotion(m))
+      if (move_is_promotion(m))
           moves[i].score = QueenValueMidgame;
       else
           moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))

@@ -113,10 +113,10 @@ const string move_to_san(const Position& pos, Move m) {
           san += "x";
       }
       san += square_to_string(move_to(m));
-      if (move_promotion(m))
+      if (move_is_promotion(m))
       {
           san += '=';
-          san += piece_type_to_char(move_promotion(m), true);
+          san += piece_type_to_char(move_promotion_piece(m), true);
       }
   }
   // Is the move check?  We don't use pos.move_is_check(m) here, because
@@ -273,7 +273,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
   while ((m = mp.get_next_move()) != MOVE_NONE)
       if (   pos.type_of_piece_on(move_from(m)) == pt
           && move_to(m) == to
-          && move_promotion(m) == promotion
+          && move_promotion_piece(m) == promotion
           && (fromFile == FILE_NONE || fromFile == square_file(move_from(m)))
           && (fromRank == RANK_NONE || fromRank == square_rank(move_from(m))))
       {

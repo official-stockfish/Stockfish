@@ -78,8 +78,12 @@ inline Square move_to(Move m) {
   return Square(m & 0x3F);
 }
 
-inline PieceType move_promotion(Move m) {
+inline PieceType move_promotion_piece(Move m) {
   return PieceType((int(m) >> 12) & 7);
+}
+
+inline int move_is_promotion(Move m) {
+  return m & (7 << 12);
 }
 
 inline int move_is_ep(Move m) {

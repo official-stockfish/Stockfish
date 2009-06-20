@@ -1086,7 +1086,7 @@ namespace {
             &&  moveCount >= LMRPVMoves
             && !dangerous
             && !moveIsCapture
-            && !move_promotion(move)
+            && !move_is_promotion(move)
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
@@ -1337,7 +1337,7 @@ namespace {
       if (    useFutilityPruning
           && !dangerous
           && !moveIsCapture
-          && !move_promotion(move))
+          && !move_is_promotion(move))
       {
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(depth)
@@ -1370,7 +1370,7 @@ namespace {
           &&  moveCount >= LMRNonPVMoves
           && !dangerous
           && !moveIsCapture
-          && !move_promotion(move)
+          && !move_is_promotion(move)
           && !move_is_castle(move)
           && !move_is_killer(move, ss[ply]))
       {
@@ -1545,7 +1545,7 @@ namespace {
       if (   enoughMaterial
           && !isCheck
           && !pvNode
-          && !move_promotion(move)
+          && !move_is_promotion(move)
           && !pos.move_is_check(move, dcCandidates)
           && !pos.move_is_passed_pawn_push(move))
       {
@@ -1566,7 +1566,7 @@ namespace {
 
       // Don't search captures and checks with negative SEE values
       if (   !isCheck
-          && !move_promotion(move)
+          && !move_is_promotion(move)
           && (pos.midgame_value_of_piece_on(move_from(move)) >
               pos.midgame_value_of_piece_on(move_to(move)))
           &&  pos.see(move) < 0)
@@ -1663,7 +1663,7 @@ namespace {
       if (    useFutilityPruning
           && !dangerous
           && !moveIsCapture
-          && !move_promotion(move)
+          && !move_is_promotion(move)
           &&  moveCount >= 2 + int(sp->depth)
           &&  ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth, Threads[threadID].H))
         continue;
@@ -1677,7 +1677,7 @@ namespace {
       if (   !dangerous
           &&  moveCount >= LMRNonPVMoves
           && !moveIsCapture
-          && !move_promotion(move)
+          && !move_is_promotion(move)
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
@@ -1780,7 +1780,7 @@ namespace {
       if (   !dangerous
           &&  moveCount >= LMRPVMoves
           && !moveIsCapture
-          && !move_promotion(move)
+          && !move_is_promotion(move)
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
@@ -2236,7 +2236,7 @@ namespace {
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
-        && !move_promotion(m)
+        && !move_is_promotion(m)
         && !move_is_ep(m))
     {
         result += PawnEndgameExtension[pvNode];
@@ -2347,7 +2347,7 @@ namespace {
 
   bool ok_to_history(const Position& pos, Move m) {
 
-    return !pos.move_is_capture(m) && !move_promotion(m);
+    return !pos.move_is_capture(m) && !move_is_promotion(m);
   }
 
 

@@ -129,8 +129,8 @@ const std::string move_to_string(Move move) {
               return (from == SQ_E1 ? "e1c1" : "e8c8");
       }
       str = square_to_string(from) + square_to_string(to);
-      if (move_promotion(move))
-          str += piece_type_to_char(move_promotion(move), false);
+      if (move_is_promotion(move))
+          str += piece_type_to_char(move_promotion_piece(move), false);
   }
   return str;
 }

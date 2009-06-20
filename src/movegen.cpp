@@ -506,7 +506,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       // be a promotion.
       if (   (  (square_rank(to) == RANK_8 && us == WHITE)
               ||(square_rank(to) == RANK_1 && us != WHITE))
-           && !move_promotion(m))
+           && !move_is_promotion(m))
           return false;
 
       // Proceed according to the square delta between the source and
@@ -560,7 +560,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   // Luckly we can handle all the other pieces in one go
   return (   pos.piece_attacks_square(pos.piece_on(from), from, to)
           && pos.pl_move_is_legal(m, pinned)
-          && !move_promotion(m));
+          && !move_is_promotion(m));
 }
 
 
