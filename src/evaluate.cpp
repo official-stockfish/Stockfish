@@ -284,7 +284,7 @@ namespace {
                                     EvalInfo &ei);
   void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
                                     EvalInfo &ei);
-
+  template<bool HasPopCnt>
   void evaluate_space(const Position &p, Color us, EvalInfo &ei);
   inline Value apply_weight(Value v, int w);
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
@@ -403,8 +403,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
     // Evaluate space for both sides
     if (ei.mi->space_weight() > 0)
     {
-        evaluate_space(pos, WHITE, ei);
-        evaluate_space(pos, BLACK, ei);
+        evaluate_space<HasPopCnt>(pos, WHITE, ei);
+        evaluate_space<HasPopCnt>(pos, BLACK, ei);
     }
   }
 
@@ -1117,7 +1117,7 @@ namespace {
   // squares one, two or three squares behind a friendly pawn are counted
   // twice. Finally, the space bonus is scaled by a weight taken from the
   // material hash table.
-
+  template<bool HasPopCnt>
   void evaluate_space(const Position &pos, Color us, EvalInfo &ei) {
 
     Color them = opposite_color(us);
@@ -1145,8 +1145,8 @@ namespace {
         behindFriendlyPawns |= (behindFriendlyPawns << 16);
     }
 
-    int space =  count_1s_max_15(safeSquares)
-               + count_1s_max_15(behindFriendlyPawns & safeSquares);
+    int space =  count_1s_max_15<HasPopCnt>(safeSquares)
+               + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
     ei.mgValue += Sign[us] * apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
   }
