@@ -2278,7 +2278,7 @@ namespace {
 
     assert(move_is_ok(m));
     assert(threat == MOVE_NONE || move_is_ok(threat));
-    assert(!move_promotion(m));
+    assert(!move_is_promotion(m));
     assert(!pos.move_is_check(m));
     assert(!pos.move_is_capture(m));
     assert(!pos.move_is_passed_pawn_push(m));

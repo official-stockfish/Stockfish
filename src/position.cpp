@@ -982,7 +982,7 @@ void Position::do_promotion_move(Move m) {
 
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(move_promotion(m));
+  assert(move_is_promotion(m));
 
   us = side_to_move();
   them = opposite_color(us);
@@ -1290,7 +1290,7 @@ void Position::undo_promotion_move(Move m) {
   PieceType promotion;
 
   assert(move_is_ok(m));
-  assert(move_promotion(m));
+  assert(move_is_promotion(m));
 
   // When we have arrived here, some work has already been done by
   // Position::undo_move.  In particular, the side to move has been switched,
