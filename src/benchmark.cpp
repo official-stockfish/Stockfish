@@ -144,7 +144,16 @@ void benchmark(const string& commandLine) {
           break;
       totalNodes += nodes_searched();
   }
-  cout << "\nProcessing time (ms) " << get_system_time() - startTime
-       << "\nNodes searched " << totalNodes << "\nPress any key to exit" << endl;
+  cnt = get_system_time() - startTime;
+  cout << "\nProcessing time (ms) " << cnt
+       << "\nNodes searched " << totalNodes
+       << "\nNodes/second " << (int)(totalNodes/(cnt/1000.0))
+       << endl;
+
+  // Under MS Visual C++ debug window always unconditionally closes
+  // when program exits, this is bad because we want to read results before.
+  #if (defined(WINDOWS) || defined(WIN32) || defined(WIN64))
+  cout << "Press any key to exit" << endl;
   cin >> fileName;
+  #endif
 }
