@@ -39,93 +39,93 @@ namespace {
 
   // Doubled pawn penalty by file, middle game.
   const Value DoubledPawnMidgamePenalty[8] = {
-    Value(20), Value(30), Value(34), Value(34),
-    Value(34), Value(34), Value(30), Value(20)
+    Value(13), Value(20), Value(23), Value(23),
+    Value(23), Value(23), Value(20), Value(13)
   };
 
   // Doubled pawn penalty by file, endgame.
   const Value DoubledPawnEndgamePenalty[8] = {
-    Value(35), Value(40), Value(40), Value(40),
-    Value(40), Value(40), Value(40), Value(35)
+    Value(43), Value(48), Value(48), Value(48),
+    Value(48), Value(48), Value(48), Value(43)
   };
 
   // Isolated pawn penalty by file, middle game.
   const Value IsolatedPawnMidgamePenalty[8] = {
-    Value(20), Value(30), Value(34), Value(34),
-    Value(34), Value(34), Value(30), Value(20)
+    Value(25), Value(36), Value(40), Value(40),
+    Value(40), Value(40), Value(36), Value(25)
   };
 
   // Isolated pawn penalty by file, endgame.
   const Value IsolatedPawnEndgamePenalty[8] = {
-    Value(35), Value(40), Value(40), Value(40),
-    Value(40), Value(40), Value(40), Value(35)
+    Value(30), Value(35), Value(35), Value(35),
+    Value(35), Value(35), Value(35), Value(30)
   };
 
   // Backward pawn penalty by file, middle game.
   const Value BackwardPawnMidgamePenalty[8] = {
-    Value(16), Value(24), Value(27), Value(27),
-    Value(27), Value(27), Value(24), Value(16)
+    Value(20), Value(29), Value(33), Value(33),
+    Value(33), Value(33), Value(29), Value(20)
   };
 
   // Backward pawn penalty by file, endgame.
   const Value BackwardPawnEndgamePenalty[8] = {
-    Value(28), Value(32), Value(32), Value(32),
-    Value(32), Value(32), Value(32), Value(28)
+    Value(28), Value(31), Value(31), Value(31),
+    Value(31), Value(31), Value(31), Value(28)
   };
 
   // Pawn chain membership bonus by file, middle game.
   const Value ChainMidgameBonus[8] = {
-    Value(14), Value(16), Value(17), Value(18),
-    Value(18), Value(17), Value(16), Value(14)
+    Value(11), Value(13), Value(13), Value(14),
+    Value(14), Value(13), Value(13), Value(11)
   };
 
   // Pawn chain membership bonus by file, endgame.
   const Value ChainEndgameBonus[8] = {
-    Value(16), Value(16), Value(16), Value(16),
-    Value(16), Value(16), Value(16), Value(16)
+    Value(-1), Value(-1), Value(-1), Value(-1),
+    Value(-1), Value(-1), Value(-1), Value(-1)
   };
 
   // Candidate passed pawn bonus by rank, middle game.
   const Value CandidateMidgameBonus[8] = {
-    Value( 0), Value(12), Value(12), Value(20),
-    Value(40), Value(90), Value( 0), Value( 0)
+    Value( 0), Value( 6), Value(6), Value(14),
+    Value(34), Value(83), Value(0), Value( 0)
   };
 
   // Candidate passed pawn bonus by rank, endgame.
   const Value CandidateEndgameBonus[8] = {
-    Value( 0), Value(24), Value(24), Value(40),
-    Value(80), Value(180), Value(0), Value( 0)
+    Value( 0), Value( 13), Value(13), Value(29),
+    Value(68), Value(166), Value( 0), Value( 0)
   };
 
   // Pawn storm tables for positions with opposite castling:
   const int QStormTable[64] = {
     0,  0,  0,  0, 0, 0, 0, 0,
-  -22,-22,-22,-13,-4, 0, 0, 0,
-   -4, -9, -9, -9,-4, 0, 0, 0,
-    9, 18, 22, 18, 9, 0, 0, 0,
-   22, 31, 31, 22, 0, 0, 0, 0,
-   31, 40, 40, 31, 0, 0, 0, 0,
-   31, 40, 40, 31, 0, 0, 0, 0,
+  -22,-22,-22,-14,-6, 0, 0, 0,
+   -6,-10,-10,-10,-6, 0, 0, 0,
+    4, 12, 16, 12, 4, 0, 0, 0,
+   16, 23, 23, 16, 0, 0, 0, 0,
+   23, 31, 31, 23, 0, 0, 0, 0,
+   23, 31, 31, 23, 0, 0, 0, 0,
     0,  0,  0,  0, 0, 0, 0, 0
   };
 
   const int KStormTable[64] = {
-    0, 0, 0, 0,  0,  0,  0,  0,
-    0, 0, 0,-4,-13,-22,-27,-27,
-    0, 0, 0,-4, -9,-13,-18,-18,
-    0, 0, 0, 0,  9,  9,  9,  9,
-    0, 0, 0, 0,  9, 18, 27, 27,
-    0, 0, 0, 0,  9, 27, 40, 36,
-    0, 0, 0, 0,  0, 31, 40, 31,
-    0, 0, 0, 0,  0,  0,  0,  0
+    0, 0, 0,  0,  0,  0,  0,  0,
+    0, 0, 0,-10,-19,-28,-33,-33,
+    0, 0, 0,-10,-15,-19,-24,-24,
+    0, 0, 0,  0,  1,  1,  1,  1,
+    0, 0, 0,  0,  1, 10, 19, 19,
+    0, 0, 0,  0,  1, 19, 31, 27,
+    0, 0, 0,  0,  0, 22, 31, 22,
+    0, 0, 0,  0,  0,  0,  0,  0
   };
 
   // Pawn storm open file bonuses by file
-  const int16_t KStormOpenFileBonus[8] = { 45, 45, 30, 0, 0, 0, 0, 0 };
-  const int16_t QStormOpenFileBonus[8] = { 0, 0, 0, 0, 0, 30, 45, 30 };
+  const int16_t KStormOpenFileBonus[8] = { 31, 31, 18, 0, 0, 0, 0, 0 };
+  const int16_t QStormOpenFileBonus[8] = { 0, 0, 0, 0, 0, 26, 42, 26 };
 
   // Pawn storm lever bonuses by file
-  const int StormLeverBonus[8] = { 20, 20, 10, 0, 0, 10, 20, 20 };
+  const int StormLeverBonus[8] = { -8, -8, -13, 0, 0, -13, -8, -8 };
 
 }
 
