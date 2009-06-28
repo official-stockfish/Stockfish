@@ -62,16 +62,16 @@ enum Value {
 ///
 /// Values modified by Joona Kiiski
 
-const Value PawnValueMidgame   = Value(0x0CC);
-const Value PawnValueEndgame   = Value(0x101);
-const Value KnightValueMidgame = Value(0x332);
+const Value PawnValueMidgame   = Value(0x0C6);
+const Value PawnValueEndgame   = Value(0x102);
+const Value KnightValueMidgame = Value(0x331);
 const Value KnightValueEndgame = Value(0x34E);
-const Value BishopValueMidgame = Value(0x345);
-const Value BishopValueEndgame = Value(0x356);
-const Value RookValueMidgame   = Value(0x4F8);
-const Value RookValueEndgame   = Value(0x500);
-const Value QueenValueMidgame  = Value(0x9D5);
-const Value QueenValueEndgame  = Value(0x9FB);
+const Value BishopValueMidgame = Value(0x344);
+const Value BishopValueEndgame = Value(0x359);
+const Value RookValueMidgame   = Value(0x4F6);
+const Value RookValueEndgame   = Value(0x4FE);
+const Value QueenValueMidgame  = Value(0x9D9);
+const Value QueenValueEndgame  = Value(0x9FE);
 
 const Value PieceValueMidgame[17] = {
   Value(0),

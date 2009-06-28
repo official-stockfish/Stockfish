@@ -41,70 +41,70 @@ static const Value MQ = QueenValueMidgame;
 static const int MgPST[][64] = {
   { },
   {// Pawn
-   // A      B      C      D      E      F      G      H
-        0,     0,     0,     0,     0,     0,     0,     0,
-    MP-34, MP-12, MP- 2, MP+ 8, MP+ 8, MP- 2, MP-12, MP-34,
-    MP-34, MP-12, MP+ 3, MP+30, MP+30, MP+ 3, MP-12, MP-34,
-    MP-34, MP-12, MP+11, MP+52, MP+52, MP+11, MP-12, MP-34,
-    MP-34, MP-12, MP+11, MP+30, MP+30, MP+11, MP-12, MP-34,
-    MP-34, MP-12, MP+ 3, MP+ 8, MP+ 8, MP+ 3, MP-12, MP-34,
-    MP-34, MP-12, MP- 2, MP+ 8, MP+ 8, MP- 2, MP-12, MP-34,
-        0,     0,     0,     0,     0,     0,     0,     0
+   // A      B      C     D      E      F      G     H
+        0,    0,     0,     0,     0,     0,    0,     0,
+    MP-28, MP-6, MP+ 4, MP+14, MP+14, MP+ 4, MP-6, MP-28,
+    MP-28, MP-6, MP+ 9, MP+36, MP+36, MP+ 9, MP-6, MP-28,
+    MP-28, MP-6, MP+17, MP+58, MP+58, MP+17, MP-6, MP-28,
+    MP-28, MP-6, MP+17, MP+36, MP+36, MP+17, MP-6, MP-28,
+    MP-28, MP-6, MP+ 9, MP+14, MP+14, MP+ 9, MP-6, MP-28,
+    MP-28, MP-6, MP+ 4, MP+14, MP+14, MP+ 4, MP-6, MP-28,
+        0,    0,     0,     0,     0,     0,    0,     0
   },
   {// Knight
    //  A      B       C      D      E      F      G       H
-    MK-136, MK-108, MK-81, MK-68, MK-68, MK-81, MK-108, MK-136,
-    MK- 94, MK- 68, MK-40, MK-26, MK-26, MK-40, MK- 68, MK- 94,
-    MK- 54, MK- 26, MK+ 0, MK+12, MK+12, MK+ 0, MK- 26, MK- 54,
-    MK- 26, MK+  0, MK+26, MK+40, MK+40, MK+26, MK+  0, MK- 26,
-    MK- 12, MK+ 12, MK+40, MK+54, MK+54, MK+40, MK+ 12, MK- 12,
-    MK- 12, MK+ 12, MK+40, MK+54, MK+54, MK+40, MK+ 12, MK- 12,
-    MK- 54, MK- 26, MK+ 0, MK+12, MK+12, MK+ 0, MK- 26, MK- 54,
-    MK-194, MK- 68, MK-40, MK-26, MK-26, MK-40, MK- 68, MK-194
+    MK-135, MK-107, MK-80, MK-67, MK-67, MK-80, MK-107, MK-135,
+    MK- 93, MK- 67, MK-39, MK-25, MK-25, MK-39, MK- 67, MK- 93,
+    MK- 53, MK- 25, MK+ 1, MK+13, MK+13, MK+ 1, MK- 25, MK- 53,
+    MK- 25, MK+  1, MK+27, MK+41, MK+41, MK+27, MK+  1, MK- 25,
+    MK- 11, MK+ 13, MK+41, MK+55, MK+55, MK+41, MK+ 13, MK- 11,
+    MK- 11, MK+ 13, MK+41, MK+55, MK+55, MK+41, MK+ 13, MK- 11,
+    MK- 53, MK- 25, MK+ 1, MK+13, MK+13, MK+ 1, MK- 25, MK- 53,
+    MK-193, MK- 67, MK-39, MK-25, MK-25, MK-39, MK- 67, MK-193
   },
   {// Bishop
    // A      B      C      D      E      F      G      H
-    MB-41, MB-41, MB-36, MB-31, MB-31, MB-36, MB-41, MB-41,
-    MB-18, MB- 1, MB- 5, MB- 1, MB- 1, MB- 5, MB- 1, MB-18,
-    MB-14, MB- 5, MB+ 7, MB+ 3, MB+ 3, MB+ 7, MB- 5, MB-14,
-    MB- 9, MB- 1, MB+ 3, MB+16, MB+16, MB+ 3, MB- 1, MB- 9,
-    MB- 9, MB- 1, MB+ 3, MB+16, MB+16, MB+ 3, MB- 1, MB- 9,
-    MB-14, MB- 5, MB+ 7, MB+ 3, MB+ 3, MB+ 7, MB- 5, MB-14,
-    MB-18, MB- 1, MB- 5, MB- 1, MB- 1, MB- 5, MB- 1, MB-18,
-    MB-18, MB-18, MB-14, MB- 9, MB- 9, MB-14, MB-18, MB-18
+    MB-40, MB-40, MB-35, MB-30, MB-30, MB-35, MB-40, MB-40,
+    MB-17, MB+ 0, MB- 4, MB+ 0, MB+ 0, MB- 4, MB+ 0, MB-17,
+    MB-13, MB- 4, MB+ 8, MB+ 4, MB+ 4, MB+ 8, MB- 4, MB-13,
+    MB- 8, MB+ 0, MB+ 4, MB+17, MB+17, MB+ 4, MB+ 0, MB- 8,
+    MB- 8, MB+ 0, MB+ 4, MB+17, MB+17, MB+ 4, MB+ 0, MB- 8,
+    MB-13, MB- 4, MB+ 8, MB+ 4, MB+ 4, MB+ 8, MB- 4, MB-13,
+    MB-17, MB+ 0, MB- 4, MB+ 0, MB+ 0, MB- 4, MB+ 0, MB-17,
+    MB-17, MB-17, MB-13, MB- 8, MB- 8, MB-13, MB-17, MB-17
   },
   {// Rook
-   // A      B     C     D     E     F     G      H
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14,
-    MR-14, MR-9, MR-4, MR-0, MR-0, MR-4, MR-9, MR-14
+   // A      B     C     D     E     F     G     H
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12,
+    MR-12, MR-7, MR-2, MR+2, MR+2, MR-2, MR-7, MR-12
   },
   {// Queen
-   // A      B      C      D      E      F      G      H
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12,
-    MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12, MQ+12
+   // A     B     C     D     E     F     G     H
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8,
+    MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8, MQ+8
   },
   {// King
    //A    B    C    D    E    F    G    H
-    302, 328, 276, 225, 225, 276, 328, 302,
-    276, 302, 251, 200, 200, 251, 302, 276,
-    225, 251, 200, 149, 149, 200, 251, 225,
-    200, 225, 175, 124, 124, 175, 225, 200,
-    175, 200, 149,  98,  98, 149, 200, 175,
-    149, 175, 124,  72,  72, 124, 175, 149,
-    124, 149,  98,  47,  47,  98, 149, 124,
-     98, 124,  72,  21,  21,  72, 124,  98
+    287, 311, 262, 214, 214, 262, 311, 287,
+    262, 287, 238, 190, 190, 238, 287, 262,
+    214, 238, 190, 142, 142, 190, 238, 214,
+    190, 214, 167, 119, 119, 167, 214, 190,
+    167, 190, 142,  94,  94, 142, 190, 167,
+    142, 167, 119,  69,  69, 119, 167, 142,
+    119, 142,  94,  46,  46,  94, 142, 119,
+     94, 119,  69,  21,  21,  69, 119,  94
   }
 };
 
@@ -119,12 +119,12 @@ static const int EgPST[][64] = {
   {// Pawn
    // A     B     C     D     E     F     G     H
        0,    0,    0,    0,    0,    0,    0,    0,
-    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
-    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
-    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
-    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
-    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
-    EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7, EP-7,
+    EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8,
+    EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8,
+    EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8,
+    EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8,
+    EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8,
+    EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8, EP-8,
        0,    0,    0,    0,    0,    0,    0,    0
   },
   {// Knight
@@ -140,47 +140,47 @@ static const int EgPST[][64] = {
   },
   {// Bishop
    // A      B      C      D      E      F      G      H
-    EB-56, EB-39, EB-32, EB-23, EB-23, EB-32, EB-39, EB-56,
-    EB-39, EB-23, EB-15, EB- 8, EB- 8, EB-15, EB-23, EB-39,
-    EB-32, EB-15, EB- 8, EB- 1, EB- 1, EB- 8, EB-15, EB-32,
-    EB-23, EB- 8, EB- 1, EB+ 7, EB+ 7, EB- 1, EB- 8, EB-23,
-    EB-23, EB- 8, EB- 1, EB+ 7, EB+ 7, EB- 1, EB- 8, EB-23,
-    EB-32, EB-15, EB- 8, EB- 1, EB- 1, EB- 8, EB-15, EB-32,
-    EB-39, EB-23, EB-15, EB- 8, EB- 8, EB-15, EB-23, EB-39,
-    EB-56, EB-39, EB-32, EB-23, EB-23, EB-32, EB-39, EB-56
+    EB-59, EB-42, EB-35, EB-26, EB-26, EB-35, EB-42, EB-59,
+    EB-42, EB-26, EB-18, EB-11, EB-11, EB-18, EB-26, EB-42,
+    EB-35, EB-18, EB-11, EB- 4, EB- 4, EB-11, EB-18, EB-35,
+    EB-26, EB-11, EB- 4, EB+ 4, EB+ 4, EB- 4, EB-11, EB-26,
+    EB-26, EB-11, EB- 4, EB+ 4, EB+ 4, EB- 4, EB-11, EB-26,
+    EB-35, EB-18, EB-11, EB- 4, EB- 4, EB-11, EB-18, EB-35,
+    EB-42, EB-26, EB-18, EB-11, EB-11, EB-18, EB-26, EB-42,
+    EB-59, EB-42, EB-35, EB-26, EB-26, EB-35, EB-42, EB-59
   },
   {// Rook
    // A     B     C     D     E     F     G     H
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1,
-    ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1, ER+1
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3,
+    ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3, ER+3
   },
   {// Queen
    // A      B      C      D      E      F      G      H
-    EQ-77, EQ-51, EQ-39, EQ-27, EQ-27, EQ-39, EQ-51, EQ-77,
-    EQ-51, EQ-27, EQ-15, EQ- 3, EQ- 3, EQ-15, EQ-27, EQ-51,
-    EQ-39, EQ-15, EQ- 3, EQ+ 9, EQ+ 9, EQ- 3, EQ-15, EQ-39,
-    EQ-27, EQ- 3, EQ+ 9, EQ+21, EQ+21, EQ+ 9, EQ- 3, EQ-27,
-    EQ-27, EQ- 3, EQ+ 9, EQ+21, EQ+21, EQ+ 9, EQ- 3, EQ-27,
-    EQ-39, EQ-15, EQ- 3, EQ+ 9, EQ+ 9, EQ- 3, EQ-15, EQ-39,
-    EQ-51, EQ-27, EQ-15, EQ- 3, EQ- 3, EQ-15, EQ-27, EQ-51,
-    EQ-77, EQ-51, EQ-39, EQ-27, EQ-27, EQ-39, EQ-51, EQ-77
+    EQ-80, EQ-54, EQ-42, EQ-30, EQ-30, EQ-42, EQ-54, EQ-80,
+    EQ-54, EQ-30, EQ-18, EQ- 6, EQ- 6, EQ-18, EQ-30, EQ-54,
+    EQ-42, EQ-18, EQ- 6, EQ+ 6, EQ+ 6, EQ- 6, EQ-18, EQ-42,
+    EQ-30, EQ- 6, EQ+ 6, EQ+18, EQ+18, EQ+ 6, EQ- 6, EQ-30,
+    EQ-30, EQ- 6, EQ+ 6, EQ+18, EQ+18, EQ+ 6, EQ- 6, EQ-30,
+    EQ-42, EQ-18, EQ- 6, EQ+ 6, EQ+ 6, EQ- 6, EQ-18, EQ-42,
+    EQ-54, EQ-30, EQ-18, EQ- 6, EQ- 6, EQ-18, EQ-30, EQ-54,
+    EQ-80, EQ-54, EQ-42, EQ-30, EQ-30, EQ-42, EQ-54, EQ-80
   },
   {// King
    //A    B    C    D    E    F    G    H
-     16,  78, 108, 139, 139, 108,  78,  16,
-     78, 139, 170, 200, 200, 170, 139,  78,
-    108, 170, 200, 230, 230, 200, 170, 108,
-    139, 200, 230, 261, 261, 230, 200, 139,
-    139, 200, 230, 261, 261, 230, 200, 139,
-    108, 170, 200, 230, 230, 200, 170, 108,
-     78, 139, 170, 200, 200, 170, 139,  78,
-     16,  78, 108, 139, 139, 108,  78,  16
+     18,  77, 105, 135, 135, 105,  77,  18,
+     77, 135, 165, 193, 193, 165, 135,  77,
+    105, 165, 193, 222, 222, 193, 165, 105,
+    135, 193, 222, 251, 251, 222, 193, 135,
+    135, 193, 222, 251, 251, 222, 193, 135,
+    105, 165, 193, 222, 222, 193, 165, 105,
+     77, 135, 165, 193, 193, 165, 135,  77,
+     18,  77, 105, 135, 135, 105,  77,  18
   }
 };
 
