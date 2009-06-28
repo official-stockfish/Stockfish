@@ -268,20 +268,23 @@ void MovePicker::score_noncaptures() {
   // First score by history, when no history is available then use
   // piece/square tables values. This seems to be better then a
   // random choice when we don't have an history for any move.
-  Move m;
+  Piece piece;
+  Square from, to;
   int hs;
 
   for (int i = 0; i < numOfMoves; i++)
   {
-      m = moves[i].move;
-      hs = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
+      from = move_from(moves[i].move);
+      to = move_to(moves[i].move);
+      piece = pos.piece_on(from);
+      hs = H.move_ordering_score(piece, to);
 
       // Ensure history is always preferred to pst
       if (hs > 0)
           hs += 1000;
 
       // pst based scoring
-      moves[i].score = hs + pos.mg_pst_delta(m);
+      moves[i].score = hs + pos.pst_delta<Position::MidGame>(piece, from, to);
   }
 }
 

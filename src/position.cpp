@@ -735,7 +735,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     assert(color_of_piece_on(from) == us);
     assert(color_of_piece_on(to) == them || piece_on(to) == EMPTY);
 
-    PieceType piece = type_of_piece_on(from);
+    Piece piece = piece_on(from);
+    PieceType pt = type_of_piece(piece);
 
     st->capture = type_of_piece_on(to);
 
@@ -745,23 +746,21 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     // Move the piece
     Bitboard move_bb = make_move_bb(from, to);
     do_move_bb(&(byColorBB[us]), move_bb);
-    do_move_bb(&(byTypeBB[piece]), move_bb);
+    do_move_bb(&(byTypeBB[pt]), move_bb);
     do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
     board[to] = board[from];
     board[from] = EMPTY;
 
     // Update hash key
-    st->key ^= zobrist[us][piece][from] ^ zobrist[us][piece][to];
+    st->key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
 
     // Update incremental scores
-    st->mgValue -= pst<MidGame>(us, piece, from);
-    st->mgValue += pst<MidGame>(us, piece, to);
-    st->egValue -= pst<EndGame>(us, piece, from);
-    st->egValue += pst<EndGame>(us, piece, to);
+    st->mgValue += pst_delta<MidGame>(piece, from, to);
+    st->egValue += pst_delta<EndGame>(piece, from, to);
 
     // If the moving piece was a king, update the king square
-    if (piece == KING)
+    if (pt == KING)
         kingSquare[us] = to;
 
     // Reset en passant square
@@ -772,7 +771,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     }
 
     // If the moving piece was a pawn do some special extra work
-    if (piece == PAWN)
+    if (pt == PAWN)
     {
         // Reset rule 50 draw counter
         st->rule50 = 0;
@@ -793,7 +792,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     }
 
     // Update piece lists
-    pieceList[us][piece][index[from]] = to;
+    pieceList[us][pt][index[from]] = to;
     index[to] = index[from];
 
     // Update castle rights, try to shortcut a common case
@@ -808,7 +807,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     // Update checkers bitboard, piece must be already moved
     st->checkersBB = EmptyBoardBB;
     Square ksq = king_square(them);
-    switch (piece)
+    switch (pt)
     {
     case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
     case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
@@ -923,9 +922,11 @@ void Position::do_castle_move(Move m) {
   set_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
 
   // Update board array
+  Piece king = piece_of_color_and_type(us, KING);
+  Piece rook = piece_of_color_and_type(us, ROOK);
   board[kfrom] = board[rfrom] = EMPTY;
-  board[kto] = piece_of_color_and_type(us, KING);
-  board[rto] = piece_of_color_and_type(us, ROOK);
+  board[kto] = king;
+  board[rto] = rook;
 
   // Update king square
   kingSquare[us] = kto;
@@ -938,14 +939,10 @@ void Position::do_castle_move(Move m) {
   index[rto] = tmp;
 
   // Update incremental scores
-  st->mgValue -= pst<MidGame>(us, KING, kfrom);
-  st->mgValue += pst<MidGame>(us, KING, kto);
-  st->egValue -= pst<EndGame>(us, KING, kfrom);
-  st->egValue += pst<EndGame>(us, KING, kto);
-  st->mgValue -= pst<MidGame>(us, ROOK, rfrom);
-  st->mgValue += pst<MidGame>(us, ROOK, rto);
-  st->egValue -= pst<EndGame>(us, ROOK, rfrom);
-  st->egValue += pst<EndGame>(us, ROOK, rto);
+  st->mgValue += pst_delta<MidGame>(king, kfrom, kto);
+  st->egValue += pst_delta<EndGame>(king, kfrom, kto);
+  st->mgValue += pst_delta<MidGame>(rook, rfrom, rto);
+  st->egValue += pst_delta<EndGame>(rook, rfrom, rto);
 
   // Update hash key
   st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
@@ -1121,12 +1118,11 @@ void Position::do_ep_move(Move m) {
   st->pawnKey ^= zobrist[them][PAWN][capsq];
 
   // Update incremental scores
+  Piece pawn = piece_of_color_and_type(us, PAWN);
+  st->mgValue += pst_delta<MidGame>(pawn, from, to);
+  st->egValue += pst_delta<EndGame>(pawn, from, to);
   st->mgValue -= pst<MidGame>(them, PAWN, capsq);
-  st->mgValue -= pst<MidGame>(us, PAWN, from);
-  st->mgValue += pst<MidGame>(us, PAWN, to);
   st->egValue -= pst<EndGame>(them, PAWN, capsq);
-  st->egValue -= pst<EndGame>(us, PAWN, from);
-  st->egValue += pst<EndGame>(us, PAWN, to);
 
   // Reset en passant square
   st->epSquare = SQ_NONE;

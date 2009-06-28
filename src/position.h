@@ -127,6 +127,11 @@ class Position {
   friend class EndgameFunctions;
 
 public:
+  enum GamePhase {
+      MidGame,
+      EndGame
+  };
+
   // Constructors
   Position() {};
   Position(const Position& pos);
@@ -272,7 +277,7 @@ public:
   Value eg_value() const;
   Value non_pawn_material(Color c) const;
   Phase game_phase() const;
-  Value mg_pst_delta(Move m) const;
+  template<GamePhase> Value pst_delta(Piece piece, Square from, Square to) const;
 
   // Game termination checks
   bool is_mate() const;
@@ -328,10 +333,6 @@ private:
   Key compute_material_key() const;
 
   // Computing incremental evaluation scores and material counts
-  enum GamePhase {
-      MidGame,
-      EndGame
-  };
   template<GamePhase> Value pst(Color c, PieceType pt, Square s) const;
   template<GamePhase> Value compute_value() const;
   Value compute_non_pawn_material(Color c) const;
@@ -622,15 +623,16 @@ inline Key Position::get_material_key() const {
   return st->materialKey;
 }
 
-template<Position::GamePhase Phase>
+template<Position::GamePhase Ph>
 inline Value Position::pst(Color c, PieceType pt, Square s) const {
-  return (Phase == MidGame ? MgPieceSquareTable[piece_of_color_and_type(c, pt)][s]
-                           : EgPieceSquareTable[piece_of_color_and_type(c, pt)][s]);
+  return (Ph == MidGame ? MgPieceSquareTable[piece_of_color_and_type(c, pt)][s]
+                        : EgPieceSquareTable[piece_of_color_and_type(c, pt)][s]);
 }
 
-inline Value Position::mg_pst_delta(Move m) const {
-  return MgPieceSquareTable[piece_on(move_from(m))][move_to(m)]
-        -MgPieceSquareTable[piece_on(move_from(m))][move_from(m)];
+template<Position::GamePhase Ph>
+inline Value Position::pst_delta(Piece piece, Square from, Square to) const {
+  return (Ph == MidGame ? MgPieceSquareTable[piece][to] - MgPieceSquareTable[piece][from]
+                        : EgPieceSquareTable[piece][to] - EgPieceSquareTable[piece][from]);
 }
 
 inline Value Position::mg_value() const {
