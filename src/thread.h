@@ -26,7 +26,6 @@
 //// Includes
 ////
 
-#include "history.h"
 #include "lock.h"
 #include "movepick.h"
 #include "position.h"
@@ -74,7 +73,6 @@ struct Thread {
   volatile bool idle;
   volatile bool workIsWaiting;
   volatile bool printCurrentLine;
-  History H;
   unsigned char pad[64]; // set some distance among local data for each thread
 };
 
