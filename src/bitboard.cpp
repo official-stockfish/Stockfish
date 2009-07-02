@@ -22,16 +22,6 @@
 //// Includes
 ////
 
-#ifdef _MSC_VER
-    #include <intrin.h>
-    #ifdef _WIN64
-        #pragma intrinsic(_BitScanForward64)
-    #else
-        #pragma intrinsic(_BitScanForward)
-    #endif
-    #define USING_INTRINSICS
-#endif
-
 #include <iostream>
 
 #include "bitboard.h"
@@ -39,121 +29,7 @@
 #include "direction.h"
 
 
-#if defined(USE_COMPACT_ROOK_ATTACKS)
-
-Bitboard RankAttacks[8][64], FileAttacks[8][64];
-
-#elif defined(USE_32BIT_ATTACKS)
-
-const uint64_t RMult[64] = {
-  0xd7445cdec88002c0ULL, 0xd0a505c1f2001722ULL, 0xe065d1c896002182ULL,
-  0x9a8c41e75a000892ULL, 0x8900b10c89002aa8ULL, 0x9b28d1c1d60005a2ULL,
-  0x15d6c88de002d9aULL, 0xb1dbfc802e8016a9ULL, 0x149a1042d9d60029ULL,
-  0xb9c08050599e002fULL, 0x132208c3af300403ULL, 0xc1000ce2e9c50070ULL,
-  0x9d9aa13c99020012ULL, 0xb6b078daf71e0046ULL, 0x9d880182fb6e002eULL,
-  0x52889f467e850037ULL, 0xda6dc008d19a8480ULL, 0x468286034f902420ULL,
-  0x7140ac09dc54c020ULL, 0xd76ffffa39548808ULL, 0xea901c4141500808ULL,
-  0xc91004093f953a02ULL, 0x2882afa8f6bb402ULL, 0xaebe335692442c01ULL,
-  0xe904a22079fb91eULL, 0x13a514851055f606ULL, 0x76c782018c8fe632ULL,
-  0x1dc012a9d116da06ULL, 0x3c9e0037264fffa6ULL, 0x2036002853c6e4a2ULL,
-  0xe3fe08500afb47d4ULL, 0xf38af25c86b025c2ULL, 0xc0800e2182cf9a40ULL,
-  0x72002480d1f60673ULL, 0x2500200bae6e9b53ULL, 0xc60018c1eefca252ULL,
-  0x600590473e3608aULL, 0x46002c4ab3fe51b2ULL, 0xa200011486bcc8d2ULL,
-  0xb680078095784c63ULL, 0x2742002639bf11aeULL, 0xc7d60021a5bdb142ULL,
-  0xc8c04016bb83d820ULL, 0xbd520028123b4842ULL, 0x9d1600344ac2a832ULL,
-  0x6a808005631c8a05ULL, 0x604600a148d5389aULL, 0xe2e40103d40dea65ULL,
-  0x945b5a0087c62a81ULL, 0x12dc200cd82d28eULL, 0x2431c600b5f9ef76ULL,
-  0xfb142a006a9b314aULL, 0x6870e00a1c97d62ULL, 0x2a9db2004a2689a2ULL,
-  0xd3594600caf5d1a2ULL, 0xee0e4900439344a7ULL, 0x89c4d266ca25007aULL,
-  0x3e0013a2743f97e3ULL, 0x180e31a0431378aULL, 0x3a9e465a4d42a512ULL,
-  0x98d0a11a0c0d9cc2ULL, 0x8e711c1aba19b01eULL, 0x8dcdc836dd201142ULL,
-  0x5ac08a4735370479ULL,
-};
-
-const int RShift[64] = {
-  20, 21, 21, 21, 21, 21, 21, 20, 21, 22, 22, 22, 22, 22, 22, 21,
-  21, 22, 22, 22, 22, 22, 22, 21, 21, 22, 22, 22, 22, 22, 22, 21,
-  21, 22, 22, 22, 22, 22, 22, 21, 21, 22, 22, 22, 22, 22, 22, 21,
-  21, 22, 22, 22, 22, 22, 22, 21, 20, 21, 21, 21, 21, 21, 21, 20
-};
-
-#else // if defined(USE_32BIT_ATTACKS)
-
-const uint64_t RMult[64] = {
-  0xa8002c000108020ULL, 0x4440200140003000ULL, 0x8080200010011880ULL,
-  0x380180080141000ULL, 0x1a00060008211044ULL, 0x410001000a0c0008ULL,
-  0x9500060004008100ULL, 0x100024284a20700ULL, 0x802140008000ULL,
-  0x80c01002a00840ULL, 0x402004282011020ULL, 0x9862000820420050ULL,
-  0x1001448011100ULL, 0x6432800200800400ULL, 0x40100010002000cULL,
-  0x2800d0010c080ULL, 0x90c0008000803042ULL, 0x4010004000200041ULL,
-  0x3010010200040ULL, 0xa40828028001000ULL, 0x123010008000430ULL,
-  0x24008004020080ULL, 0x60040001104802ULL, 0x582200028400d1ULL,
-  0x4000802080044000ULL, 0x408208200420308ULL, 0x610038080102000ULL,
-  0x3601000900100020ULL, 0x80080040180ULL, 0xc2020080040080ULL,
-  0x80084400100102ULL, 0x4022408200014401ULL, 0x40052040800082ULL,
-  0xb08200280804000ULL, 0x8a80a008801000ULL, 0x4000480080801000ULL,
-  0x911808800801401ULL, 0x822a003002001894ULL, 0x401068091400108aULL,
-  0x4a10a00004cULL, 0x2000800640008024ULL, 0x1486408102020020ULL,
-  0x100a000d50041ULL, 0x810050020b0020ULL, 0x204000800808004ULL,
-  0x20048100a000cULL, 0x112000831020004ULL, 0x9000040810002ULL,
-  0x440490200208200ULL, 0x8910401000200040ULL, 0x6404200050008480ULL,
-  0x4b824a2010010100ULL, 0x4080801810c0080ULL, 0x400802a0080ULL,
-  0x8224080110026400ULL, 0x40002c4104088200ULL, 0x1002100104a0282ULL,
-  0x1208400811048021ULL, 0x3201014a40d02001ULL, 0x5100019200501ULL,
-  0x101000208001005ULL, 0x2008450080702ULL, 0x1002080301d00cULL,
-  0x410201ce5c030092ULL
-};
-
-const int RShift[64] = {
-  52, 53, 53, 53, 53, 53, 53, 52, 53, 54, 54, 54, 54, 54, 54, 53,
-  53, 54, 54, 54, 54, 54, 54, 53, 53, 54, 54, 54, 54, 54, 54, 53,
-  53, 54, 54, 54, 54, 54, 54, 53, 53, 54, 54, 54, 54, 54, 54, 53,
-  53, 54, 54, 54, 54, 54, 54, 53, 52, 53, 53, 53, 53, 53, 53, 52
-};
-
-#endif // defined(USE_32BIT_ATTACKS)
-
-#if !defined(USE_COMPACT_ROOK_ATTACKS)
-Bitboard RMask[64];
-int RAttackIndex[64];
-Bitboard RAttacks[0x19000];
-#endif
-
-#if defined(USE_32BIT_ATTACKS)
-
-const uint64_t BMult[64] = {
-  0x54142844c6a22981ULL, 0x710358a6ea25c19eULL, 0x704f746d63a4a8dcULL,
-  0xbfed1a0b80f838c5ULL, 0x90561d5631e62110ULL, 0x2804260376e60944ULL,
-  0x84a656409aa76871ULL, 0xf0267f64c28b6197ULL, 0x70764ebb762f0585ULL,
-  0x92aa09e0cfe161deULL, 0x41ee1f6bb266f60eULL, 0xddcbf04f6039c444ULL,
-  0x5a3fab7bac0d988aULL, 0xd3727877fa4eaa03ULL, 0xd988402d868ddaaeULL,
-  0x812b291afa075c7cULL, 0x94faf987b685a932ULL, 0x3ed867d8470d08dbULL,
-  0x92517660b8901de8ULL, 0x2d97e43e058814b4ULL, 0x880a10c220b25582ULL,
-  0xc7c6520d1f1a0477ULL, 0xdbfc7fbcd7656aa6ULL, 0x78b1b9bfb1a2b84fULL,
-  0x2f20037f112a0bc1ULL, 0x657171ea2269a916ULL, 0xc08302b07142210eULL,
-  0x880a4403064080bULL, 0x3602420842208c00ULL, 0x852800dc7e0b6602ULL,
-  0x595a3fbbaa0f03b2ULL, 0x9f01411558159d5eULL, 0x2b4a4a5f88b394f2ULL,
-  0x4afcbffc292dd03aULL, 0x4a4094a3b3f10522ULL, 0xb06f00b491f30048ULL,
-  0xd5b3820280d77004ULL, 0x8b2e01e7c8e57a75ULL, 0x2d342794e886c2e6ULL,
-  0xc302c410cde21461ULL, 0x111f426f1379c274ULL, 0xe0569220abb31588ULL,
-  0x5026d3064d453324ULL, 0xe2076040c343cd8aULL, 0x93efd1e1738021eeULL,
-  0xb680804bed143132ULL, 0x44e361b21986944cULL, 0x44c60170ef5c598cULL,
-  0xf4da475c195c9c94ULL, 0xa3afbb5f72060b1dULL, 0xbc75f410e41c4ffcULL,
-  0xb51c099390520922ULL, 0x902c011f8f8ec368ULL, 0x950b56b3d6f5490aULL,
-  0x3909e0635bf202d0ULL, 0x5744f90206ec10ccULL, 0xdc59fd76317abbc1ULL,
-  0x881c7c67fcbfc4f6ULL, 0x47ca41e7e440d423ULL, 0xeb0c88112048d004ULL,
-  0x51c60e04359aef1aULL, 0x1aa1fe0e957a5554ULL, 0xdd9448db4f5e3104ULL,
-  0xdc01f6dca4bebbdcULL,
-};
-
-const int BShift[64] = {
-  26, 27, 27, 27, 27, 27, 27, 26, 27, 27, 27, 27, 27, 27, 27, 27,
-  27, 27, 25, 25, 25, 25, 27, 27, 27, 27, 25, 23, 23, 25, 27, 27,
-  27, 27, 25, 23, 23, 25, 27, 27, 27, 27, 25, 25, 25, 25, 27, 27,
-  27, 27, 27, 27, 27, 27, 27, 27, 26, 27, 27, 27, 27, 27, 27, 26
-};
-
-#else // if defined(USE_32BIT_ATTACKS)
+#if defined(IS_64BIT)
 
 const uint64_t BMult[64] = {
   0x440049104032280ULL, 0x1021023c82008040ULL, 0x404040082000048ULL,
@@ -180,6 +56,31 @@ const uint64_t BMult[64] = {
   0xa08520292120600ULL
 };
 
+const uint64_t RMult[64] = {
+  0xa8002c000108020ULL, 0x4440200140003000ULL, 0x8080200010011880ULL,
+  0x380180080141000ULL, 0x1a00060008211044ULL, 0x410001000a0c0008ULL,
+  0x9500060004008100ULL, 0x100024284a20700ULL, 0x802140008000ULL,
+  0x80c01002a00840ULL, 0x402004282011020ULL, 0x9862000820420050ULL,
+  0x1001448011100ULL, 0x6432800200800400ULL, 0x40100010002000cULL,
+  0x2800d0010c080ULL, 0x90c0008000803042ULL, 0x4010004000200041ULL,
+  0x3010010200040ULL, 0xa40828028001000ULL, 0x123010008000430ULL,
+  0x24008004020080ULL, 0x60040001104802ULL, 0x582200028400d1ULL,
+  0x4000802080044000ULL, 0x408208200420308ULL, 0x610038080102000ULL,
+  0x3601000900100020ULL, 0x80080040180ULL, 0xc2020080040080ULL,
+  0x80084400100102ULL, 0x4022408200014401ULL, 0x40052040800082ULL,
+  0xb08200280804000ULL, 0x8a80a008801000ULL, 0x4000480080801000ULL,
+  0x911808800801401ULL, 0x822a003002001894ULL, 0x401068091400108aULL,
+  0x4a10a00004cULL, 0x2000800640008024ULL, 0x1486408102020020ULL,
+  0x100a000d50041ULL, 0x810050020b0020ULL, 0x204000800808004ULL,
+  0x20048100a000cULL, 0x112000831020004ULL, 0x9000040810002ULL,
+  0x440490200208200ULL, 0x8910401000200040ULL, 0x6404200050008480ULL,
+  0x4b824a2010010100ULL, 0x4080801810c0080ULL, 0x400802a0080ULL,
+  0x8224080110026400ULL, 0x40002c4104088200ULL, 0x1002100104a0282ULL,
+  0x1208400811048021ULL, 0x3201014a40d02001ULL, 0x5100019200501ULL,
+  0x101000208001005ULL, 0x2008450080702ULL, 0x1002080301d00cULL,
+  0x410201ce5c030092ULL
+};
+
 const int BShift[64] = {
   58, 59, 59, 59, 59, 59, 59, 58, 59, 59, 59, 59, 59, 59, 59, 59,
   59, 59, 57, 57, 57, 57, 59, 59, 59, 59, 57, 55, 55, 57, 59, 59,
@@ -187,7 +88,85 @@ const int BShift[64] = {
   59, 59, 59, 59, 59, 59, 59, 59, 58, 59, 59, 59, 59, 59, 59, 58
 };
 
-#endif // defined(USE_32BIT_ATTACKS)
+const int RShift[64] = {
+  52, 53, 53, 53, 53, 53, 53, 52, 53, 54, 54, 54, 54, 54, 54, 53,
+  53, 54, 54, 54, 54, 54, 54, 53, 53, 54, 54, 54, 54, 54, 54, 53,
+  53, 54, 54, 54, 54, 54, 54, 53, 53, 54, 54, 54, 54, 54, 54, 53,
+  53, 54, 54, 54, 54, 54, 54, 53, 52, 53, 53, 53, 53, 53, 53, 52
+};
+
+#else // if !defined(IS_64BIT)
+
+const uint64_t BMult[64] = {
+  0x54142844c6a22981ULL, 0x710358a6ea25c19eULL, 0x704f746d63a4a8dcULL,
+  0xbfed1a0b80f838c5ULL, 0x90561d5631e62110ULL, 0x2804260376e60944ULL,
+  0x84a656409aa76871ULL, 0xf0267f64c28b6197ULL, 0x70764ebb762f0585ULL,
+  0x92aa09e0cfe161deULL, 0x41ee1f6bb266f60eULL, 0xddcbf04f6039c444ULL,
+  0x5a3fab7bac0d988aULL, 0xd3727877fa4eaa03ULL, 0xd988402d868ddaaeULL,
+  0x812b291afa075c7cULL, 0x94faf987b685a932ULL, 0x3ed867d8470d08dbULL,
+  0x92517660b8901de8ULL, 0x2d97e43e058814b4ULL, 0x880a10c220b25582ULL,
+  0xc7c6520d1f1a0477ULL, 0xdbfc7fbcd7656aa6ULL, 0x78b1b9bfb1a2b84fULL,
+  0x2f20037f112a0bc1ULL, 0x657171ea2269a916ULL, 0xc08302b07142210eULL,
+  0x880a4403064080bULL, 0x3602420842208c00ULL, 0x852800dc7e0b6602ULL,
+  0x595a3fbbaa0f03b2ULL, 0x9f01411558159d5eULL, 0x2b4a4a5f88b394f2ULL,
+  0x4afcbffc292dd03aULL, 0x4a4094a3b3f10522ULL, 0xb06f00b491f30048ULL,
+  0xd5b3820280d77004ULL, 0x8b2e01e7c8e57a75ULL, 0x2d342794e886c2e6ULL,
+  0xc302c410cde21461ULL, 0x111f426f1379c274ULL, 0xe0569220abb31588ULL,
+  0x5026d3064d453324ULL, 0xe2076040c343cd8aULL, 0x93efd1e1738021eeULL,
+  0xb680804bed143132ULL, 0x44e361b21986944cULL, 0x44c60170ef5c598cULL,
+  0xf4da475c195c9c94ULL, 0xa3afbb5f72060b1dULL, 0xbc75f410e41c4ffcULL,
+  0xb51c099390520922ULL, 0x902c011f8f8ec368ULL, 0x950b56b3d6f5490aULL,
+  0x3909e0635bf202d0ULL, 0x5744f90206ec10ccULL, 0xdc59fd76317abbc1ULL,
+  0x881c7c67fcbfc4f6ULL, 0x47ca41e7e440d423ULL, 0xeb0c88112048d004ULL,
+  0x51c60e04359aef1aULL, 0x1aa1fe0e957a5554ULL, 0xdd9448db4f5e3104ULL,
+  0xdc01f6dca4bebbdcULL,
+};
+
+const uint64_t RMult[64] = {
+  0xd7445cdec88002c0ULL, 0xd0a505c1f2001722ULL, 0xe065d1c896002182ULL,
+  0x9a8c41e75a000892ULL, 0x8900b10c89002aa8ULL, 0x9b28d1c1d60005a2ULL,
+  0x15d6c88de002d9aULL, 0xb1dbfc802e8016a9ULL, 0x149a1042d9d60029ULL,
+  0xb9c08050599e002fULL, 0x132208c3af300403ULL, 0xc1000ce2e9c50070ULL,
+  0x9d9aa13c99020012ULL, 0xb6b078daf71e0046ULL, 0x9d880182fb6e002eULL,
+  0x52889f467e850037ULL, 0xda6dc008d19a8480ULL, 0x468286034f902420ULL,
+  0x7140ac09dc54c020ULL, 0xd76ffffa39548808ULL, 0xea901c4141500808ULL,
+  0xc91004093f953a02ULL, 0x2882afa8f6bb402ULL, 0xaebe335692442c01ULL,
+  0xe904a22079fb91eULL, 0x13a514851055f606ULL, 0x76c782018c8fe632ULL,
+  0x1dc012a9d116da06ULL, 0x3c9e0037264fffa6ULL, 0x2036002853c6e4a2ULL,
+  0xe3fe08500afb47d4ULL, 0xf38af25c86b025c2ULL, 0xc0800e2182cf9a40ULL,
+  0x72002480d1f60673ULL, 0x2500200bae6e9b53ULL, 0xc60018c1eefca252ULL,
+  0x600590473e3608aULL, 0x46002c4ab3fe51b2ULL, 0xa200011486bcc8d2ULL,
+  0xb680078095784c63ULL, 0x2742002639bf11aeULL, 0xc7d60021a5bdb142ULL,
+  0xc8c04016bb83d820ULL, 0xbd520028123b4842ULL, 0x9d1600344ac2a832ULL,
+  0x6a808005631c8a05ULL, 0x604600a148d5389aULL, 0xe2e40103d40dea65ULL,
+  0x945b5a0087c62a81ULL, 0x12dc200cd82d28eULL, 0x2431c600b5f9ef76ULL,
+  0xfb142a006a9b314aULL, 0x6870e00a1c97d62ULL, 0x2a9db2004a2689a2ULL,
+  0xd3594600caf5d1a2ULL, 0xee0e4900439344a7ULL, 0x89c4d266ca25007aULL,
+  0x3e0013a2743f97e3ULL, 0x180e31a0431378aULL, 0x3a9e465a4d42a512ULL,
+  0x98d0a11a0c0d9cc2ULL, 0x8e711c1aba19b01eULL, 0x8dcdc836dd201142ULL,
+  0x5ac08a4735370479ULL,
+};
+
+const int BShift[64] = {
+  26, 27, 27, 27, 27, 27, 27, 26, 27, 27, 27, 27, 27, 27, 27, 27,
+  27, 27, 25, 25, 25, 25, 27, 27, 27, 27, 25, 23, 23, 25, 27, 27,
+  27, 27, 25, 23, 23, 25, 27, 27, 27, 27, 25, 25, 25, 25, 27, 27,
+  27, 27, 27, 27, 27, 27, 27, 27, 26, 27, 27, 27, 27, 27, 27, 26
+};
+
+const int RShift[64] = {
+  20, 21, 21, 21, 21, 21, 21, 20, 21, 22, 22, 22, 22, 22, 22, 21,
+  21, 22, 22, 22, 22, 22, 22, 21, 21, 22, 22, 22, 22, 22, 22, 21,
+  21, 22, 22, 22, 22, 22, 22, 21, 21, 22, 22, 22, 22, 22, 22, 21,
+  21, 22, 22, 22, 22, 22, 22, 21, 20, 21, 21, 21, 21, 21, 21, 20
+};
+
+#endif
+
+
+Bitboard RMask[64];
+int RAttackIndex[64];
+Bitboard RAttacks[0x19000];
 
 Bitboard BMask[64];
 int BAttackIndex[64];
@@ -226,9 +205,6 @@ namespace {
                             const int shift[2], const Bitboard mult[],
                             int deltas[][2]);
   void init_pseudo_attacks();
-#if defined(USE_COMPACT_ROOK_ATTACKS)
-  void init_file_and_rank_attacks();
-#endif
 }
 
 
@@ -260,41 +236,25 @@ void init_bitboards() {
   init_ray_bitboards();
   init_attacks();
   init_between_bitboards();
-#if defined(USE_COMPACT_ROOK_ATTACKS)
-  init_file_and_rank_attacks();
-#else
-  init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift,
-                       RMult, rookDeltas);
-#endif
-  init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift,
-                       BMult, bishopDeltas);
+  init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
+  init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
   init_pseudo_attacks();
-}
-
-
-#if defined(USE_FOLDED_BITSCAN)
-
-static const int BitTable[64] = {
-  63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
-  51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
-  26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 39, 48, 24, 59, 14, 12, 55, 38, 28,
-  58, 20, 37, 17, 36, 8
-};
-
-
-/// first_1() finds the least significant nonzero bit in a nonzero bitboard.
-
-Square first_1(Bitboard b) {
-  b ^= (b - 1);
-  uint32_t fold = int(b) ^ int(b >> 32);
-  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
 }
 
 
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
-#if defined(USE_32BIT_ATTACKS)
+#if defined(IS_64BIT)
+
+Square pop_1st_bit(Bitboard *b) {
+  Bitboard bb = *b ^ (*b - 1);
+  uint32_t fold = int(bb) ^ int(bb >> 32);
+  *b &= (*b - 1);
+  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
+}
+
+#else
 
 // Use type-punning
 union b_union {
@@ -329,45 +289,7 @@ Square pop_1st_bit(Bitboard *bb) {
   return Square(BitTable[(b * 0x783a9b23) >> 26]);
 }
 
-#else
-
-Square pop_1st_bit(Bitboard *b) {
-  Bitboard bb = *b ^ (*b - 1);
-  uint32_t fold = int(bb) ^ int(bb >> 32);
-  *b &= (*b - 1);
-  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
-}
-
 #endif
-
-#else // defined(USE_FOLDED_BITSCAN)
-
-static const int BitTable[64] = {
-  0, 1, 2, 7, 3, 13, 8, 19, 4, 25, 14, 28, 9, 34, 20, 40, 5, 17, 26, 38, 15,
-  46, 29, 48, 10, 31, 35, 54, 21, 50, 41, 57, 63, 6, 12, 18, 24, 27, 33, 39,
-  16, 37, 45, 47, 30, 53, 49, 56, 62, 11, 23, 32, 36, 44, 52, 55, 61, 22, 43,
-  51, 60, 42, 59, 58
-};
-
-
-/// first_1() finds the least significant nonzero bit in a nonzero bitboard.
-
-Square first_1(Bitboard b) {
-  return Square(BitTable[((b & -b) * 0x218a392cd3d5dbfULL) >> 58]);
-}
-
-
-/// pop_1st_bit() finds and clears the least significant nonzero bit in a
-/// nonzero bitboard.
-
-Square pop_1st_bit(Bitboard *b) {
-  Bitboard bb = *b;
-  *b &= (*b - 1);
-  return Square(BitTable[((bb & -bb) * 0x218a392cd3d5dbfULL) >> 58]);
-}
-
-#endif // defined(USE_FOLDED_BITSCAN)
-
 
 namespace {
 
@@ -481,24 +403,24 @@ namespace {
       attackIndex[i] = index;
       mask[i] = sliding_attacks(i, 0ULL, 4, deltas, 1, 6, 1, 6);
 
-#if defined(USE_32BIT_ATTACKS)
-      j = (1 << (32 - shift[i]));
-#else
+#if defined(IS_64BIT)
       j = (1 << (64 - shift[i]));
+#else
+      j = (1 << (32 - shift[i]));
 #endif
 
       for(k = 0; k < j; k++) {
 
-#if defined(USE_32BIT_ATTACKS)
+#if defined(IS_64BIT)
+        b = index_to_bitboard(k, mask[i]);
+        attacks[index + ((b * mult[i]) >> shift[i])] =
+          sliding_attacks(i, b, 4, deltas);
+#else
         b = index_to_bitboard(k, mask[i]);
         attacks[index +
                  (unsigned(int(b) * int(mult[i]) ^
                            int(b >> 32) * int(mult[i] >> 32))
                   >> shift[i])] =
-          sliding_attacks(i, b, 4, deltas);
-#else
-        b = index_to_bitboard(k, mask[i]);
-        attacks[index + ((b * mult[i]) >> shift[i])] =
           sliding_attacks(i, b, 4, deltas);
 #endif
       }
@@ -515,30 +437,5 @@ namespace {
       QueenPseudoAttacks[s] = queen_attacks_bb(s, EmptyBoardBB);
     }
   }
-
-#if defined(USE_COMPACT_ROOK_ATTACKS)
-  void init_file_and_rank_attacks() {
-    int i, j, k, l, m, s;
-    Bitboard b1, b2;
-    for(i = 0; i < 64; i++) {
-
-      for(m = 0; m <= 1; m++) {
-        b1 = 0ULL;
-        for(j = 0; j < 6; j++) if(i & (1<<j)) b1 |= (1ULL << ((j+1)*(1+m*7)));
-        for(j = 0; j < 8; j++) {
-          b2 = 0ULL;
-          for(k = 0, s = 1; k < 2; k++, s *= -1) {
-            for(l = j+s; l >= 0 && l <= 7; l += s) {
-              b2 |= (m? RankBB[l] : FileBB[l]);
-              if(b1 & (1ULL << (l*(1+m*7)))) break;
-            }
-          }
-          if(m) FileAttacks[j][(b1*0xd6e8802041d0c441ULL) >> 58] = b2;
-          else RankAttacks[j][i] = b2;
-        }
-      }
-    }
-  }
-#endif // defined(USE_COMPACT_ROOK_ATTACKS)
 
 }

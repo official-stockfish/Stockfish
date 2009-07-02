@@ -26,10 +26,6 @@
 //// Defines
 ////
 
-// Comment following define if you prefer manually adjust
-// platform macros defined below
-#define AUTO_CONFIGURATION
-
 // Quiet a warning on Intel compiler
 #if !defined(__SIZEOF_INT__ )
 #define __SIZEOF_INT__ 0
@@ -38,19 +34,6 @@
 // Check for 64 bits for different compilers: Intel, MSVC and gcc
 #if defined(__x86_64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
 #define IS_64BIT
-#endif
-
-#if !defined(AUTO_CONFIGURATION) || defined(IS_64BIT)
-
-//#define USE_COMPACT_ROOK_ATTACKS
-//#define USE_32BIT_ATTACKS
-#define USE_FOLDED_BITSCAN
-
-#else
-
-#define USE_32BIT_ATTACKS
-#define USE_FOLDED_BITSCAN
-
 #endif
 
 ////
@@ -144,6 +127,13 @@ const Bitboard InFrontBB[2][8] = {
   }
 };
 
+const int BitTable[64] = {
+  63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
+  51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
+  26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 39, 48, 24, 59, 14, 12, 55, 38, 28,
+  58, 20, 37, 17, 36, 8
+};
+
 extern Bitboard SetMaskBB[65];
 extern Bitboard ClearMaskBB[65];
 
@@ -154,19 +144,11 @@ extern Bitboard BetweenBB[64][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard OutpostMask[2][64];
 
-#if defined(USE_COMPACT_ROOK_ATTACKS)
-
-extern Bitboard RankAttacks[8][64], FileAttacks[8][64];
-
-#else
-
 extern const uint64_t RMult[64];
 extern const int RShift[64];
 extern Bitboard RMask[64];
 extern int RAttackIndex[64];
 extern Bitboard RAttacks[0x19000];
-
-#endif // defined(USE_COMPACT_ROOK_ATTACKS)
 
 extern const uint64_t BMult[64];
 extern const int BShift[64];
@@ -303,29 +285,24 @@ inline Bitboard ray_bb(Square s, SignedDirection d) {
 }
 
 
-/// Functions for computing sliding attack bitboards.  rook_attacks_bb(),
+/// Functions for computing sliding attack bitboards. rook_attacks_bb(),
 /// bishop_attacks_bb() and queen_attacks_bb() all take a square and a
 /// bitboard of occupied squares as input, and return a bitboard representing
 /// all squares attacked by a rook, bishop or queen on the given square.
 
-#if defined(USE_COMPACT_ROOK_ATTACKS)
-
-inline Bitboard file_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = (blockers >> square_file(s)) & 0x01010101010100ULL;
-  return
-    FileAttacks[square_rank(s)][(b*0xd6e8802041d0c441ULL)>>58] & file_bb(s);
-}
-
-inline Bitboard rank_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = (blockers >> ((s & 56) + 1)) & 63;
-  return RankAttacks[square_file(s)][b] & rank_bb(s);
-}
+#if defined(IS_64BIT)
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
-  return file_attacks_bb(s, blockers) | rank_attacks_bb(s, blockers);
+  Bitboard b = blockers & RMask[s];
+  return RAttacks[RAttackIndex[s] + ((b * RMult[s]) >> RShift[s])];
 }
 
-#elif defined(USE_32BIT_ATTACKS)
+inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
+  Bitboard b = blockers & BMask[s];
+  return BAttacks[BAttackIndex[s] + ((b * BMult[s]) >> BShift[s])];
+}
+
+#else // if !defined(IS_64BIT)
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
   Bitboard b = blockers & RMask[s];
@@ -335,17 +312,6 @@ inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
                    >> RShift[s])];
 }
 
-#else
-
-inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = blockers & RMask[s];
-  return RAttacks[RAttackIndex[s] + ((b * RMult[s]) >> RShift[s])];
-}
-
-#endif
-
-#if defined(USE_32BIT_ATTACKS)
-
 inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
   Bitboard b = blockers & BMask[s];
   return BAttacks[BAttackIndex[s] +
@@ -354,14 +320,7 @@ inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
                    >> BShift[s])];
 }
 
-#else // defined(USE_32BIT_ATTACKS)
-
-inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = blockers & BMask[s];
-  return BAttacks[BAttackIndex[s] + ((b * BMult[s]) >> BShift[s])];
-}
-
-#endif // defined(USE_32BIT_ATTACKS)
+#endif
 
 inline Bitboard queen_attacks_bb(Square s, Bitboard blockers) {
   return rook_attacks_bb(s, blockers) | bishop_attacks_bb(s, blockers);
@@ -423,13 +382,31 @@ inline Bitboard isolated_pawn_mask(Square s) {
 }
 
 
+/// first_1() finds the least significant nonzero bit in a nonzero bitboard.
+
+#if defined(IS_64BIT)
+
+inline Square first_1(Bitboard b) {
+  return Square(BitTable[((b & -b) * 0x218a392cd3d5dbfULL) >> 58]);
+}
+
+#else
+
+inline Square first_1(Bitboard b) {
+  b ^= (b - 1);
+  uint32_t fold = int(b) ^ int(b >> 32);
+  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
+}
+
+#endif
+
+
 ////
 //// Prototypes
 ////
 
 extern void print_bitboard(Bitboard b);
 extern void init_bitboards();
-extern Square first_1(Bitboard b);
 extern Square pop_1st_bit(Bitboard *b);
 
 

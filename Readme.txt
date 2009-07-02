@@ -45,7 +45,6 @@ PolyGlot documentation.  The book file can be selected by setting the
 UCI parameter "Book File".
 
 
-
 4. Compiling it yourself
 ------------------------
 
@@ -54,27 +53,9 @@ Stockfish directly from the source code with the included Makefile.
 The exception is computer with big-endian CPUs, like PowerPC
 Macintoshes. Some of the bitboard routines in the current version of
 Stockfish are endianness-sensitive, and won't work on a big-endian CPU.
-Ensuring that the line with #define USE_32BIT_ATTACKS" near the top
-of bitboard.h is commented out should solve this problem.
-Commenting out the line with "#define USE_32BIT_ATTACKS" near the
-
-There is also a problem with compiling Stockfish on certain 64-bit
-systems, regardless of the endianness.  If Stockfish segfaults
-immediately after startup, try to comment out the line with
-"#define USE_FOLDED_BITSCAN" near the beginning of bitboard.h and
-recompile.
-
-Finally, even if Stockfish does work without any changes on your
-computer, it might be possible to improve the performance by changing
-some of the #define directives in bitboard.h.  The default settings
-are optimized for 64-bit CPUs.  On 32-bit CPUs, it is probably better
-to switch on USE_32BIT_ATTACKS, and to use BITCOUNT_SWAR_32 instead of
-BITCOUNT_SWAR_64.  For computers with very little memory (like
-handheld devices), it is possible to conserve memory by defining
-USE_COMPACT_ROOK_ATTACKS.
 
 
-6. Terms of use
+5. Terms of use
 ---------------
 
 Stockfish is free, and distributed under the GNU General Public License
@@ -93,7 +74,7 @@ For full details, read the copy of the GPL found in the file named
 Copying.txt.
 
 
-7. Feedback
+6. Feedback
 -----------
 
 The author's e-mail address is mcostalba@gmail.com
