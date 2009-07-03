@@ -58,7 +58,7 @@ typedef uint64_t Bitboard;
 #endif
 
 // Check for 64 bits for different compilers: Intel, MSVC and gcc
-#if defined(__x86_64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
+#if defined(__x86_64) || defined(_M_X64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
 #define IS_64BIT
 #endif
 

@@ -22,17 +22,18 @@
 #if !defined(BITCOUNT_H_INCLUDED)
 #define BITCOUNT_H_INCLUDED
 
-// To disable POPCNT support uncomment following line. You should do it only
+// To disable POPCNT support uncomment NO_POPCNT define. You should do it only
 // in PGO compiling to exercise the default fallback path. Don't forget to
 // re-comment the line for the final optimized compile though ;-)
-//#define DISABLE_POPCNT_SUPPORT
+
+//#define NO_POPCNT
 
 
 #include "types.h"
 
 // Select type of intrinsic bit count instruction to use
 
-#if defined(_MSC_VER) && defined(_WIN64) // Microsoft compiler
+#if defined(_MSC_VER) && defined(IS_64BIT) && !defined(NO_POPCNT) // Microsoft compiler
 
 #include <intrin.h>
 
@@ -43,9 +44,17 @@ inline bool cpu_has_popcnt() {
   return (CPUInfo[2] >> 23) & 1;
 }
 
+// Define a dummy template to workaround a compile error if __popcnt64() is not defined.
+//
+// If __popcnt64() is defined in <intrin.h> it will be choosen first due to
+// C++ overload rules that always prefer a function to a template with the same name.
+// If not, we avoid a compile error and because cpu_has_popcnt() should return false,
+// our templetized __popcnt64() is never called anyway.
+template<typename T> unsigned __popcnt64(T) { return 0; } // Is never called
+
 #define POPCNT_INTRINSIC(x) __popcnt64(x)
 
-#elif defined(__INTEL_COMPILER) && (defined(__x86_64) || defined(_M_X64)) // Intel compiler
+#elif defined(__INTEL_COMPILER) && defined(IS_64BIT) && !defined(NO_POPCNT) // Intel compiler
 
 #include <nmmintrin.h>
 
@@ -56,15 +65,18 @@ inline bool cpu_has_popcnt() {
   return (CPUInfo[2] >> 23) & 1;
 }
 
+// See comment of __popcnt64<>() few lines above for an explanation.
+template<typename T> unsigned _mm_popcnt_u64(T) { return 0; } // Is never called
+
 #define POPCNT_INTRINSIC(x) _mm_popcnt_u64(x)
 
-#else // Safe fallback for unsupported compilers
+#else // Safe fallback for unsupported compilers or when NO_POPCNT is defined
 
 inline bool cpu_has_popcnt() { return false; }
 
-#define POPCNT_INTRINSIC(x) count_1s(x)
+#define POPCNT_INTRINSIC(x) 0
 
-#endif // cpu_has_popcnt() selection
+#endif // cpu_has_popcnt() and POPCNT_INTRINSIC() definitions
 
 
 /// Software implementation of bit count functions
@@ -131,18 +143,18 @@ inline int count_1s_max_15(Bitboard b) {
 }
 
 
-// Global variable initialized at startup that is set to true if
+// Global constant initialized at startup that is set to true if
 // CPU on which application runs supports POPCNT intrinsic. Unless
-// DISABLE_POPCNT_SUPPORT is defined.
-#if defined(DISABLE_POPCNT_SUPPORT)
+// NO_POPCNT is defined.
+#if defined(NO_POPCNT)
 const bool CpuHasPOPCNT = false;
 #else
 const bool CpuHasPOPCNT = cpu_has_popcnt();
 #endif
 
 
-// Global variable used to print info about the use of 64 optimized
-// functions to verify that a 64bit compile has been correctly built.
+// Global constant used to print info about the use of 64 optimized
+// functions to verify that a 64 bit compile has been correctly built.
 #if defined(IS_64BIT)
 const bool CpuHas64BitPath = true;
 #else
