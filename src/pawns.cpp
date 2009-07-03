@@ -193,7 +193,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
 
     // Initialize pawn storm scores by giving bonuses for open files
     for (File f = FILE_A; f <= FILE_H; f++)
-        if (pos.file_is_half_open(us, f))
+        if (Position::file_is_half_open(ourPawns, f))
         {
             pi->ksStormValue[us] += KStormOpenFileBonus[f];
             pi->qsStormValue[us] += QStormOpenFileBonus[f];
@@ -213,9 +213,9 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         pi->halfOpenFiles[us] &= ~(1 << f);
 
         // Passed, isolated or doubled pawn?
-        passed = pos.pawn_is_passed(us, s);
-        isolated = pos.pawn_is_isolated(us, s);
-        doubled = pos.pawn_is_doubled(us, s);
+        passed = Position::pawn_is_passed(theirPawns, us, s);
+        isolated = Position::pawn_is_isolated(ourPawns, s);
+        doubled = Position::pawn_is_doubled(ourPawns, us, s);
 
         // We calculate kingside and queenside pawn storm
         // scores for both colors. These are used when evaluating
@@ -319,7 +319,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
 
         // Test for candidate passed pawn
         candidate =    !passed
-                     && pos.file_is_half_open(them, f)
+                     && Position::file_is_half_open(theirPawns, f)
                      && (  count_1s_max_15(neighboring_files_bb(f) & (behind_bb(us, r) | rank_bb(r)) & ourPawns)
                          - count_1s_max_15(neighboring_files_bb(f) & in_front_bb(us, r)              & theirPawns)
                          >= 0);
@@ -339,7 +339,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         {
             mv -= IsolatedPawnMidgamePenalty[f];
             ev -= IsolatedPawnEndgamePenalty[f];
-            if (pos.file_is_half_open(them, f))
+            if (Position::file_is_half_open(theirPawns, f))
             {
                 mv -= IsolatedPawnMidgamePenalty[f] / 2;
                 ev -= IsolatedPawnEndgamePenalty[f] / 2;
@@ -354,7 +354,7 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
         {
             mv -= BackwardPawnMidgamePenalty[f];
             ev -= BackwardPawnEndgamePenalty[f];
-            if (pos.file_is_half_open(them, f))
+            if (Position::file_is_half_open(theirPawns, f))
             {
                 mv -= BackwardPawnMidgamePenalty[f] / 2;
                 ev -= BackwardPawnEndgamePenalty[f] / 2;
