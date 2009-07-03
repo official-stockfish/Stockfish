@@ -23,25 +23,6 @@
 #define BITBOARD_H_INCLUDED
 
 ////
-//// Defines
-////
-
-// Quiet a warning on Intel compiler
-#if !defined(__SIZEOF_INT__ )
-#define __SIZEOF_INT__ 0
-#endif
-
-// Check for 64 bits for different compilers: Intel, MSVC and gcc
-#if defined(__x86_64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
-#define IS_64BIT
-#endif
-
-#if defined(IS_64BIT) && (defined(__GNUC__) || defined(__INTEL_COMPILER))
-#define USE_BSFQ
-#endif
-
-
-////
 //// Includes
 ////
 
@@ -49,13 +30,6 @@
 #include "piece.h"
 #include "square.h"
 #include "types.h"
-
-
-////
-//// Types
-////
-
-typedef uint64_t Bitboard;
 
 
 ////
@@ -130,13 +104,6 @@ const Bitboard InFrontBB[2][8] = {
     Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
     Rank7BB | Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB
   }
-};
-
-const int BitTable[64] = {
-  63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
-  51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
-  26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 39, 48, 24, 59, 14, 12, 55, 38, 28,
-  58, 20, 37, 17, 36, 8
 };
 
 extern Bitboard SetMaskBB[65];
@@ -407,12 +374,7 @@ inline Square __attribute__((always_inline)) pop_1st_bit(Bitboard* b) {
 
 #else // if !defined(USE_BSFQ)
 
-inline Square first_1(Bitboard b) {
-  b ^= (b - 1);
-  uint32_t fold = int(b) ^ int(b >> 32);
-  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
-}
-
+extern Square first_1(Bitboard b);
 extern Square pop_1st_bit(Bitboard* b);
 
 #endif

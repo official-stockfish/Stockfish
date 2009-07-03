@@ -28,29 +28,7 @@
 //#define DISABLE_POPCNT_SUPPORT
 
 
-#include "bitboard.h"
-
-
-// Select type of software bit count function to use
-
-#if !defined(AUTO_CONFIGURATION) || defined(IS_64BIT)
-
-//#define USE_COMPACT_ROOK_ATTACKS
-//#define USE_32BIT_ATTACKS
-#define USE_FOLDED_BITSCAN
-
-#define BITCOUNT_SWAR_64
-//#define BITCOUNT_SWAR_32
-//#define BITCOUNT_LOOP
-
-#else
-
-#define USE_32BIT_ATTACKS
-#define USE_FOLDED_BITSCAN
-#define BITCOUNT_SWAR_32
-
-#endif
-
+#include "types.h"
 
 // Select type of intrinsic bit count instruction to use
 
@@ -86,24 +64,29 @@ inline bool cpu_has_popcnt() { return false; }
 
 #define POPCNT_INTRINSIC(x) count_1s(x)
 
-#endif
+#endif // cpu_has_popcnt() selection
 
 
 /// Software implementation of bit count functions
 
-#if defined(BITCOUNT_LOOP)
+#if defined(IS_64BIT)
 
 inline int count_1s(Bitboard b) {
-  int r;
-  for(r = 0; b; r++, b &= b - 1);
-  return r;
+  b -= ((b>>1) & 0x5555555555555555ULL);
+  b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+  b = ((b>>4) + b) & 0x0F0F0F0F0F0F0F0FULL;
+  b *= 0x0101010101010101ULL;
+  return int(b >> 56);
 }
 
 inline int count_1s_max_15(Bitboard b) {
-  return count_1s(b);
+  b -= (b>>1) & 0x5555555555555555ULL;
+  b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+  b *= 0x1111111111111111ULL;
+  return int(b >> 60);
 }
 
-#elif defined(BITCOUNT_SWAR_32)
+#else // if !defined(IS_64BIT)
 
 inline int count_1s(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
@@ -126,23 +109,6 @@ inline int count_1s_max_15(Bitboard b) {
   v += w; // 0-8 in 4 bits
   v *= 0x11111111;
   return int(v >> 28);
-}
-
-#elif defined(BITCOUNT_SWAR_64)
-
-inline int count_1s(Bitboard b) {
-  b -= ((b>>1) & 0x5555555555555555ULL);
-  b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
-  b = ((b>>4) + b) & 0x0F0F0F0F0F0F0F0FULL;
-  b *= 0x0101010101010101ULL;
-  return int(b >> 56);
-}
-
-inline int count_1s_max_15(Bitboard b) {
-  b -= (b>>1) & 0x5555555555555555ULL;
-  b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
-  b *= 0x1111111111111111ULL;
-  return int(b >> 60);
 }
 
 #endif // BITCOUNT
@@ -177,7 +143,7 @@ const bool CpuHasPOPCNT = cpu_has_popcnt();
 
 // Global variable used to print info about the use of 64 optimized
 // functions to verify that a 64bit compile has been correctly built.
-#if defined(BITCOUNT_SWAR_64)
+#if defined(IS_64BIT)
 const bool CpuHas64BitPath = true;
 #else
 const bool CpuHas64BitPath = false;

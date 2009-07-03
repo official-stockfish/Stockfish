@@ -242,19 +242,43 @@ void init_bitboards() {
 }
 
 
+/// first_1() finds the least significant nonzero bit in a nonzero bitboard.
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
 #if defined(IS_64BIT) && !defined(USE_BSFQ)
 
+static const int BitTable[64] = {
+  0, 1, 2, 7, 3, 13, 8, 19, 4, 25, 14, 28, 9, 34, 20, 40, 5, 17, 26, 38, 15,
+  46, 29, 48, 10, 31, 35, 54, 21, 50, 41, 57, 63, 6, 12, 18, 24, 27, 33, 39,
+  16, 37, 45, 47, 30, 53, 49, 56, 62, 11, 23, 32, 36, 44, 52, 55, 61, 22, 43,
+  51, 60, 42, 59, 58
+};
+
+Square first_1(Bitboard b) {
+  return Square(BitTable[((b & -b) * 0x218a392cd3d5dbfULL) >> 58]);
+}
+
 Square pop_1st_bit(Bitboard* b) {
-  Bitboard bb = *b ^ (*b - 1);
-  uint32_t fold = int(bb) ^ int(bb >> 32);
+  Bitboard bb = *b;
   *b &= (*b - 1);
-  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
+  return Square(BitTable[((bb & -bb) * 0x218a392cd3d5dbfULL) >> 58]);
 }
 
 #elif !defined(USE_BSFQ)
+
+static const int BitTable[64] = {
+  63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
+  51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
+  26, 60, 6, 23, 44, 46, 27, 56, 16, 7, 39, 48, 24, 59, 14, 12, 55, 38, 28,
+  58, 20, 37, 17, 36, 8
+};
+
+Square first_1(Bitboard b) {
+  b ^= (b - 1);
+  uint32_t fold = int(b) ^ int(b >> 32);
+  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
+}
 
 // Use type-punning
 union b_union {

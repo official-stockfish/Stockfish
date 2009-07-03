@@ -41,7 +41,29 @@ typedef __int64 int64_t;
 
 #endif // !defined(_MSC_VER)
 
-// Hash keys:
+// Hash keys
 typedef uint64_t Key;
+
+// Bitboard type
+typedef uint64_t Bitboard;
+
+
+////
+//// Compiler specific defines
+////
+
+// Quiet a warning on Intel compiler
+#if !defined(__SIZEOF_INT__ )
+#define __SIZEOF_INT__ 0
+#endif
+
+// Check for 64 bits for different compilers: Intel, MSVC and gcc
+#if defined(__x86_64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
+#define IS_64BIT
+#endif
+
+#if defined(IS_64BIT) && (defined(__GNUC__) || defined(__INTEL_COMPILER))
+#define USE_BSFQ
+#endif
 
 #endif // !defined(TYPES_H_INCLUDED)
