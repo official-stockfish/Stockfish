@@ -36,6 +36,11 @@
 #define IS_64BIT
 #endif
 
+#if defined(IS_64BIT) && (defined(__GNUC__) || defined(__INTEL_COMPILER))
+#define USE_BSFQ
+#endif
+
+
 ////
 //// Includes
 ////
@@ -383,20 +388,32 @@ inline Bitboard isolated_pawn_mask(Square s) {
 
 
 /// first_1() finds the least significant nonzero bit in a nonzero bitboard.
+/// pop_1st_bit() finds and clears the least significant nonzero bit in a
+/// nonzero bitboard.
 
-#if defined(IS_64BIT)
+#if defined(USE_BSFQ) // Assembly code by Heinz van Saanen
 
-inline Square first_1(Bitboard b) {
-  return Square(BitTable[((b & -b) * 0x218a392cd3d5dbfULL) >> 58]);
+inline Square __attribute__((always_inline)) first_1(Bitboard b) {
+  Bitboard dummy;
+  __asm__("bsfq %1, %0": "=r"(dummy): "rm"(b) );
+  return (Square)(dummy);
 }
 
-#else
+inline Square __attribute__((always_inline)) pop_1st_bit(Bitboard* b) {
+  const Square s = first_1(*b);
+  *b &= ~(1ULL<<s);
+  return s;
+}
+
+#else // if !defined(USE_BSFQ)
 
 inline Square first_1(Bitboard b) {
   b ^= (b - 1);
   uint32_t fold = int(b) ^ int(b >> 32);
   return Square(BitTable[(fold * 0x783a9b23) >> 26]);
 }
+
+extern Square pop_1st_bit(Bitboard* b);
 
 #endif
 
@@ -407,7 +424,6 @@ inline Square first_1(Bitboard b) {
 
 extern void print_bitboard(Bitboard b);
 extern void init_bitboards();
-extern Square pop_1st_bit(Bitboard *b);
 
 
 #endif // !defined(BITBOARD_H_INCLUDED)

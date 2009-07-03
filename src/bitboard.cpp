@@ -161,7 +161,7 @@ const int RShift[64] = {
   21, 22, 22, 22, 22, 22, 22, 21, 20, 21, 21, 21, 21, 21, 21, 20
 };
 
-#endif
+#endif // defined(IS_64BIT)
 
 
 Bitboard RMask[64];
@@ -245,16 +245,16 @@ void init_bitboards() {
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
-#if defined(IS_64BIT)
+#if defined(IS_64BIT) && !defined(USE_BSFQ)
 
-Square pop_1st_bit(Bitboard *b) {
+Square pop_1st_bit(Bitboard* b) {
   Bitboard bb = *b ^ (*b - 1);
   uint32_t fold = int(bb) ^ int(bb >> 32);
   *b &= (*b - 1);
   return Square(BitTable[(fold * 0x783a9b23) >> 26]);
 }
 
-#else
+#elif !defined(USE_BSFQ)
 
 // Use type-punning
 union b_union {
@@ -267,7 +267,7 @@ union b_union {
 };
 
 // WARNING: Needs -fno-strict-aliasing compiler option
-Square pop_1st_bit(Bitboard *bb) {
+Square pop_1st_bit(Bitboard* bb) {
 
   b_union u;
   uint32_t b;
