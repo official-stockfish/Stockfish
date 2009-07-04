@@ -44,9 +44,8 @@ clean:
 ### Compiler:
 ###
 
-# CXX = g++
-# CXX = g++-4.2
-CXX = icpc
+CXX = g++
+# CXX = icpc
 
 
 ###
@@ -66,24 +65,25 @@ include .depend
 ### Compiler and linker switches
 ###
 
-# Enable/disable debugging:
+# Enable/disable debugging, disabled by default
 
 CXXFLAGS += -DNDEBUG
 
 
-# Compile with full warnings, and symbol names
+# Compile with full warnings, and symbol names stripped, you can use
+# -g instead of -s to compile symbol's table in, useful for debugging.
 
-CXXFLAGS += -Wall -g
+CXXFLAGS += -Wall -s
 
 
-# General optimization flags.  Note that -O2 might be faster than -O3 on some
+# General optimization flags. Note that -O2 might be faster than -O3 on some
 # systems; this requires testing.
 
-CXXFLAGS += -O3 -fno-exceptions -fomit-frame-pointer -fno-rtti -fno-strict-aliasing
+CXXFLAGS += -O3 -fno-exceptions -fno-rtti -fno-strict-aliasing
 
 # Disable most annoying warnings for the Intel C++ compiler
 
-CXXFLAGS += -wd383,869,981
+# CXXFLAGS += -wd383,869,981
 
 
 # Compiler optimization flags for the Intel C++ compiler in Mac OS X:
