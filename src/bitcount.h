@@ -51,7 +51,7 @@ inline bool cpu_has_popcnt() {
 // C++ overload rules that always prefer a function to a template with the same name.
 // If not, we avoid a compile error and because cpu_has_popcnt() should return false,
 // our templetized _mm_popcnt_u64() is never called anyway.
-template<typename T> unsigned _mm_popcnt_u64(T) { return 0; } // Is never called
+template<typename T> inline unsigned _mm_popcnt_u64(T) { return 0; } // Is never called
 
 #define POPCNT_INTRINSIC(x) _mm_popcnt_u64(x)
 
@@ -67,7 +67,7 @@ inline bool cpu_has_popcnt() {
 }
 
 // See comment of _mm_popcnt_u64<>() few lines above for an explanation.
-template<typename T> unsigned __popcnt64(T) { return 0; } // Is never called
+template<typename T> inline unsigned __popcnt64(T) { return 0; } // Is never called
 
 #define POPCNT_INTRINSIC(x) __popcnt64(x)
 
