@@ -73,7 +73,7 @@ using namespace std;
 /// Version number. If this is left empty, the current date (in the format
 /// YYMMDD) is used as a version number.
 
-static const string EngineVersion = "";
+static const string EngineVersion = "1.4";
 static const string AppName = "Stockfish";
 static const string AppTag  = "";
 
