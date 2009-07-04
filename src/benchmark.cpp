@@ -72,7 +72,7 @@ void benchmark(const string& commandLine) {
 
   istringstream csVal(commandLine);
   istringstream csStr(commandLine);
-  string ttSize, threads, fileName, limitType;
+  string ttSize, threads, fileName, limitType, timFile;
   int val, secsPerPos, maxDepth, maxNodes;
 
   csStr >> ttSize;
@@ -98,6 +98,7 @@ void benchmark(const string& commandLine) {
   csVal >> val;
   csVal >> fileName;
   csVal >> limitType;
+  csVal >> timFile;
 
   secsPerPos = maxDepth = maxNodes = 0;
 
@@ -130,30 +131,49 @@ void benchmark(const string& commandLine) {
       for (int i = 0; i < 16; i++)
           positions.push_back(string(BenchmarkPositions[i]));
 
-  int startTime = get_system_time();
+  ofstream timingFile;
+  if (!timFile.empty())
+  {
+      timingFile.open(timFile.c_str(), ios::out | ios::app);
+      if (!timingFile.is_open())
+      {
+          cerr << "Unable to open timing file " << timFile << endl;
+          Application::exit_with_failure();
+      }
+  }
+
   vector<string>::iterator it;
   int cnt = 1;
   int64_t totalNodes = 0;
+  int startTime = get_system_time();
+
   for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
   {
       Move moves[1] = {MOVE_NONE};
       int dummy[2] = {0, 0};
       Position pos(*it);
-      cout << "\nProcessing position " << cnt << '/' << positions.size() << endl << endl;
+      cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (!think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
           break;
       totalNodes += nodes_searched();
   }
+
   cnt = get_system_time() - startTime;
-  cout << "\nProcessing time (ms) " << cnt
-       << "\nNodes searched " << totalNodes
-       << "\nNodes/second " << (int)(totalNodes/(cnt/1000.0))
-       << endl;
+  cerr << "==============================="
+       << "\nTotal time (ms) : " << cnt
+       << "\nNodes searched  : " << totalNodes
+       << "\nNodes/second    : " << (int)(totalNodes/(cnt/1000.0)) << endl << endl;
+
+  if (!timFile.empty())
+  {
+      timingFile << cnt << endl << endl;
+      timingFile.close();
+  }
 
   // Under MS Visual C++ debug window always unconditionally closes
   // when program exits, this is bad because we want to read results before.
   #if (defined(WINDOWS) || defined(WIN32) || defined(WIN64))
-  cout << "Press any key to exit" << endl;
+  cerr << "Press any key to exit" << endl;
   cin >> fileName;
   #endif
 }

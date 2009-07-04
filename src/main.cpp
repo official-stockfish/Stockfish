@@ -60,16 +60,18 @@ int main(int argc, char *argv[]) {
   // Process command line arguments if any
   if (argc > 1)
   {
-      if (string(argv[1]) != "bench" || argc < 4 || argc > 7)
+      if (string(argv[1]) != "bench" || argc < 4 || argc > 8)
           cout << "Usage: stockfish bench <hash size> <threads> "
                << "[time = 60s] [fen positions file = default] "
-               << "[time, depth or node limited = time]" << endl;
+               << "[time, depth or node limited = time] "
+               << "[timing file name = none]" << endl;
       else
       {
           string time = argc > 4 ? argv[4] : "60";
           string fen = argc > 5 ? argv[5] : "default";
           string lim = argc > 6 ? argv[6] : "time";
-          benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + lim);
+          string tim = argc > 7 ? argv[7] : "";
+          benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + lim + " " + tim);
       }
       return 0;
   }
