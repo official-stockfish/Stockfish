@@ -22,18 +22,19 @@
 #if !defined(BITCOUNT_H_INCLUDED)
 #define BITCOUNT_H_INCLUDED
 
-// To disable POPCNT support uncomment NO_POPCNT define. You should do it only
-// in PGO compiling to exercise the default fallback path. Don't forget to
-// re-comment the line for the final optimized compile though ;-)
+// To enable POPCNT support uncomment USE_POPCNT define. For PGO compile on a Core i7
+// you may want to collect profile data first with USE_POPCNT disabled and then, in a
+// second profiling session, with USE_POPCNT enabled so to exercise both paths. Don't
+// forget to leave USE_POPCNT enabled for the final optimized compile though ;-)
 
-//#define NO_POPCNT
+//#define USE_POPCNT
 
 
 #include "types.h"
 
 // Select type of intrinsic bit count instruction to use
 
-#if defined(_MSC_VER) && defined(IS_64BIT) && !defined(NO_POPCNT) // Microsoft compiler
+#if defined(_MSC_VER) && defined(IS_64BIT) && defined(USE_POPCNT) // Microsoft compiler
 
 #include <intrin.h>
 
@@ -54,7 +55,7 @@ template<typename T> unsigned __popcnt64(T) { return 0; } // Is never called
 
 #define POPCNT_INTRINSIC(x) __popcnt64(x)
 
-#elif defined(__INTEL_COMPILER) && defined(IS_64BIT) && !defined(NO_POPCNT) // Intel compiler
+#elif defined(__INTEL_COMPILER) && defined(IS_64BIT) && defined(USE_POPCNT) // Intel compiler
 
 #include <nmmintrin.h>
 
@@ -70,7 +71,7 @@ template<typename T> unsigned _mm_popcnt_u64(T) { return 0; } // Is never called
 
 #define POPCNT_INTRINSIC(x) _mm_popcnt_u64(x)
 
-#else // Safe fallback for unsupported compilers or when NO_POPCNT is defined
+#else // Safe fallback for unsupported compilers or when USE_POPCNT is disabled
 
 inline bool cpu_has_popcnt() { return false; }
 
@@ -145,12 +146,8 @@ inline int count_1s_max_15(Bitboard b) {
 
 // Global constant initialized at startup that is set to true if
 // CPU on which application runs supports POPCNT intrinsic. Unless
-// NO_POPCNT is defined.
-#if defined(NO_POPCNT)
-const bool CpuHasPOPCNT = false;
-#else
+// USE_POPCNT is not defined.
 const bool CpuHasPOPCNT = cpu_has_popcnt();
-#endif
 
 
 // Global constant used to print info about the use of 64 optimized

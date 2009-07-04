@@ -54,6 +54,15 @@ The exception is computer with big-endian CPUs, like PowerPC
 Macintoshes. Some of the bitboard routines in the current version of
 Stockfish are endianness-sensitive, and won't work on a big-endian CPU.
 
+Stockfish has POPCNT instruction runtime detection and support. This can
+give an extra speed on Core i7 or similar systems. To enable this feature
+(disabled by default) simply uncomment #define USE_POPCNT in bitcount.h
+before to compile.
+
+On 64 bit Unix-like systems the 'bsfq' assembly instruction will be used
+for bit counting. Detection is automatic at compile time, but in case you
+experience compile problems you can comment out #define USE_BSFQ line in types.h
+
 
 5. Terms of use
 ---------------

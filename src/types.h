@@ -62,7 +62,7 @@ typedef uint64_t Bitboard;
 #define IS_64BIT
 #endif
 
-#if defined(IS_64BIT) && (defined(__GNUC__) || defined(__INTEL_COMPILER))
+#if defined(IS_64BIT) && !defined(_WIN64) && (defined(__GNUC__) || defined(__INTEL_COMPILER))
 #define USE_BSFQ
 #endif
 
