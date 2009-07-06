@@ -864,7 +864,7 @@ namespace {
                                              Bitboard blockSquares, MoveStack* mlist) {
 
     // Calculate our parametrized parameters at compile time
-    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Rank TRANK_8 = (Us == WHITE ? RANK_8 : RANK_1);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
@@ -882,7 +882,7 @@ namespace {
 
         assert(pos.piece_on(to) == EMPTY);
 
-        if (square_rank(to) == TRank8BB)
+        if (square_rank(to) == TRANK_8)
         {
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
