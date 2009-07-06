@@ -37,8 +37,8 @@ using std::string;
 namespace {
 
   // Values modified by Joona Kiiski
-  const Value BishopPairMidgameBonus = Value(109);
-  const Value BishopPairEndgameBonus = Value(97);
+  const Value BishopPairMidgameBonus = Value(106);
+  const Value BishopPairEndgameBonus = Value(96);
 
   Key KNNKMaterialKey, KKNNMaterialKey;
 
