@@ -173,14 +173,14 @@ namespace {
   const Value UnstoppablePawnValue = Value(0x500);
 
   // Rooks and queens on the 7th rank (modified by Joona Kiiski)
-  const Value MidgameRookOn7thBonus  = Value(43);
-  const Value EndgameRookOn7thBonus  = Value(91);
-  const Value MidgameQueenOn7thBonus = Value(28);
-  const Value EndgameQueenOn7thBonus = Value(53);
+  const Value MidgameRookOn7thBonus  = Value(47);
+  const Value EndgameRookOn7thBonus  = Value(98);
+  const Value MidgameQueenOn7thBonus = Value(27);
+  const Value EndgameQueenOn7thBonus = Value(54);
 
   // Rooks on open files (modified by Joona Kiiski)
-  const Value RookOpenFileBonus = Value(42);
-  const Value RookHalfOpenFileBonus = Value(24);
+  const Value RookOpenFileBonus = Value(43);
+  const Value RookHalfOpenFileBonus = Value(19);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
   // right to castle.
