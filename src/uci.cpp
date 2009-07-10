@@ -242,6 +242,11 @@ namespace {
         }
         if (token == "value")
         {
+            // Skip whitespace. There should be a better way to do this, but
+            // I don't know how...
+            while(isspace(uip.get()));
+            uip.unget();
+
             getline(uip, token); // reads until end of line
             set_option_value(name, token);
         } else
