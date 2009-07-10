@@ -58,15 +58,15 @@ namespace {
   // parameters at 100, which looks prettier.
   //
   // Values modified by Joona Kiiski
-  const int WeightMobilityMidgameInternal      = 0x0FA;
-  const int WeightMobilityEndgameInternal      = 0x10A;
-  const int WeightPawnStructureMidgameInternal = 0x0EC;
-  const int WeightPawnStructureEndgameInternal = 0x0CD;
-  const int WeightPassedPawnsMidgameInternal   = 0x108;
-  const int WeightPassedPawnsEndgameInternal   = 0x109;
-  const int WeightKingSafetyInternal           = 0x0F7;
-  const int WeightKingOppSafetyInternal        = 0x101;
-  const int WeightSpaceInternal                = 0x02F;
+  const int WeightMobilityMidgameInternal      = 248;
+  const int WeightMobilityEndgameInternal      = 271;
+  const int WeightPawnStructureMidgameInternal = 233;
+  const int WeightPawnStructureEndgameInternal = 201;
+  const int WeightPassedPawnsMidgameInternal   = 252;
+  const int WeightPassedPawnsEndgameInternal   = 259;
+  const int WeightKingSafetyInternal           = 247;
+  const int WeightKingOppSafetyInternal        = 259;
+  const int WeightSpaceInternal                = 46;
 
   // Mobility and outposts bonus modified by Joona Kiiski
   //

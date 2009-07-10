@@ -655,8 +655,8 @@ inline Value Position::non_pawn_material(Color c) const {
 inline Phase Position::game_phase() const {
 
   // Values modified by Joona Kiiski
-  static const Value MidgameLimit = Value(15713);
-  static const Value EndgameLimit = Value(4428);
+  static const Value MidgameLimit = Value(15581);
+  static const Value EndgameLimit = Value(3998);
 
   Value npm = non_pawn_material(WHITE) + non_pawn_material(BLACK);
 
