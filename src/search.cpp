@@ -201,12 +201,6 @@ namespace {
   // Depth limit for use of dynamic threat detection
   Depth ThreatDepth; // heavy SMP read access
 
-  // Last seconds noise filtering (LSN)
-  bool UseLSNFiltering;
-  bool looseOnTime = false;
-  int LSNTime; // In milliseconds
-  Value LSNValue;
-
   // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
   // There is heavy SMP read access on these arrays
   Depth CheckExtension[2], SingleReplyExtension[2], PawnPushTo7thExtension[2];
@@ -226,8 +220,7 @@ namespace {
   // Time managment variables
   int SearchStartTime;
   int MaxNodes, MaxDepth;
-  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime;
-  Move EasyMove;
+  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   int RootMoveNumber;
   bool InfiniteSearch;
   bool PonderSearch;
@@ -237,8 +230,6 @@ namespace {
   bool FailHigh;
   bool FailLow;
   bool Problem;
-  bool PonderingEnabled;
-  int ExactMaxTime;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -357,7 +348,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // Initialize global search variables
   Idle = false;
   SearchStartTime = get_system_time();
-  EasyMove = MOVE_NONE;
   for (int i = 0; i < THREAD_MAX; i++)
   {
       Threads[i].nodes = 0ULL;
@@ -379,7 +369,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   if (button_was_pressed("Clear Hash"))
       TT.clear();
 
-  PonderingEnabled = get_option_value_bool("Ponder");
+  bool PonderingEnabled = get_option_value_bool("Ponder");
   MultiPV = get_option_value_int("MultiPV");
 
   CheckExtension[1] = Depth(get_option_value_int("Check Extension (PV nodes)"));
@@ -410,9 +400,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
 
-  UseLSNFiltering = get_option_value_bool("LSN filtering");
-  LSNTime = get_option_value_int("LSN Time Margin (sec)") * 1000;
-  LSNValue = value_from_centipawns(get_option_value_int("LSN Value Margin"));
+  bool UseLSNFiltering = get_option_value_bool("LSN filtering");
+  int LSNTime = get_option_value_int("LSN Time Margin (sec)") * 1000;
+  Value LSNValue = value_from_centipawns(get_option_value_int("LSN Value Margin"));
 
   MinimumSplitDepth = get_option_value_int("Minimum Split Depth") * OnePly;
   MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
@@ -491,6 +481,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
 
   // We're ready to start thinking. Call the iterative deepening loop function
+  static bool looseOnTime = false;
+
+  // FIXME we really need to cleanup all this LSN ugliness
   if (!looseOnTime)
   {
       Value v = id_loop(pos, searchMoves);
@@ -641,7 +634,7 @@ namespace {
     IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
     Iteration = 1;
 
-    EasyMove = rml.scan_for_easy_move();
+    Move EasyMove = rml.scan_for_easy_move();
 
     // Iterative deepening loop
     while (Iteration < PLY_MAX)
