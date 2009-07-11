@@ -267,6 +267,7 @@ public:
   int see(Square from, Square to) const;
   int see(Move m) const;
   int see(Square to) const;
+  int see_sign(Move m) const;
 
   // Accessing hash keys
   Key get_key() const;

@@ -244,7 +244,7 @@ void MovePicker::score_captures() {
   for (int i = 0; i < numOfMoves; i++)
   {
       m = moves[i].move;
-      seeValue = pos.see(m);
+      seeValue = pos.see_sign(m);
       if (seeValue >= 0)
       {
           if (move_is_promotion(m))

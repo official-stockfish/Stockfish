@@ -1474,6 +1474,22 @@ int Position::see(Move m) const {
   return see(move_from(m), move_to(m));
 }
 
+int Position::see_sign(Move m) const {
+
+  assert(move_is_ok(m));
+
+  Square from = move_from(m);
+  Square to = move_to(m);
+
+  // Early return if SEE cannot be negative because capturing piece value
+  // is not bigger then captured one.
+  if (   midgame_value_of_piece_on(from) <= midgame_value_of_piece_on(to)
+      && type_of_piece_on(from) != KING)
+         return 1;
+
+  return see(from, to);
+}
+
 int Position::see(Square from, Square to) const {
 
   // Material values

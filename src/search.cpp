@@ -1561,9 +1561,7 @@ namespace {
       // Don't search captures and checks with negative SEE values
       if (   !isCheck
           && !move_is_promotion(move)
-          && (pos.midgame_value_of_piece_on(move_from(move)) >
-              pos.midgame_value_of_piece_on(move_to(move)))
-          &&  pos.see(move) < 0)
+          &&  pos.see_sign(move) < 0)
           continue;
 
       // Make and search the move.
@@ -2240,7 +2238,7 @@ namespace {
     if (   pvNode
         && capture
         && pos.type_of_piece_on(move_to(m)) != PAWN
-        && pos.see(m) >= 0)
+        && pos.see_sign(m) >= 0)
     {
         result += OnePly/2;
         *dangerous = true;
@@ -2313,7 +2311,7 @@ namespace {
         && threat != MOVE_NONE
         && piece_is_slider(pos.piece_on(tfrom))
         && bit_is_set(squares_between(tfrom, tto), mto)
-        && pos.see(m) >= 0)
+        && pos.see_sign(m) >= 0)
         return false;
 
     return true;
