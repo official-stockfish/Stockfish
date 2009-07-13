@@ -119,9 +119,6 @@ namespace {
     o["Full Depth Moves (PV nodes)"] = Option(14, 1, 100);
     o["Full Depth Moves (non-PV nodes)"] = Option(3, 1, 100);
     o["Threat Depth"] = Option(5, 0, 100);
-    o["LSN filtering"] = Option(true);
-    o["LSN Time Margin (sec)"] = Option(4, 1, 10);
-    o["LSN Value Margin"] = Option(200, 100, 600);
     o["Randomness"] = Option(0, 0, 10);
     o["Minimum Split Depth"] = Option(4, 4, 7);
     o["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);

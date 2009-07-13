@@ -201,6 +201,12 @@ namespace {
   // Depth limit for use of dynamic threat detection
   Depth ThreatDepth; // heavy SMP read access
 
+  // Last seconds noise filtering (LSN)
+  const bool UseLSNFiltering = true;
+  const int LSNTime = 4000; // In milliseconds
+  const Value LSNValue = value_from_centipawns(200);
+  bool looseOnTime = false;
+
   // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
   // There is heavy SMP read access on these arrays
   Depth CheckExtension[2], SingleReplyExtension[2], PawnPushTo7thExtension[2];
@@ -367,7 +373,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
   if (button_was_pressed("Clear Hash"))
+  {
       TT.clear();
+      looseOnTime = false; // reset at the beginning of a new game
+  }
 
   bool PonderingEnabled = get_option_value_bool("Ponder");
   MultiPV = get_option_value_int("MultiPV");
@@ -399,10 +408,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   UseLogFile = get_option_value_bool("Use Search Log");
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
-
-  bool UseLSNFiltering = get_option_value_bool("LSN filtering");
-  int LSNTime = get_option_value_int("LSN Time Margin (sec)") * 1000;
-  Value LSNValue = value_from_centipawns(get_option_value_int("LSN Value Margin"));
 
   MinimumSplitDepth = get_option_value_int("Minimum Split Depth") * OnePly;
   MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
@@ -481,8 +486,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
 
   // We're ready to start thinking. Call the iterative deepening loop function
-  static bool looseOnTime = false;
-
+  //
   // FIXME we really need to cleanup all this LSN ugliness
   if (!looseOnTime)
   {
