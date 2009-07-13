@@ -1243,9 +1243,8 @@ namespace {
 
         StateInfo st;
         pos.do_null_move(st);
-        int R = (depth >= 5 * OnePly ? 4 : 3); // Null move dynamic reduction
 
-        Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
+        Value nullValue = -search(pos, ss, -(beta-1), depth-4*OnePly, ply+1, false, threadID);
 
         pos.undo_null_move();
 
@@ -1364,7 +1363,7 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
-      if (    depth >= 2*OnePly
+      if (    depth >= 3*OnePly
           &&  moveCount >= LMRNonPVMoves
           && !dangerous
           && !moveIsCapture
