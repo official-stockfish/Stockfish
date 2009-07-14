@@ -31,6 +31,9 @@
 // hardcoded list name 'mlist' and from square 'from'.
 #define SERIALIZE_MOVES(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit(&b))
 
+// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
+#define SERIALIZE_MOVES_D(b, d) while (b) { to = pop_1st_bit(&b); (*mlist++).move = make_move(to + (d), to); }
+
 ////
 //// Local definitions
 ////
@@ -638,11 +641,7 @@ namespace {
     }
 
     // Capturing non-promotions
-    while (b1)
-    {
-        to = pop_1st_bit(&b1);
-        (*mlist++).move = make_move(to - TTDELTA_NE, to);
-    }
+    SERIALIZE_MOVES_D(b1, -TTDELTA_NE);
     return mlist;
   }
 
@@ -746,19 +745,11 @@ namespace {
 
     // Single pawn pushes
     b2 = b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
-    while (b2)
-    {
-        to = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(to - TDELTA_N, to);
-    }
+    SERIALIZE_MOVES_D(b2, -TDELTA_N);
 
     // Double pawn pushes
     b2 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
-    while (b2)
-    {
-        to = pop_1st_bit(&b2);
-        (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
-    }
+    SERIALIZE_MOVES_D(b2, -TDELTA_N -TDELTA_N);
     return mlist;
   }
 
@@ -773,6 +764,7 @@ namespace {
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
     const SquareDelta TDELTA_S = (Us == WHITE ? DELTA_S : DELTA_N);
 
+    Square to;
     Bitboard b1, b2, b3;
     Bitboard pawns = pos.pawns(Us);
 
@@ -787,19 +779,11 @@ namespace {
 
         // Discovered checks, single pawn pushes, no promotions
         b2 = b3 = move_pawns<Us, DELTA_N>(b1 & dc) & empty & ~TRank8BB;
-        while (b3)
-        {
-            Square to = pop_1st_bit(&b3);
-            (*mlist++).move = make_move(to - TDELTA_N, to);
-        }
+        SERIALIZE_MOVES_D(b3, -TDELTA_N);
 
         // Discovered checks, double pawn pushes
         b3 = move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty;
-        while (b3)
-        {
-            Square to = pop_1st_bit(&b3);
-            (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
-        }
+        SERIALIZE_MOVES_D(b3, -TDELTA_N -TDELTA_N);
     }
 
     // Direct checks. These are possible only for pawns on neighboring files
@@ -816,19 +800,11 @@ namespace {
     Bitboard empty = pos.empty_squares();
     b2 = move_pawns<Us, DELTA_N>(b1) & empty;
     b3 = b2 & pos.pawn_attacks(Them, ksq);
-    while (b3)
-    {
-        Square to = pop_1st_bit(&b3);
-        (*mlist++).move = make_move(to - TDELTA_N, to);
-    }
+    SERIALIZE_MOVES_D(b3, -TDELTA_N);
 
     // Direct checks, double pawn pushes
     b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.pawn_attacks(Them, ksq);
-    while (b3)
-    {
-        Square to = pop_1st_bit(&b3);
-        (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
-    }
+    SERIALIZE_MOVES_D(b3, -TDELTA_N -TDELTA_N);
     return mlist;
   }
 
