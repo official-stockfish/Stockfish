@@ -61,7 +61,7 @@ namespace {
   MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist);
 
   template<Color Us, SquareDelta Diagonal>
-  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces);
+  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool promotion);
 
   template<Color Us>
   MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
@@ -611,7 +611,7 @@ namespace {
   }
 
   template<Color Us, SquareDelta Diagonal>
-  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces) {
+  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool promotion) {
 
     // Calculate our parametrized parameters at compile time
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
@@ -626,18 +626,21 @@ namespace {
     Bitboard b1 = move_pawns<Us, Diagonal>(pawns) & ~TFileABB & enemyPieces;
 
     // Capturing promotions
-    Bitboard b2 = b1 & TRank8BB;
-    while (b2)
+    if (promotion)
     {
-        to = pop_1st_bit(&b2);
-        (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, QUEEN);
+        Bitboard b2 = b1 & TRank8BB;
+        b1 &= ~TRank8BB;
+        while (b2)
+        {
+            to = pop_1st_bit(&b2);
+            (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, QUEEN);
+        }
     }
 
     // Capturing non-promotions
-    b2 = b1 & ~TRank8BB;
-    while (b2)
+    while (b1)
     {
-        to = pop_1st_bit(&b2);
+        to = pop_1st_bit(&b1);
         (*mlist++).move = make_move(to - TTDELTA_NE, to);
     }
     return mlist;
@@ -649,22 +652,27 @@ namespace {
     // Calculate our parametrized parameters at compile time
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
     Square to;
     Bitboard pawns = pos.pawns(Us);
     Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
+    bool possiblePromotion = (pawns & TRank7BB);
 
     // Standard captures and capturing promotions in both directions
-    mlist = generate_pawn_captures_diagonal<Us, DELTA_NE>(mlist, pawns, enemyPieces);
-    mlist = generate_pawn_captures_diagonal<Us, DELTA_NW>(mlist, pawns, enemyPieces);
+    mlist = generate_pawn_captures_diagonal<Us, DELTA_NE>(mlist, pawns, enemyPieces, possiblePromotion);
+    mlist = generate_pawn_captures_diagonal<Us, DELTA_NW>(mlist, pawns, enemyPieces, possiblePromotion);
 
     // Non-capturing promotions
-    Bitboard b1 = move_pawns<Us, DELTA_N>(pawns) & pos.empty_squares() & TRank8BB;
-    while (b1)
+    if (possiblePromotion)
     {
-        to = pop_1st_bit(&b1);
-        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
+        Bitboard b1 = move_pawns<Us, DELTA_N>(pawns) & pos.empty_squares() & TRank8BB;
+        while (b1)
+        {
+            to = pop_1st_bit(&b1);
+            (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
+        }
     }
 
     // En passant captures
@@ -673,7 +681,7 @@ namespace {
         assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
         assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
 
-        b1 = pawns & pos.pawn_attacks(Them, pos.ep_square());
+        Bitboard b1 = pawns & pos.pawn_attacks(Them, pos.ep_square());
         assert(b1 != EmptyBoardBB);
 
         while (b1)
@@ -690,6 +698,7 @@ namespace {
 
     // Calculate our parametrized parameters at compile time
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
     const SquareDelta TDELTA_NE = (Us == WHITE ? DELTA_NE : DELTA_SE);
     const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
@@ -698,40 +707,45 @@ namespace {
     Bitboard b1, b2;
     Square to;
     Bitboard pawns = pos.pawns(Us);
-    Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
     Bitboard emptySquares = pos.empty_squares();
 
-    // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
-    b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces & TRank8BB;
-    while (b1)
+    if (pawns & TRank7BB) // There is some promotion candidate ?
     {
-        to = pop_1st_bit(&b1);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, ROOK);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, BISHOP);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, KNIGHT);
-    }
+         Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
 
-    // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
-    b1 = move_pawns<Us, DELTA_NW>(pawns) & ~FileHBB & enemyPieces & TRank8BB;
-    while (b1)
-    {
-        to = pop_1st_bit(&b1);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, ROOK);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, BISHOP);
-        (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, KNIGHT);
+        // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
+        b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces & TRank8BB;
+        while (b1)
+        {
+            to = pop_1st_bit(&b1);
+            (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, ROOK);
+            (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, BISHOP);
+            (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, KNIGHT);
+        }
+
+        // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
+        b1 = move_pawns<Us, DELTA_NW>(pawns) & ~FileHBB & enemyPieces & TRank8BB;
+        while (b1)
+        {
+            to = pop_1st_bit(&b1);
+            (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, ROOK);
+            (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, BISHOP);
+            (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, KNIGHT);
+        }
+
+        // Underpromotion pawn pushes
+        b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & TRank8BB;
+        while (b1)
+        {
+            to = pop_1st_bit(&b1);
+            (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
+            (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
+            (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
+        }
     }
 
     // Single pawn pushes
-    b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares;
-    b2 = b1 & TRank8BB;
-    while (b2)
-    {
-        to = pop_1st_bit(&b2);
-        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
-        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
-        (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
-    }
-    b2 = b1 & ~TRank8BB;
+    b2 = b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
     while (b2)
     {
         to = pop_1st_bit(&b2);
