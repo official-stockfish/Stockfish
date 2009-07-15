@@ -205,7 +205,7 @@ namespace {
   const bool UseLSNFiltering = true;
   const int LSNTime = 4000; // In milliseconds
   const Value LSNValue = value_from_centipawns(200);
-  bool looseOnTime = false;
+  bool loseOnTime = false;
 
   // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
   // There is heavy SMP read access on these arrays
@@ -375,7 +375,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   if (button_was_pressed("Clear Hash"))
   {
       TT.clear();
-      looseOnTime = false; // reset at the beginning of a new game
+      loseOnTime = false; // reset at the beginning of a new game
   }
 
   bool PonderingEnabled = get_option_value_bool("Ponder");
@@ -488,17 +488,17 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // We're ready to start thinking. Call the iterative deepening loop function
   //
   // FIXME we really need to cleanup all this LSN ugliness
-  if (!looseOnTime)
+  if (!loseOnTime)
   {
       Value v = id_loop(pos, searchMoves);
-      looseOnTime = (   UseLSNFiltering
+      loseOnTime = (   UseLSNFiltering
                      && myTime < LSNTime
                      && myIncrement == 0
                      && v < -LSNValue);
   }
   else
   {
-      looseOnTime = false; // reset for next match
+      loseOnTime = false; // reset for next match
       while (SearchStartTime + myTime + 1000 > get_system_time())
           ; // wait here
       id_loop(pos, searchMoves); // to fail gracefully
