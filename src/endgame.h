@@ -93,31 +93,6 @@ struct ScalingFunction : public EndgameScalingFunctionBase {
 
 
 ////
-//// Constants and variables
-////
-
-extern EvaluationFunction<KXK> EvaluateKXK, EvaluateKKX;       // Generic "mate lone king" eval
-extern EvaluationFunction<KBNK> EvaluateKBNK, EvaluateKKBN;    // KBN vs K
-extern EvaluationFunction<KPK> EvaluateKPK, EvaluateKKP;       // KP vs K
-extern EvaluationFunction<KRKP> EvaluateKRKP, EvaluateKPKR;    // KR vs KP
-extern EvaluationFunction<KRKB> EvaluateKRKB, EvaluateKBKR;    // KR vs KB
-extern EvaluationFunction<KRKN> EvaluateKRKN, EvaluateKNKR;    // KR vs KN
-extern EvaluationFunction<KQKR> EvaluateKQKR, EvaluateKRKQ;    // KQ vs KR
-extern EvaluationFunction<KBBKN> EvaluateKBBKN, EvaluateKNKBB; // KBB vs KN
-extern EvaluationFunction<KmmKm> EvaluateKmmKm; // K and two minors vs K and one or two minors:
-
-extern ScalingFunction<KBPK> ScaleKBPK, ScaleKKBP;    // KBP vs K
-extern ScalingFunction<KQKRP> ScaleKQKRP, ScaleKRPKQ; // KQ vs KRP
-extern ScalingFunction<KRPKR> ScaleKRPKR, ScaleKRKRP; // KRP vs KR
-extern ScalingFunction<KRPPKRP> ScaleKRPPKRP, ScaleKRPKRPP; // KRPP vs KRP
-extern ScalingFunction<KPsK> ScaleKPsK, ScaleKKPs;    // King and pawns vs king
-extern ScalingFunction<KBPKB> ScaleKBPKB, ScaleKBKBP; // KBP vs KB
-extern ScalingFunction<KBPPKB> ScaleKBPPKB, ScaleKBKBPP; // KBPP vs KB
-extern ScalingFunction<KBPKN> ScaleKBPKN, ScaleKNKBP; // KBP vs KN
-extern ScalingFunction<KNPK> ScaleKNPK, ScaleKKNP;    // KNP vs K
-extern ScalingFunction<KPKP> ScaleKPKPw, ScaleKPKPb;  // KP vs KP
-
-////
 //// Prototypes
 ////
 

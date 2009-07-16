@@ -30,41 +30,6 @@
 
 
 ////
-//// Constants and variables
-////
-
-/// Evaluation functions
-
-// Generic "mate lone king" eval
-EvaluationFunction<KXK> EvaluateKXK(WHITE), EvaluateKKX(BLACK);
-
-// K and two minors vs K and one or two minors
-EvaluationFunction<KmmKm> EvaluateKmmKm(WHITE);
-
-EvaluationFunction<KBNK> EvaluateKBNK(WHITE), EvaluateKKBN(BLACK); // KBN vs K
-EvaluationFunction<KPK> EvaluateKPK(WHITE), EvaluateKKP(BLACK);    // KP vs K
-EvaluationFunction<KRKP> EvaluateKRKP(WHITE), EvaluateKPKR(BLACK); // KR vs KP
-EvaluationFunction<KRKB> EvaluateKRKB(WHITE), EvaluateKBKR(BLACK); // KR vs KB
-EvaluationFunction<KRKN> EvaluateKRKN(WHITE), EvaluateKNKR(BLACK); // KR vs KN
-EvaluationFunction<KQKR> EvaluateKQKR(WHITE), EvaluateKRKQ(BLACK); // KQ vs KR
-EvaluationFunction<KBBKN> EvaluateKBBKN(WHITE), EvaluateKNKBB(BLACK); // KBB vs KN
-
-
-/// Scaling functions
-
-ScalingFunction<KBPK> ScaleKBPK(WHITE), ScaleKKBP(BLACK);    // KBP vs K
-ScalingFunction<KQKRP> ScaleKQKRP(WHITE), ScaleKRPKQ(BLACK); // KQ vs KRP
-ScalingFunction<KRPKR> ScaleKRPKR(WHITE), ScaleKRKRP(BLACK); // KRP vs KR
-ScalingFunction<KRPPKRP> ScaleKRPPKRP(WHITE), ScaleKRPKRPP(BLACK); // KRPP vs KRP
-ScalingFunction<KPsK> ScaleKPsK(WHITE), ScaleKKPs(BLACK);    // King and pawns vs king
-ScalingFunction<KBPKB> ScaleKBPKB(WHITE), ScaleKBKBP(BLACK); // KBP vs KB
-ScalingFunction<KBPPKB> ScaleKBPPKB(WHITE), ScaleKBKBPP(BLACK); // KBPP vs KB
-ScalingFunction<KBPKN> ScaleKBPKN(WHITE), ScaleKNKBP(BLACK); // KBP vs KN
-ScalingFunction<KNPK> ScaleKNPK(WHITE), ScaleKKNP(BLACK);    // KNP vs K
-ScalingFunction<KPKP> ScaleKPKPw(WHITE), ScaleKPKPb(BLACK);  // KPKP
-
-
-////
 //// Local definitions
 ////
 

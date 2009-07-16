@@ -42,7 +42,16 @@ namespace {
 
   Key KNNKMaterialKey, KKNNMaterialKey;
 
+  // Unmapped endgame evaluation and scaling functions, these
+  // are accessed direcly and not through the function maps.
+  EvaluationFunction<KmmKm> EvaluateKmmKm(WHITE);
+  EvaluationFunction<KXK>   EvaluateKXK(WHITE), EvaluateKKX(BLACK);
+  ScalingFunction<KBPK>     ScaleKBPK(WHITE),   ScaleKKBP(BLACK);
+  ScalingFunction<KQKRP>    ScaleKQKRP(WHITE),  ScaleKRPKQ(BLACK);
+  ScalingFunction<KPsK>     ScaleKPsK(WHITE),   ScaleKKPs(BLACK);
+  ScalingFunction<KPKP>     ScaleKPKPw(WHITE),  ScaleKPKPb(BLACK);
 }
+
 
 ////
 //// Classes
@@ -54,23 +63,28 @@ namespace {
 
 class EndgameFunctions {
 
+  typedef EndgameEvaluationFunctionBase EF;
+  typedef EndgameScalingFunctionBase SF;
+
 public:
   EndgameFunctions();
-  EndgameEvaluationFunctionBase* getEEF(Key key) const;
-  EndgameScalingFunctionBase* getESF(Key key, Color* c) const;
+  ~EndgameFunctions();
+  EF* getEEF(Key key) const;
+  SF* getESF(Key key, Color* c) const;
 
 private:
-  void add(const string& keyCode, EndgameEvaluationFunctionBase* f);
-  void add(const string& keyCode, Color c, EndgameScalingFunctionBase* f);
   Key buildKey(const string& keyCode);
+  const string swapColors(const string& keyCode);
+  template<EndgameType> void add_ef(const string& keyCode);
+  template<EndgameType> void add_sf(const string& keyCode);
 
   struct ScalingInfo
   {
       Color col;
-      EndgameScalingFunctionBase* fun;
+      SF* fun;
   };
 
-  std::map<Key, EndgameEvaluationFunctionBase*> EEFmap;
+  std::map<Key, EF*> EEFmap;
   std::map<Key, ScalingInfo> ESFmap;
 };
 
@@ -176,7 +190,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // material configuration. Is there a suitable scaling function?
   //
   // The code below is rather messy, and it could easily get worse later,
-  // if we decide to add more special cases.  We face problems when there
+  // if we decide to add more special cases. We face problems when there
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
   Color c;
@@ -305,42 +319,39 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 /// EndgameFunctions member definitions. This class is used to store the maps
 /// of end game and scaling functions that MaterialInfoTable will query for
 /// each key. The maps are constant and are populated only at construction,
-/// but are per-thread instead of globals to avoid expensive locks.
+/// but are per-thread instead of globals to avoid expensive locks needed
+/// because std::map is not guaranteed to be thread-safe even if accessed
+/// only for a lookup.
 
 EndgameFunctions::EndgameFunctions() {
 
   KNNKMaterialKey = buildKey("KNNK");
   KKNNMaterialKey = buildKey("KKNN");
 
-  add("KPK",   &EvaluateKPK);
-  add("KKP",   &EvaluateKKP);
-  add("KBNK",  &EvaluateKBNK);
-  add("KKBN",  &EvaluateKKBN);
-  add("KRKP",  &EvaluateKRKP);
-  add("KPKR",  &EvaluateKPKR);
-  add("KRKB",  &EvaluateKRKB);
-  add("KBKR",  &EvaluateKBKR);
-  add("KRKN",  &EvaluateKRKN);
-  add("KNKR",  &EvaluateKNKR);
-  add("KQKR",  &EvaluateKQKR);
-  add("KRKQ",  &EvaluateKRKQ);
-  add("KBBKN", &EvaluateKBBKN);
-  add("KNKBB", &EvaluateKNKBB);
+  add_ef<KPK>("KPK");
+  add_ef<KBNK>("KBNK");
+  add_ef<KRKP>("KRKP");
+  add_ef<KRKB>("KRKB");
+  add_ef<KRKN>("KRKN");
+  add_ef<KQKR>("KQKR");
+  add_ef<KBBKN>("KBBKN");
 
-  add("KNPK",    WHITE, &ScaleKNPK);
-  add("KKNP",    BLACK, &ScaleKKNP);
-  add("KRPKR",   WHITE, &ScaleKRPKR);
-  add("KRKRP",   BLACK, &ScaleKRKRP);
-  add("KBPKB",   WHITE, &ScaleKBPKB);
-  add("KBKBP",   BLACK, &ScaleKBKBP);
-  add("KBPPKB",  WHITE, &ScaleKBPPKB);
-  add("KBKBPP",  BLACK, &ScaleKBKBPP);
-  add("KBPKN",   WHITE, &ScaleKBPKN);
-  add("KNKBP",   BLACK, &ScaleKNKBP);
-  add("KRPPKRP", WHITE, &ScaleKRPPKRP);
-  add("KRPKRPP", BLACK, &ScaleKRPKRPP);
-  add("KRPPKRP", WHITE, &ScaleKRPPKRP);
-  add("KRPKRPP", BLACK, &ScaleKRPKRPP);
+  add_sf<KNPK>("KNPK");
+  add_sf<KRPKR>("KRPKR");
+  add_sf<KBPKB>("KBPKB");
+  add_sf<KBPPKB>("KBPPKB");
+  add_sf<KBPKN>("KBPKN");
+  add_sf<KRPPKRP>("KRPPKRP");
+  add_sf<KRPPKRP>("KRPPKRP");
+}
+
+EndgameFunctions::~EndgameFunctions() {
+
+    for (std::map<Key, EF*>::iterator it = EEFmap.begin(); it != EEFmap.end(); ++it)
+        delete (*it).second;
+
+    for (std::map<Key, ScalingInfo>::iterator it = ESFmap.begin(); it != ESFmap.end(); ++it)
+        delete (*it).second.fun;
 }
 
 Key EndgameFunctions::buildKey(const string& keyCode) {
@@ -364,20 +375,33 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
     return Position(s.str()).get_material_key();
 }
 
-void EndgameFunctions::add(const string& keyCode, EndgameEvaluationFunctionBase* f) {
+const string EndgameFunctions::swapColors(const string& keyCode) {
 
-  EEFmap.insert(std::pair<Key, EndgameEvaluationFunctionBase*>(buildKey(keyCode), f));
+    // Build corresponding key for the opposite color: "KBPKN" -> "KNKBP"
+    size_t idx = keyCode.find("K", 1);
+    return keyCode.substr(idx) + keyCode.substr(0, idx);
 }
 
-void EndgameFunctions::add(const string& keyCode, Color c, EndgameScalingFunctionBase* f) {
+template<EndgameType et>
+void EndgameFunctions::add_ef(const string& keyCode) {
 
-  ScalingInfo s = {c, f};
-  ESFmap.insert(std::pair<Key, ScalingInfo>(buildKey(keyCode), s));
+  EEFmap.insert(std::pair<Key, EF*>(buildKey(keyCode), new EvaluationFunction<et>(WHITE)));
+  EEFmap.insert(std::pair<Key, EF*>(buildKey(swapColors(keyCode)), new EvaluationFunction<et>(BLACK)));
+}
+
+template<EndgameType et>
+void EndgameFunctions::add_sf(const string& keyCode) {
+
+  ScalingInfo s1 = {WHITE, new ScalingFunction<et>(WHITE)};
+  ScalingInfo s2 = {BLACK, new ScalingFunction<et>(BLACK)};
+
+  ESFmap.insert(std::pair<Key, ScalingInfo>(buildKey(keyCode), s1));
+  ESFmap.insert(std::pair<Key, ScalingInfo>(buildKey(swapColors(keyCode)), s2));
 }
 
 EndgameEvaluationFunctionBase* EndgameFunctions::getEEF(Key key) const {
 
-  std::map<Key, EndgameEvaluationFunctionBase*>::const_iterator it(EEFmap.find(key));
+  std::map<Key, EF*>::const_iterator it(EEFmap.find(key));
   return (it != EEFmap.end() ? it->second : NULL);
 }
 
