@@ -1080,7 +1080,7 @@ namespace {
       {
         // Try to reduce non-pv search depth by one ply if move seems not problematic,
         // if the move fails high will be re-searched at full depth.
-        if (    depth >= 2*OnePly
+        if (    depth >= 3*OnePly
             &&  moveCount >= LMRPVMoves
             && !dangerous
             && !moveIsCapture
