@@ -68,6 +68,7 @@ public:
   EndgameFunctionBase(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
   virtual ~EndgameFunctionBase() {}
   virtual T apply(const Position&) = 0;
+  Color color() const { return strongerSide; }
 
 protected:
   Color strongerSide, weakerSide;
@@ -81,12 +82,14 @@ typedef EndgameFunctionBase<ScaleFactor> EndgameScalingFunctionBase;
 
 template<EndgameType>
 struct EvaluationFunction : public EndgameEvaluationFunctionBase {
+  typedef EndgameEvaluationFunctionBase Base;
   explicit EvaluationFunction(Color c): EndgameEvaluationFunctionBase(c) {}
   Value apply(const Position&);
 };
 
 template<EndgameType>
 struct ScalingFunction : public EndgameScalingFunctionBase {
+  typedef EndgameScalingFunctionBase Base;
   explicit ScalingFunction(Color c) : EndgameScalingFunctionBase(c) {}
   ScaleFactor apply(const Position&);
 };
