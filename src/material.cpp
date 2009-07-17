@@ -57,15 +57,13 @@ namespace {
 //// Classes
 ////
 
+typedef EndgameEvaluationFunctionBase EF;
+typedef EndgameScalingFunctionBase SF;
 
 /// See header for a class description. It is declared here to avoid
 /// to include <map> in the header file.
 
 class EndgameFunctions {
-
-  typedef EndgameEvaluationFunctionBase EF;
-  typedef EndgameScalingFunctionBase SF;
-
 public:
   EndgameFunctions();
   ~EndgameFunctions();
@@ -82,10 +80,16 @@ private:
 
   // Maps accessing functions for const and non-const references
   template<typename T> const std::map<Key, T*>& map() const { return EEFmap; }
-  template<> const std::map<Key, SF*>& map<SF>() const { return ESFmap; }
   template<typename T> std::map<Key, T*>& map() { return EEFmap; }
-  template<> std::map<Key, SF*>& map<SF>() { return ESFmap; }
 };
+
+// Explicit specializations of a member function shall be declared in
+// the namespace of which the class template is a member.
+template<> const std::map<Key, SF*>&
+EndgameFunctions::map<SF>() const { return ESFmap; }
+
+template<> std::map<Key, SF*>&
+EndgameFunctions::map<SF>() { return ESFmap; }
 
 
 ////
@@ -151,7 +155,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
   // configuration one, then a generic one if previous search failed.
-  if ((mi->evaluationFunction = funcs->get<EndgameEvaluationFunctionBase>(key)) != NULL)
+  if ((mi->evaluationFunction = funcs->get<EF>(key)) != NULL)
       return mi;
 
   else if (   pos.non_pawn_material(BLACK) == Value(0)
@@ -192,9 +196,9 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // if we decide to add more special cases. We face problems when there
   // are several conflicting applicable scaling functions and we need to
   // decide which one to use.
-  EndgameScalingFunctionBase* sf;
+  SF* sf;
 
-  if ((sf = funcs->get<EndgameScalingFunctionBase>(key)) != NULL)
+  if ((sf = funcs->get<SF>(key)) != NULL)
   {
       mi->scalingFunction[sf->color()] = sf;
       return mi;
@@ -393,6 +397,6 @@ void EndgameFunctions::add(const string& keyCode) {
 template<class T>
 T* EndgameFunctions::get(Key key) const {
 
-  std::map<Key, T*>::const_iterator it(map<T>().find(key));
+  typename std::map<Key, T*>::const_iterator it(map<T>().find(key));
   return (it != map<T>().end() ? it->second : NULL);
 }
