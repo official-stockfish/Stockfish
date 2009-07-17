@@ -532,6 +532,14 @@ void read_weights(Color us) {
 
   WeightKingSafety[us]   = weight_option("Cowardice", WeightKingSafetyInternal);
   WeightKingSafety[them] = weight_option("Aggressiveness", WeightKingOppSafetyInternal);
+  // If running in analysis mode, make sure we use symmetrical king safety.
+  // We do this by replacing both WeightKingSafety[us] and 
+  // WeightKingSafety[them] by their average.
+  if (get_option_value_bool("UCI_AnalyseMode")) {
+      WeightKingSafety[us] = (WeightKingSafety[us] + WeightKingSafety[them]) / 2;
+      WeightKingSafety[them] = WeightKingSafety[us];
+  }
+
   WeightSpace = weight_option("Space", WeightSpaceInternal);
 
   init_safety();
