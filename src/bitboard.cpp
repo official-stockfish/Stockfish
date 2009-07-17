@@ -163,6 +163,53 @@ const int RShift[64] = {
 
 #endif // defined(IS_64BIT)
 
+const Bitboard SquaresByColorBB[2] = { BlackSquaresBB, WhiteSquaresBB };
+
+const Bitboard FileBB[8] = {
+  FileABB, FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB
+};
+
+const Bitboard NeighboringFilesBB[8] = {
+  FileBBB, FileABB|FileCBB, FileBBB|FileDBB, FileCBB|FileEBB,
+  FileDBB|FileFBB, FileEBB|FileGBB, FileFBB|FileHBB, FileGBB
+};
+
+const Bitboard ThisAndNeighboringFilesBB[8] = {
+  FileABB|FileBBB, FileABB|FileBBB|FileCBB,
+  FileBBB|FileCBB|FileDBB, FileCBB|FileDBB|FileEBB,
+  FileDBB|FileEBB|FileFBB, FileEBB|FileFBB|FileGBB,
+  FileFBB|FileGBB|FileHBB, FileGBB|FileHBB
+};
+
+const Bitboard RankBB[8] = {
+  Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB
+};
+
+const Bitboard RelativeRankBB[2][8] = {
+  { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB },
+  { Rank8BB, Rank7BB, Rank6BB, Rank5BB, Rank4BB, Rank3BB, Rank2BB, Rank1BB }
+};
+
+const Bitboard InFrontBB[2][8] = {
+  { Rank2BB | Rank3BB | Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank3BB | Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank6BB | Rank7BB | Rank8BB,
+    Rank7BB | Rank8BB,
+    Rank8BB,
+    EmptyBoardBB
+  },
+  { EmptyBoardBB,
+    Rank1BB,
+    Rank2BB | Rank1BB,
+    Rank3BB | Rank2BB | Rank1BB,
+    Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank7BB | Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB
+  }
+};
 
 Bitboard RMask[64];
 int RAttackIndex[64];
