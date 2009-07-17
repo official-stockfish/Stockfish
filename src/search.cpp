@@ -1492,7 +1492,6 @@ namespace {
     else if (tte && tte->type() == VALUE_TYPE_EVAL)
     {
         // Use the cached evaluation score if possible
-        assert(tte->value() == evaluate(pos, ei, threadID));
         assert(ei.futilityMargin == Value(0));
 
         staticValue = tte->value();
