@@ -51,8 +51,7 @@ class MaterialInfo {
 public:
   MaterialInfo() : key(0) { clear(); }
 
-  Value mg_value() const;
-  Value eg_value() const;
+  Value material_value() const;
   ScaleFactor scale_factor(const Position& pos, Color c) const;
   int space_weight() const;
   bool specialized_eval_exists() const;
@@ -62,8 +61,7 @@ private:
   inline void clear();
 
   Key key;
-  int16_t mgValue;
-  int16_t egValue;
+  int16_t value;
   uint8_t factor[2];
   EndgameEvaluationFunctionBase* evaluationFunction;
   EndgameScalingFunctionBase* scalingFunction[2];
@@ -102,17 +100,12 @@ private:
 //// Inline functions
 ////
 
-/// MaterialInfo::mg_value and MaterialInfo::eg_value simply returns the
-/// material balance evaluation for the middle game and the endgame.
+/// MaterialInfo::material_value simply returns the material balance
+/// evaluation that is independent from game phase.
 
-inline Value MaterialInfo::mg_value() const {
+inline Value MaterialInfo::material_value() const {
 
-  return Value(mgValue);
-}
-
-inline Value MaterialInfo::eg_value() const {
-
-  return Value(egValue);
+  return Value(value);
 }
 
 
@@ -121,7 +114,7 @@ inline Value MaterialInfo::eg_value() const {
 
 inline void MaterialInfo::clear() {
 
-  mgValue = egValue = 0;
+  value = 0;
   factor[WHITE] = factor[BLACK] = uint8_t(SCALE_FACTOR_NORMAL);
   evaluationFunction = NULL;
   scalingFunction[WHITE] = scalingFunction[BLACK] = NULL;

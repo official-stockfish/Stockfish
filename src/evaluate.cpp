@@ -326,8 +326,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the material hash table
   ei.mi = MaterialTable[threadID]->get_material_info(pos);
-  ei.mgValue += ei.mi->mg_value();
-  ei.egValue += ei.mi->eg_value();
+  ei.mgValue += ei.mi->material_value();
+  ei.egValue += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return

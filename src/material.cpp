@@ -40,7 +40,18 @@ namespace {
   const Value BishopPairMidgameBonus = Value(109);
   const Value BishopPairEndgameBonus = Value(97);
 
-  Key KNNKMaterialKey, KKNNMaterialKey;
+  // Polynomial material balance parameters
+  const Value RedundantQueenPenalty = Value(320);
+  const Value RedundantRookPenalty  = Value(554);
+  const int LinearCoefficients[6]   = { 1709, -137, -1185, -166, 141, 59 };
+
+  const int QuadraticCoefficientsSameColor[][6] = {
+  { 0, 0, 0, 0, 0, 0 }, { 33, -6, 0, 0, 0, 0 }, { 29, 269, -12, 0, 0, 0 },
+  { 0, 19, -4, 0, 0, 0 }, { -35, -10, 40, 95, 50, 0 }, { 52, 23, 78, 144, -11, -33 } };
+
+  const int QuadraticCoefficientsOppositeColor[][6] = {
+  { 0, 0, 0, 0, 0, 0 }, { -5, 0, 0, 0, 0, 0 }, { -33, 23, 0, 0, 0, 0 },
+  { 17, 25, -3, 0, 0, 0 }, { 10, -2, -19, -67, 0, 0 }, { 69, 64, -41, 116, 137, 0 } };
 
   // Unmapped endgame evaluation and scaling functions, these
   // are accessed direcly and not through the function maps.
@@ -50,6 +61,8 @@ namespace {
   ScalingFunction<KQKRP>    ScaleKQKRP(WHITE),  ScaleKRPKQ(BLACK);
   ScalingFunction<KPsK>     ScaleKPsK(WHITE),   ScaleKKPs(BLACK);
   ScalingFunction<KPKP>     ScaleKPKPw(WHITE),  ScaleKPKPb(BLACK);
+
+  Key KNNKMaterialKey, KKNNMaterialKey;
 }
 
 
@@ -261,10 +274,10 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   // Evaluate the material balance
 
-  Color c;
+  const int bishopsPair_count[2] = { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(BLACK, BISHOP) > 1 };
+  Color c, them;
   int sign;
-  Value egValue = Value(0);
-  Value mgValue = Value(0);
+  int matValue = 0;
 
   for (c = WHITE, sign = 1; c <= BLACK; c++, sign = -sign)
   {
@@ -291,30 +304,37 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
         }
     }
 
-    // Bishop pair
-    if (pos.piece_count(c, BISHOP) >= 2)
-    {
-        mgValue += sign * BishopPairMidgameBonus;
-        egValue += sign * BishopPairEndgameBonus;
-    }
-
-    // Knights are stronger when there are many pawns on the board.  The
-    // formula is taken from Larry Kaufman's paper "The Evaluation of Material
-    // Imbalances in Chess":
+    // Redundancy of major pieces, formula based on Kaufman's paper
+    // "The Evaluation of Material Imbalances in Chess"
     // http://mywebpages.comcast.net/danheisman/Articles/evaluation_of_material_imbalance.htm
-    mgValue += sign * Value(pos.piece_count(c, KNIGHT)*(pos.piece_count(c, PAWN)-5)*16);
-    egValue += sign * Value(pos.piece_count(c, KNIGHT)*(pos.piece_count(c, PAWN)-5)*16);
-
-    // Redundancy of major pieces, again based on Kaufman's paper:
     if (pos.piece_count(c, ROOK) >= 1)
+        matValue -= sign * ((pos.piece_count(c, ROOK) - 1) * RedundantRookPenalty + pos.piece_count(c, QUEEN) * RedundantQueenPenalty);
+
+    // Second-degree polynomial material imbalance by Tord Romstad
+    //
+    // We use NO_PIECE_TYPE as a place holder for the bishop pair "extended piece",
+    // this allow us to be more flexible in defining bishop pair bonuses.
+    them = opposite_color(c);
+    for (PieceType pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
     {
-        Value v = Value((pos.piece_count(c, ROOK) - 1) * 32 + pos.piece_count(c, QUEEN) * 16);
-        mgValue -= sign * v;
-        egValue -= sign * v;
+        int c1, c2, c3;
+        c1 = sign * (pt1 != NO_PIECE_TYPE ? pos.piece_count(c, pt1) : bishopsPair_count[c]);
+        if (!c1)
+            continue;
+
+        matValue += c1 * LinearCoefficients[pt1];
+
+        for (PieceType pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
+        {
+            c2 = (pt2 != NO_PIECE_TYPE ? pos.piece_count(c,    pt2) : bishopsPair_count[c]);
+            c3 = (pt2 != NO_PIECE_TYPE ? pos.piece_count(them, pt2) : bishopsPair_count[them]);
+            matValue += c1 * c2 * QuadraticCoefficientsSameColor[pt1][pt2];
+            matValue += c1 * c3 * QuadraticCoefficientsOppositeColor[pt1][pt2];
+        }
     }
   }
-  mi->mgValue = int16_t(mgValue);
-  mi->egValue = int16_t(egValue);
+
+  mi->value = int16_t(matValue / 16);
   return mi;
 }
 
