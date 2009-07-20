@@ -1249,14 +1249,7 @@ namespace {
 
         pos.undo_null_move();
 
-        if (value_is_mate(nullValue))
-        {
-            if (nullValue == value_mated_in(ply + 2))
-                mateThreat = true;
-
-            /* Do not return unproven mates */
-        }
-        else if (nullValue >= beta)
+        if (nullValue >= beta)
         {
             if (depth < 6 * OnePly)
                 return beta;
@@ -1272,6 +1265,9 @@ namespace {
             // move which was reduced. If a connection is found, return a fail
             // low score (which will cause the reduced move to fail high in the
             // parent node, which will trigger a re-search with full depth).
+            if (nullValue == value_mated_in(ply + 2))
+                mateThreat = true;
+
             ss[ply].threatMove = ss[ply + 1].currentMove;
             if (   depth < ThreatDepth
                 && ss[ply - 1].reduction
