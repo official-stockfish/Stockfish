@@ -77,7 +77,6 @@ private:
   void score_captures();
   void score_noncaptures();
   void score_evasions();
-  void score_qcaptures();
   Move pick_move_from_list();
 
   const Position& pos;

@@ -141,12 +141,10 @@ Move MovePicker::get_next_move() {
         score_captures();
         std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
-        checkLegal = true;
         break;
 
     case PH_KILLERS:
         movesPicked = numOfMoves = 0;
-        checkLegal = false;
         if (killer1 != MOVE_NONE && move_is_legal(pos, killer1, pinned) && !pos.move_is_capture(killer1))
             moves[numOfMoves++].move = killer1;
         if (killer2 != MOVE_NONE && move_is_legal(pos, killer2, pinned) && !pos.move_is_capture(killer2) )
@@ -155,16 +153,16 @@ Move MovePicker::get_next_move() {
 
     case PH_NONCAPTURES:
         checkKillers = (numOfMoves != 0); // previous phase is PH_KILLERS
+        checkLegal = true;
         numOfMoves = generate_noncaptures(pos, moves);
         score_noncaptures();
         std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
-        checkLegal = true;
         break;
 
     case PH_BAD_CAPTURES:
-        // Bad captures SEE value is already calculated by score_captures()
-        // so just sort them to get SEE move ordering.
+        // Bad captures SEE value is already calculated so just sort them
+        // to get SEE move ordering.
         std::sort(badCaptures, badCaptures + numOfBadCaptures);
         movesPicked = 0;
         break;
@@ -179,7 +177,7 @@ Move MovePicker::get_next_move() {
 
     case PH_QCAPTURES:
         numOfMoves = generate_captures(pos, moves);
-        score_qcaptures();
+        score_captures();
         std::sort(moves, moves + numOfMoves);
         movesPicked = 0;
         break;
@@ -229,38 +227,28 @@ Move MovePicker::get_next_move(Lock &lock) {
 void MovePicker::score_captures() {
   // Winning and equal captures in the main search are ordered by MVV/LVA.
   // Suprisingly, this appears to perform slightly better than SEE based
-  // move ordering.  The reason is probably that in a position with a winning
+  // move ordering. The reason is probably that in a position with a winning
   // capture, capturing a more valuable (but sufficiently defended) piece
-  // first usually doesn't hurt.  The opponent will have to recapture, and
+  // first usually doesn't hurt. The opponent will have to recapture, and
   // the hanging piece will still be hanging (except in the unusual cases
   // where it is possible to recapture with the hanging piece). Exchanging
   // big pieces before capturing a hanging piece probably helps to reduce
   // the subtree size.
-  // While scoring captures it moves all captures with negative SEE values
-  // to the badCaptures[] array.
+  // In main search we want to push captures with negative SEE values to
+  // badCaptures[] array, but instead of doing it now we delay till when
+  // the move has been picked up in pick_move_from_list(), this way we save
+  // some SEE calls in case we get a cutoff (idea from Pablo Vazquez).
   Move m;
-  int seeValue;
 
+  // Use MVV/LVA ordering
   for (int i = 0; i < numOfMoves; i++)
   {
       m = moves[i].move;
-      seeValue = pos.see_sign(m);
-      if (seeValue >= 0)
-      {
-          if (move_is_promotion(m))
-              moves[i].score = QueenValueMidgame;
-          else
-              moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
-                              -int(pos.type_of_piece_on(move_from(m)));
-      }
+      if (move_is_promotion(m))
+          moves[i].score = QueenValueMidgame;
       else
-      {
-          // Losing capture, move it to the badCaptures[] array
-          assert(numOfBadCaptures < 63);
-          moves[i].score = seeValue;
-          badCaptures[numOfBadCaptures++] = moves[i];
-          moves[i--] = moves[--numOfMoves];
-      }
+          moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
+                          -int(pos.type_of_piece_on(move_from(m)));
   }
 }
 
@@ -304,20 +292,6 @@ void MovePicker::score_evasions() {
   }
 }
 
-void MovePicker::score_qcaptures() {
-
-  // Use MVV/LVA ordering
-  for (int i = 0; i < numOfMoves; i++)
-  {
-      Move m = moves[i].move;
-      if (move_is_promotion(m))
-          moves[i].score = QueenValueMidgame;
-      else
-          moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
-                          -int(pos.type_of_piece_on(move_from(m)));
-  }
-}
-
 
 /// MovePicker::pick_move_from_list() picks the move with the biggest score
 /// from a list of generated moves (moves[] or badCaptures[], depending on
@@ -333,6 +307,26 @@ Move MovePicker::pick_move_from_list() {
   switch (PhaseTable[phaseIndex]) {
 
   case PH_GOOD_CAPTURES:
+      while (movesPicked < numOfMoves)
+      {
+          Move move = moves[movesPicked++].move;
+          if (   move != ttMove
+              && move != mateKiller
+              && pos.pl_move_is_legal(move, pinned))
+          {
+              // Check for a non negative SEE now
+              int seeValue = pos.see_sign(move);
+              if (seeValue >= 0)
+                  return move;
+
+              // Losing capture, move it to the badCaptures[] array, note
+              // that move has now been already checked for legality.
+              assert(numOfBadCaptures < 63);
+              badCaptures[numOfBadCaptures].move = move;
+              badCaptures[numOfBadCaptures++].score = seeValue;
+          }
+      }
+      break;
   case PH_KILLERS:
   case PH_NONCAPTURES:
       while (movesPicked < numOfMoves)
@@ -349,18 +343,11 @@ Move MovePicker::pick_move_from_list() {
   case PH_EVASIONS:
       if (movesPicked < numOfMoves)
           return moves[movesPicked++].move;
-
       break;
 
   case PH_BAD_CAPTURES:
-      while (movesPicked < numOfBadCaptures)
-      {
-          Move move = badCaptures[movesPicked++].move;
-          if (   move != ttMove
-              && move != mateKiller
-              && pos.pl_move_is_legal(move, pinned))
-              return move;
-      }
+      if (movesPicked < numOfBadCaptures)
+          return badCaptures[movesPicked++].move;
       break;
 
   case PH_QCAPTURES:
