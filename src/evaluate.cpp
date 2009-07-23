@@ -353,8 +353,13 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   // Initialize pawn attack bitboards for both sides
   ei.attackedBy[WHITE][PAWN] = ((pos.pawns(WHITE) << 9) & ~FileABB) | ((pos.pawns(WHITE) << 7) & ~FileHBB);
   ei.attackedBy[BLACK][PAWN] = ((pos.pawns(BLACK) >> 7) & ~FileABB) | ((pos.pawns(BLACK) >> 9) & ~FileHBB);
-  ei.kingAttackersCount[WHITE] = count_1s_max_15<HasPopCnt>(ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING])/2;
-  ei.kingAttackersCount[BLACK] = count_1s_max_15<HasPopCnt>(ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING])/2;
+  Bitboard b1 = ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING];
+  Bitboard b2 = ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING];
+  if (b1)
+      ei.kingAttackersCount[WHITE] = count_1s_max_15<HasPopCnt>(b1)/2;
+
+  if (b2)
+      ei.kingAttackersCount[BLACK] = count_1s_max_15<HasPopCnt>(b2)/2;
 
   // Evaluate pieces
   for (Color c = WHITE; c <= BLACK; c++)
