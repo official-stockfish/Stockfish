@@ -194,15 +194,6 @@ void init_uci_options() {
 
   options["Threads"].defaultValue = stringify(Min(cpu_count(), 7));
   options["Threads"].currentValue = stringify(Min(cpu_count(), 7));
-
-  // Increase the minimum split depth when the number of CPUs is big.
-  // It would probably be better to let this depend on the number of threads
-  // instead.
-  if (cpu_count() > 4)
-  {
-      options["Minimum Split Depth"].defaultValue = "6";
-      options["Minimum Split Depth"].currentValue = "6";
-  }
 }
 
 
