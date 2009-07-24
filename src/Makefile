@@ -44,7 +44,7 @@ clean:
 ### Compiler:
 ###
 
-CXX = g++-4.2
+CXX = g++
 # CXX = icpc
 
 
@@ -67,7 +67,7 @@ include .depend
 
 # Enable/disable debugging, disabled by default
 
-# CXXFLAGS += -DNDEBUG
+CXXFLAGS += -DNDEBUG
 
 
 # Compile with full warnings, and symbol names stripped, you can use
