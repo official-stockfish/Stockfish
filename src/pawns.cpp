@@ -385,3 +385,21 @@ PawnInfo *PawnInfoTable::get_pawn_info(const Position &pos) {
   pi->egValue = int16_t(egValue[WHITE] - egValue[BLACK]);
   return pi;
 }
+
+
+/// PawnInfo::updateShelter calculates and caches king shelter. It is called
+/// only when king square changes, about 20% of total get_king_shelter() calls.
+int PawnInfo::updateShelter(const Position& pos, Color c, Square ksq) {
+
+  int shelter = 0;
+  Bitboard pawns = pos.pawns(c) & this_and_neighboring_files_bb(ksq);
+  unsigned r = ksq & (7 << 3);
+  for (int i = 1, k = (c ? -8 : 8); i < 4; i++)
+  {
+      r += k;
+      shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (128 >> i);
+  }
+  kingSquares[c] = ksq;
+  kingShelters[c] = shelter;
+  return shelter;
+}

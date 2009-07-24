@@ -266,9 +266,6 @@ namespace {
   const int PawnTableSize = 16384;
   const int MaterialTableSize = 1024;
 
-  // Array which gives the number of nonzero bits in an 8-bit integer
-  uint8_t BitCount8Bit[256];
-
   // Function prototypes
   template<bool HasPopCnt>
   Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID);
@@ -498,12 +495,6 @@ void init_eval(int threads) {
     if (!MaterialTable[i])
         MaterialTable[i] = new MaterialInfoTable(MaterialTableSize);
   }
-
-  for (Bitboard b = 0ULL; b < 256ULL; b++)
-  {
-      assert(count_1s(b) == int(uint8_t(count_1s(b))));
-      BitCount8Bit[b] = (uint8_t)count_1s(b);
-  }
 }
 
 
@@ -714,10 +705,6 @@ namespace {
     }
   }
 
-  inline Bitboard shiftRowsDown(const Bitboard& b, int num) {
-
-    return b >> (num << 3);
-  }
 
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color.
 
@@ -730,19 +717,7 @@ namespace {
     // King shelter
     if (relative_rank(us, s) <= RANK_4)
     {
-        // Shelter cache lookup
-        shelter = ei.pi->kingShelter(us, s);
-        if (shelter == -1)
-        {
-            shelter = 0;
-            Bitboard pawns = p.pawns(us) & this_and_neighboring_files_bb(s);
-            Rank r = square_rank(s);
-            for (int i = 1; i < 4; i++)
-                shelter += BitCount8Bit[shiftRowsDown(pawns, r+i*sign) & 0xFF] * (128 >> i);
-
-            // Cache shelter value in pawn info
-            ei.pi->setKingShelter(us, s, shelter);
-        }
+        shelter = ei.pi->get_king_shelter(p, us, s);
         ei.mgValue += sign * Value(shelter);
     }
 

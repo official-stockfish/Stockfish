@@ -233,6 +233,8 @@ Bitboard BishopPseudoAttacks[64];
 Bitboard RookPseudoAttacks[64];
 Bitboard QueenPseudoAttacks[64];
 
+uint8_t BitCount8Bit[256];
+
 
 ////
 //// Local definitions
@@ -382,6 +384,9 @@ namespace {
           in_front_bb(c, s) & this_and_neighboring_files_bb(s);
         OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
       }
+
+    for (Bitboard b = 0ULL; b < 256ULL; b++)
+        BitCount8Bit[b] = (uint8_t)count_1s(b);
   }
 
 

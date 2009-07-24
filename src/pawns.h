@@ -55,11 +55,11 @@ public:
   int file_is_half_open(Color c, File f) const;
   int has_open_file_to_left(Color c, File f) const;
   int has_open_file_to_right(Color c, File f) const;
-  int kingShelter(Color c, Square ksq) const;
-  void setKingShelter(Color c, Square ksq, int value);
+  int get_king_shelter(const Position& pos, Color c, Square ksq);
 
 private:
   inline void clear();
+  int updateShelter(const Position& pos, Color c, Square ksq);
 
   Key key;
   Bitboard passedPawns;
@@ -124,13 +124,8 @@ inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
   return halfOpenFiles[c] & ~((1 << int(f+1)) - 1);
 }
 
-inline int PawnInfo::kingShelter(Color c, Square ksq) const {
-  return (kingSquares[c] == ksq ?  kingShelters[c] : -1);
-}
-
-inline void PawnInfo::setKingShelter(Color c, Square ksq, int value) {
-  kingSquares[c] = ksq;
-  kingShelters[c] = (int16_t)value;
+inline int PawnInfo::get_king_shelter(const Position& pos, Color c, Square ksq) {
+  return (kingSquares[c] == ksq ? kingShelters[c] : updateShelter(pos, c, ksq));
 }
 
 inline void PawnInfo::clear() {
