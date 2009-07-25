@@ -2202,16 +2202,19 @@ namespace {
     assert(m != MOVE_NONE);
 
     Depth result = Depth(0);
-    *dangerous = check || singleReply || mateThreat;
+    *dangerous = check | singleReply | mateThreat;
 
-    if (check)
-        result += CheckExtension[pvNode];
+    if (*dangerous)
+    {
+        if (check)
+            result += CheckExtension[pvNode];
 
-    if (singleReply)
-        result += SingleReplyExtension[pvNode];
+        if (singleReply)
+            result += SingleReplyExtension[pvNode];
 
-    if (mateThreat)
-        result += MateThreatExtension[pvNode];
+        if (mateThreat)
+            result += MateThreatExtension[pvNode];
+    }
 
     if (pos.type_of_piece_on(move_from(m)) == PAWN)
     {
