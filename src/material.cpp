@@ -28,7 +28,7 @@
 
 #include "material.h"
 
-using std::string;
+using namespace std;
 
 ////
 //// Local definitions
@@ -88,21 +88,21 @@ private:
   static Key buildKey(const string& keyCode);
   static const string swapColors(const string& keyCode);
 
-  std::map<Key, EF*> EEFmap;
-  std::map<Key, SF*> ESFmap;
+  // Here we store two maps, one for evaluate and one for scaling
+  pair<map<Key, EF*>, map<Key, SF*> > maps;
 
   // Maps accessing functions for const and non-const references
-  template<typename T> const std::map<Key, T*>& map() const { return EEFmap; }
-  template<typename T> std::map<Key, T*>& map() { return EEFmap; }
+  template<typename T> const map<Key, T*>& get() const { return maps.first; }
+  template<typename T> map<Key, T*>& get() { return maps.first; }
 };
 
 // Explicit specializations of a member function shall be declared in
 // the namespace of which the class template is a member.
-template<> const std::map<Key, SF*>&
-EndgameFunctions::map<SF>() const { return ESFmap; }
+template<> const map<Key, SF*>&
+EndgameFunctions::get<SF>() const { return maps.second; }
 
-template<> std::map<Key, SF*>&
-EndgameFunctions::map<SF>() { return ESFmap; }
+template<> map<Key, SF*>&
+EndgameFunctions::get<SF>() { return maps.second; }
 
 
 ////
@@ -119,8 +119,8 @@ MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
   funcs = new EndgameFunctions();
   if (!entries || !funcs)
   {
-      std::cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
-                << " bytes for material hash table." << std::endl;
+      cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
+           << " bytes for material hash table." << endl;
       Application::exit_with_failure();
   }
 }
@@ -370,10 +370,10 @@ EndgameFunctions::EndgameFunctions() {
 
 EndgameFunctions::~EndgameFunctions() {
 
-    for (std::map<Key, EF*>::iterator it = EEFmap.begin(); it != EEFmap.end(); ++it)
+    for (map<Key, EF*>::iterator it = maps.first.begin(); it != maps.first.end(); ++it)
         delete (*it).second;
 
-    for (std::map<Key, SF*>::iterator it = ESFmap.begin(); it != ESFmap.end(); ++it)
+    for (map<Key, SF*>::iterator it = maps.second.begin(); it != maps.second.end(); ++it)
         delete (*it).second;
 }
 
@@ -382,7 +382,7 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
     assert(keyCode.length() > 0 && keyCode[0] == 'K');
     assert(keyCode.length() < 8);
 
-    std::stringstream s;
+    stringstream s;
     bool upcase = false;
 
     // Build up a fen substring with the given pieces, note
@@ -410,13 +410,13 @@ void EndgameFunctions::add(const string& keyCode) {
 
   typedef typename T::Base F;
 
-  map<F>().insert(std::pair<Key, F*>(buildKey(keyCode), new T(WHITE)));
-  map<F>().insert(std::pair<Key, F*>(buildKey(swapColors(keyCode)), new T(BLACK)));
+  get<F>().insert(pair<Key, F*>(buildKey(keyCode), new T(WHITE)));
+  get<F>().insert(pair<Key, F*>(buildKey(swapColors(keyCode)), new T(BLACK)));
 }
 
 template<class T>
 T* EndgameFunctions::get(Key key) const {
 
-  typename std::map<Key, T*>::const_iterator it(map<T>().find(key));
-  return (it != map<T>().end() ? it->second : NULL);
+  typename map<Key, T*>::const_iterator it(get<T>().find(key));
+  return (it != get<T>().end() ? it->second : NULL);
 }
