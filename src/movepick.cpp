@@ -147,7 +147,7 @@ Move MovePicker::get_next_move() {
         movesPicked = numOfMoves = 0;
         if (killer1 != MOVE_NONE && move_is_legal(pos, killer1, pinned) && !pos.move_is_capture(killer1))
             moves[numOfMoves++].move = killer1;
-        if (killer2 != MOVE_NONE && move_is_legal(pos, killer2, pinned) && !pos.move_is_capture(killer2) )
+        if (killer2 != MOVE_NONE && move_is_legal(pos, killer2, pinned) && !pos.move_is_capture(killer2))
             moves[numOfMoves++].move = killer2;
         break;
 
