@@ -65,13 +65,9 @@ Application::~Application() {
 
 void Application::initialize() {
 
-  instance();
-}
-
-Application& Application::instance() {
-
+  // A static Application object is allocated
+  // once only when this function is called.
   static Application singleton;
-  return singleton;
 }
 
 void Application::exit_with_failure() {

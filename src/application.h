@@ -29,18 +29,11 @@ class Application {
 
   Application();
   Application(const Application&);
+ ~Application();
 
 public:
   static void initialize();
   static void exit_with_failure();
-
- ~Application();
-
-private:
-  static Application& instance();
-
-  void init();
-  void deallocateAll();
 };
 
 #endif // !defined(APPLICATION_H_INCLUDED)
