@@ -58,7 +58,7 @@ public:
   int get_king_shelter(const Position& pos, Color c, Square ksq);
 
 private:
-  inline void clear();
+  void clear();
   int updateShelter(const Position& pos, Color c, Square ksq);
 
   Key key;
@@ -67,7 +67,7 @@ private:
   int16_t ksStormValue[2], qsStormValue[2];
   uint8_t halfOpenFiles[2];
   Square kingSquares[2];
-  int16_t kingShelters[2];
+  uint8_t kingShelters[2];
 };
 
 /// The PawnInfoTable class represents a pawn hash table.  It is basically
@@ -127,16 +127,5 @@ inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
 inline int PawnInfo::get_king_shelter(const Position& pos, Color c, Square ksq) {
   return (kingSquares[c] == ksq ? kingShelters[c] : updateShelter(pos, c, ksq));
 }
-
-inline void PawnInfo::clear() {
-
-  passedPawns = EmptyBoardBB;
-  mgValue = egValue = 0;
-  ksStormValue[WHITE] = ksStormValue[BLACK] = 0;
-  qsStormValue[WHITE] = qsStormValue[BLACK] = 0;
-  halfOpenFiles[WHITE] = halfOpenFiles[BLACK] = 0xFF;
-  kingSquares[WHITE] = kingSquares[BLACK] = SQ_NONE;
-}
-
 
 #endif // !defined(PAWNS_H_INCLUDED)

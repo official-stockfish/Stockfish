@@ -248,10 +248,6 @@ public:
   static bool pawn_is_isolated(Bitboard ourPawns, Square s);
   static bool pawn_is_doubled(Bitboard ourPawns, Color c, Square s);
 
-  // Open and half-open files
-  static bool file_is_open(Bitboard pawns, File f);
-  static bool file_is_half_open(Bitboard pawns, File f);
-
   // Weak squares
   bool square_is_weak(Square s, Color c) const;
 
@@ -603,14 +599,6 @@ inline bool Position::pawn_is_isolated(Bitboard ourPawns, Square s) {
 
 inline bool Position::pawn_is_doubled(Bitboard ourPawns, Color c, Square s) {
   return ourPawns & squares_behind(c, s);
-}
-
-inline bool Position::file_is_open(Bitboard pawns, File f) {
-  return !(pawns & file_bb(f));
-}
-
-inline bool Position::file_is_half_open(Bitboard pawns, File f) {
-  return !(pawns & file_bb(f));
 }
 
 inline bool Position::square_is_weak(Square s, Color c) const {
