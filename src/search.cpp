@@ -858,6 +858,7 @@ namespace {
                       << " currmovenumber " << i + 1 << std::endl;
 
         // Decide search depth for this move
+        bool moveIsCapture = pos.move_is_capture(move);
         bool dangerous;
         ext = extension(pos, move, true, pos.move_is_capture(move), pos.move_is_check(move), false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
@@ -883,15 +884,30 @@ namespace {
         }
         else
         {
-            value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
-            if (value > alpha)
+            if (newDepth >= 3*OnePly
+                && i + MultiPV >= LMRPVMoves
+                && !dangerous
+                && !moveIsCapture
+                && !move_is_promotion(move)
+                && !move_is_castle(move))
             {
-                // Fail high! Set the boolean variable FailHigh to true, and
-                // re-search the move with a big window. The variable FailHigh is
-                // used for time managment: We try to avoid aborting the search
-                // prematurely during a fail high research.
-                FailHigh = true;
-                value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+                ss[0].reduction = OnePly;
+                value = -search(pos, ss, -alpha, newDepth-OnePly, 1, true, 0);
+            }
+            else
+                value = alpha + 1; // Just to trigger next condition
+            if(value > alpha)
+            {
+                value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
+                if (value > alpha)
+                {
+                    // Fail high! Set the boolean variable FailHigh to true, and
+                    // re-search the move with a big window. The variable FailHigh is
+                    // used for time managment: We try to avoid aborting the search
+                    // prematurely during a fail high research.
+                    FailHigh = true;
+                    value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+                }
             }
         }
 
