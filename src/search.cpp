@@ -28,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "bitcount.h"
 #include "book.h"
 #include "evaluate.h"
 #include "history.h"
@@ -195,6 +196,16 @@ namespace {
 
   /// Variables initialized by UCI options
 
+  // Adjustable playing strength
+  int Slowdown = 0;
+  const int SlowdownArray[32] = {
+    19, 41, 70, 110, 160, 230, 320, 430, 570, 756, 1000, 1300, 1690, 2197,
+    2834, 3600, 4573, 5809, 7700, 9863, 12633, 16181, 20726, 26584, 34005,
+    43557, 55792, 71463, 91536, 117247, 150180, 192363
+  };
+  int Strength;
+  const int MaxStrength = 25;
+
   // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV nodes
   int LMRPVMoves, LMRNonPVMoves; // heavy SMP read access for the latter
 
@@ -281,7 +292,7 @@ namespace {
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
-  void init_node(SearchStack ss[], int ply, int threadID);
+  void init_node(const Position& pos, SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack* pss, SearchStack ss[], int ply);
   bool connected_moves(const Position& pos, Move m1, Move m2);
@@ -294,6 +305,7 @@ namespace {
   bool ok_to_history(const Position& pos, Move m);
   void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
+  void slowdown(const Position& pos);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -414,7 +426,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   read_weights(pos.side_to_move());
 
-  int newActiveThreads = get_option_value_int("Threads");
+  // Set the number of active threads. If UCI_LimitStrength is enabled, never
+  // use more than one thread.
+  int newActiveThreads =
+    get_option_value_bool("UCI_LimitStrength")? 1 : get_option_value_int("Threads");
   if (newActiveThreads != ActiveThreads)
   {
       ActiveThreads = newActiveThreads;
@@ -426,6 +441,19 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   for (int i = 1; i < ActiveThreads; i++)
       assert(thread_is_available(i, 0));
+
+  // Set playing strength
+  if (get_option_value_bool("UCI_LimitStrength"))
+  {
+      Strength = (get_option_value_int("UCI_Elo") - 2100) / 25;
+      Slowdown =
+        (Strength == MaxStrength)? 0 : SlowdownArray[Max(0, 31-Strength)];
+  }
+  else
+  {
+      Strength = MaxStrength;
+      Slowdown = 0;
+  }
 
   // Set thinking time
   int myTime = time[side_to_move];
@@ -471,9 +499,15 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       NodesBetweenPolls = Min(MaxNodes, 30000);
       InfiniteSearch = true; // HACK
   }
+  else if (Slowdown) {
+      if (Slowdown > 50000) NodesBetweenPolls = 30;
+      else if (Slowdown > 10000) NodesBetweenPolls = 100;
+      else if (Slowdown > 1000) NodesBetweenPolls = 500;
+      else if (Slowdown > 100) NodesBetweenPolls = 3000;
+      else NodesBetweenPolls = 15000;
+  }
   else
       NodesBetweenPolls = 30000;
-
 
   // Write information to search log file
   if (UseLogFile)
@@ -1022,7 +1056,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(ss, ply, threadID);
+    init_node(pos, ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1212,7 +1246,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(ss, ply, threadID);
+    init_node(pos, ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1468,7 +1502,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(ss, ply, threadID);
+    init_node(pos, ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -2055,10 +2089,13 @@ namespace {
   // NodesBetweenPolls nodes, init_node() also calls poll(), which polls
   // for user input and checks whether it is time to stop the search.
 
-  void init_node(SearchStack ss[], int ply, int threadID) {
+  void init_node(const Position& pos, SearchStack ss[], int ply, int threadID) {
 
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
+
+    if (Slowdown && Iteration >= 3)
+      slowdown(pos);
 
     Threads[threadID].nodes++;
 
@@ -2391,6 +2428,21 @@ namespace {
 
     ss.killers[0] = m;
   }
+
+
+  // slowdown() simply wastes CPU cycles doing nothing useful.  It's used
+  // in strength handicap mode.
+
+  void slowdown(const Position &pos) {
+    int i, n;
+    n = Slowdown;
+    for (i = 0; i < n; i++)  {
+        Square s = Square(i&63);
+        if (count_1s(pos.attacks_to(s)) > 63)
+            std::cout << "This can't happen, but I put this string here anyway, in order to prevent the compiler from optimizing away the useless computation." << std::endl;
+    }
+  }
+
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
   // high at ply 1 at the node below the first root node.  This information
