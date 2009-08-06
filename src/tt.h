@@ -87,6 +87,7 @@ public:
   TTEntry* retrieve(const Key posKey) const;
   void new_search();
   void insert_pv(const Position& pos, Move pv[]);
+  void extract_pv(const Position& pos, Move pv[]);
   int full() const;
 
 private:

@@ -306,7 +306,6 @@ namespace {
   void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
   void slowdown(const Position& pos);
-  void build_pv(const Position& pos, Move pv[]);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -976,7 +975,7 @@ namespace {
             // Update PV
             rml.set_move_score(i, value);
             update_pv(ss, 0);
-            build_pv(pos, ss[0].pv);
+            TT.extract_pv(pos, ss[0].pv);
             rml.set_move_pv(i, ss[0].pv);
 
             if (MultiPV == 1)
@@ -2443,37 +2442,6 @@ namespace {
         if (count_1s(pos.attacks_to(s)) > 63)
             std::cout << "This can't happen, but I put this string here anyway, in order to prevent the compiler from optimizing away the useless computation." << std::endl;
     }
-  }
-
-
-  // build_pv() extends a PV by adding moves from the transposition table at
-  // the end. This should ensure that the PV is almost always at least two
-  // plies long, which is important, because otherwise we will often get
-  // single-move PVs when the search stops while failing high, and a
-  // single-move PV means that we don't have a ponder move.
-
-  void build_pv(const Position& pos, Move pv[]) {
-    int ply;
-    Position p(pos);
-    StateInfo st[100];
-
-    for (ply = 0; pv[ply] != MOVE_NONE; ply++)
-        p.do_move(pv[ply], st[ply]);
-
-    bool stop;
-    const TTEntry* tte;
-    for (stop = false, tte = TT.retrieve(p.get_key());
-         tte && tte->move() != MOVE_NONE && !stop;
-         tte = TT.retrieve(p.get_key()), ply++)
-    {
-        if (!move_is_legal(p, tte->move(), p.pinned_pieces(p.side_to_move())))
-            break;
-        pv[ply] = tte->move();
-        p.do_move(pv[ply], st[ply]);
-        for (int j = 0; j < ply; j++)
-            if (st[j].key == p.get_key()) stop = true;
-    }
-    pv[ply] = MOVE_NONE;
   }
 
 

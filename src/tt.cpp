@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstring>
 
+#include "movegen.h"
 #include "tt.h"
 
 
@@ -182,6 +183,38 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
       store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i]);
       p.do_move(pv[i], st);
   }
+}
+
+
+/// TranspositionTable::extract_pv() extends a PV by adding moves from the
+/// transposition table at the end. This should ensure that the PV is almost
+/// always at least two plies long, which is important, because otherwise we
+/// will often get single-move PVs when the search stops while failing high,
+/// and a single-move PV means that we don't have a ponder move.
+
+void TranspositionTable::extract_pv(const Position& pos, Move pv[]) {
+
+  int ply;
+  Position p(pos);
+  StateInfo st[100];
+
+  for (ply = 0; pv[ply] != MOVE_NONE; ply++)
+      p.do_move(pv[ply], st[ply]);
+
+  bool stop;
+  const TTEntry* tte;
+  for (stop = false, tte = retrieve(p.get_key());
+       tte && tte->move() != MOVE_NONE && !stop;
+       tte = retrieve(p.get_key()), ply++)
+  {
+      if (!move_is_legal(p, tte->move(), p.pinned_pieces(p.side_to_move())))
+          break;
+      pv[ply] = tte->move();
+      p.do_move(pv[ply], st[ply]);
+      for (int j = 0; j < ply; j++)
+          if (st[j].key == p.get_key()) stop = true;
+  }
+  pv[ply] = MOVE_NONE;
 }
 
 
