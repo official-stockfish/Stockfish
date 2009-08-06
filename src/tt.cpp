@@ -207,7 +207,7 @@ void TranspositionTable::extract_pv(const Position& pos, Move pv[]) {
        tte && tte->move() != MOVE_NONE && !stop;
        tte = retrieve(p.get_key()), ply++)
   {
-      if (!move_is_legal(p, tte->move(), p.pinned_pieces(p.side_to_move())))
+      if (!move_is_legal(p, tte->move()))
           break;
       pv[ply] = tte->move();
       p.do_move(pv[ply], st[ply]);

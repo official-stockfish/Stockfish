@@ -567,6 +567,29 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 }
 
 
+/// Another version of move_is_legal(), which takes only a position and a move
+/// as input. This function does not require that the side to move is not in
+/// check. It is not optimized for speed, and is only used for verifying move
+/// legality when building a PV from the transposition table.
+
+bool move_is_legal(const Position& pos, const Move m) {
+
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+  if (!pos.is_check())
+      return move_is_legal(pos, m, pinned);
+  else
+  {
+      Position p(pos);
+      MoveStack moves[64];
+      int n = generate_evasions(p, moves, pinned);
+      for (int i = 0; i < n; i++)
+          if (moves[i].move == m)
+              return true;
+      return false;
+  }
+}
+
+
 namespace {
 
   template<PieceType Piece>

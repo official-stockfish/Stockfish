@@ -38,6 +38,7 @@ extern int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bi
 extern int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned);
 extern int generate_legal_moves(const Position& pos, MoveStack* mlist);
 extern bool move_is_legal(const Position& pos, const Move m, Bitboard pinned);
+extern bool move_is_legal(const Position& pos, const Move m);
 
 
 #endif // !defined(MOVEGEN_H_INCLUDED)
