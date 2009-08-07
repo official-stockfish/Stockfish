@@ -989,6 +989,8 @@ namespace {
                 // Print search information to the standard output
                 std::cout << "info depth " << Iteration
                           << " score " << value_to_string(value)
+                          << ((value >= beta)?
+                              " lowerbound" : ((value <= alpha)? " upperbound" : ""))
                           << " time " << current_search_time()
                           << " nodes " << nodes_searched()
                           << " nps " << nps()
