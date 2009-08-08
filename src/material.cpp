@@ -41,17 +41,17 @@ namespace {
   const Value BishopPairEndgameBonus = Value(97);
 
   // Polynomial material balance parameters
-  const Value RedundantQueenPenalty = Value(358);
-  const Value RedundantRookPenalty  = Value(536);
-  const int LinearCoefficients[6]   = { 1740, -146, -1246, -197, 206, -7 };
+  const Value RedundantQueenPenalty = Value(320);
+  const Value RedundantRookPenalty  = Value(554);
+  const int LinearCoefficients[6]   = { 1709, -137, -1185, -166, 141, 59 };
 
   const int QuadraticCoefficientsSameColor[][6] = {
-  { 0, 0, 0, 0, 0, 0 }, { 31, -4, 0, 0, 0, 0 }, { 14, 267, -21, 0, 0, 0 },
-  { 0, 7, -26, 0, 0, 0 }, { -3, -1, 69, 162, 80, 0 }, { 40, 27, 119, 174, -64, -49 } };
+  { 0, 0, 0, 0, 0, 0 }, { 33, -6, 0, 0, 0, 0 }, { 29, 269, -12, 0, 0, 0 },
+  { 0, 19, -4, 0, 0, 0 }, { -35, -10, 40, 95, 50, 0 }, { 52, 23, 78, 144, -11, -33 } };
 
   const int QuadraticCoefficientsOppositeColor[][6] = {
-  { 0, 0, 0, 0, 0, 0 }, { -9, 0, 0, 0, 0, 0 }, { 49, 32, 0, 0, 0, 0 },
-  { -25, 19, -5, 0, 0, 0 }, { 97, -6, 39, -88, 0, 0 }, { 77, 69, -42, 104, 116, 0 } };
+  { 0, 0, 0, 0, 0, 0 }, { -5, 0, 0, 0, 0, 0 }, { -33, 23, 0, 0, 0, 0 },
+  { 17, 25, -3, 0, 0, 0 }, { 10, -2, -19, -67, 0, 0 }, { 69, 64, -41, 116, 137, 0 } };
 
   // Unmapped endgame evaluation and scaling functions, these
   // are accessed direcly and not through the function maps.
