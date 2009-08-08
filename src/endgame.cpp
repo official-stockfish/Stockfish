@@ -348,11 +348,18 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) {
   return (strongerSide == pos.side_to_move() ? result : -result);
 }
 
+
+/// K and two minors vs K and one or two minors or K and two knights against
+/// king alone are always draw.
 template<>
 Value EvaluationFunction<KmmKm>::apply(const Position&) {
   return Value(0);
 }
 
+template<>
+Value EvaluationFunction<KNNK>::apply(const Position&) {
+  return Value(0);
+}
 
 /// KBPKScalingFunction scales endgames where the stronger side has king,
 /// bishop and one or more pawns. It checks for draws with rook pawns and a

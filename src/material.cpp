@@ -61,8 +61,6 @@ namespace {
   ScalingFunction<KQKRP>    ScaleKQKRP(WHITE),  ScaleKRPKQ(BLACK);
   ScalingFunction<KPsK>     ScaleKPsK(WHITE),   ScaleKKPs(BLACK);
   ScalingFunction<KPKP>     ScaleKPKPw(WHITE),  ScaleKPKPb(BLACK);
-
-  Key KNNKMaterialKey, KKNNMaterialKey;
 }
 
 
@@ -156,14 +154,6 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // Clear the MaterialInfo object, and set its key
   mi->clear();
   mi->key = key;
-
-  // A special case before looking for a specialized evaluation function
-  // KNN vs K is a draw.
-  if (key == KNNKMaterialKey || key == KKNNMaterialKey)
-  {
-      mi->factor[WHITE] = mi->factor[BLACK] = 0;
-      return mi;
-  }
 
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
@@ -348,9 +338,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
 EndgameFunctions::EndgameFunctions() {
 
-  KNNKMaterialKey = buildKey("KNNK");
-  KKNNMaterialKey = buildKey("KKNN");
-
+  add<EvaluationFunction<KNNK>  >("KNNK");
   add<EvaluationFunction<KPK>   >("KPK");
   add<EvaluationFunction<KBNK>  >("KBNK");
   add<EvaluationFunction<KRKP>  >("KRKP");
