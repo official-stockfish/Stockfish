@@ -894,7 +894,7 @@ namespace {
         // Decide search depth for this move
         bool moveIsCapture = pos.move_is_capture(move);
         bool dangerous;
-        ext = extension(pos, move, true, pos.move_is_capture(move), pos.move_is_check(move), false, false, &dangerous);
+        ext = extension(pos, move, true, moveIsCapture, pos.move_is_check(move), false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
@@ -918,8 +918,8 @@ namespace {
         }
         else
         {
-            if (newDepth >= 3*OnePly
-                && i + MultiPV >= LMRPVMoves
+            if (   newDepth >= 3*OnePly
+                && i >= MultiPV + LMRPVMoves - 2 // Remove -2 and decrease LMRPVMoves instead ?
                 && !dangerous
                 && !moveIsCapture
                 && !move_is_promotion(move)
@@ -927,10 +927,10 @@ namespace {
             {
                 ss[0].reduction = OnePly;
                 value = -search(pos, ss, -alpha, newDepth-OnePly, 1, true, 0);
-            }
-            else
+            } else
                 value = alpha + 1; // Just to trigger next condition
-            if(value > alpha)
+
+            if (value > alpha)
             {
                 value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
                 if (value > alpha)
