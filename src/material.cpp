@@ -263,8 +263,10 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   }
 
   // Evaluate the material balance
-
-  const int bishopsPair_count[2] = { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(BLACK, BISHOP) > 1 };
+  const int pieceCount[2][6] = { { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(WHITE, PAWN), pos.piece_count(WHITE, KNIGHT),
+                                   pos.piece_count(WHITE, BISHOP), pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
+                                 { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
+                                   pos.piece_count(BLACK, BISHOP), pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
   Color c, them;
   int sign;
   int matValue = 0;
@@ -297,29 +299,26 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
     // Redundancy of major pieces, formula based on Kaufman's paper
     // "The Evaluation of Material Imbalances in Chess"
     // http://mywebpages.comcast.net/danheisman/Articles/evaluation_of_material_imbalance.htm
-    if (pos.piece_count(c, ROOK) >= 1)
-        matValue -= sign * ((pos.piece_count(c, ROOK) - 1) * RedundantRookPenalty + pos.piece_count(c, QUEEN) * RedundantQueenPenalty);
+    if (pieceCount[c][ROOK] >= 1)
+        matValue -= sign * ((pieceCount[c][ROOK] - 1) * RedundantRookPenalty + pieceCount[c][QUEEN] * RedundantQueenPenalty);
 
     // Second-degree polynomial material imbalance by Tord Romstad
     //
     // We use NO_PIECE_TYPE as a place holder for the bishop pair "extended piece",
     // this allow us to be more flexible in defining bishop pair bonuses.
     them = opposite_color(c);
-    for (PieceType pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
+    for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
     {
-        int c1, c2, c3;
-        c1 = sign * (pt1 != NO_PIECE_TYPE ? pos.piece_count(c, pt1) : bishopsPair_count[c]);
+        int c1 = sign * pieceCount[c][pt1];
         if (!c1)
             continue;
 
         matValue += c1 * LinearCoefficients[pt1];
 
-        for (PieceType pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
+        for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
         {
-            c2 = (pt2 != NO_PIECE_TYPE ? pos.piece_count(c,    pt2) : bishopsPair_count[c]);
-            c3 = (pt2 != NO_PIECE_TYPE ? pos.piece_count(them, pt2) : bishopsPair_count[them]);
-            matValue += c1 * c2 * QuadraticCoefficientsSameColor[pt1][pt2];
-            matValue += c1 * c3 * QuadraticCoefficientsOppositeColor[pt1][pt2];
+            matValue += c1 * pieceCount[c][pt2] * QuadraticCoefficientsSameColor[pt1][pt2];
+            matValue += c1 * pieceCount[them][pt2] * QuadraticCoefficientsOppositeColor[pt1][pt2];
         }
     }
   }
