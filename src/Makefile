@@ -75,6 +75,7 @@ help:
 	@echo "make osx-ppc64      >  PPC-Mac OS X 64 bit. Compiler = g++"
 	@echo "make osx-x86        >  x86-Mac OS X 32 bit. Compiler = g++"
 	@echo "make osx-x86_64     >  x86-Mac OS X 64 bit. Compiler = g++"
+	@echo "make strip          >  Strip executable"
 	@echo "make clean          >  Clean up"
 	@echo ""
 
@@ -156,6 +157,9 @@ osx-x86_64:
 	CXXFLAGS+='-arch x86_64' \
 	LDFLAGS+='-arch x86_64' \
 	all
+
+strip:
+	strip $(EXE)
 
 
 ### Compilation. Do not change
