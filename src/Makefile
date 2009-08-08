@@ -18,133 +18,146 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-###
-### Files
-###
-
+### Executable name. Do not change
 EXE = stockfish
 
+
+### ==========================================================================
+### Compiler speed switches for both GCC and ICC. These settings are generally
+### fast on a broad range of systems, but may be changed experimentally
+### ==========================================================================
+GCCFLAGS = -O3
+ICCFLAGS = -fast
+
+
+### ==========================================================================
+### Run built-in benchmark for pgo-builds with:  32MB hash  1 thread  10 depth
+### These settings are generally fast, but may be changed experimentally
+### ==========================================================================
+PGOBENCH = ./$(EXE) bench 32 1 10 default depth
+
+
+### General compiler settings. Do not change
+GCCFLAGS += -s -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing
+ICCFLAGS += -s -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing -wd383,869,981,10187,10188,11505,11503
+
+
+### General linker settings. Do not change
+LDFLAGS  = -lpthread
+
+
+### Object files. Do not change
 OBJS = application.o bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 	misc.o move.o movegen.o history.o movepick.o search.o piece.o \
 	position.o direction.o tt.o value.o uci.o ucioption.o \
 	mersenne.o book.o bitbase.o san.o benchmark.o
 
 
-###
-### Rules
-###
+### General rules. Do not change
+default:
+	$(MAKE) gcc
+
+help:
+	@echo ""
+	@echo "Makefile options:"
+	@echo ""
+	@echo "make                >  Default: Compiler = g++"
+	@echo "make icc            >  Compiler = icpc"
+	@echo "make icc-profile    >  Compiler = icpc + automatic pgo-build"
+	@echo "make osx-ppc32      >  PPC-Mac OS X 32 bit. Compiler = g++"
+	@echo "make osx-ppc64      >  PPC-Mac OS X 64 bit. Compiler = g++"
+	@echo "make osx-x86        >  x86-Mac OS X 32 bit. Compiler = g++"
+	@echo "make osx-x86_64     >  x86-Mac OS X 64 bit. Compiler = g++"
+	@echo "make clean          >  Clean up"
+	@echo ""
 
 all: $(EXE) .depend
 
 clean:
-	$(RM) *.o .depend stockfish
+	$(RM) *.o .depend *~ $(EXE)
 
 
-###
-### Compiler:
-###
+### Possible targets. You may add your own ones here
+gcc:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	all
 
-CXX = g++
-# CXX = icpc
+icc:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS)" \
+	all
+
+icc-profile-make:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS)" \
+	CXXFLAGS+='-prof-gen=srcpos -prof_dir ./profdir' \
+	all
+
+icc-profile-use:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS)" \
+	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
+	all
+
+icc-profile:
+	@rm -rf profdir
+	@mkdir profdir
+	@touch *.cpp *.h
+	$(MAKE) icc-profile-make
+	@echo ""
+	@echo "Running benchmark for pgo-build ..."
+	@$(PGOBENCH) > /dev/null
+	@echo "Benchmark finished. Build final executable now ..."
+	@echo ""
+	@touch *.cpp *.h
+	$(MAKE) icc-profile-use
+	@rm -rf profdir bench.txt
+
+osx-ppc32:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	CXXFLAGS+='-arch ppc' \
+	LDFLAGS+='-arch ppc' \
+	all
+
+osx-ppc64:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	CXXFLAGS+='-arch ppc64' \
+	LDFLAGS+='-arch ppc64' \
+	all
+
+osx-x86:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	CXXFLAGS+='-arch i386' \
+	LDFLAGS+='-arch i386' \
+	all
+
+osx-x86_64:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	CXXFLAGS+='-arch x86_64' \
+	LDFLAGS+='-arch x86_64' \
+	all
 
 
-###
-### Dependencies
-###
-
+### Compilation. Do not change
 $(EXE): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS)
 
+
+### Dependencies. Do not change
 .depend:
 	$(CXX) -MM $(OBJS:.o=.cpp) > $@
 
 include .depend
-
-
-###
-### Compiler and linker switches
-###
-
-# Enable/disable debugging, disabled by default
-
-CXXFLAGS += -DNDEBUG
-
-
-# Compile with full warnings, and symbol names stripped, you can use
-# -g instead of -s to compile symbol's table in, useful for debugging.
-
-CXXFLAGS += -Wall -s
-
-
-# General optimization flags. Note that -O2 might be faster than -O3 on some
-# systems; this requires testing.
-
-CXXFLAGS += -O3 -fno-exceptions -fno-rtti -fno-strict-aliasing
-
-# Disable most annoying warnings for the Intel C++ compiler
-
-# CXXFLAGS += -wd383,869,981
-
-
-# Compiler optimization flags for the Intel C++ compiler in Mac OS X:
-
-# CXXFLAGS += -mdynamic-no-pic -no-prec-div -ipo -static -xP
-
-
-# Profiler guided optimization with the Intel C++ compiler v11. To use it, first
-# create the directory ./profdata if it does not already exist, and delete its
-# contents if it does exist.  Then compile with -prof_gen, and run the
-# resulting binary for a while (for instance, do ./stockfish bench 128 1, and
-# wait 15 minutes for the benchmark to complete).  Then do a 'make clean', and
-# recompile with -prof_use.
-
-# CXXFLAGS += -prof-gen -prof-dir./profdata
-# CXXFLAGS += -prof-use -ipo -prof_dir./profdata
-
-
-# Profiler guided optimization with GCC.  I've never been able to make this
-# work.
-
-# CXXFLAGS += -fprofile-generate
-# LDFLAGS += -fprofile-generate
-# CXXFLAGS += -fprofile-use
-# CXXFLAGS += -fprofile-use
-
-
-# General linker flags
-
-LDFLAGS += -lm -lpthread
-
-
-# Compiler switches for generating binaries for various CPUs in Mac OS X.
-# Note that 'arch ppc' and 'arch ppc64' only works with g++, and not with
-# the intel compiler.
-
-# CXXFLAGS += -arch ppc
-# CXXFLAGS += -arch ppc64
-# CXXFLAGS += -arch i386
-# CXXFLAGS += -arch x86_64
-# LDFLAGS += -arch ppc
-# LDFLAGS += -arch ppc64
-# LDFLAGS += -arch i386
-# LDFLAGS += -arch x86_64
-
-
-# Backwards compatibility with Mac OS X 10.4 when compiling under 10.5 with
-# GCC 4.0.  I haven't found a way to make it work with GCC 4.2.
-
-# CXXFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk
-# CXXFLAGS += -mmacosx-version-min=10.4
-# LDFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk
-# LDFLAGS += -Wl,-syslibroot /Developer/SDKs/MacOSX10.4u.sdk
-# LDFLAGS += -mmacosx-version-min=10.4
-
-
-# Backwards compatibility with Mac OS X 10.4 when compiling with ICC.  Doesn't
-# work yet. :-(
-
-# CXXFLAGS += -DMAC_OS_X_VERSION_MIN_REQUIRED=1040
-# CXXFLAGS += -DMAC_OS_X_VERSION_MAX_ALLOWED=1040
-# CXXFLAGS += -D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=1040
-# CXXFLAGS += -F/Developer/SDKs/MacOSX10.4u.sdk/
-# LDFLAGS += -Wl,-syslibroot -Wl,/Developer/SDKs/MacOSX10.4u.sdk
