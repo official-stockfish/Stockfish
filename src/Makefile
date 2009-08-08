@@ -31,6 +31,13 @@ ICCFLAGS = -fast
 
 
 ### ==========================================================================
+### Enable/disable debugging, disabled by default
+### ==========================================================================
+GCCFLAGS += -DNDEBUG
+ICCFLAGS += -DNDEBUG
+
+
+### ==========================================================================
 ### Run built-in benchmark for pgo-builds with:  32MB hash  1 thread  10 depth
 ### These settings are generally fast, but may be changed experimentally
 ### ==========================================================================
@@ -38,8 +45,8 @@ PGOBENCH = ./$(EXE) bench 32 1 10 default depth
 
 
 ### General compiler settings. Do not change
-GCCFLAGS += -s -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing
-ICCFLAGS += -s -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing -wd383,869,981,10187,10188,11505,11503
+GCCFLAGS += -g -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing
+ICCFLAGS += -g -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing -wd383,869,981,10187,10188,11505,11503
 
 
 ### General linker settings. Do not change
