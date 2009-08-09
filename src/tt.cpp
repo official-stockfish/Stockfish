@@ -31,7 +31,7 @@
 
 
 /// This is the number of TTEntry slots for each position
-static const int ClusterSize = 4;
+static const int ClusterSize = 5;
 
 
 ////
