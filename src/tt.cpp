@@ -25,15 +25,19 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#include <xmmintrin.h>
 
 #include "movegen.h"
 #include "tt.h"
 
+#if defined(_MSC_VER)
+#include <xmmintrin.h>
+#endif
 
-/// This is the number of TTEntry slots for each position
+// This is the number of TTEntry slots for each position
 static const int ClusterSize = 5;
 
+// The main transposition table
+TranspositionTable TT;
 
 ////
 //// Functions
@@ -174,7 +178,11 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
 void TranspositionTable::prefetch(const Key posKey) const {
 
+#if defined(_MSC_VER)
   _mm_prefetch((char*)first_entry(posKey), _MM_HINT_T0);
+#else
+  __builtin_prefetch((const void*)first_entry(posKey), 0, 3);
+#endif
 }
 
 

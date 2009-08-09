@@ -72,14 +72,6 @@ Position::Position(const string& fen) {
 }
 
 
-/// Position::setTranspositionTable() is used by search functions to pass
-/// the pointer to the used TT so that do_move() will prefetch TT access.
-
-void Position::setTranspositionTable(TranspositionTable* tt) {
-  TT = tt;
-}
-
-
 /// Position::from_fen() initializes the position object with the given FEN
 /// string. This function is not very robust - make sure that input FENs are
 /// correct (this is assumed to be the responsibility of the GUI).
@@ -728,6 +720,9 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   // case of non-reversible moves is taken care of later.
   st->rule50++;
 
+  // Update side to move
+  st->key ^= zobSideToMove;
+
   if (move_is_castle(m))
       do_castle_move(m);
   else if (move_is_promotion(m))
@@ -750,11 +745,10 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     st->capture = type_of_piece_on(to);
 
     if (st->capture)
-      do_capture_move(st->capture, them, to);
+        do_capture_move(st->capture, them, to);
 
     // Update hash key
     st->key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
-    st->key ^= zobSideToMove;
 
     // Reset en passant square
     if (st->epSquare != SQ_NONE)
@@ -772,11 +766,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
         st->key ^= zobCastle[st->castleRights];
     }
 
-    bool checkEpSquare = (pt == PAWN && abs(int(to) - int(from)) == 16);
-
     // Prefetch TT access as soon as we know key is updated
-    if (!checkEpSquare && TT)
-        TT->prefetch(st->key);
+    TT.prefetch(st->key);
 
     // Move the piece
     Bitboard move_bb = make_move_bb(from, to);
@@ -797,7 +788,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
         st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
 
         // Set en passant square, only if moved pawn can be captured
-        if (checkEpSquare)
+        if (abs(int(to) - int(from)) == 16)
         {
             if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
                 || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
@@ -807,10 +798,6 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
             }
         }
     }
-
-    // Prefetch only here in the few cases we needed zobEp[] to update the key
-    if (checkEpSquare && TT)
-        TT->prefetch(st->key);
 
     // Update incremental scores
     st->mgValue += pst_delta<MidGame>(piece, from, to);
@@ -979,8 +966,6 @@ void Position::do_castle_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
-
-  st->key ^= zobSideToMove;
 }
 
 
@@ -1071,8 +1056,6 @@ void Position::do_promotion_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
-
-  st->key ^= zobSideToMove;
 }
 
 
@@ -1150,8 +1133,6 @@ void Position::do_ep_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
-
-  st->key ^= zobSideToMove;
 }
 
 
@@ -1436,7 +1417,7 @@ void Position::do_null_move(StateInfo& backupSt) {
       st->key ^= zobEp[st->epSquare];
 
   st->key ^= zobSideToMove;
-  TT->prefetch(st->key);
+  TT.prefetch(st->key);
   sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;
   st->rule50++;
@@ -1680,7 +1661,6 @@ void Position::clear() {
   initialKFile = FILE_E;
   initialKRFile = FILE_H;
   initialQRFile = FILE_A;
-  TT = NULL;
 }
 
 

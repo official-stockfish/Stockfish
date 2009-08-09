@@ -98,7 +98,6 @@ struct StateInfo {
   StateInfo* previous;
 };
 
-class TranspositionTable;
 
 /// The position data structure. A position consists of the following data:
 ///
@@ -259,7 +258,6 @@ public:
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
-  void setTranspositionTable(TranspositionTable* tt);
 
   // Static exchange evaluation
   int see(Square from, Square to) const;
@@ -358,7 +356,6 @@ private:
   File initialKFile, initialKRFile, initialQRFile;
   StateInfo startState;
   StateInfo* st;
-  TranspositionTable* TT;
 
   // Static variables
   static int castleRightsMask[64];

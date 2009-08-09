@@ -105,4 +105,6 @@ private:
   uint8_t generation;
 };
 
+extern TranspositionTable TT;
+
 #endif // !defined(TT_H_INCLUDED)

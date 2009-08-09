@@ -190,9 +190,6 @@ namespace {
   // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
 
-  // The main transposition table
-  TranspositionTable TT;
-
 
   /// Variables initialized by UCI options
 
@@ -663,7 +660,6 @@ namespace {
 
     // Initialize
     TT.new_search();
-    p.setTranspositionTable(&TT);
     H.clear();
     for (int i = 0; i < 3; i++)
     {
