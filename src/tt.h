@@ -85,6 +85,7 @@ public:
   void clear();
   void store(const Key posKey, Value v, ValueType type, Depth d, Move m);
   TTEntry* retrieve(const Key posKey) const;
+  void prefetch(const Key posKey) const;
   void new_search();
   void insert_pv(const Position& pos, Move pv[]);
   void extract_pv(const Position& pos, Move pv[]);

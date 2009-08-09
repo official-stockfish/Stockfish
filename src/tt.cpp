@@ -25,6 +25,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <xmmintrin.h>
 
 #include "movegen.h"
 #include "tt.h"
@@ -153,6 +154,17 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
   return NULL;
 }
 
+/// TranspositionTable::prefetch looks up the current position in the
+/// transposition table and load it in L1/L2 cache. This is a non
+/// blocking function and do not stalls the CPU waiting for data
+/// to be loaded from RAM, that can be very slow. When we will
+/// subsequently call retrieve() the TT data will be already
+/// quickly accessible in L1/l2 CPU cache.
+
+void TranspositionTable::prefetch(const Key posKey) const {
+
+  _mm_prefetch((char*)first_entry(posKey), _MM_HINT_T0);
+}
 
 /// TranspositionTable::first_entry returns a pointer to the first
 /// entry of a cluster given a position. The low 32 bits of the key
