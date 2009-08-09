@@ -34,6 +34,7 @@
 #include "position.h"
 #include "psqtab.h"
 #include "san.h"
+#include "tt.h"
 #include "ucioption.h"
 
 using std::string;
@@ -68,6 +69,14 @@ Position::Position(const Position& pos) {
 
 Position::Position(const string& fen) {
   from_fen(fen);
+}
+
+
+/// Position::setTranspositionTable() is used by search functions to pass
+/// the pointer to the used TT so that do_move() will prefetch TT access.
+
+void Position::setTranspositionTable(TranspositionTable* tt) {
+  TT = tt;
 }
 
 
@@ -743,6 +752,32 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     if (st->capture)
       do_capture_move(st->capture, them, to);
 
+    // Update hash key
+    st->key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
+    st->key ^= zobSideToMove;
+
+    // Reset en passant square
+    if (st->epSquare != SQ_NONE)
+    {
+        st->key ^= zobEp[st->epSquare];
+        st->epSquare = SQ_NONE;
+    }
+
+    // Update castle rights, try to shortcut a common case
+    if ((castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
+    {
+        st->key ^= zobCastle[st->castleRights];
+        st->castleRights &= castleRightsMask[from];
+        st->castleRights &= castleRightsMask[to];
+        st->key ^= zobCastle[st->castleRights];
+    }
+
+    bool checkEpSquare = (pt == PAWN && abs(int(to) - int(from)) == 16);
+
+    // Prefetch TT access as soon as we know key is updated
+    if (!checkEpSquare && TT)
+        TT->prefetch(st->key);
+
     // Move the piece
     Bitboard move_bb = make_move_bb(from, to);
     do_move_bb(&(byColorBB[us]), move_bb);
@@ -751,24 +786,6 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
     board[to] = board[from];
     board[from] = EMPTY;
-
-    // Update hash key
-    st->key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
-
-    // Update incremental scores
-    st->mgValue += pst_delta<MidGame>(piece, from, to);
-    st->egValue += pst_delta<EndGame>(piece, from, to);
-
-    // If the moving piece was a king, update the king square
-    if (pt == KING)
-        kingSquare[us] = to;
-
-    // Reset en passant square
-    if (st->epSquare != SQ_NONE)
-    {
-        st->key ^= zobEp[st->epSquare];
-        st->epSquare = SQ_NONE;
-    }
 
     // If the moving piece was a pawn do some special extra work
     if (pt == PAWN)
@@ -780,7 +797,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
         st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
 
         // Set en passant square, only if moved pawn can be captured
-        if (abs(int(to) - int(from)) == 16)
+        if (checkEpSquare)
         {
             if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
                 || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
@@ -791,18 +808,21 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
         }
     }
 
+    // Prefetch only here in the few cases we needed zobEp[] to update the key
+    if (checkEpSquare && TT)
+        TT->prefetch(st->key);
+
+    // Update incremental scores
+    st->mgValue += pst_delta<MidGame>(piece, from, to);
+    st->egValue += pst_delta<EndGame>(piece, from, to);
+
+    // If the moving piece was a king, update the king square
+    if (pt == KING)
+        kingSquare[us] = to;
+
     // Update piece lists
     pieceList[us][pt][index[from]] = to;
     index[to] = index[from];
-
-    // Update castle rights, try to shortcut a common case
-    if ((castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
-    {
-        st->key ^= zobCastle[st->castleRights];
-        st->castleRights &= castleRightsMask[from];
-        st->castleRights &= castleRightsMask[to];
-        st->key ^= zobCastle[st->castleRights];
-    }
 
     // Update checkers bitboard, piece must be already moved
     st->checkersBB = EmptyBoardBB;
@@ -820,7 +840,6 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   }
 
   // Finish
-  st->key ^= zobSideToMove;
   sideToMove = opposite_color(sideToMove);
   gamePly++;
 
@@ -960,6 +979,8 @@ void Position::do_castle_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  st->key ^= zobSideToMove;
 }
 
 
@@ -1050,6 +1071,8 @@ void Position::do_promotion_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  st->key ^= zobSideToMove;
 }
 
 
@@ -1127,6 +1150,8 @@ void Position::do_ep_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  st->key ^= zobSideToMove;
 }
 
 
@@ -1407,14 +1432,15 @@ void Position::do_null_move(StateInfo& backupSt) {
   history[gamePly] = st->key;
 
   // Update the necessary information
-  sideToMove = opposite_color(sideToMove);
   if (st->epSquare != SQ_NONE)
       st->key ^= zobEp[st->epSquare];
 
+  st->key ^= zobSideToMove;
+  TT->prefetch(st->key);
+  sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;
   st->rule50++;
   gamePly++;
-  st->key ^= zobSideToMove;
 
   st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
@@ -1654,6 +1680,7 @@ void Position::clear() {
   initialKFile = FILE_E;
   initialKRFile = FILE_H;
   initialQRFile = FILE_A;
+  TT = NULL;
 }
 
 

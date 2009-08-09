@@ -93,6 +93,16 @@ void TranspositionTable::clear() {
 }
 
 
+/// TranspositionTable::first_entry returns a pointer to the first
+/// entry of a cluster given a position. The low 32 bits of the key
+/// are used to get the index in the table.
+
+inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
+
+  return entries + ((uint32_t(posKey) & (size - 1)) * ClusterSize);
+}
+
+
 /// TranspositionTable::store writes a new entry containing a position,
 /// a value, a value type, a search depth, and a best move to the
 /// transposition table. Transposition table is organized in clusters of
@@ -145,7 +155,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
 TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
   uint32_t posKey32 = posKey >> 32;
-  TTEntry *tte = first_entry(posKey);
+  TTEntry* tte = first_entry(posKey);
 
   for (int i = 0; i < ClusterSize; i++, tte++)
       if (tte->key() == posKey32)
@@ -153,6 +163,7 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
   return NULL;
 }
+
 
 /// TranspositionTable::prefetch looks up the current position in the
 /// transposition table and load it in L1/L2 cache. This is a non
@@ -166,14 +177,6 @@ void TranspositionTable::prefetch(const Key posKey) const {
   _mm_prefetch((char*)first_entry(posKey), _MM_HINT_T0);
 }
 
-/// TranspositionTable::first_entry returns a pointer to the first
-/// entry of a cluster given a position. The low 32 bits of the key
-/// are used to get the index in the table.
-
-inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
-
-  return entries + ((uint32_t(posKey) & (size - 1)) * ClusterSize);
-}
 
 /// TranspositionTable::new_search() is called at the beginning of every new
 /// search. It increments the "generation" variable, which is used to

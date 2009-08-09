@@ -663,6 +663,7 @@ namespace {
 
     // Initialize
     TT.new_search();
+    p.setTranspositionTable(&TT);
     H.clear();
     for (int i = 0; i < 3; i++)
     {
@@ -1126,7 +1127,6 @@ namespace {
       // Make and search the move
       StateInfo st;
       pos.do_move(move, st, dcCandidates);
-      TT.prefetch(pos.get_key());
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1297,8 +1297,6 @@ namespace {
 
         StateInfo st;
         pos.do_null_move(st);
-        TT.prefetch(pos.get_key());
-
         int R = (depth >= 5 * OnePly ? 4 : 3); // Null move dynamic reduction
 
         Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
@@ -1413,7 +1411,6 @@ namespace {
       // Make and search the move
       StateInfo st;
       pos.do_move(move, st, dcCandidates);
-      TT.prefetch(pos.get_key());
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1623,7 +1620,6 @@ namespace {
       // Make and search the move.
       StateInfo st;
       pos.do_move(move, st, dcCandidates);
-      TT.prefetch(pos.get_key());
       Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
