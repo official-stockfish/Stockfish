@@ -30,6 +30,10 @@
 #include "tt.h"
 
 
+/// This is the number of TTEntry slots for each position
+static const int ClusterSize = 4;
+
+
 ////
 //// Functions
 ////
@@ -56,16 +60,16 @@ void TranspositionTable::set_size(unsigned mbSize) {
 
   unsigned newSize = 1024;
 
-  // We store a cluster of 4 TTEntry for each position and newSize is
-  // the maximum number of storable positions
-  while ((2 * newSize) * 4 * (sizeof(TTEntry)) <= (mbSize << 20))
+  // We store a cluster of ClusterSize number of TTEntry for each position
+  // and newSize is the maximum number of storable positions.
+  while ((2 * newSize) * ClusterSize * (sizeof(TTEntry)) <= (mbSize << 20))
       newSize *= 2;
 
   if (newSize != size)
   {
       size = newSize;
       delete [] entries;
-      entries = new TTEntry[size * 4];
+      entries = new TTEntry[size * ClusterSize];
       if (!entries)
       {
           std::cerr << "Failed to allocate " << mbSize
@@ -84,7 +88,7 @@ void TranspositionTable::set_size(unsigned mbSize) {
 
 void TranspositionTable::clear() {
 
-  memset(entries, 0, size * 4 * sizeof(TTEntry));
+  memset(entries, 0, size * ClusterSize * sizeof(TTEntry));
 }
 
 
@@ -101,11 +105,12 @@ void TranspositionTable::clear() {
 void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m) {
 
   TTEntry *tte, *replace;
+  uint32_t posKey32 = posKey >> 32; // Use the high 32 bits as key
 
   tte = replace = first_entry(posKey);
-  for (int i = 0; i < 4; i++, tte++)
+  for (int i = 0; i < ClusterSize; i++, tte++)
   {
-      if (!tte->key() || tte->key() == posKey) // empty or overwrite old
+      if (!tte->key() || tte->key() == posKey32) // empty or overwrite old
       {
           // Do not overwrite when new type is VALUE_TYPE_EVAL
           if (tte->key() && t == VALUE_TYPE_EVAL)
@@ -114,7 +119,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           if (m == MOVE_NONE)
               m = tte->move();
 
-          *tte = TTEntry(posKey, v, t, d, m, generation);
+          *tte = TTEntry(posKey32, v, t, d, m, generation);
           return;
       }
       else if (i == 0)  // replace would be a no-op in this common case
@@ -127,7 +132,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
       if (c1 + c2 + c3 > 0)
           replace = tte;
   }
-  *replace = TTEntry(posKey, v, t, d, m, generation);
+  *replace = TTEntry(posKey32, v, t, d, m, generation);
   writes++;
 }
 
@@ -138,10 +143,11 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
 
 TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
+  uint32_t posKey32 = posKey >> 32;
   TTEntry *tte = first_entry(posKey);
 
-  for (int i = 0; i < 4; i++, tte++)
-      if (tte->key() == posKey)
+  for (int i = 0; i < ClusterSize; i++, tte++)
+      if (tte->key() == posKey32)
           return tte;
 
   return NULL;
@@ -149,11 +155,12 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
 
 /// TranspositionTable::first_entry returns a pointer to the first
-/// entry of a cluster given a position.
+/// entry of a cluster given a position. The low 32 bits of the key
+/// are used to get the index in the table.
 
 inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 
-  return entries + (int(posKey & (size - 1)) << 2);
+  return entries + ((uint32_t(posKey) & (size - 1)) * ClusterSize);
 }
 
 /// TranspositionTable::new_search() is called at the beginning of every new
@@ -224,6 +231,6 @@ void TranspositionTable::extract_pv(const Position& pos, Move pv[]) {
 
 int TranspositionTable::full() const {
 
-  double N = double(size) * 4.0;
+  double N = double(size) * ClusterSize;
   return int(1000 * (1 - exp(writes * log(1.0 - 1.0/N))));
 }

@@ -36,12 +36,12 @@
 
 /// The TTEntry class is the class of transposition table entries
 ///
-/// A TTEntry needs 128 bits to be stored
+/// A TTEntry needs 96 bits to be stored
 ///
-/// bit    0-63: key
-/// bit   64-95: data
-/// bit  96-111: value
-/// bit 112-127: depth
+/// bit  0-31: key
+/// bit 32-63: data
+/// bit 64-79: value
+/// bit 80-95: depth
 ///
 /// the 32 bits of the data field are so defined
 ///
@@ -54,11 +54,11 @@ class TTEntry {
 
 public:
   TTEntry() {}
-  TTEntry(Key k, Value v, ValueType t, Depth d, Move m, int generation)
+  TTEntry(uint32_t k, Value v, ValueType t, Depth d, Move m, int generation)
         : key_ (k), data((m & 0x1FFFF) | (t << 20) | (generation << 23)),
           value_(int16_t(v)), depth_(int16_t(d)) {}
 
-  Key key() const { return key_; }
+  uint32_t key() const { return key_; }
   Depth depth() const { return Depth(depth_); }
   Move move() const { return Move(data & 0x1FFFF); }
   Value value() const { return Value(value_); }
@@ -66,7 +66,7 @@ public:
   int generation() const { return (data >> 23); }
 
 private:
-  Key key_;
+  uint32_t key_;
   uint32_t data;
   int16_t value_;
   int16_t depth_;
