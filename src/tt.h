@@ -70,6 +70,7 @@ private:
   uint32_t data;
   int16_t value_;
   int16_t depth_;
+  uint32_t pad_to_16_bytes;
 };
 
 /// The transposition table class.  This is basically just a huge array
