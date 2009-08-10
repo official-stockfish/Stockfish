@@ -174,12 +174,14 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 /// blocking function and do not stalls the CPU waiting for data
 /// to be loaded from RAM, that can be very slow. When we will
 /// subsequently call retrieve() the TT data will be already
-/// quickly accessible in L1/l2 CPU cache.
+/// quickly accessible in L1/L2 CPU cache.
 
 void TranspositionTable::prefetch(const Key posKey) const {
 
 #if defined(_MSC_VER)
-  _mm_prefetch((char*)first_entry(posKey), _MM_HINT_T0);
+   char* addr = (char*)first_entry(posKey);
+  _mm_prefetch(addr, _MM_HINT_T0);
+  _mm_prefetch(addr+64, _MM_HINT_T0);
 #else
   // We need to force an asm volatile here because gcc builtin
   // is optimized away by Intel compiler.
