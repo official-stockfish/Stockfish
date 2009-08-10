@@ -181,7 +181,10 @@ void TranspositionTable::prefetch(const Key posKey) const {
 #if defined(_MSC_VER)
   _mm_prefetch((char*)first_entry(posKey), _MM_HINT_T0);
 #else
-  __builtin_prefetch((const void*)first_entry(posKey), 0, 3);
+  // We need to force an asm volatile here because gcc builtin
+  // is optimized away by Intel compiler.
+  char* addr = (char*)first_entry(posKey);
+  asm volatile("prefetcht0 %0" :: "m" (addr));
 #endif
 }
 
