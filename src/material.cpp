@@ -36,10 +36,6 @@ using namespace std;
 
 namespace {
 
-  // Values modified by Joona Kiiski
-  const Value BishopPairMidgameBonus = Value(109);
-  const Value BishopPairEndgameBonus = Value(97);
-
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
   const Value RedundantRookPenalty  = Value(554);
