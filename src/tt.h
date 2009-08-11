@@ -70,10 +70,23 @@ private:
   uint32_t data;
   int16_t value_;
   int16_t depth_;
-  uint32_t pad_to_16_bytes;
 };
 
-/// The transposition table class.  This is basically just a huge array
+
+/// This is the number of TTEntry slots for each position
+const int ClusterSize = 5;
+
+/// Each group of ClusterSize number of TTEntry form a TTCluster
+/// that is indexed by a single position key. Cluster is padded
+/// to a cache line size so to guarantee always aligned accesses.
+
+struct TTCluster {
+  TTEntry data[ClusterSize];
+  char cache_line_padding[64 - sizeof(TTEntry[ClusterSize])];
+};
+
+
+/// The transposition table class. This is basically just a huge array
 /// containing TTEntry objects, and a few methods for writing new entries
 /// and reading new ones.
 
@@ -95,14 +108,14 @@ public:
 private:
   inline TTEntry* first_entry(const Key posKey) const;
 
-  // Be sure 'writes' is at least one cacheline away
+  // Be sure 'writes' is at least one cache line away
   // from read only variables.
   unsigned char pad_before[64 - sizeof(unsigned)];
   unsigned writes; // heavy SMP read/write access here
   unsigned char pad_after[64];
 
   unsigned size;
-  TTEntry* entries;
+  TTCluster* entries;
   uint8_t generation;
 };
 

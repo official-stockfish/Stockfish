@@ -33,9 +33,6 @@
 #include <xmmintrin.h>
 #endif
 
-// This is the number of TTEntry slots for each position
-static const int ClusterSize = 4;
-
 // The main transposition table
 TranspositionTable TT;
 
@@ -67,14 +64,14 @@ void TranspositionTable::set_size(unsigned mbSize) {
 
   // We store a cluster of ClusterSize number of TTEntry for each position
   // and newSize is the maximum number of storable positions.
-  while ((2 * newSize) * ClusterSize * (sizeof(TTEntry)) <= (mbSize << 20))
+  while ((2 * newSize) * sizeof(TTCluster) <= (mbSize << 20))
       newSize *= 2;
 
   if (newSize != size)
   {
       size = newSize;
       delete [] entries;
-      entries = new TTEntry[size * ClusterSize];
+      entries = new TTCluster[size];
       if (!entries)
       {
           std::cerr << "Failed to allocate " << mbSize
@@ -93,7 +90,7 @@ void TranspositionTable::set_size(unsigned mbSize) {
 
 void TranspositionTable::clear() {
 
-  memset(entries, 0, size * ClusterSize * sizeof(TTEntry));
+  memset(entries, 0, size * sizeof(TTCluster));
 }
 
 
@@ -103,7 +100,7 @@ void TranspositionTable::clear() {
 
 inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 
-  return entries + ((uint32_t(posKey) & (size - 1)) * ClusterSize);
+  return entries[uint32_t(posKey) & (size - 1)].data;
 }
 
 
