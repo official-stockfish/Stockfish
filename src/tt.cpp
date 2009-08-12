@@ -25,13 +25,10 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <xmmintrin.h>
 
 #include "movegen.h"
 #include "tt.h"
-
-#if defined(_MSC_VER)
-#include <xmmintrin.h>
-#endif
 
 // The main transposition table
 TranspositionTable TT;
@@ -175,16 +172,15 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
 void TranspositionTable::prefetch(const Key posKey) const {
 
-#if defined(_MSC_VER)
-   char* addr = (char*)first_entry(posKey);
-  _mm_prefetch(addr, _MM_HINT_T0);
-  _mm_prefetch(addr+64, _MM_HINT_T0);
-#else
-  // We need to force an asm volatile here because gcc builtin
-  // is optimized away by Intel compiler.
-  char* addr = (char*)first_entry(posKey);
-  asm volatile("prefetcht0 %0" :: "m" (addr));
+#if defined(__INTEL_COMPILER) || defined(__ICL)
+   // This hack prevents prefetches to be optimized away by the
+   // Intel compiler. Both MSVC and gcc seems not affected.
+   __asm__ ("");
 #endif
+
+   char const* addr = (char*)first_entry(posKey);
+  _mm_prefetch(addr, _MM_HINT_T2);
+  _mm_prefetch(addr+64, _MM_HINT_T2); // 64 bytes ahead
 }
 
 

@@ -26,8 +26,8 @@ EXE = stockfish
 ### Compiler speed switches for both GCC and ICC. These settings are generally
 ### fast on a broad range of systems, but may be changed experimentally
 ### ==========================================================================
-GCCFLAGS = -O3
-ICCFLAGS = -fast
+GCCFLAGS = -O3 -msse
+ICCFLAGS = -fast -msse
 
 
 ### ==========================================================================
@@ -169,6 +169,6 @@ $(EXE): $(OBJS)
 
 ### Dependencies. Do not change
 .depend:
-	$(CXX) -MM $(OBJS:.o=.cpp) > $@
+	$(CXX) -msse -MM $(OBJS:.o=.cpp) > $@
 
 include .depend
