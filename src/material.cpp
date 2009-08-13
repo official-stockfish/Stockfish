@@ -30,6 +30,7 @@
 
 using namespace std;
 
+
 ////
 //// Local definitions
 ////
@@ -49,14 +50,17 @@ namespace {
   { 0, 0, 0, 0, 0, 0 }, { -5, 0, 0, 0, 0, 0 }, { -33, 23, 0, 0, 0, 0 },
   { 17, 25, -3, 0, 0, 0 }, { 10, -2, -19, -67, 0, 0 }, { 69, 64, -41, 116, 137, 0 } };
 
-  // Unmapped endgame evaluation and scaling functions, these
+  // Named endgame evaluation and scaling functions, these
   // are accessed direcly and not through the function maps.
   EvaluationFunction<KmmKm> EvaluateKmmKm(WHITE);
   EvaluationFunction<KXK>   EvaluateKXK(WHITE), EvaluateKKX(BLACK);
-  ScalingFunction<KBPK>     ScaleKBPK(WHITE),   ScaleKKBP(BLACK);
-  ScalingFunction<KQKRP>    ScaleKQKRP(WHITE),  ScaleKRPKQ(BLACK);
+  ScalingFunction<KBPsK>    ScaleKBPsK(WHITE),  ScaleKKBPs(BLACK);
+  ScalingFunction<KQKRPs>   ScaleKQKRPs(WHITE), ScaleKRPsKQ(BLACK);
   ScalingFunction<KPsK>     ScaleKPsK(WHITE),   ScaleKKPs(BLACK);
   ScalingFunction<KPKP>     ScaleKPKPw(WHITE),  ScaleKPKPb(BLACK);
+
+  typedef EndgameEvaluationFunctionBase EF;
+  typedef EndgameScalingFunctionBase SF;
 }
 
 
@@ -64,11 +68,10 @@ namespace {
 //// Classes
 ////
 
-typedef EndgameEvaluationFunctionBase EF;
-typedef EndgameScalingFunctionBase SF;
-
-/// See header for a class description. It is declared here to avoid
-/// to include <map> in the header file.
+/// EndgameFunctions class stores endgame evaluation and scaling functions
+/// in two std::map. Because STL library is not guaranteed to be thread
+/// safe even for read access, the maps, although with identical content,
+/// are replicated for each thread. This is faster then using locks.
 
 class EndgameFunctions {
 public:
@@ -82,10 +85,10 @@ private:
   static Key buildKey(const string& keyCode);
   static const string swapColors(const string& keyCode);
 
-  // Here we store two maps, one for evaluate and one for scaling
+  // Here we store two maps, for evaluate and scaling functions
   pair<map<Key, EF*>, map<Key, SF*> > maps;
 
-  // Maps accessing functions for const and non-const references
+  // Maps accessing functions returning const and non-const references
   template<typename T> const map<Key, T*>& get() const { return maps.first; }
   template<typename T> map<Key, T*>& get() { return maps.first; }
 };
@@ -103,24 +106,21 @@ EndgameFunctions::get<SF>() { return maps.second; }
 //// Functions
 ////
 
-
-/// Constructor for the MaterialInfoTable class
+/// MaterialInfoTable c'tor and d'tor, called once by each thread
 
 MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
 
   size = numOfEntries;
   entries = new MaterialInfo[size];
   funcs = new EndgameFunctions();
+
   if (!entries || !funcs)
   {
-      cerr << "Failed to allocate " << (numOfEntries * sizeof(MaterialInfo))
+      cerr << "Failed to allocate " << numOfEntries * sizeof(MaterialInfo)
            << " bytes for material hash table." << endl;
       Application::exit_with_failure();
   }
 }
-
-
-/// Destructor for the MaterialInfoTable class
 
 MaterialInfoTable::~MaterialInfoTable() {
 
@@ -175,8 +175,8 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
            && pos.rooks() == EmptyBoardBB
            && pos.queens() == EmptyBoardBB)
   {
-      // Minor piece endgame with at least one minor piece per side,
-      // and no pawns.
+      // Minor piece endgame with at least one minor piece per side and
+      // no pawns. Note that the case KmmK is already handled by KXK.
       assert(pos.knights(WHITE) | pos.bishops(WHITE));
       assert(pos.knights(BLACK) | pos.bishops(BLACK));
 
@@ -203,29 +203,32 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       return mi;
   }
 
+  // Generic scaling functions that refer to more then one material
+  // distribution. Should be probed after the specialized ones.
+  // Note that these ones don't return after setting the function.
   if (   pos.non_pawn_material(WHITE) == BishopValueMidgame
       && pos.piece_count(WHITE, BISHOP) == 1
       && pos.piece_count(WHITE, PAWN) >= 1)
-      mi->scalingFunction[WHITE] = &ScaleKBPK;
+      mi->scalingFunction[WHITE] = &ScaleKBPsK;
 
   if (   pos.non_pawn_material(BLACK) == BishopValueMidgame
       && pos.piece_count(BLACK, BISHOP) == 1
       && pos.piece_count(BLACK, PAWN) >= 1)
-      mi->scalingFunction[BLACK] = &ScaleKKBP;
+      mi->scalingFunction[BLACK] = &ScaleKKBPs;
 
   if (   pos.piece_count(WHITE, PAWN) == 0
       && pos.non_pawn_material(WHITE) == QueenValueMidgame
       && pos.piece_count(WHITE, QUEEN) == 1
       && pos.piece_count(BLACK, ROOK) == 1
       && pos.piece_count(BLACK, PAWN) >= 1)
-      mi->scalingFunction[WHITE] = &ScaleKQKRP;
+      mi->scalingFunction[WHITE] = &ScaleKQKRPs;
 
   else if (   pos.piece_count(BLACK, PAWN) == 0
            && pos.non_pawn_material(BLACK) == QueenValueMidgame
            && pos.piece_count(BLACK, QUEEN) == 1
            && pos.piece_count(WHITE, ROOK) == 1
            && pos.piece_count(WHITE, PAWN) >= 1)
-      mi->scalingFunction[BLACK] = &ScaleKRPKQ;
+      mi->scalingFunction[BLACK] = &ScaleKRPsKQ;
 
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0))
   {
@@ -241,6 +244,8 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       }
       else if (pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1)
       {
+          // This is a special case because we set scaling functions
+          // for both colors instead of only one.
           mi->scalingFunction[WHITE] = &ScaleKPKPw;
           mi->scalingFunction[BLACK] = &ScaleKPKPb;
       }
@@ -298,11 +303,12 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
     if (pieceCount[c][ROOK] >= 1)
         matValue -= sign * ((pieceCount[c][ROOK] - 1) * RedundantRookPenalty + pieceCount[c][QUEEN] * RedundantQueenPenalty);
 
+    them = opposite_color(c);
+
     // Second-degree polynomial material imbalance by Tord Romstad
     //
     // We use NO_PIECE_TYPE as a place holder for the bishop pair "extended piece",
     // this allow us to be more flexible in defining bishop pair bonuses.
-    them = opposite_color(c);
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
     {
         int c1 = sign * pieceCount[c][pt1];
@@ -318,18 +324,12 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
         }
     }
   }
-
   mi->value = int16_t(matValue / 16);
   return mi;
 }
 
 
-/// EndgameFunctions member definitions. This class is used to store the maps
-/// of end game and scaling functions that MaterialInfoTable will query for
-/// each key. The maps are constant and are populated only at construction,
-/// but are per-thread instead of globals to avoid expensive locks needed
-/// because std::map is not guaranteed to be thread-safe even if accessed
-/// only for a lookup.
+/// EndgameFunctions member definitions.
 
 EndgameFunctions::EndgameFunctions() {
 
@@ -368,8 +368,8 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
     stringstream s;
     bool upcase = false;
 
-    // Build up a fen substring with the given pieces, note
-    // that the fen string could be of an illegal position.
+    // Build up a fen string with the given pieces, note that
+    // the fen string could be of an illegal position.
     for (size_t i = 0; i < keyCode.length(); i++)
     {
         if (keyCode[i] == 'K')

@@ -49,8 +49,8 @@ enum EndgameType {
     KmmKm, // K and two minors vs K and one or two minors
 
     // Scaling functions
-    KBPK,    // KBP vs K
-    KQKRP,   // KQ vs KRP
+    KBPsK,   // KB+pawns vs K
+    KQKRPs,  // KQ vs KR+pawns
     KRPKR,   // KRP vs KR
     KRPPKRP, // KRPP vs KRP
     KPsK,    // King and pawns vs king

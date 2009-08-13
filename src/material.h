@@ -68,19 +68,11 @@ private:
   int spaceWeight;
 };
 
-
-/// EndgameFunctions class stores the endgame evaluation functions std::map.
-/// Because STL library is not thread safe even for read access, the maps,
-/// although with identical content, are replicated for each thread. This
-/// is faster then using locks with an unique set of global maps.
-
-class EndgameFunctions;
-
-
 /// The MaterialInfoTable class represents a pawn hash table. It is basically
 /// just an array of MaterialInfo objects and a few methods for accessing these
 /// objects. The most important method is get_material_info, which looks up a
 /// position in the table and returns a pointer to a MaterialInfo object.
+class EndgameFunctions;
 
 class MaterialInfoTable {
 

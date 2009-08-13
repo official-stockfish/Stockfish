@@ -367,7 +367,7 @@ Value EvaluationFunction<KNNK>::apply(const Position&) {
 /// returned. If not, the return value is SCALE_FACTOR_NONE, i.e. no scaling
 /// will be used.
 template<>
-ScaleFactor ScalingFunction<KBPK>::apply(const Position& pos) {
+ScaleFactor ScalingFunction<KBPsK>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -393,7 +393,6 @@ ScaleFactor ScalingFunction<KBPK>::apply(const Position& pos) {
           // The bishop has the wrong color, and the defending king is on the
           // file of the pawn(s) or the neighboring file. Find the rank of the
           // frontmost pawn.
-
           Rank rank;
           if (strongerSide == WHITE)
           {
@@ -422,7 +421,7 @@ ScaleFactor ScalingFunction<KBPK>::apply(const Position& pos) {
 /// It tests for fortress draws with a rook on the third rank defended by
 /// a pawn.
 template<>
-ScaleFactor ScalingFunction<KQKRP>::apply(const Position& pos) {
+ScaleFactor ScalingFunction<KQKRPs>::apply(const Position& pos) {
 
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, QUEEN) == 1);
