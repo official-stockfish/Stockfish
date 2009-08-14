@@ -323,13 +323,13 @@ inline Bitboard isolated_pawn_mask(Square s) {
 
 #if defined(USE_BSFQ) // Assembly code by Heinz van Saanen
 
-inline Square __attribute__((always_inline)) first_1(Bitboard b) {
+inline Square first_1(Bitboard b) {
   Bitboard dummy;
   __asm__("bsfq %1, %0": "=r"(dummy): "rm"(b) );
   return (Square)(dummy);
 }
 
-inline Square __attribute__((always_inline)) pop_1st_bit(Bitboard* b) {
+inline Square pop_1st_bit(Bitboard* b) {
   const Square s = first_1(*b);
   *b &= ~(1ULL<<s);
   return s;
