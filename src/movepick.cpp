@@ -42,12 +42,12 @@ namespace {
 
   /// Variables
 
-  MovePicker::MovegenPhase PhaseTable[32];
+  CACHE_LINE_ALIGNMENT
   int MainSearchPhaseIndex;
   int EvasionsPhaseIndex;
   int QsearchWithChecksPhaseIndex;
   int QsearchWithoutChecksPhaseIndex;
-
+  uint8_t PhaseTable[32];
 }
 
 

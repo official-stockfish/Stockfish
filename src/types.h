@@ -66,4 +66,11 @@ typedef uint64_t Bitboard;
 #define USE_BSFQ
 #endif
 
+// Cache line alignment specification
+#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#define CACHE_LINE_ALIGNMENT __declspec(align(64))
+#else
+#define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(64)))
+#endif
+
 #endif // !defined(TYPES_H_INCLUDED)
