@@ -742,9 +742,9 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     assert(!(ep || pm) || piece == piece_of_color_and_type(us, PAWN));
     assert(!pm || relative_rank(us, to) == RANK_8);
 
-    st->capture = type_of_piece_on(to);
+    st->capture = ep ? PAWN : type_of_piece_on(to);
 
-    if (st->capture || ep)
+    if (st->capture)
         do_capture_move(st->capture, them, to, ep);
 
     // Update hash key
@@ -892,7 +892,6 @@ void Position::do_capture_move(PieceType capture, Color them, Square to, bool ep
 
     if (ep)
     {
-        capture = PAWN;
         capsq = (them == BLACK)? (to - DELTA_N) : (to - DELTA_S);
 
         assert(to == st->epSquare);
@@ -1042,14 +1041,13 @@ void Position::undo_move(Move m) {
 
   if (move_is_castle(m))
       undo_castle_move(m);
-  else if (move_is_ep(m))
-      undo_ep_move(m);
   else
   {
       Color us = side_to_move();
       Color them = opposite_color(us);
       Square from = move_from(m);
       Square to = move_to(m);
+      bool ep = move_is_ep(m);
       bool pm = move_is_promotion(m);
 
       PieceType piece = type_of_piece_on(to);
@@ -1057,6 +1055,9 @@ void Position::undo_move(Move m) {
       assert(square_is_empty(from));
       assert(color_of_piece_on(to) == us);
       assert(!pm || relative_rank(us, to) == RANK_8);
+      assert(!ep || to == st->previous->epSquare);
+      assert(!ep || relative_rank(us, to) == RANK_6);
+      assert(!ep || piece_on(to) == piece_of_color_and_type(us, PAWN));
 
       if (pm)
       {
@@ -1088,6 +1089,7 @@ void Position::undo_move(Move m) {
       do_move_bb(&(byTypeBB[piece]), move_bb);
       do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
       board[from] = piece_of_color_and_type(us, piece);
+      board[to] = EMPTY;
 
       // If the moving piece was a king, update the king square
       if (piece == KING)
@@ -1099,22 +1101,27 @@ void Position::undo_move(Move m) {
 
       if (st->capture)
       {
+          Square capsq = to;
+
+          if (ep)
+              capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
+
           assert(st->capture != KING);
+          assert(!ep || square_is_empty(capsq));
 
           // Restore the captured piece
-          set_bit(&(byColorBB[them]), to);
-          set_bit(&(byTypeBB[st->capture]), to);
-          set_bit(&(byTypeBB[0]), to);
-          board[to] = piece_of_color_and_type(them, st->capture);
+          set_bit(&(byColorBB[them]), capsq);
+          set_bit(&(byTypeBB[st->capture]), capsq);
+          set_bit(&(byTypeBB[0]), capsq);
+          board[capsq] = piece_of_color_and_type(them, st->capture);
 
           // Update piece list
-          pieceList[them][st->capture][pieceCount[them][st->capture]] = to;
-          index[to] = pieceCount[them][st->capture];
+          pieceList[them][st->capture][pieceCount[them][st->capture]] = capsq;
+          index[capsq] = pieceCount[them][st->capture];
 
           // Update piece count
           pieceCount[them][st->capture]++;
-      } else
-          board[to] = EMPTY;
+      }
   }
 
   // Finally point our state pointer back to the previous state
@@ -1182,54 +1189,6 @@ void Position::undo_castle_move(Move m) {
   int tmp = index[rto];  // Necessary because we may have rto == kfrom in FRC.
   index[kfrom] = index[kto];
   index[rfrom] = tmp;
-}
-
-
-/// Position::undo_ep_move() is a private method used to unmake an en passant
-/// capture. It is called from the main Position::undo_move function.
-
-void Position::undo_ep_move(Move m) {
-
-  assert(move_is_ok(m));
-  assert(move_is_ep(m));
-
-  // When we have arrived here, some work has already been done by
-  // Position::undo_move. In particular, the side to move has been switched,
-  // so the code below is correct.
-  Color us = side_to_move();
-  Color them = opposite_color(us);
-  Square from = move_from(m);
-  Square to = move_to(m);
-  Square capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
-
-  assert(to == st->previous->epSquare);
-  assert(relative_rank(us, to) == RANK_6);
-  assert(piece_on(to) == piece_of_color_and_type(us, PAWN));
-  assert(piece_on(from) == EMPTY);
-  assert(piece_on(capsq) == EMPTY);
-
-  // Restore captured pawn
-  set_bit(&(byColorBB[them]), capsq);
-  set_bit(&(byTypeBB[PAWN]), capsq);
-  set_bit(&(byTypeBB[0]), capsq);
-  board[capsq] = piece_of_color_and_type(them, PAWN);
-
-  // Move capturing pawn back to source square
-  Bitboard move_bb = make_move_bb(to, from);
-  do_move_bb(&(byColorBB[us]), move_bb);
-  do_move_bb(&(byTypeBB[PAWN]), move_bb);
-  do_move_bb(&(byTypeBB[0]), move_bb);
-  board[to] = EMPTY;
-  board[from] = piece_of_color_and_type(us, PAWN);
-
-  // Update piece list
-  pieceList[us][PAWN][index[to]] = from;
-  index[from] = index[to];
-  pieceList[them][PAWN][pieceCount[them][PAWN]] = capsq;
-  index[capsq] = pieceCount[them][PAWN];
-
-  // Update piece count
-  pieceCount[them][PAWN]++;
 }
 
 
