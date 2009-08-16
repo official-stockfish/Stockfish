@@ -310,10 +310,9 @@ private:
   void allow_ooo(Color c);
 
   // Helper functions for doing and undoing moves
-  void do_capture_move(PieceType capture, Color them, Square to);
+  void do_capture_move(PieceType capture, Color them, Square to, bool ep);
   void do_castle_move(Move m);
   void do_promotion_move(Move m);
-  void do_ep_move(Move m);
   void undo_castle_move(Move m);
   void undo_promotion_move(Move m);
   void undo_ep_move(Move m);
