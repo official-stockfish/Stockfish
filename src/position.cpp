@@ -1042,27 +1042,48 @@ void Position::undo_move(Move m) {
 
   if (move_is_castle(m))
       undo_castle_move(m);
-  else if (move_is_promotion(m))
-      undo_promotion_move(m);
   else if (move_is_ep(m))
       undo_ep_move(m);
   else
   {
-      Color us, them;
-      Square from, to;
-      PieceType piece;
+      Color us = side_to_move();
+      Color them = opposite_color(us);
+      Square from = move_from(m);
+      Square to = move_to(m);
+      bool pm = move_is_promotion(m);
 
-      us = side_to_move();
-      them = opposite_color(us);
-      from = move_from(m);
-      to = move_to(m);
+      PieceType piece = type_of_piece_on(to);
 
-      assert(piece_on(from) == EMPTY);
+      assert(square_is_empty(from));
       assert(color_of_piece_on(to) == us);
+      assert(!pm || relative_rank(us, to) == RANK_8);
+
+      if (pm)
+      {
+          PieceType promotion = move_promotion_piece(m);
+
+          assert(piece_on(to) == piece_of_color_and_type(us, promotion));
+          assert(promotion >= KNIGHT && promotion <= QUEEN);
+
+          // Replace promoted piece with a pawn
+          clear_bit(&(byTypeBB[promotion]), to);
+          set_bit(&(byTypeBB[PAWN]), to);
+
+          // Update piece list replacing promotion piece with a pawn
+          pieceList[us][promotion][index[to]] = pieceList[us][promotion][pieceCount[us][promotion] - 1];
+          index[pieceList[us][promotion][index[to]]] = index[to];
+          pieceList[us][PAWN][pieceCount[us][PAWN]] = to;
+          index[to] = pieceCount[us][PAWN];
+
+          // Update piece counts
+          pieceCount[us][promotion]--;
+          pieceCount[us][PAWN]++;
+
+          piece = PAWN;
+      }
 
       // Put the piece back at the source square
       Bitboard move_bb = make_move_bb(to, from);
-      piece = type_of_piece_on(to);
       do_move_bb(&(byColorBB[us]), move_bb);
       do_move_bb(&(byTypeBB[piece]), move_bb);
       do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
@@ -1161,76 +1182,6 @@ void Position::undo_castle_move(Move m) {
   int tmp = index[rto];  // Necessary because we may have rto == kfrom in FRC.
   index[kfrom] = index[kto];
   index[rfrom] = tmp;
-}
-
-
-/// Position::undo_promotion_move() is a private method used to unmake a
-/// promotion move. It is called from the main Position::do_move
-/// function.
-
-void Position::undo_promotion_move(Move m) {
-
-  Color us, them;
-  Square from, to;
-  PieceType promotion;
-
-  assert(move_is_ok(m));
-  assert(move_is_promotion(m));
-
-  // When we have arrived here, some work has already been done by
-  // Position::undo_move.  In particular, the side to move has been switched,
-  // so the code below is correct.
-  us = side_to_move();
-  them = opposite_color(us);
-  from = move_from(m);
-  to = move_to(m);
-
-  assert(relative_rank(us, to) == RANK_8);
-  assert(piece_on(from) == EMPTY);
-
-  // Remove promoted piece
-  promotion = move_promotion_piece(m);
-  assert(piece_on(to)==piece_of_color_and_type(us, promotion));
-  assert(promotion >= KNIGHT && promotion <= QUEEN);
-  clear_bit(&(byColorBB[us]), to);
-  clear_bit(&(byTypeBB[promotion]), to);
-  clear_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
-
-  // Insert pawn at source square
-  set_bit(&(byColorBB[us]), from);
-  set_bit(&(byTypeBB[PAWN]), from);
-  set_bit(&(byTypeBB[0]), from); // HACK: byTypeBB[0] == occupied squares
-  board[from] = piece_of_color_and_type(us, PAWN);
-
-  // Update piece list
-  pieceList[us][PAWN][pieceCount[us][PAWN]] = from;
-  index[from] = pieceCount[us][PAWN];
-  pieceList[us][promotion][index[to]] =
-    pieceList[us][promotion][pieceCount[us][promotion] - 1];
-  index[pieceList[us][promotion][index[to]]] = index[to];
-
-  // Update piece counts
-  pieceCount[us][promotion]--;
-  pieceCount[us][PAWN]++;
-
-  if (st->capture)
-  {
-      assert(st->capture != KING);
-
-      // Insert captured piece:
-      set_bit(&(byColorBB[them]), to);
-      set_bit(&(byTypeBB[st->capture]), to);
-      set_bit(&(byTypeBB[0]), to); // HACK: byTypeBB[0] == occupied squares
-      board[to] = piece_of_color_and_type(them, st->capture);
-
-      // Update piece list
-      pieceList[them][st->capture][pieceCount[them][st->capture]] = to;
-      index[to] = pieceCount[them][st->capture];
-
-      // Update piece count
-      pieceCount[them][st->capture]++;
-  } else
-      board[to] = EMPTY;
 }
 
 
