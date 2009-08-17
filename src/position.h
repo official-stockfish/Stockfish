@@ -342,7 +342,7 @@ private:
 
   // Piece lists
   Square pieceList[2][8][16]; // [color][pieceType][index]
-  int index[64];
+  int index[64]; // [square]
 
   // Other info
   Square kingSquare[2];

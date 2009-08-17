@@ -710,7 +710,6 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   };
 
   memcpy(&newSt, st, sizeof(ReducedStateInfo));
-  newSt.capture = NO_PIECE_TYPE;
   newSt.previous = st;
   st = &newSt;
 
@@ -788,9 +787,11 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   if (pt == KING)
       kingSquare[us] = to;
 
-  // Update piece lists
-  pieceList[us][pt][index[from]] = to;
+  // Update piece lists, note that index[from] is not updated and
+  // becomes stale. This works as long as index[] is accessed just
+  // by known occupied squares.
   index[to] = index[from];
+  pieceList[us][pt][index[to]] = to;
 
   // If the moving piece was a pawn do some special extra work
   if (pt == PAWN)
@@ -832,11 +833,13 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       pieceCount[us][PAWN]--;
       pieceCount[us][promotion]++;
 
-      // Update piece lists
-      pieceList[us][PAWN][index[from]] = pieceList[us][PAWN][pieceCount[us][PAWN]];
-      index[pieceList[us][PAWN][index[from]]] = index[from];
-      pieceList[us][promotion][pieceCount[us][promotion] - 1] = to;
+      // Update piece lists, move the last pawn at index[to] position
+      // and shrink the list. Add a new promotion piece to the list.
+      Square lastPawnSquare = pieceList[us][PAWN][pieceCount[us][PAWN]];
+      index[lastPawnSquare] = index[to];
+      pieceList[us][PAWN][index[lastPawnSquare]] = lastPawnSquare;
       index[to] = pieceCount[us][promotion] - 1;
+      pieceList[us][promotion][index[to]] = to;
 
       // Partially revert hash keys update
       key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
@@ -902,7 +905,6 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
         assert(to == st->epSquare);
         assert(relative_rank(opposite_color(them), to) == RANK_6);
         assert(piece_on(to) == EMPTY);
-        assert(piece_on(from) == piece_of_color_and_type(opposite_color(them), PAWN));
         assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
         board[capsq] = EMPTY;
@@ -934,9 +936,10 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
     // Update piece count
     pieceCount[them][capture]--;
 
-    // Update piece list
-    pieceList[them][capture][index[capsq]] = pieceList[them][capture][pieceCount[them][capture]];
-    index[pieceList[them][capture][index[capsq]]] = index[capsq];
+    // Update piece list, move the last piece at index[capsq] position
+    Square lastPieceSquare = pieceList[them][capture][pieceCount[them][capture]];
+    index[lastPieceSquare] = index[capsq];
+    pieceList[them][capture][index[lastPieceSquare]] = lastPieceSquare;
 
     // Reset rule 50 counter
     st->rule50 = 0;
@@ -956,6 +959,9 @@ void Position::do_castle_move(Move m) {
 
   Color us = side_to_move();
   Color them = opposite_color(us);
+
+  // Reset capture field
+  st->capture = NO_PIECE_TYPE;
 
   // Find source squares for king and rook
   Square kfrom = move_from(m);
