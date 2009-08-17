@@ -696,6 +696,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   assert(is_ok());
   assert(move_is_ok(m));
 
+  Bitboard key = st->key;
+
   // Copy some fields of old state to our new StateInfo object except the
   // ones which are recalculated from scratch anyway, then switch our state
   // pointer to point to the new, ready to be updated, state.
@@ -714,177 +716,180 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[gamePly] = st->key;
+  history[gamePly] = key;
+  gamePly++;
+
+  // Update side to move
+  key ^= zobSideToMove;
 
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
   st->rule50++;
 
-  // Update side to move
-  st->key ^= zobSideToMove;
-
   if (move_is_castle(m))
+  {
+      st->key = key;
       do_castle_move(m);
+      return;
+  }
+
+  Color us = side_to_move();
+  Color them = opposite_color(us);
+  Square from = move_from(m);
+  Square to = move_to(m);
+  bool ep = move_is_ep(m);
+  bool pm = move_is_promotion(m);
+
+  Piece piece = piece_on(from);
+  PieceType pt = type_of_piece(piece);
+
+  assert(color_of_piece_on(from) == us);
+  assert(color_of_piece_on(to) == them || square_is_empty(to));
+  assert(!(ep || pm) || piece == piece_of_color_and_type(us, PAWN));
+  assert(!pm || relative_rank(us, to) == RANK_8);
+
+  st->capture = ep ? PAWN : type_of_piece_on(to);
+
+  if (st->capture)
+      do_capture_move(key, st->capture, them, to, ep);
+
+  // Update hash key
+  key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
+
+  // Reset en passant square
+  if (st->epSquare != SQ_NONE)
+  {
+      key ^= zobEp[st->epSquare];
+      st->epSquare = SQ_NONE;
+  }
+
+  // Update castle rights, try to shortcut a common case
+  if ((castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
+  {
+      key ^= zobCastle[st->castleRights];
+      st->castleRights &= castleRightsMask[from];
+      st->castleRights &= castleRightsMask[to];
+      key ^= zobCastle[st->castleRights];
+  }
+
+  // Prefetch TT access as soon as we know key is updated
+  TT.prefetch(key);
+
+  // Move the piece
+  Bitboard move_bb = make_move_bb(from, to);
+  do_move_bb(&(byColorBB[us]), move_bb);
+  do_move_bb(&(byTypeBB[pt]), move_bb);
+  do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
+
+  board[to] = board[from];
+  board[from] = EMPTY;
+
+  // If the moving piece was a king, update the king square
+  if (pt == KING)
+      kingSquare[us] = to;
+
+  // Update piece lists
+  pieceList[us][pt][index[from]] = to;
+  index[to] = index[from];
+
+  // If the moving piece was a pawn do some special extra work
+  if (pt == PAWN)
+  {
+      // Reset rule 50 draw counter
+      st->rule50 = 0;
+
+      // Update pawn hash key
+      st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
+
+      // Set en passant square, only if moved pawn can be captured
+      if (abs(int(to) - int(from)) == 16)
+      {
+          if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
+              || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
+              {
+              st->epSquare = Square((int(from) + int(to)) / 2);
+              key ^= zobEp[st->epSquare];
+          }
+      }
+  }
+
+  // Update incremental scores
+  st->mgValue += pst_delta<MidGame>(piece, from, to);
+  st->egValue += pst_delta<EndGame>(piece, from, to);
+
+  if (pm)
+  {
+      PieceType promotion = move_promotion_piece(m);
+
+      assert(promotion >= KNIGHT && promotion <= QUEEN);
+
+      // Insert promoted piece instead of pawn
+      clear_bit(&(byTypeBB[PAWN]), to);
+      set_bit(&(byTypeBB[promotion]), to);
+      board[to] = piece_of_color_and_type(us, promotion);
+
+      // Update piece counts
+      pieceCount[us][PAWN]--;
+      pieceCount[us][promotion]++;
+
+      // Update piece lists
+      pieceList[us][PAWN][index[from]] = pieceList[us][PAWN][pieceCount[us][PAWN]];
+      index[pieceList[us][PAWN][index[from]]] = index[from];
+      pieceList[us][promotion][pieceCount[us][promotion] - 1] = to;
+      index[to] = pieceCount[us][promotion] - 1;
+
+      // Partially revert hash keys update
+      key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
+      st->pawnKey ^= zobrist[us][PAWN][to];
+
+      // Update material key
+      st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
+      st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
+
+      // Partially revert and update incremental scores
+      st->mgValue -= pst<MidGame>(us, PAWN, to);
+      st->mgValue += pst<MidGame>(us, promotion, to);
+      st->egValue -= pst<EndGame>(us, PAWN, to);
+      st->egValue += pst<EndGame>(us, promotion, to);
+
+      // Update material
+      st->npMaterial[us] += piece_value_midgame(promotion);
+  }
+
+  // Update the key with the final value
+  st->key = key;
+
+  // Update checkers bitboard, piece must be already moved
+  if (ep | pm)
+      st->checkersBB = attacks_to(king_square(them), us);
   else
   {
-    Color us = side_to_move();
-    Color them = opposite_color(us);
-    Square from = move_from(m);
-    Square to = move_to(m);
-    bool ep = move_is_ep(m);
-    bool pm = move_is_promotion(m);
-
-    Piece piece = piece_on(from);
-    PieceType pt = type_of_piece(piece);
-
-    assert(color_of_piece_on(from) == us);
-    assert(color_of_piece_on(to) == them || square_is_empty(to));
-    assert(!(ep || pm) || piece == piece_of_color_and_type(us, PAWN));
-    assert(!pm || relative_rank(us, to) == RANK_8);
-
-    st->capture = ep ? PAWN : type_of_piece_on(to);
-
-    if (st->capture)
-        do_capture_move(st->capture, them, to, ep);
-
-    // Update hash key
-    st->key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
-
-    // Reset en passant square
-    if (st->epSquare != SQ_NONE)
-    {
-        st->key ^= zobEp[st->epSquare];
-        st->epSquare = SQ_NONE;
-    }
-
-    // Update castle rights, try to shortcut a common case
-    if ((castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
-    {
-        st->key ^= zobCastle[st->castleRights];
-        st->castleRights &= castleRightsMask[from];
-        st->castleRights &= castleRightsMask[to];
-        st->key ^= zobCastle[st->castleRights];
-    }
-
-    // Prefetch TT access as soon as we know key is updated
-    TT.prefetch(st->key);
-
-    // Move the piece
-    Bitboard move_bb = make_move_bb(from, to);
-    do_move_bb(&(byColorBB[us]), move_bb);
-    do_move_bb(&(byTypeBB[pt]), move_bb);
-    do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
-
-    board[to] = board[from];
-    board[from] = EMPTY;
-
-    // If the moving piece was a pawn do some special extra work
-    if (pt == PAWN)
-    {
-        // Reset rule 50 draw counter
-        st->rule50 = 0;
-
-        // Update pawn hash key
-        st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
-
-        // Set en passant square, only if moved pawn can be captured
-        if (abs(int(to) - int(from)) == 16)
-        {
-            if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
-                || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
-            {
-                st->epSquare = Square((int(from) + int(to)) / 2);
-                st->key ^= zobEp[st->epSquare];
-            }
-        }
-    }
-
-    // Update incremental scores
-    st->mgValue += pst_delta<MidGame>(piece, from, to);
-    st->egValue += pst_delta<EndGame>(piece, from, to);
-
-    // If the moving piece was a king, update the king square
-    if (pt == KING)
-        kingSquare[us] = to;
-
-    // Update piece lists
-    pieceList[us][pt][index[from]] = to;
-    index[to] = index[from];
-
-    if (pm)
-    {
-        PieceType promotion = move_promotion_piece(m);
-
-        assert(promotion >= KNIGHT && promotion <= QUEEN);
-
-        // Insert promoted piece instead of pawn
-        clear_bit(&(byTypeBB[PAWN]), to);
-        set_bit(&(byTypeBB[promotion]), to);
-        board[to] = piece_of_color_and_type(us, promotion);
-
-        // Partially revert hash keys update
-        st->key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
-        st->pawnKey ^= zobrist[us][PAWN][to];
-
-        // Update material key
-        st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
-        st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
-
-        // Update piece counts
-        pieceCount[us][PAWN]--;
-        pieceCount[us][promotion]++;
-
-        // Update piece lists
-        pieceList[us][PAWN][index[from]] = pieceList[us][PAWN][pieceCount[us][PAWN]];
-        index[pieceList[us][PAWN][index[from]]] = index[from];
-        pieceList[us][promotion][pieceCount[us][promotion] - 1] = to;
-        index[to] = pieceCount[us][promotion] - 1;
-
-        // Partially revert and update incremental scores
-        st->mgValue -= pst<MidGame>(us, PAWN, to);
-        st->mgValue += pst<MidGame>(us, promotion, to);
-        st->egValue -= pst<EndGame>(us, PAWN, to);
-        st->egValue += pst<EndGame>(us, promotion, to);
-
-        // Update material
-        st->npMaterial[us] += piece_value_midgame(promotion);
-    }
-
-    // Update checkers bitboard, piece must be already moved
-    if (ep || pm)
-        st->checkersBB = attacks_to(king_square(them), us);
-    else
-    {
-        st->checkersBB = EmptyBoardBB; // FIXME EP ?
-        Square ksq = king_square(them);
-        switch (pt)
-        {
-        case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-        case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
-        case BISHOP: update_checkers<BISHOP>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
-        case ROOK:   update_checkers<ROOK>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-        case QUEEN:  update_checkers<QUEEN>(&(st->checkersBB), ksq, from, to, dcCandidates);  break;
-        case KING:   update_checkers<KING>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-        default: assert(false); break;
-        }
-    }
+      st->checkersBB = EmptyBoardBB;
+      Square ksq = king_square(them);
+      switch (pt)
+      {
+      case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+      case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
+      case BISHOP: update_checkers<BISHOP>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
+      case ROOK:   update_checkers<ROOK>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+      case QUEEN:  update_checkers<QUEEN>(&(st->checkersBB), ksq, from, to, dcCandidates);  break;
+      case KING:   update_checkers<KING>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+      default: assert(false); break;
+      }
   }
 
   // Finish
   sideToMove = opposite_color(sideToMove);
-  gamePly++;
 
   st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
-
-  assert(is_ok());
 }
 
 
 /// Position::do_capture_move() is a private method used to update captured
 /// piece info. It is called from the main Position::do_move function.
 
-void Position::do_capture_move(PieceType capture, Color them, Square to, bool ep) {
+void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Square to, bool ep) {
 
     assert(capture != KING);
 
@@ -897,7 +902,7 @@ void Position::do_capture_move(PieceType capture, Color them, Square to, bool ep
         assert(to == st->epSquare);
         assert(relative_rank(opposite_color(them), to) == RANK_6);
         assert(piece_on(to) == EMPTY);
-        //assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
+        assert(piece_on(from) == piece_of_color_and_type(opposite_color(them), PAWN));
         assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
         board[capsq] = EMPTY;
@@ -906,10 +911,10 @@ void Position::do_capture_move(PieceType capture, Color them, Square to, bool ep
     // Remove captured piece
     clear_bit(&(byColorBB[them]), capsq);
     clear_bit(&(byTypeBB[capture]), capsq);
-    clear_bit(&(byTypeBB[0]), capsq); // HACK: byTypeBB[0] == occupied squares
+    clear_bit(&(byTypeBB[0]), capsq);
 
     // Update hash key
-    st->key ^= zobrist[them][capture][capsq];
+    key ^= zobrist[them][capture][capsq];
 
     // If the captured piece was a pawn, update pawn hash key
     if (capture == PAWN)
@@ -1025,6 +1030,12 @@ void Position::do_castle_move(Move m) {
 
   // Update checkers BB
   st->checkersBB = attacks_to(king_square(them), us);
+
+  // Finish
+  sideToMove = opposite_color(sideToMove);
+
+  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
+  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 }
 
 
@@ -1040,94 +1051,94 @@ void Position::undo_move(Move m) {
   sideToMove = opposite_color(sideToMove);
 
   if (move_is_castle(m))
-      undo_castle_move(m);
-  else
   {
-      Color us = side_to_move();
-      Color them = opposite_color(us);
-      Square from = move_from(m);
-      Square to = move_to(m);
-      bool ep = move_is_ep(m);
-      bool pm = move_is_promotion(m);
+      undo_castle_move(m);
+      return;
+  }
 
-      PieceType piece = type_of_piece_on(to);
+  Color us = side_to_move();
+  Color them = opposite_color(us);
+  Square from = move_from(m);
+  Square to = move_to(m);
+  bool ep = move_is_ep(m);
+  bool pm = move_is_promotion(m);
 
-      assert(square_is_empty(from));
-      assert(color_of_piece_on(to) == us);
-      assert(!pm || relative_rank(us, to) == RANK_8);
-      assert(!ep || to == st->previous->epSquare);
-      assert(!ep || relative_rank(us, to) == RANK_6);
-      assert(!ep || piece_on(to) == piece_of_color_and_type(us, PAWN));
+  PieceType pt = type_of_piece_on(to);
 
-      if (pm)
-      {
-          PieceType promotion = move_promotion_piece(m);
+  assert(square_is_empty(from));
+  assert(color_of_piece_on(to) == us);
+  assert(!pm || relative_rank(us, to) == RANK_8);
+  assert(!ep || to == st->previous->epSquare);
+  assert(!ep || relative_rank(us, to) == RANK_6);
+  assert(!ep || piece_on(to) == piece_of_color_and_type(us, PAWN));
 
-          assert(piece_on(to) == piece_of_color_and_type(us, promotion));
-          assert(promotion >= KNIGHT && promotion <= QUEEN);
+  if (pm)
+  {
+      PieceType promotion = move_promotion_piece(m);
+      pt = PAWN;
 
-          // Replace promoted piece with a pawn
-          clear_bit(&(byTypeBB[promotion]), to);
-          set_bit(&(byTypeBB[PAWN]), to);
+      assert(promotion >= KNIGHT && promotion <= QUEEN);
+      assert(piece_on(to) == piece_of_color_and_type(us, promotion));
 
-          // Update piece list replacing promotion piece with a pawn
-          pieceList[us][promotion][index[to]] = pieceList[us][promotion][pieceCount[us][promotion] - 1];
-          index[pieceList[us][promotion][index[to]]] = index[to];
-          pieceList[us][PAWN][pieceCount[us][PAWN]] = to;
-          index[to] = pieceCount[us][PAWN];
+      // Replace promoted piece with a pawn
+      clear_bit(&(byTypeBB[promotion]), to);
+      set_bit(&(byTypeBB[PAWN]), to);
 
-          // Update piece counts
-          pieceCount[us][promotion]--;
-          pieceCount[us][PAWN]++;
+      // Update piece counts
+      pieceCount[us][promotion]--;
+      pieceCount[us][PAWN]++;
 
-          piece = PAWN;
-      }
+      // Update piece list replacing promotion piece with a pawn
+      pieceList[us][promotion][index[to]] = pieceList[us][promotion][pieceCount[us][promotion]];
+      index[pieceList[us][promotion][index[to]]] = index[to];
+      pieceList[us][PAWN][pieceCount[us][PAWN] - 1] = to;
+      index[to] = pieceCount[us][PAWN] - 1;
+  }
 
-      // Put the piece back at the source square
-      Bitboard move_bb = make_move_bb(to, from);
-      do_move_bb(&(byColorBB[us]), move_bb);
-      do_move_bb(&(byTypeBB[piece]), move_bb);
-      do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
-      board[from] = piece_of_color_and_type(us, piece);
-      board[to] = EMPTY;
+  // Put the piece back at the source square
+  Bitboard move_bb = make_move_bb(to, from);
+  do_move_bb(&(byColorBB[us]), move_bb);
+  do_move_bb(&(byTypeBB[pt]), move_bb);
+  do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
-      // If the moving piece was a king, update the king square
-      if (piece == KING)
-          kingSquare[us] = from;
+  board[from] = piece_of_color_and_type(us, pt);
+  board[to] = EMPTY;
+
+  // If the moving piece was a king, update the king square
+  if (pt == KING)
+      kingSquare[us] = from;
+
+  // Update piece list
+  pieceList[us][pt][index[to]] = from;
+  index[from] = index[to];
+
+  if (st->capture)
+  {
+      Square capsq = to;
+
+      if (ep)
+          capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
+
+      assert(st->capture != KING);
+      assert(!ep || square_is_empty(capsq));
+
+      // Restore the captured piece
+      set_bit(&(byColorBB[them]), capsq);
+      set_bit(&(byTypeBB[st->capture]), capsq);
+      set_bit(&(byTypeBB[0]), capsq);
+
+      board[capsq] = piece_of_color_and_type(them, st->capture);
 
       // Update piece list
-      pieceList[us][piece][index[to]] = from;
-      index[from] = index[to];
+      pieceList[them][st->capture][pieceCount[them][st->capture]] = capsq;
+      index[capsq] = pieceCount[them][st->capture];
 
-      if (st->capture)
-      {
-          Square capsq = to;
-
-          if (ep)
-              capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
-
-          assert(st->capture != KING);
-          assert(!ep || square_is_empty(capsq));
-
-          // Restore the captured piece
-          set_bit(&(byColorBB[them]), capsq);
-          set_bit(&(byTypeBB[st->capture]), capsq);
-          set_bit(&(byTypeBB[0]), capsq);
-          board[capsq] = piece_of_color_and_type(them, st->capture);
-
-          // Update piece list
-          pieceList[them][st->capture][pieceCount[them][st->capture]] = capsq;
-          index[capsq] = pieceCount[them][st->capture];
-
-          // Update piece count
-          pieceCount[them][st->capture]++;
-      }
+      // Update piece count
+      pieceCount[them][st->capture]++;
   }
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
-
-  assert(is_ok());
 }
 
 
@@ -1189,6 +1200,9 @@ void Position::undo_castle_move(Move m) {
   int tmp = index[rto];  // Necessary because we may have rto == kfrom in FRC.
   index[kfrom] = index[kto];
   index[rfrom] = tmp;
+
+  // Finally point our state pointer back to the previous state
+  st = st->previous;
 }
 
 

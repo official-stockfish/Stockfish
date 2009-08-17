@@ -310,7 +310,7 @@ private:
   void allow_ooo(Color c);
 
   // Helper functions for doing and undoing moves
-  void do_capture_move(PieceType capture, Color them, Square to, bool ep);
+  void do_capture_move(Bitboard& key, PieceType capture, Color them, Square to, bool ep);
   void do_castle_move(Move m);
   void undo_castle_move(Move m);
   void find_checkers();
