@@ -1464,19 +1464,17 @@ void Position::clear() {
   memset(st, 0, sizeof(StateInfo));
   st->epSquare = SQ_NONE;
 
-  memset(index, 0, sizeof(int) * 64);
-  memset(byColorBB, 0, sizeof(Bitboard) * 2);
+  memset(byColorBB,  0, sizeof(Bitboard) * 2);
+  memset(byTypeBB,   0, sizeof(Bitboard) * 8);
+  memset(pieceCount, 0, sizeof(int) * 2 * 8);
+  memset(index,      0, sizeof(int) * 64);
 
   for (int i = 0; i < 64; i++)
       board[i] = EMPTY;
 
   for (int i = 0; i < 7; i++)
-  {
-      byTypeBB[i] = EmptyBoardBB;
-      pieceCount[0][i] = pieceCount[1][i] = 0;
       for (int j = 0; j < 8; j++)
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
-  }
 
   sideToMove = WHITE;
   gamePly = 0;
