@@ -763,7 +763,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   }
 
   // Update castle rights, try to shortcut a common case
-  if ((castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
+  int cm = castleRightsMask[from] & castleRightsMask[to];
+  if (cm != ALL_CASTLES && ((cm & st->castleRights) != st->castleRights))
   {
       key ^= zobCastle[st->castleRights];
       st->castleRights &= castleRightsMask[from];
@@ -805,9 +806,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       // Set en passant square, only if moved pawn can be captured
       if (abs(int(to) - int(from)) == 16)
       {
-          if (   (us == WHITE && (pawn_attacks(WHITE, from + DELTA_N) & pawns(BLACK)))
-              || (us == BLACK && (pawn_attacks(BLACK, from + DELTA_S) & pawns(WHITE))))
-              {
+          if (pawn_attacks(us, from + (us == WHITE ? DELTA_N : DELTA_S)) & pawns(them))
+          {
               st->epSquare = Square((int(from) + int(to)) / 2);
               key ^= zobEp[st->epSquare];
           }
@@ -818,7 +818,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   st->mgValue += pst_delta<MidGame>(piece, from, to);
   st->egValue += pst_delta<EndGame>(piece, from, to);
 
-  if (pm)
+  if (pm) // promotion ?
   {
       PieceType promotion = move_promotion_piece(m);
 
@@ -898,7 +898,7 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
 
     Square capsq = to;
 
-    if (ep)
+    if (ep) // en passant ?
     {
         capsq = (them == BLACK)? (to - DELTA_N) : (to - DELTA_S);
 
@@ -1005,7 +1005,7 @@ void Position::do_castle_move(Move m) {
   // Update piece lists
   pieceList[us][KING][index[kfrom]] = kto;
   pieceList[us][ROOK][index[rfrom]] = rto;
-  int tmp = index[rfrom];
+  int tmp = index[rfrom]; // In Chess960 could be rto == kfrom
   index[kto] = index[kfrom];
   index[rto] = tmp;
 
@@ -1078,7 +1078,7 @@ void Position::undo_move(Move m) {
   assert(!ep || relative_rank(us, to) == RANK_6);
   assert(!ep || piece_on(to) == piece_of_color_and_type(us, PAWN));
 
-  if (pm)
+  if (pm) // promotion ?
   {
       PieceType promotion = move_promotion_piece(m);
       pt = PAWN;
@@ -1095,10 +1095,11 @@ void Position::undo_move(Move m) {
       pieceCount[us][PAWN]++;
 
       // Update piece list replacing promotion piece with a pawn
-      pieceList[us][promotion][index[to]] = pieceList[us][promotion][pieceCount[us][promotion]];
-      index[pieceList[us][promotion][index[to]]] = index[to];
-      pieceList[us][PAWN][pieceCount[us][PAWN] - 1] = to;
+      Square lastPromotionSquare = pieceList[us][promotion][pieceCount[us][promotion]];
+      index[lastPromotionSquare] = index[to];
+      pieceList[us][promotion][index[lastPromotionSquare]] = lastPromotionSquare;
       index[to] = pieceCount[us][PAWN] - 1;
+      pieceList[us][PAWN][index[to]] = to;
   }
 
   // Put the piece back at the source square
@@ -1115,8 +1116,8 @@ void Position::undo_move(Move m) {
       kingSquare[us] = from;
 
   // Update piece list
-  pieceList[us][pt][index[to]] = from;
   index[from] = index[to];
+  pieceList[us][pt][index[from]] = from;
 
   if (st->capture)
   {
@@ -1135,12 +1136,12 @@ void Position::undo_move(Move m) {
 
       board[capsq] = piece_of_color_and_type(them, st->capture);
 
-      // Update piece list
-      pieceList[them][st->capture][pieceCount[them][st->capture]] = capsq;
-      index[capsq] = pieceCount[them][st->capture];
-
       // Update piece count
       pieceCount[them][st->capture]++;
+
+      // Update piece list, add a new captured piece in capsq square
+      index[capsq] = pieceCount[them][st->capture] - 1;
+      pieceList[them][st->capture][index[capsq]] = capsq;
   }
 
   // Finally point our state pointer back to the previous state
@@ -1203,7 +1204,7 @@ void Position::undo_castle_move(Move m) {
   // Update piece lists
   pieceList[us][KING][index[kto]] = kfrom;
   pieceList[us][ROOK][index[rto]] = rfrom;
-  int tmp = index[rto];  // Necessary because we may have rto == kfrom in FRC.
+  int tmp = index[rto];  // In Chess960 could be rto == kfrom
   index[kfrom] = index[kto];
   index[rfrom] = tmp;
 
@@ -1224,10 +1225,10 @@ void Position::do_null_move(StateInfo& backupSt) {
   // StateInfo object.
   // Note that differently from normal case here backupSt is actually used as
   // a backup storage not as a new state to be used.
+  backupSt.key      = st->key;
   backupSt.epSquare = st->epSquare;
-  backupSt.key = st->key;
-  backupSt.mgValue = st->mgValue;
-  backupSt.egValue = st->egValue;
+  backupSt.mgValue  = st->mgValue;
+  backupSt.egValue  = st->egValue;
   backupSt.previous = st->previous;
   st->previous = &backupSt;
 
@@ -1241,6 +1242,7 @@ void Position::do_null_move(StateInfo& backupSt) {
 
   st->key ^= zobSideToMove;
   TT.prefetch(st->key);
+
   sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;
   st->rule50++;
@@ -1248,8 +1250,6 @@ void Position::do_null_move(StateInfo& backupSt) {
 
   st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
-
-  assert(is_ok());
 }
 
 
@@ -1261,18 +1261,17 @@ void Position::undo_null_move() {
   assert(!is_check());
 
   // Restore information from the our backup StateInfo object
-  st->epSquare = st->previous->epSquare;
-  st->key = st->previous->key;
-  st->mgValue = st->previous->mgValue;
-  st->egValue = st->previous->egValue;
-  st->previous = st->previous->previous;
+  StateInfo* backupSt = st->previous;
+  st->key      = backupSt->key;
+  st->epSquare = backupSt->epSquare;
+  st->mgValue  = backupSt->mgValue;
+  st->egValue  = backupSt->egValue;
+  st->previous = backupSt->previous;
 
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
   st->rule50--;
   gamePly--;
-
-  assert(is_ok());
 }
 
 
