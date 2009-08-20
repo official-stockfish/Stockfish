@@ -886,6 +886,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+
+  assert(is_ok());
 }
 
 
@@ -953,7 +955,6 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
 
 void Position::do_castle_move(Move m) {
 
-  assert(is_ok());
   assert(move_is_ok(m));
   assert(move_is_castle(m));
 
@@ -1042,6 +1043,8 @@ void Position::do_castle_move(Move m) {
 
   st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
   st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+
+  assert(is_ok());
 }
 
 
@@ -1146,6 +1149,8 @@ void Position::undo_move(Move m) {
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
+
+  assert(is_ok());
 }
 
 
@@ -1210,6 +1215,8 @@ void Position::undo_castle_move(Move m) {
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
+
+  assert(is_ok());
 }
 
 

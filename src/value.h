@@ -96,7 +96,7 @@ const Value PieceValueEndgame[17] = {
 /// Bonus for having the side to move (modified by Joona Kiiski)
 
 const Value TempoValueMidgame = Value(48);
-const Value TempoValueEndgame = Value(21);
+const Value TempoValueEndgame = Value(22);
 
 
 ////
