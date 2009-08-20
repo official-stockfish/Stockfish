@@ -829,6 +829,10 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       set_bit(&(byTypeBB[promotion]), to);
       board[to] = piece_of_color_and_type(us, promotion);
 
+      // Update material key
+      st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
+      st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
+
       // Update piece counts
       pieceCount[us][PAWN]--;
       pieceCount[us][promotion]++;
@@ -844,10 +848,6 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       // Partially revert hash keys update
       key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
       st->pawnKey ^= zobrist[us][PAWN][to];
-
-      // Update material key
-      st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
-      st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
 
       // Partially revert and update incremental scores
       st->mgValue -= pst<MidGame>(us, PAWN, to);
