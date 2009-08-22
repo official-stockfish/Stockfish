@@ -40,15 +40,15 @@ namespace {
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
   const Value RedundantRookPenalty  = Value(554);
-  const int LinearCoefficients[6]   = { 1709, -137, -1185, -166, 141, 59 };
+  const int LinearCoefficients[6]   = { 1617, -162, -1172, -190, 105, 26 };
 
   const int QuadraticCoefficientsSameColor[][6] = {
-  { 0, 0, 0, 0, 0, 0 }, { 33, -6, 0, 0, 0, 0 }, { 29, 269, -12, 0, 0, 0 },
-  { 0, 19, -4, 0, 0, 0 }, { -35, -10, 40, 95, 50, 0 }, { 52, 23, 78, 144, -11, -33 } };
+  { 7, 7, 7, 7, 7, 7 }, { 39, 2, 7, 7, 7, 7 }, { 35, 271, -4, 7, 7, 7 },
+  { 7, 25, 4, 7, 7, 7 }, { -27, -2, 46, 100, 56, 7 }, { 58, 29, 83, 148, -3, -25 } };
 
   const int QuadraticCoefficientsOppositeColor[][6] = {
-  { 0, 0, 0, 0, 0, 0 }, { -5, 0, 0, 0, 0, 0 }, { -33, 23, 0, 0, 0, 0 },
-  { 17, 25, -3, 0, 0, 0 }, { 10, -2, -19, -67, 0, 0 }, { 69, 64, -41, 116, 137, 0 } };
+  { 0, 0, 0, 0, 0, 0 }, { -4, 0, 0, 0, 0, 0 }, { -31, 21, 0, 0, 0, 0 },
+  { 16, 23, -2, 0, 0, 0 }, { 9, -1, -18, -63, 0, 0 }, { 65, 60, -38, 110, 130, 0 } };
 
   // Named endgame evaluation and scaling functions, these
   // are accessed direcly and not through the function maps.
