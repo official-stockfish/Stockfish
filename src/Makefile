@@ -28,6 +28,7 @@ EXE = stockfish
 ### ==========================================================================
 GCCFLAGS = -O3 -msse
 ICCFLAGS = -fast -msse
+ICCFLAGS-OSX = -fast -mdynamic-no-pic
 
 
 ### ==========================================================================
@@ -35,6 +36,7 @@ ICCFLAGS = -fast -msse
 ### ==========================================================================
 GCCFLAGS += -DNDEBUG
 ICCFLAGS += -DNDEBUG
+ICCFLAGS-OSX += -DNDEBUG
 
 
 ### ==========================================================================
@@ -47,6 +49,7 @@ PGOBENCH = ./$(EXE) bench 32 1 10 default depth
 ### General compiler settings. Do not change
 GCCFLAGS += -g -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing
 ICCFLAGS += -g -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing -wd383,869,981,10187,10188,11505,11503
+ICCFLAGS-OSX += -g -Wall -fno-exceptions -fno-rtti -fno-strict-aliasing -wd383,869,981,10187,10188,11505,11503
 
 
 ### General linker settings. Do not change
@@ -75,6 +78,10 @@ help:
 	@echo "make osx-ppc64      >  PPC-Mac OS X 64 bit. Compiler = g++"
 	@echo "make osx-x86        >  x86-Mac OS X 32 bit. Compiler = g++"
 	@echo "make osx-x86_64     >  x86-Mac OS X 64 bit. Compiler = g++"
+	@echo "make osx-icc32      >  x86-Mac OS X 32 bit. Compiler = icpc"
+	@echo "make osx-icc64      >  x86-Mac OS X 64 bit. Compiler = icpc"
+	@echo "make osx-icc32-profile > OSX 32 bit. Compiler = icpc + automatic pgo-build"
+	@echo "make osx-icc64-profile > OSX 64 bit. Compiler = icpc + automatic pgo-build"
 	@echo "make strip          >  Strip executable"
 	@echo "make clean          >  Clean up"
 	@echo ""
@@ -157,6 +164,88 @@ osx-x86_64:
 	CXXFLAGS+='-arch x86_64' \
 	LDFLAGS+='-arch x86_64' \
 	all
+	
+osx-icc32:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS-OSX)" \
+	CXXFLAGS+='-arch i386' \
+	LDFLAGS+='-arch i386' \
+	all
+
+osx-icc64:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS-OSX)" \
+	CXXFLAGS+='-arch x86_64' \
+	LDFLAGS+='-arch x86_64' \
+	all
+
+osx-icc32-profile-make:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS-OSX)" \
+	CXXFLAGS+='-arch i386' \
+	CXXFLAGS+='-prof_gen -prof_dir ./profdir' \
+	LDFLAGS+='-arch i386' \
+	all
+
+osx-icc32-profile-use:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS-OSX)" \
+	CXXFLAGS+='-arch i386' \
+	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
+	LDFLAGS+='-arch i386' \
+	all
+
+osx-icc32-profile:
+	@rm -rf profdir
+	@mkdir profdir
+	@touch *.cpp *.h
+	$(MAKE) osx-icc32-profile-make
+	@echo ""
+	@echo "Running benchmark for pgo-build ..."
+	@$(PGOBENCH) > /dev/null
+	@echo "Benchmark finished. Build final executable now ..."
+	@echo ""
+	@touch *.cpp *.h
+	$(MAKE) osx-icc32-profile-use
+	@rm -rf profdir bench.txt
+
+osx-icc64-profile-make:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS-OSX)" \
+	CXXFLAGS+='-arch x86_64' \
+	CXXFLAGS+='-prof_gen -prof_dir ./profdir' \
+	LDFLAGS+='-arch x86_64' \
+	all
+
+osx-icc64-profile-use:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS-OSX)" \
+	CXXFLAGS+='-arch x86_64' \
+	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
+	LDFLAGS+='-arch x86_64' \
+	all
+
+osx-icc64-profile:
+	@rm -rf profdir
+	@mkdir profdir
+	@touch *.cpp *.h
+	$(MAKE) osx-icc64-profile-make
+	@echo ""
+	@echo "Running benchmark for pgo-build ..."
+	@$(PGOBENCH) > /dev/null
+	@echo "Benchmark finished. Build final executable now ..."
+	@echo ""
+	@touch *.cpp *.h
+	$(MAKE) osx-icc64-profile-use
+	@rm -rf profdir bench.txt
+
+
 
 strip:
 	strip $(EXE)
