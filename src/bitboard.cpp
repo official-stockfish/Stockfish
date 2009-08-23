@@ -297,6 +297,7 @@ void init_bitboards() {
 
 #if defined(IS_64BIT) && !defined(USE_BSFQ)
 
+CACHE_LINE_ALIGNMENT
 static const int BitTable[64] = {
   0, 1, 2, 7, 3, 13, 8, 19, 4, 25, 14, 28, 9, 34, 20, 40, 5, 17, 26, 38, 15,
   46, 29, 48, 10, 31, 35, 54, 21, 50, 41, 57, 63, 6, 12, 18, 24, 27, 33, 39,
@@ -316,6 +317,7 @@ Square pop_1st_bit(Bitboard* b) {
 
 #elif !defined(USE_BSFQ)
 
+CACHE_LINE_ALIGNMENT
 static const int BitTable[64] = {
   63, 30, 3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29, 2,
   51, 21, 43, 45, 10, 18, 47, 1, 54, 9, 57, 0, 35, 62, 31, 40, 4, 49, 5, 52,
@@ -343,23 +345,17 @@ union b_union {
 Square pop_1st_bit(Bitboard* bb) {
 
   b_union u;
-  uint32_t b;
 
   u.b = *bb;
 
   if (u.dw.l)
   {
-      b = u.dw.l;
-      *((uint32_t*)bb) = b & (b - 1);
-      b ^= (b - 1);
+      *((uint32_t*)bb) = u.dw.l & (u.dw.l - 1);
+      return Square(BitTable[((u.dw.l ^ (u.dw.l - 1)) * 0x783a9b23) >> 26]);
   }
-  else
-  {
-      b = u.dw.h;
-      *((uint32_t*)bb+1) = b & (b - 1); // Little endian only?
-      b = ~(b ^ (b - 1));
-  }
-  return Square(BitTable[(b * 0x783a9b23) >> 26]);
+
+  *((uint32_t*)bb+1) = u.dw.h & (u.dw.h - 1); // Little endian only?
+  return Square(BitTable[((~(u.dw.h ^ (u.dw.h - 1))) * 0x783a9b23) >> 26]);
 }
 
 #endif
