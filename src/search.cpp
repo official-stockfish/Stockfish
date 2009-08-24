@@ -1288,45 +1288,6 @@ namespace {
                         &&  ok_to_do_nullmove(pos)
                         &&  approximateEval >= beta - NullMoveMargin);
 
-    // Null move search
-    if (useNullMove)
-    {
-        ss[ply].currentMove = MOVE_NULL;
-
-        StateInfo st;
-        pos.do_null_move(st);
-        int R = (depth >= 5 * OnePly ? 4 : 3); // Null move dynamic reduction
-
-        Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
-
-        pos.undo_null_move();
-
-        if (nullValue >= beta)
-        {
-            if (depth < 6 * OnePly)
-                return beta;
-
-            // Do zugzwang verification search
-            Value v = search(pos, ss, beta, depth-5*OnePly, ply, false, threadID);
-            if (v >= beta)
-                return beta;
-        } else {
-            // The null move failed low, which means that we may be faced with
-            // some kind of threat. If the previous move was reduced, check if
-            // the move that refuted the null move was somehow connected to the
-            // move which was reduced. If a connection is found, return a fail
-            // low score (which will cause the reduced move to fail high in the
-            // parent node, which will trigger a re-search with full depth).
-            if (nullValue == value_mated_in(ply + 2))
-                mateThreat = true;
-
-            ss[ply].threatMove = ss[ply + 1].currentMove;
-            if (   depth < ThreatDepth
-                && ss[ply - 1].reduction
-                && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
-                return beta - 1;
-        }
-    }
     // Null move search not allowed, try razoring
     if (    !useNullMove
          && !value_is_mate(beta)
@@ -1351,7 +1312,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves.
-    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply], useNullMove);
 
     Move move, movesSearched[256];
     int moveCount = 0;
@@ -1367,6 +1328,48 @@ namespace {
            && (move = mp.get_next_move()) != MOVE_NONE
            && !thread_should_stop(threadID))
     {
+
+      // Null move search
+      if (move == MOVE_NULL)
+      {
+          ss[ply].currentMove = MOVE_NULL;
+
+          StateInfo st;
+          pos.do_null_move(st);
+          int R = (depth >= 5 * OnePly ? 4 : 3); // Null move dynamic reduction
+
+          Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
+
+          pos.undo_null_move();
+
+          if (nullValue >= beta)
+          {
+              if (depth < 6 * OnePly)
+                  return beta;
+
+              // Do zugzwang verification search
+              Value v = search(pos, ss, beta, depth-5*OnePly, ply, false, threadID);
+              if (v >= beta)
+                  return beta;
+          } else {
+              // The null move failed low, which means that we may be faced with
+              // some kind of threat. If the previous move was reduced, check if
+              // the move that refuted the null move was somehow connected to the
+              // move which was reduced. If a connection is found, return a fail
+              // low score (which will cause the reduced move to fail high in the
+              // parent node, which will trigger a re-search with full depth).
+              if (nullValue == value_mated_in(ply + 2))
+                  mateThreat = true;
+
+              ss[ply].threatMove = ss[ply + 1].currentMove;
+              if (   depth < ThreatDepth
+                  && ss[ply - 1].reduction
+                  && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
+                  return beta - 1;
+          }
+          continue;
+      }
+
       assert(move_is_ok(move));
 
       bool singleReply = (isCheck && mp.number_of_moves() == 1);
