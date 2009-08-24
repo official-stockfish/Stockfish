@@ -1282,7 +1282,7 @@ namespace {
     bool isCheck = pos.is_check();
 
     bool useNullMove = (    allowNullmove
-                        &&  depth > OnePly
+                        //&&  depth > OnePly
                         && !isCheck
                         && !value_is_mate(beta)
                         &&  ok_to_do_nullmove(pos)
