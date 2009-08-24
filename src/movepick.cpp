@@ -43,7 +43,7 @@ namespace {
   /// Variables
 
   CACHE_LINE_ALIGNMENT
-  const MovegenPhaseT MainSearchPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const MovegenPhaseT MainSearchPhaseTable[] = { PH_STOP, PH_NULL_MOVE, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
   const MovegenPhaseT EvasionsPhaseTable[] = { PH_STOP, PH_EVASIONS, PH_STOP};
   const MovegenPhaseT QsearchWithChecksPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
   const MovegenPhaseT QsearchWithoutChecksPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
@@ -63,7 +63,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
-                       const History& h, SearchStack* ss) : pos(p), H(h) {
+                       const History& h, SearchStack* ss, bool useNullMove) : pos(p), H(h) {
   ttMoves[0] = ttm;
   if (ss)
   {
@@ -114,6 +114,9 @@ Move MovePicker::get_next_move() {
     // Next phase
     phasePtr++;
     switch (*phasePtr) {
+
+    case PH_NULL_MOVE:
+        break;
 
     case PH_TT_MOVES:
         movesPicked = 0; // This is used as index to ttMoves[]
