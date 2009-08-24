@@ -2267,12 +2267,13 @@ namespace {
 
     if (pos.type_of_piece_on(move_from(m)) == PAWN)
     {
-        if (pos.move_is_pawn_push_to_7th(m))
+        Color c = pos.side_to_move();
+        if (relative_rank(c, move_to(m)) == RANK_7)
         {
             result += PawnPushTo7thExtension[pvNode];
             *dangerous = true;
         }
-        if (pos.move_is_passed_pawn_push(m))
+        if (pos.pawn_is_passed(c, move_to(m)))
         {
             result += PassedPawnExtension[pvNode];
             *dangerous = true;

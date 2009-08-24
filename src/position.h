@@ -236,10 +236,7 @@ public:
   bool move_is_check(Move m) const;
   bool move_is_check(Move m, Bitboard dcCandidates) const;
   bool move_is_capture(Move m) const;
-  bool move_is_deep_pawn_push(Move m) const;
-  bool move_is_pawn_push_to_7th(Move m) const;
   bool move_is_passed_pawn_push(Move m) const;
-  bool move_was_passed_pawn_push(Move m) const;
   bool move_attacks_square(Move m, Square s) const;
 
   // Information about pawns
@@ -653,31 +650,10 @@ inline Phase Position::game_phase() const {
       return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
 
-inline bool Position::move_is_deep_pawn_push(Move m) const {
-
-  Color c = side_to_move();
-  return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
-        && relative_rank(c, move_to(m)) > RANK_4;
-}
-
-inline bool Position::move_is_pawn_push_to_7th(Move m) const {
-
-  Color c = side_to_move();
-  return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
-        && relative_rank(c, move_to(m)) == RANK_7;
-}
-
 inline bool Position::move_is_passed_pawn_push(Move m) const {
 
   Color c = side_to_move();
   return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
-        && pawn_is_passed(c, move_to(m));
-}
-
-inline bool Position::move_was_passed_pawn_push(Move m) const {
-
-  Color c = opposite_color(side_to_move());
-  return   piece_on(move_to(m)) == piece_of_color_and_type(c, PAWN)
         && pawn_is_passed(c, move_to(m));
 }
 
