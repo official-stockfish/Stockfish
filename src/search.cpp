@@ -1281,13 +1281,15 @@ namespace {
     bool mateThreat = false;
     bool isCheck = pos.is_check();
 
+    bool useNullMove = (    allowNullmove
+                        &&  depth > OnePly
+                        && !isCheck
+                        && !value_is_mate(beta)
+                        &&  ok_to_do_nullmove(pos)
+                        &&  approximateEval >= beta - NullMoveMargin);
+
     // Null move search
-    if (    allowNullmove
-        &&  depth > OnePly
-        && !isCheck
-        && !value_is_mate(beta)
-        &&  ok_to_do_nullmove(pos)
-        &&  approximateEval >= beta - NullMoveMargin)
+    if (useNullMove)
     {
         ss[ply].currentMove = MOVE_NULL;
 
@@ -1326,12 +1328,13 @@ namespace {
         }
     }
     // Null move search not allowed, try razoring
-    else if (   !value_is_mate(beta)
-             && depth < RazorDepth
-             && approximateEval < beta - RazorApprMargins[int(depth) - 2]
-             && ss[ply - 1].currentMove != MOVE_NULL
-             && ttMove == MOVE_NONE
-             && !pos.has_pawn_on_7th(pos.side_to_move()))
+    if (    !useNullMove
+         && !value_is_mate(beta)
+         && depth < RazorDepth
+         && approximateEval < beta - RazorApprMargins[int(depth) - 2]
+         && ss[ply - 1].currentMove != MOVE_NULL
+         && ttMove == MOVE_NONE
+         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
         if (v < beta - RazorMargins[int(depth) - 2])
