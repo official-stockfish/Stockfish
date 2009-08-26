@@ -35,8 +35,21 @@
 //// Types
 ////
 
-struct EvalInfo;
 struct SearchStack;
+
+enum MovegenPhase {
+  PH_TT_MOVES,       // Transposition table move and mate killer
+  PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
+  PH_KILLERS,        // Killer moves from the current ply
+  PH_NONCAPTURES,    // Non-captures and underpromotions
+  PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
+  PH_EVASIONS,       // Check evasions
+  PH_QCAPTURES,      // Captures in quiescence search
+  PH_QCHECKS,        // Non-capture checks in quiescence search
+  PH_STOP
+};
+
+typedef uint8_t MovegenPhaseT;
 
 /// MovePicker is a class which is used to pick one legal move at a time from
 /// the current position. It is initialized with a Position object and a few
@@ -51,27 +64,11 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // silence a warning under MSVC
 
 public:
-
-  enum MovegenPhase {
-    PH_TT_MOVE,        // Transposition table move
-    PH_MATE_KILLER,    // Mate killer from the current ply
-    PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
-    PH_KILLERS,        // Killer moves from the current ply
-    PH_NONCAPTURES,    // Non-captures and underpromotions
-    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
-    PH_EVASIONS,       // Check evasions
-    PH_QCAPTURES,      // Captures in quiescence search
-    PH_QCHECKS,        // Non-capture checks in quiescence search
-    PH_STOP
-  };
-
   MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
   Move get_next_move();
   Move get_next_move(Lock& lock);
   int number_of_moves() const;
   Bitboard discovered_check_candidates() const;
-
-  static void init_phase_table();
 
 private:
   void score_captures();
@@ -81,14 +78,12 @@ private:
 
   const Position& pos;
   const History& H;
-  Move ttMove, mateKiller, killer1, killer2;
-  Bitboard pinned, dc;
-  MoveStack moves[256], badCaptures[64];
-  int phaseIndex;
-  int numOfMoves, numOfBadCaptures;
-  int movesPicked;
-  bool checkKillers, checkLegal;
+  Move ttMoves[2], killers[2];
+  const MovegenPhaseT* phasePtr;
+  int movesPicked, numOfMoves, numOfBadCaptures;
   bool finished;
+  Bitboard dc, pinned;
+  MoveStack moves[256], badCaptures[64];
 };
 
 

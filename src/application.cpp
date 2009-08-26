@@ -47,7 +47,6 @@ Application::Application() {
     init_uci_options();
     Position::init_zobrist();
     Position::init_piece_square_tables();
-    MovePicker::init_phase_table();
     init_eval(1);
     init_bitbases();
     init_threads();

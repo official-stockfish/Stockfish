@@ -43,11 +43,10 @@ namespace {
   /// Variables
 
   CACHE_LINE_ALIGNMENT
-  int MainSearchPhaseIndex;
-  int EvasionsPhaseIndex;
-  int QsearchWithChecksPhaseIndex;
-  int QsearchWithoutChecksPhaseIndex;
-  uint8_t PhaseTable[32];
+  const MovegenPhaseT MainSearchPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const MovegenPhaseT EvasionsPhaseTable[] = { PH_STOP, PH_EVASIONS, PH_STOP};
+  const MovegenPhaseT QsearchWithChecksPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
+  const MovegenPhaseT QsearchWithoutChecksPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
 }
 
 
@@ -65,33 +64,31 @@ namespace {
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const History& h, SearchStack* ss) : pos(p), H(h) {
-  ttMove = ttm;
+  ttMoves[0] = ttm;
   if (ss)
   {
-      mateKiller = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
-      killer1 = ss->killers[0];
-      killer2 = ss->killers[1];
+      ttMoves[1] = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
+      killers[0] = ss->killers[0];
+      killers[1] = ss->killers[1];
   } else
-      mateKiller = killer1 = killer2 = MOVE_NONE;
+      ttMoves[1] = killers[0] = killers[1] = MOVE_NONE;
 
   movesPicked = numOfMoves = numOfBadCaptures = 0;
-  checkKillers = checkLegal = finished = false;
+  finished = false;
 
   if (p.is_check())
-      phaseIndex = EvasionsPhaseIndex;
+      phasePtr = EvasionsPhaseTable;
   else if (d > Depth(0))
-      phaseIndex = MainSearchPhaseIndex;
+      phasePtr = MainSearchPhaseTable;
   else if (d == Depth(0))
-      phaseIndex = QsearchWithChecksPhaseIndex;
+      phasePtr = QsearchWithChecksPhaseTable;
   else
-      phaseIndex = QsearchWithoutChecksPhaseIndex;
+      phasePtr = QsearchWithoutChecksPhaseTable;
 
   Color us = pos.side_to_move();
 
   dc = p.discovered_check_candidates(us);
   pinned = p.pinned_pieces(us);
-
-  finished = false;
 }
 
 
@@ -115,25 +112,11 @@ Move MovePicker::get_next_move() {
     }
 
     // Next phase
-    phaseIndex++;
-    switch (PhaseTable[phaseIndex]) {
+    phasePtr++;
+    switch (*phasePtr) {
 
-    case PH_TT_MOVE:
-        if (ttMove != MOVE_NONE)
-        {
-            assert(move_is_ok(ttMove));
-            if (move_is_legal(pos, ttMove, pinned))
-                return ttMove;
-        }
-        break;
-
-    case PH_MATE_KILLER:
-        if (mateKiller != MOVE_NONE)
-        {
-            assert(move_is_ok(mateKiller));
-            if (move_is_legal(pos, mateKiller, pinned))
-                return mateKiller;
-        }
+    case PH_TT_MOVES:
+        movesPicked = 0; // This is used as index to ttMoves[]
         break;
 
     case PH_GOOD_CAPTURES:
@@ -144,16 +127,10 @@ Move MovePicker::get_next_move() {
         break;
 
     case PH_KILLERS:
-        movesPicked = numOfMoves = 0;
-        if (killer1 != MOVE_NONE && move_is_legal(pos, killer1, pinned) && !pos.move_is_capture(killer1))
-            moves[numOfMoves++].move = killer1;
-        if (killer2 != MOVE_NONE && move_is_legal(pos, killer2, pinned) && !pos.move_is_capture(killer2))
-            moves[numOfMoves++].move = killer2;
+        movesPicked = 0; // This is used as index to killers[]
         break;
 
     case PH_NONCAPTURES:
-        checkKillers = (numOfMoves != 0); // previous phase is PH_KILLERS
-        checkLegal = true;
         numOfMoves = generate_noncaptures(pos, moves);
         score_noncaptures();
         std::sort(moves, moves + numOfMoves);
@@ -281,7 +258,7 @@ void MovePicker::score_evasions() {
   for (int i = 0; i < numOfMoves; i++)
   {
       Move m = moves[i].move;
-      if (m == ttMove)
+      if (m == ttMoves[0])
           moves[i].score = 2*HistoryMax;
       else if (!pos.square_is_empty(move_to(m)))
       {
@@ -301,17 +278,26 @@ void MovePicker::score_evasions() {
 Move MovePicker::pick_move_from_list() {
 
   assert(movesPicked >= 0);
-  assert(!pos.is_check() || PhaseTable[phaseIndex] == PH_EVASIONS || PhaseTable[phaseIndex] == PH_STOP);
-  assert( pos.is_check() || PhaseTable[phaseIndex] != PH_EVASIONS);
+  assert(!pos.is_check() || *phasePtr == PH_EVASIONS || *phasePtr == PH_STOP);
+  assert( pos.is_check() || *phasePtr != PH_EVASIONS);
 
-  switch (PhaseTable[phaseIndex]) {
+  switch (*phasePtr) {
+
+  case PH_TT_MOVES:
+        while (movesPicked < 2) {
+            Move move = ttMoves[movesPicked++];
+            if (   move != MOVE_NONE
+                && move_is_legal(pos, move, pinned))
+                return move;
+        }
+        break;
 
   case PH_GOOD_CAPTURES:
       while (movesPicked < numOfMoves)
       {
           Move move = moves[movesPicked++].move;
-          if (   move != ttMove
-              && move != mateKiller
+          if (   move != ttMoves[0]
+              && move != ttMoves[1]
               && pos.pl_move_is_legal(move, pinned))
           {
               // Check for a non negative SEE now
@@ -327,15 +313,28 @@ Move MovePicker::pick_move_from_list() {
           }
       }
       break;
+
   case PH_KILLERS:
+        while (movesPicked < 2) {
+            Move move = killers[movesPicked++];
+            if (   move != MOVE_NONE
+                && move != ttMoves[0]
+                && move != ttMoves[1]
+                && move_is_legal(pos, move, pinned)
+                && !pos.move_is_capture(move))
+                return move;
+        }
+        break;
+
   case PH_NONCAPTURES:
       while (movesPicked < numOfMoves)
       {
           Move move = moves[movesPicked++].move;
-          if (   move != ttMove
-              && move != mateKiller
-              && (!checkKillers || (move != killer1 && move != killer2))
-              && (!checkLegal || pos.pl_move_is_legal(move, pinned)))
+          if (   move != ttMoves[0]
+              && move != ttMoves[1]
+              && move != killers[0]
+              && move != killers[1]
+              && pos.pl_move_is_legal(move, pinned))
               return move;
       }
       break;
@@ -356,7 +355,7 @@ Move MovePicker::pick_move_from_list() {
       {
           Move move = moves[movesPicked++].move;
           // Maybe postpone the legality check until after futility pruning?
-          if (   move != ttMove
+          if (   move != ttMoves[0]
               && pos.pl_move_is_legal(move, pinned))
               return move;
       }
@@ -366,43 +365,4 @@ Move MovePicker::pick_move_from_list() {
       break;
   }
   return MOVE_NONE;
-}
-
-
-/// MovePicker::init_phase_table() initializes the PhaseTable[],
-/// MainSearchPhaseIndex, EvasionPhaseIndex, QsearchWithChecksPhaseIndex
-/// and QsearchWithoutChecksPhaseIndex. It is only called once during
-/// program startup, and never again while the program is running.
-
-void MovePicker::init_phase_table() {
-
-  int i = 0;
-
-  // Main search
-  MainSearchPhaseIndex = i - 1;
-  PhaseTable[i++] = PH_TT_MOVE;
-  PhaseTable[i++] = PH_MATE_KILLER;
-  PhaseTable[i++] = PH_GOOD_CAPTURES;
-  PhaseTable[i++] = PH_KILLERS;
-  PhaseTable[i++] = PH_NONCAPTURES;
-  PhaseTable[i++] = PH_BAD_CAPTURES;
-  PhaseTable[i++] = PH_STOP;
-
-  // Check evasions
-  EvasionsPhaseIndex = i - 1;
-  PhaseTable[i++] = PH_EVASIONS;
-  PhaseTable[i++] = PH_STOP;
-
-  // Quiescence search with checks
-  QsearchWithChecksPhaseIndex = i - 1;
-  PhaseTable[i++] = PH_TT_MOVE;
-  PhaseTable[i++] = PH_QCAPTURES;
-  PhaseTable[i++] = PH_QCHECKS;
-  PhaseTable[i++] = PH_STOP;
-
-  // Quiescence search without checks
-  QsearchWithoutChecksPhaseIndex = i - 1;
-  PhaseTable[i++] = PH_TT_MOVE;
-  PhaseTable[i++] = PH_QCAPTURES;
-  PhaseTable[i++] = PH_STOP;
 }
