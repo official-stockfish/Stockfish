@@ -43,12 +43,12 @@ namespace {
   /// Variables
 
   CACHE_LINE_ALIGNMENT
-  const MovegenPhaseT MainSearchPhaseTable[] = { PH_STOP, PH_NULL_MOVE, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const MovegenPhaseT MainSearchNoNullPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const MovegenPhaseT LowSearchPhaseTable[]  = { PH_STOP, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_NULL_MOVE, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const MovegenPhaseT EvasionsPhaseTable[] = { PH_STOP, PH_EVASIONS, PH_STOP};
-  const MovegenPhaseT QsearchWithChecksPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
-  const MovegenPhaseT QsearchWithoutChecksPhaseTable[] = { PH_STOP, PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
+  const MovegenPhaseT MainSearchPhaseTable[] = { PH_NULL_MOVE, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const MovegenPhaseT MainSearchNoNullPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const MovegenPhaseT LowSearchPhaseTable[]  = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_NULL_MOVE, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const MovegenPhaseT EvasionsPhaseTable[] = { PH_EVASIONS, PH_STOP};
+  const MovegenPhaseT QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
+  const MovegenPhaseT QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
 }
 
 
@@ -75,8 +75,13 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   } else
       ttMoves[1] = killers[0] = killers[1] = MOVE_NONE;
 
-  movesPicked = numOfMoves = numOfBadCaptures = 0;
+  numOfBadCaptures = 0;
   finished = false;
+
+  Color us = pos.side_to_move();
+
+  dc = p.discovered_check_candidates(us);
+  pinned = p.pinned_pieces(us);
 
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
@@ -89,117 +94,70 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   else
       phasePtr = QsearchWithoutChecksPhaseTable;
 
-  Color us = pos.side_to_move();
-
-  dc = p.discovered_check_candidates(us);
-  pinned = p.pinned_pieces(us);
+  phasePtr--;
+  go_next_phase();
 }
 
 
-/// MovePicker::get_next_move() is the most important method of the MovePicker
-/// class.  It returns a new legal move every time it is called, until there
-/// are no more moves left of the types we are interested in.
+/// MovePicker::go_next_phase() generates, scores and sorts the next bunch
+/// of moves when there are no more moves to try for the currrent phase.
 
-Move MovePicker::get_next_move() {
+void MovePicker::go_next_phase() {
 
-  Move move;
+  movesPicked = 0;
+  phase = *(++phasePtr);
+  switch (phase) {
 
-  while (true)
-  {
-    // If we already have a list of generated moves, pick the best move from
-    // the list, and return it.
-    move = pick_move_from_list();
-    if (move != MOVE_NONE)
-    {
-        assert(move_is_ok(move));
-        return move;
-    }
+  case PH_NULL_MOVE:
+  case PH_TT_MOVES:
+      return;
 
-    // Next phase
-    phasePtr++;
-    switch (*phasePtr) {
+  case PH_GOOD_CAPTURES:
+      numOfMoves = generate_captures(pos, moves);
+      score_captures();
+      std::sort(moves, moves + numOfMoves);
+      return;
 
-    case PH_NULL_MOVE:
-        return MOVE_NULL;
+  case PH_KILLERS:
+      return;
 
-    case PH_TT_MOVES:
-        movesPicked = 0; // This is used as index to ttMoves[]
-        break;
+  case PH_NONCAPTURES:
+      numOfMoves = generate_noncaptures(pos, moves);
+      score_noncaptures();
+      std::sort(moves, moves + numOfMoves);
+      return;
 
-    case PH_GOOD_CAPTURES:
-        numOfMoves = generate_captures(pos, moves);
-        score_captures();
-        std::sort(moves, moves + numOfMoves);
-        movesPicked = 0;
-        break;
+  case PH_BAD_CAPTURES:
+      // Bad captures SEE value is already calculated so just sort them
+      // to get SEE move ordering.
+      std::sort(badCaptures, badCaptures + numOfBadCaptures);
+      return;
 
-    case PH_KILLERS:
-        movesPicked = 0; // This is used as index to killers[]
-        break;
+  case PH_EVASIONS:
+      assert(pos.is_check());
+      numOfMoves = generate_evasions(pos, moves, pinned);
+      score_evasions();
+      std::sort(moves, moves + numOfMoves);
+      return;
 
-    case PH_NONCAPTURES:
-        numOfMoves = generate_noncaptures(pos, moves);
-        score_noncaptures();
-        std::sort(moves, moves + numOfMoves);
-        movesPicked = 0;
-        break;
+  case PH_QCAPTURES:
+      numOfMoves = generate_captures(pos, moves);
+      score_captures();
+      std::sort(moves, moves + numOfMoves);
+      return;
 
-    case PH_BAD_CAPTURES:
-        // Bad captures SEE value is already calculated so just sort them
-        // to get SEE move ordering.
-        std::sort(badCaptures, badCaptures + numOfBadCaptures);
-        movesPicked = 0;
-        break;
+  case PH_QCHECKS:
+      // Perhaps we should order moves move here?  FIXME
+      numOfMoves = generate_non_capture_checks(pos, moves, dc);
+      return;
 
-    case PH_EVASIONS:
-        assert(pos.is_check());
-        numOfMoves = generate_evasions(pos, moves, pinned);
-        score_evasions();
-        std::sort(moves, moves + numOfMoves);
-        movesPicked = 0;
-        break;
+  case PH_STOP:
+      return;
 
-    case PH_QCAPTURES:
-        numOfMoves = generate_captures(pos, moves);
-        score_captures();
-        std::sort(moves, moves + numOfMoves);
-        movesPicked = 0;
-        break;
-
-    case PH_QCHECKS:
-        // Perhaps we should order moves move here?  FIXME
-        numOfMoves = generate_non_capture_checks(pos, moves, dc);
-        movesPicked = 0;
-        break;
-
-    case PH_STOP:
-        return MOVE_NONE;
-
-    default:
-        assert(false);
-        return MOVE_NONE;
-    }
+  default:
+      assert(false);
+      return;
   }
-}
-
-
-/// A variant of get_next_move() which takes a lock as a parameter, used to
-/// prevent multiple threads from picking the same move at a split point.
-
-Move MovePicker::get_next_move(Lock &lock) {
-
-   lock_grab(&lock);
-   if (finished)
-   {
-       lock_release(&lock);
-       return MOVE_NONE;
-   }
-   Move m = get_next_move();
-   if (m == MOVE_NONE)
-       finished = true;
-
-   lock_release(&lock);
-   return m;
 }
 
 
@@ -276,100 +234,131 @@ void MovePicker::score_evasions() {
   }
 }
 
+/// MovePicker::get_next_move() is the most important method of the MovePicker
+/// class. It returns a new legal move every time it is called, until there
+/// are no more moves left.
+/// It picks the move with the biggest score from a list of generated moves taking
+/// care not to return the tt move if that has already been serched previously.
 
-/// MovePicker::pick_move_from_list() picks the move with the biggest score
-/// from a list of generated moves (moves[] or badCaptures[], depending on
-/// the current move generation phase).  It takes care not to return the
-/// transposition table move if that has already been serched previously.
-
-Move MovePicker::pick_move_from_list() {
+Move MovePicker::get_next_move() {
 
   assert(movesPicked >= 0);
   assert(!pos.is_check() || *phasePtr == PH_EVASIONS || *phasePtr == PH_STOP);
   assert( pos.is_check() || *phasePtr != PH_EVASIONS);
 
-  switch (*phasePtr) {
+  while (true)
+  {
+      switch (phase) {
 
-  case PH_TT_MOVES:
-        while (movesPicked < 2) {
-            Move move = ttMoves[movesPicked++];
-            if (   move != MOVE_NONE
-                && move_is_legal(pos, move, pinned))
-                return move;
-        }
-        break;
+      case PH_NULL_MOVE:
+          go_next_phase();
+          return MOVE_NULL;
 
-  case PH_GOOD_CAPTURES:
-      while (movesPicked < numOfMoves)
-      {
-          Move move = moves[movesPicked++].move;
-          if (   move != ttMoves[0]
-              && move != ttMoves[1]
-              && pos.pl_move_is_legal(move, pinned))
+      case PH_TT_MOVES:
+            while (movesPicked < 2) {
+                Move move = ttMoves[movesPicked++];
+                if (   move != MOVE_NONE
+                    && move_is_legal(pos, move, pinned))
+                    return move;
+            }
+            break;
+
+      case PH_GOOD_CAPTURES:
+          while (movesPicked < numOfMoves)
           {
-              // Check for a non negative SEE now
-              int seeValue = pos.see_sign(move);
-              if (seeValue >= 0)
-                  return move;
+              Move move = moves[movesPicked++].move;
+              if (   move != ttMoves[0]
+                  && move != ttMoves[1]
+                  && pos.pl_move_is_legal(move, pinned))
+              {
+                  // Check for a non negative SEE now
+                  int seeValue = pos.see_sign(move);
+                  if (seeValue >= 0)
+                      return move;
 
-              // Losing capture, move it to the badCaptures[] array, note
-              // that move has now been already checked for legality.
-              assert(numOfBadCaptures < 63);
-              badCaptures[numOfBadCaptures].move = move;
-              badCaptures[numOfBadCaptures++].score = seeValue;
+                  // Losing capture, move it to the badCaptures[] array, note
+                  // that move has now been already checked for legality.
+                  assert(numOfBadCaptures < 63);
+                  badCaptures[numOfBadCaptures].move = move;
+                  badCaptures[numOfBadCaptures++].score = seeValue;
+              }
           }
+          break;
+
+      case PH_KILLERS:
+            while (movesPicked < 2) {
+                Move move = killers[movesPicked++];
+                if (   move != MOVE_NONE
+                    && move != ttMoves[0]
+                    && move != ttMoves[1]
+                    && move_is_legal(pos, move, pinned)
+                    && !pos.move_is_capture(move))
+                    return move;
+            }
+            break;
+
+      case PH_NONCAPTURES:
+          while (movesPicked < numOfMoves)
+          {
+              Move move = moves[movesPicked++].move;
+              if (   move != ttMoves[0]
+                  && move != ttMoves[1]
+                  && move != killers[0]
+                  && move != killers[1]
+                  && pos.pl_move_is_legal(move, pinned))
+                  return move;
+          }
+          break;
+
+      case PH_EVASIONS:
+          if (movesPicked < numOfMoves)
+              return moves[movesPicked++].move;
+          break;
+
+      case PH_BAD_CAPTURES:
+          if (movesPicked < numOfBadCaptures)
+              return badCaptures[movesPicked++].move;
+          break;
+
+      case PH_QCAPTURES:
+      case PH_QCHECKS:
+          while (movesPicked < numOfMoves)
+          {
+              Move move = moves[movesPicked++].move;
+              // Maybe postpone the legality check until after futility pruning?
+              if (   move != ttMoves[0]
+                  && pos.pl_move_is_legal(move, pinned))
+                  return move;
+          }
+          break;
+
+      case PH_STOP:
+          return MOVE_NONE;
+
+      default:
+          assert(false);
+          break;
       }
-      break;
-
-  case PH_KILLERS:
-        while (movesPicked < 2) {
-            Move move = killers[movesPicked++];
-            if (   move != MOVE_NONE
-                && move != ttMoves[0]
-                && move != ttMoves[1]
-                && move_is_legal(pos, move, pinned)
-                && !pos.move_is_capture(move))
-                return move;
-        }
-        break;
-
-  case PH_NONCAPTURES:
-      while (movesPicked < numOfMoves)
-      {
-          Move move = moves[movesPicked++].move;
-          if (   move != ttMoves[0]
-              && move != ttMoves[1]
-              && move != killers[0]
-              && move != killers[1]
-              && pos.pl_move_is_legal(move, pinned))
-              return move;
-      }
-      break;
-
-  case PH_EVASIONS:
-      if (movesPicked < numOfMoves)
-          return moves[movesPicked++].move;
-      break;
-
-  case PH_BAD_CAPTURES:
-      if (movesPicked < numOfBadCaptures)
-          return badCaptures[movesPicked++].move;
-      break;
-
-  case PH_QCAPTURES:
-  case PH_QCHECKS:
-      while (movesPicked < numOfMoves)
-      {
-          Move move = moves[movesPicked++].move;
-          // Maybe postpone the legality check until after futility pruning?
-          if (   move != ttMoves[0]
-              && pos.pl_move_is_legal(move, pinned))
-              return move;
-      }
-      break;
-
-  default:
-      break;
+      go_next_phase();
   }
   return MOVE_NONE;
+}
+
+/// A variant of get_next_move() which takes a lock as a parameter, used to
+/// prevent multiple threads from picking the same move at a split point.
+
+Move MovePicker::get_next_move(Lock &lock) {
+
+   lock_grab(&lock);
+   if (finished)
+   {
+       lock_release(&lock);
+       return MOVE_NONE;
+   }
+   Move m = get_next_move();
+   if (m == MOVE_NONE)
+       finished = true;
+
+   lock_release(&lock);
+   return m;
 }

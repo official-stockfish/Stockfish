@@ -75,13 +75,13 @@ private:
   void score_captures();
   void score_noncaptures();
   void score_evasions();
-  Move pick_move_from_list();
+  void go_next_phase();
 
   const Position& pos;
   const History& H;
   Move ttMoves[2], killers[2];
   const MovegenPhaseT* phasePtr;
-  int movesPicked, numOfMoves, numOfBadCaptures;
+  int phase, movesPicked, numOfMoves, numOfBadCaptures;
   bool finished;
   Bitboard dc, pinned;
   MoveStack moves[256], badCaptures[64];
