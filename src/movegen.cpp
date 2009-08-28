@@ -137,36 +137,33 @@ namespace {
 /// generate_captures generates() all pseudo-legal captures and queen
 /// promotions. The return value is the number of moves generated.
 
-int generate_captures(const Position& pos, MoveStack* mlist) {
+MoveStack* generate_captures(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
   Color us = pos.side_to_move();
   Bitboard target = pos.pieces_of_color(opposite_color(us));
-  MoveStack* mlist_start = mlist;
 
   mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us);
-  mlist = generate_piece_moves<KING>(pos, mlist, us, target);
-  return int(mlist - mlist_start);
+  return  generate_piece_moves<KING>(pos, mlist, us, target);
 }
 
 
 /// generate_noncaptures() generates all pseudo-legal non-captures and
 /// underpromotions. The return value is the number of moves generated.
 
-int generate_noncaptures(const Position& pos, MoveStack* mlist) {
+MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
   Color us = pos.side_to_move();
   Bitboard target = pos.empty_squares();
-  MoveStack* mlist_start = mlist;
 
   mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
@@ -175,22 +172,20 @@ int generate_noncaptures(const Position& pos, MoveStack* mlist) {
   mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
   mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
-  mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
-  return int(mlist - mlist_start);
+  return  generate_castle_moves<QUEEN_SIDE>(pos, mlist);
 }
 
 
 /// generate_non_capture_checks() generates all pseudo-legal non-capturing,
 /// non-promoting checks. It returns the number of generated moves.
 
-int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
+MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(opposite_color(us));
-  MoveStack* mlist_start = mlist;
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
 
@@ -213,7 +208,7 @@ int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard 
       && castling_is_check(pos, KING_SIDE))
       mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
 
-  return int(mlist - mlist_start);
+  return mlist;
 }
 
 
@@ -221,7 +216,7 @@ int generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard 
 /// in check. Unlike the other move generation functions, this one generates
 /// only legal moves. It returns the number of generated moves.
 
-int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
+MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
@@ -230,7 +225,6 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
   Square ksq = pos.king_square(us);
-  MoveStack* mlist_start = mlist;
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
 
@@ -350,7 +344,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
           }
       }
   }
-  return int(mlist - mlist_start);
+  return mlist;
 }
 
 
@@ -360,7 +354,7 @@ int generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 /// very hard to write an efficient legal move generator, but for the moment
 /// we don't need it.
 
-int generate_legal_moves(const Position& pos, MoveStack* mlist) {
+MoveStack* generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
@@ -370,15 +364,17 @@ int generate_legal_moves(const Position& pos, MoveStack* mlist) {
       return generate_evasions(pos, mlist, pinned);
 
   // Generate pseudo-legal moves
-  int n = generate_captures(pos, mlist);
-  n += generate_noncaptures(pos, mlist + n);
+  MoveStack* last = generate_captures(pos, mlist);
+  last = generate_noncaptures(pos, last);
 
   // Remove illegal moves from the list
-  for (int i = 0; i < n; i++)
-      if (!pos.pl_move_is_legal(mlist[i].move, pinned))
-          mlist[i--].move = mlist[--n].move;
-
-  return n;
+  for (MoveStack* cur = mlist; cur != last; cur++)
+      if (!pos.pl_move_is_legal(cur->move, pinned))
+      {
+          cur->move = (--last)->move;
+          cur--;
+      }
+  return last;
 }
 
 
@@ -580,11 +576,12 @@ bool move_is_legal(const Position& pos, const Move m) {
   else
   {
       Position p(pos);
-      MoveStack moves[64];
-      int n = generate_evasions(p, moves, pinned);
-      for (int i = 0; i < n; i++)
-          if (moves[i].move == m)
+      MoveStack mlist[64];
+      MoveStack* last = generate_evasions(p, mlist, pinned);
+      for (MoveStack* cur = mlist; cur != last; cur++)
+          if (cur->move == m)
               return true;
+
       return false;
   }
 }

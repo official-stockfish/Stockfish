@@ -81,9 +81,10 @@ private:
   const History& H;
   Move ttMoves[2], killers[2];
   const MovegenPhaseT* phasePtr;
-  int phase, movesPicked, numOfMoves, numOfBadCaptures;
+  int phase, movesPicked, numOfBadCaptures;
   bool finished;
   Bitboard dc, pinned;
+  MoveStack *curMove, *lastMove;
   MoveStack moves[256], badCaptures[64];
 };
 
@@ -98,7 +99,7 @@ private:
 /// a single reply to check.
 
 inline int MovePicker::number_of_moves() const {
-  return numOfMoves;
+  return int(lastMove - moves);
 }
 
 /// MovePicker::discovered_check_candidates() returns a bitboard containing

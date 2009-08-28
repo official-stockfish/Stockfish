@@ -100,55 +100,59 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
 
 
 /// MovePicker::go_next_phase() generates, scores and sorts the next bunch
-/// of moves when there are no more moves to try for the currrent phase.
+/// of moves when there are no more moves to try for the current phase.
 
 void MovePicker::go_next_phase() {
 
-  movesPicked = 0;
+  curMove = moves;
   phase = *(++phasePtr);
   switch (phase) {
 
   case PH_NULL_MOVE:
   case PH_TT_MOVES:
+      movesPicked = 0;
       return;
 
   case PH_GOOD_CAPTURES:
-      numOfMoves = generate_captures(pos, moves);
+      lastMove = generate_captures(pos, moves);
       score_captures();
-      std::sort(moves, moves + numOfMoves);
+      std::sort(moves, lastMove);
       return;
 
   case PH_KILLERS:
+      movesPicked = 0;
       return;
 
   case PH_NONCAPTURES:
-      numOfMoves = generate_noncaptures(pos, moves);
+      lastMove = generate_noncaptures(pos, moves);
       score_noncaptures();
-      std::sort(moves, moves + numOfMoves);
+      std::sort(moves, lastMove);
       return;
 
   case PH_BAD_CAPTURES:
       // Bad captures SEE value is already calculated so just sort them
       // to get SEE move ordering.
-      std::sort(badCaptures, badCaptures + numOfBadCaptures);
+      curMove = badCaptures;
+      lastMove = badCaptures + numOfBadCaptures;
+      std::sort(badCaptures, lastMove);
       return;
 
   case PH_EVASIONS:
       assert(pos.is_check());
-      numOfMoves = generate_evasions(pos, moves, pinned);
+      lastMove = generate_evasions(pos, moves, pinned);
       score_evasions();
-      std::sort(moves, moves + numOfMoves);
+      std::sort(moves, lastMove);
       return;
 
   case PH_QCAPTURES:
-      numOfMoves = generate_captures(pos, moves);
+      lastMove = generate_captures(pos, moves);
       score_captures();
-      std::sort(moves, moves + numOfMoves);
+      std::sort(moves, lastMove);
       return;
 
   case PH_QCHECKS:
       // Perhaps we should order moves move here?  FIXME
-      numOfMoves = generate_non_capture_checks(pos, moves, dc);
+      lastMove = generate_non_capture_checks(pos, moves, dc);
       return;
 
   case PH_STOP:
@@ -161,10 +165,10 @@ void MovePicker::go_next_phase() {
 }
 
 
-/// MovePicker::score_captures(), MovePicker::score_noncaptures(),
-/// MovePicker::score_evasions() and MovePicker::score_qcaptures() assign a
-/// numerical move ordering score to each move in a move list.  The moves
-/// with highest scores will be picked first by pick_move_from_list().
+/// MovePicker::score_captures(), MovePicker::score_noncaptures() and
+/// MovePicker::score_evasions() assign a numerical move ordering score
+/// to each move in a move list.  The moves with highest scores will be
+/// picked first by get_next_move().
 
 void MovePicker::score_captures() {
   // Winning and equal captures in the main search are ordered by MVV/LVA.
@@ -183,14 +187,14 @@ void MovePicker::score_captures() {
   Move m;
 
   // Use MVV/LVA ordering
-  for (int i = 0; i < numOfMoves; i++)
+  for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
-      m = moves[i].move;
+      m = cur->move;
       if (move_is_promotion(m))
-          moves[i].score = QueenValueMidgame;
+          cur->score = QueenValueMidgame;
       else
-          moves[i].score = int(pos.midgame_value_of_piece_on(move_to(m)))
-                          -int(pos.type_of_piece_on(move_from(m)));
+          cur->score = int(pos.midgame_value_of_piece_on(move_to(m)))
+                      -int(pos.type_of_piece_on(move_from(m)));
   }
 }
 
@@ -202,10 +206,10 @@ void MovePicker::score_noncaptures() {
   Square from, to;
   int hs;
 
-  for (int i = 0; i < numOfMoves; i++)
+  for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
-      from = move_from(moves[i].move);
-      to = move_to(moves[i].move);
+      from = move_from(cur->move);
+      to = move_to(cur->move);
       piece = pos.piece_on(from);
       hs = H.move_ordering_score(piece, to);
 
@@ -214,23 +218,23 @@ void MovePicker::score_noncaptures() {
           hs += 1000;
 
       // pst based scoring
-      moves[i].score = hs + pos.pst_delta<Position::MidGame>(piece, from, to);
+      cur->score = hs + pos.pst_delta<Position::MidGame>(piece, from, to);
   }
 }
 
 void MovePicker::score_evasions() {
 
-  for (int i = 0; i < numOfMoves; i++)
+  for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
-      Move m = moves[i].move;
+      Move m = cur->move;
       if (m == ttMoves[0])
-          moves[i].score = 2*HistoryMax;
+          cur->score = 2*HistoryMax;
       else if (!pos.square_is_empty(move_to(m)))
       {
           int seeScore = pos.see(m);
-          moves[i].score = (seeScore >= 0)? seeScore + HistoryMax : seeScore;
+          cur->score = (seeScore >= 0)? seeScore + HistoryMax : seeScore;
       } else
-          moves[i].score = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
+          cur->score = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
   }
 }
 
@@ -242,7 +246,6 @@ void MovePicker::score_evasions() {
 
 Move MovePicker::get_next_move() {
 
-  assert(movesPicked >= 0);
   assert(!pos.is_check() || *phasePtr == PH_EVASIONS || *phasePtr == PH_STOP);
   assert( pos.is_check() || *phasePtr != PH_EVASIONS);
 
@@ -255,18 +258,19 @@ Move MovePicker::get_next_move() {
           return MOVE_NULL;
 
       case PH_TT_MOVES:
-            while (movesPicked < 2) {
-                Move move = ttMoves[movesPicked++];
-                if (   move != MOVE_NONE
-                    && move_is_legal(pos, move, pinned))
-                    return move;
-            }
-            break;
+          while (movesPicked < 2)
+          {
+              Move move = ttMoves[movesPicked++];
+              if (   move != MOVE_NONE
+                  && move_is_legal(pos, move, pinned))
+                  return move;
+          }
+          break;
 
       case PH_GOOD_CAPTURES:
-          while (movesPicked < numOfMoves)
+          while (curMove != lastMove)
           {
-              Move move = moves[movesPicked++].move;
+              Move move = (curMove++)->move;
               if (   move != ttMoves[0]
                   && move != ttMoves[1]
                   && pos.pl_move_is_legal(move, pinned))
@@ -286,21 +290,22 @@ Move MovePicker::get_next_move() {
           break;
 
       case PH_KILLERS:
-            while (movesPicked < 2) {
-                Move move = killers[movesPicked++];
-                if (   move != MOVE_NONE
-                    && move != ttMoves[0]
-                    && move != ttMoves[1]
-                    && move_is_legal(pos, move, pinned)
-                    && !pos.move_is_capture(move))
-                    return move;
-            }
-            break;
+          while (movesPicked < 2)
+          {
+              Move move = killers[movesPicked++];
+              if (   move != MOVE_NONE
+                  && move != ttMoves[0]
+                  && move != ttMoves[1]
+                  && move_is_legal(pos, move, pinned)
+                  && !pos.move_is_capture(move))
+                  return move;
+          }
+          break;
 
       case PH_NONCAPTURES:
-          while (movesPicked < numOfMoves)
+          while (curMove != lastMove)
           {
-              Move move = moves[movesPicked++].move;
+              Move move = (curMove++)->move;
               if (   move != ttMoves[0]
                   && move != ttMoves[1]
                   && move != killers[0]
@@ -311,20 +316,16 @@ Move MovePicker::get_next_move() {
           break;
 
       case PH_EVASIONS:
-          if (movesPicked < numOfMoves)
-              return moves[movesPicked++].move;
-          break;
-
       case PH_BAD_CAPTURES:
-          if (movesPicked < numOfBadCaptures)
-              return badCaptures[movesPicked++].move;
+          if (curMove != lastMove)
+              return (curMove++)->move;
           break;
 
       case PH_QCAPTURES:
       case PH_QCHECKS:
-          while (movesPicked < numOfMoves)
+          while (curMove != lastMove)
           {
-              Move move = moves[movesPicked++].move;
+              Move move = (curMove++)->move;
               // Maybe postpone the legality check until after futility pruning?
               if (   move != ttMoves[0]
                   && pos.pl_move_is_legal(move, pinned))

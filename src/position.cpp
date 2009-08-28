@@ -1696,7 +1696,7 @@ bool Position::is_mate() const {
 
   MoveStack moves[256];
 
-  return is_check() && !generate_evasions(*this, moves, pinned_pieces(sideToMove));
+  return is_check() && (generate_evasions(*this, moves, pinned_pieces(sideToMove)) == moves);
 }
 
 
@@ -1716,20 +1716,18 @@ bool Position::has_mate_threat(Color c) {
       do_null_move(st1);
 
   MoveStack mlist[120];
-  int count;
   bool result = false;
   Bitboard dc = discovered_check_candidates(sideToMove);
   Bitboard pinned = pinned_pieces(sideToMove);
 
   // Generate pseudo-legal non-capture and capture check moves
-  count = generate_non_capture_checks(*this, mlist, dc);
-  count += generate_captures(*this, mlist + count);
+  MoveStack* last = generate_non_capture_checks(*this, mlist, dc);
+  last = generate_captures(*this, last);
 
   // Loop through the moves, and see if one of them is mate
-  for (int i = 0; i < count; i++)
+  for (MoveStack* cur = mlist; cur != last; cur++)
   {
-      Move move = mlist[i].move;
-
+      Move move = cur->move;
       if (!pl_move_is_legal(move, pinned))
           continue;
 

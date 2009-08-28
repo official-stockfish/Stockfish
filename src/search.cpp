@@ -1968,15 +1968,15 @@ namespace {
     bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
 
     // Generate all legal moves
-    int lm_count = generate_legal_moves(pos, mlist);
+    MoveStack* last = generate_legal_moves(pos, mlist);
 
     // Add each move to the moves[] array
-    for (int i = 0; i < lm_count; i++)
+    for (MoveStack* cur = mlist; cur != last; cur++)
     {
         bool includeMove = includeAllMoves;
 
         for (int k = 0; !includeMove && searchMoves[k] != MOVE_NONE; k++)
-            includeMove = (searchMoves[k] == mlist[i].move);
+            includeMove = (searchMoves[k] == cur->move);
 
         if (!includeMove)
             continue;
@@ -1985,7 +1985,7 @@ namespace {
         StateInfo st;
         SearchStack ss[PLY_MAX_PLUS_2];
 
-        moves[count].move = mlist[i].move;
+        moves[count].move = cur->move;
         pos.do_move(moves[count].move, st);
         moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
         pos.undo_move(moves[count].move);
