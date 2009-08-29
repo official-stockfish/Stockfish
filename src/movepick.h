@@ -79,12 +79,12 @@ private:
 
   const Position& pos;
   const History& H;
-  Move ttMoves[2], killers[2];
-  const MovegenPhaseT* phasePtr;
-  int phase, movesPicked, numOfBadCaptures;
+  MoveStack ttMoves[2], killers[2];
   bool finished;
-  Bitboard dc, pinned;
+  int numOfBadCaptures, phase;
+  const MovegenPhaseT* phasePtr;
   MoveStack *curMove, *lastMove;
+  Bitboard dc, pinned;
   MoveStack moves[256], badCaptures[64];
 };
 

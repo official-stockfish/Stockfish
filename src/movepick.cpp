@@ -27,7 +27,6 @@
 #include <cassert>
 
 #include "history.h"
-#include "evaluate.h"
 #include "movegen.h"
 #include "movepick.h"
 #include "search.h"
@@ -39,8 +38,6 @@
 ////
 
 namespace {
-
-  /// Variables
 
   CACHE_LINE_ALIGNMENT
   const MovegenPhaseT MainSearchPhaseTable[] = { PH_NULL_MOVE, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
@@ -57,7 +54,7 @@ namespace {
 ////
 
 
-/// Constructor for the MovePicker class.  Apart from the position for which
+/// Constructor for the MovePicker class. Apart from the position for which
 /// it is asked to pick legal moves, MovePicker also wants some information
 /// to help it to return the presumably good moves first, to decide which
 /// moves to return (in the quiescence search, for instance, we only want to
@@ -66,17 +63,17 @@ namespace {
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const History& h, SearchStack* ss, bool useNullMove) : pos(p), H(h) {
-  ttMoves[0] = ttm;
+  ttMoves[0].move = ttm;
   if (ss)
   {
-      ttMoves[1] = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
-      killers[0] = ss->killers[0];
-      killers[1] = ss->killers[1];
+      ttMoves[1].move = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
+      killers[0].move = ss->killers[0];
+      killers[1].move = ss->killers[1];
   } else
-      ttMoves[1] = killers[0] = killers[1] = MOVE_NONE;
+      ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
 
-  numOfBadCaptures = 0;
   finished = false;
+  numOfBadCaptures = 0;
 
   Color us = pos.side_to_move();
 
@@ -109,8 +106,11 @@ void MovePicker::go_next_phase() {
   switch (phase) {
 
   case PH_NULL_MOVE:
+      return;
+
   case PH_TT_MOVES:
-      movesPicked = 0;
+      curMove = ttMoves;
+      lastMove = curMove + 2;
       return;
 
   case PH_GOOD_CAPTURES:
@@ -120,7 +120,8 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_KILLERS:
-      movesPicked = 0;
+      curMove = killers;
+      lastMove = curMove + 2;
       return;
 
   case PH_NONCAPTURES:
@@ -202,14 +203,16 @@ void MovePicker::score_noncaptures() {
   // First score by history, when no history is available then use
   // piece/square tables values. This seems to be better then a
   // random choice when we don't have an history for any move.
+  Move m;
   Piece piece;
   Square from, to;
   int hs;
 
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
-      from = move_from(cur->move);
-      to = move_to(cur->move);
+      m = cur->move;
+      from = move_from(m);
+      to = move_to(m);
       piece = pos.piece_on(from);
       hs = H.move_ordering_score(piece, to);
 
@@ -224,15 +227,17 @@ void MovePicker::score_noncaptures() {
 
 void MovePicker::score_evasions() {
 
+  Move m;
+
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
-      Move m = cur->move;
-      if (m == ttMoves[0])
-          cur->score = 2*HistoryMax;
+      m = cur->move;
+      if (m == ttMoves[0].move)
+          cur->score = 2 * HistoryMax;
       else if (!pos.square_is_empty(move_to(m)))
       {
           int seeScore = pos.see(m);
-          cur->score = (seeScore >= 0)? seeScore + HistoryMax : seeScore;
+          cur->score = seeScore + (seeScore >= 0 ? HistoryMax : 0);
       } else
           cur->score = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
   }
@@ -258,9 +263,9 @@ Move MovePicker::get_next_move() {
           return MOVE_NULL;
 
       case PH_TT_MOVES:
-          while (movesPicked < 2)
+          while (curMove != lastMove)
           {
-              Move move = ttMoves[movesPicked++];
+              Move move = (curMove++)->move;
               if (   move != MOVE_NONE
                   && move_is_legal(pos, move, pinned))
                   return move;
@@ -271,8 +276,8 @@ Move MovePicker::get_next_move() {
           while (curMove != lastMove)
           {
               Move move = (curMove++)->move;
-              if (   move != ttMoves[0]
-                  && move != ttMoves[1]
+              if (   move != ttMoves[0].move
+                  && move != ttMoves[1].move
                   && pos.pl_move_is_legal(move, pinned))
               {
                   // Check for a non negative SEE now
@@ -290,12 +295,12 @@ Move MovePicker::get_next_move() {
           break;
 
       case PH_KILLERS:
-          while (movesPicked < 2)
+          while (curMove != lastMove)
           {
-              Move move = killers[movesPicked++];
+              Move move = (curMove++)->move;
               if (   move != MOVE_NONE
-                  && move != ttMoves[0]
-                  && move != ttMoves[1]
+                  && move != ttMoves[0].move
+                  && move != ttMoves[1].move
                   && move_is_legal(pos, move, pinned)
                   && !pos.move_is_capture(move))
                   return move;
@@ -306,10 +311,10 @@ Move MovePicker::get_next_move() {
           while (curMove != lastMove)
           {
               Move move = (curMove++)->move;
-              if (   move != ttMoves[0]
-                  && move != ttMoves[1]
-                  && move != killers[0]
-                  && move != killers[1]
+              if (   move != ttMoves[0].move
+                  && move != ttMoves[1].move
+                  && move != killers[0].move
+                  && move != killers[1].move
                   && pos.pl_move_is_legal(move, pinned))
                   return move;
           }
@@ -327,7 +332,7 @@ Move MovePicker::get_next_move() {
           {
               Move move = (curMove++)->move;
               // Maybe postpone the legality check until after futility pruning?
-              if (   move != ttMoves[0]
+              if (   move != ttMoves[0].move
                   && pos.pl_move_is_legal(move, pinned))
                   return move;
           }
@@ -342,7 +347,6 @@ Move MovePicker::get_next_move() {
       }
       go_next_phase();
   }
-  return MOVE_NONE;
 }
 
 /// A variant of get_next_move() which takes a lock as a parameter, used to
