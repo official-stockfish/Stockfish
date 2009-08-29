@@ -38,7 +38,6 @@
 struct SearchStack;
 
 enum MovegenPhase {
-  PH_NULL_MOVE,      // Null move
   PH_TT_MOVES,       // Transposition table move and mate killer
   PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
   PH_KILLERS,        // Killer moves from the current ply
@@ -65,7 +64,7 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // silence a warning under MSVC
 
 public:
-  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL, bool useNullMove = false);
+  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
   Move get_next_move();
   Move get_next_move(Lock& lock);
   int number_of_moves() const;

@@ -40,9 +40,7 @@
 namespace {
 
   CACHE_LINE_ALIGNMENT
-  const MovegenPhaseT MainSearchPhaseTable[] = { PH_NULL_MOVE, PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const MovegenPhaseT MainSearchNoNullPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const MovegenPhaseT LowSearchPhaseTable[]  = { PH_TT_MOVES, PH_NULL_MOVE, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const MovegenPhaseT MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
   const MovegenPhaseT EvasionsPhaseTable[] = { PH_EVASIONS, PH_STOP};
   const MovegenPhaseT QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
   const MovegenPhaseT QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
@@ -62,7 +60,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
-                       const History& h, SearchStack* ss, bool useNullMove) : pos(p), H(h) {
+                       const History& h, SearchStack* ss) : pos(p), H(h) {
   ttMoves[0].move = ttm;
   if (ss)
   {
@@ -82,10 +80,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
 
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
-  else if (d >= Depth(3 * OnePly))
-      phasePtr = useNullMove ? MainSearchPhaseTable : MainSearchNoNullPhaseTable;
   else if (d > Depth(0))
-      phasePtr = useNullMove ? LowSearchPhaseTable : MainSearchNoNullPhaseTable;
+      phasePtr = MainSearchPhaseTable;
   else if (d == Depth(0))
       phasePtr = QsearchWithChecksPhaseTable;
   else
@@ -104,9 +100,6 @@ void MovePicker::go_next_phase() {
   curMove = moves;
   phase = *(++phasePtr);
   switch (phase) {
-
-  case PH_NULL_MOVE:
-      return;
 
   case PH_TT_MOVES:
       curMove = ttMoves;
@@ -257,10 +250,6 @@ Move MovePicker::get_next_move() {
   while (true)
   {
       switch (phase) {
-
-      case PH_NULL_MOVE:
-          go_next_phase();
-          return MOVE_NULL;
 
       case PH_TT_MOVES:
           while (curMove != lastMove)
