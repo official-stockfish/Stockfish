@@ -1091,15 +1091,15 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
-
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
-    Bitboard dcCandidates = mp.discovered_check_candidates();
     Color us = pos.side_to_move();
     bool isCheck = pos.is_check();
     bool mateThreat = pos.has_mate_threat(opposite_color(us));
+
+    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
+    Bitboard dcCandidates = mp.discovered_check_candidates();
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
