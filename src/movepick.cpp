@@ -150,6 +150,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_STOP:
+      lastMove = curMove + 1; // hack to be friendly for get_next_move()
       return;
 
   default:
@@ -247,24 +248,23 @@ Move MovePicker::get_next_move() {
   assert(!pos.is_check() || *phasePtr == PH_EVASIONS || *phasePtr == PH_STOP);
   assert( pos.is_check() || *phasePtr != PH_EVASIONS);
 
+  Move move;
+
   while (true)
   {
-      switch (phase) {
+      while (curMove != lastMove)
+      {
+          move = (curMove++)->move;
 
-      case PH_TT_MOVES:
-          while (curMove != lastMove)
-          {
-              Move move = (curMove++)->move;
+          switch (phase) {
+
+          case PH_TT_MOVES:
               if (   move != MOVE_NONE
                   && move_is_legal(pos, move, pinned))
                   return move;
-          }
-          break;
+              break;
 
-      case PH_GOOD_CAPTURES:
-          while (curMove != lastMove)
-          {
-              Move move = (curMove++)->move;
+          case PH_GOOD_CAPTURES:
               if (   move != ttMoves[0].move
                   && move != ttMoves[1].move
                   && pos.pl_move_is_legal(move, pinned))
@@ -280,59 +280,45 @@ Move MovePicker::get_next_move() {
                   badCaptures[numOfBadCaptures].move = move;
                   badCaptures[numOfBadCaptures++].score = seeValue;
               }
-          }
-          break;
+              break;
 
-      case PH_KILLERS:
-          while (curMove != lastMove)
-          {
-              Move move = (curMove++)->move;
+          case PH_KILLERS:
               if (   move != MOVE_NONE
                   && move != ttMoves[0].move
                   && move != ttMoves[1].move
                   && move_is_legal(pos, move, pinned)
                   && !pos.move_is_capture(move))
                   return move;
-          }
-          break;
+              break;
 
-      case PH_NONCAPTURES:
-          while (curMove != lastMove)
-          {
-              Move move = (curMove++)->move;
+          case PH_NONCAPTURES:
               if (   move != ttMoves[0].move
                   && move != ttMoves[1].move
                   && move != killers[0].move
                   && move != killers[1].move
                   && pos.pl_move_is_legal(move, pinned))
                   return move;
-          }
-          break;
+              break;
 
-      case PH_EVASIONS:
-      case PH_BAD_CAPTURES:
-          if (curMove != lastMove)
-              return (curMove++)->move;
-          break;
+          case PH_EVASIONS:
+          case PH_BAD_CAPTURES:
+              return move;
 
-      case PH_QCAPTURES:
-      case PH_QCHECKS:
-          while (curMove != lastMove)
-          {
-              Move move = (curMove++)->move;
+          case PH_QCAPTURES:
+          case PH_QCHECKS:
               // Maybe postpone the legality check until after futility pruning?
               if (   move != ttMoves[0].move
                   && pos.pl_move_is_legal(move, pinned))
                   return move;
+              break;
+
+          case PH_STOP:
+              return MOVE_NONE;
+
+          default:
+              assert(false);
+              break;
           }
-          break;
-
-      case PH_STOP:
-          return MOVE_NONE;
-
-      default:
-          assert(false);
-          break;
       }
       go_next_phase();
   }
