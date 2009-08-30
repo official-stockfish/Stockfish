@@ -61,10 +61,12 @@ namespace {
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const History& h, SearchStack* ss) : pos(p), H(h) {
+  int searchTT = ttm;
   ttMoves[0].move = ttm;
   if (ss)
   {
       ttMoves[1].move = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
+      searchTT |= ttMoves[1].move;
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
   } else
@@ -81,11 +83,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
   else if (d > Depth(0))
-      phasePtr = MainSearchPhaseTable;
+      phasePtr = MainSearchPhaseTable + !searchTT;
   else if (d == Depth(0))
-      phasePtr = QsearchWithChecksPhaseTable;
+      phasePtr = QsearchWithChecksPhaseTable + !searchTT;
   else
-      phasePtr = QsearchWithoutChecksPhaseTable;
+      phasePtr = QsearchWithoutChecksPhaseTable + !searchTT;
 
   phasePtr--;
   go_next_phase();
