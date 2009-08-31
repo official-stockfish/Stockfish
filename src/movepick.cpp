@@ -73,7 +73,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
 
   finished = false;
-  numOfBadCaptures = 0;
+  lastBadCapture = badCaptures;
 
   Color us = pos.side_to_move();
 
@@ -129,7 +129,7 @@ void MovePicker::go_next_phase() {
       // Bad captures SEE value is already calculated so just sort them
       // to get SEE move ordering.
       curMove = badCaptures;
-      lastMove = badCaptures + numOfBadCaptures;
+      lastMove = lastBadCapture;
       std::sort(badCaptures, lastMove);
       return;
 
@@ -278,9 +278,10 @@ Move MovePicker::get_next_move() {
 
                   // Losing capture, move it to the badCaptures[] array, note
                   // that move has now been already checked for legality.
-                  assert(numOfBadCaptures < 63);
-                  badCaptures[numOfBadCaptures].move = move;
-                  badCaptures[numOfBadCaptures++].score = seeValue;
+                  assert(int(lastBadCapture - badCaptures) < 63);
+                  lastBadCapture->move = move;
+                  lastBadCapture->score = seeValue;
+                  lastBadCapture++;
               }
               break;
 
