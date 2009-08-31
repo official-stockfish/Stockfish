@@ -940,7 +940,7 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
 
     // Update piece list, move the last piece at index[capsq] position
     //
-    // WARNING: this is a not perfectly revresible operation. When we
+    // WARNING: This is a not perfectly revresible operation. When we
     // will reinsert the captured piece in undo_move() we will put it
     // at the end of the list and not in its original place, it means
     // index[] and pieceList[] are not guaranteed to be invariant to a

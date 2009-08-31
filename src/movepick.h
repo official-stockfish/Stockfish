@@ -37,20 +37,6 @@
 
 struct SearchStack;
 
-enum MovegenPhase {
-  PH_TT_MOVES,       // Transposition table move and mate killer
-  PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
-  PH_KILLERS,        // Killer moves from the current ply
-  PH_NONCAPTURES,    // Non-captures and underpromotions
-  PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
-  PH_EVASIONS,       // Check evasions
-  PH_QCAPTURES,      // Captures in quiescence search
-  PH_QCHECKS,        // Non-capture checks in quiescence search
-  PH_STOP
-};
-
-typedef uint8_t MovegenPhaseT;
-
 /// MovePicker is a class which is used to pick one legal move at a time from
 /// the current position. It is initialized with a Position object and a few
 /// moves we have reason to believe are good. The most important method is
@@ -67,7 +53,7 @@ public:
   MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
   Move get_next_move();
   Move get_next_move(Lock& lock);
-  int number_of_moves() const;
+  int number_of_evasions() const;
   Bitboard discovered_check_candidates() const;
 
 private:
@@ -81,7 +67,7 @@ private:
   MoveStack ttMoves[2], killers[2];
   bool finished;
   int phase;
-  const MovegenPhaseT* phasePtr;
+  const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastBadCapture;
   Bitboard dc, pinned;
   MoveStack moves[256], badCaptures[64];
@@ -92,12 +78,13 @@ private:
 //// Inline functions
 ////
 
-/// MovePicker::number_of_moves() simply returns the numOfMoves member
-/// variable. It is intended to be used in positions where the side to move
-/// is in check, for detecting checkmates or situations where there is only
-/// a single reply to check.
+/// MovePicker::number_of_evasions() simply returns the number of moves in
+/// evasions phase. It is intended to be used in positions where the side to
+/// move is in check, for detecting checkmates or situations where there is
+/// only a single reply to check.
+/// WARNING: It works as long as PH_EVASIONS is the _only_ phase for evasions.
 
-inline int MovePicker::number_of_moves() const {
+inline int MovePicker::number_of_evasions() const {
   return int(lastMove - moves);
 }
 

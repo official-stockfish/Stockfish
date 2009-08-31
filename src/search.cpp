@@ -1109,7 +1109,7 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool singleReply = (isCheck && mp.number_of_moves() == 1);
+      bool singleReply = (isCheck && mp.number_of_evasions() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
 
@@ -1366,7 +1366,7 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool singleReply = (isCheck && mp.number_of_moves() == 1);
+      bool singleReply = (isCheck && mp.number_of_evasions() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
       bool moveIsCapture = pos.move_is_capture(move);
 

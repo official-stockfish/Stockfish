@@ -39,11 +39,23 @@
 
 namespace {
 
+  enum MovegenPhase {
+    PH_TT_MOVES,       // Transposition table move and mate killer
+    PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
+    PH_KILLERS,        // Killer moves from the current ply
+    PH_NONCAPTURES,    // Non-captures and underpromotions
+    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
+    PH_EVASIONS,       // Check evasions
+    PH_QCAPTURES,      // Captures in quiescence search
+    PH_QCHECKS,        // Non-capture checks in quiescence search
+    PH_STOP
+  };
+
   CACHE_LINE_ALIGNMENT
-  const MovegenPhaseT MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const MovegenPhaseT EvasionsPhaseTable[] = { PH_EVASIONS, PH_STOP};
-  const MovegenPhaseT QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
-  const MovegenPhaseT QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
+  const uint8_t MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const uint8_t EvasionsPhaseTable[] = { PH_EVASIONS, PH_STOP};
+  const uint8_t QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
+  const uint8_t QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
 }
 
 
@@ -63,6 +75,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const History& h, SearchStack* ss) : pos(p), H(h) {
   int searchTT = ttm;
   ttMoves[0].move = ttm;
+  finished = false;
+  lastBadCapture = badCaptures;
+
   if (ss)
   {
       ttMoves[1].move = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
@@ -71,9 +86,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
       killers[1].move = ss->killers[1];
   } else
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
-
-  finished = false;
-  lastBadCapture = badCaptures;
 
   Color us = pos.side_to_move();
 
@@ -243,7 +255,7 @@ void MovePicker::score_evasions() {
 /// class. It returns a new legal move every time it is called, until there
 /// are no more moves left.
 /// It picks the move with the biggest score from a list of generated moves taking
-/// care not to return the tt move if that has already been serched previously.
+/// care not to return the tt move if has already been searched previously.
 
 Move MovePicker::get_next_move() {
 
