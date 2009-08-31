@@ -116,7 +116,7 @@ namespace {
     o["Passed Pawn Extension (non-PV nodes)"] = Option(0, 0, 2);
     o["Pawn Endgame Extension (PV nodes)"] = Option(2, 0, 2);
     o["Pawn Endgame Extension (non-PV nodes)"] = Option(2, 0, 2);
-    o["Full Depth Moves (PV nodes)"] = Option(14, 1, 100);
+    o["Full Depth Moves (PV nodes)"] = Option(10, 1, 100);
     o["Full Depth Moves (non-PV nodes)"] = Option(3, 1, 100);
     o["Threat Depth"] = Option(5, 0, 100);
     o["Randomness"] = Option(0, 0, 10);

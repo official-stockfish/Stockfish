@@ -916,7 +916,7 @@ namespace {
         else
         {
             if (   newDepth >= 3*OnePly
-                && i >= MultiPV + LMRPVMoves - 2 // Remove -2 and decrease LMRPVMoves instead ?
+                && i >= MultiPV + LMRPVMoves
                 && !dangerous
                 && !moveIsCapture
                 && !move_is_promotion(move)
