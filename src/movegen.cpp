@@ -832,7 +832,7 @@ namespace {
   MoveStack* generate_piece_checks(const Position& pos, MoveStack* mlist, Color us,
                                    Bitboard dc, Square ksq) {
 
-    Bitboard target = pos.pieces_of_color_and_type(us, Piece);
+    Bitboard target = pos.pieces_of_color(us) & pos.pieces_of_type(Piece);
 
     // Discovered checks
     Bitboard b = target & dc;

@@ -133,7 +133,7 @@ public:
   };
 
   // Constructors
-  Position() {};
+  Position() {}
   Position(const Position& pos);
   Position(const std::string& fen);
 
@@ -163,7 +163,6 @@ public:
   Bitboard occupied_squares() const;
   Bitboard pieces_of_color(Color c) const;
   Bitboard pieces_of_type(PieceType pt) const;
-  Bitboard pieces_of_color_and_type(Color c, PieceType pt) const;
   Bitboard pawns() const;
   Bitboard knights() const;
   Bitboard bishops() const;
@@ -414,10 +413,6 @@ inline Bitboard Position::pieces_of_type(PieceType pt) const {
   return byTypeBB[pt];
 }
 
-inline Bitboard Position::pieces_of_color_and_type(Color c, PieceType pt) const {
-  return pieces_of_color(c) & pieces_of_type(pt);
-}
-
 inline Bitboard Position::pawns() const {
   return pieces_of_type(PAWN);
 }
@@ -455,35 +450,35 @@ inline Bitboard Position::sliders() const {
 }
 
 inline Bitboard Position::pawns(Color c) const {
-  return pieces_of_color_and_type(c, PAWN);
+  return pieces_of_color(c) & pieces_of_type(PAWN);
 }
 
 inline Bitboard Position::knights(Color c) const {
-  return pieces_of_color_and_type(c, KNIGHT);
+  return pieces_of_color(c) & pieces_of_type(KNIGHT);
 }
 
 inline Bitboard Position::bishops(Color c) const {
-  return pieces_of_color_and_type(c, BISHOP);
+  return pieces_of_color(c) & pieces_of_type(BISHOP);
 }
 
 inline Bitboard Position::rooks(Color c) const {
-  return pieces_of_color_and_type(c, ROOK);
+  return pieces_of_color(c) & pieces_of_type(ROOK);
 }
 
 inline Bitboard Position::queens(Color c) const {
-  return pieces_of_color_and_type(c, QUEEN);
+  return pieces_of_color(c) & pieces_of_type(QUEEN);
 }
 
 inline Bitboard Position::kings(Color c) const {
-  return pieces_of_color_and_type(c, KING);
+  return pieces_of_color(c) & pieces_of_type(KING);
 }
 
 inline Bitboard Position::rooks_and_queens(Color c) const {
-  return rooks_and_queens() & pieces_of_color(c);
+  return pieces_of_color(c) & rooks_and_queens();
 }
 
 inline Bitboard Position::bishops_and_queens(Color c) const {
-  return bishops_and_queens() & pieces_of_color(c);
+  return pieces_of_color(c) & bishops_and_queens();
 }
 
 inline int Position::piece_count(Color c, PieceType pt) const {

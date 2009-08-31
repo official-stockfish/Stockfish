@@ -1382,11 +1382,12 @@ int Position::see(Square from, Square to) const {
 
       // Locate the least valuable attacker to the destination square
       // and use it to initialize from square.
+      stmAttackers = attackers & pieces_of_color(us);
       PieceType pt;
-      for (pt = PAWN; !(attackers & pieces_of_color_and_type(us, pt)); pt++)
+      for (pt = PAWN; !(stmAttackers & pieces_of_type(pt)); pt++)
           assert(pt < KING);
 
-      from = first_1(attackers & pieces_of_color_and_type(us, pt));
+      from = first_1(stmAttackers & pieces_of_type(pt));
       piece = piece_on(from);
   }
 
@@ -1633,7 +1634,7 @@ Value Position::compute_value() const {
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= KING; pt++)
       {
-          b = pieces_of_color_and_type(c, pt);
+          b = pieces_of_color(c) & pieces_of_type(pt);
           while(b)
           {
               s = pop_1st_bit(&b);
@@ -1659,7 +1660,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
   {
-      Bitboard b = pieces_of_color_and_type(c, pt);
+      Bitboard b = pieces_of_color(c) & pieces_of_type(pt);
       while (b)
       {
           assert(piece_on(first_1(b)) == piece_of_color_and_type(c, pt));
@@ -2011,7 +2012,7 @@ bool Position::is_ok(int* failedStep) const {
   if (debugPieceCounts)
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
-              if (pieceCount[c][pt] != count_1s(pieces_of_color_and_type(c, pt)))
+              if (pieceCount[c][pt] != count_1s(pieces_of_color(c) & pieces_of_type(pt)))
                   return false;
 
   if (failedStep) (*failedStep)++;
@@ -2021,7 +2022,7 @@ bool Position::is_ok(int* failedStep) const {
           for(PieceType pt = PAWN; pt <= KING; pt++)
               for(int i = 0; i < pieceCount[c][pt]; i++)
               {
-                  if (piece_on(piece_list(c, pt, i)) != piece_of_color_and_type(c, pt))
+                  if (piece_on(piece_list(c, pt, i)) != (pieces_of_color(c) & pieces_of_type(pt)))
                       return false;
 
                   if (index[piece_list(c, pt, i)] != i)

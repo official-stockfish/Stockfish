@@ -930,7 +930,7 @@ namespace {
                     b3 |= (b2 & pos.pieces_of_color(them));
 
                     // There are no enemy pawns in the pawn's path
-                    assert((b2 & pos.pieces_of_color_and_type(them, PAWN)) == EmptyBoardBB);
+                    assert((b2 & pos.pieces_of_color(them) & pos.pieces_of_type(PAWN)) == EmptyBoardBB);
 
                     // Are any of the squares in the pawn's path attacked or occupied by the enemy?
                     if (b3 == EmptyBoardBB)
