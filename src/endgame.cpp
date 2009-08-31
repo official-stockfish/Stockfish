@@ -329,7 +329,7 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) {
   assert(pos.non_pawn_material(strongerSide) == 2*BishopValueMidgame);
   assert(pos.piece_count(weakerSide, KNIGHT) == 1);
   assert(pos.non_pawn_material(weakerSide) == KnightValueMidgame);
-  assert(pos.pawns() == EmptyBoardBB);
+  assert(pos.pieces<PAWN>() == EmptyBoardBB);
 
   Value result = BishopValueEndgame;
   Square wksq = pos.king_square(strongerSide);
@@ -376,7 +376,7 @@ ScaleFactor ScalingFunction<KBPsK>::apply(const Position& pos) {
   // No assertions about the material of weakerSide, because we want draws to
   // be detected even when the weaker side has some pawns.
 
-  Bitboard pawns = pos.pawns(strongerSide);
+  Bitboard pawns = pos.pieces<PAWN>(strongerSide);
   File pawnFile = square_file(pos.piece_list(strongerSide, PAWN, 0));
 
   // All pawns are on a single rook file ?
@@ -432,12 +432,12 @@ ScaleFactor ScalingFunction<KQKRPs>::apply(const Position& pos) {
   Square kingSq = pos.king_square(weakerSide);
   if (   relative_rank(weakerSide, kingSq) <= RANK_2
       && relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4
-      && (pos.rooks(weakerSide) & relative_rank_bb(weakerSide, RANK_3))
-      && (pos.pawns(weakerSide) & relative_rank_bb(weakerSide, RANK_2))
-      && (pos.piece_attacks<KING>(kingSq) & pos.pawns(weakerSide)))
+      && (pos.pieces<ROOK>(weakerSide) & relative_rank_bb(weakerSide, RANK_3))
+      && (pos.pieces<PAWN>(weakerSide) & relative_rank_bb(weakerSide, RANK_2))
+      && (pos.piece_attacks<KING>(kingSq) & pos.pieces<PAWN>(weakerSide)))
   {
       Square rsq = pos.piece_list(weakerSide, ROOK, 0);
-      if (pos.pawn_attacks(strongerSide, rsq) & pos.pawns(weakerSide))
+      if (pos.pawn_attacks(strongerSide, rsq) & pos.pieces<PAWN>(weakerSide))
           return ScaleFactor(0);
   }
   return SCALE_FACTOR_NONE;
@@ -616,7 +616,7 @@ ScaleFactor ScalingFunction<KPsK>::apply(const Position &pos) {
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
-  Bitboard pawns = pos.pawns(strongerSide);
+  Bitboard pawns = pos.pieces<PAWN>(strongerSide);
 
   // Are all pawns on the 'a' file?
   if ((pawns & ~FileABB) == EmptyBoardBB)
@@ -694,7 +694,7 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position &pos) {
       else
       {
           Bitboard ray = ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
-          if (ray & pos.kings(weakerSide))
+          if (ray & pos.pieces<KING>(weakerSide))
               return ScaleFactor(0);
           if(  (pos.piece_attacks<BISHOP>(weakerBishopSq) & ray)
              && square_distance(weakerBishopSq, pawnSq) >= 3)
@@ -761,13 +761,13 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) {
     if (   ksq == blockSq1
         && square_color(ksq) != square_color(wbsq)
         && (   bbsq == blockSq2
-            || (pos.piece_attacks<BISHOP>(blockSq2) & pos.bishops(weakerSide))
+            || (pos.piece_attacks<BISHOP>(blockSq2) & pos.pieces<BISHOP>(weakerSide))
             || rank_distance(r1, r2) >= 2))
         return ScaleFactor(0);
     else if (   ksq == blockSq2
              && square_color(ksq) != square_color(wbsq)
              && (   bbsq == blockSq1
-                 || (pos.piece_attacks<BISHOP>(blockSq1) & pos.bishops(weakerSide))))
+                 || (pos.piece_attacks<BISHOP>(blockSq1) & pos.pieces<BISHOP>(weakerSide))))
         return ScaleFactor(0);
     else
         return SCALE_FACTOR_NONE;

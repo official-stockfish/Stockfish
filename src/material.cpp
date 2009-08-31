@@ -171,14 +171,14 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       mi->evaluationFunction = &EvaluateKKX;
       return mi;
   }
-  else if (   pos.pawns() == EmptyBoardBB
-           && pos.rooks() == EmptyBoardBB
-           && pos.queens() == EmptyBoardBB)
+  else if (   pos.pieces<PAWN>() == EmptyBoardBB
+           && pos.pieces<ROOK>() == EmptyBoardBB
+           && pos.pieces<QUEEN>() == EmptyBoardBB)
   {
       // Minor piece endgame with at least one minor piece per side and
       // no pawns. Note that the case KmmK is already handled by KXK.
-      assert(pos.knights(WHITE) | pos.bishops(WHITE));
-      assert(pos.knights(BLACK) | pos.bishops(BLACK));
+      assert((pos.pieces<KNIGHT>(WHITE) | pos.pieces<BISHOP>(WHITE)));
+      assert((pos.pieces<KNIGHT>(BLACK) | pos.pieces<BISHOP>(BLACK)));
 
       if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
           && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)

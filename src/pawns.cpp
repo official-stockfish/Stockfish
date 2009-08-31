@@ -197,8 +197,8 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
   for (Color us = WHITE; us <= BLACK; us++)
   {
     Color them = opposite_color(us);
-    Bitboard ourPawns = pos.pawns(us);
-    Bitboard theirPawns = pos.pawns(them);
+    Bitboard ourPawns = pos.pieces<PAWN>(us);
+    Bitboard theirPawns = pos.pieces<PAWN>(them);
     Bitboard pawns = ourPawns;
 
     // Initialize pawn storm scores by giving bonuses for open files
@@ -392,7 +392,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
 int PawnInfo::updateShelter(const Position& pos, Color c, Square ksq) {
 
   unsigned shelter = 0;
-  Bitboard pawns = pos.pawns(c) & this_and_neighboring_files_bb(ksq);
+  Bitboard pawns = pos.pieces<PAWN>(c) & this_and_neighboring_files_bb(ksq);
   unsigned r = ksq & (7 << 3);
   for (int i = 1, k = (c ? -8 : 8); i < 4; i++)
   {

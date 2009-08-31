@@ -163,24 +163,14 @@ public:
   Bitboard occupied_squares() const;
   Bitboard pieces_of_color(Color c) const;
   Bitboard pieces_of_type(PieceType pt) const;
-  Bitboard pawns() const;
-  Bitboard knights() const;
-  Bitboard bishops() const;
-  Bitboard rooks() const;
-  Bitboard queens() const;
-  Bitboard kings() const;
-  Bitboard rooks_and_queens() const;
-  Bitboard bishops_and_queens() const;
-  Bitboard sliders() const;
-  Bitboard pawns(Color c) const;
-  Bitboard knights(Color c) const;
-  Bitboard bishops(Color c) const;
-  Bitboard rooks(Color c) const;
-  Bitboard queens(Color c) const;
-  Bitboard kings(Color c) const;
-  Bitboard rooks_and_queens(Color c) const;
-  Bitboard bishops_and_queens(Color c) const;
-  Bitboard sliders_of_color(Color c) const;
+
+  // Pieces by constant type of both colors
+  template<PieceType Piece> Bitboard pieces()    const { return byTypeBB[Piece]; }
+  template<> Bitboard pieces<BISHOP_AND_QUEEN>() const { return byTypeBB[BISHOP] | byTypeBB[QUEEN]; }
+  template<> Bitboard pieces<ROOK_AND_QUEEN>()   const { return byTypeBB[ROOK]   | byTypeBB[QUEEN]; }
+
+  // Pieces by constant type of a given color
+  template<PieceType Piece> Bitboard pieces(Color c) const { return byColorBB[c] & pieces<Piece>(); }
 
   // Number of pieces of each color and type
   int piece_count(Color c, PieceType pt) const;
@@ -413,74 +403,6 @@ inline Bitboard Position::pieces_of_type(PieceType pt) const {
   return byTypeBB[pt];
 }
 
-inline Bitboard Position::pawns() const {
-  return pieces_of_type(PAWN);
-}
-
-inline Bitboard Position::knights() const {
-  return pieces_of_type(KNIGHT);
-}
-
-inline Bitboard Position::bishops() const {
-  return pieces_of_type(BISHOP);
-}
-
-inline Bitboard Position::rooks() const {
-  return pieces_of_type(ROOK);
-}
-
-inline Bitboard Position::queens() const {
-  return pieces_of_type(QUEEN);
-}
-
-inline Bitboard Position::kings() const {
-  return pieces_of_type(KING);
-}
-
-inline Bitboard Position::rooks_and_queens() const {
-  return rooks() | queens();
-}
-
-inline Bitboard Position::bishops_and_queens() const {
-  return bishops() | queens();
-}
-
-inline Bitboard Position::sliders() const {
-  return bishops() | queens() | rooks();
-}
-
-inline Bitboard Position::pawns(Color c) const {
-  return pieces_of_color(c) & pieces_of_type(PAWN);
-}
-
-inline Bitboard Position::knights(Color c) const {
-  return pieces_of_color(c) & pieces_of_type(KNIGHT);
-}
-
-inline Bitboard Position::bishops(Color c) const {
-  return pieces_of_color(c) & pieces_of_type(BISHOP);
-}
-
-inline Bitboard Position::rooks(Color c) const {
-  return pieces_of_color(c) & pieces_of_type(ROOK);
-}
-
-inline Bitboard Position::queens(Color c) const {
-  return pieces_of_color(c) & pieces_of_type(QUEEN);
-}
-
-inline Bitboard Position::kings(Color c) const {
-  return pieces_of_color(c) & pieces_of_type(KING);
-}
-
-inline Bitboard Position::rooks_and_queens(Color c) const {
-  return pieces_of_color(c) & rooks_and_queens();
-}
-
-inline Bitboard Position::bishops_and_queens(Color c) const {
-  return pieces_of_color(c) & bishops_and_queens();
-}
-
 inline int Position::piece_count(Color c, PieceType pt) const {
   return pieceCount[c][pt];
 }
@@ -559,7 +481,7 @@ inline bool Position::pawn_attacks_square(Color c, Square f, Square t) const {
 }
 
 template<PieceType Piece>
-Bitboard Position::piece_attacks_square(Square f, Square t) const {
+inline Bitboard Position::piece_attacks_square(Square f, Square t) const {
   return bit_is_set(piece_attacks<Piece>(f), t);
 }
 
@@ -574,7 +496,7 @@ inline bool Position::square_is_attacked(Square s, Color c) const {
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
-  return !(pawns(opposite_color(c)) & passed_pawn_mask(c, s));
+  return !(pieces<PAWN>(opposite_color(c)) & passed_pawn_mask(c, s));
 }
 
 inline bool Position::pawn_is_passed(Bitboard theirPawns, Color c, Square s) {
@@ -590,7 +512,7 @@ inline bool Position::pawn_is_doubled(Bitboard ourPawns, Color c, Square s) {
 }
 
 inline bool Position::square_is_weak(Square s, Color c) const {
-  return !(pawns(c) & outpost_mask(opposite_color(c), s));
+  return !(pieces<PAWN>(c) & outpost_mask(opposite_color(c), s));
 }
 
 inline Key Position::get_key() const {
@@ -666,7 +588,7 @@ inline bool Position::opposite_colored_bishops() const {
 
 inline bool Position::has_pawn_on_7th(Color c) const {
 
-  return pawns(c) & relative_rank_bb(c, RANK_7);
+  return pieces<PAWN>(c) & relative_rank_bb(c, RANK_7);
 }
 
 inline bool Position::move_is_capture(Move m) const {

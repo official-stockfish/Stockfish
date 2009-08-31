@@ -35,7 +35,8 @@
 
 enum PieceType {
   NO_PIECE_TYPE = 0,
-  PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6
+  PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6,
+  BISHOP_AND_QUEEN = 8, ROOK_AND_QUEEN = 9
 };
 
 enum Piece {

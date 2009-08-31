@@ -340,8 +340,8 @@ Bitboard Position::hidden_checkers(Color c) const {
 
   // Pinners are sliders, not checkers, that give check when
   // candidate pinned is removed.
-  pinners =  (rooks_and_queens(FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq])
-           | (bishops_and_queens(FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq]);
+  pinners =  (pieces<ROOK_AND_QUEEN>(FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq])
+           | (pieces<BISHOP_AND_QUEEN>(FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq]);
 
   if (FindPinned && pinners)
       pinners &= ~st->checkersBB;
@@ -384,12 +384,12 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
 Bitboard Position::attacks_to(Square s) const {
 
-  return  (pawn_attacks(BLACK, s)   & pawns(WHITE))
-        | (pawn_attacks(WHITE, s)   & pawns(BLACK))
-        | (piece_attacks<KNIGHT>(s) & pieces_of_type(KNIGHT))
-        | (piece_attacks<ROOK>(s)   & rooks_and_queens())
-        | (piece_attacks<BISHOP>(s) & bishops_and_queens())
-        | (piece_attacks<KING>(s)   & pieces_of_type(KING));
+  return  (pawn_attacks(BLACK, s)   & pieces<PAWN>(WHITE))
+        | (pawn_attacks(WHITE, s)   & pieces<PAWN>(BLACK))
+        | (piece_attacks<KNIGHT>(s) & pieces<KNIGHT>())
+        | (piece_attacks<ROOK>(s)   & pieces<ROOK_AND_QUEEN>())
+        | (piece_attacks<BISHOP>(s) & pieces<BISHOP_AND_QUEEN>())
+        | (piece_attacks<KING>(s)   & pieces<KING>());
 }
 
 /// Position::piece_attacks_square() tests whether the piece on square f
@@ -435,8 +435,8 @@ bool Position::move_attacks_square(Move m, Square s) const {
   Color us = color_of_piece_on(f);
   clear_bit(&occ, f);
   set_bit(&occ, t);
-  Bitboard xray = ( (rook_attacks_bb(s, occ) & rooks_and_queens())
-                   |(bishop_attacks_bb(s, occ) & bishops_and_queens())) & pieces_of_color(us);
+  Bitboard xray = ( (rook_attacks_bb(s, occ) &  pieces<ROOK_AND_QUEEN>())
+                   |(bishop_attacks_bb(s, occ) & pieces<BISHOP_AND_QUEEN>())) & pieces_of_color(us);
 
   // If we have attacks we need to verify that are caused by our move
   // and are not already existent ones.
@@ -503,8 +503,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       clear_bit(&b, capsq);
       set_bit(&b, to);
 
-      return   !(rook_attacks_bb(ksq, b) & rooks_and_queens(them))
-            && !(bishop_attacks_bb(ksq, b) & bishops_and_queens(them));
+      return   !(rook_attacks_bb(ksq, b) & pieces<ROOK_AND_QUEEN>(them))
+            && !(bishop_attacks_bb(ksq, b) & pieces<BISHOP_AND_QUEEN>(them));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -586,8 +586,8 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
           clear_bit(&b, from);
           clear_bit(&b, capsq);
           set_bit(&b, to);
-          return  (rook_attacks_bb(ksq, b) & rooks_and_queens(us))
-                ||(bishop_attacks_bb(ksq, b) & bishops_and_queens(us));
+          return  (rook_attacks_bb(ksq, b) & pieces<ROOK_AND_QUEEN>(us))
+                ||(bishop_attacks_bb(ksq, b) & pieces<BISHOP_AND_QUEEN>(us));
       }
       return false;
 
@@ -674,10 +674,10 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
   if (Piece != QUEEN && bit_is_set(dcCandidates, from))
   {
       if (Piece != ROOK)
-          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & rooks_and_queens(side_to_move()));
+          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & pieces<ROOK_AND_QUEEN>(side_to_move()));
 
       if (Piece != BISHOP)
-          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & bishops_and_queens(side_to_move()));
+          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & pieces<BISHOP_AND_QUEEN>(side_to_move()));
   }
 }
 
@@ -806,7 +806,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       // Set en passant square, only if moved pawn can be captured
       if (abs(int(to) - int(from)) == 16)
       {
-          if (pawn_attacks(us, from + (us == WHITE ? DELTA_N : DELTA_S)) & pawns(them))
+          if (pawn_attacks(us, from + (us == WHITE ? DELTA_N : DELTA_S)) & pieces<PAWN>(them))
           {
               st->epSquare = Square((int(from) + int(to)) / 2);
               key ^= zobEp[st->epSquare];
@@ -1366,12 +1366,12 @@ int Position::see(Square from, Square to) const {
   while (true)
   {
       clear_bit(&occ, from);
-      attackers =  (rook_attacks_bb(to, occ)   & rooks_and_queens())
-                 | (bishop_attacks_bb(to, occ) & bishops_and_queens())
-                 | (piece_attacks<KNIGHT>(to)  & knights())
-                 | (piece_attacks<KING>(to)    & kings())
-                 | (pawn_attacks(WHITE, to)    & pawns(BLACK))
-                 | (pawn_attacks(BLACK, to)    & pawns(WHITE));
+      attackers =  (rook_attacks_bb(to, occ)   & pieces<ROOK_AND_QUEEN>())
+                 | (bishop_attacks_bb(to, occ) & pieces<BISHOP_AND_QUEEN>())
+                 | (piece_attacks<KNIGHT>(to)  & pieces<KNIGHT>())
+                 | (piece_attacks<KING>(to)    & pieces<KING>())
+                 | (pawn_attacks(WHITE, to)    & pieces<PAWN>(BLACK))
+                 | (pawn_attacks(BLACK, to)    & pieces<PAWN>(WHITE));
 
       if (from != SQ_NONE)
           break;
@@ -1422,8 +1422,8 @@ int Position::see(Square from, Square to) const {
       // and scan for new X-ray attacks behind the attacker.
       b = stmAttackers & pieces_of_type(pt);
       occ ^= (b & (~b + 1));
-      attackers |=  (rook_attacks_bb(to, occ) & rooks_and_queens())
-                  | (bishop_attacks_bb(to, occ) & bishops_and_queens());
+      attackers |=  (rook_attacks_bb(to, occ) &  pieces<ROOK_AND_QUEEN>())
+                  | (bishop_attacks_bb(to, occ) & pieces<BISHOP_AND_QUEEN>());
 
       attackers &= occ;
 
@@ -1589,7 +1589,7 @@ Key Position::compute_pawn_key() const {
 
   for (Color c = WHITE; c <= BLACK; c++)
   {
-      b = pawns(c);
+      b = pieces<PAWN>(c);
       while(b)
       {
           s = pop_1st_bit(&b);
@@ -1679,7 +1679,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 bool Position::is_draw() const {
 
   // Draw by material?
-  if (   !pawns()
+  if (   !pieces<PAWN>()
       && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMidgame))
       return true;
 
