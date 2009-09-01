@@ -47,8 +47,8 @@ namespace {
   { 7, 25, 4, 7, 7, 7 }, { -27, -2, 46, 100, 56, 7 }, { 58, 29, 83, 148, -3, -25 } };
 
   const int QuadraticCoefficientsOppositeColor[][6] = {
-  { 0, 0, 0, 0, 0, 0 }, { -4, 0, 0, 0, 0, 0 }, { -31, 21, 0, 0, 0, 0 },
-  { 16, 23, -2, 0, 0, 0 }, { 9, -1, -18, -63, 0, 0 }, { 65, 60, -38, 110, 130, 0 } };
+  { 41, 41, 41, 41, 41, 41 }, { 37, 41, 41, 41, 41, 41 }, { 10, 62, 41, 41, 41, 41 },
+  { 57, 64, 39, 41, 41, 41 }, { 50, 40, 23, -22, 41, 41 }, { 106, 101, 3, 151, 171, 41 } };
 
   // Named endgame evaluation and scaling functions, these
   // are accessed direcly and not through the function maps.
