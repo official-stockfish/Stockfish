@@ -83,10 +83,6 @@ inline int piece_is_slider(Piece p) {
   return SlidingArray[int(p)];
 }
 
-inline int piece_is_slider(PieceType pt) {
-  return SlidingArray[int(pt)];
-}
-
 inline SquareDelta pawn_push(Color c) {
     return (c == WHITE ? DELTA_N : DELTA_S);
 }
