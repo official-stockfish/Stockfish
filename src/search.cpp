@@ -2185,7 +2185,7 @@ namespace {
     // Case 5: Discovered check, checking piece is the piece moved in m1
     if (   piece_is_slider(pos.piece_on(t1))
         && bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), f2)
-        && !bit_is_set(squares_between(t2, pos.king_square(pos.side_to_move())), t2))
+        && !bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), t2))
     {
         Bitboard occ = pos.occupied_squares();
         Color us = pos.side_to_move();
