@@ -162,15 +162,10 @@ public:
   Bitboard empty_squares() const;
   Bitboard occupied_squares() const;
   Bitboard pieces_of_color(Color c) const;
-  Bitboard pieces_of_type(PieceType pt) const;
-
-  // Pieces by constant type of both colors
-  template<PieceType Piece> Bitboard pieces()    const { return byTypeBB[Piece]; }
-  template<> Bitboard pieces<BISHOP_AND_QUEEN>() const { return byTypeBB[BISHOP] | byTypeBB[QUEEN]; }
-  template<> Bitboard pieces<ROOK_AND_QUEEN>()   const { return byTypeBB[ROOK]   | byTypeBB[QUEEN]; }
-
-  // Pieces by constant type of a given color
-  template<PieceType Piece> Bitboard pieces(Color c) const { return byColorBB[c] & pieces<Piece>(); }
+  Bitboard pieces(PieceType pt) const;
+  Bitboard pieces(PieceType pt, Color c) const;
+  Bitboard pieces(PieceType pt1, PieceType pt2) const;
+  Bitboard pieces(PieceType pt1, PieceType pt2, Color c) const;
 
   // Number of pieces of each color and type
   int piece_count(Color c, PieceType pt) const;
@@ -399,8 +394,20 @@ inline Bitboard Position::pieces_of_color(Color c) const {
   return byColorBB[c];
 }
 
-inline Bitboard Position::pieces_of_type(PieceType pt) const {
+inline Bitboard Position::pieces(PieceType pt) const {
   return byTypeBB[pt];
+}
+
+inline Bitboard Position::pieces(PieceType pt, Color c) const {
+  return byTypeBB[pt] & byColorBB[c];
+}
+
+inline Bitboard Position::pieces(PieceType pt1, PieceType pt2) const {
+  return byTypeBB[pt1] | byTypeBB[pt2];
+}
+
+inline Bitboard Position::pieces(PieceType pt1, PieceType pt2, Color c) const {
+  return (byTypeBB[pt1] | byTypeBB[pt2]) & byColorBB[c];
 }
 
 inline int Position::piece_count(Color c, PieceType pt) const {
@@ -496,7 +503,7 @@ inline bool Position::square_is_attacked(Square s, Color c) const {
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
-  return !(pieces<PAWN>(opposite_color(c)) & passed_pawn_mask(c, s));
+  return !(pieces(PAWN, opposite_color(c)) & passed_pawn_mask(c, s));
 }
 
 inline bool Position::pawn_is_passed(Bitboard theirPawns, Color c, Square s) {
@@ -512,7 +519,7 @@ inline bool Position::pawn_is_doubled(Bitboard ourPawns, Color c, Square s) {
 }
 
 inline bool Position::square_is_weak(Square s, Color c) const {
-  return !(pieces<PAWN>(c) & outpost_mask(opposite_color(c), s));
+  return !(pieces(PAWN, c) & outpost_mask(opposite_color(c), s));
 }
 
 inline Key Position::get_key() const {
@@ -588,7 +595,7 @@ inline bool Position::opposite_colored_bishops() const {
 
 inline bool Position::has_pawn_on_7th(Color c) const {
 
-  return pieces<PAWN>(c) & relative_rank_bb(c, RANK_7);
+  return pieces(PAWN, c) & relative_rank_bb(c, RANK_7);
 }
 
 inline bool Position::move_is_capture(Move m) const {

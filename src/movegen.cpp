@@ -238,14 +238,14 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   // and to be able to use square_is_attacked().
   Bitboard checkers = pos.checkers();
   Bitboard checkersAttacks = EmptyBoardBB;
-  Bitboard b = checkers & pos.pieces<BISHOP_AND_QUEEN>();
+  Bitboard b = checkers & pos.pieces(BISHOP, QUEEN);
   while (b)
   {
       from = pop_1st_bit(&b);
       checkersAttacks |= bishop_attacks_bb(from, b_noKing);
   }
 
-  b = checkers & pos.pieces<ROOK_AND_QUEEN>();
+  b = checkers & pos.pieces(ROOK, QUEEN);
   while (b)
   {
       from = pop_1st_bit(&b);
@@ -275,7 +275,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       // Generate captures of the checking piece
 
       // Pawn captures
-      b1 = pos.pawn_attacks(them, checksq) & pos.pieces<PAWN>(us) & ~pinned;
+      b1 = pos.pawn_attacks(them, checksq) & pos.pieces(PAWN, us) & ~pinned;
       while (b1)
       {
           from = pop_1st_bit(&b1);
@@ -290,9 +290,9 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       }
 
       // Pieces captures
-      b1 = (  (pos.piece_attacks<KNIGHT>(checksq) & pos.pieces<KNIGHT>(us))
-            | (pos.piece_attacks<BISHOP>(checksq) & pos.pieces<BISHOP_AND_QUEEN>(us))
-            | (pos.piece_attacks<ROOK>(checksq)   & pos.pieces<ROOK_AND_QUEEN>(us)) ) & ~pinned;
+      b1 = (  (pos.piece_attacks<KNIGHT>(checksq) & pos.pieces(KNIGHT, us))
+            | (pos.piece_attacks<BISHOP>(checksq) & pos.pieces(BISHOP, QUEEN, us))
+            | (pos.piece_attacks<ROOK>(checksq)   & pos.pieces(ROOK, QUEEN, us)) ) & ~pinned;
 
       while (b1)
       {
@@ -302,7 +302,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
 
       // Blocking check evasions are possible only if the checking piece is
       // a slider.
-      if (checkers & (pos.pieces<BISHOP>() | pos.pieces<ROOK>() | pos.pieces<QUEEN>()))
+      if (checkers & (pos.pieces(BISHOP) | pos.pieces(ROOK) | pos.pieces(QUEEN)))
       {
           Bitboard blockSquares = squares_between(checksq, ksq);
 
@@ -323,10 +323,10 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       // check. If pos.ep_square() is set, the last move made must have been
       // a double pawn push. If, furthermore, the checking piece is a pawn,
       // an en passant check evasion may be possible.
-      if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces<PAWN>(them)))
+      if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
       {
           to = pos.ep_square();
-          b1 = pos.pawn_attacks(them, to) & pos.pieces<PAWN>(us);
+          b1 = pos.pawn_attacks(them, to) & pos.pieces(PAWN, us);
 
           // The checking pawn cannot be a discovered (bishop) check candidate
           // otherwise we were in check also before last double push move.
@@ -675,7 +675,7 @@ namespace {
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
     Square to;
-    Bitboard pawns = pos.pieces<PAWN>(Us);
+    Bitboard pawns = pos.pieces(PAWN, Us);
     Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
     bool possiblePromotion = (pawns & TRank7BB);
 
@@ -725,7 +725,7 @@ namespace {
 
     Bitboard b1, b2;
     Square to;
-    Bitboard pawns = pos.pieces<PAWN>(Us);
+    Bitboard pawns = pos.pieces(PAWN, Us);
     Bitboard emptySquares = pos.empty_squares();
 
     if (pawns & TRank7BB) // There is some promotion candidate ?
@@ -786,7 +786,7 @@ namespace {
 
     Square to;
     Bitboard b1, b2, b3;
-    Bitboard pawns = pos.pieces<PAWN>(Us);
+    Bitboard pawns = pos.pieces(PAWN, Us);
 
     if (dc & pawns)
     {
@@ -832,7 +832,7 @@ namespace {
   MoveStack* generate_piece_checks(const Position& pos, MoveStack* mlist, Color us,
                                    Bitboard dc, Square ksq) {
 
-    Bitboard target = pos.pieces<Piece>(us);
+    Bitboard target = pos.pieces(Piece, us);
 
     // Discovered checks
     Bitboard b = target & dc;
@@ -881,7 +881,7 @@ namespace {
     Square to;
 
     // Find non-pinned pawns and push them one square
-    Bitboard b1 = move_pawns<Us, DELTA_N>(pos.pieces<PAWN>(Us) & ~pinned);
+    Bitboard b1 = move_pawns<Us, DELTA_N>(pos.pieces(PAWN, Us) & ~pinned);
 
     // We don't have to AND with empty squares here,
     // because the blocking squares will always be empty.

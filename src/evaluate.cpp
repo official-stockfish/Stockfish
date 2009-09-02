@@ -348,8 +348,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   ei.kingZone[BLACK] = ei.attackedBy[WHITE][KING] | (ei.attackedBy[WHITE][KING] << 8);
 
   // Initialize pawn attack bitboards for both sides
-  ei.attackedBy[WHITE][PAWN] = ((pos.pieces<PAWN>(WHITE) << 9) & ~FileABB) | ((pos.pieces<PAWN>(WHITE) << 7) & ~FileHBB);
-  ei.attackedBy[BLACK][PAWN] = ((pos.pieces<PAWN>(BLACK) >> 7) & ~FileABB) | ((pos.pieces<PAWN>(BLACK) >> 9) & ~FileHBB);
+  ei.attackedBy[WHITE][PAWN] = ((pos.pieces(PAWN, WHITE) << 9) & ~FileABB) | ((pos.pieces(PAWN, WHITE) << 7) & ~FileHBB);
+  ei.attackedBy[BLACK][PAWN] = ((pos.pieces(PAWN, BLACK) >> 7) & ~FileABB) | ((pos.pieces(PAWN, BLACK) >> 9) & ~FileHBB);
   Bitboard b1 = ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING];
   Bitboard b2 = ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING];
   if (b1)
@@ -590,10 +590,10 @@ namespace {
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
-    if (bonus && (p.pawn_attacks(them, s) & p.pieces<PAWN>(us)))
+    if (bonus && (p.pawn_attacks(them, s) & p.pieces(PAWN, us)))
     {
-        if (    p.pieces<KNIGHT>(them) == EmptyBoardBB
-            && (SquaresByColorBB[square_color(s)] & p.pieces<BISHOP>(them)) == EmptyBoardBB)
+        if (    p.pieces(KNIGHT, them) == EmptyBoardBB
+            && (SquaresByColorBB[square_color(s)] & p.pieces(BISHOP, them)) == EmptyBoardBB)
             bonus += bonus + bonus / 2;
         else
             bonus += bonus / 2;
@@ -622,9 +622,9 @@ namespace {
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.piece_attacks<Piece>(s);
         else if (Piece == BISHOP)
-            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces<QUEEN>(us));
+            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, us));
         else if (Piece == ROOK)
-            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces<ROOK_AND_QUEEN>(us));
+            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, us));
         else
             assert(false);
 
@@ -787,8 +787,8 @@ namespace {
                         from = p.piece_list(them, QUEEN, i);
                         if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
                             && !bit_is_set(p.pinned_pieces(them), from)
-                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces<ROOK_AND_QUEEN>(us))
-                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces<BISHOP_AND_QUEEN>(us)))
+                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(ROOK, QUEEN, us))
+                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(BISHOP, QUEEN, us)))
 
                             ei.mateThreat[them] = make_move(from, to);
                     }
@@ -841,7 +841,7 @@ namespace {
       // adding pawns later).
       if (DiscoveredCheckBonus)
       {
-        b = p.discovered_check_candidates(them) & ~p.pieces<PAWN>();
+        b = p.discovered_check_candidates(them) & ~p.pieces(PAWN);
         if (b)
           attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente? 2 : 1);
       }
@@ -889,7 +889,7 @@ namespace {
         Color them = opposite_color(us);
         Square ourKingSq = pos.king_square(us);
         Square theirKingSq = pos.king_square(them);
-        Bitboard b = ei.pi->passed_pawns() & pos.pieces<PAWN>(us), b2, b3, b4;
+        Bitboard b = ei.pi->passed_pawns() & pos.pieces(PAWN, us), b2, b3, b4;
 
         while (b)
         {
@@ -923,14 +923,14 @@ namespace {
                     // If there is an enemy rook or queen attacking the pawn from behind,
                     // add all X-ray attacks by the rook or queen.
                     if (    bit_is_set(ei.attacked_by(them,ROOK) | ei.attacked_by(them,QUEEN),s)
-                        && (squares_behind(us, s) & pos.pieces<ROOK_AND_QUEEN>(them)))
+                        && (squares_behind(us, s) & pos.pieces(ROOK, QUEEN, them)))
                         b3 = b2;
 
                     // Squares attacked or occupied by enemy pieces
                     b3 |= (b2 & pos.pieces_of_color(them));
 
                     // There are no enemy pawns in the pawn's path
-                    assert((b2 & pos.pieces<PAWN>(them)) == EmptyBoardBB);
+                    assert((b2 & pos.pieces(PAWN, them)) == EmptyBoardBB);
 
                     // Are any of the squares in the pawn's path attacked or occupied by the enemy?
                     if (b3 == EmptyBoardBB)
@@ -951,7 +951,7 @@ namespace {
             }
 
             // If the pawn is supported by a friendly pawn, increase bonus
-            b2 = pos.pieces<PAWN>(us) & neighboring_files_bb(s);
+            b2 = pos.pieces(PAWN, us) & neighboring_files_bb(s);
             if (b2 & rank_bb(s))
                 ebonus += Value(r * 20);
             else if (pos.pawn_attacks(them, s) & b2)
@@ -993,7 +993,7 @@ namespace {
                 if (   pos.non_pawn_material(them) <= KnightValueMidgame
                     && pos.piece_count(them, KNIGHT) <= 1)
                     ebonus += ebonus / 4;
-                else if (pos.pieces<ROOK_AND_QUEEN>(them))
+                else if (pos.pieces(ROOK, QUEEN, them))
                     ebonus -= ebonus / 4;
             }
 
@@ -1115,13 +1115,13 @@ namespace {
     // pawn, or if it is undefended and attacked by an enemy piece.
 
     Bitboard safeSquares =   SpaceMask[us]
-                          & ~pos.pieces<PAWN>(us)
+                          & ~pos.pieces(PAWN, us)
                           & ~ei.attacked_by(them, PAWN)
                           & ~(~ei.attacked_by(us) & ei.attacked_by(them));
 
     // Find all squares which are at most three squares behind some friendly
     // pawn.
-    Bitboard behindFriendlyPawns = pos.pieces<PAWN>(us);
+    Bitboard behindFriendlyPawns = pos.pieces(PAWN, us);
     if (us == WHITE)
     {
         behindFriendlyPawns |= (behindFriendlyPawns >> 8);

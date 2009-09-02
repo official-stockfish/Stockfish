@@ -340,8 +340,8 @@ Bitboard Position::hidden_checkers(Color c) const {
 
   // Pinners are sliders, not checkers, that give check when
   // candidate pinned is removed.
-  pinners =  (pieces<ROOK_AND_QUEEN>(FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq])
-           | (pieces<BISHOP_AND_QUEEN>(FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq]);
+  pinners =  (pieces(ROOK, QUEEN, FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq])
+           | (pieces(BISHOP, QUEEN, FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq]);
 
   if (FindPinned && pinners)
       pinners &= ~st->checkersBB;
@@ -384,12 +384,12 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
 Bitboard Position::attacks_to(Square s) const {
 
-  return  (pawn_attacks(BLACK, s)   & pieces<PAWN>(WHITE))
-        | (pawn_attacks(WHITE, s)   & pieces<PAWN>(BLACK))
-        | (piece_attacks<KNIGHT>(s) & pieces<KNIGHT>())
-        | (piece_attacks<ROOK>(s)   & pieces<ROOK_AND_QUEEN>())
-        | (piece_attacks<BISHOP>(s) & pieces<BISHOP_AND_QUEEN>())
-        | (piece_attacks<KING>(s)   & pieces<KING>());
+  return  (pawn_attacks(BLACK, s)   & pieces(PAWN, WHITE))
+        | (pawn_attacks(WHITE, s)   & pieces(PAWN, BLACK))
+        | (piece_attacks<KNIGHT>(s) & pieces(KNIGHT))
+        | (piece_attacks<ROOK>(s)   & pieces(ROOK, QUEEN))
+        | (piece_attacks<BISHOP>(s) & pieces(BISHOP, QUEEN))
+        | (piece_attacks<KING>(s)   & pieces(KING));
 }
 
 /// Position::piece_attacks_square() tests whether the piece on square f
@@ -435,8 +435,8 @@ bool Position::move_attacks_square(Move m, Square s) const {
   Color us = color_of_piece_on(f);
   clear_bit(&occ, f);
   set_bit(&occ, t);
-  Bitboard xray = ( (rook_attacks_bb(s, occ) &  pieces<ROOK_AND_QUEEN>())
-                   |(bishop_attacks_bb(s, occ) & pieces<BISHOP_AND_QUEEN>())) & pieces_of_color(us);
+  Bitboard xray = ( (rook_attacks_bb(s, occ) &  pieces(ROOK, QUEEN))
+                   |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN))) & pieces_of_color(us);
 
   // If we have attacks we need to verify that are caused by our move
   // and are not already existent ones.
@@ -503,8 +503,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       clear_bit(&b, capsq);
       set_bit(&b, to);
 
-      return   !(rook_attacks_bb(ksq, b) & pieces<ROOK_AND_QUEEN>(them))
-            && !(bishop_attacks_bb(ksq, b) & pieces<BISHOP_AND_QUEEN>(them));
+      return   !(rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, them))
+            && !(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, them));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -586,8 +586,8 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
           clear_bit(&b, from);
           clear_bit(&b, capsq);
           set_bit(&b, to);
-          return  (rook_attacks_bb(ksq, b) & pieces<ROOK_AND_QUEEN>(us))
-                ||(bishop_attacks_bb(ksq, b) & pieces<BISHOP_AND_QUEEN>(us));
+          return  (rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, us))
+                ||(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, us));
       }
       return false;
 
@@ -674,10 +674,10 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
   if (Piece != QUEEN && bit_is_set(dcCandidates, from))
   {
       if (Piece != ROOK)
-          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & pieces<ROOK_AND_QUEEN>(side_to_move()));
+          (*pCheckersBB) |= (piece_attacks<ROOK>(ksq) & pieces(ROOK, QUEEN, side_to_move()));
 
       if (Piece != BISHOP)
-          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & pieces<BISHOP_AND_QUEEN>(side_to_move()));
+          (*pCheckersBB) |= (piece_attacks<BISHOP>(ksq) & pieces(BISHOP, QUEEN, side_to_move()));
   }
 }
 
@@ -806,7 +806,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       // Set en passant square, only if moved pawn can be captured
       if (abs(int(to) - int(from)) == 16)
       {
-          if (pawn_attacks(us, from + (us == WHITE ? DELTA_N : DELTA_S)) & pieces<PAWN>(them))
+          if (pawn_attacks(us, from + (us == WHITE ? DELTA_N : DELTA_S)) & pieces(PAWN, them))
           {
               st->epSquare = Square((int(from) + int(to)) / 2);
               key ^= zobEp[st->epSquare];
@@ -1366,12 +1366,12 @@ int Position::see(Square from, Square to) const {
   while (true)
   {
       clear_bit(&occ, from);
-      attackers =  (rook_attacks_bb(to, occ)   & pieces<ROOK_AND_QUEEN>())
-                 | (bishop_attacks_bb(to, occ) & pieces<BISHOP_AND_QUEEN>())
-                 | (piece_attacks<KNIGHT>(to)  & pieces<KNIGHT>())
-                 | (piece_attacks<KING>(to)    & pieces<KING>())
-                 | (pawn_attacks(WHITE, to)    & pieces<PAWN>(BLACK))
-                 | (pawn_attacks(BLACK, to)    & pieces<PAWN>(WHITE));
+      attackers =  (rook_attacks_bb(to, occ)   & pieces(ROOK, QUEEN))
+                 | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN))
+                 | (piece_attacks<KNIGHT>(to)  & pieces(KNIGHT))
+                 | (piece_attacks<KING>(to)    & pieces(KING))
+                 | (pawn_attacks(WHITE, to)    & pieces(PAWN, BLACK))
+                 | (pawn_attacks(BLACK, to)    & pieces(PAWN, WHITE));
 
       if (from != SQ_NONE)
           break;
@@ -1384,10 +1384,10 @@ int Position::see(Square from, Square to) const {
       // and use it to initialize from square.
       stmAttackers = attackers & pieces_of_color(us);
       PieceType pt;
-      for (pt = PAWN; !(stmAttackers & pieces_of_type(pt)); pt++)
+      for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
           assert(pt < KING);
 
-      from = first_1(stmAttackers & pieces_of_type(pt));
+      from = first_1(stmAttackers & pieces(pt));
       piece = piece_on(from);
   }
 
@@ -1415,15 +1415,15 @@ int Position::see(Square from, Square to) const {
       // Locate the least valuable attacker for the side to move. The loop
       // below looks like it is potentially infinite, but it isn't. We know
       // that the side to move still has at least one attacker left.
-      for (pt = PAWN; !(stmAttackers & pieces_of_type(pt)); pt++)
+      for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
           assert(pt < KING);
 
       // Remove the attacker we just found from the 'attackers' bitboard,
       // and scan for new X-ray attacks behind the attacker.
-      b = stmAttackers & pieces_of_type(pt);
+      b = stmAttackers & pieces(pt);
       occ ^= (b & (~b + 1));
-      attackers |=  (rook_attacks_bb(to, occ) &  pieces<ROOK_AND_QUEEN>())
-                  | (bishop_attacks_bb(to, occ) & pieces<BISHOP_AND_QUEEN>());
+      attackers |=  (rook_attacks_bb(to, occ) &  pieces(ROOK, QUEEN))
+                  | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN));
 
       attackers &= occ;
 
@@ -1589,7 +1589,7 @@ Key Position::compute_pawn_key() const {
 
   for (Color c = WHITE; c <= BLACK; c++)
   {
-      b = pieces<PAWN>(c);
+      b = pieces(PAWN, c);
       while(b)
       {
           s = pop_1st_bit(&b);
@@ -1634,7 +1634,7 @@ Value Position::compute_value() const {
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= KING; pt++)
       {
-          b = pieces_of_color(c) & pieces_of_type(pt);
+          b = pieces(pt, c);
           while(b)
           {
               s = pop_1st_bit(&b);
@@ -1660,7 +1660,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
   {
-      Bitboard b = pieces_of_color(c) & pieces_of_type(pt);
+      Bitboard b = pieces(pt, c);
       while (b)
       {
           assert(piece_on(first_1(b)) == piece_of_color_and_type(c, pt));
@@ -1679,7 +1679,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 bool Position::is_draw() const {
 
   // Draw by material?
-  if (   !pieces<PAWN>()
+  if (   !pieces(PAWN)
       && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMidgame))
       return true;
 
@@ -1956,7 +1956,7 @@ bool Position::is_ok(int* failedStep) const {
       // Separate piece type bitboards must have empty intersections
       for (PieceType p1 = PAWN; p1 <= KING; p1++)
           for (PieceType p2 = PAWN; p2 <= KING; p2++)
-              if (p1 != p2 && (pieces_of_type(p1) & pieces_of_type(p2)))
+              if (p1 != p2 && (pieces(p1) & pieces(p2)))
                   return false;
   }
 
@@ -2012,7 +2012,7 @@ bool Position::is_ok(int* failedStep) const {
   if (debugPieceCounts)
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
-              if (pieceCount[c][pt] != count_1s(pieces_of_color(c) & pieces_of_type(pt)))
+              if (pieceCount[c][pt] != count_1s(pieces(pt, c)))
                   return false;
 
   if (failedStep) (*failedStep)++;
@@ -2022,7 +2022,7 @@ bool Position::is_ok(int* failedStep) const {
           for(PieceType pt = PAWN; pt <= KING; pt++)
               for(int i = 0; i < pieceCount[c][pt]; i++)
               {
-                  if (piece_on(piece_list(c, pt, i)) != (pieces_of_color(c) & pieces_of_type(pt)))
+                  if (piece_on(piece_list(c, pt, i)) != (pieces(pt, c)))
                       return false;
 
                   if (index[piece_list(c, pt, i)] != i)
