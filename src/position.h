@@ -457,7 +457,7 @@ inline Bitboard Position::piece_attacks(Square s) const {
 
 template<>
 inline Bitboard Position::piece_attacks<PAWN>(Square s) const {
-  return StepAttackBB[piece_of_color_and_type(opposite_color(sideToMove), PAWN)][s];
+  return StepAttackBB[WP][s] | StepAttackBB[BP][s];
 }
 
 template<>

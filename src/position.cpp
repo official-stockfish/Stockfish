@@ -667,7 +667,7 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 
   else if (   Piece != KING
            && !Slider
-           && bit_is_set(piece_attacks<Piece>(ksq), to))
+           && bit_is_set(Piece == PAWN ? pawn_attacks(opposite_color(sideToMove), ksq) : piece_attacks<Piece>(ksq), to))
       set_bit(pCheckersBB, to);
 
   // Discovery checks
