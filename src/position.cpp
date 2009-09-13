@@ -479,10 +479,9 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   Color us = side_to_move();
   Square from = move_from(m);
-  Square ksq = king_square(us);
 
   assert(color_of_piece_on(from) == us);
-  assert(piece_on(ksq) == piece_of_color_and_type(us, KING));
+  assert(piece_on(king_square(us)) == piece_of_color_and_type(us, KING));
 
   // En passant captures are a tricky special case.  Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
@@ -493,6 +492,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       Square to = move_to(m);
       Square capsq = make_square(square_file(to), square_rank(from));
       Bitboard b = occupied_squares();
+      Square ksq = king_square(us);
 
       assert(to == ep_square());
       assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
@@ -509,14 +509,14 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
-  if (from == ksq)
+  if (type_of_piece_on(from) == KING)
       return !(square_is_attacked(move_to(m), opposite_color(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return (   !pinned
           || !bit_is_set(pinned, from)
-          || (direction_between_squares(from, ksq) == direction_between_squares(move_to(m), ksq)));
+          || (direction_between_squares(from, king_square(us)) == direction_between_squares(move_to(m), king_square(us))));
 }
 
 
