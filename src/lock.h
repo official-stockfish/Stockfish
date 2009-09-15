@@ -86,8 +86,9 @@ typedef pthread_mutex_t Lock;
 
 #else
 
-
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#undef WIN32_LEAN_AND_MEAN
 
 typedef CRITICAL_SECTION Lock;
 #  define lock_init(x, y) InitializeCriticalSection(x)
