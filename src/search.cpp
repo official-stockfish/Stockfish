@@ -1543,7 +1543,11 @@ namespace {
         staticValue = tte->value();
     }
     else
+    {
         staticValue = evaluate(pos, ei, threadID);
+        if (!value_is_mate(staticValue + Value(ply)))
+            staticValue += Value(ply);
+    }
 
     if (ply == PLY_MAX - 1)
         return evaluate(pos, ei, threadID);
