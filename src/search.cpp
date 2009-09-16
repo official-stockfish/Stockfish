@@ -1540,14 +1540,10 @@ namespace {
         // Use the cached evaluation score if possible
         assert(ei.futilityMargin == Value(0));
 
-        staticValue = tte->value();
+        staticValue = tte->value() + ply;
     }
     else
-    {
-        staticValue = evaluate(pos, ei, threadID);
-        if (!value_is_mate(staticValue + Value(ply)))
-            staticValue += Value(ply);
-    }
+        staticValue = evaluate(pos, ei, threadID) + ply;
 
     if (ply == PLY_MAX - 1)
         return evaluate(pos, ei, threadID);
@@ -1560,7 +1556,7 @@ namespace {
     {
         // Store the score to avoid a future costly evaluation() call
         if (!isCheck && !tte && ei.futilityMargin == 0)
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
+            TT.store(pos.get_key(), bestValue - ply, VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
 
         return bestValue;
     }
