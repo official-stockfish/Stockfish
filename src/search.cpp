@@ -1556,7 +1556,7 @@ namespace {
     {
         // Store the score to avoid a future costly evaluation() call
         if (!isCheck && !tte && ei.futilityMargin == 0)
-            TT.store(pos.get_key(), bestValue - ply, VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
 
         return bestValue;
     }
