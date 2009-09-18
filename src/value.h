@@ -37,7 +37,9 @@ enum ValueType {
   VALUE_TYPE_UPPER = 1,  // Upper bound
   VALUE_TYPE_LOWER = 2,  // Lower bound
   VALUE_TYPE_EXACT = 3,  // Exact score
-  VALUE_TYPE_EVAL  = 4   // Evaluation cache
+  VALUE_TYPE_EVAL  = 4,  // Evaluation cache
+  VALUE_TYPE_EV_UP = 5,  // Evaluation cache for upper bound
+  VALUE_TYPE_EV_LO = 6   // Evaluation cache for lower bound
 };
 
 

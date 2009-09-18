@@ -121,8 +121,8 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
   {
       if (!tte->key() || tte->key() == posKey32) // empty or overwrite old
       {
-          // Do not overwrite when new type is VALUE_TYPE_EVAL
-          if (tte->key() && t == VALUE_TYPE_EVAL)
+          // Do not overwrite when new type is VALUE_TYPE_EV_LO
+          if (tte->key() && t == VALUE_TYPE_EV_LO)
               return;
 
           if (m == MOVE_NONE)

@@ -1535,7 +1535,7 @@ namespace {
     if (isCheck)
         staticValue = -VALUE_INFINITE;
 
-    else if (tte && tte->type() == VALUE_TYPE_EVAL)
+    else if (tte && (tte->type() & VALUE_TYPE_EVAL))
     {
         // Use the cached evaluation score if possible
         assert(ei.futilityMargin == Value(0));
@@ -1556,7 +1556,7 @@ namespace {
     {
         // Store the score to avoid a future costly evaluation() call
         if (!isCheck && !tte && ei.futilityMargin == 0)
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EVAL, Depth(-127*OnePly), MOVE_NONE);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EV_LO, Depth(-127*OnePly), MOVE_NONE);
 
         return bestValue;
     }
@@ -1644,9 +1644,13 @@ namespace {
     Move m = ss[ply].pv[ply];
     if (!pvNode)
     {
+        // If bestValue isn't changed it means it is still the static evaluation of
+        // the node, so keep this info to avoid a future costly evaluation() call.
+        ValueType type = (bestValue == staticValue && !ei.futilityMargin ? VALUE_TYPE_EV_UP : VALUE_TYPE_UPPER);
         Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
+
         if (bestValue < beta)
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
         else
             TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, m);
     }
