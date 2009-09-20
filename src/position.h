@@ -195,12 +195,12 @@ public:
   // Piece lists
   Square piece_list(Color c, PieceType pt, int index) const;
 
-  // Attack information to a given square
+  // Information about attacks to or from a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Color c) const;
-  Bitboard piece_attacks(Piece p, Square s) const;
-  Bitboard pawn_attacks(Square s, Color c) const;
-  template<PieceType> Bitboard piece_attacks(Square s) const;
+  Bitboard piece_attacks_from(Piece p, Square s) const;
+  Bitboard pawn_attacks_from(Square s, Color c) const;
+  template<PieceType> Bitboard piece_attacks_from(Square s) const;
 
   // Properties of moves
   bool pl_move_is_legal(Move m) const;
@@ -433,33 +433,33 @@ inline Square Position::initial_qr_square(Color c) const {
   return relative_square(c, make_square(initialQRFile, RANK_1));
 }
 
-inline Bitboard Position::pawn_attacks(Square s, Color c) const {
+inline Bitboard Position::pawn_attacks_from(Square s, Color c) const {
   return StepAttackBB[piece_of_color_and_type(c, PAWN)][s];
 }
 
 template<PieceType Piece> // Knight and King
-inline Bitboard Position::piece_attacks(Square s) const {
+inline Bitboard Position::piece_attacks_from(Square s) const {
   return StepAttackBB[Piece][s];
 }
 
 template<>
-inline Bitboard Position::piece_attacks<PAWN>(Square s) const {
+inline Bitboard Position::piece_attacks_from<PAWN>(Square s) const {
   return StepAttackBB[WP][s] | StepAttackBB[BP][s];
 }
 
 template<>
-inline Bitboard Position::piece_attacks<BISHOP>(Square s) const {
+inline Bitboard Position::piece_attacks_from<BISHOP>(Square s) const {
   return bishop_attacks_bb(s, occupied_squares());
 }
 
 template<>
-inline Bitboard Position::piece_attacks<ROOK>(Square s) const {
+inline Bitboard Position::piece_attacks_from<ROOK>(Square s) const {
   return rook_attacks_bb(s, occupied_squares());
 }
 
 template<>
-inline Bitboard Position::piece_attacks<QUEEN>(Square s) const {
-  return piece_attacks<ROOK>(s) | piece_attacks<BISHOP>(s);
+inline Bitboard Position::piece_attacks_from<QUEEN>(Square s) const {
+  return piece_attacks_from<ROOK>(s) | piece_attacks_from<BISHOP>(s);
 }
 
 inline Bitboard Position::checkers() const {

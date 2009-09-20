@@ -342,8 +342,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   ei.egValue += apply_weight(ei.pi->eg_value(), WeightPawnStructureEndgame);
 
   // Initialize king attack bitboards and king attack zones for both sides
-  ei.attackedBy[WHITE][KING] = pos.piece_attacks<KING>(pos.king_square(WHITE));
-  ei.attackedBy[BLACK][KING] = pos.piece_attacks<KING>(pos.king_square(BLACK));
+  ei.attackedBy[WHITE][KING] = pos.piece_attacks_from<KING>(pos.king_square(WHITE));
+  ei.attackedBy[BLACK][KING] = pos.piece_attacks_from<KING>(pos.king_square(BLACK));
   ei.kingZone[WHITE] = ei.attackedBy[BLACK][KING] | (ei.attackedBy[BLACK][KING] >> 8);
   ei.kingZone[BLACK] = ei.attackedBy[WHITE][KING] | (ei.attackedBy[WHITE][KING] << 8);
 
@@ -590,7 +590,7 @@ namespace {
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
-    if (bonus && (p.pawn_attacks(s, them) & p.pieces(PAWN, us)))
+    if (bonus && (p.pawn_attacks_from(s, them) & p.pieces(PAWN, us)))
     {
         if (    p.pieces(KNIGHT, them) == EmptyBoardBB
             && (SquaresByColorBB[square_color(s)] & p.pieces(BISHOP, them)) == EmptyBoardBB)
@@ -620,7 +620,7 @@ namespace {
         s = pos.piece_list(us, Piece, i);
 
         if (Piece == KNIGHT || Piece == QUEEN)
-            b = pos.piece_attacks<Piece>(s);
+            b = pos.piece_attacks_from<Piece>(s);
         else if (Piece == BISHOP)
             b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, us));
         else if (Piece == ROOK)
@@ -773,7 +773,7 @@ namespace {
           if (QueenContactMates && !p.is_check())
           {
             Bitboard escapeSquares =
-                p.piece_attacks<KING>(s) & ~p.pieces_of_color(us) & ~attackedByOthers;
+                p.piece_attacks_from<KING>(s) & ~p.pieces_of_color(us) & ~attackedByOthers;
 
             while (b)
             {
@@ -785,7 +785,7 @@ namespace {
                     for (int i = 0; i < p.piece_count(them, QUEEN); i++)
                     {
                         from = p.piece_list(them, QUEEN, i);
-                        if (    bit_is_set(p.piece_attacks<QUEEN>(from), to)
+                        if (    bit_is_set(p.piece_attacks_from<QUEEN>(from), to)
                             && !bit_is_set(p.pinned_pieces(them), from)
                             && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(ROOK, QUEEN, us))
                             && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(BISHOP, QUEEN, us)))
@@ -801,7 +801,7 @@ namespace {
       // Analyse safe distance checks
       if (QueenCheckBonus > 0 || RookCheckBonus > 0)
       {
-          b = p.piece_attacks<ROOK>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.piece_attacks_from<ROOK>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
 
           // Queen checks
           b2 = b & ei.attacked_by(them, QUEEN);
@@ -815,7 +815,7 @@ namespace {
       }
       if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
       {
-          b = p.piece_attacks<BISHOP>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.piece_attacks_from<BISHOP>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
 
           // Queen checks
           b2 = b & ei.attacked_by(them, QUEEN);
@@ -829,7 +829,7 @@ namespace {
       }
       if (KnightCheckBonus > 0)
       {
-          b = p.piece_attacks<KNIGHT>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.piece_attacks_from<KNIGHT>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
 
           // Knight checks
           b2 = b & ei.attacked_by(them, KNIGHT);
@@ -954,7 +954,7 @@ namespace {
             b2 = pos.pieces(PAWN, us) & neighboring_files_bb(s);
             if (b2 & rank_bb(s))
                 ebonus += Value(r * 20);
-            else if (pos.pawn_attacks(s, them) & b2)
+            else if (pos.pawn_attacks_from(s, them) & b2)
                 ebonus += Value(r * 12);
 
             // If the other side has only a king, check whether the pawn is
