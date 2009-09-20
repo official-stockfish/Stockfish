@@ -557,7 +557,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   }
 
   // Luckly we can handle all the other pieces in one go
-  return (   pos.piece_attacks_square(pos.piece_on(from), from, to)
+  return (   bit_is_set(pos.piece_attacks(pc, from), to)
           && pos.pl_move_is_legal(m, pinned)
           && !move_is_promotion(m));
 }

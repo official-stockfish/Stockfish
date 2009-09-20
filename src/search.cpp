@@ -2153,7 +2153,9 @@ namespace {
   // the second move is assumed to be a move from the current position.
 
   bool connected_moves(const Position& pos, Move m1, Move m2) {
+
     Square f1, t1, f2, t2;
+    Piece p;
 
     assert(move_is_ok(m1));
     assert(move_is_ok(m2));
@@ -2179,11 +2181,12 @@ namespace {
       return true;
 
     // Case 4: The destination square for m2 is attacked by the moving piece in m1
-    if (pos.piece_attacks_square(pos.piece_on(t1), t1, t2))
+    p = pos.piece_on(t1);
+    if (bit_is_set(pos.piece_attacks(p, t1), t2))
         return true;
 
     // Case 5: Discovered check, checking piece is the piece moved in m1
-    if (   piece_is_slider(pos.piece_on(t1))
+    if (   piece_is_slider(p)
         && bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), f2)
         && !bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), t2))
     {
@@ -2191,19 +2194,19 @@ namespace {
         Color us = pos.side_to_move();
         Square ksq = pos.king_square(us);
         clear_bit(&occ, f2);
-        if (pos.type_of_piece_on(t1) == BISHOP)
+        if (type_of_piece(p) == BISHOP)
         {
             if (bit_is_set(bishop_attacks_bb(ksq, occ), t1))
                 return true;
         }
-        else if (pos.type_of_piece_on(t1) == ROOK)
+        else if (type_of_piece(p) == ROOK)
         {
             if (bit_is_set(rook_attacks_bb(ksq, occ), t1))
                 return true;
         }
         else
         {
-            assert(pos.type_of_piece_on(t1) == QUEEN);
+            assert(type_of_piece(p) == QUEEN);
             if (bit_is_set(queen_attacks_bb(ksq, occ), t1))
                 return true;
         }

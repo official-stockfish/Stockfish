@@ -392,23 +392,22 @@ Bitboard Position::attackers_to(Square s) const {
         | (piece_attacks<KING>(s)   & pieces(KING));
 }
 
-/// Position::piece_attacks_square() tests whether the piece on square f
-/// attacks square t.
+/// Position::piece_attacks() computes a bitboard of all attacks
+/// of a given piece put in a given square.
 
-bool Position::piece_attacks_square(Piece p, Square f, Square t) const {
+Bitboard Position::piece_attacks(Piece p, Square s) const {
 
-  assert(square_is_ok(f));
-  assert(square_is_ok(t));
+  assert(square_is_ok(s));
 
   switch (p)
   {
-  case WP:          return pawn_attacks_square(f, t, WHITE);
-  case BP:          return pawn_attacks_square(f, t, BLACK);
-  case WN: case BN: return piece_attacks_square<KNIGHT>(f, t);
-  case WB: case BB: return piece_attacks_square<BISHOP>(f, t);
-  case WR: case BR: return piece_attacks_square<ROOK>(f, t);
-  case WQ: case BQ: return piece_attacks_square<QUEEN>(f, t);
-  case WK: case BK: return piece_attacks_square<KING>(f, t);
+  case WP:          return pawn_attacks(s, WHITE);
+  case BP:          return pawn_attacks(s, BLACK);
+  case WN: case BN: return piece_attacks<KNIGHT>(s);
+  case WB: case BB: return piece_attacks<BISHOP>(s);
+  case WR: case BR: return piece_attacks<ROOK>(s);
+  case WQ: case BQ: return piece_attacks<QUEEN>(s);
+  case WK: case BK: return piece_attacks<KING>(s);
   default: break;
   }
   return false;
@@ -427,7 +426,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
   assert(square_is_occupied(f));
 
-  if (piece_attacks_square(piece_on(f), t, s))
+  if (bit_is_set(piece_attacks(piece_on(f), t), s))
       return true;
 
   // Move the piece and scan for X-ray attacks behind it

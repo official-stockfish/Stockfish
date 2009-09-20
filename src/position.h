@@ -198,13 +198,9 @@ public:
   // Attack information to a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Color c) const;
-  template<PieceType> Bitboard piece_attacks(Square s) const;
+  Bitboard piece_attacks(Piece p, Square s) const;
   Bitboard pawn_attacks(Square s, Color c) const;
-
-  // Attack information to a given square from another given square
-  template<PieceType> Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
-  bool piece_attacks_square(Piece p, Square f, Square t) const; // Dispatch at run-time
-  bool pawn_attacks_square(Square f, Square t, Color c) const;
+  template<PieceType> Bitboard piece_attacks(Square s) const;
 
   // Properties of moves
   bool pl_move_is_legal(Move m) const;
@@ -472,15 +468,6 @@ inline Bitboard Position::checkers() const {
 
 inline bool Position::is_check() const {
   return st->checkersBB != EmptyBoardBB;
-}
-
-inline bool Position::pawn_attacks_square(Square f, Square t, Color c) const {
-  return bit_is_set(pawn_attacks(f, c), t);
-}
-
-template<PieceType Piece>
-inline Bitboard Position::piece_attacks_square(Square f, Square t) const {
-  return bit_is_set(piece_attacks<Piece>(f), t);
 }
 
 inline Bitboard Position::attackers_to(Square s, Color c) const {
