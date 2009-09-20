@@ -2439,8 +2439,9 @@ namespace {
     n = Slowdown;
     for (i = 0; i < n; i++)  {
         Square s = Square(i&63);
-        if (count_1s(pos.attacks_to(s)) > 63)
-            std::cout << "This can't happen, but I put this string here anyway, in order to prevent the compiler from optimizing away the useless computation." << std::endl;
+        if (count_1s(pos.attackers_to(s)) > 63)
+            std::cout << "This can't happen, but I put this string here anyway, in order to "
+                         "prevent the compiler from optimizing away the useless computation." << std::endl;
     }
   }
 

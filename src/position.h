@@ -196,8 +196,8 @@ public:
   Square piece_list(Color c, PieceType pt, int index) const;
 
   // Attack information to a given square
-  Bitboard attacks_to(Square s) const;
-  Bitboard attacks_to(Square s, Color c) const;
+  Bitboard attackers_to(Square s) const;
+  Bitboard attackers_to(Square s, Color c) const;
   template<PieceType> Bitboard piece_attacks(Square s) const;
   Bitboard pawn_attacks(Square s, Color c) const;
 
@@ -483,9 +483,9 @@ inline Bitboard Position::piece_attacks_square(Square f, Square t) const {
   return bit_is_set(piece_attacks<Piece>(f), t);
 }
 
-inline Bitboard Position::attacks_to(Square s, Color c) const {
+inline Bitboard Position::attackers_to(Square s, Color c) const {
 
-  return attacks_to(s) & pieces_of_color(c);
+  return attackers_to(s) & pieces_of_color(c);
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {

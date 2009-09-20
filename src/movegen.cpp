@@ -235,7 +235,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   // Find squares attacked by slider checkers, we will
   // remove them from king evasions set so to avoid a couple
   // of cycles in the slow king evasions legality check loop
-  // and to be able to use attacks_to().
+  // and to be able to use attackers_to().
   Bitboard checkers = pos.checkers();
   Bitboard checkersAttacks = EmptyBoardBB;
   Bitboard b = checkers & pos.pieces(BISHOP, QUEEN);
@@ -257,9 +257,9 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   while (b1)
   {
       to = pop_1st_bit(&b1);
-      // Note that we can use attacks_to() only because we
+      // Note that we can use attackers_to() only because we
       // have already removed slider checkers.
-      if (!pos.attacks_to(to, them))
+      if (!pos.attackers_to(to, them))
           (*mlist++).move = make_move(ksq, to);
   }
 
@@ -441,7 +441,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       // is occupied or under attack.
       for (s = Min(from, g1); s <= Max(from, g1); s++)
           if (  (s != from && s != to && !pos.square_is_empty(s))
-              || pos.attacks_to(s, them))
+              || pos.attackers_to(s, them))
               illegal = true;
 
       // Check if any of the squares between king and rook
@@ -472,7 +472,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
       for (s = Min(from, c1); s <= Max(from, c1); s++)
           if(  (s != from && s != to && !pos.square_is_empty(s))
-             || pos.attacks_to(s, them))
+             || pos.attackers_to(s, them))
               illegal = true;
 
       for (s = Min(to, d1); s <= Max(to, d1); s++)
@@ -942,7 +942,7 @@ namespace {
         // It is a bit complicated to correctly handle Chess960
         for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
             if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
-                || pos.attacks_to(s, them))
+                || pos.attackers_to(s, them))
                 illegal = true;
 
         for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)

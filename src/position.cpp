@@ -379,10 +379,10 @@ Bitboard Position::discovered_check_candidates(Color c) const {
   return hidden_checkers<false>(c);
 }
 
-/// Position::attacks_to() computes a bitboard containing all pieces which
+/// Position::attackers_to() computes a bitboard containing all pieces which
 /// attacks a given square.
 
-Bitboard Position::attacks_to(Square s) const {
+Bitboard Position::attackers_to(Square s) const {
 
   return  (pawn_attacks(s, BLACK)   & pieces(PAWN, WHITE))
         | (pawn_attacks(s, WHITE)   & pieces(PAWN, BLACK))
@@ -446,14 +446,14 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
 /// Position::find_checkers() computes the checkersBB bitboard, which
 /// contains a nonzero bit for each checking piece (0, 1 or 2). It
-/// currently works by calling Position::attacks_to, which is probably
+/// currently works by calling Position::attackers_to, which is probably
 /// inefficient. Consider rewriting this function to use the last move
 /// played, like in non-bitboard versions of Glaurung.
 
 void Position::find_checkers() {
 
   Color us = side_to_move();
-  st->checkersBB = attacks_to(king_square(us), opposite_color(us));
+  st->checkersBB = attackers_to(king_square(us), opposite_color(us));
 }
 
 
@@ -510,7 +510,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
   if (type_of_piece_on(from) == KING)
-      return !attacks_to(move_to(m), opposite_color(us));
+      return !attackers_to(move_to(m), opposite_color(us));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -864,7 +864,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // Update checkers bitboard, piece must be already moved
   if (ep | pm)
-      st->checkersBB = attacks_to(king_square(them), us);
+      st->checkersBB = attackers_to(king_square(them), us);
   else
   {
       st->checkersBB = EmptyBoardBB;
@@ -1041,7 +1041,7 @@ void Position::do_castle_move(Move m) {
   st->rule50 = 0;
 
   // Update checkers BB
-  st->checkersBB = attacks_to(king_square(them), us);
+  st->checkersBB = attackers_to(king_square(them), us);
 
   // Finish
   sideToMove = opposite_color(sideToMove);
@@ -1923,7 +1923,7 @@ bool Position::is_ok(int* failedStep) const {
       Color us = side_to_move();
       Color them = opposite_color(us);
       Square ksq = king_square(them);
-      if (attacks_to(ksq, us))
+      if (attackers_to(ksq, us))
           return false;
   }
 
