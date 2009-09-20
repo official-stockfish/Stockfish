@@ -185,7 +185,6 @@ public:
 
   // Bitboards for pinned pieces and discovered check candidates
   Bitboard discovered_check_candidates(Color c) const;
-  Bitboard pinned_pieces(Color c, Bitboard& p) const;
   Bitboard pinned_pieces(Color c) const;
 
   // Checking pieces and under check information
