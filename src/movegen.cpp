@@ -253,7 +253,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   }
 
   // Generate evasions for king
-  Bitboard b1 = pos.piece_attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~checkersAttacks;
+  Bitboard b1 = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~checkersAttacks;
   Bitboard enemy = pos.pieces_of_color(them);
   while (b1)
   {
@@ -276,7 +276,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       // Generate captures of the checking piece
 
       // Pawn captures
-      b1 = pos.pawn_attacks_from(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
+      b1 = pos.attacks_from<PAWN>(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
       while (b1)
       {
           from = pop_1st_bit(&b1);
@@ -291,9 +291,9 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       }
 
       // Pieces captures
-      b1 = (  (pos.piece_attacks_from<KNIGHT>(checksq) & pos.pieces(KNIGHT, us))
-            | (pos.piece_attacks_from<BISHOP>(checksq) & pos.pieces(BISHOP, QUEEN, us))
-            | (pos.piece_attacks_from<ROOK>(checksq)   & pos.pieces(ROOK, QUEEN, us)) ) & ~pinned;
+      b1 = (  (pos.attacks_from<KNIGHT>(checksq) & pos.pieces(KNIGHT, us))
+            | (pos.attacks_from<BISHOP>(checksq) & pos.pieces(BISHOP, QUEEN, us))
+            | (pos.attacks_from<ROOK>(checksq)   & pos.pieces(ROOK, QUEEN, us)) ) & ~pinned;
 
       while (b1)
       {
@@ -327,7 +327,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
       {
           to = pos.ep_square();
-          b1 = pos.pawn_attacks_from(to, them) & pos.pieces(PAWN, us);
+          b1 = pos.attacks_from<PAWN>(to, them) & pos.pieces(PAWN, us);
 
           // The checking pawn cannot be a discovered (bishop) check candidate
           // otherwise we were in check also before last double push move.
@@ -558,7 +558,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   }
 
   // Luckly we can handle all the other pieces in one go
-  return (   bit_is_set(pos.piece_attacks_from(pc, from), to)
+  return (   bit_is_set(pos.attacks_from(pc, from), to)
           && pos.pl_move_is_legal(m, pinned)
           && !move_is_promotion(m));
 }
@@ -599,7 +599,7 @@ namespace {
     for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
     {
         from = pos.piece_list(us, Piece, i);
-        b = pos.piece_attacks_from<Piece>(from) & target;
+        b = pos.attacks_from<Piece>(from) & target;
         SERIALIZE_MOVES(b);
     }
     return mlist;
@@ -617,7 +617,7 @@ namespace {
         if (pinned && bit_is_set(pinned, from))
             continue;
 
-        b = pos.piece_attacks_from<Piece>(from) & target;
+        b = pos.attacks_from<Piece>(from) & target;
         SERIALIZE_MOVES(b);
     }
     return mlist;
@@ -629,7 +629,7 @@ namespace {
     Bitboard b;
     Square from = pos.king_square(us);
 
-    b = pos.piece_attacks_from<KING>(from) & target;
+    b = pos.attacks_from<KING>(from) & target;
     SERIALIZE_MOVES(b);
     return mlist;
   }
@@ -701,7 +701,7 @@ namespace {
         assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
         assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
 
-        Bitboard b1 = pawns & pos.pawn_attacks_from(pos.ep_square(), Them);
+        Bitboard b1 = pawns & pos.attacks_from<PAWN>(pos.ep_square(), Them);
         assert(b1 != EmptyBoardBB);
 
         while (b1)
@@ -820,11 +820,11 @@ namespace {
     // Direct checks, single pawn pushes
     Bitboard empty = pos.empty_squares();
     b2 = move_pawns<Us, DELTA_N>(b1) & empty;
-    b3 = b2 & pos.pawn_attacks_from(ksq, Them);
+    b3 = b2 & pos.attacks_from<PAWN>(ksq, Them);
     SERIALIZE_MOVES_D(b3, -TDELTA_N);
 
     // Direct checks, double pawn pushes
-    b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.pawn_attacks_from(ksq, Them);
+    b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.attacks_from<PAWN>(ksq, Them);
     SERIALIZE_MOVES_D(b3, -TDELTA_N -TDELTA_N);
     return mlist;
   }
@@ -840,7 +840,7 @@ namespace {
     while (b)
     {
         Square from = pop_1st_bit(&b);
-        Bitboard bb = pos.piece_attacks_from<Piece>(from) & pos.empty_squares();
+        Bitboard bb = pos.attacks_from<Piece>(from) & pos.empty_squares();
         if (Piece == KING)
             bb &= ~QueenPseudoAttacks[ksq];
 
@@ -851,7 +851,7 @@ namespace {
     b = target & ~dc;
     if (Piece != KING || b)
     {
-        Bitboard checkSqs = pos.piece_attacks_from<Piece>(ksq) & pos.empty_squares();
+        Bitboard checkSqs = pos.attacks_from<Piece>(ksq) & pos.empty_squares();
         if (!checkSqs)
             return mlist;
 
@@ -863,7 +863,7 @@ namespace {
                 || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
                 continue;
 
-            Bitboard bb = pos.piece_attacks_from<Piece>(from) & checkSqs;
+            Bitboard bb = pos.attacks_from<Piece>(from) & checkSqs;
             SERIALIZE_MOVES(bb);
         }
     }

@@ -303,7 +303,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
         if (   passed
             || isolated
             || chain
-            || (pos.pawn_attacks_from(s, us) & theirPawns)
+            || (pos.attacks_from<PAWN>(s, us) & theirPawns)
             || (ourPawns & behind_bb(us, r) & neighboring_files_bb(f)))
             backward = false;
         else
@@ -312,7 +312,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
             // pawn on neighboring files. We now check whether the pawn is
             // backward by looking in the forward direction on the neighboring
             // files, and seeing whether we meet a friendly or an enemy pawn first.
-            Bitboard b = pos.pawn_attacks_from(s, us);
+            Bitboard b = pos.attacks_from<PAWN>(s, us);
             if (us == WHITE)
             {
                 for ( ; !(b & (ourPawns | theirPawns)); b <<= 8);

@@ -2182,7 +2182,7 @@ namespace {
 
     // Case 4: The destination square for m2 is attacked by the moving piece in m1
     p = pos.piece_on(t1);
-    if (bit_is_set(pos.piece_attacks_from(p, t1), t2))
+    if (bit_is_set(pos.attacks_from(p, t1), t2))
         return true;
 
     // Case 5: Discovered check, checking piece is the piece moved in m1

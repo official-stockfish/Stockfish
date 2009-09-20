@@ -384,30 +384,30 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
 Bitboard Position::attackers_to(Square s) const {
 
-  return  (pawn_attacks_from(s, BLACK)   & pieces(PAWN, WHITE))
-        | (pawn_attacks_from(s, WHITE)   & pieces(PAWN, BLACK))
-        | (piece_attacks_from<KNIGHT>(s) & pieces(KNIGHT))
-        | (piece_attacks_from<ROOK>(s)   & pieces(ROOK, QUEEN))
-        | (piece_attacks_from<BISHOP>(s) & pieces(BISHOP, QUEEN))
-        | (piece_attacks_from<KING>(s)   & pieces(KING));
+  return  (attacks_from<PAWN>(s, BLACK) & pieces(PAWN, WHITE))
+        | (attacks_from<PAWN>(s, WHITE) & pieces(PAWN, BLACK))
+        | (attacks_from<KNIGHT>(s)      & pieces(KNIGHT))
+        | (attacks_from<ROOK>(s)        & pieces(ROOK, QUEEN))
+        | (attacks_from<BISHOP>(s)      & pieces(BISHOP, QUEEN))
+        | (attacks_from<KING>(s)        & pieces(KING));
 }
 
-/// Position::piece_attacks_from() computes a bitboard of all attacks
+/// Position::attacks_from() computes a bitboard of all attacks
 /// of a given piece put in a given square.
 
-Bitboard Position::piece_attacks_from(Piece p, Square s) const {
+Bitboard Position::attacks_from(Piece p, Square s) const {
 
   assert(square_is_ok(s));
 
   switch (p)
   {
-  case WP:          return pawn_attacks_from(s, WHITE);
-  case BP:          return pawn_attacks_from(s, BLACK);
-  case WN: case BN: return piece_attacks_from<KNIGHT>(s);
-  case WB: case BB: return piece_attacks_from<BISHOP>(s);
-  case WR: case BR: return piece_attacks_from<ROOK>(s);
-  case WQ: case BQ: return piece_attacks_from<QUEEN>(s);
-  case WK: case BK: return piece_attacks_from<KING>(s);
+  case WP:          return attacks_from<PAWN>(s, WHITE);
+  case BP:          return attacks_from<PAWN>(s, BLACK);
+  case WN: case BN: return attacks_from<KNIGHT>(s);
+  case WB: case BB: return attacks_from<BISHOP>(s);
+  case WR: case BR: return attacks_from<ROOK>(s);
+  case WQ: case BQ: return attacks_from<QUEEN>(s);
+  case WK: case BK: return attacks_from<KING>(s);
   default: break;
   }
   return false;
@@ -426,7 +426,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
   assert(square_is_occupied(f));
 
-  if (bit_is_set(piece_attacks_from(piece_on(f), t), s))
+  if (bit_is_set(attacks_from(piece_on(f), t), s))
       return true;
 
   // Move the piece and scan for X-ray attacks behind it
@@ -439,7 +439,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
   // If we have attacks we need to verify that are caused by our move
   // and are not already existent ones.
-  return xray && (xray ^ (xray & piece_attacks_from<QUEEN>(s)));
+  return xray && (xray ^ (xray & attacks_from<QUEEN>(s)));
 }
 
 
@@ -547,7 +547,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   {
   case PAWN:
 
-      if (bit_is_set(pawn_attacks_from(ksq, them), to)) // Normal check?
+      if (bit_is_set(attacks_from<PAWN>(ksq, them), to)) // Normal check?
           return true;
 
       if (   dcCandidates // Discovered check?
@@ -563,7 +563,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
           switch (move_promotion_piece(m))
           {
           case KNIGHT:
-              return bit_is_set(piece_attacks_from<KNIGHT>(to), ksq);
+              return bit_is_set(attacks_from<KNIGHT>(to), ksq);
           case BISHOP:
               return bit_is_set(bishop_attacks_bb(to, b), ksq);
           case ROOK:
@@ -593,21 +593,21 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   // Test discovered check and normal check according to piece type
   case KNIGHT:
     return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || bit_is_set(piece_attacks_from<KNIGHT>(ksq), to);
+          || bit_is_set(attacks_from<KNIGHT>(ksq), to);
 
   case BISHOP:
     return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || (direction_is_diagonal(ksq, to) && bit_is_set(piece_attacks_from<BISHOP>(ksq), to));
+          || (direction_is_diagonal(ksq, to) && bit_is_set(attacks_from<BISHOP>(ksq), to));
 
   case ROOK:
     return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || (direction_is_straight(ksq, to) && bit_is_set(piece_attacks_from<ROOK>(ksq), to));
+          || (direction_is_straight(ksq, to) && bit_is_set(attacks_from<ROOK>(ksq), to));
 
   case QUEEN:
       // Discovered checks are impossible!
       assert(!bit_is_set(dcCandidates, from));
-      return (   (direction_is_straight(ksq, to) && bit_is_set(piece_attacks_from<ROOK>(ksq), to))
-              || (direction_is_diagonal(ksq, to) && bit_is_set(piece_attacks_from<BISHOP>(ksq), to)));
+      return (   (direction_is_straight(ksq, to) && bit_is_set(attacks_from<ROOK>(ksq), to))
+              || (direction_is_diagonal(ksq, to) && bit_is_set(attacks_from<BISHOP>(ksq), to)));
 
   case KING:
       // Discovered check?
@@ -661,23 +661,23 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
   // Direct checks
   if (  (   (Bishop && bit_is_set(BishopPseudoAttacks[ksq], to))
          || (Rook   && bit_is_set(RookPseudoAttacks[ksq], to)))
-      && bit_is_set(piece_attacks_from<Piece>(ksq), to)) // slow, try to early skip
+      && bit_is_set(attacks_from<Piece>(ksq), to)) // slow, try to early skip
       set_bit(pCheckersBB, to);
 
   else if (   Piece != KING
            && !Slider
-           && bit_is_set(Piece == PAWN ? pawn_attacks_from(ksq, opposite_color(sideToMove))
-                                       : piece_attacks_from<Piece>(ksq), to))
+           && bit_is_set(Piece == PAWN ? attacks_from<PAWN>(ksq, opposite_color(sideToMove))
+                                       : attacks_from<Piece>(ksq), to))
       set_bit(pCheckersBB, to);
 
   // Discovery checks
   if (Piece != QUEEN && bit_is_set(dcCandidates, from))
   {
       if (Piece != ROOK)
-          (*pCheckersBB) |= (piece_attacks_from<ROOK>(ksq) & pieces(ROOK, QUEEN, side_to_move()));
+          (*pCheckersBB) |= (attacks_from<ROOK>(ksq) & pieces(ROOK, QUEEN, side_to_move()));
 
       if (Piece != BISHOP)
-          (*pCheckersBB) |= (piece_attacks_from<BISHOP>(ksq) & pieces(BISHOP, QUEEN, side_to_move()));
+          (*pCheckersBB) |= (attacks_from<BISHOP>(ksq) & pieces(BISHOP, QUEEN, side_to_move()));
   }
 }
 
@@ -806,7 +806,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       // Set en passant square, only if moved pawn can be captured
       if (abs(int(to) - int(from)) == 16)
       {
-          if (pawn_attacks_from(from + (us == WHITE ? DELTA_N : DELTA_S), us) & pieces(PAWN, them))
+          if (attacks_from<PAWN>(from + (us == WHITE ? DELTA_N : DELTA_S), us) & pieces(PAWN, them))
           {
               st->epSquare = Square((int(from) + int(to)) / 2);
               key ^= zobEp[st->epSquare];
@@ -1358,12 +1358,12 @@ int Position::see(Square from, Square to) const {
   while (true)
   {
       clear_bit(&occ, from);
-      attackers =  (rook_attacks_bb(to, occ)       & pieces(ROOK, QUEEN))
-                 | (bishop_attacks_bb(to, occ)     & pieces(BISHOP, QUEEN))
-                 | (piece_attacks_from<KNIGHT>(to) & pieces(KNIGHT))
-                 | (piece_attacks_from<KING>(to)   & pieces(KING))
-                 | (pawn_attacks_from(to, WHITE)   & pieces(PAWN, BLACK))
-                 | (pawn_attacks_from(to, BLACK)   & pieces(PAWN, WHITE));
+      attackers =  (rook_attacks_bb(to, occ)      & pieces(ROOK, QUEEN))
+                 | (bishop_attacks_bb(to, occ)    & pieces(BISHOP, QUEEN))
+                 | (attacks_from<KNIGHT>(to)      & pieces(KNIGHT))
+                 | (attacks_from<KING>(to)        & pieces(KING))
+                 | (attacks_from<PAWN>(to, WHITE) & pieces(PAWN, BLACK))
+                 | (attacks_from<PAWN>(to, BLACK) & pieces(PAWN, WHITE));
 
       if (from != SQ_NONE)
           break;

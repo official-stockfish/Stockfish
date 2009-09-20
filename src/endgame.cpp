@@ -343,7 +343,7 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) {
   result += Value(square_distance(bksq, nsq) * 32);
 
   // Bonus for restricting the knight's mobility
-  result += Value((8 - count_1s_max_15(pos.piece_attacks_from<KNIGHT>(nsq))) * 8);
+  result += Value((8 - count_1s_max_15(pos.attacks_from<KNIGHT>(nsq))) * 8);
 
   return (strongerSide == pos.side_to_move() ? result : -result);
 }
@@ -434,10 +434,10 @@ ScaleFactor ScalingFunction<KQKRPs>::apply(const Position& pos) {
       && relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4
       && (pos.pieces(ROOK, weakerSide) & relative_rank_bb(weakerSide, RANK_3))
       && (pos.pieces(PAWN, weakerSide) & relative_rank_bb(weakerSide, RANK_2))
-      && (pos.piece_attacks_from<KING>(kingSq) & pos.pieces(PAWN, weakerSide)))
+      && (pos.attacks_from<KING>(kingSq) & pos.pieces(PAWN, weakerSide)))
   {
       Square rsq = pos.piece_list(weakerSide, ROOK, 0);
-      if (pos.pawn_attacks_from(rsq, strongerSide) & pos.pieces(PAWN, weakerSide))
+      if (pos.attacks_from<PAWN>(rsq, strongerSide) & pos.pieces(PAWN, weakerSide))
           return ScaleFactor(0);
   }
   return SCALE_FACTOR_NONE;
@@ -696,7 +696,7 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position &pos) {
           Bitboard ray = ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
           if (ray & pos.pieces(KING, weakerSide))
               return ScaleFactor(0);
-          if(  (pos.piece_attacks_from<BISHOP>(weakerBishopSq) & ray)
+          if(  (pos.attacks_from<BISHOP>(weakerBishopSq) & ray)
              && square_distance(weakerBishopSq, pawnSq) >= 3)
               return ScaleFactor(0);
       }
@@ -761,13 +761,13 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) {
     if (   ksq == blockSq1
         && square_color(ksq) != square_color(wbsq)
         && (   bbsq == blockSq2
-            || (pos.piece_attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
+            || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
             || rank_distance(r1, r2) >= 2))
         return ScaleFactor(0);
     else if (   ksq == blockSq2
              && square_color(ksq) != square_color(wbsq)
              && (   bbsq == blockSq1
-                 || (pos.piece_attacks_from<BISHOP>(blockSq1) & pos.pieces(BISHOP, weakerSide))))
+                 || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(BISHOP, weakerSide))))
         return ScaleFactor(0);
     else
         return SCALE_FACTOR_NONE;
