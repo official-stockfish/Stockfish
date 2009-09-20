@@ -590,7 +590,7 @@ namespace {
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
-    if (bonus && (p.pawn_attacks(them, s) & p.pieces(PAWN, us)))
+    if (bonus && (p.pawn_attacks(s, them) & p.pieces(PAWN, us)))
     {
         if (    p.pieces(KNIGHT, them) == EmptyBoardBB
             && (SquaresByColorBB[square_color(s)] & p.pieces(BISHOP, them)) == EmptyBoardBB)
@@ -954,7 +954,7 @@ namespace {
             b2 = pos.pieces(PAWN, us) & neighboring_files_bb(s);
             if (b2 & rank_bb(s))
                 ebonus += Value(r * 20);
-            else if (pos.pawn_attacks(them, s) & b2)
+            else if (pos.pawn_attacks(s, them) & b2)
                 ebonus += Value(r * 12);
 
             // If the other side has only a king, check whether the pawn is

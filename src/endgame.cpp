@@ -437,7 +437,7 @@ ScaleFactor ScalingFunction<KQKRPs>::apply(const Position& pos) {
       && (pos.piece_attacks<KING>(kingSq) & pos.pieces(PAWN, weakerSide)))
   {
       Square rsq = pos.piece_list(weakerSide, ROOK, 0);
-      if (pos.pawn_attacks(strongerSide, rsq) & pos.pieces(PAWN, weakerSide))
+      if (pos.pawn_attacks(rsq, strongerSide) & pos.pieces(PAWN, weakerSide))
           return ScaleFactor(0);
   }
   return SCALE_FACTOR_NONE;

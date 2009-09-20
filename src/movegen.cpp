@@ -275,7 +275,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       // Generate captures of the checking piece
 
       // Pawn captures
-      b1 = pos.pawn_attacks(them, checksq) & pos.pieces(PAWN, us) & ~pinned;
+      b1 = pos.pawn_attacks(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
       while (b1)
       {
           from = pop_1st_bit(&b1);
@@ -326,7 +326,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
       {
           to = pos.ep_square();
-          b1 = pos.pawn_attacks(them, to) & pos.pieces(PAWN, us);
+          b1 = pos.pawn_attacks(to, them) & pos.pieces(PAWN, us);
 
           // The checking pawn cannot be a discovered (bishop) check candidate
           // otherwise we were in check also before last double push move.
@@ -700,7 +700,7 @@ namespace {
         assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
         assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
 
-        Bitboard b1 = pawns & pos.pawn_attacks(Them, pos.ep_square());
+        Bitboard b1 = pawns & pos.pawn_attacks(pos.ep_square(), Them);
         assert(b1 != EmptyBoardBB);
 
         while (b1)
@@ -819,11 +819,11 @@ namespace {
     // Direct checks, single pawn pushes
     Bitboard empty = pos.empty_squares();
     b2 = move_pawns<Us, DELTA_N>(b1) & empty;
-    b3 = b2 & pos.pawn_attacks(Them, ksq);
+    b3 = b2 & pos.pawn_attacks(ksq, Them);
     SERIALIZE_MOVES_D(b3, -TDELTA_N);
 
     // Direct checks, double pawn pushes
-    b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.pawn_attacks(Them, ksq);
+    b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.pawn_attacks(ksq, Them);
     SERIALIZE_MOVES_D(b3, -TDELTA_N -TDELTA_N);
     return mlist;
   }

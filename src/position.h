@@ -195,19 +195,16 @@ public:
   // Piece lists
   Square piece_list(Color c, PieceType pt, int index) const;
 
-  // Attack information for a given square
+  // Attack information to a given square
   Bitboard attacks_to(Square s) const;
   Bitboard attacks_to(Square s, Color c) const;
-  bool pawn_attacks_square(Color c, Square f, Square t) const;
-  Bitboard pawn_attacks(Color c, Square s) const;
+  template<PieceType> Bitboard piece_attacks(Square s) const;
+  Bitboard pawn_attacks(Square s, Color c) const;
 
-  template<PieceType>
-  Bitboard piece_attacks(Square s) const;
-
-  template<PieceType>
-  Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
-
+  // Attack information to a given square from another given square
+  template<PieceType> Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
   bool piece_attacks_square(Piece p, Square f, Square t) const; // Dispatch at run-time
+  bool pawn_attacks_square(Square f, Square t, Color c) const;
 
   // Properties of moves
   bool pl_move_is_legal(Move m) const;
@@ -273,7 +270,7 @@ public:
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
 
-  // Static member functions:
+  // Static member functions
   static void init_zobrist();
   static void init_piece_square_tables();
 
@@ -440,7 +437,7 @@ inline Square Position::initial_qr_square(Color c) const {
   return relative_square(c, make_square(initialQRFile, RANK_1));
 }
 
-inline Bitboard Position::pawn_attacks(Color c, Square s) const {
+inline Bitboard Position::pawn_attacks(Square s, Color c) const {
   return StepAttackBB[piece_of_color_and_type(c, PAWN)][s];
 }
 
@@ -477,8 +474,8 @@ inline bool Position::is_check() const {
   return st->checkersBB != EmptyBoardBB;
 }
 
-inline bool Position::pawn_attacks_square(Color c, Square f, Square t) const {
-  return bit_is_set(pawn_attacks(c, f), t);
+inline bool Position::pawn_attacks_square(Square f, Square t, Color c) const {
+  return bit_is_set(pawn_attacks(f, c), t);
 }
 
 template<PieceType Piece>

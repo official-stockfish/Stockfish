@@ -384,8 +384,8 @@ Bitboard Position::discovered_check_candidates(Color c) const {
 
 Bitboard Position::attacks_to(Square s) const {
 
-  return  (pawn_attacks(BLACK, s)   & pieces(PAWN, WHITE))
-        | (pawn_attacks(WHITE, s)   & pieces(PAWN, BLACK))
+  return  (pawn_attacks(s, BLACK)   & pieces(PAWN, WHITE))
+        | (pawn_attacks(s, WHITE)   & pieces(PAWN, BLACK))
         | (piece_attacks<KNIGHT>(s) & pieces(KNIGHT))
         | (piece_attacks<ROOK>(s)   & pieces(ROOK, QUEEN))
         | (piece_attacks<BISHOP>(s) & pieces(BISHOP, QUEEN))
@@ -402,8 +402,8 @@ bool Position::piece_attacks_square(Piece p, Square f, Square t) const {
 
   switch (p)
   {
-  case WP:          return pawn_attacks_square(WHITE, f, t);
-  case BP:          return pawn_attacks_square(BLACK, f, t);
+  case WP:          return pawn_attacks_square(f, t, WHITE);
+  case BP:          return pawn_attacks_square(f, t, BLACK);
   case WN: case BN: return piece_attacks_square<KNIGHT>(f, t);
   case WB: case BB: return piece_attacks_square<BISHOP>(f, t);
   case WR: case BR: return piece_attacks_square<ROOK>(f, t);
@@ -548,7 +548,7 @@ bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
   {
   case PAWN:
 
-      if (bit_is_set(pawn_attacks(them, ksq), to)) // Normal check?
+      if (bit_is_set(pawn_attacks(ksq, them), to)) // Normal check?
           return true;
 
       if (   dcCandidates // Discovered check?
@@ -667,7 +667,7 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
 
   else if (   Piece != KING
            && !Slider
-           && bit_is_set(Piece == PAWN ? pawn_attacks(opposite_color(sideToMove), ksq) : piece_attacks<Piece>(ksq), to))
+           && bit_is_set(Piece == PAWN ? pawn_attacks(ksq, opposite_color(sideToMove)) : piece_attacks<Piece>(ksq), to))
       set_bit(pCheckersBB, to);
 
   // Discovery checks
@@ -806,7 +806,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       // Set en passant square, only if moved pawn can be captured
       if (abs(int(to) - int(from)) == 16)
       {
-          if (pawn_attacks(us, from + (us == WHITE ? DELTA_N : DELTA_S)) & pieces(PAWN, them))
+          if (pawn_attacks(from + (us == WHITE ? DELTA_N : DELTA_S), us) & pieces(PAWN, them))
           {
               st->epSquare = Square((int(from) + int(to)) / 2);
               key ^= zobEp[st->epSquare];
@@ -1362,8 +1362,8 @@ int Position::see(Square from, Square to) const {
                  | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN))
                  | (piece_attacks<KNIGHT>(to)  & pieces(KNIGHT))
                  | (piece_attacks<KING>(to)    & pieces(KING))
-                 | (pawn_attacks(WHITE, to)    & pieces(PAWN, BLACK))
-                 | (pawn_attacks(BLACK, to)    & pieces(PAWN, WHITE));
+                 | (pawn_attacks(to, WHITE)    & pieces(PAWN, BLACK))
+                 | (pawn_attacks(to, BLACK)    & pieces(PAWN, WHITE));
 
       if (from != SQ_NONE)
           break;
