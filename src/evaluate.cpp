@@ -43,7 +43,7 @@ namespace {
   const int Sign[2] = { 1, -1 };
 
   // Evaluation grain size, must be a power of 2
-  const int GrainSize = 4;
+  const int GrainSize = 8;
 
   // Evaluation weights, initialized from UCI options
   int WeightMobilityMidgame, WeightMobilityEndgame;
