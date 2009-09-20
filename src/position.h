@@ -197,7 +197,6 @@ public:
 
   // Information about attacks to or from a given square
   Bitboard attackers_to(Square s) const;
-  Bitboard attackers_to(Square s, Color c) const;
   Bitboard piece_attacks_from(Piece p, Square s) const;
   Bitboard pawn_attacks_from(Square s, Color c) const;
   template<PieceType> Bitboard piece_attacks_from(Square s) const;
@@ -468,11 +467,6 @@ inline Bitboard Position::checkers() const {
 
 inline bool Position::is_check() const {
   return st->checkersBB != EmptyBoardBB;
-}
-
-inline Bitboard Position::attackers_to(Square s, Color c) const {
-
-  return attackers_to(s) & pieces_of_color(c);
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {

@@ -254,12 +254,13 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
 
   // Generate evasions for king
   Bitboard b1 = pos.piece_attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~checkersAttacks;
+  Bitboard enemy = pos.pieces_of_color(them);
   while (b1)
   {
       to = pop_1st_bit(&b1);
       // Note that we can use attackers_to() only because we
       // have already removed slider checkers.
-      if (!pos.attackers_to(to, them))
+      if (!(pos.attackers_to(to) & enemy))
           (*mlist++).move = make_move(ksq, to);
   }
 
@@ -441,7 +442,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       // is occupied or under attack.
       for (s = Min(from, g1); s <= Max(from, g1); s++)
           if (  (s != from && s != to && !pos.square_is_empty(s))
-              || pos.attackers_to(s, them))
+              ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
               illegal = true;
 
       // Check if any of the squares between king and rook
@@ -472,7 +473,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
       for (s = Min(from, c1); s <= Max(from, c1); s++)
           if(  (s != from && s != to && !pos.square_is_empty(s))
-             || pos.attackers_to(s, them))
+             ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
               illegal = true;
 
       for (s = Min(to, d1); s <= Max(to, d1); s++)
@@ -942,7 +943,7 @@ namespace {
         // It is a bit complicated to correctly handle Chess960
         for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
             if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
-                || pos.attackers_to(s, them))
+                ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
                 illegal = true;
 
         for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)

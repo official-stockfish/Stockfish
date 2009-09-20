@@ -452,7 +452,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 void Position::find_checkers() {
 
   Color us = side_to_move();
-  st->checkersBB = attackers_to(king_square(us), opposite_color(us));
+  st->checkersBB = attackers_to(king_square(us)) & pieces_of_color(opposite_color(us));
 }
 
 
@@ -509,7 +509,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
   if (type_of_piece_on(from) == KING)
-      return !attackers_to(move_to(m), opposite_color(us));
+      return !(attackers_to(move_to(m)) & pieces_of_color(opposite_color(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -864,7 +864,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // Update checkers bitboard, piece must be already moved
   if (ep | pm)
-      st->checkersBB = attackers_to(king_square(them), us);
+      st->checkersBB = attackers_to(king_square(them)) & pieces_of_color(us);
   else
   {
       st->checkersBB = EmptyBoardBB;
@@ -1041,7 +1041,7 @@ void Position::do_castle_move(Move m) {
   st->rule50 = 0;
 
   // Update checkers BB
-  st->checkersBB = attackers_to(king_square(them), us);
+  st->checkersBB = attackers_to(king_square(them)) & pieces_of_color(us);
 
   // Finish
   sideToMove = opposite_color(sideToMove);
@@ -1358,12 +1358,12 @@ int Position::see(Square from, Square to) const {
   while (true)
   {
       clear_bit(&occ, from);
-      attackers =  (rook_attacks_bb(to, occ)   & pieces(ROOK, QUEEN))
-                 | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN))
-                 | (piece_attacks_from<KNIGHT>(to)  & pieces(KNIGHT))
-                 | (piece_attacks_from<KING>(to)    & pieces(KING))
-                 | (pawn_attacks_from(to, WHITE)    & pieces(PAWN, BLACK))
-                 | (pawn_attacks_from(to, BLACK)    & pieces(PAWN, WHITE));
+      attackers =  (rook_attacks_bb(to, occ)       & pieces(ROOK, QUEEN))
+                 | (bishop_attacks_bb(to, occ)     & pieces(BISHOP, QUEEN))
+                 | (piece_attacks_from<KNIGHT>(to) & pieces(KNIGHT))
+                 | (piece_attacks_from<KING>(to)   & pieces(KING))
+                 | (pawn_attacks_from(to, WHITE)   & pieces(PAWN, BLACK))
+                 | (pawn_attacks_from(to, BLACK)   & pieces(PAWN, WHITE));
 
       if (from != SQ_NONE)
           break;
@@ -1923,7 +1923,7 @@ bool Position::is_ok(int* failedStep) const {
       Color us = side_to_move();
       Color them = opposite_color(us);
       Square ksq = king_square(them);
-      if (attackers_to(ksq, us))
+      if (attackers_to(ksq) & pieces_of_color(us))
           return false;
   }
 
