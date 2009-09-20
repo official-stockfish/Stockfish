@@ -183,31 +183,26 @@ public:
   Square initial_kr_square(Color c) const;
   Square initial_qr_square(Color c) const;
 
-  // Attack bitboards
-  Bitboard sliding_attacks(Square s, Direction d) const;
-  Bitboard ray_attacks(Square s, SignedDirection d) const;
-  Bitboard pawn_attacks(Color c, Square s) const;
-
-  template<PieceType>
-  Bitboard piece_attacks(Square s) const;
-
   // Bitboards for pinned pieces and discovered check candidates
   Bitboard discovered_check_candidates(Color c) const;
   Bitboard pinned_pieces(Color c, Bitboard& p) const;
   Bitboard pinned_pieces(Color c) const;
 
-  // Checking pieces
+  // Checking pieces and under check information
   Bitboard checkers() const;
+  bool is_check() const;
 
   // Piece lists
   Square piece_list(Color c, PieceType pt, int index) const;
 
   // Attack information for a given square
-  bool square_is_attacked(Square s, Color c) const;
   Bitboard attacks_to(Square s) const;
   Bitboard attacks_to(Square s, Color c) const;
-  bool is_check() const;
   bool pawn_attacks_square(Color c, Square f, Square t) const;
+  Bitboard pawn_attacks(Color c, Square s) const;
+
+  template<PieceType>
+  Bitboard piece_attacks(Square s) const;
 
   template<PieceType>
   Bitboard piece_attacks_square(Square f, Square t) const; // Dispatch at compile-time
@@ -494,11 +489,6 @@ inline Bitboard Position::piece_attacks_square(Square f, Square t) const {
 inline Bitboard Position::attacks_to(Square s, Color c) const {
 
   return attacks_to(s) & pieces_of_color(c);
-}
-
-inline bool Position::square_is_attacked(Square s, Color c) const {
-
-  return attacks_to(s, c) != EmptyBoardBB;
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
