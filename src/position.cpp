@@ -704,7 +704,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   struct ReducedStateInfo {
     Key key, pawnKey, materialKey;
     int castleRights, rule50;
-    Square epSquare;
+    Square kingSquare[2], epSquare;
     Value mgValue, egValue;
     Value npMaterial[2];
   };
@@ -786,7 +786,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // If the moving piece was a king, update the king square
   if (pt == KING)
-      kingSquare[us] = to;
+      st->kingSquare[us] = to;
 
   // Update piece lists, note that index[from] is not updated and
   // becomes stale. This works as long as index[] is accessed just
@@ -920,16 +920,15 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
     // Update hash key
     key ^= zobrist[them][capture][capsq];
 
-    // If the captured piece was a pawn, update pawn hash key
-    if (capture == PAWN)
-        st->pawnKey ^= zobrist[them][PAWN][capsq];
-
     // Update incremental scores
     st->mgValue -= pst<MidGame>(them, capture, capsq);
     st->egValue -= pst<EndGame>(them, capture, capsq);
 
-    // Update material
-    if (capture != PAWN)
+    // If the captured piece was a pawn, update pawn hash key,
+    // otherwise update non-pawn material.
+    if (capture == PAWN)
+        st->pawnKey ^= zobrist[them][PAWN][capsq];
+    else
         st->npMaterial[them] -= piece_value_midgame(capture);
 
     // Update material hash key
@@ -1007,7 +1006,7 @@ void Position::do_castle_move(Move m) {
   board[rto] = rook;
 
   // Update king square
-  kingSquare[us] = kto;
+  st->kingSquare[us] = kto;
 
   // Update piece lists
   pieceList[us][KING][index[kfrom]] = kto;
@@ -1120,10 +1119,6 @@ void Position::undo_move(Move m) {
   board[from] = piece_of_color_and_type(us, pt);
   board[to] = EMPTY;
 
-  // If the moving piece was a king, update the king square
-  if (pt == KING)
-      kingSquare[us] = from;
-
   // Update piece list
   index[from] = index[to];
   pieceList[us][pt][index[from]] = from;
@@ -1208,9 +1203,6 @@ void Position::undo_castle_move(Move m) {
   board[rto] = board[kto] = EMPTY;
   board[rfrom] = piece_of_color_and_type(us, ROOK);
   board[kfrom] = piece_of_color_and_type(us, KING);
-
-  // Update king square
-  kingSquare[us] = kfrom;
 
   // Update piece lists
   pieceList[us][KING][index[kto]] = kfrom;
@@ -1529,7 +1521,7 @@ void Position::put_piece(Piece p, Square s) {
   pieceCount[c][pt]++;
 
   if (pt == KING)
-      kingSquare[c] = s;
+      st->kingSquare[c] = s;
 }
 
 
