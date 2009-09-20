@@ -1540,10 +1540,10 @@ namespace {
         // Use the cached evaluation score if possible
         assert(ei.futilityMargin == Value(0));
 
-        staticValue = tte->value() + 7;
+        staticValue = tte->value();
     }
     else
-        staticValue = evaluate(pos, ei, threadID) + 7;
+        staticValue = evaluate(pos, ei, threadID);
 
     if (ply == PLY_MAX - 1)
         return evaluate(pos, ei, threadID);
