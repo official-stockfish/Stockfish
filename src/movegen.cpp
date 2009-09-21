@@ -66,11 +66,8 @@ namespace {
   template<Color Us, SquareDelta Diagonal>
   MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool promotion);
 
-  template<Color Us>
-  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist);
-
-  template<Color Us>
-  MoveStack* generate_pawn_checks(const Position&, Bitboard, Square, MoveStack*);
+  template<Color Us, bool Checks>
+  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist, Bitboard dc = EmptyBoardBB, Square ksq = SQ_NONE);
 
   template<Color Us, SquareDelta Direction>
   inline Bitboard move_pawns(Bitboard p) {
@@ -92,8 +89,8 @@ namespace {
   template<>
   inline MoveStack* generate_piece_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
 
-    return (us == WHITE ? generate_pawn_checks<WHITE>(p, dc, ksq, m)
-                        : generate_pawn_checks<BLACK>(p, dc, ksq, m));
+    return (us == WHITE ? generate_pawn_noncaptures<WHITE, true>(p, m, dc, ksq)
+                        : generate_pawn_noncaptures<BLACK, true>(p, m, dc, ksq));
   }
 
   // Template generate_piece_moves() with specializations and overloads
@@ -112,8 +109,8 @@ namespace {
           return (us == WHITE ? generate_pawn_captures<WHITE>(p, m)
                               : generate_pawn_captures<BLACK>(p, m));
       else
-          return (us == WHITE ? generate_pawn_noncaptures<WHITE>(p, m)
-                              : generate_pawn_noncaptures<BLACK>(p, m));
+          return (us == WHITE ? generate_pawn_noncaptures<WHITE, false>(p, m)
+                              : generate_pawn_noncaptures<BLACK, false>(p, m));
   }
 
   template<PieceType>
@@ -712,10 +709,11 @@ namespace {
     return mlist;
   }
 
-  template<Color Us>
-  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist) {
+  template<Color Us, bool GenerateChecks>
+  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist, Bitboard dc, Square ksq) {
 
     // Calculate our parametrized parameters at compile time
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
@@ -723,17 +721,20 @@ namespace {
     const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
-    Bitboard b1, b2;
+    Bitboard b1, b2, dcPawns1, dcPawns2;
     Square to;
     Bitboard pawns = pos.pieces(PAWN, Us);
     Bitboard emptySquares = pos.empty_squares();
 
     if (pawns & TRank7BB) // There is some promotion candidate ?
     {
-         Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
+        // When generating checks consider under-promotion moves (both captures
+        // and non captures) only if can give a discovery check.
+        Bitboard pp = GenerateChecks ? pawns & dc & EmptyBoardBB: pawns;
+        Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
 
         // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
-        b1 = move_pawns<Us, DELTA_NE>(pawns) & ~FileABB & enemyPieces & TRank8BB;
+        b1 = move_pawns<Us, DELTA_NE>(pp) & ~FileABB & enemyPieces & TRank8BB;
         while (b1)
         {
             to = pop_1st_bit(&b1);
@@ -743,7 +744,7 @@ namespace {
         }
 
         // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
-        b1 = move_pawns<Us, DELTA_NW>(pawns) & ~FileHBB & enemyPieces & TRank8BB;
+        b1 = move_pawns<Us, DELTA_NW>(pp) & ~FileHBB & enemyPieces & TRank8BB;
         while (b1)
         {
             to = pop_1st_bit(&b1);
@@ -753,7 +754,7 @@ namespace {
         }
 
         // Underpromotion pawn pushes
-        b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & TRank8BB;
+        b1 = move_pawns<Us, DELTA_N>(pp) & emptySquares & TRank8BB;
         while (b1)
         {
             to = pop_1st_bit(&b1);
@@ -763,68 +764,25 @@ namespace {
         }
     }
 
-    // Single pawn pushes
-    b2 = b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
-    SERIALIZE_MOVES_D(b2, -TDELTA_N);
-
-    // Double pawn pushes
-    b2 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
-    SERIALIZE_MOVES_D(b2, -TDELTA_N -TDELTA_N);
-    return mlist;
-  }
-
-
-  template<Color Us>
-  MoveStack* generate_pawn_checks(const Position& pos, Bitboard dc, Square ksq, MoveStack* mlist)
-  {
-    // Calculate our parametrized parameters at compile time
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
-    const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
-    const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
-    const SquareDelta TDELTA_S = (Us == WHITE ? DELTA_S : DELTA_N);
-
-    Square to;
-    Bitboard b1, b2, b3;
-    Bitboard pawns = pos.pieces(PAWN, Us);
-
-    if (dc & pawns)
+    dcPawns1 = dcPawns2 = EmptyBoardBB;
+    if (GenerateChecks && (dc & pawns))
     {
-         Bitboard empty = pos.empty_squares();
-
         // Pawn moves which gives discovered check. This is possible only if the
         // pawn is not on the same file as the enemy king, because we don't
         // generate captures.
-        b1 = pawns & ~file_bb(ksq);
-
-        // Discovered checks, single pawn pushes, no promotions
-        b2 = b3 = move_pawns<Us, DELTA_N>(b1 & dc) & empty & ~TRank8BB;
-        SERIALIZE_MOVES_D(b3, -TDELTA_N);
-
-        // Discovered checks, double pawn pushes
-        b3 = move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty;
-        SERIALIZE_MOVES_D(b3, -TDELTA_N -TDELTA_N);
+        dcPawns1 = move_pawns<Us, DELTA_N>(pawns & dc & ~file_bb(ksq)) & emptySquares & ~TRank8BB;
+        dcPawns2 = move_pawns<Us, DELTA_N>(dcPawns1 & TRank3BB) & emptySquares;
     }
 
-    // Direct checks. These are possible only for pawns on neighboring files
-    // and in the two ranks that, after the push, are in front of the enemy king.
-    b1 = pawns & neighboring_files_bb(ksq) & ~dc;
+    // Single pawn pushes
+    b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
+    b2 = GenerateChecks ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns1 : b1;
+    SERIALIZE_MOVES_D(b2, -TDELTA_N);
 
-    // We can get false positives if (ksq + x) is not in [0,63] range but
-    // is not a problem, they will be filtered out later.
-    b2 = b1 & (rank_bb(ksq + 2 * TDELTA_S) | rank_bb(ksq + 3 * TDELTA_S));
-    if (!b2)
-        return mlist;
-
-    // Direct checks, single pawn pushes
-    Bitboard empty = pos.empty_squares();
-    b2 = move_pawns<Us, DELTA_N>(b1) & empty;
-    b3 = b2 & pos.attacks_from<PAWN>(ksq, Them);
-    SERIALIZE_MOVES_D(b3, -TDELTA_N);
-
-    // Direct checks, double pawn pushes
-    b3 =  move_pawns<Us, DELTA_N>(b2 & TRank3BB) & empty & pos.attacks_from<PAWN>(ksq, Them);
-    SERIALIZE_MOVES_D(b3, -TDELTA_N -TDELTA_N);
+    // Double pawn pushes
+    b1 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
+    b2 = GenerateChecks ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns2 : b1;
+    SERIALIZE_MOVES_D(b2, -TDELTA_N -TDELTA_N);
     return mlist;
   }
 
