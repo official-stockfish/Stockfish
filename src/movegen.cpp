@@ -345,13 +345,11 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
 }
 
 
-/// generate_legal_moves() computes a complete list of legal moves in the
-/// current position. This function is not very fast, and should be used
-/// only in situations where performance is unimportant. It wouldn't be
-/// very hard to write an efficient legal move generator, but for the moment
-/// we don't need it.
+/// generate_moves() computes a complete list of legal or pseudo legal moves in
+/// the current position. This function is not very fast, and should be used
+/// only in situations where performance is unimportant.
 
-MoveStack* generate_legal_moves(const Position& pos, MoveStack* mlist) {
+MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLegal) {
 
   assert(pos.is_ok());
 
@@ -363,6 +361,8 @@ MoveStack* generate_legal_moves(const Position& pos, MoveStack* mlist) {
   // Generate pseudo-legal moves
   MoveStack* last = generate_captures(pos, mlist);
   last = generate_noncaptures(pos, last);
+  if (pseudoLegal)
+      return last;
 
   // Remove illegal moves from the list
   for (MoveStack* cur = mlist; cur != last; cur++)
@@ -376,10 +376,24 @@ MoveStack* generate_legal_moves(const Position& pos, MoveStack* mlist) {
 
 
 /// move_is_legal() takes a position and a (not necessarily pseudo-legal)
-/// move and a pinned pieces bitboard as input, and tests whether
-/// the move is legal.  If the move is legal, the move itself is
-/// returned. If not, the function returns false.  This function must
-/// only be used when the side to move is not in check.
+/// move and tests whether the move is legal. This version is not very fast
+/// and should be used only for non time-critical paths.
+
+bool move_is_legal(const Position& pos, const Move m) {
+
+  MoveStack mlist[256];
+  MoveStack* last = generate_moves(pos, mlist, true);
+  for (MoveStack* cur = mlist; cur != last; cur++)
+      if (cur->move == m)
+          return pos.pl_move_is_legal(m);
+
+  return false;
+}
+
+
+/// Fast version of move_is_legal() that takes a position a move and
+/// a pinned pieces bitboard as input, and tests whether the move is legal.
+/// This version must only be used when the side to move is not in check.
 
 bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
@@ -387,6 +401,10 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   assert(!pos.is_check());
   assert(move_is_ok(m));
   assert(pinned == pos.pinned_pieces(pos.side_to_move()));
+
+  // Use a slower but simpler function for uncommon cases
+  if (move_is_ep(m) || move_is_castle(m))
+      return move_is_legal(pos, m);
 
   Color us = pos.side_to_move();
   Square from = move_from(m);
@@ -399,92 +417,6 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
   Color them = opposite_color(us);
   Square to = move_to(m);
-
-  // En passant moves
-  if (move_is_ep(m))
-  {
-      // The piece must be a pawn and destination square must be the
-      // en passant square.
-      if (   type_of_piece(pc) != PAWN
-          || to != pos.ep_square())
-          return false;
-
-      assert(pos.square_is_empty(to));
-      assert(pos.piece_on(to - pawn_push(us)) == piece_of_color_and_type(them, PAWN));
-
-      // The move is pseudo-legal, check if it is also legal
-      return pos.pl_move_is_legal(m, pinned);
-  }
-
-  // Castling moves
-  if (move_is_short_castle(m))
-  {
-      // The piece must be a king and side to move must still have
-      // the right to castle kingside.
-      if (   type_of_piece(pc) != KING
-          ||!pos.can_castle_kingside(us))
-          return false;
-
-      assert(from == pos.king_square(us));
-      assert(to == pos.initial_kr_square(us));
-      assert(pos.piece_on(to) == piece_of_color_and_type(us, ROOK));
-
-      Square g1 = relative_square(us, SQ_G1);
-      Square f1 = relative_square(us, SQ_F1);
-      Square s;
-      bool illegal = false;
-
-      // Check if any of the squares between king and rook
-      // is occupied or under attack.
-      for (s = Min(from, g1); s <= Max(from, g1); s++)
-          if (  (s != from && s != to && !pos.square_is_empty(s))
-              ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
-              illegal = true;
-
-      // Check if any of the squares between king and rook
-      // is occupied.
-      for (s = Min(to, f1); s <= Max(to, f1); s++)
-          if (s != from && s != to && !pos.square_is_empty(s))
-              illegal = true;
-
-      return !illegal;
-  }
-
-  if (move_is_long_castle(m))
-  {
-      // The piece must be a king and side to move must still have
-      // the right to castle kingside.
-      if (   type_of_piece(pc) != KING
-          ||!pos.can_castle_queenside(us))
-          return false;
-
-      assert(from == pos.king_square(us));
-      assert(to == pos.initial_qr_square(us));
-      assert(pos.piece_on(to) == piece_of_color_and_type(us, ROOK));
-
-      Square c1 = relative_square(us, SQ_C1);
-      Square d1 = relative_square(us, SQ_D1);
-      Square s;
-      bool illegal = false;
-
-      for (s = Min(from, c1); s <= Max(from, c1); s++)
-          if(  (s != from && s != to && !pos.square_is_empty(s))
-             ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
-              illegal = true;
-
-      for (s = Min(to, d1); s <= Max(to, d1); s++)
-          if(s != from && s != to && !pos.square_is_empty(s))
-              illegal = true;
-
-      if (   square_file(to) == FILE_B
-          && (   pos.piece_on(to + DELTA_W) == piece_of_color_and_type(them, ROOK)
-              || pos.piece_on(to + DELTA_W) == piece_of_color_and_type(them, QUEEN)))
-          illegal = true;
-
-      return !illegal;
-  }
-
-  // Normal moves
 
   // The destination square cannot be occupied by a friendly piece
   if (pos.color_of_piece_on(to) == us)
@@ -557,30 +489,6 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   return (   bit_is_set(pos.attacks_from(pc, from), to)
           && pos.pl_move_is_legal(m, pinned)
           && !move_is_promotion(m));
-}
-
-
-/// Another version of move_is_legal(), which takes only a position and a move
-/// as input. This function does not require that the side to move is not in
-/// check. It is not optimized for speed, and is only used for verifying move
-/// legality when building a PV from the transposition table.
-
-bool move_is_legal(const Position& pos, const Move m) {
-
-  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
-  if (!pos.is_check())
-      return move_is_legal(pos, m, pinned);
-  else
-  {
-      Position p(pos);
-      MoveStack mlist[64];
-      MoveStack* last = generate_evasions(p, mlist, pinned);
-      for (MoveStack* cur = mlist; cur != last; cur++)
-          if (cur->move == m)
-              return true;
-
-      return false;
-  }
 }
 
 

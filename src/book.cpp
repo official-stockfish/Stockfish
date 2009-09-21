@@ -430,7 +430,7 @@ Move Book::get_move(const Position& pos) {
       return MOVE_NONE;
 
   MoveStack mlist[256];
-  MoveStack* last = generate_legal_moves(pos, mlist);
+  MoveStack* last = generate_moves(pos, mlist);
   for (MoveStack* cur = mlist; cur != last; cur++)
       if ((int(cur->move) & 07777) == bookMove)
           return cur->move;

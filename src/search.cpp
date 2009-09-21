@@ -1966,7 +1966,7 @@ namespace {
     bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
 
     // Generate all legal moves
-    MoveStack* last = generate_legal_moves(pos, mlist);
+    MoveStack* last = generate_moves(pos, mlist);
 
     // Add each move to the moves[] array
     for (MoveStack* cur = mlist; cur != last; cur++)
