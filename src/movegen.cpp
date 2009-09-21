@@ -225,6 +225,8 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
   Square ksq = pos.king_square(us);
+  Bitboard sliderAttacks = EmptyBoardBB;
+  Bitboard checkers = pos.checkers();
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
 
@@ -236,30 +238,28 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   // remove them from king evasions set so to avoid a couple
   // of cycles in the slow king evasions legality check loop
   // and to be able to use attackers_to().
-  Bitboard checkers = pos.checkers();
-  Bitboard checkersAttacks = EmptyBoardBB;
   Bitboard b = checkers & pos.pieces(BISHOP, QUEEN);
   while (b)
   {
       from = pop_1st_bit(&b);
-      checkersAttacks |= bishop_attacks_bb(from, b_noKing);
+      sliderAttacks |= bishop_attacks_bb(from, b_noKing);
   }
 
   b = checkers & pos.pieces(ROOK, QUEEN);
   while (b)
   {
       from = pop_1st_bit(&b);
-      checkersAttacks |= rook_attacks_bb(from, b_noKing);
+      sliderAttacks |= rook_attacks_bb(from, b_noKing);
   }
 
-  // Generate evasions for king
-  Bitboard b1 = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~checkersAttacks;
+  // Generate evasions for king, both captures and non captures
+  Bitboard b1 = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~sliderAttacks;
   Bitboard enemy = pos.pieces_of_color(them);
   while (b1)
   {
       to = pop_1st_bit(&b1);
       // Note that we can use attackers_to() only because we
-      // have already removed slider checkers.
+      // have already removed slider checkers attacked squares.
       if (!(pos.attackers_to(to) & enemy))
           (*mlist++).move = make_move(ksq, to);
   }
@@ -301,15 +301,14 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
           (*mlist++).move = make_move(from, checksq);
       }
 
-      // Blocking check evasions are possible only if the checking piece is
-      // a slider.
-      if (checkers & (pos.pieces(BISHOP) | pos.pieces(ROOK) | pos.pieces(QUEEN)))
+      // Blocking check evasions are possible only if the checking piece is a slider
+      if (sliderAttacks)
       {
           Bitboard blockSquares = squares_between(checksq, ksq);
 
           assert((pos.occupied_squares() & blockSquares) == EmptyBoardBB);
 
-          if (blockSquares != EmptyBoardBB)
+          if (blockSquares)
           {
               mlist = generate_piece_moves<PAWN>(pos, mlist, us, blockSquares, pinned);
               mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, blockSquares, pinned);
