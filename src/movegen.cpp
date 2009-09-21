@@ -55,19 +55,19 @@ namespace {
 
   // Helper templates
   template<CastlingSide Side>
-  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist);
+  MoveStack* generate_castle_moves(const Position&, MoveStack*);
 
   template<Color Us>
   MoveStack* generate_pawn_blocking_evasions(const Position&, Bitboard, Bitboard, MoveStack*);
 
   template<Color Us>
-  MoveStack* generate_pawn_captures(const Position& pos, MoveStack* mlist);
+  MoveStack* generate_pawn_captures(const Position&, MoveStack*);
 
   template<Color Us, SquareDelta Diagonal>
-  MoveStack* generate_pawn_captures_diagonal(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool promotion);
+  MoveStack* generate_pawn_captures_diagonal(MoveStack*, Bitboard, Bitboard, bool);
 
   template<Color Us, bool Checks>
-  MoveStack* generate_pawn_noncaptures(const Position& pos, MoveStack* mlist, Bitboard dc = EmptyBoardBB, Square ksq = SQ_NONE);
+  MoveStack* generate_pawn_noncaptures(const Position&, MoveStack*, Bitboard = EmptyBoardBB, Square = SQ_NONE);
 
   template<Color Us, SquareDelta Direction>
   inline Bitboard move_pawns(Bitboard p) {
@@ -95,7 +95,7 @@ namespace {
 
   // Template generate_piece_moves() with specializations and overloads
   template<PieceType>
-  MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard);
+  MoveStack* generate_piece_moves(const Position&, MoveStack*, Color, Bitboard);
 
   template<>
   MoveStack* generate_piece_moves<KING>(const Position&, MoveStack*, Color, Bitboard);
@@ -114,7 +114,7 @@ namespace {
   }
 
   template<PieceType>
-  MoveStack* generate_piece_moves(const Position&, MoveStack*, Color us, Bitboard, Bitboard);
+  MoveStack* generate_piece_moves(const Position&, MoveStack*, Color, Bitboard, Bitboard);
 
   template<>
   inline MoveStack* generate_piece_moves<PAWN>(const Position& p, MoveStack* m,
@@ -131,7 +131,7 @@ namespace {
 ////
 
 
-/// generate_captures generates() all pseudo-legal captures and queen
+/// generate_captures() generates all pseudo-legal captures and queen
 /// promotions. Returns a pointer to the end of the move list.
 
 MoveStack* generate_captures(const Position& pos, MoveStack* mlist) {
@@ -173,8 +173,8 @@ MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
 }
 
 
-/// generate_non_capture_checks() generates all pseudo-legal non-capturing,
-/// non-promoting checks. Returns a pointer to the end of the move list.
+/// generate_non_capture_checks() generates all pseudo-legal non-captures and
+/// underpromotions that give check. Returns a pointer to the end of the move list.
 
 MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
 
@@ -231,8 +231,8 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   Bitboard b_noKing = pos.occupied_squares();
   clear_bit(&b_noKing, ksq);
 
-  // Find squares attacked by slider checkers, we will
-  // remove them from king evasions set so to avoid a couple
+  // Find squares attacked by slider checkers, we will remove
+  // them from the king evasions set so to avoid a couple
   // of cycles in the slow king evasions legality check loop
   // and to be able to use attackers_to().
   Bitboard b = checkers & pos.pieces(BISHOP, QUEEN);
@@ -249,14 +249,14 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       sliderAttacks |= rook_attacks_bb(from, b_noKing);
   }
 
-  // Generate evasions for king, both captures and non captures
-  Bitboard b1 = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~sliderAttacks;
+  // Generate evasions for king, capture and non capture moves
   Bitboard enemy = pos.pieces_of_color(them);
+  Bitboard b1 = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~sliderAttacks;
   while (b1)
   {
+      // Note that we can use attackers_to() only because we have already
+      // removed from b1 the squares attacked by slider checkers.
       to = pop_1st_bit(&b1);
-      // Note that we can use attackers_to() only because we
-      // have already removed slider checkers attacked squares.
       if (!(pos.attackers_to(to) & enemy))
           (*mlist++).move = make_move(ksq, to);
   }
@@ -345,9 +345,9 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
 }
 
 
-/// generate_moves() computes a complete list of legal or pseudo legal moves in
+/// generate_moves() computes a complete list of legal or pseudo-legal moves in
 /// the current position. This function is not very fast, and should be used
-/// only in situations where performance is unimportant.
+/// only in non time-critical paths.
 
 MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLegal) {
 
@@ -377,7 +377,7 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 
 /// move_is_legal() takes a position and a (not necessarily pseudo-legal)
 /// move and tests whether the move is legal. This version is not very fast
-/// and should be used only for non time-critical paths.
+/// and should be used only in non time-critical paths.
 
 bool move_is_legal(const Position& pos, const Move m) {
 
@@ -391,8 +391,8 @@ bool move_is_legal(const Position& pos, const Move m) {
 }
 
 
-/// Fast version of move_is_legal() that takes a position a move and
-/// a pinned pieces bitboard as input, and tests whether the move is legal.
+/// Fast version of move_is_legal() that takes a position a move and a
+/// bitboard of pinned pieces as input, and tests whether the move is legal.
 /// This version must only be used when the side to move is not in check.
 
 bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
@@ -407,7 +407,9 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       return move_is_legal(pos, m);
 
   Color us = pos.side_to_move();
+  Color them = opposite_color(us);
   Square from = move_from(m);
+  Square to = move_to(m);
   Piece pc = pos.piece_on(from);
 
   // If the from square is not occupied by a piece belonging to the side to
@@ -415,14 +417,11 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   if (color_of_piece(pc) != us)
       return false;
 
-  Color them = opposite_color(us);
-  Square to = move_to(m);
-
   // The destination square cannot be occupied by a friendly piece
   if (pos.color_of_piece_on(to) == us)
       return false;
 
-  // Proceed according to the type of the moving piece.
+  // Handle the special case of a pawn move
   if (type_of_piece(pc) == PAWN)
   {
       // Move direction must be compatible with pawn color
@@ -430,14 +429,13 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       if ((us == WHITE) != (direction > 0))
           return false;
 
-      // If the destination square is on the 8/1th rank, the move must
-      // be a promotion.
-      if (   (  (square_rank(to) == RANK_8 && us == WHITE)
-              ||(square_rank(to) == RANK_1 && us != WHITE))
-           && !move_is_promotion(m))
+      // A pawn move is a promotion iff the destination square is
+      // on the 8/1th rank.
+      if ((  (square_rank(to) == RANK_8 && us == WHITE)
+           ||(square_rank(to) == RANK_1 && us != WHITE)) != bool(move_is_promotion(m)))
           return false;
 
-      // Proceed according to the square delta between the source and
+      // Proceed according to the square delta between the origin and
       // destionation squares.
       switch (direction)
       {
