@@ -730,7 +730,7 @@ namespace {
     {
         // When generating checks consider under-promotion moves (both captures
         // and non captures) only if can give a discovery check.
-        Bitboard pp = GenerateChecks ? pawns & dc & EmptyBoardBB: pawns;
+        Bitboard pp = GenerateChecks ? pawns & dc : pawns;
         Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
 
         // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
