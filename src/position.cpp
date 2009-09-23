@@ -2014,7 +2014,7 @@ bool Position::is_ok(int* failedStep) const {
           for(PieceType pt = PAWN; pt <= KING; pt++)
               for(int i = 0; i < pieceCount[c][pt]; i++)
               {
-                  if (piece_on(piece_list(c, pt, i)) != (pieces(pt, c)))
+                  if (piece_on(piece_list(c, pt, i)) != piece_of_color_and_type(c, pt))
                       return false;
 
                   if (index[piece_list(c, pt, i)] != i)
