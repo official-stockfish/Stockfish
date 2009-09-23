@@ -476,10 +476,10 @@ namespace {
 
     Square from;
     Bitboard b;
+    const Square* ptr = pos.piece_list_begin(us, Piece);
 
-    for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
+    while ((from = *ptr++) != SQ_NONE)
     {
-        from = pos.piece_list(us, Piece, i);
         b = pos.attacks_from<Piece>(from) & target;
         SERIALIZE_MOVES(b);
     }
@@ -502,10 +502,10 @@ namespace {
                                      Color us, Bitboard target, Bitboard pinned) {
     Square from;
     Bitboard b;
+    const Square* ptr = pos.piece_list_begin(us, Piece);
 
-    for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
+    while ((from = *ptr++) != SQ_NONE)
     {
-        from = pos.piece_list(us, Piece, i);
         if (pinned && bit_is_set(pinned, from))
             continue;
 

@@ -838,6 +838,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       Square lastPawnSquare = pieceList[us][PAWN][pieceCount[us][PAWN]];
       index[lastPawnSquare] = index[to];
       pieceList[us][PAWN][index[lastPawnSquare]] = lastPawnSquare;
+      pieceList[us][PAWN][pieceCount[us][PAWN]] = SQ_NONE;
       index[to] = pieceCount[us][promotion] - 1;
       pieceList[us][promotion][index[to]] = to;
 
@@ -943,6 +944,7 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
     Square lastPieceSquare = pieceList[them][capture][pieceCount[them][capture]];
     index[lastPieceSquare] = index[capsq];
     pieceList[them][capture][index[lastPieceSquare]] = lastPieceSquare;
+    pieceList[them][capture][pieceCount[them][capture]] = SQ_NONE;
 
     // Reset rule 50 counter
     st->rule50 = 0;
@@ -1099,6 +1101,7 @@ void Position::undo_move(Move m) {
       Square lastPromotionSquare = pieceList[us][promotion][pieceCount[us][promotion]];
       index[lastPromotionSquare] = index[to];
       pieceList[us][promotion][index[lastPromotionSquare]] = lastPromotionSquare;
+      pieceList[us][promotion][pieceCount[us][promotion]] = SQ_NONE;
       index[to] = pieceCount[us][PAWN] - 1;
       pieceList[us][PAWN][index[to]] = to;
   }

@@ -193,6 +193,7 @@ public:
 
   // Piece lists
   Square piece_list(Color c, PieceType pt, int index) const;
+  const Square* piece_list_begin(Color c, PieceType pt) const;
 
   // Information about attacks to or from a given square
   Bitboard attackers_to(Square s) const;
@@ -401,6 +402,10 @@ inline int Position::piece_count(Color c, PieceType pt) const {
 
 inline Square Position::piece_list(Color c, PieceType pt, int index) const {
   return pieceList[c][pt][index];
+}
+
+inline const Square* Position::piece_list_begin(Color c, PieceType pt) const {
+  return pieceList[c][pt];
 }
 
 inline Square Position::ep_square() const {
