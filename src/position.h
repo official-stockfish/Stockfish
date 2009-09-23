@@ -298,11 +298,11 @@ private:
   template<GamePhase> Value compute_value() const;
   Value compute_non_pawn_material(Color c) const;
 
-  // Bitboards
-  Bitboard byColorBB[2], byTypeBB[8];
-
   // Board
   Piece board[64];
+
+  // Bitboards
+  Bitboard byTypeBB[8], byColorBB[2];
 
   // Piece counts
   int pieceCount[2][8]; // [color][pieceType]
