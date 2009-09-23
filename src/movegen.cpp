@@ -576,7 +576,6 @@ namespace {
     Bitboard b1, b2, dcPawns1, dcPawns2;
     Square to;
     Bitboard pawns = (Type == EVASION ? pos.pieces(PAWN, Us) & ~dcp : pos.pieces(PAWN, Us));
-    Bitboard emptySquares = pos.empty_squares();
     bool possiblePromotion = pawns & TRank7BB;
 
     if (Type == CAPTURE)
@@ -621,7 +620,7 @@ namespace {
 
         // Underpromotion pawn pushes. Also queen promotions for evasions and captures.
         b1 = move_pawns<Us, DELTA_N>(pp) & TRank8BB;
-        b1 &= (Type == EVASION ? blockSquares : emptySquares);
+        b1 &= (Type == EVASION ? blockSquares : pos.empty_squares());
 
         while (b1)
         {
@@ -638,47 +637,45 @@ namespace {
         }
     }
 
-    if (Type == CAPTURE)
+    if (Type != CAPTURE)
     {
-        // En passant captures
-        if (pos.ep_square() != SQ_NONE)
+        Bitboard emptySquares = pos.empty_squares();
+        dcPawns1 = dcPawns2 = EmptyBoardBB;
+        if (Type == CHECK && (pawns & dcp))
         {
-            assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
-            assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
-
-            Bitboard b1 = pawns & pos.attacks_from<PAWN>(pos.ep_square(), Them);
-            assert(b1 != EmptyBoardBB);
-
-            while (b1)
-            {
-                to = pop_1st_bit(&b1);
-                (*mlist++).move = make_ep_move(to, pos.ep_square());
-            }
+            // Pawn moves which gives discovered check. This is possible only if the
+            // pawn is not on the same file as the enemy king, because we don't
+            // generate captures.
+            dcPawns1 = move_pawns<Us, DELTA_N>(pawns & dcp & ~file_bb(ksq)) & emptySquares & ~TRank8BB;
+            dcPawns2 = move_pawns<Us, DELTA_N>(dcPawns1 & TRank3BB) & emptySquares;
         }
-        return mlist;
-    }
 
-    dcPawns1 = dcPawns2 = EmptyBoardBB;
-    if (Type == CHECK && (pawns & dcp))
+        // Single pawn pushes
+        b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
+        b2 = (Type == CHECK ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns1 :
+              (Type == EVASION ? b1 & blockSquares : b1));
+        SERIALIZE_MOVES_D(b2, -TDELTA_N);
+
+        // Double pawn pushes
+        b1 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
+        b2 = (Type == CHECK ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns2 :
+              (Type == EVASION ? b1 & blockSquares : b1));
+        SERIALIZE_MOVES_D(b2, -TDELTA_N -TDELTA_N);
+    }
+    else if (pos.ep_square() != SQ_NONE) // En passant captures
     {
-        // Pawn moves which gives discovered check. This is possible only if the
-        // pawn is not on the same file as the enemy king, because we don't
-        // generate captures.
-        dcPawns1 = move_pawns<Us, DELTA_N>(pawns & dcp & ~file_bb(ksq)) & emptySquares & ~TRank8BB;
-        dcPawns2 = move_pawns<Us, DELTA_N>(dcPawns1 & TRank3BB) & emptySquares;
+        assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
+        assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
+
+        b1 = pawns & pos.attacks_from<PAWN>(pos.ep_square(), Them);
+        assert(b1 != EmptyBoardBB);
+
+        while (b1)
+        {
+            to = pop_1st_bit(&b1);
+            (*mlist++).move = make_ep_move(to, pos.ep_square());
+        }
     }
-
-    // Single pawn pushes
-    b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
-    b2 = (Type == CHECK ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns1 :
-         (Type == EVASION ? b1 & blockSquares : b1));
-    SERIALIZE_MOVES_D(b2, -TDELTA_N);
-
-    // Double pawn pushes
-    b1 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
-    b2 = (Type == CHECK ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns2 :
-         (Type == EVASION ? b1 & blockSquares : b1));
-    SERIALIZE_MOVES_D(b2, -TDELTA_N -TDELTA_N);
     return mlist;
   }
 
@@ -706,19 +703,19 @@ namespace {
     // Direct non-capture checks
     b = target & ~dc;
     Bitboard checkSqs = pos.attacks_from<Piece>(ksq) & pos.empty_squares();
-    if (Piece == KING || !checkSqs)
-        return mlist;
-
-    while (b)
+    if (Piece != KING && checkSqs)
     {
-        Square from = pop_1st_bit(&b);
-        if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
-            || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
-            || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
-            continue;
+        while (b)
+        {
+            Square from = pop_1st_bit(&b);
+            if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
+                || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
+                || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
+                continue;
 
-        Bitboard bb = pos.attacks_from<Piece>(from) & checkSqs;
-        SERIALIZE_MOVES(bb);
+            Bitboard bb = pos.attacks_from<Piece>(from) & checkSqs;
+            SERIALIZE_MOVES(bb);
+        }
     }
     return mlist;
   }
