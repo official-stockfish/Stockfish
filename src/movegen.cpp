@@ -436,7 +436,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
           return false;
 
       // Proceed according to the square delta between the origin and
-      // destionation squares.
+      // destination squares.
       switch (direction)
       {
       case DELTA_NW:
@@ -507,6 +507,17 @@ namespace {
     return mlist;
   }
 
+  template<>
+  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+
+    Bitboard b;
+    Square from = pos.king_square(us);
+
+    b = pos.attacks_from<KING>(from) & target;
+    SERIALIZE_MOVES(b);
+    return mlist;
+  }
+
   template<PieceType Piece>
   MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist,
                                   Color us, Bitboard target, Bitboard pinned) {
@@ -522,17 +533,6 @@ namespace {
         b = pos.attacks_from<Piece>(from) & target;
         SERIALIZE_MOVES(b);
     }
-    return mlist;
-  }
-
-  template<>
-  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
-
-    Bitboard b;
-    Square from = pos.king_square(us);
-
-    b = pos.attacks_from<KING>(from) & target;
-    SERIALIZE_MOVES(b);
     return mlist;
   }
 
@@ -671,7 +671,7 @@ namespace {
     }
 
     dcPawns1 = dcPawns2 = EmptyBoardBB;
-    if (GenerateChecks && (dc & pawns))
+    if (GenerateChecks && (pawns & dc))
     {
         // Pawn moves which gives discovered check. This is possible only if the
         // pawn is not on the same file as the enemy king, because we don't
@@ -698,8 +698,11 @@ namespace {
 
     Bitboard target = pos.pieces(Piece, us);
 
-    // Discovered checks
+    // Discovered non-capture checks
     Bitboard b = target & dc;
+
+    assert(Piece != QUEEN || !b);
+
     while (b)
     {
         Square from = pop_1st_bit(&b);
@@ -710,7 +713,7 @@ namespace {
         SERIALIZE_MOVES(bb);
     }
 
-    // Direct checks
+    // Direct non-capture checks
     b = target & ~dc;
     Bitboard checkSqs = pos.attacks_from<Piece>(ksq) & pos.empty_squares();
     if (Piece == KING || !checkSqs)
@@ -735,47 +738,38 @@ namespace {
                                              Bitboard blockSquares, MoveStack* mlist) {
 
     // Calculate our parametrized parameters at compile time
-    const Rank TRANK_8 = (Us == WHITE ? RANK_8 : RANK_1);
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
+    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
+    Bitboard b1, b2;
     Square to;
+    Bitboard pawns = pos.pieces(PAWN, Us) & ~pinned;
+    Bitboard emptySquares = pos.empty_squares();
 
-    // Find non-pinned pawns and push them one square
-    Bitboard b1 = move_pawns<Us, DELTA_N>(pos.pieces(PAWN, Us) & ~pinned);
-
-    // We don't have to AND with empty squares here,
-    // because the blocking squares will always be empty.
-    Bitboard b2 = b1 & blockSquares;
-    while (b2)
+    if (pawns & TRank7BB) // There is some promotion candidate ?
     {
-        to = pop_1st_bit(&b2);
-
-        assert(pos.piece_on(to) == EMPTY);
-
-        if (square_rank(to) == TRANK_8)
+        // Note that blockSquares are always empty
+        b1 = move_pawns<Us, DELTA_N>(pawns) & blockSquares & TRank8BB;
+        while (b1)
         {
+            to = pop_1st_bit(&b1);
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
             (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
-        } else
-            (*mlist++).move = make_move(to - TDELTA_N, to);
+        }
     }
 
-    // Double pawn pushes
-    b2 = b1 & pos.empty_squares() & TRank3BB;
-    b2 = move_pawns<Us, DELTA_N>(b2) & blockSquares;
-    while (b2)
-    {
-        to = pop_1st_bit(&b2);
+    // Single pawn pushes
+    b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
+    b2 = b1 & blockSquares;
+    SERIALIZE_MOVES_D(b2, -TDELTA_N);
 
-        assert(pos.piece_on(to) == EMPTY);
-        assert(Us != WHITE || square_rank(to) == RANK_4);
-        assert(Us != BLACK || square_rank(to) == RANK_5);
-
-        (*mlist++).move = make_move(to - TDELTA_N - TDELTA_N, to);
-    }
+    // Double pawn pushes. Note that blockSquares are always empty
+    b1 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & blockSquares;
+    SERIALIZE_MOVES_D(b1, -TDELTA_N -TDELTA_N);
     return mlist;
   }
 
