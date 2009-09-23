@@ -89,7 +89,7 @@ enum Phase {
 struct StateInfo {
   Key key, pawnKey, materialKey;
   int castleRights, rule50;
-  Square kingSquare[2], epSquare;
+  Square epSquare;
   Value mgValue, egValue;
   Value npMaterial[2];
 
@@ -408,7 +408,7 @@ inline Square Position::ep_square() const {
 }
 
 inline Square Position::king_square(Color c) const {
-  return st->kingSquare[c];
+  return pieceList[c][KING][0];
 }
 
 inline bool Position::can_castle_kingside(Color side) const {

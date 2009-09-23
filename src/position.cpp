@@ -704,7 +704,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   struct ReducedStateInfo {
     Key key, pawnKey, materialKey;
     int castleRights, rule50;
-    Square kingSquare[2], epSquare;
+    Square epSquare;
     Value mgValue, egValue;
     Value npMaterial[2];
   };
@@ -783,10 +783,6 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   board[to] = board[from];
   board[from] = EMPTY;
-
-  // If the moving piece was a king, update the king square
-  if (pt == KING)
-      st->kingSquare[us] = to;
 
   // Update piece lists, note that index[from] is not updated and
   // becomes stale. This works as long as index[] is accessed just
@@ -1004,9 +1000,6 @@ void Position::do_castle_move(Move m) {
   board[kfrom] = board[rfrom] = EMPTY;
   board[kto] = king;
   board[rto] = rook;
-
-  // Update king square
-  st->kingSquare[us] = kto;
 
   // Update piece lists
   pieceList[us][KING][index[kfrom]] = kto;
@@ -1519,9 +1512,6 @@ void Position::put_piece(Piece p, Square s) {
   set_bit(&byTypeBB[0], s); // HACK: byTypeBB[0] contains all occupied squares.
 
   pieceCount[c][pt]++;
-
-  if (pt == KING)
-      st->kingSquare[c] = s;
 }
 
 
