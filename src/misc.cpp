@@ -29,33 +29,10 @@
 #  include <unistd.h>
 
 #else
-/*
-   (c) Copyright 1992 Eric Backus
 
-   This software may be used freely so long as this copyright notice is
-   left intact. There is no warrantee on this software.
-*/
-#  include <windows.h>
-#  include <time.h>
-#  include "dos.h"
-
-static int gettimeofday(struct timeval* tp, struct timezone*)
-{
-    SYSTEMTIME systime;
-
-    if (tp)
-    {
-        struct tm tmrec;
-        time_t theTime = time(NULL);
-
-        tmrec = *localtime(&theTime);
-        tp->tv_sec = mktime(&tmrec);
-        GetLocalTime(&systime); /* system time */
-
-        tp->tv_usec = systime.wMilliseconds * 1000;
-    }
-    return 0;
-}
+#define _CRT_SECURE_NO_DEPRECATE
+#include <windows.h>
+#include <sys/timeb.h>
 
 #endif
 
@@ -189,9 +166,16 @@ const string engine_name() {
 /// milliseconds.
 
 int get_system_time() {
-  struct timeval t;
-  gettimeofday(&t, NULL);
-  return t.tv_sec*1000 + t.tv_usec/1000;
+
+#if defined(_MSC_VER)
+    struct _timeb t;
+    _ftime(&t);
+    return int(t.time*1000 + t.millitm);
+#else
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_sec*1000 + t.tv_usec/1000;
+#endif
 }
 
 
