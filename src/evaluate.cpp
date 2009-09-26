@@ -614,11 +614,10 @@ namespace {
     int mob;
     File f;
     Color them = opposite_color(us);
+    const Square* ptr = pos.piece_list_begin(us, Piece);
 
-    for (int i = 0, e = pos.piece_count(us, Piece); i < e; i++)
+    while ((s = *ptr++) != SQ_NONE)
     {
-        s = pos.piece_list(us, Piece, i);
-
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
