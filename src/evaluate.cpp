@@ -270,11 +270,11 @@ namespace {
   template<bool HasPopCnt>
   Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID);
 
-  template<PieceType Piece, bool HasPopCnt>
-  void evaluate_pieces(const Position& p, Color us, EvalInfo& ei);
+  template<Color Us, bool HasPopCnt>
+  void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
 
-  template<bool HasPopCnt>
-  void evaluate_king(const Position& p, Color us, EvalInfo &ei);
+  template<Color Us, bool HasPopCnt>
+  void evaluate_king(const Position& p, EvalInfo &ei);
 
   void evaluate_passed_pawns(const Position &pos, EvalInfo &ei);
   void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
@@ -359,24 +359,14 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
       ei.kingAttackersCount[BLACK] = count_1s_max_15<HasPopCnt>(b2)/2;
 
   // Evaluate pieces
-  for (Color c = WHITE; c <= BLACK; c++)
-  {
-      evaluate_pieces<KNIGHT, HasPopCnt>(pos, c, ei);
-      evaluate_pieces<BISHOP, HasPopCnt>(pos, c, ei);
-      evaluate_pieces<ROOK,   HasPopCnt>(pos, c, ei);
-      evaluate_pieces<QUEEN,  HasPopCnt>(pos, c, ei);
-
-      // Sum up all attacked squares
-      ei.attackedBy[c][0] =   ei.attackedBy[c][PAWN]   | ei.attackedBy[c][KNIGHT]
-                            | ei.attackedBy[c][BISHOP] | ei.attackedBy[c][ROOK]
-                            | ei.attackedBy[c][QUEEN]  | ei.attackedBy[c][KING];
-  }
+  evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei);
+  evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei);
 
   // Kings. Kings are evaluated after all other pieces for both sides,
   // because we need complete attack information for all pieces when computing
   // the king safety evaluation.
-  for (Color c = WHITE; c <= BLACK; c++)
-      evaluate_king<HasPopCnt>(pos, c, ei);
+  evaluate_king<WHITE, HasPopCnt>(pos, ei);
+  evaluate_king<BLACK, HasPopCnt>(pos, ei);
 
   // Evaluate passed pawns.  We evaluate passed pawns for both sides at once,
   // because we need to know which side promotes first in positions where
@@ -546,113 +536,117 @@ namespace {
 
   // evaluate_mobility() computes mobility and attacks for every piece
 
-  template<PieceType Piece, bool HasPopCnt>
-  int evaluate_mobility(const Position& p, const Bitboard& b, Color us, Color them, EvalInfo& ei) {
+  template<PieceType Piece, Color Us, bool HasPopCnt>
+  int evaluate_mobility(const Position& p, const Bitboard& b, EvalInfo& ei) {
 
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
     static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
     static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
 
     // Update attack info
-    ei.attackedBy[us][Piece] |= b;
+    ei.attackedBy[Us][Piece] |= b;
 
     // King attacks
-    if (b & ei.kingZone[us])
+    if (b & ei.kingZone[Us])
     {
-        ei.kingAttackersCount[us]++;
-        ei.kingAttackersWeight[us] += AttackWeight[Piece];
-        Bitboard bb = (b & ei.attackedBy[them][KING]);
+        ei.kingAttackersCount[Us]++;
+        ei.kingAttackersWeight[Us] += AttackWeight[Piece];
+        Bitboard bb = (b & ei.attackedBy[Them][KING]);
         if (bb)
-            ei.kingAdjacentZoneAttacksCount[us] += count_1s_max_15<HasPopCnt>(bb);
+            ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
     }
 
     // Remove squares protected by enemy pawns
-    Bitboard bb = (b & ~ei.attackedBy[them][PAWN]);
+    Bitboard bb = (b & ~ei.attackedBy[Them][PAWN]);
 
     // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(bb & ~p.pieces_of_color(us))
-                              : count_1s<HasPopCnt>(bb & ~p.pieces_of_color(us)));
+    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(bb & ~p.pieces_of_color(Us))
+                              : count_1s<HasPopCnt>(bb & ~p.pieces_of_color(Us)));
 
-    ei.mgMobility += Sign[us] * MgBonus[Piece][mob];
-    ei.egMobility += Sign[us] * EgBonus[Piece][mob];
+    ei.mgMobility += Sign[Us] * MgBonus[Piece][mob];
+    ei.egMobility += Sign[Us] * EgBonus[Piece][mob];
     return mob;
   }
 
 
   // evaluate_outposts() evaluates bishop and knight outposts squares
 
-  template<PieceType Piece>
-  void evaluate_outposts(const Position& p, Color us, Color them, EvalInfo& ei, Square s) {
+  template<PieceType Piece, Color Us>
+  void evaluate_outposts(const Position& p, EvalInfo& ei, Square s) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     // Initial bonus based on square
-    Value bonus = (Piece == BISHOP ? BishopOutpostBonus[relative_square(us, s)]
-                                   : KnightOutpostBonus[relative_square(us, s)]);
+    Value bonus = (Piece == BISHOP ? BishopOutpostBonus[relative_square(Us, s)]
+                                   : KnightOutpostBonus[relative_square(Us, s)]);
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
-    if (bonus && (p.attacks_from<PAWN>(s, them) & p.pieces(PAWN, us)))
+    if (bonus && (p.attacks_from<PAWN>(s, Them) & p.pieces(PAWN, Us)))
     {
-        if (    p.pieces(KNIGHT, them) == EmptyBoardBB
-            && (SquaresByColorBB[square_color(s)] & p.pieces(BISHOP, them)) == EmptyBoardBB)
+        if (    p.pieces(KNIGHT, Them) == EmptyBoardBB
+            && (SquaresByColorBB[square_color(s)] & p.pieces(BISHOP, Them)) == EmptyBoardBB)
             bonus += bonus + bonus / 2;
         else
             bonus += bonus / 2;
     }
-    ei.mgValue += Sign[us] * bonus;
-    ei.egValue += Sign[us] * bonus;
+    ei.mgValue += Sign[Us] * bonus;
+    ei.egValue += Sign[Us] * bonus;
   }
 
 
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given
   // color.
 
-  template<PieceType Piece, bool HasPopCnt>
-  void evaluate_pieces(const Position& pos, Color us, EvalInfo& ei) {
+  template<PieceType Piece, Color Us, bool HasPopCnt>
+  void evaluate_pieces(const Position& pos, EvalInfo& ei) {
 
     Bitboard b;
     Square s, ksq;
     int mob;
     File f;
-    Color them = opposite_color(us);
-    const Square* ptr = pos.piece_list_begin(us, Piece);
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Square* ptr = pos.piece_list_begin(Us, Piece);
 
     while ((s = *ptr++) != SQ_NONE)
     {
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
-            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, us));
+            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
         else if (Piece == ROOK)
-            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, us));
+            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
         else
             assert(false);
 
         // Attacks and mobility
-        mob = evaluate_mobility<Piece, HasPopCnt>(pos, b, us, them, ei);
+        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, b, ei);
 
         // Bishop and knight outposts squares
-        if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, them))
-            evaluate_outposts<Piece>(pos, us, them, ei, s);
+        if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
+            evaluate_outposts<Piece, Us>(pos, ei, s);
 
         // Special patterns: trapped bishops on a7/h7/a2/h2
         // and trapped bishops on a1/h1/a8/h8 in Chess960.
         if (Piece == BISHOP)
         {
-            if (bit_is_set(MaskA7H7[us], s))
-                evaluate_trapped_bishop_a7h7(pos, s, us, ei);
+            if (bit_is_set(MaskA7H7[Us], s))
+                evaluate_trapped_bishop_a7h7(pos, s, Us, ei);
 
-            if (Chess960 && bit_is_set(MaskA1H1[us], s))
-                evaluate_trapped_bishop_a1h1(pos, s, us, ei);
+            if (Chess960 && bit_is_set(MaskA1H1[Us], s))
+                evaluate_trapped_bishop_a1h1(pos, s, Us, ei);
         }
 
         if (Piece == ROOK || Piece == QUEEN)
         {
             // Queen or rook on 7th rank
-            if (   relative_rank(us, s) == RANK_7
-                && relative_rank(us, pos.king_square(them)) == RANK_8)
+            if (   relative_rank(Us, s) == RANK_7
+                && relative_rank(Us, pos.king_square(Them)) == RANK_8)
             {
-                ei.mgValue += Sign[us] * (Piece == ROOK ? MidgameRookOn7thBonus : MidgameQueenOn7thBonus);
-                ei.egValue += Sign[us] * (Piece == ROOK ? EndgameRookOn7thBonus : EndgameQueenOn7thBonus);
+                ei.mgValue += Sign[Us] * (Piece == ROOK ? MidgameRookOn7thBonus : MidgameQueenOn7thBonus);
+                ei.egValue += Sign[Us] * (Piece == ROOK ? EndgameRookOn7thBonus : EndgameQueenOn7thBonus);
             }
         }
 
@@ -661,84 +655,99 @@ namespace {
         {
             // Open and half-open files
             f = square_file(s);
-            if (ei.pi->file_is_half_open(us, f))
+            if (ei.pi->file_is_half_open(Us, f))
             {
-                if (ei.pi->file_is_half_open(them, f))
+                if (ei.pi->file_is_half_open(Them, f))
                 {
-                    ei.mgValue += Sign[us] * RookOpenFileBonus;
-                    ei.egValue += Sign[us] * RookOpenFileBonus;
+                    ei.mgValue += Sign[Us] * RookOpenFileBonus;
+                    ei.egValue += Sign[Us] * RookOpenFileBonus;
                 }
                 else
                 {
-                    ei.mgValue += Sign[us] * RookHalfOpenFileBonus;
-                    ei.egValue += Sign[us] * RookHalfOpenFileBonus;
+                    ei.mgValue += Sign[Us] * RookHalfOpenFileBonus;
+                    ei.egValue += Sign[Us] * RookHalfOpenFileBonus;
                 }
             }
 
             // Penalize rooks which are trapped inside a king. Penalize more if
             // king has lost right to castle.
-            if (mob > 6 || ei.pi->file_is_half_open(us, f))
+            if (mob > 6 || ei.pi->file_is_half_open(Us, f))
                 continue;
 
-            ksq = pos.king_square(us);
+            ksq = pos.king_square(Us);
 
             if (    square_file(ksq) >= FILE_E
                 &&  square_file(s) > square_file(ksq)
-                && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+                && (relative_rank(Us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
             {
                 // Is there a half-open file between the king and the edge of the board?
-                if (!ei.pi->has_open_file_to_right(us, square_file(ksq)))
-                    ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                                    : Sign[us] *  (TrappedRookPenalty - mob * 16);
+                if (!ei.pi->has_open_file_to_right(Us, square_file(ksq)))
+                    ei.mgValue -= pos.can_castle(Us)? Sign[Us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                                    : Sign[Us] *  (TrappedRookPenalty - mob * 16);
             }
             else if (    square_file(ksq) <= FILE_D
                     &&  square_file(s) < square_file(ksq)
-                    && (relative_rank(us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+                    && (relative_rank(Us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
             {
                 // Is there a half-open file between the king and the edge of the board?
-                if (!ei.pi->has_open_file_to_left(us, square_file(ksq)))
-                    ei.mgValue -= pos.can_castle(us)? Sign[us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                                    : Sign[us] * (TrappedRookPenalty - mob * 16);
+                if (!ei.pi->has_open_file_to_left(Us, square_file(ksq)))
+                    ei.mgValue -= pos.can_castle(Us)? Sign[Us] * ((TrappedRookPenalty - mob * 16) / 2)
+                                                    : Sign[Us] * (TrappedRookPenalty - mob * 16);
             }
         }
     }
   }
 
+  // evaluate_pieces_of_color<>() assigns bonuses and penalties to all the pieces of a given
+  // color.
+
+  template<Color Us, bool HasPopCnt>
+  void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei) {
+
+      evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei);
+      evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei);
+      evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei);
+      evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei);
+
+      // Sum up all attacked squares
+      ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
+                             | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
+                             | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
+  }
 
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color.
 
-  template<bool HasPopCnt>
-  void evaluate_king(const Position& p, Color us, EvalInfo& ei) {
+  template<Color Us, bool HasPopCnt>
+  void evaluate_king(const Position& p, EvalInfo& ei) {
 
-    int shelter = 0, sign = Sign[us];
-    Square s = p.king_square(us);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Square s = p.king_square(Us);
+    int shelter = 0;
 
     // King shelter
-    if (relative_rank(us, s) <= RANK_4)
+    if (relative_rank(Us, s) <= RANK_4)
     {
-        shelter = ei.pi->get_king_shelter(p, us, s);
-        ei.mgValue += sign * Value(shelter);
+        shelter = ei.pi->get_king_shelter(p, Us, s);
+        ei.mgValue += Sign[Us] * Value(shelter);
     }
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
-    Color them = opposite_color(us);
-
-    if (   p.piece_count(them, QUEEN) >= 1
-        && ei.kingAttackersCount[them] >= 2
-        && p.non_pawn_material(them) >= QueenValueMidgame + RookValueMidgame
-        && ei.kingAdjacentZoneAttacksCount[them])
+    if (   p.piece_count(Them, QUEEN) >= 1
+        && ei.kingAttackersCount[Them] >= 2
+        && p.non_pawn_material(Them) >= QueenValueMidgame + RookValueMidgame
+        && ei.kingAdjacentZoneAttacksCount[Them])
     {
       // Is it the attackers turn to move?
-      bool sente = (them == p.side_to_move());
+      bool sente = (Them == p.side_to_move());
 
       // Find the attacked squares around the king which has no defenders
       // apart from the king itself
       Bitboard undefended =
-             ei.attacked_by(them)       & ~ei.attacked_by(us, PAWN)
-          & ~ei.attacked_by(us, KNIGHT) & ~ei.attacked_by(us, BISHOP)
-          & ~ei.attacked_by(us, ROOK)   & ~ei.attacked_by(us, QUEEN)
-          & ei.attacked_by(us, KING);
+             ei.attacked_by(Them)       & ~ei.attacked_by(Us, PAWN)
+          & ~ei.attacked_by(Us, KNIGHT) & ~ei.attacked_by(Us, BISHOP)
+          & ~ei.attacked_by(Us, ROOK)   & ~ei.attacked_by(Us, QUEEN)
+          &  ei.attacked_by(Us, KING);
 
       Bitboard occ = p.occupied_squares(), b, b2;
 
@@ -748,17 +757,17 @@ namespace {
       // undefended squares around the king, the square of the king, and the
       // quality of the pawn shelter.
       int attackUnits =
-            Min((ei.kingAttackersCount[them] * ei.kingAttackersWeight[them]) / 2, 25)
-          + (ei.kingAdjacentZoneAttacksCount[them] + count_1s_max_15<HasPopCnt>(undefended)) * 3
-          + InitKingDanger[relative_square(us, s)] - (shelter >> 5);
+            Min((ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2, 25)
+          + (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended)) * 3
+          + InitKingDanger[relative_square(Us, s)] - (shelter >> 5);
 
       // Analyse safe queen contact checks
-      b = undefended & ei.attacked_by(them, QUEEN) & ~p.pieces_of_color(them);
+      b = undefended & ei.attacked_by(Them, QUEEN) & ~p.pieces_of_color(Them);
       if (b)
       {
         Bitboard attackedByOthers =
-              ei.attacked_by(them, PAWN)   | ei.attacked_by(them, KNIGHT)
-            | ei.attacked_by(them, BISHOP) | ei.attacked_by(them, ROOK);
+              ei.attacked_by(Them, PAWN)   | ei.attacked_by(Them, KNIGHT)
+            | ei.attacked_by(Them, BISHOP) | ei.attacked_by(Them, ROOK);
 
         b &= attackedByOthers;
         if (b)
@@ -772,7 +781,7 @@ namespace {
           if (QueenContactMates && !p.is_check())
           {
             Bitboard escapeSquares =
-                p.attacks_from<KING>(s) & ~p.pieces_of_color(us) & ~attackedByOthers;
+                p.attacks_from<KING>(s) & ~p.pieces_of_color(Us) & ~attackedByOthers;
 
             while (b)
             {
@@ -781,15 +790,15 @@ namespace {
                 {
                     // We have a mate, unless the queen is pinned or there
                     // is an X-ray attack through the queen.
-                    for (int i = 0; i < p.piece_count(them, QUEEN); i++)
+                    for (int i = 0; i < p.piece_count(Them, QUEEN); i++)
                     {
-                        from = p.piece_list(them, QUEEN, i);
+                        from = p.piece_list(Them, QUEEN, i);
                         if (    bit_is_set(p.attacks_from<QUEEN>(from), to)
-                            && !bit_is_set(p.pinned_pieces(them), from)
-                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(ROOK, QUEEN, us))
-                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(BISHOP, QUEEN, us)))
+                            && !bit_is_set(p.pinned_pieces(Them), from)
+                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(ROOK, QUEEN, Us))
+                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(BISHOP, QUEEN, Us)))
 
-                            ei.mateThreat[them] = make_move(from, to);
+                            ei.mateThreat[Them] = make_move(from, to);
                     }
                 }
             }
@@ -800,38 +809,38 @@ namespace {
       // Analyse safe distance checks
       if (QueenCheckBonus > 0 || RookCheckBonus > 0)
       {
-          b = p.attacks_from<ROOK>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.attacks_from<ROOK>(s) & ~p.pieces_of_color(Them) & ~ei.attacked_by(Us);
 
           // Queen checks
-          b2 = b & ei.attacked_by(them, QUEEN);
+          b2 = b & ei.attacked_by(Them, QUEEN);
           if( b2)
               attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
 
           // Rook checks
-          b2 = b & ei.attacked_by(them, ROOK);
+          b2 = b & ei.attacked_by(Them, ROOK);
           if (b2)
               attackUnits += RookCheckBonus * count_1s_max_15<HasPopCnt>(b2);
       }
       if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
       {
-          b = p.attacks_from<BISHOP>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.attacks_from<BISHOP>(s) & ~p.pieces_of_color(Them) & ~ei.attacked_by(Us);
 
           // Queen checks
-          b2 = b & ei.attacked_by(them, QUEEN);
+          b2 = b & ei.attacked_by(Them, QUEEN);
           if (b2)
               attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
 
           // Bishop checks
-          b2 = b & ei.attacked_by(them, BISHOP);
+          b2 = b & ei.attacked_by(Them, BISHOP);
           if (b2)
               attackUnits += BishopCheckBonus * count_1s_max_15<HasPopCnt>(b2);
       }
       if (KnightCheckBonus > 0)
       {
-          b = p.attacks_from<KNIGHT>(s) & ~p.pieces_of_color(them) & ~ei.attacked_by(us);
+          b = p.attacks_from<KNIGHT>(s) & ~p.pieces_of_color(Them) & ~ei.attacked_by(Us);
 
           // Knight checks
-          b2 = b & ei.attacked_by(them, KNIGHT);
+          b2 = b & ei.attacked_by(Them, KNIGHT);
           if (b2)
               attackUnits += KnightCheckBonus * count_1s_max_15<HasPopCnt>(b2);
       }
@@ -840,16 +849,16 @@ namespace {
       // adding pawns later).
       if (DiscoveredCheckBonus)
       {
-        b = p.discovered_check_candidates(them) & ~p.pieces(PAWN);
+        b = p.discovered_check_candidates(Them) & ~p.pieces(PAWN);
         if (b)
-          attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente? 2 : 1);
+          attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
       }
 
       // Has a mate threat been found?  We don't do anything here if the
       // side with the mating move is the side to move, because in that
       // case the mating side will get a huge bonus at the end of the main
       // evaluation function instead.
-      if (ei.mateThreat[them] != MOVE_NONE)
+      if (ei.mateThreat[Them] != MOVE_NONE)
           attackUnits += MateThreatBonus;
 
       // Ensure that attackUnits is between 0 and 99, in order to avoid array
@@ -866,11 +875,11 @@ namespace {
       // that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
-      Value v = apply_weight(SafetyTable[attackUnits], WeightKingSafety[us]);
+      Value v = apply_weight(SafetyTable[attackUnits], WeightKingSafety[Us]);
 
-      ei.mgValue -= sign * v;
+      ei.mgValue -= Sign[Us] * v;
 
-      if (us == p.side_to_move())
+      if (Us == p.side_to_move())
           ei.futilityMargin += v;
     }
   }
