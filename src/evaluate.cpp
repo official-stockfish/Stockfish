@@ -529,31 +529,43 @@ namespace {
   // evaluate_mobility() computes mobility and attacks for every piece
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  int evaluate_mobility(const Position& pos, const Bitboard& mob_bb, EvalInfo& ei) {
+  int evaluate_mobility(const Position& pos, Bitboard b, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
     static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
     static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
+    static const int lastIndex[] = { 0, 0, 8, 15, 15, 31 };
 
     // Update attack info
-    ei.attackedBy[Us][Piece] |= mob_bb;
+    ei.attackedBy[Us][Piece] |= b;
 
     // King attacks
-    if (mob_bb & ei.kingZone[Us])
+    if (b & ei.kingZone[Us])
     {
         ei.kingAttackersCount[Us]++;
         ei.kingAttackersWeight[Us] += AttackWeight[Piece];
-        Bitboard b = (mob_bb & ei.attackedBy[Them][KING]);
-        if (b)
-            ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(b);
+        Bitboard bb = (b & ei.attackedBy[Them][KING]);
+        if (bb)
+            ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
     }
 
+    // The squares occupied by enemy pieces will be counted two times instead
+    // of one. The shift (almost) guarantees that intersection with b is zero
+    // so when we 'or' the two bitboards togheter and count we get the correct
+    // sum of '1' in b and attacked bitboards.
+    Bitboard attacked = Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
+                                    : ((b & pos.pieces_of_color(Them)) << 1);
+
     // Remove squares protected by enemy pawns or occupied by our pieces
-    Bitboard b = mob_bb & ~ei.attackedBy[Them][PAWN] & ~pos.pieces_of_color(Us);
+    b &= ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
     // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b) : count_1s<HasPopCnt>(b));
+    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b | attacked)
+                              : count_1s<HasPopCnt>(b | attacked));
+
+    if (mob > lastIndex[Piece])
+        mob = lastIndex[Piece];
 
     ei.mgMobility += Sign[Us] * MgBonus[Piece][mob];
     ei.egMobility += Sign[Us] * EgBonus[Piece][mob];
@@ -592,7 +604,7 @@ namespace {
   template<PieceType Piece, Color Us, bool HasPopCnt>
   void evaluate_pieces(const Position& pos, EvalInfo& ei) {
 
-    Bitboard mob_bb;
+    Bitboard b;
     Square s, ksq;
     int mob;
     File f;
@@ -603,16 +615,16 @@ namespace {
     while ((s = *ptr++) != SQ_NONE)
     {
         if (Piece == KNIGHT || Piece == QUEEN)
-            mob_bb = pos.attacks_from<Piece>(s);
+            b = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
-            mob_bb = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
+            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
         else if (Piece == ROOK)
-            mob_bb = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
+            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
         else
             assert(false);
 
         // Attacks and mobility
-        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, mob_bb, ei);
+        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, b, ei);
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
