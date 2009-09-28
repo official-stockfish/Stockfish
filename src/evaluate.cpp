@@ -274,22 +274,18 @@ namespace {
   void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_king(const Position& p, EvalInfo &ei);
+  void evaluate_king(const Position& pos, EvalInfo& ei);
 
-  void evaluate_passed_pawns(const Position &pos, EvalInfo &ei);
-  void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
-                                    EvalInfo &ei);
-  void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
-                                    EvalInfo &ei);
-  template<bool HasPopCnt>
-  void evaluate_space(const Position &p, Color us, EvalInfo &ei);
+  template<Color Us, bool HasPopCnt>
+  void evaluate_space(const Position& pos, EvalInfo& ei);
+
+  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
+  void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
+  void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
   inline Value apply_weight(Value v, int w);
   Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
-
-  int compute_weight(int uciWeight, int internalWeight);
   int weight_option(const std::string& opt, int weight);
   void init_safety();
-
 }
 
 
@@ -368,7 +364,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   evaluate_king<WHITE, HasPopCnt>(pos, ei);
   evaluate_king<BLACK, HasPopCnt>(pos, ei);
 
-  // Evaluate passed pawns.  We evaluate passed pawns for both sides at once,
+  // Evaluate passed pawns. We evaluate passed pawns for both sides at once,
   // because we need to know which side promotes first in positions where
   // both sides have an unstoppable passed pawn.
   if (ei.pi->passed_pawns())
@@ -395,8 +391,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
     // Evaluate space for both sides
     if (ei.mi->space_weight() > 0)
     {
-        evaluate_space<HasPopCnt>(pos, WHITE, ei);
-        evaluate_space<HasPopCnt>(pos, BLACK, ei);
+        evaluate_space<WHITE, HasPopCnt>(pos, ei);
+        evaluate_space<BLACK, HasPopCnt>(pos, ei);
     }
   }
 
@@ -433,8 +429,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
           factor[BLACK] = sf;
   }
 
-  // Interpolate between the middle game and the endgame score, and
-  // return
+  // Interpolate between the middle game and the endgame score
   Color stm = pos.side_to_move();
 
   Value v = Sign[stm] * scale_by_game_phase(ei.mgValue, ei.egValue, phase, factor);
@@ -445,7 +440,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 } // namespace
 
 /// quick_evaluate() does a very approximate evaluation of the current position.
-/// It currently considers only material and piece square table scores.  Perhaps
+/// It currently considers only material and piece square table scores. Perhaps
 /// we should add scores from the pawn and material hash tables?
 
 Value quick_evaluate(const Position &pos) {
@@ -464,7 +459,7 @@ Value quick_evaluate(const Position &pos) {
 }
 
 
-/// init_eval() initializes various tables used by the evaluation function.
+/// init_eval() initializes various tables used by the evaluation function
 
 void init_eval(int threads) {
 
@@ -488,7 +483,7 @@ void init_eval(int threads) {
 }
 
 
-/// quit_eval() releases heap-allocated memory at program termination.
+/// quit_eval() releases heap-allocated memory at program termination
 
 void quit_eval() {
 
@@ -502,10 +497,11 @@ void quit_eval() {
 }
 
 
-/// read_weights() reads evaluation weights from the corresponding UCI
-/// parameters.
+/// read_weights() reads evaluation weights from the corresponding UCI parameters
 
 void read_weights(Color us) {
+
+  Color them = opposite_color(us);
 
   WeightMobilityMidgame      = weight_option("Mobility (Middle Game)", WeightMobilityMidgameInternal);
   WeightMobilityEndgame      = weight_option("Mobility (Endgame)", WeightMobilityEndgameInternal);
@@ -513,21 +509,17 @@ void read_weights(Color us) {
   WeightPawnStructureEndgame = weight_option("Pawn Structure (Endgame)", WeightPawnStructureEndgameInternal);
   WeightPassedPawnsMidgame   = weight_option("Passed Pawns (Middle Game)", WeightPassedPawnsMidgameInternal);
   WeightPassedPawnsEndgame   = weight_option("Passed Pawns (Endgame)", WeightPassedPawnsEndgameInternal);
+  WeightSpace                = weight_option("Space", WeightSpaceInternal);
+  WeightKingSafety[us]       = weight_option("Cowardice", WeightKingSafetyInternal);
+  WeightKingSafety[them]     = weight_option("Aggressiveness", WeightKingOppSafetyInternal);
 
-  Color them = opposite_color(us);
-
-  WeightKingSafety[us]   = weight_option("Cowardice", WeightKingSafetyInternal);
-  WeightKingSafety[them] = weight_option("Aggressiveness", WeightKingOppSafetyInternal);
-  // If running in analysis mode, make sure we use symmetrical king safety.
-  // We do this by replacing both WeightKingSafety[us] and 
-  // WeightKingSafety[them] by their average.
-  if (get_option_value_bool("UCI_AnalyseMode")) {
+  // If running in analysis mode, make sure we use symmetrical king safety. We do this
+  // by replacing both WeightKingSafety[us] and WeightKingSafety[them] by their average.
+  if (get_option_value_bool("UCI_AnalyseMode"))
+  {
       WeightKingSafety[us] = (WeightKingSafety[us] + WeightKingSafety[them]) / 2;
       WeightKingSafety[them] = WeightKingSafety[us];
   }
-
-  WeightSpace = weight_option("Space", WeightSpaceInternal);
-
   init_safety();
 }
 
@@ -537,7 +529,7 @@ namespace {
   // evaluate_mobility() computes mobility and attacks for every piece
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  int evaluate_mobility(const Position& p, const Bitboard& b, EvalInfo& ei) {
+  int evaluate_mobility(const Position& pos, const Bitboard& mob_bb, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
@@ -545,24 +537,23 @@ namespace {
     static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
 
     // Update attack info
-    ei.attackedBy[Us][Piece] |= b;
+    ei.attackedBy[Us][Piece] |= mob_bb;
 
     // King attacks
-    if (b & ei.kingZone[Us])
+    if (mob_bb & ei.kingZone[Us])
     {
         ei.kingAttackersCount[Us]++;
         ei.kingAttackersWeight[Us] += AttackWeight[Piece];
-        Bitboard bb = (b & ei.attackedBy[Them][KING]);
-        if (bb)
-            ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
+        Bitboard b = (mob_bb & ei.attackedBy[Them][KING]);
+        if (b)
+            ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(b);
     }
 
-    // Remove squares protected by enemy pawns
-    Bitboard bb = (b & ~ei.attackedBy[Them][PAWN]);
+    // Remove squares protected by enemy pawns or occupied by our pieces
+    Bitboard b = mob_bb & ~ei.attackedBy[Them][PAWN] & ~pos.pieces_of_color(Us);
 
     // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(bb & ~p.pieces_of_color(Us))
-                              : count_1s<HasPopCnt>(bb & ~p.pieces_of_color(Us)));
+    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b) : count_1s<HasPopCnt>(b));
 
     ei.mgMobility += Sign[Us] * MgBonus[Piece][mob];
     ei.egMobility += Sign[Us] * EgBonus[Piece][mob];
@@ -573,7 +564,7 @@ namespace {
   // evaluate_outposts() evaluates bishop and knight outposts squares
 
   template<PieceType Piece, Color Us>
-  void evaluate_outposts(const Position& p, EvalInfo& ei, Square s) {
+  void evaluate_outposts(const Position& pos, EvalInfo& ei, Square s) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -583,10 +574,10 @@ namespace {
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
-    if (bonus && (p.attacks_from<PAWN>(s, Them) & p.pieces(PAWN, Us)))
+    if (bonus && (pos.attacks_from<PAWN>(s, Them) & pos.pieces(PAWN, Us)))
     {
-        if (    p.pieces(KNIGHT, Them) == EmptyBoardBB
-            && (SquaresByColorBB[square_color(s)] & p.pieces(BISHOP, Them)) == EmptyBoardBB)
+        if (    pos.pieces(KNIGHT, Them) == EmptyBoardBB
+            && (SquaresByColorBB[square_color(s)] & pos.pieces(BISHOP, Them)) == EmptyBoardBB)
             bonus += bonus + bonus / 2;
         else
             bonus += bonus / 2;
@@ -596,13 +587,12 @@ namespace {
   }
 
 
-  // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given
-  // color.
+  // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
   void evaluate_pieces(const Position& pos, EvalInfo& ei) {
 
-    Bitboard b;
+    Bitboard mob_bb;
     Square s, ksq;
     int mob;
     File f;
@@ -613,16 +603,16 @@ namespace {
     while ((s = *ptr++) != SQ_NONE)
     {
         if (Piece == KNIGHT || Piece == QUEEN)
-            b = pos.attacks_from<Piece>(s);
+            mob_bb = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
-            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
+            mob_bb = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
         else if (Piece == ROOK)
-            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
+            mob_bb = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
         else
             assert(false);
 
         // Attacks and mobility
-        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, b, ei);
+        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, mob_bb, ei);
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
@@ -698,8 +688,9 @@ namespace {
     }
   }
 
-  // evaluate_pieces_of_color<>() assigns bonuses and penalties to all the pieces of a given
-  // color.
+
+  // evaluate_pieces_of_color<>() assigns bonuses and penalties to all the
+  // pieces of a given color.
 
   template<Color Us, bool HasPopCnt>
   void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei) {
@@ -715,31 +706,32 @@ namespace {
                              | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
   }
 
-  // evaluate_king<>() assigns bonuses and penalties to a king of a given color.
+
+  // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_king(const Position& p, EvalInfo& ei) {
+  void evaluate_king(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Square s = p.king_square(Us);
+    const Square s = pos.king_square(Us);
     int shelter = 0;
 
     // King shelter
     if (relative_rank(Us, s) <= RANK_4)
     {
-        shelter = ei.pi->get_king_shelter(p, Us, s);
+        shelter = ei.pi->get_king_shelter(pos, Us, s);
         ei.mgValue += Sign[Us] * Value(shelter);
     }
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
-    if (   p.piece_count(Them, QUEEN) >= 1
+    if (   pos.piece_count(Them, QUEEN) >= 1
         && ei.kingAttackersCount[Them] >= 2
-        && p.non_pawn_material(Them) >= QueenValueMidgame + RookValueMidgame
+        && pos.non_pawn_material(Them) >= QueenValueMidgame + RookValueMidgame
         && ei.kingAdjacentZoneAttacksCount[Them])
     {
       // Is it the attackers turn to move?
-      bool sente = (Them == p.side_to_move());
+      bool sente = (Them == pos.side_to_move());
 
       // Find the attacked squares around the king which has no defenders
       // apart from the king itself
@@ -749,7 +741,7 @@ namespace {
           & ~ei.attacked_by(Us, ROOK)   & ~ei.attacked_by(Us, QUEEN)
           &  ei.attacked_by(Us, KING);
 
-      Bitboard occ = p.occupied_squares(), b, b2;
+      Bitboard occ = pos.occupied_squares(), b, b2;
 
       // Initialize the 'attackUnits' variable, which is used later on as an
       // index to the SafetyTable[] array.  The initial value is based on the
@@ -762,7 +754,7 @@ namespace {
           + InitKingDanger[relative_square(Us, s)] - (shelter >> 5);
 
       // Analyse safe queen contact checks
-      b = undefended & ei.attacked_by(Them, QUEEN) & ~p.pieces_of_color(Them);
+      b = undefended & ei.attacked_by(Them, QUEEN) & ~pos.pieces_of_color(Them);
       if (b)
       {
         Bitboard attackedByOthers =
@@ -778,10 +770,10 @@ namespace {
           attackUnits += QueenContactCheckBonus * count * (sente ? 2 : 1);
 
           // Is there a mate threat?
-          if (QueenContactMates && !p.is_check())
+          if (QueenContactMates && !pos.is_check())
           {
             Bitboard escapeSquares =
-                p.attacks_from<KING>(s) & ~p.pieces_of_color(Us) & ~attackedByOthers;
+                pos.attacks_from<KING>(s) & ~pos.pieces_of_color(Us) & ~attackedByOthers;
 
             while (b)
             {
@@ -790,13 +782,13 @@ namespace {
                 {
                     // We have a mate, unless the queen is pinned or there
                     // is an X-ray attack through the queen.
-                    for (int i = 0; i < p.piece_count(Them, QUEEN); i++)
+                    for (int i = 0; i < pos.piece_count(Them, QUEEN); i++)
                     {
-                        from = p.piece_list(Them, QUEEN, i);
-                        if (    bit_is_set(p.attacks_from<QUEEN>(from), to)
-                            && !bit_is_set(p.pinned_pieces(Them), from)
-                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(ROOK, QUEEN, Us))
-                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & p.pieces(BISHOP, QUEEN, Us)))
+                        from = pos.piece_list(Them, QUEEN, i);
+                        if (    bit_is_set(pos.attacks_from<QUEEN>(from), to)
+                            && !bit_is_set(pos.pinned_pieces(Them), from)
+                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & pos.pieces(ROOK, QUEEN, Us))
+                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & pos.pieces(BISHOP, QUEEN, Us)))
 
                             ei.mateThreat[Them] = make_move(from, to);
                     }
@@ -809,11 +801,11 @@ namespace {
       // Analyse safe distance checks
       if (QueenCheckBonus > 0 || RookCheckBonus > 0)
       {
-          b = p.attacks_from<ROOK>(s) & ~p.pieces_of_color(Them) & ~ei.attacked_by(Us);
+          b = pos.attacks_from<ROOK>(s) & ~pos.pieces_of_color(Them) & ~ei.attacked_by(Us);
 
           // Queen checks
           b2 = b & ei.attacked_by(Them, QUEEN);
-          if( b2)
+          if (b2)
               attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
 
           // Rook checks
@@ -823,7 +815,7 @@ namespace {
       }
       if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
       {
-          b = p.attacks_from<BISHOP>(s) & ~p.pieces_of_color(Them) & ~ei.attacked_by(Us);
+          b = pos.attacks_from<BISHOP>(s) & ~pos.pieces_of_color(Them) & ~ei.attacked_by(Us);
 
           // Queen checks
           b2 = b & ei.attacked_by(Them, QUEEN);
@@ -837,7 +829,7 @@ namespace {
       }
       if (KnightCheckBonus > 0)
       {
-          b = p.attacks_from<KNIGHT>(s) & ~p.pieces_of_color(Them) & ~ei.attacked_by(Us);
+          b = pos.attacks_from<KNIGHT>(s) & ~pos.pieces_of_color(Them) & ~ei.attacked_by(Us);
 
           // Knight checks
           b2 = b & ei.attacked_by(Them, KNIGHT);
@@ -849,7 +841,7 @@ namespace {
       // adding pawns later).
       if (DiscoveredCheckBonus)
       {
-        b = p.discovered_check_candidates(Them) & ~p.pieces(PAWN);
+        b = pos.discovered_check_candidates(Them) & ~pos.pieces(PAWN);
         if (b)
           attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
       }
@@ -879,15 +871,15 @@ namespace {
 
       ei.mgValue -= Sign[Us] * v;
 
-      if (Us == p.side_to_move())
+      if (Us == pos.side_to_move())
           ei.futilityMargin += v;
     }
   }
 
 
-  // evaluate_passed_pawns() evaluates the passed pawns for both sides.
+  // evaluate_passed_pawns() evaluates the passed pawns for both sides
 
-  void evaluate_passed_pawns(const Position &pos, EvalInfo &ei) {
+  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
 
     bool hasUnstoppable[2] = {false, false};
     int movesToGo[2] = {100, 100};
@@ -1029,7 +1021,7 @@ namespace {
         // side wins.
         if (movesToGo[WHITE] <= movesToGo[BLACK] - 3)
             ei.egValue += UnstoppablePawnValue - Value(0x40 * (movesToGo[WHITE]/2));
-        else if(movesToGo[BLACK] <= movesToGo[WHITE] - 3)
+        else if (movesToGo[BLACK] <= movesToGo[WHITE] - 3)
             ei.egValue -= UnstoppablePawnValue - Value(0x40 * (movesToGo[BLACK]/2));
 
         // We could also add some rules about the situation when one side
@@ -1045,8 +1037,8 @@ namespace {
   // (a2/h2 for black) is trapped by enemy pawns, and assigns a penalty
   // if it is.
 
-  void evaluate_trapped_bishop_a7h7(const Position &pos, Square s, Color us,
-                                    EvalInfo &ei) {
+  void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo &ei) {
+
     assert(square_is_ok(s));
     assert(pos.piece_on(s) == piece_of_color_and_type(us, BISHOP));
 
@@ -1065,11 +1057,11 @@ namespace {
 
   // evaluate_trapped_bishop_a1h1() determines whether a bishop on a1/h1
   // (a8/h8 for black) is trapped by a friendly pawn on b2/g2 (b7/g7 for
-  // black), and assigns a penalty if it is.  This pattern can obviously
+  // black), and assigns a penalty if it is. This pattern can obviously
   // only occur in Chess960 games.
 
-  void evaluate_trapped_bishop_a1h1(const Position &pos, Square s, Color us,
-                                    EvalInfo &ei) {
+  void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei) {
+
     Piece pawn = piece_of_color_and_type(us, PAWN);
     Square b2, b3, c3;
 
@@ -1113,38 +1105,30 @@ namespace {
   // squares one, two or three squares behind a friendly pawn are counted
   // twice. Finally, the space bonus is scaled by a weight taken from the
   // material hash table.
-  template<bool HasPopCnt>
-  void evaluate_space(const Position &pos, Color us, EvalInfo &ei) {
+  template<Color Us, bool HasPopCnt>
+  void evaluate_space(const Position& pos, EvalInfo& ei) {
 
-    Color them = opposite_color(us);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     // Find the safe squares for our pieces inside the area defined by
-    // SpaceMask[us]. A square is unsafe it is attacked by an enemy
+    // SpaceMask[us]. A square is unsafe if it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
 
-    Bitboard safeSquares =   SpaceMask[us]
-                          & ~pos.pieces(PAWN, us)
-                          & ~ei.attacked_by(them, PAWN)
-                          & ~(~ei.attacked_by(us) & ei.attacked_by(them));
+    Bitboard safeSquares =   SpaceMask[Us]
+                          & ~pos.pieces(PAWN, Us)
+                          & ~ei.attacked_by(Them, PAWN)
+                          & ~(~ei.attacked_by(Us) & ei.attacked_by(Them));
 
     // Find all squares which are at most three squares behind some friendly
     // pawn.
-    Bitboard behindFriendlyPawns = pos.pieces(PAWN, us);
-    if (us == WHITE)
-    {
-        behindFriendlyPawns |= (behindFriendlyPawns >> 8);
-        behindFriendlyPawns |= (behindFriendlyPawns >> 16);
-    }
-    else
-    {
-        behindFriendlyPawns |= (behindFriendlyPawns << 8);
-        behindFriendlyPawns |= (behindFriendlyPawns << 16);
-    }
+    Bitboard behindFriendlyPawns = pos.pieces(PAWN, Us);
+    behindFriendlyPawns |= (Us == WHITE ? behindFriendlyPawns >>  8 : behindFriendlyPawns <<  8);
+    behindFriendlyPawns |= (Us == WHITE ? behindFriendlyPawns >> 16 : behindFriendlyPawns << 16);
 
     int space =  count_1s_max_15<HasPopCnt>(safeSquares)
                + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
-    ei.mgValue += Sign[us] * apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
+    ei.mgValue += Sign[Us] * apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
   }
 
 
@@ -1172,20 +1156,14 @@ namespace {
   }
 
 
-  // compute_weight() computes the value of an evaluation weight, by combining
+  // weight_option() computes the value of an evaluation weight, by combining
   // an UCI-configurable weight with an internal weight.
 
-  int compute_weight(int uciWeight, int internalWeight) {
+  int weight_option(const std::string& opt, int internalWeight) {
 
+    int uciWeight = get_option_value_int(opt);
     uciWeight = (uciWeight * 0x100) / 100;
     return (uciWeight * internalWeight) / 0x100;
-  }
-
-
-  // helper used in read_weights()
-  int weight_option(const std::string& opt, int weight) {
-
-    return compute_weight(get_option_value_int(opt), weight);
   }
 
 
@@ -1213,9 +1191,9 @@ namespace {
     {
         if (i < b)
             SafetyTable[i] = Value(0);
-        else if(quad)
+        else if (quad)
             SafetyTable[i] = Value((int)(a * (i - b) * (i - b)));
-        else if(linear)
+        else if (linear)
             SafetyTable[i] = Value((int)(100 * a * (i - b)));
     }
 
