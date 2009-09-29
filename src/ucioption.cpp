@@ -131,8 +131,6 @@ namespace {
     o["UCI_ShowCurrLine"] = Option(false);
     o["UCI_Chess960"] = Option(false);
     o["UCI_AnalyseMode"] = Option(false);
-    o["UCI_LimitStrength"] = Option(false);
-    o["UCI_Elo"] = Option(2900, 2100, 2900);
 
     // Any option should know its name so to be easily printed
     for (Options::iterator it = o.begin(); it != o.end(); ++it)
