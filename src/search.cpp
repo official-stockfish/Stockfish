@@ -658,6 +658,15 @@ namespace {
     // searchMoves are verified, copied, scored and sorted
     RootMoveList rml(p, searchMoves);
 
+    // Print RootMoveList c'tor startup scoring to the standard output,
+    // so that we print information also for iteration 1.
+    std::cout << "info depth " << 1 << "\ninfo depth " << 1
+              << " score " << value_to_string(rml.get_move_score(0))
+              << " time " << current_search_time()
+              << " nodes " << nodes_searched()
+              << " nps " << nps()
+              << " pv " << rml.get_move(0) << "\n";
+
     // Initialize
     TT.new_search();
     H.clear();
