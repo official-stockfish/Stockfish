@@ -28,7 +28,6 @@
 #include <iostream>
 #include <sstream>
 
-#include "bitcount.h"
 #include "book.h"
 #include "evaluate.h"
 #include "history.h"
@@ -279,7 +278,7 @@ namespace {
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
-  void init_node(const Position& pos, SearchStack ss[], int ply, int threadID);
+  void init_node(SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack* pss, SearchStack ss[], int ply);
   bool connected_moves(const Position& pos, Move m1, Move m2);
@@ -412,7 +411,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   read_weights(pos.side_to_move());
 
-  // Set the number of active threads.
+  // Set the number of active threads
   int newActiveThreads = get_option_value_int("Threads");
   if (newActiveThreads != ActiveThreads)
   {
@@ -1032,7 +1031,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(pos, ss, ply, threadID);
+    init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1222,7 +1221,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(pos, ss, ply, threadID);
+    init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -1478,7 +1477,7 @@ namespace {
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
-    init_node(pos, ss, ply, threadID);
+    init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
     if (AbortSearch || thread_should_stop(threadID))
@@ -2069,7 +2068,7 @@ namespace {
   // NodesBetweenPolls nodes, init_node() also calls poll(), which polls
   // for user input and checks whether it is time to stop the search.
 
-  void init_node(const Position& pos, SearchStack ss[], int ply, int threadID) {
+  void init_node(SearchStack ss[], int ply, int threadID) {
 
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
