@@ -550,16 +550,15 @@ namespace {
             ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
     }
 
-    // The squares occupied by enemy pieces will be counted two times instead
-    // of one. The shift (almost) guarantees that intersection with b is zero
-    // so when we 'or' the two bitboards togheter and count we get the correct
-    // sum of '1' in b and attacked bitboards.
-    Bitboard attacked = Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
-                                    : ((b & pos.pieces_of_color(Them)) << 1);
-
     // Remove squares protected by enemy pawns or occupied by our pieces
     b &= ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
+    // The squares occupied by enemy pieces (not defended by pawns) will be
+    // counted two times instead of one. The shift (almost) guarantees that
+    // intersection with b is zero so when we 'or' the two bitboards togheter
+    // and count we get the correct sum of '1' in b and attacked bitboards.
+    Bitboard attacked = Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
+                                    : ((b & pos.pieces_of_color(Them)) << 1);
     // Mobility
     int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b | attacked)
                               : count_1s<HasPopCnt>(b | attacked));
