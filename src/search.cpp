@@ -1333,6 +1333,10 @@ namespace {
     bool useFutilityPruning =   depth < SelectiveDepth
                              && !isCheck;
 
+    // Avoid calling evaluate() if we already have the score in TT
+    if (tte && (tte->type() & VALUE_TYPE_EVAL))
+        futilityValue = value_from_tt(tte->value(), ply) + FutilityMargins[int(depth) - 2];
+
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
     while (   bestValue < beta
