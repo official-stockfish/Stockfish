@@ -207,8 +207,8 @@ namespace {
     ((1ULL << SQ_A8) | (1ULL << SQ_H8))
   };
 
-  // The SpaceMask[color] contains area of the board which is consdered by
-  // the space evaluation. In the middle game, each side is given a bonus
+  // The SpaceMask[color] contains the area of the board which is consdered 
+  // by the space evaluation. In the middle game, each side is given a bonus
   // based on how many squares inside this area are safe and available for
   // friendly minor pieces.
   const Bitboard SpaceMask[2] = {
