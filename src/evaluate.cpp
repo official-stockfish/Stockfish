@@ -344,8 +344,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   ei.kingZone[BLACK] = ei.attackedBy[WHITE][KING] | (ei.attackedBy[WHITE][KING] << 8);
 
   // Initialize pawn attack bitboards for both sides
-  ei.attackedBy[WHITE][PAWN] = ((pos.pieces(PAWN, WHITE) << 9) & ~FileABB) | ((pos.pieces(PAWN, WHITE) << 7) & ~FileHBB);
-  ei.attackedBy[BLACK][PAWN] = ((pos.pieces(PAWN, BLACK) >> 7) & ~FileABB) | ((pos.pieces(PAWN, BLACK) >> 9) & ~FileHBB);
+  ei.attackedBy[WHITE][PAWN] = ei.pi->pawn_attacks(WHITE);
+  ei.attackedBy[BLACK][PAWN] = ei.pi->pawn_attacks(BLACK);
   Bitboard b1 = ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING];
   Bitboard b2 = ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING];
   if (b1)

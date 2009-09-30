@@ -193,6 +193,10 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
   Value mgValue[2] = {Value(0), Value(0)};
   Value egValue[2] = {Value(0), Value(0)};
 
+  // Calculate pawn attacks
+  pi->pawnAttacks[WHITE] = ((pos.pieces(PAWN, WHITE) << 9) & ~FileABB) | ((pos.pieces(PAWN, WHITE) << 7) & ~FileHBB);
+  pi->pawnAttacks[BLACK] = ((pos.pieces(PAWN, BLACK) >> 7) & ~FileABB) | ((pos.pieces(PAWN, BLACK) >> 9) & ~FileHBB);
+
   // Loop through the pawns for both colors
   for (Color us = WHITE; us <= BLACK; us++)
   {

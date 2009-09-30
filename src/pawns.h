@@ -51,6 +51,7 @@ public:
   Value eg_value() const;
   Value kingside_storm_value(Color c) const;
   Value queenside_storm_value(Color c) const;
+  Bitboard pawn_attacks(Color c) const;
   Bitboard passed_pawns() const;
   int file_is_half_open(Color c, File f) const;
   int has_open_file_to_left(Color c, File f) const;
@@ -63,6 +64,7 @@ private:
 
   Key key;
   Bitboard passedPawns;
+  Bitboard pawnAttacks[2];
   int16_t mgValue, egValue;
   int16_t ksStormValue[2], qsStormValue[2];
   uint8_t halfOpenFiles[2];
@@ -102,6 +104,10 @@ inline Value PawnInfo::eg_value() const {
 
 inline Bitboard PawnInfo::passed_pawns() const {
   return passedPawns;
+}
+
+inline Bitboard PawnInfo::pawn_attacks(Color c) const {
+  return pawnAttacks[c];
 }
 
 inline Value PawnInfo::kingside_storm_value(Color c) const {
