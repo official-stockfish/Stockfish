@@ -104,7 +104,7 @@ void benchmark(const string& commandLine) {
 
   if (limitType == "time")
       secsPerPos = val * 1000;
-  else if (limitType == "depth")
+  else if (limitType == "depth" || limitType == "perft")
       maxDepth = val;
   else
       maxNodes = val;
@@ -153,7 +153,9 @@ void benchmark(const string& commandLine) {
       int dummy[2] = {0, 0};
       Position pos(*it);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
-      if (!think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
+      if (limitType == "perft")
+          totalNodes += perft(pos, maxDepth * OnePly);
+      else if (!think(pos, true, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
           break;
       totalNodes += nodes_searched();
   }

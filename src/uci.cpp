@@ -61,6 +61,7 @@ namespace {
   void set_option(UCIInputParser& uip);
   void set_position(UCIInputParser& uip);
   bool go(UCIInputParser& uip);
+  void perft(UCIInputParser& uip);
 }
 
 
@@ -155,6 +156,8 @@ namespace {
         cout << "key: " << hex << RootPosition.get_key()
              << "\nmaterial key: " << RootPosition.get_material_key()
              << "\npawn key: " << RootPosition.get_pawn_key() << endl;
+    else if (token == "perft")
+        perft(uip);
     else
     {
         cout << "Unknown command: " << command << endl;
@@ -318,4 +321,24 @@ namespace {
                  time, inc, movesToGo, depth, nodes, moveTime, searchMoves);
   }
 
+  void perft(UCIInputParser& uip) {
+
+    string token;
+    int depth = 0;
+
+    while (!uip.eof())
+    {
+        uip >> token;
+
+        if (token == "depth")
+            uip >> depth;
+    }
+    Position pos = RootPosition;
+    int tm = get_system_time();
+    int n = perft(pos, depth * OnePly);
+    tm = get_system_time() - tm;
+    std::cout << "\nNodes " << n
+              << "\nTime (ms) " << tm
+              << "\nNodes/second " << (int)(n/(tm/1000.0)) << std::endl;
+  }
 }

@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
       if (string(argv[1]) != "bench" || argc < 4 || argc > 8)
           cout << "Usage: stockfish bench <hash size> <threads> "
                << "[time = 60s] [fen positions file = default] "
-               << "[time, depth or node limited = time] "
+               << "[time, depth, perft or node limited = time] "
                << "[timing file name = none]" << endl;
       else
       {

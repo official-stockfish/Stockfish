@@ -69,6 +69,7 @@ extern void stop_threads();
 extern bool think(const Position &pos, bool infinite, bool ponder, int side_to_move,
                   int time[], int increment[], int movesToGo, int maxDepth,
                   int maxNodes, int maxTime, Move searchMoves[]);
+extern int perft(Position &pos, Depth depth);
 extern int64_t nodes_searched();
 
 

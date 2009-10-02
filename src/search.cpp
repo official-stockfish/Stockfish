@@ -326,6 +326,32 @@ namespace {
 //// Functions
 ////
 
+
+/// perft() is our utility to verify move generation is bug free. All the
+/// legal moves up to given depth are generated and counted and the sum returned.
+
+int perft(Position& pos, Depth depth)
+{
+    if (depth <= Depth(0)) // Replace with '<' to test also qsearch
+      return 1;
+
+    Move move;
+    MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
+    Bitboard dcCandidates = mp.discovered_check_candidates();
+    int sum = 0;
+
+    // Loop through all legal moves
+    while ((move = mp.get_next_move()) != MOVE_NONE)
+    {
+      StateInfo st;
+      pos.do_move(move, st, dcCandidates);
+      sum += perft(pos, depth - OnePly);
+      pos.undo_move(move);
+    }
+    return sum;
+}
+
+
 /// think() is the external interface to Stockfish's search, and is called when
 /// the program receives the UCI 'go' command. It initializes various
 /// search-related global variables, and calls root_search(). It returns false
@@ -447,7 +473,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       if (movesToGo == 1)
       {
           MaxSearchTime = myTime / 2;
-          AbsoluteMaxSearchTime = 
+          AbsoluteMaxSearchTime =
              (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
       } else {
           MaxSearchTime = myTime / Min(movesToGo, 20);
@@ -976,7 +1002,7 @@ namespace {
                 std::cout << std::endl;
 
                 if (UseLogFile)
-                    LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value, 
+                    LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value,
                                          ((value >= beta)? VALUE_TYPE_LOWER
                                           : ((value <= alpha)? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT)),
                                          ss[0].pv)
