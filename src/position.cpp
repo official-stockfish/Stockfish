@@ -1321,7 +1321,7 @@ int Position::see(Square from, Square to) const {
     0, 0
   };
 
-  Bitboard attackers, stmAttackers, occ, b;
+  Bitboard attackers, stmAttackers, b;
 
   assert(square_is_ok(from) || from == SQ_NONE);
   assert(square_is_ok(to));
@@ -1333,10 +1333,7 @@ int Position::see(Square from, Square to) const {
   // Initialize pieces
   Piece piece = piece_on(from);
   Piece capture = piece_on(to);
-
-  // Find all attackers to the destination square, with the moving piece
-  // removed, but possibly an X-ray attacker added behind it.
-  occ = occupied_squares();
+  Bitboard occ = occupied_squares();
 
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
@@ -1353,6 +1350,8 @@ int Position::see(Square from, Square to) const {
 
   while (true)
   {
+      // Find all attackers to the destination square, with the moving piece
+      // removed, but possibly an X-ray attacker added behind it.
       clear_bit(&occ, from);
       attackers =  (rook_attacks_bb(to, occ)      & pieces(ROOK, QUEEN))
                  | (bishop_attacks_bb(to, occ)    & pieces(BISHOP, QUEEN))
