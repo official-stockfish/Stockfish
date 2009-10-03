@@ -207,7 +207,7 @@ namespace {
     ((1ULL << SQ_A8) | (1ULL << SQ_H8))
   };
 
-  // The SpaceMask[color] contains the area of the board which is consdered 
+  // The SpaceMask[color] contains the area of the board which is considered
   // by the space evaluation. In the middle game, each side is given a bonus
   // based on how many squares inside this area are safe and available for
   // friendly minor pieces.
@@ -555,13 +555,14 @@ namespace {
 
     // The squares occupied by enemy pieces (not defended by pawns) will be
     // counted two times instead of one. The shift (almost) guarantees that
-    // intersection with b is zero so when we 'or' the two bitboards togheter
-    // and count we get the correct sum of '1' in b and attacked bitboards.
-    Bitboard attacked = Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
-                                    : ((b & pos.pieces_of_color(Them)) << 1);
+    // intersection of the shifted value with b is zero so that after or-ing
+    // the count of 1s bits is increased by the number of affected squares.
+    b |= Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
+                     : ((b & pos.pieces_of_color(Them)) << 1);
+
     // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b | attacked)
-                              : count_1s<HasPopCnt>(b | attacked));
+    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b)
+                              : count_1s<HasPopCnt>(b));
 
     if (mob > lastIndex[Piece])
         mob = lastIndex[Piece];
