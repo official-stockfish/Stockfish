@@ -199,7 +199,7 @@ namespace {
   Depth ThreatDepth; // heavy SMP read access
 
   // Last seconds noise filtering (LSN)
-  const bool UseLSNFiltering = true;
+  const bool UseLSNFiltering = false;
   const int LSNTime = 4000; // In milliseconds
   const Value LSNValue = value_from_centipawns(200);
   bool loseOnTime = false;
@@ -489,9 +489,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   {
       Value v = id_loop(pos, searchMoves);
       loseOnTime = (   UseLSNFiltering
-                     && myTime < LSNTime
-                     && myIncrement == 0
-                     && v < -LSNValue);
+                    && myTime < LSNTime
+                    && myIncrement == 0
+                    && v < -LSNValue);
   }
   else
   {
