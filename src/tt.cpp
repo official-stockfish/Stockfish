@@ -220,27 +220,26 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 /// will often get single-move PVs when the search stops while failing high,
 /// and a single-move PV means that we don't have a ponder move.
 
-void TranspositionTable::extract_pv(const Position& pos, Move pv[]) {
+void TranspositionTable::extract_pv(const Position& pos, Move pv[], int pvSize) {
 
-  int ply;
-  Position p(pos);
-  StateInfo st[100];
-
-  for (ply = 0; pv[ply] != MOVE_NONE; ply++)
-      p.do_move(pv[ply], st[ply]);
-
-  bool stop;
   const TTEntry* tte;
-  for (stop = false, tte = retrieve(p.get_key());
-       tte && tte->move() != MOVE_NONE && !stop;
-       tte = retrieve(p.get_key()), ply++)
+  StateInfo st;
+  Position p(pos);
+  int ply = 0;
+
+  // Update position to the end of current PV
+  while (pv[ply] != MOVE_NONE)
+      p.do_move(pv[ply++], st);
+
+  // Try to add moves from TT until possible
+  while (   (tte = retrieve(p.get_key())) != NULL
+         && tte->move() != MOVE_NONE
+         && move_is_legal(p, tte->move())
+         && (!p.is_draw() || ply < 2)
+         && ply < pvSize)
   {
-      if (!move_is_legal(p, tte->move()))
-          break;
       pv[ply] = tte->move();
-      p.do_move(pv[ply], st[ply]);
-      for (int j = 0; j < ply; j++)
-          if (st[j].key == p.get_key()) stop = true;
+      p.do_move(pv[ply++], st);
   }
   pv[ply] = MOVE_NONE;
 }

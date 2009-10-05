@@ -947,7 +947,7 @@ namespace {
             // Update PV
             rml.set_move_score(i, value);
             update_pv(ss, 0);
-            TT.extract_pv(pos, ss[0].pv);
+            TT.extract_pv(pos, ss[0].pv, PLY_MAX);
             rml.set_move_pv(i, ss[0].pv);
 
             if (MultiPV == 1)
