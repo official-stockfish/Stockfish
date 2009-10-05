@@ -199,7 +199,7 @@ namespace {
   Depth ThreatDepth; // heavy SMP read access
 
   // Last seconds noise filtering (LSN)
-  const bool UseLSNFiltering = false;
+  const bool UseLSNFiltering = true;
   const int LSNTime = 4000; // In milliseconds
   const Value LSNValue = value_from_centipawns(200);
   bool loseOnTime = false;
