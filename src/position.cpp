@@ -985,17 +985,22 @@ void Position::do_castle_move(Move m) {
       rto = relative_square(us, SQ_D1);
   }
 
-  // Move the pieces
-  Bitboard kmove_bb = make_move_bb(kfrom, kto);
-  do_move_bb(&(byColorBB[us]), kmove_bb);
-  do_move_bb(&(byTypeBB[KING]), kmove_bb);
-  do_move_bb(&(byTypeBB[0]), kmove_bb); // HACK: byTypeBB[0] == occupied squares
+  // Remove pieces from source squares:
+  clear_bit(&(byColorBB[us]), kfrom);
+  clear_bit(&(byTypeBB[KING]), kfrom);
+  clear_bit(&(byTypeBB[0]), kfrom); // HACK: byTypeBB[0] == occupied squares
+  clear_bit(&(byColorBB[us]), rfrom);
+  clear_bit(&(byTypeBB[ROOK]), rfrom);
+  clear_bit(&(byTypeBB[0]), rfrom); // HACK: byTypeBB[0] == occupied squares
 
-  Bitboard rmove_bb = make_move_bb(rfrom, rto);
-  do_move_bb(&(byColorBB[us]), rmove_bb);
-  do_move_bb(&(byTypeBB[ROOK]), rmove_bb);
-  do_move_bb(&(byTypeBB[0]), rmove_bb); // HACK: byTypeBB[0] == occupied squares
-
+  // Put pieces on destination squares:
+  set_bit(&(byColorBB[us]), kto);
+  set_bit(&(byTypeBB[KING]), kto);
+  set_bit(&(byTypeBB[0]), kto); // HACK: byTypeBB[0] == occupied squares
+  set_bit(&(byColorBB[us]), rto);
+  set_bit(&(byTypeBB[ROOK]), rto);
+  set_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
+  
   // Update board array
   Piece king = piece_of_color_and_type(us, KING);
   Piece rook = piece_of_color_and_type(us, ROOK);
@@ -1106,6 +1111,7 @@ void Position::undo_move(Move m) {
       pieceList[us][PAWN][index[to]] = to;
   }
 
+
   // Put the piece back at the source square
   Bitboard move_bb = make_move_bb(to, from);
   do_move_bb(&(byColorBB[us]), move_bb);
@@ -1183,17 +1189,22 @@ void Position::undo_castle_move(Move m) {
 
   assert(piece_on(kto) == piece_of_color_and_type(us, KING));
   assert(piece_on(rto) == piece_of_color_and_type(us, ROOK));
-
-  // Put the pieces back at the source square
-  Bitboard kmove_bb = make_move_bb(kto, kfrom);
-  do_move_bb(&(byColorBB[us]), kmove_bb);
-  do_move_bb(&(byTypeBB[KING]), kmove_bb);
-  do_move_bb(&(byTypeBB[0]), kmove_bb); // HACK: byTypeBB[0] == occupied squares
-
-  Bitboard rmove_bb = make_move_bb(rto, rfrom);
-  do_move_bb(&(byColorBB[us]), rmove_bb);
-  do_move_bb(&(byTypeBB[ROOK]), rmove_bb);
-  do_move_bb(&(byTypeBB[0]), rmove_bb); // HACK: byTypeBB[0] == occupied squares
+  
+  // Remove pieces from destination squares:
+  clear_bit(&(byColorBB[us]), kto);
+  clear_bit(&(byTypeBB[KING]), kto);
+  clear_bit(&(byTypeBB[0]), kto); // HACK: byTypeBB[0] == occupied squares
+  clear_bit(&(byColorBB[us]), rto);
+  clear_bit(&(byTypeBB[ROOK]), rto);
+  clear_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
+ 
+  // Put pieces on source squares:
+  set_bit(&(byColorBB[us]), kfrom);
+  set_bit(&(byTypeBB[KING]), kfrom);
+  set_bit(&(byTypeBB[0]), kfrom); // HACK: byTypeBB[0] == occupied squares
+  set_bit(&(byColorBB[us]), rfrom);
+  set_bit(&(byTypeBB[ROOK]), rfrom);
+  set_bit(&(byTypeBB[0]), rfrom); // HACK: byTypeBB[0] == occupied squares
 
   // Update board
   board[rto] = board[kto] = EMPTY;
