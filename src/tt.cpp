@@ -231,7 +231,7 @@ void TranspositionTable::extract_pv(const Position& pos, Move pv[], int pvSize) 
   while (pv[ply] != MOVE_NONE)
       p.do_move(pv[ply++], st);
 
-  // Try to add moves from TT until possible
+  // Try to add moves from TT while possible
   while (   (tte = retrieve(p.get_key())) != NULL
          && tte->move() != MOVE_NONE
          && move_is_legal(p, tte->move())
