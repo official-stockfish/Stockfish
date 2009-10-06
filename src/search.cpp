@@ -299,6 +299,7 @@ namespace {
   void ponderhit();
   void print_current_line(SearchStack ss[], int ply, int threadID);
   void wait_for_stop_or_ponderhit();
+  void init_ss_array(SearchStack ss[]);
 
   void idle_loop(int threadID, SplitPoint* waitSp);
   void init_split_point_stack();
@@ -636,11 +637,7 @@ namespace {
     // Initialize
     TT.new_search();
     H.clear();
-    for (int i = 0; i < 3; i++)
-    {
-        ss[i].init(i);
-        ss[i].initKillers();
-    }
+    init_ss_array(ss);
     IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
     Iteration = 1;
 
@@ -1961,6 +1958,7 @@ namespace {
         // Find a quick score for the move
         StateInfo st;
         SearchStack ss[PLY_MAX_PLUS_2];
+        init_ss_array(ss);
 
         moves[count].move = cur->move;
         pos.do_move(moves[count].move, st);
@@ -2557,6 +2555,18 @@ namespace {
     Threads[threadID].printCurrentLine = false;
     if (threadID + 1 < ActiveThreads)
         Threads[threadID + 1].printCurrentLine = true;
+  }
+
+
+  // init_ss_array() does a fast reset of the first entries of a SearchStack array
+
+  void init_ss_array(SearchStack ss[]) {
+
+    for (int i = 0; i < 3; i++)
+    {
+        ss[i].init(i);
+        ss[i].initKillers();
+    }
   }
 
 
