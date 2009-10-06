@@ -971,7 +971,10 @@ namespace {
                 std::cout << std::endl;
 
                 if (UseLogFile)
-                    LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value, ss[0].pv)
+                    LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value, 
+                                         ((value >= beta)? VALUE_TYPE_LOWER
+                                          : ((value <= alpha)? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT)),
+                                         ss[0].pv)
                             << std::endl;
 
                 if (value > alpha)

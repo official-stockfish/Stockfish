@@ -325,14 +325,15 @@ const string line_to_san(const Position& pos, Move line[], int startColumn, bool
 /// when the UCI parameter "Use Search Log" is "true").
 
 const string pretty_pv(const Position& pos, int time, int depth,
-                       uint64_t nodes, Value score, Move pv[]) {
+                       uint64_t nodes, Value score, ValueType type, Move pv[]) {
   std::stringstream s;
 
   // Depth
   s << std::setw(2) << depth << "  ";
 
   // Score
-  s << std::setw(8) << score_string(score);
+  s << ((type == VALUE_TYPE_LOWER)? ">" : ((type == VALUE_TYPE_UPPER)? "<" : " "));
+  s << std::setw(7) << score_string(score);
 
   // Time
   s << std::setw(8) << time_string(time) << " ";
