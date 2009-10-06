@@ -45,7 +45,7 @@ class PawnInfo {
   friend class PawnInfoTable;
 
 public:
-  PawnInfo() : key(0) { clear(); }
+  PawnInfo() { clear(); }
 
   Value mg_value() const;
   Value eg_value() const;
