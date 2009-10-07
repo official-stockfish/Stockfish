@@ -446,7 +446,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       if (movesToGo == 1)
       {
           MaxSearchTime = myTime / 2;
-          AbsoluteMaxSearchTime = Min(myTime / 2, myTime - 500);
+          AbsoluteMaxSearchTime = 
+             (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
       } else {
           MaxSearchTime = myTime / Min(movesToGo, 20);
           AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
@@ -470,6 +471,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       NodesBetweenPolls = Min(MaxNodes, 30000);
       InfiniteSearch = true; // HACK
   }
+  else if (myTime < 1000)
+      NodesBetweenPolls = 100;
+  else if (myTime < 5000)
+      NodesBetweenPolls = 1000;
   else
       NodesBetweenPolls = 30000;
 
