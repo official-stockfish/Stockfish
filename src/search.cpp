@@ -471,11 +471,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       NodesBetweenPolls = Min(MaxNodes, 30000);
       InfiniteSearch = true; // HACK
   }
-  else if (InfiniteSearch)
-      NodesBetweenPolls = 30000;
-  else if (myTime < 1000)
+  else if (myTime && myTime < 1000)
       NodesBetweenPolls = 1000;
-  else if (myTime < 5000)
+  else if (myTime && myTime < 5000)
       NodesBetweenPolls = 5000;
   else
       NodesBetweenPolls = 30000;
