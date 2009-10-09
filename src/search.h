@@ -48,7 +48,7 @@ const int KILLER_MAX = 2;
 /// current ply.
 
 struct SearchStack {
-  Move pv[PLY_MAX];
+  Move pv[PLY_MAX_PLUS_2];
   Move currentMove;
   Move mateKiller;
   Move threatMove;

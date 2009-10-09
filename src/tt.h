@@ -102,7 +102,7 @@ public:
   void prefetch(const Key posKey) const;
   void new_search();
   void insert_pv(const Position& pos, Move pv[]);
-  void extract_pv(const Position& pos, Move pv[], int pvSize);
+  void extract_pv(const Position& pos, Move pv[], const int PLY_MAX);
   int full() const;
 
 private:
