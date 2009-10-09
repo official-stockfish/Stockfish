@@ -303,12 +303,11 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
         // it cannot be backward. If can capture an enemy pawn or if
         // there are friendly pawns behind on neighboring files it cannot
         // be backward either.
+
         bool backward;
-        if (   passed
-            || isolated
-            || chain
-            || (pos.attacks_from<PAWN>(s, us) & theirPawns)
-            || (ourPawns & behind_bb(us, r) & neighboring_files_bb(f)))
+        if (   (passed | isolated | chain)
+            || (ourPawns & behind_bb(us, r) & neighboring_files_bb(f))
+            || (pos.attacks_from<PAWN>(s, us) & theirPawns))
             backward = false;
         else
         {
