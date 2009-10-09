@@ -703,7 +703,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   // pointer to point to the new, ready to be updated, state.
   struct ReducedStateInfo {
     Key key, pawnKey, materialKey;
-    int castleRights, rule50;
+    int castleRights, rule50, pliesFromNull;
     Square epSquare;
     Value mgValue, egValue;
     Value npMaterial[2];
@@ -724,6 +724,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
   st->rule50++;
+  st->pliesFromNull++;
 
   if (move_is_castle(m))
   {
@@ -1238,11 +1239,11 @@ void Position::do_null_move(StateInfo& backupSt) {
   // Note that differently from normal case here backupSt is actually used as
   // a backup storage not as a new state to be used.
   backupSt.key      = st->key;
-  backupSt.rule50   = st->rule50;
   backupSt.epSquare = st->epSquare;
   backupSt.mgValue  = st->mgValue;
   backupSt.egValue  = st->egValue;
   backupSt.previous = st->previous;
+  backupSt.pliesFromNull = st->pliesFromNull;
   st->previous = &backupSt;
 
   // Save the current key to the history[] array, in order to be able to
@@ -1258,7 +1259,8 @@ void Position::do_null_move(StateInfo& backupSt) {
 
   sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;
-  st->rule50 = 0;
+  st->rule50++;
+  st->pliesFromNull = 0;
   gamePly++;
 
   st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
@@ -1276,14 +1278,15 @@ void Position::undo_null_move() {
   // Restore information from the our backup StateInfo object
   StateInfo* backupSt = st->previous;
   st->key      = backupSt->key;
-  st->rule50   = backupSt->rule50;
   st->epSquare = backupSt->epSquare;
   st->mgValue  = backupSt->mgValue;
   st->egValue  = backupSt->egValue;
   st->previous = backupSt->previous;
+  st->pliesFromNull = backupSt->pliesFromNull;
 
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
+  st->rule50--;
   gamePly--;
 }
 
@@ -1684,7 +1687,7 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by repetition?
-  for (int i = 2; i < Min(gamePly, st->rule50); i += 2)
+  for (int i = 2; i < Min(Min(gamePly, st->rule50), st->pliesFromNull); i += 2)
       if (history[gamePly - i] == st->key)
           return true;
 
