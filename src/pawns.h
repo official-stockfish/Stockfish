@@ -85,6 +85,11 @@ public:
   PawnInfo* get_pawn_info(const Position& pos);
 
 private:
+  typedef std::pair<Value, Value> Values;
+
+  template<Color Us>
+  Values evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi);
+
   unsigned size;
   PawnInfo* entries;
 };

@@ -190,203 +190,211 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
   pi->clear();
   pi->key = key;
 
-  Value mgValue[2] = {Value(0), Value(0)};
-  Value egValue[2] = {Value(0), Value(0)};
-
   // Calculate pawn attacks
-  pi->pawnAttacks[WHITE] = ((pos.pieces(PAWN, WHITE) << 9) & ~FileABB) | ((pos.pieces(PAWN, WHITE) << 7) & ~FileHBB);
-  pi->pawnAttacks[BLACK] = ((pos.pieces(PAWN, BLACK) >> 7) & ~FileABB) | ((pos.pieces(PAWN, BLACK) >> 9) & ~FileHBB);
+  Bitboard whitePawns = pos.pieces(PAWN, WHITE);
+  Bitboard blackPawns = pos.pieces(PAWN, BLACK);
+  pi->pawnAttacks[WHITE] = ((whitePawns << 9) & ~FileABB) | ((whitePawns << 7) & ~FileHBB);
+  pi->pawnAttacks[BLACK] = ((blackPawns >> 7) & ~FileABB) | ((blackPawns >> 9) & ~FileHBB);
 
-  // Loop through the pawns for both colors
-  for (Color us = WHITE; us <= BLACK; us++)
-  {
-    Color them = opposite_color(us);
-    Bitboard ourPawns = pos.pieces(PAWN, us);
-    Bitboard theirPawns = pos.pieces(PAWN, them);
-    Bitboard pawns = ourPawns;
+  // Evaluate pawns for both colors
+  Values whiteValues = evaluate_pawns<WHITE>(pos, whitePawns, blackPawns, pi);
+  Values blackValues = evaluate_pawns<BLACK>(pos, blackPawns, whitePawns, pi);
 
-    // Initialize pawn storm scores by giving bonuses for open files
-    for (File f = FILE_A; f <= FILE_H; f++)
-        if (!(pawns & file_bb(f)))
-        {
-            pi->ksStormValue[us] += KStormOpenFileBonus[f];
-            pi->qsStormValue[us] += QStormOpenFileBonus[f];
-            pi->halfOpenFiles[us] |= (1 << f);
-        }
-
-    // Loop through all pawns of the current color and score each pawn
-    while (pawns)
-    {
-        Square s = pop_1st_bit(&pawns);
-        File f = square_file(s);
-        Rank r = square_rank(s);
-
-        assert(pos.piece_on(s) == piece_of_color_and_type(us, PAWN));
-
-        // Passed, isolated or doubled pawn?
-        bool passed   = Position::pawn_is_passed(theirPawns, us, s);
-        bool isolated = Position::pawn_is_isolated(ourPawns, s);
-        bool doubled  = Position::pawn_is_doubled(ourPawns, us, s);
-
-        // We calculate kingside and queenside pawn storm
-        // scores for both colors. These are used when evaluating
-        // middle game positions with opposite side castling.
-        //
-        // Each pawn is given a base score given by a piece square table
-        // (KStormTable[] or QStormTable[]). Pawns which seem to have good
-        // chances of creating an open file by exchanging itself against an
-        // enemy pawn on an adjacent file gets an additional bonus.
-
-        // Kingside pawn storms
-        int bonus = KStormTable[relative_square(us, s)];
-        if (f >= FILE_F)
-        {
-            Bitboard b = outpost_mask(us, s) & theirPawns & (FileFBB | FileGBB | FileHBB);
-            while (b)
-            {
-                Square s2 = pop_1st_bit(&b);
-                if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
-                {
-                    // The enemy pawn has no pawn beside itself, which makes it
-                    // particularly vulnerable. Big bonus, especially against a
-                    // weakness on the rook file.
-                    if (square_file(s2) == FILE_H)
-                        bonus += 4*StormLeverBonus[f] - 8*square_distance(s, s2);
-                    else
-                        bonus += 2*StormLeverBonus[f] - 4*square_distance(s, s2);
-                } else
-                    // There is at least one enemy pawn beside the enemy pawn we look
-                    // at, which means that the pawn has somewhat better chances of
-                    // defending itself by advancing. Smaller bonus.
-                    bonus += StormLeverBonus[f] - 2*square_distance(s, s2);
-            }
-        }
-        pi->ksStormValue[us] += bonus;
-
-        // Queenside pawn storms
-        bonus = QStormTable[relative_square(us, s)];
-        if (f <= FILE_C)
-        {
-            Bitboard b = outpost_mask(us, s) & theirPawns & (FileABB | FileBBB | FileCBB);
-            while (b)
-            {
-                Square s2 = pop_1st_bit(&b);
-                if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
-                {
-                    // The enemy pawn has no pawn beside itself, which makes it
-                    // particularly vulnerable. Big bonus, especially against a
-                    // weakness on the rook file.
-                    if (square_file(s2) == FILE_A)
-                        bonus += 4*StormLeverBonus[f] - 16*square_distance(s, s2);
-                    else
-                        bonus += 2*StormLeverBonus[f] - 8*square_distance(s, s2);
-                } else
-                    // There is at least one enemy pawn beside the enemy pawn we look
-                    // at, which means that the pawn has somewhat better chances of
-                    // defending itself by advancing. Smaller bonus.
-                    bonus += StormLeverBonus[f] - 4*square_distance(s, s2);
-            }
-        }
-        pi->qsStormValue[us] += bonus;
-
-        // Member of a pawn chain (but not the backward one)? We could speed up
-        // the test a little by introducing an array of masks indexed by color
-        // and square for doing the test, but because everything is hashed,
-        // it probably won't make any noticable difference.
-        bool chain =  ourPawns
-                    & neighboring_files_bb(f)
-                    & (rank_bb(r) | rank_bb(r - (us == WHITE ? 1 : -1)));
-
-        // Test for backward pawn
-        //
-        // If the pawn is passed, isolated, or member of a pawn chain
-        // it cannot be backward. If can capture an enemy pawn or if
-        // there are friendly pawns behind on neighboring files it cannot
-        // be backward either.
-
-        bool backward;
-        if (   (passed | isolated | chain)
-            || (ourPawns & behind_bb(us, r) & neighboring_files_bb(f))
-            || (pos.attacks_from<PAWN>(s, us) & theirPawns))
-            backward = false;
-        else
-        {
-            // We now know that there are no friendly pawns beside or behind this
-            // pawn on neighboring files. We now check whether the pawn is
-            // backward by looking in the forward direction on the neighboring
-            // files, and seeing whether we meet a friendly or an enemy pawn first.
-            Bitboard b = pos.attacks_from<PAWN>(s, us);
-            if (us == WHITE)
-            {
-                for ( ; !(b & (ourPawns | theirPawns)); b <<= 8);
-                backward = (b | (b << 8)) & theirPawns;
-            }
-            else
-            {
-                for ( ; !(b & (ourPawns | theirPawns)); b >>= 8);
-                backward = (b | (b >> 8)) & theirPawns;
-            }
-        }
-
-        // Test for candidate passed pawn
-        bool candidate;
-        candidate =    !passed
-                    && !(theirPawns & file_bb(f))
-                    && (  count_1s_max_15(neighboring_files_bb(f) & (behind_bb(us, r) | rank_bb(r)) & ourPawns)
-                        - count_1s_max_15(neighboring_files_bb(f) & in_front_bb(us, r)              & theirPawns)
-                        >= 0);
-
-        // In order to prevent doubled passed pawns from receiving a too big
-        // bonus, only the frontmost passed pawn on each file is considered as
-        // a true passed pawn.
-        if (passed && (ourPawns & squares_in_front_of(us, s)))
-            passed = false;
-
-        // Score this pawn
-        if (passed)
-            set_bit(&(pi->passedPawns), s);
-
-        if (isolated)
-        {
-            mgValue[us] -= IsolatedPawnMidgamePenalty[f];
-            egValue[us] -= IsolatedPawnEndgamePenalty[f];
-            if (!(theirPawns & file_bb(f)))
-            {
-                mgValue[us] -= IsolatedPawnMidgamePenalty[f] / 2;
-                egValue[us] -= IsolatedPawnEndgamePenalty[f] / 2;
-            }
-        }
-        if (doubled)
-        {
-            mgValue[us] -= DoubledPawnMidgamePenalty[f];
-            egValue[us] -= DoubledPawnEndgamePenalty[f];
-        }
-        if (backward)
-        {
-            mgValue[us] -= BackwardPawnMidgamePenalty[f];
-            egValue[us] -= BackwardPawnEndgamePenalty[f];
-            if (!(theirPawns & file_bb(f)))
-            {
-                mgValue[us] -= BackwardPawnMidgamePenalty[f] / 2;
-                egValue[us] -= BackwardPawnEndgamePenalty[f] / 2;
-            }
-        }
-        if (chain)
-        {
-            mgValue[us] += ChainMidgameBonus[f];
-            egValue[us] += ChainEndgameBonus[f];
-        }
-        if (candidate)
-        {
-            mgValue[us] += CandidateMidgameBonus[relative_rank(us, s)];
-            egValue[us] += CandidateEndgameBonus[relative_rank(us, s)];
-        }
-    } // while(pawns)
-  } // for(colors)
-
-  pi->mgValue = int16_t(mgValue[WHITE] - mgValue[BLACK]);
-  pi->egValue = int16_t(egValue[WHITE] - egValue[BLACK]);
+  pi->mgValue = int16_t(whiteValues.first - blackValues.first);
+  pi->egValue = int16_t(whiteValues.second - blackValues.second);
   return pi;
+}
+
+
+/// PawnInfoTable::evaluate_pawns() evaluates each pawn of the given color
+
+template<Color Us>
+PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
+                                                    Bitboard theirPawns, PawnInfo* pi) {
+  Square s;
+  File f;
+  Rank r;
+  bool passed, isolated, doubled, chain, backward, candidate;
+  int bonus;
+  Value mgValue = Value(0);
+  Value egValue = Value(0);
+  Bitboard pawns = ourPawns;
+
+  // Initialize pawn storm scores by giving bonuses for open files
+  for (File f = FILE_A; f <= FILE_H; f++)
+      if (!(ourPawns & file_bb(f)))
+      {
+          pi->ksStormValue[Us] += KStormOpenFileBonus[f];
+          pi->qsStormValue[Us] += QStormOpenFileBonus[f];
+          pi->halfOpenFiles[Us] |= (1 << f);
+      }
+
+  // Loop through all pawns of the current color and score each pawn
+  while (pawns)
+  {
+      s = pop_1st_bit(&pawns);
+      f = square_file(s);
+      r = square_rank(s);
+
+      assert(pos.piece_on(s) == piece_of_color_and_type(Us, PAWN));
+
+      // Passed, isolated or doubled pawn?
+      passed   = Position::pawn_is_passed(theirPawns, Us, s);
+      isolated = Position::pawn_is_isolated(ourPawns, s);
+      doubled  = Position::pawn_is_doubled(ourPawns, Us, s);
+
+      // We calculate kingside and queenside pawn storm
+      // scores for both colors. These are used when evaluating
+      // middle game positions with opposite side castling.
+      //
+      // Each pawn is given a base score given by a piece square table
+      // (KStormTable[] or QStormTable[]). Pawns which seem to have good
+      // chances of creating an open file by exchanging itself against an
+      // enemy pawn on an adjacent file gets an additional bonus.
+
+      // Kingside pawn storms
+      bonus = KStormTable[relative_square(Us, s)];
+      if (f >= FILE_F)
+      {
+          Bitboard b = outpost_mask(Us, s) & theirPawns & (FileFBB | FileGBB | FileHBB);
+          while (b)
+          {
+              Square s2 = pop_1st_bit(&b);
+              if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
+              {
+                  // The enemy pawn has no pawn beside itself, which makes it
+                  // particularly vulnerable. Big bonus, especially against a
+                  // weakness on the rook file.
+                  if (square_file(s2) == FILE_H)
+                      bonus += 4*StormLeverBonus[f] - 8*square_distance(s, s2);
+                  else
+                      bonus += 2*StormLeverBonus[f] - 4*square_distance(s, s2);
+              } else
+                  // There is at least one enemy pawn beside the enemy pawn we look
+                  // at, which means that the pawn has somewhat better chances of
+                  // defending itself by advancing. Smaller bonus.
+                  bonus += StormLeverBonus[f] - 2*square_distance(s, s2);
+          }
+      }
+      pi->ksStormValue[Us] += bonus;
+
+      // Queenside pawn storms
+      bonus = QStormTable[relative_square(Us, s)];
+      if (f <= FILE_C)
+      {
+          Bitboard b = outpost_mask(Us, s) & theirPawns & (FileABB | FileBBB | FileCBB);
+          while (b)
+          {
+              Square s2 = pop_1st_bit(&b);
+              if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
+              {
+                  // The enemy pawn has no pawn beside itself, which makes it
+                  // particularly vulnerable. Big bonus, especially against a
+                  // weakness on the rook file.
+                  if (square_file(s2) == FILE_A)
+                      bonus += 4*StormLeverBonus[f] - 16*square_distance(s, s2);
+                  else
+                      bonus += 2*StormLeverBonus[f] - 8*square_distance(s, s2);
+              } else
+                  // There is at least one enemy pawn beside the enemy pawn we look
+                  // at, which means that the pawn has somewhat better chances of
+                  // defending itself by advancing. Smaller bonus.
+                  bonus += StormLeverBonus[f] - 4*square_distance(s, s2);
+          }
+      }
+      pi->qsStormValue[Us] += bonus;
+
+      // Member of a pawn chain (but not the backward one)? We could speed up
+      // the test a little by introducing an array of masks indexed by color
+      // and square for doing the test, but because everything is hashed,
+      // it probably won't make any noticable difference.
+      chain =  ourPawns
+             & neighboring_files_bb(f)
+             & (rank_bb(r) | rank_bb(r - (Us == WHITE ? 1 : -1)));
+
+      // Test for backward pawn
+      //
+      // If the pawn is passed, isolated, or member of a pawn chain
+      // it cannot be backward. If can capture an enemy pawn or if
+      // there are friendly pawns behind on neighboring files it cannot
+      // be backward either.
+      if (   (passed | isolated | chain)
+          || (ourPawns & behind_bb(Us, r) & neighboring_files_bb(f))
+          || (pos.attacks_from<PAWN>(s, Us) & theirPawns))
+          backward = false;
+      else
+      {
+          // We now know that there are no friendly pawns beside or behind this
+          // pawn on neighboring files. We now check whether the pawn is
+          // backward by looking in the forward direction on the neighboring
+          // files, and seeing whether we meet a friendly or an enemy pawn first.
+          Bitboard b = pos.attacks_from<PAWN>(s, Us);
+
+          // Note that we are sure to find something because pawn is not passed
+          // nor isolated, so loop is potentially infinite, but it isn't.
+          while (!(b & (ourPawns | theirPawns)))
+              Us == WHITE ? b <<= 8 : b >>= 8;
+
+          // The friendly pawn needs to be at least two ranks closer than the enemy
+          // pawn in order to help the potentially backward pawn advance.
+          backward = (b | (Us == WHITE ? b << 8 : b >> 8)) & theirPawns;
+      }
+
+      // Test for candidate passed pawn
+      candidate =   !passed
+                 && !(theirPawns & file_bb(f))
+                 && (  count_1s_max_15(neighboring_files_bb(f) & (behind_bb(Us, r) | rank_bb(r)) & ourPawns)
+                     - count_1s_max_15(neighboring_files_bb(f) & in_front_bb(Us, r)              & theirPawns)
+                     >= 0);
+
+      // In order to prevent doubled passed pawns from receiving a too big
+      // bonus, only the frontmost passed pawn on each file is considered as
+      // a true passed pawn.
+      if (passed && (ourPawns & squares_in_front_of(Us, s)))
+          passed = false;
+
+      // Score this pawn
+      if (passed)
+          set_bit(&(pi->passedPawns), s);
+
+      if (isolated)
+      {
+          mgValue -= IsolatedPawnMidgamePenalty[f];
+          egValue -= IsolatedPawnEndgamePenalty[f];
+          if (!(theirPawns & file_bb(f)))
+          {
+              mgValue -= IsolatedPawnMidgamePenalty[f] / 2;
+              egValue -= IsolatedPawnEndgamePenalty[f] / 2;
+          }
+      }
+      if (doubled)
+      {
+          mgValue -= DoubledPawnMidgamePenalty[f];
+          egValue -= DoubledPawnEndgamePenalty[f];
+      }
+      if (backward)
+      {
+          mgValue -= BackwardPawnMidgamePenalty[f];
+          egValue -= BackwardPawnEndgamePenalty[f];
+          if (!(theirPawns & file_bb(f)))
+          {
+              mgValue -= BackwardPawnMidgamePenalty[f] / 2;
+              egValue -= BackwardPawnEndgamePenalty[f] / 2;
+          }
+      }
+      if (chain)
+      {
+          mgValue += ChainMidgameBonus[f];
+          egValue += ChainEndgameBonus[f];
+      }
+      if (candidate)
+      {
+          mgValue += CandidateMidgameBonus[relative_rank(Us, s)];
+          egValue += CandidateEndgameBonus[relative_rank(Us, s)];
+      }
+  } // while (pawns)
+
+  return Values(mgValue, egValue);
 }
 
 
