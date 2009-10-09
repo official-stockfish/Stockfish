@@ -88,7 +88,7 @@ enum Phase {
 
 struct StateInfo {
   Key key, pawnKey, materialKey;
-  int castleRights, rule50, pliesFromNull;
+  int castleRights, rule50;
   Square epSquare;
   Value mgValue, egValue;
   Value npMaterial[2];
