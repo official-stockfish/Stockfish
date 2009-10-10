@@ -1488,8 +1488,8 @@ void Position::clear() {
   for (int i = 0; i < 64; i++)
       board[i] = EMPTY;
 
-  for (int i = 0; i < 7; i++)
-      for (int j = 0; j < 8; j++)
+  for (int i = 0; i < 8; i++)
+      for (int j = 0; j < 16; j++)
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
 
   sideToMove = WHITE;
