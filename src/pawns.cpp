@@ -218,7 +218,7 @@ PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboar
   int bonus;
   Value mgValue = Value(0);
   Value egValue = Value(0);
-  Bitboard pawns = ourPawns;
+  const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
   // Initialize pawn storm scores by giving bonuses for open files
   for (File f = FILE_A; f <= FILE_H; f++)
@@ -230,9 +230,8 @@ PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboar
       }
 
   // Loop through all pawns of the current color and score each pawn
-  while (pawns)
+  while ((s = *ptr++) != SQ_NONE)
   {
-      s = pop_1st_bit(&pawns);
       f = square_file(s);
       r = square_rank(s);
 
@@ -392,7 +391,7 @@ PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboar
           mgValue += CandidateMidgameBonus[relative_rank(Us, s)];
           egValue += CandidateEndgameBonus[relative_rank(Us, s)];
       }
-  } // while (pawns)
+  }
 
   return Values(mgValue, egValue);
 }
