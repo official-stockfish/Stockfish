@@ -889,6 +889,133 @@ namespace {
   }
 
 
+  // evaluate_passed_pawns() evaluates the passed pawns of the given color
+
+  template<Color Us>
+  void evaluate_passed_pawns_of_color(const Position& pos, bool hasUnstoppable[], int movesToGo[], EvalInfo& ei) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    Bitboard b2, b3, b4;
+    Square ourKingSq = pos.king_square(Us);
+    Square theirKingSq = pos.king_square(Them);
+    Bitboard b = ei.pi->passed_pawns() & pos.pieces(PAWN, Us);
+
+    while (b)
+    {
+        Square s = pop_1st_bit(&b);
+
+        assert(pos.piece_on(s) == piece_of_color_and_type(Us, PAWN));
+        assert(pos.pawn_is_passed(Us, s));
+
+        int r = int(relative_rank(Us, s) - RANK_2);
+        int tr = Max(0, r * (r - 1));
+        Square blockSq = s + pawn_push(Us);
+
+        // Base bonus based on rank
+        Value mbonus = Value(20 * tr);
+        Value ebonus = Value(10 + r * r * 10);
+
+        // Adjust bonus based on king proximity
+        if (tr != 0)
+        {
+            ebonus -= Value(square_distance(ourKingSq, blockSq) * 3 * tr);
+            ebonus -= Value(square_distance(ourKingSq, blockSq + pawn_push(Us)) * 1 * tr);
+            ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
+
+            // If the pawn is free to advance, increase bonus
+            if (pos.square_is_empty(blockSq))
+            {
+                b2 = squares_in_front_of(Us, s);
+                b3 = b2 & ei.attacked_by(Them);
+                b4 = b2 & ei.attacked_by(Us);
+
+                // If there is an enemy rook or queen attacking the pawn from behind,
+                // add all X-ray attacks by the rook or queen.
+                if (    bit_is_set(ei.attacked_by(Them, ROOK) | ei.attacked_by(Them, QUEEN), s)
+                    && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them)))
+                    b3 = b2;
+
+                // Squares attacked or occupied by enemy pieces
+                b3 |= (b2 & pos.pieces_of_color(Them));
+
+                // There are no enemy pawns in the pawn's path
+                assert((b2 & pos.pieces(PAWN, Them)) == EmptyBoardBB);
+
+                // Are any of the squares in the pawn's path attacked or occupied by the enemy?
+                if (b3 == EmptyBoardBB)
+                    // No enemy attacks or pieces, huge bonus!
+                    ebonus += Value(tr * (b2 == b4 ? 17 : 15));
+                else
+                    // OK, there are enemy attacks or pieces (but not pawns). Are those
+                    // squares which are attacked by the enemy also attacked by us?
+                    // If yes, big bonus (but smaller than when there are no enemy attacks),
+                    // if no, somewhat smaller bonus.
+                    ebonus += Value(tr * ((b3 & b4) == b3 ? 13 : 8));
+
+                // At last, add a small bonus when there are no *friendly* pieces
+                // in the pawn's path.
+                if ((b2 & pos.pieces_of_color(Us)) == EmptyBoardBB)
+                    ebonus += Value(tr);
+            }
+        } // tr != 0
+
+        // If the pawn is supported by a friendly pawn, increase bonus
+        b2 = pos.pieces(PAWN, Us) & neighboring_files_bb(s);
+        if (b2 & rank_bb(s))
+            ebonus += Value(r * 20);
+        else if (pos.attacks_from<PAWN>(s, Them) & b2)
+            ebonus += Value(r * 12);
+
+        // If the other side has only a king, check whether the pawn is
+        // unstoppable
+        if (pos.non_pawn_material(Them) == Value(0))
+        {
+            Square qsq;
+            int d;
+
+            qsq = relative_square(Us, make_square(square_file(s), RANK_8));
+            d =  square_distance(s, qsq)
+               - square_distance(theirKingSq, qsq)
+               + (Us != pos.side_to_move());
+
+            if (d < 0)
+            {
+                int mtg = RANK_8 - relative_rank(Us, s);
+                int blockerCount = count_1s_max_15(squares_in_front_of(Us,s) & pos.occupied_squares());
+                mtg += blockerCount;
+                d += blockerCount;
+                if (d < 0)
+                {
+                    hasUnstoppable[Us] = true;
+                    movesToGo[Us] = Min(movesToGo[Us], mtg);
+                }
+            }
+        }
+
+        // Rook pawns are a special case: They are sometimes worse, and
+        // sometimes better than other passed pawns. It is difficult to find
+        // good rules for determining whether they are good or bad. For now,
+        // we try the following: Increase the value for rook pawns if the
+        // other side has no pieces apart from a knight, and decrease the
+        // value if the other side has a rook or queen.
+        if (square_file(s) == FILE_A || square_file(s) == FILE_H)
+        {
+            if (   pos.non_pawn_material(Them) <= KnightValueMidgame
+                && pos.piece_count(Them, KNIGHT) <= 1)
+                ebonus += ebonus / 4;
+            else if (pos.pieces(ROOK, QUEEN, Them))
+                ebonus -= ebonus / 4;
+        }
+
+        // Add the scores for this pawn to the middle game and endgame eval.
+        ei.mgValue += apply_weight(Sign[Us] * mbonus, WeightPassedPawnsMidgame);
+        ei.egValue += apply_weight(Sign[Us] * ebonus, WeightPassedPawnsEndgame);
+
+    } // while
+  }
+
+
   // evaluate_passed_pawns() evaluates the passed pawns for both sides
 
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
@@ -896,124 +1023,9 @@ namespace {
     bool hasUnstoppable[2] = {false, false};
     int movesToGo[2] = {100, 100};
 
-    for (Color us = WHITE; us <= BLACK; us++)
-    {
-        Color them = opposite_color(us);
-        Square ourKingSq = pos.king_square(us);
-        Square theirKingSq = pos.king_square(them);
-        Bitboard b = ei.pi->passed_pawns() & pos.pieces(PAWN, us), b2, b3, b4;
-
-        while (b)
-        {
-            Square s = pop_1st_bit(&b);
-
-            assert(pos.piece_on(s) == piece_of_color_and_type(us, PAWN));
-            assert(pos.pawn_is_passed(us, s));
-
-            int r = int(relative_rank(us, s) - RANK_2);
-            int tr = Max(0, r * (r - 1));
-            Square blockSq = s + pawn_push(us);
-
-            // Base bonus based on rank
-            Value mbonus = Value(20 * tr);
-            Value ebonus = Value(10 + r * r * 10);
-
-            // Adjust bonus based on king proximity
-            if (tr != 0)
-            {
-                ebonus -= Value(square_distance(ourKingSq, blockSq) * 3 * tr);
-                ebonus -= Value(square_distance(ourKingSq, blockSq + pawn_push(us)) * 1 * tr);
-                ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
-
-                // If the pawn is free to advance, increase bonus
-                if (pos.square_is_empty(blockSq))
-                {
-                    b2 = squares_in_front_of(us, s);
-                    b3 = b2 & ei.attacked_by(them);
-                    b4 = b2 & ei.attacked_by(us);
-
-                    // If there is an enemy rook or queen attacking the pawn from behind,
-                    // add all X-ray attacks by the rook or queen.
-                    if (    bit_is_set(ei.attacked_by(them,ROOK) | ei.attacked_by(them,QUEEN),s)
-                        && (squares_behind(us, s) & pos.pieces(ROOK, QUEEN, them)))
-                        b3 = b2;
-
-                    // Squares attacked or occupied by enemy pieces
-                    b3 |= (b2 & pos.pieces_of_color(them));
-
-                    // There are no enemy pawns in the pawn's path
-                    assert((b2 & pos.pieces(PAWN, them)) == EmptyBoardBB);
-
-                    // Are any of the squares in the pawn's path attacked or occupied by the enemy?
-                    if (b3 == EmptyBoardBB)
-                        // No enemy attacks or pieces, huge bonus!
-                        ebonus += Value(tr * (b2 == b4 ? 17 : 15));
-                    else
-                        // OK, there are enemy attacks or pieces (but not pawns). Are those
-                        // squares which are attacked by the enemy also attacked by us?
-                        // If yes, big bonus (but smaller than when there are no enemy attacks),
-                        // if no, somewhat smaller bonus.
-                        ebonus += Value(tr * ((b3 & b4) == b3 ? 13 : 8));
-
-                    // At last, add a small bonus when there are no *friendly* pieces
-                    // in the pawn's path.
-                    if ((b2 & pos.pieces_of_color(us)) == EmptyBoardBB)
-                        ebonus += Value(tr);
-                }
-            }
-
-            // If the pawn is supported by a friendly pawn, increase bonus
-            b2 = pos.pieces(PAWN, us) & neighboring_files_bb(s);
-            if (b2 & rank_bb(s))
-                ebonus += Value(r * 20);
-            else if (pos.attacks_from<PAWN>(s, them) & b2)
-                ebonus += Value(r * 12);
-
-            // If the other side has only a king, check whether the pawn is
-            // unstoppable
-            if (pos.non_pawn_material(them) == Value(0))
-            {
-                Square qsq;
-                int d;
-
-                qsq = relative_square(us, make_square(square_file(s), RANK_8));
-                d =  square_distance(s, qsq)
-                   - square_distance(theirKingSq, qsq)
-                   + (us != pos.side_to_move());
-
-                if (d < 0)
-                {
-                    int mtg = RANK_8 - relative_rank(us, s);
-                    int blockerCount = count_1s_max_15(squares_in_front_of(us,s) & pos.occupied_squares());
-                    mtg += blockerCount;
-                    d += blockerCount;
-                    if (d < 0)
-                    {
-                        hasUnstoppable[us] = true;
-                        movesToGo[us] = Min(movesToGo[us], mtg);
-                    }
-                }
-            }
-            // Rook pawns are a special case: They are sometimes worse, and
-            // sometimes better than other passed pawns. It is difficult to find
-            // good rules for determining whether they are good or bad. For now,
-            // we try the following: Increase the value for rook pawns if the
-            // other side has no pieces apart from a knight, and decrease the
-            // value if the other side has a rook or queen.
-            if (square_file(s) == FILE_A || square_file(s) == FILE_H)
-            {
-                if (   pos.non_pawn_material(them) <= KnightValueMidgame
-                    && pos.piece_count(them, KNIGHT) <= 1)
-                    ebonus += ebonus / 4;
-                else if (pos.pieces(ROOK, QUEEN, them))
-                    ebonus -= ebonus / 4;
-            }
-
-            // Add the scores for this pawn to the middle game and endgame eval.
-            ei.mgValue += apply_weight(Sign[us] * mbonus, WeightPassedPawnsMidgame);
-            ei.egValue += apply_weight(Sign[us] * ebonus, WeightPassedPawnsEndgame);
-        }
-    }
+    // Evaluate pawns for each color
+    evaluate_passed_pawns_of_color<WHITE>(pos, hasUnstoppable, movesToGo, ei);
+    evaluate_passed_pawns_of_color<BLACK>(pos, hasUnstoppable, movesToGo, ei);
 
     // Does either side have an unstoppable passed pawn?
     if (hasUnstoppable[WHITE] && !hasUnstoppable[BLACK])
