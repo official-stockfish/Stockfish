@@ -210,7 +210,7 @@ void print_uci_options() {
   for (Options::const_iterator it = options.begin(); it != options.end(); ++it)
       vec.push_back(it->second);
 
-  std::stable_sort(vec.begin(), vec.end());
+  std::sort(vec.begin(), vec.end());
 
   for (std::vector<Option>::const_iterator it = vec.begin(); it != vec.end(); ++it)
   {

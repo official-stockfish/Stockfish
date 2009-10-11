@@ -123,7 +123,7 @@ void MovePicker::go_next_phase() {
   case PH_GOOD_CAPTURES:
       lastMove = generate_captures(pos, moves);
       score_captures();
-      std::stable_sort(moves, lastMove);
+      std::sort(moves, lastMove);
       return;
 
   case PH_KILLERS:
@@ -134,7 +134,7 @@ void MovePicker::go_next_phase() {
   case PH_NONCAPTURES:
       lastMove = generate_noncaptures(pos, moves);
       score_noncaptures();
-      std::stable_sort(moves, lastMove);
+      std::sort(moves, lastMove);
       return;
 
   case PH_BAD_CAPTURES:
@@ -142,20 +142,20 @@ void MovePicker::go_next_phase() {
       // to get SEE move ordering.
       curMove = badCaptures;
       lastMove = lastBadCapture;
-      std::stable_sort(badCaptures, lastMove);
+      std::sort(badCaptures, lastMove);
       return;
 
   case PH_EVASIONS:
       assert(pos.is_check());
       lastMove = generate_evasions(pos, moves, pinned);
       score_evasions();
-      std::stable_sort(moves, lastMove);
+      std::sort(moves, lastMove);
       return;
 
   case PH_QCAPTURES:
       lastMove = generate_captures(pos, moves);
       score_captures();
-      std::stable_sort(moves, lastMove);
+      std::sort(moves, lastMove);
       return;
 
   case PH_QCHECKS:
