@@ -940,8 +940,8 @@ namespace {
 
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen.
-                if (    bit_is_set(ei.attacked_by(Them, ROOK) | ei.attacked_by(Them, QUEEN), s)
-                    && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them)))
+                if (   (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them))
+                    && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<QUEEN>(s)))
                     b3 = b2;
 
                 // Are any of the squares in the pawn's path attacked or occupied by the enemy?
