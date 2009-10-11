@@ -892,7 +892,7 @@ namespace {
   // evaluate_passed_pawns() evaluates the passed pawns of the given color
 
   template<Color Us>
-  void evaluate_passed_pawns_of_color(const Position& pos, bool hasUnstoppable[], int movesToGo[], EvalInfo& ei) {
+  void evaluate_passed_pawns_of_color(const Position& pos, int movesToGo[], EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -910,15 +910,16 @@ namespace {
 
         int r = int(relative_rank(Us, s) - RANK_2);
         int tr = Max(0, r * (r - 1));
-        Square blockSq = s + pawn_push(Us);
 
         // Base bonus based on rank
         Value mbonus = Value(20 * tr);
         Value ebonus = Value(10 + r * r * 10);
 
         // Adjust bonus based on king proximity
-        if (tr != 0)
+        if (tr)
         {
+            Square blockSq = s + pawn_push(Us);
+
             ebonus -= Value(square_distance(ourKingSq, blockSq) * 3 * tr);
             ebonus -= Value(square_distance(ourKingSq, blockSq + pawn_push(Us)) * 1 * tr);
             ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
@@ -926,9 +927,16 @@ namespace {
             // If the pawn is free to advance, increase bonus
             if (pos.square_is_empty(blockSq))
             {
+                // There are no enemy pawns in the pawn's path
                 b2 = squares_in_front_of(Us, s);
-                b3 = b2 & ei.attacked_by(Them);
+
+                assert((b2 & pos.pieces(PAWN, Them)) == EmptyBoardBB);
+
+                // Squares attacked by us
                 b4 = b2 & ei.attacked_by(Us);
+
+                // Squares attacked or occupied by enemy pieces
+                b3 = b2 & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
 
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen.
@@ -936,19 +944,14 @@ namespace {
                     && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them)))
                     b3 = b2;
 
-                // Squares attacked or occupied by enemy pieces
-                b3 |= (b2 & pos.pieces_of_color(Them));
-
-                // There are no enemy pawns in the pawn's path
-                assert((b2 & pos.pieces(PAWN, Them)) == EmptyBoardBB);
-
                 // Are any of the squares in the pawn's path attacked or occupied by the enemy?
                 if (b3 == EmptyBoardBB)
                     // No enemy attacks or pieces, huge bonus!
+                    // Even bigger if we protect the pawn's path
                     ebonus += Value(tr * (b2 == b4 ? 17 : 15));
                 else
                     // OK, there are enemy attacks or pieces (but not pawns). Are those
-                    // squares which are attacked by the enemy also attacked by us?
+                    // squares which are attacked by the enemy also attacked by us ?
                     // If yes, big bonus (but smaller than when there are no enemy attacks),
                     // if no, somewhat smaller bonus.
                     ebonus += Value(tr * ((b3 & b4) == b3 ? 13 : 8));
@@ -986,10 +989,7 @@ namespace {
                 mtg += blockerCount;
                 d += blockerCount;
                 if (d < 0)
-                {
-                    hasUnstoppable[Us] = true;
-                    movesToGo[Us] = Min(movesToGo[Us], mtg);
-                }
+                    movesToGo[Us] = movesToGo[Us] ? Min(movesToGo[Us], mtg) : mtg;
             }
         }
 
@@ -1020,19 +1020,18 @@ namespace {
 
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
 
-    bool hasUnstoppable[2] = {false, false};
-    int movesToGo[2] = {100, 100};
+    int movesToGo[2] = {0, 0};
 
     // Evaluate pawns for each color
-    evaluate_passed_pawns_of_color<WHITE>(pos, hasUnstoppable, movesToGo, ei);
-    evaluate_passed_pawns_of_color<BLACK>(pos, hasUnstoppable, movesToGo, ei);
+    evaluate_passed_pawns_of_color<WHITE>(pos, movesToGo, ei);
+    evaluate_passed_pawns_of_color<BLACK>(pos, movesToGo, ei);
 
     // Does either side have an unstoppable passed pawn?
-    if (hasUnstoppable[WHITE] && !hasUnstoppable[BLACK])
+    if (movesToGo[WHITE] && !movesToGo[BLACK])
         ei.egValue += UnstoppablePawnValue - Value(0x40 * movesToGo[WHITE]);
-    else if (hasUnstoppable[BLACK] && !hasUnstoppable[WHITE])
+    else if (movesToGo[BLACK] && !movesToGo[WHITE])
         ei.egValue -= UnstoppablePawnValue - Value(0x40 * movesToGo[BLACK]);
-    else if (hasUnstoppable[BLACK] && hasUnstoppable[WHITE])
+    else if (movesToGo[BLACK] && movesToGo[WHITE])
     {
         // Both sides have unstoppable pawns! Try to find out who queens
         // first. We begin by transforming 'movesToGo' to the number of
