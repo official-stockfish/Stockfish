@@ -1048,7 +1048,7 @@ namespace {
     EvalInfo ei;
 
     if (ply >= PLY_MAX - 1)
-        return evaluate(pos, ei, threadID);
+        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Mate distance pruning
     Value oldAlpha = alpha;
@@ -1238,7 +1238,7 @@ namespace {
     EvalInfo ei;
 
     if (ply >= PLY_MAX - 1)
-        return evaluate(pos, ei, threadID);
+        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Mate distance pruning
     if (value_mated_in(ply) >= beta)
@@ -1529,8 +1529,8 @@ namespace {
     else
         staticValue = evaluate(pos, ei, threadID);
 
-    if (ply == PLY_MAX - 1)
-        return evaluate(pos, ei, threadID);
+    if (ply >= PLY_MAX - 1)
+        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.

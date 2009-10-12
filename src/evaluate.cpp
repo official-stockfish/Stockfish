@@ -309,6 +309,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   assert(pos.is_ok());
   assert(threadID >= 0 && threadID < THREAD_MAX);
+  assert(!pos.is_check());
 
   memset(&ei, 0, sizeof(EvalInfo));
 
