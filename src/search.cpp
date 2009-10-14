@@ -1369,7 +1369,8 @@ namespace {
       {
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(depth)
-              && ok_to_prune(pos, move, ss[ply].threatMove, depth))
+              && ok_to_prune(pos, move, ss[ply].threatMove, depth)
+              && bestValue > value_mated_in(PLY_MAX))
               continue;
 
           // Value based pruning
