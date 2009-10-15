@@ -1069,7 +1069,10 @@ namespace {
             Square winnerQSq = relative_square(winnerSide, make_square(square_file(pawnToGo[winnerSide]), RANK_8));
             Square loserQSq = relative_square(loserSide, make_square(square_file(pawnToGo[loserSide]), RANK_8));
 
-            Bitboard b = pos.attacks_from<QUEEN>(winnerQSq);
+            Bitboard b = pos.occupied_squares();
+            clear_bit(&b, pawnToGo[winnerSide]);
+            clear_bit(&b, pawnToGo[loserSide]);
+            b = queen_attacks_bb(winnerQSq, b);
 
             if (  (b & pos.pieces(KING, loserSide))
                 ||(bit_is_set(b, loserQSq) && !bit_is_set(ei.attacked_by(loserSide), loserQSq)))
