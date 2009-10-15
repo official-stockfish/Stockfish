@@ -62,9 +62,29 @@ struct MoveStack {
   int score;
 };
 
-// Note that operator< is set up such that std::sort() will sort in descending order
+// Note that operator< is set up such that sorting will be in descending order
 inline bool operator<(const MoveStack& f, const MoveStack& s) { return s.score < f.score; }
 
+// Our stable insertion sort in range [firstMove, lastMove), platform independent
+template<typename T>
+inline void sort_moves(T* firstMove, T* lastMove)
+{
+    T value;
+    T *cur, *p, *d;
+
+    if (firstMove != lastMove)
+        for (cur = firstMove; ++cur != lastMove; )
+        {
+            p = d = cur;
+            value = *p--;
+            if (value < *p)
+            {
+                do *d = *p;
+                while (--d != firstMove && value < *--p);
+                *d = value;
+            }
+        }
+}
 
 ////
 //// Inline functions

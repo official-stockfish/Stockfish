@@ -23,7 +23,6 @@
 //// Includes
 ////
 
-#include <algorithm>
 #include <cassert>
 
 #include "history.h"
@@ -123,7 +122,7 @@ void MovePicker::go_next_phase() {
   case PH_GOOD_CAPTURES:
       lastMove = generate_captures(pos, moves);
       score_captures();
-      std::sort(moves, lastMove);
+      sort_moves(moves, lastMove);
       return;
 
   case PH_KILLERS:
@@ -134,7 +133,7 @@ void MovePicker::go_next_phase() {
   case PH_NONCAPTURES:
       lastMove = generate_noncaptures(pos, moves);
       score_noncaptures();
-      std::sort(moves, lastMove);
+      sort_moves(moves, lastMove);
       return;
 
   case PH_BAD_CAPTURES:
@@ -142,20 +141,20 @@ void MovePicker::go_next_phase() {
       // to get SEE move ordering.
       curMove = badCaptures;
       lastMove = lastBadCapture;
-      std::sort(badCaptures, lastMove);
+      sort_moves(badCaptures, lastMove);
       return;
 
   case PH_EVASIONS:
       assert(pos.is_check());
       lastMove = generate_evasions(pos, moves, pinned);
       score_evasions();
-      std::sort(moves, lastMove);
+      sort_moves(moves, lastMove);
       return;
 
   case PH_QCAPTURES:
       lastMove = generate_captures(pos, moves);
       score_captures();
-      std::sort(moves, lastMove);
+      sort_moves(moves, lastMove);
       return;
 
   case PH_QCHECKS:
