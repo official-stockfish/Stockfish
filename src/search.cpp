@@ -308,7 +308,9 @@ namespace {
   bool thread_is_available(int slave, int master);
   bool idle_thread_exists(int master);
   bool split(const Position& pos, SearchStack* ss, int ply,
-             Value *alpha, Value *beta, Value *bestValue, Depth depth, int *moves,
+             Value *alpha, Value *beta, Value *bestValue,
+             const Value futilityValue, const Value approximateValue,
+             Depth depth, int *moves,
              MovePicker *mp, Bitboard dcCandidates, int master, bool pvNode);
   void wake_sleeping_threads();
 
@@ -1176,7 +1178,7 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &alpha, &beta, &bestValue, depth,
+          && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE, VALUE_NONE, depth,
                    &moveCount, &mp, dcCandidates, threadID, true))
           break;
     }
@@ -1437,7 +1439,7 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &beta, &beta, &bestValue, depth, &moveCount,
+          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, approximateEval, depth, &moveCount,
                    &mp, dcCandidates, threadID, false))
         break;
     }
@@ -1693,10 +1695,37 @@ namespace {
       if (    useFutilityPruning
           && !dangerous
           && !moveIsCapture
-          && !move_is_promotion(move)
-          &&  moveCount >= 2 + int(sp->depth)
-          &&  ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth))
-        continue;
+          && !move_is_promotion(move))
+      {
+          // History pruning. See ok_to_prune() definition
+          if (   moveCount >= 2 + int(sp->depth)
+              && ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth)
+              && sp->bestValue > value_mated_in(PLY_MAX))
+              continue;
+
+          // Value based pruning
+          if (sp->approximateEval < sp->beta)
+          {
+              if (sp->futilityValue == VALUE_NONE)
+              {
+                  EvalInfo ei;
+                  sp->futilityValue =  evaluate(pos, ei, threadID)
+                                    + FutilityMargins[int(sp->depth) - 2];
+              }
+
+              if (sp->futilityValue < sp->beta)
+              {
+                  if (sp->futilityValue > sp->bestValue) // Less then 1% of cases
+                  {
+                      lock_grab(&(sp->lock));
+                      if (sp->futilityValue > sp->bestValue)
+                          sp->bestValue = sp->futilityValue;
+                      lock_release(&(sp->lock));
+                  }
+                  continue;
+              }
+          }
+      }
 
       // Make and search the move.
       StateInfo st;
@@ -2756,7 +2785,8 @@ namespace {
   // splitPoint->cpus becomes 0), split() returns true.
 
   bool split(const Position& p, SearchStack* sstck, int ply,
-             Value* alpha, Value* beta, Value* bestValue, Depth depth, int* moves,
+             Value* alpha, Value* beta, Value* bestValue, const Value futilityValue,
+             const Value approximateEval, Depth depth, int* moves,
              MovePicker* mp, Bitboard dcCandidates, int master, bool pvNode) {
 
     assert(p.is_ok());
@@ -2796,6 +2826,8 @@ namespace {
     splitPoint->pvNode = pvNode;
     splitPoint->dcCandidates = dcCandidates;
     splitPoint->bestValue = *bestValue;
+    splitPoint->futilityValue = futilityValue;
+    splitPoint->approximateEval = approximateEval;
     splitPoint->master = master;
     splitPoint->mp = mp;
     splitPoint->moves = *moves;
