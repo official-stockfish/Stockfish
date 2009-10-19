@@ -1759,21 +1759,24 @@ namespace {
           break;
 
       // New best move?
-      lock_grab(&(sp->lock));
-      if (value > sp->bestValue && !thread_should_stop(threadID))
+      if (value > sp->bestValue) // Less then 2% of cases
       {
-          sp->bestValue = value;
-          if (sp->bestValue >= sp->beta)
+          lock_grab(&(sp->lock));
+          if (value > sp->bestValue && !thread_should_stop(threadID))
           {
-              sp_update_pv(sp->parentSstack, ss, sp->ply);
-              for (int i = 0; i < ActiveThreads; i++)
-                  if (i != threadID && (i == sp->master || sp->slaves[i]))
-                      Threads[i].stop = true;
+              sp->bestValue = value;
+              if (sp->bestValue >= sp->beta)
+              {
+                  sp_update_pv(sp->parentSstack, ss, sp->ply);
+                  for (int i = 0; i < ActiveThreads; i++)
+                      if (i != threadID && (i == sp->master || sp->slaves[i]))
+                          Threads[i].stop = true;
 
-              sp->finished = true;
-        }
+                  sp->finished = true;
+              }
+          }
+          lock_release(&(sp->lock));
       }
-      lock_release(&(sp->lock));
     }
 
     lock_grab(&(sp->lock));
