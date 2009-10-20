@@ -1596,6 +1596,7 @@ namespace {
 
       // Don't search captures and checks with negative SEE values
       if (   !isCheck
+          &&  move != ttMove
           && !move_is_promotion(move)
           &&  pos.see_sign(move) < 0)
           continue;
@@ -1622,7 +1623,7 @@ namespace {
 
     // All legal moves have been searched.  A special case: If we're in check
     // and no legal moves were found, it is checkmate.
-    if (pos.is_check() && moveCount == 0) // Mate!
+    if (!moveCount && pos.is_check()) // Mate!
         return value_mated_in(ply);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
