@@ -122,7 +122,6 @@ void MovePicker::go_next_phase() {
   case PH_GOOD_CAPTURES:
       lastMove = generate_captures(pos, moves);
       score_captures();
-      sort_moves(moves, lastMove);
       return;
 
   case PH_KILLERS:
@@ -141,20 +140,17 @@ void MovePicker::go_next_phase() {
       // to get SEE move ordering.
       curMove = badCaptures;
       lastMove = lastBadCapture;
-      sort_moves(badCaptures, lastMove);
       return;
 
   case PH_EVASIONS:
       assert(pos.is_check());
       lastMove = generate_evasions(pos, moves, pinned);
       score_evasions();
-      sort_moves(moves, lastMove);
       return;
 
   case PH_QCAPTURES:
       lastMove = generate_captures(pos, moves);
       score_captures();
-      sort_moves(moves, lastMove);
       return;
 
   case PH_QCHECKS:
@@ -267,17 +263,17 @@ Move MovePicker::get_next_move() {
   {
       while (curMove != lastMove)
       {
-          move = (curMove++)->move;
-
           switch (phase) {
 
           case PH_TT_MOVES:
+              move = (curMove++)->move;
               if (   move != MOVE_NONE
                   && move_is_legal(pos, move, pinned))
                   return move;
               break;
 
           case PH_GOOD_CAPTURES:
+              move = pick_best(curMove++, lastMove).move;
               if (   move != ttMoves[0].move
                   && move != ttMoves[1].move
                   && pos.pl_move_is_legal(move, pinned))
@@ -297,6 +293,7 @@ Move MovePicker::get_next_move() {
               break;
 
           case PH_KILLERS:
+              move = (curMove++)->move;
               if (   move != MOVE_NONE
                   && move != ttMoves[0].move
                   && move != ttMoves[1].move
@@ -306,6 +303,7 @@ Move MovePicker::get_next_move() {
               break;
 
           case PH_NONCAPTURES:
+              move = (curMove++)->move;
               if (   move != ttMoves[0].move
                   && move != ttMoves[1].move
                   && move != killers[0].move
@@ -316,11 +314,18 @@ Move MovePicker::get_next_move() {
 
           case PH_EVASIONS:
           case PH_BAD_CAPTURES:
+              move = pick_best(curMove++, lastMove).move;
               return move;
 
           case PH_QCAPTURES:
+              move = pick_best(curMove++, lastMove).move;
+              if (   move != ttMoves[0].move
+                  && pos.pl_move_is_legal(move, pinned))
+                  return move;
+              break;
+
           case PH_QCHECKS:
-              // Maybe postpone the legality check until after futility pruning?
+              move = (curMove++)->move;
               if (   move != ttMoves[0].move
                   && pos.pl_move_is_legal(move, pinned))
                   return move;

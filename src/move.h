@@ -86,6 +86,27 @@ inline void sort_moves(T* firstMove, T* lastMove)
         }
 }
 
+// Picks up the best move in range [curMove, lastMove), one per cycle.
+// It is faster then sorting all the moves in advance when moves are few,
+// as normally are the possible captures. Note that is not a stable alghoritm.
+template<typename T>
+inline T pick_best(T* curMove, T* lastMove)
+{
+    T bestMove, tmp;
+
+    bestMove = *curMove;
+    while (++curMove != lastMove)
+    {
+        if (*curMove < bestMove)
+        {
+            tmp = *curMove;
+            *curMove = bestMove;
+            bestMove = tmp;
+        }
+    }
+    return bestMove;
+}
+
 ////
 //// Inline functions
 ////
