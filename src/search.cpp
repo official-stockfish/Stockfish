@@ -288,7 +288,6 @@ namespace {
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
-  bool ok_to_history(const Position& pos, Move m);
   void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
 
@@ -868,9 +867,9 @@ namespace {
                       << " currmovenumber " << i + 1 << std::endl;
 
         // Decide search depth for this move
-        bool moveIsCapture = pos.move_is_capture(move);
+        bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
         bool dangerous;
-        ext = extension(pos, move, true, moveIsCapture, pos.move_is_check(move), false, false, &dangerous);
+        ext = extension(pos, move, true, captureOrPromotion, pos.move_is_check(move), false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
@@ -897,8 +896,7 @@ namespace {
             if (   newDepth >= 3*OnePly
                 && i >= MultiPV + LMRPVMoves
                 && !dangerous
-                && !moveIsCapture
-                && !move_is_promotion(move)
+                && !captureOrPromotion
                 && !move_is_castle(move))
             {
                 ss[0].reduction = OnePly;
@@ -1093,13 +1091,13 @@ namespace {
 
       bool singleReply = (isCheck && mp.number_of_evasions() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool moveIsCapture = pos.move_is_capture(move);
+      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
       bool dangerous;
-      Depth ext = extension(pos, move, true, moveIsCapture, moveIsCheck, singleReply, mateThreat, &dangerous);
+      Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
       Depth newDepth = depth - OnePly + ext;
 
       // Make and search the move
@@ -1115,8 +1113,7 @@ namespace {
         if (    depth >= 3*OnePly
             &&  moveCount >= LMRPVMoves
             && !dangerous
-            && !moveIsCapture
-            && !move_is_promotion(move)
+            && !captureOrPromotion
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
@@ -1200,7 +1197,7 @@ namespace {
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
         Move m = ss[ply].pv[ply];
-        if (ok_to_history(pos, m)) // Only non capture moves are considered
+        if (!pos.move_is_capture_or_promotion(m))
         {
             update_history(pos, m, depth, movesSearched, moveCount);
             update_killers(m, ss[ply]);
@@ -1354,20 +1351,19 @@ namespace {
 
       bool singleReply = (isCheck && mp.number_of_evasions() == 1);
       bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool moveIsCapture = pos.move_is_capture(move);
+      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
       bool dangerous;
-      Depth ext = extension(pos, move, false, moveIsCapture, moveIsCheck, singleReply, mateThreat, &dangerous);
+      Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
       Depth newDepth = depth - OnePly + ext;
 
       // Futility pruning
       if (    useFutilityPruning
           && !dangerous
-          && !moveIsCapture
-          && !move_is_promotion(move))
+          && !captureOrPromotion)
       {
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(depth)
@@ -1400,8 +1396,7 @@ namespace {
       if (    depth >= 3*OnePly
           &&  moveCount >= LMRNonPVMoves
           && !dangerous
-          && !moveIsCapture
-          && !move_is_promotion(move)
+          && !captureOrPromotion
           && !move_is_castle(move)
           && !move_is_killer(move, ss[ply]))
       {
@@ -1460,7 +1455,7 @@ namespace {
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
         Move m = ss[ply].pv[ply];
-        if (ok_to_history(pos, m)) // Only non capture moves are considered
+        if (!pos.move_is_capture_or_promotion(m))
         {
             update_history(pos, m, depth, movesSearched, moveCount);
             update_killers(m, ss[ply]);
@@ -1644,7 +1639,7 @@ namespace {
     }
 
     // Update killers only for good check moves
-    if (alpha >= beta && ok_to_history(pos, m)) // Only non capture moves are considered
+    if (alpha >= beta && !pos.move_is_capture_or_promotion(m))
         update_killers(m, ss[ply]);
 
     return bestValue;
@@ -1679,7 +1674,7 @@ namespace {
       assert(move_is_ok(move));
 
       bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
-      bool moveIsCapture = pos.move_is_capture(move);
+      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       lock_grab(&(sp->lock));
       int moveCount = ++sp->moves;
@@ -1689,14 +1684,13 @@ namespace {
 
       // Decide the new search depth.
       bool dangerous;
-      Depth ext = extension(pos, move, false, moveIsCapture, moveIsCheck, false, false, &dangerous);
+      Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Prune?
       if (    useFutilityPruning
           && !dangerous
-          && !moveIsCapture
-          && !move_is_promotion(move))
+          && !captureOrPromotion)
       {
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(sp->depth)
@@ -1736,8 +1730,7 @@ namespace {
       // if the move fails high will be re-searched at full depth.
       if (   !dangerous
           &&  moveCount >= LMRNonPVMoves
-          && !moveIsCapture
-          && !move_is_promotion(move)
+          && !captureOrPromotion
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
@@ -1819,7 +1812,7 @@ namespace {
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
       bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
-      bool moveIsCapture = pos.move_is_capture(move);
+      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       assert(move_is_ok(move));
 
@@ -1831,7 +1824,7 @@ namespace {
 
       // Decide the new search depth.
       bool dangerous;
-      Depth ext = extension(pos, move, true, moveIsCapture, moveIsCheck, false, false, &dangerous);
+      Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
@@ -1842,8 +1835,7 @@ namespace {
       // if the move fails high will be re-searched at full depth.
       if (   !dangerous
           &&  moveCount >= LMRPVMoves
-          && !moveIsCapture
-          && !move_is_promotion(move)
+          && !captureOrPromotion
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
@@ -2268,8 +2260,8 @@ namespace {
   // extended, as example because the corresponding UCI option is set to zero,
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
 
-  Depth extension(const Position& pos, Move m, bool pvNode, bool capture, bool check,
-                  bool singleReply, bool mateThreat, bool* dangerous) {
+  Depth extension(const Position& pos, Move m, bool pvNode, bool captureOrPromotion,
+                  bool check, bool singleReply, bool mateThreat, bool* dangerous) {
 
     assert(m != MOVE_NONE);
 
@@ -2303,7 +2295,7 @@ namespace {
         }
     }
 
-    if (   capture
+    if (   captureOrPromotion
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
@@ -2315,7 +2307,7 @@ namespace {
     }
 
     if (   pvNode
-        && capture
+        && captureOrPromotion
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && pos.see_sign(m) >= 0)
     {
@@ -2349,9 +2341,8 @@ namespace {
 
     assert(move_is_ok(m));
     assert(threat == MOVE_NONE || move_is_ok(threat));
-    assert(!move_is_promotion(m));
     assert(!pos.move_is_check(m));
-    assert(!pos.move_is_capture(m));
+    assert(!pos.move_is_capture_or_promotion(m));
     assert(!pos.move_is_passed_pawn_push(m));
     assert(d >= OnePly);
 
@@ -2413,15 +2404,6 @@ namespace {
   }
 
 
-  // ok_to_history() returns true if a move m can be stored
-  // in history. Should be a non capturing move nor a promotion.
-
-  bool ok_to_history(const Position& pos, Move m) {
-
-    return !pos.move_is_capture(m) && !move_is_promotion(m);
-  }
-
-
   // update_history() registers a good move that produced a beta-cutoff
   // in history and marks as failures all the other moves of that ply.
 
@@ -2433,7 +2415,7 @@ namespace {
     for (int i = 0; i < moveCount - 1; i++)
     {
         assert(m != movesSearched[i]);
-        if (ok_to_history(pos, movesSearched[i]))
+        if (!pos.move_is_capture_or_promotion(movesSearched[i]))
             H.failure(pos.piece_on(move_from(movesSearched[i])), move_to(movesSearched[i]));
     }
   }

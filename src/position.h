@@ -207,6 +207,7 @@ public:
   bool move_is_check(Move m) const;
   bool move_is_check(Move m, Bitboard dcCandidates) const;
   bool move_is_capture(Move m) const;
+  bool move_is_capture_or_promotion(Move m) const;
   bool move_is_passed_pawn_push(Move m) const;
   bool move_attacks_square(Move m, Square s) const;
 
@@ -568,8 +569,13 @@ inline bool Position::has_pawn_on_7th(Color c) const {
 inline bool Position::move_is_capture(Move m) const {
 
   // Move must not be MOVE_NONE !
+  return (m & (3 << 15)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
+}
 
-  return (!square_is_empty(move_to(m)) && !move_is_castle(m)) || move_is_ep(m);
+inline bool Position::move_is_capture_or_promotion(Move m) const {
+
+  // Move must not be MOVE_NONE !
+  return (m & (0x1F << 12)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
 }
 
 #endif // !defined(POSITION_H_INCLUDED)
