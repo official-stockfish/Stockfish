@@ -531,7 +531,7 @@ namespace {
   // evaluate_mobility() computes mobility and attacks for every piece
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  int evaluate_mobility(const Position& pos, Bitboard b, EvalInfo& ei) {
+  int evaluate_mobility(const Position& pos, Bitboard b, Bitboard mob_area, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
@@ -552,13 +552,11 @@ namespace {
             ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
     }
 
-    // Remove squares protected by enemy pawns or occupied by our pieces
-    b &= ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
-
     // The squares occupied by enemy pieces (not defended by pawns) will be
     // counted two times instead of one. The shift (almost) guarantees that
     // intersection of the shifted value with b is zero so that after or-ing
     // the count of 1s bits is increased by the number of affected squares.
+    b &= mob_area;
     b |= Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
                      : ((b & pos.pieces_of_color(Them)) << 1);
 
@@ -614,6 +612,9 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* ptr = pos.piece_list_begin(Us, Piece);
 
+    // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
+    const Bitboard mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
+
     while ((s = *ptr++) != SQ_NONE)
     {
         if (Piece == KNIGHT || Piece == QUEEN)
@@ -626,7 +627,7 @@ namespace {
             assert(false);
 
         // Attacks and mobility
-        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, b, ei);
+        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, b, mob_area, ei);
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
