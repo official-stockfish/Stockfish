@@ -244,25 +244,25 @@ namespace {
   // ThreatBonus[][] contains bonus according to which piece type
   // attacks which one.
   const Value MidgameThreatBonus[8][8] = {
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
-    V(0),V(30), V(0),V(50), V(70), V(70), V(0), V(0), // KNIGHT attacks
-    V(0),V(30),V(50), V(0), V(70), V(70), V(0), V(0), // BISHOP attacks
-    V(0),V(20),V(40),V(40),  V(0), V(50), V(0), V(0), // ROOK attacks
-    V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0), // QUEEN attacks
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0)  // not used
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
+      { V(0),V(30), V(0),V(50), V(70), V(70), V(0), V(0) }, // KNIGHT attacks
+      { V(0),V(30),V(50), V(0), V(70), V(70), V(0), V(0) }, // BISHOP attacks
+      { V(0),V(20),V(40),V(40),  V(0), V(50), V(0), V(0) }, // ROOK attacks
+      { V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0) }, // QUEEN attacks
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }  // not used
   };
 
   const Value EndgameThreatBonus[8][8] = {
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
-    V(0),V(40), V(0),V(50),V(100),V(100), V(0), V(0), // KNIGHT attacks
-    V(0),V(40),V(50), V(0),V(100),V(100), V(0), V(0), // BISHOP attacks
-    V(0),V(30),V(50),V(50),  V(0), V(50), V(0), V(0), // ROOK attacks
-    V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0), // QUEEN attacks
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
-    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0)  // not used
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
+      { V(0),V(40), V(0),V(50),V(100),V(100), V(0), V(0) }, // KNIGHT attacks
+      { V(0),V(40),V(50), V(0),V(100),V(100), V(0), V(0) }, // BISHOP attacks
+      { V(0),V(30),V(50),V(50),  V(0), V(50), V(0), V(0) }, // ROOK attacks
+      { V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0) }, // QUEEN attacks
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
+      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }  // not used
   };
 
   // ThreatedByPawnPenalty[] contains a penalty according to which piece
@@ -309,6 +309,9 @@ namespace {
 
   template<Color Us, bool HasPopCnt>
   void evaluate_king(const Position& pos, EvalInfo& ei);
+
+  template<Color Us>
+  void evaluate_threats(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
   void evaluate_space(const Position& pos, EvalInfo& ei);
