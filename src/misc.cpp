@@ -52,7 +52,7 @@ using namespace std;
 
 static const string EngineVersion = "";
 static const string AppName = "Stockfish";
-static const string AppTag  = "";
+static const string AppTag  = "765a";
 
 
 ////

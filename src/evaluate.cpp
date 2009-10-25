@@ -241,6 +241,40 @@ namespace {
   // Bonus for having a mate threat, initialized from UCI options
   int MateThreatBonus;
 
+  // ThreatBonus[][] contains bonus according to which piece type
+  // attacks which one.
+  const Value MidgameThreatBonus[8][8] = {
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
+    V(0),V(30), V(0),V(50), V(70), V(70), V(0), V(0), // KNIGHT attacks
+    V(0),V(30),V(50), V(0), V(70), V(70), V(0), V(0), // BISHOP attacks
+    V(0),V(20),V(40),V(40),  V(0), V(50), V(0), V(0), // ROOK attacks
+    V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0), // QUEEN attacks
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0)  // not used
+  };
+
+  const Value EndgameThreatBonus[8][8] = {
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
+    V(0),V(40), V(0),V(50),V(100),V(100), V(0), V(0), // KNIGHT attacks
+    V(0),V(40),V(50), V(0),V(100),V(100), V(0), V(0), // BISHOP attacks
+    V(0),V(30),V(50),V(50),  V(0), V(50), V(0), V(0), // ROOK attacks
+    V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0), // QUEEN attacks
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0), // not used
+    V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0)  // not used
+  };
+
+  // ThreatedByPawnPenalty[] contains a penalty according to which piece
+  // type is attacked by an enemy pawn.
+  const Value MidgameThreatedByPawnPenalty[8] = {
+    V(0), V(0), V(50), V(50), V(70), V(80), V(0), V(0)
+  };
+
+  const Value EndgameThreatedByPawnPenalty[8] = {
+    V(0), V(0), V(70), V(70), V(100), V(120), V(0), V(0)
+  };
+
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
   const int InitKingDanger[64] = {
@@ -364,6 +398,10 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   // the king safety evaluation.
   evaluate_king<WHITE, HasPopCnt>(pos, ei);
   evaluate_king<BLACK, HasPopCnt>(pos, ei);
+
+  // Evaluate tactical threats, we need full attack info
+  evaluate_threats<WHITE>(pos, ei);
+  evaluate_threats<BLACK>(pos, ei);
 
   // Evaluate passed pawns. We evaluate passed pawns for both sides at once,
   // because we need to know which side promotes first in positions where
@@ -531,13 +569,12 @@ namespace {
   // evaluate_mobility() computes mobility and attacks for every piece
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  int evaluate_mobility(const Position& pos, Bitboard b, Bitboard mob_area, EvalInfo& ei) {
+  int evaluate_mobility(Bitboard b, Bitboard mob_area, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
     static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
     static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
-    static const int lastIndex[] = { 0, 0, 8, 15, 15, 31 };
 
     // Update attack info
     ei.attackedBy[Us][Piece] |= b;
@@ -552,20 +589,9 @@ namespace {
             ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
     }
 
-    // The squares occupied by enemy pieces (not defended by pawns) will be
-    // counted two times instead of one. The shift (almost) guarantees that
-    // intersection of the shifted value with b is zero so that after or-ing
-    // the count of 1s bits is increased by the number of affected squares.
-    b &= mob_area;
-    b |= Us == WHITE ? ((b & pos.pieces_of_color(Them)) >> 1)
-                     : ((b & pos.pieces_of_color(Them)) << 1);
-
     // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b)
-                              : count_1s<HasPopCnt>(b));
-
-    if (mob > lastIndex[Piece])
-        mob = lastIndex[Piece];
+    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & mob_area)
+                              : count_1s<HasPopCnt>(b & mob_area));
 
     ei.mgMobility += Sign[Us] * MgBonus[Piece][mob];
     ei.egMobility += Sign[Us] * EgBonus[Piece][mob];
@@ -627,7 +653,15 @@ namespace {
             assert(false);
 
         // Attacks and mobility
-        mob = evaluate_mobility<Piece, Us, HasPopCnt>(pos, b, mob_area, ei);
+        mob = evaluate_mobility<Piece, Us, HasPopCnt>(b, mob_area, ei);
+
+        // Decrease score if we are attacked by an enemy pawn. Remaining part
+        // of threat evaluation must be done later when we have full attack info.
+        if (bit_is_set(ei.attackedBy[Them][PAWN], s))
+        {
+            ei.mgValue -= Sign[Us] * MidgameThreatedByPawnPenalty[Piece];
+            ei.egValue -= Sign[Us] * EndgameThreatedByPawnPenalty[Piece];
+        }
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
@@ -701,6 +735,44 @@ namespace {
             }
         }
     }
+  }
+
+
+  // evaluate_threats<>() assigns bonuses according to the type of attacking piece
+  // and the type of attacked one.
+
+  template<Color Us>
+  void evaluate_threats(const Position& pos, EvalInfo& ei) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    Bitboard b;
+    Value mgBonus = Value(0);
+    Value egBonus = Value(0);
+
+    // Enemy pieces not defended by a pawn and under our attack
+    Bitboard weakEnemies =  pos.pieces_of_color(Them)
+                          & ~ei.attackedBy[Them][PAWN]
+                          & ei.attackedBy[Us][0];
+    if (!weakEnemies)
+        return;
+
+    // Add bonus according to type of attacked enemy pieces and to the
+    // type of attacking piece, from knights to queens. Kings are not
+    // considered because are already special handled in king evaluation.
+    for (PieceType pt1 = KNIGHT; pt1 < KING; pt1++)
+    {
+        b = ei.attackedBy[Us][pt1] & weakEnemies;
+        if (b)
+            for (PieceType pt2 = PAWN; pt2 < KING; pt2++)
+                if (b & pos.pieces(pt2))
+                {
+                    mgBonus += MidgameThreatBonus[pt1][pt2];
+                    egBonus += EndgameThreatBonus[pt1][pt2];
+                }
+    }
+    ei.mgValue += Sign[Us] * mgBonus;
+    ei.egValue += Sign[Us] * egBonus;
   }
 
 
