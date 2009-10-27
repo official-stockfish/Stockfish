@@ -245,10 +245,10 @@ namespace {
   // attacks which one.
   const Value MidgameThreatBonus[8][8] = {
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0),V(30), V(0),V(50), V(70), V(70), V(0), V(0) }, // KNIGHT attacks
-      { V(0),V(30),V(50), V(0), V(70), V(70), V(0), V(0) }, // BISHOP attacks
-      { V(0),V(20),V(40),V(40),  V(0), V(50), V(0), V(0) }, // ROOK attacks
-      { V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0) }, // QUEEN attacks
+      { V(0),V(18), V(0),V(37), V(55), V(55), V(0), V(0) }, // KNIGHT attacks
+      { V(0),V(18),V(37), V(0), V(55), V(55), V(0), V(0) }, // BISHOP attacks
+      { V(0), V(9),V(27),V(27),  V(0), V(37), V(0), V(0) }, // ROOK attacks
+      { V(0),V(27),V(27),V(27), V(27),  V(0), V(0), V(0) }, // QUEEN attacks
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }  // not used
@@ -256,10 +256,10 @@ namespace {
 
   const Value EndgameThreatBonus[8][8] = {
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0),V(40), V(0),V(50),V(100),V(100), V(0), V(0) }, // KNIGHT attacks
-      { V(0),V(40),V(50), V(0),V(100),V(100), V(0), V(0) }, // BISHOP attacks
-      { V(0),V(30),V(50),V(50),  V(0), V(50), V(0), V(0) }, // ROOK attacks
-      { V(0),V(40),V(40),V(40), V(40),  V(0), V(0), V(0) }, // QUEEN attacks
+      { V(0),V(37), V(0),V(47), V(97), V(97), V(0), V(0) }, // KNIGHT attacks
+      { V(0),V(37),V(47), V(0), V(97), V(97), V(0), V(0) }, // BISHOP attacks
+      { V(0),V(27),V(47),V(47),  V(0), V(47), V(0), V(0) }, // ROOK attacks
+      { V(0),V(37),V(37),V(37), V(37),  V(0), V(0), V(0) }, // QUEEN attacks
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
       { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }  // not used
@@ -268,11 +268,11 @@ namespace {
   // ThreatedByPawnPenalty[] contains a penalty according to which piece
   // type is attacked by an enemy pawn.
   const Value MidgameThreatedByPawnPenalty[8] = {
-    V(0), V(0), V(50), V(50), V(70), V(80), V(0), V(0)
+    V(0), V(0), V(56), V(56), V(76), V(86), V(0), V(0)
   };
 
   const Value EndgameThreatedByPawnPenalty[8] = {
-    V(0), V(0), V(70), V(70), V(100), V(120), V(0), V(0)
+    V(0), V(0), V(70), V(70), V(99), V(118), V(0), V(0)
   };
 
   // InitKingDanger[] contains bonuses based on the position of the defending
