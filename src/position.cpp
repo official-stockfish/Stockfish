@@ -1300,13 +1300,13 @@ void Position::undo_null_move() {
 int Position::see(Square to) const {
 
   assert(square_is_ok(to));
-  return see(SQ_NONE, to);
+  return see(SQ_NONE, to, false);
 }
 
 int Position::see(Move m) const {
 
   assert(move_is_ok(m));
-  return see(move_from(m), move_to(m));
+  return see(move_from(m), move_to(m), false);
 }
 
 int Position::see_sign(Move m) const {
@@ -1322,10 +1322,10 @@ int Position::see_sign(Move m) const {
       && type_of_piece_on(from) != KING)
          return 1;
 
-  return see(from, to);
+  return see(from, to, true);
 }
 
-int Position::see(Square from, Square to) const {
+int Position::see(Square from, Square to, bool shortcut) const {
 
   // Material values
   static const int seeValues[18] = {
@@ -1338,6 +1338,7 @@ int Position::see(Square from, Square to) const {
 
   Bitboard attackers, stmAttackers, b;
 
+  assert(!shortcut || from != SQ_NONE);
   assert(square_is_ok(from) || from == SQ_NONE);
   assert(square_is_ok(to));
 
@@ -1349,6 +1350,22 @@ int Position::see(Square from, Square to) const {
   Piece piece = piece_on(from);
   Piece capture = piece_on(to);
   Bitboard occ = occupied_squares();
+
+  // If captured piece is defended by enemy pawns or knights then SEE is negative
+  // when captured piece value is not enough to compensate the lost of capturing one.
+  if (shortcut)
+  {
+      int diff = seeValues[piece] - seeValues[capture];
+
+      if (   diff > seeValues[PAWN]
+          &&(attacks_from<PAWN>(to, us) & pieces(PAWN, them)))
+          return -(diff - seeValues[PAWN] / 2);
+
+      if (   diff > seeValues[KNIGHT]
+          && pieces(KNIGHT, them)
+          &&(pieces(KNIGHT, them) & attacks_from<KNIGHT>(to)))
+          return -(diff - seeValues[KNIGHT] / 2);
+  }
 
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
