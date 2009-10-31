@@ -1337,6 +1337,7 @@ int Position::see(Square from, Square to, bool shortcut) const {
   };
 
   Bitboard attackers, stmAttackers, b;
+  int pieceDiff = 0;
 
   assert(!shortcut || from != SQ_NONE);
   assert(square_is_ok(from) || from == SQ_NONE);
@@ -1351,20 +1352,24 @@ int Position::see(Square from, Square to, bool shortcut) const {
   Piece capture = piece_on(to);
   Bitboard occ = occupied_squares();
 
+  // King cannot be recaptured
+  if (type_of_piece(piece) == KING)
+      return seeValues[capture];
+
   // If captured piece is defended by enemy pawns or knights then SEE is negative
-  // when captured piece value is not enough to compensate the lost of capturing one.
+  // when captured piece value does not compensate the lost of capturing one.
   if (shortcut)
   {
-      int diff = seeValues[piece] - seeValues[capture];
+      pieceDiff = seeValues[piece] - seeValues[capture];
 
-      if (   diff > seeValues[PAWN]
+      if (   pieceDiff > seeValues[PAWN]
           &&(attacks_from<PAWN>(to, us) & pieces(PAWN, them)))
-          return -(diff - seeValues[PAWN] / 2);
+          return -(pieceDiff - seeValues[PAWN] / 2);
 
-      if (   diff > seeValues[KNIGHT]
+      if (   pieceDiff > seeValues[KNIGHT]
           && pieces(KNIGHT, them)
           &&(pieces(KNIGHT, them) & attacks_from<KNIGHT>(to)))
-          return -(diff - seeValues[KNIGHT] / 2);
+          return -(pieceDiff - seeValues[KNIGHT] / 2);
   }
 
   // Handle en passant moves
@@ -1436,6 +1441,15 @@ int Position::see(Square from, Square to, bool shortcut) const {
       // that the side to move still has at least one attacker left.
       for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
           assert(pt < KING);
+
+      // If captured piece is defended by an enemy piece then SEE is negative
+      // if captured piece value does not compensate the lost of capturing one.
+      if (pieceDiff > seeValues[pt])
+      {
+          assert(shortcut);
+          return -(pieceDiff - seeValues[pt] / 2);
+      } else
+          pieceDiff = 0; // Only first cycle
 
       // Remove the attacker we just found from the 'attackers' bitboard,
       // and scan for new X-ray attacks behind the attacker.
