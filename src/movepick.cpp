@@ -197,8 +197,8 @@ void MovePicker::score_captures() {
       if (move_is_promotion(m))
           cur->score = QueenValueMidgame;
       else
-          cur->score = int(pos.midgame_value_of_piece_on(move_to(m)))
-                      -int(pos.type_of_piece_on(move_from(m)));
+          cur->score =  pos.midgame_value_of_piece_on(move_to(m))
+                      - pos.type_of_piece_on(move_from(m));
   }
 }
 
@@ -229,19 +229,25 @@ void MovePicker::score_noncaptures() {
 }
 
 void MovePicker::score_evasions() {
-
+  // Always try ttMove as first. Then try good captures ordered
+  // by MVV/LVA, then non-captures if destination square is not
+  // under attack, ordered by history value, and at the end
+  // bad-captures and non-captures with a negative SEE. This
+  // last group is ordered by the SEE score.
   Move m;
+  int seeScore;
 
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
       if (m == ttMoves[0].move)
           cur->score = 2 * HistoryMax;
-      else if (!pos.square_is_empty(move_to(m)))
-      {
-          int seeScore = pos.see(m);
-          cur->score = seeScore + (seeScore >= 0 ? HistoryMax : 0);
-      } else
+      else if ((seeScore = pos.see_sign(m)) < 0)
+          cur->score = seeScore;
+      else if (pos.move_is_capture(m))
+          cur->score =  pos.midgame_value_of_piece_on(move_to(m))
+                      - pos.type_of_piece_on(move_from(m)) + HistoryMax;
+      else
           cur->score = H.move_ordering_score(pos.piece_on(move_from(m)), move_to(m));
   }
 }
