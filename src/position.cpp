@@ -1300,13 +1300,13 @@ void Position::undo_null_move() {
 int Position::see(Square to) const {
 
   assert(square_is_ok(to));
-  return see(SQ_NONE, to, false);
+  return see(SQ_NONE, to);
 }
 
 int Position::see(Move m) const {
 
   assert(move_is_ok(m));
-  return see(move_from(m), move_to(m), false);
+  return see(move_from(m), move_to(m));
 }
 
 int Position::see_sign(Move m) const {
@@ -1322,10 +1322,10 @@ int Position::see_sign(Move m) const {
       && type_of_piece_on(from) != KING)
          return 1;
 
-  return see(from, to, true);
+  return see(from, to);
 }
 
-int Position::see(Square from, Square to, bool shortcut) const {
+int Position::see(Square from, Square to) const {
 
   // Material values
   static const int seeValues[18] = {
@@ -1337,7 +1337,6 @@ int Position::see(Square from, Square to, bool shortcut) const {
   };
 
   Bitboard attackers, stmAttackers, b;
-  int pieceDiff = 0;
 
   assert(!shortcut || from != SQ_NONE);
   assert(square_is_ok(from) || from == SQ_NONE);
@@ -1355,22 +1354,6 @@ int Position::see(Square from, Square to, bool shortcut) const {
   // King cannot be recaptured
   if (type_of_piece(piece) == KING)
       return seeValues[capture];
-
-  // If captured piece is defended by enemy pawns or knights then SEE is negative
-  // when captured piece value does not compensate the lost of capturing one.
-  if (shortcut)
-  {
-      pieceDiff = seeValues[piece] - seeValues[capture];
-
-      if (   pieceDiff > seeValues[PAWN]
-          &&(attacks_from<PAWN>(to, us) & pieces(PAWN, them)))
-          return -(pieceDiff - seeValues[PAWN] / 2);
-
-      if (   pieceDiff > seeValues[KNIGHT]
-          && pieces(KNIGHT, them)
-          &&(pieces(KNIGHT, them) & attacks_from<KNIGHT>(to)))
-          return -(pieceDiff - seeValues[KNIGHT] / 2);
-  }
 
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
@@ -1441,15 +1424,6 @@ int Position::see(Square from, Square to, bool shortcut) const {
       // that the side to move still has at least one attacker left.
       for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
           assert(pt < KING);
-
-      // If captured piece is defended by an enemy piece then SEE is negative
-      // if captured piece value does not compensate the lost of capturing one.
-      if (pieceDiff > seeValues[pt])
-      {
-          assert(shortcut);
-          return -(pieceDiff - seeValues[pt] / 2);
-      } else
-          pieceDiff = 0; // Only first cycle
 
       // Remove the attacker we just found from the 'attackers' bitboard,
       // and scan for new X-ray attacks behind the attacker.

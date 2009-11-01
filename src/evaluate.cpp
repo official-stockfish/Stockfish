@@ -1171,8 +1171,8 @@ namespace {
     Square b8 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B8 : SQ_G8);
 
     if (   pos.piece_on(b6) == piece_of_color_and_type(opposite_color(us), PAWN)
-        && pos.see(s, b6, false) < 0
-        && pos.see(s, b8, false) < 0)
+        && pos.see(s, b6) < 0
+        && pos.see(s, b8) < 0)
     {
         ei.mgValue -= Sign[us] * TrappedBishopA7H7Penalty;
         ei.egValue -= Sign[us] * TrappedBishopA7H7Penalty;
