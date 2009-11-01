@@ -52,9 +52,6 @@ namespace {
     EVASION
   };
 
-  // Functions
-  bool castling_is_check(const Position&, CastlingSide);
-
   // Helper templates
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position&, MoveStack*);
@@ -190,20 +187,7 @@ MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bi
   mlist = generate_direct_checks<KNIGHT>(pos, mlist, us, dc, ksq);
   mlist = generate_direct_checks<BISHOP>(pos, mlist, us, dc, ksq);
   mlist = generate_direct_checks<ROOK>(pos, mlist, us, dc, ksq);
-  mlist = generate_direct_checks<QUEEN>(pos, mlist, us, dc, ksq);
-
-  // Castling moves that give check. Very rare but nice to have!
-  if (   pos.can_castle_queenside(us)
-      && (square_rank(ksq) == square_rank(pos.king_square(us)) || square_file(ksq) == FILE_D)
-      && castling_is_check(pos, QUEEN_SIDE))
-      mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
-
-  if (   pos.can_castle_kingside(us)
-      && (square_rank(ksq) == square_rank(pos.king_square(us)) || square_file(ksq) == FILE_F)
-      && castling_is_check(pos, KING_SIDE))
-      mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
-
-  return mlist;
+  return  generate_direct_checks<QUEEN>(pos, mlist, us, dc, ksq);
 }
 
 
@@ -786,18 +770,5 @@ namespace {
             (*mlist++).move = make_castle_move(ksq, rsq);
     }
     return mlist;
-  }
-
-  bool castling_is_check(const Position& pos, CastlingSide side) {
-
-    // After castling opponent king is attacked by the castled rook?
-    File rookFile = (side == QUEEN_SIDE ? FILE_D : FILE_F);
-    Color us = pos.side_to_move();
-    Square ksq = pos.king_square(us);
-    Bitboard occ = pos.occupied_squares();
-
-    clear_bit(&occ, ksq); // Remove our king from the board
-    Square rsq = make_square(rookFile, square_rank(ksq));
-    return bit_is_set(rook_attacks_bb(rsq, occ), pos.king_square(opposite_color(us)));
   }
 }
