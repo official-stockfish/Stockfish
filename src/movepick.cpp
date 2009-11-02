@@ -318,10 +318,15 @@ Move MovePicker::get_next_move() {
                   return move;
               break;
 
-          case PH_EVASIONS:
           case PH_BAD_CAPTURES:
               move = pick_best(curMove++, lastMove).move;
               return move;
+
+          case PH_EVASIONS:
+              move = pick_best(curMove++, lastMove).move;
+              if (pos.pl_move_is_legal(move, pinned))
+                  return move;
+              break;
 
           case PH_QCAPTURES:
               move = pick_best(curMove++, lastMove).move;

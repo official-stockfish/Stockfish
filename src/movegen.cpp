@@ -191,74 +191,69 @@ MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bi
 }
 
 
-/// generate_evasions() generates all check evasions when the side to move is
-/// in check. Unlike the other move generation functions, this one generates
-/// only legal moves. Returns a pointer to the end of the move list.
+/// generate_evasions() generates all pseudo-legal check evasions when
+/// the side to move is in check. Returns a pointer to the end of the move list.
 
 MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
 
-  Square from, to;
+  Bitboard b;
+  Square from, to, checksq;
+  int checkersCnt = 0;
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
   Square ksq = pos.king_square(us);
-  Bitboard sliderAttacks = EmptyBoardBB;
   Bitboard checkers = pos.checkers();
+  Bitboard sliderAttacks = EmptyBoardBB;
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
-
-  // The bitboard of occupied pieces without our king
-  Bitboard b_noKing = pos.occupied_squares();
-  clear_bit(&b_noKing, ksq);
+  assert(checkers);
 
   // Find squares attacked by slider checkers, we will remove
-  // them from the king evasions set so to avoid a couple
-  // of cycles in the slow king evasions legality check loop
-  // and to be able to use attackers_to().
-  Bitboard b = checkers & pos.pieces(BISHOP, QUEEN);
-  while (b)
+  // them from the king evasions set so to early skip known
+  // illegal moves and avoid an useless legality check later.
+  b = checkers;
+  do
   {
-      from = pop_1st_bit(&b);
-      sliderAttacks |= bishop_attacks_bb(from, b_noKing);
-  }
+      checkersCnt++;
+      checksq = pop_1st_bit(&b);
 
-  b = checkers & pos.pieces(ROOK, QUEEN);
-  while (b)
-  {
-      from = pop_1st_bit(&b);
-      sliderAttacks |= rook_attacks_bb(from, b_noKing);
-  }
+      assert(pos.color_of_piece_on(checksq) == them);
+
+      switch (pos.type_of_piece_on(checksq))
+      {
+      case BISHOP: sliderAttacks |= BishopPseudoAttacks[checksq]; break;
+      case ROOK:   sliderAttacks |= RookPseudoAttacks[checksq];   break;
+      case QUEEN:
+          // In case of a queen remove also squares attacked in the other direction to
+          // avoid possible illegal moves when queen and king are on adjacent squares.
+          if (direction_is_straight(checksq, ksq))
+              sliderAttacks |= RookPseudoAttacks[checksq] | pos.attacks_from<BISHOP>(checksq);
+          else
+              sliderAttacks |= BishopPseudoAttacks[checksq] | pos.attacks_from<ROOK>(checksq);
+      default:
+          break;
+      }
+  } while (b);
 
   // Generate evasions for king, capture and non capture moves
-  Bitboard enemy = pos.pieces_of_color(them);
-  Bitboard b1 = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~sliderAttacks;
-  while (b1)
-  {
-      // Note that we can use attackers_to() only because we have already
-      // removed from b1 the squares attacked by slider checkers.
-      to = pop_1st_bit(&b1);
-      if (!(pos.attackers_to(to) & enemy))
-          (*mlist++).move = make_move(ksq, to);
-  }
+  b = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~sliderAttacks;
+  from = ksq;
+  SERIALIZE_MOVES(b);
 
-  // Generate evasions for other pieces only if not double check. We use a
-  // simple bit twiddling hack here rather than calling count_1s in order to
-  // save some time (we know that pos.checkers() has at most two nonzero bits).
-  if (checkers & (checkers - 1)) // Two bits set?
+  // Generate evasions for other pieces only if not double check
+  if (checkersCnt > 1)
       return mlist;
 
-  Square checksq = first_1(checkers);
   Bitboard target = squares_between(checksq, ksq);
 
-  assert(pos.color_of_piece_on(checksq) == them);
-
   // Pawn captures
-  b1 = pos.attacks_from<PAWN>(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
-  while (b1)
+  b = pos.attacks_from<PAWN>(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
+  while (b)
   {
-      from = pop_1st_bit(&b1);
+      from = pop_1st_bit(&b);
       if (relative_rank(us, checksq) == RANK_8)
       {
           (*mlist++).move = make_promotion_move(from, checksq, QUEEN);
@@ -277,10 +272,10 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   target |= checkers;
 
   // Captures and blocking evasions for the other pieces
-  mlist = generate_piece_evasions<KNIGHT>(pos, mlist, us, target, pinned);
-  mlist = generate_piece_evasions<BISHOP>(pos, mlist, us, target, pinned);
-  mlist = generate_piece_evasions<ROOK>(pos, mlist, us, target, pinned);
-  mlist = generate_piece_evasions<QUEEN>(pos, mlist, us, target, pinned);
+  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
+  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
+  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
+  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
 
   // Finally, the special case of en passant captures. An en passant
   // capture can only be a check evasion if the check is not a discovered
@@ -290,17 +285,17 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
   {
       to = pos.ep_square();
-      b1 = pos.attacks_from<PAWN>(to, them) & pos.pieces(PAWN, us);
+      b = pos.attacks_from<PAWN>(to, them) & pos.pieces(PAWN, us);
 
       // The checking pawn cannot be a discovered (bishop) check candidate
       // otherwise we were in check also before last double push move.
       assert(!bit_is_set(pos.discovered_check_candidates(them), checksq));
-      assert(count_1s(b1) == 1 || count_1s(b1) == 2);
+      assert(count_1s(b) == 1 || count_1s(b) == 2);
 
-      b1 &= ~pinned;
-      while (b1)
+      b &= ~pinned;
+      while (b)
       {
-          from = pop_1st_bit(&b1);
+          from = pop_1st_bit(&b);
           // Move is always legal because checking pawn is not a discovered
           // check candidate and our capturing pawn has been already tested
           // against pinned pieces.
@@ -319,14 +314,16 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 
   assert(pos.is_ok());
 
+  MoveStack* last;
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
-  if (pos.is_check())
-      return generate_evasions(pos, mlist, pinned);
-
   // Generate pseudo-legal moves
-  MoveStack* last = generate_captures(pos, mlist);
-  last = generate_noncaptures(pos, last);
+  if (pos.is_check())
+      last = generate_evasions(pos, mlist, pinned);
+  else {
+      last = generate_captures(pos, mlist);
+      last = generate_noncaptures(pos, last);
+  }
   if (pseudoLegal)
       return last;
 

@@ -470,7 +470,6 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(is_ok());
   assert(move_is_ok(m));
   assert(pinned == pinned_pieces(side_to_move()));
-  assert(!is_check());
 
   // Castling moves are checked for legality during move generation.
   if (move_is_castle(m))
@@ -482,7 +481,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(color_of_piece_on(from) == us);
   assert(piece_on(king_square(us)) == piece_of_color_and_type(us, KING));
 
-  // En passant captures are a tricky special case.  Because they are
+  // En passant captures are a tricky special case. Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
   // after the move is made
   if (move_is_ep(m))
@@ -1706,8 +1705,7 @@ bool Position::is_draw() const {
 bool Position::is_mate() const {
 
   MoveStack moves[256];
-
-  return is_check() && (generate_evasions(*this, moves, pinned_pieces(sideToMove)) == moves);
+  return is_check() && (generate_moves(*this, moves, false) == moves);
 }
 
 
