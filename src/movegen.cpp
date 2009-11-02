@@ -246,81 +246,65 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   // Generate evasions for other pieces only if not double check. We use a
   // simple bit twiddling hack here rather than calling count_1s in order to
   // save some time (we know that pos.checkers() has at most two nonzero bits).
-  if (!(checkers & (checkers - 1))) // Only one bit set?
+  if (checkers & (checkers - 1)) // Two bits set?
+      return mlist;
+
+  Square checksq = first_1(checkers);
+  Bitboard target = squares_between(checksq, ksq);
+
+  assert(pos.color_of_piece_on(checksq) == them);
+
+  // Pawn captures
+  b1 = pos.attacks_from<PAWN>(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
+  while (b1)
   {
-      Square checksq = first_1(checkers);
-
-      assert(pos.color_of_piece_on(checksq) == them);
-
-      // Generate captures of the checking piece
-
-      // Pawn captures
-      b1 = pos.attacks_from<PAWN>(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
-      while (b1)
+      from = pop_1st_bit(&b1);
+      if (relative_rank(us, checksq) == RANK_8)
       {
-          from = pop_1st_bit(&b1);
-          if (relative_rank(us, checksq) == RANK_8)
-          {
-              (*mlist++).move = make_promotion_move(from, checksq, QUEEN);
-              (*mlist++).move = make_promotion_move(from, checksq, ROOK);
-              (*mlist++).move = make_promotion_move(from, checksq, BISHOP);
-              (*mlist++).move = make_promotion_move(from, checksq, KNIGHT);
-          } else
-              (*mlist++).move = make_move(from, checksq);
-      }
-
-      // Pieces captures
-      b1 = (  (pos.attacks_from<KNIGHT>(checksq) & pos.pieces(KNIGHT, us))
-            | (pos.attacks_from<BISHOP>(checksq) & pos.pieces(BISHOP, QUEEN, us))
-            | (pos.attacks_from<ROOK>(checksq)   & pos.pieces(ROOK, QUEEN, us)) ) & ~pinned;
-
-      while (b1)
-      {
-          from = pop_1st_bit(&b1);
+          (*mlist++).move = make_promotion_move(from, checksq, QUEEN);
+          (*mlist++).move = make_promotion_move(from, checksq, ROOK);
+          (*mlist++).move = make_promotion_move(from, checksq, BISHOP);
+          (*mlist++).move = make_promotion_move(from, checksq, KNIGHT);
+      } else
           (*mlist++).move = make_move(from, checksq);
-      }
+  }
 
-      // Blocking check evasions are possible only if the checking piece is a slider
-      if (sliderAttacks)
+  // Pawn blocking evasions (possible only if the checking piece is a slider)
+  if (sliderAttacks)
+      mlist = generate_piece_evasions<PAWN>(pos, mlist, us, target, pinned);
+
+  // Add the checking piece to the target squares
+  target |= checkers;
+
+  // Captures and blocking evasions for the other pieces
+  mlist = generate_piece_evasions<KNIGHT>(pos, mlist, us, target, pinned);
+  mlist = generate_piece_evasions<BISHOP>(pos, mlist, us, target, pinned);
+  mlist = generate_piece_evasions<ROOK>(pos, mlist, us, target, pinned);
+  mlist = generate_piece_evasions<QUEEN>(pos, mlist, us, target, pinned);
+
+  // Finally, the special case of en passant captures. An en passant
+  // capture can only be a check evasion if the check is not a discovered
+  // check. If pos.ep_square() is set, the last move made must have been
+  // a double pawn push. If, furthermore, the checking piece is a pawn,
+  // an en passant check evasion may be possible.
+  if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
+  {
+      to = pos.ep_square();
+      b1 = pos.attacks_from<PAWN>(to, them) & pos.pieces(PAWN, us);
+
+      // The checking pawn cannot be a discovered (bishop) check candidate
+      // otherwise we were in check also before last double push move.
+      assert(!bit_is_set(pos.discovered_check_candidates(them), checksq));
+      assert(count_1s(b1) == 1 || count_1s(b1) == 2);
+
+      b1 &= ~pinned;
+      while (b1)
       {
-          Bitboard blockSquares = squares_between(checksq, ksq);
-
-          assert((pos.occupied_squares() & blockSquares) == EmptyBoardBB);
-
-          if (blockSquares)
-          {
-              mlist = generate_piece_evasions<PAWN>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_evasions<KNIGHT>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_evasions<BISHOP>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_evasions<ROOK>(pos, mlist, us, blockSquares, pinned);
-              mlist = generate_piece_evasions<QUEEN>(pos, mlist, us, blockSquares, pinned);
-          }
-      }
-
-      // Finally, the special case of en passant captures. An en passant
-      // capture can only be a check evasion if the check is not a discovered
-      // check. If pos.ep_square() is set, the last move made must have been
-      // a double pawn push. If, furthermore, the checking piece is a pawn,
-      // an en passant check evasion may be possible.
-      if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
-      {
-          to = pos.ep_square();
-          b1 = pos.attacks_from<PAWN>(to, them) & pos.pieces(PAWN, us);
-
-          // The checking pawn cannot be a discovered (bishop) check candidate
-          // otherwise we were in check also before last double push move.
-          assert(!bit_is_set(pos.discovered_check_candidates(them), checksq));
-          assert(count_1s(b1) == 1 || count_1s(b1) == 2);
-
-          b1 &= ~pinned;
-          while (b1)
-          {
-              from = pop_1st_bit(&b1);
-              // Move is always legal because checking pawn is not a discovered
-              // check candidate and our capturing pawn has been already tested
-              // against pinned pieces.
-              (*mlist++).move = make_ep_move(from, to);
-          }
+          from = pop_1st_bit(&b1);
+          // Move is always legal because checking pawn is not a discovered
+          // check candidate and our capturing pawn has been already tested
+          // against pinned pieces.
+          (*mlist++).move = make_ep_move(from, to);
       }
   }
   return mlist;
