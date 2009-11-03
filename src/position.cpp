@@ -458,13 +458,6 @@ void Position::find_checkers() {
 
 /// Position::pl_move_is_legal() tests whether a pseudo-legal move is legal
 
-bool Position::pl_move_is_legal(Move m) const {
-
-  // If we're in check, all pseudo-legal moves are legal, because our
-  // check evasion generator only generates true legal moves.
-  return is_check() || pl_move_is_legal(m, pinned_pieces(side_to_move()));
-}
-
 bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   assert(is_ok());
@@ -1337,7 +1330,6 @@ int Position::see(Square from, Square to) const {
 
   Bitboard attackers, stmAttackers, b;
 
-  assert(!shortcut || from != SQ_NONE);
   assert(square_is_ok(from) || from == SQ_NONE);
   assert(square_is_ok(to));
 

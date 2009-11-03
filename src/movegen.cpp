@@ -57,8 +57,7 @@ namespace {
   MoveStack* generate_castle_moves(const Position&, MoveStack*);
 
   template<Color Us, MoveType Type>
-  MoveStack* generate_pawn_moves(const Position&, MoveStack*, Bitboard = EmptyBoardBB,
-                                 Square = SQ_NONE, Bitboard = EmptyBoardBB);
+  MoveStack* generate_pawn_moves(const Position&, MoveStack*, Bitboard, Square);
 
   // Template generate_piece_moves (captures and non-captures) with specializations and overloads
   template<PieceType>
@@ -68,19 +67,19 @@ namespace {
   MoveStack* generate_piece_moves<KING>(const Position&, MoveStack*, Color, Bitboard);
 
   template<PieceType Piece, MoveType Type>
-  inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us) {
+  inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
 
     assert(Piece == PAWN);
-    assert(Type == CAPTURE || Type == NON_CAPTURE);
+    assert(Type == CAPTURE || Type == NON_CAPTURE || Type == EVASION);
 
-    return (us == WHITE ? generate_pawn_moves<WHITE, Type>(p, m)
-                        : generate_pawn_moves<BLACK, Type>(p, m));
+    return (us == WHITE ? generate_pawn_moves<WHITE, Type>(p, m, t, SQ_NONE)
+                        : generate_pawn_moves<BLACK, Type>(p, m, t, SQ_NONE));
   }
 
   // Templates for non-capture checks generation
 
   template<PieceType Piece>
-  MoveStack* generate_discovered_checks(const Position& pos, Square from, MoveStack* mlist);
+  MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from);
 
   template<PieceType>
   MoveStack* generate_direct_checks(const Position&, MoveStack*, Color, Bitboard, Square);
@@ -90,18 +89,6 @@ namespace {
 
     return (us == WHITE ? generate_pawn_moves<WHITE, CHECK>(p, m, dc, ksq)
                         : generate_pawn_moves<BLACK, CHECK>(p, m, dc, ksq));
-  }
-
-  // Template generate_piece_evasions with specializations
-  template<PieceType>
-  MoveStack* generate_piece_evasions(const Position&, MoveStack*, Color, Bitboard, Bitboard);
-
-  template<>
-  inline MoveStack* generate_piece_evasions<PAWN>(const Position& p, MoveStack* m,
-                                                  Color us, Bitboard t, Bitboard pnd) {
-
-    return (us == WHITE ? generate_pawn_moves<WHITE, EVASION>(p, m, pnd, SQ_NONE, t)
-                        : generate_pawn_moves<BLACK, EVASION>(p, m, pnd, SQ_NONE, t));
   }
 }
 
@@ -126,7 +113,7 @@ MoveStack* generate_captures(const Position& pos, MoveStack* mlist) {
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us);
+  mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us, target);
   return  generate_piece_moves<KING>(pos, mlist, us, target);
 }
 
@@ -142,7 +129,7 @@ MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
   Color us = pos.side_to_move();
   Bitboard target = pos.empty_squares();
 
-  mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us);
+  mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
@@ -153,7 +140,7 @@ MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
 }
 
 
-/// generate_non_capture_checks() generates all pseudo-legal non-captures and
+/// generate_non_capture_checks() generates all pseudo-legal non-captures and knight
 /// underpromotions that give check. Returns a pointer to the end of the move list.
 
 MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
@@ -174,10 +161,10 @@ MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bi
      switch (pos.type_of_piece_on(from))
      {
       case PAWN:   /* Will be generated togheter with pawns direct checks */     break;
-      case KNIGHT: mlist = generate_discovered_checks<KNIGHT>(pos, from, mlist); break;
-      case BISHOP: mlist = generate_discovered_checks<BISHOP>(pos, from, mlist); break;
-      case ROOK:   mlist = generate_discovered_checks<ROOK>(pos, from, mlist);   break;
-      case KING:   mlist = generate_discovered_checks<KING>(pos, from, mlist);   break;
+      case KNIGHT: mlist = generate_discovered_checks<KNIGHT>(pos, mlist, from); break;
+      case BISHOP: mlist = generate_discovered_checks<BISHOP>(pos, mlist, from); break;
+      case ROOK:   mlist = generate_discovered_checks<ROOK>(pos, mlist, from);   break;
+      case KING:   mlist = generate_discovered_checks<KING>(pos, mlist, from);   break;
       default: assert(false); break;
      }
   }
@@ -194,16 +181,15 @@ MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bi
 /// generate_evasions() generates all pseudo-legal check evasions when
 /// the side to move is in check. Returns a pointer to the end of the move list.
 
-MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pinned) {
+MoveStack* generate_evasions(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
 
   Bitboard b;
-  Square from, to, checksq;
+  Square from, checksq;
   int checkersCnt = 0;
   Color us = pos.side_to_move();
-  Color them = opposite_color(us);
   Square ksq = pos.king_square(us);
   Bitboard checkers = pos.checkers();
   Bitboard sliderAttacks = EmptyBoardBB;
@@ -220,7 +206,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
       checkersCnt++;
       checksq = pop_1st_bit(&b);
 
-      assert(pos.color_of_piece_on(checksq) == them);
+      assert(pos.color_of_piece_on(checksq) == opposite_color(us));
 
       switch (pos.type_of_piece_on(checksq))
       {
@@ -247,62 +233,15 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist, Bitboard pin
   if (checkersCnt > 1)
       return mlist;
 
-  Bitboard target = squares_between(checksq, ksq);
+  // Find squares where a blocking evasion or a capture of the
+  // checker piece is possible.
+  Bitboard target = squares_between(checksq, ksq) | checkers;
 
-  // Pawn captures
-  b = pos.attacks_from<PAWN>(checksq, them) & pos.pieces(PAWN, us) & ~pinned;
-  while (b)
-  {
-      from = pop_1st_bit(&b);
-      if (relative_rank(us, checksq) == RANK_8)
-      {
-          (*mlist++).move = make_promotion_move(from, checksq, QUEEN);
-          (*mlist++).move = make_promotion_move(from, checksq, ROOK);
-          (*mlist++).move = make_promotion_move(from, checksq, BISHOP);
-          (*mlist++).move = make_promotion_move(from, checksq, KNIGHT);
-      } else
-          (*mlist++).move = make_move(from, checksq);
-  }
-
-  // Pawn blocking evasions (possible only if the checking piece is a slider)
-  if (sliderAttacks)
-      mlist = generate_piece_evasions<PAWN>(pos, mlist, us, target, pinned);
-
-  // Add the checking piece to the target squares
-  target |= checkers;
-
-  // Captures and blocking evasions for the other pieces
+  mlist = generate_piece_moves<PAWN, EVASION>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
-
-  // Finally, the special case of en passant captures. An en passant
-  // capture can only be a check evasion if the check is not a discovered
-  // check. If pos.ep_square() is set, the last move made must have been
-  // a double pawn push. If, furthermore, the checking piece is a pawn,
-  // an en passant check evasion may be possible.
-  if (pos.ep_square() != SQ_NONE && (checkers & pos.pieces(PAWN, them)))
-  {
-      to = pos.ep_square();
-      b = pos.attacks_from<PAWN>(to, them) & pos.pieces(PAWN, us);
-
-      // The checking pawn cannot be a discovered (bishop) check candidate
-      // otherwise we were in check also before last double push move.
-      assert(!bit_is_set(pos.discovered_check_candidates(them), checksq));
-      assert(count_1s(b) == 1 || count_1s(b) == 2);
-
-      b &= ~pinned;
-      while (b)
-      {
-          from = pop_1st_bit(&b);
-          // Move is always legal because checking pawn is not a discovered
-          // check candidate and our capturing pawn has been already tested
-          // against pinned pieces.
-          (*mlist++).move = make_ep_move(from, to);
-      }
-  }
-  return mlist;
+  return  generate_piece_moves<QUEEN>(pos, mlist, us, target);
 }
 
 
@@ -319,7 +258,7 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 
   // Generate pseudo-legal moves
   if (pos.is_check())
-      last = generate_evasions(pos, mlist, pinned);
+      last = generate_evasions(pos, mlist);
   else {
       last = generate_captures(pos, mlist);
       last = generate_noncaptures(pos, last);
@@ -348,7 +287,7 @@ bool move_is_legal(const Position& pos, const Move m) {
   MoveStack* last = generate_moves(pos, mlist, true);
   for (MoveStack* cur = mlist; cur != last; cur++)
       if (cur->move == m)
-          return pos.pl_move_is_legal(m);
+          return pos.pl_move_is_legal(m, pos.pinned_pieces(pos.side_to_move()));
 
   return false;
 }
@@ -481,24 +420,6 @@ namespace {
     return mlist;
   }
 
-  template<PieceType Piece>
-  MoveStack* generate_piece_evasions(const Position& pos, MoveStack* mlist,
-                                     Color us, Bitboard target, Bitboard pinned) {
-    Square from;
-    Bitboard b;
-    const Square* ptr = pos.piece_list_begin(us, Piece);
-
-    while ((from = *ptr++) != SQ_NONE)
-    {
-        if (pinned && bit_is_set(pinned, from))
-            continue;
-
-        b = pos.attacks_from<Piece>(from) & target;
-        SERIALIZE_MOVES(b);
-    }
-    return mlist;
-  }
-
   template<Color Us, SquareDelta Direction>
   inline Bitboard move_pawns(Bitboard p) {
 
@@ -512,8 +433,8 @@ namespace {
         return p;
   }
 
-  template<Color Us, SquareDelta Diagonal>
-  MoveStack* generate_pawn_diagonal_captures(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool promotion) {
+  template<Color Us, MoveType Type, SquareDelta Diagonal>
+  inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool possiblePromotion) {
 
     // Calculate our parametrized parameters at compile time
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
@@ -527,131 +448,147 @@ namespace {
     // Captures in the a1-h8 (a8-h1 for black) diagonal or in the h1-a8 (h8-a1 for black)
     Bitboard b1 = move_pawns<Us, Diagonal>(pawns) & ~TFileABB & enemyPieces;
 
-    // Capturing promotions
-    if (promotion)
+    // Capturing promotions and under-promotions
+    if (possiblePromotion)
     {
         Bitboard b2 = b1 & TRank8BB;
         b1 &= ~TRank8BB;
         while (b2)
         {
             to = pop_1st_bit(&b2);
-            (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, QUEEN);
+
+            if (Type == CAPTURE || Type == EVASION)
+                (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, QUEEN);
+
+            if (Type == NON_CAPTURE || Type == EVASION)
+            {
+                (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, ROOK);
+                (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, BISHOP);
+                (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, KNIGHT);
+            }
+
+            // This is the only possible under promotion that can give a check
+            // not already included in the queen-promotion. It is not sure that
+            // the promoted knight will give check, but it doesn't worth to verify.
+            if (Type == CHECK)
+                (*mlist++).move = make_promotion_move(to - TTDELTA_NE, to, KNIGHT);
         }
     }
 
-    // Capturing non-promotions
-    SERIALIZE_MOVES_D(b1, -TTDELTA_NE);
+    // Serialize standard captures
+    if (Type == CAPTURE || Type == EVASION)
+        SERIALIZE_MOVES_D(b1, -TTDELTA_NE);
+
     return mlist;
   }
 
   template<Color Us, MoveType Type>
-  MoveStack* generate_pawn_moves(const Position& pos, MoveStack* mlist, Bitboard dcp,
-                                 Square ksq, Bitboard blockSquares) {
+  MoveStack* generate_pawn_moves(const Position& pos, MoveStack* mlist, Bitboard target, Square ksq) {
 
     // Calculate our parametrized parameters at compile time
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
-    const SquareDelta TDELTA_NE = (Us == WHITE ? DELTA_NE : DELTA_SE);
-    const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
     const SquareDelta TDELTA_N = (Us == WHITE ? DELTA_N : DELTA_S);
 
-    Bitboard b1, b2, dcPawns1, dcPawns2;
     Square to;
-    Bitboard pawns = (Type == EVASION ? pos.pieces(PAWN, Us) & ~dcp : pos.pieces(PAWN, Us));
+    Bitboard b1, b2, enemyPieces, emptySquares;
+    Bitboard pawns = pos.pieces(PAWN, Us);
     bool possiblePromotion = pawns & TRank7BB;
 
-    if (Type == CAPTURE)
+    // Standard captures and capturing promotions and underpromotions
+    if (Type == CAPTURE || Type == EVASION || possiblePromotion)
     {
-        // Standard captures and capturing promotions in both directions
-        Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
-        mlist = generate_pawn_diagonal_captures<Us, DELTA_NE>(mlist, pawns, enemyPieces, possiblePromotion);
-        mlist = generate_pawn_diagonal_captures<Us, DELTA_NW>(mlist, pawns, enemyPieces, possiblePromotion);
+        enemyPieces = (Type == CAPTURE ? target : pos.pieces_of_color(opposite_color(Us)));
+
+        if (Type == EVASION)
+            enemyPieces &= target; // Capture only the checker piece
+
+        mlist = generate_pawn_captures<Us, Type, DELTA_NE>(mlist, pawns, enemyPieces, possiblePromotion);
+        mlist = generate_pawn_captures<Us, Type, DELTA_NW>(mlist, pawns, enemyPieces, possiblePromotion);
     }
 
+    // Non-capturing promotions and underpromotions
     if (possiblePromotion)
     {
-        // When generating checks consider under-promotion moves (both captures
-        // and non captures) only if can give a discovery check. Note that dcp
-        // is dc bitboard or pinned bitboard when Type == EVASION.
-        Bitboard pp = (Type == CHECK ? pawns & dcp : pawns);
+        b1 = move_pawns<Us, DELTA_N>(pawns) & TRank8BB & pos.empty_squares();
 
-        if (Type != EVASION && Type != CAPTURE)
-        {
-            Bitboard enemyPieces = pos.pieces_of_color(opposite_color(Us));
-
-            // Underpromotion captures in the a1-h8 (a8-h1 for black) direction
-            b1 = move_pawns<Us, DELTA_NE>(pp) & ~FileABB & enemyPieces & TRank8BB;
-            while (b1)
-            {
-                to = pop_1st_bit(&b1);
-                (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, ROOK);
-                (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, BISHOP);
-                (*mlist++).move = make_promotion_move(to - TDELTA_NE, to, KNIGHT);
-            }
-
-            // Underpromotion captures in the h1-a8 (h8-a1 for black) direction
-            b1 = move_pawns<Us, DELTA_NW>(pp) & ~FileHBB & enemyPieces & TRank8BB;
-            while (b1)
-            {
-                to = pop_1st_bit(&b1);
-                (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, ROOK);
-                (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, BISHOP);
-                (*mlist++).move = make_promotion_move(to - TDELTA_NW, to, KNIGHT);
-            }
-        }
-
-        // Underpromotion pawn pushes. Also queen promotions for evasions and captures.
-        b1 = move_pawns<Us, DELTA_N>(pp) & TRank8BB;
-        b1 &= (Type == EVASION ? blockSquares : pos.empty_squares());
+        if (Type == EVASION)
+            b1 &= target; // Only blocking promotion pushes
 
         while (b1)
         {
             to = pop_1st_bit(&b1);
-            if (Type == EVASION || Type == CAPTURE)
+
+            if (Type == CAPTURE || Type == EVASION)
                 (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
 
-            if (Type != CAPTURE)
+            if (Type == NON_CAPTURE || Type == EVASION)
             {
                 (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
                 (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
                 (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
             }
+
+            // This is the only possible under promotion that can give a check
+            // not already included in the queen-promotion.
+            if (Type == CHECK && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(Them)))
+                (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
         }
     }
 
+    // Standard pawn pushes and double pushes
     if (Type != CAPTURE)
     {
-        Bitboard emptySquares = pos.empty_squares();
-        dcPawns1 = dcPawns2 = EmptyBoardBB;
-        if (Type == CHECK && (pawns & dcp))
-        {
-            // Pawn moves which gives discovered check. This is possible only if the
-            // pawn is not on the same file as the enemy king, because we don't
-            // generate captures.
-            dcPawns1 = move_pawns<Us, DELTA_N>(pawns & dcp & ~file_bb(ksq)) & emptySquares & ~TRank8BB;
-            dcPawns2 = move_pawns<Us, DELTA_N>(dcPawns1 & TRank3BB) & emptySquares;
-        }
+        emptySquares = (Type == NON_CAPTURE ? target : pos.empty_squares());
 
-        // Single pawn pushes
+        // Single and double pawn pushes
         b1 = move_pawns<Us, DELTA_N>(pawns) & emptySquares & ~TRank8BB;
-        b2 = (Type == CHECK ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns1 :
-             (Type == EVASION ? b1 & blockSquares : b1));
-        SERIALIZE_MOVES_D(b2, -TDELTA_N);
+        b2 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
 
-        // Double pawn pushes
-        b1 = move_pawns<Us, DELTA_N>(b1 & TRank3BB) & emptySquares;
-        b2 = (Type == CHECK ? (b1 & pos.attacks_from<PAWN>(ksq, Them)) | dcPawns2 :
-             (Type == EVASION ? b1 & blockSquares : b1));
+        // Filter out unwanted pushes according to the move type
+        if (Type == EVASION)
+        {
+            b1 &= target;
+            b2 &= target;
+        }
+        else if (Type == CHECK)
+        {
+            // Pawn moves which give direct cheks
+            b1 &= pos.attacks_from<PAWN>(ksq, Them);
+            b2 &= pos.attacks_from<PAWN>(ksq, Them);
+
+            // Pawn moves which gives discovered check. This is possible only if
+            // the pawn is not on the same file as the enemy king, because we
+            //  don't generate captures.
+            if (pawns & target) // For CHECK type target is dc bitboard
+            {
+                Bitboard dc1 = move_pawns<Us, DELTA_N>(pawns & target & ~file_bb(ksq)) & emptySquares & ~TRank8BB;
+                Bitboard dc2 = move_pawns<Us, DELTA_N>(dc1 & TRank3BB) & emptySquares;
+
+                b1 |= dc1;
+                b2 |= dc2;
+            }
+        }
+        SERIALIZE_MOVES_D(b1, -TDELTA_N);
         SERIALIZE_MOVES_D(b2, -TDELTA_N -TDELTA_N);
     }
-    else if (pos.ep_square() != SQ_NONE) // En passant captures
+
+    // En passant captures
+    if ((Type == CAPTURE || Type == EVASION) && pos.ep_square() != SQ_NONE)
     {
         assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
         assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
 
+        // An en passant capture can be an evasion only if the checking piece
+        // is the double pushed pawn and so is in the target. Otherwise this
+        // is a discovery check and we are forced to do otherwise.
+        if (Type == EVASION && !bit_is_set(target, pos.ep_square() - TDELTA_N))
+            return mlist;
+
         b1 = pawns & pos.attacks_from<PAWN>(pos.ep_square(), Them);
+
         assert(b1 != EmptyBoardBB);
 
         while (b1)
@@ -664,7 +601,7 @@ namespace {
   }
 
   template<PieceType Piece>
-  MoveStack* generate_discovered_checks(const Position& pos, Square from, MoveStack* mlist) {
+  MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from) {
 
     assert(Piece != QUEEN);
 

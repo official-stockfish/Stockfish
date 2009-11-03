@@ -142,13 +142,14 @@ Move move_from_san(const Position& pos, const string& movestr) {
   assert(pos.is_ok());
 
   MovePicker mp = MovePicker(pos, MOVE_NONE, OnePly, H);
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
   // Castling moves
   if (movestr == "O-O-O" || movestr == "O-O-O+")
   {
       Move m;
       while ((m = mp.get_next_move()) != MOVE_NONE)
-          if (move_is_long_castle(m) && pos.pl_move_is_legal(m))
+          if (move_is_long_castle(m) && pos.pl_move_is_legal(m, pinned))
               return m;
 
       return MOVE_NONE;
@@ -157,7 +158,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
   {
       Move m;
       while ((m = mp.get_next_move()) != MOVE_NONE)
-          if (move_is_short_castle(m) && pos.pl_move_is_legal(m))
+          if (move_is_short_castle(m) && pos.pl_move_is_legal(m, pinned))
               return m;
 
     return MOVE_NONE;
@@ -367,11 +368,12 @@ namespace {
         return AMBIGUITY_NONE;
 
     MovePicker mp = MovePicker(pos, MOVE_NONE, OnePly, H);
+    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
     Move mv, moveList[8];
 
     int n = 0;
     while ((mv = mp.get_next_move()) != MOVE_NONE)
-        if (move_to(mv) == to && pos.piece_on(move_from(mv)) == pc && pos.pl_move_is_legal(mv))
+        if (move_to(mv) == to && pos.piece_on(move_from(mv)) == pc && pos.pl_move_is_legal(mv, pinned))
             moveList[n++] = mv;
 
     if (n == 1)

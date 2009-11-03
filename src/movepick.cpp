@@ -144,7 +144,7 @@ void MovePicker::go_next_phase() {
 
   case PH_EVASIONS:
       assert(pos.is_check());
-      lastMove = generate_evasions(pos, moves, pinned);
+      lastMove = generate_evasions(pos, moves);
       score_evasions();
       return;
 

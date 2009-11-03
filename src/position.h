@@ -202,7 +202,6 @@ public:
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
 
   // Properties of moves
-  bool pl_move_is_legal(Move m) const;
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool move_is_check(Move m) const;
   bool move_is_check(Move m, Bitboard dcCandidates) const;
