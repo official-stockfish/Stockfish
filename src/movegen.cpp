@@ -143,13 +143,14 @@ MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
 /// generate_non_capture_checks() generates all pseudo-legal non-captures and knight
 /// underpromotions that give check. Returns a pointer to the end of the move list.
 
-MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist, Bitboard dc) {
+MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(opposite_color(us));
+  Bitboard dc = pos.discovered_check_candidates(us);
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
 

@@ -54,7 +54,6 @@ public:
   Move get_next_move();
   Move get_next_move(Lock& lock);
   int number_of_evasions() const;
-  Bitboard discovered_check_candidates() const;
 
 private:
   void score_captures();
@@ -69,7 +68,7 @@ private:
   int phase;
   const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastBadCapture;
-  Bitboard dc, pinned;
+  Bitboard pinned;
   MoveStack moves[256], badCaptures[64];
 };
 
@@ -86,14 +85,6 @@ private:
 
 inline int MovePicker::number_of_evasions() const {
   return int(lastMove - moves);
-}
-
-/// MovePicker::discovered_check_candidates() returns a bitboard containing
-/// all pieces which can possibly give discovered check. This bitboard is
-/// computed by the constructor function.
-
-inline Bitboard MovePicker::discovered_check_candidates() const {
-  return dc;
 }
 
 #endif // !defined(MOVEPICK_H_INCLUDED)

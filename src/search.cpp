@@ -334,7 +334,7 @@ int perft(Position& pos, Depth depth)
 {
     Move move;
     MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
-    Bitboard dcCandidates = mp.discovered_check_candidates();
+    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
     int sum = 0;
 
     // If we are at the last ply we don't need to do and undo
@@ -1110,7 +1110,7 @@ namespace {
     bool mateThreat = pos.has_mate_threat(opposite_color(us));
 
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
-    Bitboard dcCandidates = mp.discovered_check_candidates();
+    Bitboard dcCandidates = pos.discovered_check_candidates(us);
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
@@ -1363,7 +1363,8 @@ namespace {
     Move move, movesSearched[256];
     int moveCount = 0;
     Value value, bestValue = -VALUE_INFINITE;
-    Bitboard dcCandidates = mp.discovered_check_candidates();
+    Color us = pos.side_to_move();
+    Bitboard dcCandidates = pos.discovered_check_candidates(us);
     Value futilityValue = VALUE_NONE;
     bool useFutilityPruning =   depth < SelectiveDepth
                              && !isCheck;
@@ -1583,8 +1584,8 @@ namespace {
     MovePicker mp = MovePicker(pos, ttMove, depth, H);
     Move move;
     int moveCount = 0;
-    Bitboard dcCandidates = mp.discovered_check_candidates();
     Color us = pos.side_to_move();
+    Bitboard dcCandidates = pos.discovered_check_candidates(us);
     bool enoughMaterial = pos.non_pawn_material(us) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff

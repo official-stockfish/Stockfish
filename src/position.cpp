@@ -1718,11 +1718,10 @@ bool Position::has_mate_threat(Color c) {
 
   MoveStack mlist[120];
   bool result = false;
-  Bitboard dc = discovered_check_candidates(sideToMove);
   Bitboard pinned = pinned_pieces(sideToMove);
 
   // Generate pseudo-legal non-capture and capture check moves
-  MoveStack* last = generate_non_capture_checks(*this, mlist, dc);
+  MoveStack* last = generate_non_capture_checks(*this, mlist);
   last = generate_captures(*this, last);
 
   // Loop through the moves, and see if one of them is mate

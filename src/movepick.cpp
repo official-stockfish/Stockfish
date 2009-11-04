@@ -86,10 +86,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   } else
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
 
-  Color us = pos.side_to_move();
-
-  dc = p.discovered_check_candidates(us);
-  pinned = p.pinned_pieces(us);
+  pinned = p.pinned_pieces(pos.side_to_move());
 
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
@@ -155,7 +152,7 @@ void MovePicker::go_next_phase() {
 
   case PH_QCHECKS:
       // Perhaps we should order moves move here?  FIXME
-      lastMove = generate_non_capture_checks(pos, moves, dc);
+      lastMove = generate_non_capture_checks(pos, moves);
       return;
 
   case PH_STOP:
