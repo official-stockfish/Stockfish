@@ -332,13 +332,18 @@ namespace {
 
 int perft(Position& pos, Depth depth)
 {
-    if (depth <= Depth(0)) // Replace with '<' to test also qsearch
-      return 1;
-
     Move move;
     MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
     Bitboard dcCandidates = mp.discovered_check_candidates();
     int sum = 0;
+
+    // If we are at the last ply we don't need to do and undo
+    // the moves, just to count them.
+    if (depth <= OnePly) // Replace with '<' to test also qsearch
+    {
+        while ((move = mp.get_next_move()) != MOVE_NONE) sum++;
+        return sum;
+    }
 
     // Loop through all legal moves
     while ((move = mp.get_next_move()) != MOVE_NONE)
