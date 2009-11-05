@@ -52,7 +52,7 @@ namespace {
 
   CACHE_LINE_ALIGNMENT
   const uint8_t MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const uint8_t EvasionsPhaseTable[] = { PH_EVASIONS, PH_STOP};
+  const uint8_t EvasionsPhaseTable[] = { PH_TT_MOVES, PH_EVASIONS, PH_STOP};
   const uint8_t QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
   const uint8_t QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
 }
@@ -77,7 +77,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   finished = false;
   lastBadCapture = badCaptures;
 
-  if (ss)
+  if (ss && !p.is_check())
   {
       ttMoves[1].move = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
       searchTT |= ttMoves[1].move;
@@ -91,13 +91,13 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
   else if (d > Depth(0))
-      phasePtr = MainSearchPhaseTable + !searchTT;
+      phasePtr = MainSearchPhaseTable;
   else if (d == Depth(0))
-      phasePtr = QsearchWithChecksPhaseTable + !searchTT;
+      phasePtr = QsearchWithChecksPhaseTable;
   else
-      phasePtr = QsearchWithoutChecksPhaseTable + !searchTT;
+      phasePtr = QsearchWithoutChecksPhaseTable;
 
-  phasePtr--;
+  phasePtr += !searchTT - 1;
   go_next_phase();
 }
 
@@ -226,20 +226,17 @@ void MovePicker::score_noncaptures() {
 }
 
 void MovePicker::score_evasions() {
-  // Always try ttMove as first. Then try good captures ordered
-  // by MVV/LVA, then non-captures if destination square is not
-  // under attack, ordered by history value, and at the end
-  // bad-captures and non-captures with a negative SEE. This
-  // last group is ordered by the SEE score.
+  // Try good captures ordered by MVV/LVA, then non-captures if
+  // destination square is not under attack, ordered by history
+  // value, and at the end bad-captures and non-captures with a
+  // negative SEE. This last group is ordered by the SEE score.
   Move m;
   int seeScore;
 
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
-      if (m == ttMoves[0].move)
-          cur->score = 2 * HistoryMax;
-      else if ((seeScore = pos.see_sign(m)) < 0)
+      if ((seeScore = pos.see_sign(m)) < 0)
           cur->score = seeScore;
       else if (pos.move_is_capture(m))
           cur->score =  pos.midgame_value_of_piece_on(move_to(m))
@@ -256,9 +253,6 @@ void MovePicker::score_evasions() {
 /// care not to return the tt move if has already been searched previously.
 
 Move MovePicker::get_next_move() {
-
-  assert(!pos.is_check() || *phasePtr == PH_EVASIONS || *phasePtr == PH_STOP);
-  assert( pos.is_check() || *phasePtr != PH_EVASIONS);
 
   Move move;
 
@@ -320,11 +314,6 @@ Move MovePicker::get_next_move() {
               return move;
 
           case PH_EVASIONS:
-              move = pick_best(curMove++, lastMove).move;
-              if (pos.pl_move_is_legal(move, pinned))
-                  return move;
-              break;
-
           case PH_QCAPTURES:
               move = pick_best(curMove++, lastMove).move;
               if (   move != ttMoves[0].move
