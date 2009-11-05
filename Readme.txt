@@ -52,9 +52,9 @@ UCI parameter "Book File".
 
 On Unix-like systems, it should usually be possible to compile
 Stockfish directly from the source code with the included Makefile.
-The exception is computer with big-endian CPUs, like PowerPC
-Macintoshes. Some of the bitboard routines in the current version of
-Stockfish are endianness-sensitive, and won't work on a big-endian CPU.
+
+For big-endian machines like Power PC you need to enable the proper
+flag changing from -DNBIGENDIAN to -DBIGENDIAN in the Makefile.
 
 Stockfish has POPCNT instruction runtime detection and support. This can
 give an extra speed on Core i7 or similar systems. To enable this feature
