@@ -1062,6 +1062,18 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
+    Move movesSearched[256];
+    EvalInfo ei;
+    StateInfo st;
+    Bitboard dcCandidates;
+    const TTEntry* tte;
+    Move ttMove, move;
+    Depth ext, newDepth;
+    Value oldAlpha, value;
+    bool isCheck, mateThreat, singleReply, moveIsCheck, captureOrPromotion, dangerous;
+    int moveCount = 0;
+    Value bestValue = -VALUE_INFINITE;
+
     if (depth < OnePly)
         return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
 
@@ -1076,13 +1088,11 @@ namespace {
     if (pos.is_draw())
         return VALUE_DRAW;
 
-    EvalInfo ei;
-
     if (ply >= PLY_MAX - 1)
         return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Mate distance pruning
-    Value oldAlpha = alpha;
+    oldAlpha = alpha;
     alpha = Max(value_mated_in(ply), alpha);
     beta = Min(value_mate_in(ply+1), beta);
     if (alpha >= beta)
@@ -1090,8 +1100,8 @@ namespace {
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
-    const TTEntry* tte = TT.retrieve(pos.get_key());
-    Move ttMove = (tte ? tte->move() : MOVE_NONE);
+    tte = TT.retrieve(pos.get_key());
+    ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Go with internal iterative deepening if we don't have a TT move
     if (UseIIDAtPVNodes && ttMove == MOVE_NONE && depth >= 5*OnePly)
@@ -1102,15 +1112,10 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    Move move, movesSearched[256];
-    int moveCount = 0;
-    Value value, bestValue = -VALUE_INFINITE;
-    Color us = pos.side_to_move();
-    bool isCheck = pos.is_check();
-    bool mateThreat = pos.has_mate_threat(opposite_color(us));
-
+    isCheck = pos.is_check();
+    mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
+    dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
-    Bitboard dcCandidates = pos.discovered_check_candidates(us);
 
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
@@ -1120,19 +1125,17 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool singleReply = (isCheck && mp.number_of_evasions() == 1);
-      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
+      singleReply = (isCheck && mp.number_of_evasions() == 1);
+      moveIsCheck = pos.move_is_check(move, dcCandidates);
+      captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
-      bool dangerous;
-      Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
-      Depth newDepth = depth - OnePly + ext;
+      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+      newDepth = depth - OnePly + ext;
 
       // Make and search the move
-      StateInfo st;
       pos.do_move(move, st, dcCandidates);
 
       if (moveCount == 1) // The first move in list is the PV
@@ -1227,13 +1230,13 @@ namespace {
     else if (bestValue >= beta)
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
-        Move m = ss[ply].pv[ply];
-        if (!pos.move_is_capture_or_promotion(m))
+        move = ss[ply].pv[ply];
+        if (!pos.move_is_capture_or_promotion(move))
         {
-            update_history(pos, m, depth, movesSearched, moveCount);
-            update_killers(m, ss[ply]);
+            update_history(pos, move, depth, movesSearched, moveCount);
+            update_killers(move, ss[ply]);
         }
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
     }
     else
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
@@ -1251,6 +1254,19 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
+    Move movesSearched[256];
+    EvalInfo ei;
+    StateInfo st;
+    Bitboard dcCandidates;
+    const TTEntry* tte;
+    Move ttMove, move;
+    Depth ext, newDepth;
+    Value approximateEval, nullValue, value, futilityValue;
+    bool isCheck, useFutilityPruning, singleReply, moveIsCheck, captureOrPromotion, dangerous;
+    bool mateThreat = false;
+    int moveCount = 0;
+    Value bestValue = -VALUE_INFINITE;
+
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
 
@@ -1265,8 +1281,6 @@ namespace {
     if (pos.is_draw())
         return VALUE_DRAW;
 
-    EvalInfo ei;
-
     if (ply >= PLY_MAX - 1)
         return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
@@ -1278,8 +1292,8 @@ namespace {
         return beta - 1;
 
     // Transposition table lookup
-    const TTEntry* tte = TT.retrieve(pos.get_key());
-    Move ttMove = (tte ? tte->move() : MOVE_NONE);
+    tte = TT.retrieve(pos.get_key());
+    ttMove = (tte ? tte->move() : MOVE_NONE);
 
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
     {
@@ -1287,9 +1301,8 @@ namespace {
         return value_from_tt(tte->value(), ply);
     }
 
-    Value approximateEval = quick_evaluate(pos);
-    bool mateThreat = false;
-    bool isCheck = pos.is_check();
+    approximateEval = quick_evaluate(pos);
+    isCheck = pos.is_check();
 
     // Null move search
     if (    allowNullmove
@@ -1301,11 +1314,10 @@ namespace {
     {
         ss[ply].currentMove = MOVE_NULL;
 
-        StateInfo st;
         pos.do_null_move(st);
         int R = (depth >= 5 * OnePly ? 4 : 3); // Null move dynamic reduction
 
-        Value nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
+        nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
 
         pos.undo_null_move();
 
@@ -1359,15 +1371,9 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves.
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
-
-    Move move, movesSearched[256];
-    int moveCount = 0;
-    Value value, bestValue = -VALUE_INFINITE;
-    Color us = pos.side_to_move();
-    Bitboard dcCandidates = pos.discovered_check_candidates(us);
-    Value futilityValue = VALUE_NONE;
-    bool useFutilityPruning =   depth < SelectiveDepth
-                             && !isCheck;
+    dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
+    futilityValue = VALUE_NONE;
+    useFutilityPruning = depth < SelectiveDepth && !isCheck;
 
     // Avoid calling evaluate() if we already have the score in TT
     if (tte && (tte->type() & VALUE_TYPE_EVAL))
@@ -1381,16 +1387,15 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool singleReply = (isCheck && mp.number_of_evasions() == 1);
-      bool moveIsCheck = pos.move_is_check(move, dcCandidates);
-      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
+      singleReply = (isCheck && mp.number_of_evasions() == 1);
+      moveIsCheck = pos.move_is_check(move, dcCandidates);
+      captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
-      bool dangerous;
-      Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
-      Depth newDepth = depth - OnePly + ext;
+      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+      newDepth = depth - OnePly + ext;
 
       // Futility pruning
       if (    useFutilityPruning
@@ -1420,7 +1425,6 @@ namespace {
       }
 
       // Make and search the move
-      StateInfo st;
       pos.do_move(move, st, dcCandidates);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
@@ -1486,13 +1490,13 @@ namespace {
     else
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
-        Move m = ss[ply].pv[ply];
-        if (!pos.move_is_capture_or_promotion(m))
+        move = ss[ply].pv[ply];
+        if (!pos.move_is_capture_or_promotion(move))
         {
-            update_history(pos, m, depth, movesSearched, moveCount);
-            update_killers(m, ss[ply]);
+            update_history(pos, move, depth, movesSearched, moveCount);
+            update_killers(move, ss[ply]);
         }
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, m);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -1514,6 +1518,16 @@ namespace {
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < ActiveThreads);
 
+    EvalInfo ei;
+    StateInfo st;
+    Bitboard dcCandidates;
+    Move ttMove, move;
+    Value staticValue, bestValue, value, futilityValue;
+    bool isCheck, enoughMaterial;
+    const TTEntry* tte = NULL;
+    int moveCount = 0;
+    bool pvNode = (beta - alpha != 1);
+
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
     init_node(ss, ply, threadID);
@@ -1526,8 +1540,6 @@ namespace {
         return VALUE_DRAW;
 
     // Transposition table lookup, only when not in PV
-    TTEntry* tte = NULL;
-    bool pvNode = (beta - alpha != 1);
     if (!pvNode)
     {
         tte = TT.retrieve(pos.get_key());
@@ -1538,12 +1550,10 @@ namespace {
             return value_from_tt(tte->value(), ply);
         }
     }
-    Move ttMove = (tte ? tte->move() : MOVE_NONE);
+    ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Evaluate the position statically
-    EvalInfo ei;
-    Value staticValue;
-    bool isCheck = pos.is_check();
+    isCheck = pos.is_check();
     ei.futilityMargin = Value(0); // Manually initialize futilityMargin
 
     if (isCheck)
@@ -1564,7 +1574,7 @@ namespace {
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.
-    Value bestValue = staticValue;
+    bestValue = staticValue;
 
     if (bestValue >= beta)
     {
@@ -1582,11 +1592,8 @@ namespace {
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
     MovePicker mp = MovePicker(pos, ttMove, depth, H);
-    Move move;
-    int moveCount = 0;
-    Color us = pos.side_to_move();
-    Bitboard dcCandidates = pos.discovered_check_candidates(us);
-    bool enoughMaterial = pos.non_pawn_material(us) > RookValueMidgame;
+    dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
+    enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
@@ -1606,12 +1613,12 @@ namespace {
           && !pos.move_is_check(move, dcCandidates)
           && !pos.move_is_passed_pawn_push(move))
       {
-          Value futilityValue = staticValue
-                              + Max(pos.midgame_value_of_piece_on(move_to(move)),
-                                    pos.endgame_value_of_piece_on(move_to(move)))
-                              + (move_is_ep(move) ? PawnValueEndgame : Value(0))
-                              + FutilityMarginQS
-                              + ei.futilityMargin;
+          futilityValue =  staticValue
+                         + Max(pos.midgame_value_of_piece_on(move_to(move)),
+                               pos.endgame_value_of_piece_on(move_to(move)))
+                         + (move_is_ep(move) ? PawnValueEndgame : Value(0))
+                         + FutilityMarginQS
+                         + ei.futilityMargin;
 
           if (futilityValue < alpha)
           {
@@ -1628,10 +1635,9 @@ namespace {
           &&  pos.see_sign(move) < 0)
           continue;
 
-      // Make and search the move.
-      StateInfo st;
+      // Make and search the move
       pos.do_move(move, st, dcCandidates);
-      Value value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
+      value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -1656,7 +1662,7 @@ namespace {
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     // Update transposition table
-    Move m = ss[ply].pv[ply];
+    move = ss[ply].pv[ply];
     if (!pvNode)
     {
         // If bestValue isn't changed it means it is still the static evaluation of
@@ -1667,12 +1673,12 @@ namespace {
         if (bestValue < beta)
             TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
         else
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, m);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move);
     }
 
     // Update killers only for good check moves
-    if (alpha >= beta && !pos.move_is_capture_or_promotion(m))
-        update_killers(m, ss[ply]);
+    if (alpha >= beta && !pos.move_is_capture_or_promotion(move))
+        update_killers(move, ss[ply]);
 
     return bestValue;
   }
