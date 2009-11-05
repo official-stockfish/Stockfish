@@ -511,6 +511,32 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 }
 
 
+/// Position::pl_move_is_evasion() tests whether a pseudo-legal move is a legal evasion
+
+bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
+{
+  assert(pos.is_check());
+
+  Color us = side_to_move();
+  Square from = move_from(m);
+  Square to = move_to(m);
+
+  // King moves and en-passant captures are verified in pl_move_is_legal()
+  if (type_of_piece_on(from) == KING || move_is_ep(m))
+      return pl_move_is_legal(m, pinned);
+
+  Bitboard target = checkers();
+  Square checksq = pop_1st_bit(&target);
+
+  if (target) // double check ?
+      return false;
+
+  // Our move must be a blocking evasion or a capture of the checking piece
+  target = squares_between(checksq, king_square(us)) | checkers();
+  return bit_is_set(target, to) && pl_move_is_legal(m, pinned);
+}
+
+
 /// Position::move_is_check() tests whether a pseudo-legal move is a check
 
 bool Position::move_is_check(Move m) const {

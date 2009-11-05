@@ -296,12 +296,10 @@ bool move_is_legal(const Position& pos, const Move m) {
 
 /// Fast version of move_is_legal() that takes a position a move and a
 /// bitboard of pinned pieces as input, and tests whether the move is legal.
-/// This version must only be used when the side to move is not in check.
 
 bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
   assert(pos.is_ok());
-  assert(!pos.is_check());
   assert(move_is_ok(m));
   assert(pinned == pos.pinned_pieces(pos.side_to_move()));
 
@@ -383,13 +381,13 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
           return false;
       }
       // The move is pseudo-legal, check if it is also legal
-      return pos.pl_move_is_legal(m, pinned);
+      return pos.is_check() ? pos.pl_move_is_evasion(m, pinned) : pos.pl_move_is_legal(m, pinned);
   }
 
   // Luckly we can handle all the other pieces in one go
-  return (   bit_is_set(pos.attacks_from(pc, from), to)
-          && pos.pl_move_is_legal(m, pinned)
-          && !move_is_promotion(m));
+  return    bit_is_set(pos.attacks_from(pc, from), to)
+        && (pos.is_check() ? pos.pl_move_is_evasion(m, pinned) : pos.pl_move_is_legal(m, pinned))
+        && !move_is_promotion(m);
 }
 
 
