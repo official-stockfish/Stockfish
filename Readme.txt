@@ -58,8 +58,7 @@ flag changing from -DNBIGENDIAN to -DBIGENDIAN in the Makefile.
 
 Stockfish has POPCNT instruction runtime detection and support. This can
 give an extra speed on Core i7 or similar systems. To enable this feature
-(disabled by default) simply uncomment #define USE_POPCNT in bitcount.h
-before to compile.
+compile with 'make icc-profile-popcnt'
 
 On 64 bit Unix-like systems the 'bsfq' assembly instruction will be used
 for bit counting. Detection is automatic at compile time, but in case you

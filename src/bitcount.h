@@ -22,19 +22,12 @@
 #if !defined(BITCOUNT_H_INCLUDED)
 #define BITCOUNT_H_INCLUDED
 
-// To enable POPCNT support uncomment USE_POPCNT define. For PGO compile on a Core i7
-// you may want to collect profile data first with USE_POPCNT disabled and then, in a
-// second profiling session, with USE_POPCNT enabled so to exercise both paths. Don't
-// forget to leave USE_POPCNT enabled for the final optimized compile though ;-)
-
-//#define USE_POPCNT
-
-
 #include "types.h"
 
-// Select type of intrinsic bit count instruction to use
+// Select type of intrinsic bit count instruction to use, see
+// README.txt on how to pgo compile with POPCNT support.
 
-#if defined(__INTEL_COMPILER) && defined(IS_64BIT) && defined(USE_POPCNT) // Intel compiler
+#if defined(__INTEL_COMPILER) && defined(USE_POPCNT) // Intel compiler
 
 #include <nmmintrin.h>
 
@@ -45,17 +38,9 @@ inline bool cpu_has_popcnt() {
   return (CPUInfo[2] >> 23) & 1;
 }
 
-// Define a dummy template to workaround a compile error if _mm_popcnt_u64() is not defined.
-//
-// If _mm_popcnt_u64() is defined in <nmmintrin.h> it will be choosen first due to
-// C++ overload rules that always prefer a function to a template with the same name.
-// If not, we avoid a compile error and because cpu_has_popcnt() should return false,
-// our templetized _mm_popcnt_u64() is never called anyway.
-template<typename T> inline unsigned _mm_popcnt_u64(T) { return 0; } // Is never called
-
 #define POPCNT_INTRINSIC(x) _mm_popcnt_u64(x)
 
-#elif defined(_MSC_VER) && defined(IS_64BIT) && defined(USE_POPCNT) // Microsoft compiler
+#elif defined(_MSC_VER) && defined(USE_POPCNT) // Microsoft compiler
 
 #include <intrin.h>
 
@@ -65,9 +50,6 @@ inline bool cpu_has_popcnt() {
   __cpuid(CPUInfo, 0x00000001);
   return (CPUInfo[2] >> 23) & 1;
 }
-
-// See comment of _mm_popcnt_u64<>() few lines above for an explanation.
-template<typename T> inline unsigned __popcnt64(T) { return 0; } // Is never called
 
 #define POPCNT_INTRINSIC(x) __popcnt64(x)
 
