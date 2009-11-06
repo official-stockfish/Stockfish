@@ -221,7 +221,7 @@ PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboar
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
   // Initialize pawn storm scores by giving bonuses for open files
-  for (File f = FILE_A; f <= FILE_H; f++)
+  for (f = FILE_A; f <= FILE_H; f++)
       if (!(ourPawns & file_bb(f)))
       {
           pi->ksStormValue[Us] += KStormOpenFileBonus[f];
