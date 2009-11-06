@@ -40,11 +40,11 @@ ICCFLAGS-OSX += -DNDEBUG
 
 
 ### ==========================================================================
-### Enable/disable compile for a big-endian CPU, disabled by default
+### Remove below comments to compile for a big-endian machine
 ### ==========================================================================
-GCCFLAGS += -DNBIGENDIAN
-ICCFLAGS += -DNBIGENDIAN
-ICCFLAGS-OSX += -DNBIGENDIAN
+#GCCFLAGS += -DBIGENDIAN
+#ICCFLAGS += -DBIGENDIAN
+#ICCFLAGS-OSX += -DBIGENDIAN
 
 
 ### ==========================================================================
