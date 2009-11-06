@@ -515,7 +515,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
 bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
 {
-  assert(pos.is_check());
+  assert(is_check());
 
   Color us = side_to_move();
   Square from = move_from(m);
