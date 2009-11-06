@@ -1103,8 +1103,11 @@ namespace {
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    // Go with internal iterative deepening if we don't have a TT move
-    if (UseIIDAtPVNodes && ttMove == MOVE_NONE && depth >= 5*OnePly)
+    // Go with internal iterative deepening if we don't have a TT move or
+    // if search depth is more then 4*OnePly higher then TT move depth.
+    if (   UseIIDAtPVNodes
+        && depth >= 5*OnePly
+        &&(!ttMove || depth > tte->depth() + 4*OnePly))
     {
         search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
         ttMove = ss[ply].pv[ply];
