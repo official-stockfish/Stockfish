@@ -77,6 +77,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   finished = false;
   lastBadCapture = badCaptures;
 
+  pinned = p.pinned_pieces(pos.side_to_move());
+
   if (ss && !p.is_check())
   {
       ttMoves[1].move = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
@@ -85,8 +87,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
       killers[1].move = ss->killers[1];
   } else
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
-
-  pinned = p.pinned_pieces(pos.side_to_move());
 
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;

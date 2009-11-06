@@ -79,7 +79,7 @@ namespace {
   // Templates for non-capture checks generation
 
   template<PieceType Piece>
-  MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from);
+  MoveStack* generate_discovered_checks(const Position&, MoveStack*, Square);
 
   template<PieceType>
   MoveStack* generate_direct_checks(const Position&, MoveStack*, Color, Bitboard, Square);
@@ -148,17 +148,19 @@ MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist) {
   assert(pos.is_ok());
   assert(!pos.is_check());
 
+  Bitboard b, dc;
+  Square from;
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(opposite_color(us));
-  Bitboard dc = pos.discovered_check_candidates(us);
 
   assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
 
   // Discovered non-capture checks
-  Bitboard b = dc;
+  b = dc = pos.discovered_check_candidates(us);
+
   while (b)
   {
-     Square from = pop_1st_bit(&b);
+     from = pop_1st_bit(&b);
      switch (pos.type_of_piece_on(from))
      {
       case PAWN:   /* Will be generated togheter with pawns direct checks */     break;
@@ -187,7 +189,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist) {
   assert(pos.is_ok());
   assert(pos.is_check());
 
-  Bitboard b;
+  Bitboard b, target;
   Square from, checksq;
   int checkersCnt = 0;
   Color us = pos.side_to_move();
@@ -236,7 +238,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist) {
 
   // Find squares where a blocking evasion or a capture of the
   // checker piece is possible.
-  Bitboard target = squares_between(checksq, ksq) | checkers;
+  target = squares_between(checksq, ksq) | checkers;
 
   mlist = generate_piece_moves<PAWN, EVASION>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
@@ -254,26 +256,25 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 
   assert(pos.is_ok());
 
-  MoveStack* last;
+  MoveStack *last, *cur = mlist;
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
   // Generate pseudo-legal moves
   if (pos.is_check())
       last = generate_evasions(pos, mlist);
-  else {
-      last = generate_captures(pos, mlist);
-      last = generate_noncaptures(pos, last);
-  }
+  else
+      last = generate_noncaptures(pos, generate_captures(pos, mlist));
+
   if (pseudoLegal)
       return last;
 
   // Remove illegal moves from the list
-  for (MoveStack* cur = mlist; cur != last; cur++)
-      if (!pos.pl_move_is_legal(cur->move, pinned))
-      {
+  while (cur != last)
+      if (pos.pl_move_is_legal(cur->move, pinned))
+          cur++;
+      else
           cur->move = (--last)->move;
-          cur--;
-      }
+
   return last;
 }
 
@@ -285,8 +286,9 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 bool move_is_legal(const Position& pos, const Move m) {
 
   MoveStack mlist[256];
-  MoveStack* last = generate_moves(pos, mlist, true);
-  for (MoveStack* cur = mlist; cur != last; cur++)
+  MoveStack *cur, *last = generate_moves(pos, mlist, true);
+
+   for (cur = mlist; cur != last; cur++)
       if (cur->move == m)
           return pos.pl_move_is_legal(m, pos.pinned_pieces(pos.side_to_move()));
 
@@ -303,15 +305,15 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   assert(move_is_ok(m));
   assert(pinned == pos.pinned_pieces(pos.side_to_move()));
 
-  // Use a slower but simpler function for uncommon cases
-  if (move_is_ep(m) || move_is_castle(m))
-      return move_is_legal(pos, m);
-
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
   Square from = move_from(m);
   Square to = move_to(m);
   Piece pc = pos.piece_on(from);
+
+  // Use a slower but simpler function for uncommon cases
+  if (move_is_ep(m) || move_is_castle(m))
+      return move_is_legal(pos, m);
 
   // If the from square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
@@ -396,8 +398,8 @@ namespace {
   template<PieceType Piece>
   MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
-    Square from;
     Bitboard b;
+    Square from;
     const Square* ptr = pos.piece_list_begin(us, Piece);
 
     while ((from = *ptr++) != SQ_NONE)
@@ -433,7 +435,7 @@ namespace {
   }
 
   template<Color Us, MoveType Type, SquareDelta Diagonal>
-  inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces, bool possiblePromotion) {
+  inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard enemyPieces) {
 
     // Calculate our parametrized parameters at compile time
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
@@ -442,15 +444,16 @@ namespace {
     const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
     const SquareDelta TTDELTA_NE = (Diagonal == DELTA_NE ? TDELTA_NE : TDELTA_NW);
 
+    Bitboard b1, b2;
     Square to;
 
     // Captures in the a1-h8 (a8-h1 for black) diagonal or in the h1-a8 (h8-a1 for black)
-    Bitboard b1 = move_pawns<Us, Diagonal>(pawns) & ~TFileABB & enemyPieces;
+    b1 = move_pawns<Us, Diagonal>(pawns) & ~TFileABB & enemyPieces;
 
     // Capturing promotions and under-promotions
-    if (possiblePromotion)
+    if (b1 & TRank8BB)
     {
-        Bitboard b2 = b1 & TRank8BB;
+        b2 = b1 & TRank8BB;
         b1 &= ~TRank8BB;
         while (b2)
         {
@@ -494,22 +497,21 @@ namespace {
     Square to;
     Bitboard b1, b2, enemyPieces, emptySquares;
     Bitboard pawns = pos.pieces(PAWN, Us);
-    bool possiblePromotion = pawns & TRank7BB;
 
     // Standard captures and capturing promotions and underpromotions
-    if (Type == CAPTURE || Type == EVASION || possiblePromotion)
+    if (Type == CAPTURE || Type == EVASION || (pawns & TRank7BB))
     {
         enemyPieces = (Type == CAPTURE ? target : pos.pieces_of_color(opposite_color(Us)));
 
         if (Type == EVASION)
             enemyPieces &= target; // Capture only the checker piece
 
-        mlist = generate_pawn_captures<Us, Type, DELTA_NE>(mlist, pawns, enemyPieces, possiblePromotion);
-        mlist = generate_pawn_captures<Us, Type, DELTA_NW>(mlist, pawns, enemyPieces, possiblePromotion);
+        mlist = generate_pawn_captures<Us, Type, DELTA_NE>(mlist, pawns, enemyPieces);
+        mlist = generate_pawn_captures<Us, Type, DELTA_NW>(mlist, pawns, enemyPieces);
     }
 
     // Non-capturing promotions and underpromotions
-    if (possiblePromotion)
+    if (pawns & TRank7BB)
     {
         b1 = move_pawns<Us, DELTA_N>(pawns) & TRank8BB & pos.empty_squares();
 
@@ -619,8 +621,8 @@ namespace {
                                    Bitboard dc, Square ksq) {
     assert(Piece != KING);
 
+    Bitboard checkSqs, b;
     Square from;
-    Bitboard checkSqs;
     const Square* ptr = pos.piece_list_begin(us, Piece);
 
     if ((from = *ptr++) == SQ_NONE)
@@ -638,8 +640,8 @@ namespace {
         if (dc && bit_is_set(dc, from))
             continue;
 
-        Bitboard bb = pos.attacks_from<Piece>(from) & checkSqs;
-        SERIALIZE_MOVES(bb);
+        b = pos.attacks_from<Piece>(from) & checkSqs;
+        SERIALIZE_MOVES(b);
 
     } while ((from = *ptr++) != SQ_NONE);
 
