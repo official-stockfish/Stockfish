@@ -82,6 +82,7 @@ help:
 	@echo "make                >  Default: Compiler = g++"
 	@echo "make icc            >  Compiler = icpc"
 	@echo "make icc-profile    >  Compiler = icpc + automatic pgo-build"
+	@echo "make icc-profile-popcnt >  Compiler = icpc + automatic pgo-build + popcnt-support"
 	@echo "make osx-ppc32      >  PPC-Mac OS X 32 bit. Compiler = g++"
 	@echo "make osx-ppc64      >  PPC-Mac OS X 64 bit. Compiler = g++"
 	@echo "make osx-x86        >  x86-Mac OS X 32 bit. Compiler = g++"
@@ -140,6 +141,40 @@ icc-profile:
 	@touch *.cpp *.h
 	$(MAKE) icc-profile-use
 	@rm -rf profdir bench.txt
+
+icc-profile-make-with-popcnt:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS) -DUSE_POPCNT" \
+	CXXFLAGS+='-prof-gen=srcpos -prof_dir ./profdir' \
+	all
+
+icc-profile-use-with-popcnt:
+	$(MAKE) \
+	CXX='icpc' \
+	CXXFLAGS="$(ICCFLAGS) -DUSE_POPCNT" \
+	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
+	all
+
+icc-profile-popcnt:
+	@rm -rf profdir
+	@mkdir profdir
+	@touch *.cpp *.h
+	$(MAKE) icc-profile-make
+	@echo ""
+	@echo "Running benchmark for pgo-build (popcnt disabled)..."
+	@$(PGOBENCH) > /dev/null
+	@touch *.cpp *.h
+	$(MAKE) icc-profile-make-with-popcnt
+	@echo ""
+	@echo "Running benchmark for pgo-build (popcnt enabled)..."
+	@$(PGOBENCH) > /dev/null
+	@echo "Benchmarks finished. Build final executable now ..."
+	@echo ""
+	@touch *.cpp *.h
+	$(MAKE) icc-profile-use-with-popcnt
+	@rm -rf profdir bench.txt
+
 
 osx-ppc32:
 	$(MAKE) \
