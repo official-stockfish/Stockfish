@@ -46,11 +46,9 @@ namespace {
   const int GrainSize = 8;
 
   // Evaluation weights, initialized from UCI options
-  int WeightMobilityMidgame, WeightMobilityEndgame;
-  int WeightPawnStructureMidgame, WeightPawnStructureEndgame;
-  int WeightPassedPawnsMidgame, WeightPassedPawnsEndgame;
-  int WeightKingSafety[2];
-  int WeightSpace;
+  Score WeightMobility, WeightPawnStructure;
+  Score WeightPassedPawns, WeightSpace;
+  Score WeightKingSafety[2];
 
   // Internal evaluation weights. These are applied on top of the evaluation
   // weights read from UCI parameters. The purpose is to be able to change
@@ -58,15 +56,12 @@ namespace {
   // parameters at 100, which looks prettier.
   //
   // Values modified by Joona Kiiski
-  const int WeightMobilityMidgameInternal      = 248;
-  const int WeightMobilityEndgameInternal      = 271;
-  const int WeightPawnStructureMidgameInternal = 233;
-  const int WeightPawnStructureEndgameInternal = 201;
-  const int WeightPassedPawnsMidgameInternal   = 252;
-  const int WeightPassedPawnsEndgameInternal   = 259;
-  const int WeightKingSafetyInternal           = 247;
-  const int WeightKingOppSafetyInternal        = 259;
-  const int WeightSpaceInternal                = 46;
+  const Score WeightMobilityInternal      = Score(248, 271);
+  const Score WeightPawnStructureInternal = Score(233, 201);
+  const Score WeightPassedPawnsInternal   = Score(252, 259);
+  const Score WeightSpaceInternal         = Score( 46,   0);
+  const Score WeightKingSafetyInternal    = Score(247,   0);
+  const Score WeightKingOppSafetyInternal = Score(259,   0);
 
   // Mobility and outposts bonus modified by Joona Kiiski
   //
@@ -149,8 +144,8 @@ namespace {
   const Score QueenOn7thBonus = Score(27, 54);
 
   // Rooks on open files (modified by Joona Kiiski)
-  const Value RookOpenFileBonus = Value(43);
-  const Value RookHalfOpenFileBonus = Value(19);
+  const Score RookOpenFileBonus = Score(43, 43);
+  const Score RookHalfOpenFileBonus = Score(19, 19);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
   // right to castle.
@@ -158,7 +153,7 @@ namespace {
 
   // Penalty for a bishop on a7/h7 (a2/h2 for black) which is trapped by
   // enemy pawns.
-  const Value TrappedBishopA7H7Penalty = Value(300);
+  const Score TrappedBishopA7H7Penalty = Score(300, 300);
 
   // Bitboard masks for detecting trapped bishops on a7/h7 (a2/h2 for black)
   const Bitboard MaskA7H7[2] = {
@@ -169,7 +164,7 @@ namespace {
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
   // happen in Chess960 games.
-  const Value TrappedBishopA1H1Penalty = Value(100);
+  const Score TrappedBishopA1H1Penalty = Score(100, 100);
 
   // Bitboard masks for detecting trapped bishops on a1/h1 (a8/h8 for black)
   const Bitboard MaskA1H1[2] = {
@@ -215,8 +210,9 @@ namespace {
 
   // ThreatBonus[][] contains bonus according to which piece type
   // attacks which one.
-  const Score ThreatBonus[8][8] = {
   #define Z Score(0, 0)
+
+  const Score ThreatBonus[8][8] = {
       { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
       { Z, S(18,37),       Z, S(37,47), S(55,97), S(55,97), Z, Z }, // KNIGHT attacks
       { Z, S(18,37), S(37,47),       Z, S(55,97), S(55,97), Z, Z }, // BISHOP attacks
@@ -225,18 +221,15 @@ namespace {
       { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
       { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
       { Z, Z, Z, Z, Z, Z, Z, Z }  // not used
-  #undef Z
   };
 
   // ThreatedByPawnPenalty[] contains a penalty according to which piece
   // type is attacked by an enemy pawn.
-  const Value MidgameThreatedByPawnPenalty[8] = {
-    V(0), V(0), V(56), V(56), V(76), V(86), V(0), V(0)
+  const Score ThreatedByPawnPenalty[8] = {
+    Z, Z, S(56, 70), S(56, 70), S(76, 99), S(86, 118), Z, Z
   };
 
-  const Value EndgameThreatedByPawnPenalty[8] = {
-    V(0), V(0), V(70), V(70), V(99), V(118), V(0), V(0)
-  };
+  #undef Z
 
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
@@ -282,9 +275,9 @@ namespace {
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
-  inline Score apply_weight(Score v, int wmg, int weg);
+  inline Score apply_weight(Score v, Score weight);
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
-  int weight_option(const std::string& opt, int weight);
+  Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
   void init_safety();
 }
 
@@ -333,7 +326,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the pawn hash table
   ei.pi = PawnTable[threadID]->get_pawn_info(pos);
-  ei.value += apply_weight(ei.pi->value(), WeightPawnStructureMidgame, WeightPawnStructureEndgame);
+  ei.value += apply_weight(ei.pi->value(), WeightPawnStructure);
 
   // Initialize king attack bitboards and king attack zones for both sides
   ei.attackedBy[WHITE][KING] = pos.attacks_from<KING>(pos.king_square(WHITE));
@@ -398,7 +391,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   }
 
   // Mobility
-  ei.value += apply_weight(ei.mobility, WeightMobilityMidgame, WeightMobilityEndgame);
+  ei.value += apply_weight(ei.mobility, WeightMobility);
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those
@@ -501,15 +494,12 @@ void read_weights(Color us) {
 
   Color them = opposite_color(us);
 
-  WeightMobilityMidgame      = weight_option("Mobility (Middle Game)", WeightMobilityMidgameInternal);
-  WeightMobilityEndgame      = weight_option("Mobility (Endgame)", WeightMobilityEndgameInternal);
-  WeightPawnStructureMidgame = weight_option("Pawn Structure (Middle Game)", WeightPawnStructureMidgameInternal);
-  WeightPawnStructureEndgame = weight_option("Pawn Structure (Endgame)", WeightPawnStructureEndgameInternal);
-  WeightPassedPawnsMidgame   = weight_option("Passed Pawns (Middle Game)", WeightPassedPawnsMidgameInternal);
-  WeightPassedPawnsEndgame   = weight_option("Passed Pawns (Endgame)", WeightPassedPawnsEndgameInternal);
-  WeightSpace                = weight_option("Space", WeightSpaceInternal);
-  WeightKingSafety[us]       = weight_option("Cowardice", WeightKingSafetyInternal);
-  WeightKingSafety[them]     = weight_option("Aggressiveness", WeightKingOppSafetyInternal);
+  WeightMobility         = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightMobilityInternal);
+  WeightPawnStructure    = weight_option("Pawn Structure (Middle Game)", "Pawn Structure (Endgame)", WeightPawnStructureInternal);
+  WeightPassedPawns      = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightPassedPawnsInternal);
+  WeightSpace            = weight_option("Space", "Space", WeightSpaceInternal);
+  WeightKingSafety[us]   = weight_option("Cowardice", "Cowardice", WeightKingSafetyInternal);
+  WeightKingSafety[them] = weight_option("Aggressiveness", "Aggressiveness", WeightKingOppSafetyInternal);
 
   // If running in analysis mode, make sure we use symmetrical king safety. We do this
   // by replacing both WeightKingSafety[us] and WeightKingSafety[them] by their average.
@@ -611,7 +601,7 @@ namespace {
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (bit_is_set(ei.attackedBy[Them][PAWN], s))
-            ei.value -= Sign[Us] * Score(MidgameThreatedByPawnPenalty[Piece], EndgameThreatedByPawnPenalty[Piece]);
+            ei.value -= Sign[Us] * ThreatedByPawnPenalty[Piece];
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
@@ -646,9 +636,9 @@ namespace {
             if (ei.pi->file_is_half_open(Us, f))
             {
                 if (ei.pi->file_is_half_open(Them, f))
-                    ei.value += Sign[Us] * Score(RookOpenFileBonus, RookOpenFileBonus);
+                    ei.value += Sign[Us] * RookOpenFileBonus;
                 else
-                    ei.value += Sign[Us] * Score(RookHalfOpenFileBonus, RookHalfOpenFileBonus);
+                    ei.value += Sign[Us] * RookHalfOpenFileBonus;
             }
 
             // Penalize rooks which are trapped inside a king. Penalize more if
@@ -892,7 +882,7 @@ namespace {
       // that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
-      Score v = apply_weight(Score(SafetyTable[attackUnits], 0), WeightKingSafety[Us], 0);
+      Score v = apply_weight(Score(SafetyTable[attackUnits], 0), WeightKingSafety[Us]);
 
       ei.value -= Sign[Us] * v;
 
@@ -1025,7 +1015,7 @@ namespace {
         }
 
         // Add the scores for this pawn to the middle game and endgame eval.
-        ei.value += Sign[Us] * apply_weight(Score(mbonus, ebonus), WeightPassedPawnsMidgame, WeightPassedPawnsEndgame);
+        ei.value += Sign[Us] * apply_weight(Score(mbonus, ebonus), WeightPassedPawns);
 
     } // while
   }
@@ -1065,7 +1055,7 @@ namespace {
 
         // If one side queens at least three plies before the other, that side wins
         if (movesToGo[winnerSide] <= movesToGo[loserSide] - 3)
-            ei.value += Score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2))));
+            ei.value += Sign[winnerSide] * Score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
 
         // If one side queens one ply before the other and checks the king or attacks
         // the undefended opponent's queening square, that side wins. To avoid cases
@@ -1086,7 +1076,7 @@ namespace {
 
             if (  (b & pos.pieces(KING, loserSide))
                 ||(bit_is_set(b, loserQSq) && !bit_is_set(ei.attacked_by(loserSide), loserQSq)))
-                ei.value += Score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2))));
+                ei.value += Sign[winnerSide] * Score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
         }
     }
   }
@@ -1108,7 +1098,7 @@ namespace {
         && pos.see(s, b6) < 0
         && pos.see(s, b8) < 0)
     {
-        ei.value -= Sign[us] * Score(TrappedBishopA7H7Penalty, TrappedBishopA7H7Penalty);
+        ei.value -= Sign[us] * TrappedBishopA7H7Penalty;
     }
   }
 
@@ -1142,16 +1132,16 @@ namespace {
 
     if (pos.piece_on(b2) == pawn)
     {
-        Value penalty;
+        Score penalty;
 
         if (!pos.square_is_empty(b3))
-            penalty = 2*TrappedBishopA1H1Penalty;
+            penalty = 2 * TrappedBishopA1H1Penalty;
         else if (pos.piece_on(c3) == pawn)
             penalty = TrappedBishopA1H1Penalty;
         else
             penalty = TrappedBishopA1H1Penalty / 2;
 
-        ei.value -= Sign[us] * Score(penalty, penalty);
+        ei.value -= Sign[us] * penalty;
     }
   }
 
@@ -1185,14 +1175,14 @@ namespace {
     int space =  count_1s_max_15<HasPopCnt>(safeSquares)
                + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
-    ei.value += Sign[Us] * apply_weight(Score(space * ei.mi->space_weight(), 0), WeightSpace, 0);
+    ei.value += Sign[Us] * apply_weight(Score(space * ei.mi->space_weight(), 0), WeightSpace);
   }
 
 
   // apply_weight() applies an evaluation weight to a value
 
-  inline Score apply_weight(Score v, int wmg, int weg) {
-      return Score(v.mg() * wmg, v.eg() * weg) / 0x100;
+  inline Score apply_weight(Score v, Score w) {
+      return v * w / 0x100;
   }
 
 
@@ -1214,11 +1204,11 @@ namespace {
 
 
   // weight_option() computes the value of an evaluation weight, by combining
-  // an UCI-configurable weight with an internal weight.
+  // two UCI-configurable weights (midgame and endgame) with an internal weight.
 
-  int weight_option(const std::string& opt, int internalWeight) {
+  Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight) {
 
-    int uciWeight = get_option_value_int(opt);
+    Score uciWeight(get_option_value_int(mgOpt), get_option_value_int(egOpt));
     uciWeight = (uciWeight * 0x100) / 100;
     return (uciWeight * internalWeight) / 0x100;
   }

@@ -83,9 +83,11 @@ private:
     ScoreValue v;
 };
 
+inline Score operator+(Score s1, Score s2) { return Score(s1.mg() + s2.mg(), s1.eg() + s2.eg()); }
 inline Score operator-(Score s1, Score s2) { return Score(s1.mg() - s2.mg(), s1.eg() - s2.eg()); }
+inline Score operator*(Score s1, Score s2) { return Score(s1.mg() * s2.mg(), s1.eg() * s2.eg()); }
 inline Score operator*(int i, Score s) { return Score(i * s.mg(), i * s.eg()); }
-inline Score operator*(Score s, int i) { return s * i; }
+inline Score operator*(Score s, int i) { return Score(s.mg() * i, s.eg() * i); }
 inline Score operator/(Score s, int i) { return Score(s.mg() / i, s.eg() / i); }
 inline Score operator-(Score s) { return Score(-s.mg(), -s.eg()); }
 
