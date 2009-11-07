@@ -55,36 +55,33 @@ enum Value {
 /// Score struct keeps a midgame and an endgame value in a single
 /// ScoreValue 64 bit union.
 
-typedef int score_t;
+enum Score;
 
-struct Score {
+inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
+inline Value mg_value(Score s) { return Value((int(s) + 32768) >> 16); }
 
-    Score() {}
-    Score(score_t mg, score_t eg) { mgv = mg; egv = eg; }
+inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
 
-    Score& operator+=(const Score& s) { mgv += s.mg(); egv += s.eg(); return *this; }
-    Score& operator-=(const Score& s) { mgv -= s.mg(); egv -= s.eg(); return *this; }
-    Score operator+(const Score& s) { return Score(mg() + s.mg(), eg() + s.eg()); }
-    Score operator-(const Score& s) { return Score(mg() - s.mg(), eg() - s.eg()); }
+inline Score operator-(Score s) { return Score(-int(s)); }
+inline Score operator+(Score s1, Score s2) { return Score(int(s1) + int(s2)); }
+inline Score operator-(Score s1, Score s2) { return Score(int(s1) - int(s2)); }
+inline void operator+=(Score& s1, Score s2) { s1 = Score(int(s1) + int(s2)); }
+inline void operator-=(Score& s1, Score s2) { s1 = Score(int(s1) - int(s2)); }
+inline Score operator*(int i, Score s) { return Score(i * int(s)); }
+inline Score operator/(Score s, int i) { return Score(int(s) / i); }
 
-    bool operator==(const Score& s) { return mgv == s.mg() && egv == s.eg(); }
-    bool operator!=(const Score& s) { return !(*this == s); }
+// Only declared but not defined. We don't want to multiply two scores due to
+// a very high risk of overflow. So user should explicitly convert to integer.
+inline Score operator*(Score s1, Score s2);
 
-    Value mg() const { return Value(mgv); }
-    Value eg() const { return Value(egv); }
+// Following are only declared to prevent erroneus instantations
+inline Score operator*(Score s, int i);
+inline Score operator/(Score s1, Score s2);
+inline Score operator+(Score s, int i);
+inline Score operator+(int i, Score s);
+inline Score operator-(Score s, int i);
+inline Score operator-(int i, Score s);
 
-private:
-    score_t mgv;
-    score_t egv;
-};
-
-inline Score operator*(Score s1, Score s2) { return Score(s1.mg() * s2.mg(), s1.eg() * s2.eg()); }
-inline Score operator*(int i, Score s) { return Score(i * s.mg(), i * s.eg()); }
-inline Score operator*(Score s, int i) { return Score(s.mg() * i, s.eg() * i); }
-inline Score operator/(Score s, int i) { return Score(s.mg() / i, s.eg() / i); }
-inline Score operator-(Score s) { return Score(-s.mg(), -s.eg()); }
-
-extern std::ostream& operator<<(std::ostream& os, Score s);
 
 ////
 //// Constants and variables
@@ -131,7 +128,7 @@ const Value PieceValueEndgame[17] = {
 
 /// Bonus for having the side to move (modified by Joona Kiiski)
 
-const Score TempoValue = Score(48, 22);
+const Score TempoValue = make_score(48, 22);
 
 
 ////

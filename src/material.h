@@ -97,7 +97,7 @@ private:
 
 inline Score MaterialInfo::material_value() const {
 
-  return Score(value, value);
+  return make_score(value, value);
 }
 
 

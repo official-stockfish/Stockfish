@@ -56,18 +56,18 @@ namespace {
   // parameters at 100, which looks prettier.
   //
   // Values modified by Joona Kiiski
-  const Score WeightMobilityInternal      = Score(248, 271);
-  const Score WeightPawnStructureInternal = Score(233, 201);
-  const Score WeightPassedPawnsInternal   = Score(252, 259);
-  const Score WeightSpaceInternal         = Score( 46,   0);
-  const Score WeightKingSafetyInternal    = Score(247,   0);
-  const Score WeightKingOppSafetyInternal = Score(259,   0);
+  const Score WeightMobilityInternal      = make_score(248, 271);
+  const Score WeightPawnStructureInternal = make_score(233, 201);
+  const Score WeightPassedPawnsInternal   = make_score(252, 259);
+  const Score WeightSpaceInternal         = make_score( 46,   0);
+  const Score WeightKingSafetyInternal    = make_score(247,   0);
+  const Score WeightKingOppSafetyInternal = make_score(259,   0);
 
   // Mobility and outposts bonus modified by Joona Kiiski
   //
   // Visually better to define tables constants
   typedef Value V;
-  typedef Score S;
+  #define S(mg, eg) make_score(mg, eg)
 
   // Knight mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly piecess.
@@ -140,12 +140,12 @@ namespace {
   const Value UnstoppablePawnValue = Value(0x500);
 
   // Rooks and queens on the 7th rank (modified by Joona Kiiski)
-  const Score RookOn7thBonus  = Score(47, 98);
-  const Score QueenOn7thBonus = Score(27, 54);
+  const Score RookOn7thBonus  = make_score(47, 98);
+  const Score QueenOn7thBonus = make_score(27, 54);
 
   // Rooks on open files (modified by Joona Kiiski)
-  const Score RookOpenFileBonus = Score(43, 43);
-  const Score RookHalfOpenFileBonus = Score(19, 19);
+  const Score RookOpenFileBonus = make_score(43, 43);
+  const Score RookHalfOpenFileBonus = make_score(19, 19);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
   // right to castle.
@@ -153,7 +153,7 @@ namespace {
 
   // Penalty for a bishop on a7/h7 (a2/h2 for black) which is trapped by
   // enemy pawns.
-  const Score TrappedBishopA7H7Penalty = Score(300, 300);
+  const Score TrappedBishopA7H7Penalty = make_score(300, 300);
 
   // Bitboard masks for detecting trapped bishops on a7/h7 (a2/h2 for black)
   const Bitboard MaskA7H7[2] = {
@@ -164,7 +164,7 @@ namespace {
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
   // happen in Chess960 games.
-  const Score TrappedBishopA1H1Penalty = Score(100, 100);
+  const Score TrappedBishopA1H1Penalty = make_score(100, 100);
 
   // Bitboard masks for detecting trapped bishops on a1/h1 (a8/h8 for black)
   const Bitboard MaskA1H1[2] = {
@@ -210,7 +210,7 @@ namespace {
 
   // ThreatBonus[][] contains bonus according to which piece type
   // attacks which one.
-  #define Z Score(0, 0)
+  #define Z make_score(0, 0)
 
   const Score ThreatBonus[8][8] = {
       { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
@@ -230,6 +230,7 @@ namespace {
   };
 
   #undef Z
+  #undef S
 
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
@@ -375,12 +376,12 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
     if (   square_file(pos.king_square(WHITE)) >= FILE_E
         && square_file(pos.king_square(BLACK)) <= FILE_D)
 
-        ei.value += Score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
+        ei.value += make_score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
 
     else if (   square_file(pos.king_square(WHITE)) <= FILE_D
              && square_file(pos.king_square(BLACK)) >= FILE_E)
 
-        ei.value += Score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
+        ei.value += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
 
     // Evaluate space for both sides
     if (ei.mi->space_weight() > 0)
@@ -397,8 +398,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   // colored bishop endgames, and use a lower scale for those
   if (   phase < PHASE_MIDGAME
       && pos.opposite_colored_bishops()
-      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && ei.value.eg() > Value(0))
-          || (factor[BLACK] == SCALE_FACTOR_NORMAL && ei.value.eg() < Value(0))))
+      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && eg_value(ei.value) > Value(0))
+          || (factor[BLACK] == SCALE_FACTOR_NORMAL && eg_value(ei.value) < Value(0))))
   {
       ScaleFactor sf;
 
@@ -564,7 +565,7 @@ namespace {
         else
             bonus += bonus / 2;
     }
-    ei.value += Sign[Us] * Score(bonus, bonus);
+    ei.value += Sign[Us] * make_score(bonus, bonus);
   }
 
 
@@ -654,8 +655,8 @@ namespace {
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_right(Us, square_file(ksq)))
-                    ei.value -= Sign[Us] * Score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
-                                                                    : (TrappedRookPenalty - mob * 16), 0);
+                    ei.value -= Sign[Us] * make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                                         : (TrappedRookPenalty - mob * 16), 0);
             }
             else if (    square_file(ksq) <= FILE_D
                     &&  square_file(s) < square_file(ksq)
@@ -663,8 +664,8 @@ namespace {
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_left(Us, square_file(ksq)))
-                    ei.value -= Sign[Us] * Score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
-                                                                    : (TrappedRookPenalty - mob * 16), 0);
+                    ei.value -= Sign[Us] * make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                                         : (TrappedRookPenalty - mob * 16), 0);
             }
         }
     }
@@ -680,7 +681,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b;
-    Score bonus(0, 0);
+    Score bonus = make_score(0, 0);
 
     // Enemy pieces not defended by a pawn and under our attack
     Bitboard weakEnemies =  pos.pieces_of_color(Them)
@@ -735,7 +736,7 @@ namespace {
     if (relative_rank(Us, s) <= RANK_4)
     {
         shelter = ei.pi->get_king_shelter(pos, Us, s);
-        ei.value += Sign[Us] * Score(shelter, 0);
+        ei.value += Sign[Us] * make_score(shelter, 0);
     }
 
     // King safety. This is quite complicated, and is almost certainly far
@@ -882,12 +883,12 @@ namespace {
       // that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
-      Score v = apply_weight(Score(SafetyTable[attackUnits], 0), WeightKingSafety[Us]);
+      Score v = apply_weight(make_score(SafetyTable[attackUnits], 0), WeightKingSafety[Us]);
 
       ei.value -= Sign[Us] * v;
 
       if (Us == pos.side_to_move())
-          ei.futilityMargin += v.mg();
+          ei.futilityMargin += mg_value(v);
     }
   }
 
@@ -1015,7 +1016,7 @@ namespace {
         }
 
         // Add the scores for this pawn to the middle game and endgame eval.
-        ei.value += Sign[Us] * apply_weight(Score(mbonus, ebonus), WeightPassedPawns);
+        ei.value += Sign[Us] * apply_weight(make_score(mbonus, ebonus), WeightPassedPawns);
 
     } // while
   }
@@ -1040,7 +1041,7 @@ namespace {
     if (!movesToGo[WHITE] || !movesToGo[BLACK])
     {
         Color winnerSide = movesToGo[WHITE] ? WHITE : BLACK;
-        ei.value += Score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * movesToGo[winnerSide])));
+        ei.value += make_score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * movesToGo[winnerSide])));
     }
     else
     {   // Both sides have unstoppable pawns! Try to find out who queens
@@ -1055,7 +1056,7 @@ namespace {
 
         // If one side queens at least three plies before the other, that side wins
         if (movesToGo[winnerSide] <= movesToGo[loserSide] - 3)
-            ei.value += Sign[winnerSide] * Score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
+            ei.value += Sign[winnerSide] * make_score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
 
         // If one side queens one ply before the other and checks the king or attacks
         // the undefended opponent's queening square, that side wins. To avoid cases
@@ -1076,7 +1077,7 @@ namespace {
 
             if (  (b & pos.pieces(KING, loserSide))
                 ||(bit_is_set(b, loserQSq) && !bit_is_set(ei.attacked_by(loserSide), loserQSq)))
-                ei.value += Sign[winnerSide] * Score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
+                ei.value += Sign[winnerSide] * make_score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
         }
     }
   }
@@ -1175,14 +1176,14 @@ namespace {
     int space =  count_1s_max_15<HasPopCnt>(safeSquares)
                + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
-    ei.value += Sign[Us] * apply_weight(Score(space * ei.mi->space_weight(), 0), WeightSpace);
+    ei.value += Sign[Us] * apply_weight(make_score(space * ei.mi->space_weight(), 0), WeightSpace);
   }
 
 
-  // apply_weight() applies an evaluation weight to a value
+  // apply_weight() applies an evaluation weight to a value trying to prevent overflow
 
   inline Score apply_weight(Score v, Score w) {
-      return v * w / 0x100;
+      return make_score((int(mg_value(v)) * mg_value(w)) / 0x100, (int(eg_value(v)) * eg_value(w)) / 0x100);
   }
 
 
@@ -1192,14 +1193,14 @@ namespace {
 
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]) {
 
-    assert(v.mg() > -VALUE_INFINITE && v.mg() < VALUE_INFINITE);
-    assert(v.eg() > -VALUE_INFINITE && v.eg() < VALUE_INFINITE);
+    assert(mg_value(v) > -VALUE_INFINITE && mg_value(v) < VALUE_INFINITE);
+    assert(eg_value(v) > -VALUE_INFINITE && eg_value(v) < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
-    Value ev = apply_scale_factor(v.eg(), sf[(v.eg() > Value(0) ? WHITE : BLACK)]);
+    Value ev = apply_scale_factor(eg_value(v), sf[(eg_value(v) > Value(0) ? WHITE : BLACK)]);
 
-    Value result = Value(int((v.mg() * ph + ev * (128 - ph)) / 128));
-    return Value(int(result) & ~(GrainSize - 1));
+    int result = (mg_value(v) * ph + ev * (128 - ph)) / 128;
+    return Value(result & ~(GrainSize - 1));
   }
 
 
@@ -1208,11 +1209,18 @@ namespace {
 
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight) {
 
-    Score uciWeight(get_option_value_int(mgOpt), get_option_value_int(egOpt));
-    uciWeight = (uciWeight * 0x100) / 100;
-    return (uciWeight * internalWeight) / 0x100;
-  }
+    Score uciWeight = make_score(get_option_value_int(mgOpt), get_option_value_int(egOpt));
 
+    // Convert to integer to prevent overflow
+    int mg = mg_value(uciWeight);
+    int eg = eg_value(uciWeight);
+
+    mg = (mg * 0x100) / 100;
+    eg = (eg * 0x100) / 100;
+    mg = (mg * mg_value(internalWeight)) / 0x100;
+    eg = (eg * eg_value(internalWeight)) / 0x100;
+    return make_score(mg, eg);
+  }
 
   // init_safety() initizes the king safety evaluation, based on UCI
   // parameters.  It is called from read_weights().
@@ -1254,9 +1262,4 @@ namespace {
             SafetyTable[i] = Value(peak);
     }
   }
-}
-
-std::ostream& operator<<(std::ostream &os, Score s) {
-
-    return os << "(" << s.mg() << ", " << s.eg() << ")";
 }

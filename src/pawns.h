@@ -99,7 +99,7 @@ private:
 ////
 
 inline Score PawnInfo::value() const {
-  return Score(mgValue, egValue);
+  return make_score(mgValue, egValue);
 }
 
 inline Bitboard PawnInfo::passed_pawns() const {

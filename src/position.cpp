@@ -894,7 +894,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // Finish
   sideToMove = opposite_color(sideToMove);
-  st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
+  st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
 
   assert(is_ok());
 }
@@ -1054,7 +1054,7 @@ void Position::do_castle_move(Move m) {
 
   // Finish
   sideToMove = opposite_color(sideToMove);
-  st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
+  st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
 
   assert(is_ok());
 }
@@ -1631,7 +1631,7 @@ Key Position::compute_material_key() const {
 /// updated by do_move and undo_move when the program is running in debug mode.
 Score Position::compute_value() const {
 
-  Score result(0, 0);
+  Score result = make_score(0, 0);
   Bitboard b;
   Square s;
 
@@ -1647,7 +1647,7 @@ Score Position::compute_value() const {
           }
       }
 
-  result += (side_to_move() == WHITE)? TempoValue / 2 : -TempoValue / 2;
+  result += (side_to_move() == WHITE ? TempoValue / 2 : -TempoValue / 2);
   return result;
 }
 
@@ -1796,7 +1796,7 @@ void Position::init_piece_square_tables() {
       for (Piece p = WP; p <= WK; p++)
       {
           i = (r == 0)? 0 : (genrand_int32() % (r*2) - r);
-          PieceSquareTable[p][s] = Score(MgPST[p][s] + i, EgPST[p][s] + i);
+          PieceSquareTable[p][s] = make_score(MgPST[p][s] + i, EgPST[p][s] + i);
       }
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)

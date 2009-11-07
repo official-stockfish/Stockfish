@@ -221,7 +221,7 @@ void MovePicker::score_noncaptures() {
           hs += 1000;
 
       // pst based scoring
-      cur->score = hs + pos.pst_delta(piece, from, to).mg();
+      cur->score = hs + mg_value(pos.pst_delta(piece, from, to));
   }
 }
 
