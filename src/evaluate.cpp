@@ -320,6 +320,7 @@ namespace {
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
   inline Value apply_weight(Value v, int w);
+  inline Score apply_weight(Score v, int wmg, int weg);
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
   int weight_option(const std::string& opt, int weight);
   void init_safety();
@@ -356,7 +357,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the material hash table
   ei.mi = MaterialTable[threadID]->get_material_info(pos);
-  ei.value += Score(ei.mi->material_value(), ei.mi->material_value());
+  ei.value += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return
@@ -370,8 +371,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the pawn hash table
   ei.pi = PawnTable[threadID]->get_pawn_info(pos);
-  ei.value += Score(apply_weight(ei.pi->mg_value(), WeightPawnStructureMidgame),
-                    apply_weight(ei.pi->eg_value(), WeightPawnStructureEndgame));
+  ei.value += apply_weight(ei.pi->value(), WeightPawnStructureMidgame, WeightPawnStructureEndgame);
 
   // Initialize king attack bitboards and king attack zones for both sides
   ei.attackedBy[WHITE][KING] = pos.attacks_from<KING>(pos.king_square(WHITE));
@@ -436,8 +436,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   }
 
   // Mobility
-  ei.value += Score(apply_weight(ei.mgMobility, WeightMobilityMidgame),
-                    apply_weight(ei.egMobility, WeightMobilityEndgame));
+  ei.value += apply_weight(Score(ei.mgMobility, ei.egMobility), WeightMobilityMidgame, WeightMobilityEndgame);
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those
@@ -789,7 +788,7 @@ namespace {
     if (relative_rank(Us, s) <= RANK_4)
     {
         shelter = ei.pi->get_king_shelter(pos, Us, s);
-        ei.value += Score(Sign[Us] * Value(shelter), 0);
+        ei.value += Sign[Us] * Score(shelter, 0);
     }
 
     // King safety. This is quite complicated, and is almost certainly far
@@ -938,7 +937,7 @@ namespace {
       // change far bigger than the value of the captured piece.
       Value v = apply_weight(SafetyTable[attackUnits], WeightKingSafety[Us]);
 
-      ei.value -= Score(Sign[Us] * v, 0);
+      ei.value -= Sign[Us] * Score(v, 0);
 
       if (Us == pos.side_to_move())
           ei.futilityMargin += v;
@@ -1238,6 +1237,10 @@ namespace {
 
   inline Value apply_weight(Value v, int w) {
     return (v*w) / 0x100;
+  }
+
+  inline Score apply_weight(Score v, int wmg, int weg) {
+      return Score(v.mg()*wmg, v.eg()*weg) / 0x100;
   }
 
 

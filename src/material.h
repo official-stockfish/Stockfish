@@ -51,7 +51,7 @@ class MaterialInfo {
 public:
   MaterialInfo() : key(0) { clear(); }
 
-  Value material_value() const;
+  Score material_value() const;
   ScaleFactor scale_factor(const Position& pos, Color c) const;
   int space_weight() const;
   bool specialized_eval_exists() const;
@@ -95,9 +95,9 @@ private:
 /// MaterialInfo::material_value simply returns the material balance
 /// evaluation that is independent from game phase.
 
-inline Value MaterialInfo::material_value() const {
+inline Score MaterialInfo::material_value() const {
 
-  return Value(value);
+  return Score(value, value);
 }
 
 

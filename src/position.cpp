@@ -721,7 +721,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
     Key key, pawnKey, materialKey;
     int castleRights, rule50, pliesFromNull;
     Square epSquare;
-    Value mgValue, egValue;
+    Value value;
     Value npMaterial[2];
   };
 

@@ -47,8 +47,7 @@ class PawnInfo {
 public:
   PawnInfo() { clear(); }
 
-  Value mg_value() const;
-  Value eg_value() const;
+  Score value() const;
   Value kingside_storm_value(Color c) const;
   Value queenside_storm_value(Color c) const;
   Bitboard pawn_attacks(Color c) const;
@@ -99,12 +98,8 @@ private:
 //// Inline functions
 ////
 
-inline Value PawnInfo::mg_value() const {
-  return Value(mgValue);
-}
-
-inline Value PawnInfo::eg_value() const {
-  return Value(egValue);
+inline Score PawnInfo::value() const {
+  return Score(mgValue, egValue);
 }
 
 inline Bitboard PawnInfo::passed_pawns() const {
