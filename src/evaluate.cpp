@@ -215,26 +215,17 @@ namespace {
 
   // ThreatBonus[][] contains bonus according to which piece type
   // attacks which one.
-  const Value MidgameThreatBonus[8][8] = {
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0),V(18), V(0),V(37), V(55), V(55), V(0), V(0) }, // KNIGHT attacks
-      { V(0),V(18),V(37), V(0), V(55), V(55), V(0), V(0) }, // BISHOP attacks
-      { V(0), V(9),V(27),V(27),  V(0), V(37), V(0), V(0) }, // ROOK attacks
-      { V(0),V(27),V(27),V(27), V(27),  V(0), V(0), V(0) }, // QUEEN attacks
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }  // not used
-  };
-
-  const Value EndgameThreatBonus[8][8] = {
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0),V(37), V(0),V(47), V(97), V(97), V(0), V(0) }, // KNIGHT attacks
-      { V(0),V(37),V(47), V(0), V(97), V(97), V(0), V(0) }, // BISHOP attacks
-      { V(0),V(27),V(47),V(47),  V(0), V(47), V(0), V(0) }, // ROOK attacks
-      { V(0),V(37),V(37),V(37), V(37),  V(0), V(0), V(0) }, // QUEEN attacks
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }, // not used
-      { V(0), V(0), V(0), V(0),  V(0),  V(0), V(0), V(0) }  // not used
+  const Score ThreatBonus[8][8] = {
+  #define Z Score(0, 0)
+      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
+      { Z, S(18,37),       Z, S(37,47), S(55,97), S(55,97), Z, Z }, // KNIGHT attacks
+      { Z, S(18,37), S(37,47),       Z, S(55,97), S(55,97), Z, Z }, // BISHOP attacks
+      { Z, S( 9,27), S(27,47), S(27,47),       Z, S(37,47), Z, Z }, // ROOK attacks
+      { Z, S(27,37), S(27,37), S(27,37), S(27,37),       Z, Z, Z }, // QUEEN attacks
+      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
+      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
+      { Z, Z, Z, Z, Z, Z, Z, Z }  // not used
+  #undef Z
   };
 
   // ThreatedByPawnPenalty[] contains a penalty according to which piece
@@ -717,7 +708,7 @@ namespace {
         if (b)
             for (PieceType pt2 = PAWN; pt2 < KING; pt2++)
                 if (b & pos.pieces(pt2))
-                    bonus += Score(MidgameThreatBonus[pt1][pt2], EndgameThreatBonus[pt1][pt2]);
+                    bonus += ThreatBonus[pt1][pt2];
     }
     ei.value += Sign[Us] * bonus;
   }
