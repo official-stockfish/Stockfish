@@ -213,8 +213,7 @@ void Position::from_fen(const string& fen) {
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
   st->materialKey = compute_material_key();
-  st->mgValue = compute_value<MidGame>();
-  st->egValue = compute_value<EndGame>();
+  st->value = Score(compute_value<MidGame>(), compute_value<EndGame>());
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
@@ -830,8 +829,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   }
 
   // Update incremental scores
-  st->mgValue += pst_delta<MidGame>(piece, from, to);
-  st->egValue += pst_delta<EndGame>(piece, from, to);
+  st->value += Score(pst_delta<MidGame>(piece, from, to), pst_delta<EndGame>(piece, from, to));
 
   if (pm) // promotion ?
   {
@@ -866,10 +864,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       st->pawnKey ^= zobrist[us][PAWN][to];
 
       // Partially revert and update incremental scores
-      st->mgValue -= pst<MidGame>(us, PAWN, to);
-      st->mgValue += pst<MidGame>(us, promotion, to);
-      st->egValue -= pst<EndGame>(us, PAWN, to);
-      st->egValue += pst<EndGame>(us, promotion, to);
+      st->value -= Score(pst<MidGame>(us, PAWN, to), pst<EndGame>(us, PAWN, to));
+      st->value += Score(pst<MidGame>(us, promotion, to), pst<EndGame>(us, promotion, to));
 
       // Update material
       st->npMaterial[us] += piece_value_midgame(promotion);
@@ -899,9 +895,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // Finish
   sideToMove = opposite_color(sideToMove);
-
-  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+  st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
 
   assert(is_ok());
 }
@@ -937,8 +931,7 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
     key ^= zobrist[them][capture][capsq];
 
     // Update incremental scores
-    st->mgValue -= pst<MidGame>(them, capture, capsq);
-    st->egValue -= pst<EndGame>(them, capture, capsq);
+    st->value -= Score(pst<MidGame>(them, capture, capsq), pst<EndGame>(them, capture, capsq));
 
     // If the captured piece was a pawn, update pawn hash key,
     // otherwise update non-pawn material.
@@ -1035,10 +1028,8 @@ void Position::do_castle_move(Move m) {
   index[rto] = tmp;
 
   // Update incremental scores
-  st->mgValue += pst_delta<MidGame>(king, kfrom, kto);
-  st->egValue += pst_delta<EndGame>(king, kfrom, kto);
-  st->mgValue += pst_delta<MidGame>(rook, rfrom, rto);
-  st->egValue += pst_delta<EndGame>(rook, rfrom, rto);
+  st->value += Score(pst_delta<MidGame>(king, kfrom, kto), pst_delta<EndGame>(king, kfrom, kto));
+  st->value += Score(pst_delta<MidGame>(rook, rfrom, rto), pst_delta<EndGame>(rook, rfrom, rto));
 
   // Update hash key
   st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
@@ -1064,9 +1055,7 @@ void Position::do_castle_move(Move m) {
 
   // Finish
   sideToMove = opposite_color(sideToMove);
-
-  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
+  st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
 
   assert(is_ok());
 }
@@ -1258,8 +1247,7 @@ void Position::do_null_move(StateInfo& backupSt) {
   // a backup storage not as a new state to be used.
   backupSt.key      = st->key;
   backupSt.epSquare = st->epSquare;
-  backupSt.mgValue  = st->mgValue;
-  backupSt.egValue  = st->egValue;
+  backupSt.value    = st->value;
   backupSt.previous = st->previous;
   backupSt.pliesFromNull = st->pliesFromNull;
   st->previous = &backupSt;
@@ -1279,10 +1267,8 @@ void Position::do_null_move(StateInfo& backupSt) {
   st->epSquare = SQ_NONE;
   st->rule50++;
   st->pliesFromNull = 0;
+  st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
   gamePly++;
-
-  st->mgValue += (sideToMove == WHITE)? TempoValueMidgame : -TempoValueMidgame;
-  st->egValue += (sideToMove == WHITE)? TempoValueEndgame : -TempoValueEndgame;
 }
 
 
@@ -1297,8 +1283,7 @@ void Position::undo_null_move() {
   StateInfo* backupSt = st->previous;
   st->key      = backupSt->key;
   st->epSquare = backupSt->epSquare;
-  st->mgValue  = backupSt->mgValue;
-  st->egValue  = backupSt->egValue;
+  st->value    = backupSt->value;
   st->previous = backupSt->previous;
   st->pliesFromNull = backupSt->pliesFromNull;
 
@@ -1664,8 +1649,8 @@ Value Position::compute_value() const {
           }
       }
 
-  const Value TempoValue = (Phase == MidGame ? TempoValueMidgame : TempoValueEndgame);
-  result += (side_to_move() == WHITE)? TempoValue / 2 : -TempoValue / 2;
+  const Value tv = (Phase == MidGame ? TempoValue.mg() : TempoValue.eg());
+  result += (side_to_move() == WHITE)? tv / 2 : -tv / 2;
   return result;
 }
 
@@ -1878,8 +1863,7 @@ void Position::flipped_copy(const Position& pos) {
   st->materialKey = compute_material_key();
 
   // Incremental scores
-  st->mgValue = compute_value<MidGame>();
-  st->egValue = compute_value<EndGame>();
+  st->value = Score(compute_value<MidGame>(), compute_value<EndGame>());
 
   // Material
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
@@ -2008,10 +1992,10 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugIncrementalEval)
   {
-      if (st->mgValue != compute_value<MidGame>())
+      if (st->value.mg() != compute_value<MidGame>())
           return false;
 
-      if (st->egValue != compute_value<EndGame>())
+      if (st->value.eg() != compute_value<EndGame>())
           return false;
   }
 

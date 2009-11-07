@@ -90,7 +90,7 @@ struct StateInfo {
   Key key, pawnKey, materialKey;
   int castleRights, rule50, pliesFromNull;
   Square epSquare;
-  Value mgValue, egValue;
+  Score value;
   Value npMaterial[2];
 
   PieceType capture;
@@ -240,8 +240,7 @@ public:
   Key get_material_key() const;
 
   // Incremental evaluation
-  Value mg_value() const;
-  Value eg_value() const;
+  Score value() const;
   Value non_pawn_material(Color c) const;
   Phase game_phase() const;
   template<GamePhase> Value pst_delta(Piece piece, Square from, Square to) const;
@@ -514,12 +513,8 @@ inline Value Position::pst_delta(Piece piece, Square from, Square to) const {
                         : EgPieceSquareTable[piece][to] - EgPieceSquareTable[piece][from]);
 }
 
-inline Value Position::mg_value() const {
-  return st->mgValue;
-}
-
-inline Value Position::eg_value() const {
-  return st->egValue;
+inline Score Position::value() const {
+  return st->value;
 }
 
 inline Value Position::non_pawn_material(Color c) const {

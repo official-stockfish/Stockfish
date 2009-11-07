@@ -352,7 +352,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Initialize by reading the incrementally updated scores included in the
   // position object (material + piece square tables)
-  ei.value = Score(pos.mg_value(), pos.eg_value());
+  ei.value = pos.value();
 
   // Probe the material hash table
   ei.mi = MaterialTable[threadID]->get_material_info(pos);
@@ -489,11 +489,10 @@ Value quick_evaluate(const Position &pos) {
   static const
   ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
 
-  Score v = Score(pos.mg_value(), pos.eg_value());
   Phase ph = pos.game_phase();
   Color stm = pos.side_to_move();
 
-  return Sign[stm] * scale_by_game_phase(v, ph, sf);
+  return Sign[stm] * scale_by_game_phase(pos.value(), ph, sf);
 }
 
 

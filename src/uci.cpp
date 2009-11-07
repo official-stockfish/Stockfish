@@ -148,8 +148,8 @@ namespace {
     else if (token == "eval")
     {
         EvalInfo ei;
-        cout << "Incremental mg: " << RootPosition.mg_value()
-             << "\nIncremental eg: " << RootPosition.eg_value()
+        cout << "Incremental mg: " << RootPosition.value().mg()
+             << "\nIncremental eg: " << RootPosition.value().eg()
              << "\nFull eval: " << evaluate(RootPosition, ei, 0) << endl;
     }
     else if (token == "key")
