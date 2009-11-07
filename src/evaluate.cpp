@@ -145,10 +145,8 @@ namespace {
   const Value UnstoppablePawnValue = Value(0x500);
 
   // Rooks and queens on the 7th rank (modified by Joona Kiiski)
-  const Value MidgameRookOn7thBonus  = Value(47);
-  const Value EndgameRookOn7thBonus  = Value(98);
-  const Value MidgameQueenOn7thBonus = Value(27);
-  const Value EndgameQueenOn7thBonus = Value(54);
+  const Score RookOn7thBonus  = Score(47, 98);
+  const Score QueenOn7thBonus = Score(27, 54);
 
   // Rooks on open files (modified by Joona Kiiski)
   const Value RookOpenFileBonus = Value(43);
@@ -645,8 +643,7 @@ namespace {
             if (   relative_rank(Us, s) == RANK_7
                 && relative_rank(Us, pos.king_square(Them)) == RANK_8)
             {
-                ei.value += Sign[Us] * (Piece == ROOK ? Score(MidgameRookOn7thBonus, EndgameRookOn7thBonus)
-                                                      : Score(MidgameQueenOn7thBonus, EndgameQueenOn7thBonus));
+                ei.value += Sign[Us] * (Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus);
             }
         }
 
