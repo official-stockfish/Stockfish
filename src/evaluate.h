@@ -91,7 +91,7 @@ struct EvalInfo {
   Move mateThreat[2];
 
   // Middle game and endgame mobility scores.
-  Value mgMobility, egMobility;
+  Score mobility;
 
   // Extra futility margin. This is added to the standard futility margin
   // in the quiescence search.

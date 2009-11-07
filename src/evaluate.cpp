@@ -72,76 +72,48 @@ namespace {
   //
   // Visually better to define tables constants
   typedef Value V;
+  typedef Score S;
 
   // Knight mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly piecess.
-  const Value MidgameKnightMobilityBonus[] = {
-  //    0       1      2     3      4      5      6      7      8
-    V(-38), V(-25),V(-12), V(0), V(12), V(25), V(31), V(38), V(38)
-  };
-
-  const Value EndgameKnightMobilityBonus[] = {
-  //    0       1      2     3      4      5      6      7      8
-    V(-33), V(-23),V(-13), V(-3), V(7), V(17), V(22), V(27), V(27)
+  const Score KnightMobilityBonus[] = {
+    S(-38,-33), S(-25,-23), S(-12,-13), S( 0,-3),
+    S( 12,  7), S( 25, 17), S( 31, 22), S(38, 27), S(38, 27)
   };
 
   // Bishop mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces. X-ray attacks through
   // queens are also included.
-  const Value MidgameBishopMobilityBonus[] = {
-  //    0       1      2      3      4      5      6      7
-    V(-25), V(-11),  V(3), V(17), V(31), V(45), V(57), V(65),
-  //    8       9     10     11     12     13     14     15
-    V( 71), V( 74), V(76), V(78), V(79), V(80), V(81), V(81)
-  };
-
-  const Value EndgameBishopMobilityBonus[] = {
-  //    0       1      2      3      4      5      6      7
-    V(-30), V(-16), V(-2), V(12), V(26), V(40), V(52), V(60),
-  //    8       9     10     11     12     13     14     15
-    V( 65), V( 69), V(71), V(73), V(74), V(75), V(76), V(76)
+  const Score BishopMobilityBonus[] = {
+    S(-25,-30), S(-11,-16), S( 3, -2), S(17, 12),
+    S( 31, 26), S( 45, 40), S(57, 52), S(65, 60),
+    S( 71, 65), S( 74, 69), S(76, 71), S(78, 73),
+    S( 79, 74), S( 80, 75), S(81, 76), S(81, 76)
   };
 
   // Rook mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces. X-ray attacks through
   // queens and rooks are also included.
-  const Value MidgameRookMobilityBonus[] = {
-  //    0       1      2      3      4      5      6      7
-    V(-20), V(-14), V(-8), V(-2),  V(4), V(10), V(14), V(19),
-  //    8       9     10     11     12     13     14     15
-    V( 23), V( 26), V(27), V(28), V(29), V(30), V(31), V(32)
-  };
-
-  const Value EndgameRookMobilityBonus[] = {
-  //    0       1      2      3      4      5      6      7
-    V(-36), V(-19), V(-3), V(13), V(29), V(46), V(62), V(79),
-  //    8       9     10     11     12     13     14     15
-    V( 95), V(106),V(111),V(114),V(116),V(117),V(118),V(118)
+  const Score RookMobilityBonus[] = {
+    S(-20,-36), S(-14,-19), S(-8, -3), S(-2, 13),
+    S(  4, 29), S( 10, 46), S(14, 62), S(19, 79),
+    S( 23, 95), S( 26,106), S(27,111), S(28,114),
+    S( 29,116), S( 30,117), S(31,118), S(32,118)
   };
 
   // Queen mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces.
-  const Value MidgameQueenMobilityBonus[] = {
-  //    0      1      2      3      4      5      6      7
-    V(-10), V(-8), V(-6), V(-3), V(-1), V( 1), V( 3), V( 5),
-  //    8      9     10     11     12     13     14     15
-    V(  8), V(10), V(12), V(15), V(16), V(17), V(18), V(20),
-  //   16     17     18     19     20     21     22     23
-    V( 20), V(20), V(20), V(20), V(20), V(20), V(20), V(20),
-  //   24     25     26     27     28     29     30     31
-    V( 20), V(20), V(20), V(20), V(20), V(20), V(20), V(20)
+  const Score QueenMobilityBonus[] = {
+    S(-10,-18), S(-8,-13), S(-6, -7), S(-3, -2), S(-1,  3), S( 1,  8),
+    S(  3, 13), S( 5, 19), S( 8, 23), S(10, 27), S(12, 32), S(15, 34),
+    S( 16, 35), S(17, 35), S(18, 35), S(20, 35), S(20, 35), S(20, 35),
+    S( 20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35),
+    S( 20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35),
+    S( 20, 35), S(20, 35)
   };
 
-  const Value EndgameQueenMobilityBonus[] = {
-  //    0      1      2      3      4      5      6      7
-    V(-18),V(-13), V(-7), V(-2), V( 3), V (8), V(13), V(19),
-  //    8      9     10     11     12     13     14     15
-    V( 23), V(27), V(32), V(34), V(35), V(35), V(35), V(35),
-  //   16     17     18     19     20     21     22     23
-    V( 35), V(35), V(35), V(35), V(35), V(35), V(35), V(35),
-  //   24     25     26     27     28     29     30     31
-    V( 35), V(35), V(35), V(35), V(35), V(35), V(35), V(35)
-  };
+  // Pointers table to access mobility tables through piece type
+  const Score* MobilityBonus[] = { 0, 0, KnightMobilityBonus, BishopMobilityBonus, RookMobilityBonus, QueenMobilityBonus };
 
   // Outpost bonuses for knights and bishops, indexed by square (from white's
   // point of view).
@@ -225,11 +197,13 @@ namespace {
   /// the strength of the attack are added up into an integer, which is used
   /// as an index to SafetyTable[].
 
-  // Attack weights for each piece type
+  // Attack weights for each piece type and table indexed on piece type
   const int QueenAttackWeight  = 5;
   const int RookAttackWeight   = 3;
   const int BishopAttackWeight = 2;
   const int KnightAttackWeight = 2;
+
+  const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
 
   // Bonuses for safe checks, initialized from UCI options
   int QueenContactCheckBonus, DiscoveredCheckBonus;
@@ -435,7 +409,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   }
 
   // Mobility
-  ei.value += apply_weight(Score(ei.mgMobility, ei.egMobility), WeightMobilityMidgame, WeightMobilityEndgame);
+  ei.value += apply_weight(ei.mobility, WeightMobilityMidgame, WeightMobilityEndgame);
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those
@@ -567,9 +541,6 @@ namespace {
   int evaluate_mobility(Bitboard b, Bitboard mob_area, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    static const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
-    static const Value* MgBonus[] = { 0, 0, MidgameKnightMobilityBonus, MidgameBishopMobilityBonus, MidgameRookMobilityBonus, MidgameQueenMobilityBonus };
-    static const Value* EgBonus[] = { 0, 0, EndgameKnightMobilityBonus, EndgameBishopMobilityBonus, EndgameRookMobilityBonus, EndgameQueenMobilityBonus };
 
     // Update attack info
     ei.attackedBy[Us][Piece] |= b;
@@ -588,8 +559,7 @@ namespace {
     int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & mob_area)
                               : count_1s<HasPopCnt>(b & mob_area));
 
-    ei.mgMobility += Sign[Us] * MgBonus[Piece][mob];
-    ei.egMobility += Sign[Us] * EgBonus[Piece][mob];
+    ei.mobility += Sign[Us] * MobilityBonus[Piece][mob];
     return mob;
   }
 
