@@ -319,7 +319,6 @@ namespace {
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
-  inline Value apply_weight(Value v, int w);
   inline Score apply_weight(Score v, int wmg, int weg);
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
   int weight_option(const std::string& opt, int weight);
@@ -935,12 +934,12 @@ namespace {
       // that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
-      Value v = apply_weight(SafetyTable[attackUnits], WeightKingSafety[Us]);
+      Score v = apply_weight(Score(SafetyTable[attackUnits], 0), WeightKingSafety[Us], 0);
 
-      ei.value -= Sign[Us] * Score(v, 0);
+      ei.value -= Sign[Us] * v;
 
       if (Us == pos.side_to_move())
-          ei.futilityMargin += v;
+          ei.futilityMargin += v.mg();
     }
   }
 
@@ -1068,8 +1067,7 @@ namespace {
         }
 
         // Add the scores for this pawn to the middle game and endgame eval.
-        ei.value += Score(apply_weight(Sign[Us] * mbonus, WeightPassedPawnsMidgame),
-                          apply_weight(Sign[Us] * ebonus, WeightPassedPawnsEndgame));
+        ei.value += Sign[Us] * apply_weight(Score(mbonus, ebonus), WeightPassedPawnsMidgame, WeightPassedPawnsEndgame);
 
     } // while
   }
@@ -1229,18 +1227,14 @@ namespace {
     int space =  count_1s_max_15<HasPopCnt>(safeSquares)
                + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
-    ei.value += Sign[Us] * Score(apply_weight(Value(space * ei.mi->space_weight()), WeightSpace), 0);
+    ei.value += Sign[Us] * apply_weight(Score(space * ei.mi->space_weight(), 0), WeightSpace, 0);
   }
 
 
   // apply_weight() applies an evaluation weight to a value
 
-  inline Value apply_weight(Value v, int w) {
-    return (v*w) / 0x100;
-  }
-
   inline Score apply_weight(Score v, int wmg, int weg) {
-      return Score(v.mg()*wmg, v.eg()*weg) / 0x100;
+      return Score(v.mg() * wmg, v.eg() * weg) / 0x100;
   }
 
 
