@@ -55,36 +55,29 @@ enum Value {
 /// Score struct keeps a midgame and an endgame value in a single
 /// ScoreValue 64 bit union.
 
-union ScoreValue {
-    int64_t v64;
-    struct {
-      int32_t mgv;
-      int32_t egv;
-    } v32;
-};
+typedef int score_t;
 
 struct Score {
 
     Score() {}
-    Score(const Score& s) { v = s.v; }
-    Score(int mg, int eg) { v.v32.mgv = int32_t(mg); v.v32.egv = int32_t(eg); }
+    Score(score_t mg, score_t eg) { mgv = mg; egv = eg; }
 
-    Score& operator=(const Score& s) { v = s.v; return *this; }
-    Score& operator+=(const Score& s) { v.v32.mgv += s.v.v32.mgv; v.v32.egv += s.v.v32.egv; return *this; }
-    Score& operator-=(const Score& s) { v.v32.mgv -= s.v.v32.mgv; v.v32.egv -= s.v.v32.egv; return *this; }
+    Score& operator+=(const Score& s) { mgv += s.mg(); egv += s.eg(); return *this; }
+    Score& operator-=(const Score& s) { mgv -= s.mg(); egv -= s.eg(); return *this; }
+    Score operator+(const Score& s) { return Score(mg() + s.mg(), eg() + s.eg()); }
+    Score operator-(const Score& s) { return Score(mg() - s.mg(), eg() - s.eg()); }
 
-    bool operator==(const Score& s) { return v.v64 == s.v.v64; }
-    bool operator!=(const Score& s) { return v.v64 != s.v.v64; }
+    bool operator==(const Score& s) { return mgv == s.mg() && egv == s.eg(); }
+    bool operator!=(const Score& s) { return !(*this == s); }
 
-    Value mg() const { return Value(v.v32.mgv); }
-    Value eg() const { return Value(v.v32.egv); }
+    Value mg() const { return Value(mgv); }
+    Value eg() const { return Value(egv); }
 
 private:
-    ScoreValue v;
+    score_t mgv;
+    score_t egv;
 };
 
-inline Score operator+(Score s1, Score s2) { return Score(s1.mg() + s2.mg(), s1.eg() + s2.eg()); }
-inline Score operator-(Score s1, Score s2) { return Score(s1.mg() - s2.mg(), s1.eg() - s2.eg()); }
 inline Score operator*(Score s1, Score s2) { return Score(s1.mg() * s2.mg(), s1.eg() * s2.eg()); }
 inline Score operator*(int i, Score s) { return Score(i * s.mg(), i * s.eg()); }
 inline Score operator*(Score s, int i) { return Score(s.mg() * i, s.eg() * i); }
