@@ -52,8 +52,7 @@ Key Position::zobCastle[16];
 Key Position::zobMaterial[2][8][16];
 Key Position::zobSideToMove;
 
-Value Position::MgPieceSquareTable[16][64];
-Value Position::EgPieceSquareTable[16][64];
+Score Position::PieceSquareTable[16][64];
 
 static bool RequestPending = false;
 
@@ -213,7 +212,7 @@ void Position::from_fen(const string& fen) {
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
   st->materialKey = compute_material_key();
-  st->value = Score(compute_value<MidGame>(), compute_value<EndGame>());
+  st->value = compute_value();
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 }
@@ -829,7 +828,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   }
 
   // Update incremental scores
-  st->value += Score(pst_delta<MidGame>(piece, from, to), pst_delta<EndGame>(piece, from, to));
+  st->value += pst_delta(piece, from, to);
 
   if (pm) // promotion ?
   {
@@ -864,8 +863,8 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       st->pawnKey ^= zobrist[us][PAWN][to];
 
       // Partially revert and update incremental scores
-      st->value -= Score(pst<MidGame>(us, PAWN, to), pst<EndGame>(us, PAWN, to));
-      st->value += Score(pst<MidGame>(us, promotion, to), pst<EndGame>(us, promotion, to));
+      st->value -= pst(us, PAWN, to);
+      st->value += pst(us, promotion, to);
 
       // Update material
       st->npMaterial[us] += piece_value_midgame(promotion);
@@ -931,7 +930,7 @@ void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Squ
     key ^= zobrist[them][capture][capsq];
 
     // Update incremental scores
-    st->value -= Score(pst<MidGame>(them, capture, capsq), pst<EndGame>(them, capture, capsq));
+    st->value -= pst(them, capture, capsq);
 
     // If the captured piece was a pawn, update pawn hash key,
     // otherwise update non-pawn material.
@@ -1028,8 +1027,8 @@ void Position::do_castle_move(Move m) {
   index[rto] = tmp;
 
   // Update incremental scores
-  st->value += Score(pst_delta<MidGame>(king, kfrom, kto), pst_delta<EndGame>(king, kfrom, kto));
-  st->value += Score(pst_delta<MidGame>(rook, rfrom, rto), pst_delta<EndGame>(rook, rfrom, rto));
+  st->value += pst_delta(king, kfrom, kto);
+  st->value += pst_delta(rook, rfrom, rto);
 
   // Update hash key
   st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
@@ -1630,10 +1629,9 @@ Key Position::compute_material_key() const {
 /// game and the endgame. These functions are used to initialize the incremental
 /// scores when a new position is set up, and to verify that the scores are correctly
 /// updated by do_move and undo_move when the program is running in debug mode.
-template<Position::GamePhase Phase>
-Value Position::compute_value() const {
+Score Position::compute_value() const {
 
-  Value result = Value(0);
+  Score result(0, 0);
   Bitboard b;
   Square s;
 
@@ -1645,12 +1643,11 @@ Value Position::compute_value() const {
           {
               s = pop_1st_bit(&b);
               assert(piece_on(s) == piece_of_color_and_type(c, pt));
-              result += pst<Phase>(c, pt, s);
+              result += pst(c, pt, s);
           }
       }
 
-  const Value tv = (Phase == MidGame ? TempoValue.mg() : TempoValue.eg());
-  result += (side_to_move() == WHITE)? tv / 2 : -tv / 2;
+  result += (side_to_move() == WHITE)? TempoValue / 2 : -TempoValue / 2;
   return result;
 }
 
@@ -1799,16 +1796,12 @@ void Position::init_piece_square_tables() {
       for (Piece p = WP; p <= WK; p++)
       {
           i = (r == 0)? 0 : (genrand_int32() % (r*2) - r);
-          MgPieceSquareTable[p][s] = Value(MgPST[p][s] + i);
-          EgPieceSquareTable[p][s] = Value(EgPST[p][s] + i);
+          PieceSquareTable[p][s] = Score(MgPST[p][s] + i, EgPST[p][s] + i);
       }
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       for (Piece p = BP; p <= BK; p++)
-      {
-          MgPieceSquareTable[p][s] = -MgPieceSquareTable[p-8][flip_square(s)];
-          EgPieceSquareTable[p][s] = -EgPieceSquareTable[p-8][flip_square(s)];
-      }
+          PieceSquareTable[p][s] = -PieceSquareTable[p-8][flip_square(s)];
 }
 
 
@@ -1863,7 +1856,7 @@ void Position::flipped_copy(const Position& pos) {
   st->materialKey = compute_material_key();
 
   // Incremental scores
-  st->value = Score(compute_value<MidGame>(), compute_value<EndGame>());
+  st->value = compute_value();
 
   // Material
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
@@ -1990,14 +1983,8 @@ bool Position::is_ok(int* failedStep) const {
 
   // Incremental eval OK?
   if (failedStep) (*failedStep)++;
-  if (debugIncrementalEval)
-  {
-      if (st->value.mg() != compute_value<MidGame>())
-          return false;
-
-      if (st->value.eg() != compute_value<EndGame>())
-          return false;
-  }
+  if (debugIncrementalEval && st->value != compute_value())
+      return false;
 
   // Non-pawn material OK?
   if (failedStep) (*failedStep)++;

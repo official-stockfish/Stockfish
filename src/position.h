@@ -243,7 +243,7 @@ public:
   Score value() const;
   Value non_pawn_material(Color c) const;
   Phase game_phase() const;
-  template<GamePhase> Value pst_delta(Piece piece, Square from, Square to) const;
+  Score pst_delta(Piece piece, Square from, Square to) const;
 
   // Game termination checks
   bool is_mate() const;
@@ -295,8 +295,8 @@ private:
   Key compute_material_key() const;
 
   // Computing incremental evaluation scores and material counts
-  template<GamePhase> Value pst(Color c, PieceType pt, Square s) const;
-  template<GamePhase> Value compute_value() const;
+  Score pst(Color c, PieceType pt, Square s) const;
+  Score compute_value() const;
   Value compute_non_pawn_material(Color c) const;
 
   // Board
@@ -327,8 +327,7 @@ private:
   static Key zobCastle[16];
   static Key zobMaterial[2][8][16];
   static Key zobSideToMove;
-  static Value MgPieceSquareTable[16][64];
-  static Value EgPieceSquareTable[16][64];
+  static Score PieceSquareTable[16][64];
 };
 
 
@@ -501,16 +500,12 @@ inline Key Position::get_material_key() const {
   return st->materialKey;
 }
 
-template<Position::GamePhase Ph>
-inline Value Position::pst(Color c, PieceType pt, Square s) const {
-  return (Ph == MidGame ? MgPieceSquareTable[piece_of_color_and_type(c, pt)][s]
-                        : EgPieceSquareTable[piece_of_color_and_type(c, pt)][s]);
+inline Score Position::pst(Color c, PieceType pt, Square s) const {
+  return PieceSquareTable[piece_of_color_and_type(c, pt)][s];
 }
 
-template<Position::GamePhase Ph>
-inline Value Position::pst_delta(Piece piece, Square from, Square to) const {
-  return (Ph == MidGame ? MgPieceSquareTable[piece][to] - MgPieceSquareTable[piece][from]
-                        : EgPieceSquareTable[piece][to] - EgPieceSquareTable[piece][from]);
+inline Score Position::pst_delta(Piece piece, Square from, Square to) const {
+  return PieceSquareTable[piece][to] - PieceSquareTable[piece][from];
 }
 
 inline Score Position::value() const {

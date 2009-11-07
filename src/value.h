@@ -73,6 +73,9 @@ struct Score {
     Score& operator+=(const Score& s) { v.v32.mgv += s.v.v32.mgv; v.v32.egv += s.v.v32.egv; return *this; }
     Score& operator-=(const Score& s) { v.v32.mgv -= s.v.v32.mgv; v.v32.egv -= s.v.v32.egv; return *this; }
 
+    bool operator==(const Score& s) { return v.v64 == s.v.v64; }
+    bool operator!=(const Score& s) { return v.v64 != s.v.v64; }
+
     Value mg() const { return Value(v.v32.mgv); }
     Value eg() const { return Value(v.v32.egv); }
 
@@ -80,8 +83,10 @@ private:
     ScoreValue v;
 };
 
+inline Score operator-(Score s1, Score s2) { return Score(s1.mg() - s2.mg(), s1.eg() - s2.eg()); }
 inline Score operator*(int i, Score s) { return Score(i * s.mg(), i * s.eg()); }
 inline Score operator*(Score s, int i) { return s * i; }
+inline Score operator/(Score s, int i) { return Score(s.mg() / i, s.eg() / i); }
 inline Score operator-(Score s) { return Score(-s.mg(), -s.eg()); }
 
 extern std::ostream& operator<<(std::ostream& os, Score s);
