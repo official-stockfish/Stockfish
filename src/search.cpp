@@ -284,7 +284,7 @@ namespace {
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, const SearchStack& ss);
-  Depth extension(const Position& pos, Move m, Depth depth, bool pvNode, bool capture, bool check, bool singleReply, bool mateThreat, bool* dangerous);
+  Depth extension(const Position& pos, Move m, bool pvNode, bool capture, bool check, bool singleReply, bool mateThreat, bool* dangerous);
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat, Depth d);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -900,7 +900,7 @@ namespace {
         // Decide search depth for this move
         bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
         bool dangerous;
-        ext = extension(pos, move, Depth(100), true, captureOrPromotion, pos.move_is_check(move), false, false, &dangerous);
+        ext = extension(pos, move, true, captureOrPromotion, pos.move_is_check(move), false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
@@ -1132,7 +1132,7 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
-      ext = extension(pos, move, depth, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
       newDepth = depth - OnePly + ext;
 
       // Make and search the move
@@ -1394,7 +1394,7 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Decide the new search depth
-      ext = extension(pos, move, depth, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
       newDepth = depth - OnePly + ext;
 
       // Futility pruning
@@ -1722,7 +1722,7 @@ namespace {
 
       // Decide the new search depth.
       bool dangerous;
-      Depth ext = extension(pos, move, sp->depth, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+      Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Prune?
@@ -1862,7 +1862,7 @@ namespace {
 
       // Decide the new search depth.
       bool dangerous;
-      Depth ext = extension(pos, move, sp->depth, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+      Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
       // Make and search the move.
@@ -2298,7 +2298,7 @@ namespace {
   // extended, as example because the corresponding UCI option is set to zero,
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
 
-  Depth extension(const Position& pos, Move m, Depth depth, bool pvNode, bool captureOrPromotion,
+  Depth extension(const Position& pos, Move m, bool pvNode, bool captureOrPromotion,
                   bool check, bool singleReply, bool mateThreat, bool* dangerous) {
 
     assert(m != MOVE_NONE);
@@ -2317,19 +2317,6 @@ namespace {
         if (mateThreat)
             result += MateThreatExtension[pvNode];
     }
-
-    if (   pvNode
-        && captureOrPromotion
-        && pos.type_of_piece_on(move_to(m)) != PAWN
-        && pos.see_sign(m) >= 0)
-    {
-        result += OnePly/2;
-        *dangerous = true;
-    }
-
-    // Do not extend at low depths
-    if (!pvNode && depth < 4*OnePly)
-        return Min(result, OnePly); // Further test with Min(result, OnePly / 2)
 
     if (pos.type_of_piece_on(move_from(m)) == PAWN)
     {
@@ -2354,6 +2341,15 @@ namespace {
         && !move_is_ep(m))
     {
         result += PawnEndgameExtension[pvNode];
+        *dangerous = true;
+    }
+
+    if (   pvNode
+        && captureOrPromotion
+        && pos.type_of_piece_on(move_to(m)) != PAWN
+        && pos.see_sign(m) >= 0)
+    {
+        result += OnePly/2;
         *dangerous = true;
     }
 
