@@ -320,7 +320,7 @@ namespace {
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
   inline Value apply_weight(Value v, int w);
-  Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]);
+  Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
   int weight_option(const std::string& opt, int weight);
   void init_safety();
 }
@@ -352,13 +352,11 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Initialize by reading the incrementally updated scores included in the
   // position object (material + piece square tables)
-  ei.mgValue = pos.mg_value();
-  ei.egValue = pos.eg_value();
+  ei.value = Score(pos.mg_value(), pos.eg_value());
 
   // Probe the material hash table
   ei.mi = MaterialTable[threadID]->get_material_info(pos);
-  ei.mgValue += ei.mi->material_value();
-  ei.egValue += ei.mi->material_value();
+  ei.value += Score(ei.mi->material_value(), ei.mi->material_value());
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return
@@ -372,8 +370,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the pawn hash table
   ei.pi = PawnTable[threadID]->get_pawn_info(pos);
-  ei.mgValue += apply_weight(ei.pi->mg_value(), WeightPawnStructureMidgame);
-  ei.egValue += apply_weight(ei.pi->eg_value(), WeightPawnStructureEndgame);
+  ei.value += Score(apply_weight(ei.pi->mg_value(), WeightPawnStructureMidgame),
+                    apply_weight(ei.pi->eg_value(), WeightPawnStructureEndgame));
 
   // Initialize king attack bitboards and king attack zones for both sides
   ei.attackedBy[WHITE][KING] = pos.attacks_from<KING>(pos.king_square(WHITE));
@@ -422,14 +420,12 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
     if (   square_file(pos.king_square(WHITE)) >= FILE_E
         && square_file(pos.king_square(BLACK)) <= FILE_D)
 
-        ei.mgValue += ei.pi->queenside_storm_value(WHITE)
-                    - ei.pi->kingside_storm_value(BLACK);
+        ei.value += Score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
 
     else if (   square_file(pos.king_square(WHITE)) <= FILE_D
              && square_file(pos.king_square(BLACK)) >= FILE_E)
 
-        ei.mgValue += ei.pi->kingside_storm_value(WHITE)
-                    - ei.pi->queenside_storm_value(BLACK);
+        ei.value += Score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
 
     // Evaluate space for both sides
     if (ei.mi->space_weight() > 0)
@@ -440,15 +436,15 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   }
 
   // Mobility
-  ei.mgValue += apply_weight(ei.mgMobility, WeightMobilityMidgame);
-  ei.egValue += apply_weight(ei.egMobility, WeightMobilityEndgame);
+  ei.value += Score(apply_weight(ei.mgMobility, WeightMobilityMidgame),
+                    apply_weight(ei.egMobility, WeightMobilityEndgame));
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those
   if (   phase < PHASE_MIDGAME
       && pos.opposite_colored_bishops()
-      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && ei.egValue > Value(0))
-          || (factor[BLACK] == SCALE_FACTOR_NORMAL && ei.egValue < Value(0))))
+      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && ei.value.eg() > Value(0))
+          || (factor[BLACK] == SCALE_FACTOR_NORMAL && ei.value.eg() < Value(0))))
   {
       ScaleFactor sf;
 
@@ -475,7 +471,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   // Interpolate between the middle game and the endgame score
   Color stm = pos.side_to_move();
 
-  Value v = Sign[stm] * scale_by_game_phase(ei.mgValue, ei.egValue, phase, factor);
+  Value v = Sign[stm] * scale_by_game_phase(ei.value, phase, factor);
 
   return (ei.mateThreat[stm] == MOVE_NONE ? v : 8 * QueenValueMidgame - v);
 }
@@ -493,12 +489,11 @@ Value quick_evaluate(const Position &pos) {
   static const
   ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
 
-  Value mgv = pos.mg_value();
-  Value egv = pos.eg_value();
+  Score v = Score(pos.mg_value(), pos.eg_value());
   Phase ph = pos.game_phase();
   Color stm = pos.side_to_move();
 
-  return Sign[stm] * scale_by_game_phase(mgv, egv, ph, sf);
+  return Sign[stm] * scale_by_game_phase(v, ph, sf);
 }
 
 
@@ -623,8 +618,7 @@ namespace {
         else
             bonus += bonus / 2;
     }
-    ei.mgValue += Sign[Us] * bonus;
-    ei.egValue += Sign[Us] * bonus;
+    ei.value += Sign[Us] * Score(bonus, bonus);
   }
 
 
@@ -661,10 +655,7 @@ namespace {
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (bit_is_set(ei.attackedBy[Them][PAWN], s))
-        {
-            ei.mgValue -= Sign[Us] * MidgameThreatedByPawnPenalty[Piece];
-            ei.egValue -= Sign[Us] * EndgameThreatedByPawnPenalty[Piece];
-        }
+            ei.value -= Sign[Us] * Score(MidgameThreatedByPawnPenalty[Piece], EndgameThreatedByPawnPenalty[Piece]);
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
@@ -687,8 +678,8 @@ namespace {
             if (   relative_rank(Us, s) == RANK_7
                 && relative_rank(Us, pos.king_square(Them)) == RANK_8)
             {
-                ei.mgValue += Sign[Us] * (Piece == ROOK ? MidgameRookOn7thBonus : MidgameQueenOn7thBonus);
-                ei.egValue += Sign[Us] * (Piece == ROOK ? EndgameRookOn7thBonus : EndgameQueenOn7thBonus);
+                ei.value += Sign[Us] * (Piece == ROOK ? Score(MidgameRookOn7thBonus, EndgameRookOn7thBonus)
+                                                      : Score(MidgameQueenOn7thBonus, EndgameQueenOn7thBonus));
             }
         }
 
@@ -700,15 +691,9 @@ namespace {
             if (ei.pi->file_is_half_open(Us, f))
             {
                 if (ei.pi->file_is_half_open(Them, f))
-                {
-                    ei.mgValue += Sign[Us] * RookOpenFileBonus;
-                    ei.egValue += Sign[Us] * RookOpenFileBonus;
-                }
+                    ei.value += Sign[Us] * Score(RookOpenFileBonus, RookOpenFileBonus);
                 else
-                {
-                    ei.mgValue += Sign[Us] * RookHalfOpenFileBonus;
-                    ei.egValue += Sign[Us] * RookHalfOpenFileBonus;
-                }
+                    ei.value += Sign[Us] * Score(RookHalfOpenFileBonus, RookHalfOpenFileBonus);
             }
 
             // Penalize rooks which are trapped inside a king. Penalize more if
@@ -724,8 +709,8 @@ namespace {
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_right(Us, square_file(ksq)))
-                    ei.mgValue -= pos.can_castle(Us)? Sign[Us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                                    : Sign[Us] *  (TrappedRookPenalty - mob * 16);
+                    ei.value -= Sign[Us] * Score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                                    : (TrappedRookPenalty - mob * 16), 0);
             }
             else if (    square_file(ksq) <= FILE_D
                     &&  square_file(s) < square_file(ksq)
@@ -733,8 +718,8 @@ namespace {
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_left(Us, square_file(ksq)))
-                    ei.mgValue -= pos.can_castle(Us)? Sign[Us] * ((TrappedRookPenalty - mob * 16) / 2)
-                                                    : Sign[Us] * (TrappedRookPenalty - mob * 16);
+                    ei.value -= Sign[Us] * Score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                                    : (TrappedRookPenalty - mob * 16), 0);
             }
         }
     }
@@ -750,8 +735,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b;
-    Value mgBonus = Value(0);
-    Value egBonus = Value(0);
+    Score bonus(0, 0);
 
     // Enemy pieces not defended by a pawn and under our attack
     Bitboard weakEnemies =  pos.pieces_of_color(Them)
@@ -769,13 +753,9 @@ namespace {
         if (b)
             for (PieceType pt2 = PAWN; pt2 < KING; pt2++)
                 if (b & pos.pieces(pt2))
-                {
-                    mgBonus += MidgameThreatBonus[pt1][pt2];
-                    egBonus += EndgameThreatBonus[pt1][pt2];
-                }
+                    bonus += Score(MidgameThreatBonus[pt1][pt2], EndgameThreatBonus[pt1][pt2]);
     }
-    ei.mgValue += Sign[Us] * mgBonus;
-    ei.egValue += Sign[Us] * egBonus;
+    ei.value += Sign[Us] * bonus;
   }
 
 
@@ -810,7 +790,7 @@ namespace {
     if (relative_rank(Us, s) <= RANK_4)
     {
         shelter = ei.pi->get_king_shelter(pos, Us, s);
-        ei.mgValue += Sign[Us] * Value(shelter);
+        ei.value += Score(Sign[Us] * Value(shelter), 0);
     }
 
     // King safety. This is quite complicated, and is almost certainly far
@@ -959,7 +939,7 @@ namespace {
       // change far bigger than the value of the captured piece.
       Value v = apply_weight(SafetyTable[attackUnits], WeightKingSafety[Us]);
 
-      ei.mgValue -= Sign[Us] * v;
+      ei.value -= Score(Sign[Us] * v, 0);
 
       if (Us == pos.side_to_move())
           ei.futilityMargin += v;
@@ -1090,8 +1070,8 @@ namespace {
         }
 
         // Add the scores for this pawn to the middle game and endgame eval.
-        ei.mgValue += apply_weight(Sign[Us] * mbonus, WeightPassedPawnsMidgame);
-        ei.egValue += apply_weight(Sign[Us] * ebonus, WeightPassedPawnsEndgame);
+        ei.value += Score(apply_weight(Sign[Us] * mbonus, WeightPassedPawnsMidgame),
+                          apply_weight(Sign[Us] * ebonus, WeightPassedPawnsEndgame));
 
     } // while
   }
@@ -1116,7 +1096,7 @@ namespace {
     if (!movesToGo[WHITE] || !movesToGo[BLACK])
     {
         Color winnerSide = movesToGo[WHITE] ? WHITE : BLACK;
-        ei.egValue += Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * movesToGo[winnerSide]));
+        ei.value += Score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * movesToGo[winnerSide])));
     }
     else
     {   // Both sides have unstoppable pawns! Try to find out who queens
@@ -1131,7 +1111,7 @@ namespace {
 
         // If one side queens at least three plies before the other, that side wins
         if (movesToGo[winnerSide] <= movesToGo[loserSide] - 3)
-            ei.egValue += Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
+            ei.value += Score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2))));
 
         // If one side queens one ply before the other and checks the king or attacks
         // the undefended opponent's queening square, that side wins. To avoid cases
@@ -1152,7 +1132,7 @@ namespace {
 
             if (  (b & pos.pieces(KING, loserSide))
                 ||(bit_is_set(b, loserQSq) && !bit_is_set(ei.attacked_by(loserSide), loserQSq)))
-                ei.egValue += Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
+                ei.value += Score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2))));
         }
     }
   }
@@ -1174,8 +1154,7 @@ namespace {
         && pos.see(s, b6) < 0
         && pos.see(s, b8) < 0)
     {
-        ei.mgValue -= Sign[us] * TrappedBishopA7H7Penalty;
-        ei.egValue -= Sign[us] * TrappedBishopA7H7Penalty;
+        ei.value -= Sign[us] * Score(TrappedBishopA7H7Penalty, TrappedBishopA7H7Penalty);
     }
   }
 
@@ -1218,8 +1197,7 @@ namespace {
         else
             penalty = TrappedBishopA1H1Penalty / 2;
 
-        ei.mgValue -= Sign[us] * penalty;
-        ei.egValue -= Sign[us] * penalty;
+        ei.value -= Sign[us] * Score(penalty, penalty);
     }
   }
 
@@ -1253,7 +1231,7 @@ namespace {
     int space =  count_1s_max_15<HasPopCnt>(safeSquares)
                + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
-    ei.mgValue += Sign[Us] * apply_weight(Value(space * ei.mi->space_weight()), WeightSpace);
+    ei.value += Sign[Us] * Score(apply_weight(Value(space * ei.mi->space_weight()), WeightSpace), 0);
   }
 
 
@@ -1268,15 +1246,15 @@ namespace {
   // score, based on game phase.  It also scales the return value by a
   // ScaleFactor array.
 
-  Value scale_by_game_phase(Value mv, Value ev, Phase ph, const ScaleFactor sf[]) {
+  Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]) {
 
-    assert(mv > -VALUE_INFINITE && mv < VALUE_INFINITE);
-    assert(ev > -VALUE_INFINITE && ev < VALUE_INFINITE);
+    assert(v.mg() > -VALUE_INFINITE && v.mg() < VALUE_INFINITE);
+    assert(v.eg() > -VALUE_INFINITE && v.eg() < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
-    ev = apply_scale_factor(ev, sf[(ev > Value(0) ? WHITE : BLACK)]);
+    Value ev = apply_scale_factor(v.eg(), sf[(v.eg() > Value(0) ? WHITE : BLACK)]);
 
-    Value result = Value(int((mv * ph + ev * (128 - ph)) / 128));
+    Value result = Value(int((v.mg() * ph + ev * (128 - ph)) / 128));
     return Value(int(result) & ~(GrainSize - 1));
   }
 
@@ -1332,4 +1310,9 @@ namespace {
             SafetyTable[i] = Value(peak);
     }
   }
+}
+
+std::ostream& operator<<(std::ostream &os, Score s) {
+
+    return os << "(" << s.mg() << ", " << s.eg() << ")";
 }

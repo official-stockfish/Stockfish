@@ -52,6 +52,40 @@ enum Value {
 };
 
 
+/// Score struct keeps a midgame and an endgame value in a single
+/// ScoreValue 64 bit union.
+
+union ScoreValue {
+    int64_t v64;
+    struct {
+      int32_t mgv;
+      int32_t egv;
+    } v32;
+};
+
+struct Score {
+
+    Score() {}
+    Score(const Score& s) { v = s.v; }
+    Score(int mg, int eg) { v.v32.mgv = int32_t(mg); v.v32.egv = int32_t(eg); }
+
+    Score& operator=(const Score& s) { v = s.v; return *this; }
+    Score& operator+=(const Score& s) { v.v32.mgv += s.v.v32.mgv; v.v32.egv += s.v.v32.egv; return *this; }
+    Score& operator-=(const Score& s) { v.v32.mgv -= s.v.v32.mgv; v.v32.egv -= s.v.v32.egv; return *this; }
+
+    Value mg() const { return Value(v.v32.mgv); }
+    Value eg() const { return Value(v.v32.egv); }
+
+private:
+    ScoreValue v;
+};
+
+inline Score operator*(int i, Score s) { return Score(i * s.mg(), i * s.eg()); }
+inline Score operator*(Score s, int i) { return s * i; }
+inline Score operator-(Score s) { return Score(-s.mg(), -s.eg()); }
+
+extern std::ostream& operator<<(std::ostream& os, Score s);
+
 ////
 //// Constants and variables
 ////
@@ -97,8 +131,7 @@ const Value PieceValueEndgame[17] = {
 
 /// Bonus for having the side to move (modified by Joona Kiiski)
 
-const Value TempoValueMidgame = Value(48);
-const Value TempoValueEndgame = Value(22);
+const Score TempoValue = Score(48, 22);
 
 
 ////

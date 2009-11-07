@@ -25,6 +25,8 @@
 //// Includes
 ////
 
+#include <iostream>
+
 #include "material.h"
 #include "pawns.h"
 
@@ -46,7 +48,7 @@ class Position;
 struct EvalInfo {
 
   // Middle game and endgame evaluations
-  Value mgValue, egValue;
+  Score value;
 
   // Pointers to material and pawn hash table entries
   MaterialInfo* mi;
