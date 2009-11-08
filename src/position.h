@@ -87,12 +87,13 @@ enum Phase {
 /// must be passed as a parameter.
 
 struct StateInfo {
-  Key key, pawnKey, materialKey;
+  Key pawnKey, materialKey;
   int castleRights, rule50, pliesFromNull;
   Square epSquare;
   Score value;
   Value npMaterial[2];
 
+  Key key;
   PieceType capture;
   Bitboard checkersBB;
   StateInfo* previous;

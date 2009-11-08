@@ -718,7 +718,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   // ones which are recalculated from scratch anyway, then switch our state
   // pointer to point to the new, ready to be updated, state.
   struct ReducedStateInfo {
-    Key key, pawnKey, materialKey;
+    Key pawnKey, materialKey;
     int castleRights, rule50, pliesFromNull;
     Square epSquare;
     Value value;
@@ -758,16 +758,15 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   Piece piece = piece_on(from);
   PieceType pt = type_of_piece(piece);
+  PieceType capture = ep ? PAWN : type_of_piece_on(to);
 
   assert(color_of_piece_on(from) == us);
   assert(color_of_piece_on(to) == them || square_is_empty(to));
   assert(!(ep || pm) || piece == piece_of_color_and_type(us, PAWN));
   assert(!pm || relative_rank(us, to) == RANK_8);
 
-  st->capture = ep ? PAWN : type_of_piece_on(to);
-
-  if (st->capture)
-      do_capture_move(key, st->capture, them, to, ep);
+  if (capture)
+      do_capture_move(key, capture, them, to, ep);
 
   // Update hash key
   key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
@@ -817,7 +816,7 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
       st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
 
       // Set en passant square, only if moved pawn can be captured
-      if (abs(int(to) - int(from)) == 16)
+      if ((to ^ from) == 16)
       {
           if (attacks_from<PAWN>(from + (us == WHITE ? DELTA_N : DELTA_S), us) & pieces(PAWN, them))
           {
@@ -829,6 +828,9 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
 
   // Update incremental scores
   st->value += pst_delta(piece, from, to);
+
+  // Set capture piece
+  st->capture = capture;
 
   if (pm) // promotion ?
   {
