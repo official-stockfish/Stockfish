@@ -123,6 +123,10 @@ inline PieceType move_promotion_piece(Move m) {
   return PieceType((int(m) >> 12) & 7);
 }
 
+inline int move_is_special(Move m) {
+  return m & (0x1F << 12);
+}
+
 inline int move_is_promotion(Move m) {
   return m & (7 << 12);
 }

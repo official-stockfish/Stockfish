@@ -557,122 +557,92 @@ bool Position::move_is_check(Move m) const {
 
 bool Position::move_is_check(Move m, const CheckInfo& ci) const {
 
-  Bitboard dcCandidates = ci.dcCandidates;
-
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(dcCandidates == discovered_check_candidates(side_to_move()));
+  assert(ci.dcCandidates == discovered_check_candidates(side_to_move()));
+  assert(color_of_piece_on(move_from(m)) == side_to_move());
+  assert(piece_on(ci.ksq) == piece_of_color_and_type(opposite_color(side_to_move()), KING));
 
-  Color us = side_to_move();
-  Color them = opposite_color(us);
   Square from = move_from(m);
   Square to = move_to(m);
-  Square ksq = king_square(them);
+  PieceType pt = type_of_piece_on(from);
 
-  assert(color_of_piece_on(from) == us);
-  assert(piece_on(ksq) == piece_of_color_and_type(them, KING));
+  // Direct check ?
+  if (bit_is_set(ci.checkSq[pt], to))
+      return true;
 
-  // Proceed according to the type of the moving piece
-  switch (type_of_piece_on(from))
+  // Discovery check ?
+  if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
   {
-  case PAWN:
-
-      if (bit_is_set(attacks_from<PAWN>(ksq, them), to)) // Normal check?
+      // For pawn and king moves we need to verify also direction
+      if (  (pt != PAWN && pt != KING)
+          ||(direction_between_squares(from, ci.ksq) != direction_between_squares(to, ci.ksq)))
           return true;
-
-      if (   dcCandidates // Discovered check?
-          && bit_is_set(dcCandidates, from)
-          && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
-          return true;
-
-      if (move_is_promotion(m)) // Promotion with check?
-      {
-          Bitboard b = occupied_squares();
-          clear_bit(&b, from);
-
-          switch (move_promotion_piece(m))
-          {
-          case KNIGHT:
-              return bit_is_set(attacks_from<KNIGHT>(to), ksq);
-          case BISHOP:
-              return bit_is_set(bishop_attacks_bb(to, b), ksq);
-          case ROOK:
-              return bit_is_set(rook_attacks_bb(to, b), ksq);
-          case QUEEN:
-              return bit_is_set(queen_attacks_bb(to, b), ksq);
-          default:
-              assert(false);
-          }
-      }
-      // En passant capture with check?  We have already handled the case
-      // of direct checks and ordinary discovered check, the only case we
-      // need to handle is the unusual case of a discovered check through the
-      // captured pawn.
-      else if (move_is_ep(m))
-      {
-          Square capsq = make_square(square_file(to), square_rank(from));
-          Bitboard b = occupied_squares();
-          clear_bit(&b, from);
-          clear_bit(&b, capsq);
-          set_bit(&b, to);
-          return  (rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, us))
-                ||(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, us));
-      }
-      return false;
-
-  // Test discovered check and normal check according to piece type
-  case KNIGHT:
-    return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || bit_is_set(attacks_from<KNIGHT>(ksq), to);
-
-  case BISHOP:
-    return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || (direction_is_diagonal(ksq, to) && bit_is_set(attacks_from<BISHOP>(ksq), to));
-
-  case ROOK:
-    return   (dcCandidates && bit_is_set(dcCandidates, from))
-          || (direction_is_straight(ksq, to) && bit_is_set(attacks_from<ROOK>(ksq), to));
-
-  case QUEEN:
-      // Discovered checks are impossible!
-      assert(!bit_is_set(dcCandidates, from));
-      return (   (direction_is_straight(ksq, to) && bit_is_set(attacks_from<ROOK>(ksq), to))
-              || (direction_is_diagonal(ksq, to) && bit_is_set(attacks_from<BISHOP>(ksq), to)));
-
-  case KING:
-      // Discovered check?
-      if (   bit_is_set(dcCandidates, from)
-          && (direction_between_squares(from, ksq) != direction_between_squares(to, ksq)))
-          return true;
-
-      // Castling with check?
-      if (move_is_castle(m))
-      {
-          Square kfrom, kto, rfrom, rto;
-          Bitboard b = occupied_squares();
-          kfrom = from;
-          rfrom = to;
-
-          if (rfrom > kfrom)
-          {
-              kto = relative_square(us, SQ_G1);
-              rto = relative_square(us, SQ_F1);
-          } else {
-              kto = relative_square(us, SQ_C1);
-              rto = relative_square(us, SQ_D1);
-          }
-          clear_bit(&b, kfrom);
-          clear_bit(&b, rfrom);
-          set_bit(&b, rto);
-          set_bit(&b, kto);
-          return bit_is_set(rook_attacks_bb(rto, b), ksq);
-      }
-      return false;
-
-  default: // NO_PIECE_TYPE
-      break;
   }
-  assert(false);
+
+  // Can we skip the ugly special cases ?
+  if (!move_is_special(m))
+      return false;
+
+  Color us = side_to_move();
+  Bitboard b = occupied_squares();
+
+  // Promotion with check ?
+  if (move_is_promotion(m))
+  {
+      clear_bit(&b, from);
+
+      switch (move_promotion_piece(m))
+      {
+      case KNIGHT:
+          return bit_is_set(attacks_from<KNIGHT>(to), ci.ksq);
+      case BISHOP:
+          return bit_is_set(bishop_attacks_bb(to, b), ci.ksq);
+      case ROOK:
+          return bit_is_set(rook_attacks_bb(to, b), ci.ksq);
+      case QUEEN:
+          return bit_is_set(queen_attacks_bb(to, b), ci.ksq);
+      default:
+          assert(false);
+      }
+  }
+
+  // En passant capture with check?  We have already handled the case
+  // of direct checks and ordinary discovered check, the only case we
+  // need to handle is the unusual case of a discovered check through the
+  // captured pawn.
+  if (move_is_ep(m))
+  {
+      Square capsq = make_square(square_file(to), square_rank(from));
+      clear_bit(&b, from);
+      clear_bit(&b, capsq);
+      set_bit(&b, to);
+      return  (rook_attacks_bb(ci.ksq, b) & pieces(ROOK, QUEEN, us))
+            ||(bishop_attacks_bb(ci.ksq, b) & pieces(BISHOP, QUEEN, us));
+  }
+
+  // Castling with check ?
+  if (move_is_castle(m))
+  {
+      Square kfrom, kto, rfrom, rto;
+      kfrom = from;
+      rfrom = to;
+
+      if (rfrom > kfrom)
+      {
+          kto = relative_square(us, SQ_G1);
+          rto = relative_square(us, SQ_F1);
+      } else {
+          kto = relative_square(us, SQ_C1);
+          rto = relative_square(us, SQ_D1);
+      }
+      clear_bit(&b, kfrom);
+      clear_bit(&b, rfrom);
+      set_bit(&b, rto);
+      set_bit(&b, kto);
+      return bit_is_set(rook_attacks_bb(rto, b), ci.ksq);
+  }
+
   return false;
 }
 
