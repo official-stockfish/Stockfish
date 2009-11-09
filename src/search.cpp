@@ -1114,7 +1114,8 @@ namespace {
     // to search all moves
     isCheck = pos.is_check();
     mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
-    dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
+    CheckInfo ci(pos);
+    dcCandidates = ci.dc;
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
 
     // Loop through all legal moves until no moves remain or a beta cutoff
@@ -1371,7 +1372,8 @@ namespace {
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves.
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
-    dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
+    CheckInfo ci(pos);
+    dcCandidates = ci.dc;
     futilityValue = VALUE_NONE;
     useFutilityPruning = depth < SelectiveDepth && !isCheck;
 
@@ -1592,7 +1594,8 @@ namespace {
     // to search the moves.  Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0) will be generated.
     MovePicker mp = MovePicker(pos, ttMove, depth, H);
-    dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
+    CheckInfo ci(pos);
+    dcCandidates = ci.dc;
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
