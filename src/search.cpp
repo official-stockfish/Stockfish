@@ -1115,7 +1115,7 @@ namespace {
     isCheck = pos.is_check();
     mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
     CheckInfo ci(pos);
-    dcCandidates = ci.dc;
+    dcCandidates = ci.dcCandidates;
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
 
     // Loop through all legal moves until no moves remain or a beta cutoff
@@ -1127,7 +1127,7 @@ namespace {
       assert(move_is_ok(move));
 
       singleReply = (isCheck && mp.number_of_evasions() == 1);
-      moveIsCheck = pos.move_is_check(move, dcCandidates);
+      moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1373,7 +1373,7 @@ namespace {
     // to search all moves.
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
-    dcCandidates = ci.dc;
+    dcCandidates = ci.dcCandidates;
     futilityValue = VALUE_NONE;
     useFutilityPruning = depth < SelectiveDepth && !isCheck;
 
@@ -1390,7 +1390,7 @@ namespace {
       assert(move_is_ok(move));
 
       singleReply = (isCheck && mp.number_of_evasions() == 1);
-      moveIsCheck = pos.move_is_check(move, dcCandidates);
+      moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       movesSearched[moveCount++] = ss[ply].currentMove = move;
@@ -1595,7 +1595,7 @@ namespace {
     // queen promotions and checks (only if depth == 0) will be generated.
     MovePicker mp = MovePicker(pos, ttMove, depth, H);
     CheckInfo ci(pos);
-    dcCandidates = ci.dc;
+    dcCandidates = ci.dcCandidates;
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
@@ -1613,7 +1613,7 @@ namespace {
           && !isCheck
           && !pvNode
           && !move_is_promotion(move)
-          && !pos.move_is_check(move, dcCandidates)
+          && !pos.move_is_check(move, ci)
           && !pos.move_is_passed_pawn_push(move))
       {
           futilityValue =  staticValue
@@ -1701,6 +1701,7 @@ namespace {
     assert(ActiveThreads > 1);
 
     Position pos = Position(sp->pos);
+    CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
     Value value;
     Move move;
@@ -1714,7 +1715,7 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
+      bool moveIsCheck = pos.move_is_check(move, ci);
       bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       lock_grab(&(sp->lock));
@@ -1844,6 +1845,7 @@ namespace {
     assert(ActiveThreads > 1);
 
     Position pos = Position(sp->pos);
+    CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
     Value value;
     Move move;
@@ -1852,7 +1854,7 @@ namespace {
            && !thread_should_stop(threadID)
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
     {
-      bool moveIsCheck = pos.move_is_check(move, sp->dcCandidates);
+      bool moveIsCheck = pos.move_is_check(move, ci);
       bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       assert(move_is_ok(move));

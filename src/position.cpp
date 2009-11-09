@@ -65,7 +65,7 @@ CheckInfo::CheckInfo(const Position& pos) {
   Color them = opposite_color(us);
 
   ksq = pos.king_square(them);
-  dc = pos.discovered_check_candidates(us);
+  dcCandidates = pos.discovered_check_candidates(us);
 
   checkSq[PAWN] = pos.attacks_from<PAWN>(ksq, them);
   checkSq[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
@@ -552,11 +552,12 @@ bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
 
 bool Position::move_is_check(Move m) const {
 
-  Bitboard dc = discovered_check_candidates(side_to_move());
-  return move_is_check(m, dc);
+  return move_is_check(m, CheckInfo(*this));
 }
 
-bool Position::move_is_check(Move m, Bitboard dcCandidates) const {
+bool Position::move_is_check(Move m, const CheckInfo& ci) const {
+
+  Bitboard dcCandidates = ci.dcCandidates;
 
   assert(is_ok());
   assert(move_is_ok(m));
