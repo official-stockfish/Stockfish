@@ -63,6 +63,18 @@ const int MaxGameLength = 220;
 //// Types
 ////
 
+/// struct checkInfo is initialized at c'tor time and keeps
+/// info used to detect if a move gives check.
+
+struct CheckInfo {
+
+    CheckInfo(const Position&);
+
+    Square ksq;
+    Bitboard dc;
+    Bitboard checkSq[8];
+};
+
 /// Castle rights, encoded as bit fields
 
 enum CastleRights {
