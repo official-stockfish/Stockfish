@@ -1065,7 +1065,6 @@ namespace {
     Move movesSearched[256];
     EvalInfo ei;
     StateInfo st;
-    Bitboard dcCandidates;
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
@@ -1115,7 +1114,6 @@ namespace {
     isCheck = pos.is_check();
     mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
     CheckInfo ci(pos);
-    dcCandidates = ci.dcCandidates;
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
 
     // Loop through all legal moves until no moves remain or a beta cutoff
@@ -1137,7 +1135,7 @@ namespace {
       newDepth = depth - OnePly + ext;
 
       // Make and search the move
-      pos.do_move(move, st, dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates);
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1211,7 +1209,7 @@ namespace {
           && !AbortSearch
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE, VALUE_NONE, depth,
-                   &moveCount, &mp, dcCandidates, threadID, true))
+                   &moveCount, &mp, ci.dcCandidates, threadID, true))
           break;
     }
 
@@ -1258,7 +1256,6 @@ namespace {
     Move movesSearched[256];
     EvalInfo ei;
     StateInfo st;
-    Bitboard dcCandidates;
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
@@ -1373,7 +1370,6 @@ namespace {
     // to search all moves.
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
-    dcCandidates = ci.dcCandidates;
     futilityValue = VALUE_NONE;
     useFutilityPruning = depth < SelectiveDepth && !isCheck;
 
@@ -1427,7 +1423,7 @@ namespace {
       }
 
       // Make and search the move
-      pos.do_move(move, st, dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1473,7 +1469,7 @@ namespace {
           && !AbortSearch
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, approximateEval, depth, &moveCount,
-                   &mp, dcCandidates, threadID, false))
+                   &mp, ci.dcCandidates, threadID, false))
         break;
     }
 
@@ -1522,7 +1518,6 @@ namespace {
 
     EvalInfo ei;
     StateInfo st;
-    Bitboard dcCandidates;
     Move ttMove, move;
     Value staticValue, bestValue, value, futilityValue;
     bool isCheck, enoughMaterial;
@@ -1595,7 +1590,6 @@ namespace {
     // queen promotions and checks (only if depth == 0) will be generated.
     MovePicker mp = MovePicker(pos, ttMove, depth, H);
     CheckInfo ci(pos);
-    dcCandidates = ci.dcCandidates;
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
 
     // Loop through the moves until no moves remain or a beta cutoff
@@ -1639,7 +1633,7 @@ namespace {
           continue;
 
       // Make and search the move
-      pos.do_move(move, st, dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates);
       value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
