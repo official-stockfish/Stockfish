@@ -68,19 +68,13 @@ inline Score operator-(Score s1, Score s2) { return Score(int(s1) - int(s2)); }
 inline void operator+=(Score& s1, Score s2) { s1 = Score(int(s1) + int(s2)); }
 inline void operator-=(Score& s1, Score s2) { s1 = Score(int(s1) - int(s2)); }
 inline Score operator*(int i, Score s) { return Score(i * int(s)); }
-inline Score operator/(Score s, int i) { return Score(int(s) / i); }
+
+// Division must be handled separately for each term
+inline Score operator/(Score s, int i) { return make_score(mg_value(s) / i, eg_value(s) / i); }
 
 // Only declared but not defined. We don't want to multiply two scores due to
 // a very high risk of overflow. So user should explicitly convert to integer.
 inline Score operator*(Score s1, Score s2);
-
-// Following are only declared to prevent erroneus instantations
-inline Score operator*(Score s, int i);
-inline Score operator/(Score s1, Score s2);
-inline Score operator+(Score s, int i);
-inline Score operator+(int i, Score s);
-inline Score operator-(Score s, int i);
-inline Score operator-(int i, Score s);
 
 
 ////
