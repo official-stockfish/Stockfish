@@ -658,20 +658,18 @@ inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square 
   const bool Rook   = (Piece == QUEEN || Piece == ROOK);
   const bool Slider = Bishop || Rook;
 
+  assert(*pCheckersBB == EmptyBoardBB);
+
   // Direct checks
-  if (  (   (Bishop && bit_is_set(BishopPseudoAttacks[ksq], to))
+  if (  (   !Slider // try to early skip slide piece attacks
+         || (Bishop && bit_is_set(BishopPseudoAttacks[ksq], to))
          || (Rook   && bit_is_set(RookPseudoAttacks[ksq], to)))
-      && bit_is_set(attacks_from<Piece>(ksq), to)) // slow, try to early skip
-      set_bit(pCheckersBB, to);
-
-  else if (   Piece != KING
-           && !Slider
-           && bit_is_set(Piece == PAWN ? attacks_from<PAWN>(ksq, opposite_color(sideToMove))
-                                       : attacks_from<Piece>(ksq), to))
-      set_bit(pCheckersBB, to);
-
+      && bit_is_set(Piece == PAWN ? attacks_from<PAWN>(ksq, opposite_color(sideToMove)) : attacks_from<Piece>(ksq) , to))
+  {
+      *pCheckersBB = SetMaskBB[to];
+  }
   // Discovery checks
-  if (Piece != QUEEN && bit_is_set(dcCandidates, from))
+  if (Piece != QUEEN && dcCandidates && bit_is_set(dcCandidates, from))
   {
       if (Piece != ROOK)
           (*pCheckersBB) |= (attacks_from<ROOK>(ksq) & pieces(ROOK, QUEEN, side_to_move()));
