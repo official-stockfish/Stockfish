@@ -236,7 +236,7 @@ public:
   // Doing and undoing moves
   void saveState();
   void do_move(Move m, StateInfo& st);
-  void do_move(Move m, StateInfo& st, Bitboard dcCandidates);
+  void do_move(Move m, StateInfo& st, Bitboard dcCandidates, bool moveCanBeCheck = true);
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();

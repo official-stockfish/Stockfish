@@ -334,7 +334,6 @@ int perft(Position& pos, Depth depth)
 {
     Move move;
     MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
-    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
     int sum = 0;
 
     // If we are at the last ply we don't need to do and undo
@@ -346,10 +345,11 @@ int perft(Position& pos, Depth depth)
     }
 
     // Loop through all legal moves
+    CheckInfo ci(pos);
     while ((move = mp.get_next_move()) != MOVE_NONE)
     {
       StateInfo st;
-      pos.do_move(move, st, dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates, pos.move_is_check(move, ci));
       sum += perft(pos, depth - OnePly);
       pos.undo_move(move);
     }
@@ -862,7 +862,7 @@ namespace {
 
     Value oldAlpha = alpha;
     Value value;
-    Bitboard dcCandidates = pos.discovered_check_candidates(pos.side_to_move());
+    CheckInfo ci(pos);
 
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
@@ -904,7 +904,7 @@ namespace {
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
-        pos.do_move(move, st, dcCandidates);
+        pos.do_move(move, st, ci.dcCandidates);
 
         if (i < MultiPV)
         {
@@ -1135,7 +1135,7 @@ namespace {
       newDepth = depth - OnePly + ext;
 
       // Make and search the move
-      pos.do_move(move, st, ci.dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates, moveIsCheck);
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1423,7 +1423,7 @@ namespace {
       }
 
       // Make and search the move
-      pos.do_move(move, st, ci.dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates, moveIsCheck);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1520,7 +1520,7 @@ namespace {
     StateInfo st;
     Move ttMove, move;
     Value staticValue, bestValue, value, futilityValue;
-    bool isCheck, enoughMaterial;
+    bool isCheck, enoughMaterial, moveIsCheck;
     const TTEntry* tte = NULL;
     int moveCount = 0;
     bool pvNode = (beta - alpha != 1);
@@ -1602,12 +1602,14 @@ namespace {
       moveCount++;
       ss[ply].currentMove = move;
 
+      moveIsCheck = pos.move_is_check(move, ci);
+
       // Futility pruning
       if (   enoughMaterial
           && !isCheck
           && !pvNode
+          && !moveIsCheck
           && !move_is_promotion(move)
-          && !pos.move_is_check(move, ci)
           && !pos.move_is_passed_pawn_push(move))
       {
           futilityValue =  staticValue
@@ -1633,7 +1635,7 @@ namespace {
           continue;
 
       // Make and search the move
-      pos.do_move(move, st, ci.dcCandidates);
+      pos.do_move(move, st, ci.dcCandidates, moveIsCheck);
       value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
@@ -1760,7 +1762,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st, sp->dcCandidates);
+      pos.do_move(move, st, sp->dcCandidates, moveIsCheck);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1866,7 +1868,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st, sp->dcCandidates);
+      pos.do_move(move, st, sp->dcCandidates, moveIsCheck);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.

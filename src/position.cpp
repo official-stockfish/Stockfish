@@ -689,7 +689,7 @@ void Position::do_move(Move m, StateInfo& newSt) {
   do_move(m, newSt, discovered_check_candidates(side_to_move()));
 }
 
-void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
+void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates, bool moveCanBeCheck) {
 
   assert(is_ok());
   assert(move_is_ok(m));
@@ -858,21 +858,25 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates) {
   st->key = key;
 
   // Update checkers bitboard, piece must be already moved
-  if (ep | pm)
-      st->checkersBB = attackers_to(king_square(them)) & pieces_of_color(us);
-  else
+  st->checkersBB = EmptyBoardBB;
+
+  if (moveCanBeCheck)
   {
-      st->checkersBB = EmptyBoardBB;
-      Square ksq = king_square(them);
-      switch (pt)
+      if (ep | pm)
+          st->checkersBB = attackers_to(king_square(them)) & pieces_of_color(us);
+      else
       {
-      case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-      case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
-      case BISHOP: update_checkers<BISHOP>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
-      case ROOK:   update_checkers<ROOK>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-      case QUEEN:  update_checkers<QUEEN>(&(st->checkersBB), ksq, from, to, dcCandidates);  break;
-      case KING:   update_checkers<KING>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-      default: assert(false); break;
+          Square ksq = king_square(them);
+          switch (pt)
+          {
+          case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+          case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
+          case BISHOP: update_checkers<BISHOP>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
+          case ROOK:   update_checkers<ROOK>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+          case QUEEN:  update_checkers<QUEEN>(&(st->checkersBB), ksq, from, to, dcCandidates);  break;
+          case KING:   update_checkers<KING>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
+          default: assert(false); break;
+          }
       }
   }
 
