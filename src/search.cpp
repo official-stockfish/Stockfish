@@ -1398,7 +1398,8 @@ namespace {
       // Futility pruning
       if (    useFutilityPruning
           && !dangerous
-          && !captureOrPromotion)
+          && !captureOrPromotion
+          &&  move != ttMove)
       {
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= 2 + int(depth)
@@ -1609,6 +1610,7 @@ namespace {
           && !isCheck
           && !pvNode
           && !moveIsCheck
+          &&  move != ttMove
           && !move_is_promotion(move)
           && !pos.move_is_passed_pawn_push(move))
       {
