@@ -348,21 +348,19 @@ union b_union {
 
 Square pop_1st_bit(Bitboard* bb) {
 
-   b_union u;
+   b_union* u;
    Square ret;
 
-   u.b = *bb;
+   u = (b_union*)bb;
 
-   if (u.dw.l)
+   if (u->dw.l)
    {
-       ret = Square(BitTable[((u.dw.l ^ (u.dw.l - 1)) * 0x783a9b23) >> 26]);
-       u.dw.l &= (u.dw.l - 1);
-       *bb = u.b;
+       ret = Square(BitTable[((u->dw.l ^ (u->dw.l - 1)) * 0x783a9b23) >> 26]);
+       u->dw.l &= (u->dw.l - 1);
        return ret;
    }
-   ret = Square(BitTable[((~(u.dw.h ^ (u.dw.h - 1))) * 0x783a9b23) >> 26]);
-   u.dw.h &= (u.dw.h - 1);
-   *bb = u.b;
+   ret = Square(BitTable[((~(u->dw.h ^ (u->dw.h - 1))) * 0x783a9b23) >> 26]);
+   u->dw.h &= (u->dw.h - 1);
    return ret;
 }
 
