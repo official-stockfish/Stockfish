@@ -349,7 +349,7 @@ int perft(Position& pos, Depth depth)
     while ((move = mp.get_next_move()) != MOVE_NONE)
     {
       StateInfo st;
-      pos.do_move(move, st, ci.dcCandidates, pos.move_is_check(move, ci));
+      pos.do_move(move, st, ci, pos.move_is_check(move, ci));
       sum += perft(pos, depth - OnePly);
       pos.undo_move(move);
     }
@@ -898,13 +898,14 @@ namespace {
                       << " currmovenumber " << i + 1 << std::endl;
 
         // Decide search depth for this move
+        bool moveIsCheck = pos.move_is_check(move);
         bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
         bool dangerous;
-        ext = extension(pos, move, true, captureOrPromotion, pos.move_is_check(move), false, false, &dangerous);
+        ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
         newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
 
         // Make the move, and search it
-        pos.do_move(move, st, ci.dcCandidates);
+        pos.do_move(move, st, ci, moveIsCheck);
 
         if (i < MultiPV)
         {
@@ -1135,7 +1136,7 @@ namespace {
       newDepth = depth - OnePly + ext;
 
       // Make and search the move
-      pos.do_move(move, st, ci.dcCandidates, moveIsCheck);
+      pos.do_move(move, st, ci, moveIsCheck);
 
       if (moveCount == 1) // The first move in list is the PV
           value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
@@ -1424,7 +1425,7 @@ namespace {
       }
 
       // Make and search the move
-      pos.do_move(move, st, ci.dcCandidates, moveIsCheck);
+      pos.do_move(move, st, ci, moveIsCheck);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1637,7 +1638,7 @@ namespace {
           continue;
 
       // Make and search the move
-      pos.do_move(move, st, ci.dcCandidates, moveIsCheck);
+      pos.do_move(move, st, ci, moveIsCheck);
       value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
@@ -1764,7 +1765,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st, sp->dcCandidates, moveIsCheck);
+      pos.do_move(move, st, ci, moveIsCheck);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
@@ -1870,7 +1871,7 @@ namespace {
 
       // Make and search the move.
       StateInfo st;
-      pos.do_move(move, st, sp->dcCandidates, moveIsCheck);
+      pos.do_move(move, st, ci, moveIsCheck);
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.

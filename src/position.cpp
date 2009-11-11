@@ -343,16 +343,15 @@ void Position::copy(const Position& pos) {
 template<bool FindPinned>
 Bitboard Position::hidden_checkers(Color c) const {
 
-  Bitboard pinners, result = EmptyBoardBB;
+  Bitboard result = EmptyBoardBB;
+  Bitboard pinners = pieces_of_color(FindPinned ? opposite_color(c) : c);
 
   // Pinned pieces protect our king, dicovery checks attack
   // the enemy king.
   Square ksq = king_square(FindPinned ? c : opposite_color(c));
 
-  // Pinners are sliders, not checkers, that give check when
-  // candidate pinned is removed.
-  pinners =  (pieces(ROOK, QUEEN, FindPinned ? opposite_color(c) : c) & RookPseudoAttacks[ksq])
-           | (pieces(BISHOP, QUEEN, FindPinned ? opposite_color(c) : c) & BishopPseudoAttacks[ksq]);
+  // Pinners are sliders, not checkers, that give check when candidate pinned is removed
+  pinners &= (pieces(ROOK, QUEEN) & RookPseudoAttacks[ksq]) | (pieces(BISHOP, QUEEN) & BishopPseudoAttacks[ksq]);
 
   if (FindPinned && pinners)
       pinners &= ~st->checkersBB;
@@ -647,49 +646,17 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
 }
 
 
-/// Position::update_checkers() udpates chekers info given the move. It is called
-/// in do_move() and is faster then find_checkers().
-
-template<PieceType Piece>
-inline void Position::update_checkers(Bitboard* pCheckersBB, Square ksq, Square from,
-                                      Square to, Bitboard dcCandidates) {
-
-  const bool Bishop = (Piece == QUEEN || Piece == BISHOP);
-  const bool Rook   = (Piece == QUEEN || Piece == ROOK);
-  const bool Slider = Bishop || Rook;
-
-  assert(*pCheckersBB == EmptyBoardBB);
-
-  // Direct checks
-  if (  (   !Slider // try to early skip slide piece attacks
-         || (Bishop && bit_is_set(BishopPseudoAttacks[ksq], to))
-         || (Rook   && bit_is_set(RookPseudoAttacks[ksq], to)))
-      && bit_is_set(Piece == PAWN ? attacks_from<PAWN>(ksq, opposite_color(sideToMove)) : attacks_from<Piece>(ksq) , to))
-  {
-      *pCheckersBB = SetMaskBB[to];
-  }
-  // Discovery checks
-  if (Piece != QUEEN && dcCandidates && bit_is_set(dcCandidates, from))
-  {
-      if (Piece != ROOK)
-          (*pCheckersBB) |= (attacks_from<ROOK>(ksq) & pieces(ROOK, QUEEN, side_to_move()));
-
-      if (Piece != BISHOP)
-          (*pCheckersBB) |= (attacks_from<BISHOP>(ksq) & pieces(BISHOP, QUEEN, side_to_move()));
-  }
-}
-
-
 /// Position::do_move() makes a move, and saves all information necessary
 /// to a StateInfo object. The move is assumed to be legal.
 /// Pseudo-legal moves should be filtered out before this function is called.
 
 void Position::do_move(Move m, StateInfo& newSt) {
 
-  do_move(m, newSt, discovered_check_candidates(side_to_move()));
+  CheckInfo ci(*this);
+  do_move(m, newSt, ci, move_is_check(m, ci));
 }
 
-void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates, bool moveCanBeCheck) {
+void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveIsCheck) {
 
   assert(is_ok());
   assert(move_is_ok(m));
@@ -860,22 +827,24 @@ void Position::do_move(Move m, StateInfo& newSt, Bitboard dcCandidates, bool mov
   // Update checkers bitboard, piece must be already moved
   st->checkersBB = EmptyBoardBB;
 
-  if (moveCanBeCheck)
+  if (moveIsCheck)
   {
       if (ep | pm)
           st->checkersBB = attackers_to(king_square(them)) & pieces_of_color(us);
       else
       {
-          Square ksq = king_square(them);
-          switch (pt)
+          // Direct checks
+          if (bit_is_set(ci.checkSq[pt], to))
+              st->checkersBB = SetMaskBB[to];
+
+          // Discovery checks
+          if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
           {
-          case PAWN:   update_checkers<PAWN>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-          case KNIGHT: update_checkers<KNIGHT>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
-          case BISHOP: update_checkers<BISHOP>(&(st->checkersBB), ksq, from, to, dcCandidates); break;
-          case ROOK:   update_checkers<ROOK>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-          case QUEEN:  update_checkers<QUEEN>(&(st->checkersBB), ksq, from, to, dcCandidates);  break;
-          case KING:   update_checkers<KING>(&(st->checkersBB), ksq, from, to, dcCandidates);   break;
-          default: assert(false); break;
+              if (pt != ROOK)
+                  st->checkersBB |= (attacks_from<ROOK>(ci.ksq) & pieces(ROOK, QUEEN, us));
+
+              if (pt != BISHOP)
+                  st->checkersBB |= (attacks_from<BISHOP>(ci.ksq) & pieces(BISHOP, QUEEN, us));
           }
       }
   }

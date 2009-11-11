@@ -236,7 +236,7 @@ public:
   // Doing and undoing moves
   void saveState();
   void do_move(Move m, StateInfo& st);
-  void do_move(Move m, StateInfo& st, Bitboard dcCandidates, bool moveCanBeCheck = true);
+  void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
@@ -295,9 +295,6 @@ private:
   void do_castle_move(Move m);
   void undo_castle_move(Move m);
   void find_checkers();
-
-  template<PieceType Piece>
-  void update_checkers(Bitboard* pCheckersBB, Square ksq, Square from, Square to, Bitboard dcCandidates);
 
   template<bool FindPinned>
   Bitboard hidden_checkers(Color c) const;
