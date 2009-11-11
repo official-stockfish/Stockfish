@@ -515,35 +515,6 @@ void read_weights(Color us) {
 
 namespace {
 
-  // evaluate_mobility() computes mobility and attacks for every piece
-
-  template<PieceType Piece, Color Us, bool HasPopCnt>
-  int evaluate_mobility(Bitboard b, Bitboard mob_area, EvalInfo& ei) {
-
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-
-    // Update attack info
-    ei.attackedBy[Us][Piece] |= b;
-
-    // King attacks
-    if (b & ei.kingZone[Us])
-    {
-        ei.kingAttackersCount[Us]++;
-        ei.kingAttackersWeight[Us] += AttackWeight[Piece];
-        Bitboard bb = (b & ei.attackedBy[Them][KING]);
-        if (bb)
-            ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
-    }
-
-    // Mobility
-    int mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & mob_area)
-                              : count_1s<HasPopCnt>(b & mob_area));
-
-    ei.mobility += Sign[Us] * MobilityBonus[Piece][mob];
-    return mob;
-  }
-
-
   // evaluate_outposts() evaluates bishop and knight outposts squares
 
   template<PieceType Piece, Color Us>
@@ -572,7 +543,7 @@ namespace {
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  void evaluate_pieces(const Position& pos, EvalInfo& ei) {
+  void evaluate_pieces(const Position& pos, EvalInfo& ei, Bitboard mob_area) {
 
     Bitboard b;
     Square s, ksq;
@@ -581,9 +552,6 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* ptr = pos.piece_list_begin(Us, Piece);
-
-    // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
-    const Bitboard mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
     while ((s = *ptr++) != SQ_NONE)
     {
@@ -596,8 +564,24 @@ namespace {
         else
             assert(false);
 
-        // Attacks and mobility
-        mob = evaluate_mobility<Piece, Us, HasPopCnt>(b, mob_area, ei);
+        // Update attack info
+        ei.attackedBy[Us][Piece] |= b;
+
+        // King attacks
+        if (b & ei.kingZone[Us])
+        {
+            ei.kingAttackersCount[Us]++;
+            ei.kingAttackersWeight[Us] += AttackWeight[Piece];
+            Bitboard bb = (b & ei.attackedBy[Them][KING]);
+            if (bb)
+                ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
+        }
+
+        // Mobility
+        mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & mob_area)
+                              : count_1s<HasPopCnt>(b & mob_area));
+
+        ei.mobility += Sign[Us] * MobilityBonus[Piece][mob];
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
@@ -711,15 +695,20 @@ namespace {
   template<Color Us, bool HasPopCnt>
   void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei) {
 
-      evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei);
-      evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei);
-      evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei);
-      evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-      // Sum up all attacked squares
-      ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
-                             | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
-                             | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
+    // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
+    const Bitboard mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
+
+    evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, mob_area);
+    evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, mob_area);
+    evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, mob_area);
+    evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, mob_area);
+
+    // Sum up all attacked squares
+    ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
+                           | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
+                           | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
   }
 
 
