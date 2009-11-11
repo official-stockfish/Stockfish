@@ -73,7 +73,7 @@ inline void sort_moves(T* firstMove, T* lastMove)
     T *cur, *p, *d;
 
     if (firstMove != lastMove)
-        for (cur = firstMove; ++cur != lastMove; )
+        for (cur = firstMove + 1; cur != lastMove; cur++)
         {
             p = d = cur;
             value = *p--;
