@@ -720,8 +720,12 @@ namespace {
   void evaluate_king(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    Bitboard undefended, attackedByOthers, escapeSquares, occ, b, b2, safe;
+    Square from, to;
+    bool sente;
+    int attackUnits, count, shelter = 0;
     const Square s = pos.king_square(Us);
-    int shelter = 0;
 
     // King shelter
     if (relative_rank(Us, s) <= RANK_4)
@@ -738,77 +742,80 @@ namespace {
         && ei.kingAdjacentZoneAttacksCount[Them])
     {
       // Is it the attackers turn to move?
-      bool sente = (Them == pos.side_to_move());
+      sente = (Them == pos.side_to_move());
 
       // Find the attacked squares around the king which has no defenders
       // apart from the king itself
-      Bitboard undefended =
-             ei.attacked_by(Them)       & ~ei.attacked_by(Us, PAWN)
-          & ~ei.attacked_by(Us, KNIGHT) & ~ei.attacked_by(Us, BISHOP)
-          & ~ei.attacked_by(Us, ROOK)   & ~ei.attacked_by(Us, QUEEN)
-          &  ei.attacked_by(Us, KING);
-
-      Bitboard occ = pos.occupied_squares(), b, b2;
+      undefended = ei.attacked_by(Them) & ei.attacked_by(Us, KING);
+      undefended &= ~(  ei.attacked_by(Us, PAWN)   | ei.attacked_by(Us, KNIGHT)
+                      | ei.attacked_by(Us, BISHOP) | ei.attacked_by(Us, ROOK)
+                      | ei.attacked_by(Us, QUEEN));
 
       // Initialize the 'attackUnits' variable, which is used later on as an
-      // index to the SafetyTable[] array.  The initial value is based on the
+      // index to the SafetyTable[] array. The initial value is based on the
       // number and types of the attacking pieces, the number of attacked and
       // undefended squares around the king, the square of the king, and the
       // quality of the pawn shelter.
-      int attackUnits =
-            Min((ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2, 25)
-          + (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended)) * 3
-          + InitKingDanger[relative_square(Us, s)] - (shelter >> 5);
+      attackUnits =  Min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
+                   + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended))
+                   + InitKingDanger[relative_square(Us, s)]
+                   - (shelter >> 5);
 
       // Analyse safe queen contact checks
       b = undefended & ei.attacked_by(Them, QUEEN) & ~pos.pieces_of_color(Them);
       if (b)
       {
-        Bitboard attackedByOthers =
-              ei.attacked_by(Them, PAWN)   | ei.attacked_by(Them, KNIGHT)
-            | ei.attacked_by(Them, BISHOP) | ei.attacked_by(Them, ROOK);
+        attackedByOthers =  ei.attacked_by(Them, PAWN)   | ei.attacked_by(Them, KNIGHT)
+                          | ei.attacked_by(Them, BISHOP) | ei.attacked_by(Them, ROOK);
 
         b &= attackedByOthers;
+
+        // Squares attacked by the queen and supported by another enemy piece and
+        // not defended by other pieces but our king.
         if (b)
         {
-          // The bitboard b now contains the squares available for safe queen
-          // contact checks.
-          int count = count_1s_max_15<HasPopCnt>(b);
-          attackUnits += QueenContactCheckBonus * count * (sente ? 2 : 1);
+            // The bitboard b now contains the squares available for safe queen
+            // contact checks.
+            count = count_1s_max_15<HasPopCnt>(b);
+            attackUnits += QueenContactCheckBonus * count * (sente ? 2 : 1);
 
-          // Is there a mate threat?
-          if (QueenContactMates && !pos.is_check())
-          {
-            Bitboard escapeSquares =
-                pos.attacks_from<KING>(s) & ~pos.pieces_of_color(Us) & ~attackedByOthers;
-
-            while (b)
+            // Is there a mate threat?
+            if (QueenContactMates && !pos.is_check())
             {
-                Square from, to = pop_1st_bit(&b);
-                if (!(escapeSquares & ~queen_attacks_bb(to, occ & ClearMaskBB[s])))
+                escapeSquares = pos.attacks_from<KING>(s) & ~pos.pieces_of_color(Us) & ~attackedByOthers;
+                occ = pos.occupied_squares();
+                while (b)
                 {
-                    // We have a mate, unless the queen is pinned or there
-                    // is an X-ray attack through the queen.
-                    for (int i = 0; i < pos.piece_count(Them, QUEEN); i++)
-                    {
-                        from = pos.piece_list(Them, QUEEN, i);
-                        if (    bit_is_set(pos.attacks_from<QUEEN>(from), to)
-                            && !bit_is_set(pos.pinned_pieces(Them), from)
-                            && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & pos.pieces(ROOK, QUEEN, Us))
-                            && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & pos.pieces(BISHOP, QUEEN, Us)))
+                    to = pop_1st_bit(&b);
 
-                            ei.mateThreat[Them] = make_move(from, to);
+                    // Do we have escape squares from queen contact check attack ?
+                    if (!(escapeSquares & ~queen_attacks_bb(to, occ & ClearMaskBB[s])))
+                    {
+                        // We have a mate, unless the queen is pinned or there
+                        // is an X-ray attack through the queen.
+                        for (int i = 0; i < pos.piece_count(Them, QUEEN); i++)
+                        {
+                            from = pos.piece_list(Them, QUEEN, i);
+                            if (    bit_is_set(pos.attacks_from<QUEEN>(from), to)
+                                && !bit_is_set(pos.pinned_pieces(Them), from)
+                                && !(rook_attacks_bb(to, occ & ClearMaskBB[from]) & pos.pieces(ROOK, QUEEN, Us))
+                                && !(bishop_attacks_bb(to, occ & ClearMaskBB[from]) & pos.pieces(BISHOP, QUEEN, Us)))
+
+                                // Set the mate threat move
+                                ei.mateThreat[Them] = make_move(from, to);
+                        }
                     }
                 }
             }
-          }
         }
       }
 
       // Analyse safe distance checks
+      safe = ~(pos.pieces_of_color(Them) | ei.attacked_by(Us));
+
       if (QueenCheckBonus > 0 || RookCheckBonus > 0)
       {
-          b = pos.attacks_from<ROOK>(s) & ~pos.pieces_of_color(Them) & ~ei.attacked_by(Us);
+          b = pos.attacks_from<ROOK>(s) & safe;
 
           // Queen checks
           b2 = b & ei.attacked_by(Them, QUEEN);
@@ -822,7 +829,7 @@ namespace {
       }
       if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
       {
-          b = pos.attacks_from<BISHOP>(s) & ~pos.pieces_of_color(Them) & ~ei.attacked_by(Us);
+          b = pos.attacks_from<BISHOP>(s) & safe;
 
           // Queen checks
           b2 = b & ei.attacked_by(Them, QUEEN);
@@ -836,7 +843,7 @@ namespace {
       }
       if (KnightCheckBonus > 0)
       {
-          b = pos.attacks_from<KNIGHT>(s) & ~pos.pieces_of_color(Them) & ~ei.attacked_by(Us);
+          b = pos.attacks_from<KNIGHT>(s) & safe;
 
           // Knight checks
           b2 = b & ei.attacked_by(Them, KNIGHT);
@@ -848,12 +855,12 @@ namespace {
       // adding pawns later).
       if (DiscoveredCheckBonus)
       {
-        b = pos.discovered_check_candidates(Them) & ~pos.pieces(PAWN);
-        if (b)
-          attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
+          b = pos.discovered_check_candidates(Them) & ~pos.pieces(PAWN);
+          if (b)
+              attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
       }
 
-      // Has a mate threat been found?  We don't do anything here if the
+      // Has a mate threat been found? We don't do anything here if the
       // side with the mating move is the side to move, because in that
       // case the mating side will get a huge bonus at the end of the main
       // evaluation function instead.
@@ -861,15 +868,11 @@ namespace {
           attackUnits += MateThreatBonus;
 
       // Ensure that attackUnits is between 0 and 99, in order to avoid array
-      // out of bounds errors:
-      if (attackUnits < 0)
-          attackUnits = 0;
-
-      if (attackUnits >= 100)
-          attackUnits = 99;
+      // out of bounds errors.
+      attackUnits = Min(99, Max(0, attackUnits));
 
       // Finally, extract the king safety score from the SafetyTable[] array.
-      // Add the score to the evaluation, and also to ei.futilityMargin.  The
+      // Add the score to the evaluation, and also to ei.futilityMargin. The
       // reason for adding the king safety score to the futility margin is
       // that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
