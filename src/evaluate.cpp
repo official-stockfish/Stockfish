@@ -69,9 +69,11 @@ namespace {
   typedef Value V;
   #define S(mg, eg) make_score(mg, eg)
 
+  CACHE_LINE_ALIGNMENT
+
   // Knight mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly piecess.
-  const Score KnightMobilityBonus[] = {
+  const Score KnightMobilityBonus[16] = {
     S(-38,-33), S(-25,-23), S(-12,-13), S( 0,-3),
     S( 12,  7), S( 25, 17), S( 31, 22), S(38, 27), S(38, 27)
   };
@@ -79,7 +81,7 @@ namespace {
   // Bishop mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces. X-ray attacks through
   // queens are also included.
-  const Score BishopMobilityBonus[] = {
+  const Score BishopMobilityBonus[16] = {
     S(-25,-30), S(-11,-16), S( 3, -2), S(17, 12),
     S( 31, 26), S( 45, 40), S(57, 52), S(65, 60),
     S( 71, 65), S( 74, 69), S(76, 71), S(78, 73),
@@ -89,7 +91,7 @@ namespace {
   // Rook mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces. X-ray attacks through
   // queens and rooks are also included.
-  const Score RookMobilityBonus[] = {
+  const Score RookMobilityBonus[16] = {
     S(-20,-36), S(-14,-19), S(-8, -3), S(-2, 13),
     S(  4, 29), S( 10, 46), S(14, 62), S(19, 79),
     S( 23, 95), S( 26,106), S(27,111), S(28,114),
@@ -98,7 +100,7 @@ namespace {
 
   // Queen mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly pieces.
-  const Score QueenMobilityBonus[] = {
+  const Score QueenMobilityBonus[32] = {
     S(-10,-18), S(-8,-13), S(-6, -7), S(-3, -2), S(-1,  3), S( 1,  8),
     S(  3, 13), S( 5, 19), S( 8, 23), S(10, 27), S(12, 32), S(15, 34),
     S( 16, 35), S(17, 35), S(18, 35), S(20, 35), S(20, 35), S(20, 35),
@@ -108,7 +110,8 @@ namespace {
   };
 
   // Pointers table to access mobility tables through piece type
-  const Score* MobilityBonus[] = { 0, 0, KnightMobilityBonus, BishopMobilityBonus, RookMobilityBonus, QueenMobilityBonus };
+  const Score* MobilityBonus[8] = { 0, 0, KnightMobilityBonus, BishopMobilityBonus,
+                                   RookMobilityBonus, QueenMobilityBonus, 0, 0 };
 
   // Outpost bonuses for knights and bishops, indexed by square (from white's
   // point of view).
@@ -135,6 +138,30 @@ namespace {
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
   };
+
+  // ThreatBonus[][] contains bonus according to which piece type
+  // attacks which one.
+  #define Z make_score(0, 0)
+
+  const Score ThreatBonus[8][8] = {
+      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
+      { Z, S(18,37),       Z, S(37,47), S(55,97), S(55,97), Z, Z }, // KNIGHT attacks
+      { Z, S(18,37), S(37,47),       Z, S(55,97), S(55,97), Z, Z }, // BISHOP attacks
+      { Z, S( 9,27), S(27,47), S(27,47),       Z, S(37,47), Z, Z }, // ROOK attacks
+      { Z, S(27,37), S(27,37), S(27,37), S(27,37),       Z, Z, Z }, // QUEEN attacks
+      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
+      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
+      { Z, Z, Z, Z, Z, Z, Z, Z }  // not used
+  };
+
+  // ThreatedByPawnPenalty[] contains a penalty according to which piece
+  // type is attacked by an enemy pawn.
+  const Score ThreatedByPawnPenalty[8] = {
+    Z, Z, S(56, 70), S(56, 70), S(76, 99), S(86, 118), Z, Z
+  };
+
+  #undef Z
+  #undef S
 
   // Bonus for unstoppable passed pawns
   const Value UnstoppablePawnValue = Value(0x500);
@@ -207,30 +234,6 @@ namespace {
 
   // Bonus for having a mate threat, initialized from UCI options
   int MateThreatBonus;
-
-  // ThreatBonus[][] contains bonus according to which piece type
-  // attacks which one.
-  #define Z make_score(0, 0)
-
-  const Score ThreatBonus[8][8] = {
-      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
-      { Z, S(18,37),       Z, S(37,47), S(55,97), S(55,97), Z, Z }, // KNIGHT attacks
-      { Z, S(18,37), S(37,47),       Z, S(55,97), S(55,97), Z, Z }, // BISHOP attacks
-      { Z, S( 9,27), S(27,47), S(27,47),       Z, S(37,47), Z, Z }, // ROOK attacks
-      { Z, S(27,37), S(27,37), S(27,37), S(27,37),       Z, Z, Z }, // QUEEN attacks
-      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
-      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
-      { Z, Z, Z, Z, Z, Z, Z, Z }  // not used
-  };
-
-  // ThreatedByPawnPenalty[] contains a penalty according to which piece
-  // type is attacked by an enemy pawn.
-  const Score ThreatedByPawnPenalty[8] = {
-    Z, Z, S(56, 70), S(56, 70), S(76, 99), S(86, 118), Z, Z
-  };
-
-  #undef Z
-  #undef S
 
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
@@ -528,7 +531,7 @@ namespace {
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
-    if (bonus && (pos.attacks_from<PAWN>(s, Them) & pos.pieces(PAWN, Us)))
+    if (bonus && bit_is_set(ei.attackedBy[Us][PAWN], s))
     {
         if (    pos.pieces(KNIGHT, Them) == EmptyBoardBB
             && (SquaresByColorBB[square_color(s)] & pos.pieces(BISHOP, Them)) == EmptyBoardBB)
@@ -543,7 +546,7 @@ namespace {
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  void evaluate_pieces(const Position& pos, EvalInfo& ei, Bitboard mob_area) {
+  void evaluate_pieces(const Position& pos, EvalInfo& ei, Bitboard no_mob_area) {
 
     Bitboard b;
     Square s, ksq;
@@ -555,6 +558,7 @@ namespace {
 
     while ((s = *ptr++) != SQ_NONE)
     {
+        // Find attacked squares, including x-ray attacks for bishops and rooks
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
@@ -578,8 +582,8 @@ namespace {
         }
 
         // Mobility
-        mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & mob_area)
-                              : count_1s<HasPopCnt>(b & mob_area));
+        mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & no_mob_area)
+                              : count_1s<HasPopCnt>(b & no_mob_area));
 
         ei.mobility += Sign[Us] * MobilityBonus[Piece][mob];
 
@@ -603,14 +607,12 @@ namespace {
                 evaluate_trapped_bishop_a1h1(pos, s, Us, ei);
         }
 
-        if (Piece == ROOK || Piece == QUEEN)
+        // Queen or rook on 7th rank
+        if (  (Piece == ROOK || Piece == QUEEN)
+            && relative_rank(Us, s) == RANK_7
+            && relative_rank(Us, pos.king_square(Them)) == RANK_8)
         {
-            // Queen or rook on 7th rank
-            if (   relative_rank(Us, s) == RANK_7
-                && relative_rank(Us, pos.king_square(Them)) == RANK_8)
-            {
-                ei.value += Sign[Us] * (Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus);
-            }
+            ei.value += Sign[Us] * (Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus);
         }
 
         // Special extra evaluation for rooks
@@ -643,8 +645,8 @@ namespace {
                                                                          : (TrappedRookPenalty - mob * 16), 0);
             }
             else if (    square_file(ksq) <= FILE_D
-                    &&  square_file(s) < square_file(ksq)
-                    && (relative_rank(Us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+                     &&  square_file(s) < square_file(ksq)
+                     && (relative_rank(Us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_left(Us, square_file(ksq)))
@@ -698,12 +700,12 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
-    const Bitboard mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
+    const Bitboard no_mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
-    evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, mob_area);
-    evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, mob_area);
-    evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, mob_area);
-    evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, mob_area);
+    evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, no_mob_area);
+    evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, no_mob_area);
+    evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, no_mob_area);
+    evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, no_mob_area);
 
     // Sum up all attacked squares
     ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
