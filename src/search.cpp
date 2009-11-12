@@ -310,7 +310,7 @@ namespace {
              Value *alpha, Value *beta, Value *bestValue,
              const Value futilityValue, const Value approximateValue,
              Depth depth, int *moves,
-             MovePicker *mp, Bitboard dcCandidates, int master, bool pvNode);
+             MovePicker *mp, int master, bool pvNode);
   void wake_sleeping_threads();
 
 #if !defined(_MSC_VER)
@@ -1209,8 +1209,8 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE, VALUE_NONE, depth,
-                   &moveCount, &mp, ci.dcCandidates, threadID, true))
+          && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE, VALUE_NONE,
+                   depth, &moveCount, &mp, threadID, true))
           break;
     }
 
@@ -1470,8 +1470,8 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, approximateEval, depth, &moveCount,
-                   &mp, ci.dcCandidates, threadID, false))
+          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, approximateEval,
+                   depth, &moveCount, &mp, threadID, false))
         break;
     }
 
@@ -2815,7 +2815,7 @@ namespace {
   bool split(const Position& p, SearchStack* sstck, int ply,
              Value* alpha, Value* beta, Value* bestValue, const Value futilityValue,
              const Value approximateEval, Depth depth, int* moves,
-             MovePicker* mp, Bitboard dcCandidates, int master, bool pvNode) {
+             MovePicker* mp, int master, bool pvNode) {
 
     assert(p.is_ok());
     assert(sstck != NULL);
@@ -2852,7 +2852,6 @@ namespace {
     splitPoint->alpha = pvNode? *alpha : (*beta - 1);
     splitPoint->beta = *beta;
     splitPoint->pvNode = pvNode;
-    splitPoint->dcCandidates = dcCandidates;
     splitPoint->bestValue = *bestValue;
     splitPoint->futilityValue = futilityValue;
     splitPoint->approximateEval = approximateEval;

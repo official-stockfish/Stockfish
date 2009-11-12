@@ -53,7 +53,6 @@ struct SplitPoint {
   volatile Value alpha, beta, bestValue, futilityValue;
   Value approximateEval;
   bool pvNode;
-  Bitboard dcCandidates;
   int master, slaves[THREAD_MAX];
   Lock lock;
   MovePicker *mp;
