@@ -54,6 +54,7 @@ public:
   Score material_value() const;
   ScaleFactor scale_factor(const Position& pos, Color c) const;
   int space_weight() const;
+  Phase game_phase() const;
   bool specialized_eval_exists() const;
   Value evaluate(const Position& pos) const;
 
@@ -66,6 +67,7 @@ private:
   EndgameEvaluationFunctionBase* evaluationFunction;
   EndgameScalingFunctionBase* scalingFunction[2];
   int spaceWeight;
+  Phase gamePhase;
 };
 
 /// The MaterialInfoTable class represents a pawn hash table. It is basically
@@ -81,6 +83,8 @@ public:
   ~MaterialInfoTable();
   MaterialInfo* get_material_info(const Position& pos);
 
+  static Phase game_phase(const Position& pos);
+
 private:
   unsigned size;
   MaterialInfo* entries;
@@ -91,6 +95,7 @@ private:
 ////
 //// Inline functions
 ////
+
 
 /// MaterialInfo::material_value simply returns the material balance
 /// evaluation that is independent from game phase.
@@ -139,6 +144,14 @@ inline ScaleFactor MaterialInfo::scale_factor(const Position& pos, Color c) cons
 inline int MaterialInfo::space_weight() const {
 
   return spaceWeight;
+}
+
+/// MaterialInfo::game_phase() returns the game phase according
+/// to this material configuration.
+
+inline Phase MaterialInfo::game_phase() const {
+
+  return gamePhase;
 }
 
 

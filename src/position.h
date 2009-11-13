@@ -255,7 +255,6 @@ public:
   // Incremental evaluation
   Score value() const;
   Value non_pawn_material(Color c) const;
-  Phase game_phase() const;
   Score pst_delta(Piece piece, Square from, Square to) const;
 
   // Game termination checks
@@ -524,22 +523,6 @@ inline Score Position::value() const {
 
 inline Value Position::non_pawn_material(Color c) const {
   return st->npMaterial[c];
-}
-
-inline Phase Position::game_phase() const {
-
-  // Values modified by Joona Kiiski
-  static const Value MidgameLimit = Value(15581);
-  static const Value EndgameLimit = Value(3998);
-
-  Value npm = non_pawn_material(WHITE) + non_pawn_material(BLACK);
-
-  if (npm >= MidgameLimit)
-      return PHASE_MIDGAME;
-  else if(npm <= EndgameLimit)
-      return PHASE_ENDGAME;
-  else
-      return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
 
 inline bool Position::move_is_passed_pawn_push(Move m) const {

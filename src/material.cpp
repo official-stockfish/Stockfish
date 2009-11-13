@@ -37,6 +37,10 @@ using namespace std;
 
 namespace {
 
+  // Values modified by Joona Kiiski
+  const Value MidgameLimit = Value(15581);
+  const Value EndgameLimit = Value(3998);
+
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
   const Value RedundantRookPenalty  = Value(554);
@@ -129,6 +133,22 @@ MaterialInfoTable::~MaterialInfoTable() {
 }
 
 
+/// MaterialInfoTable::game_phase() calculate the phase given the current
+/// position. Because the phase is strictly a function of the material, it
+/// is stored in MaterialInfo.
+
+Phase MaterialInfoTable::game_phase(const Position& pos) {
+
+  Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
+
+  if (npm >= MidgameLimit)
+      return PHASE_MIDGAME;
+  else if (npm <= EndgameLimit)
+      return PHASE_ENDGAME;
+
+  return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
+}
+
 /// MaterialInfoTable::get_material_info() takes a position object as input,
 /// computes or looks up a MaterialInfo object, and returns a pointer to it.
 /// If the material configuration is not already present in the table, it
@@ -150,6 +170,9 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // Clear the MaterialInfo object, and set its key
   mi->clear();
   mi->key = key;
+
+  // Calculate game phase
+  mi->gamePhase = MaterialInfoTable::game_phase(pos);
 
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed

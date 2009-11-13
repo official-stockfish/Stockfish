@@ -370,7 +370,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   if (ei.pi->passed_pawns())
       evaluate_passed_pawns(pos, ei);
 
-  Phase phase = pos.game_phase();
+  Phase phase = ei.mi->game_phase();
 
   // Middle-game specific evaluation terms
   if (phase > PHASE_ENDGAME)
@@ -444,13 +444,10 @@ Value quick_evaluate(const Position &pos) {
 
   assert(pos.is_ok());
 
-  static const
-  ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
+  static const ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
 
-  Phase ph = pos.game_phase();
-  Color stm = pos.side_to_move();
-
-  return Sign[stm] * scale_by_game_phase(pos.value(), ph, sf);
+  Value v = scale_by_game_phase(pos.value(), MaterialInfoTable::game_phase(pos), sf);
+  return (pos.side_to_move() == WHITE ? v : -v);
 }
 
 
