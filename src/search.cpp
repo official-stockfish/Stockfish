@@ -333,14 +333,14 @@ namespace {
 int perft(Position& pos, Depth depth)
 {
     Move move;
-    MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
     int sum = 0;
+    MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
 
     // If we are at the last ply we don't need to do and undo
     // the moves, just to count them.
     if (depth <= OnePly) // Replace with '<' to test also qsearch
     {
-        while ((move = mp.get_next_move()) != MOVE_NONE) sum++;
+        while (mp.get_next_move()) sum++;
         return sum;
     }
 
@@ -348,10 +348,10 @@ int perft(Position& pos, Depth depth)
     CheckInfo ci(pos);
     while ((move = mp.get_next_move()) != MOVE_NONE)
     {
-      StateInfo st;
-      pos.do_move(move, st, ci, pos.move_is_check(move, ci));
-      sum += perft(pos, depth - OnePly);
-      pos.undo_move(move);
+        StateInfo st;
+        pos.do_move(move, st, ci, pos.move_is_check(move, ci));
+        sum += perft(pos, depth - OnePly);
+        pos.undo_move(move);
     }
     return sum;
 }

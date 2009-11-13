@@ -324,18 +324,17 @@ namespace {
   void perft(UCIInputParser& uip) {
 
     string token;
-    int depth = 0;
-
-    while (!uip.eof())
-    {
-        uip >> token;
-
-        if (token == "depth")
-            uip >> depth;
-    }
+    int depth, tm, n;
     Position pos = RootPosition;
-    int tm = get_system_time();
-    int n = perft(pos, depth * OnePly);
+
+    if (uip.eof())
+        return;
+
+    uip >> depth;
+    tm = get_system_time();
+
+    n = perft(pos, depth * OnePly);
+
     tm = get_system_time() - tm;
     std::cout << "\nNodes " << n
               << "\nTime (ms) " << tm
