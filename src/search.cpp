@@ -1314,7 +1314,13 @@ namespace {
         ss[ply].currentMove = MOVE_NULL;
 
         pos.do_null_move(st);
-        int R = (depth >= 5 * OnePly ? 4 : 3); // Null move dynamic reduction
+
+        // Null move dynamic reduction based on depth
+        int R = (depth >= 5 * OnePly ? 4 : 3);
+
+        // Null move dynamic reduction based on value
+        if (approximateEval - beta > PawnValueMidgame)
+            R++;
 
         nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
 
