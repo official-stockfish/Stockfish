@@ -47,7 +47,7 @@ class PawnInfo {
 public:
   PawnInfo() { clear(); }
 
-  Score value() const;
+  Score pawns_value() const;
   Value kingside_storm_value(Color c) const;
   Value queenside_storm_value(Color c) const;
   Bitboard pawn_attacks(Color c) const;
@@ -64,7 +64,7 @@ private:
   Key key;
   Bitboard passedPawns;
   Bitboard pawnAttacks[2];
-  int16_t mgValue, egValue;
+  Score value;
   int16_t ksStormValue[2], qsStormValue[2];
   uint8_t halfOpenFiles[2];
   Square kingSquares[2];
@@ -84,10 +84,8 @@ public:
   PawnInfo* get_pawn_info(const Position& pos);
 
 private:
-  typedef std::pair<Value, Value> Values;
-
   template<Color Us>
-  Values evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi);
+  Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi);
 
   unsigned size;
   PawnInfo* entries;
@@ -98,8 +96,8 @@ private:
 //// Inline functions
 ////
 
-inline Score PawnInfo::value() const {
-  return make_score(mgValue, egValue);
+inline Score PawnInfo::pawns_value() const {
+  return value;
 }
 
 inline Bitboard PawnInfo::passed_pawns() const {

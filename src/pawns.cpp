@@ -38,64 +38,36 @@ namespace {
 
   /// Constants and variables
 
-  // Doubled pawn penalty by file, middle game
-  const Value DoubledPawnMidgamePenalty[8] = {
-    Value(13), Value(20), Value(23), Value(23),
-    Value(23), Value(23), Value(20), Value(13)
+  #define S(mg, eg) make_score(mg, eg)
+
+  // Doubled pawn penalty by file
+  const Score DoubledPawnPenalty[8] = {
+    S(13, 43), S(20, 48), S(23, 48), S(23, 48),
+    S(23, 48), S(23, 48), S(20, 48), S(13, 43)
   };
 
-  // Doubled pawn penalty by file, endgame
-  const Value DoubledPawnEndgamePenalty[8] = {
-    Value(43), Value(48), Value(48), Value(48),
-    Value(48), Value(48), Value(48), Value(43)
+  // Isolated pawn penalty by file
+  const Score IsolatedPawnPenalty[8] = {
+    S(25, 30), S(36, 35), S(40, 35), S(40, 35),
+    S(40, 35), S(40, 35), S(36, 35), S(25, 30)
   };
 
-  // Isolated pawn penalty by file, middle game
-  const Value IsolatedPawnMidgamePenalty[8] = {
-    Value(25), Value(36), Value(40), Value(40),
-    Value(40), Value(40), Value(36), Value(25)
+  // Backward pawn penalty by file
+  const Score BackwardPawnPenalty[8] = {
+    S(20, 28), S(29, 31), S(33, 31), S(33, 31),
+    S(33, 31), S(33, 31), S(29, 31), S(20, 28)
   };
 
-  // Isolated pawn penalty by file, endgame
-  const Value IsolatedPawnEndgamePenalty[8] = {
-    Value(30), Value(35), Value(35), Value(35),
-    Value(35), Value(35), Value(35), Value(30)
+  // Pawn chain membership bonus by file
+  const Score ChainBonus[8] = {
+    S(11,-1), S(13,-1), S(13,-1), S(14,-1),
+    S(14,-1), S(13,-1), S(13,-1), S(11,-1)
   };
 
-  // Backward pawn penalty by file, middle game
-  const Value BackwardPawnMidgamePenalty[8] = {
-    Value(20), Value(29), Value(33), Value(33),
-    Value(33), Value(33), Value(29), Value(20)
-  };
-
-  // Backward pawn penalty by file, endgame
-  const Value BackwardPawnEndgamePenalty[8] = {
-    Value(28), Value(31), Value(31), Value(31),
-    Value(31), Value(31), Value(31), Value(28)
-  };
-
-  // Pawn chain membership bonus by file, middle game
-  const Value ChainMidgameBonus[8] = {
-    Value(11), Value(13), Value(13), Value(14),
-    Value(14), Value(13), Value(13), Value(11)
-  };
-
-  // Pawn chain membership bonus by file, endgame
-  const Value ChainEndgameBonus[8] = {
-    Value(-1), Value(-1), Value(-1), Value(-1),
-    Value(-1), Value(-1), Value(-1), Value(-1)
-  };
-
-  // Candidate passed pawn bonus by rank, middle game
-  const Value CandidateMidgameBonus[8] = {
-    Value( 0), Value( 6), Value(6), Value(14),
-    Value(34), Value(83), Value(0), Value( 0)
-  };
-
-  // Candidate passed pawn bonus by rank, endgame
-  const Value CandidateEndgameBonus[8] = {
-    Value( 0), Value( 13), Value(13), Value(29),
-    Value(68), Value(166), Value( 0), Value( 0)
+  // Candidate passed pawn bonus by rank
+  const Score CandidateBonus[8] = {
+    S( 0, 0), S( 6, 13), S(6,13), S(14,29),
+    S(34,68), S(83,166), S(0, 0), S( 0, 0)
   };
 
   // Pawn storm tables for positions with opposite castling
@@ -197,11 +169,8 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
   pi->pawnAttacks[BLACK] = ((blackPawns >> 7) & ~FileABB) | ((blackPawns >> 9) & ~FileHBB);
 
   // Evaluate pawns for both colors
-  Values whiteValues = evaluate_pawns<WHITE>(pos, whitePawns, blackPawns, pi);
-  Values blackValues = evaluate_pawns<BLACK>(pos, blackPawns, whitePawns, pi);
-
-  pi->mgValue = int16_t(whiteValues.first - blackValues.first);
-  pi->egValue = int16_t(whiteValues.second - blackValues.second);
+  pi->value =  evaluate_pawns<WHITE>(pos, whitePawns, blackPawns, pi)
+             - evaluate_pawns<BLACK>(pos, blackPawns, whitePawns, pi);
   return pi;
 }
 
@@ -209,15 +178,14 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
 /// PawnInfoTable::evaluate_pawns() evaluates each pawn of the given color
 
 template<Color Us>
-PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
-                                                    Bitboard theirPawns, PawnInfo* pi) {
+Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
+                                    Bitboard theirPawns, PawnInfo* pi) {
   Square s;
   File f;
   Rank r;
   bool passed, isolated, doubled, chain, backward, candidate;
   int bonus;
-  Value mgValue = Value(0);
-  Value egValue = Value(0);
+  Score value = make_score(0, 0);
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
   // Initialize pawn storm scores by giving bonuses for open files
@@ -358,42 +326,27 @@ PawnInfoTable::Values PawnInfoTable::evaluate_pawns(const Position& pos, Bitboar
 
       if (isolated)
       {
-          mgValue -= IsolatedPawnMidgamePenalty[f];
-          egValue -= IsolatedPawnEndgamePenalty[f];
+          value -= IsolatedPawnPenalty[f];
           if (!(theirPawns & file_bb(f)))
-          {
-              mgValue -= IsolatedPawnMidgamePenalty[f] / 2;
-              egValue -= IsolatedPawnEndgamePenalty[f] / 2;
-          }
+              value -= IsolatedPawnPenalty[f] / 2;
       }
       if (doubled)
-      {
-          mgValue -= DoubledPawnMidgamePenalty[f];
-          egValue -= DoubledPawnEndgamePenalty[f];
-      }
+          value -= DoubledPawnPenalty[f];
+
       if (backward)
       {
-          mgValue -= BackwardPawnMidgamePenalty[f];
-          egValue -= BackwardPawnEndgamePenalty[f];
+          value -= BackwardPawnPenalty[f];
           if (!(theirPawns & file_bb(f)))
-          {
-              mgValue -= BackwardPawnMidgamePenalty[f] / 2;
-              egValue -= BackwardPawnEndgamePenalty[f] / 2;
-          }
+              value -= BackwardPawnPenalty[f] / 2;
       }
       if (chain)
-      {
-          mgValue += ChainMidgameBonus[f];
-          egValue += ChainEndgameBonus[f];
-      }
+          value += ChainBonus[f];
+
       if (candidate)
-      {
-          mgValue += CandidateMidgameBonus[relative_rank(Us, s)];
-          egValue += CandidateEndgameBonus[relative_rank(Us, s)];
-      }
+          value += CandidateBonus[relative_rank(Us, s)];
   }
 
-  return Values(mgValue, egValue);
+  return value;
 }
 
 

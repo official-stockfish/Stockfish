@@ -64,8 +64,7 @@ namespace {
   const Score WeightKingOppSafetyInternal = make_score(259,   0);
 
   // Mobility and outposts bonus modified by Joona Kiiski
-  //
-  // Visually better to define tables constants
+
   typedef Value V;
   #define S(mg, eg) make_score(mg, eg)
 
@@ -330,7 +329,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the pawn hash table
   ei.pi = PawnTable[threadID]->get_pawn_info(pos);
-  ei.value += apply_weight(ei.pi->value(), WeightPawnStructure);
+  ei.value += apply_weight(ei.pi->pawns_value(), WeightPawnStructure);
 
   // Initialize king attack bitboards and king attack zones for both sides
   ei.attackedBy[WHITE][KING] = pos.attacks_from<KING>(pos.king_square(WHITE));
