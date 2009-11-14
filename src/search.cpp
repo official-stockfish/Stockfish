@@ -1388,6 +1388,9 @@ namespace {
     if (tte && (tte->type() & VALUE_TYPE_EVAL))
         futilityValue = value_from_tt(tte->value(), ply) + FutilityMargins[int(depth) - 2];
 
+    // Move count pruning limit
+    const int MCLimit = 3 + (1 << (3*int(depth)/8));
+
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
     while (   bestValue < beta
@@ -1412,8 +1415,23 @@ namespace {
           && !captureOrPromotion
           &&  move != ttMove)
       {
+          //std::cout << std::endl;
+          //for (int d = 2; d <= 14; d+=2)
+          //    std::cout << d / 2 << ", " << 3+(1 << (3*d/8)) << std::endl;
+          //std::cout << std::endl;
+/*
+            3 + (1 << (3*int(depth)/8))
+
+            1 * onePly - > moveCount >= 4
+            2 * onePly - > moveCount >= 5
+            3 * onePly - > moveCount >= 7
+            4 * onePly - > moveCount >= 11
+            5 * onePly - > moveCount >= 11
+            6 * onePly - > moveCount >= 19
+            7 * onePly - > moveCount >= 35
+*/
           // History pruning. See ok_to_prune() definition
-          if (   moveCount >= 2 + int(depth)
+          if (   moveCount >= MCLimit
               && ok_to_prune(pos, move, ss[ply].threatMove, depth)
               && bestValue > value_mated_in(PLY_MAX))
               continue;
