@@ -176,6 +176,9 @@ namespace {
   // and near frontier nodes.
   const Value FutilityMarginQS = Value(0x80);
 
+  // Each move futility margin is decreased
+  const Value IncrementalFutilityMargin = Value(0xA);
+
   // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
   //                                   4 ply         4.5 ply       5 ply         5.5 ply       6 ply         6.5 ply
@@ -1260,7 +1263,7 @@ namespace {
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
-    Value approximateEval, nullValue, value, futilityValue;
+    Value approximateEval, nullValue, value, futilityValue, futilityValueScaled;
     bool isCheck, useFutilityPruning, singleReply, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
@@ -1420,12 +1423,15 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + FutilityMargins[int(depth) - 2];
+                                 + FutilityMargins[int(depth) - 2]
+                                 + 4*IncrementalFutilityMargin;
 
-              if (futilityValue < beta)
+              futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
+
+              if (futilityValueScaled < beta)
               {
-                  if (futilityValue > bestValue)
-                      bestValue = futilityValue;
+                  if (futilityValueScaled > bestValue)
+                      bestValue = futilityValueScaled;
                   continue;
               }
           }
