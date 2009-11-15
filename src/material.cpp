@@ -44,7 +44,8 @@ namespace {
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
   const Value RedundantRookPenalty  = Value(554);
-  const int LinearCoefficients[6]   = { 1617, -162, -1172, -190, 105, 26 };
+
+  const int LinearCoefficients[6] = { 1617, -162, -1172, -190, 105, 26 };
 
   const int QuadraticCoefficientsSameColor[][6] = {
   { 7, 7, 7, 7, 7, 7 }, { 39, 2, 7, 7, 7, 7 }, { 35, 271, -4, 7, 7, 7 },
@@ -133,7 +134,7 @@ MaterialInfoTable::~MaterialInfoTable() {
 }
 
 
-/// MaterialInfoTable::game_phase() calculate the phase given the current
+/// MaterialInfoTable::game_phase() calculates the phase given the current
 /// position. Because the phase is strictly a function of the material, it
 /// is stored in MaterialInfo.
 
@@ -171,7 +172,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   mi->clear();
   mi->key = key;
 
-  // Calculate game phase
+  // Store game phase
   mi->gamePhase = MaterialInfoTable::game_phase(pos);
 
   // Let's look if we have a specialized evaluation function for this
@@ -292,8 +293,8 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
                                  { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
                                    pos.piece_count(BLACK, BISHOP), pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
   Color c, them;
-  int sign;
-  int matValue = 0;
+  int sign, pt1, pt2, pc;
+  int v, vv, matValue = 0;
 
   for (c = WHITE, sign = 1; c <= BLACK; c++, sign = -sign)
   {
@@ -327,25 +328,27 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
         matValue -= sign * ((pieceCount[c][ROOK] - 1) * RedundantRookPenalty + pieceCount[c][QUEEN] * RedundantQueenPenalty);
 
     them = opposite_color(c);
+    v = 0;
 
     // Second-degree polynomial material imbalance by Tord Romstad
     //
     // We use NO_PIECE_TYPE as a place holder for the bishop pair "extended piece",
     // this allow us to be more flexible in defining bishop pair bonuses.
-    for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
+    for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
     {
-        int c1 = sign * pieceCount[c][pt1];
-        if (!c1)
+        pc = pieceCount[c][pt1];
+        if (!pc)
             continue;
 
-        matValue += c1 * LinearCoefficients[pt1];
+        vv = LinearCoefficients[pt1];
 
-        for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
-        {
-            matValue += c1 * pieceCount[c][pt2] * QuadraticCoefficientsSameColor[pt1][pt2];
-            matValue += c1 * pieceCount[them][pt2] * QuadraticCoefficientsOppositeColor[pt1][pt2];
-        }
+        for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
+            vv +=  pieceCount[c][pt2] * QuadraticCoefficientsSameColor[pt1][pt2]
+                 + pieceCount[them][pt2] * QuadraticCoefficientsOppositeColor[pt1][pt2];
+
+        v += pc * vv;
     }
+    matValue += sign * v;
   }
   mi->value = int16_t(matValue / 16);
   return mi;
