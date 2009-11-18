@@ -1416,10 +1416,27 @@ namespace {
           &&  move != ttMove)
       {
           //std::cout << std::endl;
-          //for (int d = 2; d <= 14; d+=2)
-          //    std::cout << d / 2 << ", " << 3+(1 << (3*d/8)) << std::endl;
+          //for (int d = 2; d < 14; d++)
+          //    std::cout << d << ", " << 300 + 2*(1 << (3*d/4)) << std::endl;
+
           //std::cout << std::endl;
 /*
+            300 + 2*(1 << (3*d/4))
+
+            2 -> 256 -  304
+            3 -> 288 -  308
+            4 -> 512 -  316
+            5 -> 544 -  316
+            6 -> 592 -  332
+            7 -> 624 -  364
+            8 -> 672 -  428
+            9 -> 704 -  428
+           10 -> 832 -  556
+           11 -> 864 -  812
+           12 -> 928 -  1324
+           13 -> 960 -  1324
+
+
             3 + (1 << (3*int(depth)/8))
 
             1 * onePly - > moveCount >= 4
@@ -1441,7 +1458,7 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + FutilityMargins[int(depth) - 2]
+                                 + (300 + 2 * (1 << (3 * int(depth) /4)))
                                  + 4*IncrementalFutilityMargin;
 
               futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
