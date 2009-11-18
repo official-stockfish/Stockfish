@@ -1360,8 +1360,9 @@ namespace {
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
-        Value v = qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
-        if (v < beta - RazorMargins[int(depth) - 2])
+        Value rbeta = beta - RazorMargins[int(depth) - 2];
+        Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
+        if (v < rbeta)
           return v;
     }
 
