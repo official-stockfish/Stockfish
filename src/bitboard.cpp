@@ -366,6 +366,29 @@ Square pop_1st_bit(Bitboard* bb) {
 
 #endif
 
+int bitScanReverse32(uint32_t b)
+{
+   int result = 0;
+
+   if (b > 0xFFFF) {
+      b >>= 16;
+      result += 16;
+   }
+   if (b > 0xFF) {
+      b >>= 8;
+      result += 8;
+   }
+   if (b > 0xF) {
+      b >>= 4;
+      result += 4;
+   }
+   if (b > 0x3) {
+      b >>= 2;
+      result += 2;
+   }
+   return result + (b > 0) + (b > 1);
+}
+
 namespace {
 
   // All functions below are used to precompute various bitboards during

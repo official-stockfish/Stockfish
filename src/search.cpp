@@ -1417,10 +1417,25 @@ namespace {
       {
           //std::cout << std::endl;
           //for (int d = 2; d < 14; d++)
-          //    std::cout << d << ", " << 300 + 2*(1 << (3*d/4)) << std::endl;
+          //    std::cout << d << ", " << 64*(1+bitScanReverse32(d*d)) << std::endl;
 
           //std::cout << std::endl;
 /*
+            64*(1+bitScanReverse32(d*d))
+
+            2 -> 256 -  256
+            3 -> 288 -  320
+            4 -> 512 -  384
+            5 -> 544 -  384
+            6 -> 592 -  448
+            7 -> 624 -  448
+            8 -> 672 -  512
+            9 -> 704 -  512
+           10 -> 832 -  512
+           11 -> 864 -  512
+           12 -> 928 -  576
+           13 -> 960 -  576
+
             300 + 2*(1 << (3*d/4))
 
             2 -> 256 -  304
@@ -1458,7 +1473,7 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + (300 + 2 * (1 << (3 * int(depth) /4)))
+                                 + 64*(1+bitScanReverse32(int(depth) * int(depth)))
                                  + 4*IncrementalFutilityMargin;
 
               futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
