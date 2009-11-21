@@ -1135,7 +1135,7 @@ namespace {
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      movesSearched[moveCount++] = ss[ply].currentMove = move;
+      movesSearched[moveCount++] = move;
 
       // Decide the new search depth
       ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
@@ -1159,6 +1159,9 @@ namespace {
       }
 
       newDepth = depth - OnePly + ext;
+
+      // Update current move
+      ss[ply].currentMove = move;
 
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
@@ -1434,7 +1437,7 @@ namespace {
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      movesSearched[moveCount++] = ss[ply].currentMove = move;
+      movesSearched[moveCount++] = move;
 
       // Decide the new search depth
       ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
@@ -1459,6 +1462,9 @@ namespace {
       }
 
       newDepth = depth - OnePly + ext;
+
+      // Update current move
+      ss[ply].currentMove = move;
 
       // Futility pruning
       if (    useFutilityPruning
