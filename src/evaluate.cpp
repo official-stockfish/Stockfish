@@ -110,7 +110,7 @@ namespace {
 
   // Pointers table to access mobility tables through piece type
   const Score* MobilityBonus[8] = { 0, 0, KnightMobilityBonus, BishopMobilityBonus,
-                                   RookMobilityBonus, QueenMobilityBonus, 0, 0 };
+                                    RookMobilityBonus, QueenMobilityBonus, 0, 0 };
 
   // Outpost bonuses for knights and bishops, indexed by square (from white's
   // point of view).
@@ -140,7 +140,7 @@ namespace {
 
   // ThreatBonus[][] contains bonus according to which piece type
   // attacks which one.
-  #define Z make_score(0, 0)
+  #define Z S(0, 0)
 
   const Score ThreatBonus[8][8] = {
       { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
@@ -252,8 +252,8 @@ namespace {
   Value SafetyTable[100];
 
   // Pawn and material hash tables, indexed by the current thread id
-  PawnInfoTable* PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   MaterialInfoTable* MaterialTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  PawnInfoTable* PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   // Sizes of pawn and material hash tables
   const int PawnTableSize = 16384;
