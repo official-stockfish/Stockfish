@@ -1473,8 +1473,7 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + 64*(1+bitScanReverse32(int(depth) * int(depth)))
-                                 + 4*IncrementalFutilityMargin;
+                                 + 64*(1+bitScanReverse32(int(depth) * int(depth)));
 
               futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
 
