@@ -51,6 +51,7 @@ Key Position::zobEp[64];
 Key Position::zobCastle[16];
 Key Position::zobMaterial[2][8][16];
 Key Position::zobSideToMove;
+Key Position::zobExclusion;
 
 Score Position::PieceSquareTable[16][64];
 
@@ -1736,6 +1737,8 @@ void Position::init_zobrist() {
 
   for (int i = 0; i < 16; i++)
       zobMaterial[0][KING][i] = zobMaterial[1][KING][i] = Key(0ULL);
+
+  zobExclusion = genrand_int64();
 }
 
 

@@ -281,6 +281,9 @@ public:
   static void init_zobrist();
   static void init_piece_square_tables();
 
+  // Public zobs
+  static Key zobExclusion;
+
 private:
 
   // Initialization helper functions (used while setting up a position)

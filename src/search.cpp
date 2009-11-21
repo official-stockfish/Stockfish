@@ -277,7 +277,7 @@ namespace {
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value alpha, Value beta);
   Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
-  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID);
+  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move forbiddenMove = MOVE_NONE);
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
@@ -1251,7 +1251,7 @@ namespace {
   // search() is the search function for zero-width nodes.
 
   Value search(Position& pos, SearchStack ss[], Value beta, Depth depth,
-               int ply, bool allowNullmove, int threadID) {
+               int ply, bool allowNullmove, int threadID, Move forbiddenMove) {
 
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -1293,8 +1293,14 @@ namespace {
     if (value_mate_in(ply + 1) < beta)
         return beta - 1;
 
+    // Position key calculation
+    Key posKey = pos.get_key();
+
+    if (forbiddenMove != MOVE_NONE)
+      posKey ^= Position::zobExclusion;
+
     // Transposition table lookup
-    tte = TT.retrieve(pos.get_key());
+    tte = TT.retrieve(posKey);
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
@@ -1398,6 +1404,9 @@ namespace {
            && !thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
+
+      if (move == forbiddenMove)
+          continue;
 
       singleReply = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
@@ -1540,7 +1549,7 @@ namespace {
     // All legal moves have been searched.  A special case: If there were
     // no legal moves, it must be mate or stalemate.
     if (moveCount == 0)
-        return (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
+        return (forbiddenMove == MOVE_NONE ? (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW) : beta - 1);
 
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
@@ -1548,7 +1557,7 @@ namespace {
         return bestValue;
 
     if (bestValue < beta)
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
     else
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
@@ -1558,7 +1567,7 @@ namespace {
             update_history(pos, move, depth, movesSearched, moveCount);
             update_killers(move, ss[ply]);
         }
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
