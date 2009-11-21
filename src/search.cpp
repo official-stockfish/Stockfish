@@ -172,6 +172,9 @@ namespace {
   const bool PruneDefendingMoves = false;
   const bool PruneBlockingMoves  = false;
 
+  // Only move margin
+  const Value OnlyMoveMargin = Value(100);
+
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes.
   const Value FutilityMarginQS = Value(0x80);
@@ -1136,6 +1139,25 @@ namespace {
 
       // Decide the new search depth
       ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+
+      // Only move extension
+      if (   moveCount == 1
+          && ext < OnePly
+          && depth >= 8 * OnePly
+          && tte
+          && (tte->type() & VALUE_TYPE_LOWER)
+          && tte->move() != MOVE_NONE
+          && tte->depth() >= depth - 3 * OnePly)
+      {
+          Value ttValue = value_from_tt(tte->value(), ply);
+          if (abs(ttValue) < VALUE_KNOWN_WIN)
+          {
+              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, depth / 2, ply, false, threadID, tte->move());
+              if (excValue < ttValue - OnlyMoveMargin)
+                  ext = OnePly;
+          }
+      }
+
       newDepth = depth - OnePly + ext;
 
       // Make and search the move
@@ -1416,6 +1438,26 @@ namespace {
 
       // Decide the new search depth
       ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+
+      // Only move extension
+      if (   forbiddenMove == MOVE_NONE
+          && moveCount == 1
+          && ext < OnePly
+          && depth >= 8 * OnePly
+          && tte
+          && (tte->type() & VALUE_TYPE_LOWER)
+          && tte->move() != MOVE_NONE
+          && tte->depth() >= depth - 3 * OnePly)
+      {
+          Value ttValue = value_from_tt(tte->value(), ply);
+          if (abs(ttValue) < VALUE_KNOWN_WIN)
+          {
+              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, depth / 2, ply, false, threadID, tte->move());
+              if (excValue < ttValue - OnlyMoveMargin)
+                  ext = OnePly;
+          }
+      }
+
       newDepth = depth - OnePly + ext;
 
       // Futility pruning
