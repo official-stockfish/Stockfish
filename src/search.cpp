@@ -177,7 +177,7 @@ namespace {
   const Value FutilityMarginQS = Value(0x80);
 
   // Each move futility margin is decreased
-  const Value IncrementalFutilityMargin = Value(0xA);
+  const Value IncrementalFutilityMargin = Value(0x8);
 
   // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
@@ -1473,7 +1473,7 @@ namespace {
           {
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + 64*(1+bitScanReverse32(int(depth) * int(depth)));
+                                 + 64*(2+bitScanReverse32(int(depth) * int(depth)));
 
               futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
 
