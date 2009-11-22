@@ -1143,7 +1143,7 @@ namespace {
       // Only move extension
       if (   moveCount == 1
           && ext < OnePly
-          && depth >= 8 * OnePly
+          && depth >= 4 * OnePly
           && tte
           && (tte->type() & VALUE_TYPE_LOWER)
           && tte->move() != MOVE_NONE
@@ -1152,9 +1152,9 @@ namespace {
           Value ttValue = value_from_tt(tte->value(), ply);
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, depth / 2, ply, false, threadID, tte->move());
+              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, Max(Min(depth / 2,  depth - 4 * OnePly), OnePly), ply, false, threadID, tte->move());
               if (excValue < ttValue - OnlyMoveMargin)
-                  ext = OnePly;
+                  ext = (depth >= 8 * OnePly)? OnePly : ext + OnePly / 2;
           }
       }
 
@@ -1446,7 +1446,7 @@ namespace {
       if (   forbiddenMove == MOVE_NONE
           && moveCount == 1
           && ext < OnePly
-          && depth >= 8 * OnePly
+          && depth >= 4 * OnePly
           && tte
           && (tte->type() & VALUE_TYPE_LOWER)
           && tte->move() != MOVE_NONE
@@ -1455,9 +1455,9 @@ namespace {
           Value ttValue = value_from_tt(tte->value(), ply);
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, depth / 2, ply, false, threadID, tte->move());
+              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, Max(Min(depth / 2,  depth - 4 * OnePly), OnePly), ply, false, threadID, tte->move());
               if (excValue < ttValue - OnlyMoveMargin)
-                  ext = OnePly;
+                  ext = (depth >= 8 * OnePly)? OnePly : ext + OnePly / 2;
           }
       }
 
