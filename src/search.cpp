@@ -1154,7 +1154,7 @@ namespace {
           {
               Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, Max(Min(depth / 2,  depth - 4 * OnePly), OnePly), ply, false, threadID, tte->move());
               if (excValue < ttValue - OnlyMoveMargin)
-                  ext = (depth >= 8 * OnePly)? OnePly : ext + OnePly / 2;
+                  ext = OnePly;
           }
       }
 
