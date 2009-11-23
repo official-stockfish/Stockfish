@@ -172,8 +172,9 @@ namespace {
   const bool PruneDefendingMoves = false;
   const bool PruneBlockingMoves  = false;
 
-  // Only move margin
-  const Value OnlyMoveMargin = Value(100);
+  // If the TT move is at least SingleReplyMargin better then the
+  // remaining ones we will extend it.
+  const Value SingleReplyMargin = Value(0x64);
 
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes.
@@ -280,7 +281,7 @@ namespace {
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value alpha, Value beta);
   Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
-  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move forbiddenMove = MOVE_NONE);
+  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove = MOVE_NONE);
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
@@ -1135,25 +1136,29 @@ namespace {
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      movesSearched[moveCount++] = move;
-
       // Decide the new search depth
       ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
 
-      // Only move extension
-      if (   moveCount == 1
+      // We want to extend the TT move if it is much better then remaining ones.
+      // To verify this we do a reduced search on all the other moves but the ttMove,
+      // if result is lower then TT value minus a margin then we assume ttMove is the
+      // only one playable. It is a kind of relaxed single reply extension.
+      if (   depth >= 4 * OnePly
+          && move == ttMove
           && ext < OnePly
-          && depth >= 4 * OnePly
-          && tte
-          && (tte->type() & VALUE_TYPE_LOWER)
-          && tte->move() != MOVE_NONE
+          && is_lower_bound(tte->type())
           && tte->depth() >= depth - 3 * OnePly)
       {
           Value ttValue = value_from_tt(tte->value(), ply);
+
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, Max(Min(depth / 2,  depth - 4 * OnePly), OnePly), ply, false, threadID, tte->move());
-              if (excValue < ttValue - OnlyMoveMargin)
+              Depth d = Max(Min(depth / 2,  depth - 4 * OnePly), OnePly);
+              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, d, ply, false, threadID, ttMove);
+
+              // If search result is well below the foreseen score of the ttMove then we
+              // assume ttMove is the only one realistically playable and we extend it.
+              if (excValue < ttValue - SingleReplyMargin)
                   ext = OnePly;
           }
       }
@@ -1161,7 +1166,7 @@ namespace {
       newDepth = depth - OnePly + ext;
 
       // Update current move
-      ss[ply].currentMove = move;
+      movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
@@ -1276,7 +1281,7 @@ namespace {
   // search() is the search function for zero-width nodes.
 
   Value search(Position& pos, SearchStack ss[], Value beta, Depth depth,
-               int ply, bool allowNullmove, int threadID, Move forbiddenMove) {
+               int ply, bool allowNullmove, int threadID, Move excludedMove) {
 
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -1318,11 +1323,9 @@ namespace {
     if (value_mate_in(ply + 1) < beta)
         return beta - 1;
 
-    // Position key calculation
-    Key posKey = pos.get_key();
-
-    if (forbiddenMove != MOVE_NONE)
-      posKey ^= Position::zobExclusion;
+    // We don't want the score of a partial search to overwrite a previous full search
+    // TT value, so we use a different position key in case of an excluded move exsists.
+    Key posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
 
     // Transposition table lookup
     tte = TT.retrieve(posKey);
@@ -1422,49 +1425,52 @@ namespace {
     // Move count pruning limit
     const int MCLimit = 3 + (1 << (3*int(depth)/8));
 
-    // Loop through all legal moves until no moves remain or a beta cutoff
-    // occurs.
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
 
-      if (move == forbiddenMove)
+      if (move == excludedMove)
           continue;
 
       singleReply = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      movesSearched[moveCount++] = move;
-
       // Decide the new search depth
       ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
 
-      // Only move extension
-      if (   forbiddenMove == MOVE_NONE
-          && moveCount == 1
+      // We want to extend the TT move if it is much better then remaining ones.
+      // To verify this we do a reduced search on all the other moves but the ttMove,
+      // if result is lower then TT value minus a margin then we assume ttMove is the
+      // only one playable. It is a kind of relaxed single reply extension.
+      if (   depth >= 4 * OnePly
+          && !excludedMove // do not allow recursive single-reply search
+          && move == ttMove
           && ext < OnePly
-          && depth >= 4 * OnePly
-          && tte
-          && (tte->type() & VALUE_TYPE_LOWER)
-          && tte->move() != MOVE_NONE
+          && is_lower_bound(tte->type())
           && tte->depth() >= depth - 3 * OnePly)
       {
           Value ttValue = value_from_tt(tte->value(), ply);
+
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - OnlyMoveMargin, Max(Min(depth / 2,  depth - 4 * OnePly), OnePly), ply, false, threadID, tte->move());
-              if (excValue < ttValue - OnlyMoveMargin)
-                  ext = (depth >= 8 * OnePly)? OnePly : ext + OnePly / 2;
+              Depth d = Max(Min(depth / 2,  depth - 4 * OnePly), OnePly);
+              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, d, ply, false, threadID, ttMove);
+
+              // If search result is well below the foreseen score of the ttMove then we
+              // assume ttMove is the only one realistically playable and we extend it.
+              if (excValue < ttValue - SingleReplyMargin)
+                  ext = (depth >= 8 * OnePly) ? OnePly : ext + OnePly / 2;
           }
       }
 
       newDepth = depth - OnePly + ext;
 
       // Update current move
-      ss[ply].currentMove = move;
+      movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Futility pruning
       if (    useFutilityPruning
@@ -1472,53 +1478,6 @@ namespace {
           && !captureOrPromotion
           &&  move != ttMove)
       {
-          //std::cout << std::endl;
-          //for (int d = 2; d < 14; d++)
-          //    std::cout << d << ", " << 64*(1+bitScanReverse32(d*d)) << std::endl;
-
-          //std::cout << std::endl;
-/*
-            64*(1+bitScanReverse32(d*d))
-
-            2 -> 256 -  256
-            3 -> 288 -  320
-            4 -> 512 -  384
-            5 -> 544 -  384
-            6 -> 592 -  448
-            7 -> 624 -  448
-            8 -> 672 -  512
-            9 -> 704 -  512
-           10 -> 832 -  512
-           11 -> 864 -  512
-           12 -> 928 -  576
-           13 -> 960 -  576
-
-            300 + 2*(1 << (3*d/4))
-
-            2 -> 256 -  304
-            3 -> 288 -  308
-            4 -> 512 -  316
-            5 -> 544 -  316
-            6 -> 592 -  332
-            7 -> 624 -  364
-            8 -> 672 -  428
-            9 -> 704 -  428
-           10 -> 832 -  556
-           11 -> 864 -  812
-           12 -> 928 -  1324
-           13 -> 960 -  1324
-
-
-            3 + (1 << (3*int(depth)/8))
-
-            1 * onePly - > moveCount >= 4
-            2 * onePly - > moveCount >= 5
-            3 * onePly - > moveCount >= 7
-            4 * onePly - > moveCount >= 11
-            5 * onePly - > moveCount >= 11
-            6 * onePly - > moveCount >= 19
-            7 * onePly - > moveCount >= 35
-*/
           // History pruning. See ok_to_prune() definition
           if (   moveCount >= MCLimit
               && ok_to_prune(pos, move, ss[ply].threatMove, depth)
@@ -1597,7 +1556,7 @@ namespace {
     // All legal moves have been searched.  A special case: If there were
     // no legal moves, it must be mate or stalemate.
     if (moveCount == 0)
-        return (forbiddenMove == MOVE_NONE ? (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW) : beta - 1);
+        return excludedMove ? beta - 1 : (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.

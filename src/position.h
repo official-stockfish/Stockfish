@@ -249,6 +249,7 @@ public:
 
   // Accessing hash keys
   Key get_key() const;
+  Key get_exclusion_key() const;
   Key get_pawn_key() const;
   Key get_material_key() const;
 
@@ -280,9 +281,6 @@ public:
   // Static member functions
   static void init_zobrist();
   static void init_piece_square_tables();
-
-  // Public zobs
-  static Key zobExclusion;
 
 private:
 
@@ -340,6 +338,7 @@ private:
   static Key zobMaterial[2][8][16];
   static Key zobSideToMove;
   static Score PieceSquareTable[16][64];
+  static Key zobExclusion;
 };
 
 
@@ -502,6 +501,10 @@ inline bool Position::square_is_weak(Square s, Color c) const {
 
 inline Key Position::get_key() const {
   return st->key;
+}
+
+inline Key Position::get_exclusion_key() const {
+  return st->key ^ zobExclusion;
 }
 
 inline Key Position::get_pawn_key() const {
