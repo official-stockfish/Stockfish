@@ -65,9 +65,9 @@ struct MoveStack {
 // Note that operator< is set up such that sorting will be in descending order
 inline bool operator<(const MoveStack& f, const MoveStack& s) { return s.score < f.score; }
 
-// Our stable insertion sort in range [firstMove, lastMove), platform independent
+// An helper insertion sort implementation
 template<typename T>
-inline void sort_moves(T* firstMove, T* lastMove)
+inline void insertion_sort(T* firstMove, T* lastMove)
 {
     T value;
     T *cur, *p, *d;
@@ -84,6 +84,59 @@ inline void sort_moves(T* firstMove, T* lastMove)
                 *d = value;
             }
         }
+}
+
+// Our dedicated sort in range [firstMove, lastMove), it is well
+// tuned for non-captures where we have a lot of zero scored moves.
+template<typename T>
+inline void sort_moves(T* firstMove, T* lastMove)
+{
+    T tmp;
+    T *p, *d;
+
+    d = lastMove;
+    p = firstMove - 1;
+
+    d->score = -1; // right guard
+
+    // Split positives vs non-positives
+    do {
+        while ((++p)->score > 0);
+
+        if (p != d)
+        {
+            while (--d != p && d->score <= 0);
+
+            tmp = *p;
+            *p = *d;
+            *d = tmp;
+        }
+
+    } while (p != d);
+
+    // Sort positives
+    insertion_sort<T>(firstMove, p);
+
+    d = lastMove;
+    p--;
+
+    // Split zero vs negatives
+    do {
+        while ((++p)->score == 0);
+
+        if (p != d)
+        {
+            while (--d != p && d->score < 0);
+
+            tmp = *p;
+            *p = *d;
+            *d = tmp;
+        }
+
+    } while (p != d);
+
+    // Sort negatives
+    insertion_sort<T>(p, lastMove);
 }
 
 // Picks up the best move in range [curMove, lastMove), one per cycle.
