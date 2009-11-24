@@ -802,7 +802,6 @@ namespace {
 
             if (stopSearch)
             {
-                //FIXME: Implement fail-low emergency measures
                 if (!PonderSearch)
                     break;
                 else
@@ -2119,7 +2118,7 @@ namespace {
         moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
         pos.undo_move(moves[count].move);
         moves[count].pv[0] = moves[count].move;
-        moves[count].pv[1] = MOVE_NONE; // FIXME
+        moves[count].pv[1] = MOVE_NONE;
         count++;
     }
     sort();
