@@ -119,7 +119,6 @@ namespace {
     inline Move get_move_pv(int moveNum, int i) const;
     inline int64_t get_move_cumulative_nodes(int moveNum) const;
     inline int move_count() const;
-    Move scan_for_easy_move() const;
     inline void sort();
     void sort_multipv(int n);
 
@@ -685,7 +684,11 @@ namespace {
     IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
     Iteration = 1;
 
-    Move EasyMove = rml.scan_for_easy_move();
+    // Is one move significantly better than others after initial scoring ?
+    Move EasyMove = MOVE_NONE;
+    if (   rml.move_count() == 1
+        || rml.get_move_score(0) > rml.get_move_score(1) + EasyMoveMargin)
+        EasyMove = rml.get_move(0);
 
     // Iterative deepening loop
     while (Iteration < PLY_MAX)
@@ -2168,28 +2171,6 @@ namespace {
     return count;
   }
 
-
-  // RootMoveList::scan_for_easy_move() is called at the end of the first
-  // iteration, and is used to detect an "easy move", i.e. a move which appears
-  // to be much bester than all the rest.  If an easy move is found, the move
-  // is returned, otherwise the function returns MOVE_NONE.  It is very
-  // important that this function is called at the right moment:  The code
-  // assumes that the first iteration has been completed and the moves have
-  // been sorted. This is done in RootMoveList c'tor.
-
-  Move RootMoveList::scan_for_easy_move() const {
-
-    assert(count);
-
-    if (count == 1)
-        return get_move(0);
-
-    // moves are sorted so just consider the best and the second one
-    if (get_move_score(0) > get_move_score(1) + EasyMoveMargin)
-        return get_move(0);
-
-    return MOVE_NONE;
-  }
 
   // RootMoveList::sort() sorts the root move list at the beginning of a new
   // iteration.
