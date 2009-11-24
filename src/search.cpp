@@ -526,23 +526,41 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
               << " moves to go: " << movesToGo << std::endl;
 
 
-  // We're ready to start thinking. Call the iterative deepening loop function
-  //
-  // FIXME we really need to cleanup all this LSN ugliness
-  if (!loseOnTime)
+  // LSN filtering. Used only for developing purpose. Disabled by default.
+  if (UseLSNFiltering)
   {
-      Value v = id_loop(pos, searchMoves);
-      loseOnTime = (   UseLSNFiltering
-                    && myTime < LSNTime
-                    && myIncrement == 0
-                    && v < -LSNValue);
+      // Step 2. If after last move we decided to lose on time, do it now!
+      if (   loseOnTime
+          && myTime < LSNTime // double check: catches some very rear false positives!
+          && myIncrement == 0
+          && movesToGo == 0)
+      {
+          while (SearchStartTime + myTime + 1000 > get_system_time())
+              ; // wait here
+      } else if (loseOnTime) // false positive, reset flag
+          loseOnTime = false;
   }
-  else
+
+  // We're ready to start thinking. Call the iterative deepening loop function
+  Value v = id_loop(pos, searchMoves);
+
+  // LSN filtering. Used only for developing purpose. Disabled by default.
+  if (UseLSNFiltering)
   {
-      loseOnTime = false; // reset for next match
-      while (SearchStartTime + myTime + 1000 > get_system_time())
-          ; // wait here
-      id_loop(pos, searchMoves); // to fail gracefully
+      // Step 1. If this is sudden death game and our position is hopeless, decide to lose on time.
+      if (   !loseOnTime // If we already lost on time, go to step 3.
+          && myTime < LSNTime
+          && myIncrement == 0
+          && movesToGo == 0
+          && v < -LSNValue)
+      {
+          loseOnTime = true;
+      }
+      else if (loseOnTime)
+      {
+          // Step 3. Now after stepping over the time limit, reset flag for next match.
+          loseOnTime = false;
+      }
   }
 
   if (UseLogFile)
