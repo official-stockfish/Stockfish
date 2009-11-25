@@ -1121,7 +1121,14 @@ namespace {
         return alpha;
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
-    // pruning, but only for move ordering.
+    // pruning, but only for move ordering. This is to avoid problems in
+    // the following areas:
+    //
+    // * Repetition draw detection
+    // * Fifty move rule detection
+    // * Searching for a mate
+    // * Printing of full PV line
+    //
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
