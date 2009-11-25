@@ -527,18 +527,12 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
 
   // LSN filtering. Used only for developing purpose. Disabled by default.
-  if (UseLSNFiltering)
+  if (   UseLSNFiltering
+      && loseOnTime)
   {
       // Step 2. If after last move we decided to lose on time, do it now!
-      if (   loseOnTime
-          && myTime < LSNTime // double check: catches some very rear false positives!
-          && myIncrement == 0
-          && movesToGo == 0)
-      {
-          while (SearchStartTime + myTime + 1000 > get_system_time())
-              ; // wait here
-      } else if (loseOnTime) // false positive, reset flag
-          loseOnTime = false;
+       while (SearchStartTime + myTime + 1000 > get_system_time())
+           ; // wait here
   }
 
   // We're ready to start thinking. Call the iterative deepening loop function
@@ -547,7 +541,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // LSN filtering. Used only for developing purpose. Disabled by default.
   if (UseLSNFiltering)
   {
-      // Step 1. If this is sudden death game and our position is hopeless, decide to lose on time.
+      // Step 1. If this is sudden death game and our position is hopeless,
+      // decide to lose on time.
       if (   !loseOnTime // If we already lost on time, go to step 3.
           && myTime < LSNTime
           && myIncrement == 0
