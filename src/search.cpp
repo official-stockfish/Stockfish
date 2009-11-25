@@ -1158,7 +1158,7 @@ namespace {
       // To verify this we do a reduced search on all the other moves but the ttMove,
       // if result is lower then TT value minus a margin then we assume ttMove is the
       // only one playable. It is a kind of relaxed single reply extension.
-      if (   depth >= 4 * OnePly
+      if (   depth >= 8 * OnePly
           && move == ttMove
           && ext < OnePly
           && is_lower_bound(tte->type())
@@ -1168,8 +1168,7 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Depth d = Max(Min(depth / 2,  depth - 4 * OnePly), OnePly);
-              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, d, ply, false, threadID, ttMove);
+              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, ttMove);
 
               // If search result is well below the foreseen score of the ttMove then we
               // assume ttMove is the only one realistically playable and we extend it.
@@ -1461,7 +1460,7 @@ namespace {
       // To verify this we do a reduced search on all the other moves but the ttMove,
       // if result is lower then TT value minus a margin then we assume ttMove is the
       // only one playable. It is a kind of relaxed single reply extension.
-      if (   depth >= 4 * OnePly
+      if (   depth >= 8 * OnePly
           && !excludedMove // do not allow recursive single-reply search
           && move == ttMove
           && ext < OnePly
@@ -1472,13 +1471,12 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Depth d = Max(Min(depth / 2,  depth - 4 * OnePly), OnePly);
-              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, d, ply, false, threadID, ttMove);
+              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, ttMove);
 
               // If search result is well below the foreseen score of the ttMove then we
               // assume ttMove is the only one realistically playable and we extend it.
               if (excValue < ttValue - SingleReplyMargin)
-                  ext = (depth >= 8 * OnePly) ? OnePly : ext + OnePly / 2;
+                  ext = OnePly;
           }
       }
 
