@@ -180,7 +180,7 @@ namespace {
   const Value FutilityMarginQS = Value(0x80);
 
   // Each move futility margin is decreased
-  const Value IncrementalFutilityMargin = Value(0x8);
+  const Value IncrementalFutilityMargin = Value(0x4);
 
   // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
@@ -1452,6 +1452,12 @@ namespace {
     // Move count pruning limit
     const int MCLimit = 3 + (1 << (3*int(depth)/8));
 
+    /*
+    for (int d = 2; d < 16; d++)
+        std::cout << d << " -> " << 56*(0+2*bitScanReverse32(1 * int(d) * int(d) / 2)) << std::endl;
+        //std::cout << d << " -> " << 32*(1+3*bitScanReverse32(1 * int(d) * int(d))) << std::endl;
+    */
+
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
@@ -1513,10 +1519,10 @@ namespace {
 
           // Value based pruning
           if (approximateEval < beta)
-          {
+          {//dbg_before();
               if (futilityValue == VALUE_NONE)
                   futilityValue =  evaluate(pos, ei, threadID)
-                                 + 64*(2+bitScanReverse32(int(depth) * int(depth)));
+                                 + 56*(0+2*bitScanReverse32(1 * int(depth) * int(depth) / 2));
 
               futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
 
@@ -1526,6 +1532,7 @@ namespace {
                       bestValue = futilityValueScaled;
                   continue;
               }
+           //dbg_after(); // 36% (inc == 8), 40% (inc == 4), 37%(56)
           }
       }
 
