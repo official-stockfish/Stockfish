@@ -1137,6 +1137,11 @@ namespace {
     {
         search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
         ttMove = ss[ply].pv[ply];
+        tte = TT.retrieve(pos.get_key());
+
+        // Following assert could fail, for instance when we have
+        // moveCount == 0 we return without saving a TT entry.
+        /* assert(tte); */
     }
 
     // Initialize a MovePicker object for the current position, and prepare
@@ -1165,8 +1170,11 @@ namespace {
       // To verify this we do a reduced search on all the other moves but the ttMove,
       // if result is lower then TT value minus a margin then we assume ttMove is the
       // only one playable. It is a kind of relaxed single reply extension.
+      // Note that could be ttMove != tte->move() due to IID, so we always use tte->move()
+      // to avoid aliases when we probe tte->depth() and tte->type()
       if (   depth >= 8 * OnePly
-          && move == ttMove
+          && tte
+          && move == tte->move()
           && ext < OnePly
           && is_lower_bound(tte->type())
           && tte->depth() >= depth - 3 * OnePly)
@@ -1430,6 +1438,7 @@ namespace {
     {
         search(pos, ss, beta, Min(depth/2, depth-2*OnePly), ply, false, threadID);
         ttMove = ss[ply].pv[ply];
+        tte = TT.retrieve(pos.get_key());
     }
 
     // Initialize a MovePicker object for the current position, and prepare
@@ -1467,9 +1476,12 @@ namespace {
       // To verify this we do a reduced search on all the other moves but the ttMove,
       // if result is lower then TT value minus a margin then we assume ttMove is the
       // only one playable. It is a kind of relaxed single reply extension.
+      // Note that could be ttMove != tte->move() due to IID, so we always use tte->move()
+      // to avoid aliases when we probe tte->depth() and tte->type()
       if (   depth >= 8 * OnePly
-          && !excludedMove // do not allow recursive single-reply search
-          && move == ttMove
+          && tte
+          && move == tte->move()
+          && !excludedMove // Do not allow recursive single-reply search
           && ext < OnePly
           && is_lower_bound(tte->type())
           && tte->depth() >= depth - 3 * OnePly)
