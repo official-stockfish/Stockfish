@@ -1169,7 +1169,7 @@ namespace {
       // To verify this we do a reduced search on all the other moves but the ttMove,
       // if result is lower then TT value minus a margin then we assume ttMove is the
       // only one playable. It is a kind of relaxed single reply extension.
-      if (   depth >= 8 * OnePly
+      if (   depth >= 6 * OnePly
           && tte
           && move == tte->move()
           && ext < OnePly
