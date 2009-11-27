@@ -1180,7 +1180,7 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, ttMove);
+              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, move);
 
               // If search result is well below the foreseen score of the ttMove then we
               // assume ttMove is the only one realistically playable and we extend it.
@@ -1485,7 +1485,7 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, ttMove);
+              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, move);
 
               // If search result is well below the foreseen score of the ttMove then we
               // assume ttMove is the only one realistically playable and we extend it.
