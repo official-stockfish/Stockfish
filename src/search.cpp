@@ -677,6 +677,14 @@ namespace {
     // searchMoves are verified, copied, scored and sorted
     RootMoveList rml(p, searchMoves);
 
+    if (rml.move_count() == 0)
+    {
+        if (PonderSearch)
+            wait_for_stop_or_ponderhit();
+
+        return pos.is_check()? -VALUE_MATE : VALUE_DRAW;
+    }
+
     // Print RootMoveList c'tor startup scoring to the standard output,
     // so that we print information also for iteration 1.
     std::cout << "info depth " << 1 << "\ninfo depth " << 1
