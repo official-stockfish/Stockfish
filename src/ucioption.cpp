@@ -169,6 +169,18 @@ namespace {
       return ret;
   }
 
+  // Specialization for std::string where instruction 'ss >> ret;'
+  // would erroneusly tokenize a string with spaces.
+
+  template<>
+  string get_option_value<string>(const string& optionName) {
+
+      if (options.find(optionName) == options.end())
+          return string();
+
+      return options[optionName].currentValue;
+  }
+
 }
 
 ////
