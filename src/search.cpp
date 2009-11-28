@@ -182,10 +182,6 @@ namespace {
   // Each move futility margin is decreased
   const Value IncrementalFutilityMargin = Value(0x4);
 
-  // Remaining depth:                  1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
-  const Value FutilityMargins[12] = { Value(0x100), Value(0x120), Value(0x200), Value(0x220), Value(0x250), Value(0x270),
-  //                                   4 ply         4.5 ply       5 ply         5.5 ply       6 ply         6.5 ply
-                                      Value(0x2A0), Value(0x2C0), Value(0x340), Value(0x360), Value(0x3A0), Value(0x3C0) };
   // Razoring
   const Depth RazorDepth = 4*OnePly;
 
@@ -1359,7 +1355,7 @@ namespace {
 
     if (tte && ok_to_use_TT(tte, depth, beta, ply))
     {
-        ss[ply].currentMove = ttMove; // can be MOVE_NONE
+        ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
     }
 
@@ -1445,18 +1441,13 @@ namespace {
     futilityValue = VALUE_NONE;
     useFutilityPruning = depth < SelectiveDepth && !isCheck;
 
+    // Calculate depth dependant futility pruning parameters
+    const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
+    const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
+
     // Avoid calling evaluate() if we already have the score in TT
     if (tte && (tte->type() & VALUE_TYPE_EVAL))
-        futilityValue = value_from_tt(tte->value(), ply) + FutilityMargins[int(depth) - 2];
-
-    // Move count pruning limit
-    const int MCLimit = 3 + (1 << (3*int(depth)/8));
-
-    /*
-    for (int d = 2; d < 16; d++)
-        std::cout << d << " -> " << 56*(0+2*bitScanReverse32(1 * int(d) * int(d) / 2)) << std::endl;
-        //std::cout << d << " -> " << 32*(1+3*bitScanReverse32(1 * int(d) * int(d))) << std::endl;
-    */
+        futilityValue = value_from_tt(tte->value(), ply) + FutilityValueMargin;
 
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
@@ -1512,17 +1503,16 @@ namespace {
           &&  move != ttMove)
       {
           // History pruning. See ok_to_prune() definition
-          if (   moveCount >= MCLimit
+          if (   moveCount >= FutilityMoveCountMargin
               && ok_to_prune(pos, move, ss[ply].threatMove, depth)
               && bestValue > value_mated_in(PLY_MAX))
               continue;
 
           // Value based pruning
           if (approximateEval < beta)
-          {//dbg_before();
+          {
               if (futilityValue == VALUE_NONE)
-                  futilityValue =  evaluate(pos, ei, threadID)
-                                 + 56*(0+2*bitScanReverse32(1 * int(depth) * int(depth) / 2));
+                  futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
 
               futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
 
@@ -1532,7 +1522,6 @@ namespace {
                       bestValue = futilityValueScaled;
                   continue;
               }
-           //dbg_after(); // 36% (inc == 8), 40% (inc == 4), 37%(56)
           }
       }
 
@@ -1552,7 +1541,7 @@ namespace {
           value = -search(pos, ss, -(beta-1), newDepth-OnePly, ply+1, true, threadID);
       }
       else
-        value = beta; // Just to trigger next condition
+          value = beta; // Just to trigger next condition
 
       if (value >= beta) // Go with full depth non-pv search
       {
@@ -1566,12 +1555,12 @@ namespace {
       // New best move?
       if (value > bestValue)
       {
-        bestValue = value;
-        if (value >= beta)
-            update_pv(ss, ply);
+          bestValue = value;
+          if (value >= beta)
+              update_pv(ss, ply);
 
-        if (value == value_mate_in(ply + 1))
-            ss[ply].mateKiller = move;
+          if (value == value_mate_in(ply + 1))
+              ss[ply].mateKiller = move;
       }
 
       // Split?
@@ -1584,7 +1573,7 @@ namespace {
           && !thread_should_stop(threadID)
           && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, approximateEval,
                    depth, &moveCount, &mp, threadID, false))
-        break;
+          break;
     }
 
     // All legal moves have been searched.  A special case: If there were
@@ -1663,10 +1652,10 @@ namespace {
     }
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    // Evaluate the position statically
     isCheck = pos.is_check();
     ei.futilityMargin = Value(0); // Manually initialize futilityMargin
 
+    // Evaluate the position statically
     if (isCheck)
         staticValue = -VALUE_INFINITE;
 
@@ -1675,7 +1664,7 @@ namespace {
         // Use the cached evaluation score if possible
         assert(ei.futilityMargin == Value(0));
 
-        staticValue = tte->value();
+        staticValue = value_from_tt(tte->value(), ply);
     }
     else
         staticValue = evaluate(pos, ei, threadID);
@@ -1820,6 +1809,8 @@ namespace {
     bool useFutilityPruning =     sp->depth < SelectiveDepth
                               && !isCheck;
 
+    const int FutilityValueMargin = 112 * bitScanReverse32(int(sp->depth) * int(sp->depth) / 2);
+
     while (    sp->bestValue < sp->beta
            && !thread_should_stop(threadID)
            && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
@@ -1857,8 +1848,7 @@ namespace {
               if (sp->futilityValue == VALUE_NONE)
               {
                   EvalInfo ei;
-                  sp->futilityValue =  evaluate(pos, ei, threadID)
-                                    + FutilityMargins[int(sp->depth) - 2];
+                  sp->futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
               }
 
               if (sp->futilityValue < sp->beta)
