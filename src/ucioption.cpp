@@ -125,6 +125,7 @@ namespace {
     o["Threads"] = Option(1, 1, 8);
     o["Hash"] = Option(32, 4, 4096);
     o["Clear Hash"] = Option(false, BUTTON);
+    o["New Game"] = Option(false, BUTTON);
     o["Ponder"] = Option(true);
     o["OwnBook"] = Option(true);
     o["MultiPV"] = Option(1, 1, 500);

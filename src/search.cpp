@@ -402,13 +402,13 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   Problem = false;
   ExactMaxTime = maxTime;
 
+  if (button_was_pressed("New Game"))
+      loseOnTime = false; // reset at the beginning of a new game
+
   // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
   if (button_was_pressed("Clear Hash"))
-  {
       TT.clear();
-      loseOnTime = false; // reset at the beginning of a new game
-  }
 
   bool PonderingEnabled = get_option_value_bool("Ponder");
   MultiPV = get_option_value_int("MultiPV");

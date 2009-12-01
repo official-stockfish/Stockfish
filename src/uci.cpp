@@ -124,7 +124,7 @@ namespace {
     }
     else if (token == "ucinewgame")
     {
-        push_button("Clear Hash");
+        push_button("New Game");
         Position::init_piece_square_tables();
         RootPosition.from_fen(StartPosition);
     }
