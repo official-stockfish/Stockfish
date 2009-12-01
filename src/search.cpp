@@ -1517,19 +1517,16 @@ namespace {
               continue;
 
           // Value based pruning
-          if (approximateEval < beta)
+          if (futilityValue == VALUE_NONE)
+              futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
+
+          futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
+
+          if (futilityValueScaled < beta)
           {
-              if (futilityValue == VALUE_NONE)
-                  futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
-
-              futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
-
-              if (futilityValueScaled < beta)
-              {
-                  if (futilityValueScaled > bestValue)
-                      bestValue = futilityValueScaled;
-                  continue;
-              }
+              if (futilityValueScaled > bestValue)
+                  bestValue = futilityValueScaled;
+              continue;
           }
       }
 
