@@ -2523,8 +2523,8 @@ namespace {
     Value v = value_from_tt(tte->value(), ply);
 
     return   (   tte->depth() >= depth
-              || v >= Max(value_mate_in(100), beta)
-              || v < Min(value_mated_in(100), beta))
+              || v >= Max(value_mate_in(PLY_MAX), beta)
+              || v < Min(value_mated_in(PLY_MAX), beta))
 
           && (   (is_lower_bound(tte->type()) && v >= beta)
               || (is_upper_bound(tte->type()) && v < beta));
