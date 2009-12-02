@@ -173,7 +173,7 @@ namespace {
 
   // If the TT move is at least SingleReplyMargin better then the
   // remaining ones we will extend it.
-  const Value SingleReplyMargin = Value(0x64);
+  const Value SingleReplyMargin = Value(0x20);
 
   // Margins for futility pruning in the quiescence search, and at frontier
   // and near frontier nodes.
