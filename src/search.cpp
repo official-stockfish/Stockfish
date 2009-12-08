@@ -743,7 +743,7 @@ namespace {
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
-        //TT.insert_pv(p, ss[0].pv);
+        TT.insert_pv(p, ss[0].pv);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!

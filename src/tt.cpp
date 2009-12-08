@@ -208,7 +208,9 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 
   for (int i = 0; pv[i] != MOVE_NONE; i++)
   {
-      store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i]);
+      TTEntry *tte = retrieve(p.get_key());
+      if (!tte || tte->move() != pv[i])
+          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i]);
       p.do_move(pv[i], st);
   }
 }
