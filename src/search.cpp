@@ -180,7 +180,7 @@ namespace {
   const Value FutilityMarginQS = Value(0x80);
 
   // Each move futility margin is decreased
-  const Value IncrementalFutilityMargin = Value(0x4);
+  const Value IncrementalFutilityMargin = Value(0x8);
 
   // Razoring
   const Depth RazorDepth = 4*OnePly;
