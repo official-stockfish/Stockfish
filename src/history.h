@@ -47,14 +47,11 @@ public:
   History();
   void clear();
   void success(Piece p, Square to, Depth d);
-  void failure(Piece p, Square to);
+  void failure(Piece p, Square to, Depth d);
   int move_ordering_score(Piece p, Square to) const;
-  bool ok_to_prune(Piece p, Square to, Depth d) const;
 
 private:
   int history[16][64];  // [piece][square]
-  int successCount[16][64];
-  int failureCount[16][64];
 };
 
 

@@ -288,7 +288,7 @@ namespace {
   bool move_is_killer(Move m, const SearchStack& ss);
   Depth extension(const Position& pos, Move m, bool pvNode, bool capture, bool check, bool singleReply, bool mateThreat, bool* dangerous);
   bool ok_to_do_nullmove(const Position& pos);
-  bool ok_to_prune(const Position& pos, Move m, Move threat, Depth d);
+  bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
@@ -1510,9 +1510,9 @@ namespace {
           && !captureOrPromotion
           &&  move != ttMove)
       {
-          // History pruning. See ok_to_prune() definition
+          // Move count based pruning
           if (   moveCount >= FutilityMoveCountMargin
-              && ok_to_prune(pos, move, ss[ply].threatMove, depth)
+              && ok_to_prune(pos, move, ss[ply].threatMove)
               && bestValue > value_mated_in(PLY_MAX))
               continue;
 
@@ -1841,9 +1841,9 @@ namespace {
           && !dangerous
           && !captureOrPromotion)
       {
-          // History pruning. See ok_to_prune() definition
+          // Move count based pruning
           if (   moveCount >= 2 + int(sp->depth)
-              && ok_to_prune(pos, move, ss[sp->ply].threatMove, sp->depth)
+              && ok_to_prune(pos, move, ss[sp->ply].threatMove)
               && sp->bestValue > value_mated_in(PLY_MAX))
               continue;
 
@@ -2464,7 +2464,7 @@ namespace {
   // non-tactical moves late in the move list close to the leaves are
   // candidates for pruning.
 
-  bool ok_to_prune(const Position& pos, Move m, Move threat, Depth d) {
+  bool ok_to_prune(const Position& pos, Move m, Move threat) {
 
     assert(move_is_ok(m));
     assert(threat == MOVE_NONE || move_is_ok(threat));
@@ -2498,11 +2498,7 @@ namespace {
         && pos.move_attacks_square(m, tto))
         return false;
 
-    // Case 4: Don't prune moves with good history
-    if (!H.ok_to_prune(pos.piece_on(mfrom), mto, d))
-        return false;
-
-    // Case 5: If the moving piece in the threatened move is a slider, don't
+    // Case 4: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
     if (  !PruneBlockingMoves
         && threat != MOVE_NONE
@@ -2543,7 +2539,7 @@ namespace {
     {
         assert(m != movesSearched[i]);
         if (!pos.move_is_capture_or_promotion(movesSearched[i]))
-            H.failure(pos.piece_on(move_from(movesSearched[i])), move_to(movesSearched[i]));
+            H.failure(pos.piece_on(move_from(movesSearched[i])), move_to(movesSearched[i]), depth);
     }
   }
 

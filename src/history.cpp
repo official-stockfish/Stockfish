@@ -42,8 +42,6 @@ History::History() { clear(); }
 
 void History::clear() {
   memset(history, 0, 2 * 8 * 64 * sizeof(int));
-  memset(successCount, 0, 2 * 8 * 64 * sizeof(int));
-  memset(failureCount, 0, 2 * 8 * 64 * sizeof(int));
 }
 
 
@@ -58,7 +56,6 @@ void History::success(Piece p, Square to, Depth d) {
   assert(square_is_ok(to));
 
   history[p][to] += int(d) * int(d);
-  successCount[p][to]++;
 
   // Prevent history overflow
   if (history[p][to] >= HistoryMax)
@@ -72,12 +69,14 @@ void History::success(Piece p, Square to, Depth d) {
 /// called for each non-capturing move which failed to produce a beta cutoff
 /// at a node where a beta cutoff was finally found.
 
-void History::failure(Piece p, Square to) {
+void History::failure(Piece p, Square to, Depth d) {
 
   assert(piece_is_ok(p));
   assert(square_is_ok(to));
 
-  failureCount[p][to]++;
+  history[p][to] -= int(d) * int(d);
+  if (history[p][to] < 0)
+      history[p][to] = 0;
 }
 
 
@@ -90,16 +89,4 @@ int History::move_ordering_score(Piece p, Square to) const {
   assert(square_is_ok(to));
 
   return history[p][to];
-}
-
-
-/// History::ok_to_prune() decides whether a move has been sufficiently
-/// unsuccessful that it makes sense to prune it entirely.
-
-bool History::ok_to_prune(Piece p, Square to, Depth d) const {
-
-  assert(piece_is_ok(p));
-  assert(square_is_ok(to));
-
-  return (int(d) * successCount[p][to] < failureCount[p][to]);
 }
