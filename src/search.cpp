@@ -1814,6 +1814,7 @@ namespace {
     bool useFutilityPruning =     sp->depth < SelectiveDepth
                               && !isCheck;
 
+    const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
     const int FutilityValueMargin = 112 * bitScanReverse32(int(sp->depth) * int(sp->depth) / 2);
 
     while (    sp->bestValue < sp->beta
@@ -1842,31 +1843,30 @@ namespace {
           && !captureOrPromotion)
       {
           // Move count based pruning
-          if (   moveCount >= 2 + int(sp->depth)
+          if (   moveCount >= FutilityMoveCountMargin
               && ok_to_prune(pos, move, ss[sp->ply].threatMove)
               && sp->bestValue > value_mated_in(PLY_MAX))
               continue;
 
           // Value based pruning
-          if (sp->approximateEval < sp->beta)
+          if (sp->futilityValue == VALUE_NONE)
           {
-              if (sp->futilityValue == VALUE_NONE)
-              {
-                  EvalInfo ei;
-                  sp->futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
-              }
+              EvalInfo ei;
+              sp->futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
+          }
 
-              if (sp->futilityValue < sp->beta)
+          Value futilityValueScaled = sp->futilityValue - moveCount * IncrementalFutilityMargin;
+
+          if (futilityValueScaled < sp->beta)
+          {
+              if (futilityValueScaled > sp->bestValue) // Less then 1% of cases
               {
-                  if (sp->futilityValue > sp->bestValue) // Less then 1% of cases
-                  {
-                      lock_grab(&(sp->lock));
-                      if (sp->futilityValue > sp->bestValue)
-                          sp->bestValue = sp->futilityValue;
-                      lock_release(&(sp->lock));
-                  }
-                  continue;
+                  lock_grab(&(sp->lock));
+                  if (futilityValueScaled > sp->bestValue)
+                      sp->bestValue = futilityValueScaled;
+                  lock_release(&(sp->lock));
               }
+              continue;
           }
       }
 
