@@ -139,7 +139,7 @@ namespace {
 
   // Use internal iterative deepening?
   const bool UseIIDAtPVNodes = true;
-  const bool UseIIDAtNonPVNodes = false;
+  const bool UseIIDAtNonPVNodes = true;
 
   // Internal iterative deepening margin. At Non-PV moves, when
   // UseIIDAtNonPVNodes is true, we do an internal iterative deepening
