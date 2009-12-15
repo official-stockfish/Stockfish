@@ -1435,7 +1435,7 @@ namespace {
 
     // Go with internal iterative deepening if we don't have a TT move
     if (UseIIDAtNonPVNodes && ttMove == MOVE_NONE && depth >= 8*OnePly &&
-        evaluate(pos, ei, threadID) >= beta - IIDMargin)
+        !isCheck && evaluate(pos, ei, threadID) >= beta - IIDMargin)
     {
         search(pos, ss, beta, Min(depth/2, depth-2*OnePly), ply, false, threadID);
         ttMove = ss[ply].pv[ply];
