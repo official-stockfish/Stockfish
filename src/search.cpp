@@ -2471,7 +2471,6 @@ namespace {
     assert(!pos.move_is_check(m));
     assert(!pos.move_is_capture_or_promotion(m));
     assert(!pos.move_is_passed_pawn_push(m));
-    assert(d >= OnePly);
 
     Square mfrom, mto, tfrom, tto;
 
