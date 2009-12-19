@@ -61,7 +61,7 @@ private:
 
 /// HistoryMax controls how often the history counters will be scaled down:
 /// When the history score for a move gets bigger than HistoryMax, all
-/// entries in the table are divided by 2. It is difficult to guess what
+/// entries in the table are divided by 4. It is difficult to guess what
 /// the ideal value of this constant is. Scaling down the scores often has
 /// the effect that parts of the search tree which have been searched
 /// recently have a bigger importance for move ordering than the moves which
