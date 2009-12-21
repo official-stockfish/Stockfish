@@ -55,7 +55,7 @@ enum Value {
 /// Score struct keeps a midgame and an endgame value in a single
 /// ScoreValue 64 bit union.
 
-enum Score;
+enum Score {};
 
 inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
 inline Value mg_value(Score s) { return Value((int(s) + 32768) >> 16); }
