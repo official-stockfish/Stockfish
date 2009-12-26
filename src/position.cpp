@@ -671,7 +671,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
     Key pawnKey, materialKey;
     int castleRights, rule50, pliesFromNull;
     Square epSquare;
-    Value value;
+    Score value;
     Value npMaterial[2];
   };
 
@@ -969,7 +969,7 @@ void Position::do_castle_move(Move m) {
   set_bit(&(byColorBB[us]), rto);
   set_bit(&(byTypeBB[ROOK]), rto);
   set_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
-  
+
   // Update board array
   Piece king = piece_of_color_and_type(us, KING);
   Piece rook = piece_of_color_and_type(us, ROOK);
@@ -1154,7 +1154,7 @@ void Position::undo_castle_move(Move m) {
 
   assert(piece_on(kto) == piece_of_color_and_type(us, KING));
   assert(piece_on(rto) == piece_of_color_and_type(us, ROOK));
-  
+
   // Remove pieces from destination squares:
   clear_bit(&(byColorBB[us]), kto);
   clear_bit(&(byTypeBB[KING]), kto);
@@ -1162,7 +1162,7 @@ void Position::undo_castle_move(Move m) {
   clear_bit(&(byColorBB[us]), rto);
   clear_bit(&(byTypeBB[ROOK]), rto);
   clear_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
- 
+
   // Put pieces on source squares:
   set_bit(&(byColorBB[us]), kfrom);
   set_bit(&(byTypeBB[KING]), kfrom);
