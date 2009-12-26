@@ -52,8 +52,9 @@ enum Value {
 };
 
 
-/// Score struct keeps a midgame and an endgame value in a single
-/// ScoreValue 64 bit union.
+/// Score enum keeps a midgame and an endgame value in a single
+/// integer (enum), first LSB 16 bits are used to store endgame
+/// value, while upper bits are used for midgame value.
 
 enum Score {};
 
