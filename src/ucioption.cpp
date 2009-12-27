@@ -122,7 +122,7 @@ namespace {
     o["Randomness"] = Option(0, 0, 10);
     o["Minimum Split Depth"] = Option(4, 4, 7);
     o["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
-    o["Threads"] = Option(1, 1, 8);
+    o["Threads"] = Option(1, 1, THREAD_MAX);
     o["Hash"] = Option(32, 4, 2048);
     o["Clear Hash"] = Option(false, BUTTON);
     o["New Game"] = Option(false, BUTTON);

@@ -251,9 +251,10 @@ namespace {
   // in init_safety().
   Value SafetyTable[100];
 
-  // Pawn and material hash tables, indexed by the current thread id
-  MaterialInfoTable* MaterialTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  PawnInfoTable* PawnTable[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  // Pawn and material hash tables, indexed by the current thread id.
+  // Note that they will be initialized at 0 being global variables.
+  MaterialInfoTable* MaterialTable[THREAD_MAX];
+  PawnInfoTable* PawnTable[THREAD_MAX];
 
   // Sizes of pawn and material hash tables
   const int PawnTableSize = 16384;
