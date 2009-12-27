@@ -1142,9 +1142,6 @@ namespace {
         search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
         ttMove = ss[ply].pv[ply];
         tte = TT.retrieve(pos.get_key());
-
-        // If tte->move() != MOVE_NONE then it equals ttMove
-        assert(!(tte && tte->move()) || tte->move() == ttMove);
     }
 
     // Initialize a MovePicker object for the current position, and prepare
