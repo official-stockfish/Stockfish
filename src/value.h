@@ -56,7 +56,7 @@ enum Value {
 /// integer (enum), first LSB 16 bits are used to store endgame
 /// value, while upper bits are used for midgame value.
 
-enum Score {};
+enum Score { ENSURE_32_BIT_SIZE = 1 << 31 };
 
 inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
 inline Value mg_value(Score s) { return Value((int(s) + 32768) >> 16); }
