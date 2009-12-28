@@ -56,10 +56,22 @@ enum Value {
 /// integer (enum), first LSB 16 bits are used to store endgame
 /// value, while upper bits are used for midgame value.
 
-enum Score { ENSURE_32_BIT_SIZE = 1 << 31 };
+// Compiler is free to choose the enum type as long as can keep
+// its data, so ensure Score to be an integer type.
+enum Score { ENSURE_32_BITS_SIZE_P = (1 << 16), ENSURE_32_BITS_SIZE_N = -(1 << 16)};
 
+// Extracting the _signed_ lower and upper 16 bits it not so trivial
+// because according to the standard a simple cast to short is
+// implementation defined and so is a right shift of a signed integer.
+inline Value mg_value(Score s) { return Value(((int(s) + 32768) & ~0xffff) / 0x10000); }
+
+// Unfortunatly on Intel 64 bit we have a small speed regression, so use a faster code in
+// this case, although not 100% standard compliant it seems to work for Intel and MSVC.
+#if defined(IS_64BIT) && (!defined(__GNUC__) || defined(__INTEL_COMPILER))
 inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
-inline Value mg_value(Score s) { return Value((int(s) + 32768) >> 16); }
+#else
+inline Value eg_value(Score s) { return Value((int)(unsigned(s) & 0x7fffu) - (int)(unsigned(s) & 0x8000u)); }
+#endif
 
 inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
 

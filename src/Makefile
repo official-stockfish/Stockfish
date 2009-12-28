@@ -25,11 +25,8 @@ EXE = stockfish
 ### ==========================================================================
 ### Compiler speed switches for both GCC and ICC. These settings are generally
 ### fast on a broad range of systems, but may be changed experimentally
-###
-### NOTE: Some versions of gcc miscompile value.h with -O2 or -O3, this is the
-### safe setup, try changing to -O3 or -O2 and verify it works for you.
 ### ==========================================================================
-GCCFLAGS = -O1 -msse
+GCCFLAGS = -O3 -msse
 ICCFLAGS = -fast -msse
 ICCFLAGS-OSX = -fast -mdynamic-no-pic
 
