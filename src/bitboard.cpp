@@ -368,27 +368,38 @@ Square pop_1st_bit(Bitboard* bb) {
 
 #endif
 
+// Optimized bitScanReverse32() implementation by Pascal Georges. Note
+// that first bit is 1, this allow to differentiate between 0 and 1.
+static CACHE_LINE_ALIGNMENT
+const char MsbTable[256] = {
+  0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+  7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+};
+
 int bitScanReverse32(uint32_t b)
 {
    int result = 0;
 
-   if (b > 0xFFFF) {
+   if (b > 0xFFFF)
+   {
       b >>= 16;
       result += 16;
    }
-   if (b > 0xFF) {
+   if (b > 0xFF)
+   {
       b >>= 8;
       result += 8;
    }
-   if (b > 0xF) {
-      b >>= 4;
-      result += 4;
-   }
-   if (b > 0x3) {
-      b >>= 2;
-      result += 2;
-   }
-   return result + (b > 0) + (b > 1);
+   return result + MsbTable[b];
 }
 
 namespace {
