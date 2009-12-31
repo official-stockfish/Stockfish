@@ -61,7 +61,7 @@ void History::success(Piece p, Square to, Depth d) {
   if (history[p][to] >= HistoryMax)
       for (int i = 0; i < 16; i++)
           for (int j = 0; j < 64; j++)
-              history[i][j] /= 4;
+              history[i][j] /= 2;
 }
 
 
