@@ -1376,7 +1376,7 @@ namespace {
         pos.do_null_move(st);
 
         // Null move dynamic reduction based on depth
-        int R = (depth >= 5 * OnePly ? 4 : 3);
+        int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
 
         // Null move dynamic reduction based on value
         if (approximateEval - beta > PawnValueMidgame)
