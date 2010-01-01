@@ -288,6 +288,7 @@ namespace {
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
+  Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
 
@@ -1360,7 +1361,7 @@ namespace {
         return value_from_tt(tte->value(), ply);
     }
 
-    approximateEval = quick_evaluate(pos);
+    approximateEval = refine_eval(tte, quick_evaluate(pos), ply);
     isCheck = pos.is_check();
 
     // Null move search
@@ -2473,6 +2474,23 @@ namespace {
               || (is_upper_bound(tte->type()) && v < beta));
   }
 
+
+  // refine_eval() returns the transposition table score if
+  // possible otherwise falls back on static position evaluation.
+
+  Value refine_eval(const TTEntry* tte, Value defaultEval, int ply) {
+
+      if (!tte)
+          return defaultEval;
+
+      Value v = value_from_tt(tte->value(), ply);
+
+      if (   (is_lower_bound(tte->type()) && v >= defaultEval)
+          || (is_upper_bound(tte->type()) && v < defaultEval))
+          return v;
+
+      return defaultEval;
+  }
 
   // update_history() registers a good move that produced a beta-cutoff
   // in history and marks as failures all the other moves of that ply.
