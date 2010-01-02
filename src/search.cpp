@@ -310,8 +310,7 @@ namespace {
   bool idle_thread_exists(int master);
   bool split(const Position& pos, SearchStack* ss, int ply,
              Value *alpha, Value *beta, Value *bestValue,
-             const Value futilityValue, const Value approximateValue,
-             Depth depth, int *moves,
+             const Value futilityValue, Depth depth, int *moves,
              MovePicker *mp, int master, bool pvNode);
   void wake_sleeping_threads();
 
@@ -1269,7 +1268,7 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE, VALUE_NONE,
+          && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE,
                    depth, &moveCount, &mp, threadID, true))
           break;
     }
@@ -1573,7 +1572,7 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, approximateEval,
+          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue,
                    depth, &moveCount, &mp, threadID, false))
           break;
     }
@@ -2891,8 +2890,7 @@ namespace {
 
   bool split(const Position& p, SearchStack* sstck, int ply,
              Value* alpha, Value* beta, Value* bestValue, const Value futilityValue,
-             const Value approximateEval, Depth depth, int* moves,
-             MovePicker* mp, int master, bool pvNode) {
+             Depth depth, int* moves, MovePicker* mp, int master, bool pvNode) {
 
     assert(p.is_ok());
     assert(sstck != NULL);
@@ -2931,7 +2929,6 @@ namespace {
     splitPoint->pvNode = pvNode;
     splitPoint->bestValue = *bestValue;
     splitPoint->futilityValue = futilityValue;
-    splitPoint->approximateEval = approximateEval;
     splitPoint->master = master;
     splitPoint->mp = mp;
     splitPoint->moves = *moves;

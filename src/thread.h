@@ -51,7 +51,6 @@ struct SplitPoint {
   int ply;
   Depth depth;
   volatile Value alpha, beta, bestValue, futilityValue;
-  Value approximateEval;
   bool pvNode;
   int master, slaves[THREAD_MAX];
   Lock lock;
