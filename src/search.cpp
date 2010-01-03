@@ -592,7 +592,7 @@ void init_threads() {
   }
 
   // Launch the helper threads
-  for(i = 1; i < THREAD_MAX; i++)
+  for (i = 1; i < THREAD_MAX; i++)
   {
 #if !defined(_MSC_VER)
       pthread_create(pthread, NULL, init_thread, (void*)(&i));
@@ -619,7 +619,7 @@ void stop_threads() {
   for (int i = 1; i < THREAD_MAX; i++)
   {
       Threads[i].stop = true;
-      while(Threads[i].running);
+      while (Threads[i].running);
   }
   destroy_split_point_stack();
 }
@@ -2167,7 +2167,7 @@ namespace {
 
   void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
     int j;
-    for(j = 0; pv[j] != MOVE_NONE; j++)
+    for (j = 0; pv[j] != MOVE_NONE; j++)
       moves[moveNum].pv[j] = pv[j];
     moves[moveNum].pv[j] = MOVE_NONE;
   }
@@ -2250,7 +2250,7 @@ namespace {
 
     ss[ply].pv[ply] = ss[ply].currentMove;
     int p;
-    for(p = ply + 1; ss[ply+1].pv[p] != MOVE_NONE; p++)
+    for (p = ply + 1; ss[ply+1].pv[p] != MOVE_NONE; p++)
       ss[ply].pv[p] = ss[ply+1].pv[p];
     ss[ply].pv[p] = MOVE_NONE;
   }
@@ -2265,7 +2265,7 @@ namespace {
 
     ss[ply].pv[ply] = pss[ply].pv[ply] = ss[ply].currentMove;
     int p;
-    for(p = ply + 1; ss[ply+1].pv[p] != MOVE_NONE; p++)
+    for (p = ply + 1; ss[ply+1].pv[p] != MOVE_NONE; p++)
       ss[ply].pv[p] = pss[ply].pv[p] = ss[ply+1].pv[p];
     ss[ply].pv[p] = pss[ply].pv[p] = MOVE_NONE;
   }
@@ -2550,7 +2550,7 @@ namespace {
 
   bool fail_high_ply_1() {
 
-    for(int i = 0; i < ActiveThreads; i++)
+    for (int i = 0; i < ActiveThreads; i++)
         if (Threads[i].failHighPly1)
             return true;
 
@@ -2562,6 +2562,7 @@ namespace {
   // since the beginning of the current search.
 
   int current_search_time() {
+
     return get_system_time() - SearchStartTime;
   }
 
@@ -2569,12 +2570,13 @@ namespace {
   // nps() computes the current nodes/second count.
 
   int nps() {
+
     int t = current_search_time();
-    return (t > 0)? int((nodes_searched() * 1000) / t) : 0;
+    return (t > 0 ? int((nodes_searched() * 1000) / t) : 0);
   }
 
 
-  // poll() performs two different functions:  It polls for user input, and it
+  // poll() performs two different functions: It polls for user input, and it
   // looks at the time consumed so far and decides if it's time to abort the
   // search.
 
@@ -2588,6 +2590,7 @@ namespace {
     {
         // We are line oriented, don't read single chars
         std::string command;
+
         if (!std::getline(std::cin, command))
             command = "quit";
 
@@ -2606,6 +2609,7 @@ namespace {
         else if (command == "ponderhit")
             ponderhit();
     }
+
     // Print search information
     if (t < 1000)
         lastInfoTime = 0;
@@ -2619,6 +2623,7 @@ namespace {
     {
         lastInfoTime = t;
         lock_grab(&IOLock);
+
         if (dbg_show_mean)
             dbg_print_mean();
 
@@ -2627,20 +2632,32 @@ namespace {
 
         cout << "info nodes " << nodes_searched() << " nps " << nps()
              << " time " << t << " hashfull " << TT.full() << endl;
+
         lock_release(&IOLock);
+
         if (ShowCurrentLine)
             Threads[0].printCurrentLine = true;
     }
+
     // Should we stop the search?
     if (PonderSearch)
         return;
 
-    bool overTime =     t > AbsoluteMaxSearchTime
-                     || (RootMoveNumber == 1 && t > MaxSearchTime + ExtraSearchTime && !FailLow) //FIXME: We are not checking any problem flags, BUG?
-                     || (  !FailHigh && !FailLow && !fail_high_ply_1() && !Problem
-                         && t > 6*(MaxSearchTime + ExtraSearchTime));
+    bool stillAtFirstMove =    RootMoveNumber == 1
+                           && !FailLow
+                           &&  t > MaxSearchTime + ExtraSearchTime;
 
-    if (   (Iteration >= 3 && (!InfiniteSearch && overTime))
+    bool noProblemFound =   !FailHigh
+                         && !FailLow
+                         && !fail_high_ply_1()
+                         && !Problem
+                         &&  t > 6 * (MaxSearchTime + ExtraSearchTime);
+
+    bool noMoreTime =   t > AbsoluteMaxSearchTime
+                     || stillAtFirstMove //FIXME: We are not checking any problem flags, BUG?
+                     || noProblemFound;
+
+    if (   (Iteration >= 3 && !InfiniteSearch && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
         || (Iteration >= 3 && MaxNodes && nodes_searched() >= MaxNodes))
         AbortSearch = true;
@@ -2655,19 +2672,28 @@ namespace {
 
     int t = current_search_time();
     PonderSearch = false;
-    if (Iteration >= 3 &&
-       (!InfiniteSearch && (StopOnPonderhit ||
-                            t > AbsoluteMaxSearchTime ||
-                            (RootMoveNumber == 1 &&
-                             t > MaxSearchTime + ExtraSearchTime && !FailLow) ||
-                            (!FailHigh && !FailLow && !fail_high_ply_1() && !Problem &&
-                             t > 6*(MaxSearchTime + ExtraSearchTime)))))
-      AbortSearch = true;
+
+    bool stillAtFirstMove =    RootMoveNumber == 1
+                           && !FailLow
+                           &&  t > MaxSearchTime + ExtraSearchTime;
+
+    bool noProblemFound =   !FailHigh
+                         && !FailLow
+                         && !fail_high_ply_1()
+                         && !Problem
+                         &&  t > 6 * (MaxSearchTime + ExtraSearchTime);
+
+    bool noMoreTime =   t > AbsoluteMaxSearchTime
+                     || stillAtFirstMove
+                     || noProblemFound;
+
+    if (Iteration >= 3 && !InfiniteSearch && (noMoreTime || StopOnPonderhit))
+        AbortSearch = true;
   }
 
 
   // print_current_line() prints the current line of search for a given
-  // thread.  Called when the UCI option UCI_ShowCurrLine is 'true'.
+  // thread. Called when the UCI option UCI_ShowCurrLine is 'true'.
 
   void print_current_line(SearchStack ss[], int ply, int threadID) {
 
@@ -2703,8 +2729,8 @@ namespace {
 
 
   // wait_for_stop_or_ponderhit() is called when the maximum depth is reached
-  // while the program is pondering.  The point is to work around a wrinkle in
-  // the UCI protocol:  When pondering, the engine is not allowed to give a
+  // while the program is pondering. The point is to work around a wrinkle in
+  // the UCI protocol: When pondering, the engine is not allowed to give a
   // "bestmove" before the GUI sends it a "stop" or "ponderhit" command.
   // We simply wait here until one of these commands is sent, and return,
   // after which the bestmove and pondermove will be printed (in id_loop()).
@@ -2734,41 +2760,48 @@ namespace {
   // object for which the current thread is the master.
 
   void idle_loop(int threadID, SplitPoint* waitSp) {
+
     assert(threadID >= 0 && threadID < THREAD_MAX);
 
     Threads[threadID].running = true;
 
-    while(true) {
-      if(AllThreadsShouldExit && threadID != 0)
-        break;
+    while (true)
+    {
+        if (AllThreadsShouldExit && threadID != 0)
+            break;
 
-      // If we are not thinking, wait for a condition to be signaled instead
-      // of wasting CPU time polling for work:
-      while(threadID != 0 && (Idle || threadID >= ActiveThreads)) {
+        // If we are not thinking, wait for a condition to be signaled instead
+        // of wasting CPU time polling for work.
+        while (threadID != 0 && (Idle || threadID >= ActiveThreads))
+        {
+
 #if !defined(_MSC_VER)
-        pthread_mutex_lock(&WaitLock);
-        if(Idle || threadID >= ActiveThreads)
-          pthread_cond_wait(&WaitCond, &WaitLock);
-        pthread_mutex_unlock(&WaitLock);
+            pthread_mutex_lock(&WaitLock);
+            if (Idle || threadID >= ActiveThreads)
+                pthread_cond_wait(&WaitCond, &WaitLock);
+
+            pthread_mutex_unlock(&WaitLock);
 #else
-        WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
+            WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
 #endif
-      }
+        }
 
       // If this thread has been assigned work, launch a search
-      if(Threads[threadID].workIsWaiting) {
-        Threads[threadID].workIsWaiting = false;
-        if(Threads[threadID].splitPoint->pvNode)
-          sp_search_pv(Threads[threadID].splitPoint, threadID);
-        else
-          sp_search(Threads[threadID].splitPoint, threadID);
-        Threads[threadID].idle = true;
+      if (Threads[threadID].workIsWaiting)
+      {
+          Threads[threadID].workIsWaiting = false;
+          if (Threads[threadID].splitPoint->pvNode)
+              sp_search_pv(Threads[threadID].splitPoint, threadID);
+          else
+              sp_search(Threads[threadID].splitPoint, threadID);
+
+          Threads[threadID].idle = true;
       }
 
       // If this thread is the master of a split point and all threads have
       // finished their work at this split point, return from the idle loop.
-      if(waitSp != NULL && waitSp->cpus == 0)
-        return;
+      if (waitSp != NULL && waitSp->cpus == 0)
+          return;
     }
 
     Threads[threadID].running = false;
@@ -2779,11 +2812,13 @@ namespace {
   // initializes all split point objects.
 
   void init_split_point_stack() {
-    for(int i = 0; i < THREAD_MAX; i++)
-      for(int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++) {
-        SplitPointStack[i][j].parent = NULL;
-        lock_init(&(SplitPointStack[i][j].lock), NULL);
-      }
+
+    for (int i = 0; i < THREAD_MAX; i++)
+        for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
+        {
+            SplitPointStack[i][j].parent = NULL;
+            lock_init(&(SplitPointStack[i][j].lock), NULL);
+        }
   }
 
 
@@ -2791,62 +2826,66 @@ namespace {
   // destroys all locks in the precomputed split point objects.
 
   void destroy_split_point_stack() {
-    for(int i = 0; i < THREAD_MAX; i++)
-      for(int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
-        lock_destroy(&(SplitPointStack[i][j].lock));
+
+    for (int i = 0; i < THREAD_MAX; i++)
+        for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
+            lock_destroy(&(SplitPointStack[i][j].lock));
   }
 
 
   // thread_should_stop() checks whether the thread with a given threadID has
-  // been asked to stop, directly or indirectly.  This can happen if a beta
-  // cutoff has occured in thre thread's currently active split point, or in
+  // been asked to stop, directly or indirectly. This can happen if a beta
+  // cutoff has occured in the thread's currently active split point, or in
   // some ancestor of the current split point.
 
   bool thread_should_stop(int threadID) {
+
     assert(threadID >= 0 && threadID < ActiveThreads);
 
     SplitPoint* sp;
 
-    if(Threads[threadID].stop)
-      return true;
-    if(ActiveThreads <= 2)
-      return false;
-    for(sp = Threads[threadID].splitPoint; sp != NULL; sp = sp->parent)
-      if(sp->finished) {
-        Threads[threadID].stop = true;
+    if (Threads[threadID].stop)
         return true;
-      }
+    if (ActiveThreads <= 2)
+        return false;
+    for (sp = Threads[threadID].splitPoint; sp != NULL; sp = sp->parent)
+        if (sp->finished)
+        {
+            Threads[threadID].stop = true;
+            return true;
+        }
     return false;
   }
 
 
   // thread_is_available() checks whether the thread with threadID "slave" is
-  // available to help the thread with threadID "master" at a split point.  An
-  // obvious requirement is that "slave" must be idle.  With more than two
+  // available to help the thread with threadID "master" at a split point. An
+  // obvious requirement is that "slave" must be idle. With more than two
   // threads, this is not by itself sufficient:  If "slave" is the master of
   // some active split point, it is only available as a slave to the other
   // threads which are busy searching the split point at the top of "slave"'s
   // split point stack (the "helpful master concept" in YBWC terminology).
 
   bool thread_is_available(int slave, int master) {
+
     assert(slave >= 0 && slave < ActiveThreads);
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    if(!Threads[slave].idle || slave == master)
-      return false;
+    if (!Threads[slave].idle || slave == master)
+        return false;
 
-    if(Threads[slave].activeSplitPoints == 0)
-      // No active split points means that the thread is available as a slave
-      // for any other thread.
-      return true;
+    if (Threads[slave].activeSplitPoints == 0)
+        // No active split points means that the thread is available as
+        // a slave for any other thread.
+        return true;
 
-    if(ActiveThreads == 2)
-      return true;
+    if (ActiveThreads == 2)
+        return true;
 
     // Apply the "helpful master" concept if possible.
-    if(SplitPointStack[slave][Threads[slave].activeSplitPoints-1].slaves[master])
-      return true;
+    if (SplitPointStack[slave][Threads[slave].activeSplitPoints - 1].slaves[master])
+        return true;
 
     return false;
   }
@@ -2856,25 +2895,27 @@ namespace {
   // a slave for the thread with threadID "master".
 
   bool idle_thread_exists(int master) {
+
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    for(int i = 0; i < ActiveThreads; i++)
-      if(thread_is_available(i, master))
-        return true;
+    for (int i = 0; i < ActiveThreads; i++)
+        if (thread_is_available(i, master))
+            return true;
+
     return false;
   }
 
 
   // split() does the actual work of distributing the work at a node between
-  // several threads at PV nodes.  If it does not succeed in splitting the
+  // several threads at PV nodes. If it does not succeed in splitting the
   // node (because no idle threads are available, or because we have no unused
-  // split point objects), the function immediately returns false.  If
+  // split point objects), the function immediately returns false. If
   // splitting is possible, a SplitPoint object is initialized with all the
   // data that must be copied to the helper threads (the current position and
   // search stack, alpha, beta, the search depth, etc.), and we tell our
-  // helper threads that they have been assigned work.  This will cause them
-  // to instantly leave their idle loops and call sp_search_pv().  When all
+  // helper threads that they have been assigned work. This will cause them
+  // to instantly leave their idle loops and call sp_search_pv(). When all
   // threads have returned from sp_search_pv (or, equivalently, when
   // splitPoint->cpus becomes 0), split() returns true.
 
@@ -2899,22 +2940,23 @@ namespace {
 
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
-    if(!idle_thread_exists(master) ||
-       Threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX) {
-      lock_release(&MPLock);
-      return false;
+    if (   !idle_thread_exists(master)
+        || Threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
+    {
+        lock_release(&MPLock);
+        return false;
     }
 
     // Pick the next available split point object from the split point stack
     splitPoint = SplitPointStack[master] + Threads[master].activeSplitPoints;
     Threads[master].activeSplitPoints++;
 
-    // Initialize the split point object
+    // Initialize the split point object and copy current position
     splitPoint->parent = Threads[master].splitPoint;
     splitPoint->finished = false;
     splitPoint->ply = ply;
     splitPoint->depth = depth;
-    splitPoint->alpha = pvNode? *alpha : (*beta - 1);
+    splitPoint->alpha = pvNode ? *alpha : (*beta - 1);
     splitPoint->beta = *beta;
     splitPoint->pvNode = pvNode;
     splitPoint->bestValue = *bestValue;
@@ -2925,54 +2967,58 @@ namespace {
     splitPoint->cpus = 1;
     splitPoint->pos.copy(p);
     splitPoint->parentSstack = sstck;
-    for(i = 0; i < ActiveThreads; i++)
-      splitPoint->slaves[i] = 0;
+    for (i = 0; i < ActiveThreads; i++)
+        splitPoint->slaves[i] = 0;
 
-    // Copy the current position and the search stack to the master thread
-    memcpy(splitPoint->sstack[master], sstck, (ply+1)*sizeof(SearchStack));
+    // Copy the current search stack to the master thread
+    memcpy(splitPoint->sstack[master], sstck, (ply+1) * sizeof(SearchStack));
     Threads[master].splitPoint = splitPoint;
 
     // Make copies of the current position and search stack for each thread
-    for(i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint;
-        i++)
-      if(thread_is_available(i, master)) {
-        memcpy(splitPoint->sstack[i], sstck, (ply+1)*sizeof(SearchStack));
-        Threads[i].splitPoint = splitPoint;
-        splitPoint->slaves[i] = 1;
-        splitPoint->cpus++;
-      }
+    for (i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
+        if (thread_is_available(i, master))
+        {
+            memcpy(splitPoint->sstack[i], sstck, (ply+1) * sizeof(SearchStack));
+            Threads[i].splitPoint = splitPoint;
+            splitPoint->slaves[i] = 1;
+            splitPoint->cpus++;
+        }
 
-    // Tell the threads that they have work to do.  This will make them leave
+    // Tell the threads that they have work to do. This will make them leave
     // their idle loop.
-    for(i = 0; i < ActiveThreads; i++)
-      if(i == master || splitPoint->slaves[i]) {
-        Threads[i].workIsWaiting = true;
-        Threads[i].idle = false;
-        Threads[i].stop = false;
-      }
+    for (i = 0; i < ActiveThreads; i++)
+        if (i == master || splitPoint->slaves[i])
+        {
+            Threads[i].workIsWaiting = true;
+            Threads[i].idle = false;
+            Threads[i].stop = false;
+        }
 
     lock_release(&MPLock);
 
-    // Everything is set up.  The master thread enters the idle loop, from
+    // Everything is set up. The master thread enters the idle loop, from
     // which it will instantly launch a search, because its workIsWaiting
     // slot is 'true'.  We send the split point as a second parameter to the
     // idle loop, which means that the main thread will return from the idle
     // loop when all threads have finished their work at this split point
-    // (i.e. when // splitPoint->cpus == 0).
+    // (i.e. when splitPoint->cpus == 0).
     idle_loop(master, splitPoint);
 
     // We have returned from the idle loop, which means that all threads are
-    // finished. Update alpha, beta and bestvalue, and return.
+    // finished. Update alpha, beta and bestValue, and return.
     lock_grab(&MPLock);
-    if(pvNode) *alpha = splitPoint->alpha;
+
+    if (pvNode)
+        *alpha = splitPoint->alpha;
+
     *beta = splitPoint->beta;
     *bestValue = splitPoint->bestValue;
     Threads[master].stop = false;
     Threads[master].idle = false;
     Threads[master].activeSplitPoints--;
     Threads[master].splitPoint = splitPoint->parent;
-    lock_release(&MPLock);
 
+    lock_release(&MPLock);
     return true;
   }
 
@@ -2981,39 +3027,45 @@ namespace {
   // to start a new search from the root.
 
   void wake_sleeping_threads() {
-    if(ActiveThreads > 1) {
-      for(int i = 1; i < ActiveThreads; i++) {
-        Threads[i].idle = true;
-        Threads[i].workIsWaiting = false;
-      }
+
+    if (ActiveThreads > 1)
+    {
+        for (int i = 1; i < ActiveThreads; i++)
+        {
+            Threads[i].idle = true;
+            Threads[i].workIsWaiting = false;
+        }
+
 #if !defined(_MSC_VER)
       pthread_mutex_lock(&WaitLock);
       pthread_cond_broadcast(&WaitCond);
       pthread_mutex_unlock(&WaitLock);
 #else
-      for(int i = 1; i < THREAD_MAX; i++)
-        SetEvent(SitIdleEvent[i]);
+      for (int i = 1; i < THREAD_MAX; i++)
+          SetEvent(SitIdleEvent[i]);
 #endif
     }
   }
 
 
   // init_thread() is the function which is called when a new thread is
-  // launched.  It simply calls the idle_loop() function with the supplied
-  // threadID.  There are two versions of this function; one for POSIX threads
-  // and one for Windows threads.
+  // launched. It simply calls the idle_loop() function with the supplied
+  // threadID. There are two versions of this function; one for POSIX
+  // threads and one for Windows threads.
 
 #if !defined(_MSC_VER)
 
-  void *init_thread(void *threadID) {
-    idle_loop(*(int *)threadID, NULL);
+  void* init_thread(void *threadID) {
+
+    idle_loop(*(int*)threadID, NULL);
     return NULL;
   }
 
 #else
 
   DWORD WINAPI init_thread(LPVOID threadID) {
-    idle_loop(*(int *)threadID, NULL);
+
+    idle_loop(*(int*)threadID, NULL);
     return NULL;
   }
 
