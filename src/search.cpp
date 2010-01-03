@@ -246,8 +246,7 @@ namespace {
   Lock MPLock;
   Lock IOLock;
   bool AllThreadsShouldExit = false;
-  const int MaxActiveSplitPoints = 8; // FIXME, sync with UCI Option
-  SplitPoint SplitPointStack[THREAD_MAX][MaxActiveSplitPoints];
+  SplitPoint SplitPointStack[THREAD_MAX][ACTIVE_SPLIT_POINTS_MAX];
   bool Idle = true;
 
 #if !defined(_MSC_VER)
@@ -2781,7 +2780,7 @@ namespace {
 
   void init_split_point_stack() {
     for(int i = 0; i < THREAD_MAX; i++)
-      for(int j = 0; j < MaxActiveSplitPoints; j++) {
+      for(int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++) {
         SplitPointStack[i][j].parent = NULL;
         lock_init(&(SplitPointStack[i][j].lock), NULL);
       }
@@ -2793,7 +2792,7 @@ namespace {
 
   void destroy_split_point_stack() {
     for(int i = 0; i < THREAD_MAX; i++)
-      for(int j = 0; j < MaxActiveSplitPoints; j++)
+      for(int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
         lock_destroy(&(SplitPointStack[i][j].lock));
   }
 
@@ -2901,7 +2900,7 @@ namespace {
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
     if(!idle_thread_exists(master) ||
-       Threads[master].activeSplitPoints >= MaxActiveSplitPoints) {
+       Threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX) {
       lock_release(&MPLock);
       return false;
     }

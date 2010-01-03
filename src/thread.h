@@ -37,6 +37,7 @@
 ////
 
 const int THREAD_MAX = 8;
+const int ACTIVE_SPLIT_POINTS_MAX = 8;
 
 
 ////
