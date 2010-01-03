@@ -64,7 +64,6 @@ private:
   const Position& pos;
   const History& H;
   MoveStack ttMoves[2], killers[2];
-  bool finished;
   int phase;
   const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastBadCapture;

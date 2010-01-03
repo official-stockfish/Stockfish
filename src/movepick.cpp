@@ -74,7 +74,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
                        const History& h, SearchStack* ss) : pos(p), H(h) {
   int searchTT = ttm;
   ttMoves[0].move = ttm;
-  finished = false;
   lastBadCapture = badCaptures;
 
   pinned = p.pinned_pieces(pos.side_to_move());
@@ -156,7 +155,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_STOP:
-      lastMove = curMove + 1; // hack to be friendly for get_next_move()
+      lastMove = curMove + 1; // Avoids another go_next_phase() call
       return;
 
   default:
@@ -346,14 +345,10 @@ Move MovePicker::get_next_move() {
 Move MovePicker::get_next_move(Lock &lock) {
 
    lock_grab(&lock);
-   if (finished)
-   {
-       lock_release(&lock);
-       return MOVE_NONE;
-   }
+
+   // Note that it is safe to call many times
+   // get_next_move() when phase == PH_STOP
    Move m = get_next_move();
-   if (m == MOVE_NONE)
-       finished = true;
 
    lock_release(&lock);
    return m;
