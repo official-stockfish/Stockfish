@@ -326,6 +326,13 @@ namespace {
 //// Functions
 ////
 
+//FIXME: HACK
+static double lnArray[512];
+
+inline double ln(int i)
+{
+    return lnArray[i];
+}
 
 /// perft() is our utility to verify move generation is bug free. All the legal
 /// moves up to given depth are generated and counted and the sum returned.
@@ -562,7 +569,13 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 /// and initializes the split point stack and the global locks and condition
 /// objects.
 
+#include <cmath> //FIXME: HACK
+
 void init_threads() {
+
+  // FIXME: HACK!!
+  for (int i = 0; i < 512; i++)
+    lnArray[i] = log(double(i));
 
   volatile int i;
 
@@ -1202,14 +1215,19 @@ namespace {
         // Try to reduce non-pv search depth by one ply if move seems not problematic,
         // if the move fails high will be re-searched at full depth.
         if (    depth >= 3*OnePly
-            &&  moveCount >= LMRPVMoves
             && !dangerous
             && !captureOrPromotion
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
-            ss[ply].reduction = OnePly;
-            value = -search(pos, ss, -alpha, newDepth-OnePly, ply+1, true, threadID);
+          double red = ln(moveCount) * ln(depth / 2) / 3.0;
+          if (red >= 1.0)
+          {
+              ss[ply].reduction = Depth(floor(red * int(OnePly)));
+              value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+          }
+          else
+              value = alpha + 1; // Just to trigger next condition
         }
         else
             value = alpha + 1; // Just to trigger next condition
@@ -1527,14 +1545,20 @@ namespace {
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
       if (    depth >= 3*OnePly
-          &&  moveCount >= LMRNonPVMoves
           && !dangerous
           && !captureOrPromotion
           && !move_is_castle(move)
-          && !move_is_killer(move, ss[ply]))
+          && !move_is_killer(move, ss[ply])
+          /* && move != ttMove*/)
       {
-          ss[ply].reduction = OnePly;
-          value = -search(pos, ss, -(beta-1), newDepth-OnePly, ply+1, true, threadID);
+          double red = ln(moveCount) * ln(depth / 2) / 1.5;
+          if (red >= 1.0)
+          {
+              ss[ply].reduction = Depth(floor(red * int(OnePly)));
+              value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
+          }
+          else
+              value = beta; // Just to trigger next condition
       }
       else
           value = beta; // Just to trigger next condition
@@ -1868,13 +1892,18 @@ namespace {
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
       if (   !dangerous
-          &&  moveCount >= LMRNonPVMoves
           && !captureOrPromotion
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = OnePly;
-          value = -search(pos, ss, -(sp->beta-1), newDepth - OnePly, sp->ply+1, true, threadID);
+          double red = ln(moveCount) * ln(sp->depth / 2) / 1.5;
+          if (red >= 1.0)
+          {
+              ss[sp->ply].reduction = Depth(floor(red * int(OnePly)));
+              value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+          }
+          else
+              value = sp->beta; // Just to trigger next condition
       }
       else
           value = sp->beta; // Just to trigger next condition
@@ -1974,13 +2003,18 @@ namespace {
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
       if (   !dangerous
-          &&  moveCount >= LMRPVMoves
           && !captureOrPromotion
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = OnePly;
-          value = -search(pos, ss, -sp->alpha, newDepth - OnePly, sp->ply+1, true, threadID);
+          double red = ln(moveCount) * ln(sp->depth / 2) / 3.0;
+          if (red >= 1.0)
+          {
+              ss[sp->ply].reduction = Depth(floor(red * int(OnePly)));
+              value = -search(pos, ss, -sp->alpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+          }
+          else
+              value = sp->alpha + 1; // Just to trigger next condition
       }
       else
           value = sp->alpha + 1; // Just to trigger next condition
