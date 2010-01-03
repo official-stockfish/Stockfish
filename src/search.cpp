@@ -41,6 +41,8 @@
 #include "tt.h"
 #include "ucioption.h"
 
+using std::cout;
+using std::endl;
 
 ////
 //// Local definitions
@@ -86,20 +88,19 @@ namespace {
   };
 
 
-  // The RootMove class is used for moves at the root at the tree.  For each
+  // The RootMove class is used for moves at the root at the tree. For each
   // root move, we store a score, a node count, and a PV (really a refutation
   // in the case of moves which fail low).
 
   struct RootMove {
 
     RootMove();
-    bool operator<(const RootMove&); // used to sort
+    bool operator<(const RootMove&) const; // Used to sort
 
     Move move;
     Value score;
-    int64_t nodes, cumulativeNodes;
+    int64_t nodes, cumulativeNodes, ourBeta, theirBeta;
     Move pv[PLY_MAX_PLUS_2];
-    int64_t ourBeta, theirBeta;
   };
 
 
@@ -132,7 +133,7 @@ namespace {
   /// Constants
 
   // Search depth at iteration 1
-  const Depth InitialDepth = OnePly /*+ OnePly/2*/;
+  const Depth InitialDepth = OnePly;
 
   // Depth limit for selective search
   const Depth SelectiveDepth = 7 * OnePly;
@@ -182,8 +183,8 @@ namespace {
   // Each move futility margin is decreased
   const Value IncrementalFutilityMargin = Value(0x8);
 
-  // Razoring
-  const Depth RazorDepth = 4*OnePly;
+  // Depth limit for razoring
+  const Depth RazorDepth = 4 * OnePly;
 
   // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
   const Value RazorMargins[6]     = { Value(0x180), Value(0x300), Value(0x300), Value(0x3C0), Value(0x3C0), Value(0x3C0) };
@@ -195,10 +196,10 @@ namespace {
   /// Variables initialized by UCI options
 
   // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV nodes
-  int LMRPVMoves, LMRNonPVMoves; // heavy SMP read access for the latter
+  int LMRPVMoves, LMRNonPVMoves;
 
   // Depth limit for use of dynamic threat detection
-  Depth ThreatDepth; // heavy SMP read access
+  Depth ThreatDepth;
 
   // Last seconds noise filtering (LSN)
   const bool UseLSNFiltering = true;
@@ -207,13 +208,12 @@ namespace {
   bool loseOnTime = false;
 
   // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
-  // There is heavy SMP read access on these arrays
   Depth CheckExtension[2], SingleReplyExtension[2], PawnPushTo7thExtension[2];
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Iteration counters
   int Iteration;
-  BetaCounterType BetaCounter; // has per-thread internal data
+  BetaCounterType BetaCounter;
 
   // Scores and number of times the best move changed for each iteration
   IterationInfoType IterationInfo[PLY_MAX_PLUS_2];
@@ -223,18 +223,13 @@ namespace {
   int MultiPV;
 
   // Time managment variables
+  int RootMoveNumber;
   int SearchStartTime;
   int MaxNodes, MaxDepth;
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
-  int RootMoveNumber;
-  bool InfiniteSearch;
-  bool PonderSearch;
-  bool StopOnPonderhit;
-  bool AbortSearch; // heavy SMP read access
-  bool Quit;
-  bool FailHigh;
-  bool FailLow;
-  bool Problem;
+  bool InfiniteSearch, PonderSearch, StopOnPonderhit;
+  bool AbortSearch, Quit;
+  bool FailHigh, FailLow, Problem;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -251,7 +246,7 @@ namespace {
   Lock MPLock;
   Lock IOLock;
   bool AllThreadsShouldExit = false;
-  const int MaxActiveSplitPoints = 8;
+  const int MaxActiveSplitPoints = 8; // FIXME, sync with UCI Option
   SplitPoint SplitPointStack[THREAD_MAX][MaxActiveSplitPoints];
   bool Idle = true;
 
@@ -328,8 +323,8 @@ namespace {
 ////
 
 
-/// perft() is our utility to verify move generation is bug free. All the
-/// legal moves up to given depth are generated and counted and the sum returned.
+/// perft() is our utility to verify move generation is bug free. All the legal
+/// moves up to given depth are generated and counted and the sum returned.
 
 int perft(Position& pos, Depth depth)
 {
@@ -377,32 +372,28 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       bookMove = OpeningBook.get_move(pos);
       if (bookMove != MOVE_NONE)
       {
-          std::cout << "bestmove " << bookMove << std::endl;
+          cout << "bestmove " << bookMove << endl;
           return true;
       }
   }
 
   // Initialize global search variables
-  Idle = false;
+  Idle = StopOnPonderhit = AbortSearch = Quit = false;
+  FailHigh = FailLow = Problem = false;
   SearchStartTime = get_system_time();
+  ExactMaxTime = maxTime;
+  NodesSincePoll = 0;
+  InfiniteSearch = infinite;
+  PonderSearch = ponder;
+
   for (int i = 0; i < THREAD_MAX; i++)
   {
       Threads[i].nodes = 0ULL;
       Threads[i].failHighPly1 = false;
   }
-  NodesSincePoll = 0;
-  InfiniteSearch = infinite;
-  PonderSearch = ponder;
-  StopOnPonderhit = false;
-  AbortSearch = false;
-  Quit = false;
-  FailHigh = false;
-  FailLow = false;
-  Problem = false;
-  ExactMaxTime = maxTime;
 
   if (button_was_pressed("New Game"))
-      loseOnTime = false; // reset at the beginning of a new game
+      loseOnTime = false; // Reset at the beginning of a new game
 
   // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
@@ -469,7 +460,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       {
           MaxSearchTime = myTime / 30 + myIncrement;
           AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
-      } else { // Blitz game without increment
+      }
+      else // Blitz game without increment
+      {
           MaxSearchTime = myTime / 30;
           AbsoluteMaxSearchTime = myTime / 8;
       }
@@ -479,9 +472,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       if (movesToGo == 1)
       {
           MaxSearchTime = myTime / 2;
-          AbsoluteMaxSearchTime =
-             (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
-      } else {
+          AbsoluteMaxSearchTime = (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
+      }
+      else
+      {
           MaxSearchTime = myTime / Min(movesToGo, 20);
           AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
       }
@@ -513,13 +507,12 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   // Write information to search log file
   if (UseLogFile)
-      LogFile << "Searching: " << pos.to_fen() << std::endl
+      LogFile << "Searching: " << pos.to_fen() << endl
               << "infinite: "  << infinite
               << " ponder: "   << ponder
               << " time: "     << myTime
               << " increment: " << myIncrement
-              << " moves to go: " << movesToGo << std::endl;
-
+              << " moves to go: " << movesToGo << endl;
 
   // LSN filtering. Used only for developing purpose. Disabled by default.
   if (   UseLSNFiltering
@@ -527,13 +520,13 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   {
       // Step 2. If after last move we decided to lose on time, do it now!
        while (SearchStartTime + myTime + 1000 > get_system_time())
-           ; // wait here
+           /* wait here */;
   }
 
   // We're ready to start thinking. Call the iterative deepening loop function
   Value v = id_loop(pos, searchMoves);
 
-  // LSN filtering. Used only for developing purpose. Disabled by default.
+
   if (UseLSNFiltering)
   {
       // Step 1. If this is sudden death game and our position is hopeless,
@@ -561,7 +554,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 }
 
 
-/// init_threads() is called during startup.  It launches all helper threads,
+/// init_threads() is called during startup. It launches all helper threads,
 /// and initializes the split point stack and the global locks and condition
 /// objects.
 
@@ -615,7 +608,7 @@ void init_threads() {
 }
 
 
-/// stop_threads() is called when the program exits.  It makes all the
+/// stop_threads() is called when the program exits. It makes all the
 /// helper threads exit cleanly.
 
 void stop_threads() {
@@ -663,7 +656,7 @@ void SearchStack::initKillers() {
 
 namespace {
 
-  // id_loop() is the main iterative deepening loop.  It calls root_search
+  // id_loop() is the main iterative deepening loop. It calls root_search
   // repeatedly with increasing depth until the allocated thinking time has
   // been consumed, the user stops the search, or the maximum search depth is
   // reached.
@@ -686,12 +679,12 @@ namespace {
 
     // Print RootMoveList c'tor startup scoring to the standard output,
     // so that we print information also for iteration 1.
-    std::cout << "info depth " << 1 << "\ninfo depth " << 1
-              << " score " << value_to_string(rml.get_move_score(0))
-              << " time " << current_search_time()
-              << " nodes " << nodes_searched()
-              << " nps " << nps()
-              << " pv " << rml.get_move(0) << "\n";
+    cout << "info depth " << 1 << "\ninfo depth " << 1
+         << " score " << value_to_string(rml.get_move_score(0))
+         << " time " << current_search_time()
+         << " nodes " << nodes_searched()
+         << " nps " << nps()
+         << " pv " << rml.get_move(0) << "\n";
 
     // Initialize
     TT.new_search();
@@ -716,7 +709,7 @@ namespace {
         if (Iteration <= 5)
             ExtraSearchTime = 0;
 
-        std::cout << "info depth " << Iteration << std::endl;
+        cout << "info depth " << Iteration << endl;
 
         // Calculate dynamic search window based on previous iterations
         Value alpha, beta;
@@ -775,7 +768,7 @@ namespace {
         speculatedValue = Min(Max(speculatedValue, -VALUE_INFINITE), VALUE_INFINITE);
         IterationInfo[Iteration] = IterationInfoType(value, speculatedValue);
 
-        // Erase the easy move if it differs from the new best move
+        // Drop the easy move if it differs from the new best move
         if (ss[0].pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
@@ -786,7 +779,8 @@ namespace {
             // Time to stop?
             bool stopSearch = false;
 
-            // Stop search early if there is only a single legal move
+            // Stop search early if there is only a single legal move,
+            // we search up to Iteration 6 anyway to get a proper score.
             if (Iteration >= 6 && rml.move_count() == 1)
                 stopSearch = true;
 
@@ -814,9 +808,9 @@ namespace {
                                 + BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
-            // iteration.  We probably don't have enough time to search the first
+            // iteration. We probably don't have enough time to search the first
             // move at the next iteration anyway.
-            if (current_search_time() > ((MaxSearchTime + ExtraSearchTime)*80) / 128)
+            if (current_search_time() > ((MaxSearchTime + ExtraSearchTime) * 80) / 128)
                 stopSearch = true;
 
             if (stopSearch)
@@ -840,10 +834,10 @@ namespace {
         wait_for_stop_or_ponderhit();
     else
         // Print final search statistics
-        std::cout << "info nodes " << nodes_searched()
-                  << " nps " << nps()
-                  << " time " << current_search_time()
-                  << " hashfull " << TT.full() << std::endl;
+        cout << "info nodes " << nodes_searched()
+             << " nps " << nps()
+             << " time " << current_search_time()
+             << " hashfull " << TT.full() << endl;
 
     // Print the best move and the ponder move to the standard output
     if (ss[0].pv[0] == MOVE_NONE)
@@ -851,11 +845,11 @@ namespace {
         ss[0].pv[0] = rml.get_move(0);
         ss[0].pv[1] = MOVE_NONE;
     }
-    std::cout << "bestmove " << ss[0].pv[0];
+    cout << "bestmove " << ss[0].pv[0];
     if (ss[0].pv[1] != MOVE_NONE)
-        std::cout << " ponder " << ss[0].pv[1];
+        cout << " ponder " << ss[0].pv[1];
 
-    std::cout << std::endl;
+    cout << endl;
 
     if (UseLogFile)
     {
@@ -865,25 +859,23 @@ namespace {
         if (dbg_show_hit_rate)
             dbg_print_hit_rate(LogFile);
 
-        StateInfo st;
-        LogFile << "Nodes: " << nodes_searched() << std::endl
-                << "Nodes/second: " << nps() << std::endl
-                << "Best move: " << move_to_san(p, ss[0].pv[0]) << std::endl;
+        LogFile << "\nNodes: " << nodes_searched()
+                << "\nNodes/second: " << nps()
+                << "\nBest move: " << move_to_san(p, ss[0].pv[0]);
 
+        StateInfo st;
         p.do_move(ss[0].pv[0], st);
-        LogFile << "Ponder move: " << move_to_san(p, ss[0].pv[1])
-                << std::endl << std::endl;
+        LogFile << "\nPonder move: " << move_to_san(p, ss[0].pv[1]) << endl;
     }
     return rml.get_move_score(0);
   }
 
 
-  // root_search() is the function which searches the root node.  It is
+  // root_search() is the function which searches the root node. It is
   // similar to search_pv except that it uses a different move ordering
-  // scheme (perhaps we should try to use this at internal PV nodes, too?)
-  // and prints some information to the standard output.
+  // scheme and prints some information to the standard output.
 
-  Value root_search(Position& pos, SearchStack ss[], RootMoveList &rml, Value alpha, Value beta) {
+  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value alpha, Value beta) {
 
     Value oldAlpha = alpha;
     Value value;
@@ -908,8 +900,7 @@ namespace {
         RootMoveNumber = i + 1;
         FailHigh = false;
 
-        // Remember the node count before the move is searched. The node counts
-        // are used to sort the root moves at the next iteration.
+        // Save the current node count before the move is searched
         nodes = nodes_searched();
 
         // Reset beta cut-off counters
@@ -918,9 +909,10 @@ namespace {
         // Pick the next root move, and print the move and the move number to
         // the standard output.
         move = ss[0].currentMove = rml.get_move(i);
+
         if (current_search_time() >= 1000)
-            std::cout << "info currmove " << move
-                      << " currmovenumber " << i + 1 << std::endl;
+            cout << "info currmove " << move
+                 << " currmovenumber " << RootMoveNumber << endl;
 
         // Decide search depth for this move
         bool moveIsCheck = pos.move_is_check(move);
@@ -939,17 +931,21 @@ namespace {
                 alpha = -VALUE_INFINITE;
 
             value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+
             // If the value has dropped a lot compared to the last iteration,
             // set the boolean variable Problem to true. This variable is used
             // for time managment: When Problem is true, we try to complete the
             // current iteration before playing a move.
-            Problem = (Iteration >= 2 && value <= IterationInfo[Iteration-1].value - ProblemMargin);
+            Problem = (   Iteration >= 2
+                       && value <= IterationInfo[Iteration - 1].value - ProblemMargin);
 
             if (Problem && StopOnPonderhit)
                 StopOnPonderhit = false;
         }
         else
         {
+            // Try to reduce non-pv search depth by one ply if move seems not problematic,
+            // if the move fails high will be re-searched at full depth.
             if (   newDepth >= 3*OnePly
                 && i >= MultiPV + LMRPVMoves
                 && !dangerous
@@ -964,12 +960,13 @@ namespace {
             if (value > alpha)
             {
                 value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
+
                 if (value > alpha)
                 {
                     // Fail high! Set the boolean variable FailHigh to true, and
-                    // re-search the move with a big window. The variable FailHigh is
-                    // used for time managment: We try to avoid aborting the search
-                    // prematurely during a fail high research.
+                    // re-search the move using a PV search. The variable FailHigh
+                    // is used for time managment: We try to avoid aborting the
+                    // search prematurely during a fail high research.
                     FailHigh = true;
                     value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
                 }
@@ -986,14 +983,12 @@ namespace {
         if (AbortSearch)
             break;
 
-        // Remember the node count for this move. The node counts are used to
-        // sort the root moves at the next iteration.
-        rml.set_move_nodes(i, nodes_searched() - nodes);
-
-        // Remember the beta-cutoff statistics
+        // Remember beta-cutoff and searched nodes counts for this move. The
+        // info is used to sort the root moves at the next iteration.
         int64_t our, their;
         BetaCounter.read(pos.side_to_move(), our, their);
         rml.set_beta_counters(i, our, their);
+        rml.set_move_nodes(i, nodes_searched() - nodes);
 
         assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
 
@@ -1018,27 +1013,28 @@ namespace {
                     BestMoveChangesByIteration[Iteration]++;
 
                 // Print search information to the standard output
-                std::cout << "info depth " << Iteration
-                          << " score " << value_to_string(value)
-                          << ((value >= beta)?
-                              " lowerbound" : ((value <= alpha)? " upperbound" : ""))
-                          << " time " << current_search_time()
-                          << " nodes " << nodes_searched()
-                          << " nps " << nps()
-                          << " pv ";
+                cout << "info depth " << Iteration
+                     << " score " << value_to_string(value)
+                     << ((value >= beta) ? " lowerbound" :
+                        ((value <= alpha)? " upperbound" : ""))
+                     << " time "  << current_search_time()
+                     << " nodes " << nodes_searched()
+                     << " nps "   << nps()
+                     << " pv ";
 
                 for (int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
-                    std::cout << ss[0].pv[j] << " ";
+                    cout << ss[0].pv[j] << " ";
 
-                std::cout << std::endl;
+                cout << endl;
 
                 if (UseLogFile)
-                    LogFile << pretty_pv(pos, current_search_time(), Iteration, nodes_searched(), value,
-                                         ((value >= beta)? VALUE_TYPE_LOWER
-                                          : ((value <= alpha)? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT)),
-                                         ss[0].pv)
-                            << std::endl;
+                {
+                    ValueType type =  (value >= beta  ? VALUE_TYPE_LOWER
+                                    : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
 
+                    LogFile << pretty_pv(pos, current_search_time(), Iteration,
+                                         nodes_searched(), value, type, ss[0].pv) << endl;
+                }
                 if (value > alpha)
                     alpha = value;
 
@@ -1052,23 +1048,22 @@ namespace {
                 rml.sort_multipv(i);
                 for (int j = 0; j < Min(MultiPV, rml.move_count()); j++)
                 {
-                    int k;
-                    std::cout << "info multipv " << j + 1
-                              << " score " << value_to_string(rml.get_move_score(j))
-                              << " depth " << ((j <= i)? Iteration : Iteration - 1)
-                              << " time " << current_search_time()
-                              << " nodes " << nodes_searched()
-                              << " nps " << nps()
-                              << " pv ";
+                    cout << "info multipv " << j + 1
+                         << " score " << value_to_string(rml.get_move_score(j))
+                         << " depth " << ((j <= i)? Iteration : Iteration - 1)
+                         << " time " << current_search_time()
+                         << " nodes " << nodes_searched()
+                         << " nps " << nps()
+                         << " pv ";
 
-                    for (k = 0; rml.get_move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
-                        std::cout << rml.get_move_pv(j, k) << " ";
+                    for (int k = 0; rml.get_move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
+                        cout << rml.get_move_pv(j, k) << " ";
 
-                    std::cout << std::endl;
+                    cout << endl;
                 }
                 alpha = rml.get_move_score(Min(i, MultiPV-1));
             }
-        } // New best move case
+        } // PV move or new best move
 
         assert(alpha >= oldAlpha);
 
@@ -1165,10 +1160,9 @@ namespace {
       // Decide the new search depth
       ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
 
-      // We want to extend the TT move if it is much better then remaining ones.
-      // To verify this we do a reduced search on all the other moves but the ttMove,
-      // if result is lower then TT value minus a margin then we assume ttMove is the
-      // only one playable. It is a kind of relaxed single reply extension.
+      // Singular extension search. We extend the TT move if its value is much better than
+      // its siblings. To verify this we do a reduced search on all the other moves but the
+      // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
       if (   depth >= 6 * OnePly
           && tte
           && move == tte->move()
@@ -1182,8 +1176,6 @@ namespace {
           {
               Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, move);
 
-              // If search result is well below the foreseen score of the ttMove then we
-              // assume ttMove is the only one realistically playable and we extend it.
               if (excValue < ttValue - SingleReplyMargin)
                   ext = OnePly;
           }
@@ -1470,10 +1462,9 @@ namespace {
       // Decide the new search depth
       ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
 
-      // We want to extend the TT move if it is much better then remaining ones.
-      // To verify this we do a reduced search on all the other moves but the ttMove,
-      // if result is lower then TT value minus a margin then we assume ttMove is the
-      // only one playable. It is a kind of relaxed single reply extension.
+      // Singular extension search. We extend the TT move if its value is much better than
+      // its siblings. To verify this we do a reduced search on all the other moves but the
+      // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
       if (   depth >= 8 * OnePly
           && tte
           && move == tte->move()
@@ -1488,8 +1479,6 @@ namespace {
           {
               Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, move);
 
-              // If search result is well below the foreseen score of the ttMove then we
-              // assume ttMove is the only one realistically playable and we extend it.
               if (excValue < ttValue - SingleReplyMargin)
                   ext = OnePly;
           }
@@ -2103,7 +2092,7 @@ namespace {
   // than a move m2 if it has a higher score, or if the moves
   // have equal score but m1 has the higher node count.
 
-  bool RootMove::operator<(const RootMove& m) {
+  bool RootMove::operator<(const RootMove& m) const {
 
     if (score != m.score)
         return (score < m.score);
@@ -2635,8 +2624,8 @@ namespace {
         if (dbg_show_hit_rate)
             dbg_print_hit_rate();
 
-        std::cout << "info nodes " << nodes_searched() << " nps " << nps()
-                  << " time " << t << " hashfull " << TT.full() << std::endl;
+        cout << "info nodes " << nodes_searched() << " nps " << nps()
+             << " time " << t << " hashfull " << TT.full() << endl;
         lock_release(&IOLock);
         if (ShowCurrentLine)
             Threads[0].printCurrentLine = true;
@@ -2687,11 +2676,11 @@ namespace {
     if (!Threads[threadID].idle)
     {
         lock_grab(&IOLock);
-        std::cout << "info currline " << (threadID + 1);
+        cout << "info currline " << (threadID + 1);
         for (int p = 0; p < ply; p++)
-            std::cout << " " << ss[p].currentMove;
+            cout << " " << ss[p].currentMove;
 
-        std::cout << std::endl;
+        cout << endl;
         lock_release(&IOLock);
     }
     Threads[threadID].printCurrentLine = false;
