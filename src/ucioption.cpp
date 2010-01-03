@@ -106,8 +106,8 @@ namespace {
     o["Mate Threat Bonus"] = Option(3, 0, 8);
     o["Check Extension (PV nodes)"] = Option(2, 0, 2);
     o["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
-    o["Single Reply Extension (PV nodes)"] = Option(2, 0, 2);
-    o["Single Reply Extension (non-PV nodes)"] = Option(2, 0, 2);
+    o["Single Evasion Extension (PV nodes)"] = Option(2, 0, 2);
+    o["Single Evasion Extension (non-PV nodes)"] = Option(2, 0, 2);
     o["Mate Threat Extension (PV nodes)"] = Option(0, 0, 2);
     o["Mate Threat Extension (non-PV nodes)"] = Option(0, 0, 2);
     o["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
@@ -315,7 +315,7 @@ void push_button(const string& buttonName) {
 bool button_was_pressed(const string& buttonName) {
 
   if (!get_option_value<bool>(buttonName))
-	  return false;
+      return false;
 
   set_option_value(buttonName, "false");
   return true;

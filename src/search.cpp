@@ -208,7 +208,7 @@ namespace {
   bool loseOnTime = false;
 
   // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
-  Depth CheckExtension[2], SingleReplyExtension[2], PawnPushTo7thExtension[2];
+  Depth CheckExtension[2], SingleEvasionExtension[2], PawnPushTo7thExtension[2];
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Iteration counters
@@ -281,7 +281,7 @@ namespace {
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, const SearchStack& ss);
-  Depth extension(const Position& pos, Move m, bool pvNode, bool capture, bool check, bool singleReply, bool mateThreat, bool* dangerous);
+  Depth extension(const Position&, Move, bool, bool, bool, bool, bool, bool*);
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -406,8 +406,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   CheckExtension[1] = Depth(get_option_value_int("Check Extension (PV nodes)"));
   CheckExtension[0] = Depth(get_option_value_int("Check Extension (non-PV nodes)"));
 
-  SingleReplyExtension[1] = Depth(get_option_value_int("Single Reply Extension (PV nodes)"));
-  SingleReplyExtension[0] = Depth(get_option_value_int("Single Reply Extension (non-PV nodes)"));
+  SingleEvasionExtension[1] = Depth(get_option_value_int("Single Evasion Extension (PV nodes)"));
+  SingleEvasionExtension[0] = Depth(get_option_value_int("Single Evasion Extension (non-PV nodes)"));
 
   PawnPushTo7thExtension[1] = Depth(get_option_value_int("Pawn Push to 7th Extension (PV nodes)"));
   PawnPushTo7thExtension[0] = Depth(get_option_value_int("Pawn Push to 7th Extension (non-PV nodes)"));
@@ -1090,7 +1090,7 @@ namespace {
     Move ttMove, move;
     Depth ext, newDepth;
     Value oldAlpha, value;
-    bool isCheck, mateThreat, singleReply, moveIsCheck, captureOrPromotion, dangerous;
+    bool isCheck, mateThreat, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     int moveCount = 0;
     Value bestValue = -VALUE_INFINITE;
 
@@ -1131,7 +1131,9 @@ namespace {
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
     // Go with internal iterative deepening if we don't have a TT move
-    if (UseIIDAtPVNodes && ttMove == MOVE_NONE && depth >= 5*OnePly)
+    if (   UseIIDAtPVNodes
+        && depth >= 5*OnePly
+        && ttMove == MOVE_NONE)
     {
         search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
         ttMove = ss[ply].pv[ply];
@@ -1153,12 +1155,12 @@ namespace {
     {
       assert(move_is_ok(move));
 
-      singleReply = (isCheck && mp.number_of_evasions() == 1);
+      singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Decide the new search depth
-      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
 
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
@@ -1312,7 +1314,7 @@ namespace {
     Move ttMove, move;
     Depth ext, newDepth;
     Value approximateEval, nullValue, value, futilityValue, futilityValueScaled;
-    bool isCheck, useFutilityPruning, singleReply, moveIsCheck, captureOrPromotion, dangerous;
+    bool isCheck, useFutilityPruning, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
     Value bestValue = -VALUE_INFINITE;
@@ -1455,12 +1457,12 @@ namespace {
       if (move == excludedMove)
           continue;
 
-      singleReply = (isCheck && mp.number_of_evasions() == 1);
+      singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Decide the new search depth
-      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleReply, mateThreat, &dangerous);
+      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
 
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
@@ -2373,20 +2375,20 @@ namespace {
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
 
   Depth extension(const Position& pos, Move m, bool pvNode, bool captureOrPromotion,
-                  bool check, bool singleReply, bool mateThreat, bool* dangerous) {
+                  bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous) {
 
     assert(m != MOVE_NONE);
 
     Depth result = Depth(0);
-    *dangerous = check | singleReply | mateThreat;
+    *dangerous = moveIsCheck | singleEvasion | mateThreat;
 
     if (*dangerous)
     {
-        if (check)
+        if (moveIsCheck)
             result += CheckExtension[pvNode];
 
-        if (singleReply)
-            result += SingleReplyExtension[pvNode];
+        if (singleEvasion)
+            result += SingleEvasionExtension[pvNode];
 
         if (mateThreat)
             result += MateThreatExtension[pvNode];
