@@ -969,7 +969,7 @@ namespace {
                 && !captureOrPromotion
                 && !move_is_castle(move))
             {
-                double red = ln(RootMoveNumber - MultiPV + 1) * ln(depth / 2) / 3.0;
+                double red = 0.5 + ln(RootMoveNumber - MultiPV + 1) * ln(depth / 2) / 6.0;
                 if (red >= 1.0)
                 {
                     ss[0].reduction = Depth(int(floor(red * int(OnePly))));
@@ -1226,7 +1226,7 @@ namespace {
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
-          double red = ln(moveCount) * ln(depth / 2) / 3.0;
+          double red = 0.5 + ln(moveCount) * ln(depth / 2) / 6.0;
           if (red >= 1.0)
           {
               ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
@@ -1557,7 +1557,7 @@ namespace {
           && !move_is_killer(move, ss[ply])
           /* && move != ttMove*/)
       {
-          double red = ln(moveCount) * ln(depth / 2) / 1.5;
+          double red = 0.5 + ln(moveCount) * ln(depth / 2) / 3.0;
           if (red >= 1.0)
           {
               ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
@@ -1902,7 +1902,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          double red = ln(moveCount) * ln(sp->depth / 2) / 1.5;
+          double red = 0.5 + ln(moveCount) * ln(sp->depth / 2) / 3.0;
           if (red >= 1.0)
           {
               ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
@@ -2013,7 +2013,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          double red = ln(moveCount) * ln(sp->depth / 2) / 3.0;
+          double red = 0.5 + ln(moveCount) * ln(sp->depth / 2) / 6.0;
           if (red >= 1.0)
           {
               ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
