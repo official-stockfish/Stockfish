@@ -100,7 +100,7 @@ namespace {
     // sorting the moves. A move m1 is considered to be better
     // than a move m2 if it has a higher score, or if the moves
     // have equal score but m1 has the higher node count.
-    bool RootMove::operator<(const RootMove& m) const {
+    bool operator<(const RootMove& m) const {
 
         return score != m.score ? score < m.score : theirBeta <= m.theirBeta;
     }
@@ -2126,13 +2126,13 @@ namespace {
 
   // RootMoveList simple methods definitions
 
-  inline void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
+  void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
 
     moves[moveNum].nodes = nodes;
     moves[moveNum].cumulativeNodes += nodes;
   }
 
-  inline void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
+  void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
 
     moves[moveNum].ourBeta = our;
     moves[moveNum].theirBeta = their;
@@ -2152,7 +2152,7 @@ namespace {
   // RootMoveList::sort() sorts the root move list at the beginning of a new
   // iteration.
 
-  inline void RootMoveList::sort() {
+  void RootMoveList::sort() {
 
     sort_multipv(count - 1); // Sort all items
   }
