@@ -912,7 +912,7 @@ namespace {
         int64_t nodes;
         Move move;
         StateInfo st;
-        Depth ext, newDepth;
+        Depth depth, ext, newDepth;
 
         RootMoveNumber = i + 1;
         FailHigh = false;
@@ -935,8 +935,9 @@ namespace {
         bool moveIsCheck = pos.move_is_check(move);
         bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
         bool dangerous;
+        depth =  (Iteration - 2) * OnePly + InitialDepth;
         ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
-        newDepth = (Iteration - 2) * OnePly + ext + InitialDepth;
+        newDepth = depth + ext;
 
         // Make the move, and search it
         pos.do_move(move, st, ci, moveIsCheck);
@@ -963,14 +964,19 @@ namespace {
         {
             // Try to reduce non-pv search depth by one ply if move seems not problematic,
             // if the move fails high will be re-searched at full depth.
-            if (   newDepth >= 3*OnePly
-                && i >= MultiPV + LMRPVMoves
+            if (   depth >= 3*OnePly // FIXME was newDepth
                 && !dangerous
                 && !captureOrPromotion
                 && !move_is_castle(move))
             {
-                ss[0].reduction = OnePly;
-                value = -search(pos, ss, -alpha, newDepth-OnePly, 1, true, 0);
+                double red = ln(RootMoveNumber - MultiPV + 1) * ln(depth / 2) / 3.0;
+                if (red >= 1.0)
+                {
+                    ss[0].reduction = Depth(int(floor(red * int(OnePly))));
+                    value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
+                }
+                else
+                    value = alpha + 1; // Just to trigger next condition
             } else
                 value = alpha + 1; // Just to trigger next condition
 
@@ -1223,7 +1229,7 @@ namespace {
           double red = ln(moveCount) * ln(depth / 2) / 3.0;
           if (red >= 1.0)
           {
-              ss[ply].reduction = Depth(floor(red * int(OnePly)));
+              ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
           }
           else
@@ -1554,7 +1560,7 @@ namespace {
           double red = ln(moveCount) * ln(depth / 2) / 1.5;
           if (red >= 1.0)
           {
-              ss[ply].reduction = Depth(floor(red * int(OnePly)));
+              ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
           }
           else
@@ -1899,7 +1905,7 @@ namespace {
           double red = ln(moveCount) * ln(sp->depth / 2) / 1.5;
           if (red >= 1.0)
           {
-              ss[sp->ply].reduction = Depth(floor(red * int(OnePly)));
+              ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
           }
           else
@@ -2010,7 +2016,7 @@ namespace {
           double red = ln(moveCount) * ln(sp->depth / 2) / 3.0;
           if (red >= 1.0)
           {
-              ss[sp->ply].reduction = Depth(floor(red * int(OnePly)));
+              ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -sp->alpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
           }
           else
