@@ -339,7 +339,7 @@ void Position::copy(const Position& pos) {
 /// king) pieces for the given color and for the given pinner type. Or, when
 /// template parameter FindPinned is false, the pieces of the given color
 /// candidate for a discovery check against the enemy king.
-/// Note that checkersBB bitboard must be already updated.
+/// Bitboard checkersBB must be already updated when looking for pinners.
 
 template<bool FindPinned>
 Bitboard Position::hidden_checkers(Color c) const {
@@ -373,7 +373,8 @@ Bitboard Position::hidden_checkers(Color c) const {
 
 
 /// Position:pinned_pieces() returns a bitboard of all pinned (against the
-/// king) pieces for the given color.
+/// king) pieces for the given color. Note that checkersBB bitboard must
+/// be already updated.
 
 Bitboard Position::pinned_pieces(Color c) const {
 
@@ -383,7 +384,8 @@ Bitboard Position::pinned_pieces(Color c) const {
 
 /// Position:discovered_check_candidates() returns a bitboard containing all
 /// pieces for the given side which are candidates for giving a discovered
-/// check.
+/// check. Contrary to pinned_pieces() here there is no need of checkersBB
+/// to be already updated.
 
 Bitboard Position::discovered_check_candidates(Color c) const {
 

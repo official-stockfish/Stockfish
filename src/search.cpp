@@ -94,8 +94,16 @@ namespace {
 
   struct RootMove {
 
-    RootMove();
-    bool operator<(const RootMove&) const; // Used to sort
+    RootMove() { nodes = cumulativeNodes = ourBeta = theirBeta = 0ULL; }
+
+    // RootMove::operator<() is the comparison function used when
+    // sorting the moves. A move m1 is considered to be better
+    // than a move m2 if it has a higher score, or if the moves
+    // have equal score but m1 has the higher node count.
+    bool RootMove::operator<(const RootMove& m) const {
+
+        return score != m.score ? score < m.score : theirBeta <= m.theirBeta;
+    }
 
     Move move;
     Value score;
@@ -111,16 +119,18 @@ namespace {
 
   public:
     RootMoveList(Position& pos, Move searchMoves[]);
-    inline Move get_move(int moveNum) const;
-    inline Value get_move_score(int moveNum) const;
-    inline void set_move_score(int moveNum, Value score);
-    inline void set_move_nodes(int moveNum, int64_t nodes);
-    inline void set_beta_counters(int moveNum, int64_t our, int64_t their);
+
+    int move_count() const { return count; }
+    Move get_move(int moveNum) const { return moves[moveNum].move; }
+    Value get_move_score(int moveNum) const { return moves[moveNum].score; }
+    void set_move_score(int moveNum, Value score) { moves[moveNum].score = score; }
+    Move get_move_pv(int moveNum, int i) const { return moves[moveNum].pv[i]; }
+    int64_t get_move_cumulative_nodes(int moveNum) const { return moves[moveNum].cumulativeNodes; }
+
+    void set_move_nodes(int moveNum, int64_t nodes);
+    void set_beta_counters(int moveNum, int64_t our, int64_t their);
     void set_move_pv(int moveNum, const Move pv[]);
-    inline Move get_move_pv(int moveNum, int i) const;
-    inline int64_t get_move_cumulative_nodes(int moveNum) const;
-    inline int move_count() const;
-    inline void sort();
+    void sort();
     void sort_multipv(int n);
 
   private:
@@ -165,12 +175,6 @@ namespace {
   // Null move margin. A null move search will not be done if the approximate
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x300);
-
-  // Pruning criterions. See the code and comments in ok_to_prune() to
-  // understand their precise meaning.
-  const bool PruneEscapeMoves    = false;
-  const bool PruneDefendingMoves = false;
-  const bool PruneBlockingMoves  = false;
 
   // If the TT move is at least SingleReplyMargin better then the
   // remaining ones we will extend it.
@@ -284,7 +288,7 @@ namespace {
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
-  void update_history(const Position& pos, Move m, Depth depth, Move movesSearched[], int moveCount);
+  void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
 
   bool fail_high_ply_1();
@@ -2080,30 +2084,9 @@ namespace {
   }
 
 
-  /// The RootMove class
-
-  // Constructor
-
-  RootMove::RootMove() {
-    nodes = cumulativeNodes = ourBeta = theirBeta = 0ULL;
-  }
-
-  // RootMove::operator<() is the comparison function used when
-  // sorting the moves.  A move m1 is considered to be better
-  // than a move m2 if it has a higher score, or if the moves
-  // have equal score but m1 has the higher node count.
-
-  bool RootMove::operator<(const RootMove& m) const {
-
-    if (score != m.score)
-        return (score < m.score);
-
-    return theirBeta <= m.theirBeta;
-  }
-
   /// The RootMoveList class
 
-  // Constructor
+  // RootMoveList c'tor
 
   RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) : count(0) {
 
@@ -2141,47 +2124,28 @@ namespace {
   }
 
 
-  // Simple accessor methods for the RootMoveList class
-
-  inline Move RootMoveList::get_move(int moveNum) const {
-    return moves[moveNum].move;
-  }
-
-  inline Value RootMoveList::get_move_score(int moveNum) const {
-    return moves[moveNum].score;
-  }
-
-  inline void RootMoveList::set_move_score(int moveNum, Value score) {
-    moves[moveNum].score = score;
-  }
+  // RootMoveList simple methods definitions
 
   inline void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
+
     moves[moveNum].nodes = nodes;
     moves[moveNum].cumulativeNodes += nodes;
   }
 
   inline void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
+
     moves[moveNum].ourBeta = our;
     moves[moveNum].theirBeta = their;
   }
 
   void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
+
     int j;
+
     for (j = 0; pv[j] != MOVE_NONE; j++)
-      moves[moveNum].pv[j] = pv[j];
+        moves[moveNum].pv[j] = pv[j];
+
     moves[moveNum].pv[j] = MOVE_NONE;
-  }
-
-  inline Move RootMoveList::get_move_pv(int moveNum, int i) const {
-    return moves[moveNum].pv[i];
-  }
-
-  inline int64_t RootMoveList::get_move_cumulative_nodes(int moveNum) const {
-    return moves[moveNum].cumulativeNodes;
-  }
-
-  inline int RootMoveList::move_count() const {
-    return count;
   }
 
 
@@ -2190,7 +2154,7 @@ namespace {
 
   inline void RootMoveList::sort() {
 
-    sort_multipv(count - 1); // all items
+    sort_multipv(count - 1); // Sort all items
   }
 
 
@@ -2200,20 +2164,22 @@ namespace {
 
   void RootMoveList::sort_multipv(int n) {
 
-    for (int i = 1; i <= n; i++)
+    int i,j;
+
+    for (i = 1; i <= n; i++)
     {
-      RootMove rm = moves[i];
-      int j;
-      for (j = i; j > 0 && moves[j-1] < rm; j--)
-          moves[j] = moves[j-1];
-      moves[j] = rm;
+        RootMove rm = moves[i];
+        for (j = i; j > 0 && moves[j - 1] < rm; j--)
+            moves[j] = moves[j - 1];
+
+        moves[j] = rm;
     }
   }
 
 
   // init_node() is called at the beginning of all the search functions
-  // (search(), search_pv(), qsearch(), and so on) and initializes the search
-  // stack object corresponding to the current node.  Once every
+  // (search(), search_pv(), qsearch(), and so on) and initializes the
+  // search stack object corresponding to the current node. Once every
   // NodesBetweenPolls nodes, init_node() also calls poll(), which polls
   // for user input and checks whether it is time to stop the search.
 
@@ -2234,48 +2200,56 @@ namespace {
         }
     }
     ss[ply].init(ply);
-    ss[ply+2].initKillers();
+    ss[ply + 2].initKillers();
 
     if (Threads[threadID].printCurrentLine)
         print_current_line(ss, ply, threadID);
   }
 
 
-  // update_pv() is called whenever a search returns a value > alpha.  It
-  // updates the PV in the SearchStack object corresponding to the current
-  // node.
+  // update_pv() is called whenever a search returns a value > alpha.
+  // It updates the PV in the SearchStack object corresponding to the
+  // current node.
 
   void update_pv(SearchStack ss[], int ply) {
+
     assert(ply >= 0 && ply < PLY_MAX);
 
-    ss[ply].pv[ply] = ss[ply].currentMove;
     int p;
-    for (p = ply + 1; ss[ply+1].pv[p] != MOVE_NONE; p++)
-      ss[ply].pv[p] = ss[ply+1].pv[p];
+
+    ss[ply].pv[ply] = ss[ply].currentMove;
+
+    for (p = ply + 1; ss[ply + 1].pv[p] != MOVE_NONE; p++)
+        ss[ply].pv[p] = ss[ply + 1].pv[p];
+
     ss[ply].pv[p] = MOVE_NONE;
   }
 
 
-  // sp_update_pv() is a variant of update_pv for use at split points.  The
+  // sp_update_pv() is a variant of update_pv for use at split points. The
   // difference between the two functions is that sp_update_pv also updates
   // the PV at the parent node.
 
   void sp_update_pv(SearchStack* pss, SearchStack ss[], int ply) {
+
     assert(ply >= 0 && ply < PLY_MAX);
 
-    ss[ply].pv[ply] = pss[ply].pv[ply] = ss[ply].currentMove;
     int p;
-    for (p = ply + 1; ss[ply+1].pv[p] != MOVE_NONE; p++)
-      ss[ply].pv[p] = pss[ply].pv[p] = ss[ply+1].pv[p];
+
+    ss[ply].pv[ply] = pss[ply].pv[ply] = ss[ply].currentMove;
+
+    for (p = ply + 1; ss[ply + 1].pv[p] != MOVE_NONE; p++)
+        ss[ply].pv[p] = pss[ply].pv[p] = ss[ply + 1].pv[p];
+
     ss[ply].pv[p] = pss[ply].pv[p] = MOVE_NONE;
   }
 
 
   // connected_moves() tests whether two moves are 'connected' in the sense
   // that the first move somehow made the second move possible (for instance
-  // if the moving piece is the same in both moves).  The first move is
-  // assumed to be the move that was made to reach the current position, while
-  // the second move is assumed to be a move from the current position.
+  // if the moving piece is the same in both moves). The first move is assumed
+  // to be the move that was made to reach the current position, while the
+  // second move is assumed to be a move from the current position.
 
   bool connected_moves(const Position& pos, Move m1, Move m2) {
 
@@ -2305,36 +2279,23 @@ namespace {
         && bit_is_set(squares_between(f2, t2), f1))
       return true;
 
-    // Case 4: The destination square for m2 is attacked by the moving piece in m1
+    // Case 4: The destination square for m2 is defended by the moving piece in m1
     p = pos.piece_on(t1);
     if (bit_is_set(pos.attacks_from(p, t1), t2))
         return true;
 
     // Case 5: Discovered check, checking piece is the piece moved in m1
-    if (   piece_is_slider(p)
-        && bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), f2)
+    if (    piece_is_slider(p)
+        &&  bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), f2)
         && !bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), t2))
     {
-        Bitboard occ = pos.occupied_squares();
-        Color us = pos.side_to_move();
-        Square ksq = pos.king_square(us);
-        clear_bit(&occ, f2);
-        if (type_of_piece(p) == BISHOP)
-        {
-            if (bit_is_set(bishop_attacks_bb(ksq, occ), t1))
-                return true;
-        }
-        else if (type_of_piece(p) == ROOK)
-        {
-            if (bit_is_set(rook_attacks_bb(ksq, occ), t1))
-                return true;
-        }
-        else
-        {
-            assert(type_of_piece(p) == QUEEN);
-            if (bit_is_set(queen_attacks_bb(ksq, occ), t1))
-                return true;
-        }
+        // discovered_check_candidates() works also if the Position's side to
+        // move is the opposite of the checking piece.
+        Color them = opposite_color(pos.side_to_move());
+        Bitboard dcCandidates = pos.discovered_check_candidates(them);
+
+        if (bit_is_set(dcCandidates, f2))
+            return true;
     }
     return false;
   }
@@ -2367,7 +2328,7 @@ namespace {
 
 
   // extension() decides whether a move should be searched with normal depth,
-  // or with extended depth.  Certain classes of moves (checking moves, in
+  // or with extended depth. Certain classes of moves (checking moves, in
   // particular) are searched with bigger depth than ordinary moves and in
   // any case are marked as 'dangerous'. Note that also if a move is not
   // extended, as example because the corresponding UCI option is set to zero,
@@ -2433,11 +2394,11 @@ namespace {
 
 
   // ok_to_do_nullmove() looks at the current position and decides whether
-  // doing a 'null move' should be allowed.  In order to avoid zugzwang
+  // doing a 'null move' should be allowed. In order to avoid zugzwang
   // problems, null moves are not allowed when the side to move has very
-  // little material left.  Currently, the test is a bit too simple:  Null
-  // moves are avoided only when the side to move has only pawns left.  It's
-  // probably a good idea to avoid null moves in at least some more
+  // little material left. Currently, the test is a bit too simple: Null
+  // moves are avoided only when the side to move has only pawns left.
+  // It's probably a good idea to avoid null moves in at least some more
   // complicated endgames, e.g. KQ vs KR.  FIXME
 
   bool ok_to_do_nullmove(const Position& pos) {
@@ -2446,7 +2407,7 @@ namespace {
   }
 
 
-  // ok_to_prune() tests whether it is safe to forward prune a move.  Only
+  // ok_to_prune() tests whether it is safe to forward prune a move. Only
   // non-tactical moves late in the move list close to the leaves are
   // candidates for pruning.
 
@@ -2460,6 +2421,11 @@ namespace {
 
     Square mfrom, mto, tfrom, tto;
 
+    // Prune if there isn't any threat move and
+    // is not a castling move (common case).
+    if (threat == MOVE_NONE && !move_is_castle(m))
+        return true;
+
     mfrom = move_from(m);
     mto = move_to(m);
     tfrom = move_from(threat);
@@ -2470,14 +2436,12 @@ namespace {
         return false;
 
     // Case 2: Don't prune moves which move the threatened piece
-    if (!PruneEscapeMoves && threat != MOVE_NONE && mfrom == tto)
+    if (mfrom == tto)
         return false;
 
     // Case 3: If the threatened piece has value less than or equal to the
     // value of the threatening piece, don't prune move which defend it.
-    if (   !PruneDefendingMoves
-        && threat != MOVE_NONE
-        && pos.move_is_capture(threat)
+    if (   pos.move_is_capture(threat)
         && (   pos.midgame_value_of_piece_on(tfrom) >= pos.midgame_value_of_piece_on(tto)
             || pos.type_of_piece_on(tfrom) == KING)
         && pos.move_attacks_square(m, tto))
@@ -2485,9 +2449,7 @@ namespace {
 
     // Case 4: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
-    if (  !PruneBlockingMoves
-        && threat != MOVE_NONE
-        && piece_is_slider(pos.piece_on(tfrom))
+    if (   piece_is_slider(pos.piece_on(tfrom))
         && bit_is_set(squares_between(tfrom, tto), mto)
         && pos.see_sign(m) >= 0)
         return false;
@@ -2515,16 +2477,21 @@ namespace {
   // update_history() registers a good move that produced a beta-cutoff
   // in history and marks as failures all the other moves of that ply.
 
-  void update_history(const Position& pos, Move m, Depth depth,
+  void update_history(const Position& pos, Move move, Depth depth,
                       Move movesSearched[], int moveCount) {
 
-    H.success(pos.piece_on(move_from(m)), move_to(m), depth);
+    Move m;
+
+    H.success(pos.piece_on(move_from(move)), move_to(move), depth);
 
     for (int i = 0; i < moveCount - 1; i++)
     {
-        assert(m != movesSearched[i]);
-        if (!pos.move_is_capture_or_promotion(movesSearched[i]))
-            H.failure(pos.piece_on(move_from(movesSearched[i])), move_to(movesSearched[i]), depth);
+        m = movesSearched[i];
+
+        assert(m != move);
+
+        if (!pos.move_is_capture_or_promotion(m))
+            H.failure(pos.piece_on(move_from(m)), move_to(m), depth);
     }
   }
 
@@ -2546,7 +2513,7 @@ namespace {
 
   // fail_high_ply_1() checks if some thread is currently resolving a fail
   // high at ply 1 at the node below the first root node.  This information
-  // is used for time managment.
+  // is used for time management.
 
   bool fail_high_ply_1() {
 
@@ -2770,8 +2737,8 @@ namespace {
         if (AllThreadsShouldExit && threadID != 0)
             break;
 
-        // If we are not thinking, wait for a condition to be signaled instead
-        // of wasting CPU time polling for work.
+        // If we are not thinking, wait for a condition to be signaled
+        // instead of wasting CPU time polling for work.
         while (threadID != 0 && (Idle || threadID >= ActiveThreads))
         {
 
@@ -2835,7 +2802,7 @@ namespace {
 
   // thread_should_stop() checks whether the thread with a given threadID has
   // been asked to stop, directly or indirectly. This can happen if a beta
-  // cutoff has occured in the thread's currently active split point, or in
+  // cutoff has occurred in the thread's currently active split point, or in
   // some ancestor of the current split point.
 
   bool thread_should_stop(int threadID) {
@@ -2883,7 +2850,7 @@ namespace {
     if (ActiveThreads == 2)
         return true;
 
-    // Apply the "helpful master" concept if possible.
+    // Apply the "helpful master" concept if possible
     if (SplitPointStack[slave][Threads[slave].activeSplitPoints - 1].slaves[master])
         return true;
 
