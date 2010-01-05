@@ -1341,7 +1341,7 @@ namespace {
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
-    Value approximateEval, nullValue, value, futilityValue, futilityValueScaled;
+    Value staticValue, nullValue, value, futilityValue, futilityValueScaled;
     bool isCheck, useFutilityPruning, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
@@ -1385,8 +1385,24 @@ namespace {
         return value_from_tt(tte->value(), ply);
     }
 
-    approximateEval = refine_eval(tte, quick_evaluate(pos), ply);
     isCheck = pos.is_check();
+    ei.futilityMargin = Value(0); // Manually initialize futilityMargin
+
+    // Evaluate the position statically
+    if (isCheck)
+        staticValue = quick_evaluate(pos);
+    else if (tte && (tte->type() & VALUE_TYPE_EVAL))
+        staticValue = value_from_tt(tte->value(), ply);
+    else
+        staticValue = evaluate(pos, ei, threadID);
+
+    // Calculate depth dependant futility pruning parameters
+    const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
+    const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
+
+    // Enhance position with TT value if possible
+    futilityValue = staticValue + FutilityValueMargin;
+    staticValue = refine_eval(tte, staticValue, ply);
 
     // Null move search
     if (    allowNullmove
@@ -1394,7 +1410,7 @@ namespace {
         && !isCheck
         && !value_is_mate(beta)
         &&  ok_to_do_nullmove(pos)
-        &&  approximateEval >= beta - NullMoveMargin)
+        &&  staticValue >= beta - NullMoveMargin)
     {
         ss[ply].currentMove = MOVE_NULL;
 
@@ -1404,7 +1420,7 @@ namespace {
         int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
 
         // Null move dynamic reduction based on value
-        if (approximateEval - beta > PawnValueMidgame)
+        if (staticValue - beta > PawnValueMidgame)
             R++;
 
         nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
@@ -1440,7 +1456,7 @@ namespace {
     // Null move search not allowed, try razoring
     else if (   !value_is_mate(beta)
              && depth < RazorDepth
-             && approximateEval < beta - RazorApprMargins[int(depth) - 2]
+             && staticValue < beta - RazorApprMargins[int(depth) - 2]
              && ss[ply - 1].currentMove != MOVE_NULL
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
@@ -1464,16 +1480,7 @@ namespace {
     // to search all moves.
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
-    futilityValue = VALUE_NONE;
     useFutilityPruning = depth < SelectiveDepth && !isCheck;
-
-    // Calculate depth dependant futility pruning parameters
-    const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
-    const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
-
-    // Avoid calling evaluate() if we already have the score in TT
-    if (tte && (tte->type() & VALUE_TYPE_EVAL))
-        futilityValue = value_from_tt(tte->value(), ply) + FutilityValueMargin;
 
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
@@ -1532,9 +1539,6 @@ namespace {
               continue;
 
           // Value based pruning
-          if (futilityValue == VALUE_NONE)
-              futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
-
           futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
 
           if (futilityValueScaled < beta)
