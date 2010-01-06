@@ -204,11 +204,16 @@ void Position::from_fen(const string& fen) {
   while (fen[i] == ' ')
       i++;
 
-  // En passant square
+  // En passant square -- ignore if no capture is possible
   if (    i <= fen.length() - 2
       && (fen[i] >= 'a' && fen[i] <= 'h')
       && (fen[i+1] == '3' || fen[i+1] == '6'))
-      st->epSquare = square_from_string(fen.substr(i, 2));
+  {
+      Square fenEpSquare = square_from_string(fen.substr(i, 2));
+      Color them = opposite_color(sideToMove);
+      if (attacks_from<PAWN>(fenEpSquare, them) & this->pieces(PAWN, sideToMove))
+          st->epSquare = square_from_string(fen.substr(i, 2));
+  }
 
   // Various initialisation
   for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
