@@ -107,7 +107,8 @@ namespace {
     UCIInputParser uip(command);
     string token;
 
-    uip >> token; // operator>>() skips any whitespace
+    if (!(uip >> token)) // operator>>() skips any whitespace
+        return true;
 
     if (token == "quit")
         return false;
@@ -159,14 +160,8 @@ namespace {
     else if (token == "perft")
         perft(uip);
     else
-    {
         cout << "Unknown command: " << command << endl;
-        while (!uip.eof())
-        {
-            uip >> token;
-            cout << token << endl;
-        }
-    }
+
     return true;
   }
 
@@ -181,33 +176,33 @@ namespace {
 
     string token;
 
-    uip >> token; // operator>>() skips any whitespace
+    if (!(uip >> token)) // operator>>() skips any whitespace
+        return;
 
     if (token == "startpos")
         RootPosition.from_fen(StartPosition);
     else if (token == "fen")
     {
         string fen;
-        while (token != "moves" && !uip.eof())
+        while (uip >> token && token != "moves")
         {
-            uip >> token;
             fen += token;
             fen += ' ';
         }
         RootPosition.from_fen(fen);
     }
 
-    if (!uip.eof())
+    if (uip.good())
     {
         if (token != "moves")
           uip >> token;
+
         if (token == "moves")
         {
             Move move;
             StateInfo st;
-            while (!uip.eof())
+            while (uip >> token)
             {
-                uip >> token;
                 move = move_from_string(RootPosition, token);
                 RootPosition.do_move(move, st);
                 if (RootPosition.rule_50_counter() == 0)
@@ -231,18 +226,14 @@ namespace {
 
     string token, name;
 
-    uip >> token;
-    if (token == "name")
-    {
-        uip >> name;
-        while (!uip.eof())
-        {
-            uip >> token;
-            if (token == "value")
-                break;
+    if (!(uip >> token)) // operator>>() skips any whitespace
+        return;
 
+    if (token == "name" && uip >> name)
+    {
+        while (uip >> token && token != "value")
             name += (" " + token);
-        }
+
         if (token == "value")
         {
             // Reads until end of line and left trim white space
@@ -276,10 +267,8 @@ namespace {
 
     searchMoves[0] = MOVE_NONE;
 
-    while (!uip.eof())
+    while (uip >> token)
     {
-        uip >> token;
-
         if (token == "infinite")
             infinite = true;
         else if (token == "ponder")
@@ -327,10 +316,9 @@ namespace {
     int depth, tm, n;
     Position pos = RootPosition;
 
-    if (uip.eof())
+    if (!(uip >> depth))
         return;
 
-    uip >> depth;
     tm = get_system_time();
 
     n = perft(pos, depth * OnePly);
