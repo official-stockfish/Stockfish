@@ -196,15 +196,14 @@ void init_uci_options() {
 
   load_defaults(options);
 
-  // Limit the default value of "Threads" to 7 even if we have 8 CPU cores.
-  // According to Ken Dail's tests, Glaurung plays much better with 7 than
-  // with 8 threads.  This is weird, but it is probably difficult to find out
-  // why before I have a 8-core computer to experiment with myself.
-  assert(options.find("Threads") != options.end());
+  // Set optimal value for parameter "Minimum Split Depth"
+  // according to number of available cores.
   assert(options.find("Minimum Split Depth") != options.end());
 
-  options["Threads"].defaultValue = stringify(Min(cpu_count(), 7));
-  options["Threads"].currentValue = stringify(Min(cpu_count(), 7));
+  Option& msd = options["Minimum Split Depth"];
+
+  if (cpu_count() >= 8)
+      msd.defaultValue = msd.currentValue = stringify(7);
 }
 
 
