@@ -1400,7 +1400,7 @@ namespace {
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
     const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
 
-    // Enhance position with TT value if possible
+    // Enhance score accuracy with TT value if possible
     futilityValue = staticValue + FutilityValueMargin;
     staticValue = refine_eval(tte, staticValue, ply);
 
@@ -1492,8 +1492,8 @@ namespace {
       if (move == excludedMove)
           continue;
 
-      singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
+      singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Decide the new search depth
@@ -1606,9 +1606,9 @@ namespace {
           break;
     }
 
-    // All legal moves have been searched.  A special case: If there were
+    // All legal moves have been searched. A special case: If there were
     // no legal moves, it must be mate or stalemate.
-    if (moveCount == 0)
+    if (!moveCount)
         return excludedMove ? beta - 1 : (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
     // If the search is not aborted, update the transposition table,
@@ -1622,12 +1622,13 @@ namespace {
     {
         BetaCounter.add(pos.side_to_move(), depth, threadID);
         move = ss[ply].pv[ply];
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
         if (!pos.move_is_capture_or_promotion(move))
         {
             update_history(pos, move, depth, movesSearched, moveCount);
             update_killers(move, ss[ply]);
         }
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
+
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -1652,7 +1653,7 @@ namespace {
     EvalInfo ei;
     StateInfo st;
     Move ttMove, move;
-    Value staticValue, bestValue, value, futilityValue;
+    Value staticValue, bestValue, value, futilityBase, futilityValue;
     bool isCheck, enoughMaterial, moveIsCheck;
     const TTEntry* tte = NULL;
     int moveCount = 0;
@@ -1669,18 +1670,21 @@ namespace {
     if (pos.is_draw())
         return VALUE_DRAW;
 
-    // Transposition table lookup, only when not in PV
-    if (!pvNode)
-    {
-        tte = TT.retrieve(pos.get_key());
-        if (tte && ok_to_use_TT(tte, depth, beta, ply))
-        {
-            assert(tte->type() != VALUE_TYPE_EVAL);
+    if (ply >= PLY_MAX - 1)
+        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
-            return value_from_tt(tte->value(), ply);
-        }
-    }
+    // Transposition table lookup. At PV nodes, we don't use the TT for
+    // pruning, but only for move ordering.
+    tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
+
+    if (!pvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
+    {
+        assert(tte->type() != VALUE_TYPE_EVAL);
+
+        ss[ply].currentMove = ttMove; // Can be MOVE_NONE
+        return value_from_tt(tte->value(), ply);
+    }
 
     isCheck = pos.is_check();
     ei.futilityMargin = Value(0); // Manually initialize futilityMargin
@@ -1688,19 +1692,10 @@ namespace {
     // Evaluate the position statically
     if (isCheck)
         staticValue = -VALUE_INFINITE;
-
     else if (tte && (tte->type() & VALUE_TYPE_EVAL))
-    {
-        // Use the cached evaluation score if possible
-        assert(ei.futilityMargin == Value(0));
-
         staticValue = value_from_tt(tte->value(), ply);
-    }
     else
         staticValue = evaluate(pos, ei, threadID);
-
-    if (ply >= PLY_MAX - 1)
-        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.
@@ -1724,6 +1719,7 @@ namespace {
     MovePicker mp = MovePicker(pos, ttMove, depth, H);
     CheckInfo ci(pos);
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
+    futilityBase = staticValue + FutilityMarginQS + ei.futilityMargin;
 
     // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
@@ -1732,10 +1728,11 @@ namespace {
     {
       assert(move_is_ok(move));
 
+      moveIsCheck = pos.move_is_check(move, ci);
+
+      // Update current move
       moveCount++;
       ss[ply].currentMove = move;
-
-      moveIsCheck = pos.move_is_check(move, ci);
 
       // Futility pruning
       if (   enoughMaterial
@@ -1746,12 +1743,9 @@ namespace {
           && !move_is_promotion(move)
           && !pos.move_is_passed_pawn_push(move))
       {
-          futilityValue =  staticValue
-                         + Max(pos.midgame_value_of_piece_on(move_to(move)),
-                               pos.endgame_value_of_piece_on(move_to(move)))
-                         + (move_is_ep(move) ? PawnValueEndgame : Value(0))
-                         + FutilityMarginQS
-                         + ei.futilityMargin;
+          futilityValue =  futilityBase
+                         + pos.endgame_value_of_piece_on(move_to(move))
+                         + (move_is_ep(move) ? PawnValueEndgame : Value(0));
 
           if (futilityValue < alpha)
           {
@@ -1787,31 +1781,31 @@ namespace {
        }
     }
 
-    // All legal moves have been searched.  A special case: If we're in check
+    // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
     if (!moveCount && pos.is_check()) // Mate!
         return value_mated_in(ply);
 
-    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
-
     // Update transposition table
-    move = ss[ply].pv[ply];
-    if (!pvNode)
+    Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
+    if (bestValue < beta)
     {
-        // If bestValue isn't changed it means it is still the static evaluation of
-        // the node, so keep this info to avoid a future costly evaluation() call.
+        // If bestValue isn't changed it means it is still the static evaluation
+        // of the node, so keep this info to avoid a future evaluation() call.
         ValueType type = (bestValue == staticValue && !ei.futilityMargin ? VALUE_TYPE_EV_UP : VALUE_TYPE_UPPER);
-        Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
+    }
+    else
+    {
+        move = ss[ply].pv[ply];
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move);
 
-        if (bestValue < beta)
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
-        else
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move);
+        // Update killers only for good checking moves
+        if (!pos.move_is_capture_or_promotion(move))
+            update_killers(move, ss[ply]);
     }
 
-    // Update killers only for good check moves
-    if (alpha >= beta && !pos.move_is_capture_or_promotion(move))
-        update_killers(move, ss[ply]);
+    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     return bestValue;
   }
