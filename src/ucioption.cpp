@@ -198,9 +198,13 @@ void init_uci_options() {
 
   // Set optimal value for parameter "Minimum Split Depth"
   // according to number of available cores.
+  assert(options.find("Threads") != options.end());
   assert(options.find("Minimum Split Depth") != options.end());
 
+  Option& thr = options["Threads"];
   Option& msd = options["Minimum Split Depth"];
+
+  thr.defaultValue = thr.currentValue = stringify(cpu_count());
 
   if (cpu_count() >= 8)
       msd.defaultValue = msd.currentValue = stringify(7);
