@@ -652,6 +652,7 @@ void SearchStack::init(int ply) {
   pv[ply] = pv[ply + 1] = MOVE_NONE;
   currentMove = threatMove = MOVE_NONE;
   reduction = Depth(0);
+  eval = VALUE_NONE;
 }
 
 void SearchStack::initKillers() {
@@ -1391,6 +1392,7 @@ namespace {
     const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
 
     // Enhance score accuracy with TT value if possible
+    ss[ply].eval = staticValue;
     futilityValue = staticValue + FutilityValueMargin;
     staticValue = refine_eval(tte, staticValue, ply);
 

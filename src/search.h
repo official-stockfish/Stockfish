@@ -27,6 +27,7 @@
 
 #include "depth.h"
 #include "move.h"
+#include "value.h"
 
 
 ////
@@ -54,6 +55,7 @@ struct SearchStack {
   Move threatMove;
   Move killers[KILLER_MAX];
   Depth reduction;
+  Value eval;
 
   void init(int ply);
   void initKillers();
