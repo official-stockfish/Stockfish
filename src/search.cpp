@@ -172,9 +172,9 @@ namespace {
   // best move from the previous iteration, Problem is set back to false.
   const Value NoProblemMargin = Value(0x14);
 
-  // Null move margin. A null move search will not be done if the approximate
+  // Null move margin. A null move search will not be done if the static
   // evaluation of the position is more than NullMoveMargin below beta.
-  const Value NullMoveMargin = Value(0x300);
+  const Value NullMoveMargin = Value(0x200);
 
   // If the TT move is at least SingleReplyMargin better then the
   // remaining ones we will extend it.
@@ -189,13 +189,6 @@ namespace {
 
   // Depth limit for razoring
   const Depth RazorDepth = 4 * OnePly;
-
-  // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
-  const Value RazorMargins[6]     = { Value(0x180), Value(0x300), Value(0x300), Value(0x3C0), Value(0x3C0), Value(0x3C0) };
-
-  // Remaining depth:                 1 ply         1.5 ply       2 ply         2.5 ply       3 ply         3.5 ply
-  const Value RazorApprMargins[6] = { Value(0x520), Value(0x300), Value(0x300), Value(0x300), Value(0x300), Value(0x300) };
-
 
   /// Variables initialized by UCI options
 
@@ -1453,12 +1446,12 @@ namespace {
     // Null move search not allowed, try razoring
     else if (   !value_is_mate(beta)
              && depth < RazorDepth
-             && staticValue < beta - RazorApprMargins[int(depth) - 2]
+             && staticValue < beta - (depth > OnePly ? NullMoveMargin + 16 * depth : 2*NullMoveMargin)
              && ss[ply - 1].currentMove != MOVE_NULL
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
-        Value rbeta = beta - RazorMargins[int(depth) - 2];
+        Value rbeta = beta - (NullMoveMargin + 16 * depth);
         Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
         if (v < rbeta)
           return v;
