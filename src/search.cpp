@@ -231,7 +231,7 @@ namespace {
   int SearchStartTime;
   int MaxNodes, MaxDepth;
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
-  bool InfiniteSearch, PonderSearch, StopOnPonderhit;
+  bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool AbortSearch, Quit;
   bool FailHigh, FailLow, Problem;
 
@@ -373,8 +373,20 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
            int time[], int increment[], int movesToGo, int maxDepth,
            int maxNodes, int maxTime, Move searchMoves[]) {
 
-  // Look for a book move
-  if (!infinite && !ponder && get_option_value_bool("OwnBook"))
+  // Initialize global search variables
+  Idle = StopOnPonderhit = AbortSearch = Quit = false;
+  FailHigh = FailLow = Problem = false;
+  NodesSincePoll = 0;
+  SearchStartTime = get_system_time();
+  ExactMaxTime = maxTime;
+  MaxDepth = maxDepth;
+  MaxNodes = maxNodes;
+  InfiniteSearch = infinite;
+  PonderSearch = ponder;
+  UseTimeManagement = !ExactMaxTime && !MaxDepth && !MaxNodes && !InfiniteSearch;
+
+  // Look for a book move, only during games, not tests
+  if (UseTimeManagement && !ponder && get_option_value_bool("OwnBook"))
   {
       Move bookMove;
       if (get_option_value_string("Book File") != OpeningBook.file_name())
@@ -387,15 +399,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
           return true;
       }
   }
-
-  // Initialize global search variables
-  Idle = StopOnPonderhit = AbortSearch = Quit = false;
-  FailHigh = FailLow = Problem = false;
-  SearchStartTime = get_system_time();
-  ExactMaxTime = maxTime;
-  NodesSincePoll = 0;
-  InfiniteSearch = infinite;
-  PonderSearch = ponder;
 
   for (int i = 0; i < THREAD_MAX; i++)
   {
@@ -464,51 +467,45 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // Set thinking time
   int myTime = time[side_to_move];
   int myIncrement = increment[side_to_move];
-
-  if (!movesToGo) // Sudden death time control
+  if (UseTimeManagement)
   {
-      if (myIncrement)
+      if (!movesToGo) // Sudden death time control
       {
-          MaxSearchTime = myTime / 30 + myIncrement;
-          AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
+          if (myIncrement)
+          {
+              MaxSearchTime = myTime / 30 + myIncrement;
+              AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
+          }
+          else // Blitz game without increment
+          {
+              MaxSearchTime = myTime / 30;
+              AbsoluteMaxSearchTime = myTime / 8;
+          }
       }
-      else // Blitz game without increment
+      else // (x moves) / (y minutes)
       {
-          MaxSearchTime = myTime / 30;
-          AbsoluteMaxSearchTime = myTime / 8;
+          if (movesToGo == 1)
+          {
+              MaxSearchTime = myTime / 2;
+              AbsoluteMaxSearchTime = (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
+          }
+          else
+          {
+              MaxSearchTime = myTime / Min(movesToGo, 20);
+              AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
+          }
+      }
+
+      if (PonderingEnabled)
+      {
+          MaxSearchTime += MaxSearchTime / 4;
+          MaxSearchTime = Min(MaxSearchTime, AbsoluteMaxSearchTime);
       }
   }
-  else // (x moves) / (y minutes)
-  {
-      if (movesToGo == 1)
-      {
-          MaxSearchTime = myTime / 2;
-          AbsoluteMaxSearchTime = (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
-      }
-      else
-      {
-          MaxSearchTime = myTime / Min(movesToGo, 20);
-          AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
-      }
-  }
 
-  if (PonderingEnabled)
-  {
-      MaxSearchTime += MaxSearchTime / 4;
-      MaxSearchTime = Min(MaxSearchTime, AbsoluteMaxSearchTime);
-  }
-
-  // Fixed depth or fixed number of nodes?
-  MaxDepth = maxDepth;
-  if (MaxDepth)
-      InfiniteSearch = true; // HACK
-
-  MaxNodes = maxNodes;
+  // Set best NodesBetweenPolls interval
   if (MaxNodes)
-  {
       NodesBetweenPolls = Min(MaxNodes, 30000);
-      InfiniteSearch = true; // HACK
-  }
   else if (myTime && myTime < 1000)
       NodesBetweenPolls = 1000;
   else if (myTime && myTime < 5000)
@@ -791,7 +788,7 @@ namespace {
 
         Problem = false;
 
-        if (!InfiniteSearch)
+        if (UseTimeManagement)
         {
             // Time to stop?
             bool stopSearch = false;
@@ -845,9 +842,9 @@ namespace {
 
     rml.sort();
 
-    // If we are pondering, we shouldn't print the best move before we
-    // are told to do so
-    if (PonderSearch)
+    // If we are pondering or in infinite search, we shouldn't print the
+    // best move before we are told to do so.
+    if (PonderSearch || InfiniteSearch)
         wait_for_stop_or_ponderhit();
     else
         // Print final search statistics
@@ -2680,7 +2677,7 @@ namespace {
                      || stillAtFirstMove //FIXME: We are not checking any problem flags, BUG?
                      || noProblemFound;
 
-    if (   (Iteration >= 3 && !InfiniteSearch && noMoreTime)
+    if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
         || (Iteration >= 3 && MaxNodes && nodes_searched() >= MaxNodes))
         AbortSearch = true;
@@ -2710,7 +2707,7 @@ namespace {
                      || stillAtFirstMove
                      || noProblemFound;
 
-    if (Iteration >= 3 && !InfiniteSearch && (noMoreTime || StopOnPonderhit))
+    if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))
         AbortSearch = true;
   }
 
