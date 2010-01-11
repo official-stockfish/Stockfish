@@ -850,7 +850,7 @@ namespace {
 
     // If we are pondering or in infinite search, we shouldn't print the
     // best move before we are told to do so.
-    if (PonderSearch || InfiniteSearch)
+    if (!AbortSearch && (PonderSearch || InfiniteSearch))
         wait_for_stop_or_ponderhit();
     else
         // Print final search statistics
