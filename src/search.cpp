@@ -1447,8 +1447,9 @@ namespace {
     }
     // Null move search not allowed, try razoring
     else if (   !value_is_mate(beta)
+             && !isCheck
              && depth < RazorDepth
-             && staticValue < beta - (depth > OnePly ? NullMoveMargin + 16 * depth : 2*NullMoveMargin)
+             && staticValue < beta - (NullMoveMargin + 16 * depth)
              && ss[ply - 1].currentMove != MOVE_NULL
              && ttMove == MOVE_NONE
              && !pos.has_pawn_on_7th(pos.side_to_move()))
