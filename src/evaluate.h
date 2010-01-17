@@ -47,6 +47,8 @@ class Position;
 
 struct EvalInfo {
 
+  EvalInfo() : futilityMargin(Value(0)) {}
+
   // Middle game and endgame evaluations
   Score value;
 

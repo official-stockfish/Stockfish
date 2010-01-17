@@ -1370,7 +1370,6 @@ namespace {
     }
 
     isCheck = pos.is_check();
-    ei.futilityMargin = Value(0); // Manually initialize futilityMargin
 
     // Calculate depth dependant futility pruning parameters
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
@@ -1672,7 +1671,6 @@ namespace {
     }
 
     isCheck = pos.is_check();
-    ei.futilityMargin = Value(0); // Manually initialize futilityMargin
 
     // Evaluate the position statically
     if (isCheck)
