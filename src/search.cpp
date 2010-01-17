@@ -955,6 +955,8 @@ namespace {
         {
             // Try to reduce non-pv search depth by one ply if move seems not problematic,
             // if the move fails high will be re-searched at full depth.
+            bool doFullDepthSearch = true;
+
             if (   depth >= 3*OnePly // FIXME was newDepth
                 && !dangerous
                 && !captureOrPromotion
@@ -965,13 +967,11 @@ namespace {
                 {
                     ss[0].reduction = Depth(int(floor(red * int(OnePly))));
                     value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
+                    doFullDepthSearch = (value > alpha);
                 }
-                else
-                    value = alpha + 1; // Just to trigger next condition
-            } else
-                value = alpha + 1; // Just to trigger next condition
+            }
 
-            if (value > alpha)
+            if (doFullDepthSearch)
             {
                 value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
 
@@ -1207,6 +1207,8 @@ namespace {
       {
         // Try to reduce non-pv search depth by one ply if move seems not problematic,
         // if the move fails high will be re-searched at full depth.
+        bool doFullDepthSearch = true;
+
         if (    depth >= 3*OnePly
             && !dangerous
             && !captureOrPromotion
@@ -1218,14 +1220,11 @@ namespace {
           {
               ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+              doFullDepthSearch = (value > alpha);
           }
-          else
-              value = alpha + 1; // Just to trigger next condition
         }
-        else
-            value = alpha + 1; // Just to trigger next condition
 
-        if (value > alpha) // Go with full depth non-pv search
+        if (doFullDepthSearch) // Go with full depth non-pv search
         {
             ss[ply].reduction = Depth(0);
             value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
@@ -1541,6 +1540,8 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
+      bool doFullDepthSearch = true;
+
       if (    depth >= 3*OnePly
           && !dangerous
           && !captureOrPromotion
@@ -1553,14 +1554,11 @@ namespace {
           {
               ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
+              doFullDepthSearch = (value >= beta);
           }
-          else
-              value = beta; // Just to trigger next condition
       }
-      else
-          value = beta; // Just to trigger next condition
 
-      if (value >= beta) // Go with full depth non-pv search
+      if (doFullDepthSearch) // Go with full depth non-pv search
       {
           ss[ply].reduction = Depth(0);
           value = -search(pos, ss, -(beta-1), newDepth, ply+1, true, threadID);
@@ -1871,6 +1869,8 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
+      bool doFullDepthSearch = true;
+
       if (   !dangerous
           && !captureOrPromotion
           && !move_is_castle(move)
@@ -1881,14 +1881,11 @@ namespace {
           {
               ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              doFullDepthSearch = (value >= sp->beta);
           }
-          else
-              value = sp->beta; // Just to trigger next condition
       }
-      else
-          value = sp->beta; // Just to trigger next condition
 
-      if (value >= sp->beta) // Go with full depth non-pv search
+      if (doFullDepthSearch) // Go with full depth non-pv search
       {
           ss[sp->ply].reduction = Depth(0);
           value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true, threadID);
@@ -1982,6 +1979,8 @@ namespace {
 
       // Try to reduce non-pv search depth by one ply if move seems not problematic,
       // if the move fails high will be re-searched at full depth.
+      bool doFullDepthSearch = true;
+
       if (   !dangerous
           && !captureOrPromotion
           && !move_is_castle(move)
@@ -1990,24 +1989,23 @@ namespace {
           double red = 0.5 + ln(moveCount) * ln(sp->depth / 2) / 6.0;
           if (red >= 1.0)
           {
+              Value localAlpha = sp->alpha;
               ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
-              value = -search(pos, ss, -sp->alpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              value = -search(pos, ss, -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              doFullDepthSearch = (value > localAlpha);
           }
-          else
-              value = sp->alpha + 1; // Just to trigger next condition
       }
-      else
-          value = sp->alpha + 1; // Just to trigger next condition
 
-      if (value > sp->alpha) // Go with full depth non-pv search
+      if (doFullDepthSearch) // Go with full depth non-pv search
       {
+          Value localAlpha = sp->alpha;
           ss[sp->ply].reduction = Depth(0);
-          value = -search(pos, ss, -sp->alpha, newDepth, sp->ply+1, true, threadID);
+          value = -search(pos, ss, -localAlpha, newDepth, sp->ply+1, true, threadID);
 
-          if (value > sp->alpha && value < sp->beta)
+          if (value > localAlpha && value < sp->beta)
           {
               // When the search fails high at ply 1 while searching the first
-              // move at the root, set the flag failHighPly1.  This is used for
+              // move at the root, set the flag failHighPly1. This is used for
               // time managment: We don't want to stop the search early in
               // such cases, because resolving the fail high at ply 1 could
               // result in a big drop in score at the root.
