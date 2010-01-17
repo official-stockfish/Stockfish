@@ -1328,11 +1328,11 @@ namespace {
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
-    Value staticValue, nullValue, value, futilityValue, futilityValueScaled;
+    Value bestValue, staticValue, nullValue, value, futilityValue, futilityValueScaled;
     bool isCheck, useFutilityPruning, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
-    Value bestValue = -VALUE_INFINITE;
+    futilityValue = staticValue = bestValue = -VALUE_INFINITE;
 
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
