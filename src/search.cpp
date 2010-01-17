@@ -1098,7 +1098,6 @@ namespace {
     assert(threadID >= 0 && threadID < ActiveThreads);
 
     Move movesSearched[256];
-    EvalInfo ei;
     StateInfo st;
     const TTEntry* tte;
     Move ttMove, move;
@@ -1119,11 +1118,8 @@ namespace {
     if (AbortSearch || thread_should_stop(threadID))
         return Value(0);
 
-    if (pos.is_draw())
+    if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
-
-    if (ply >= PLY_MAX - 1)
-        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Mate distance pruning
     oldAlpha = alpha;
@@ -1349,11 +1345,8 @@ namespace {
     if (AbortSearch || thread_should_stop(threadID))
         return Value(0);
 
-    if (pos.is_draw())
+    if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
-
-    if (ply >= PLY_MAX - 1)
-        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Mate distance pruning
     if (value_mated_in(ply) >= beta)
@@ -1379,22 +1372,24 @@ namespace {
     isCheck = pos.is_check();
     ei.futilityMargin = Value(0); // Manually initialize futilityMargin
 
-    // Evaluate the position statically
-    if (isCheck)
-        staticValue = quick_evaluate(pos);
-    else if (tte && (tte->type() & VALUE_TYPE_EVAL))
-        staticValue = value_from_tt(tte->value(), ply);
-    else
-        staticValue = evaluate(pos, ei, threadID);
-
     // Calculate depth dependant futility pruning parameters
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
     const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
 
-    // Enhance score accuracy with TT value if possible
-    ss[ply].eval = staticValue;
-    futilityValue = staticValue + FutilityValueMargin;
-    staticValue = refine_eval(tte, staticValue, ply);
+    // Evaluate the position statically
+    if (isCheck)
+        ss[ply].eval = VALUE_NONE;
+    else
+    {
+        if (tte && (tte->type() & VALUE_TYPE_EVAL))
+            staticValue = value_from_tt(tte->value(), ply);
+        else
+            staticValue = evaluate(pos, ei, threadID);
+
+        ss[ply].eval = staticValue;
+        futilityValue = staticValue + FutilityValueMargin;
+        staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
+    }
 
     // Null move search
     if (    allowNullmove
@@ -1660,11 +1655,8 @@ namespace {
     if (AbortSearch || thread_should_stop(threadID))
         return Value(0);
 
-    if (pos.is_draw())
+    if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
-
-    if (ply >= PLY_MAX - 1)
-        return pos.is_check() ? quick_evaluate(pos) : evaluate(pos, ei, threadID);
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.

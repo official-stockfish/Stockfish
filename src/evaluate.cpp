@@ -436,21 +436,6 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
 } // namespace
 
-/// quick_evaluate() does a very approximate evaluation of the current position.
-/// It currently considers only material and piece square table scores. Perhaps
-/// we should add scores from the pawn and material hash tables?
-
-Value quick_evaluate(const Position &pos) {
-
-  assert(pos.is_ok());
-
-  static const ScaleFactor sf[2] = {SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL};
-
-  Value v = scale_by_game_phase(pos.value(), MaterialInfoTable::game_phase(pos), sf);
-  return (pos.side_to_move() == WHITE ? v : -v);
-}
-
-
 /// init_eval() initializes various tables used by the evaluation function
 
 void init_eval(int threads) {
