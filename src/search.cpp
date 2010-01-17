@@ -1817,7 +1817,6 @@ namespace {
                               && !isCheck;
 
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
-    const int FutilityValueMargin = 112 * bitScanReverse32(int(sp->depth) * int(sp->depth) / 2);
 
     while (    sp->bestValue < sp->beta
            && !thread_should_stop(threadID)
@@ -1851,12 +1850,6 @@ namespace {
               continue;
 
           // Value based pruning
-          if (sp->futilityValue == VALUE_NONE)
-          {
-              EvalInfo ei;
-              sp->futilityValue = evaluate(pos, ei, threadID) + FutilityValueMargin;
-          }
-
           Value futilityValueScaled = sp->futilityValue - moveCount * IncrementalFutilityMargin;
 
           if (futilityValueScaled < sp->beta)
