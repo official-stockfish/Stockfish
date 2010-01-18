@@ -47,6 +47,7 @@ const int KILLER_MAX = 2;
 /// from nodes shallower and deeper in the tree during the search.  Each
 /// search thread has its own array of SearchStack objects, indexed by the
 /// current ply.
+struct EvalInfo;
 
 struct SearchStack {
   Move pv[PLY_MAX_PLUS_2];
@@ -56,6 +57,7 @@ struct SearchStack {
   Move killers[KILLER_MAX];
   Depth reduction;
   Value eval;
+  EvalInfo* evalInfo;
 
   void init(int ply);
   void initKillers();

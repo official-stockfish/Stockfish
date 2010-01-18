@@ -653,6 +653,7 @@ void SearchStack::init(int ply) {
   currentMove = threatMove = MOVE_NONE;
   reduction = Depth(0);
   eval = VALUE_NONE;
+  evalInfo = NULL;
 }
 
 void SearchStack::initKillers() {
@@ -1375,14 +1376,15 @@ namespace {
     const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
 
     // Evaluate the position statically
-    if (isCheck)
-        ss[ply].eval = VALUE_NONE;
-    else
+    if (!isCheck)
     {
         if (tte && (tte->type() & VALUE_TYPE_EVAL))
             staticValue = value_from_tt(tte->value(), ply);
         else
+        {
             staticValue = evaluate(pos, ei, threadID);
+            ss[ply].evalInfo = &ei;
+        }
 
         ss[ply].eval = staticValue;
         futilityValue = staticValue + FutilityValueMargin;
