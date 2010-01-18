@@ -887,7 +887,7 @@ namespace {
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value alpha, Value beta) {
 
     Value oldAlpha = alpha;
-    Value value;
+    Value value = -VALUE_INFINITE;
     CheckInfo ci(pos);
 
     // Loop through all the moves in the root move list
@@ -1106,7 +1106,7 @@ namespace {
     Value oldAlpha, value;
     bool isCheck, mateThreat, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     int moveCount = 0;
-    Value bestValue = -VALUE_INFINITE;
+    Value bestValue = value = -VALUE_INFINITE;
 
     if (depth < OnePly)
         return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
@@ -1332,7 +1332,7 @@ namespace {
     bool isCheck, useFutilityPruning, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
-    futilityValue = staticValue = bestValue = -VALUE_INFINITE;
+    futilityValue = staticValue = bestValue = value = -VALUE_INFINITE;
 
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
@@ -1810,7 +1810,7 @@ namespace {
     Position pos = Position(sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
-    Value value;
+    Value value = -VALUE_INFINITE;
     Move move;
     bool isCheck = pos.is_check();
     bool useFutilityPruning =     sp->depth < SelectiveDepth
@@ -1952,7 +1952,7 @@ namespace {
     Position pos = Position(sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
-    Value value;
+    Value value = -VALUE_INFINITE;
     Move move;
 
     while (    sp->alpha < sp->beta
