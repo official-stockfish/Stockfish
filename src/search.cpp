@@ -1687,10 +1687,14 @@ namespace {
     if (bestValue > alpha)
         alpha = bestValue;
 
+    // If we are near beta then try to get a cutoff pushing checks a bit further
+    bool deepChecks = depth == -OnePly && staticValue >= beta - PawnValueMidgame / 8;
+
     // Initialize a MovePicker object for the current position, and prepare
-    // to search the moves.  Because the depth is <= 0 here, only captures,
-    // queen promotions and checks (only if depth == 0) will be generated.
-    MovePicker mp = MovePicker(pos, ttMove, depth, H);
+    // to search the moves. Because the depth is <= 0 here, only captures,
+    // queen promotions and checks (only if depth == 0 or depth == -OnePly
+    // and we are near beta) will be generated.
+    MovePicker mp = MovePicker(pos, ttMove, deepChecks ? Depth(0) : depth, H);
     CheckInfo ci(pos);
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
     futilityBase = staticValue + FutilityMarginQS + ei.futilityMargin;
