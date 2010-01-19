@@ -23,6 +23,7 @@
 ////
 
 #include <cassert>
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -235,6 +236,10 @@ namespace {
   bool UseLogFile;
   std::ofstream LogFile;
 
+  // Natural logarithmic lookup table and its getter function
+  double lnArray[512];
+  inline double ln(int i) { return lnArray[i]; }
+
   // MP related variables
   int ActiveThreads = 1;
   Depth MinimumSplitDepth;
@@ -319,13 +324,6 @@ namespace {
 //// Functions
 ////
 
-//FIXME: HACK
-static double lnArray[512];
-
-inline double ln(int i)
-{
-    return lnArray[i];
-}
 
 /// perft() is our utility to verify move generation is bug free. All the legal
 /// moves up to given depth are generated and counted and the sum returned.
@@ -559,19 +557,17 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 /// and initializes the split point stack and the global locks and condition
 /// objects.
 
-#include <cmath> //FIXME: HACK
-
 void init_threads() {
-
-  // FIXME: HACK!!
-  for (int i = 0; i < 512; i++)
-    lnArray[i] = log(double(i));
 
   volatile int i;
 
 #if !defined(_MSC_VER)
   pthread_t pthread[1];
 #endif
+
+  // Init our logarithmic lookup table
+  for (int i = 0; i < 512; i++)
+      lnArray[i] = log(double(i)); // log() returns base-e logarithm
 
   for (i = 0; i < THREAD_MAX; i++)
       Threads[i].activeSplitPoints = 0;
