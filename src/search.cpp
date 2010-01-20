@@ -1643,7 +1643,7 @@ namespace {
     StateInfo st;
     Move ttMove, move;
     Value staticValue, bestValue, value, futilityBase, futilityValue;
-    bool isCheck, enoughMaterial, moveIsCheck;
+    bool isCheck, enoughMaterial, moveIsCheck, evasionPrunable;
     const TTEntry* tte = NULL;
     int moveCount = 0;
     bool pvNode = (beta - alpha != 1);
@@ -1744,8 +1744,15 @@ namespace {
           }
       }
 
-      // Don't search captures and checks with negative SEE values
-      if (   !isCheck
+      // Detect blocking evasions that are candidate to be pruned
+      evasionPrunable =   isCheck
+                       && bestValue != -VALUE_INFINITE
+                       && !pos.move_is_capture(move)
+                       && pos.type_of_piece_on(move_from(move)) != KING
+                       && !pos.can_castle(pos.side_to_move());
+
+      // Don't search moves with negative SEE values
+      if (   (!isCheck || evasionPrunable)
           &&  move != ttMove
           && !move_is_promotion(move)
           &&  pos.see_sign(move) < 0)
