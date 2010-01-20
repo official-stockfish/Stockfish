@@ -193,9 +193,6 @@ namespace {
 
   /// Variables initialized by UCI options
 
-  // Minimum number of full depth (i.e. non-reduced) moves at PV and non-PV nodes
-  int LMRPVMoves, LMRNonPVMoves;
-
   // Depth limit for use of dynamic threat detection
   Depth ThreatDepth;
 
@@ -426,8 +423,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   MateThreatExtension[1] = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
   MateThreatExtension[0] = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
 
-  LMRPVMoves    = get_option_value_int("Full Depth Moves (PV nodes)") + 1;
-  LMRNonPVMoves = get_option_value_int("Full Depth Moves (non-PV nodes)") + 1;
   ThreatDepth   = get_option_value_int("Threat Depth") * OnePly;
 
   Chess960 = get_option_value_bool("UCI_Chess960");
@@ -566,7 +561,7 @@ void init_threads() {
 #endif
 
   // Init our logarithmic lookup table
-  for (int i = 0; i < 512; i++)
+  for (i = 0; i < 512; i++)
       lnArray[i] = log(double(i)); // log() returns base-e logarithm
 
   for (i = 0; i < THREAD_MAX; i++)
