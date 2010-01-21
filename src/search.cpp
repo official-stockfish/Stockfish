@@ -703,6 +703,7 @@ namespace {
     // Initialize
     TT.new_search();
     H.clear();
+    MG.clear();
     init_ss_array(ss);
     IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
     Iteration = 1;
@@ -1428,6 +1429,10 @@ namespace {
             MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
     }
 
+    // Post futility pruning
+    if (staticValue - FutilityValueMargin >= beta)
+        return (staticValue - FutilityValueMargin);
+
     // Null move search
     if (    allowNullmove
         &&  depth > OnePly
@@ -1555,6 +1560,7 @@ namespace {
       if (    useFutilityPruning
           && !dangerous
           && !captureOrPromotion
+          && !move_is_castle(move)
           &&  move != ttMove)
       {
           // Move count based pruning
@@ -2509,9 +2515,8 @@ namespace {
 
     Square mfrom, mto, tfrom, tto;
 
-    // Prune if there isn't any threat move and
-    // is not a castling move (common case).
-    if (threat == MOVE_NONE && !move_is_castle(m))
+    // Prune if there isn't any threat move
+    if (threat == MOVE_NONE)
         return true;
 
     mfrom = move_from(m);
@@ -2519,15 +2524,11 @@ namespace {
     tfrom = move_from(threat);
     tto = move_to(threat);
 
-    // Case 1: Castling moves are never pruned
-    if (move_is_castle(m))
-        return false;
-
-    // Case 2: Don't prune moves which move the threatened piece
+    // Case 1: Don't prune moves which move the threatened piece
     if (mfrom == tto)
         return false;
 
-    // Case 3: If the threatened piece has value less than or equal to the
+    // Case 2: If the threatened piece has value less than or equal to the
     // value of the threatening piece, don't prune move which defend it.
     if (   pos.move_is_capture(threat)
         && (   pos.midgame_value_of_piece_on(tfrom) >= pos.midgame_value_of_piece_on(tto)
@@ -2535,7 +2536,7 @@ namespace {
         && pos.move_attacks_square(m, tto))
         return false;
 
-    // Case 4: If the moving piece in the threatened move is a slider, don't
+    // Case 3: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
     if (   piece_is_slider(pos.piece_on(tfrom))
         && bit_is_set(squares_between(tfrom, tto), mto)
