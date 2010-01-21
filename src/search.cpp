@@ -32,6 +32,7 @@
 #include "book.h"
 #include "evaluate.h"
 #include "history.h"
+#include "maxgain.h"
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
@@ -263,6 +264,8 @@ namespace {
   // History table
   History H;
 
+  // MaxGain table
+  MaxGain MG;
 
   /// Functions
 

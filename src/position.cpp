@@ -1301,6 +1301,11 @@ void Position::undo_null_move() {
 }
 
 
+///
+PieceType Position::captured_piece() const {
+  return st->capture;
+}
+
 /// Position::see() is a static exchange evaluator: It tries to estimate the
 /// material gain or loss resulting from a move. There are three versions of
 /// this function: One which takes a destination square as input, one takes a

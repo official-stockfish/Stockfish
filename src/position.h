@@ -241,6 +241,9 @@ public:
   void do_null_move(StateInfo& st);
   void undo_null_move();
 
+  // Past
+  PieceType captured_piece() const;
+
   // Static exchange evaluation
   int see(Square from, Square to) const;
   int see(Move m) const;
