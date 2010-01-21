@@ -1403,7 +1403,7 @@ namespace {
 
     // Calculate depth dependant futility pruning parameters
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
-    const int FutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
+    const int PostFutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
 
     // Evaluate the position statically
     if (!isCheck)
@@ -1417,7 +1417,7 @@ namespace {
         }
 
         ss[ply].eval = staticValue;
-        futilityValue = staticValue + FutilityValueMargin;
+        futilityValue = staticValue + PostFutilityValueMargin; //FIXME: Remove me, only for split
         staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
 
         // Store gain statistics
@@ -1430,8 +1430,8 @@ namespace {
     }
 
     // Post futility pruning
-    if (staticValue - FutilityValueMargin >= beta)
-        return (staticValue - FutilityValueMargin);
+    if (staticValue - PostFutilityValueMargin >= beta)
+        return (staticValue - PostFutilityValueMargin);
 
     // Null move search
     if (    allowNullmove
@@ -1570,7 +1570,20 @@ namespace {
               continue;
 
           // Value based pruning
-          futilityValueScaled = futilityValue - moveCount * IncrementalFutilityMargin;
+          Depth predictedDepth = newDepth;
+
+          //FIXME HACK: awful code duplication
+          double red = 0.5 + ln(moveCount) * ln(depth / 2) / 3.0;
+          if (red >= 1.0)
+              predictedDepth -= int(floor(red * int(OnePly)));
+
+          int preFutilityValueMargin = 0;
+          if (predictedDepth >= OnePly)
+              preFutilityValueMargin = 112 * bitScanReverse32(int(predictedDepth) * int(predictedDepth) / 2);
+
+          preFutilityValueMargin += MG.retrieve(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
+
+          futilityValueScaled = ss[ply].eval + preFutilityValueMargin - moveCount * IncrementalFutilityMargin;
 
           if (futilityValueScaled < beta)
           {
@@ -1631,7 +1644,7 @@ namespace {
           && idle_thread_exists(threadID)
           && !AbortSearch
           && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue,
+          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
                    depth, &moveCount, &mp, threadID, false))
           break;
     }
