@@ -894,6 +894,14 @@ namespace {
     Value oldAlpha = alpha;
     Value value = -VALUE_INFINITE;
     CheckInfo ci(pos);
+    bool isCheck = pos.is_check();
+
+    // Evaluate the position statically
+    EvalInfo ei;
+    if (!isCheck)
+        ss[0].eval = evaluate(pos, ei, 0);
+    else
+        ss[0].eval = VALUE_NONE;
 
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
@@ -1156,9 +1164,25 @@ namespace {
         tte = TT.retrieve(pos.get_key());
     }
 
+    // Evaluate the position statically
+    isCheck = pos.is_check();
+    EvalInfo ei;
+    if (!isCheck)
+    {
+        ss[ply].eval = evaluate(pos, ei, threadID);
+
+        // Store gain statistics
+        Move m = ss[ply - 1].currentMove;
+        if (   m != MOVE_NULL
+            && pos.captured_piece() == NO_PIECE_TYPE
+            && !move_is_castle(m)
+            && !move_is_promotion(m))
+            MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
+
+    }
+
     // Initialize a MovePicker object for the current position, and prepare
     // to search all moves
-    isCheck = pos.is_check();
     mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
     CheckInfo ci(pos);
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
@@ -1394,6 +1418,14 @@ namespace {
         ss[ply].eval = staticValue;
         futilityValue = staticValue + FutilityValueMargin;
         staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
+
+        // Store gain statistics
+        Move m = ss[ply - 1].currentMove;
+        if (   m != MOVE_NULL
+            && pos.captured_piece() == NO_PIECE_TYPE
+            && !move_is_castle(m)
+            && !move_is_promotion(m))
+            MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
     }
 
     // Null move search
@@ -1684,6 +1716,19 @@ namespace {
         staticValue = value_from_tt(tte->value(), ply);
     else
         staticValue = evaluate(pos, ei, threadID);
+
+    if (!isCheck)
+    {
+        ss[ply].eval = staticValue;
+        // Store gain statistics
+        Move m = ss[ply - 1].currentMove;
+        if (   m != MOVE_NULL
+            && pos.captured_piece() == NO_PIECE_TYPE
+            && !move_is_castle(m)
+            && !move_is_promotion(m))
+            MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
+    }
+
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.
