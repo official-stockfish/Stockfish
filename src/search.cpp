@@ -1359,7 +1359,7 @@ namespace {
     Move ttMove, move;
     Depth ext, newDepth;
     Value bestValue, staticValue, nullValue, value, futilityValue, futilityValueScaled;
-    bool isCheck, useFutilityPruning, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
+    bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
     futilityValue = staticValue = bestValue = value = -VALUE_INFINITE;
@@ -1430,7 +1430,7 @@ namespace {
     }
 
     // Post futility pruning
-    if (staticValue - PostFutilityValueMargin >= beta)
+    if (depth < SelectiveDepth && staticValue - PostFutilityValueMargin >= beta)
         return (staticValue - PostFutilityValueMargin);
 
     // Null move search
@@ -1510,7 +1510,6 @@ namespace {
     // to search all moves.
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
-    useFutilityPruning = depth < SelectiveDepth && !isCheck;
 
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
@@ -1559,7 +1558,8 @@ namespace {
       // Futility pruning for captures
       Color them = opposite_color(pos.side_to_move());
 
-      if (    useFutilityPruning
+      if (   !isCheck
+          && newDepth < SelectiveDepth
           && !dangerous
           && pos.move_is_capture(move)
           && !pos.move_is_check(move, ci)
@@ -1579,7 +1579,7 @@ namespace {
 
 
       // Futility pruning
-      if (    useFutilityPruning
+      if (   !isCheck
           && !dangerous
           && !captureOrPromotion
           && !move_is_castle(move)
@@ -1599,19 +1599,22 @@ namespace {
           if (red >= 1.0)
               predictedDepth -= int(floor(red * int(OnePly)));
 
-          int preFutilityValueMargin = 0;
-          if (predictedDepth >= OnePly)
-              preFutilityValueMargin = 112 * bitScanReverse32(int(predictedDepth) * int(predictedDepth) / 2);
-
-          preFutilityValueMargin += MG.retrieve(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
-
-          futilityValueScaled = ss[ply].eval + preFutilityValueMargin - moveCount * IncrementalFutilityMargin;
-
-          if (futilityValueScaled < beta)
+          if (predictedDepth < SelectiveDepth)
           {
-              if (futilityValueScaled > bestValue)
-                  bestValue = futilityValueScaled;
-              continue;
+              int preFutilityValueMargin = 0;
+              if (predictedDepth >= OnePly)
+                  preFutilityValueMargin = 112 * bitScanReverse32(int(predictedDepth) * int(predictedDepth) / 2);
+
+              preFutilityValueMargin += MG.retrieve(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
+
+              futilityValueScaled = ss[ply].eval + preFutilityValueMargin - moveCount * IncrementalFutilityMargin;
+
+              if (futilityValueScaled < beta)
+              {
+                  if (futilityValueScaled > bestValue)
+                      bestValue = futilityValueScaled;
+                  continue;
+              }
           }
       }
 
