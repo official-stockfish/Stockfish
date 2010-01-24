@@ -559,6 +559,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 void init_threads() {
 
   volatile int i;
+  bool ok;
 
 #if !defined(_MSC_VER)
   pthread_t pthread[1];
@@ -598,11 +599,17 @@ void init_threads() {
   for (i = 1; i < THREAD_MAX; i++)
   {
 #if !defined(_MSC_VER)
-      pthread_create(pthread, NULL, init_thread, (void*)(&i));
+      ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
 #else
       DWORD iID[1];
-      CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, iID);
+      ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, iID) != NULL);
 #endif
+
+      if (!ok)
+      {
+          cout << "Failed to create thread number " << i << endl;
+          Application::exit_with_failure();
+      }
 
       // Wait until the thread has finished launching
       while (!Threads[i].running);
@@ -2796,6 +2803,8 @@ namespace {
       // If this thread has been assigned work, launch a search
       if (Threads[threadID].workIsWaiting)
       {
+          assert(!Threads[threadID].idle);
+
           Threads[threadID].workIsWaiting = false;
           if (Threads[threadID].splitPoint->pvNode)
               sp_search_pv(Threads[threadID].splitPoint, threadID);
