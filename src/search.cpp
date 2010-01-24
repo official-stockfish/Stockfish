@@ -2009,7 +2009,14 @@ namespace {
               if (sp->ply == 1 && RootMoveNumber == 1)
                   Threads[threadID].failHighPly1 = true;
 
-              value = -search_pv(pos, ss, -sp->beta, -sp->alpha, newDepth, sp->ply+1, threadID);
+              // If another thread has failed high then sp->alpha has been increased
+              // to be higher or equal then beta, if so, avoid to start a PV search.
+              localAlpha = sp->alpha;
+              if (localAlpha < sp->beta)
+                  value = -search_pv(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, threadID);
+              else
+                  assert(thread_should_stop(threadID));
+
               Threads[threadID].failHighPly1 = false;
         }
       }
@@ -2027,11 +2034,7 @@ namespace {
           sp->bestValue = value;
           if (value > sp->alpha)
           {
-              sp->alpha = value;
-              sp_update_pv(sp->parentSstack, ss, sp->ply);
-              if (value == value_mate_in(sp->ply + 1))
-                  ss[sp->ply].mateKiller = move;
-
+              // Ask threads to stop before to modify sp->alpha
               if (value >= sp->beta)
               {
                   for (int i = 0; i < ActiveThreads; i++)
@@ -2040,6 +2043,12 @@ namespace {
 
                   sp->finished = true;
               }
+
+              sp->alpha = value;
+
+              sp_update_pv(sp->parentSstack, ss, sp->ply);
+              if (value == value_mate_in(sp->ply + 1))
+                  ss[sp->ply].mateKiller = move;
         }
         // If we are at ply 1, and we are searching the first root move at
         // ply 0, set the 'Problem' variable if the score has dropped a lot
