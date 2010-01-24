@@ -271,10 +271,24 @@ const string Position::to_fen() const {
   fen += (sideToMove == WHITE ? "w " : "b ");
   if (st->castleRights != NO_CASTLES)
   {
-    if (can_castle_kingside(WHITE))  fen += 'K';
-    if (can_castle_queenside(WHITE)) fen += 'Q';
-    if (can_castle_kingside(BLACK))  fen += 'k';
-    if (can_castle_queenside(BLACK)) fen += 'q';
+     if (initialKFile == FILE_E && initialQRFile == FILE_A && initialKRFile == FILE_H)
+     {
+        if (can_castle_kingside(WHITE))  fen += 'K';
+        if (can_castle_queenside(WHITE)) fen += 'Q';
+        if (can_castle_kingside(BLACK))  fen += 'k';
+        if (can_castle_queenside(BLACK)) fen += 'q';
+     } 
+     else
+     {
+        if (can_castle_kingside(WHITE)) 
+           fen += toupper(file_to_char(initialKRFile));
+        if (can_castle_queenside(WHITE)) 
+           fen += toupper(file_to_char(initialQRFile));
+        if (can_castle_kingside(BLACK)) 
+           fen += file_to_char(initialKRFile);
+        if (can_castle_queenside(BLACK)) 
+           fen += file_to_char(initialQRFile);
+     }
   } else
       fen += '-';
 
@@ -1850,6 +1864,7 @@ bool Position::is_ok(int* failedStep) const {
   static const bool debugNonPawnMaterial = false;
   static const bool debugPieceCounts = false;
   static const bool debugPieceList = false;
+  static const bool debugCastleSquares = false;
 
   if (failedStep) *failedStep = 1;
 
@@ -1986,6 +2001,25 @@ bool Position::is_ok(int* failedStep) const {
                       return false;
               }
   }
+
+  if (failedStep) (*failedStep)++;
+  if (debugCastleSquares) {
+     for (Color c = WHITE; c <= BLACK; c++) {
+        if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != piece_of_color_and_type(c, ROOK))
+           return false;
+        if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != piece_of_color_and_type(c, ROOK))
+           return false;
+     }
+     if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
+        return false;
+     if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
+        return false;
+     if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
+        return false;
+     if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
+        return false;
+  }
+
   if (failedStep) *failedStep = 0;
   return true;
 }
