@@ -2986,15 +2986,15 @@ namespace {
     for (i = 0; i < ActiveThreads; i++)
         splitPoint->slaves[i] = 0;
 
-    // Copy the current search stack to the master thread
-    memcpy(splitPoint->sstack[master], sstck, (ply+1) * sizeof(SearchStack));
+    // Copy the tail of current search stack to the master thread
+    memcpy(splitPoint->sstack[master] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
     Threads[master].splitPoint = splitPoint;
 
     // Make copies of the current position and search stack for each thread
     for (i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
         if (thread_is_available(i, master))
         {
-            memcpy(splitPoint->sstack[i], sstck, (ply+1) * sizeof(SearchStack));
+            memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
             Threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
             splitPoint->cpus++;
