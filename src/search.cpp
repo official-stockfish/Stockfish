@@ -2847,17 +2847,22 @@ namespace {
     if(!Threads[slave].idle || slave == master)
       return false;
 
-    if(Threads[slave].activeSplitPoints == 0)
-      // No active split points means that the thread is available as a slave
-      // for any other thread.
-      return true;
+    // Make a local copy to be sure doesn't change under our feet
+    int localActiveSplitPoints = Threads[slave].activeSplitPoints;
+
+    if (localActiveSplitPoints == 0)
+        // No active split points means that the thread is available as
+        // a slave for any other thread.
+        return true;
 
     if(ActiveThreads == 2)
       return true;
 
-    // Apply the "helpful master" concept if possible.
-    if(SplitPointStack[slave][Threads[slave].activeSplitPoints-1].slaves[master])
-      return true;
+    // Apply the "helpful master" concept if possible. Use localActiveSplitPoints
+    // that is known to be > 0, instead of Threads[slave].activeSplitPoints that
+    // could have been set to 0 by another thread leading to an out of bound access.
+    if (SplitPointStack[slave][localActiveSplitPoints - 1].slaves[master])
+        return true;
 
     return false;
   }

@@ -64,7 +64,7 @@ struct SplitPoint {
 
 struct Thread {
   SplitPoint *splitPoint;
-  int activeSplitPoints;
+  volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
   bool failHighPly1;
