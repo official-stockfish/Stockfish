@@ -143,61 +143,61 @@ void Position::from_fen(const string& fen) {
   }
 
   i++;
-  while(strchr("KQkqabcdefghABCDEFGH-", fen[i])) {
-    if (fen[i] == '-')
-    {
+  while (strchr("KQkqabcdefghABCDEFGH-", fen[i])) {
+      if (fen[i] == '-')
+      {
+          i++;
+          break;
+      }
+      else if (fen[i] == 'K') allow_oo(WHITE);
+      else if (fen[i] == 'Q') allow_ooo(WHITE);
+      else if (fen[i] == 'k') allow_oo(BLACK);
+      else if (fen[i] == 'q') allow_ooo(BLACK);
+      else if (fen[i] >= 'A' && fen[i] <= 'H') {
+          File rookFile, kingFile = FILE_NONE;
+          for (Square square = SQ_B1; square <= SQ_G1; square++)
+              if (piece_on(square) == WK)
+                  kingFile = square_file(square);
+          if (kingFile == FILE_NONE) {
+              std::cout << "Error in FEN at character " << i << std::endl;
+              return;
+          }
+          initialKFile = kingFile;
+          rookFile = File(fen[i] - 'A') + FILE_A;
+          if (rookFile < initialKFile) {
+              allow_ooo(WHITE);
+              initialQRFile = rookFile;
+          }
+          else {
+              allow_oo(WHITE);
+              initialKRFile = rookFile;
+          }
+      }
+      else if (fen[i] >= 'a' && fen[i] <= 'h') {
+          File rookFile, kingFile = FILE_NONE;
+          for (Square square = SQ_B8; square <= SQ_G8; square++)
+              if (piece_on(square) == BK)
+                  kingFile = square_file(square);
+          if (kingFile == FILE_NONE) {
+              std::cout << "Error in FEN at character " << i << std::endl;
+              return;
+          }
+          initialKFile = kingFile;
+          rookFile = File(fen[i] - 'a') + FILE_A;
+          if (rookFile < initialKFile) {
+              allow_ooo(BLACK);
+              initialQRFile = rookFile;
+          }
+          else {
+              allow_oo(BLACK);
+              initialKRFile = rookFile;
+          }
+      }
+      else {
+          std::cout << "Error in FEN at character " << i << std::endl;
+          return;
+      }
       i++;
-      break;
-    }
-    else if(fen[i] == 'K') allow_oo(WHITE);
-    else if(fen[i] == 'Q') allow_ooo(WHITE);
-    else if(fen[i] == 'k') allow_oo(BLACK);
-    else if(fen[i] == 'q') allow_ooo(BLACK);
-    else if(fen[i] >= 'A' && fen[i] <= 'H') {
-      File rookFile, kingFile = FILE_NONE;
-      for(Square square = SQ_B1; square <= SQ_G1; square++)
-        if(piece_on(square) == WK)
-          kingFile = square_file(square);
-      if(kingFile == FILE_NONE) {
-        std::cout << "Error in FEN at character " << i << std::endl;
-        return;
-      }
-      initialKFile = kingFile;
-      rookFile = File(fen[i] - 'A') + FILE_A;
-      if(rookFile < initialKFile) {
-        allow_ooo(WHITE);
-        initialQRFile = rookFile;
-      }
-      else {
-        allow_oo(WHITE);
-        initialKRFile = rookFile;
-      }
-    }
-    else if(fen[i] >= 'a' && fen[i] <= 'h') {
-      File rookFile, kingFile = FILE_NONE;
-      for(Square square = SQ_B8; square <= SQ_G8; square++)
-        if(piece_on(square) == BK)
-          kingFile = square_file(square);
-      if(kingFile == FILE_NONE) {
-        std::cout << "Error in FEN at character " << i << std::endl;
-        return;
-      }
-      initialKFile = kingFile;
-      rookFile = File(fen[i] - 'a') + FILE_A;
-      if(rookFile < initialKFile) {
-        allow_ooo(BLACK);
-        initialQRFile = rookFile;
-      }
-      else {
-        allow_oo(BLACK);
-        initialKRFile = rookFile;
-      }
-    }
-    else {
-      std::cout << "Error in FEN at character " << i << std::endl;
-      return;
-    }
-    i++;
   }
 
   // Skip blanks
@@ -277,16 +277,16 @@ const string Position::to_fen() const {
         if (can_castle_queenside(WHITE)) fen += 'Q';
         if (can_castle_kingside(BLACK))  fen += 'k';
         if (can_castle_queenside(BLACK)) fen += 'q';
-     } 
+     }
      else
      {
-        if (can_castle_kingside(WHITE)) 
-           fen += toupper(file_to_char(initialKRFile));
-        if (can_castle_queenside(WHITE)) 
-           fen += toupper(file_to_char(initialQRFile));
-        if (can_castle_kingside(BLACK)) 
+        if (can_castle_kingside(WHITE))
+           fen += char(toupper(file_to_char(initialKRFile)));
+        if (can_castle_queenside(WHITE))
+           fen += char(toupper(file_to_char(initialQRFile)));
+        if (can_castle_kingside(BLACK))
            fen += file_to_char(initialKRFile);
-        if (can_castle_queenside(BLACK)) 
+        if (can_castle_queenside(BLACK))
            fen += file_to_char(initialQRFile);
      }
   } else
@@ -1574,7 +1574,7 @@ Key Position::compute_pawn_key() const {
   for (Color c = WHITE; c <= BLACK; c++)
   {
       b = pieces(PAWN, c);
-      while(b)
+      while (b)
       {
           s = pop_1st_bit(&b);
           result ^= zobrist[c][PAWN][s];
@@ -1618,7 +1618,7 @@ Score Position::compute_value() const {
       for (PieceType pt = PAWN; pt <= KING; pt++)
       {
           b = pieces(pt, c);
-          while(b)
+          while (b)
           {
               s = pop_1st_bit(&b);
               assert(piece_on(s) == piece_of_color_and_type(c, pt));
@@ -1990,9 +1990,9 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugPieceList)
   {
-      for(Color c = WHITE; c <= BLACK; c++)
-          for(PieceType pt = PAWN; pt <= KING; pt++)
-              for(int i = 0; i < pieceCount[c][pt]; i++)
+      for (Color c = WHITE; c <= BLACK; c++)
+          for (PieceType pt = PAWN; pt <= KING; pt++)
+              for (int i = 0; i < pieceCount[c][pt]; i++)
               {
                   if (piece_on(piece_list(c, pt, i)) != piece_of_color_and_type(c, pt))
                       return false;
@@ -2004,20 +2004,20 @@ bool Position::is_ok(int* failedStep) const {
 
   if (failedStep) (*failedStep)++;
   if (debugCastleSquares) {
-     for (Color c = WHITE; c <= BLACK; c++) {
-        if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != piece_of_color_and_type(c, ROOK))
-           return false;
-        if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != piece_of_color_and_type(c, ROOK))
-           return false;
-     }
-     if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
-        return false;
-     if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
-        return false;
-     if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
-        return false;
-     if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
-        return false;
+      for (Color c = WHITE; c <= BLACK; c++) {
+          if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != piece_of_color_and_type(c, ROOK))
+              return false;
+          if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != piece_of_color_and_type(c, ROOK))
+              return false;
+      }
+      if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
+          return false;
+      if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
+          return false;
+      if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
+          return false;
+      if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
+          return false;
   }
 
   if (failedStep) *failedStep = 0;
