@@ -2950,7 +2950,6 @@ namespace {
     assert(ActiveThreads > 1);
 
     SplitPoint* splitPoint;
-    int i;
 
     lock_grab(&MPLock);
 
@@ -2983,34 +2982,42 @@ namespace {
     splitPoint->cpus = 1;
     splitPoint->pos = &p;
     splitPoint->parentSstack = sstck;
-    for (i = 0; i < ActiveThreads; i++)
+    for (int i = 0; i < ActiveThreads; i++)
         splitPoint->slaves[i] = 0;
 
-    // Copy the tail of current search stack to the master thread
-    memcpy(splitPoint->sstack[master] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
+    Threads[master].idle = false;
     Threads[master].splitPoint = splitPoint;
 
-    // Make copies of the current position and search stack for each thread
-    for (i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
+    // Allocate available threads setting idle flag to false
+    for (int i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
         if (thread_is_available(i, master))
         {
-            memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
+            Threads[i].idle = false;
             Threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
             splitPoint->cpus++;
         }
 
+    assert(splitPoint->cpus > 1);
+
+    // We can release the lock because master and slave threads are already booked
+    lock_release(&MPLock);
+
+    // Copy the tail of current search stack to the master thread
+    memcpy(splitPoint->sstack[master] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
+
     // Tell the threads that they have work to do. This will make them leave
-    // their idle loop.
-    for (i = 0; i < ActiveThreads; i++)
+    // their idle loop. Also copy search stack tail for each slave thread.
+    for (int i = 0; i < ActiveThreads; i++)
+    {
         if (i == master || splitPoint->slaves[i])
         {
             Threads[i].workIsWaiting = true;
-            Threads[i].idle = false;
             Threads[i].stop = false;
         }
-
-    lock_release(&MPLock);
+        if (splitPoint->slaves[i])
+            memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
+    }
 
     // Everything is set up. The master thread enters the idle loop, from
     // which it will instantly launch a search, because its workIsWaiting
