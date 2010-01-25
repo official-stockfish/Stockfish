@@ -3010,13 +3010,14 @@ namespace {
     // their idle loop. Also copy search stack tail for each slave thread.
     for (int i = 0; i < ActiveThreads; i++)
     {
-        if (i == master || splitPoint->slaves[i])
-        {
-            Threads[i].workIsWaiting = true;
-            Threads[i].stop = false;
-        }
         if (splitPoint->slaves[i])
             memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
+
+        if (i == master || splitPoint->slaves[i])
+        {
+            Threads[i].stop = false;
+            Threads[i].workIsWaiting = true; // This makes the slave to exit from idle_loop()
+        }
     }
 
     // Everything is set up. The master thread enters the idle loop, from
