@@ -63,7 +63,7 @@ namespace {
 /// that the move is a legal move from the position. The return value is
 /// a string containing the move in short algebraic notation.
 
-const string move_to_san(const Position& pos, Move m) {
+const string move_to_san(Position& pos, Move m) {
 
   assert(pos.is_ok());
   assert(move_is_ok(m));
@@ -123,10 +123,10 @@ const string move_to_san(const Position& pos, Move m) {
   // Position::move_is_check doesn't detect all checks (not castling moves,
   // promotions and en passant captures).
   StateInfo st;
-  Position p(pos);
-  p.do_move(m, st);
-  if (p.is_check())
-      san += p.is_mate()? "#" : "+";
+  pos.do_move(m, st);
+  if (pos.is_check())
+      san += pos.is_mate() ? "#" : "+";
+  pos.undo_move(m);
 
   return san;
 }

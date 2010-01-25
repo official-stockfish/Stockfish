@@ -356,8 +356,9 @@ void Position::print(Move m) const {
   std::cout << std::endl;
   if (m != MOVE_NONE)
   {
+      Position p(*this);
       string col = (color_of_piece_on(move_from(m)) == BLACK ? ".." : "");
-      std::cout << "Move is: " << col << move_to_san(*this, m) << std::endl;
+      std::cout << "Move is: " << col << move_to_san(p, m) << std::endl;
   }
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
