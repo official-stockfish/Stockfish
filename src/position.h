@@ -146,7 +146,7 @@ public:
   };
 
   // Constructors
-  Position() {}
+  Position();
   Position(const Position& pos);
   Position(const std::string& fen);
 
@@ -156,7 +156,7 @@ public:
   void print(Move m = MOVE_NONE) const;
 
   // Copying
-  void copy(const Position& pos);
+  void fast_copy(const Position& pos);
   void flipped_copy(const Position& pos);
 
   // The piece on a given square
@@ -234,7 +234,7 @@ public:
   bool square_is_weak(Square s, Color c) const;
 
   // Doing and undoing moves
-  void saveState();
+  void detach();
   void do_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);

@@ -2981,7 +2981,7 @@ namespace {
     splitPoint->mp = mp;
     splitPoint->moves = *moves;
     splitPoint->cpus = 1;
-    splitPoint->pos.copy(p);
+    splitPoint->pos.fast_copy(p);
     splitPoint->parentSstack = sstck;
     for (i = 0; i < ActiveThreads; i++)
         splitPoint->slaves[i] = 0;

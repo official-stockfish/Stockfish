@@ -76,12 +76,49 @@ CheckInfo::CheckInfo(const Position& pos) {
   checkSq[KING] = EmptyBoardBB;
 }
 
+
+/// Position c'tors. Here we always create a slower but safer copy of
+/// the original position or the FEN string, we want the new born Position
+/// object do not depend on any external data. Instead if we know what we
+/// are doing and we need speed we can create a position with default
+/// c'tor Position() and then use just fast_copy().
+
+Position::Position() {}
+
 Position::Position(const Position& pos) {
-  copy(pos);
+
+  fast_copy(pos);
+  detach(); // Always detach() in copy c'tor to avoid surprises
 }
 
 Position::Position(const string& fen) {
+
   from_fen(fen);
+}
+
+
+/// Position::fast_copy() creates a partial copy of the given position,
+/// only data that changes with a do_move() / undo_move() cycle is copied,
+/// in particular for stateInfo are copied only the pointers, so that the
+/// actual data remains stored in the parent Position. This is not a problem
+/// if the parent Position is known not to be destroyed while we are still alive,
+/// as is the common case, see detach() otherwise.
+
+void Position::fast_copy(const Position& pos) {
+
+  memcpy(this, &pos, sizeof(Position));
+}
+
+
+/// Position::detach() copies the content of the current state and castling
+/// masks inside the position itself. This is needed when the st pointee could
+/// become stale, as example because the caller is about to going out of scope.
+
+void Position::detach() {
+
+  startState = *st;
+  st = &startState;
+  st->previous = NULL; // as a safe guard
 }
 
 
@@ -342,15 +379,6 @@ void Position::print(Move m) const {
             << "Key is: " << st->key << std::endl;
 
   RequestPending = false;
-}
-
-
-/// Position::copy() creates a copy of the input position.
-
-void Position::copy(const Position& pos) {
-
-  memcpy(this, &pos, sizeof(Position));
-  saveState(); // detach and copy state info
 }
 
 
@@ -1440,19 +1468,6 @@ int Position::see(Square from, Square to) const {
       swapList[n-1] = Min(-swapList[n], swapList[n-1]);
 
   return swapList[0];
-}
-
-
-/// Position::saveState() copies the content of the current state
-/// inside startState and makes st point to it. This is needed
-/// when the st pointee could become stale, as example because
-/// the caller is about to going out of scope.
-
-void Position::saveState() {
-
-  startState = *st;
-  st = &startState;
-  st->previous = NULL; // as a safe guard
 }
 
 
