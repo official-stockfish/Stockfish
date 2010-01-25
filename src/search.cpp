@@ -1813,7 +1813,8 @@ namespace {
     assert(threadID >= 0 && threadID < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    Position pos = Position(sp->pos);
+    Position pos;
+    pos.fast_copy(sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
     Value value = -VALUE_INFINITE;
@@ -1955,7 +1956,8 @@ namespace {
     assert(threadID >= 0 && threadID < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    Position pos = Position(sp->pos);
+    Position pos;
+    pos.fast_copy(sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
     Value value = -VALUE_INFINITE;
@@ -2985,6 +2987,9 @@ namespace {
     splitPoint->parentSstack = sstck;
     for (i = 0; i < ActiveThreads; i++)
         splitPoint->slaves[i] = 0;
+
+    // Detach splitPoint Position from the master one
+    splitPoint->pos.detach();
 
     // Copy the tail of current search stack to the master thread
     memcpy(splitPoint->sstack[master] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
