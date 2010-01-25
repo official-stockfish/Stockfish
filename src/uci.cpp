@@ -314,7 +314,7 @@ namespace {
 
     string token;
     int depth, tm, n;
-    Position pos = RootPosition;
+    Position pos(RootPosition);
 
     if (!(uip >> depth))
         return;

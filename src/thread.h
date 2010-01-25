@@ -46,7 +46,7 @@ const int ACTIVE_SPLIT_POINTS_MAX = 8;
 
 struct SplitPoint {
   SplitPoint *parent;
-  Position pos;
+  const Position* pos;
   SearchStack sstack[THREAD_MAX][PLY_MAX_PLUS_2];
   SearchStack *parentSstack;
   int ply;

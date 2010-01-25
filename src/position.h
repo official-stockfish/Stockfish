@@ -147,8 +147,8 @@ public:
 
   // Constructors
   Position();
-  Position(const Position& pos);
-  Position(const std::string& fen);
+  explicit Position(const Position& pos);
+  explicit Position(const std::string& fen);
 
   // Text input/output
   void from_fen(const std::string& fen);
