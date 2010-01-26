@@ -299,9 +299,6 @@ namespace {
         }
     }
 
-    if (moveTime)
-        infinite = true;  // HACK
-
     assert(RootPosition.is_ok());
 
     return think(RootPosition, infinite, ponder, RootPosition.side_to_move(),
