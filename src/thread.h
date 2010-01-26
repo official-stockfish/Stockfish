@@ -51,7 +51,8 @@ struct SplitPoint {
   SearchStack *parentSstack;
   int ply;
   Depth depth;
-  volatile Value alpha, beta, bestValue, futilityValue;
+  volatile Value alpha, beta, bestValue;
+  Value futilityValue;
   bool pvNode;
   int master, slaves[THREAD_MAX];
   Lock lock;
