@@ -301,6 +301,6 @@ $(EXE): $(OBJS)
 
 ### Dependencies. Do not change
 .depend:
-	$(CXX) -msse -MM $(OBJS:.o=.cpp) > $@
+	$(CXX) -MM $(OBJS:.o=.cpp) > $@
 
 include .depend
