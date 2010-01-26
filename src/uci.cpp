@@ -54,7 +54,7 @@ namespace {
   // The root position. This is set up when the user (or in practice, the GUI)
   // sends the "position" UCI command. The root position is sent to the think()
   // function when the program receives the "go" command.
-  Position RootPosition(StartPosition);
+  Position RootPosition;
 
   // Local functions
   bool handle_command(const string& command);
