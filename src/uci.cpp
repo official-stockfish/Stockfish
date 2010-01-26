@@ -292,11 +292,9 @@ namespace {
         else if (token == "searchmoves")
         {
             int numOfMoves = 0;
-            while (!uip.eof())
-            {
-                uip >> token;
+            while (uip >> token)
                 searchMoves[numOfMoves++] = move_from_string(RootPosition, token);
-            }
+
             searchMoves[numOfMoves] = MOVE_NONE;
         }
     }
