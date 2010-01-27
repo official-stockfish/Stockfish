@@ -1000,6 +1000,7 @@ namespace {
 
             if (doFullDepthSearch)
             {
+                ss[0].reduction = Depth(0);
                 value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
 
                 if (value > alpha)
