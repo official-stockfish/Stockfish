@@ -214,6 +214,9 @@ namespace {
   IterationInfoType IterationInfo[PLY_MAX_PLUS_2];
   int BestMoveChangesByIteration[PLY_MAX_PLUS_2];
 
+  // Search window management
+  int AspirationDelta;
+
   // MultiPV mode
   int MultiPV;
 
@@ -266,7 +269,7 @@ namespace {
   /// Functions
 
   Value id_loop(const Position& pos, Move searchMoves[]);
-  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value alpha, Value beta);
+  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta);
   Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove = MOVE_NONE);
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
@@ -730,7 +733,10 @@ namespace {
             int prevDelta1 = IterationInfo[Iteration - 1].speculatedValue - IterationInfo[Iteration - 2].speculatedValue;
             int prevDelta2 = IterationInfo[Iteration - 2].speculatedValue - IterationInfo[Iteration - 3].speculatedValue;
 
-            int delta = Max(2 * abs(prevDelta1) + abs(prevDelta2), ProblemMargin);
+            int delta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
+
+            delta = (delta + 7) / 8 * 8; // Round to match grainSize
+            AspirationDelta = delta;
 
             alpha = Max(IterationInfo[Iteration - 1].value - delta, -VALUE_INFINITE);
             beta  = Min(IterationInfo[Iteration - 1].value + delta,  VALUE_INFINITE);
@@ -886,11 +892,12 @@ namespace {
   // similar to search_pv except that it uses a different move ordering
   // scheme and prints some information to the standard output.
 
-  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value alpha, Value beta) {
+  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta) {
 
-    Value oldAlpha = alpha;
-    Value value = -VALUE_INFINITE;
+    Value alpha = oldAlpha;
+    Value value;
     CheckInfo ci(pos);
+    int researchCount = 0;
     bool isCheck = pos.is_check();
 
     // Evaluate the position statically
@@ -899,6 +906,9 @@ namespace {
         ss[0].eval = evaluate(pos, ei, 0);
     else
         ss[0].eval = VALUE_NONE;
+
+    while(1) // Fail low loop
+    {
 
     // Loop through all the moves in the root move list
     for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
@@ -941,10 +951,15 @@ namespace {
         ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
         newDepth = depth + ext;
 
+        value = - VALUE_INFINITE;
+
+        while (1) // Fail high loop
+        {
+
         // Make the move, and search it
         pos.do_move(move, st, ci, moveIsCheck);
 
-        if (i < MultiPV)
+        if (i < MultiPV || value > alpha)
         {
             // Aspiration window is disabled in multi-pv case
             if (MultiPV > 1)
@@ -999,6 +1014,46 @@ namespace {
         }
 
         pos.undo_move(move);
+
+        if (AbortSearch || value < beta)
+            break; // We are not failing high
+
+        // We are failing high and going to do a research. It's important to update score
+        // before research in case we run out of time while researching.
+        rml.set_move_score(i, value);
+        update_pv(ss, 0);
+        TT.extract_pv(pos, ss[0].pv, PLY_MAX);
+        rml.set_move_pv(i, ss[0].pv);
+
+        // Print search information to the standard output
+        cout << "info depth " << Iteration
+             << " score " << value_to_string(value)
+             << ((value >= beta) ? " lowerbound" :
+                ((value <= alpha)? " upperbound" : ""))
+             << " time "  << current_search_time()
+             << " nodes " << nodes_searched()
+             << " nps "   << nps()
+             << " pv ";
+
+        for (int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
+            cout << ss[0].pv[j] << " ";
+
+        cout << endl;
+
+        if (UseLogFile)
+        {
+            ValueType type =  (value >= beta  ? VALUE_TYPE_LOWER
+                            : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
+
+            LogFile << pretty_pv(pos, current_search_time(), Iteration,
+                                 nodes_searched(), value, type, ss[0].pv) << endl;
+        }
+
+        // Prepare for research
+        researchCount++;
+        beta = Min(beta + AspirationDelta * (1 << researchCount), VALUE_INFINITE);
+
+        } // End of fail high loop
 
         // Finished searching the move. If AbortSearch is true, the search
         // was aborted because the user interrupted the search or because we
@@ -1094,6 +1149,17 @@ namespace {
 
         FailLow = (alpha == oldAlpha);
     }
+
+    if (AbortSearch || alpha > oldAlpha)
+        break; // End search, we are not failing low
+
+    // Prepare for research
+    researchCount++;
+    alpha = Max(alpha - AspirationDelta * (1 << researchCount), -VALUE_INFINITE);
+    oldAlpha = alpha;
+
+    } // Fail low loop
+
     return alpha;
   }
 
