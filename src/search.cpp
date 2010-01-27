@@ -185,6 +185,8 @@ namespace {
   // and near frontier nodes.
   const Value FutilityMarginQS = Value(0x80);
 
+  Value FutilityMargins[2 * PLY_MAX_PLUS_2]; // Initialized at startup.
+
   // Each move futility margin is decreased
   const Value IncrementalFutilityMargin = Value(0x8);
 
@@ -575,6 +577,14 @@ void init_threads() {
 
   for (i = 0; i < THREAD_MAX; i++)
       Threads[i].activeSplitPoints = 0;
+
+  // Init futility margins array
+  FutilityMargins[0] = FutilityMargins[1] = Value(0);
+
+  for (i = 2; i < 2 * PLY_MAX_PLUS_2; i++)
+  {
+      FutilityMargins[i] = Value(112 * bitScanReverse32(i * i / 2)); // FIXME: test using log instead of BSR
+  }
 
   // Initialize global locks
   lock_init(&MPLock, NULL);
@@ -1458,7 +1468,7 @@ namespace {
 
     // Calculate depth dependant futility pruning parameters
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
-    const int PostFutilityValueMargin = 112 * bitScanReverse32(int(depth) * int(depth) / 2);
+    const int PostFutilityValueMargin = FutilityMargins[int(depth)];
 
     // Evaluate the position statically
     if (!isCheck)
@@ -1626,7 +1636,7 @@ namespace {
           int preFutilityValueMargin = 0;
 
           if (newDepth >= OnePly)
-              preFutilityValueMargin = 112 * bitScanReverse32(int(newDepth) * int(newDepth) / 2);
+              preFutilityValueMargin = FutilityMargins[int(newDepth)];
 
           Value futilityCaptureValue = ss[ply].eval + pos.endgame_value_of_piece_on(move_to(move)) + preFutilityValueMargin + ei.futilityMargin + 90;
 
@@ -1663,7 +1673,7 @@ namespace {
           {
               int preFutilityValueMargin = 0;
               if (predictedDepth >= OnePly)
-                  preFutilityValueMargin = 112 * bitScanReverse32(int(predictedDepth) * int(predictedDepth) / 2);
+                  preFutilityValueMargin = FutilityMargins[int(predictedDepth)];
 
               preFutilityValueMargin += H.gain(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
 
