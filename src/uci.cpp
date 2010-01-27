@@ -224,7 +224,7 @@ namespace {
 
   void set_option(UCIInputParser& uip) {
 
-    string token, name;
+    string token, name, value;
 
     if (!(uip >> token)) // operator>>() skips any whitespace
         return;
@@ -234,13 +234,12 @@ namespace {
         while (uip >> token && token != "value")
             name += (" " + token);
 
-        if (token == "value")
+        if (token == "value" && uip >> value)
         {
-            // Reads until end of line and left trim white space
-            getline(uip, token);
-            token.erase(0, token.find_first_not_of(" \n\r\t"));
+            while (uip >> token)
+                value += (" " + token);
 
-            set_option_value(name, token);
+            set_option_value(name, value);
         } else
             push_button(name);
     }
