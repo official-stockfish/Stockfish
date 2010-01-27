@@ -989,10 +989,9 @@ namespace {
                 && !captureOrPromotion
                 && !move_is_castle(move))
             {
-                double red = 0.5 + ln(RootMoveNumber - MultiPV + 1) * ln(depth / 2) / 6.0;
-                if (red >= 1.0)
+                ss[0].reduction = calculate_reduction(0.5, RootMoveNumber - MultiPV + 1, depth, 6.0);
+                if (ss[0].reduction)
                 {
-                    ss[0].reduction = Depth(int(floor(red * int(OnePly))));
                     value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
                     doFullDepthSearch = (value > alpha);
                 }
@@ -1303,13 +1302,12 @@ namespace {
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
-          double red = 0.5 + ln(moveCount) * ln(depth / 2) / 6.0;
-          if (red >= 1.0)
-          {
-              ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
-              value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
-              doFullDepthSearch = (value > alpha);
-          }
+            ss[ply].reduction = calculate_reduction(0.5, moveCount, depth, 6.0);
+            if (ss[ply].reduction)
+            {
+                value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+                doFullDepthSearch = (value > alpha);
+            }
         }
 
         if (doFullDepthSearch) // Go with full depth non-pv search
@@ -1656,10 +1654,10 @@ namespace {
           // Value based pruning
           Depth predictedDepth = newDepth;
 
-          //FIXME HACK: awful code duplication
-          double red = 0.5 + ln(moveCount) * ln(depth / 2) / 3.0;
-          if (red >= 1.0)
-              predictedDepth -= int(floor(red * int(OnePly)));
+          //FIXME: We are ignoring condition: depth >= 3*OnePly, BUG??
+          ss[ply].reduction = calculate_reduction(0.5, moveCount, depth, 3.0);
+          if (ss[ply].reduction)
+              predictedDepth -= ss[ply].reduction;
 
           if (predictedDepth < SelectiveDepth)
           {
@@ -1691,13 +1689,11 @@ namespace {
           && !dangerous
           && !captureOrPromotion
           && !move_is_castle(move)
-          && !move_is_killer(move, ss[ply])
-          /* && move != ttMove*/)
+          && !move_is_killer(move, ss[ply]))
       {
-          double red = 0.5 + ln(moveCount) * ln(depth / 2) / 3.0;
-          if (red >= 1.0)
+          ss[ply].reduction = calculate_reduction(0.5, moveCount, depth, 3.0);
+          if (ss[ply].reduction)
           {
-              ss[ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
               doFullDepthSearch = (value >= beta);
           }
@@ -2039,10 +2035,9 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          double red = 0.5 + ln(moveCount) * ln(sp->depth / 2) / 3.0;
-          if (red >= 1.0)
+          ss[sp->ply].reduction = calculate_reduction(0.5, moveCount, sp->depth, 3.0);
+          if (ss[sp->ply].reduction)
           {
-              ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
               doFullDepthSearch = (value >= sp->beta);
           }
@@ -2153,11 +2148,10 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          double red = 0.5 + ln(moveCount) * ln(sp->depth / 2) / 6.0;
-          if (red >= 1.0)
+          ss[sp->ply].reduction = calculate_reduction(0.5, moveCount, sp->depth, 6.0);
+          if (ss[sp->ply].reduction)
           {
               Value localAlpha = sp->alpha;
-              ss[sp->ply].reduction = Depth(int(floor(red * int(OnePly))));
               value = -search(pos, ss, -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
               doFullDepthSearch = (value > localAlpha);
           }
