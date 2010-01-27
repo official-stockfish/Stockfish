@@ -1497,10 +1497,9 @@ namespace {
 
     // Do a "stand pat". If we are above beta by a good margin then
     // return immediately.
-    // FIXME: test with added condition 'allowNullmove || depth <= OnePly' and !value_is_mate(beta)
-    // FIXME: test with modified condition 'depth < RazorDepth'
     if (  !isCheck
-        && depth < SelectiveDepth
+        && allowNullmove
+        && depth < RazorDepth
         && staticValue - FutilityMargins[int(depth)] >= beta)
         return staticValue - FutilityMargins[int(depth)];
 
