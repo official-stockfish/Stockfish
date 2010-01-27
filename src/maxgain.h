@@ -39,7 +39,7 @@ class MaxGain {
 public:
   MaxGain();
   void clear();
-  void store(Piece p, Square from, Square to, Value prev, Value curr);
+  void store(Piece p, Square from, Square to, Value delta);
   Value retrieve(Piece p, Square from, Square to);
 
 private:

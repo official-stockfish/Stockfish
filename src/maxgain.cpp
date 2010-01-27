@@ -47,12 +47,8 @@ void MaxGain::clear() {
 
 /// MaxGain::store
 
-void MaxGain::store(Piece p, Square from, Square to, Value prev, Value curr)
+void MaxGain::store(Piece p, Square from, Square to, Value delta)
 {
-  if (prev == VALUE_NONE || curr == VALUE_NONE)
-    return;
-
-  Value delta = curr - prev;
   if (delta >= maxStaticValueDelta[p][from][to])
     maxStaticValueDelta[p][from][to] = delta;
   else

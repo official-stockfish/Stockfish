@@ -289,6 +289,7 @@ namespace {
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
+  void update_gains(const Position& pos, Move move, Value before, Value after);
 
   bool fail_high_ply_1();
   int current_search_time();
@@ -1165,21 +1166,14 @@ namespace {
         tte = TT.retrieve(pos.get_key());
     }
 
-    // Evaluate the position statically
     isCheck = pos.is_check();
-    EvalInfo ei;
     if (!isCheck)
     {
+        // Update gain statistics of the previous move that lead
+        // us in this position.
+        EvalInfo ei;
         ss[ply].eval = evaluate(pos, ei, threadID);
-
-        // Store gain statistics
-        Move m = ss[ply - 1].currentMove;
-        if (   m != MOVE_NULL
-            && pos.captured_piece() == NO_PIECE_TYPE
-            && !move_is_castle(m)
-            && !move_is_promotion(m))
-            MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
-
+        update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
     // Initialize a MovePicker object for the current position, and prepare
@@ -1419,14 +1413,7 @@ namespace {
         ss[ply].eval = staticValue;
         futilityValue = staticValue + PostFutilityValueMargin; //FIXME: Remove me, only for split
         staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
-
-        // Store gain statistics
-        Move m = ss[ply - 1].currentMove;
-        if (   m != MOVE_NULL
-            && pos.captured_piece() == NO_PIECE_TYPE
-            && !move_is_castle(m)
-            && !move_is_promotion(m))
-            MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
+        update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
     // Post futility pruning
@@ -1764,15 +1751,8 @@ namespace {
     if (!isCheck)
     {
         ss[ply].eval = staticValue;
-        // Store gain statistics
-        Move m = ss[ply - 1].currentMove;
-        if (   m != MOVE_NULL
-            && pos.captured_piece() == NO_PIECE_TYPE
-            && !move_is_castle(m)
-            && !move_is_promotion(m))
-            MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), ss[ply - 1].eval, -ss[ply].eval);
+        update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
-
 
     // Initialize "stand pat score", and return it immediately if it is
     // at least beta.
@@ -2652,6 +2632,21 @@ namespace {
         ss.killers[i] = ss.killers[i - 1];
 
     ss.killers[0] = m;
+  }
+
+
+  // update_gains() updates the gains table of a non-capture move given
+  // the static position evaluation before and after the move.
+
+  void update_gains(const Position& pos, Move m, Value before, Value after) {
+
+    if (   m != MOVE_NULL
+        && before != VALUE_NONE
+        && after != VALUE_NONE
+        && pos.captured_piece() == NO_PIECE_TYPE
+        && !move_is_castle(m)
+        && !move_is_promotion(m))
+        MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), -(before + after));
   }
 
 
