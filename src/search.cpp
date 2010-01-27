@@ -1468,7 +1468,6 @@ namespace {
 
     // Calculate depth dependant futility pruning parameters
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
-    const int PostFutilityValueMargin = FutilityMargins[int(depth)];
 
     // Evaluate the position statically
     if (!isCheck)
@@ -1482,7 +1481,7 @@ namespace {
         }
 
         ss[ply].eval = staticValue;
-        futilityValue = staticValue + PostFutilityValueMargin; //FIXME: Remove me, only for split
+        futilityValue = staticValue + FutilityMargins[int(depth)]; //FIXME: Remove me, only for split
         staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
@@ -1493,8 +1492,8 @@ namespace {
     // FIXME: test with modified condition 'depth < RazorDepth'
     if (  !isCheck
         && depth < SelectiveDepth
-        && staticValue - PostFutilityValueMargin >= beta)
-        return staticValue - PostFutilityValueMargin;
+        && staticValue - FutilityMargins[int(depth)] >= beta)
+        return staticValue - FutilityMargins[int(depth)];
 
     // Null move search
     if (    allowNullmove
