@@ -286,6 +286,7 @@ namespace {
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
+  Depth calculate_reduction(double baseReduction, int moveCount, Depth depth, double reductionInhibitor);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
   void update_gains(const Position& pos, Move move, Value before, Value after);
@@ -2677,6 +2678,20 @@ namespace {
           return v;
 
       return defaultEval;
+  }
+
+  // calculate_reduction() returns reduction in plies based on
+  // moveCount and depth. Reduction is always at least one ply.
+
+  Depth calculate_reduction(double baseReduction, int moveCount, Depth depth, double reductionInhibitor) {
+
+    double red = baseReduction + ln(moveCount) * ln(depth / 2) / reductionInhibitor;
+
+    if (red >= 1.0)
+        return Depth(int(floor(red * int(OnePly))));
+    else
+        return Depth(0);
+
   }
 
   // update_history() registers a good move that produced a beta-cutoff
