@@ -42,6 +42,7 @@ History::History() { clear(); }
 
 void History::clear() {
   memset(history, 0, 2 * 8 * 64 * sizeof(int));
+  memset(maxStaticValueDelta, 0, 16 * 64 * 64 * sizeof(int));
 }
 
 
@@ -93,4 +94,22 @@ int History::move_ordering_score(Piece p, Square to) const {
   assert(square_is_ok(to));
 
   return history[p][to];
+}
+
+
+/// History::set_gain() and History::gain() store and retrieve the
+/// gain of a move given the delta of the static position evaluations
+/// before and after the move.
+
+void History::set_gain(Piece p, Square from, Square to, Value delta)
+{
+  if (delta >= maxStaticValueDelta[p][from][to])
+      maxStaticValueDelta[p][from][to] = delta;
+  else
+      maxStaticValueDelta[p][from][to]--;
+}
+
+Value History::gain(Piece p, Square from, Square to) const
+{
+  return Value(maxStaticValueDelta[p][from][to]);
 }

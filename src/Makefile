@@ -68,7 +68,7 @@ LDFLAGS  = -lpthread
 OBJS = application.o bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 	misc.o move.o movegen.o history.o movepick.o search.o piece.o \
 	position.o direction.o tt.o value.o uci.o ucioption.o \
-	maxgain.o mersenne.o book.o bitbase.o san.o benchmark.o
+	mersenne.o book.o bitbase.o san.o benchmark.o
 
 
 ### General rules. Do not change

@@ -32,7 +32,6 @@
 #include "book.h"
 #include "evaluate.h"
 #include "history.h"
-#include "maxgain.h"
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
@@ -263,9 +262,6 @@ namespace {
 
   // History table
   History H;
-
-  // MaxGain table
-  MaxGain MG;
 
   /// Functions
 
@@ -704,7 +700,6 @@ namespace {
     // Initialize
     TT.new_search();
     H.clear();
-    MG.clear();
     init_ss_array(ss);
     IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
     Iteration = 1;
@@ -1592,7 +1587,7 @@ namespace {
               if (predictedDepth >= OnePly)
                   preFutilityValueMargin = 112 * bitScanReverse32(int(predictedDepth) * int(predictedDepth) / 2);
 
-              preFutilityValueMargin += MG.retrieve(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
+              preFutilityValueMargin += H.gain(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
 
               futilityValueScaled = ss[ply].eval + preFutilityValueMargin - moveCount * IncrementalFutilityMargin;
 
@@ -2646,7 +2641,7 @@ namespace {
         && pos.captured_piece() == NO_PIECE_TYPE
         && !move_is_castle(m)
         && !move_is_promotion(m))
-        MG.store(pos.piece_on(move_to(m)), move_from(m), move_to(m), -(before + after));
+        H.set_gain(pos.piece_on(move_to(m)), move_from(m), move_to(m), -(before + after));
   }
 
 

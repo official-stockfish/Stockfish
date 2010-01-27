@@ -28,6 +28,7 @@
 #include "depth.h"
 #include "move.h"
 #include "piece.h"
+#include "value.h"
 
 
 ////
@@ -49,9 +50,12 @@ public:
   void success(Piece p, Square to, Depth d);
   void failure(Piece p, Square to, Depth d);
   int move_ordering_score(Piece p, Square to) const;
+  void set_gain(Piece p, Square from, Square to, Value delta);
+  Value gain(Piece p, Square from, Square to) const;
 
 private:
   int history[16][64];  // [piece][square]
+  int maxStaticValueDelta[16][64][64];  // [piece][from_square][to_square]
 };
 
 
