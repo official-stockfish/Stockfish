@@ -1990,7 +1990,10 @@ namespace {
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       if (thread_should_stop(threadID))
+      {
+          lock_grab(&(sp->lock));
           break;
+      }
 
       // New best move?
       if (value > sp->bestValue) // Less then 2% of cases
@@ -2124,7 +2127,10 @@ namespace {
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       if (thread_should_stop(threadID))
+      {
+          lock_grab(&(sp->lock));
           break;
+      }
 
       // New best move?
       if (value > sp->bestValue) // Less then 2% of cases
