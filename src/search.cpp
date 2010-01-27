@@ -1411,9 +1411,14 @@ namespace {
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
-    // Post futility pruning
-    if (depth < SelectiveDepth && staticValue - PostFutilityValueMargin >= beta)
-        return (staticValue - PostFutilityValueMargin);
+    // Do a "stand pat". If we are above beta by a good margin then
+    // return immediately.
+    // FIXME: test with added condition 'allowNullmove || depth <= OnePly' and !value_is_mate(beta)
+    // FIXME: test with modified condition 'depth < RazorDepth'
+    if (  !isCheck
+        && depth < SelectiveDepth
+        && staticValue - PostFutilityValueMargin >= beta)
+        return staticValue - PostFutilityValueMargin;
 
     // Null move search
     if (    allowNullmove
@@ -1538,6 +1543,8 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Futility pruning for captures
+      // FIXME: test disabling 'Futility pruning for captures'
+      // FIXME: test with 'newDepth < RazorDepth'
       Color them = opposite_color(pos.side_to_move());
 
       if (   !isCheck
@@ -1558,7 +1565,6 @@ namespace {
           if (ss[ply].eval + pos.endgame_value_of_piece_on(move_to(move)) + preFutilityValueMargin + ei.futilityMargin + 90 < beta)
               continue;
       }
-
 
       // Futility pruning
       if (   !isCheck
