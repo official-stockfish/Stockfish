@@ -27,7 +27,6 @@
 
 #include "depth.h"
 #include "history.h"
-#include "lock.h"
 #include "position.h"
 
 
@@ -52,7 +51,6 @@ class MovePicker {
 public:
   MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
   Move get_next_move();
-  Move get_next_move(Lock& lock);
   int number_of_evasions() const;
 
 private:

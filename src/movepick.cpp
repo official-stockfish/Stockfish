@@ -254,6 +254,8 @@ void MovePicker::score_evasions_or_checks() {
 /// are no more moves left.
 /// It picks the move with the biggest score from a list of generated moves taking
 /// care not to return the tt move if has already been searched previously.
+/// Note that this function is not thread safe so should be lock protected by
+/// caller when accessed through a shared MovePicker object.
 
 Move MovePicker::get_next_move() {
 
@@ -343,17 +345,3 @@ Move MovePicker::get_next_move() {
   }
 }
 
-/// A variant of get_next_move() which takes a lock as a parameter, used to
-/// prevent multiple threads from picking the same move at a split point.
-
-Move MovePicker::get_next_move(Lock &lock) {
-
-   lock_grab(&lock);
-
-   // Note that it is safe to call many times
-   // get_next_move() when phase == PH_STOP
-   Move m = get_next_move();
-
-   lock_release(&lock);
-   return m;
-}

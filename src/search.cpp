@@ -1874,28 +1874,29 @@ namespace {
     SearchStack* ss = sp->sstack[threadID];
     Value value = -VALUE_INFINITE;
     Move move;
+    int moveCount;
     bool isCheck = pos.is_check();
     bool useFutilityPruning =     sp->depth < SelectiveDepth
                               && !isCheck;
 
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
 
-    while (    sp->bestValue < sp->beta
+    while (    lock_grab_bool(&(sp->lock))
+           &&  sp->bestValue < sp->beta
            && !thread_should_stop(threadID)
-           && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
+           && (move = sp->mp->get_next_move()) != MOVE_NONE)
     {
+      moveCount = ++sp->moves;
+      lock_release(&(sp->lock));
+
       assert(move_is_ok(move));
 
       bool moveIsCheck = pos.move_is_check(move, ci);
       bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      lock_grab(&(sp->lock));
-      int moveCount = ++sp->moves;
-      lock_release(&(sp->lock));
-
       ss[sp->ply].currentMove = move;
 
-      // Decide the new search depth.
+      // Decide the new search depth
       bool dangerous;
       Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
@@ -1982,7 +1983,7 @@ namespace {
       }
     }
 
-    lock_grab(&(sp->lock));
+    /* Here we have the lock still grabbed */
 
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads.
@@ -2015,24 +2016,25 @@ namespace {
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
     Value value = -VALUE_INFINITE;
+    int moveCount;
     Move move;
 
-    while (    sp->alpha < sp->beta
+    while (    lock_grab_bool(&(sp->lock))
+           &&  sp->alpha < sp->beta
            && !thread_should_stop(threadID)
-           && (move = sp->mp->get_next_move(sp->lock)) != MOVE_NONE)
+           && (move = sp->mp->get_next_move()) != MOVE_NONE)
     {
-      bool moveIsCheck = pos.move_is_check(move, ci);
-      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
+      moveCount = ++sp->moves;
+      lock_release(&(sp->lock));
 
       assert(move_is_ok(move));
 
-      lock_grab(&(sp->lock));
-      int moveCount = ++sp->moves;
-      lock_release(&(sp->lock));
+      bool moveIsCheck = pos.move_is_check(move, ci);
+      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       ss[sp->ply].currentMove = move;
 
-      // Decide the new search depth.
+      // Decide the new search depth
       bool dangerous;
       Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
@@ -2131,7 +2133,7 @@ namespace {
       }
     }
 
-    lock_grab(&(sp->lock));
+    /* Here we have the lock still grabbed */
 
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads.
