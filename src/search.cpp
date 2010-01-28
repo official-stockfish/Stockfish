@@ -1629,36 +1629,6 @@ namespace {
       // Update current move
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
-      // Futility pruning for captures
-      // FIXME: test disabling 'Futility pruning for captures'
-      // FIXME: test with 'newDepth < RazorDepth'
-      Color them = opposite_color(pos.side_to_move());
-
-      if (   !isCheck
-          && newDepth < SelectiveDepth
-          && !dangerous
-          && pos.move_is_capture(move)
-          && !pos.move_is_check(move, ci)
-          && !move_is_promotion(move)
-          && move != ttMove
-          && !move_is_ep(move)
-          && (pos.type_of_piece_on(move_to(move)) != PAWN || !pos.pawn_is_passed(them, move_to(move)))) // Do not prune passed pawn captures
-      {
-          int preFutilityValueMargin = 0;
-
-          if (newDepth >= OnePly)
-              preFutilityValueMargin = FutilityMargins[int(newDepth)];
-
-          Value futilityCaptureValue = ss[ply].eval + pos.endgame_value_of_piece_on(move_to(move)) + preFutilityValueMargin + ei.futilityMargin + 90;
-
-          if (futilityCaptureValue < beta)
-          {
-              if (futilityCaptureValue > bestValue)
-                  bestValue = futilityCaptureValue;
-              continue;
-          }
-      }
-
       // Futility pruning
       if (   !isCheck
           && !dangerous
