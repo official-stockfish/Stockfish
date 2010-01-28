@@ -239,8 +239,8 @@ namespace {
   std::ofstream LogFile;
 
   // Natural logarithmic lookup table and its getter function
-  double lnArray[512];
-  inline double ln(int i) { return lnArray[i]; }
+  float lnArray[512];
+  inline float ln(int i) { return lnArray[i]; }
 
   // MP related variables
   int ActiveThreads = 1;
@@ -288,8 +288,8 @@ namespace {
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
-  void reduction_parameters(double base, double Inhibitor, Depth depth, double& logLimit, double& gradient);
-  Depth reduction(int moveCount, const double LogLimit, const double BaseRed, const double Gradient);
+  void reduction_parameters(float base, float Inhibitor, Depth depth, float& logLimit, float& gradient);
+  Depth reduction(int moveCount, const float LogLimit, const float BaseRed, const float Gradient);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
   void update_gains(const Position& pos, Move move, Value before, Value after);
@@ -574,7 +574,7 @@ void init_threads() {
 
   // Init our logarithmic lookup table
   for (i = 0; i < 512; i++)
-      lnArray[i] = log(double(i)); // log() returns base-e logarithm
+      lnArray[i] = float(log(double(i))); // log() returns base-e logarithm
 
   for (i = 0; i < THREAD_MAX; i++)
       Threads[i].activeSplitPoints = 0;
@@ -966,7 +966,7 @@ namespace {
         value = - VALUE_INFINITE;
 
         // Precalculate reduction parameters
-        double LogLimit, Gradient, BaseReduction = 0.5;
+        float LogLimit, Gradient, BaseReduction = 0.5;
         reduction_parameters(BaseReduction, 6.0, depth, LogLimit, Gradient);
 
         while (1) // Fail high loop
@@ -1260,7 +1260,7 @@ namespace {
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
 
     // Precalculate reduction parameters
-    double LogLimit, Gradient, BaseReduction = 0.5;
+    float LogLimit, Gradient, BaseReduction = 0.5;
     reduction_parameters(BaseReduction, 6.0, depth, LogLimit, Gradient);
 
     // Loop through all legal moves until no moves remain or a beta cutoff
@@ -1583,7 +1583,7 @@ namespace {
     CheckInfo ci(pos);
 
     // Precalculate reduction parameters
-    double LogLimit, Gradient, BaseReduction = 0.5;
+    float LogLimit, Gradient, BaseReduction = 0.5;
     reduction_parameters(BaseReduction, 3.0, depth, LogLimit, Gradient);
 
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
@@ -1998,7 +1998,7 @@ namespace {
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
 
     // Precalculate reduction parameters
-    double LogLimit, Gradient, BaseReduction = 0.5;
+    float LogLimit, Gradient, BaseReduction = 0.5;
     reduction_parameters(BaseReduction, 3.0, sp->depth, LogLimit, Gradient);
 
     while (    lock_grab_bool(&(sp->lock))
@@ -2142,7 +2142,7 @@ namespace {
     Move move;
 
     // Precalculate reduction parameters
-    double LogLimit, Gradient, BaseReduction = 0.5;
+    float LogLimit, Gradient, BaseReduction = 0.5;
     reduction_parameters(BaseReduction, 6.0, sp->depth, LogLimit, Gradient);
 
     while (    lock_grab_bool(&(sp->lock))
@@ -2710,26 +2710,26 @@ namespace {
   // floating point operations are involved we try to recalculate reduction at each move, but
   // we do the most consuming computation only once per node.
 
-  void reduction_parameters(double baseReduction, double reductionInhibitor, Depth depth, double& logLimit, double& gradient)
+  void reduction_parameters(float baseReduction, float reductionInhibitor, Depth depth, float& logLimit, float& gradient)
   {
       // Precalculate some parameters to avoid to calculate the following formula for each move:
       //
       //    red = baseReduction + ln(moveCount) * ln(depth / 2) / reductionInhibitor;
       //
-      logLimit = depth  > OnePly ? (1.0 - baseReduction) * reductionInhibitor / ln(depth / 2) : 1000.0;
-      gradient = depth  > OnePly ? ln(depth / 2) / reductionInhibitor : 0.0;
+      logLimit = depth  > OnePly ? (1 - baseReduction) * reductionInhibitor / ln(depth / 2) : 1000;
+      gradient = depth  > OnePly ? ln(depth / 2) / reductionInhibitor : 0;
   }
 
 
   // reduction() returns reduction in plies based on moveCount and depth.
   // Reduction is always at least one ply.
 
-  Depth reduction(int moveCount, double logLimit, double baseReduction, double gradient) {    
+  Depth reduction(int moveCount, float logLimit, float baseReduction, float gradient) {    
 
     if (ln(moveCount) < logLimit)
         return Depth(0);
 
-    double red = baseReduction + ln(moveCount) * gradient;
+    float red = baseReduction + ln(moveCount) * gradient;
     return Depth(int(floor(red * int(OnePly))));
   }
 
