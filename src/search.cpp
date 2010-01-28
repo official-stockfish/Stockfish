@@ -288,7 +288,8 @@ namespace {
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
-  Depth calculate_reduction(double baseReduction, int moveCount, Depth depth, double reductionInhibitor);
+  void reduction_parameters(double base, double Inhibitor, Depth depth, double& logLimit, double& gradient);
+  Depth reduction(int moveCount, const double LogLimit, const double BaseRed, const double Gradient);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
   void update_gains(const Position& pos, Move move, Value before, Value after);
@@ -964,6 +965,10 @@ namespace {
 
         value = - VALUE_INFINITE;
 
+        // Precalculate reduction parameters
+        double LogLimit, Gradient, BaseReduction = 0.5;
+        reduction_parameters(BaseReduction, 6.0, depth, LogLimit, Gradient);
+
         while (1) // Fail high loop
         {
 
@@ -999,7 +1004,7 @@ namespace {
                 && !captureOrPromotion
                 && !move_is_castle(move))
             {
-                ss[0].reduction = calculate_reduction(0.5, RootMoveNumber - MultiPV + 1, depth, 6.0);
+                ss[0].reduction = reduction(RootMoveNumber - MultiPV + 1, LogLimit, BaseReduction, Gradient);
                 if (ss[0].reduction)
                 {
                     value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
@@ -1254,6 +1259,10 @@ namespace {
     CheckInfo ci(pos);
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
 
+    // Precalculate reduction parameters
+    double LogLimit, Gradient, BaseReduction = 0.5;
+    reduction_parameters(BaseReduction, 6.0, depth, LogLimit, Gradient);
+
     // Loop through all legal moves until no moves remain or a beta cutoff
     // occurs.
     while (   alpha < beta
@@ -1311,8 +1320,8 @@ namespace {
             && !captureOrPromotion
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
-        {
-            ss[ply].reduction = calculate_reduction(0.5, moveCount, depth, 6.0);
+        {            
+            ss[ply].reduction = reduction(moveCount, LogLimit, BaseReduction, Gradient);
             if (ss[ply].reduction)
             {
                 value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
@@ -1573,6 +1582,10 @@ namespace {
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
 
+    // Precalculate reduction parameters
+    double LogLimit, Gradient, BaseReduction = 0.5;
+    reduction_parameters(BaseReduction, 3.0, depth, LogLimit, Gradient);
+
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
@@ -1664,7 +1677,7 @@ namespace {
           Depth predictedDepth = newDepth;
 
           //FIXME: We are ignoring condition: depth >= 3*OnePly, BUG??
-          ss[ply].reduction = calculate_reduction(0.5, moveCount, depth, 3.0);
+          ss[ply].reduction = reduction(moveCount, LogLimit, BaseReduction, Gradient);
           if (ss[ply].reduction)
               predictedDepth -= ss[ply].reduction;
 
@@ -1700,7 +1713,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[ply]))
       {
-          ss[ply].reduction = calculate_reduction(0.5, moveCount, depth, 3.0);
+          ss[ply].reduction = reduction(moveCount, LogLimit, BaseReduction, Gradient);
           if (ss[ply].reduction)
           {
               value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
@@ -1984,6 +1997,10 @@ namespace {
 
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
 
+    // Precalculate reduction parameters
+    double LogLimit, Gradient, BaseReduction = 0.5;
+    reduction_parameters(BaseReduction, 3.0, sp->depth, LogLimit, Gradient);
+
     while (    lock_grab_bool(&(sp->lock))
            &&  sp->bestValue < sp->beta
            && !thread_should_stop(threadID)
@@ -2044,7 +2061,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = calculate_reduction(0.5, moveCount, sp->depth, 3.0);
+          ss[sp->ply].reduction = reduction(moveCount, LogLimit, BaseReduction, Gradient);
           if (ss[sp->ply].reduction)
           {
               value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
@@ -2124,6 +2141,10 @@ namespace {
     int moveCount;
     Move move;
 
+    // Precalculate reduction parameters
+    double LogLimit, Gradient, BaseReduction = 0.5;
+    reduction_parameters(BaseReduction, 6.0, sp->depth, LogLimit, Gradient);
+
     while (    lock_grab_bool(&(sp->lock))
            &&  sp->alpha < sp->beta
            && !thread_should_stop(threadID)
@@ -2157,7 +2178,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = calculate_reduction(0.5, moveCount, sp->depth, 6.0);
+          ss[sp->ply].reduction = reduction(moveCount, LogLimit, BaseReduction, Gradient);
           if (ss[sp->ply].reduction)
           {
               Value localAlpha = sp->alpha;
@@ -2684,19 +2705,34 @@ namespace {
       return defaultEval;
   }
 
-  // calculate_reduction() returns reduction in plies based on
-  // moveCount and depth. Reduction is always at least one ply.
 
-  Depth calculate_reduction(double baseReduction, int moveCount, Depth depth, double reductionInhibitor) {
+  // reduction_parameters() precalculates some parameters used later by reduction. Becasue
+  // floating point operations are involved we try to recalculate reduction at each move, but
+  // we do the most consuming computation only once per node.
 
-    double red = baseReduction + ln(moveCount) * ln(depth / 2) / reductionInhibitor;
+  void reduction_parameters(double baseReduction, double reductionInhibitor, Depth depth, double& logLimit, double& gradient)
+  {
+      // Precalculate some parameters to avoid to calculate the following formula for each move:
+      //
+      //    red = baseReduction + ln(moveCount) * ln(depth / 2) / reductionInhibitor;
+      //
+      logLimit = depth  > OnePly ? (1.0 - baseReduction) * reductionInhibitor / ln(depth / 2) : 1000.0;
+      gradient = ln(depth / 2) / reductionInhibitor;
+  }
 
-    if (red >= 1.0)
-        return Depth(int(floor(red * int(OnePly))));
-    else
+
+  // reduction() returns reduction in plies based on moveCount and depth.
+  // Reduction is always at least one ply.
+
+  Depth reduction(int moveCount, double logLimit, double baseReduction, double gradient) {    
+
+    if (ln(moveCount) < logLimit)
         return Depth(0);
 
+    double red = baseReduction + ln(moveCount) * gradient;
+    return Depth(int(floor(red * int(OnePly))));
   }
+
 
   // update_history() registers a good move that produced a beta-cutoff
   // in history and marks as failures all the other moves of that ply.
