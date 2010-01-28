@@ -2717,7 +2717,7 @@ namespace {
       //    red = baseReduction + ln(moveCount) * ln(depth / 2) / reductionInhibitor;
       //
       logLimit = depth  > OnePly ? (1.0 - baseReduction) * reductionInhibitor / ln(depth / 2) : 1000.0;
-      gradient = ln(depth / 2) / reductionInhibitor;
+      gradient = depth  > OnePly ? ln(depth / 2) / reductionInhibitor : 0.0;
   }
 
 
