@@ -94,7 +94,15 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   else if (d == Depth(0))
       phasePtr = QsearchWithChecksPhaseTable;
   else
+  {
       phasePtr = QsearchWithoutChecksPhaseTable;
+
+      // Skip TT move if is not a capture or a promotion, this avoids
+      // qsearch tree explosion due to a possible perpetual check or
+      // similar rare cases when TT table is full.
+      if (ttm != MOVE_NONE && !pos.move_is_capture_or_promotion(ttm))
+          searchTT = ttMoves[0].move = MOVE_NONE;
+  }
 
   phasePtr += !searchTT - 1;
   go_next_phase();
