@@ -1805,6 +1805,7 @@ namespace {
     const TTEntry* tte = NULL;
     int moveCount = 0;
     bool pvNode = (beta - alpha != 1);
+    Value oldAlpha = alpha;
 
     // Initialize, and make an early exit in case of an aborted search,
     // an instant draw, maximum ply reached, etc.
@@ -1948,14 +1949,14 @@ namespace {
 
     // Update transposition table
     Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
-    if (bestValue < beta)
+    if (bestValue <= oldAlpha)
     {
         // If bestValue isn't changed it means it is still the static evaluation
         // of the node, so keep this info to avoid a future evaluation() call.
         ValueType type = (bestValue == staticValue && !ei.futilityMargin ? VALUE_TYPE_EV_UP : VALUE_TYPE_UPPER);
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
     }
-    else
+    else if (bestValue >= beta)
     {
         move = ss[ply].pv[ply];
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move);
@@ -1964,6 +1965,8 @@ namespace {
         if (!pos.move_is_capture_or_promotion(move))
             update_killers(move, ss[ply]);
     }
+    else
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, d, ss[ply].pv[ply]);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
