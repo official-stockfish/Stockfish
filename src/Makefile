@@ -80,6 +80,7 @@ help:
 	@echo "Makefile options:"
 	@echo ""
 	@echo "make                >  Default: Compiler = g++"
+	@echo "make gcc-popcnt     >  Compiler = g++ + popcnt-support"
 	@echo "make icc            >  Compiler = icpc"
 	@echo "make icc-profile    >  Compiler = icpc + automatic pgo-build"
 	@echo "make icc-profile-popcnt >  Compiler = icpc + automatic pgo-build + popcnt-support"
@@ -107,6 +108,13 @@ gcc:
 	CXX='g++' \
 	CXXFLAGS="$(GCCFLAGS)" \
 	all
+
+gcc-popcnt:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS) -DUSE_POPCNT" \
+	all
+
 
 icc:
 	$(MAKE) \

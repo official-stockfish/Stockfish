@@ -53,6 +53,30 @@ inline bool cpu_has_popcnt() {
 
 #define POPCNT_INTRINSIC(x) __popcnt64(x)
 
+#elif defined(__GNUC__) && defined(USE_POPCNT) // Gcc compiler
+
+inline void __cpuid(unsigned int op,
+                    unsigned int *eax, unsigned int *ebx,
+                    unsigned int *ecx, unsigned int *edx)
+{
+  *eax = op;
+  *ecx = 0;
+  __asm__("cpuid" : "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
+                  : "0" (*eax), "2" (*ecx));
+}
+
+inline bool cpu_has_popcnt() {
+
+  unsigned int eax, ebx, ecx, edx;
+  __cpuid(1, &eax, &ebx, &ecx, &edx);
+  return (ecx >> 23) & 1;
+}
+
+#define POPCNT_INTRINSIC(x) ({ \
+   unsigned long __ret; \
+   __asm__("popcnt %1, %0" : "=r" (__ret) : "r" (x)); \
+   __ret; })
+
 #else // Safe fallback for unsupported compilers or when USE_POPCNT is disabled
 
 inline bool cpu_has_popcnt() { return false; }
