@@ -531,7 +531,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // We're ready to start thinking. Call the iterative deepening loop function
   Value v = id_loop(pos, searchMoves);
 
-
   if (UseLSNFiltering)
   {
       // Step 1. If this is sudden death game and our position is hopeless,
@@ -695,6 +694,7 @@ namespace {
     // searchMoves are verified, copied, scored and sorted
     RootMoveList rml(p, searchMoves);
 
+    // Handle special case of searching on a mate/stale position
     if (rml.move_count() == 0)
     {
         if (PonderSearch)
@@ -745,13 +745,11 @@ namespace {
             int prevDelta1 = IterationInfo[Iteration - 1].speculatedValue - IterationInfo[Iteration - 2].speculatedValue;
             int prevDelta2 = IterationInfo[Iteration - 2].speculatedValue - IterationInfo[Iteration - 3].speculatedValue;
 
-            int delta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
+            AspirationDelta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
+            AspirationDelta = (AspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-            delta = (delta + 7) / 8 * 8; // Round to match grainSize
-            AspirationDelta = delta;
-
-            alpha = Max(IterationInfo[Iteration - 1].value - delta, -VALUE_INFINITE);
-            beta  = Min(IterationInfo[Iteration - 1].value + delta,  VALUE_INFINITE);
+            alpha = Max(IterationInfo[Iteration - 1].value - AspirationDelta, -VALUE_INFINITE);
+            beta  = Min(IterationInfo[Iteration - 1].value + AspirationDelta,  VALUE_INFINITE);
         }
         else
         {
@@ -906,20 +904,22 @@ namespace {
 
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta) {
 
-    Value alpha = oldAlpha;
+    int64_t nodes;
+    Move move;
+    StateInfo st;
+    Depth depth, ext, newDepth;
     Value value;
     CheckInfo ci(pos);
     int researchCount = 0;
+    bool moveIsCheck, captureOrPromotion, dangerous;
+    Value alpha = oldAlpha;
     bool isCheck = pos.is_check();
 
     // Evaluate the position statically
     EvalInfo ei;
-    if (!isCheck)
-        ss[0].eval = evaluate(pos, ei, 0);
-    else
-        ss[0].eval = VALUE_NONE;
+    ss[0].eval = !isCheck ? evaluate(pos, ei, 0) : VALUE_NONE;
 
-    while(1) // Fail low loop
+    while (1) // Fail low loop
     {
 
     // Loop through all the moves in the root move list
@@ -933,10 +933,6 @@ namespace {
             rml.set_move_score(i, -VALUE_INFINITE);
             continue;
         }
-        int64_t nodes;
-        Move move;
-        StateInfo st;
-        Depth depth, ext, newDepth;
 
         RootMoveNumber = i + 1;
         FailHigh = false;
@@ -956,10 +952,9 @@ namespace {
                  << " currmovenumber " << RootMoveNumber << endl;
 
         // Decide search depth for this move
-        bool moveIsCheck = pos.move_is_check(move);
-        bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
-        bool dangerous;
-        depth =  (Iteration - 2) * OnePly + InitialDepth;
+        moveIsCheck = pos.move_is_check(move);
+        captureOrPromotion = pos.move_is_capture_or_promotion(move);
+        depth = (Iteration - 2) * OnePly + InitialDepth;
         ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
         newDepth = depth + ext;
 
@@ -1031,8 +1026,9 @@ namespace {
 
         pos.undo_move(move);
 
+        // Can we exit fail high loop ?
         if (AbortSearch || value < beta)
-            break; // We are not failing high
+            break;
 
         // We are failing high and going to do a research. It's important to update score
         // before research in case we run out of time while researching.
@@ -1065,7 +1061,7 @@ namespace {
                                  nodes_searched(), value, type, ss[0].pv) << endl;
         }
 
-        // Prepare for research
+        // Prepare for a research after a fail high, each time with a wider window
         researchCount++;
         beta = Min(beta + AspirationDelta * (1 << researchCount), VALUE_INFINITE);
 
@@ -1166,10 +1162,11 @@ namespace {
         FailLow = (alpha == oldAlpha);
     }
 
+    // Can we exit fail low loop ?
     if (AbortSearch || alpha > oldAlpha)
-        break; // End search, we are not failing low
+        break;
 
-    // Prepare for research
+    // Prepare for a research after a fail low, each time with a wider window
     researchCount++;
     alpha = Max(alpha - AspirationDelta * (1 << researchCount), -VALUE_INFINITE);
     oldAlpha = alpha;
@@ -1320,7 +1317,7 @@ namespace {
             && !captureOrPromotion
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
-        {            
+        {
             ss[ply].reduction = reduction(moveCount, LogLimit, BaseReduction, Gradient);
             if (ss[ply].reduction)
             {
@@ -2281,7 +2278,9 @@ namespace {
 
   RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) : count(0) {
 
+    SearchStack ss[PLY_MAX_PLUS_2];
     MoveStack mlist[MaxRootMoves];
+    StateInfo st;
     bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
 
     // Generate all legal moves
@@ -2299,16 +2298,13 @@ namespace {
             continue;
 
         // Find a quick score for the move
-        StateInfo st;
-        SearchStack ss[PLY_MAX_PLUS_2];
         init_ss_array(ss);
-
+        pos.do_move(cur->move, st);
         moves[count].move = cur->move;
-        pos.do_move(moves[count].move, st);
         moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
-        pos.undo_move(moves[count].move);
-        moves[count].pv[0] = moves[count].move;
+        moves[count].pv[0] = cur->move;
         moves[count].pv[1] = MOVE_NONE;
+        pos.undo_move(cur->move);
         count++;
     }
     sort();
@@ -2696,7 +2692,7 @@ namespace {
   // reduction() returns reduction in plies based on moveCount and depth.
   // Reduction is always at least one ply.
 
-  Depth reduction(int moveCount, float logLimit, float baseReduction, float gradient) {    
+  Depth reduction(int moveCount, float logLimit, float baseReduction, float gradient) {
 
     if (ln(moveCount) < logLimit)
         return Depth(0);
