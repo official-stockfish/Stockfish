@@ -55,9 +55,9 @@ TranspositionTable::~TranspositionTable() {
 
 void TranspositionTable::set_size(unsigned mbSize) {
 
-  assert(mbSize >= 4 && mbSize <= 2048);
+  assert(mbSize >= 4 && mbSize <= 8192);
 
-  unsigned newSize = 1024;
+  size_t newSize = 1024;
 
   // We store a cluster of ClusterSize number of TTEntry for each position
   // and newSize is the maximum number of storable positions.

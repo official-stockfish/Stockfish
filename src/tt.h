@@ -114,7 +114,7 @@ private:
   unsigned writes; // heavy SMP read/write access here
   unsigned char pad_after[64];
 
-  unsigned size;
+  size_t size;
   TTCluster* entries;
   uint8_t generation;
 };
