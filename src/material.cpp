@@ -374,7 +374,6 @@ EndgameFunctions::EndgameFunctions() {
   add<ScalingFunction<KBPPKB>  >("KBPPKB");
   add<ScalingFunction<KBPKN>   >("KBPKN");
   add<ScalingFunction<KRPPKRP> >("KRPPKRP");
-  add<ScalingFunction<KRPPKRP> >("KRPPKRP");
 }
 
 EndgameFunctions::~EndgameFunctions() {
