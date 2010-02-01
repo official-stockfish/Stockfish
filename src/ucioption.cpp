@@ -292,10 +292,28 @@ void set_option_value(const string& name, const string& value) {
   else if (v == "false")
       v = "0";
 
-  if (options.find(name) != options.end())
-      options[name].currentValue = v;
-  else
+  if (options.find(name) == options.end())
+  {
       std::cout << "No such option: " << name << std::endl;
+      return;
+  }
+
+  // Normally it's up to the GUI to check for option's limits,
+  // but we could receive the new value directly from the user
+  // by teminal window. So let's check the bounds anyway.
+  Option& opt = options[name];
+
+  if (opt.type == CHECK && v != "0" && v != "1")
+      return;
+
+  else if (opt.type == SPIN)
+  {
+      int val = atoi(v.c_str());
+      if (val < opt.minValue || val > opt.maxValue)
+          return;
+  }
+
+  opt.currentValue = v;
 }
 
 
