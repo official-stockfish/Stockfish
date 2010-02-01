@@ -2810,8 +2810,6 @@ namespace {
       // If this thread has been assigned work, launch a search
       if (Threads[threadID].workIsWaiting)
       {
-          assert(!Threads[threadID].idle);
-
           Threads[threadID].workIsWaiting = false;
           if (Threads[threadID].splitPoint->pvNode)
               sp_search_pv(Threads[threadID].splitPoint, threadID);
