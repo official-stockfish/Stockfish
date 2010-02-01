@@ -95,7 +95,7 @@ class TranspositionTable {
 public:
   TranspositionTable();
   ~TranspositionTable();
-  void set_size(unsigned mbSize);
+  void set_size(size_t mbSize);
   void clear();
   void store(const Key posKey, Value v, ValueType type, Depth d, Move m);
   TTEntry* retrieve(const Key posKey) const;
@@ -114,7 +114,7 @@ private:
   unsigned writes; // heavy SMP read/write access here
   unsigned char pad_after[64];
 
-  unsigned size;
+  size_t size;
   TTCluster* entries;
   uint8_t generation;
 };
