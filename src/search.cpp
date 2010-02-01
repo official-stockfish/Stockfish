@@ -1821,7 +1821,7 @@ namespace {
     if (bestValue >= beta)
     {
         // Store the score to avoid a future costly evaluation() call
-        if (!isCheck && !tte && ei.futilityMargin == 0)
+        if (!isCheck && !tte && ei.futilityMargin[pos.side_to_move()] == 0)
             TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EV_LO, Depth(-127*OnePly), MOVE_NONE);
 
         return bestValue;
@@ -1840,7 +1840,7 @@ namespace {
     MovePicker mp = MovePicker(pos, ttMove, deepChecks ? Depth(0) : depth, H);
     CheckInfo ci(pos);
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
-    futilityBase = staticValue + FutilityMarginQS + ei.futilityMargin;
+    futilityBase = staticValue + FutilityMarginQS + ei.futilityMargin[pos.side_to_move()];
 
     // Loop through the moves until no moves remain or a beta cutoff
     // occurs.
@@ -1920,7 +1920,7 @@ namespace {
     {
         // If bestValue isn't changed it means it is still the static evaluation
         // of the node, so keep this info to avoid a future evaluation() call.
-        ValueType type = (bestValue == staticValue && !ei.futilityMargin ? VALUE_TYPE_EV_UP : VALUE_TYPE_UPPER);
+        ValueType type = (bestValue == staticValue && !ei.futilityMargin[pos.side_to_move()] ? VALUE_TYPE_EV_UP : VALUE_TYPE_UPPER);
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
     }
     else if (bestValue >= beta)

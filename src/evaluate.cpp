@@ -860,11 +860,8 @@ namespace {
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
       Score v = apply_weight(make_score(SafetyTable[attackUnits], 0), WeightKingSafety[Us]);
-
       ei.value -= Sign[Us] * v;
-
-      if (Us == pos.side_to_move())
-          ei.futilityMargin += mg_value(v);
+      ei.futilityMargin[Us] += mg_value(v);
     }
   }
 

@@ -47,7 +47,7 @@ class Position;
 
 struct EvalInfo {
 
-  EvalInfo() : futilityMargin(Value(0)) {}
+  EvalInfo() { futilityMargin[0] = futilityMargin[1] = Value(0); }
 
   // Middle game and endgame evaluations
   Score value;
@@ -96,8 +96,8 @@ struct EvalInfo {
   Score mobility;
 
   // Extra futility margin. This is added to the standard futility margin
-  // in the quiescence search.
-  Value futilityMargin;
+  // in the quiescence search. One for each color.
+  Value futilityMargin[2];
 };
 
 
