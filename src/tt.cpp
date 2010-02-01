@@ -53,7 +53,7 @@ TranspositionTable::~TranspositionTable() {
 /// TranspositionTable::set_size sets the size of the transposition table,
 /// measured in megabytes.
 
-void TranspositionTable::set_size(unsigned mbSize) {
+void TranspositionTable::set_size(size_t mbSize) {
 
   assert(mbSize >= 4 && mbSize <= 8192);
 

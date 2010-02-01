@@ -95,7 +95,7 @@ class TranspositionTable {
 public:
   TranspositionTable();
   ~TranspositionTable();
-  void set_size(unsigned mbSize);
+  void set_size(size_t mbSize);
   void clear();
   void store(const Key posKey, Value v, ValueType type, Depth d, Move m);
   TTEntry* retrieve(const Key posKey) const;
