@@ -748,7 +748,7 @@ namespace {
             break; // Value cannot be trusted. Break out immediately!
 
         //Save info about search result
-        ValueByIterationInfo[Iteration] = value;
+        ValueByIteration[Iteration] = value;
 
         // Drop the easy move if it differs from the new best move
         if (ss[0].pv[0] != EasyMove)
