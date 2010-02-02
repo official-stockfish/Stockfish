@@ -53,26 +53,6 @@ namespace {
 
   /// Types
 
-  // IterationInfoType stores search results for each iteration
-  //
-  // Because we use relatively small (dynamic) aspiration window,
-  // there happens many fail highs and fail lows in root. And
-  // because we don't do researches in those cases, "value" stored
-  // here is not necessarily exact. Instead in case of fail high/low
-  // we guess what the right value might be and store our guess
-  // as a "speculated value" and then move on. Speculated values are
-  // used just to calculate aspiration window width, so also if are
-  // not exact is not big a problem.
-
-  struct IterationInfoType {
-
-    IterationInfoType(Value v = Value(0), Value sv = Value(0))
-    : value(v), speculatedValue(sv) {}
-
-    Value value, speculatedValue;
-  };
-
-
   // The BetaCounterType class is used to order moves at ply one.
   // Apart for the first one that has its score, following moves
   // normally have score -VALUE_INFINITE, so are ordered according
@@ -213,7 +193,7 @@ namespace {
   BetaCounterType BetaCounter;
 
   // Scores and number of times the best move changed for each iteration
-  IterationInfoType IterationInfo[PLY_MAX_PLUS_2];
+  Value ValueByIteration[PLY_MAX_PLUS_2];
   int BestMoveChangesByIteration[PLY_MAX_PLUS_2];
 
   // Search window management
@@ -716,7 +696,7 @@ namespace {
     TT.new_search();
     H.clear();
     init_ss_array(ss);
-    IterationInfo[1] = IterationInfoType(rml.get_move_score(0), rml.get_move_score(0));
+    ValueByIteration[1] = rml.get_move_score(0);
     Iteration = 1;
 
     // Is one move significantly better than others after initial scoring ?
@@ -740,16 +720,16 @@ namespace {
         // Calculate dynamic search window based on previous iterations
         Value alpha, beta;
 
-        if (MultiPV == 1 && Iteration >= 6 && abs(IterationInfo[Iteration - 1].value) < VALUE_KNOWN_WIN)
+        if (MultiPV == 1 && Iteration >= 6 && abs(ValueByIteration[Iteration - 1]) < VALUE_KNOWN_WIN)
         {
-            int prevDelta1 = IterationInfo[Iteration - 1].speculatedValue - IterationInfo[Iteration - 2].speculatedValue;
-            int prevDelta2 = IterationInfo[Iteration - 2].speculatedValue - IterationInfo[Iteration - 3].speculatedValue;
+            int prevDelta1 = ValueByIteration[Iteration - 1] - ValueByIteration[Iteration - 2];
+            int prevDelta2 = ValueByIteration[Iteration - 2] - ValueByIteration[Iteration - 3];
 
             AspirationDelta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
             AspirationDelta = (AspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-            alpha = Max(IterationInfo[Iteration - 1].value - AspirationDelta, -VALUE_INFINITE);
-            beta  = Min(IterationInfo[Iteration - 1].value + AspirationDelta,  VALUE_INFINITE);
+            alpha = Max(ValueByIteration[Iteration - 1] - AspirationDelta, -VALUE_INFINITE);
+            beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
         }
         else
         {
@@ -768,32 +748,7 @@ namespace {
             break; // Value cannot be trusted. Break out immediately!
 
         //Save info about search result
-        Value speculatedValue;
-        bool fHigh = false;
-        bool fLow = false;
-        Value delta = value - IterationInfo[Iteration - 1].value;
-
-        if (value >= beta)
-        {
-            assert(delta > 0);
-
-            fHigh = true;
-            speculatedValue = value + delta;
-            BestMoveChangesByIteration[Iteration] += 2; // Allocate more time
-        }
-        else if (value <= alpha)
-        {
-            assert(value == alpha);
-            assert(delta < 0);
-
-            fLow = true;
-            speculatedValue = value + delta;
-            BestMoveChangesByIteration[Iteration] += 3; // Allocate more time
-        } else
-            speculatedValue = value;
-
-        speculatedValue = Min(Max(speculatedValue, -VALUE_INFINITE), VALUE_INFINITE);
-        IterationInfo[Iteration] = IterationInfoType(value, speculatedValue);
+        ValueByIterationInfo[Iteration] = value;
 
         // Drop the easy move if it differs from the new best move
         if (ss[0].pv[0] != EasyMove)
@@ -813,15 +768,13 @@ namespace {
 
             // Stop search early when the last two iterations returned a mate score
             if (  Iteration >= 6
-                && abs(IterationInfo[Iteration].value) >= abs(VALUE_MATE) - 100
-                && abs(IterationInfo[Iteration-1].value) >= abs(VALUE_MATE) - 100)
+                && abs(ValueByIteration[Iteration]) >= abs(VALUE_MATE) - 100
+                && abs(ValueByIteration[Iteration-1]) >= abs(VALUE_MATE) - 100)
                 stopSearch = true;
 
             // Stop search early if one move seems to be much better than the rest
             int64_t nodes = nodes_searched();
             if (   Iteration >= 8
-                && !fLow
-                && !fHigh
                 && EasyMove == ss[0].pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
                        && current_search_time() > MaxSearchTime / 16)
@@ -983,7 +936,7 @@ namespace {
             // for time managment: When Problem is true, we try to complete the
             // current iteration before playing a move.
             Problem = (   Iteration >= 2
-                       && value <= IterationInfo[Iteration - 1].value - ProblemMargin);
+                       && value <= ValueByIteration[Iteration - 1] - ProblemMargin);
 
             if (Problem && StopOnPonderhit)
                 StopOnPonderhit = false;
@@ -1132,7 +1085,7 @@ namespace {
 
                 // Reset the global variable Problem to false if the value isn't too
                 // far below the final value from the last iteration.
-                if (value > IterationInfo[Iteration - 1].value - NoProblemMargin)
+                if (value > ValueByIteration[Iteration - 1] - NoProblemMargin)
                     Problem = false;
             }
             else // MultiPV > 1
@@ -1366,7 +1319,7 @@ namespace {
           // (from the computer's point of view) since the previous iteration.
           if (   ply == 1
               && Iteration >= 2
-              && -value <= IterationInfo[Iteration-1].value - ProblemMargin)
+              && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
               Problem = true;
       }
 
@@ -2224,7 +2177,7 @@ namespace {
               // (from the computer's point of view) since the previous iteration.
               if (   sp->ply == 1
                      && Iteration >= 2
-                     && -value <= IterationInfo[Iteration-1].value - ProblemMargin)
+                     && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
                   Problem = true;
           }
           lock_release(&(sp->lock));
