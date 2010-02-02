@@ -42,7 +42,7 @@ History::History() { clear(); }
 
 void History::clear() {
   memset(history, 0, 2 * 8 * 64 * sizeof(int));
-  memset(maxStaticValueDelta, 0, 16 * 64 * 64 * sizeof(int));
+  memset(maxStaticValueDelta, 0, 2 * 8 * 64 * sizeof(int));
 }
 
 
@@ -101,15 +101,15 @@ int History::move_ordering_score(Piece p, Square to) const {
 /// gain of a move given the delta of the static position evaluations
 /// before and after the move.
 
-void History::set_gain(Piece p, Square from, Square to, Value delta)
+void History::set_gain(Piece p, Square to, Value delta)
 {
-  if (delta >= maxStaticValueDelta[p][from][to])
-      maxStaticValueDelta[p][from][to] = delta;
+  if (delta >= maxStaticValueDelta[p][to])
+      maxStaticValueDelta[p][to] = delta;
   else
-      maxStaticValueDelta[p][from][to]--;
+      maxStaticValueDelta[p][to]--;
 }
 
-Value History::gain(Piece p, Square from, Square to) const
+Value History::gain(Piece p, Square to) const
 {
-  return Value(maxStaticValueDelta[p][from][to]);
+  return Value(maxStaticValueDelta[p][to]);
 }

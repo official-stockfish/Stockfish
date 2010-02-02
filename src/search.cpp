@@ -1607,7 +1607,7 @@ namespace {
               if (predictedDepth >= OnePly)
                   preFutilityValueMargin = FutilityMargins[int(predictedDepth)];
 
-              preFutilityValueMargin += H.gain(pos.piece_on(move_from(move)), move_from(move), move_to(move)) + 45;
+              preFutilityValueMargin += H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
 
               futilityValueScaled = ss[ply].eval + preFutilityValueMargin - moveCount * IncrementalFutilityMargin;
 
@@ -2704,7 +2704,7 @@ namespace {
         && pos.captured_piece() == NO_PIECE_TYPE
         && !move_is_castle(m)
         && !move_is_promotion(m))
-        H.set_gain(pos.piece_on(move_to(m)), move_from(m), move_to(m), -(before + after));
+        H.set_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
 
