@@ -1492,8 +1492,9 @@ namespace {
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
-    // Do a "stand pat". If we are above beta by a good margin then
-    // return immediately.
+    // Static null move pruning. We're betting that the opponent doesn't have
+    // a move that will reduce the score by more than FutilityMargins[int(depth)]
+    // if we do a null move.
     if (  !isCheck
         && allowNullmove
         && depth < RazorDepth
