@@ -198,7 +198,7 @@ namespace {
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool AbortSearch, Quit;
-  bool FailLow;
+  bool AspirationFailLow;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -340,7 +340,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   // Initialize global search variables
   Idle = StopOnPonderhit = AbortSearch = Quit = false;
-  FailLow = false;
+  AspirationFailLow = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
@@ -1078,9 +1078,9 @@ namespace {
 
             assert(alpha >= oldAlpha);
 
-            FailLow = (alpha == oldAlpha);
+            AspirationFailLow = (alpha == oldAlpha);
 
-            if (FailLow && StopOnPonderhit)
+            if (AspirationFailLow && StopOnPonderhit)
                 StopOnPonderhit = false;
         }
 
@@ -2683,7 +2683,7 @@ namespace {
         return;
 
     bool stillAtFirstMove =    RootMoveNumber == 1
-                           && !FailLow
+                           && !AspirationFailLow
                            &&  t > MaxSearchTime + ExtraSearchTime;
 
     bool noMoreTime =   t > AbsoluteMaxSearchTime
@@ -2706,7 +2706,7 @@ namespace {
     PonderSearch = false;
 
     bool stillAtFirstMove =    RootMoveNumber == 1
-                           && !FailLow
+                           && !AspirationFailLow
                            &&  t > MaxSearchTime + ExtraSearchTime;
 
     bool noMoreTime =   t > AbsoluteMaxSearchTime
