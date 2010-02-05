@@ -86,8 +86,8 @@ inline void insertion_sort(T* firstMove, T* lastMove)
         }
 }
 
-// Our dedicated sort in range [firstMove, lastMove), it is well
-// tuned for non-captures where we have a lot of zero scored moves.
+// Our dedicated sort in range [firstMove, lastMove), first splits
+// positive scores from ramining then order seaprately the two sets.
 template<typename T>
 inline void sort_moves(T* firstMove, T* lastMove)
 {
@@ -114,28 +114,8 @@ inline void sort_moves(T* firstMove, T* lastMove)
 
     } while (p != d);
 
-    // Sort positives
+    // Sort positives and non-positives separately
     insertion_sort<T>(firstMove, p);
-
-    d = lastMove;
-    p--;
-
-    // Split zero vs negatives
-    do {
-        while ((++p)->score == 0);
-
-        if (p != d)
-        {
-            while (--d != p && d->score < 0);
-
-            tmp = *p;
-            *p = *d;
-            *d = tmp;
-        }
-
-    } while (p != d);
-
-    // Sort negatives
     insertion_sort<T>(p, lastMove);
 }
 
