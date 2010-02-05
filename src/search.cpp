@@ -2771,15 +2771,8 @@ namespace {
                            && !FailLow
                            &&  t > MaxSearchTime + ExtraSearchTime;
 
-    bool noProblemFound =   !FailHigh
-                         && !FailLow
-                         && !fail_high_ply_1()
-                         && !Problem
-                         &&  t > 6 * (MaxSearchTime + ExtraSearchTime);
-
     bool noMoreTime =   t > AbsoluteMaxSearchTime
-                     || stillAtFirstMove //FIXME: We are not checking any problem flags, BUG?
-                     || noProblemFound;
+                     || stillAtFirstMove;
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
@@ -2801,15 +2794,8 @@ namespace {
                            && !FailLow
                            &&  t > MaxSearchTime + ExtraSearchTime;
 
-    bool noProblemFound =   !FailHigh
-                         && !FailLow
-                         && !fail_high_ply_1()
-                         && !Problem
-                         &&  t > 6 * (MaxSearchTime + ExtraSearchTime);
-
     bool noMoreTime =   t > AbsoluteMaxSearchTime
-                     || stillAtFirstMove
-                     || noProblemFound;
+                     || stillAtFirstMove;
 
     if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))
         AbortSearch = true;
