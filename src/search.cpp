@@ -276,7 +276,6 @@ namespace {
   void update_killers(Move m, SearchStack& ss);
   void update_gains(const Position& pos, Move move, Value before, Value after);
 
-  bool fail_high_ply_1();
   int current_search_time();
   int nps();
   void poll();
@@ -380,7 +379,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   for (int i = 0; i < THREAD_MAX; i++)
   {
       Threads[i].nodes = 0ULL;
-      Threads[i].failHighPly1 = false;
   }
 
   if (button_was_pressed("New Game"))
@@ -1276,19 +1274,7 @@ namespace {
             ss[ply].reduction = Depth(0);
             value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
             if (value > alpha && value < beta)
-            {
-                // When the search fails high at ply 1 while searching the first
-                // move at the root, set the flag failHighPly1. This is used for
-                // time managment:  We don't want to stop the search early in
-                // such cases, because resolving the fail high at ply 1 could
-                // result in a big drop in score at the root.
-                if (ply == 1 && RootMoveNumber == 1)
-                    Threads[threadID].failHighPly1 = true;
-
-                // A fail high occurred. Re-search at full window (pv search)
                 value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
-                Threads[threadID].failHighPly1 = false;
-          }
         }
       }
       pos.undo_move(move);
@@ -2098,14 +2084,6 @@ namespace {
 
           if (value > localAlpha && value < sp->beta)
           {
-              // When the search fails high at ply 1 while searching the first
-              // move at the root, set the flag failHighPly1. This is used for
-              // time managment: We don't want to stop the search early in
-              // such cases, because resolving the fail high at ply 1 could
-              // result in a big drop in score at the root.
-              if (sp->ply == 1 && RootMoveNumber == 1)
-                  Threads[threadID].failHighPly1 = true;
-
               // If another thread has failed high then sp->alpha has been increased
               // to be higher or equal then beta, if so, avoid to start a PV search.
               localAlpha = sp->alpha;
@@ -2113,8 +2091,6 @@ namespace {
                   value = -search_pv(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, threadID);
               else
                   assert(thread_should_stop(threadID));
-
-              Threads[threadID].failHighPly1 = false;
         }
       }
       pos.undo_move(move);
@@ -2657,20 +2633,6 @@ namespace {
         && !move_is_castle(m)
         && !move_is_promotion(m))
         H.set_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
-  }
-
-
-  // fail_high_ply_1() checks if some thread is currently resolving a fail
-  // high at ply 1 at the node below the first root node.  This information
-  // is used for time management.
-
-  bool fail_high_ply_1() {
-
-    for (int i = 0; i < ActiveThreads; i++)
-        if (Threads[i].failHighPly1)
-            return true;
-
-    return false;
   }
 
 

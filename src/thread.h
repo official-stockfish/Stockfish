@@ -68,7 +68,6 @@ struct Thread {
   volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
-  bool failHighPly1;
   volatile bool stop;
   volatile bool running;
   volatile bool idle;
