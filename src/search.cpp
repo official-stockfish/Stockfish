@@ -3026,7 +3026,7 @@ namespace {
     for (int i = 0; i < ActiveThreads; i++)
         if (i == master || splitPoint->slaves[i])
         {
-            memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 3 * sizeof(SearchStack));
+            memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 4 * sizeof(SearchStack));
             Threads[i].workIsWaiting = true; // This makes the slave to exit from idle_loop()
         }
 
