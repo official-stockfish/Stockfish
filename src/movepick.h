@@ -64,7 +64,7 @@ private:
   MoveStack ttMoves[2], killers[2];
   int phase;
   const uint8_t* phasePtr;
-  MoveStack *curMove, *lastMove, *lastBadCapture;
+  MoveStack *curMove, *lastMove, *lastGoodNonCapture, *lastBadCapture;
   Bitboard pinned;
   MoveStack moves[256], badCaptures[64];
 };

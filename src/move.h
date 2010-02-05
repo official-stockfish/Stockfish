@@ -89,7 +89,7 @@ inline void insertion_sort(T* firstMove, T* lastMove)
 // Our dedicated sort in range [firstMove, lastMove), first splits
 // positive scores from ramining then order seaprately the two sets.
 template<typename T>
-inline void sort_moves(T* firstMove, T* lastMove)
+inline void sort_moves(T* firstMove, T* lastMove, T** lastPositive)
 {
     T tmp;
     T *p, *d;
@@ -114,9 +114,9 @@ inline void sort_moves(T* firstMove, T* lastMove)
 
     } while (p != d);
 
-    // Sort positives and non-positives separately
+    // Sort just positive scored moves, remaining only when we get there
     insertion_sort<T>(firstMove, p);
-    insertion_sort<T>(p, lastMove);
+    *lastPositive = p;
 }
 
 // Picks up the best move in range [curMove, lastMove), one per cycle.

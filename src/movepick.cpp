@@ -136,7 +136,7 @@ void MovePicker::go_next_phase() {
   case PH_NONCAPTURES:
       lastMove = generate_noncaptures(pos, moves);
       score_noncaptures();
-      sort_moves(moves, lastMove);
+      sort_moves(moves, lastMove, &lastGoodNonCapture);
       return;
 
   case PH_BAD_CAPTURES:
@@ -305,6 +305,11 @@ Move MovePicker::get_next_move() {
               break;
 
           case PH_NONCAPTURES:
+
+              // Sort negative scored moves only when we get there
+              if (curMove == lastGoodNonCapture)
+                  insertion_sort(lastGoodNonCapture, lastMove);
+
               move = (curMove++)->move;
               if (   move != ttMoves[0].move
                   && move != ttMoves[1].move
