@@ -209,7 +209,7 @@ namespace {
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool AbortSearch, Quit;
-  bool FailHigh, FailLow, Problem;
+  bool FailLow, Problem;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -352,7 +352,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   // Initialize global search variables
   Idle = StopOnPonderhit = AbortSearch = Quit = false;
-  FailHigh = FailLow = Problem = false;
+  FailLow = Problem = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
@@ -896,7 +896,6 @@ namespace {
             }
 
             RootMoveNumber = i + 1;
-            FailHigh = false;
 
             // Save the current node count before the move is searched
             nodes = nodes_searched();
@@ -970,14 +969,7 @@ namespace {
                         value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
 
                         if (value > alpha)
-                        {
-                            // Fail high! Set the boolean variable FailHigh to true, and
-                            // re-search the move using a PV search. The variable FailHigh
-                            // is used for time managment: We try to avoid aborting the
-                            // search prematurely during a fail high research.
-                            FailHigh = true;
                             value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
-                        }
                     }
                 }
 
