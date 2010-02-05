@@ -142,17 +142,6 @@ namespace {
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
 
-  // Problem margin. If the score of the first move at iteration N+1 has
-  // dropped by more than this since iteration N, the boolean variable
-  // "Problem" is set to true, which will make the program spend some extra
-  // time looking for a better move.
-  const Value ProblemMargin = Value(0x28);
-
-  // No problem margin. If the boolean "Problem" is true, and a new move
-  // is found at the root which is less than NoProblemMargin worse than the
-  // best move from the previous iteration, Problem is set back to false.
-  const Value NoProblemMargin = Value(0x14);
-
   // Null move margin. A null move search will not be done if the static
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x200);
@@ -209,7 +198,7 @@ namespace {
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool AbortSearch, Quit;
-  bool FailLow, Problem;
+  bool FailLow;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -351,7 +340,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   // Initialize global search variables
   Idle = StopOnPonderhit = AbortSearch = Quit = false;
-  FailLow = Problem = false;
+  FailLow = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
@@ -760,8 +749,6 @@ namespace {
         if (ss[0].pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
-        Problem = false;
-
         if (UseTimeManagement)
         {
             // Time to stop?
@@ -931,16 +918,6 @@ namespace {
                         alpha = -VALUE_INFINITE;
 
                     value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
-
-                    // If the value has dropped a lot compared to the last iteration,
-                    // set the boolean variable Problem to true. This variable is used
-                    // for time managment: When Problem is true, we try to complete the
-                    // current iteration before playing a move.
-                    Problem = (   Iteration >= 2
-                               && value <= ValueByIteration[Iteration - 1] - ProblemMargin);
-
-                    if (Problem && StopOnPonderhit)
-                        StopOnPonderhit = false;
                 }
                 else
                 {
@@ -1076,11 +1053,6 @@ namespace {
                     }
                     if (value > alpha)
                         alpha = value;
-
-                    // Reset the global variable Problem to false if the value isn't too
-                    // far below the final value from the last iteration.
-                    if (value > ValueByIteration[Iteration - 1] - NoProblemMargin)
-                        Problem = false;
                 }
                 else // MultiPV > 1
                 {
@@ -1107,6 +1079,9 @@ namespace {
             assert(alpha >= oldAlpha);
 
             FailLow = (alpha == oldAlpha);
+
+            if (FailLow && StopOnPonderhit)
+                StopOnPonderhit = false;
         }
 
         // Can we exit fail low loop ?
@@ -1292,13 +1267,6 @@ namespace {
               if (value == value_mate_in(ply + 1))
                   ss[ply].mateKiller = move;
           }
-          // If we are at ply 1, and we are searching the first root move at
-          // ply 0, set the 'Problem' variable if the score has dropped a lot
-          // (from the computer's point of view) since the previous iteration.
-          if (   ply == 1
-              && Iteration >= 2
-              && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
-              Problem = true;
       }
 
       // Split?
@@ -2128,13 +2096,6 @@ namespace {
                   if (value == value_mate_in(sp->ply + 1))
                       ss[sp->ply].mateKiller = move;
               }
-              // If we are at ply 1, and we are searching the first root move at
-              // ply 0, set the 'Problem' variable if the score has dropped a lot
-              // (from the computer's point of view) since the previous iteration.
-              if (   sp->ply == 1
-                     && Iteration >= 2
-                     && -value <= ValueByIteration[Iteration-1] - ProblemMargin)
-                  Problem = true;
           }
           lock_release(&(sp->lock));
       }
