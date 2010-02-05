@@ -240,7 +240,7 @@ void MovePicker::score_evasions_or_checks() {
   {
       m = cur->move;
       if ((seeScore = pos.see_sign(m)) < 0)
-          cur->score = seeScore;
+          cur->score = seeScore - HistoryMax; // Be sure are at the bottom
       else if (pos.move_is_capture(m))
           cur->score =  pos.midgame_value_of_piece_on(move_to(m))
                       - pos.type_of_piece_on(move_from(m)) + HistoryMax;
