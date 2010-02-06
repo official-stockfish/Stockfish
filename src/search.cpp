@@ -1473,7 +1473,7 @@ namespace {
     {
         search(pos, ss, beta, Min(depth/2, depth-2*OnePly), ply, false, threadID);
         ttMove = ss[ply].pv[ply];
-        tte = TT.retrieve(pos.get_key());
+        tte = TT.retrieve(posKey);
     }
 
     // Initialize a MovePicker object for the current position, and prepare
