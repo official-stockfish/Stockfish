@@ -351,7 +351,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   UseTimeManagement = !ExactMaxTime && !MaxDepth && !MaxNodes && !InfiniteSearch;
 
   // Look for a book move, only during games, not tests
-  if (UseTimeManagement && !ponder && get_option_value_bool("OwnBook"))
+  if (UseTimeManagement && get_option_value_bool("OwnBook"))
   {
       Move bookMove;
       if (get_option_value_string("Book File") != OpeningBook.file_name())
@@ -360,6 +360,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       bookMove = OpeningBook.get_move(pos);
       if (bookMove != MOVE_NONE)
       {
+          if (PonderSearch)
+              wait_for_stop_or_ponderhit();
+
           cout << "bestmove " << bookMove << endl;
           return true;
       }
