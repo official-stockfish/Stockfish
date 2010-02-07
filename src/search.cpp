@@ -126,9 +126,6 @@ namespace {
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly;
 
-  // Depth limit for selective search
-  const Depth SelectiveDepth = 7 * OnePly;
-
   // Use internal iterative deepening?
   const bool UseIIDAtPVNodes = true;
   const bool UseIIDAtNonPVNodes = true;
@@ -149,15 +146,6 @@ namespace {
   // If the TT move is at least SingleReplyMargin better then the
   // remaining ones we will extend it.
   const Value SingleReplyMargin = Value(0x20);
-
-  // Margins for futility pruning in the quiescence search, and at frontier
-  // and near frontier nodes.
-  const Value FutilityMarginQS = Value(0x80);
-
-  Value FutilityMargins[2 * PLY_MAX_PLUS_2]; // Initialized at startup.
-
-  // Each move futility margin is decreased
-  const Value IncrementalFutilityMargin = Value(0x8);
 
   // Depth limit for razoring
   const Depth RazorDepth = 4 * OnePly;
@@ -206,6 +194,12 @@ namespace {
   // Log file
   bool UseLogFile;
   std::ofstream LogFile;
+
+  // Futility lookup tables and their getter functions
+  const Value FutilityMarginQS = Value(0x80);
+  int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
+
+  inline Value futility_margin(Depth d, int mn) { return (Value) (d < 14? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2*VALUE_INFINITE); }
 
   // Reduction lookup tables and their getter functions
   // Initialized at startup
@@ -554,12 +548,11 @@ void init_threads() {
       }
 
   // Init futility margins array
-  FutilityMargins[0] = FutilityMargins[1] = Value(0);
-
-  for (i = 2; i < 2 * PLY_MAX_PLUS_2; i++)
-  {
-      FutilityMargins[i] = Value(112 * bitScanReverse32(i * i / 2)); // FIXME: test using log instead of BSR
-  }
+  for (i = 0; i < 14; i++) // i == depth (OnePly = 2)
+      for (int j = 0; j < 64; j++) // j == moveNumber
+      {
+          FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j; // FIXME: test using log instead of BSR
+      }
 
   for (i = 0; i < THREAD_MAX; i++)
       Threads[i].activeSplitPoints = 0;
@@ -1389,7 +1382,7 @@ namespace {
         }
 
         ss[ply].eval = staticValue;
-        futilityValue = staticValue + FutilityMargins[int(depth)]; //FIXME: Remove me, only for split
+        futilityValue = staticValue + futility_margin(depth, 0); //FIXME: Remove me, only for split
         staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
@@ -1400,8 +1393,8 @@ namespace {
     if (  !isCheck
         && allowNullmove
         && depth < RazorDepth
-        && staticValue - FutilityMargins[int(depth)] >= beta)
-        return staticValue - FutilityMargins[int(depth)];
+        && staticValue - futility_margin(depth, 0) >= beta)
+        return staticValue - futility_margin(depth, 0);
 
     // Null move search
     if (    allowNullmove
@@ -1539,29 +1532,14 @@ namespace {
               continue;
 
           // Value based pruning
-          Depth predictedDepth = newDepth;
+          Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); //FIXME: We are ignoring condition: depth >= 3*OnePly, BUG??
+          futilityValueScaled = ss[ply].eval + futility_margin(predictedDepth, moveCount) + H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
 
-          //FIXME: We are ignoring condition: depth >= 3*OnePly, BUG??
-          ss[ply].reduction = nonpv_reduction(depth, moveCount);
-          if (ss[ply].reduction)
-              predictedDepth -= ss[ply].reduction;
-
-          if (predictedDepth < SelectiveDepth)
+          if (futilityValueScaled < beta)
           {
-              int preFutilityValueMargin = 0;
-              if (predictedDepth >= OnePly)
-                  preFutilityValueMargin = FutilityMargins[int(predictedDepth)];
-
-              preFutilityValueMargin += H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
-
-              futilityValueScaled = ss[ply].eval + preFutilityValueMargin - moveCount * IncrementalFutilityMargin;
-
-              if (futilityValueScaled < beta)
-              {
-                  if (futilityValueScaled > bestValue)
-                      bestValue = futilityValueScaled;
-                  continue;
-              }
+              if (futilityValueScaled > bestValue)
+                  bestValue = futilityValueScaled;
+              continue;
           }
       }
 
@@ -1860,7 +1838,7 @@ namespace {
     Move move;
     int moveCount;
     bool isCheck = pos.is_check();
-    bool useFutilityPruning =     sp->depth < SelectiveDepth
+    bool useFutilityPruning =     sp->depth < 7 * OnePly //FIXME: sync with search
                               && !isCheck;
 
     const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
@@ -1897,7 +1875,7 @@ namespace {
               continue;
 
           // Value based pruning
-          Value futilityValueScaled = sp->futilityValue - moveCount * IncrementalFutilityMargin;
+          Value futilityValueScaled = sp->futilityValue - moveCount * 8; //FIXME: sync with search
 
           if (futilityValueScaled < sp->beta)
           {
