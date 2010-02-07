@@ -164,8 +164,8 @@ namespace {
   int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
   int FutilityMoveCountArray[32]; // [depth]
 
-  inline Value futility_margin(Depth d, int mn) { return (Value) (d < 14? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2*VALUE_INFINITE); }
-  inline int futility_move_count(Depth d) { return (d < 32? FutilityMoveCountArray[d] : 512); }
+  inline Value futility_margin(Depth d, int mn) { return Value(d < 7*OnePly ? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
+  inline int futility_move_count(Depth d) { return d < 16*OnePly ? FutilityMoveCountArray[d] : 512; }
 
   /// Variables initialized by UCI options
 
@@ -527,8 +527,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 }
 
 
-/// init_search() is called during startup. It initializes various
-/// lookup tables.
+/// init_search() is called during startup. It initializes various lookup tables
 
 void init_search() {
 
@@ -1544,7 +1543,8 @@ namespace {
 
           // Value based pruning
           Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); //FIXME: We are ignoring condition: depth >= 3*OnePly, BUG??
-          futilityValueScaled = ss[ply].eval + futility_margin(predictedDepth, moveCount) + H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
+          futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
+                               + H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
 
           if (futilityValueScaled < beta)
           {
