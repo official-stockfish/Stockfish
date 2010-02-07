@@ -49,6 +49,7 @@ Application::Application() {
     Position::init_piece_square_tables();
     init_eval(1);
     init_bitbases();
+    init_search();
     init_threads();
 
     // Make random number generation less deterministic, for book moves

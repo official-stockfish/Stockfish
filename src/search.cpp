@@ -527,6 +527,34 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 }
 
 
+/// init_search() is called during startup. It initializes various
+/// lookup tables.
+
+void init_search() {
+
+  // Init our reduction lookup tables
+  for (int i = 1; i < 64; i++) // i == depth (OnePly = 1)
+      for (int j = 1; j < 64; j++) // j == moveNumber
+      {
+          double    pvRed = 0.5 + log(double(i)) * log(double(j)) / 6.0;
+          double nonPVRed = 0.5 + log(double(i)) * log(double(j)) / 3.0;
+          PVReductionMatrix[i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
+          NonPVReductionMatrix[i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
+      }
+
+  // Init futility margins array
+  for (int i = 0; i < 14; i++) // i == depth (OnePly = 2)
+      for (int j = 0; j < 64; j++) // j == moveNumber
+      {
+          FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j; // FIXME: test using log instead of BSR
+      }
+
+  // Init futility move count array
+  for (int i = 0; i < 32; i++) // i == depth (OnePly = 2)
+      FutilityMoveCountArray[i] = 3 + (1 << (3 * i / 8));
+}
+
+
 /// init_threads() is called during startup. It launches all helper threads,
 /// and initializes the split point stack and the global locks and condition
 /// objects.
@@ -539,27 +567,6 @@ void init_threads() {
 #if !defined(_MSC_VER)
   pthread_t pthread[1];
 #endif
-
-  // Init our reduction lookup tables
-  for (i = 1; i < 64; i++) // i == depth
-      for (int j = 1; j < 64; j++) // j == moveNumber
-      {
-          double    pvRed = 0.5 + log(double(i)) * log(double(j)) / 6.0;
-          double nonPVRed = 0.5 + log(double(i)) * log(double(j)) / 3.0;
-          PVReductionMatrix[i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
-          NonPVReductionMatrix[i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
-      }
-
-  // Init futility margins array
-  for (i = 0; i < 14; i++) // i == depth (OnePly = 2)
-      for (int j = 0; j < 64; j++) // j == moveNumber
-      {
-          FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j; // FIXME: test using log instead of BSR
-      }
-
-  // Init futility move count array
-  for (i = 0; i < 32; i++) // i == depth (OnePly = 2)
-      FutilityMoveCountArray[i] = 3 + (1 << (3 * i / 8));
 
   for (i = 0; i < THREAD_MAX; i++)
       Threads[i].activeSplitPoints = 0;

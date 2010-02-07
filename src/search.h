@@ -68,6 +68,7 @@ struct SearchStack {
 //// Prototypes
 ////
 
+extern void init_search();
 extern void init_threads();
 extern void stop_threads();
 extern bool think(const Position &pos, bool infinite, bool ponder, int side_to_move,
