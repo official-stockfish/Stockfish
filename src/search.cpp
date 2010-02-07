@@ -198,8 +198,10 @@ namespace {
   // Futility lookup tables and their getter functions
   const Value FutilityMarginQS = Value(0x80);
   int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
+  int FutilityMoveCountArray[32]; // [depth]
 
   inline Value futility_margin(Depth d, int mn) { return (Value) (d < 14? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2*VALUE_INFINITE); }
+  inline int futility_move_count(Depth d) { return (d < 32? FutilityMoveCountArray[d] : 512); }
 
   // Reduction lookup tables and their getter functions
   // Initialized at startup
@@ -553,6 +555,10 @@ void init_threads() {
       {
           FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j; // FIXME: test using log instead of BSR
       }
+
+  // Init futility move count array
+  for (i = 0; i < 32; i++) // i == depth (OnePly = 2)
+      FutilityMoveCountArray[i] = 3 + (1 << (3 * i / 8));
 
   for (i = 0; i < THREAD_MAX; i++)
       Threads[i].activeSplitPoints = 0;
@@ -1367,9 +1373,6 @@ namespace {
 
     isCheck = pos.is_check();
 
-    // Calculate depth dependant futility pruning parameters
-    const int FutilityMoveCountMargin = 3 + (1 << (3 * int(depth) / 8));
-
     // Evaluate the position statically
     if (!isCheck)
     {
@@ -1526,7 +1529,7 @@ namespace {
           &&  move != ttMove)
       {
           // Move count based pruning
-          if (   moveCount >= FutilityMoveCountMargin
+          if (   moveCount >= futility_move_count(depth)
               && ok_to_prune(pos, move, ss[ply].threatMove)
               && bestValue > value_mated_in(PLY_MAX))
               continue;
@@ -1841,8 +1844,6 @@ namespace {
     bool useFutilityPruning =     sp->depth < 7 * OnePly //FIXME: sync with search
                               && !isCheck;
 
-    const int FutilityMoveCountMargin = 3 + (1 << (3 * int(sp->depth) / 8));
-
     while (    lock_grab_bool(&(sp->lock))
            &&  sp->bestValue < sp->beta
            && !thread_should_stop(threadID)
@@ -1869,7 +1870,7 @@ namespace {
           && !captureOrPromotion)
       {
           // Move count based pruning
-          if (   moveCount >= FutilityMoveCountMargin
+          if (   moveCount >= futility_move_count(sp->depth)
               && ok_to_prune(pos, move, ss[sp->ply].threatMove)
               && sp->bestValue > value_mated_in(PLY_MAX))
               continue;
