@@ -150,6 +150,23 @@ namespace {
   // Depth limit for razoring
   const Depth RazorDepth = 4 * OnePly;
 
+  /// Lookup tables initialized at startup
+
+  // Reduction lookup tables and their getter functions
+  int8_t    PVReductionMatrix[64][64]; // [depth][moveNumber]
+  int8_t NonPVReductionMatrix[64][64]; // [depth][moveNumber]
+
+  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
+
+  // Futility lookup tables and their getter functions
+  const Value FutilityMarginQS = Value(0x80);
+  int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
+  int FutilityMoveCountArray[32]; // [depth]
+
+  inline Value futility_margin(Depth d, int mn) { return (Value) (d < 14? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2*VALUE_INFINITE); }
+  inline int futility_move_count(Depth d) { return (d < 32? FutilityMoveCountArray[d] : 512); }
+
   /// Variables initialized by UCI options
 
   // Depth limit for use of dynamic threat detection
@@ -194,22 +211,6 @@ namespace {
   // Log file
   bool UseLogFile;
   std::ofstream LogFile;
-
-  // Futility lookup tables and their getter functions
-  const Value FutilityMarginQS = Value(0x80);
-  int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
-  int FutilityMoveCountArray[32]; // [depth]
-
-  inline Value futility_margin(Depth d, int mn) { return (Value) (d < 14? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2*VALUE_INFINITE); }
-  inline int futility_move_count(Depth d) { return (d < 32? FutilityMoveCountArray[d] : 512); }
-
-  // Reduction lookup tables and their getter functions
-  // Initialized at startup
-  int8_t    PVReductionMatrix[64][64]; // [depth][moveNumber]
-  int8_t NonPVReductionMatrix[64][64]; // [depth][moveNumber]
-
-  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
-  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
 
   // MP related variables
   int ActiveThreads = 1;
