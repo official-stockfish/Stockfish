@@ -653,7 +653,6 @@ void SearchStack::init(int ply) {
   currentMove = threatMove = MOVE_NONE;
   reduction = Depth(0);
   eval = VALUE_NONE;
-  evalInfo = NULL;
 }
 
 void SearchStack::initKillers() {
@@ -1386,10 +1385,7 @@ namespace {
         if (tte && (tte->type() & VALUE_TYPE_EVAL))
             staticValue = value_from_tt(tte->value(), ply);
         else
-        {
             staticValue = evaluate(pos, ei, threadID);
-            ss[ply].evalInfo = &ei;
-        }
 
         ss[ply].eval = staticValue;
         futilityValue = staticValue + futility_margin(depth, 0); //FIXME: Remove me, only for split
