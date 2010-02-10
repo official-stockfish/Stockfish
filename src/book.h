@@ -53,7 +53,10 @@ struct BookEntry {
 };
 
 class Book : private std::ifstream {
+  Book(const Book&); // just decleared..
+  Book& operator=(const Book&); // ..to avoid a warning
 public:
+  Book() {}
   ~Book();
   void open(const std::string& fName);
   void close();
