@@ -1334,7 +1334,7 @@ namespace {
         && !isCheck
         && !value_is_mate(beta)
         &&  ok_to_do_nullmove(pos)
-        &&  staticValue >= beta - NullMoveMargin)
+        &&  staticValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0))
     {
         ss[ply].currentMove = MOVE_NULL;
 
