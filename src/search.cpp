@@ -1695,6 +1695,7 @@ namespace {
 
       // Don't search moves with negative SEE values
       if (   (!isCheck || evasionPrunable)
+          && !pvNode
           &&  move != ttMove
           && !move_is_promotion(move)
           &&  pos.see_sign(move) < 0)
