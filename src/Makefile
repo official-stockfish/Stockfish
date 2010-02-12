@@ -21,6 +21,10 @@
 ### Executable name. Do not change
 EXE = stockfish
 
+### Installation dir definitions
+PREFIX = /usr/local
+BINDIR = $(PREFIX)/bin
+
 
 ### ==========================================================================
 ### Compiler speed switches for both GCC and ICC. These settings are generally
@@ -92,14 +96,18 @@ help:
 	@echo "make osx-icc64      >  x86-Mac OS X 64 bit. Compiler = icpc"
 	@echo "make osx-icc32-profile > OSX 32 bit. Compiler = icpc + automatic pgo-build"
 	@echo "make osx-icc64-profile > OSX 64 bit. Compiler = icpc + automatic pgo-build"
+	@echo "make hpux           >  HP-UX. Compiler = aCC"
 	@echo "make strip          >  Strip executable"
 	@echo "make clean          >  Clean up"
 	@echo ""
 
 all: $(EXE) .depend
 
+test check: default
+	@$(PGOBENCH)
+
 clean:
-	$(RM) *.o .depend *~ $(EXE)
+	$(RM) *.o .depend *~ $(EXE) core bench.txt
 
 
 ### Possible targets. You may add your own ones here
@@ -296,6 +304,12 @@ osx-icc64-profile:
 	$(MAKE) osx-icc64-profile-use
 	@rm -rf profdir bench.txt
 
+hpux:
+	$(MAKE) \
+	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -DBIGENDIAN -mt +O3 -DNDEBUG' \
+	CXXFLAGS="" \
+	LDFLAGS="" \
+	all
 
 
 strip:
@@ -306,9 +320,14 @@ strip:
 $(EXE): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS)
 
+### Installation
+install: default
+	-mkdir -p -m 755 $(BINDIR)
+	-cp $(EXE) $(BINDIR)
+	-strip $(BINDIR)/$(EXE)
 
 ### Dependencies. Do not change
 .depend:
-	$(CXX) -msse -MM $(OBJS:.o=.cpp) > $@
+	-@$(CXX) -msse -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
 include .depend

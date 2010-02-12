@@ -25,7 +25,9 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#include <xmmintrin.h>
+#if !defined(__hpux)
+#  include <xmmintrin.h>
+#endif
 
 #include "movegen.h"
 #include "tt.h"
@@ -167,11 +169,14 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 /// to be loaded from RAM, that can be very slow. When we will
 /// subsequently call retrieve() the TT data will be already
 /// quickly accessible in L1/L2 CPU cache.
+#if defined(__hpux)
+void TranspositionTable::prefetch(const Key) const {} // Not supported on HP UX
+#else
 
 void TranspositionTable::prefetch(const Key posKey) const {
 
 #if defined(__INTEL_COMPILER) || defined(__ICL)
-   // This hack prevents prefetches to be optimized away by the
+   // This hack prevents prefetches to be optimized away by
    // Intel compiler. Both MSVC and gcc seems not affected.
    __asm__ ("");
 #endif
@@ -181,6 +186,7 @@ void TranspositionTable::prefetch(const Key posKey) const {
   _mm_prefetch(addr+64, _MM_HINT_T2); // 64 bytes ahead
 }
 
+#endif
 
 /// TranspositionTable::new_search() is called at the beginning of every new
 /// search. It increments the "generation" variable, which is used to

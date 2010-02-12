@@ -390,7 +390,7 @@ void Book::close() {
 /// Book::file_name() returns the file name of the currently active book,
 /// or the empty string if no book is open.
 
-const string Book::file_name() const {
+const string Book::file_name() { // Not const to compile on HP-UX 11.X
 
   return is_open() ? fileName : "";
 }

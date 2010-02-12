@@ -27,6 +27,9 @@
 #  include <sys/time.h>
 #  include <sys/types.h>
 #  include <unistd.h>
+#  if defined(__hpux)
+#     include <sys/pstat.h>
+#  endif
 
 #else
 
@@ -186,6 +189,14 @@ int get_system_time() {
 #  if defined(_SC_NPROCESSORS_ONLN)
 int cpu_count() {
   return Min(sysconf(_SC_NPROCESSORS_ONLN), 8);
+}
+#  elif defined(__hpux)
+int cpu_count() {
+  struct pst_dynamic psd;
+  if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1)
+      return 1;
+
+  return Min(psd.psd_proc_cnt, 8);
 }
 #  else
 int cpu_count() {

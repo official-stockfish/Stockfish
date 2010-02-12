@@ -60,7 +60,7 @@ public:
   ~Book();
   void open(const std::string& fName);
   void close();
-  const std::string file_name() const;
+  const std::string file_name();
   Move get_move(const Position& pos);
 
 private:
