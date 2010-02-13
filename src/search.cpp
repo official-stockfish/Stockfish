@@ -566,9 +566,6 @@ void init_threads() {
   pthread_t pthread[1];
 #endif
 
-  for (i = 0; i < THREAD_MAX; i++)
-      Threads[i].activeSplitPoints = 0;
-
   // Initialize global locks
   lock_init(&MPLock, NULL);
   lock_init(&IOLock, NULL);
@@ -591,12 +588,7 @@ void init_threads() {
 
   // All threads except the main thread should be initialized to idle state
   for (i = 1; i < THREAD_MAX; i++)
-  {
-      Threads[i].stop = false;
-      Threads[i].workIsWaiting = false;
       Threads[i].idle = true;
-      Threads[i].running = false;
-  }
 
   // Launch the helper threads
   for (i = 1; i < THREAD_MAX; i++)

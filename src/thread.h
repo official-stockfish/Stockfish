@@ -26,6 +26,8 @@
 //// Includes
 ////
 
+#include <cstring>
+
 #include "lock.h"
 #include "movepick.h"
 #include "position.h"
@@ -64,6 +66,9 @@ struct SplitPoint {
 
 
 struct Thread {
+
+  Thread() { memset(this, 0, sizeof(Thread)); }
+
   SplitPoint *splitPoint;
   volatile int activeSplitPoints;
   uint64_t nodes;
