@@ -53,23 +53,62 @@ namespace {
 
   /// Types
 
-  // The BetaCounterType class is used to order moves at ply one.
-  // Apart for the first one that has its score, following moves
-  // normally have score -VALUE_INFINITE, so are ordered according
-  // to the number of beta cutoffs occurred under their subtree during
-  // the last iteration. The counters are per thread variables to avoid
-  // concurrent accessing under SMP case.
 
-  struct BetaCounterType {
+  // ThreadsManager class is used to handle all the threads related stuff in search,
+  // init, starting, parking and, the most important, launching a slave thread at a
+  // split point are what this class does. All the access to shared thread data is
+  // done through this class, so that we avoid using global variables instead.
 
-    BetaCounterType();
-    void clear();
-    void add(Color us, Depth d, int threadID);
-    void read(Color us, int64_t& our, int64_t& their);
+  class ThreadsManager {
+    /* As long as the single ThreadsManager object is defined as a global we don't
+       need to explicitly initialize to zero its data members because variables with
+       static storage duration are automatically set to zero before enter main()
+    */
+  public:
+    void init_threads();
+    void exit_threads();
+
+    int active_threads() const { return ActiveThreads; }
+    void set_active_threads(int newActiveThreads) { ActiveThreads = newActiveThreads; }
+    void set_stop_request(int threadID) { threads[threadID].stop = true; }
+    void incrementNodeCounter(int threadID) { threads[threadID].nodes++; }
+    void incrementBetaCounter(Color us, Depth d, int threadID) { threads[threadID].betaCutOffs[us] += unsigned(d); }
+    void print_current_line(SearchStack ss[], int ply, int threadID);
+
+    void resetNodeCounters();
+    void resetBetaCounters();
+    int64_t nodes_searched() const;
+    void get_beta_counters(Color us, int64_t& our, int64_t& their) const;
+    bool idle_thread_exists(int master) const;
+    bool thread_is_available(int slave, int master) const;
+    bool thread_should_stop(int threadID);
+    void wake_sleeping_threads();
+    void put_threads_to_sleep();
+    void idle_loop(int threadID, SplitPoint* waitSp);
+    bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, Value* beta, Value* bestValue,
+               const Value futilityValue, Depth depth, int* moves, MovePicker* mp, int master, bool pvNode);
+
+  private:
+    friend void poll();
+
+    int ActiveThreads;
+    bool AllThreadsShouldExit, AllThreadsShouldSleep;
+    Thread threads[THREAD_MAX];
+    SplitPoint SplitPointStack[THREAD_MAX][ACTIVE_SPLIT_POINTS_MAX];
+
+    Lock MPLock, IOLock;
+
+#if !defined(_MSC_VER)
+    pthread_cond_t WaitCond;
+    pthread_mutex_t WaitLock;
+#else
+    HANDLE SitIdleEvent[THREAD_MAX];
+#endif
+
   };
 
 
-  // The RootMove class is used for moves at the root at the tree. For each
+  // RootMove struct is used for moves at the root at the tree. For each
   // root move, we store a score, a node count, and a PV (really a refutation
   // in the case of moves which fail low).
 
@@ -184,7 +223,6 @@ namespace {
 
   // Iteration counters
   int Iteration;
-  BetaCounterType BetaCounter;
 
   // Scores and number of times the best move changed for each iteration
   Value ValueByIteration[PLY_MAX_PLUS_2];
@@ -213,21 +251,9 @@ namespace {
   std::ofstream LogFile;
 
   // MP related variables
-  int ActiveThreads = 1;
   Depth MinimumSplitDepth;
   int MaxThreadsPerSplitPoint;
-  Thread Threads[THREAD_MAX];
-  Lock MPLock;
-  Lock IOLock;
-  bool AllThreadsShouldExit, AllThreadsShouldSleep;
-  SplitPoint SplitPointStack[THREAD_MAX][ACTIVE_SPLIT_POINTS_MAX];
-
-#if !defined(_MSC_VER)
-  pthread_cond_t WaitCond;
-  pthread_mutex_t WaitLock;
-#else
-  HANDLE SitIdleEvent[THREAD_MAX];
-#endif
+  ThreadsManager TM;
 
   // Node counters, used only by thread[0] but try to keep in different
   // cache lines (64 bytes each) from the heavy SMP read accessed variables.
@@ -265,22 +291,8 @@ namespace {
   int nps();
   void poll();
   void ponderhit();
-  void print_current_line(SearchStack ss[], int ply, int threadID);
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack ss[]);
-
-  void idle_loop(int threadID, SplitPoint* waitSp);
-  void init_split_point_stack();
-  void destroy_split_point_stack();
-  bool thread_should_stop(int threadID);
-  bool thread_is_available(int slave, int master);
-  bool idle_thread_exists(int master);
-  bool split(const Position& pos, SearchStack* ss, int ply,
-             Value *alpha, Value *beta, Value *bestValue,
-             const Value futilityValue, Depth depth, int *moves,
-             MovePicker *mp, int master, bool pvNode);
-  void wake_sleeping_threads();
-  void put_threads_to_sleep();
 
 #if !defined(_MSC_VER)
   void *init_thread(void *threadID);
@@ -294,6 +306,13 @@ namespace {
 ////
 //// Functions
 ////
+
+/// init_threads(), exit_threads() and nodes_searched() are helpers to
+/// give accessibility to some TM methods from outside of current file.
+
+void init_threads() { TM.init_threads(); }
+void exit_threads() { TM.exit_threads(); }
+int64_t nodes_searched() { return TM.nodes_searched(); }
 
 
 /// perft() is our utility to verify move generation is bug free. All the legal
@@ -365,10 +384,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       }
   }
 
-  for (int i = 0; i < THREAD_MAX; i++)
-  {
-      Threads[i].nodes = 0ULL;
-  }
+  TM.resetNodeCounters();
 
   if (button_was_pressed("New Game"))
       loseOnTime = false; // Reset at the beginning of a new game
@@ -414,10 +430,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   // Set the number of active threads
   int newActiveThreads = get_option_value_int("Threads");
-  if (newActiveThreads != ActiveThreads)
+  if (newActiveThreads != TM.active_threads())
   {
-      ActiveThreads = newActiveThreads;
-      init_eval(ActiveThreads);
+      TM.set_active_threads(newActiveThreads);
+      init_eval(TM.active_threads());
       // HACK: init_eval() destroys the static castleRightsMask[] array in the
       // Position class. The below line repairs the damage.
       Position p(pos.to_fen());
@@ -425,10 +441,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   }
 
   // Wake up sleeping threads
-  wake_sleeping_threads();
+  TM.wake_sleeping_threads();
 
-  for (int i = 1; i < ActiveThreads; i++)
-      assert(thread_is_available(i, 0));
+  for (int i = 1; i < TM.active_threads(); i++)
+      assert(TM.thread_is_available(i, 0));
 
   // Set thinking time
   int myTime = time[side_to_move];
@@ -522,7 +538,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.close();
 
-  put_threads_to_sleep();
+  TM.put_threads_to_sleep();
 
   return !Quit;
 }
@@ -552,95 +568,6 @@ void init_search() {
   // Init futility move count array
   for (int i = 0; i < 32; i++) // i == depth (OnePly = 2)
       FutilityMoveCountArray[i] = 3 + (1 << (3 * i / 8));
-}
-
-
-/// init_threads() is called during startup. It launches all helper threads,
-/// and initializes the split point stack and the global locks and condition
-/// objects.
-
-void init_threads() {
-
-  volatile int i;
-  bool ok;
-
-#if !defined(_MSC_VER)
-  pthread_t pthread[1];
-#endif
-
-  // Initialize global locks
-  lock_init(&MPLock, NULL);
-  lock_init(&IOLock, NULL);
-
-  init_split_point_stack();
-
-#if !defined(_MSC_VER)
-  pthread_mutex_init(&WaitLock, NULL);
-  pthread_cond_init(&WaitCond, NULL);
-#else
-  for (i = 0; i < THREAD_MAX; i++)
-      SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
-#endif
-
-  // Will be set just before program exits to properly end the threads
-  AllThreadsShouldExit = false;
-
-  // Threads will be put to sleep as soon as created
-  AllThreadsShouldSleep = true;
-
-  // All threads except the main thread should be initialized to idle state
-  for (i = 1; i < THREAD_MAX; i++)
-      Threads[i].idle = true;
-
-  // Launch the helper threads
-  for (i = 1; i < THREAD_MAX; i++)
-  {
-#if !defined(_MSC_VER)
-      ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
-#else
-      DWORD iID[1];
-      ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, iID) != NULL);
-#endif
-
-      if (!ok)
-      {
-          cout << "Failed to create thread number " << i << endl;
-          Application::exit_with_failure();
-      }
-
-      // Wait until the thread has finished launching and is gone to sleep
-      while (!Threads[i].running || !Threads[i].sleeping);
-  }
-}
-
-
-/// exit_threads() is called when the program exits. It makes all the
-/// helper threads exit cleanly.
-
-void exit_threads() {
-
-  ActiveThreads = THREAD_MAX;  // HACK
-  AllThreadsShouldSleep = true;  // HACK
-  wake_sleeping_threads();
-  AllThreadsShouldExit = true;
-  for (int i = 1; i < THREAD_MAX; i++)
-  {
-      Threads[i].stop = true;
-      while (Threads[i].running);
-  }
-  destroy_split_point_stack();
-}
-
-
-/// nodes_searched() returns the total number of nodes searched so far in
-/// the current search.
-
-int64_t nodes_searched() {
-
-  int64_t result = 0ULL;
-  for (int i = 0; i < ActiveThreads; i++)
-      result += Threads[i].nodes;
-  return result;
 }
 
 
@@ -690,7 +617,7 @@ namespace {
     cout << "info depth " << 1 << "\ninfo depth " << 1
          << " score " << value_to_string(rml.get_move_score(0))
          << " time " << current_search_time()
-         << " nodes " << nodes_searched()
+         << " nodes " << TM.nodes_searched()
          << " nps " << nps()
          << " pv " << rml.get_move(0) << "\n";
 
@@ -773,7 +700,7 @@ namespace {
                 stopSearch = true;
 
             // Stop search early if one move seems to be much better than the rest
-            int64_t nodes = nodes_searched();
+            int64_t nodes = TM.nodes_searched();
             if (   Iteration >= 8
                 && EasyMove == ss[0].pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
@@ -814,7 +741,7 @@ namespace {
         wait_for_stop_or_ponderhit();
     else
         // Print final search statistics
-        cout << "info nodes " << nodes_searched()
+        cout << "info nodes " << TM.nodes_searched()
              << " nps " << nps()
              << " time " << current_search_time()
              << " hashfull " << TT.full() << endl;
@@ -839,7 +766,7 @@ namespace {
         if (dbg_show_hit_rate)
             dbg_print_hit_rate(LogFile);
 
-        LogFile << "\nNodes: " << nodes_searched()
+        LogFile << "\nNodes: " << TM.nodes_searched()
                 << "\nNodes/second: " << nps()
                 << "\nBest move: " << move_to_san(p, ss[0].pv[0]);
 
@@ -890,10 +817,10 @@ namespace {
             RootMoveNumber = i + 1;
 
             // Save the current node count before the move is searched
-            nodes = nodes_searched();
+            nodes = TM.nodes_searched();
 
             // Reset beta cut-off counters
-            BetaCounter.clear();
+            TM.resetBetaCounters();
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
@@ -974,7 +901,7 @@ namespace {
                      << ((value >= beta) ? " lowerbound" :
                         ((value <= alpha)? " upperbound" : ""))
                      << " time "  << current_search_time()
-                     << " nodes " << nodes_searched()
+                     << " nodes " << TM.nodes_searched()
                      << " nps "   << nps()
                      << " pv ";
 
@@ -989,7 +916,7 @@ namespace {
                                     : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
 
                     LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                                         nodes_searched(), value, type, ss[0].pv) << endl;
+                                         TM.nodes_searched(), value, type, ss[0].pv) << endl;
                 }
 
                 // Prepare for a research after a fail high, each time with a wider window
@@ -1009,9 +936,9 @@ namespace {
             // Remember beta-cutoff and searched nodes counts for this move. The
             // info is used to sort the root moves at the next iteration.
             int64_t our, their;
-            BetaCounter.read(pos.side_to_move(), our, their);
+            TM.get_beta_counters(pos.side_to_move(), our, their);
             rml.set_beta_counters(i, our, their);
-            rml.set_move_nodes(i, nodes_searched() - nodes);
+            rml.set_move_nodes(i, TM.nodes_searched() - nodes);
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
 
@@ -1041,7 +968,7 @@ namespace {
                          << ((value >= beta) ? " lowerbound" :
                             ((value <= alpha)? " upperbound" : ""))
                          << " time "  << current_search_time()
-                         << " nodes " << nodes_searched()
+                         << " nodes " << TM.nodes_searched()
                          << " nps "   << nps()
                          << " pv ";
 
@@ -1056,7 +983,7 @@ namespace {
                                         : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
 
                         LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                                             nodes_searched(), value, type, ss[0].pv) << endl;
+                                             TM.nodes_searched(), value, type, ss[0].pv) << endl;
                     }
                     if (value > alpha)
                         alpha = value;
@@ -1070,7 +997,7 @@ namespace {
                              << " score " << value_to_string(rml.get_move_score(j))
                              << " depth " << ((j <= i)? Iteration : Iteration - 1)
                              << " time " << current_search_time()
-                             << " nodes " << nodes_searched()
+                             << " nodes " << TM.nodes_searched()
                              << " nps " << nps()
                              << " pv ";
 
@@ -1114,7 +1041,7 @@ namespace {
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
     assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < ActiveThreads);
+    assert(threadID >= 0 && threadID < TM.active_threads());
 
     Move movesSearched[256];
     StateInfo st;
@@ -1134,7 +1061,7 @@ namespace {
     init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
-    if (AbortSearch || thread_should_stop(threadID))
+    if (AbortSearch || TM.thread_should_stop(threadID))
         return Value(0);
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
@@ -1189,7 +1116,7 @@ namespace {
     // occurs.
     while (   alpha < beta
            && (move = mp.get_next_move()) != MOVE_NONE
-           && !thread_should_stop(threadID))
+           && !TM.thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
 
@@ -1277,15 +1204,15 @@ namespace {
       }
 
       // Split?
-      if (   ActiveThreads > 1
+      if (   TM.active_threads() > 1
           && bestValue < beta
           && depth >= MinimumSplitDepth
           && Iteration <= 99
-          && idle_thread_exists(threadID)
+          && TM.idle_thread_exists(threadID)
           && !AbortSearch
-          && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE,
-                   depth, &moveCount, &mp, threadID, true))
+          && !TM.thread_should_stop(threadID)
+          && TM.split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE,
+                      depth, &moveCount, &mp, threadID, true))
           break;
     }
 
@@ -1296,7 +1223,7 @@ namespace {
 
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (AbortSearch || thread_should_stop(threadID))
+    if (AbortSearch || TM.thread_should_stop(threadID))
         return bestValue;
 
     if (bestValue <= oldAlpha)
@@ -1304,7 +1231,7 @@ namespace {
 
     else if (bestValue >= beta)
     {
-        BetaCounter.add(pos.side_to_move(), depth, threadID);
+        TM.incrementBetaCounter(pos.side_to_move(), depth, threadID);
         move = ss[ply].pv[ply];
         if (!pos.move_is_capture_or_promotion(move))
         {
@@ -1327,7 +1254,7 @@ namespace {
 
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < ActiveThreads);
+    assert(threadID >= 0 && threadID < TM.active_threads());
 
     Move movesSearched[256];
     EvalInfo ei;
@@ -1349,7 +1276,7 @@ namespace {
     init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
-    if (AbortSearch || thread_should_stop(threadID))
+    if (AbortSearch || TM.thread_should_stop(threadID))
         return Value(0);
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
@@ -1482,7 +1409,7 @@ namespace {
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
-           && !thread_should_stop(threadID))
+           && !TM.thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
 
@@ -1591,15 +1518,15 @@ namespace {
       }
 
       // Split?
-      if (   ActiveThreads > 1
+      if (   TM.active_threads() > 1
           && bestValue < beta
           && depth >= MinimumSplitDepth
           && Iteration <= 99
-          && idle_thread_exists(threadID)
+          && TM.idle_thread_exists(threadID)
           && !AbortSearch
-          && !thread_should_stop(threadID)
-          && split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
-                   depth, &moveCount, &mp, threadID, false))
+          && !TM.thread_should_stop(threadID)
+          && TM.split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
+                      depth, &moveCount, &mp, threadID, false))
           break;
     }
 
@@ -1610,14 +1537,14 @@ namespace {
 
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (AbortSearch || thread_should_stop(threadID))
+    if (AbortSearch || TM.thread_should_stop(threadID))
         return bestValue;
 
     if (bestValue < beta)
         TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
     else
     {
-        BetaCounter.add(pos.side_to_move(), depth, threadID);
+        TM.incrementBetaCounter(pos.side_to_move(), depth, threadID);
         move = ss[ply].pv[ply];
         TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
         if (!pos.move_is_capture_or_promotion(move))
@@ -1645,7 +1572,7 @@ namespace {
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(depth <= 0);
     assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < ActiveThreads);
+    assert(threadID >= 0 && threadID < TM.active_threads());
 
     EvalInfo ei;
     StateInfo st;
@@ -1662,7 +1589,7 @@ namespace {
     init_node(ss, ply, threadID);
 
     // After init_node() that calls poll()
-    if (AbortSearch || thread_should_stop(threadID))
+    if (AbortSearch || TM.thread_should_stop(threadID))
         return Value(0);
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
@@ -1834,8 +1761,8 @@ namespace {
 
   void sp_search(SplitPoint* sp, int threadID) {
 
-    assert(threadID >= 0 && threadID < ActiveThreads);
-    assert(ActiveThreads > 1);
+    assert(threadID >= 0 && threadID < TM.active_threads());
+    assert(TM.active_threads() > 1);
 
     Position pos(*sp->pos);
     CheckInfo ci(pos);
@@ -1849,7 +1776,7 @@ namespace {
 
     while (    lock_grab_bool(&(sp->lock))
            &&  sp->bestValue < sp->beta
-           && !thread_should_stop(threadID)
+           && !TM.thread_should_stop(threadID)
            && (move = sp->mp->get_next_move()) != MOVE_NONE)
     {
       moveCount = ++sp->moves;
@@ -1924,7 +1851,7 @@ namespace {
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      if (thread_should_stop(threadID))
+      if (TM.thread_should_stop(threadID))
       {
           lock_grab(&(sp->lock));
           break;
@@ -1934,15 +1861,15 @@ namespace {
       if (value > sp->bestValue) // Less then 2% of cases
       {
           lock_grab(&(sp->lock));
-          if (value > sp->bestValue && !thread_should_stop(threadID))
+          if (value > sp->bestValue && !TM.thread_should_stop(threadID))
           {
               sp->bestValue = value;
               if (sp->bestValue >= sp->beta)
               {
                   sp_update_pv(sp->parentSstack, ss, sp->ply);
-                  for (int i = 0; i < ActiveThreads; i++)
+                  for (int i = 0; i < TM.active_threads(); i++)
                       if (i != threadID && (i == sp->master || sp->slaves[i]))
-                          Threads[i].stop = true;
+                          TM.set_stop_request(i);
 
                   sp->finished = true;
               }
@@ -1955,10 +1882,10 @@ namespace {
 
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads.
-    if (sp->master == threadID && thread_should_stop(threadID))
-        for (int i = 0; i < ActiveThreads; i++)
+    if (sp->master == threadID && TM.thread_should_stop(threadID))
+        for (int i = 0; i < TM.active_threads(); i++)
             if (sp->slaves[i])
-                Threads[i].stop = true;
+                TM.set_stop_request(i);
 
     sp->cpus--;
     sp->slaves[threadID] = 0;
@@ -1977,8 +1904,8 @@ namespace {
 
   void sp_search_pv(SplitPoint* sp, int threadID) {
 
-    assert(threadID >= 0 && threadID < ActiveThreads);
-    assert(ActiveThreads > 1);
+    assert(threadID >= 0 && threadID < TM.active_threads());
+    assert(TM.active_threads() > 1);
 
     Position pos(*sp->pos);
     CheckInfo ci(pos);
@@ -1989,7 +1916,7 @@ namespace {
 
     while (    lock_grab_bool(&(sp->lock))
            &&  sp->alpha < sp->beta
-           && !thread_should_stop(threadID)
+           && !TM.thread_should_stop(threadID)
            && (move = sp->mp->get_next_move()) != MOVE_NONE)
     {
       moveCount = ++sp->moves;
@@ -2043,14 +1970,14 @@ namespace {
               if (localAlpha < sp->beta)
                   value = -search_pv(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, threadID);
               else
-                  assert(thread_should_stop(threadID));
+                  assert(TM.thread_should_stop(threadID));
         }
       }
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      if (thread_should_stop(threadID))
+      if (TM.thread_should_stop(threadID))
       {
           lock_grab(&(sp->lock));
           break;
@@ -2060,7 +1987,7 @@ namespace {
       if (value > sp->bestValue) // Less then 2% of cases
       {
           lock_grab(&(sp->lock));
-          if (value > sp->bestValue && !thread_should_stop(threadID))
+          if (value > sp->bestValue && !TM.thread_should_stop(threadID))
           {
               sp->bestValue = value;
               if (value > sp->alpha)
@@ -2068,9 +1995,9 @@ namespace {
                   // Ask threads to stop before to modify sp->alpha
                   if (value >= sp->beta)
                   {
-                      for (int i = 0; i < ActiveThreads; i++)
+                      for (int i = 0; i < TM.active_threads(); i++)
                           if (i != threadID && (i == sp->master || sp->slaves[i]))
-                              Threads[i].stop = true;
+                              TM.set_stop_request(i);
 
                       sp->finished = true;
                   }
@@ -2090,133 +2017,15 @@ namespace {
 
     // If this is the master thread and we have been asked to stop because of
     // a beta cutoff higher up in the tree, stop all slave threads.
-    if (sp->master == threadID && thread_should_stop(threadID))
-        for (int i = 0; i < ActiveThreads; i++)
+    if (sp->master == threadID && TM.thread_should_stop(threadID))
+        for (int i = 0; i < TM.active_threads(); i++)
             if (sp->slaves[i])
-                Threads[i].stop = true;
+                TM.set_stop_request(i);
 
     sp->cpus--;
     sp->slaves[threadID] = 0;
 
     lock_release(&(sp->lock));
-  }
-
-  /// The BetaCounterType class
-
-  BetaCounterType::BetaCounterType() { clear(); }
-
-  void BetaCounterType::clear() {
-
-    for (int i = 0; i < THREAD_MAX; i++)
-        Threads[i].betaCutOffs[WHITE] = Threads[i].betaCutOffs[BLACK] = 0ULL;
-  }
-
-  void BetaCounterType::add(Color us, Depth d, int threadID) {
-
-    // Weighted count based on depth
-    Threads[threadID].betaCutOffs[us] += unsigned(d);
-  }
-
-  void BetaCounterType::read(Color us, int64_t& our, int64_t& their) {
-
-    our = their = 0UL;
-    for (int i = 0; i < THREAD_MAX; i++)
-    {
-        our += Threads[i].betaCutOffs[us];
-        their += Threads[i].betaCutOffs[opposite_color(us)];
-    }
-  }
-
-
-  /// The RootMoveList class
-
-  // RootMoveList c'tor
-
-  RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) : count(0) {
-
-    SearchStack ss[PLY_MAX_PLUS_2];
-    MoveStack mlist[MaxRootMoves];
-    StateInfo st;
-    bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
-
-    // Generate all legal moves
-    MoveStack* last = generate_moves(pos, mlist);
-
-    // Add each move to the moves[] array
-    for (MoveStack* cur = mlist; cur != last; cur++)
-    {
-        bool includeMove = includeAllMoves;
-
-        for (int k = 0; !includeMove && searchMoves[k] != MOVE_NONE; k++)
-            includeMove = (searchMoves[k] == cur->move);
-
-        if (!includeMove)
-            continue;
-
-        // Find a quick score for the move
-        init_ss_array(ss);
-        pos.do_move(cur->move, st);
-        moves[count].move = cur->move;
-        moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
-        moves[count].pv[0] = cur->move;
-        moves[count].pv[1] = MOVE_NONE;
-        pos.undo_move(cur->move);
-        count++;
-    }
-    sort();
-  }
-
-
-  // RootMoveList simple methods definitions
-
-  void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
-
-    moves[moveNum].nodes = nodes;
-    moves[moveNum].cumulativeNodes += nodes;
-  }
-
-  void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
-
-    moves[moveNum].ourBeta = our;
-    moves[moveNum].theirBeta = their;
-  }
-
-  void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
-
-    int j;
-
-    for (j = 0; pv[j] != MOVE_NONE; j++)
-        moves[moveNum].pv[j] = pv[j];
-
-    moves[moveNum].pv[j] = MOVE_NONE;
-  }
-
-
-  // RootMoveList::sort() sorts the root move list at the beginning of a new
-  // iteration.
-
-  void RootMoveList::sort() {
-
-    sort_multipv(count - 1); // Sort all items
-  }
-
-
-  // RootMoveList::sort_multipv() sorts the first few moves in the root move
-  // list by their scores and depths. It is used to order the different PVs
-  // correctly in MultiPV mode.
-
-  void RootMoveList::sort_multipv(int n) {
-
-    int i,j;
-
-    for (i = 1; i <= n; i++)
-    {
-        RootMove rm = moves[i];
-        for (j = i; j > 0 && moves[j - 1] < rm; j--)
-            moves[j] = moves[j - 1];
-
-        moves[j] = rm;
-    }
   }
 
 
@@ -2229,9 +2038,9 @@ namespace {
   void init_node(SearchStack ss[], int ply, int threadID) {
 
     assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < ActiveThreads);
+    assert(threadID >= 0 && threadID < TM.active_threads());
 
-    Threads[threadID].nodes++;
+    TM.incrementNodeCounter(threadID);
 
     if (threadID == 0)
     {
@@ -2244,9 +2053,7 @@ namespace {
     }
     ss[ply].init(ply);
     ss[ply + 2].initKillers();
-
-    if (Threads[threadID].printCurrentLine)
-        print_current_line(ss, ply, threadID);
+    TM.print_current_line(ss, ply, threadID);
   }
 
 
@@ -2596,7 +2403,7 @@ namespace {
   int nps() {
 
     int t = current_search_time();
-    return (t > 0 ? int((nodes_searched() * 1000) / t) : 0);
+    return (t > 0 ? int((TM.nodes_searched() * 1000) / t) : 0);
   }
 
 
@@ -2646,7 +2453,7 @@ namespace {
     else if (t - lastInfoTime >= 1000)
     {
         lastInfoTime = t;
-        lock_grab(&IOLock);
+        lock_grab(&TM.IOLock);
 
         if (dbg_show_mean)
             dbg_print_mean();
@@ -2654,13 +2461,13 @@ namespace {
         if (dbg_show_hit_rate)
             dbg_print_hit_rate();
 
-        cout << "info nodes " << nodes_searched() << " nps " << nps()
+        cout << "info nodes " << TM.nodes_searched() << " nps " << nps()
              << " time " << t << " hashfull " << TT.full() << endl;
 
-        lock_release(&IOLock);
+        lock_release(&TM.IOLock);
 
         if (ShowCurrentLine)
-            Threads[0].printCurrentLine = true;
+            TM.threads[0].printCurrentLineRequest = true;
     }
 
     // Should we stop the search?
@@ -2676,7 +2483,7 @@ namespace {
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
-        || (Iteration >= 3 && MaxNodes && nodes_searched() >= MaxNodes))
+        || (Iteration >= 3 && MaxNodes && TM.nodes_searched() >= MaxNodes))
         AbortSearch = true;
   }
 
@@ -2699,30 +2506,6 @@ namespace {
 
     if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))
         AbortSearch = true;
-  }
-
-
-  // print_current_line() prints the current line of search for a given
-  // thread. Called when the UCI option UCI_ShowCurrLine is 'true'.
-
-  void print_current_line(SearchStack ss[], int ply, int threadID) {
-
-    assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < ActiveThreads);
-
-    if (!Threads[threadID].idle)
-    {
-        lock_grab(&IOLock);
-        cout << "info currline " << (threadID + 1);
-        for (int p = 0; p < ply; p++)
-            cout << " " << ss[p].currentMove;
-
-        cout << endl;
-        lock_release(&IOLock);
-    }
-    Threads[threadID].printCurrentLine = false;
-    if (threadID + 1 < ActiveThreads)
-        Threads[threadID + 1].printCurrentLine = true;
   }
 
 
@@ -2765,15 +2548,77 @@ namespace {
   }
 
 
+  // init_thread() is the function which is called when a new thread is
+  // launched. It simply calls the idle_loop() function with the supplied
+  // threadID. There are two versions of this function; one for POSIX
+  // threads and one for Windows threads.
+
+#if !defined(_MSC_VER)
+
+  void* init_thread(void *threadID) {
+
+    TM.idle_loop(*(int*)threadID, NULL);
+    return NULL;
+  }
+
+#else
+
+  DWORD WINAPI init_thread(LPVOID threadID) {
+
+    TM.idle_loop(*(int*)threadID, NULL);
+    return NULL;
+  }
+
+#endif
+
+
+  /// The ThreadsManager class
+
+  // resetNodeCounters(), resetBetaCounters(), searched_nodes() and
+  // get_beta_counters() are getters/setters for the per thread
+  // counters used to sort the moves at root.
+
+  void ThreadsManager::resetNodeCounters() {
+
+    for (int i = 0; i < THREAD_MAX; i++)
+        threads[i].nodes = 0ULL;
+  }
+
+  void ThreadsManager::resetBetaCounters() {
+
+    for (int i = 0; i < THREAD_MAX; i++)
+        threads[i].betaCutOffs[WHITE] = threads[i].betaCutOffs[BLACK] = 0ULL;
+  }
+
+  int64_t ThreadsManager::nodes_searched() const {
+
+    int64_t result = 0ULL;
+    for (int i = 0; i < ActiveThreads; i++)
+        result += threads[i].nodes;
+
+    return result;
+  }
+
+  void ThreadsManager::get_beta_counters(Color us, int64_t& our, int64_t& their) const {
+
+    our = their = 0UL;
+    for (int i = 0; i < THREAD_MAX; i++)
+    {
+        our += threads[i].betaCutOffs[us];
+        their += threads[i].betaCutOffs[opposite_color(us)];
+    }
+  }
+
+
   // idle_loop() is where the threads are parked when they have no work to do.
   // The parameter "waitSp", if non-NULL, is a pointer to an active SplitPoint
   // object for which the current thread is the master.
 
-  void idle_loop(int threadID, SplitPoint* waitSp) {
+  void ThreadsManager::idle_loop(int threadID, SplitPoint* waitSp) {
 
     assert(threadID >= 0 && threadID < THREAD_MAX);
 
-    Threads[threadID].running = true;
+    threads[threadID].running = true;
 
     while (!AllThreadsShouldExit || threadID == 0)
     {
@@ -2784,7 +2629,7 @@ namespace {
                && (AllThreadsShouldSleep || threadID >= ActiveThreads))
         {
 
-            Threads[threadID].sleeping = true;
+            threads[threadID].sleeping = true;
 
 #if !defined(_MSC_VER)
             pthread_mutex_lock(&WaitLock);
@@ -2799,51 +2644,115 @@ namespace {
 
         // Out of the while loop to avoid races in case thread is woken up but
         // while condition still holds true so that is put to sleep again.
-        Threads[threadID].sleeping = false;
+        threads[threadID].sleeping = false;
 
-      // If this thread has been assigned work, launch a search
-      if (Threads[threadID].workIsWaiting)
-      {
-          assert(!Threads[threadID].idle);
+        // If this thread has been assigned work, launch a search
+        if (threads[threadID].workIsWaiting)
+        {
+            assert(!threads[threadID].idle);
 
-          Threads[threadID].workIsWaiting = false;
-          if (Threads[threadID].splitPoint->pvNode)
-              sp_search_pv(Threads[threadID].splitPoint, threadID);
-          else
-              sp_search(Threads[threadID].splitPoint, threadID);
+            threads[threadID].workIsWaiting = false;
+            if (threads[threadID].splitPoint->pvNode)
+                sp_search_pv(threads[threadID].splitPoint, threadID);
+            else
+                sp_search(threads[threadID].splitPoint, threadID);
 
-          Threads[threadID].idle = true;
-      }
+            threads[threadID].idle = true;
+        }
 
-      // If this thread is the master of a split point and all threads have
-      // finished their work at this split point, return from the idle loop.
-      if (waitSp != NULL && waitSp->cpus == 0)
-          return;
+        // If this thread is the master of a split point and all threads have
+        // finished their work at this split point, return from the idle loop.
+        if (waitSp != NULL && waitSp->cpus == 0)
+            return;
     }
 
-    Threads[threadID].running = false;
+    threads[threadID].running = false;
   }
 
 
-  // init_split_point_stack() is called during program initialization, and
-  // initializes all split point objects.
+  // init_threads() is called during startup. It launches all helper threads,
+  // and initializes the split point stack and the global locks and condition
+  // objects.
 
-  void init_split_point_stack() {
+  void ThreadsManager::init_threads() {
 
+    volatile int i;
+    bool ok;
+
+#if !defined(_MSC_VER)
+    pthread_t pthread[1];
+#endif
+
+    // Initialize global locks
+    lock_init(&MPLock, NULL);
+    lock_init(&IOLock, NULL);
+
+    // Initialize SplitPointStack locks
     for (int i = 0; i < THREAD_MAX; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
         {
             SplitPointStack[i][j].parent = NULL;
             lock_init(&(SplitPointStack[i][j].lock), NULL);
         }
+
+#if !defined(_MSC_VER)
+    pthread_mutex_init(&WaitLock, NULL);
+    pthread_cond_init(&WaitCond, NULL);
+#else
+    for (i = 0; i < THREAD_MAX; i++)
+        SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
+#endif
+
+    // Will be set just before program exits to properly end the threads
+    AllThreadsShouldExit = false;
+
+    // Threads will be put to sleep as soon as created
+    AllThreadsShouldSleep = true;
+
+    // All threads except the main thread should be initialized to idle state
+    ActiveThreads = 1;
+    for (i = 1; i < THREAD_MAX; i++)
+        threads[i].idle = true;
+
+    // Launch the helper threads
+    for (i = 1; i < THREAD_MAX; i++)
+    {
+
+#if !defined(_MSC_VER)
+        ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
+#else
+        DWORD iID[1];
+        ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, iID) != NULL);
+#endif
+
+        if (!ok)
+        {
+            cout << "Failed to create thread number " << i << endl;
+            Application::exit_with_failure();
+        }
+
+        // Wait until the thread has finished launching and is gone to sleep
+        while (!threads[i].running || !threads[i].sleeping);
+    }
   }
 
 
-  // destroy_split_point_stack() is called when the program exits, and
-  // destroys all locks in the precomputed split point objects.
+  // exit_threads() is called when the program exits. It makes all the
+  // helper threads exit cleanly.
 
-  void destroy_split_point_stack() {
+  void ThreadsManager::exit_threads() {
 
+    ActiveThreads = THREAD_MAX;  // HACK
+    AllThreadsShouldSleep = true;  // HACK
+    wake_sleeping_threads();
+    AllThreadsShouldExit = true;
+    for (int i = 1; i < THREAD_MAX; i++)
+    {
+        threads[i].stop = true;
+        while (threads[i].running);
+    }
+
+    // Now we can safely destroy the locks
     for (int i = 0; i < THREAD_MAX; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
             lock_destroy(&(SplitPointStack[i][j].lock));
@@ -2855,22 +2764,25 @@ namespace {
   // cutoff has occurred in the thread's currently active split point, or in
   // some ancestor of the current split point.
 
-  bool thread_should_stop(int threadID) {
+  bool ThreadsManager::thread_should_stop(int threadID) {
 
     assert(threadID >= 0 && threadID < ActiveThreads);
 
     SplitPoint* sp;
 
-    if (Threads[threadID].stop)
+    if (threads[threadID].stop)
         return true;
+
     if (ActiveThreads <= 2)
         return false;
-    for (sp = Threads[threadID].splitPoint; sp != NULL; sp = sp->parent)
+
+    for (sp = threads[threadID].splitPoint; sp != NULL; sp = sp->parent)
         if (sp->finished)
         {
-            Threads[threadID].stop = true;
+            threads[threadID].stop = true;
             return true;
         }
+
     return false;
   }
 
@@ -2883,17 +2795,17 @@ namespace {
   // threads which are busy searching the split point at the top of "slave"'s
   // split point stack (the "helpful master concept" in YBWC terminology).
 
-  bool thread_is_available(int slave, int master) {
+  bool ThreadsManager::thread_is_available(int slave, int master) const {
 
     assert(slave >= 0 && slave < ActiveThreads);
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    if (!Threads[slave].idle || slave == master)
+    if (!threads[slave].idle || slave == master)
         return false;
 
     // Make a local copy to be sure doesn't change under our feet
-    int localActiveSplitPoints = Threads[slave].activeSplitPoints;
+    int localActiveSplitPoints = threads[slave].activeSplitPoints;
 
     if (localActiveSplitPoints == 0)
         // No active split points means that the thread is available as
@@ -2904,7 +2816,7 @@ namespace {
         return true;
 
     // Apply the "helpful master" concept if possible. Use localActiveSplitPoints
-    // that is known to be > 0, instead of Threads[slave].activeSplitPoints that
+    // that is known to be > 0, instead of threads[slave].activeSplitPoints that
     // could have been set to 0 by another thread leading to an out of bound access.
     if (SplitPointStack[slave][localActiveSplitPoints - 1].slaves[master])
         return true;
@@ -2916,7 +2828,7 @@ namespace {
   // idle_thread_exists() tries to find an idle thread which is available as
   // a slave for the thread with threadID "master".
 
-  bool idle_thread_exists(int master) {
+  bool ThreadsManager::idle_thread_exists(int master) const {
 
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
@@ -2941,7 +2853,7 @@ namespace {
   // threads have returned from sp_search_pv (or, equivalently, when
   // splitPoint->cpus becomes 0), split() returns true.
 
-  bool split(const Position& p, SearchStack* sstck, int ply,
+  bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply,
              Value* alpha, Value* beta, Value* bestValue, const Value futilityValue,
              Depth depth, int* moves, MovePicker* mp, int master, bool pvNode) {
 
@@ -2962,18 +2874,18 @@ namespace {
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
     if (   !idle_thread_exists(master)
-        || Threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
+        || threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
     {
         lock_release(&MPLock);
         return false;
     }
 
     // Pick the next available split point object from the split point stack
-    splitPoint = SplitPointStack[master] + Threads[master].activeSplitPoints;
-    Threads[master].activeSplitPoints++;
+    splitPoint = SplitPointStack[master] + threads[master].activeSplitPoints;
+    threads[master].activeSplitPoints++;
 
     // Initialize the split point object
-    splitPoint->parent = Threads[master].splitPoint;
+    splitPoint->parent = threads[master].splitPoint;
     splitPoint->finished = false;
     splitPoint->ply = ply;
     splitPoint->depth = depth;
@@ -2991,17 +2903,17 @@ namespace {
     for (int i = 0; i < ActiveThreads; i++)
         splitPoint->slaves[i] = 0;
 
-    Threads[master].idle = false;
-    Threads[master].stop = false;
-    Threads[master].splitPoint = splitPoint;
+    threads[master].idle = false;
+    threads[master].stop = false;
+    threads[master].splitPoint = splitPoint;
 
     // Allocate available threads setting idle flag to false
     for (int i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
         if (thread_is_available(i, master))
         {
-            Threads[i].idle = false;
-            Threads[i].stop = false;
-            Threads[i].splitPoint = splitPoint;
+            threads[i].idle = false;
+            threads[i].stop = false;
+            threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
             splitPoint->cpus++;
         }
@@ -3017,7 +2929,7 @@ namespace {
         if (i == master || splitPoint->slaves[i])
         {
             memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 4 * sizeof(SearchStack));
-            Threads[i].workIsWaiting = true; // This makes the slave to exit from idle_loop()
+            threads[i].workIsWaiting = true; // This makes the slave to exit from idle_loop()
         }
 
     // Everything is set up. The master thread enters the idle loop, from
@@ -3037,10 +2949,10 @@ namespace {
 
     *beta = splitPoint->beta;
     *bestValue = splitPoint->bestValue;
-    Threads[master].stop = false;
-    Threads[master].idle = false;
-    Threads[master].activeSplitPoints--;
-    Threads[master].splitPoint = splitPoint->parent;
+    threads[master].stop = false;
+    threads[master].idle = false;
+    threads[master].activeSplitPoints--;
+    threads[master].splitPoint = splitPoint->parent;
 
     lock_release(&MPLock);
     return true;
@@ -3050,43 +2962,44 @@ namespace {
   // wake_sleeping_threads() wakes up all sleeping threads when it is time
   // to start a new search from the root.
 
-  void wake_sleeping_threads() {
+  void ThreadsManager::wake_sleeping_threads() {
 
     assert(AllThreadsShouldSleep);
+    assert(ActiveThreads > 0);
 
     AllThreadsShouldSleep = false;
 
-    if (ActiveThreads > 1)
-    {
-        for (int i = 1; i < ActiveThreads; i++)
-        {
-            assert(Threads[i].sleeping == true);
+    if (ActiveThreads == 1)
+        return;
 
-            Threads[i].idle = true;
-            Threads[i].workIsWaiting = false;
-        }
+    for (int i = 1; i < ActiveThreads; i++)
+    {
+        assert(threads[i].sleeping == true);
+
+        threads[i].idle = true;
+        threads[i].workIsWaiting = false;
+    }
 
 #if !defined(_MSC_VER)
-      pthread_mutex_lock(&WaitLock);
-      pthread_cond_broadcast(&WaitCond);
-      pthread_mutex_unlock(&WaitLock);
+    pthread_mutex_lock(&WaitLock);
+    pthread_cond_broadcast(&WaitCond);
+    pthread_mutex_unlock(&WaitLock);
 #else
-      for (int i = 1; i < THREAD_MAX; i++)
-          SetEvent(SitIdleEvent[i]);
+    for (int i = 1; i < THREAD_MAX; i++)
+        SetEvent(SitIdleEvent[i]);
 #endif
 
-      // Wait for the threads to be all woken up
-      for (int i = 1; i < ActiveThreads; i++)
-           while (Threads[i].sleeping);
-    }
+    // Wait for the threads to be all woken up
+    for (int i = 1; i < ActiveThreads; i++)
+        while (threads[i].sleeping);
   }
 
 
   // put_threads_to_sleep() makes all the threads go to sleep just before
-  // to leave think(), at the end of the search. Threads should have already
+  // to leave think(), at the end of the search. threads should have already
   // finished the job and should be idle.
 
-  void put_threads_to_sleep() {
+  void ThreadsManager::put_threads_to_sleep() {
 
     assert(!AllThreadsShouldSleep);
 
@@ -3094,31 +3007,131 @@ namespace {
 
     // Wait for the threads to be all sleeping
     for (int i = 1; i < ActiveThreads; i++)
-        while (!Threads[i].sleeping);
+        while (!threads[i].sleeping);
   }
 
 
-  // init_thread() is the function which is called when a new thread is
-  // launched. It simply calls the idle_loop() function with the supplied
-  // threadID. There are two versions of this function; one for POSIX
-  // threads and one for Windows threads.
+  // print_current_line() prints _once_ the current line of search for a
+  // given thread and then setup the print request for the next thread.
+  // Called when the UCI option UCI_ShowCurrLine is 'true'.
 
-#if !defined(_MSC_VER)
+  void ThreadsManager::print_current_line(SearchStack ss[], int ply, int threadID) {
 
-  void* init_thread(void *threadID) {
+    assert(ply >= 0 && ply < PLY_MAX);
+    assert(threadID >= 0 && threadID < ActiveThreads);
 
-    idle_loop(*(int*)threadID, NULL);
-    return NULL;
+    if (!threads[threadID].printCurrentLineRequest)
+        return;
+
+    // One shot only
+    threads[threadID].printCurrentLineRequest = false;
+
+    if (!threads[threadID].idle)
+    {
+        lock_grab(&IOLock);
+        cout << "info currline " << (threadID + 1);
+        for (int p = 0; p < ply; p++)
+            cout << " " << ss[p].currentMove;
+
+        cout << endl;
+        lock_release(&IOLock);
+    }
+
+    // Setup print request for the next thread ID
+    if (threadID + 1 < ActiveThreads)
+        threads[threadID + 1].printCurrentLineRequest = true;
   }
 
-#else
 
-  DWORD WINAPI init_thread(LPVOID threadID) {
+  /// The RootMoveList class
 
-    idle_loop(*(int*)threadID, NULL);
-    return NULL;
+  // RootMoveList c'tor
+
+  RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) : count(0) {
+
+    SearchStack ss[PLY_MAX_PLUS_2];
+    MoveStack mlist[MaxRootMoves];
+    StateInfo st;
+    bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
+
+    // Generate all legal moves
+    MoveStack* last = generate_moves(pos, mlist);
+
+    // Add each move to the moves[] array
+    for (MoveStack* cur = mlist; cur != last; cur++)
+    {
+        bool includeMove = includeAllMoves;
+
+        for (int k = 0; !includeMove && searchMoves[k] != MOVE_NONE; k++)
+            includeMove = (searchMoves[k] == cur->move);
+
+        if (!includeMove)
+            continue;
+
+        // Find a quick score for the move
+        init_ss_array(ss);
+        pos.do_move(cur->move, st);
+        moves[count].move = cur->move;
+        moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
+        moves[count].pv[0] = cur->move;
+        moves[count].pv[1] = MOVE_NONE;
+        pos.undo_move(cur->move);
+        count++;
+    }
+    sort();
   }
 
-#endif
 
-}
+  // RootMoveList simple methods definitions
+
+  void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
+
+    moves[moveNum].nodes = nodes;
+    moves[moveNum].cumulativeNodes += nodes;
+  }
+
+  void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
+
+    moves[moveNum].ourBeta = our;
+    moves[moveNum].theirBeta = their;
+  }
+
+  void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
+
+    int j;
+
+    for (j = 0; pv[j] != MOVE_NONE; j++)
+        moves[moveNum].pv[j] = pv[j];
+
+    moves[moveNum].pv[j] = MOVE_NONE;
+  }
+
+
+  // RootMoveList::sort() sorts the root move list at the beginning of a new
+  // iteration.
+
+  void RootMoveList::sort() {
+
+    sort_multipv(count - 1); // Sort all items
+  }
+
+
+  // RootMoveList::sort_multipv() sorts the first few moves in the root move
+  // list by their scores and depths. It is used to order the different PVs
+  // correctly in MultiPV mode.
+
+  void RootMoveList::sort_multipv(int n) {
+
+    int i,j;
+
+    for (i = 1; i <= n; i++)
+    {
+        RootMove rm = moves[i];
+        for (j = i; j > 0 && moves[j - 1] < rm; j--)
+            moves[j] = moves[j - 1];
+
+        moves[j] = rm;
+    }
+  }
+
+} // namspace

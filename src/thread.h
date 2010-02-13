@@ -66,9 +66,6 @@ struct SplitPoint {
 
 
 struct Thread {
-
-  Thread() { memset(this, 0, sizeof(Thread)); }
-
   SplitPoint *splitPoint;
   volatile int activeSplitPoints;
   uint64_t nodes;
@@ -78,7 +75,7 @@ struct Thread {
   volatile bool idle;
   volatile bool sleeping;
   volatile bool workIsWaiting;
-  volatile bool printCurrentLine;
+  volatile bool printCurrentLineRequest;
   unsigned char pad[64]; // set some distance among local data for each thread
 };
 
