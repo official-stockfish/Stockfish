@@ -71,6 +71,7 @@ struct Thread {
   volatile bool stop;
   volatile bool running;
   volatile bool idle;
+  volatile bool sleeping;
   volatile bool workIsWaiting;
   volatile bool printCurrentLine;
   unsigned char pad[64]; // set some distance among local data for each thread

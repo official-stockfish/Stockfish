@@ -219,9 +219,8 @@ namespace {
   Thread Threads[THREAD_MAX];
   Lock MPLock;
   Lock IOLock;
-  bool AllThreadsShouldExit = false;
+  bool AllThreadsShouldExit, AllThreadsShouldSleep;
   SplitPoint SplitPointStack[THREAD_MAX][ACTIVE_SPLIT_POINTS_MAX];
-  bool Idle = true;
 
 #if !defined(_MSC_VER)
   pthread_cond_t WaitCond;
@@ -336,7 +335,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
            int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
-  Idle = StopOnPonderhit = AbortSearch = Quit = false;
+  AllThreadsShouldSleep = StopOnPonderhit = AbortSearch = Quit = false;
   AspirationFailLow = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
@@ -522,7 +521,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.close();
 
-  Idle = true;
+  AllThreadsShouldSleep = true;
   return !Quit;
 }
 
@@ -584,6 +583,12 @@ void init_threads() {
       SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
 #endif
 
+  // Will be set just before program exits to properly end the threads
+  AllThreadsShouldExit = false;
+
+  // Threads will be put to sleep as soon as created
+  AllThreadsShouldSleep = true;
+
   // All threads except the main thread should be initialized to idle state
   for (i = 1; i < THREAD_MAX; i++)
   {
@@ -621,7 +626,7 @@ void init_threads() {
 void stop_threads() {
 
   ActiveThreads = THREAD_MAX;  // HACK
-  Idle = false;  // HACK
+  AllThreadsShouldSleep = false;  // HACK
   wake_sleeping_threads();
   AllThreadsShouldExit = true;
   for (int i = 1; i < THREAD_MAX; i++)
@@ -2776,15 +2781,16 @@ namespace {
 
     Threads[threadID].running = true;
 
-    while (true)
+    while (!AllThreadsShouldExit || threadID == 0)
     {
-        if (AllThreadsShouldExit && threadID != 0)
-            break;
-
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (threadID != 0 && (Idle || threadID >= ActiveThreads))
+        while (    threadID != 0
+               && !AllThreadsShouldExit
+               && (AllThreadsShouldSleep || threadID >= ActiveThreads))
         {
+
+            Threads[threadID].sleeping = true;
 
 #if !defined(_MSC_VER)
             pthread_mutex_lock(&WaitLock);
@@ -2795,6 +2801,7 @@ namespace {
 #else
             WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
 #endif
+            Threads[threadID].sleeping = false;
         }
 
       // If this thread has been assigned work, launch a search
