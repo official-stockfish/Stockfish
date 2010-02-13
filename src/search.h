@@ -69,7 +69,7 @@ struct SearchStack {
 
 extern void init_search();
 extern void init_threads();
-extern void stop_threads();
+extern void exit_threads();
 extern bool think(const Position &pos, bool infinite, bool ponder, int side_to_move,
                   int time[], int increment[], int movesToGo, int maxDepth,
                   int maxNodes, int maxTime, Move searchMoves[]);

@@ -612,10 +612,10 @@ void init_threads() {
 }
 
 
-/// stop_threads() is called when the program exits. It makes all the
+/// exit_threads() is called when the program exits. It makes all the
 /// helper threads exit cleanly.
 
-void stop_threads() {
+void exit_threads() {
 
   ActiveThreads = THREAD_MAX;  // HACK
   AllThreadsShouldSleep = false;  // HACK

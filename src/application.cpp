@@ -59,7 +59,7 @@ Application::Application() {
 
 Application::~Application() {
 
-  stop_threads();
+  exit_threads();
   quit_eval();
 }
 
