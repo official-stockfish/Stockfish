@@ -2793,8 +2793,11 @@ namespace {
 #else
             WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
 #endif
-            Threads[threadID].sleeping = false;
         }
+
+        // Out of the while loop to avoid races in case thread is woken up but
+        // while condition still holds true so that is put to sleep again.
+        Threads[threadID].sleeping = false;
 
       // If this thread has been assigned work, launch a search
       if (Threads[threadID].workIsWaiting)
@@ -3051,6 +3054,8 @@ namespace {
     {
         for (int i = 1; i < ActiveThreads; i++)
         {
+            assert(Threads[i].sleeping == true);
+
             Threads[i].idle = true;
             Threads[i].workIsWaiting = false;
         }
@@ -3063,6 +3068,10 @@ namespace {
       for (int i = 1; i < THREAD_MAX; i++)
           SetEvent(SitIdleEvent[i]);
 #endif
+
+      // Wait for the threads to be all woken up
+      for (int i = 1; i < ActiveThreads; i++)
+           while (Threads[i].sleeping);
     }
   }
 
