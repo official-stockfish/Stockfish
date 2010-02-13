@@ -2788,7 +2788,7 @@ namespace {
 
 #if !defined(_MSC_VER)
             pthread_mutex_lock(&WaitLock);
-            if (Idle || threadID >= ActiveThreads)
+            if (AllThreadsShouldSleep || threadID >= ActiveThreads)
                 pthread_cond_wait(&WaitCond, &WaitLock);
 
             pthread_mutex_unlock(&WaitLock);
