@@ -280,6 +280,7 @@ namespace {
              const Value futilityValue, Depth depth, int *moves,
              MovePicker *mp, int master, bool pvNode);
   void wake_sleeping_threads();
+  void put_threads_to_sleep();
 
 #if !defined(_MSC_VER)
   void *init_thread(void *threadID);
@@ -335,7 +336,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
            int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
-  AllThreadsShouldSleep = StopOnPonderhit = AbortSearch = Quit = false;
+  StopOnPonderhit = AbortSearch = Quit = false;
   AspirationFailLow = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
@@ -521,7 +522,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   if (UseLogFile)
       LogFile.close();
 
-  AllThreadsShouldSleep = true;
+  put_threads_to_sleep();
+
   return !Quit;
 }
 
@@ -606,8 +608,8 @@ void init_threads() {
           Application::exit_with_failure();
       }
 
-      // Wait until the thread has finished launching
-      while (!Threads[i].running);
+      // Wait until the thread has finished launching and is gone to sleep
+      while (!Threads[i].running || !Threads[i].sleeping);
   }
 }
 
@@ -618,7 +620,7 @@ void init_threads() {
 void exit_threads() {
 
   ActiveThreads = THREAD_MAX;  // HACK
-  AllThreadsShouldSleep = false;  // HACK
+  AllThreadsShouldSleep = true;  // HACK
   wake_sleeping_threads();
   AllThreadsShouldExit = true;
   for (int i = 1; i < THREAD_MAX; i++)
@@ -3050,6 +3052,10 @@ namespace {
 
   void wake_sleeping_threads() {
 
+    assert(AllThreadsShouldSleep);
+
+    AllThreadsShouldSleep = false;
+
     if (ActiveThreads > 1)
     {
         for (int i = 1; i < ActiveThreads; i++)
@@ -3073,6 +3079,22 @@ namespace {
       for (int i = 1; i < ActiveThreads; i++)
            while (Threads[i].sleeping);
     }
+  }
+
+
+  // put_threads_to_sleep() makes all the threads go to sleep just before
+  // to leave think(), at the end of the search. Threads should have already
+  // finished the job and should be idle.
+
+  void put_threads_to_sleep() {
+
+    assert(!AllThreadsShouldSleep);
+
+    AllThreadsShouldSleep = true;
+
+    // Wait for the threads to be all sleeping
+    for (int i = 1; i < ActiveThreads; i++)
+        while (!Threads[i].sleeping);
   }
 
 
