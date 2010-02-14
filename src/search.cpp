@@ -81,7 +81,7 @@ namespace {
     void get_beta_counters(Color us, int64_t& our, int64_t& their) const;
     bool idle_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
-    bool thread_should_stop(int threadID);
+    bool thread_should_stop(int threadID) const;
     void wake_sleeping_threads();
     void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* waitSp);
@@ -1881,10 +1881,12 @@ namespace {
     /* Here we have the lock still grabbed */
 
     // If this is the master thread and we have been asked to stop because of
-    // a beta cutoff higher up in the tree, stop all slave threads.
+    // a beta cutoff higher up in the tree, stop all slave threads. Note that
+    // thread_should_stop(threadID) does not imply that 'stop' flag is set, so
+    // do this explicitly now, under lock protection.
     if (sp->master == threadID && TM.thread_should_stop(threadID))
         for (int i = 0; i < TM.active_threads(); i++)
-            if (sp->slaves[i])
+            if (sp->slaves[i] || i == threadID)
                 TM.set_stop_request(i);
 
     sp->cpus--;
@@ -2016,10 +2018,12 @@ namespace {
     /* Here we have the lock still grabbed */
 
     // If this is the master thread and we have been asked to stop because of
-    // a beta cutoff higher up in the tree, stop all slave threads.
+    // a beta cutoff higher up in the tree, stop all slave threads. Note that
+    // thread_should_stop(threadID) does not imply that 'stop' flag is set, so
+    // do this explicitly now, under lock protection.
     if (sp->master == threadID && TM.thread_should_stop(threadID))
         for (int i = 0; i < TM.active_threads(); i++)
-            if (sp->slaves[i])
+            if (sp->slaves[i] || i == threadID)
                 TM.set_stop_request(i);
 
     sp->cpus--;
@@ -2764,7 +2768,7 @@ namespace {
   // cutoff has occurred in the thread's currently active split point, or in
   // some ancestor of the current split point.
 
-  bool ThreadsManager::thread_should_stop(int threadID) {
+  bool ThreadsManager::thread_should_stop(int threadID) const {
 
     assert(threadID >= 0 && threadID < ActiveThreads);
 
@@ -2778,10 +2782,7 @@ namespace {
 
     for (sp = threads[threadID].splitPoint; sp != NULL; sp = sp->parent)
         if (sp->finished)
-        {
-            threads[threadID].stop = true;
             return true;
-        }
 
     return false;
   }
