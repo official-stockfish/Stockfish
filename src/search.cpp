@@ -3006,11 +3006,20 @@ namespace {
 
     AllThreadsShouldSleep = true;
 
-    // Wait for the threads to be all sleeping
+    // Wait for the threads to be all sleeping and reset flags
+    // to a known state.
     for (int i = 1; i < ActiveThreads; i++)
+    {
         while (!threads[i].sleeping);
-  }
 
+        assert(threads[i].idle);
+        assert(threads[i].running);
+        assert(!threads[i].workIsWaiting);
+
+        // These two flags can be in a random state
+        threads[i].stop = threads[i].printCurrentLineRequest = false;
+    }
+  }
 
   // print_current_line() prints _once_ the current line of search for a
   // given thread and then setup the print request for the next thread.
