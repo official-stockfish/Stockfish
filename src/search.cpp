@@ -2904,9 +2904,15 @@ namespace {
     for (int i = 0; i < ActiveThreads; i++)
         splitPoint->slaves[i] = 0;
 
-    threads[master].idle = false;
-    threads[master].stopRequest = false;
     threads[master].splitPoint = splitPoint;
+
+    // If we are here it means we are not idle
+    assert(!threads[master].idle);
+
+    // Following assert could fail because we could be slave of a master
+    // thread that has just raised a stop request. Note that stopRequest
+    // can be changed with only splitPoint::lock held, not with MPLock.
+    /* assert(!threads[master].stopRequest); */
 
     // Allocate available threads setting idle flag to false
     for (int i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
