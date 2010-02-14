@@ -70,7 +70,7 @@ struct Thread {
   volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
-  volatile bool stop;
+  volatile bool stopRequest;
   volatile bool running;
   volatile bool idle;
   volatile bool sleeping;

@@ -70,7 +70,7 @@ namespace {
 
     int active_threads() const { return ActiveThreads; }
     void set_active_threads(int newActiveThreads) { ActiveThreads = newActiveThreads; }
-    void set_stop_request(int threadID) { threads[threadID].stop = true; }
+    void set_stop_request(int threadID) { threads[threadID].stopRequest = true; }
     void incrementNodeCounter(int threadID) { threads[threadID].nodes++; }
     void incrementBetaCounter(Color us, Depth d, int threadID) { threads[threadID].betaCutOffs[us] += unsigned(d); }
     void print_current_line(SearchStack ss[], int ply, int threadID);
@@ -2752,7 +2752,7 @@ namespace {
     AllThreadsShouldExit = true;
     for (int i = 1; i < THREAD_MAX; i++)
     {
-        threads[i].stop = true;
+        threads[i].stopRequest = true;
         while (threads[i].running);
     }
 
@@ -2774,7 +2774,7 @@ namespace {
 
     SplitPoint* sp;
 
-    if (threads[threadID].stop)
+    if (threads[threadID].stopRequest)
         return true;
 
     if (ActiveThreads <= 2)
@@ -2905,7 +2905,7 @@ namespace {
         splitPoint->slaves[i] = 0;
 
     threads[master].idle = false;
-    threads[master].stop = false;
+    threads[master].stopRequest = false;
     threads[master].splitPoint = splitPoint;
 
     // Allocate available threads setting idle flag to false
@@ -2913,7 +2913,7 @@ namespace {
         if (thread_is_available(i, master))
         {
             threads[i].idle = false;
-            threads[i].stop = false;
+            threads[i].stopRequest = false;
             threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
             splitPoint->cpus++;
@@ -2950,7 +2950,7 @@ namespace {
 
     *beta = splitPoint->beta;
     *bestValue = splitPoint->bestValue;
-    threads[master].stop = false;
+    threads[master].stopRequest = false;
     threads[master].idle = false;
     threads[master].activeSplitPoints--;
     threads[master].splitPoint = splitPoint->parent;
@@ -3017,7 +3017,7 @@ namespace {
         assert(!threads[i].workIsWaiting);
 
         // These two flags can be in a random state
-        threads[i].stop = threads[i].printCurrentLineRequest = false;
+        threads[i].stopRequest = threads[i].printCurrentLineRequest = false;
     }
   }
 
