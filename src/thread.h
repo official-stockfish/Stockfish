@@ -64,6 +64,17 @@ struct SplitPoint {
   bool finished;
 };
 
+// ThreadState type is used to represent thread's current state
+
+enum ThreadState
+{
+  THREAD_SEARCHING,     // thread is performing work
+  THREAD_AVAILABLE,     // thread is polling for work
+  THREAD_SLEEPING,      // we are not thinking, so thread is sleeping
+  THREAD_BOOKED,        // other thread (master) has booked us as a slave
+  THREAD_WORKISWAITING, // master has ordered us to start
+  THREAD_TERMINATED     // we are quitting and thread is terminated
+};
 
 struct Thread {
   SplitPoint *splitPoint;
@@ -71,11 +82,8 @@ struct Thread {
   uint64_t nodes;
   uint64_t betaCutOffs[2];
   volatile bool stopRequest;
-  volatile bool running;
-  volatile bool idle;
-  volatile bool sleeping;
-  volatile bool workIsWaiting;
   volatile bool printCurrentLineRequest;
+  volatile ThreadState state;
   unsigned char pad[64]; // set some distance among local data for each thread
 };
 

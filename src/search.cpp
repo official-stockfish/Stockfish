@@ -92,7 +92,7 @@ namespace {
     friend void poll();
 
     int ActiveThreads;
-    bool AllThreadsShouldExit, AllThreadsShouldSleep;
+    volatile bool AllThreadsShouldExit, AllThreadsShouldSleep;
     Thread threads[MAX_THREADS];
     SplitPoint SplitPointStack[MAX_THREADS][ACTIVE_SPLIT_POINTS_MAX];
 
@@ -2623,55 +2623,67 @@ namespace {
 
     assert(threadID >= 0 && threadID < MAX_THREADS);
 
-    threads[threadID].running = true;
-
-    while (!AllThreadsShouldExit || threadID == 0)
+    while (true)
     {
+        // Slave threads can exit as soon as AllThreadsShouldExit raises,
+        // master should exit as last one.
+        if (AllThreadsShouldExit && !waitSp)
+        {
+            threads[threadID].state = THREAD_TERMINATED;
+            return;
+        }
+
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
         while (    threadID != 0
                && !AllThreadsShouldExit
                && (AllThreadsShouldSleep || threadID >= ActiveThreads))
         {
-
-            threads[threadID].sleeping = true;
+            threads[threadID].state = THREAD_SLEEPING;
 
 #if !defined(_MSC_VER)
             pthread_mutex_lock(&WaitLock);
-            if (AllThreadsShouldSleep || threadID >= ActiveThreads)
-                pthread_cond_wait(&WaitCond, &WaitLock);
-
+            pthread_cond_wait(&WaitCond, &WaitLock);
             pthread_mutex_unlock(&WaitLock);
 #else
             WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
 #endif
+            // State is already changed by wake_sleeping_threads()
+            assert(threads[threadID].state == THREAD_AVAILABLE || threadID >= ActiveThreads);
         }
 
-        // Out of the while loop to avoid races in case thread is woken up but
-        // while condition still holds true so that is put to sleep again.
-        threads[threadID].sleeping = false;
-
         // If this thread has been assigned work, launch a search
-        if (threads[threadID].workIsWaiting)
+        if (threads[threadID].state == THREAD_WORKISWAITING)
         {
-            assert(!threads[threadID].idle);
+            threads[threadID].state = THREAD_SEARCHING;
 
-            threads[threadID].workIsWaiting = false;
             if (threads[threadID].splitPoint->pvNode)
                 sp_search_pv(threads[threadID].splitPoint, threadID);
             else
                 sp_search(threads[threadID].splitPoint, threadID);
 
-            threads[threadID].idle = true;
+            assert(threads[threadID].state == THREAD_SEARCHING);
+
+            // If this is a slave thread reset to available, instead
+            // if it is a master thread and all slaves have finished
+            // then leave as is to avoid booking by another master,
+            // we will leave idle loop shortly anyhow.
+            if (   !AllThreadsShouldExit
+                && (!waitSp || waitSp->cpus > 0))
+                threads[threadID].state = THREAD_AVAILABLE;
         }
 
         // If this thread is the master of a split point and all threads have
         // finished their work at this split point, return from the idle loop.
         if (waitSp != NULL && waitSp->cpus == 0)
-            return;
-    }
+        {
+            assert(   threads[threadID].state == THREAD_AVAILABLE
+                   || threads[threadID].state == THREAD_SEARCHING);
 
-    threads[threadID].running = false;
+            threads[threadID].state = THREAD_SEARCHING;
+            return;
+        }
+    }
   }
 
 
@@ -2714,10 +2726,11 @@ namespace {
     // Threads will be put to sleep as soon as created
     AllThreadsShouldSleep = true;
 
-    // All threads except the main thread should be initialized to idle state
+    // All threads except the main thread should be initialized to THREAD_AVAILABLE
     ActiveThreads = 1;
+    threads[0].state = THREAD_SEARCHING;
     for (i = 1; i < MAX_THREADS; i++)
-        threads[i].idle = true;
+        threads[i].state = THREAD_AVAILABLE;
 
     // Launch the helper threads
     for (i = 1; i < MAX_THREADS; i++)
@@ -2737,7 +2750,7 @@ namespace {
         }
 
         // Wait until the thread has finished launching and is gone to sleep
-        while (!threads[i].running || !threads[i].sleeping);
+        while (threads[i].state != THREAD_SLEEPING);
     }
   }
 
@@ -2750,12 +2763,14 @@ namespace {
     ActiveThreads = MAX_THREADS;  // HACK
     AllThreadsShouldSleep = true;  // HACK
     wake_sleeping_threads();
+
+    // This makes the threads to exit idle_loop()
     AllThreadsShouldExit = true;
+
+    // Wait for thread termination
     for (int i = 1; i < MAX_THREADS; i++)
-    {
-        threads[i].stopRequest = true;
-        while (threads[i].running);
-    }
+        while (threads[i].state != THREAD_TERMINATED)
+            threads[i].stopRequest = true;
 
     // Now we can safely destroy the locks
     for (int i = 0; i < MAX_THREADS; i++)
@@ -2803,7 +2818,7 @@ namespace {
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    if (!threads[slave].idle || slave == master)
+    if (threads[slave].state != THREAD_AVAILABLE || slave == master)
         return false;
 
     // Make a local copy to be sure doesn't change under our feet
@@ -2907,19 +2922,14 @@ namespace {
 
     threads[master].splitPoint = splitPoint;
 
-    // If we are here it means we are not idle
-    assert(!threads[master].idle);
+    // If we are here it means we are not available
+    assert(threads[master].state != THREAD_AVAILABLE);
 
-    // Following assert could fail because we could be slave of a master
-    // thread that has just raised a stop request. Note that stopRequest
-    // can be changed with only splitPoint::lock held, not with MPLock.
-    /* assert(!threads[master].stopRequest); */
-
-    // Allocate available threads setting idle flag to false
+    // Allocate available threads setting state to THREAD_BOOKED
     for (int i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
         if (thread_is_available(i, master))
         {
-            threads[i].idle = false;
+            threads[i].state = THREAD_BOOKED;
             threads[i].stopRequest = false;
             threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
@@ -2928,7 +2938,7 @@ namespace {
 
     assert(splitPoint->cpus > 1);
 
-    // We can release the lock because master and slave threads are already booked
+    // We can release the lock because slave threads are already booked and master is not available
     lock_release(&MPLock);
 
     // Tell the threads that they have work to do. This will make them leave
@@ -2937,12 +2947,15 @@ namespace {
         if (i == master || splitPoint->slaves[i])
         {
             memcpy(splitPoint->sstack[i] + ply - 1, sstck + ply - 1, 4 * sizeof(SearchStack));
-            threads[i].workIsWaiting = true; // This makes the slave to exit from idle_loop()
+
+            assert(i == master || threads[i].state == THREAD_BOOKED);
+
+            threads[i].state = THREAD_WORKISWAITING; // This makes the slave to exit from idle_loop()
         }
 
     // Everything is set up. The master thread enters the idle loop, from
-    // which it will instantly launch a search, because its workIsWaiting
-    // slot is 'true'.  We send the split point as a second parameter to the
+    // which it will instantly launch a search, because its state is
+    // THREAD_WORKISWAITING.  We send the split point as a second parameter to the
     // idle loop, which means that the main thread will return from the idle
     // loop when all threads have finished their work at this split point
     // (i.e. when splitPoint->cpus == 0).
@@ -2958,7 +2971,6 @@ namespace {
     *beta = splitPoint->beta;
     *bestValue = splitPoint->bestValue;
     threads[master].stopRequest = false;
-    threads[master].idle = false;
     threads[master].activeSplitPoints--;
     threads[master].splitPoint = splitPoint->parent;
 
@@ -2982,10 +2994,9 @@ namespace {
 
     for (int i = 1; i < ActiveThreads; i++)
     {
-        assert(threads[i].sleeping == true);
+        assert(threads[i].state == THREAD_SLEEPING);
 
-        threads[i].idle = true;
-        threads[i].workIsWaiting = false;
+        threads[i].state = THREAD_AVAILABLE;
     }
 
 #if !defined(_MSC_VER)
@@ -2997,31 +3008,25 @@ namespace {
         SetEvent(SitIdleEvent[i]);
 #endif
 
-    // Wait for the threads to be all woken up
-    for (int i = 1; i < ActiveThreads; i++)
-        while (threads[i].sleeping);
   }
 
 
   // put_threads_to_sleep() makes all the threads go to sleep just before
-  // to leave think(), at the end of the search. threads should have already
+  // to leave think(), at the end of the search. Threads should have already
   // finished the job and should be idle.
 
   void ThreadsManager::put_threads_to_sleep() {
 
     assert(!AllThreadsShouldSleep);
 
+    // This makes the threads to go to sleep
     AllThreadsShouldSleep = true;
 
     // Wait for the threads to be all sleeping and reset flags
     // to a known state.
     for (int i = 1; i < ActiveThreads; i++)
     {
-        while (!threads[i].sleeping);
-
-        assert(threads[i].idle);
-        assert(threads[i].running);
-        assert(!threads[i].workIsWaiting);
+        while (threads[i].state != THREAD_SLEEPING);
 
         // These two flags can be in a random state
         threads[i].stopRequest = threads[i].printCurrentLineRequest = false;
@@ -3043,7 +3048,7 @@ namespace {
     // One shot only
     threads[threadID].printCurrentLineRequest = false;
 
-    if (!threads[threadID].idle)
+    if (threads[threadID].state == THREAD_SEARCHING)
     {
         lock_grab(&IOLock);
         cout << "info currline " << (threadID + 1);
