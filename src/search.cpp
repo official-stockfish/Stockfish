@@ -1854,16 +1854,7 @@ namespace {
       // New best move?
       if (value > sp->bestValue) // Less then 2% of cases
       {
-          // Recursive locking, lock current split point and its ancestors to
-          // guarantee thread_should_stop() and sp_update_pv() are race free.
-          SplitPoint* spChain[MAX_THREADS * ACTIVE_SPLIT_POINTS_MAX];
-          int cnt = 0;
-          for (spChain[cnt] = sp; spChain[cnt]; )
-          {
-              lock_grab(&(spChain[cnt++]->lock));
-              spChain[cnt] = spChain[cnt - 1]->parent;
-          }
-
+          lock_grab(&(sp->lock));
           if (value > sp->bestValue && !TM.thread_should_stop(threadID))
           {
               sp->bestValue = value;
@@ -1873,10 +1864,7 @@ namespace {
                   sp_update_pv(sp->parentSstack, ss, sp->ply);
               }
           }
-
-          // Release locks in reverse order
-          while (cnt > 0)
-              lock_release(&(spChain[--cnt]->lock));
+          lock_release(&(sp->lock));
       }
     }
 
@@ -1975,16 +1963,7 @@ namespace {
       // New best move?
       if (value > sp->bestValue) // Less then 2% of cases
       {
-          // Recursive locking, lock current split point and its ancestors to
-          // guarantee thread_should_stop() and sp_update_pv() are race free.
-          SplitPoint* spChain[MAX_THREADS * ACTIVE_SPLIT_POINTS_MAX];
-          int cnt = 0;
-          for (spChain[cnt] = sp; spChain[cnt]; )
-          {
-              lock_grab(&(spChain[cnt++]->lock));
-              spChain[cnt] = spChain[cnt - 1]->parent;
-          }
-
+          lock_grab(&(sp->lock));
           if (value > sp->bestValue && !TM.thread_should_stop(threadID))
           {
               sp->bestValue = value;
@@ -2001,10 +1980,7 @@ namespace {
                       ss[sp->ply].mateKiller = move;
               }
           }
-
-          // Release locks in reverse order
-          while (cnt > 0)
-              lock_release(&(spChain[--cnt]->lock));
+          lock_release(&(sp->lock));
       }
     }
 
