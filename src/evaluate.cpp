@@ -253,8 +253,8 @@ namespace {
 
   // Pawn and material hash tables, indexed by the current thread id.
   // Note that they will be initialized at 0 being global variables.
-  MaterialInfoTable* MaterialTable[THREAD_MAX];
-  PawnInfoTable* PawnTable[THREAD_MAX];
+  MaterialInfoTable* MaterialTable[MAX_THREADS];
+  PawnInfoTable* PawnTable[MAX_THREADS];
 
   // Sizes of pawn and material hash tables
   const int PawnTableSize = 16384;
@@ -305,7 +305,7 @@ template<bool HasPopCnt>
 Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   assert(pos.is_ok());
-  assert(threadID >= 0 && threadID < THREAD_MAX);
+  assert(threadID >= 0 && threadID < MAX_THREADS);
   assert(!pos.is_check());
 
   memset(&ei, 0, sizeof(EvalInfo));
@@ -440,9 +440,9 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
 void init_eval(int threads) {
 
-  assert(threads <= THREAD_MAX);
+  assert(threads <= MAX_THREADS);
 
-  for (int i = 0; i < THREAD_MAX; i++)
+  for (int i = 0; i < MAX_THREADS; i++)
   {
     if (i >= threads)
     {
@@ -464,7 +464,7 @@ void init_eval(int threads) {
 
 void quit_eval() {
 
-  for (int i = 0; i < THREAD_MAX; i++)
+  for (int i = 0; i < MAX_THREADS; i++)
   {
       delete PawnTable[i];
       delete MaterialTable[i];

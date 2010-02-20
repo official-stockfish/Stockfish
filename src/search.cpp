@@ -79,7 +79,7 @@ namespace {
     void resetBetaCounters();
     int64_t nodes_searched() const;
     void get_beta_counters(Color us, int64_t& our, int64_t& their) const;
-    bool idle_thread_exists(int master) const;
+    bool available_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
     bool thread_should_stop(int threadID) const;
     void wake_sleeping_threads();
@@ -93,8 +93,8 @@ namespace {
 
     int ActiveThreads;
     bool AllThreadsShouldExit, AllThreadsShouldSleep;
-    Thread threads[THREAD_MAX];
-    SplitPoint SplitPointStack[THREAD_MAX][ACTIVE_SPLIT_POINTS_MAX];
+    Thread threads[MAX_THREADS];
+    SplitPoint SplitPointStack[MAX_THREADS][ACTIVE_SPLIT_POINTS_MAX];
 
     Lock MPLock, IOLock;
 
@@ -102,7 +102,7 @@ namespace {
     pthread_cond_t WaitCond;
     pthread_mutex_t WaitLock;
 #else
-    HANDLE SitIdleEvent[THREAD_MAX];
+    HANDLE SitIdleEvent[MAX_THREADS];
 #endif
 
   };
@@ -1208,7 +1208,7 @@ namespace {
           && bestValue < beta
           && depth >= MinimumSplitDepth
           && Iteration <= 99
-          && TM.idle_thread_exists(threadID)
+          && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
           && TM.split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE,
@@ -1522,7 +1522,7 @@ namespace {
           && bestValue < beta
           && depth >= MinimumSplitDepth
           && Iteration <= 99
-          && TM.idle_thread_exists(threadID)
+          && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
           && TM.split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
@@ -2585,13 +2585,13 @@ namespace {
 
   void ThreadsManager::resetNodeCounters() {
 
-    for (int i = 0; i < THREAD_MAX; i++)
+    for (int i = 0; i < MAX_THREADS; i++)
         threads[i].nodes = 0ULL;
   }
 
   void ThreadsManager::resetBetaCounters() {
 
-    for (int i = 0; i < THREAD_MAX; i++)
+    for (int i = 0; i < MAX_THREADS; i++)
         threads[i].betaCutOffs[WHITE] = threads[i].betaCutOffs[BLACK] = 0ULL;
   }
 
@@ -2607,7 +2607,7 @@ namespace {
   void ThreadsManager::get_beta_counters(Color us, int64_t& our, int64_t& their) const {
 
     our = their = 0UL;
-    for (int i = 0; i < THREAD_MAX; i++)
+    for (int i = 0; i < MAX_THREADS; i++)
     {
         our += threads[i].betaCutOffs[us];
         their += threads[i].betaCutOffs[opposite_color(us)];
@@ -2621,7 +2621,7 @@ namespace {
 
   void ThreadsManager::idle_loop(int threadID, SplitPoint* waitSp) {
 
-    assert(threadID >= 0 && threadID < THREAD_MAX);
+    assert(threadID >= 0 && threadID < MAX_THREADS);
 
     threads[threadID].running = true;
 
@@ -2693,7 +2693,7 @@ namespace {
     lock_init(&IOLock, NULL);
 
     // Initialize SplitPointStack locks
-    for (int i = 0; i < THREAD_MAX; i++)
+    for (int i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
         {
             SplitPointStack[i][j].parent = NULL;
@@ -2704,7 +2704,7 @@ namespace {
     pthread_mutex_init(&WaitLock, NULL);
     pthread_cond_init(&WaitCond, NULL);
 #else
-    for (i = 0; i < THREAD_MAX; i++)
+    for (i = 0; i < MAX_THREADS; i++)
         SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
 #endif
 
@@ -2716,11 +2716,11 @@ namespace {
 
     // All threads except the main thread should be initialized to idle state
     ActiveThreads = 1;
-    for (i = 1; i < THREAD_MAX; i++)
+    for (i = 1; i < MAX_THREADS; i++)
         threads[i].idle = true;
 
     // Launch the helper threads
-    for (i = 1; i < THREAD_MAX; i++)
+    for (i = 1; i < MAX_THREADS; i++)
     {
 
 #if !defined(_MSC_VER)
@@ -2747,18 +2747,18 @@ namespace {
 
   void ThreadsManager::exit_threads() {
 
-    ActiveThreads = THREAD_MAX;  // HACK
+    ActiveThreads = MAX_THREADS;  // HACK
     AllThreadsShouldSleep = true;  // HACK
     wake_sleeping_threads();
     AllThreadsShouldExit = true;
-    for (int i = 1; i < THREAD_MAX; i++)
+    for (int i = 1; i < MAX_THREADS; i++)
     {
         threads[i].stopRequest = true;
         while (threads[i].running);
     }
 
     // Now we can safely destroy the locks
-    for (int i = 0; i < THREAD_MAX; i++)
+    for (int i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
             lock_destroy(&(SplitPointStack[i][j].lock));
   }
@@ -2827,10 +2827,10 @@ namespace {
   }
 
 
-  // idle_thread_exists() tries to find an idle thread which is available as
+  // available_thread_exists() tries to find an idle thread which is available as
   // a slave for the thread with threadID "master".
 
-  bool ThreadsManager::idle_thread_exists(int master) const {
+  bool ThreadsManager::available_thread_exists(int master) const {
 
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
@@ -2875,7 +2875,7 @@ namespace {
 
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
-    if (   !idle_thread_exists(master)
+    if (   !available_thread_exists(master)
         || threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
     {
         lock_release(&MPLock);
@@ -2993,7 +2993,7 @@ namespace {
     pthread_cond_broadcast(&WaitCond);
     pthread_mutex_unlock(&WaitLock);
 #else
-    for (int i = 1; i < THREAD_MAX; i++)
+    for (int i = 1; i < MAX_THREADS; i++)
         SetEvent(SitIdleEvent[i]);
 #endif
 

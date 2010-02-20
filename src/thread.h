@@ -38,7 +38,7 @@
 //// Constants and variables
 ////
 
-const int THREAD_MAX = 8;
+const int MAX_THREADS = 8;
 const int ACTIVE_SPLIT_POINTS_MAX = 8;
 
 
@@ -49,14 +49,14 @@ const int ACTIVE_SPLIT_POINTS_MAX = 8;
 struct SplitPoint {
   SplitPoint *parent;
   const Position* pos;
-  SearchStack sstack[THREAD_MAX][PLY_MAX_PLUS_2];
+  SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
   SearchStack *parentSstack;
   int ply;
   Depth depth;
   volatile Value alpha, beta, bestValue;
   Value futilityValue;
   bool pvNode;
-  int master, slaves[THREAD_MAX];
+  int master, slaves[MAX_THREADS];
   Lock lock;
   MovePicker *mp;
   volatile int moves;

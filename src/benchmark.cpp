@@ -84,9 +84,9 @@ void benchmark(const string& commandLine) {
   }
   csStr >> threads;
   csVal >> val;
-  if (val < 1 || val > THREAD_MAX)
+  if (val < 1 || val > MAX_THREADS)
   {
-      cerr << "The number of threads must be between 1 and " << THREAD_MAX << endl;
+      cerr << "The number of threads must be between 1 and " << MAX_THREADS << endl;
       Application::exit_with_failure();
   }
   set_option_value("Hash", ttSize);
