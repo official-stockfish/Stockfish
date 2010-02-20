@@ -61,7 +61,7 @@ struct SplitPoint {
   MovePicker *mp;
   volatile int moves;
   volatile int cpus;
-  bool finished;
+  volatile bool stopRequest;
 };
 
 // ThreadState type is used to represent thread's current state
@@ -81,7 +81,6 @@ struct Thread {
   volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
-  volatile bool stopRequest;
   volatile bool printCurrentLineRequest;
   volatile ThreadState state;
   unsigned char pad[64]; // set some distance among local data for each thread

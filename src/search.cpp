@@ -70,7 +70,6 @@ namespace {
 
     int active_threads() const { return ActiveThreads; }
     void set_active_threads(int newActiveThreads) { ActiveThreads = newActiveThreads; }
-    void set_stop_request(int threadID) { threads[threadID].stopRequest = true; }
     void incrementNodeCounter(int threadID) { threads[threadID].nodes++; }
     void incrementBetaCounter(Color us, Depth d, int threadID) { threads[threadID].betaCutOffs[us] += unsigned(d); }
     void print_current_line(SearchStack ss[], int ply, int threadID);
@@ -1868,11 +1867,7 @@ namespace {
               if (sp->bestValue >= sp->beta)
               {
                   sp_update_pv(sp->parentSstack, ss, sp->ply);
-                  for (int i = 0; i < TM.active_threads(); i++)
-                      if (i != threadID && (i == sp->master || sp->slaves[i]))
-                          TM.set_stop_request(i);
-
-                  sp->finished = true;
+                  sp->stopRequest = true;
               }
           }
           lock_release(&(sp->lock));
@@ -1880,15 +1875,6 @@ namespace {
     }
 
     /* Here we have the lock still grabbed */
-
-    // If this is the master thread and we have been asked to stop because of
-    // a beta cutoff higher up in the tree, stop all slave threads. Note that
-    // thread_should_stop(threadID) does not imply that 'stop' flag is set, so
-    // do this explicitly now, under lock protection.
-    if (sp->master == threadID && TM.thread_should_stop(threadID))
-        for (int i = 0; i < TM.active_threads(); i++)
-            if (sp->slaves[i] || i == threadID)
-                TM.set_stop_request(i);
 
     sp->cpus--;
     sp->slaves[threadID] = 0;
@@ -1997,13 +1983,7 @@ namespace {
               {
                   // Ask threads to stop before to modify sp->alpha
                   if (value >= sp->beta)
-                  {
-                      for (int i = 0; i < TM.active_threads(); i++)
-                          if (i != threadID && (i == sp->master || sp->slaves[i]))
-                              TM.set_stop_request(i);
-
-                      sp->finished = true;
-                  }
+                      sp->stopRequest = true;
 
                   sp->alpha = value;
 
@@ -2017,15 +1997,6 @@ namespace {
     }
 
     /* Here we have the lock still grabbed */
-
-    // If this is the master thread and we have been asked to stop because of
-    // a beta cutoff higher up in the tree, stop all slave threads. Note that
-    // thread_should_stop(threadID) does not imply that 'stop' flag is set, so
-    // do this explicitly now, under lock protection.
-    if (sp->master == threadID && TM.thread_should_stop(threadID))
-        for (int i = 0; i < TM.active_threads(); i++)
-            if (sp->slaves[i] || i == threadID)
-                TM.set_stop_request(i);
 
     sp->cpus--;
     sp->slaves[threadID] = 0;
@@ -2769,8 +2740,7 @@ namespace {
 
     // Wait for thread termination
     for (int i = 1; i < MAX_THREADS; i++)
-        while (threads[i].state != THREAD_TERMINATED)
-            threads[i].stopRequest = true;
+        while (threads[i].state != THREAD_TERMINATED);
 
     // Now we can safely destroy the locks
     for (int i = 0; i < MAX_THREADS; i++)
@@ -2779,10 +2749,9 @@ namespace {
   }
 
 
-  // thread_should_stop() checks whether the thread with a given threadID has
-  // been asked to stop, directly or indirectly. This can happen if a beta
-  // cutoff has occurred in the thread's currently active split point, or in
-  // some ancestor of the current split point.
+  // thread_should_stop() checks whether the thread should stop its search.
+  // This can happen if a beta cutoff has occurred in the thread's currently
+  // active split point, or in some ancestor of the current split point.
 
   bool ThreadsManager::thread_should_stop(int threadID) const {
 
@@ -2790,17 +2759,8 @@ namespace {
 
     SplitPoint* sp;
 
-    if (threads[threadID].stopRequest)
-        return true;
-
-    if (ActiveThreads <= 2)
-        return false;
-
-    for (sp = threads[threadID].splitPoint; sp != NULL; sp = sp->parent)
-        if (sp->finished)
-            return true;
-
-    return false;
+    for (sp = threads[threadID].splitPoint; sp && !sp->stopRequest; sp = sp->parent);
+    return sp != NULL;
   }
 
 
@@ -2903,7 +2863,7 @@ namespace {
 
     // Initialize the split point object
     splitPoint->parent = threads[master].splitPoint;
-    splitPoint->finished = false;
+    splitPoint->stopRequest = false;
     splitPoint->ply = ply;
     splitPoint->depth = depth;
     splitPoint->alpha = pvNode ? *alpha : (*beta - 1);
@@ -2930,7 +2890,6 @@ namespace {
         if (thread_is_available(i, master))
         {
             threads[i].state = THREAD_BOOKED;
-            threads[i].stopRequest = false;
             threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
             splitPoint->cpus++;
@@ -2970,7 +2929,6 @@ namespace {
 
     *beta = splitPoint->beta;
     *bestValue = splitPoint->bestValue;
-    threads[master].stopRequest = false;
     threads[master].activeSplitPoints--;
     threads[master].splitPoint = splitPoint->parent;
 
@@ -3028,8 +2986,8 @@ namespace {
     {
         while (threads[i].state != THREAD_SLEEPING);
 
-        // These two flags can be in a random state
-        threads[i].stopRequest = threads[i].printCurrentLineRequest = false;
+        // This flag can be in a random state
+        threads[i].printCurrentLineRequest = false;
     }
   }
 
