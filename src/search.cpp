@@ -2650,6 +2650,8 @@ namespace {
         // If this thread has been assigned work, launch a search
         if (threads[threadID].state == THREAD_WORKISWAITING)
         {
+            assert(!AllThreadsShouldExit);
+
             threads[threadID].state = THREAD_SEARCHING;
 
             if (threads[threadID].splitPoint->pvNode)
@@ -2659,13 +2661,7 @@ namespace {
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
-            // If this is a slave thread reset to available, instead
-            // if it is a master thread and all slaves have finished
-            // then leave as is to avoid booking by another master,
-            // we will leave idle loop shortly anyhow.
-            if (   !AllThreadsShouldExit
-                && (!waitSp || waitSp->cpus > 0))
-                threads[threadID].state = THREAD_AVAILABLE;
+            threads[threadID].state = THREAD_AVAILABLE;
         }
 
         // If this thread is the master of a split point and all threads have
