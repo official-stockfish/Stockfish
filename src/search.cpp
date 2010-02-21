@@ -84,7 +84,7 @@ namespace {
     void wake_sleeping_threads();
     void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* waitSp);
-    bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, Value* beta, Value* bestValue,
+    bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
                const Value futilityValue, Depth depth, int* moves, MovePicker* mp, int master, bool pvNode);
 
   private:
@@ -1210,7 +1210,7 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
-          && TM.split(pos, ss, ply, &alpha, &beta, &bestValue, VALUE_NONE,
+          && TM.split(pos, ss, ply, &alpha, beta, &bestValue, VALUE_NONE,
                       depth, &moveCount, &mp, threadID, true))
           break;
     }
@@ -1524,7 +1524,7 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
-          && TM.split(pos, ss, ply, &beta, &beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
+          && TM.split(pos, ss, ply, NULL, beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
                       depth, &moveCount, &mp, threadID, false))
           break;
     }
@@ -2815,7 +2815,7 @@ namespace {
   // splitPoint->cpus becomes 0), split() returns true.
 
   bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply,
-             Value* alpha, Value* beta, Value* bestValue, const Value futilityValue,
+             Value* alpha, const Value beta, Value* bestValue, const Value futilityValue,
              Depth depth, int* moves, MovePicker* mp, int master, bool pvNode) {
 
     assert(p.is_ok());
@@ -2849,8 +2849,8 @@ namespace {
     splitPoint->stopRequest = false;
     splitPoint->ply = ply;
     splitPoint->depth = depth;
-    splitPoint->alpha = pvNode ? *alpha : (*beta - 1);
-    splitPoint->beta = *beta;
+    splitPoint->alpha = pvNode ? *alpha : beta - 1;
+    splitPoint->beta = beta;
     splitPoint->pvNode = pvNode;
     splitPoint->bestValue = *bestValue;
     splitPoint->futilityValue = futilityValue;
@@ -2911,7 +2911,6 @@ namespace {
     if (pvNode)
         *alpha = splitPoint->alpha;
 
-    *beta = splitPoint->beta;
     *bestValue = splitPoint->bestValue;
     threads[master].activeSplitPoints--;
     threads[master].splitPoint = splitPoint->parent;
