@@ -47,18 +47,24 @@ const int ACTIVE_SPLIT_POINTS_MAX = 8;
 ////
 
 struct SplitPoint {
-  SplitPoint *parent;
+
+  // Const data after splitPoint has been setup
+  SplitPoint* parent;
   const Position* pos;
-  SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
-  SearchStack *parentSstack;
-  int ply;
-  Depth depth;
-  volatile Value alpha, beta, bestValue;
-  Value futilityValue;
   bool pvNode;
-  int master, slaves[MAX_THREADS];
+  Depth depth;
+  Value beta, futilityValue;
+  int ply, master, slaves[MAX_THREADS];
+  SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
+
+  // Const pointers to shared data
+  MovePicker* mp;
+  SearchStack* parentSstack;
+
+  // Shared data
   Lock lock;
-  MovePicker *mp;
+  volatile Value alpha;
+  volatile Value bestValue;
   volatile int moves;
   volatile int cpus;
   volatile bool stopRequest;
@@ -77,7 +83,7 @@ enum ThreadState
 };
 
 struct Thread {
-  SplitPoint *splitPoint;
+  SplitPoint* splitPoint;
   volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
