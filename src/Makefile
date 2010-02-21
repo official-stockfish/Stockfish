@@ -330,4 +330,4 @@ install: default
 .depend:
 	-@$(CXX) -msse -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
-include .depend
+-include .depend
