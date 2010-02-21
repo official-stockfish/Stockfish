@@ -2660,7 +2660,7 @@ namespace {
     lock_init(&IOLock, NULL);
 
     // Initialize SplitPointStack locks
-    for (int i = 0; i < MAX_THREADS; i++)
+    for (i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
         {
             SplitPointStack[i][j].parent = NULL;
