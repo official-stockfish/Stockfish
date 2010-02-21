@@ -2842,8 +2842,7 @@ namespace {
     }
 
     // Pick the next available split point object from the split point stack
-    splitPoint = SplitPointStack[master] + threads[master].activeSplitPoints;
-    threads[master].activeSplitPoints++;
+    splitPoint = &SplitPointStack[master][threads[master].activeSplitPoints];
 
     // Initialize the split point object
     splitPoint->parent = threads[master].splitPoint;
@@ -2865,6 +2864,7 @@ namespace {
         splitPoint->slaves[i] = 0;
 
     threads[master].splitPoint = splitPoint;
+    threads[master].activeSplitPoints++;
 
     // If we are here it means we are not available
     assert(threads[master].state != THREAD_AVAILABLE);
