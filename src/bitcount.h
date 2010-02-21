@@ -51,7 +51,7 @@ inline bool cpu_has_popcnt() {
   return (CPUInfo[2] >> 23) & 1;
 }
 
-#define POPCNT_INTRINSIC(x) __popcnt64(x)
+#define POPCNT_INTRINSIC(x) (int)__popcnt64(x)
 
 #elif defined(__GNUC__) && defined(USE_POPCNT) // Gcc compiler
 
