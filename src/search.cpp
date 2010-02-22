@@ -2632,8 +2632,7 @@ namespace {
         // finished their work at this split point, return from the idle loop.
         if (waitSp != NULL && waitSp->cpus == 0)
         {
-            assert(   threads[threadID].state == THREAD_AVAILABLE
-                   || threads[threadID].state == THREAD_SEARCHING);
+            assert(threads[threadID].state == THREAD_AVAILABLE);
 
             threads[threadID].state = THREAD_SEARCHING;
             return;
