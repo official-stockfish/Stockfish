@@ -2822,8 +2822,8 @@ namespace {
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE && *bestValue <= *alpha);
-    assert(!pvNode || *alpha < *beta);
-    assert(*beta <= VALUE_INFINITE);
+    assert(!pvNode || *alpha < beta);
+    assert(beta <= VALUE_INFINITE);
     assert(depth > Depth(0));
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
