@@ -442,9 +442,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // Wake up sleeping threads
   TM.wake_sleeping_threads();
 
-  for (int i = 1; i < TM.active_threads(); i++)
-      assert(TM.thread_is_available(i, 0));
-
   // Set thinking time
   int myTime = time[side_to_move];
   int myIncrement = increment[side_to_move];
@@ -2595,21 +2592,23 @@ namespace {
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
         while (    threadID != 0
-               && !AllThreadsShouldExit
                && (AllThreadsShouldSleep || threadID >= ActiveThreads))
         {
             threads[threadID].state = THREAD_SLEEPING;
 
 #if !defined(_MSC_VER)
             pthread_mutex_lock(&WaitLock);
-            pthread_cond_wait(&WaitCond, &WaitLock);
+            if (AllThreadsShouldSleep || threadID >= ActiveThreads)
+                pthread_cond_wait(&WaitCond, &WaitLock);
             pthread_mutex_unlock(&WaitLock);
 #else
             WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
 #endif
-            // State is already changed by wake_sleeping_threads()
-            assert(threads[threadID].state == THREAD_AVAILABLE || threadID >= ActiveThreads);
         }
+
+        // If thread has just woken up, mark it as available
+        if (threads[threadID].state == THREAD_SLEEPING)
+            threads[threadID].state = THREAD_AVAILABLE;
 
         // If this thread has been assigned work, launch a search
         if (threads[threadID].state == THREAD_WORKISWAITING)
@@ -2933,11 +2932,7 @@ namespace {
         return;
 
     for (int i = 1; i < ActiveThreads; i++)
-    {
         assert(threads[i].state == THREAD_SLEEPING);
-
-        threads[i].state = THREAD_AVAILABLE;
-    }
 
 #if !defined(_MSC_VER)
     pthread_mutex_lock(&WaitLock);
