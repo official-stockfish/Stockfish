@@ -2819,7 +2819,9 @@ namespace {
     assert(p.is_ok());
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
-    assert(*bestValue >= -VALUE_INFINITE && *bestValue <= *alpha);
+    assert(*bestValue >= -VALUE_INFINITE);
+    assert(   ( pvNode && *bestValue <= *alpha)
+           || (!pvNode && *bestValue <   beta ));
     assert(!pvNode || *alpha < beta);
     assert(beta <= VALUE_INFINITE);
     assert(depth > Depth(0));
