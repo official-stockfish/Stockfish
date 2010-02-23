@@ -2594,6 +2594,7 @@ namespace {
         // instead of wasting CPU time polling for work.
         while (AllThreadsShouldSleep || threadID >= ActiveThreads)
         {
+            assert(!waitSp);
             assert(threadID != 0);
             threads[threadID].state = THREAD_SLEEPING;
 
