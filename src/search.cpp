@@ -2583,17 +2583,18 @@ namespace {
     {
         // Slave threads can exit as soon as AllThreadsShouldExit raises,
         // master should exit as last one.
-        if (AllThreadsShouldExit && !waitSp)
+        if (AllThreadsShouldExit)
         {
+            assert(!waitSp);
             threads[threadID].state = THREAD_TERMINATED;
             return;
         }
 
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (    threadID != 0
-               && (AllThreadsShouldSleep || threadID >= ActiveThreads))
+        while (AllThreadsShouldSleep || threadID >= ActiveThreads)
         {
+            assert(threadID != 0);
             threads[threadID].state = THREAD_SLEEPING;
 
 #if !defined(_MSC_VER)
@@ -2613,7 +2614,7 @@ namespace {
         // If this thread has been assigned work, launch a search
         if (threads[threadID].state == THREAD_WORKISWAITING)
         {
-            assert(!AllThreadsShouldExit);
+            assert(!AllThreadsShouldExit && !AllThreadsShouldSleep);
 
             threads[threadID].state = THREAD_SEARCHING;
 
