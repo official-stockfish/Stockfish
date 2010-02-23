@@ -2960,12 +2960,9 @@ namespace {
     // This makes the threads to go to sleep
     AllThreadsShouldSleep = true;
 
-    // Wait for the threads to be all sleeping and reset flags
-    // to a known state.
+    // Reset flags to a known state.
     for (int i = 1; i < ActiveThreads; i++)
     {
-        while (threads[i].state != THREAD_SLEEPING);
-
         // This flag can be in a random state
         threads[i].printCurrentLineRequest = false;
     }
