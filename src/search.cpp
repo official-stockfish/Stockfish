@@ -1267,29 +1267,30 @@ namespace {
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
 
-    // Initialize, and make an early exit in case of an aborted search,
-    // an instant draw, maximum ply reached, etc.
+    // Step 1. Initialize node and poll
+    // Polling can abort search.
     init_node(ss, ply, threadID);
 
-    // After init_node() that calls poll()
+    // Step 2. Check for aborted search and immediate draw
     if (AbortSearch || TM.thread_should_stop(threadID))
         return Value(0);
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
-    // Mate distance pruning
+    // Step 3. Mate distance pruning
     if (value_mated_in(ply) >= beta)
         return beta;
 
     if (value_mate_in(ply + 1) < beta)
         return beta - 1;
 
+    // Step 4. Transposition table lookup
+
     // We don't want the score of a partial search to overwrite a previous full search
     // TT value, so we use a different position key in case of an excluded move exsists.
     Key posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
 
-    // Transposition table lookup
     tte = TT.retrieve(posKey);
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
@@ -1299,9 +1300,9 @@ namespace {
         return value_from_tt(tte->value(), ply);
     }
 
+    // Step 5. Evaluate the position statically
     isCheck = pos.is_check();
 
-    // Evaluate the position statically
     if (!isCheck)
     {
         if (tte && (tte->type() & VALUE_TYPE_EVAL))
