@@ -99,9 +99,4 @@ typedef CRITICAL_SECTION Lock;
 
 #endif
 
-static inline bool lock_grab_bool(Lock* x) {
-    lock_grab(x);
-    return true;
-}
-
 #endif // !defined(LOCK_H_INCLUDED)

@@ -1797,8 +1797,9 @@ namespace {
     bool useFutilityPruning =     sp->depth < 7 * OnePly //FIXME: sync with search
                               && !isCheck;
 
-    while (    lock_grab_bool(&(sp->lock))
-           &&  sp->bestValue < sp->beta
+    lock_grab(&(sp->lock));
+
+    while (    sp->bestValue < sp->beta
            && !TM.thread_should_stop(threadID)
            && (move = sp->mp->get_next_move()) != MOVE_NONE)
     {
@@ -1826,20 +1827,20 @@ namespace {
           if (   moveCount >= futility_move_count(sp->depth)
               && ok_to_prune(pos, move, ss[sp->ply].threatMove)
               && sp->bestValue > value_mated_in(PLY_MAX))
+          {
+              lock_grab(&(sp->lock));
               continue;
+          }
 
           // Value based pruning
           Value futilityValueScaled = sp->futilityValue - moveCount * 8; //FIXME: sync with search
 
           if (futilityValueScaled < sp->beta)
           {
-              if (futilityValueScaled > sp->bestValue) // Less then 1% of cases
-              {
-                  lock_grab(&(sp->lock));
-                  if (futilityValueScaled > sp->bestValue)
-                      sp->bestValue = futilityValueScaled;
-                  lock_release(&(sp->lock));
-              }
+              lock_grab(&(sp->lock));
+
+              if (futilityValueScaled > sp->bestValue)
+                  sp->bestValue = futilityValueScaled;
               continue;
           }
       }
@@ -1875,26 +1876,23 @@ namespace {
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // New best move?
-      if (value > sp->bestValue) // Less then 2% of cases
+      lock_grab(&(sp->lock));
+
+      if (value > sp->bestValue && !TM.thread_should_stop(threadID))
       {
-          lock_grab(&(sp->lock));
-          if (value > sp->bestValue && !TM.thread_should_stop(threadID))
+          sp->bestValue = value;
+          if (sp->bestValue >= sp->beta)
           {
-              sp->bestValue = value;
-              if (sp->bestValue >= sp->beta)
-              {
-                  sp->stopRequest = true;
-                  sp_update_pv(sp->parentSstack, ss, sp->ply);
-              }
+              sp->stopRequest = true;
+              sp_update_pv(sp->parentSstack, ss, sp->ply);
           }
-          lock_release(&(sp->lock));
       }
     }
 
     /* Here we have the lock still grabbed */
 
-    sp->cpus--;
     sp->slaves[threadID] = 0;
+    sp->cpus--;
 
     lock_release(&(sp->lock));
   }
@@ -1920,8 +1918,9 @@ namespace {
     int moveCount;
     Move move;
 
-    while (    lock_grab_bool(&(sp->lock))
-           &&  sp->alpha < sp->beta
+    lock_grab(&(sp->lock));
+
+    while (    sp->alpha < sp->beta
            && !TM.thread_should_stop(threadID)
            && (move = sp->mp->get_next_move()) != MOVE_NONE)
     {
@@ -1982,33 +1981,30 @@ namespace {
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // New best move?
-      if (value > sp->bestValue) // Less then 2% of cases
+      lock_grab(&(sp->lock));
+
+      if (value > sp->bestValue && !TM.thread_should_stop(threadID))
       {
-          lock_grab(&(sp->lock));
-          if (value > sp->bestValue && !TM.thread_should_stop(threadID))
+          sp->bestValue = value;
+          if (value > sp->alpha)
           {
-              sp->bestValue = value;
-              if (value > sp->alpha)
-              {
-                  // Ask threads to stop before to modify sp->alpha
-                  if (value >= sp->beta)
-                      sp->stopRequest = true;
+              // Ask threads to stop before to modify sp->alpha
+              if (value >= sp->beta)
+                  sp->stopRequest = true;
 
-                  sp->alpha = value;
+              sp->alpha = value;
 
-                  sp_update_pv(sp->parentSstack, ss, sp->ply);
-                  if (value == value_mate_in(sp->ply + 1))
-                      ss[sp->ply].mateKiller = move;
-              }
+              sp_update_pv(sp->parentSstack, ss, sp->ply);
+              if (value == value_mate_in(sp->ply + 1))
+                  ss[sp->ply].mateKiller = move;
           }
-          lock_release(&(sp->lock));
       }
     }
 
     /* Here we have the lock still grabbed */
 
-    sp->cpus--;
     sp->slaves[threadID] = 0;
+    sp->cpus--;
 
     lock_release(&(sp->lock));
   }
