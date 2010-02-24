@@ -1331,16 +1331,19 @@ namespace {
           return v; //FIXME: Logically should be: return (v + 0x200 + 16 * depth);
     }
 
-    // Static null move pruning. We're betting that the opponent doesn't have
-    // a move that will reduce the score by more than FutilityMargins[int(depth)]
-    // if we do a null move.
+    // Step 7. Static null move pruning
+    // We're betting that the opponent doesn't have a move that will reduce
+    // the score by more than fuility_margin(depth) if we do a null move.
     if (  !isCheck
         && allowNullmove
         && depth < RazorDepth
         && staticValue - futility_margin(depth, 0) >= beta)
         return staticValue - futility_margin(depth, 0);
 
-    // Null move search
+    // Step 8. Null move search with verification search
+    // When we jump directly to qsearch() we do a null move only if static value is
+    // at least beta. Otherwise we do a null move if static value is not more than
+    // NullMoveMargin under beta.
     if (    allowNullmove
         &&  depth > OnePly
         && !isCheck
@@ -1390,11 +1393,11 @@ namespace {
         }
     }
 
-    // Go with internal iterative deepening if we don't have a TT move
+    // Step 9. Internal iterative deepening
     if (UseIIDAtNonPVNodes && ttMove == MOVE_NONE && depth >= 8*OnePly &&
         !isCheck && ss[ply].eval >= beta - IIDMargin)
     {
-        search(pos, ss, beta, Min(depth/2, depth-2*OnePly), ply, false, threadID);
+        search(pos, ss, beta, depth/2, ply, false, threadID);
         ttMove = ss[ply].pv[ply];
         tte = TT.retrieve(posKey);
     }
