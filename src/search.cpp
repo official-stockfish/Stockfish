@@ -85,7 +85,7 @@ namespace {
     void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* waitSp);
     bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
-               const Value futilityValue, Depth depth, int* moves, MovePicker* mp, int master, bool pvNode);
+               Depth depth, int* moves, MovePicker* mp, int master, bool pvNode);
 
   private:
     friend void poll();
@@ -1219,7 +1219,7 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
-          && TM.split(pos, ss, ply, &alpha, beta, &bestValue, VALUE_NONE,
+          && TM.split(pos, ss, ply, &alpha, beta, &bestValue,
                       depth, &moveCount, &mp, threadID, true))
           break;
     }
@@ -1272,11 +1272,11 @@ namespace {
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
-    Value bestValue, refinedValue, nullValue, value, futilityValue, futilityValueScaled;
+    Value bestValue, refinedValue, nullValue, value, futilityValueScaled;
     bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
-    futilityValue = refinedValue = bestValue = value = -VALUE_INFINITE;
+    refinedValue = bestValue = value = -VALUE_INFINITE;
 
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
@@ -1324,7 +1324,6 @@ namespace {
         else
             ss[ply].eval = evaluate(pos, ei, threadID);
 
-        futilityValue = ss[ply].eval + futility_margin(depth, 0); //FIXME: Remove me, only for split
         refinedValue = refine_eval(tte, ss[ply].eval, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
@@ -1543,7 +1542,7 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
-          && TM.split(pos, ss, ply, NULL, beta, &bestValue, futilityValue, //FIXME: SMP & futilityValue
+          && TM.split(pos, ss, ply, NULL, beta, &bestValue,
                       depth, &moveCount, &mp, threadID, false))
           break;
     }
@@ -1794,9 +1793,9 @@ namespace {
     Move move;
     int moveCount;
     bool isCheck = pos.is_check();
-    bool useFutilityPruning =     sp->depth < 7 * OnePly //FIXME: sync with search
-                              && !isCheck;
 
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
     lock_grab(&(sp->lock));
 
     while (    sp->bestValue < sp->beta
@@ -1811,17 +1810,19 @@ namespace {
       bool moveIsCheck = pos.move_is_check(move, ci);
       bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      ss[sp->ply].currentMove = move;
-
-      // Decide the new search depth
+      // Step 11. Decide the new search depth
       bool dangerous;
       Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
-      // Prune?
-      if (    useFutilityPruning
+      // Update current move
+      ss[sp->ply].currentMove = move;
+
+      // Step 12. Futility pruning
+      if (   !isCheck
           && !dangerous
-          && !captureOrPromotion)
+          && !captureOrPromotion
+          && !move_is_castle(move))
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(sp->depth)
@@ -1833,7 +1834,9 @@ namespace {
           }
 
           // Value based pruning
-          Value futilityValueScaled = sp->futilityValue - moveCount * 8; //FIXME: sync with search
+          Depth predictedDepth = newDepth - nonpv_reduction(sp->depth, moveCount);
+          Value futilityValueScaled =  ss[sp->ply].eval + futility_margin(predictedDepth, moveCount)
+                                     + H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
 
           if (futilityValueScaled < sp->beta)
           {
@@ -2845,7 +2848,7 @@ namespace {
   // splitPoint->cpus becomes 0), split() returns true.
 
   bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply,
-             Value* alpha, const Value beta, Value* bestValue, const Value futilityValue,
+             Value* alpha, const Value beta, Value* bestValue,
              Depth depth, int* moves, MovePicker* mp, int master, bool pvNode) {
 
     assert(p.is_ok());
@@ -2885,7 +2888,6 @@ namespace {
     splitPoint->beta = beta;
     splitPoint->pvNode = pvNode;
     splitPoint->bestValue = *bestValue;
-    splitPoint->futilityValue = futilityValue;
     splitPoint->master = master;
     splitPoint->mp = mp;
     splitPoint->moves = *moves;
