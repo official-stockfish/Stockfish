@@ -1052,37 +1052,50 @@ namespace {
     if (depth < OnePly)
         return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
 
-    // Initialize, and make an early exit in case of an aborted search,
-    // an instant draw, maximum ply reached, etc.
+    // Step 1. Initialize node and poll
+    // Polling can abort search.
     init_node(ss, ply, threadID);
 
-    // After init_node() that calls poll()
+    // Step 2. Check for aborted search and immediate draw
     if (AbortSearch || TM.thread_should_stop(threadID))
         return Value(0);
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
-    // Mate distance pruning
+    // Step 3. Mate distance pruning
     oldAlpha = alpha;
     alpha = Max(value_mated_in(ply), alpha);
     beta = Min(value_mate_in(ply+1), beta);
     if (alpha >= beta)
         return alpha;
 
-    // Transposition table lookup. At PV nodes, we don't use the TT for
-    // pruning, but only for move ordering. This is to avoid problems in
-    // the following areas:
+    // Step 4. Transposition table lookup
+    // At PV nodes, we don't use the TT for pruning, but only for move ordering.
+    // This is to avoid problems in the following areas:
     //
     // * Repetition draw detection
     // * Fifty move rule detection
     // * Searching for a mate
     // * Printing of full PV line
-    //
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    // Go with internal iterative deepening if we don't have a TT move
+    // Step 5. Evaluate the position statically
+    // At PV nodes we do this only to update gain statistics
+    isCheck = pos.is_check();
+    if (!isCheck)
+    {
+        EvalInfo ei;
+        ss[ply].eval = evaluate(pos, ei, threadID);
+        update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
+    }
+
+    // Step 6. Razoring (is omitted in PV nodes)
+    // Step 7. Static null move pruning (is omitted in PV nodes)
+    // Step 8. Null move search with verification search (is omitted in PV nodes)
+
+    // Step 9. Internal iterative deepening
     if (   UseIIDAtPVNodes
         && depth >= 5*OnePly
         && ttMove == MOVE_NONE)
@@ -1092,24 +1105,14 @@ namespace {
         tte = TT.retrieve(pos.get_key());
     }
 
-    isCheck = pos.is_check();
-    if (!isCheck)
-    {
-        // Update gain statistics of the previous move that lead
-        // us in this position.
-        EvalInfo ei;
-        ss[ply].eval = evaluate(pos, ei, threadID);
-        update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
-    }
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
 
-    // Initialize a MovePicker object for the current position, and prepare
-    // to search all moves
+    // Initialize a MovePicker object for the current position
     mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
-    CheckInfo ci(pos);
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
+    CheckInfo ci(pos);
 
-    // Loop through all legal moves until no moves remain or a beta cutoff
-    // occurs.
     while (   alpha < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !TM.thread_should_stop(threadID))
