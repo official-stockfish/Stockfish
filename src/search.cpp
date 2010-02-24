@@ -1402,12 +1402,13 @@ namespace {
         tte = TT.retrieve(posKey);
     }
 
-    // Initialize a MovePicker object for the current position, and prepare
-    // to search all moves.
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
+
+    // Initialize a MovePicker object for the current position
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
 
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !TM.thread_should_stop(threadID))
@@ -1421,7 +1422,7 @@ namespace {
       singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      // Decide the new search depth
+      // Step 11. Decide the new search depth
       ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
 
       // Singular extension search. We extend the TT move if its value is much better than
@@ -1448,10 +1449,10 @@ namespace {
 
       newDepth = depth - OnePly + ext;
 
-      // Update current move
+      // Update current move (this must be done after singular extension search)
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
-      // Futility pruning
+      // Step 12. Futility pruning
       if (   !isCheck
           && !dangerous
           && !captureOrPromotion
@@ -1477,10 +1478,10 @@ namespace {
           }
       }
 
-      // Make and search the move
+      // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
 
-      // Try to reduce non-pv search depth by one ply if move seems not problematic,
+      // Step 14. Reduced search
       // if the move fails high will be re-searched at full depth.
       bool doFullDepthSearch = true;
 
@@ -1498,16 +1499,19 @@ namespace {
           }
       }
 
-      if (doFullDepthSearch) // Go with full depth non-pv search
+      // Step 15. Full depth search
+      if (doFullDepthSearch)
       {
           ss[ply].reduction = Depth(0);
           value = -search(pos, ss, -(beta-1), newDepth, ply+1, true, threadID);
       }
+
+      // Step 16. Undo move
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      // New best move?
+      // Step 17. Check for new best move
       if (value > bestValue)
       {
           bestValue = value;
@@ -1518,7 +1522,7 @@ namespace {
               ss[ply].mateKiller = move;
       }
 
-      // Split?
+      // Step 18. Check for split
       if (   TM.active_threads() > 1
           && bestValue < beta
           && depth >= MinimumSplitDepth
@@ -1531,11 +1535,14 @@ namespace {
           break;
     }
 
-    // All legal moves have been searched. A special case: If there were
+    // Step 19. Check for mate and stalemate
+    // All legal moves have been searched and if there were
     // no legal moves, it must be mate or stalemate.
+    // If one move was excluded return fail low.
     if (!moveCount)
         return excludedMove ? beta - 1 : (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
 
+    // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
     if (AbortSearch || TM.thread_should_stop(threadID))
