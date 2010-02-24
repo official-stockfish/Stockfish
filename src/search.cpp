@@ -1917,10 +1917,13 @@ namespace {
     Position pos(*sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
+    StateInfo st;
     Value value = -VALUE_INFINITE;
     int moveCount;
     Move move;
 
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
     lock_grab(&(sp->lock));
 
     while (    sp->alpha < sp->beta
@@ -1935,18 +1938,20 @@ namespace {
       bool moveIsCheck = pos.move_is_check(move, ci);
       bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
-      ss[sp->ply].currentMove = move;
-
-      // Decide the new search depth
+      // Step 11. Decide the new search depth
       bool dangerous;
       Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
       Depth newDepth = sp->depth - OnePly + ext;
 
-      // Make and search the move.
-      StateInfo st;
+      // Update current move
+      ss[sp->ply].currentMove = move;
+
+      // Step 12. Futility pruning (is omitted in PV nodes)
+
+      // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
 
-      // Try to reduce non-pv search depth by one ply if move seems not problematic,
+      // Step 14. Reduced search
       // if the move fails high will be re-searched at full depth.
       bool doFullDepthSearch = true;
 
@@ -1964,7 +1969,8 @@ namespace {
           }
       }
 
-      if (doFullDepthSearch) // Go with full depth non-pv search
+      // Step 15. Full depth search
+      if (doFullDepthSearch)
       {
           Value localAlpha = sp->alpha;
           ss[sp->ply].reduction = Depth(0);
@@ -1979,11 +1985,13 @@ namespace {
                   value = -search_pv(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, threadID);
           }
       }
+
+      // Step 16. Undo move
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      // New best move?
+      // Step 17. Check for new best move
       lock_grab(&(sp->lock));
 
       if (value > sp->bestValue && !TM.thread_should_stop(threadID))
