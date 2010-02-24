@@ -1835,7 +1835,7 @@ namespace {
           if (ss[sp->ply].reduction)
           {
               value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
-              doFullDepthSearch = (value >= sp->beta);
+              doFullDepthSearch = (value >= sp->beta && !TM.thread_should_stop(threadID));
           }
       }
 
@@ -1932,7 +1932,7 @@ namespace {
           {
               Value localAlpha = sp->alpha;
               value = -search(pos, ss, -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
-              doFullDepthSearch = (value > localAlpha);
+              doFullDepthSearch = (value > localAlpha && !TM.thread_should_stop(threadID));
           }
       }
 
@@ -1942,16 +1942,14 @@ namespace {
           ss[sp->ply].reduction = Depth(0);
           value = -search(pos, ss, -localAlpha, newDepth, sp->ply+1, true, threadID);
 
-          if (value > localAlpha && value < sp->beta)
+          if (value > localAlpha && value < sp->beta && !TM.thread_should_stop(threadID))
           {
               // If another thread has failed high then sp->alpha has been increased
               // to be higher or equal then beta, if so, avoid to start a PV search.
               localAlpha = sp->alpha;
               if (localAlpha < sp->beta)
                   value = -search_pv(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, threadID);
-              else
-                  assert(TM.thread_should_stop(threadID));
-        }
+          }
       }
       pos.undo_move(move);
 
