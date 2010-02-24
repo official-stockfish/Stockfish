@@ -1272,11 +1272,11 @@ namespace {
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
-    Value bestValue, staticValue, nullValue, value, futilityValue, futilityValueScaled;
+    Value bestValue, refinedValue, nullValue, value, futilityValue, futilityValueScaled;
     bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
-    futilityValue = staticValue = bestValue = value = -VALUE_INFINITE;
+    futilityValue = refinedValue = bestValue = value = -VALUE_INFINITE;
 
     if (depth < OnePly)
         return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
@@ -1302,7 +1302,7 @@ namespace {
     // Step 4. Transposition table lookup
 
     // We don't want the score of a partial search to overwrite a previous full search
-    // TT value, so we use a different position key in case of an excluded move exsists.
+    // TT value, so we use a different position key in case of an excluded move exists.
     Key posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
 
     tte = TT.retrieve(posKey);
@@ -1320,13 +1320,12 @@ namespace {
     if (!isCheck)
     {
         if (tte && (tte->type() & VALUE_TYPE_EVAL))
-            staticValue = value_from_tt(tte->value(), ply);
+            ss[ply].eval = value_from_tt(tte->value(), ply);
         else
-            staticValue = evaluate(pos, ei, threadID);
+            ss[ply].eval = evaluate(pos, ei, threadID);
 
-        ss[ply].eval = staticValue;
-        futilityValue = staticValue + futility_margin(depth, 0); //FIXME: Remove me, only for split
-        staticValue = refine_eval(tte, staticValue, ply); // Enhance accuracy with TT value if possible
+        futilityValue = ss[ply].eval + futility_margin(depth, 0); //FIXME: Remove me, only for split
+        refinedValue = refine_eval(tte, ss[ply].eval, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
@@ -1334,7 +1333,7 @@ namespace {
     if (   !value_is_mate(beta)
         && !isCheck
         && depth < RazorDepth
-        && staticValue < beta - (0x200 + 16 * depth)
+        && refinedValue < beta - (0x200 + 16 * depth)
         && ss[ply - 1].currentMove != MOVE_NULL
         && ttMove == MOVE_NONE
         && !pos.has_pawn_on_7th(pos.side_to_move()))
@@ -1351,8 +1350,8 @@ namespace {
     if (  !isCheck
         && allowNullmove
         && depth < RazorDepth
-        && staticValue - futility_margin(depth, 0) >= beta)
-        return staticValue - futility_margin(depth, 0);
+        && refinedValue - futility_margin(depth, 0) >= beta)
+        return refinedValue - futility_margin(depth, 0);
 
     // Step 8. Null move search with verification search
     // When we jump directly to qsearch() we do a null move only if static value is
@@ -1363,7 +1362,7 @@ namespace {
         && !isCheck
         && !value_is_mate(beta)
         &&  ok_to_do_nullmove(pos)
-        &&  staticValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0))
+        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0))
     {
         ss[ply].currentMove = MOVE_NULL;
 
@@ -1373,7 +1372,7 @@ namespace {
         int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
 
         // Null move dynamic reduction based on value
-        if (staticValue - beta > PawnValueMidgame)
+        if (refinedValue - beta > PawnValueMidgame)
             R++;
 
         nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
