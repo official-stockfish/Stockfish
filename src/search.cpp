@@ -1790,6 +1790,7 @@ namespace {
     Position pos(*sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
+    StateInfo st;
     Value value = -VALUE_INFINITE;
     Move move;
     int moveCount;
@@ -1845,11 +1846,10 @@ namespace {
           }
       }
 
-      // Make and search the move.
-      StateInfo st;
+      // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
 
-      // Try to reduce non-pv search depth by one ply if move seems not problematic,
+      // Step 14. Reduced search
       // if the move fails high will be re-searched at full depth.
       bool doFullDepthSearch = true;
 
@@ -1866,16 +1866,19 @@ namespace {
           }
       }
 
-      if (doFullDepthSearch) // Go with full depth non-pv search
+      // Step 15. Full depth search
+      if (doFullDepthSearch)
       {
           ss[sp->ply].reduction = Depth(0);
           value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true, threadID);
       }
+
+      // Step 16. Undo move
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-      // New best move?
+      // Step 17. Check for new best move
       lock_grab(&(sp->lock));
 
       if (value > sp->bestValue && !TM.thread_should_stop(threadID))
