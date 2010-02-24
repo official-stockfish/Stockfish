@@ -1316,6 +1316,21 @@ namespace {
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
+    // Step 6. Razoring
+    if (   !value_is_mate(beta)
+        && !isCheck
+        && depth < RazorDepth
+        && staticValue < beta - (0x200 + 16 * depth)
+        && ss[ply - 1].currentMove != MOVE_NULL
+        && ttMove == MOVE_NONE
+        && !pos.has_pawn_on_7th(pos.side_to_move()))
+    {
+        Value rbeta = beta - (0x200 + 16 * depth);
+        Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
+        if (v < rbeta)
+          return v; //FIXME: Logically should be: return (v + 0x200 + 16 * depth);
+    }
+
     // Static null move pruning. We're betting that the opponent doesn't have
     // a move that will reduce the score by more than FutilityMargins[int(depth)]
     // if we do a null move.
@@ -1373,20 +1388,6 @@ namespace {
                 && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
                 return beta - 1;
         }
-    }
-    // Null move search not allowed, try razoring
-    else if (   !value_is_mate(beta)
-             && !isCheck
-             && depth < RazorDepth
-             && staticValue < beta - (NullMoveMargin + 16 * depth)
-             && ss[ply - 1].currentMove != MOVE_NULL
-             && ttMove == MOVE_NONE
-             && !pos.has_pawn_on_7th(pos.side_to_move()))
-    {
-        Value rbeta = beta - (NullMoveMargin + 16 * depth);
-        Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
-        if (v < rbeta)
-          return v;
     }
 
     // Go with internal iterative deepening if we don't have a TT move
