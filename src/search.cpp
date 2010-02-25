@@ -162,7 +162,10 @@ namespace {
 
   // Step 6. Razoring
 
+  // Maximum depth for razoring
   const Depth RazorDepth = 4 * OnePly;
+
+  // Dynamic razoring margin based on depth
   inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * d); }
 
   // Step 8. Null move search with verification search
@@ -171,11 +174,12 @@ namespace {
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x200);
 
-  // Depth limit for use of dynamic threat detection when null move fails low
+  // Maximum depth for use of dynamic threat detection when null move fails low
   const Depth ThreatDepth = 5 * OnePly;
 
   // Step 9. Internal iterative deepening
 
+  // Minimum depth for use of internal iterative deepening
   const Depth IIDDepthAtPVNodes = 5 * OnePly;
   const Depth IIDDepthAtNonPVNodes = 8 * OnePly;
 
@@ -191,6 +195,7 @@ namespace {
   Depth CheckExtension[2], SingleEvasionExtension[2], PawnPushTo7thExtension[2];
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
+  // Minimum depth for use of singular extension
   const Depth SingularExtensionDepthAtPVNodes = 6 * OnePly;
   const Depth SingularExtensionDepthAtNonPVNodes = 8 * OnePly;
 
@@ -200,6 +205,7 @@ namespace {
 
   // Step 12. Futility pruning
 
+  // Futility margin for quiescence search
   const Value FutilityMarginQS = Value(0x80);
 
   // Futility lookup tables (initialized at startup) and their getter functions
