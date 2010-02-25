@@ -165,25 +165,28 @@ namespace {
   const Depth RazorDepth = 4 * OnePly;
   inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * d); }
 
-  // Search depth at iteration 1
-  const Depth InitialDepth = OnePly;
-
-  // Use internal iterative deepening?
-  const bool UseIIDAtPVNodes = true;
-  const bool UseIIDAtNonPVNodes = true;
-
-  // Internal iterative deepening margin. At Non-PV moves, when
-  // UseIIDAtNonPVNodes is true, we do an internal iterative deepening
-  // search when the static evaluation is at most IIDMargin below beta.
-  const Value IIDMargin = Value(0x100);
-
-  // Easy move margin. An easy move candidate must be at least this much
-  // better than the second best move.
-  const Value EasyMoveMargin = Value(0x200);
+  // Step 8. Null move search with verification search
 
   // Null move margin. A null move search will not be done if the static
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x200);
+
+  // Step 9. Internal iterative deepening
+
+  const Depth IIDDepthAtPVNodes = 5 * OnePly;
+  const Depth IIDDepthAtNonPVNodes = 8 * OnePly;
+
+  // Internal iterative deepening margin. At Non-PV nodes
+  // we do an internal iterative deepening
+  // search when the static evaluation is at most IIDMargin below beta.
+  const Value IIDMargin = Value(0x100);
+
+  // Search depth at iteration 1
+  const Depth InitialDepth = OnePly;
+
+  // Easy move margin. An easy move candidate must be at least this much
+  // better than the second best move.
+  const Value EasyMoveMargin = Value(0x200);
 
   // If the TT move is at least SingleReplyMargin better then the
   // remaining ones we will extend it.
@@ -1098,8 +1101,7 @@ namespace {
     // Step 8. Null move search with verification search (is omitted in PV nodes)
 
     // Step 9. Internal iterative deepening
-    if (   UseIIDAtPVNodes
-        && depth >= 5*OnePly
+    if (   depth >= IIDDepthAtPVNodes
         && ttMove == MOVE_NONE)
     {
         search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
@@ -1408,8 +1410,10 @@ namespace {
     }
 
     // Step 9. Internal iterative deepening
-    if (UseIIDAtNonPVNodes && ttMove == MOVE_NONE && depth >= 8*OnePly &&
-        !isCheck && ss[ply].eval >= beta - IIDMargin)
+    if (   depth >= IIDDepthAtNonPVNodes
+        && ttMove == MOVE_NONE
+        && !isCheck
+        && ss[ply].eval >= beta - IIDMargin)
     {
         search(pos, ss, beta, depth/2, ply, false, threadID);
         ttMove = ss[ply].pv[ply];
