@@ -218,7 +218,7 @@ namespace {
   inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
   inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
 
-
+  // Step. Common adjustments
 
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly;
@@ -227,13 +227,14 @@ namespace {
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
 
-  /// Variables initialized by UCI options
-
   // Last seconds noise filtering (LSN)
   const bool UseLSNFiltering = true;
   const int LSNTime = 4000; // In milliseconds
   const Value LSNValue = value_from_centipawns(200);
   bool loseOnTime = false;
+
+
+  /// Global variables
 
   // Iteration counters
   int Iteration;
