@@ -158,7 +158,12 @@ namespace {
   };
 
 
-  /// Constants
+  /// Adjustments
+
+  // Step 6. Razoring
+
+  const Depth RazorDepth = 4 * OnePly;
+  inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * d); }
 
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly;
@@ -183,9 +188,6 @@ namespace {
   // If the TT move is at least SingleReplyMargin better then the
   // remaining ones we will extend it.
   const Value SingleReplyMargin = Value(0x20);
-
-  // Depth limit for razoring
-  const Depth RazorDepth = 4 * OnePly;
 
   /// Lookup tables initialized at startup
 
@@ -1332,15 +1334,15 @@ namespace {
     if (   !value_is_mate(beta)
         && !isCheck
         && depth < RazorDepth
-        && refinedValue < beta - (0x200 + 16 * depth)
+        && refinedValue < beta - razor_margin(depth)
         && ss[ply - 1].currentMove != MOVE_NULL
         && ttMove == MOVE_NONE
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
-        Value rbeta = beta - (0x200 + 16 * depth);
+        Value rbeta = beta - razor_margin(depth);
         Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
         if (v < rbeta)
-          return v; //FIXME: Logically should be: return (v + 0x200 + 16 * depth);
+          return v; //FIXME: Logically should be: return (v + razor_margin(depth));
     }
 
     // Step 7. Static null move pruning
