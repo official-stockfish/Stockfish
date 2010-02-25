@@ -181,16 +181,28 @@ namespace {
   // search when the static evaluation is at most IIDMargin below beta.
   const Value IIDMargin = Value(0x100);
 
+  // Step 11. Decide the new search depth
+
+  // Extensions. Configurable UCI options.
+  // Array index 0 is used at non-PV nodes, index 1 at PV nodes.
+  Depth CheckExtension[2], SingleEvasionExtension[2], PawnPushTo7thExtension[2];
+  Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
+
+  const Depth SingularExtensionDepthAtPVNodes = 6 * OnePly;
+  const Depth SingularExtensionDepthAtNonPVNodes = 8 * OnePly;
+
+  // If the TT move is at least SingularExtensionMargin better then the
+  // remaining ones we will extend it.
+  const Value SingularExtensionMargin = Value(0x20);
+
+
+
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly;
 
   // Easy move margin. An easy move candidate must be at least this much
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
-
-  // If the TT move is at least SingleReplyMargin better then the
-  // remaining ones we will extend it.
-  const Value SingleReplyMargin = Value(0x20);
 
   /// Lookup tables initialized at startup
 
@@ -219,10 +231,6 @@ namespace {
   const int LSNTime = 4000; // In milliseconds
   const Value LSNValue = value_from_centipawns(200);
   bool loseOnTime = false;
-
-  // Extensions. Array index 0 is used at non-PV nodes, index 1 at PV nodes.
-  Depth CheckExtension[2], SingleEvasionExtension[2], PawnPushTo7thExtension[2];
-  Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Iteration counters
   int Iteration;
@@ -1133,7 +1141,7 @@ namespace {
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
       // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
-      if (   depth >= 6 * OnePly
+      if (   depth >= SingularExtensionDepthAtPVNodes
           && tte
           && move == tte->move()
           && ext < OnePly
@@ -1144,9 +1152,9 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, move);
+              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
 
-              if (excValue < ttValue - SingleReplyMargin)
+              if (excValue < ttValue - SingularExtensionMargin)
                   ext = OnePly;
           }
       }
@@ -1446,7 +1454,7 @@ namespace {
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
       // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
-      if (   depth >= 8 * OnePly
+      if (   depth >= SingularExtensionDepthAtNonPVNodes
           && tte
           && move == tte->move()
           && !excludedMove // Do not allow recursive single-reply search
@@ -1458,9 +1466,9 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingleReplyMargin, depth / 2, ply, false, threadID, move);
+              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
 
-              if (excValue < ttValue - SingleReplyMargin)
+              if (excValue < ttValue - SingularExtensionMargin)
                   ext = OnePly;
           }
       }
