@@ -195,6 +195,26 @@ namespace {
   // remaining ones we will extend it.
   const Value SingularExtensionMargin = Value(0x20);
 
+  // Step 12. Futility pruning
+
+  const Value FutilityMarginQS = Value(0x80);
+
+  // Futility lookup tables (initialized at startup) and their getter functions
+  int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
+  int FutilityMoveCountArray[32]; // [depth]
+
+  inline Value futility_margin(Depth d, int mn) { return Value(d < 7*OnePly ? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
+  inline int futility_move_count(Depth d) { return d < 16*OnePly ? FutilityMoveCountArray[d] : 512; }
+
+  // Step 14. Reduced search
+
+  // Reduction lookup tables (initialized at startup) and their getter functions
+  int8_t    PVReductionMatrix[64][64]; // [depth][moveNumber]
+  int8_t NonPVReductionMatrix[64][64]; // [depth][moveNumber]
+
+  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
+
 
 
   // Search depth at iteration 1
@@ -203,23 +223,6 @@ namespace {
   // Easy move margin. An easy move candidate must be at least this much
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
-
-  /// Lookup tables initialized at startup
-
-  // Reduction lookup tables and their getter functions
-  int8_t    PVReductionMatrix[64][64]; // [depth][moveNumber]
-  int8_t NonPVReductionMatrix[64][64]; // [depth][moveNumber]
-
-  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
-  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
-
-  // Futility lookup tables and their getter functions
-  const Value FutilityMarginQS = Value(0x80);
-  int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
-  int FutilityMoveCountArray[32]; // [depth]
-
-  inline Value futility_margin(Depth d, int mn) { return Value(d < 7*OnePly ? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
-  inline int futility_move_count(Depth d) { return d < 16*OnePly ? FutilityMoveCountArray[d] : 512; }
 
   /// Variables initialized by UCI options
 
@@ -1492,7 +1495,7 @@ namespace {
               continue;
 
           // Value based pruning
-          Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); //FIXME: We are ignoring condition: depth >= 3*OnePly, BUG??
+          Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); // We illogically ignore reduction condition depth >= 3*OnePly
           futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
                                + H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
 
