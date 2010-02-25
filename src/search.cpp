@@ -72,7 +72,6 @@ namespace {
     void set_active_threads(int newActiveThreads) { ActiveThreads = newActiveThreads; }
     void incrementNodeCounter(int threadID) { threads[threadID].nodes++; }
     void incrementBetaCounter(Color us, Depth d, int threadID) { threads[threadID].betaCutOffs[us] += unsigned(d); }
-    void print_current_line(SearchStack ss[], int ply, int threadID);
 
     void resetNodeCounters();
     void resetBetaCounters();
@@ -88,14 +87,14 @@ namespace {
                Depth depth, int* moves, MovePicker* mp, int master, bool pvNode);
 
   private:
-    friend void poll();
+    friend void poll(SearchStack ss[], int ply);
 
     int ActiveThreads;
     volatile bool AllThreadsShouldExit, AllThreadsShouldSleep;
     Thread threads[MAX_THREADS];
     SplitPoint SplitPointStack[MAX_THREADS][ACTIVE_SPLIT_POINTS_MAX];
 
-    Lock MPLock, IOLock;
+    Lock MPLock;
 
 #if !defined(_MSC_VER)
     pthread_cond_t WaitCond;
@@ -288,7 +287,7 @@ namespace {
 
   int current_search_time();
   int nps();
-  void poll();
+  void poll(SearchStack ss[], int ply);
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack ss[]);
@@ -2041,13 +2040,12 @@ namespace {
         NodesSincePoll++;
         if (NodesSincePoll >= NodesBetweenPolls)
         {
-            poll();
+            poll(ss, ply);
             NodesSincePoll = 0;
         }
     }
     ss[ply].init(ply);
     ss[ply + 2].initKillers();
-    TM.print_current_line(ss, ply, threadID);
   }
 
 
@@ -2405,7 +2403,7 @@ namespace {
   // looks at the time consumed so far and decides if it's time to abort the
   // search.
 
-  void poll() {
+  void poll(SearchStack ss[], int ply) {
 
     static int lastInfoTime;
     int t = current_search_time();
@@ -2447,7 +2445,6 @@ namespace {
     else if (t - lastInfoTime >= 1000)
     {
         lastInfoTime = t;
-        lock_grab(&TM.IOLock);
 
         if (dbg_show_mean)
             dbg_print_mean();
@@ -2458,10 +2455,15 @@ namespace {
         cout << "info nodes " << TM.nodes_searched() << " nps " << nps()
              << " time " << t << " hashfull " << TT.full() << endl;
 
-        lock_release(&TM.IOLock);
+        // We only support current line printing in single thread mode
+        if (ShowCurrentLine && TM.active_threads() == 1)
+        {
+            cout << "info currline";
+            for (int p = 0; p < ply; p++)
+                cout << " " << ss[p].currentMove;
 
-        if (ShowCurrentLine)
-            TM.threads[0].printCurrentLineRequest = true;
+            cout << endl;
+        }
     }
 
     // Should we stop the search?
@@ -2690,7 +2692,6 @@ namespace {
 
     // Initialize global locks
     lock_init(&MPLock, NULL);
-    lock_init(&IOLock, NULL);
 
     // Initialize SplitPointStack locks
     for (i = 0; i < MAX_THREADS; i++)
@@ -2992,46 +2993,7 @@ namespace {
 
     // This makes the threads to go to sleep
     AllThreadsShouldSleep = true;
-
-    // Reset flags to a known state.
-    for (int i = 1; i < ActiveThreads; i++)
-    {
-        // This flag can be in a random state
-        threads[i].printCurrentLineRequest = false;
-    }
   }
-
-  // print_current_line() prints _once_ the current line of search for a
-  // given thread and then setup the print request for the next thread.
-  // Called when the UCI option UCI_ShowCurrLine is 'true'.
-
-  void ThreadsManager::print_current_line(SearchStack ss[], int ply, int threadID) {
-
-    assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < ActiveThreads);
-
-    if (!threads[threadID].printCurrentLineRequest)
-        return;
-
-    // One shot only
-    threads[threadID].printCurrentLineRequest = false;
-
-    if (threads[threadID].state == THREAD_SEARCHING)
-    {
-        lock_grab(&IOLock);
-        cout << "info currline " << (threadID + 1);
-        for (int p = 0; p < ply; p++)
-            cout << " " << ss[p].currentMove;
-
-        cout << endl;
-        lock_release(&IOLock);
-    }
-
-    // Setup print request for the next thread ID
-    if (threadID + 1 < ActiveThreads)
-        threads[threadID + 1].printCurrentLineRequest = true;
-  }
-
 
   /// The RootMoveList class
 

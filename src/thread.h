@@ -87,7 +87,6 @@ struct Thread {
   volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
-  volatile bool printCurrentLineRequest;
   volatile ThreadState state;
   unsigned char pad[64]; // set some distance among local data for each thread
 };
