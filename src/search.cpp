@@ -171,6 +171,9 @@ namespace {
   // evaluation of the position is more than NullMoveMargin below beta.
   const Value NullMoveMargin = Value(0x200);
 
+  // Depth limit for use of dynamic threat detection when null move fails low
+  const Depth ThreatDepth = 5 * OnePly;
+
   // Step 9. Internal iterative deepening
 
   const Depth IIDDepthAtPVNodes = 5 * OnePly;
@@ -225,9 +228,6 @@ namespace {
   const Value EasyMoveMargin = Value(0x200);
 
   /// Variables initialized by UCI options
-
-  // Depth limit for use of dynamic threat detection
-  Depth ThreatDepth;
 
   // Last seconds noise filtering (LSN)
   const bool UseLSNFiltering = true;
@@ -428,8 +428,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   MateThreatExtension[1] = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
   MateThreatExtension[0] = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
-
-  ThreatDepth   = get_option_value_int("Threat Depth") * OnePly;
 
   Chess960 = get_option_value_bool("UCI_Chess960");
   ShowCurrentLine = get_option_value_bool("UCI_ShowCurrLine");
