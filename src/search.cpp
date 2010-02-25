@@ -1039,14 +1039,16 @@ namespace {
     assert(threadID >= 0 && threadID < TM.active_threads());
 
     Move movesSearched[256];
+    EvalInfo ei;
     StateInfo st;
     const TTEntry* tte;
     Move ttMove, move;
     Depth ext, newDepth;
-    Value oldAlpha, value;
-    bool isCheck, mateThreat, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
+    Value bestValue, value, oldAlpha;
+    bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
+    bool mateThreat = false;
     int moveCount = 0;
-    Value bestValue = value = -VALUE_INFINITE;
+    bestValue = value = -VALUE_INFINITE;
 
     if (depth < OnePly)
         return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
@@ -1085,7 +1087,6 @@ namespace {
     isCheck = pos.is_check();
     if (!isCheck)
     {
-        EvalInfo ei;
         ss[ply].eval = evaluate(pos, ei, threadID);
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
@@ -1778,20 +1779,25 @@ namespace {
   // splitting, we don't have to repeat all this work in sp_search().  We
   // also don't need to store anything to the hash table here:  This is taken
   // care of after we return from the split point.
+  // FIXME: We are currently ignoring mateThreat flag here
 
   void sp_search(SplitPoint* sp, int threadID) {
 
     assert(threadID >= 0 && threadID < TM.active_threads());
     assert(TM.active_threads() > 1);
 
+    StateInfo st;
+    Move move;
+    Depth ext, newDepth;
+    Value value, futilityValueScaled;
+    bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
+    int moveCount;
+    value = -VALUE_INFINITE;
+
     Position pos(*sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
-    StateInfo st;
-    Value value = -VALUE_INFINITE;
-    Move move;
-    int moveCount;
-    bool isCheck = pos.is_check();
+    isCheck = pos.is_check();
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
@@ -1806,13 +1812,12 @@ namespace {
 
       assert(move_is_ok(move));
 
-      bool moveIsCheck = pos.move_is_check(move, ci);
-      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
+      moveIsCheck = pos.move_is_check(move, ci);
+      captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      bool dangerous;
-      Depth ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
-      Depth newDepth = sp->depth - OnePly + ext;
+      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+      newDepth = sp->depth - OnePly + ext;
 
       // Update current move
       ss[sp->ply].currentMove = move;
@@ -1834,7 +1839,7 @@ namespace {
 
           // Value based pruning
           Depth predictedDepth = newDepth - nonpv_reduction(sp->depth, moveCount);
-          Value futilityValueScaled =  ss[sp->ply].eval + futility_margin(predictedDepth, moveCount)
+          futilityValueScaled =  ss[sp->ply].eval + futility_margin(predictedDepth, moveCount)
                                      + H.gain(pos.piece_on(move_from(move)), move_to(move)) + 45;
 
           if (futilityValueScaled < sp->beta)
@@ -1909,19 +1914,24 @@ namespace {
   // don't have to repeat all this work in sp_search_pv().  We also don't
   // need to store anything to the hash table here: This is taken care of
   // after we return from the split point.
+  // FIXME: We are ignoring mateThreat flag!
 
   void sp_search_pv(SplitPoint* sp, int threadID) {
 
     assert(threadID >= 0 && threadID < TM.active_threads());
     assert(TM.active_threads() > 1);
 
+    StateInfo st;
+    Move move;
+    Depth ext, newDepth;
+    Value value;
+    bool moveIsCheck, captureOrPromotion, dangerous;
+    int moveCount;
+    value = -VALUE_INFINITE;
+
     Position pos(*sp->pos);
     CheckInfo ci(pos);
     SearchStack* ss = sp->sstack[threadID];
-    StateInfo st;
-    Value value = -VALUE_INFINITE;
-    int moveCount;
-    Move move;
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
@@ -1936,13 +1946,12 @@ namespace {
 
       assert(move_is_ok(move));
 
-      bool moveIsCheck = pos.move_is_check(move, ci);
-      bool captureOrPromotion = pos.move_is_capture_or_promotion(move);
+      moveIsCheck = pos.move_is_check(move, ci);
+      captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      bool dangerous;
-      Depth ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
-      Depth newDepth = sp->depth - OnePly + ext;
+      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+      newDepth = sp->depth - OnePly + ext;
 
       // Update current move
       ss[sp->ply].currentMove = move;
