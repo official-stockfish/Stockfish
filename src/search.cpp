@@ -2768,9 +2768,6 @@ namespace {
             cout << "Failed to create thread number " << i << endl;
             Application::exit_with_failure();
         }
-
-        // Wait until the thread has finished launching and is gone to sleep
-        while (threads[i].state != THREAD_SLEEPING);
     }
   }
 
