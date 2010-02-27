@@ -71,10 +71,11 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
-                       const History& h, SearchStack* ss) : pos(p), H(h) {
+                       const History& h, SearchStack* ss, Value beta) : pos(p), H(h) {
   int searchTT = ttm;
   ttMoves[0].move = ttm;
   lastBadCapture = badCaptures;
+  badCaptureThreshold = 0;
 
   pinned = p.pinned_pieces(pos.side_to_move());
 
@@ -90,8 +91,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
   else if (d > Depth(0))
+  {
+      // Consider sligtly negative captures as good if at low
+      // depth and far from beta.
+      if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * OnePly)
+          badCaptureThreshold = -PawnValueMidgame;
+
       phasePtr = MainSearchPhaseTable;
-  else if (d == Depth(0))
+  } else if (d == Depth(0))
       phasePtr = QsearchWithChecksPhaseTable;
   else
   {
@@ -290,7 +297,7 @@ Move MovePicker::get_next_move() {
               {
                   // Check for a non negative SEE now
                   int seeValue = pos.see_sign(move);
-                  if (seeValue >= 0)
+                  if (seeValue >= badCaptureThreshold)
                       return move;
 
                   // Losing capture, move it to the badCaptures[] array, note

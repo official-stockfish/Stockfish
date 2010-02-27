@@ -49,7 +49,7 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // silence a warning under MSVC
 
 public:
-  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL);
+  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL, Value beta = -VALUE_INFINITE);
   Move get_next_move();
   int number_of_evasions() const;
 
@@ -62,7 +62,7 @@ private:
   const Position& pos;
   const History& H;
   MoveStack ttMoves[2], killers[2];
-  int phase;
+  int badCaptureThreshold, phase;
   const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastGoodNonCapture, *lastBadCapture;
   Bitboard pinned;

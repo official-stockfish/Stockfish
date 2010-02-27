@@ -1440,7 +1440,7 @@ namespace {
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
 
     // Initialize a MovePicker object for the current position
-    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply], beta);
     CheckInfo ci(pos);
 
     while (   bestValue < beta
