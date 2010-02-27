@@ -2999,9 +2999,6 @@ namespace {
     if (ActiveThreads == 1)
         return;
 
-    for (int i = 1; i < ActiveThreads; i++)
-        assert(threads[i].state == THREAD_SLEEPING);
-
 #if !defined(_MSC_VER)
     pthread_mutex_lock(&WaitLock);
     pthread_cond_broadcast(&WaitCond);
