@@ -2593,7 +2593,7 @@ namespace {
   DWORD WINAPI init_thread(LPVOID threadID) {
 
     TM.idle_loop(*(int*)threadID, NULL);
-    return NULL;
+    return 0;
   }
 
 #endif
