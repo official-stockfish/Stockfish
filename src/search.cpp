@@ -94,11 +94,10 @@ namespace {
     Thread threads[MAX_THREADS];
     SplitPoint SplitPointStack[MAX_THREADS][ACTIVE_SPLIT_POINTS_MAX];
 
-    Lock MPLock;
+    Lock MPLock, WaitLock;
 
 #if !defined(_MSC_VER)
     pthread_cond_t WaitCond;
-    pthread_mutex_t WaitLock;
 #else
     HANDLE SitIdleEvent[MAX_THREADS];
 #endif
@@ -2665,10 +2664,10 @@ namespace {
             threads[threadID].state = THREAD_SLEEPING;
 
 #if !defined(_MSC_VER)
-            pthread_mutex_lock(&WaitLock);
+            lock_grab(&WaitLock);
             if (AllThreadsShouldSleep || threadID >= ActiveThreads)
                 pthread_cond_wait(&WaitCond, &WaitLock);
-            pthread_mutex_unlock(&WaitLock);
+            lock_release(&WaitLock);
 #else
             WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
 #endif
@@ -2723,6 +2722,14 @@ namespace {
 
     // Initialize global locks
     lock_init(&MPLock, NULL);
+    lock_init(&WaitLock, NULL);
+
+#if !defined(_MSC_VER)
+    pthread_cond_init(&WaitCond, NULL);
+#else
+    for (i = 0; i < MAX_THREADS; i++)
+        SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
+#endif
 
     // Initialize SplitPointStack locks
     for (i = 0; i < MAX_THREADS; i++)
@@ -2731,14 +2738,6 @@ namespace {
             SplitPointStack[i][j].parent = NULL;
             lock_init(&(SplitPointStack[i][j].lock), NULL);
         }
-
-#if !defined(_MSC_VER)
-    pthread_mutex_init(&WaitLock, NULL);
-    pthread_cond_init(&WaitCond, NULL);
-#else
-    for (i = 0; i < MAX_THREADS; i++)
-        SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
-#endif
 
     // Will be set just before program exits to properly end the threads
     AllThreadsShouldExit = false;
@@ -2794,6 +2793,9 @@ namespace {
     for (int i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
             lock_destroy(&(SplitPointStack[i][j].lock));
+
+    lock_destroy(&WaitLock);
+    lock_destroy(&MPLock);
   }
 
 
