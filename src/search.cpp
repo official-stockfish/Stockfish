@@ -2759,8 +2759,7 @@ namespace {
 #if !defined(_MSC_VER)
         ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
 #else
-        DWORD iID[1];
-        ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, iID) != NULL);
+        ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, NULL) != NULL);
 #endif
 
         if (!ok)
