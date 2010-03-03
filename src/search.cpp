@@ -800,15 +800,32 @@ namespace {
     alpha = oldAlpha;
     isCheck = pos.is_check();
 
-    // Evaluate the position statically
-    ss[0].eval = !isCheck ? evaluate(pos, ei, 0) : VALUE_NONE;
+    // Step 1. Initialize node and poll (omitted at root, but I can see no good reason for this, FIXME)
+    // Step 2. Check for aborted search (omitted at root, because we do not initialize root node)
+    // Step 3. Mate distance pruning (omitted at root)
+    // Step 4. Transposition table lookup (omitted at root)
 
-    while (1) // Fail low loop
+    // Step 5. Evaluate the position statically
+    // At root we do this only to get reference value for child nodes
+    if (!isCheck)
+        ss[0].eval = evaluate(pos, ei, 0);
+    else
+        ss[0].eval = VALUE_NONE; // HACK because we do not initialize root node
+
+    // Step 6. Razoring (omitted at root)
+    // Step 7. Static null move pruning (omitted at root)
+    // Step 8. Null move search with verification search (omitted at root)
+    // Step 9. Internal iterative deepening (omitted at root)
+
+    // Step extra. Fail low loop
+    // We start with small aspiration window and in case of fail low, we research
+    // with bigger window until we are not failing low anymore.
+    while (1)
     {
         // Sort the moves before to (re)search
         rml.sort();
 
-        // Loop through all the moves in the root move list
+        // Step 10. Loop through all moves in the root move list
         for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
         {
             // This is used by time management and starts from 1
@@ -828,21 +845,29 @@ namespace {
                 cout << "info currmove " << move
                      << " currmovenumber " << RootMoveNumber << endl;
 
-            // Decide search depth for this move
             moveIsCheck = pos.move_is_check(move);
             captureOrPromotion = pos.move_is_capture_or_promotion(move);
+
+            // Step 11. Decide the new search depth
             depth = (Iteration - 2) * OnePly + InitialDepth;
             ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
             newDepth = depth + ext;
 
-            // Reset value before the search
+            // Step 12. Futility pruning (omitted at root)
+
+            // Step extra. Fail high loop
+            // If move fails high, we research with bigger window until we are not failing
+            // high anymore.
             value = - VALUE_INFINITE;
 
-            while (1) // Fail high loop
+            while (1)
             {
-                // Make the move, and search it
+                // Step 13. Make the move
                 pos.do_move(move, st, ci, moveIsCheck);
 
+                // Step extra. pv search
+                // We do pv search for first moves (i < MultiPV)
+                // and for fail high research (value > alpha)
                 if (i < MultiPV || value > alpha)
                 {
                     // Aspiration window is disabled in multi-pv case
@@ -854,11 +879,11 @@ namespace {
                 }
                 else
                 {
-                    // Try to reduce non-pv search depth by one ply if move seems not problematic,
-                    // if the move fails high will be re-searched at full depth.
+                    // Step 14. Reduced search
+                    // if the move fails high will be re-searched at full depth
                     bool doFullDepthSearch = true;
 
-                    if (    depth >= 3 * OnePly // FIXME was newDepth
+                    if (    depth >= 3 * OnePly
                         && !dangerous
                         && !captureOrPromotion
                         && !move_is_castle(move))
@@ -872,6 +897,7 @@ namespace {
                         }
                     }
 
+                    // Step 15. Full depth search
                     if (doFullDepthSearch)
                     {
                         // Full depth non-pv search using alpha as upperbound
@@ -885,6 +911,7 @@ namespace {
                     }
                 }
 
+                // Step 16. Undo move
                 pos.undo_move(move);
 
                 // Can we exit fail high loop ?
@@ -924,6 +951,7 @@ namespace {
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
 
+            // Step 17. Check for new best move
             if (value <= alpha && i >= MultiPV)
                 rml.set_move_score(i, -VALUE_INFINITE);
             else
