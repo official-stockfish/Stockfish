@@ -811,15 +811,6 @@ namespace {
         // Loop through all the moves in the root move list
         for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
         {
-            if (alpha >= beta)
-            {
-                // We failed high, invalidate and skip next moves, leave node-counters
-                // and beta-counters as they are and quickly return, we will try to do
-                // a research at the next iteration with a bigger aspiration window.
-                rml.set_move_score(i, -VALUE_INFINITE);
-                continue;
-            }
-
             // This is used by time management and starts from 1
             RootMoveNumber = i + 1;
 
