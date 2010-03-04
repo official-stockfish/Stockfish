@@ -1339,7 +1339,9 @@ namespace {
         Value rbeta = beta - razor_margin(depth);
         Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
         if (v < rbeta)
-          return v; //FIXME: Logically should be: return (v + razor_margin(depth));
+            // Logically we should return (v + razor_margin(depth)), but
+            // surprisingly this did slightly weaker in tests.
+            return v;
     }
 
     // Step 7. Static null move pruning
