@@ -84,7 +84,7 @@ namespace {
     void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* waitSp);
     bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
-               Depth depth, int* moves, MovePicker* mp, int master, bool pvNode);
+               Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode);
 
   private:
     friend void poll(SearchStack ss[], int ply);
@@ -1219,7 +1219,7 @@ namespace {
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
           && TM.split(pos, ss, ply, &alpha, beta, &bestValue,
-                      depth, &moveCount, &mp, threadID, true))
+                      depth, mateThreat, &moveCount, &mp, threadID, true))
           break;
     }
 
@@ -1546,7 +1546,7 @@ namespace {
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
           && TM.split(pos, ss, ply, NULL, beta, &bestValue,
-                      depth, &moveCount, &mp, threadID, false))
+                      depth, mateThreat, &moveCount, &mp, threadID, false))
           break;
     }
 
@@ -1782,7 +1782,6 @@ namespace {
   // splitting, we don't have to repeat all this work in sp_search().  We
   // also don't need to store anything to the hash table here:  This is taken
   // care of after we return from the split point.
-  // FIXME: We are currently ignoring mateThreat flag here
 
   void sp_search(SplitPoint* sp, int threadID) {
 
@@ -1819,7 +1818,7 @@ namespace {
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
       newDepth = sp->depth - OnePly + ext;
 
       // Update current move
@@ -1917,7 +1916,6 @@ namespace {
   // don't have to repeat all this work in sp_search_pv().  We also don't
   // need to store anything to the hash table here: This is taken care of
   // after we return from the split point.
-  // FIXME: We are ignoring mateThreat flag!
 
   void sp_search_pv(SplitPoint* sp, int threadID) {
 
@@ -1953,7 +1951,7 @@ namespace {
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
       newDepth = sp->depth - OnePly + ext;
 
       // Update current move
@@ -2894,7 +2892,7 @@ namespace {
 
   bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply,
              Value* alpha, const Value beta, Value* bestValue,
-             Depth depth, int* moves, MovePicker* mp, int master, bool pvNode) {
+             Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode) {
 
     assert(p.is_ok());
     assert(sstck != NULL);
@@ -2929,6 +2927,7 @@ namespace {
     splitPoint->stopRequest = false;
     splitPoint->ply = ply;
     splitPoint->depth = depth;
+    splitPoint->mateThreat = mateThreat;
     splitPoint->alpha = pvNode ? *alpha : beta - 1;
     splitPoint->beta = beta;
     splitPoint->pvNode = pvNode;
