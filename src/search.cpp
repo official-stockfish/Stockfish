@@ -165,7 +165,7 @@ namespace {
   const Depth RazorDepth = 4 * OnePly;
 
   // Dynamic razoring margin based on depth
-  inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * d); }
+  inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * int(d)); }
 
   // Step 8. Null move search with verification search
 
@@ -182,14 +182,13 @@ namespace {
   const Depth IIDDepthAtPVNodes = 5 * OnePly;
   const Depth IIDDepthAtNonPVNodes = 8 * OnePly;
 
-  // Internal iterative deepening margin. At Non-PV nodes
-  // we do an internal iterative deepening
-  // search when the static evaluation is at most IIDMargin below beta.
+  // At Non-PV nodes we do an internal iterative deepening search
+  // when the static evaluation is at most IIDMargin below beta.
   const Value IIDMargin = Value(0x100);
 
   // Step 11. Decide the new search depth
 
-  // Extensions. Configurable UCI options.
+  // Extensions. Configurable UCI options
   // Array index 0 is used at non-PV nodes, index 1 at PV nodes.
   Depth CheckExtension[2], SingleEvasionExtension[2], PawnPushTo7thExtension[2];
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
@@ -208,11 +207,11 @@ namespace {
   const Value FutilityMarginQS = Value(0x80);
 
   // Futility lookup tables (initialized at startup) and their getter functions
-  int32_t FutilityMarginsMatrix[14][64]; // [depth][moveNumber]
+  int32_t FutilityMarginsMatrix[16][64]; // [depth][moveNumber]
   int FutilityMoveCountArray[32]; // [depth]
 
-  inline Value futility_margin(Depth d, int mn) { return Value(d < 7*OnePly ? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
-  inline int futility_move_count(Depth d) { return d < 16*OnePly ? FutilityMoveCountArray[d] : 512; }
+  inline Value futility_margin(Depth d, int mn) { return Value(d < 7 * OnePly ? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
+  inline int futility_move_count(Depth d) { return d < 16 * OnePly ? FutilityMoveCountArray[d] : 512; }
 
   // Step 14. Reduced search
 
@@ -223,7 +222,7 @@ namespace {
   inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
   inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
 
-  // Step. Common adjustments
+  // Common adjustments
 
   // Search depth at iteration 1
   const Depth InitialDepth = OnePly;
@@ -241,7 +240,7 @@ namespace {
 
   /// Global variables
 
-  // Iteration counters
+  // Iteration counter
   int Iteration;
 
   // Scores and number of times the best move changed for each iteration
@@ -255,13 +254,10 @@ namespace {
   int MultiPV;
 
   // Time managment variables
-  int RootMoveNumber;
-  int SearchStartTime;
-  int MaxNodes, MaxDepth;
+  int RootMoveNumber, SearchStartTime, MaxNodes, MaxDepth;
   int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
-  bool AbortSearch, Quit;
-  bool AspirationFailLow;
+  bool AbortSearch, Quit, AspirationFailLow;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -270,20 +266,20 @@ namespace {
   bool UseLogFile;
   std::ofstream LogFile;
 
-  // MP related variables
+  // Multi-threads related variables
   Depth MinimumSplitDepth;
   int MaxThreadsPerSplitPoint;
   ThreadsManager TM;
 
-  // Node counters, used only by thread[0] but try to keep in different
-  // cache lines (64 bytes each) from the heavy SMP read accessed variables.
+  // Node counters, used only by thread[0] but try to keep in different cache
+  // lines (64 bytes each) from the heavy multi-thread read accessed variables.
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
 
   // History table
   History H;
 
-  /// Functions
+  /// Local functions
 
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta);
@@ -313,6 +309,7 @@ namespace {
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack ss[]);
+  void print_pv_info(const Position& pos, SearchStack ss[], Value alpha, Value beta, Value value);
 
 #if !defined(_MSC_VER)
   void *init_thread(void *threadID);
@@ -340,9 +337,10 @@ int64_t nodes_searched() { return TM.nodes_searched(); }
 
 int perft(Position& pos, Depth depth)
 {
+    StateInfo st;
     Move move;
     int sum = 0;
-    MovePicker mp = MovePicker(pos, MOVE_NONE, depth, H);
+    MovePicker mp(pos, MOVE_NONE, depth, H);
 
     // If we are at the last ply we don't need to do and undo
     // the moves, just to count them.
@@ -356,7 +354,6 @@ int perft(Position& pos, Depth depth)
     CheckInfo ci(pos);
     while ((move = mp.get_next_move()) != MOVE_NONE)
     {
-        StateInfo st;
         pos.do_move(move, st, ci, pos.move_is_check(move, ci));
         sum += perft(pos, depth - OnePly);
         pos.undo_move(move);
@@ -375,9 +372,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
            int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
-  StopOnPonderhit = AbortSearch = Quit = false;
-  AspirationFailLow = false;
+  StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
   NodesSincePoll = 0;
+  TM.resetNodeCounters();
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
   MaxDepth = maxDepth;
@@ -389,11 +386,10 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   // Look for a book move, only during games, not tests
   if (UseTimeManagement && get_option_value_bool("OwnBook"))
   {
-      Move bookMove;
       if (get_option_value_string("Book File") != OpeningBook.file_name())
           OpeningBook.open(get_option_value_string("Book File"));
 
-      bookMove = OpeningBook.get_move(pos);
+      Move bookMove = OpeningBook.get_move(pos);
       if (bookMove != MOVE_NONE)
       {
           if (PonderSearch)
@@ -404,45 +400,37 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       }
   }
 
-  TM.resetNodeCounters();
-
+  // Reset loseOnTime flag at the beginning of a new game
   if (button_was_pressed("New Game"))
-      loseOnTime = false; // Reset at the beginning of a new game
+      loseOnTime = false;
 
   // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
   if (button_was_pressed("Clear Hash"))
       TT.clear();
 
-  bool PonderingEnabled = get_option_value_bool("Ponder");
-  MultiPV = get_option_value_int("MultiPV");
-
-  CheckExtension[1] = Depth(get_option_value_int("Check Extension (PV nodes)"));
-  CheckExtension[0] = Depth(get_option_value_int("Check Extension (non-PV nodes)"));
-
+  CheckExtension[1]         = Depth(get_option_value_int("Check Extension (PV nodes)"));
+  CheckExtension[0]         = Depth(get_option_value_int("Check Extension (non-PV nodes)"));
   SingleEvasionExtension[1] = Depth(get_option_value_int("Single Evasion Extension (PV nodes)"));
   SingleEvasionExtension[0] = Depth(get_option_value_int("Single Evasion Extension (non-PV nodes)"));
-
   PawnPushTo7thExtension[1] = Depth(get_option_value_int("Pawn Push to 7th Extension (PV nodes)"));
   PawnPushTo7thExtension[0] = Depth(get_option_value_int("Pawn Push to 7th Extension (non-PV nodes)"));
+  PassedPawnExtension[1]    = Depth(get_option_value_int("Passed Pawn Extension (PV nodes)"));
+  PassedPawnExtension[0]    = Depth(get_option_value_int("Passed Pawn Extension (non-PV nodes)"));
+  PawnEndgameExtension[1]   = Depth(get_option_value_int("Pawn Endgame Extension (PV nodes)"));
+  PawnEndgameExtension[0]   = Depth(get_option_value_int("Pawn Endgame Extension (non-PV nodes)"));
+  MateThreatExtension[1]    = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
+  MateThreatExtension[0]    = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
 
-  PassedPawnExtension[1] = Depth(get_option_value_int("Passed Pawn Extension (PV nodes)"));
-  PassedPawnExtension[0] = Depth(get_option_value_int("Passed Pawn Extension (non-PV nodes)"));
+  MinimumSplitDepth       = get_option_value_int("Minimum Split Depth") * OnePly;
+  MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
+  ShowCurrentLine         = get_option_value_bool("UCI_ShowCurrLine");
+  MultiPV                 = get_option_value_int("MultiPV");
+  Chess960                = get_option_value_bool("UCI_Chess960");
+  UseLogFile              = get_option_value_bool("Use Search Log");
 
-  PawnEndgameExtension[1] = Depth(get_option_value_int("Pawn Endgame Extension (PV nodes)"));
-  PawnEndgameExtension[0] = Depth(get_option_value_int("Pawn Endgame Extension (non-PV nodes)"));
-
-  MateThreatExtension[1] = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
-  MateThreatExtension[0] = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
-
-  Chess960 = get_option_value_bool("UCI_Chess960");
-  ShowCurrentLine = get_option_value_bool("UCI_ShowCurrLine");
-  UseLogFile = get_option_value_bool("Use Search Log");
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
-
-  MinimumSplitDepth = get_option_value_int("Minimum Split Depth") * OnePly;
-  MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
 
   read_weights(pos.side_to_move());
 
@@ -493,14 +481,15 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
           }
       }
 
-      if (PonderingEnabled)
+      if (get_option_value_bool("Ponder"))
       {
           MaxSearchTime += MaxSearchTime / 4;
           MaxSearchTime = Min(MaxSearchTime, AbsoluteMaxSearchTime);
       }
   }
 
-  // Set best NodesBetweenPolls interval
+  // Set best NodesBetweenPolls interval to avoid lagging under
+  // heavy time pressure.
   if (MaxNodes)
       NodesBetweenPolls = Min(MaxNodes, 30000);
   else if (myTime && myTime < 1000)
@@ -510,7 +499,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   else
       NodesBetweenPolls = 30000;
 
-  // Write information to search log file
+  // Write search information to log file
   if (UseLogFile)
       LogFile << "Searching: " << pos.to_fen() << endl
               << "infinite: "  << infinite
@@ -519,7 +508,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
               << " increment: " << myIncrement
               << " moves to go: " << movesToGo << endl;
 
-  // LSN filtering. Used only for developing purpose. Disabled by default.
+  // LSN filtering. Used only for developing purposes, disabled by default
   if (   UseLSNFiltering
       && loseOnTime)
   {
@@ -574,10 +563,11 @@ void init_search() {
       }
 
   // Init futility margins array
-  for (int i = 0; i < 14; i++) // i == depth (OnePly = 2)
+  for (int i = 0; i < 16; i++) // i == depth (OnePly = 2)
       for (int j = 0; j < 64; j++) // j == moveNumber
       {
-          FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j; // FIXME: test using log instead of BSR
+          // FIXME: test using log instead of BSR
+          FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j;
       }
 
   // Init futility move count array
@@ -614,8 +604,10 @@ namespace {
 
     Position p(pos);
     SearchStack ss[PLY_MAX_PLUS_2];
+    Move EasyMove = MOVE_NONE;
+    Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
-    // searchMoves are verified, copied, scored and sorted
+    // Moves to search are verified, copied, scored and sorted
     RootMoveList rml(p, searchMoves);
 
     // Handle special case of searching on a mate/stale position
@@ -624,12 +616,13 @@ namespace {
         if (PonderSearch)
             wait_for_stop_or_ponderhit();
 
-        return pos.is_check()? -VALUE_MATE : VALUE_DRAW;
+        return pos.is_check() ? -VALUE_MATE : VALUE_DRAW;
     }
 
-    // Print RootMoveList c'tor startup scoring to the standard output,
-    // so that we print information also for iteration 1.
-    cout << "info depth " << 1 << "\ninfo depth " << 1
+    // Print RootMoveList startup scoring to the standard output,
+    // so to output information also for iteration 1.
+    cout << "info depth " << 1
+         << "\ninfo depth " << 1
          << " score " << value_to_string(rml.get_move_score(0))
          << " time " << current_search_time()
          << " nodes " << TM.nodes_searched()
@@ -644,7 +637,6 @@ namespace {
     Iteration = 1;
 
     // Is one move significantly better than others after initial scoring ?
-    Move EasyMove = MOVE_NONE;
     if (   rml.move_count() == 1
         || rml.get_move_score(0) > rml.get_move_score(1) + EasyMoveMargin)
         EasyMove = rml.get_move(0);
@@ -661,9 +653,7 @@ namespace {
 
         cout << "info depth " << Iteration << endl;
 
-        // Calculate dynamic search window based on previous iterations
-        Value alpha, beta;
-
+        // Calculate dynamic aspiration window based on previous iterations
         if (MultiPV == 1 && Iteration >= 6 && abs(ValueByIteration[Iteration - 1]) < VALUE_KNOWN_WIN)
         {
             int prevDelta1 = ValueByIteration[Iteration - 1] - ValueByIteration[Iteration - 2];
@@ -675,14 +665,9 @@ namespace {
             alpha = Max(ValueByIteration[Iteration - 1] - AspirationDelta, -VALUE_INFINITE);
             beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
         }
-        else
-        {
-            alpha = - VALUE_INFINITE;
-            beta  =   VALUE_INFINITE;
-        }
 
         // Search to the current depth
-        Value value = root_search(p, ss, rml, alpha, beta);
+        value = root_search(p, ss, rml, alpha, beta);
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
@@ -694,7 +679,7 @@ namespace {
         //Save info about search result
         ValueByIteration[Iteration] = value;
 
-        // Drop the easy move if it differs from the new best move
+        // Drop the easy move if differs from the new best move
         if (ss[0].pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
@@ -714,7 +699,7 @@ namespace {
                 && abs(ValueByIteration[Iteration-1]) >= abs(VALUE_MATE) - 100)
                 stopSearch = true;
 
-            // Stop search early if one move seems to be much better than the rest
+            // Stop search early if one move seems to be much better than the others
             int64_t nodes = TM.nodes_searched();
             if (   Iteration >= 8
                 && EasyMove == ss[0].pv[0]
@@ -737,10 +722,10 @@ namespace {
 
             if (stopSearch)
             {
-                if (!PonderSearch)
-                    break;
-                else
+                if (PonderSearch)
                     StopOnPonderhit = true;
+                else
+                    break;
             }
         }
 
@@ -767,7 +752,11 @@ namespace {
         ss[0].pv[0] = rml.get_move(0);
         ss[0].pv[1] = MOVE_NONE;
     }
+
+    assert(ss[0].pv[0] != MOVE_NONE);
+
     cout << "bestmove " << ss[0].pv[0];
+
     if (ss[0].pv[1] != MOVE_NONE)
         cout << " ponder " << ss[0].pv[1];
 
@@ -787,7 +776,9 @@ namespace {
 
         StateInfo st;
         p.do_move(ss[0].pv[0], st);
-        LogFile << "\nPonder move: " << move_to_san(p, ss[0].pv[1]) << endl;
+        LogFile << "\nPonder move: "
+                << move_to_san(p, ss[0].pv[1]) // Works also with MOVE_NONE
+                << endl;
     }
     return rml.get_move_score(0);
   }
@@ -795,28 +786,28 @@ namespace {
 
   // root_search() is the function which searches the root node. It is
   // similar to search_pv except that it uses a different move ordering
-  // scheme and prints some information to the standard output.
+  // scheme, prints some information to the standard output and handles
+  // the fail low/high loops.
 
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta) {
 
+    EvalInfo ei;
+    StateInfo st;
     int64_t nodes;
     Move move;
-    StateInfo st;
     Depth depth, ext, newDepth;
-    Value value;
-    CheckInfo ci(pos);
+    Value value, alpha;
+    bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
     int researchCount = 0;
-    bool moveIsCheck, captureOrPromotion, dangerous;
-    Value alpha = oldAlpha;
-    bool isCheck = pos.is_check();
+    CheckInfo ci(pos);
+    alpha = oldAlpha;
+    isCheck = pos.is_check();
 
     // Evaluate the position statically
-    EvalInfo ei;
     ss[0].eval = !isCheck ? evaluate(pos, ei, 0) : VALUE_NONE;
 
     while (1) // Fail low loop
     {
-
         // Loop through all the moves in the root move list
         for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
         {
@@ -829,6 +820,7 @@ namespace {
                 continue;
             }
 
+            // This is used by time management and starts from 1
             RootMoveNumber = i + 1;
 
             // Save the current node count before the move is searched
@@ -852,11 +844,11 @@ namespace {
             ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
             newDepth = depth + ext;
 
+            // Reset value before the search
             value = - VALUE_INFINITE;
 
             while (1) // Fail high loop
             {
-
                 // Make the move, and search it
                 pos.do_move(move, st, ci, moveIsCheck);
 
@@ -866,6 +858,7 @@ namespace {
                     if (MultiPV > 1)
                         alpha = -VALUE_INFINITE;
 
+                    // Full depth PV search, done on first move or after a fail high
                     value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
                 }
                 else
@@ -874,14 +867,15 @@ namespace {
                     // if the move fails high will be re-searched at full depth.
                     bool doFullDepthSearch = true;
 
-                    if (   depth >= 3*OnePly // FIXME was newDepth
+                    if (    depth >= 3 * OnePly // FIXME was newDepth
                         && !dangerous
                         && !captureOrPromotion
                         && !move_is_castle(move))
                     {
-                        ss[0].reduction = pv_reduction(depth, RootMoveNumber - MultiPV + 1);
+                        ss[0].reduction = pv_reduction(depth, i - MultiPV + 2);
                         if (ss[0].reduction)
                         {
+                            // Reduced depth non-pv search using alpha as upperbound
                             value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
                             doFullDepthSearch = (value > alpha);
                         }
@@ -889,9 +883,12 @@ namespace {
 
                     if (doFullDepthSearch)
                     {
+                        // Full depth non-pv search using alpha as upperbound
                         ss[0].reduction = Depth(0);
                         value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
 
+                        // If we are above alpha then research at same depth but as PV
+                        // to get a correct score or eventually a fail high above beta.
                         if (value > alpha)
                             value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
                     }
@@ -903,36 +900,15 @@ namespace {
                 if (AbortSearch || value < beta)
                     break;
 
-                // We are failing high and going to do a research. It's important to update score
-                // before research in case we run out of time while researching.
+                // We are failing high and going to do a research. It's important to update
+                // the score before research in case we run out of time while researching.
                 rml.set_move_score(i, value);
                 update_pv(ss, 0);
                 TT.extract_pv(pos, ss[0].pv, PLY_MAX);
                 rml.set_move_pv(i, ss[0].pv);
 
-                // Print search information to the standard output
-                cout << "info depth " << Iteration
-                     << " score " << value_to_string(value)
-                     << ((value >= beta) ? " lowerbound" :
-                        ((value <= alpha)? " upperbound" : ""))
-                     << " time "  << current_search_time()
-                     << " nodes " << TM.nodes_searched()
-                     << " nps "   << nps()
-                     << " pv ";
-
-                for (int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
-                    cout << ss[0].pv[j] << " ";
-
-                cout << endl;
-
-                if (UseLogFile)
-                {
-                    ValueType type =  (value >= beta  ? VALUE_TYPE_LOWER
-                                    : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
-
-                    LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                                         TM.nodes_searched(), value, type, ss[0].pv) << endl;
-                }
+                // Print information to the standard output
+                print_pv_info(pos, ss, alpha, beta, value);
 
                 // Prepare for a research after a fail high, each time with a wider window
                 researchCount++;
@@ -977,29 +953,11 @@ namespace {
                     if (i > 0)
                         BestMoveChangesByIteration[Iteration]++;
 
-                    // Print search information to the standard output
-                    cout << "info depth " << Iteration
-                         << " score " << value_to_string(value)
-                         << ((value >= beta) ? " lowerbound" :
-                            ((value <= alpha)? " upperbound" : ""))
-                         << " time "  << current_search_time()
-                         << " nodes " << TM.nodes_searched()
-                         << " nps "   << nps()
-                         << " pv ";
+                    // Print information to the standard output
+                    print_pv_info(pos, ss, alpha, beta, value);
 
-                    for (int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
-                        cout << ss[0].pv[j] << " ";
-
-                    cout << endl;
-
-                    if (UseLogFile)
-                    {
-                        ValueType type =  (value >= beta  ? VALUE_TYPE_LOWER
-                                        : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
-
-                        LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                                             TM.nodes_searched(), value, type, ss[0].pv) << endl;
-                    }
+                    // Raise alpha to setup proper non-pv search upper bound, note
+                    // that we can end up with alpha >= beta and so get a fail high.
                     if (value > alpha)
                         alpha = value;
                 }
@@ -1010,7 +968,7 @@ namespace {
                     {
                         cout << "info multipv " << j + 1
                              << " score " << value_to_string(rml.get_move_score(j))
-                             << " depth " << ((j <= i)? Iteration : Iteration - 1)
+                             << " depth " << (j <= i ? Iteration : Iteration - 1)
                              << " time " << current_search_time()
                              << " nodes " << TM.nodes_searched()
                              << " nps " << nps()
@@ -1021,7 +979,7 @@ namespace {
 
                         cout << endl;
                     }
-                    alpha = rml.get_move_score(Min(i, MultiPV-1));
+                    alpha = rml.get_move_score(Min(i, MultiPV - 1));
                 }
             } // PV move or new best move
 
@@ -1186,7 +1144,7 @@ namespace {
         // if the move fails high will be re-searched at full depth.
         bool doFullDepthSearch = true;
 
-        if (    depth >= 3*OnePly
+        if (    depth >= 3 * OnePly
             && !dangerous
             && !captureOrPromotion
             && !move_is_castle(move)
@@ -2570,6 +2528,36 @@ namespace {
         }
         else if (command == "ponderhit" || command == "stop")
             break;
+    }
+  }
+
+
+  // print_pv_info() prints to standard output and eventually to log file information on
+  // the current PV line. It is called at each iteration or after a new pv is found.
+
+  void print_pv_info(const Position& pos, SearchStack ss[], Value alpha, Value beta, Value value) {
+
+    cout << "info depth " << Iteration
+         << " score " << value_to_string(value)
+         << ((value >= beta) ? " lowerbound" :
+            ((value <= alpha)? " upperbound" : ""))
+         << " time "  << current_search_time()
+         << " nodes " << TM.nodes_searched()
+         << " nps "   << nps()
+         << " pv ";
+
+    for (int j = 0; ss[0].pv[j] != MOVE_NONE && j < PLY_MAX; j++)
+        cout << ss[0].pv[j] << " ";
+
+    cout << endl;
+
+    if (UseLogFile)
+    {
+        ValueType type =  (value >= beta  ? VALUE_TYPE_LOWER
+            : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
+
+        LogFile << pretty_pv(pos, current_search_time(), Iteration,
+                             TM.nodes_searched(), value, type, ss[0].pv) << endl;
     }
   }
 
