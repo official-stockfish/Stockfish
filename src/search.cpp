@@ -645,7 +645,6 @@ namespace {
     while (Iteration < PLY_MAX)
     {
         // Initialize iteration
-        rml.sort();
         Iteration++;
         BestMoveChangesByIteration[Iteration] = 0;
         if (Iteration <= 5)
@@ -666,7 +665,7 @@ namespace {
             beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
         }
 
-        // Search to the current depth
+        // Search to the current depth, rml is updated and sorted
         value = root_search(p, ss, rml, alpha, beta);
 
         // Write PV to transposition table, in case the relevant entries have
@@ -732,8 +731,6 @@ namespace {
         if (MaxDepth && Iteration >= MaxDepth)
             break;
     }
-
-    rml.sort();
 
     // If we are pondering or in infinite search, we shouldn't print the
     // best move before we are told to do so.
@@ -808,6 +805,9 @@ namespace {
 
     while (1) // Fail low loop
     {
+        // Sort the moves before to (re)search
+        rml.sort();
+
         // Loop through all the moves in the root move list
         for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
         {
@@ -925,7 +925,7 @@ namespace {
                 break;
 
             // Remember beta-cutoff and searched nodes counts for this move. The
-            // info is used to sort the root moves at the next iteration.
+            // info is used to sort the root moves for the next iteration.
             int64_t our, their;
             TM.get_beta_counters(pos.side_to_move(), our, their);
             rml.set_beta_counters(i, our, their);
@@ -1001,6 +1001,9 @@ namespace {
         oldAlpha = alpha;
 
     } // Fail low loop
+
+    // Sort the moves before to return
+    rml.sort();
 
     return alpha;
   }
