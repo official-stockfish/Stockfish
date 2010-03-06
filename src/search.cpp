@@ -950,6 +950,7 @@ namespace {
             rml.set_move_nodes(i, TM.nodes_searched() - nodes);
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
+            assert(value < beta);
 
             // Step 17. Check for new best move
             if (value <= alpha && i >= MultiPV)
@@ -975,8 +976,7 @@ namespace {
                     // Print information to the standard output
                     print_pv_info(pos, ss, alpha, beta, value);
 
-                    // Raise alpha to setup proper non-pv search upper bound, note
-                    // that we can end up with alpha >= beta and so get a fail high.
+                    // Raise alpha to setup proper non-pv search upper bound
                     if (value > alpha)
                         alpha = value;
                 }
