@@ -282,7 +282,7 @@ namespace {
   /// Local functions
 
   Value id_loop(const Position& pos, Move searchMoves[]);
-  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta);
+  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
   Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove = MOVE_NONE);
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
@@ -665,8 +665,8 @@ namespace {
             beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
         }
 
-        // Search to the current depth, rml is updated and sorted
-        value = root_search(p, ss, rml, alpha, beta);
+        // Search to the current depth, rml is updated and sorted, alpha and beta could change
+        value = root_search(p, ss, rml, &alpha, &beta);
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
@@ -786,18 +786,19 @@ namespace {
   // scheme, prints some information to the standard output and handles
   // the fail low/high loops.
 
-  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value& oldAlpha, Value& beta) {
+  Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
 
     EvalInfo ei;
     StateInfo st;
     int64_t nodes;
     Move move;
     Depth depth, ext, newDepth;
-    Value value, alpha;
+    Value value, alpha, beta;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
     int researchCount = 0;
+    alpha = *alphaPtr;
+    beta = *betaPtr;
     CheckInfo ci(pos);
-    alpha = oldAlpha;
     isCheck = pos.is_check();
 
     // Step 1. Initialize node and poll (omitted at root, but I can see no good reason for this, FIXME)
@@ -930,7 +931,7 @@ namespace {
 
                 // Prepare for a research after a fail high, each time with a wider window
                 researchCount++;
-                beta = Min(beta + AspirationDelta * (1 << researchCount), VALUE_INFINITE);
+                *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCount), VALUE_INFINITE);
 
             } // End of fail high loop
 
@@ -1002,22 +1003,21 @@ namespace {
                 }
             } // PV move or new best move
 
-            assert(alpha >= oldAlpha);
+            assert(alpha >= *alphaPtr);
 
-            AspirationFailLow = (alpha == oldAlpha);
+            AspirationFailLow = (alpha == *alphaPtr);
 
             if (AspirationFailLow && StopOnPonderhit)
                 StopOnPonderhit = false;
         }
 
         // Can we exit fail low loop ?
-        if (AbortSearch || alpha > oldAlpha)
+        if (AbortSearch || !AspirationFailLow)
             break;
 
         // Prepare for a research after a fail low, each time with a wider window
         researchCount++;
-        alpha = Max(alpha - AspirationDelta * (1 << researchCount), -VALUE_INFINITE);
-        oldAlpha = alpha;
+        *alphaPtr = alpha = Max(alpha - AspirationDelta * (1 << researchCount), -VALUE_INFINITE);
 
     } // Fail low loop
 
