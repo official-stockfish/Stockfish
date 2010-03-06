@@ -254,10 +254,10 @@ namespace {
   int MultiPV;
 
   // Time managment variables
-  int RootMoveNumber, SearchStartTime, MaxNodes, MaxDepth;
-  int MaxSearchTime, AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
+  int SearchStartTime, MaxNodes, MaxDepth, MaxSearchTime;
+  int AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
-  bool AbortSearch, Quit, AspirationFailLow;
+  bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
 
   // Show current line?
   bool ShowCurrentLine;
@@ -828,8 +828,8 @@ namespace {
         // Step 10. Loop through all moves in the root move list
         for (int i = 0; i <  rml.move_count() && !AbortSearch; i++)
         {
-            // This is used by time management and starts from 1
-            RootMoveNumber = i + 1;
+            // This is used by time management
+            FirstRootMove = (i == 0);
 
             // Save the current node count before the move is searched
             nodes = TM.nodes_searched();
@@ -843,7 +843,7 @@ namespace {
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
-                     << " currmovenumber " << RootMoveNumber << endl;
+                     << " currmovenumber " << i + 1 << endl;
 
             moveIsCheck = pos.move_is_check(move);
             captureOrPromotion = pos.move_is_capture_or_promotion(move);
@@ -2480,7 +2480,7 @@ namespace {
     if (PonderSearch)
         return;
 
-    bool stillAtFirstMove =    RootMoveNumber == 1
+    bool stillAtFirstMove =    FirstRootMove
                            && !AspirationFailLow
                            &&  t > MaxSearchTime + ExtraSearchTime;
 
@@ -2503,7 +2503,7 @@ namespace {
     int t = current_search_time();
     PonderSearch = false;
 
-    bool stillAtFirstMove =    RootMoveNumber == 1
+    bool stillAtFirstMove =    FirstRootMove
                            && !AspirationFailLow
                            &&  t > MaxSearchTime + ExtraSearchTime;
 
