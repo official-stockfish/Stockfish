@@ -789,15 +789,17 @@ namespace {
 
     EvalInfo ei;
     StateInfo st;
+    CheckInfo ci(pos);
     int64_t nodes;
     Move move;
     Depth depth, ext, newDepth;
     Value value, alpha, beta;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
-    int researchCount = 0;
+    int researchCountFH, researchCountFL;
+
+    researchCountFH = researchCountFL = 0;
     alpha = *alphaPtr;
     beta = *betaPtr;
-    CheckInfo ci(pos);
     isCheck = pos.is_check();
 
     // Step 1. Initialize node and poll (omitted at root, but I can see no good reason for this, FIXME)
@@ -929,8 +931,8 @@ namespace {
                 print_pv_info(pos, ss, alpha, beta, value);
 
                 // Prepare for a research after a fail high, each time with a wider window
-                researchCount++;
-                *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCount), VALUE_INFINITE);
+                researchCountFH++;
+                *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
 
             } // End of fail high loop
 
@@ -1015,8 +1017,8 @@ namespace {
             break;
 
         // Prepare for a research after a fail low, each time with a wider window
-        researchCount++;
-        *alphaPtr = alpha = Max(alpha - AspirationDelta * (1 << researchCount), -VALUE_INFINITE);
+        researchCountFL++;
+        *alphaPtr = alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
 
     } // Fail low loop
 
