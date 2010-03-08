@@ -224,6 +224,9 @@ public:
   bool move_is_passed_pawn_push(Move m) const;
   bool move_attacks_square(Move m, Square s) const;
 
+  // Piece captured with previous moves
+  PieceType captured_piece() const;
+
   // Information about pawns
   bool pawn_is_passed(Color c, Square s) const;
   static bool pawn_is_passed(Bitboard theirPawns, Color c, Square s);
@@ -240,9 +243,6 @@ public:
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
-
-  // Past
-  PieceType captured_piece() const;
 
   // Static exchange evaluation
   int see(Square from, Square to) const;
@@ -568,6 +568,10 @@ inline bool Position::move_is_capture_or_promotion(Move m) const {
 
   // Move must not be MOVE_NONE !
   return (m & (0x1F << 12)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
+}
+
+inline PieceType Position::captured_piece() const {
+  return st->capture;
 }
 
 #endif // !defined(POSITION_H_INCLUDED)
