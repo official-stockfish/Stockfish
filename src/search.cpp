@@ -931,8 +931,8 @@ namespace {
                 print_pv_info(pos, ss, alpha, beta, value);
 
                 // Prepare for a research after a fail high, each time with a wider window
-                researchCountFH++;
                 *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
+                researchCountFH++;
 
             } // End of fail high loop
 
@@ -1017,8 +1017,8 @@ namespace {
             break;
 
         // Prepare for a research after a fail low, each time with a wider window
-        researchCountFL++;
         *alphaPtr = alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
+        researchCountFL++;
 
     } // Fail low loop
 
