@@ -373,6 +373,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   // Initialize global search variables
   StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
+  MaxSearchTime = AbsoluteMaxSearchTime = ExtraSearchTime = 0;
   NodesSincePoll = 0;
   TM.resetNodeCounters();
   SearchStartTime = get_system_time();
@@ -647,8 +648,6 @@ namespace {
         // Initialize iteration
         Iteration++;
         BestMoveChangesByIteration[Iteration] = 0;
-        if (Iteration <= 5)
-            ExtraSearchTime = 0;
 
         cout << "info depth " << Iteration << endl;
 
