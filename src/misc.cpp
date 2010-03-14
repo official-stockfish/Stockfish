@@ -41,6 +41,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -182,16 +183,17 @@ int get_system_time() {
 }
 
 
-/// cpu_count() tries to detect the number of CPU cores.
+/// builtin_cpu_count() tries to detect the number of CPU cores, if
+/// hyper-threading is enabled this is the number of logical processors.
 
 #if !defined(_MSC_VER)
 
 #  if defined(_SC_NPROCESSORS_ONLN)
-int cpu_count() {
+static int builtin_cpu_count() {
   return Min(sysconf(_SC_NPROCESSORS_ONLN), 8);
 }
 #  elif defined(__hpux)
-int cpu_count() {
+static int builtin_cpu_count() {
   struct pst_dynamic psd;
   if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1)
       return 1;
@@ -199,20 +201,65 @@ int cpu_count() {
   return Min(psd.psd_proc_cnt, 8);
 }
 #  else
-int cpu_count() {
+static int builtin_cpu_count() {
   return 1;
 }
 #  endif
 
 #else
 
-int cpu_count() {
+static int builtin_cpu_count() {
   SYSTEM_INFO s;
   GetSystemInfo(&s);
   return Min(s.dwNumberOfProcessors, 8);
 }
 
 #endif
+
+
+/// HT_enabled() returns true if hyper-threading is enabled on current machine
+
+static bool HT_enabled() {
+
+  char CPUString[0x20];
+  int CPUInfo[4] = {-1};
+  int nIds, nLogicalCPU, nCores;
+
+  // Detect CPU producer
+  __cpuid(CPUInfo, 0);
+  nIds = CPUInfo[0];
+
+  memset(CPUString, 0, sizeof(CPUString));
+  *((int*)(CPUString+0)) = CPUInfo[1];
+  *((int*)(CPUString+4)) = CPUInfo[3];
+  *((int*)(CPUString+8)) = CPUInfo[2];
+
+  // Not an Intel CPU or CPUID.4 not supported
+  if (strcmp(CPUString, "GenuineIntel") || nIds < 4)
+      return false;
+
+  // Detect if HT Technology is supported
+  __cpuid(CPUInfo, 1);
+  if (!((CPUInfo[3] >> 28) & 1))
+      return false;
+
+  nLogicalCPU = (CPUInfo[1] >> 16) & 0xFF;
+
+  // Detect number of cores
+  __cpuid(CPUInfo, 4);
+  nCores = 1 + ((CPUInfo[0] >> 26) & 0x3F);
+
+  return nLogicalCPU > nCores;
+}
+
+
+/// cpu_count() tries to detect the number of physical CPU cores taking
+/// in account hyper-threading.
+
+int cpu_count() {
+
+  return HT_enabled() ? builtin_cpu_count() / 2 : builtin_cpu_count();
+}
 
 
 /*
