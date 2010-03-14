@@ -29,8 +29,6 @@
 
 #if defined(__INTEL_COMPILER) && defined(USE_POPCNT) // Intel compiler
 
-#include <nmmintrin.h>
-
 inline bool cpu_has_popcnt() {
 
   int CPUInfo[4] = {-1};
@@ -42,8 +40,6 @@ inline bool cpu_has_popcnt() {
 
 #elif defined(_MSC_VER) && defined(USE_POPCNT) // Microsoft compiler
 
-#include <intrin.h>
-
 inline bool cpu_has_popcnt() {
 
   int CPUInfo[4] = {-1};
@@ -54,16 +50,6 @@ inline bool cpu_has_popcnt() {
 #define POPCNT_INTRINSIC(x) (int)__popcnt64(x)
 
 #elif defined(__GNUC__) && defined(USE_POPCNT) // Gcc compiler
-
-inline void __cpuid(unsigned int op,
-                    unsigned int *eax, unsigned int *ebx,
-                    unsigned int *ecx, unsigned int *edx)
-{
-  *eax = op;
-  *ecx = 0;
-  __asm__("cpuid" : "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
-                  : "0" (*eax), "2" (*ecx));
-}
 
 inline bool cpu_has_popcnt() {
 

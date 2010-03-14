@@ -73,4 +73,22 @@ typedef uint64_t Bitboard;
 #define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(64)))
 #endif
 
+// Define a __cpuid() function for gcc compilers, for Intel and MSVC
+// is already available as an intrinsic.
+#if defined(__INTEL_COMPILER)
+#include <nmmintrin.h>
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#elif defined(__GNUC__)
+inline void __cpuid(unsigned int op,
+                    unsigned int *eax, unsigned int *ebx,
+                    unsigned int *ecx, unsigned int *edx)
+{
+  *eax = op;
+  *ecx = 0;
+  __asm__("cpuid" : "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
+                  : "0" (*eax), "2" (*ecx));
+}
+#endif
+
 #endif // !defined(TYPES_H_INCLUDED)
