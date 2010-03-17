@@ -80,11 +80,14 @@ typedef uint64_t Bitboard;
 #elif defined(_MSC_VER)
 #include <intrin.h>
 #elif defined(__GNUC__)
-inline void __cpuid(unsigned int op,
-                    unsigned int *eax, unsigned int *ebx,
-                    unsigned int *ecx, unsigned int *edx)
+inline void __cpuid(int CPUInfo[4], int InfoType)
 {
-  *eax = op;
+  int* eax = CPUInfo + 0;
+  int* ebx = CPUInfo + 1;
+  int* ecx = CPUInfo + 2;
+  int* edx = CPUInfo + 3;
+
+  *eax = InfoType;
   *ecx = 0;
   __asm__("cpuid" : "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
                   : "0" (*eax), "2" (*ecx));
