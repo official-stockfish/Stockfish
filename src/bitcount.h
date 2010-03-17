@@ -26,50 +26,18 @@
 
 // Select type of intrinsic bit count instruction to use, see
 // README.txt on how to pgo compile with POPCNT support.
-
-#if defined(__INTEL_COMPILER) && defined(USE_POPCNT) // Intel compiler
-
-inline bool cpu_has_popcnt() {
-
-  int CPUInfo[4] = {-1};
-  __cpuid(CPUInfo, 0x00000001);
-  return (CPUInfo[2] >> 23) & 1;
-}
-
-#define POPCNT_INTRINSIC(x) _mm_popcnt_u64(x)
-
-#elif defined(_MSC_VER) && defined(USE_POPCNT) // Microsoft compiler
-
-inline bool cpu_has_popcnt() {
-
-  int CPUInfo[4] = {-1};
-  __cpuid(CPUInfo, 0x00000001);
-  return (CPUInfo[2] >> 23) & 1;
-}
-
+#if !defined(USE_POPCNT)
+#define POPCNT_INTRINSIC(x) 0
+#elif defined(_MSC_VER)
 #define POPCNT_INTRINSIC(x) (int)__popcnt64(x)
-
-#elif defined(__GNUC__) && defined(USE_POPCNT) // Gcc compiler
-
-inline bool cpu_has_popcnt() {
-
-  unsigned int eax, ebx, ecx, edx;
-  __cpuid(1, &eax, &ebx, &ecx, &edx);
-  return (ecx >> 23) & 1;
-}
+#elif defined(__GNUC__)
 
 #define POPCNT_INTRINSIC(x) ({ \
    unsigned long __ret; \
    __asm__("popcnt %1, %0" : "=r" (__ret) : "r" (x)); \
    __ret; })
 
-#else // Safe fallback for unsupported compilers or when USE_POPCNT is disabled
-
-inline bool cpu_has_popcnt() { return false; }
-
-#define POPCNT_INTRINSIC(x) 0
-
-#endif // cpu_has_popcnt() and POPCNT_INTRINSIC() definitions
+#endif
 
 
 /// Software implementation of bit count functions
@@ -136,10 +104,23 @@ inline int count_1s_max_15(Bitboard b) {
 }
 
 
+// Detect hardware POPCNT support
+inline bool cpu_has_popcnt() {
+
+  int CPUInfo[4] = {-1};
+  __cpuid(CPUInfo, 0x00000001);
+  return (CPUInfo[2] >> 23) & 1;
+}
+
+
 // Global constant initialized at startup that is set to true if
 // CPU on which application runs supports POPCNT intrinsic. Unless
 // USE_POPCNT is not defined.
+#if defined(USE_POPCNT)
 const bool CpuHasPOPCNT = cpu_has_popcnt();
+#else
+const bool CpuHasPOPCNT = false;
+#endif
 
 
 // Global constant used to print info about the use of 64 optimized

@@ -75,9 +75,7 @@ typedef uint64_t Bitboard;
 
 // Define a __cpuid() function for gcc compilers, for Intel and MSVC
 // is already available as an intrinsic.
-#if defined(__INTEL_COMPILER)
-#include <nmmintrin.h>
-#elif defined(_MSC_VER)
+#if defined(_MSC_VER)
 #include <intrin.h>
 #elif defined(__GNUC__)
 inline void __cpuid(int CPUInfo[4], int InfoType)
