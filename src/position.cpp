@@ -87,26 +87,13 @@ Position::Position() {}
 
 Position::Position(const Position& pos) {
 
-  fast_copy(pos);
+  memcpy(this, &pos, sizeof(Position));
   detach(); // Always detach() in copy c'tor to avoid surprises
 }
 
 Position::Position(const string& fen) {
 
   from_fen(fen);
-}
-
-
-/// Position::fast_copy() creates a partial copy of the given position,
-/// only data that changes with a do_move() / undo_move() cycle is copied,
-/// in particular for stateInfo are copied only the pointers, so that the
-/// actual data remains stored in the parent Position. This is not a problem
-/// if the parent Position is known not to be destroyed while we are still alive,
-/// as is the common case, see detach() otherwise.
-
-void Position::fast_copy(const Position& pos) {
-
-  memcpy(this, &pos, sizeof(Position));
 }
 
 

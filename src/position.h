@@ -156,7 +156,6 @@ public:
   void print(Move m = MOVE_NONE) const;
 
   // Copying
-  void fast_copy(const Position& pos);
   void flipped_copy(const Position& pos);
 
   // The piece on a given square
