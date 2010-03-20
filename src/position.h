@@ -328,12 +328,12 @@ private:
   Color sideToMove;
   int gamePly;
   Key history[MaxGameLength];
+  int castleRightsMask[64];
   File initialKFile, initialKRFile, initialQRFile;
   StateInfo startState;
   StateInfo* st;
 
   // Static variables
-  static int castleRightsMask[64];
   static Key zobrist[2][8][64];
   static Key zobEp[64];
   static Key zobCastle[16];

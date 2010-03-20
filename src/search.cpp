@@ -441,10 +441,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   {
       TM.set_active_threads(newActiveThreads);
       init_eval(TM.active_threads());
-      // HACK: init_eval() destroys the static castleRightsMask[] array in the
-      // Position class. The below line repairs the damage.
-      Position p(pos.to_fen());
-      assert(pos.is_ok());
   }
 
   // Wake up sleeping threads

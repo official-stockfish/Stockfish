@@ -44,8 +44,6 @@ using std::string;
 //// Variables
 ////
 
-int Position::castleRightsMask[64];
-
 Key Position::zobrist[2][8][64];
 Key Position::zobEp[64];
 Key Position::zobCastle[16];
