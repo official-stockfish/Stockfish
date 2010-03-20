@@ -1379,12 +1379,12 @@ namespace {
         if (nullValue >= beta)
         {
             if (depth < 6 * OnePly)
-                return beta;
+                return nullValue;
 
             // Do zugzwang verification search
             Value v = search(pos, ss, beta, depth-5*OnePly, ply, false, threadID);
             if (v >= beta)
-                return beta;
+                return nullValue;
         } else {
             // The null move failed low, which means that we may be faced with
             // some kind of threat. If the previous move was reduced, check if
