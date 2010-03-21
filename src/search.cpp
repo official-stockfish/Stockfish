@@ -215,12 +215,14 @@ namespace {
 
   // Step 14. Reduced search
 
+  int ReductionLevel = 2; // 0 = most aggressive reductions, 7 = minimum reductions
+
   // Reduction lookup tables (initialized at startup) and their getter functions
   int8_t    PVReductionMatrix[8][64][64]; // [depth][moveNumber]
   int8_t NonPVReductionMatrix[8][64][64]; // [depth][moveNumber]
 
-  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[0][Min(d / 2, 63)][Min(mn, 63)]; }
-  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[0][Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[ReductionLevel][Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[ReductionLevel][Min(d / 2, 63)][Min(mn, 63)]; }
 
   // Common adjustments
 
@@ -669,6 +671,19 @@ namespace {
 
             alpha = Max(ValueByIteration[Iteration - 1] - AspirationDelta, -VALUE_INFINITE);
             beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
+        }
+
+        // Choose optimum reduction level
+        ReductionLevel = 2;
+
+        if (UseTimeManagement)
+        {
+            int level = int(floor(log(float(MaxSearchTime) / current_search_time()) / log(2.0) + 1.0));
+            ReductionLevel = Min(Max(level, 0), 7);
+        }
+        else
+        {
+            //FIXME
         }
 
         // Search to the current depth, rml is updated and sorted, alpha and beta could change
