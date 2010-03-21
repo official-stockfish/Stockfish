@@ -216,11 +216,11 @@ namespace {
   // Step 14. Reduced search
 
   // Reduction lookup tables (initialized at startup) and their getter functions
-  int8_t    PVReductionMatrix[64][64]; // [depth][moveNumber]
-  int8_t NonPVReductionMatrix[64][64]; // [depth][moveNumber]
+  int8_t    PVReductionMatrix[8][64][64]; // [depth][moveNumber]
+  int8_t NonPVReductionMatrix[8][64][64]; // [depth][moveNumber]
 
-  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
-  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[0][Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[0][Min(d / 2, 63)][Min(mn, 63)]; }
 
   // Common adjustments
 
@@ -544,20 +544,31 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   return !Quit;
 }
 
+// init_reduction_tables()
 
-/// init_search() is called during startup. It initializes various lookup tables
+void init_reduction_tables(int8_t pvTable[64][64], int8_t nonPvTable[64][64], int pvInhib, int nonPvInhib)
+{
+  double pvBase = 1.001 - log(3.0) * log(16.0) / pvInhib;
+  double nonPvBase = 1.001 - log(3.0) * log(4.0) / nonPvInhib;
 
-void init_search() {
-
-  // Init our reduction lookup tables
+  // Init reduction lookup tables
   for (int i = 1; i < 64; i++) // i == depth (OnePly = 1)
       for (int j = 1; j < 64; j++) // j == moveNumber
       {
-          double    pvRed = 0.5 + log(double(i)) * log(double(j)) / 6.0;
-          double nonPVRed = 0.5 + log(double(i)) * log(double(j)) / 3.0;
-          PVReductionMatrix[i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
-          NonPVReductionMatrix[i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
+          double    pvRed = pvBase    + log(double(i)) * log(double(j)) / pvInhib;
+          double nonPVRed = nonPvBase + log(double(i)) * log(double(j)) / nonPvInhib;
+
+          pvTable[i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
+          nonPvTable[i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
       }
+}
+
+// init_search() is called during startup. It initializes various lookup tables
+
+void init_search() {
+
+  for (int i = 0; i < 8; i++)
+      init_reduction_tables(PVReductionMatrix[i], NonPVReductionMatrix[i], 4.0 * pow(1.3, i), 2.0 * pow(1.3, i));
 
   // Init futility margins array
   for (int i = 0; i < 16; i++) // i == depth (OnePly = 2)
