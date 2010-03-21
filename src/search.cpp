@@ -1378,6 +1378,10 @@ namespace {
 
         if (nullValue >= beta)
         {
+            // Do not return unproven mate scores
+            if (nullValue >= value_mate_in(PLY_MAX))
+                nullValue = beta;
+
             if (depth < 6 * OnePly)
                 return nullValue;
 
