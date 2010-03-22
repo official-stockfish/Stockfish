@@ -1368,11 +1368,13 @@ namespace {
 
     // Step 7. Static null move pruning
     // We're betting that the opponent doesn't have a move that will reduce
-    // the score by more than fuility_margin(depth) if we do a null move.
-    if (  !isCheck
-        && allowNullmove
-        && depth < RazorDepth
-        && refinedValue - futility_margin(depth, 0) >= beta)
+    // the score by more than futility_margin(depth) if we do a null move.
+    if (    allowNullmove
+        &&  depth < RazorDepth
+        && !isCheck
+        && !value_is_mate(beta)
+        &&  ok_to_do_nullmove(pos)
+        &&  refinedValue >= beta + futility_margin(depth, 0))
         return refinedValue - futility_margin(depth, 0);
 
     // Step 8. Null move search with verification search
@@ -1388,14 +1390,14 @@ namespace {
     {
         ss[ply].currentMove = MOVE_NULL;
 
-        pos.do_null_move(st);
-
         // Null move dynamic reduction based on depth
         int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
 
         // Null move dynamic reduction based on value
         if (refinedValue - beta > PawnValueMidgame)
             R++;
+
+        pos.do_null_move(st);
 
         nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
 
