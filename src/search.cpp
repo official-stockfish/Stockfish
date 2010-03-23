@@ -546,14 +546,13 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   return !Quit;
 }
 
-// init_reduction_tables()
-
-void init_reduction_tables(int8_t pvTable[64][64], int8_t nonPvTable[64][64], int pvInhib, int nonPvInhib)
+// init_reduction_tables() is called by init_search() and initializes
+// the tables used by LMR.
+static void init_reduction_tables(int8_t pvTable[64][64], int8_t nonPvTable[64][64], int pvInhib, int nonPvInhib)
 {
   double pvBase = 1.001 - log(3.0) * log(16.0) / pvInhib;
   double nonPvBase = 1.001 - log(3.0) * log(4.0) / nonPvInhib;
 
-  // Init reduction lookup tables
   for (int i = 1; i < 64; i++) // i == depth (OnePly = 1)
       for (int j = 1; j < 64; j++) // j == moveNumber
       {
@@ -566,11 +565,11 @@ void init_reduction_tables(int8_t pvTable[64][64], int8_t nonPvTable[64][64], in
 }
 
 // init_search() is called during startup. It initializes various lookup tables
-
 void init_search() {
 
+  // Init reduction lookup tables
   for (int i = 0; i < 8; i++)
-      init_reduction_tables(PVReductionMatrix[i], NonPVReductionMatrix[i], 4.0 * pow(1.3, i), 2.0 * pow(1.3, i));
+      init_reduction_tables(PVReductionMatrix[i], NonPVReductionMatrix[i], int(4 * pow(1.3, i)), int(2 * pow(1.3, i)));
 
   // Init futility margins array
   for (int i = 0; i < 16; i++) // i == depth (OnePly = 2)
