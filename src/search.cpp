@@ -215,7 +215,7 @@ namespace {
 
   // Step 14. Reduced search
 
-  int ReductionLevel = 2; // 0 = most aggressive reductions, 7 = minimum reductions
+  int ReductionLevel; // 0 = most aggressive reductions, 7 = minimum reductions
 
   // Reduction lookup tables (initialized at startup) and their getter functions
   int8_t    PVReductionMatrix[8][64][64]; // [depth][moveNumber]
@@ -1126,14 +1126,13 @@ namespace {
         tte = TT.retrieve(pos.get_key());
     }
 
-    // Step 10. Loop through moves
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
-
     // Initialize a MovePicker object for the current position
     mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
     CheckInfo ci(pos);
 
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   alpha < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !TM.thread_should_stop(threadID))
@@ -1350,12 +1349,12 @@ namespace {
     }
 
     // Step 6. Razoring
-    if (   !value_is_mate(beta)
+    if (    refinedValue < beta - razor_margin(depth)
+        &&  ttMove == MOVE_NONE
+        &&  ss[ply - 1].currentMove != MOVE_NULL
+        &&  depth < RazorDepth
         && !isCheck
-        && depth < RazorDepth
-        && refinedValue < beta - razor_margin(depth)
-        && ss[ply - 1].currentMove != MOVE_NULL
-        && ttMove == MOVE_NONE
+        && !value_is_mate(beta)
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
@@ -1445,13 +1444,12 @@ namespace {
         tte = TT.retrieve(posKey);
     }
 
-    // Step 10. Loop through moves
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
-
     // Initialize a MovePicker object for the current position
     MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply], beta);
     CheckInfo ci(pos);
 
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !TM.thread_should_stop(threadID))
@@ -1474,7 +1472,7 @@ namespace {
       if (   depth >= SingularExtensionDepthAtNonPVNodes
           && tte
           && move == tte->move()
-          && !excludedMove // Do not allow recursive single-reply search
+          && !excludedMove // Do not allow recursive singular extension search
           && ext < OnePly
           && is_lower_bound(tte->type())
           && tte->depth() >= depth - 3 * OnePly)
@@ -1524,8 +1522,8 @@ namespace {
       // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
 
-      // Step 14. Reduced search
-      // if the move fails high will be re-searched at full depth.
+      // Step 14. Reduced search, if the move fails high
+      // will be re-searched at full depth.
       bool doFullDepthSearch = true;
 
       if (    depth >= 3*OnePly
@@ -1579,11 +1577,11 @@ namespace {
     }
 
     // Step 19. Check for mate and stalemate
-    // All legal moves have been searched and if there were
+    // All legal moves have been searched and if there are
     // no legal moves, it must be mate or stalemate.
-    // If one move was excluded return fail low.
+    // If one move was excluded return fail low score.
     if (!moveCount)
-        return excludedMove ? beta - 1 : (pos.is_check() ? value_mated_in(ply) : VALUE_DRAW);
+        return excludedMove ? beta - 1 : (isCheck ? value_mated_in(ply) : VALUE_DRAW);
 
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
@@ -1703,8 +1701,7 @@ namespace {
     enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
     futilityBase = staticValue + FutilityMarginQS + ei.futilityMargin[pos.side_to_move()];
 
-    // Loop through the moves until no moves remain or a beta cutoff
-    // occurs.
+    // Loop through the moves until no moves remain or a beta cutoff occurs
     while (   alpha < beta
            && (move = mp.get_next_move()) != MOVE_NONE)
     {
@@ -1773,7 +1770,7 @@ namespace {
 
     // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
-    if (!moveCount && pos.is_check()) // Mate!
+    if (!moveCount && isCheck) // Mate!
         return value_mated_in(ply);
 
     // Update transposition table
