@@ -259,9 +259,6 @@ namespace {
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
 
-  // Show current line?
-  bool ShowCurrentLine;
-
   // Log file
   bool UseLogFile;
   std::ofstream LogFile;
@@ -425,7 +422,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
 
   MinimumSplitDepth       = get_option_value_int("Minimum Split Depth") * OnePly;
   MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
-  ShowCurrentLine         = get_option_value_bool("UCI_ShowCurrLine");
   MultiPV                 = get_option_value_int("MultiPV");
   Chess960                = get_option_value_bool("UCI_Chess960");
   UseLogFile              = get_option_value_bool("Use Search Log");
@@ -2464,16 +2460,6 @@ namespace {
 
         cout << "info nodes " << TM.nodes_searched() << " nps " << nps()
              << " time " << t << " hashfull " << TT.full() << endl;
-
-        // We only support current line printing in single thread mode
-        if (ShowCurrentLine && TM.active_threads() == 1)
-        {
-            cout << "info currline";
-            for (int p = 0; p < ply; p++)
-                cout << " " << ss[p].currentMove;
-
-            cout << endl;
-        }
     }
 
     // Should we stop the search?

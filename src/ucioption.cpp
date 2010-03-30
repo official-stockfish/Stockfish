@@ -88,22 +88,6 @@ namespace {
     o["Space"] = Option(100, 0, 200);
     o["Aggressiveness"] = Option(100, 0, 200);
     o["Cowardice"] = Option(100, 0, 200);
-    o["King Safety Curve"] = Option("Quadratic", COMBO);
-
-       o["King Safety Curve"].comboValues.push_back("Quadratic");
-       o["King Safety Curve"].comboValues.push_back("Linear");  /*, "From File"*/
-
-    o["King Safety Coefficient"] = Option(40, 1, 100);
-    o["King Safety X Intercept"] = Option(0, 0, 20);
-    o["King Safety Max Slope"] = Option(30, 10, 100);
-    o["King Safety Max Value"] = Option(500, 100, 1000);
-    o["Queen Contact Check Bonus"] = Option(3, 0, 8);
-    o["Queen Check Bonus"] = Option(2, 0, 4);
-    o["Rook Check Bonus"] = Option(1, 0, 4);
-    o["Bishop Check Bonus"] = Option(1, 0, 4);
-    o["Knight Check Bonus"] = Option(1, 0, 4);
-    o["Discovered Check Bonus"] = Option(3, 0, 8);
-    o["Mate Threat Bonus"] = Option(3, 0, 8);
     o["Check Extension (PV nodes)"] = Option(2, 0, 2);
     o["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
     o["Single Evasion Extension (PV nodes)"] = Option(2, 0, 2);
@@ -126,7 +110,6 @@ namespace {
     o["Ponder"] = Option(true);
     o["OwnBook"] = Option(true);
     o["MultiPV"] = Option(1, 1, 500);
-    o["UCI_ShowCurrLine"] = Option(false);
     o["UCI_Chess960"] = Option(false);
     o["UCI_AnalyseMode"] = Option(false);
 

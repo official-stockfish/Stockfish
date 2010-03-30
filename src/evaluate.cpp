@@ -224,15 +224,19 @@ namespace {
 
   const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
 
-  // Bonuses for safe checks, initialized from UCI options
-  int QueenContactCheckBonus, DiscoveredCheckBonus;
-  int QueenCheckBonus, RookCheckBonus, BishopCheckBonus, KnightCheckBonus;
+  // Bonuses for safe checks
+  const int QueenContactCheckBonus = 3;
+  const int DiscoveredCheckBonus   = 3;
+  const int QueenCheckBonus        = 2; 
+  const int RookCheckBonus         = 1;
+  const int BishopCheckBonus       = 1; 
+  const int KnightCheckBonus       = 1;
 
   // Scan for queen contact mates?
   const bool QueenContactMates = true;
 
-  // Bonus for having a mate threat, initialized from UCI options
-  int MateThreatBonus;
+  // Bonus for having a mate threat
+  const int MateThreatBonus = 3;
 
   // InitKingDanger[] contains bonuses based on the position of the defending
   // king.
@@ -1200,29 +1204,17 @@ namespace {
 
   void init_safety() {
 
-    QueenContactCheckBonus = get_option_value_int("Queen Contact Check Bonus");
-    QueenCheckBonus        = get_option_value_int("Queen Check Bonus");
-    RookCheckBonus         = get_option_value_int("Rook Check Bonus");
-    BishopCheckBonus       = get_option_value_int("Bishop Check Bonus");
-    KnightCheckBonus       = get_option_value_int("Knight Check Bonus");
-    DiscoveredCheckBonus   = get_option_value_int("Discovered Check Bonus");
-    MateThreatBonus        = get_option_value_int("Mate Threat Bonus");
-
-    int maxSlope = get_option_value_int("King Safety Max Slope");
-    int peak     = get_option_value_int("King Safety Max Value") * 256 / 100;
-    double a     = get_option_value_int("King Safety Coefficient") / 100.0;
-    double b     = get_option_value_int("King Safety X Intercept");
-    bool quad    = (get_option_value_string("King Safety Curve") == "Quadratic");
-    bool linear  = (get_option_value_string("King Safety Curve") == "Linear");
+    int maxSlope = 30;
+    int peak     = 0x500;
+    double a     = 0.4;
+    double b     = 0.0;
 
     for (int i = 0; i < 100; i++)
     {
         if (i < b)
             SafetyTable[i] = Value(0);
-        else if (quad)
+        else
             SafetyTable[i] = Value((int)(a * (i - b) * (i - b)));
-        else if (linear)
-            SafetyTable[i] = Value((int)(100 * a * (i - b)));
     }
 
     for (int i = 0; i < 100; i++)
