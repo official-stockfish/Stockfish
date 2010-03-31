@@ -87,7 +87,7 @@ namespace {
                Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode);
 
   private:
-    friend void poll(SearchStack ss[], int ply);
+    friend void poll();
 
     int ActiveThreads;
     volatile bool AllThreadsShouldExit, AllThreadsShouldSleep;
@@ -302,7 +302,7 @@ namespace {
 
   int current_search_time();
   int nps();
-  void poll(SearchStack ss[], int ply);
+  void poll();
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack ss[]);
@@ -2046,7 +2046,7 @@ namespace {
         NodesSincePoll++;
         if (NodesSincePoll >= NodesBetweenPolls)
         {
-            poll(ss, ply);
+            poll();
             NodesSincePoll = 0;
         }
     }
@@ -2409,7 +2409,7 @@ namespace {
   // looks at the time consumed so far and decides if it's time to abort the
   // search.
 
-  void poll(SearchStack ss[], int ply) {
+  void poll() {
 
     static int lastInfoTime;
     int t = current_search_time();
