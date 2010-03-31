@@ -870,7 +870,7 @@ namespace {
   }
 
 
-  // evaluate_passed_pawns() evaluates the passed pawns of the given color
+  // evaluate_passed_pawns_of_color() evaluates the passed pawns of the given color
 
   template<Color Us>
   void evaluate_passed_pawns_of_color(const Position& pos, int movesToGo[], Square pawnToGo[], EvalInfo& ei) {
