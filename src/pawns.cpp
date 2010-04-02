@@ -226,21 +226,16 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
           Bitboard b = outpost_mask(Us, s) & theirPawns & (FileFBB | FileGBB | FileHBB);
           while (b)
           {
+              // Give a bonus according to the distance of the nearest enemy pawn
               Square s2 = pop_1st_bit(&b);
+              int v = StormLeverBonus[f] - 2 * square_distance(s, s2);
+
+              // If enemy pawn has no pawn beside itself is particularly vulnerable.
+              // Big bonus, especially against a weakness on the rook file
               if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
-              {
-                  // The enemy pawn has no pawn beside itself, which makes it
-                  // particularly vulnerable. Big bonus, especially against a
-                  // weakness on the rook file.
-                  if (square_file(s2) == FILE_H)
-                      bonus += 4*StormLeverBonus[f] - 8*square_distance(s, s2);
-                  else
-                      bonus += 2*StormLeverBonus[f] - 4*square_distance(s, s2);
-              } else
-                  // There is at least one enemy pawn beside the enemy pawn we look
-                  // at, which means that the pawn has somewhat better chances of
-                  // defending itself by advancing. Smaller bonus.
-                  bonus += StormLeverBonus[f] - 2*square_distance(s, s2);
+                  v *= (square_file(s2) == FILE_H ? 4 : 2);
+
+              bonus += v;
           }
       }
       pi->ksStormValue[Us] += bonus;
@@ -252,21 +247,16 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
           Bitboard b = outpost_mask(Us, s) & theirPawns & (FileABB | FileBBB | FileCBB);
           while (b)
           {
+              // Give a bonus according to the distance of the nearest enemy pawn
               Square s2 = pop_1st_bit(&b);
+              int v = StormLeverBonus[f] - 4 * square_distance(s, s2);
+
+              // If enemy pawn has no pawn beside itself is particularly vulnerable.
+              // Big bonus, especially against a weakness on the rook file
               if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
-              {
-                  // The enemy pawn has no pawn beside itself, which makes it
-                  // particularly vulnerable. Big bonus, especially against a
-                  // weakness on the rook file.
-                  if (square_file(s2) == FILE_A)
-                      bonus += 4*StormLeverBonus[f] - 16*square_distance(s, s2);
-                  else
-                      bonus += 2*StormLeverBonus[f] - 8*square_distance(s, s2);
-              } else
-                  // There is at least one enemy pawn beside the enemy pawn we look
-                  // at, which means that the pawn has somewhat better chances of
-                  // defending itself by advancing. Smaller bonus.
-                  bonus += StormLeverBonus[f] - 4*square_distance(s, s2);
+                  v *= (square_file(s2) == FILE_A ? 4 : 2);
+
+              bonus += v;
           }
       }
       pi->qsStormValue[Us] += bonus;
