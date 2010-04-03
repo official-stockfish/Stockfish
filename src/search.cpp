@@ -1379,13 +1379,18 @@ namespace {
             if (nullValue >= value_mate_in(PLY_MAX))
                 nullValue = beta;
 
-            if (depth < 6 * OnePly)
-                return nullValue;
+            // Do zugzwang verification search for high depths, don't store in TT
+            // if search was stopped.
+            if (   (   depth < 6 * OnePly
+                    || search(pos, ss, beta, depth-5*OnePly, ply, false, threadID) >= beta)
+                && !AbortSearch
+                && !TM.thread_should_stop(threadID))
+            {
+                assert(value_to_tt(nullValue, ply) == nullValue);
 
-            // Do zugzwang verification search
-            Value v = search(pos, ss, beta, depth-5*OnePly, ply, false, threadID);
-            if (v >= beta)
+                TT.store(posKey, nullValue, VALUE_TYPE_LOWER, depth, MOVE_NONE);
                 return nullValue;
+            }
         } else {
             // The null move failed low, which means that we may be faced with
             // some kind of threat. If the previous move was reduced, check if

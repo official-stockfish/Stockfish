@@ -125,6 +125,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           if (tte->key() && t == VALUE_TYPE_EV_LO)
               return;
 
+          // Preserve any exsisting ttMove
           if (m == MOVE_NONE)
               m = tte->move();
 
