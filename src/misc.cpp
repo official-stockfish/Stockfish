@@ -221,6 +221,7 @@ static int builtin_cpu_count() {
 
 static bool HT_enabled() {
 
+  char CPUString[0x20];
   int CPUInfo[4] = {-1};
   int nIds, nLogicalCPU, nCores;
 
@@ -228,8 +229,13 @@ static bool HT_enabled() {
   __cpuid(CPUInfo, 0);
   nIds = CPUInfo[0];
 
+  memset(CPUString, 0, sizeof(CPUString));
+  memcpy(&CPUString[0], &CPUInfo[1], sizeof(int));
+  memcpy(&CPUString[4], &CPUInfo[3], sizeof(int));
+  memcpy(&CPUString[8], &CPUInfo[2], sizeof(int));
+
   // Not an Intel CPU or CPUID.4 not supported
-  if (!((CPUInfo[1] == 'uneG') && (CPUInfo[3] == 'Ieni') && (CPUInfo[2] == 'letn')) || nIds < 4)
+  if (strcmp(CPUString, "GenuineIntel") || nIds < 4)
       return false;
 
   // Detect if HT Technology is supported
