@@ -212,16 +212,16 @@ osx-x86:
 	$(MAKE) \
 	CXX='g++' \
 	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-arch i386' \
-	LDFLAGS+='-arch i386' \
+	CXXFLAGS+='-arch i386 -mdynamic-no-pic' \
+	LDFLAGS+='-arch i386 -mdynamic-no-pic' \
 	all
 
 osx-x86_64:
 	$(MAKE) \
 	CXX='g++' \
 	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-arch x86_64' \
-	LDFLAGS+='-arch x86_64' \
+	CXXFLAGS+='-arch x86_64 -mdynamic-no-pic' \
+	LDFLAGS+='-arch x86_64 -mdynamic-no-pic' \
 	all
 	
 osx-icc32:
