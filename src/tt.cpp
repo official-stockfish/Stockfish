@@ -25,7 +25,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#if !defined(__hpux)
+#if !(defined(__hpux) || defined(__ppc__) || defined(__ppc64__) || defined(__arm__))
 #  include <xmmintrin.h>
 #endif
 
@@ -170,7 +170,7 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 /// to be loaded from RAM, that can be very slow. When we will
 /// subsequently call retrieve() the TT data will be already
 /// quickly accessible in L1/L2 CPU cache.
-#if defined(__hpux)
+#if defined(__hpux) || defined(__ppc__) || defined(__ppc64__) || defined(__arm__)
 void TranspositionTable::prefetch(const Key) const {} // Not supported on HP UX
 #else
 

@@ -77,7 +77,7 @@ typedef uint64_t Bitboard;
 // is already available as an intrinsic.
 #if defined(_MSC_VER)
 #include <intrin.h>
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 inline void __cpuid(int CPUInfo[4], int InfoType)
 {
   int* eax = CPUInfo + 0;
@@ -89,6 +89,11 @@ inline void __cpuid(int CPUInfo[4], int InfoType)
   *ecx = 0;
   __asm__("cpuid" : "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
                   : "0" (*eax), "2" (*ecx));
+}
+#else
+inline void __cpuid(int CPUInfo[4], int)
+{
+   CPUInfo[0] = CPUInfo[1] = CPUInfo[2] = CPUInfo[3] = 0;
 }
 #endif
 

@@ -197,6 +197,7 @@ osx-ppc32:
 	CXX='g++' \
 	CXXFLAGS="$(GCCFLAGS)" \
 	CXXFLAGS+='-arch ppc' \
+	CXXFLAGS+='-DBIGENDIAN' \
 	LDFLAGS+='-arch ppc' \
 	all
 
@@ -205,6 +206,7 @@ osx-ppc64:
 	CXX='g++' \
 	CXXFLAGS="$(GCCFLAGS)" \
 	CXXFLAGS+='-arch ppc64' \
+	CXXFLAGS+='-DBIGENDIAN' \
 	LDFLAGS+='-arch ppc64' \
 	all
 
