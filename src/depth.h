@@ -27,7 +27,8 @@
 
 enum Depth {
   DEPTH_ZERO = 0,
-  DEPTH_MAX = 200  // 100 * OnePly;
+  DEPTH_MAX = 200, // 100 * OnePly;
+  DEPTH_ENSURE_SIGNED = -1
 };
 
 

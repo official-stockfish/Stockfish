@@ -1666,7 +1666,7 @@ namespace {
         alpha = bestValue;
 
     // If we are near beta then try to get a cutoff pushing checks a bit further
-    bool deepChecks = depth == -OnePly && staticValue >= beta - PawnValueMidgame / 8;
+    bool deepChecks = (depth == -OnePly && staticValue >= beta - PawnValueMidgame / 8);
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves. Because the depth is <= 0 here, only captures,
