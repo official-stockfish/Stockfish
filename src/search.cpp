@@ -1388,7 +1388,9 @@ namespace {
             {
                 assert(value_to_tt(nullValue, ply) == nullValue);
 
-                TT.store(posKey, nullValue, VALUE_TYPE_NS_LO, depth, MOVE_NONE);
+                // Special flag null values that are not zugzwang checked
+                ValueType vt = (depth < 6 * OnePly ? VALUE_TYPE_NS_LO : VALUE_TYPE_LOWER);
+                TT.store(posKey, nullValue, vt, depth, MOVE_NONE);
                 return nullValue;
             }
         } else {
