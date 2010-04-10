@@ -41,13 +41,13 @@
 
 #include <cassert>
 #include <cstdio>
-#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
 #include "bitcount.h"
 #include "misc.h"
+#include "thread.h"
 
 using namespace std;
 
@@ -183,83 +183,37 @@ int get_system_time() {
 }
 
 
-/// builtin_cpu_count() tries to detect the number of CPU cores, if
-/// hyper-threading is enabled this is the number of logical processors.
+/// cpu_count() tries to detect the number of CPU cores.
 
 #if !defined(_MSC_VER)
 
 #  if defined(_SC_NPROCESSORS_ONLN)
-static int builtin_cpu_count() {
-  return Min(sysconf(_SC_NPROCESSORS_ONLN), 8);
+int cpu_count() {
+  return Min(sysconf(_SC_NPROCESSORS_ONLN), MAX_THREADS);
 }
 #  elif defined(__hpux)
-static int builtin_cpu_count() {
+int cpu_count() {
   struct pst_dynamic psd;
   if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1)
       return 1;
 
-  return Min(psd.psd_proc_cnt, 8);
+  return Min(psd.psd_proc_cnt, MAX_THREADS);
 }
 #  else
-static int builtin_cpu_count() {
+int cpu_count() {
   return 1;
 }
 #  endif
 
 #else
 
-static int builtin_cpu_count() {
+int cpu_count() {
   SYSTEM_INFO s;
   GetSystemInfo(&s);
-  return Min(s.dwNumberOfProcessors, 8);
+  return Min(s.dwNumberOfProcessors, MAX_THREADS);
 }
 
 #endif
-
-
-/// HT_enabled() returns true if hyper-threading is enabled on current machine
-
-static bool HT_enabled() {
-
-  char CPUString[0x20];
-  int CPUInfo[4] = {-1};
-  int nIds, nLogicalCPU, nCores;
-
-  // Detect CPU producer
-  __cpuid(CPUInfo, 0);
-  nIds = CPUInfo[0];
-
-  memset(CPUString, 0, sizeof(CPUString));
-  memcpy(&CPUString[0], &CPUInfo[1], sizeof(int));
-  memcpy(&CPUString[4], &CPUInfo[3], sizeof(int));
-  memcpy(&CPUString[8], &CPUInfo[2], sizeof(int));
-
-  // Not an Intel CPU or CPUID.4 not supported
-  if (strcmp(CPUString, "GenuineIntel") || nIds < 4)
-      return false;
-
-  // Detect if HT Technology is supported
-  __cpuid(CPUInfo, 1);
-  if (!((CPUInfo[3] >> 28) & 1))
-      return false;
-
-  nLogicalCPU = (CPUInfo[1] >> 16) & 0xFF;
-
-  // Detect number of cores
-  __cpuid(CPUInfo, 4);
-  nCores = 1 + ((CPUInfo[0] >> 26) & 0x3F);
-
-  return nLogicalCPU > nCores;
-}
-
-
-/// cpu_count() tries to detect the number of physical CPU cores taking
-/// in account hyper-threading.
-
-int cpu_count() {
-
-  return HT_enabled() ? builtin_cpu_count() / 2 : builtin_cpu_count();
-}
 
 
 /*
