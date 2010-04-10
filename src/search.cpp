@@ -294,7 +294,7 @@ namespace {
   Depth extension(const Position&, Move, bool, bool, bool, bool, bool, bool*);
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat);
-  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
+  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply, bool allowNullmove);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack& ss);
@@ -1299,7 +1299,7 @@ namespace {
     tte = TT.retrieve(posKey);
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (tte && ok_to_use_TT(tte, depth, beta, ply))
+    if (tte && ok_to_use_TT(tte, depth, beta, ply, allowNullmove))
     {
         ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
@@ -1625,7 +1625,7 @@ namespace {
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (!pvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
+    if (!pvNode && tte && ok_to_use_TT(tte, depth, beta, ply, true))
     {
         assert(tte->type() != VALUE_TYPE_EVAL);
 
@@ -2306,14 +2306,18 @@ namespace {
   }
 
 
-  // ok_to_use_TT() returns true if a transposition table score
-  // can be used at a given point in search.
+  // ok_to_use_TT() returns true if a transposition table score can be used at a
+  // given point in search. To avoid zugzwang issues TT cutoffs at the root node
+  // of a null move verification search are not allowed if the TT value was found
+  // by a null search, this is implemented testing allowNullmove and TT entry type.
 
-  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply) {
+  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply, bool allowNullmove) {
 
     Value v = value_from_tt(tte->value(), ply);
 
-    return   (   tte->depth() >= depth
+    return   (allowNullmove || !(tte->type() & VALUE_TYPE_NULL))
+
+          && (   tte->depth() >= depth
               || v >= Max(value_mate_in(PLY_MAX), beta)
               || v < Min(value_mated_in(PLY_MAX), beta))
 
