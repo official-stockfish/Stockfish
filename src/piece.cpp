@@ -38,7 +38,7 @@ static const string PieceChars(" pnbrqk PNBRQK");
 
 char piece_type_to_char(PieceType pt, bool upcase) {
 
-  return PieceChars[pt + upcase * 7];
+  return PieceChars[pt + int(upcase) * 7];
 }
 
 PieceType piece_type_from_char(char c) {

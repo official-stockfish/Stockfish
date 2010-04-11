@@ -101,11 +101,11 @@ inline void sort_moves(T* firstMove, T* lastMove, T** lastPositive)
 
     // Split positives vs non-positives
     do {
-        while ((++p)->score > 0);
+        while ((++p)->score > 0) {}
 
         if (p != d)
         {
-            while (--d != p && d->score <= 0);
+            while (--d != p && d->score <= 0) {}
 
             tmp = *p;
             *p = *d;

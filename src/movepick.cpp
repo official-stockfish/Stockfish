@@ -111,7 +111,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
           searchTT = ttMoves[0].move = MOVE_NONE;
   }
 
-  phasePtr += !searchTT - 1;
+  phasePtr += int(!searchTT) - 1;
   go_next_phase();
 }
 

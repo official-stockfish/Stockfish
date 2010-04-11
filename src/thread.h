@@ -51,9 +51,8 @@ struct SplitPoint {
   // Const data after splitPoint has been setup
   SplitPoint* parent;
   const Position* pos;
-  bool pvNode;
   Depth depth;
-  bool mateThreat;
+  bool pvNode, mateThreat;
   Value beta;
   int ply, master, slaves[MAX_THREADS];
   SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];

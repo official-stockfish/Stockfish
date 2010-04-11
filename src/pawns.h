@@ -64,10 +64,10 @@ private:
   Key key;
   Bitboard passedPawns;
   Bitboard pawnAttacks[2];
+  Square kingSquares[2];
   Score value;
   int16_t ksStormValue[2], qsStormValue[2];
   uint8_t halfOpenFiles[2];
-  Square kingSquares[2];
   uint8_t kingShelters[2];
 };
 

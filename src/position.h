@@ -70,9 +70,9 @@ struct CheckInfo {
 
     CheckInfo(const Position&);
 
-    Square ksq;
     Bitboard dcCandidates;
     Bitboard checkSq[8];
+    Square ksq;
 };
 
 /// Castle rights, encoded as bit fields
@@ -105,8 +105,8 @@ struct StateInfo {
   Score value;
   Value npMaterial[2];
 
-  Key key;
   PieceType capture;
+  Key key;
   Bitboard checkersBB;
   StateInfo* previous;
 };
@@ -329,8 +329,8 @@ private:
   int gamePly;
   Key history[MaxGameLength];
   int castleRightsMask[64];
-  File initialKFile, initialKRFile, initialQRFile;
   StateInfo startState;
+  File initialKFile, initialKRFile, initialQRFile;
   StateInfo* st;
 
   // Static variables
@@ -412,8 +412,8 @@ inline int Position::piece_count(Color c, PieceType pt) const {
   return pieceCount[c][pt];
 }
 
-inline Square Position::piece_list(Color c, PieceType pt, int index) const {
-  return pieceList[c][pt][index];
+inline Square Position::piece_list(Color c, PieceType pt, int idx) const {
+  return pieceList[c][pt][idx];
 }
 
 inline const Square* Position::piece_list_begin(Color c, PieceType pt) const {

@@ -961,7 +961,7 @@ namespace {
             qsq = relative_square(Us, make_square(square_file(s), RANK_8));
             d =  square_distance(s, qsq)
                - square_distance(theirKingSq, qsq)
-               + (Us != pos.side_to_move());
+               + int(Us != pos.side_to_move());
 
             if (d < 0)
             {
