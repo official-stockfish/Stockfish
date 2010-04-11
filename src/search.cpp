@@ -104,6 +104,13 @@ namespace {
 
   };
 
+  // FIXME: document me
+
+  enum NullStatus {
+      ALLOW_NULLMOVE,
+      FORBID_NULLMOVE,
+      VERIFY_NULLMOVE
+  };
 
   // RootMove struct is used for moves at the root at the tree. For each
   // root move, we store a score, a node count, and a PV (really a refutation
@@ -281,7 +288,7 @@ namespace {
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
   Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
-  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove = MOVE_NONE);
+  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, NullStatus nullStatus, int threadID, Move excludedMove = MOVE_NONE);
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
@@ -886,7 +893,7 @@ namespace {
                         if (ss[0].reduction)
                         {
                             // Reduced depth non-pv search using alpha as upperbound
-                            value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
+                            value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, ALLOW_NULLMOVE, 0);
                             doFullDepthSearch = (value > alpha);
                         }
                     }
@@ -896,7 +903,7 @@ namespace {
                     {
                         // Full depth non-pv search using alpha as upperbound
                         ss[0].reduction = Depth(0);
-                        value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
+                        value = -search(pos, ss, -alpha, newDepth, 1, ALLOW_NULLMOVE, 0);
 
                         // If we are above alpha then research at same depth but as PV
                         // to get a correct score or eventually a fail high above beta.
@@ -1131,7 +1138,7 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
+              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, FORBID_NULLMOVE, threadID, move);
 
               if (excValue < ttValue - SingularExtensionMargin)
                   ext = OnePly;
@@ -1167,7 +1174,7 @@ namespace {
             ss[ply].reduction = pv_reduction(depth, moveCount);
             if (ss[ply].reduction)
             {
-                value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+                value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, ALLOW_NULLMOVE, threadID);
                 doFullDepthSearch = (value > alpha);
             }
         }
@@ -1176,7 +1183,7 @@ namespace {
         if (doFullDepthSearch)
         {
             ss[ply].reduction = Depth(0);
-            value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
+            value = -search(pos, ss, -alpha, newDepth, ply+1, ALLOW_NULLMOVE, threadID);
 
             // Step extra. pv search (only in PV nodes)
             if (value > alpha && value < beta)
@@ -1251,7 +1258,7 @@ namespace {
   // search() is the search function for zero-width nodes.
 
   Value search(Position& pos, SearchStack ss[], Value beta, Depth depth,
-               int ply, bool allowNullmove, int threadID, Move excludedMove) {
+               int ply, NullStatus nullStatus, int threadID, Move excludedMove) {
 
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -1299,7 +1306,7 @@ namespace {
     tte = TT.retrieve(posKey);
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (tte && ok_to_use_TT(tte, depth, beta, ply, allowNullmove))
+    if (tte && ok_to_use_TT(tte, depth, beta, ply, nullStatus == ALLOW_NULLMOVE))
     {
         ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
@@ -1339,7 +1346,7 @@ namespace {
     // Step 7. Static null move pruning
     // We're betting that the opponent doesn't have a move that will reduce
     // the score by more than futility_margin(depth) if we do a null move.
-    if (    allowNullmove
+    if (    nullStatus == ALLOW_NULLMOVE
         &&  depth < RazorDepth
         && !isCheck
         && !value_is_mate(beta)
@@ -1351,7 +1358,7 @@ namespace {
     // When we jump directly to qsearch() we do a null move only if static value is
     // at least beta. Otherwise we do a null move if static value is not more than
     // NullMoveMargin under beta.
-    if (    allowNullmove
+    if (    nullStatus == ALLOW_NULLMOVE
         &&  depth > OnePly
         && !isCheck
         && !value_is_mate(beta)
@@ -1369,7 +1376,7 @@ namespace {
 
         pos.do_null_move(st);
 
-        nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
+        nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, FORBID_NULLMOVE, threadID);
 
         pos.undo_null_move();
 
@@ -1382,7 +1389,7 @@ namespace {
             // Do zugzwang verification search for high depths, don't store in TT
             // if search was stopped.
             if (   (   depth < 6 * OnePly
-                    || search(pos, ss, beta, depth-5*OnePly, ply, false, threadID) >= beta)
+                    || search(pos, ss, beta, depth-5*OnePly, ply, FORBID_NULLMOVE, threadID) >= beta)
                 && !AbortSearch
                 && !TM.thread_should_stop(threadID))
             {
@@ -1415,7 +1422,7 @@ namespace {
         && !isCheck
         && ss[ply].eval >= beta - IIDMargin)
     {
-        search(pos, ss, beta, depth/2, ply, false, threadID);
+        search(pos, ss, beta, depth/2, ply, FORBID_NULLMOVE, threadID);
         ttMove = ss[ply].pv[ply];
         tte = TT.retrieve(posKey);
     }
@@ -1457,7 +1464,7 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
+              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, FORBID_NULLMOVE, threadID, move);
 
               if (excValue < ttValue - SingularExtensionMargin)
                   ext = OnePly;
@@ -1511,7 +1518,7 @@ namespace {
           ss[ply].reduction = nonpv_reduction(depth, moveCount);
           if (ss[ply].reduction)
           {
-              value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
+              value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, ALLOW_NULLMOVE, threadID);
               doFullDepthSearch = (value >= beta);
           }
       }
@@ -1520,7 +1527,7 @@ namespace {
       if (doFullDepthSearch)
       {
           ss[ply].reduction = Depth(0);
-          value = -search(pos, ss, -(beta-1), newDepth, ply+1, true, threadID);
+          value = -search(pos, ss, -(beta-1), newDepth, ply+1, ALLOW_NULLMOVE, threadID);
       }
 
       // Step 16. Undo move
@@ -1870,7 +1877,7 @@ namespace {
           ss[sp->ply].reduction = nonpv_reduction(sp->depth, moveCount);
           if (ss[sp->ply].reduction)
           {
-              value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, ALLOW_NULLMOVE, threadID);
               doFullDepthSearch = (value >= sp->beta && !TM.thread_should_stop(threadID));
           }
       }
@@ -1879,7 +1886,7 @@ namespace {
       if (doFullDepthSearch)
       {
           ss[sp->ply].reduction = Depth(0);
-          value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true, threadID);
+          value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, ALLOW_NULLMOVE, threadID);
       }
 
       // Step 16. Undo move
@@ -1976,7 +1983,7 @@ namespace {
           if (ss[sp->ply].reduction)
           {
               Value localAlpha = sp->alpha;
-              value = -search(pos, ss, -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              value = -search(pos, ss, -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, ALLOW_NULLMOVE, threadID);
               doFullDepthSearch = (value > localAlpha && !TM.thread_should_stop(threadID));
           }
       }
@@ -1986,7 +1993,7 @@ namespace {
       {
           Value localAlpha = sp->alpha;
           ss[sp->ply].reduction = Depth(0);
-          value = -search(pos, ss, -localAlpha, newDepth, sp->ply+1, true, threadID);
+          value = -search(pos, ss, -localAlpha, newDepth, sp->ply+1, ALLOW_NULLMOVE, threadID);
 
           if (value > localAlpha && value < sp->beta && !TM.thread_should_stop(threadID))
           {
