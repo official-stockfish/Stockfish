@@ -257,7 +257,7 @@ namespace {
   int SearchStartTime, MaxNodes, MaxDepth, MaxSearchTime;
   int AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
-  bool FirstRootMove, AbortSearch, Quit, AspirationFailLow, ZugDetection;
+  bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
 
   // Log file
   bool UseLogFile;
@@ -425,7 +425,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   MultiPV                 = get_option_value_int("MultiPV");
   Chess960                = get_option_value_bool("UCI_Chess960");
   UseLogFile              = get_option_value_bool("Use Search Log");
-  ZugDetection            = get_option_value_bool("Zugzwang detection"); // To be removed after 1.7.1
 
   if (UseLogFile)
       LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
@@ -2316,7 +2315,7 @@ namespace {
 
     Value v = value_from_tt(tte->value(), ply);
 
-    return   (allowNullmove || !(tte->type() & VALUE_TYPE_NULL) || !ZugDetection)
+    return   (allowNullmove || !(tte->type() & VALUE_TYPE_NULL))
 
           && (   tte->depth() >= depth
               || v >= Max(value_mate_in(PLY_MAX), beta)
