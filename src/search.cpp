@@ -1306,7 +1306,7 @@ namespace {
     tte = TT.retrieve(posKey);
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (tte && ok_to_use_TT(tte, depth, beta, ply, nullStatus == ALLOW_NULLMOVE))
+    if (tte && ok_to_use_TT(tte, depth, beta, ply, nullStatus != VERIFY_NULLMOVE))
     {
         ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
@@ -1389,7 +1389,7 @@ namespace {
             // Do zugzwang verification search for high depths, don't store in TT
             // if search was stopped.
             if (   (   depth < 6 * OnePly
-                    || search(pos, ss, beta, depth-5*OnePly, ply, FORBID_NULLMOVE, threadID) >= beta)
+                    || search(pos, ss, beta, depth-5*OnePly, ply, VERIFY_NULLMOVE, threadID) >= beta)
                 && !AbortSearch
                 && !TM.thread_should_stop(threadID))
             {
