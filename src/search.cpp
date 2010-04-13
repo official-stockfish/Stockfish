@@ -1713,7 +1713,7 @@ namespace {
 
       // Detect blocking evasions that are candidate to be pruned
       evasionPrunable =   isCheck
-                       && bestValue != -VALUE_INFINITE
+                       && bestValue > value_mated_in(PLY_MAX)
                        && !pos.move_is_capture(move)
                        && pos.type_of_piece_on(move_from(move)) != KING
                        && !pos.can_castle(pos.side_to_move());
