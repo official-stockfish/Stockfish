@@ -1217,11 +1217,10 @@ namespace {
             SafetyTable[i] = Value((int)(a * (i - b) * (i - b)));
     }
 
-    for (int i = 0; i < 100; i++)
+    for (int i = 1; i < 100; i++)
     {
-        if (SafetyTable[i+1] - SafetyTable[i] > maxSlope)
-            for (int j = i + 1; j < 100; j++)
-                SafetyTable[j] = SafetyTable[j-1] + Value(maxSlope);
+        if (SafetyTable[i] - SafetyTable[i - 1] > maxSlope)
+            SafetyTable[i] = SafetyTable[i - 1] + Value(maxSlope);
 
         if (SafetyTable[i]  > Value(peak))
             SafetyTable[i] = Value(peak);
