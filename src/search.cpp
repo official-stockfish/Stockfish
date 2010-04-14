@@ -1395,7 +1395,9 @@ namespace {
             {
                 assert(value_to_tt(nullValue, ply) == nullValue);
 
-                TT.store(posKey, nullValue, VALUE_TYPE_NS_LO, depth, MOVE_NONE);
+                if (!tte)
+                    TT.store(posKey, nullValue, VALUE_TYPE_NS_LO, depth, MOVE_NONE);
+
                 return nullValue;
             }
         } else {
