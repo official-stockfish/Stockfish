@@ -387,7 +387,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       if (get_option_value_string("Book File") != OpeningBook.file_name())
           OpeningBook.open(get_option_value_string("Book File"));
 
-      Move bookMove = OpeningBook.get_move(pos);
+      Move bookMove = OpeningBook.get_move(pos, get_option_value_bool("Best Book Move"));
       if (bookMove != MOVE_NONE)
       {
           if (PonderSearch)

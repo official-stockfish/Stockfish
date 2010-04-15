@@ -61,7 +61,7 @@ public:
   void open(const std::string& fName);
   void close();
   const std::string file_name();
-  Move get_move(const Position& pos);
+  Move get_move(const Position& pos, bool findBestMove);
 
 private:
   Book& operator>>(uint64_t& n) { n = read_integer(8); return *this; }

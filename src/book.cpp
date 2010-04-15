@@ -399,14 +399,15 @@ const string Book::file_name() { // Not const to compile on HP-UX 11.X
 /// Book::get_move() gets a book move for a given position. Returns
 /// MOVE_NONE if no book move is found.
 
-Move Book::get_move(const Position& pos) {
+Move Book::get_move(const Position& pos, bool findBestMove) {
 
   if (!is_open() || bookSize == 0)
       return MOVE_NONE;
 
-  int bookMove = 0, scoresSum = 0;
-  uint64_t key = book_key(pos);
   BookEntry entry;
+  int bookMove = MOVE_NONE;
+  int scoresSum = 0, bestScore = 0;
+  uint64_t key = book_key(pos);
 
   // Choose a book move among the possible moves for the given position
   for (int idx = find_key(key); idx < bookSize; idx++)
@@ -418,6 +419,17 @@ Move Book::get_move(const Position& pos) {
       int score = entry.count;
 
       assert(score > 0);
+
+      // If findBestMove is true choose highest rated book move
+      if (findBestMove)
+      {
+          if (score > bestScore)
+          {
+              bestScore = score;
+              bookMove = entry.move;
+          }
+          continue;
+      }
 
       // Choose book move according to its score. If a move has a very
       // high score it has more probability to be choosen then a one with
