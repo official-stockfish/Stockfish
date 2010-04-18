@@ -183,7 +183,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   Square s;
   File f;
   Rank r;
-  bool passed, isolated, doubled, chain, backward, candidate;
+  bool passed, isolated, doubled, opposed, chain, backward, candidate;
   int bonus;
   Score value = make_score(0, 0);
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
@@ -209,6 +209,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       passed   = !(theirPawns & passed_pawn_mask(Us, s));
       isolated = !(ourPawns & neighboring_files_bb(s));
       doubled  = ourPawns & squares_behind(Us, s);
+      opposed  = theirPawns & squares_in_front_of(Us, s);
 
       // We calculate kingside and queenside pawn storm
       // scores for both colors. These are used when evaluating
@@ -299,7 +300,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       // Test for candidate passed pawn
       candidate =   !passed
-                 && !(theirPawns & file_bb(f))
+                 && !opposed
                  && (  count_1s_max_15(neighboring_files_bb(f) & (behind_bb(Us, r) | rank_bb(r)) & ourPawns)
                      - count_1s_max_15(neighboring_files_bb(f) & in_front_bb(Us, r)              & theirPawns)
                      >= 0);
