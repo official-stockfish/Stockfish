@@ -226,6 +226,7 @@ Bitboard StepAttackBB[16][64];
 Bitboard RayBB[64][8];
 Bitboard BetweenBB[64][64];
 
+Bitboard SquaresInFrontMask[2][64];
 Bitboard PassedPawnMask[2][64];
 Bitboard OutpostMask[2][64];
 
@@ -427,6 +428,7 @@ namespace {
     for (Color c = WHITE; c <= BLACK; c++)
         for (Square s = SQ_A1; s <= SQ_H8; s++)
         {
+            SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
             PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
             OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
         }

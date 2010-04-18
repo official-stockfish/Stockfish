@@ -74,6 +74,7 @@ extern Bitboard StepAttackBB[16][64];
 extern Bitboard RayBB[64][8];
 extern Bitboard BetweenBB[64][64];
 
+extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard OutpostMask[2][64];
 
@@ -156,7 +157,7 @@ inline Bitboard neighboring_files_bb(File f) {
 }
 
 inline Bitboard neighboring_files_bb(Square s) {
-  return neighboring_files_bb(square_file(s));
+  return NeighboringFilesBB[square_file(s)];
 }
 
 
@@ -169,7 +170,7 @@ inline Bitboard this_and_neighboring_files_bb(File f) {
 }
 
 inline Bitboard this_and_neighboring_files_bb(Square s) {
-  return this_and_neighboring_files_bb(square_file(s));
+  return ThisAndNeighboringFilesBB[square_file(s)];
 }
 
 
@@ -195,7 +196,7 @@ inline Bitboard in_front_bb(Color c, Rank r) {
 }
 
 inline Bitboard in_front_bb(Color c, Square s) {
-  return in_front_bb(c, square_rank(s));
+  return InFrontBB[c][square_rank(s)];
 }
 
 
@@ -208,7 +209,7 @@ inline Bitboard behind_bb(Color c, Rank r) {
 }
 
 inline Bitboard behind_bb(Color c, Square s) {
-  return in_front_bb(opposite_color(c), square_rank(s));
+  return InFrontBB[opposite_color(c)][square_rank(s)];
 }
 
 
@@ -274,12 +275,11 @@ inline Bitboard squares_between(Square s1, Square s2) {
 
 /// squares_in_front_of takes a color and a square as input, and returns a
 /// bitboard representing all squares along the line in front of the square,
-/// from the point of view of the given color.  For instance,
-/// squares_in_front_of(BLACK, SQ_E4) returns a bitboard with the squares
-/// e3, e2 and e1 set.
+/// from the point of view of the given color. Definition of the table is:
+/// SquaresInFrontOf[c][s] = in_front_bb(c, s) & file_bb(s)
 
 inline Bitboard squares_in_front_of(Color c, Square s) {
-  return in_front_bb(c, s) & file_bb(s);
+  return SquaresInFrontMask[c][s];
 }
 
 
@@ -287,13 +287,14 @@ inline Bitboard squares_in_front_of(Color c, Square s) {
 /// behind the square instead of in front of the square.
 
 inline Bitboard squares_behind(Color c, Square s) {
-  return in_front_bb(opposite_color(c), s) & file_bb(s);
+  return SquaresInFrontMask[opposite_color(c)][s];
 }
 
 
 /// passed_pawn_mask takes a color and a square as input, and returns a
 /// bitboard mask which can be used to test if a pawn of the given color on
-/// the given square is a passed pawn.
+/// the given square is a passed pawn. Definition of the table is:
+/// PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_neighboring_files_bb(s)
 
 inline Bitboard passed_pawn_mask(Color c, Square s) {
   return PassedPawnMask[c][s];
@@ -302,18 +303,11 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 
 /// outpost_mask takes a color and a square as input, and returns a bitboard
 /// mask which can be used to test whether a piece on the square can possibly
-/// be driven away by an enemy pawn.
+/// be driven away by an enemy pawn. Definition of the table is:
+/// OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
 
 inline Bitboard outpost_mask(Color c, Square s) {
   return OutpostMask[c][s];
-}
-
-
-/// isolated_pawn_mask takes a square as input, and returns a bitboard mask
-/// which can be used to test whether a pawn on the given square is isolated.
-
-inline Bitboard isolated_pawn_mask(Square s) {
-  return neighboring_files_bb(s);
 }
 
 
