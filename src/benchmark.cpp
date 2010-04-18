@@ -38,8 +38,8 @@ using namespace std;
 
 const string BenchmarkPositions[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-  "r4rk1/1b2qppp/p1n1p3/1p6/1b1PN3/3BRN2/PP3PPP/R2Q2K1 b - - 7 16",
-  "4r1k1/ppq3pp/3b4/2pP4/2Q1p3/4B1P1/PP5P/R5K1 b - - 0 20",
+  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
+  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
   "4rrk1/pp1n3p/3q2pQ/2p1pb2/2PP4/2P3N1/P2B2PP/4RRK1 b - - 7 19",
   "rq3rk1/ppp2ppp/1bnpb3/3N2B1/3NP3/7P/PPPQ1PP1/2KR3R w - - 7 14",
   "r1bq1r1k/1pp1n1pp/1p1p4/4p2Q/4Pp2/1BNP4/PPP2PPP/3R1RK1 w - - 2 14",
@@ -154,10 +154,15 @@ void benchmark(const string& commandLine) {
       Position pos(*it);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (limitType == "perft")
-          totalNodes += perft(pos, maxDepth * OnePly);
-      else if (!think(pos, false, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
-          break;
-      totalNodes += nodes_searched();
+      {
+          int64_t perftCnt = perft(pos, maxDepth * OnePly);
+          cerr << "\nPerft " << maxDepth << " result (nodes searched): " << perftCnt << endl << endl;
+          totalNodes += perftCnt;
+      } else {
+          if (!think(pos, false, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
+              break;
+          totalNodes += nodes_searched();
+      }
   }
 
   cnt = get_system_time() - startTime;
