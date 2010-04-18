@@ -246,14 +246,12 @@ namespace {
   void init_ray_bitboards();
   void init_attacks();
   void init_between_bitboards();
+  void init_pseudo_attacks();
+  Bitboard index_to_bitboard(int index, Bitboard mask);
   Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
                            int fmin, int fmax, int rmin, int rmax);
-  Bitboard index_to_bitboard(int index, Bitboard mask);
-  void init_sliding_attacks(Bitboard attacks[],
-                            int attackIndex[], Bitboard mask[],
-                            const int shift[2], const Bitboard mult[],
-                            int deltas[][2]);
-  void init_pseudo_attacks();
+  void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
+                            const int shift[], const Bitboard mult[], int deltas[][2]);
 }
 
 
@@ -265,11 +263,14 @@ namespace {
 /// standard output.  This is sometimes useful for debugging.
 
 void print_bitboard(Bitboard b) {
-  for(Rank r = RANK_8; r >= RANK_1; r--) {
-    std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
-    for(File f = FILE_A; f <= FILE_H; f++)
-      std::cout << "| " << (bit_is_set(b, make_square(f, r))? 'X' : ' ') << ' ';
-    std::cout << "|" << std::endl;
+
+  for (Rank r = RANK_8; r >= RANK_1; r--)
+  {
+      std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
+      for (File f = FILE_A; f <= FILE_H; f++)
+          std::cout << "| " << (bit_is_set(b, make_square(f, r))? 'X' : ' ') << ' ';
+
+      std::cout << "|" << std::endl;
   }
   std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
 }
@@ -279,8 +280,10 @@ void print_bitboard(Bitboard b) {
 /// program initialization.
 
 void init_bitboards() {
+
   int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
   int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
+
   init_masks();
   init_ray_bitboards();
   init_attacks();
@@ -326,6 +329,7 @@ const int BitTable[64] = {
 };
 
 Square first_1(Bitboard b) {
+
   b ^= (b - 1);
   uint32_t fold = int(b) ^ int(b >> 32);
   return Square(BitTable[(fold * 0x783a9b23) >> 26]);
@@ -410,39 +414,45 @@ namespace {
   // be necessary to touch any of them.
 
   void init_masks() {
+
     SetMaskBB[SQ_NONE] = 0ULL;
     ClearMaskBB[SQ_NONE] = ~SetMaskBB[SQ_NONE];
-    for(Square s = SQ_A1; s <= SQ_H8; s++) {
-      SetMaskBB[s] = (1ULL << s);
-      ClearMaskBB[s] = ~SetMaskBB[s];
+
+    for (Square s = SQ_A1; s <= SQ_H8; s++)
+    {
+        SetMaskBB[s] = (1ULL << s);
+        ClearMaskBB[s] = ~SetMaskBB[s];
     }
-    for(Color c = WHITE; c <= BLACK; c++)
-      for(Square s = SQ_A1; s <= SQ_H8; s++) {
-        PassedPawnMask[c][s] =
-          in_front_bb(c, s) & this_and_neighboring_files_bb(s);
-        OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
-      }
+
+    for (Color c = WHITE; c <= BLACK; c++)
+        for (Square s = SQ_A1; s <= SQ_H8; s++)
+        {
+            PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
+            OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
+        }
 
     for (Bitboard b = 0ULL; b < 256ULL; b++)
         BitCount8Bit[b] = (uint8_t)count_1s(b);
   }
 
+  int remove_bit_8(int i) { return ((i & ~15) >> 1) | (i & 7); }
 
   void init_ray_bitboards() {
+
     int d[8] = {1, -1, 16, -16, 17, -17, 15, -15};
-    for(int i = 0; i < 128; i = (i + 9) & ~8) {
-      for(int j = 0; j < 8; j++) {
-        RayBB[(i&7)|((i>>4)<<3)][j] = EmptyBoardBB;
-        for(int k = i + d[j]; (k & 0x88) == 0; k += d[j])
-          set_bit(&(RayBB[(i&7)|((i>>4)<<3)][j]), Square((k&7)|((k>>4)<<3)));
-      }
-    }
+
+    for (int i = 0; i < 128; i = (i + 9) & ~8)
+        for (int j = 0; j < 8; j++)
+        {
+            RayBB[remove_bit_8(i)][j] = EmptyBoardBB;
+            for (int k = i + d[j]; (k & 0x88) == 0; k += d[j])
+                set_bit(&(RayBB[remove_bit_8(i)][j]), Square(remove_bit_8(k)));
+        }
   }
 
-
   void init_attacks() {
-    int i, j, k, l;
-    int step[16][8] =  {
+
+    const int step[16][8] =  {
       {0},
       {7,9,0}, {17,15,10,6,-6,-10,-15,-17}, {9,7,-7,-9,0}, {8,1,-1,-8,0},
       {9,7,-7,-9,8,1,-1,-8}, {9,7,-7,-9,8,1,-1,-8}, {0}, {0},
@@ -450,105 +460,115 @@ namespace {
       {9,7,-7,-9,8,1,-1,-8}, {9,7,-7,-9,8,1,-1,-8}
     };
 
-    for(i = 0; i < 64; i++) {
-      for(j = 0; j <= int(BK); j++) {
-        StepAttackBB[j][i] = EmptyBoardBB;
-        for(k = 0; k < 8 && step[j][k] != 0; k++) {
-          l = i + step[j][k];
-          if(l >= 0 && l < 64 && abs((i&7) - (l&7)) < 3)
-            StepAttackBB[j][i] |= (1ULL << l);
+    for (int i = 0; i < 64; i++)
+        for (int j = 0; j <= int(BK); j++)
+        {
+            StepAttackBB[j][i] = EmptyBoardBB;
+            for (int k = 0; k < 8 && step[j][k] != 0; k++)
+            {
+                int l = i + step[j][k];
+                if (l >= 0 && l < 64 && abs((i & 7) - (l & 7)) < 3)
+                    StepAttackBB[j][i] |= (1ULL << l);
+           }
         }
-      }
-    }
   }
-
 
   Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
                            int fmin=0, int fmax=7, int rmin=0, int rmax=7) {
     Bitboard result = 0ULL;
-    int rk = sq / 8, fl = sq % 8, r, f, i;
-    for(i = 0; i < dirs; i++) {
-      int dx = deltas[i][0], dy = deltas[i][1];
-      for(f = fl+dx, r = rk+dy;
-          (dx==0 || (f>=fmin && f<=fmax)) && (dy==0 || (r>=rmin && r<=rmax));
-          f += dx, r += dy) {
-        result |= (1ULL << (f + r*8));
-        if(block & (1ULL << (f + r*8))) break;
-      }
+    int rk = sq / 8;
+    int fl = sq % 8;
+
+    for (int i = 0; i < dirs; i++)
+    {
+        int dx = deltas[i][0];
+        int dy = deltas[i][1];
+        int f = fl + dx;
+        int r = rk + dy;
+
+        while (   (dx == 0 || (f >= fmin && f <= fmax))
+               && (dy == 0 || (r >= rmin && r <= rmax)))
+        {
+            result |= (1ULL << (f + r*8));
+            if (block & (1ULL << (f + r*8)))
+                break;
+
+            f += dx;
+            r += dy;
+        }
     }
     return result;
   }
-
 
   void init_between_bitboards() {
-    SquareDelta step[8] = {
-      DELTA_E, DELTA_W, DELTA_N, DELTA_S, DELTA_NE, DELTA_SW, DELTA_NW, DELTA_SE
-    };
-    SignedDirection d;
-    for(Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-      for(Square s2 = SQ_A1; s2 <= SQ_H8; s2++) {
-        BetweenBB[s1][s2] = EmptyBoardBB;
-        d = signed_direction_between_squares(s1, s2);
-        if(d != SIGNED_DIR_NONE)
-          for(Square s3 = s1 + step[d]; s3 != s2; s3 += step[d])
-            set_bit(&(BetweenBB[s1][s2]), s3);
+
+    const SquareDelta step[8] = { DELTA_E, DELTA_W, DELTA_N, DELTA_S,
+                                  DELTA_NE, DELTA_SW, DELTA_NW, DELTA_SE };
+
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
+        for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+        {
+            BetweenBB[s1][s2] = EmptyBoardBB;
+            SignedDirection d = signed_direction_between_squares(s1, s2);
+
+            if (d != SIGNED_DIR_NONE)
+            {
+                for (Square s3 = s1 + step[d]; s3 != s2; s3 += step[d])
+                    set_bit(&(BetweenBB[s1][s2]), s3);
+            }
       }
   }
 
-
   Bitboard index_to_bitboard(int index, Bitboard mask) {
-    int i, j, bits = count_1s(mask);
+
     Bitboard result = 0ULL;
-    for(i = 0; i < bits; i++) {
-      j = pop_1st_bit(&mask);
-      if(index & (1 << i)) result |= (1ULL << j);
+    int bits = count_1s(mask);
+
+    for (int i = 0; i < bits; i++)
+    {
+        int j = pop_1st_bit(&mask);
+        if (index & (1 << i))
+            result |= (1ULL << j);
     }
     return result;
   }
 
+  void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
+                            const int shift[], const Bitboard mult[], int deltas[][2]) {
 
-  void init_sliding_attacks(Bitboard attacks[],
-                            int attackIndex[], Bitboard mask[],
-                            const int shift[2], const Bitboard mult[],
-                            int deltas[][2]) {
-    int i, j, k, index = 0;
-    Bitboard b;
-    for(i = 0; i < 64; i++) {
-      attackIndex[i] = index;
-      mask[i] = sliding_attacks(i, 0ULL, 4, deltas, 1, 6, 1, 6);
+    for (int i = 0, index = 0; i < 64; i++)
+    {
+        attackIndex[i] = index;
+        mask[i] = sliding_attacks(i, 0ULL, 4, deltas, 1, 6, 1, 6);
 
 #if defined(IS_64BIT)
-      j = (1 << (64 - shift[i]));
+        int j = (1 << (64 - shift[i]));
 #else
-      j = (1 << (32 - shift[i]));
+        int j = (1 << (32 - shift[i]));
 #endif
 
-      for(k = 0; k < j; k++) {
-
+        for (int k = 0; k < j; k++)
+        {
 #if defined(IS_64BIT)
-        b = index_to_bitboard(k, mask[i]);
-        attacks[index + ((b * mult[i]) >> shift[i])] =
-          sliding_attacks(i, b, 4, deltas);
+            Bitboard b = index_to_bitboard(k, mask[i]);
+            attacks[index + ((b * mult[i]) >> shift[i])] = sliding_attacks(i, b, 4, deltas);
 #else
-        b = index_to_bitboard(k, mask[i]);
-        attacks[index +
-                 (unsigned(int(b) * int(mult[i]) ^
-                           int(b >> 32) * int(mult[i] >> 32))
-                  >> shift[i])] =
-          sliding_attacks(i, b, 4, deltas);
+            Bitboard b = index_to_bitboard(k, mask[i]);
+            unsigned v = int(b) * int(mult[i]) ^ int(b >> 32) * int(mult[i] >> 32);
+            attacks[index + (v >> shift[i])] = sliding_attacks(i, b, 4, deltas);
 #endif
-      }
-      index += j;
+        }
+        index += j;
     }
   }
 
-
   void init_pseudo_attacks() {
-    Square s;
-    for(s = SQ_A1; s <= SQ_H8; s++) {
-      BishopPseudoAttacks[s] = bishop_attacks_bb(s, EmptyBoardBB);
-      RookPseudoAttacks[s] = rook_attacks_bb(s, EmptyBoardBB);
-      QueenPseudoAttacks[s] = queen_attacks_bb(s, EmptyBoardBB);
+
+    for (Square s = SQ_A1; s <= SQ_H8; s++)
+    {
+        BishopPseudoAttacks[s] = bishop_attacks_bb(s, EmptyBoardBB);
+        RookPseudoAttacks[s]   = rook_attacks_bb(s, EmptyBoardBB);
+        QueenPseudoAttacks[s]  = queen_attacks_bb(s, EmptyBoardBB);
     }
   }
 
