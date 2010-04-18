@@ -228,9 +228,6 @@ public:
 
   // Information about pawns
   bool pawn_is_passed(Color c, Square s) const;
-  static bool pawn_is_passed(Bitboard theirPawns, Color c, Square s);
-  static bool pawn_is_isolated(Bitboard ourPawns, Square s);
-  static bool pawn_is_doubled(Bitboard ourPawns, Color c, Square s);
 
   // Weak squares
   bool square_is_weak(Square s, Color c) const;
@@ -483,18 +480,6 @@ inline bool Position::is_check() const {
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
   return !(pieces(PAWN, opposite_color(c)) & passed_pawn_mask(c, s));
-}
-
-inline bool Position::pawn_is_passed(Bitboard theirPawns, Color c, Square s) {
-  return !(theirPawns & passed_pawn_mask(c, s));
-}
-
-inline bool Position::pawn_is_isolated(Bitboard ourPawns, Square s) {
-  return !(ourPawns & neighboring_files_bb(s));
-}
-
-inline bool Position::pawn_is_doubled(Bitboard ourPawns, Color c, Square s) {
-  return ourPawns & squares_behind(c, s);
 }
 
 inline bool Position::square_is_weak(Square s, Color c) const {

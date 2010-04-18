@@ -206,9 +206,9 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       assert(pos.piece_on(s) == piece_of_color_and_type(Us, PAWN));
 
       // Passed, isolated or doubled pawn?
-      passed   = Position::pawn_is_passed(theirPawns, Us, s);
-      isolated = Position::pawn_is_isolated(ourPawns, s);
-      doubled  = Position::pawn_is_doubled(ourPawns, Us, s);
+      passed   = !(theirPawns & passed_pawn_mask(Us, s));
+      isolated = !(ourPawns & neighboring_files_bb(s));
+      doubled  = ourPawns & squares_behind(Us, s);
 
       // We calculate kingside and queenside pawn storm
       // scores for both colors. These are used when evaluating
