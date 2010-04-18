@@ -549,8 +549,8 @@ void init_search() {
   for (int i = 1; i < 64; i++) // i == depth (OnePly = 1)
       for (int j = 1; j < 64; j++) // j == moveNumber
       {
-          double    pvRed = 0.5 + log(double(i)) * log(double(j)) / 6.0;
-          double nonPVRed = 0.5 + log(double(i)) * log(double(j)) / 3.0;
+          double    pvRed = log(double(i)) * log(double(j)) / 3.0;
+          double nonPVRed = log(double(i)) * log(double(j)) / 1.5;
           PVReductionMatrix[i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
           NonPVReductionMatrix[i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
       }
