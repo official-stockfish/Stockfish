@@ -26,6 +26,7 @@
 ////
 
 #include "bitboard.h"
+#include "scale.h"
 #include "value.h"
 
 ////
@@ -52,6 +53,7 @@ public:
   Value queenside_storm_value(Color c) const;
   Bitboard pawn_attacks(Color c) const;
   Bitboard passed_pawns() const;
+  ScaleFactor scale_factor(Color c) const;
   int file_is_half_open(Color c, File f) const;
   int has_open_file_to_left(Color c, File f) const;
   int has_open_file_to_right(Color c, File f) const;
@@ -67,8 +69,7 @@ private:
   Square kingSquares[2];
   Score value;
   int16_t ksStormValue[2], qsStormValue[2];
-  uint8_t halfOpenFiles[2];
-  uint8_t kingShelters[2];
+  uint8_t halfOpenFiles[2], kingShelters[2], factor[2];
 };
 
 /// The PawnInfoTable class represents a pawn hash table.  It is basically
@@ -114,6 +115,10 @@ inline Value PawnInfo::kingside_storm_value(Color c) const {
 
 inline Value PawnInfo::queenside_storm_value(Color c) const {
   return Value(qsStormValue[c]);
+}
+
+inline ScaleFactor PawnInfo::scale_factor(Color c) const {
+  return ScaleFactor(factor[c]);
 }
 
 inline int PawnInfo::file_is_half_open(Color c, File f) const {
