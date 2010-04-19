@@ -72,10 +72,7 @@ namespace {
 
   // UnpairedPawnsTable[] gives a score according to the number
   // of panws that do not have an enemy pawn in front of them.
-  const int UnpairedPawnsTable[8] = {
-    SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL,
-    SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL, SCALE_FACTOR_NORMAL
-  };
+  const int UnpairedPawnsTable[8] = { 32, 48, 64, 80, 96, 112, 128, 128 };
 
   // Pawn storm tables for positions with opposite castling
   const int QStormTable[64] = {
