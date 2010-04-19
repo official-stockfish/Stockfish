@@ -72,7 +72,10 @@ namespace {
 
   // UnpairedPawnsTable[] gives a score according to the number
   // of panws that do not have an enemy pawn in front of them.
-  const int UnpairedPawnsTable[8] = { 32, 48, 64, 80, 96, 112, 128, 128 };
+  const int UnpairedPawnsTable[16] = { 32, 48, 64, 80, 96, 112, 128, 128, 128 };
+
+  // PawnsQtyTable[] gives a score according to the number of panws
+  const int PawnsQtyTable[16] = { 16, 16, 16, 16, 16, 16, 16, 16, 16 };
 
   // Pawn storm tables for positions with opposite castling
   const int QStormTable[64] = {
@@ -347,7 +350,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   }
 
   // Calculate a scale factor to be used to evaluate if position is drawish
-  pi->factor[Us] = UnpairedPawnsTable[unpairedPawnsNum];
+  pi->factor[Us] = UnpairedPawnsTable[unpairedPawnsNum] * PawnsQtyTable[pos.piece_count(Us, PAWN)] / 16;
 
   return value;
 }
