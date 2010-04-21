@@ -304,7 +304,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
     {
         if (   pos.non_pawn_material(c) == pos.non_pawn_material(opposite_color(c))
             || pos.non_pawn_material(c) < RookValueMidgame)
-            mi->factor[c] = SCALE_FACTOR_ZERO;
+            mi->factor[c] = 0;
         else
         {
             switch (pos.piece_count(c, BISHOP)) {

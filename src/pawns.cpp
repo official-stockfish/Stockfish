@@ -70,13 +70,6 @@ namespace {
     S(34,68), S(83,166), S(0, 0), S( 0, 0)
   };
 
-  // UnpairedPawnsTable[] gives a score according to the number
-  // of panws that do not have an enemy pawn in front of them.
-  const int UnpairedPawnsTable[16] = { 32, 48, 64, 80, 96, 112, 128, 128, 128 };
-
-  // PawnsQtyTable[] gives a score according to the number of panws
-  const int PawnsQtyTable[16] = { 16, 16, 16, 16, 16, 16, 16, 16, 16 };
-
   // Pawn storm tables for positions with opposite castling
   const int QStormTable[64] = {
     0,  0,  0,  0, 0, 0, 0, 0,
@@ -194,7 +187,6 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   int bonus;
   Score value = make_score(0, 0);
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
-  int unpairedPawnsNum = pos.piece_count(Us, PAWN);
 
   // Initialize pawn storm scores by giving bonuses for open files
   for (f = FILE_A; f <= FILE_H; f++)
@@ -218,10 +210,6 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       isolated = !(ourPawns & neighboring_files_bb(s));
       doubled  = ourPawns & squares_behind(Us, s);
       opposed  = theirPawns & squares_in_front_of(Us, s);
-
-      // Decrease number of unpaired pawns
-      if (opposed)
-          unpairedPawnsNum--;
 
       // We calculate kingside and queenside pawn storm
       // scores for both colors. These are used when evaluating
@@ -348,9 +336,6 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       if (candidate)
           value += CandidateBonus[relative_rank(Us, s)];
   }
-
-  // Calculate a scale factor to be used to evaluate if position is drawish
-  pi->factor[Us] = UnpairedPawnsTable[unpairedPawnsNum] * PawnsQtyTable[pos.piece_count(Us, PAWN)] / 16;
 
   return value;
 }

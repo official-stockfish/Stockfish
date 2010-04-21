@@ -430,13 +430,6 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
           factor[BLACK] = sf;
   }
 
-  // If we don't already have an unusual scale factor, use pawn
-  // evaluation ones.
-  if (factor[WHITE] == SCALE_FACTOR_NORMAL)
-      factor[WHITE] = ei.pi->scale_factor(WHITE);
-  if (factor[BLACK] == SCALE_FACTOR_NORMAL)
-      factor[BLACK] = ei.pi->scale_factor(BLACK);
-
   // Interpolate between the middle game and the endgame score
   Color stm = pos.side_to_move();
 
