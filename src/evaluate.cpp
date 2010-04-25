@@ -280,7 +280,7 @@ namespace {
   template<Color Us, bool HasPopCnt>
   void evaluate_space(const Position& pos, EvalInfo& ei);
 
-  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
+  void evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei);
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
   inline Score apply_weight(Score v, Score weight);
@@ -308,6 +308,9 @@ namespace {
 template<bool HasPopCnt>
 Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
+  Bitboard b;
+  ScaleFactor factor[2];
+
   assert(pos.is_ok());
   assert(threadID >= 0 && threadID < MAX_THREADS);
   assert(!pos.is_check());
@@ -328,7 +331,6 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
       return ei.mi->evaluate(pos);
 
   // After get_material_info() call that modifies them
-  ScaleFactor factor[2];
   factor[WHITE] = ei.mi->scale_factor(pos, WHITE);
   factor[BLACK] = ei.mi->scale_factor(pos, BLACK);
 
@@ -344,14 +346,14 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Initialize pawn attack bitboards for both sides
   ei.attackedBy[WHITE][PAWN] = ei.pi->pawn_attacks(WHITE);
-  ei.attackedBy[BLACK][PAWN] = ei.pi->pawn_attacks(BLACK);
-  Bitboard b1 = ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING];
-  Bitboard b2 = ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING];
-  if (b1)
-      ei.kingAttackersCount[WHITE] = count_1s_max_15<HasPopCnt>(b1)/2;
+  b = ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING];
+  if (b)
+      ei.kingAttackersCount[WHITE] = count_1s_max_15<HasPopCnt>(b)/2;
 
-  if (b2)
-      ei.kingAttackersCount[BLACK] = count_1s_max_15<HasPopCnt>(b2)/2;
+  ei.attackedBy[BLACK][PAWN] = ei.pi->pawn_attacks(BLACK);
+  b = ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING];
+  if (b)
+      ei.kingAttackersCount[BLACK] = count_1s_max_15<HasPopCnt>(b)/2;
 
   // Evaluate pieces
   evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei);
@@ -363,16 +365,17 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   evaluate_king<WHITE, HasPopCnt>(pos, ei);
   evaluate_king<BLACK, HasPopCnt>(pos, ei);
 
-  // Evaluate tactical threats, we need full attack info
+  // Evaluate tactical threats, we need full attack info including king
   evaluate_threats<WHITE>(pos, ei);
   evaluate_threats<BLACK>(pos, ei);
 
-  // Evaluate passed pawns. We evaluate passed pawns for both sides at once,
-  // because we need to know which side promotes first in positions where
-  // both sides have an unstoppable passed pawn. To be called after all attacks
-  // are computed, included king.
-  if (ei.pi->passed_pawns())
-      evaluate_passed_pawns(pos, ei);
+  // Evaluate passed pawns, we need full attack info including king
+  evaluate_passed_pawns<WHITE>(pos, ei);
+  evaluate_passed_pawns<BLACK>(pos, ei);
+
+  // If one side has only a king, check whether exsists any unstoppable passed pawn
+  if (!pos.non_pawn_material(WHITE) || !pos.non_pawn_material(BLACK))
+      evaluate_unstoppable_pawns(pos, ei);
 
   Phase phase = ei.mi->game_phase();
 
@@ -870,17 +873,14 @@ namespace {
   }
 
 
-  // evaluate_passed_pawns_of_color() evaluates the passed pawns of the given color
+  // evaluate_passed_pawns<>() evaluates the passed pawns of the given color
 
   template<Color Us>
-  void evaluate_passed_pawns_of_color(const Position& pos, int movesToGo[], Square pawnToGo[], EvalInfo& ei) {
+  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b2, b3, b4;
-    Square ourKingSq = pos.king_square(Us);
-    Square theirKingSq = pos.king_square(Them);
-    Bitboard b = ei.pi->passed_pawns() & pos.pieces(PAWN, Us);
+    Bitboard b = ei.pi->passed_pawns() & pos.pieces_of_color(Us);
 
     while (b)
     {
@@ -901,23 +901,23 @@ namespace {
         {
             Square blockSq = s + pawn_push(Us);
 
-            ebonus -= Value(square_distance(ourKingSq, blockSq) * 3 * tr);
-            ebonus -= Value(square_distance(ourKingSq, blockSq + pawn_push(Us)) * 1 * tr);
-            ebonus += Value(square_distance(theirKingSq, blockSq) * 6 * tr);
+            ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 3 * tr);
+            ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * 1 * tr);
+            ebonus += Value(square_distance(pos.king_square(Them), blockSq) * 6 * tr);
 
             // If the pawn is free to advance, increase bonus
             if (pos.square_is_empty(blockSq))
             {
                 // There are no enemy pawns in the pawn's path
-                b2 = squares_in_front_of(Us, s);
+                Bitboard b2 = squares_in_front_of(Us, s);
 
                 assert((b2 & pos.pieces(PAWN, Them)) == EmptyBoardBB);
 
                 // Squares attacked by us
-                b4 = b2 & ei.attacked_by(Us);
+                Bitboard b4 = b2 & ei.attacked_by(Us);
 
                 // Squares attacked or occupied by enemy pieces
-                b3 = b2 & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
+                Bitboard b3 = b2 & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
 
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen.
@@ -945,37 +945,11 @@ namespace {
         } // tr != 0
 
         // If the pawn is supported by a friendly pawn, increase bonus
-        b2 = pos.pieces(PAWN, Us) & neighboring_files_bb(s);
-        if (b2 & rank_bb(s))
+        Bitboard b1 = pos.pieces(PAWN, Us) & neighboring_files_bb(s);
+        if (b1 & rank_bb(s))
             ebonus += Value(r * 20);
-        else if (pos.attacks_from<PAWN>(s, Them) & b2)
+        else if (pos.attacks_from<PAWN>(s, Them) & b1)
             ebonus += Value(r * 12);
-
-        // If the other side has only a king, check whether the pawn is
-        // unstoppable
-        if (pos.non_pawn_material(Them) == Value(0))
-        {
-            Square qsq;
-            int d;
-
-            qsq = relative_square(Us, make_square(square_file(s), RANK_8));
-            d =  square_distance(s, qsq)
-               - square_distance(theirKingSq, qsq)
-               + int(Us != pos.side_to_move());
-
-            if (d < 0)
-            {
-                int mtg = RANK_8 - relative_rank(Us, s);
-                int blockerCount = count_1s_max_15(squares_in_front_of(Us,s) & pos.occupied_squares());
-                mtg += blockerCount;
-                d += blockerCount;
-                if (d < 0 && (!movesToGo[Us] || movesToGo[Us] > mtg))
-                {
-                    movesToGo[Us] = mtg;
-                    pawnToGo[Us] = s;
-                }
-            }
-        }
 
         // Rook pawns are a special case: They are sometimes worse, and
         // sometimes better than other passed pawns. It is difficult to find
@@ -999,16 +973,43 @@ namespace {
   }
 
 
-  // evaluate_passed_pawns() evaluates the passed pawns for both sides
+  // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides
 
-  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
+  void evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei) {
 
     int movesToGo[2] = {0, 0};
     Square pawnToGo[2] = {SQ_NONE, SQ_NONE};
 
-    // Evaluate pawns for each color
-    evaluate_passed_pawns_of_color<WHITE>(pos, movesToGo, pawnToGo, ei);
-    evaluate_passed_pawns_of_color<BLACK>(pos, movesToGo, pawnToGo, ei);
+    for (Color c = WHITE; c <= BLACK; c++)
+    {
+        // Skip evaluation if other side has non-pawn pieces
+        if (pos.non_pawn_material(opposite_color(c)))
+            continue;
+
+        Bitboard b = ei.pi->passed_pawns() & pos.pieces_of_color(c);
+
+        while (b)
+        {
+            Square s = pop_1st_bit(&b);
+            Square queeningSquare = relative_square(c, make_square(square_file(s), RANK_8));
+            int d =  square_distance(s, queeningSquare)
+                   - square_distance(pos.king_square(opposite_color(c)), queeningSquare)
+                   + int(c != pos.side_to_move());
+
+            if (d < 0)
+            {
+                int mtg = RANK_8 - relative_rank(c, s);
+                int blockerCount = count_1s_max_15(squares_in_front_of(c, s) & pos.occupied_squares());
+                mtg += blockerCount;
+                d += blockerCount;
+                if (d < 0 && (!movesToGo[c] || movesToGo[c] > mtg))
+                {
+                    movesToGo[c] = mtg;
+                    pawnToGo[c] = s;
+                }
+            }
+        }
+    }
 
     // Neither side has an unstoppable passed pawn?
     if (!(movesToGo[WHITE] | movesToGo[BLACK]))
