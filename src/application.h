@@ -29,10 +29,10 @@ class Application {
 
   Application();
   Application(const Application&);
- ~Application();
 
 public:
   static void initialize();
+  static void free_resources();
   static void exit_with_failure();
 };
 

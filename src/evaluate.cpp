@@ -382,7 +382,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   // Middle-game specific evaluation terms
   if (phase > PHASE_ENDGAME)
   {
-    // Pawn storms in positions with opposite castling.
+    // Pawn storms in positions with opposite castling
     if (   square_file(pos.king_square(WHITE)) >= FILE_E
         && square_file(pos.king_square(BLACK)) <= FILE_D)
 

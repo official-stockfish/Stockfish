@@ -57,8 +57,19 @@ int main(int argc, char *argv[]) {
   CALLGRIND_START_INSTRUMENTATION;
 #endif
 
-  // Process command line arguments if any
-  if (argc > 1)
+  if (argc <= 1)
+  {
+      // Print copyright notice
+      cout << engine_name()
+           << " by Tord Romstad, Marco Costalba, Joona Kiiski" << endl;
+
+      if (CpuHasPOPCNT)
+          cout << "Good! CPU has hardware POPCNT." << endl;
+
+      // Enter UCI mode
+      uci_main_loop();
+  }
+  else // Process command line arguments
   {
       if (string(argv[1]) != "bench" || argc < 4 || argc > 8)
           cout << "Usage: stockfish bench <hash size> <threads> "
@@ -68,22 +79,13 @@ int main(int argc, char *argv[]) {
       else
       {
           string time = argc > 4 ? argv[4] : "60";
-          string fen = argc > 5 ? argv[5] : "default";
-          string lim = argc > 6 ? argv[6] : "time";
-          string tim = argc > 7 ? argv[7] : "";
+          string fen  = argc > 5 ? argv[5] : "default";
+          string lim  = argc > 6 ? argv[6] : "time";
+          string tim  = argc > 7 ? argv[7] : "";
           benchmark(string(argv[2]) + " " + string(argv[3]) + " " + time + " " + fen + " " + lim + " " + tim);
       }
-      return 0;
   }
 
-  // Print copyright notice
-  cout << engine_name()
-       << ". By Tord Romstad, Marco Costalba, Joona Kiiski." << endl;
-
-  if (CpuHasPOPCNT)
-      cout << "Good! CPU has hardware POPCNT. We will use it." << endl;
-
-  // Enter UCI mode
-  uci_main_loop();
+  Application::free_resources();
   return 0;
 }

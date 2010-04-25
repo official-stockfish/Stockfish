@@ -57,12 +57,6 @@ Application::Application() {
         genrand_int32();
 }
 
-Application::~Application() {
-
-  exit_threads();
-  quit_eval();
-}
-
 void Application::initialize() {
 
   // A static Application object is allocated
@@ -70,7 +64,15 @@ void Application::initialize() {
   static Application singleton;
 }
 
+void Application::free_resources() {
+
+  // Warning, following functions reference global objects that
+  // must be still alive when free_resources() is called.
+  exit_threads();
+  quit_eval();
+}
+
 void Application::exit_with_failure() {
 
-  exit(EXIT_FAILURE); // d'tor will be called automatically
+  exit(EXIT_FAILURE);
 }
