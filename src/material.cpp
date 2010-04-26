@@ -55,17 +55,17 @@ namespace {
   { 41, 41, 41, 41, 41, 41 }, { 37, 41, 41, 41, 41, 41 }, { 10, 62, 41, 41, 41, 41 },
   { 57, 64, 39, 41, 41, 41 }, { 50, 40, 23, -22, 41, 41 }, { 106, 101, 3, 151, 171, 41 } };
 
-  // Named endgame evaluation and scaling functions, these
-  // are accessed direcly and not through the function maps.
-  EvaluationFunction<KmmKm> EvaluateKmmKm(WHITE);
-  EvaluationFunction<KXK>   EvaluateKXK(WHITE), EvaluateKKX(BLACK);
-  ScalingFunction<KBPsK>    ScaleKBPsK(WHITE),  ScaleKKBPs(BLACK);
-  ScalingFunction<KQKRPs>   ScaleKQKRPs(WHITE), ScaleKRPsKQ(BLACK);
-  ScalingFunction<KPsK>     ScaleKPsK(WHITE),   ScaleKKPs(BLACK);
-  ScalingFunction<KPKP>     ScaleKPKPw(WHITE),  ScaleKPKPb(BLACK);
-
   typedef EndgameEvaluationFunctionBase EF;
   typedef EndgameScalingFunctionBase SF;
+
+  // Endgame evaluation and scaling functions accessed direcly and not through
+  // the function maps because correspond to more then one material hash key.
+  EvaluationFunction<KmmKm> EvaluateKmmKm[] = { EvaluationFunction<KmmKm>(WHITE), EvaluationFunction<KmmKm>(BLACK) };
+  EvaluationFunction<KXK>   EvaluateKXK[]   = { EvaluationFunction<KXK>(WHITE),   EvaluationFunction<KXK>(BLACK) };
+  ScalingFunction<KBPsK>    ScaleKBPsK[]    = { ScalingFunction<KBPsK>(WHITE),    ScalingFunction<KBPsK>(BLACK) };
+  ScalingFunction<KQKRPs>   ScaleKQKRPs[]   = { ScalingFunction<KQKRPs>(WHITE),   ScalingFunction<KQKRPs>(BLACK) };
+  ScalingFunction<KPsK>     ScaleKPsK[]     = { ScalingFunction<KPsK>(WHITE),     ScalingFunction<KPsK>(BLACK) };
+  ScalingFunction<KPKP>     ScaleKPKP[]     = { ScalingFunction<KPKP>(WHITE),     ScalingFunction<KPKP>(BLACK) };
 
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {
@@ -206,7 +206,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   else if (is_KXK<WHITE>(pos) || is_KXK<BLACK>(pos))
   {
-      mi->evaluationFunction = is_KXK<WHITE>(pos) ? &EvaluateKXK : &EvaluateKKX;
+      mi->evaluationFunction = is_KXK<WHITE>(pos) ? &EvaluateKXK[WHITE] : &EvaluateKXK[BLACK];
       return mi;
   }
   else if (   pos.pieces(PAWN)  == EmptyBoardBB
@@ -221,7 +221,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
           && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)
       {
-          mi->evaluationFunction = &EvaluateKmmKm;
+          mi->evaluationFunction = &EvaluateKmmKm[WHITE];
           return mi;
       }
   }
@@ -245,35 +245,35 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // distribution. Should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
   if (is_KBPsK<WHITE>(pos))
-      mi->scalingFunction[WHITE] = &ScaleKBPsK;
+      mi->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
 
   if (is_KBPsK<BLACK>(pos))
-      mi->scalingFunction[BLACK] = &ScaleKKBPs;
+      mi->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
 
   if (is_KQKRPs<WHITE>(pos))
-      mi->scalingFunction[WHITE] = &ScaleKQKRPs;
+      mi->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
 
   else if (is_KQKRPs<BLACK>(pos))
-      mi->scalingFunction[BLACK] = &ScaleKRPsKQ;
+      mi->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
 
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0))
   {
       if (pos.piece_count(BLACK, PAWN) == 0)
       {
           assert(pos.piece_count(WHITE, PAWN) >= 2);
-          mi->scalingFunction[WHITE] = &ScaleKPsK;
+          mi->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
       }
       else if (pos.piece_count(WHITE, PAWN) == 0)
       {
           assert(pos.piece_count(BLACK, PAWN) >= 2);
-          mi->scalingFunction[BLACK] = &ScaleKKPs;
+          mi->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
       }
       else if (pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1)
       {
           // This is a special case because we set scaling functions
           // for both colors instead of only one.
-          mi->scalingFunction[WHITE] = &ScaleKPKPw;
-          mi->scalingFunction[BLACK] = &ScaleKPKPb;
+          mi->scalingFunction[WHITE] = &ScaleKPKP[WHITE];
+          mi->scalingFunction[BLACK] = &ScaleKPKP[BLACK];
       }
   }
 
