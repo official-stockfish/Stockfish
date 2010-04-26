@@ -66,6 +66,29 @@ namespace {
 
   typedef EndgameEvaluationFunctionBase EF;
   typedef EndgameScalingFunctionBase SF;
+
+  // Helper templates used to detect a given material distribution
+  template<Color Us> bool is_KXK(const Position& pos) {
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    return   pos.non_pawn_material(Them) == Value(0)
+          && pos.piece_count(Them, PAWN) == 0
+          && pos.non_pawn_material(Us) >= RookValueMidgame;
+  }
+
+  template<Color Us> bool is_KBPsK(const Position& pos) {
+    return   pos.non_pawn_material(Us)   == BishopValueMidgame
+          && pos.piece_count(Us, BISHOP) == 1
+          && pos.piece_count(Us, PAWN)   >= 1;
+  }
+
+  template<Color Us> bool is_KQKRPs(const Position& pos) {
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    return   pos.piece_count(Us, PAWN)    == 0
+          && pos.non_pawn_material(Us)    == QueenValueMidgame
+          && pos.piece_count(Us, QUEEN)   == 1
+          && pos.piece_count(Them, ROOK)  == 1
+          && pos.piece_count(Them, PAWN)  >= 1;
+  }
 }
 
 
@@ -181,22 +204,13 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   if ((mi->evaluationFunction = funcs->get<EF>(key)) != NULL)
       return mi;
 
-  else if (   pos.non_pawn_material(BLACK) == Value(0)
-           && pos.piece_count(BLACK, PAWN) == 0
-           && pos.non_pawn_material(WHITE) >= RookValueMidgame)
+  else if (is_KXK<WHITE>(pos) || is_KXK<BLACK>(pos))
   {
-      mi->evaluationFunction = &EvaluateKXK;
+      mi->evaluationFunction = is_KXK<WHITE>(pos) ? &EvaluateKXK : &EvaluateKKX;
       return mi;
   }
-  else if (   pos.non_pawn_material(WHITE) == Value(0)
-           && pos.piece_count(WHITE, PAWN) == 0
-           && pos.non_pawn_material(BLACK) >= RookValueMidgame)
-  {
-      mi->evaluationFunction = &EvaluateKKX;
-      return mi;
-  }
-  else if (   pos.pieces(PAWN) == EmptyBoardBB
-           && pos.pieces(ROOK) == EmptyBoardBB
+  else if (   pos.pieces(PAWN)  == EmptyBoardBB
+           && pos.pieces(ROOK)  == EmptyBoardBB
            && pos.pieces(QUEEN) == EmptyBoardBB)
   {
       // Minor piece endgame with at least one minor piece per side and
@@ -230,28 +244,16 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // Generic scaling functions that refer to more then one material
   // distribution. Should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
-  if (   pos.non_pawn_material(WHITE) == BishopValueMidgame
-      && pos.piece_count(WHITE, BISHOP) == 1
-      && pos.piece_count(WHITE, PAWN) >= 1)
+  if (is_KBPsK<WHITE>(pos))
       mi->scalingFunction[WHITE] = &ScaleKBPsK;
 
-  if (   pos.non_pawn_material(BLACK) == BishopValueMidgame
-      && pos.piece_count(BLACK, BISHOP) == 1
-      && pos.piece_count(BLACK, PAWN) >= 1)
+  if (is_KBPsK<BLACK>(pos))
       mi->scalingFunction[BLACK] = &ScaleKKBPs;
 
-  if (   pos.piece_count(WHITE, PAWN) == 0
-      && pos.non_pawn_material(WHITE) == QueenValueMidgame
-      && pos.piece_count(WHITE, QUEEN) == 1
-      && pos.piece_count(BLACK, ROOK) == 1
-      && pos.piece_count(BLACK, PAWN) >= 1)
+  if (is_KQKRPs<WHITE>(pos))
       mi->scalingFunction[WHITE] = &ScaleKQKRPs;
 
-  else if (   pos.piece_count(BLACK, PAWN) == 0
-           && pos.non_pawn_material(BLACK) == QueenValueMidgame
-           && pos.piece_count(BLACK, QUEEN) == 1
-           && pos.piece_count(WHITE, ROOK) == 1
-           && pos.piece_count(WHITE, PAWN) >= 1)
+  else if (is_KQKRPs<BLACK>(pos))
       mi->scalingFunction[BLACK] = &ScaleKRPsKQ;
 
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0))
