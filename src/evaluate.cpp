@@ -280,6 +280,9 @@ namespace {
   template<Color Us, bool HasPopCnt>
   void evaluate_space(const Position& pos, EvalInfo& ei);
 
+  template<Color Us>
+  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
+
   void evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei);
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
