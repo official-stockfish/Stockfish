@@ -72,7 +72,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     return   pos.non_pawn_material(Them) == Value(0)
           && pos.piece_count(Them, PAWN) == 0
-          && pos.non_pawn_material(Us) >= RookValueMidgame;
+          && pos.non_pawn_material(Us)   >= RookValueMidgame;
   }
 
   template<Color Us> bool is_KBPsK(const Position& pos) {
@@ -229,10 +229,8 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   // OK, we didn't find any special evaluation function for the current
   // material configuration. Is there a suitable scaling function?
   //
-  // The code below is rather messy, and it could easily get worse later,
-  // if we decide to add more special cases. We face problems when there
-  // are several conflicting applicable scaling functions and we need to
-  // decide which one to use.
+  // We face problems when there are several conflicting applicable
+  // scaling functions and we need to decide which one to use.
   SF* sf;
 
   if ((sf = funcs->get<SF>(key)) != NULL)
