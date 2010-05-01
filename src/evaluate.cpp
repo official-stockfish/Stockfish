@@ -251,9 +251,8 @@ namespace {
     15, 15, 15, 15, 15, 15, 15, 15
   };
 
-  // SafetyTable[] contains the actual king safety scores. It is initialized
-  // in init_safety().
-  Value SafetyTable[100];
+  // SafetyTable[color][] contains the actual king safety weighted scores
+  Score SafetyTable[2][128];
 
   // Pawn and material hash tables, indexed by the current thread id.
   // Note that they will be initialized at 0 being global variables.
@@ -869,9 +868,8 @@ namespace {
       // that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
-      Score v = apply_weight(make_score(SafetyTable[attackUnits], 0), WeightKingSafety[Us]);
-      ei.value -= Sign[Us] * v;
-      ei.futilityMargin[Us] += mg_value(v);
+      ei.value -= Sign[Us] * SafetyTable[Us][attackUnits];
+      ei.futilityMargin[Us] += mg_value(SafetyTable[Us][attackUnits]);
     }
   }
 
@@ -1204,7 +1202,7 @@ namespace {
   }
 
   // init_safety() initizes the king safety evaluation, based on UCI
-  // parameters.  It is called from read_weights().
+  // parameters. It is called from read_weights().
 
   void init_safety() {
 
@@ -1212,22 +1210,29 @@ namespace {
     int peak     = 0x500;
     double a     = 0.4;
     double b     = 0.0;
+    Value t[100];
 
+    // First setup the base table
     for (int i = 0; i < 100; i++)
     {
         if (i < b)
-            SafetyTable[i] = Value(0);
+            t[i] = Value(0);
         else
-            SafetyTable[i] = Value((int)(a * (i - b) * (i - b)));
+            t[i] = Value((int)(a * (i - b) * (i - b)));
     }
 
     for (int i = 1; i < 100; i++)
     {
-        if (SafetyTable[i] - SafetyTable[i - 1] > maxSlope)
-            SafetyTable[i] = SafetyTable[i - 1] + Value(maxSlope);
+        if (t[i] - t[i - 1] > maxSlope)
+            t[i] = t[i - 1] + Value(maxSlope);
 
-        if (SafetyTable[i]  > Value(peak))
-            SafetyTable[i] = Value(peak);
+        if (t[i]  > Value(peak))
+            t[i] = Value(peak);
     }
+
+    // Then apply the weights and get the final SafetyTable[] array
+    for (Color c = WHITE; c <= BLACK; c++)
+        for (int i = 0; i < 100; i++)
+            SafetyTable[c][i] = apply_weight(make_score(t[i], 0), WeightKingSafety[c]);
   }
 }
