@@ -1627,9 +1627,6 @@ namespace {
     {
         assert(tte->type() != VALUE_TYPE_EVAL);
 
-        // Refresh tte entry to avoid aging
-        TT.store(pos.get_key(), tte->value(), tte->type(), tte->depth(), ttMove);
-
         ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
     }
