@@ -338,6 +338,10 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
            ||(square_rank(to) == RANK_1 && us != WHITE)) != bool(move_is_promotion(m)))
           return false;
 
+      // The promotion piece, if any, must be valid
+      if (move_promotion_piece(m) > QUEEN || move_promotion_piece(m) == PAWN)
+          return false;
+
       // Proceed according to the square delta between the origin and
       // destination squares.
       switch (direction)
