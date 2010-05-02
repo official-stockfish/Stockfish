@@ -82,7 +82,7 @@ namespace {
     bool thread_should_stop(int threadID) const;
     void wake_sleeping_threads();
     void put_threads_to_sleep();
-    void idle_loop(int threadID, SplitPoint* waitSp);
+    void idle_loop(int threadID, SplitPoint* sp);
     bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
                Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode);
 
@@ -2636,10 +2636,10 @@ namespace {
 
 
   // idle_loop() is where the threads are parked when they have no work to do.
-  // The parameter "waitSp", if non-NULL, is a pointer to an active SplitPoint
+  // The parameter 'sp', if non-NULL, is a pointer to an active SplitPoint
   // object for which the current thread is the master.
 
-  void ThreadsManager::idle_loop(int threadID, SplitPoint* waitSp) {
+  void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
 
     assert(threadID >= 0 && threadID < MAX_THREADS);
 
@@ -2649,7 +2649,7 @@ namespace {
         // master should exit as last one.
         if (AllThreadsShouldExit)
         {
-            assert(!waitSp);
+            assert(!sp);
             threads[threadID].state = THREAD_TERMINATED;
             return;
         }
@@ -2658,7 +2658,7 @@ namespace {
         // instead of wasting CPU time polling for work.
         while (AllThreadsShouldSleep || threadID >= ActiveThreads)
         {
-            assert(!waitSp);
+            assert(!sp);
             assert(threadID != 0);
             threads[threadID].state = THREAD_SLEEPING;
 
@@ -2695,8 +2695,13 @@ namespace {
 
         // If this thread is the master of a split point and all threads have
         // finished their work at this split point, return from the idle loop.
-        if (waitSp != NULL && waitSp->cpus == 0)
+        if (sp && sp->cpus == 0)
         {
+            // Because sp->cpus is decremented under lock protection,
+            // be sure sp->lock has been released before to proceed.
+            lock_grab(&(sp->lock));
+            lock_release(&(sp->lock));
+
             assert(threads[threadID].state == THREAD_AVAILABLE);
 
             threads[threadID].state = THREAD_SEARCHING;
