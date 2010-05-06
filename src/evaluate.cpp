@@ -837,14 +837,13 @@ namespace {
       // out of bounds errors.
       attackUnits = Min(99, Max(0, attackUnits));
 
-      // Finally, extract the king danger score from the KingDangerTable[] array.
-      // Subtract the score from evaluation, and set ei.futilityMargin[].
-      // The reason for storing the king danger score to futility margin
-      // is that the king danger scores can sometimes be very big, and that
-      // capturing a single attacking piece can therefore result in a score
-      // change far bigger than the value of the captured piece.
+      // Finally, extract the king danger score from the KingDangerTable[]
+      // array and subtract the score from evaluation. Set also ei.kingDanger[]
+      // value that will be used for pruning because this value can sometimes
+      // be very big, and so capturing a single attacking piece can therefore
+      // result in a score change far bigger than the value of the captured piece.
       ei.value -= Sign[Us] * KingDangerTable[Us][attackUnits];
-      ei.futilityMargin[Us] = mg_value(KingDangerTable[Us][attackUnits]);
+      ei.kingDanger[Us] = mg_value(KingDangerTable[Us][attackUnits]);
     }
   }
 
