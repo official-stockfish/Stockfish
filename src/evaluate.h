@@ -92,7 +92,7 @@ struct EvalInfo {
   // mateThreat[color] is a move for the given side which gives a direct mate.
   Move mateThreat[2];
 
-  // Middle game and endgame mobility scores.
+  // Middle game and endgame mobility scores
   Score mobility;
 
   // Extra futility margin. This is added to the standard futility margin

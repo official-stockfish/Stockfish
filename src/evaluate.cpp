@@ -46,9 +46,11 @@ namespace {
   const int GrainSize = 8;
 
   // Evaluation weights, initialized from UCI options
-  Score WeightMobility, WeightPawnStructure;
-  Score WeightPassedPawns, WeightSpace;
-  Score WeightKingSafety[2];
+  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafetyUs, KingSafetyThem };
+  Score Weights[6];
+
+  typedef Value V;
+  #define S(mg, eg) make_score(mg, eg)
 
   // Internal evaluation weights. These are applied on top of the evaluation
   // weights read from UCI parameters. The purpose is to be able to change
@@ -56,19 +58,9 @@ namespace {
   // parameters at 100, which looks prettier.
   //
   // Values modified by Joona Kiiski
-  const Score WeightMobilityInternal      = make_score(248, 271);
-  const Score WeightPawnStructureInternal = make_score(233, 201);
-  const Score WeightPassedPawnsInternal   = make_score(252, 259);
-  const Score WeightSpaceInternal         = make_score( 46,   0);
-  const Score WeightKingSafetyInternal    = make_score(247,   0);
-  const Score WeightKingOppSafetyInternal = make_score(259,   0);
-
-  // Mobility and outposts bonus modified by Joona Kiiski
-
-  typedef Value V;
-  #define S(mg, eg) make_score(mg, eg)
-
-  CACHE_LINE_ALIGNMENT
+  const Score WeightsInternal[] = {
+      S(248, 271), S(233, 201), S(252, 259), S(46, 0), S(247, 0), S(259, 0)
+  };
 
   // Knight mobility bonus in middle game and endgame, indexed by the number
   // of attacked squares not occupied by friendly piecess.
@@ -227,9 +219,9 @@ namespace {
   // Bonuses for safe checks
   const int QueenContactCheckBonus = 3;
   const int DiscoveredCheckBonus   = 3;
-  const int QueenCheckBonus        = 2; 
+  const int QueenCheckBonus        = 2;
   const int RookCheckBonus         = 1;
-  const int BishopCheckBonus       = 1; 
+  const int BishopCheckBonus       = 1;
   const int KnightCheckBonus       = 1;
 
   // Scan for queen contact mates?
@@ -338,7 +330,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
   // Probe the pawn hash table
   ei.pi = PawnTable[threadID]->get_pawn_info(pos);
-  ei.value += apply_weight(ei.pi->pawns_value(), WeightPawnStructure);
+  ei.value += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
 
   // Initialize king attack bitboards and king attack zones for both sides
   ei.attackedBy[WHITE][KING] = pos.attacks_from<KING>(pos.king_square(WHITE));
@@ -404,7 +396,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   }
 
   // Mobility
-  ei.value += apply_weight(ei.mobility, WeightMobility);
+  ei.value += apply_weight(ei.mobility, Weights[Mobility]);
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those
@@ -487,22 +479,23 @@ void quit_eval() {
 
 void read_weights(Color us) {
 
-  Color them = opposite_color(us);
+  // King safety is asymmetrical. Our king safety is controled by "Cowardice"
+  // UCI parameter, instead the opponent one by "Aggressiveness".
+  const int kingSafetyUs   = (us == WHITE ? KingSafetyUs   : KingSafetyThem);
+  const int kingSafetyThem = (us == WHITE ? KingSafetyThem : KingSafetyUs);
 
-  WeightMobility         = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightMobilityInternal);
-  WeightPawnStructure    = weight_option("Pawn Structure (Middle Game)", "Pawn Structure (Endgame)", WeightPawnStructureInternal);
-  WeightPassedPawns      = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightPassedPawnsInternal);
-  WeightSpace            = weight_option("Space", "Space", WeightSpaceInternal);
-  WeightKingSafety[us]   = weight_option("Cowardice", "Cowardice", WeightKingSafetyInternal);
-  WeightKingSafety[them] = weight_option("Aggressiveness", "Aggressiveness", WeightKingOppSafetyInternal);
+  Weights[Mobility]       = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightsInternal[Mobility]);
+  Weights[PawnStructure]  = weight_option("Pawn Structure (Middle Game)", "Pawn Structure (Endgame)", WeightsInternal[PawnStructure]);
+  Weights[PassedPawns]    = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightsInternal[PassedPawns]);
+  Weights[Space]          = weight_option("Space", "Space", WeightsInternal[Space]);
+  Weights[kingSafetyUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingSafetyUs]);
+  Weights[kingSafetyThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingSafetyThem]);
 
   // If running in analysis mode, make sure we use symmetrical king safety. We do this
-  // by replacing both WeightKingSafety[us] and WeightKingSafety[them] by their average.
+  // by replacing both Weights[kingSafetyUs] and Weights[kingSafetyThem] by their average.
   if (get_option_value_bool("UCI_AnalyseMode"))
-  {
-      WeightKingSafety[us] = (WeightKingSafety[us] + WeightKingSafety[them]) / 2;
-      WeightKingSafety[them] = WeightKingSafety[us];
-  }
+      Weights[kingSafetyUs] = Weights[kingSafetyThem] = (Weights[kingSafetyUs] + Weights[kingSafetyThem]) / 2;
+
   init_safety();
 }
 
@@ -863,13 +856,13 @@ namespace {
       attackUnits = Min(99, Max(0, attackUnits));
 
       // Finally, extract the king safety score from the SafetyTable[] array.
-      // Add the score to the evaluation, and also to ei.futilityMargin. The
-      // reason for adding the king safety score to the futility margin is
-      // that the king safety scores can sometimes be very big, and that
+      // Subtract the score from evaluation, and set ei.futilityMargin[].
+      // The reason for storing the king safety score to futility margin
+      // is that the king safety scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
       ei.value -= Sign[Us] * SafetyTable[Us][attackUnits];
-      ei.futilityMargin[Us] += mg_value(SafetyTable[Us][attackUnits]);
+      ei.futilityMargin[Us] = mg_value(SafetyTable[Us][attackUnits]);
     }
   }
 
@@ -967,8 +960,8 @@ namespace {
                 ebonus -= ebonus / 4;
         }
 
-        // Add the scores for this pawn to the middle game and endgame eval.
-        ei.value += Sign[Us] * apply_weight(make_score(mbonus, ebonus), WeightPassedPawns);
+        // Add the scores for this pawn to the middle game and endgame eval
+        ei.value += Sign[Us] * apply_weight(make_score(mbonus, ebonus), Weights[PassedPawns]);
 
     } // while
   }
@@ -1155,7 +1148,7 @@ namespace {
     int space =  count_1s_max_15<HasPopCnt>(safeSquares)
                + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
 
-    ei.value += Sign[Us] * apply_weight(make_score(space * ei.mi->space_weight(), 0), WeightSpace);
+    ei.value += Sign[Us] * apply_weight(make_score(space * ei.mi->space_weight(), 0), Weights[Space]);
   }
 
 
@@ -1233,6 +1226,6 @@ namespace {
     // Then apply the weights and get the final SafetyTable[] array
     for (Color c = WHITE; c <= BLACK; c++)
         for (int i = 0; i < 100; i++)
-            SafetyTable[c][i] = apply_weight(make_score(t[i], 0), WeightKingSafety[c]);
+            SafetyTable[c][i] = apply_weight(make_score(t[i], 0), Weights[KingSafetyUs + c]);
   }
 }
