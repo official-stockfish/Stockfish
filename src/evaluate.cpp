@@ -46,7 +46,7 @@ namespace {
   const int GrainSize = 8;
 
   // Evaluation weights, initialized from UCI options
-  enum { Mobility, PawnStructure, PassedPawns, Space, KingSafetyUs, KingSafetyThem };
+  enum { Mobility, PawnStructure, PassedPawns, Space, KingDangerUs, KingDangerThem };
   Score Weights[6];
 
   typedef Value V;
@@ -203,10 +203,10 @@ namespace {
     (1ULL<<SQ_C5) | (1ULL<<SQ_D5) | (1ULL<<SQ_E5) | (1ULL<<SQ_F5)
   };
 
-  /// King safety constants and variables. The king safety scores are taken
-  /// from the array SafetyTable[]. Various little "meta-bonuses" measuring
-  /// the strength of the attack are added up into an integer, which is used
-  /// as an index to SafetyTable[].
+  /// King danger constants and variables. The king danger scores are taken
+  /// from the KingDangerTable[]. Various little "meta-bonuses" measuring
+  /// the strength of the enemy attack are added up into an integer, which
+  /// is used as an index to KingDangerTable[].
 
   // Attack weights for each piece type and table indexed on piece type
   const int QueenAttackWeight  = 5;
@@ -243,8 +243,8 @@ namespace {
     15, 15, 15, 15, 15, 15, 15, 15
   };
 
-  // SafetyTable[color][] contains the actual king safety weighted scores
-  Score SafetyTable[2][128];
+  // KingDangerTable[color][] contains the actual king danger weighted scores
+  Score KingDangerTable[2][128];
 
   // Pawn and material hash tables, indexed by the current thread id.
   // Note that they will be initialized at 0 being global variables.
@@ -479,22 +479,22 @@ void quit_eval() {
 
 void read_weights(Color us) {
 
-  // King safety is asymmetrical. Our king safety is controled by "Cowardice"
-  // UCI parameter, instead the opponent one by "Aggressiveness".
-  const int kingSafetyUs   = (us == WHITE ? KingSafetyUs   : KingSafetyThem);
-  const int kingSafetyThem = (us == WHITE ? KingSafetyThem : KingSafetyUs);
+  // King safety is asymmetrical. Our king danger level is weighted by
+  // "Cowardice" UCI parameter, instead the opponent one by "Aggressiveness".
+  const int kingDangerUs   = (us == WHITE ? KingDangerUs   : KingDangerThem);
+  const int kingDangerThem = (us == WHITE ? KingDangerThem : KingDangerUs);
 
   Weights[Mobility]       = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightsInternal[Mobility]);
   Weights[PawnStructure]  = weight_option("Pawn Structure (Middle Game)", "Pawn Structure (Endgame)", WeightsInternal[PawnStructure]);
   Weights[PassedPawns]    = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightsInternal[PassedPawns]);
   Weights[Space]          = weight_option("Space", "Space", WeightsInternal[Space]);
-  Weights[kingSafetyUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingSafetyUs]);
-  Weights[kingSafetyThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingSafetyThem]);
+  Weights[kingDangerUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingDangerUs]);
+  Weights[kingDangerThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingDangerThem]);
 
   // If running in analysis mode, make sure we use symmetrical king safety. We do this
-  // by replacing both Weights[kingSafetyUs] and Weights[kingSafetyThem] by their average.
+  // by replacing both Weights[kingDangerUs] and Weights[kingDangerThem] by their average.
   if (get_option_value_bool("UCI_AnalyseMode"))
-      Weights[kingSafetyUs] = Weights[kingSafetyThem] = (Weights[kingSafetyUs] + Weights[kingSafetyThem]) / 2;
+      Weights[kingDangerUs] = Weights[kingDangerThem] = (Weights[kingDangerUs] + Weights[kingDangerThem]) / 2;
 
   init_safety();
 }
@@ -736,10 +736,10 @@ namespace {
                       | ei.attacked_by(Us, QUEEN));
 
       // Initialize the 'attackUnits' variable, which is used later on as an
-      // index to the SafetyTable[] array. The initial value is based on the
-      // number and types of the attacking pieces, the number of attacked and
-      // undefended squares around the king, the square of the king, and the
-      // quality of the pawn shelter.
+      // index to the KingDangerTable[] array. The initial value is based on
+      // the number and types of the enemy's attacking pieces, the number of
+      // attacked and undefended squares around our king, the square of the
+      // king, and the quality of the pawn shelter.
       attackUnits =  Min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                    + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended))
                    + InitKingDanger[relative_square(Us, s)]
@@ -855,14 +855,14 @@ namespace {
       // out of bounds errors.
       attackUnits = Min(99, Max(0, attackUnits));
 
-      // Finally, extract the king safety score from the SafetyTable[] array.
+      // Finally, extract the king danger score from the KingDangerTable[] array.
       // Subtract the score from evaluation, and set ei.futilityMargin[].
-      // The reason for storing the king safety score to futility margin
-      // is that the king safety scores can sometimes be very big, and that
+      // The reason for storing the king danger score to futility margin
+      // is that the king danger scores can sometimes be very big, and that
       // capturing a single attacking piece can therefore result in a score
       // change far bigger than the value of the captured piece.
-      ei.value -= Sign[Us] * SafetyTable[Us][attackUnits];
-      ei.futilityMargin[Us] = mg_value(SafetyTable[Us][attackUnits]);
+      ei.value -= Sign[Us] * KingDangerTable[Us][attackUnits];
+      ei.futilityMargin[Us] = mg_value(KingDangerTable[Us][attackUnits]);
     }
   }
 
@@ -1223,9 +1223,9 @@ namespace {
             t[i] = Value(peak);
     }
 
-    // Then apply the weights and get the final SafetyTable[] array
+    // Then apply the weights and get the final KingDangerTable[] array
     for (Color c = WHITE; c <= BLACK; c++)
         for (int i = 0; i < 100; i++)
-            SafetyTable[c][i] = apply_weight(make_score(t[i], 0), Weights[KingSafetyUs + c]);
+            KingDangerTable[c][i] = apply_weight(make_score(t[i], 0), Weights[KingDangerUs + c]);
   }
 }
