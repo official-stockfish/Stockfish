@@ -216,7 +216,7 @@ namespace {
 
   const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
 
-  // Bonuses for safe checks
+  // Bonuses for enemy's safe checks
   const int QueenContactCheckBonus = 3;
   const int DiscoveredCheckBonus   = 3;
   const int QueenCheckBonus        = 2;
@@ -705,16 +705,16 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard undefended, attackedByOthers, escapeSquares, occ, b, b2, safe;
+    Bitboard undefended, attackedByOthers, escapeSquares, occ, b, b1, b2, safe;
     Square from, to;
     bool sente;
     int attackUnits, count, shelter = 0;
-    const Square s = pos.king_square(Us);
+    const Square ksq = pos.king_square(Us);
 
     // King shelter
-    if (relative_rank(Us, s) <= RANK_4)
+    if (relative_rank(Us, ksq) <= RANK_4)
     {
-        shelter = ei.pi->get_king_shelter(pos, Us, s);
+        shelter = ei.pi->get_king_shelter(pos, Us, ksq);
         ei.value += Sign[Us] * make_score(shelter, 0);
     }
 
@@ -742,7 +742,7 @@ namespace {
       // king, and the quality of the pawn shelter.
       attackUnits =  Min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                    + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended))
-                   + InitKingDanger[relative_square(Us, s)]
+                   + InitKingDanger[relative_square(Us, ksq)]
                    - (shelter >> 5);
 
       // Analyse safe queen contact checks
@@ -766,14 +766,14 @@ namespace {
             // Is there a mate threat?
             if (QueenContactMates && !pos.is_check())
             {
-                escapeSquares = pos.attacks_from<KING>(s) & ~pos.pieces_of_color(Us) & ~attackedByOthers;
+                escapeSquares = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(Us) & ~attackedByOthers;
                 occ = pos.occupied_squares();
                 while (b)
                 {
                     to = pop_1st_bit(&b);
 
                     // Do we have escape squares from queen contact check attack ?
-                    if (!(escapeSquares & ~queen_attacks_bb(to, occ & ClearMaskBB[s])))
+                    if (!(escapeSquares & ~queen_attacks_bb(to, occ & ClearMaskBB[ksq])))
                     {
                         // We have a mate, unless the queen is pinned or there
                         // is an X-ray attack through the queen.
@@ -794,55 +794,37 @@ namespace {
         }
       }
 
-      // Analyse safe distance checks
+      // Analyse enemy's safe distance checks
       safe = ~(pos.pieces_of_color(Them) | ei.attacked_by(Us));
 
-      if (QueenCheckBonus > 0 || RookCheckBonus > 0)
-      {
-          b = pos.attacks_from<ROOK>(s) & safe;
+      b1 = pos.attacks_from<ROOK>(ksq) & safe;
+      b2 = pos.attacks_from<BISHOP>(ksq) & safe;
 
-          // Queen checks
-          b2 = b & ei.attacked_by(Them, QUEEN);
-          if (b2)
-              attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
+      // Enemy rooks safe checks
+      b = b1 & ei.attacked_by(Them, ROOK);
+      if (b)
+          attackUnits += RookCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
-          // Rook checks
-          b2 = b & ei.attacked_by(Them, ROOK);
-          if (b2)
-              attackUnits += RookCheckBonus * count_1s_max_15<HasPopCnt>(b2);
-      }
-      if (QueenCheckBonus > 0 || BishopCheckBonus > 0)
-      {
-          b = pos.attacks_from<BISHOP>(s) & safe;
+      // Enemy bishops safe checks
+      b = b2 & ei.attacked_by(Them, BISHOP);
+      if (b)
+          attackUnits += BishopCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
-          // Queen checks
-          b2 = b & ei.attacked_by(Them, QUEEN);
-          if (b2)
-              attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b2);
+      // Enemy queens safe checks
+      b = (b1 | b2) & ei.attacked_by(Them, QUEEN);
+      if (b)
+          attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
-          // Bishop checks
-          b2 = b & ei.attacked_by(Them, BISHOP);
-          if (b2)
-              attackUnits += BishopCheckBonus * count_1s_max_15<HasPopCnt>(b2);
-      }
-      if (KnightCheckBonus > 0)
-      {
-          b = pos.attacks_from<KNIGHT>(s) & safe;
-
-          // Knight checks
-          b2 = b & ei.attacked_by(Them, KNIGHT);
-          if (b2)
-              attackUnits += KnightCheckBonus * count_1s_max_15<HasPopCnt>(b2);
-      }
+      // Enemy knights safe checks
+      b = pos.attacks_from<KNIGHT>(ksq) & ei.attacked_by(Them, KNIGHT) & safe;
+      if (b)
+          attackUnits += KnightCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
       // Analyse discovered checks (only for non-pawns right now, consider
       // adding pawns later).
-      if (DiscoveredCheckBonus)
-      {
-          b = pos.discovered_check_candidates(Them) & ~pos.pieces(PAWN);
-          if (b)
-              attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
-      }
+      b = pos.discovered_check_candidates(Them) & ~pos.pieces(PAWN);
+      if (b)
+          attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
 
       // Has a mate threat been found? We don't do anything here if the
       // side with the mating move is the side to move, because in that
