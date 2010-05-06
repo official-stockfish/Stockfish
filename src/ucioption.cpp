@@ -93,8 +93,8 @@ namespace {
     o["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
     o["Single Evasion Extension (PV nodes)"] = Option(2, 0, 2);
     o["Single Evasion Extension (non-PV nodes)"] = Option(2, 0, 2);
-    o["Mate Threat Extension (PV nodes)"] = Option(0, 0, 2);
-    o["Mate Threat Extension (non-PV nodes)"] = Option(0, 0, 2);
+    o["Mate Threat Extension (PV nodes)"] = Option(2, 0, 2);
+    o["Mate Threat Extension (non-PV nodes)"] = Option(2, 0, 2);
     o["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
     o["Pawn Push to 7th Extension (non-PV nodes)"] = Option(1, 0, 2);
     o["Passed Pawn Extension (PV nodes)"] = Option(1, 0, 2);
