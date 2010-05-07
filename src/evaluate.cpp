@@ -203,13 +203,8 @@ namespace {
   /// the strength of the enemy attack are added up into an integer, which
   /// is used as an index to KingDangerTable[].
 
-  // Attack weights for each piece type and table indexed on piece type
-  const int QueenAttackWeight  = 5;
-  const int RookAttackWeight   = 3;
-  const int BishopAttackWeight = 2;
-  const int KnightAttackWeight = 2;
-
-  const int AttackWeight[] = { 0, 0, KnightAttackWeight, BishopAttackWeight, RookAttackWeight, QueenAttackWeight };
+  // KingAttackWeights[] contains king attack weights by piece type
+  const int KingAttackWeights[8] = { 0, 0, 2, 2, 3, 5 };
 
   // Bonuses for enemy's safe checks
   const int QueenContactCheckBonus = 3;
@@ -554,7 +549,7 @@ namespace {
         if (b & ei.kingZone[Us])
         {
             ei.kingAttackersCount[Us]++;
-            ei.kingAttackersWeight[Us] += AttackWeight[Piece];
+            ei.kingAttackersWeight[Us] += KingAttackWeights[Piece];
             Bitboard bb = (b & ei.attackedBy[Them][KING]);
             if (bb)
                 ei.kingAdjacentZoneAttacksCount[Us] += count_1s_max_15<HasPopCnt>(bb);
