@@ -89,9 +89,6 @@ struct EvalInfo {
   // 2 to kingAdjacentZoneAttacksCount[BLACK].
   int kingAdjacentZoneAttacksCount[2];
 
-  // mateThreat[color] is a move for the given side which gives a direct mate.
-  Move mateThreat[2];
-
   // Middle game and endgame mobility scores
   Score mobility;
 
