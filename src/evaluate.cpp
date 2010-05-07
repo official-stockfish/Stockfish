@@ -130,28 +130,23 @@ namespace {
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
   };
 
-  // ThreatBonus[][] contains bonus according to which piece type
-  // attacks which one.
-  #define Z S(0, 0)
-
+  // ThreatBonus[attacking][attacked] contains bonus according to which
+  // piece type attacks which one.
   const Score ThreatBonus[8][8] = {
-      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
-      { Z, S(18,37),       Z, S(37,47), S(55,97), S(55,97), Z, Z }, // KNIGHT attacks
-      { Z, S(18,37), S(37,47),       Z, S(55,97), S(55,97), Z, Z }, // BISHOP attacks
-      { Z, S( 9,27), S(27,47), S(27,47),       Z, S(37,47), Z, Z }, // ROOK attacks
-      { Z, S(27,37), S(27,37), S(27,37), S(27,37),       Z, Z, Z }, // QUEEN attacks
-      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
-      { Z, Z, Z, Z, Z, Z, Z, Z }, // not used
-      { Z, Z, Z, Z, Z, Z, Z, Z }  // not used
+    {},
+    { S(0, 0), S(18,37), S( 0, 0), S(37,47), S(55,97), S(55,97) }, // KNIGHT
+    { S(0, 0), S(18,37), S(37,47), S( 0, 0), S(55,97), S(55,97) }, // BISHOP
+    { S(0, 0), S( 9,27), S(27,47), S(27,47), S( 0, 0), S(37,47) }, // ROOK
+    { S(0, 0), S(27,37), S(27,37), S(27,37), S(27,37), S( 0, 0) }, // QUEEN
+    {}, {}, {}
   };
 
   // ThreatedByPawnPenalty[] contains a penalty according to which piece
   // type is attacked by an enemy pawn.
   const Score ThreatedByPawnPenalty[8] = {
-    Z, Z, S(56, 70), S(56, 70), S(76, 99), S(86, 118), Z, Z
+    S(0, 0), S(0, 0), S(56, 70), S(56, 70), S(76, 99), S(86, 118)
   };
 
-  #undef Z
   #undef S
 
   // Bonus for unstoppable passed pawns
