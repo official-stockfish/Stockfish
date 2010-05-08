@@ -1247,9 +1247,10 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search<NonPV>(pos, ss, ttValue - SingularExtensionMargin - 1, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
+              Value b = ttValue - SingularExtensionMargin;
+              Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply, false, threadID, move);
 
-              if (excValue < ttValue - SingularExtensionMargin)
+              if (v < ttValue - SingularExtensionMargin)
                   ext = OnePly;
           }
       }
@@ -1274,7 +1275,7 @@ namespace {
               continue;
 
           // Value based pruning
-          Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount); // We illogically ignore reduction condition depth >= 3*OnePly
+          Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount); // FIXME We illogically ignore reduction condition depth >= 3*OnePly
           futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
                                + H.gain(pos.piece_on(move_from(move)), move_to(move));
 
@@ -1295,34 +1296,36 @@ namespace {
           value = -search<PV>(pos, ss, -beta, -alpha, newDepth, ply+1, false, threadID);
       else
       {
-        // Step 14. Reduced search
-        // if the move fails high will be re-searched at full depth.
-        bool doFullDepthSearch = true;
+          // Step 14. Reduced search
+          // if the move fails high will be re-searched at full depth.
+          bool doFullDepthSearch = true;
 
-        if (    depth >= 3 * OnePly
-            && !dangerous
-            && !captureOrPromotion
-            && !move_is_castle(move)
-            && !move_is_killer(move, ss[ply]))
-        {
-            ss[ply].reduction = reduction<PvNode>(depth, moveCount);
-            if (ss[ply].reduction)
-            {
-                value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
-                doFullDepthSearch = (value > alpha);
-            }
-        }
+          if (    depth >= 3 * OnePly
+              && !dangerous
+              && !captureOrPromotion
+              && !move_is_castle(move)
+              && !move_is_killer(move, ss[ply]))
+          {
+              ss[ply].reduction = reduction<PvNode>(depth, moveCount);
+              if (ss[ply].reduction)
+              {
+                  value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+                  doFullDepthSearch = (value > alpha);
+              }
+          }
 
-        // Step 15. Full depth search
-        if (doFullDepthSearch)
-        {
-            ss[ply].reduction = Depth(0);
-            value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth, ply+1, true, threadID);
+          // Step 15. Full depth search
+          if (doFullDepthSearch)
+          {
+              ss[ply].reduction = Depth(0);
+              value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth, ply+1, true, threadID);
 
-            // Step extra. pv search (only in PV nodes)
-            if (PvNode && value > alpha && value < beta)
-                value = -search<PV>(pos, ss, -beta, -alpha, newDepth, ply+1, false, threadID);
-        }
+              // Step extra. pv search (only in PV nodes)
+              // Search only for possible new PV nodes, if instead value >= beta then
+              // parent node fails low with value <= alpha and tries another move.
+              if (PvNode && value > alpha && value < beta)
+                  value = -search<PV>(pos, ss, -beta, -alpha, newDepth, ply+1, false, threadID);
+          }
       }
 
       // Step 16. Undo move
