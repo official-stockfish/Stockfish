@@ -1025,8 +1025,8 @@ namespace {
   // search<>() is the main search function for both PV and non-PV nodes
 
   template <NodeType PvNode>
-  Value search(Position& pos, SearchStack ss[], Value alpha, Value beta,
-               Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove) {
+  Value search(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth,
+               int ply, bool allowNullmove, int threadID, Move excludedMove) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
@@ -1098,7 +1098,7 @@ namespace {
     isCheck = pos.is_check();
     if (!isCheck)
     {
-        if (!PvNode && tte && (tte->type() & VALUE_TYPE_EVAL))
+        if (tte && (tte->type() & VALUE_TYPE_EVAL))
             ss[ply].eval = value_from_tt(tte->value(), ply);
         else
             ss[ply].eval = evaluate(pos, ei, threadID);
