@@ -52,7 +52,7 @@ using std::endl;
 namespace {
 
   /// Types
-  enum NodeType { NonPV, PV};
+  enum NodeType { NonPV, PV };
 
   // ThreadsManager class is used to handle all the threads related stuff in search,
   // init, starting, parking and, the most important, launching a slave thread at a
@@ -215,11 +215,10 @@ namespace {
   // Step 14. Reduced search
 
   // Reduction lookup tables (initialized at startup) and their getter functions
-  int8_t    PVReductionMatrix[64][64]; // [depth][moveNumber]
-  int8_t NonPVReductionMatrix[64][64]; // [depth][moveNumber]
+  int8_t ReductionMatrix[2][64][64]; // [pv][depth][moveNumber]
 
-  inline Depth    pv_reduction(Depth d, int mn) { return (Depth)    PVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
-  inline Depth nonpv_reduction(Depth d, int mn) { return (Depth) NonPVReductionMatrix[Min(d / 2, 63)][Min(mn, 63)]; }
+  template <NodeType PV>
+  inline Depth reduction(Depth d, int mn) { return (Depth) ReductionMatrix[PV][Min(d / 2, 63)][Min(mn, 63)]; }
 
   // Common adjustments
 
@@ -552,8 +551,8 @@ void init_search() {
       {
           double    pvRed = log(double(i)) * log(double(j)) / 3.0;
           double nonPVRed = log(double(i)) * log(double(j)) / 1.5;
-          PVReductionMatrix[i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
-          NonPVReductionMatrix[i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
+          ReductionMatrix[PV][i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
+          ReductionMatrix[NonPV][i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
       }
 
   // Init futility margins array
@@ -883,7 +882,7 @@ namespace {
                         && !captureOrPromotion
                         && !move_is_castle(move))
                     {
-                        ss[0].reduction = pv_reduction(depth, i - MultiPV + 2);
+                        ss[0].reduction = reduction<PV>(depth, i - MultiPV + 2);
                         if (ss[0].reduction)
                         {
                             // Reduced depth non-pv search using alpha as upperbound
@@ -1285,7 +1284,7 @@ namespace {
               continue;
 
           // Value based pruning
-          Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); // We illogically ignore reduction condition depth >= 3*OnePly
+          Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount); // We illogically ignore reduction condition depth >= 3*OnePly
           futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
                                + H.gain(pos.piece_on(move_from(move)), move_to(move));
 
@@ -1316,7 +1315,7 @@ namespace {
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
-            ss[ply].reduction = (PvNode ? pv_reduction(depth, moveCount) : nonpv_reduction(depth, moveCount));
+            ss[ply].reduction = reduction<PvNode>(depth, moveCount);
             if (ss[ply].reduction)
             {
                 value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
@@ -1658,7 +1657,7 @@ namespace {
           }
 
           // Value based pruning
-          Depth predictedDepth = newDepth - nonpv_reduction(sp->depth, moveCount);
+          Depth predictedDepth = newDepth - reduction<NonPV>(sp->depth, moveCount);
           futilityValueScaled =  ss[sp->ply].eval + futility_margin(predictedDepth, moveCount)
                                + H.gain(pos.piece_on(move_from(move)), move_to(move));
 
@@ -1684,7 +1683,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = nonpv_reduction(sp->depth, moveCount);
+          ss[sp->ply].reduction = reduction<NonPV>(sp->depth, moveCount);
           if (ss[sp->ply].reduction)
           {
               value = -search<NonPV>(pos, ss, -(sp->alpha+1), -(sp->alpha), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
@@ -1789,7 +1788,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = pv_reduction(sp->depth, moveCount);
+          ss[sp->ply].reduction = reduction<PV>(sp->depth, moveCount);
           if (ss[sp->ply].reduction)
           {
               Value localAlpha = sp->alpha;
