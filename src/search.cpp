@@ -179,8 +179,7 @@ namespace {
   // Step 9. Internal iterative deepening
 
   // Minimum depth for use of internal iterative deepening
-  const Depth IIDDepthAtPVNodes = 5 * OnePly;
-  const Depth IIDDepthAtNonPVNodes = 8 * OnePly;
+  const Depth IIDDepth[2] = { 8 * OnePly /* non-PV */, 5 * OnePly /* PV */};
 
   // At Non-PV nodes we do an internal iterative deepening search
   // when the static evaluation is at most IIDMargin below beta.
@@ -1197,23 +1196,12 @@ namespace {
     }
 
     // Step 9. Internal iterative deepening
-    // We have different rules for PV nodes and non-pv nodes
-    if (   PvNode
-        && depth >= IIDDepthAtPVNodes
-        && ttMove == MOVE_NONE)
-    {
-        search<PV>(pos, ss, alpha, beta, depth-2*OnePly, ply, false, threadID);
-        ttMove = ss[ply].pv[ply];
-        tte = TT.retrieve(posKey);
-    }
-
-    if (   !PvNode
-        && depth >= IIDDepthAtNonPVNodes
+    if (   depth >= IIDDepth[PvNode]
         && ttMove == MOVE_NONE
-        && !isCheck
-        && ss[ply].eval >= beta - IIDMargin)
+        && (PvNode || (!isCheck && ss[ply].eval >= beta - IIDMargin)))
     {
-        search<NonPV>(pos, ss, alpha, beta, depth/2, ply, false, threadID);
+        Depth d = (PvNode ? depth - 2 * OnePly : depth / 2);
+        search<PvNode>(pos, ss, alpha, beta, d, ply, false, threadID);
         ttMove = ss[ply].pv[ply];
         tte = TT.retrieve(posKey);
     }
