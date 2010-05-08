@@ -1022,7 +1022,7 @@ namespace {
   }
 
 
-  // search_pv() is the main search function for PV nodes.
+  // search<>() is the main search function for both PV and non-PV nodes
 
   template <NodeType PvNode>
   Value search(Position& pos, SearchStack ss[], Value alpha, Value beta,
