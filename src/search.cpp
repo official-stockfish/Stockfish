@@ -282,6 +282,9 @@ namespace {
   template <NodeType PvNode>
   Value search(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, bool allowNullmove, int threadID,  Move excludedMove = MOVE_NONE);
 
+  template <NodeType PvNode>
+  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
+
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
@@ -291,7 +294,6 @@ namespace {
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, const SearchStack& ss);
-  Depth extension(const Position&, Move, bool, bool, bool, bool, bool, bool*);
   bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -844,7 +846,7 @@ namespace {
 
             // Step 11. Decide the new search depth
             depth = (Iteration - 2) * OnePly + InitialDepth;
-            ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+            ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, false, &dangerous);
             newDepth = depth + ext;
 
             // Step 12. Futility pruning (omitted at root)
@@ -1240,7 +1242,7 @@ namespace {
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension(pos, move, PvNode, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
+      ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
 
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
@@ -1635,7 +1637,7 @@ namespace {
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
+      ext = extension<NonPV>(pos, move, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
       newDepth = sp->depth - OnePly + ext;
 
       // Update current move
@@ -1768,7 +1770,7 @@ namespace {
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
+      ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
       newDepth = sp->depth - OnePly + ext;
 
       // Update current move
@@ -2002,9 +2004,9 @@ namespace {
   // any case are marked as 'dangerous'. Note that also if a move is not
   // extended, as example because the corresponding UCI option is set to zero,
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
-
-  Depth extension(const Position& pos, Move m, bool pvNode, bool captureOrPromotion,
-                  bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous) {
+  template <NodeType PvNode>
+  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck,
+                  bool singleEvasion, bool mateThreat, bool* dangerous) {
 
     assert(m != MOVE_NONE);
 
@@ -2014,13 +2016,13 @@ namespace {
     if (*dangerous)
     {
         if (moveIsCheck)
-            result += CheckExtension[pvNode];
+            result += CheckExtension[PvNode];
 
         if (singleEvasion)
-            result += SingleEvasionExtension[pvNode];
+            result += SingleEvasionExtension[PvNode];
 
         if (mateThreat)
-            result += MateThreatExtension[pvNode];
+            result += MateThreatExtension[PvNode];
     }
 
     if (pos.type_of_piece_on(move_from(m)) == PAWN)
@@ -2028,12 +2030,12 @@ namespace {
         Color c = pos.side_to_move();
         if (relative_rank(c, move_to(m)) == RANK_7)
         {
-            result += PawnPushTo7thExtension[pvNode];
+            result += PawnPushTo7thExtension[PvNode];
             *dangerous = true;
         }
         if (pos.pawn_is_passed(c, move_to(m)))
         {
-            result += PassedPawnExtension[pvNode];
+            result += PassedPawnExtension[PvNode];
             *dangerous = true;
         }
     }
@@ -2045,11 +2047,11 @@ namespace {
         && !move_is_promotion(m)
         && !move_is_ep(m))
     {
-        result += PawnEndgameExtension[pvNode];
+        result += PawnEndgameExtension[PvNode];
         *dangerous = true;
     }
 
-    if (   pvNode
+    if (   PvNode
         && captureOrPromotion
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && pos.see_sign(m) >= 0)
