@@ -194,8 +194,7 @@ namespace {
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Minimum depth for use of singular extension
-  const Depth SingularExtensionDepthAtPVNodes = 6 * OnePly;
-  const Depth SingularExtensionDepthAtNonPVNodes = 8 * OnePly;
+  const Depth SingularExtensionDepth[2] = { 8 * OnePly /* non-PV */, 6 * OnePly /* PV */};
 
   // If the TT move is at least SingularExtensionMargin better then the
   // remaining ones we will extend it.
@@ -280,8 +279,10 @@ namespace {
 
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack ss[], RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
-  Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
-  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove = MOVE_NONE);
+
+  template <bool PvNode>
+  Value search(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, bool allowNullmove, int threadID,  Move excludedMove = MOVE_NONE);
+
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
@@ -869,7 +870,7 @@ namespace {
                         alpha = -VALUE_INFINITE;
 
                     // Full depth PV search, done on first move or after a fail high
-                    value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+                    value = -search<true>(pos, ss, -beta, -alpha, newDepth, 1, false, 0);
                 }
                 else
                 {
@@ -886,7 +887,7 @@ namespace {
                         if (ss[0].reduction)
                         {
                             // Reduced depth non-pv search using alpha as upperbound
-                            value = -search(pos, ss, -alpha, newDepth-ss[0].reduction, 1, true, 0);
+                            value = -search<false>(pos, ss, -(alpha+1), -alpha, newDepth-ss[0].reduction, 1, true, 0);
                             doFullDepthSearch = (value > alpha);
                         }
                     }
@@ -896,12 +897,12 @@ namespace {
                     {
                         // Full depth non-pv search using alpha as upperbound
                         ss[0].reduction = Depth(0);
-                        value = -search(pos, ss, -alpha, newDepth, 1, true, 0);
+                        value = -search<false>(pos, ss, -(alpha+1), -alpha, newDepth, 1, true, 0);
 
                         // If we are above alpha then research at same depth but as PV
                         // to get a correct score or eventually a fail high above beta.
                         if (value > alpha)
-                            value = -search_pv(pos, ss, -beta, -alpha, newDepth, 1, 0);
+                            value = -search<true>(pos, ss, -beta, -alpha, newDepth, 1, false, 0);
                     }
                 }
 
@@ -1023,8 +1024,10 @@ namespace {
 
   // search_pv() is the main search function for PV nodes.
 
-  Value search_pv(Position& pos, SearchStack ss[], Value alpha, Value beta,
-                  Depth depth, int ply, int threadID) {
+  template <bool PvNode>
+  Value search(Position& pos, SearchStack ss[], Value alpha, Value beta,
+               Depth depth, int ply, bool allowNullmove, int threadID, Move excludedMove) {
+
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
@@ -1038,10 +1041,12 @@ namespace {
     Move ttMove, move;
     Depth ext, newDepth;
     Value bestValue, value, oldAlpha;
+    Value refinedValue, nullValue, futilityValueScaled; // Non-PV specific
     bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
-    bestValue = value = -VALUE_INFINITE;
+    refinedValue = bestValue = value = -VALUE_INFINITE;
+    oldAlpha = alpha;
 
     if (depth < OnePly)
         return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
@@ -1058,13 +1063,20 @@ namespace {
         return VALUE_DRAW;
 
     // Step 3. Mate distance pruning
-    oldAlpha = alpha;
     alpha = Max(value_mated_in(ply), alpha);
     beta = Min(value_mate_in(ply+1), beta);
     if (alpha >= beta)
         return alpha;
 
     // Step 4. Transposition table lookup
+
+    // We don't want the score of a partial search to overwrite a previous full search
+    // TT value, so we use a different position key in case of an excluded move exists.
+    Key posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
+
+    tte = TT.retrieve(posKey);
+    ttMove = (tte ? tte->move() : MOVE_NONE);
+
     // At PV nodes, we don't use the TT for pruning, but only for move ordering.
     // This is to avoid problems in the following areas:
     //
@@ -1072,57 +1084,173 @@ namespace {
     // * Fifty move rule detection
     // * Searching for a mate
     // * Printing of full PV line
-    tte = TT.retrieve(pos.get_key());
-    ttMove = (tte ? tte->move() : MOVE_NONE);
+
+    if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
+    {
+        // Refresh tte entry to avoid aging
+        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove);
+
+        ss[ply].currentMove = ttMove; // Can be MOVE_NONE
+        return value_from_tt(tte->value(), ply);
+    }
 
     // Step 5. Evaluate the position statically
     // At PV nodes we do this only to update gain statistics
     isCheck = pos.is_check();
     if (!isCheck)
     {
-        ss[ply].eval = evaluate(pos, ei, threadID);
+        if (!PvNode && tte && (tte->type() & VALUE_TYPE_EVAL))
+            ss[ply].eval = value_from_tt(tte->value(), ply);
+        else
+            ss[ply].eval = evaluate(pos, ei, threadID);
+
+        refinedValue = refine_eval(tte, ss[ply].eval, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
     }
 
     // Step 6. Razoring (is omitted in PV nodes)
-    // Step 7. Static null move pruning (is omitted in PV nodes)
-    // Step 8. Null move search with verification search (is omitted in PV nodes)
-
-    // Step 9. Internal iterative deepening
-    if (   depth >= IIDDepthAtPVNodes
-        && ttMove == MOVE_NONE)
+    if (   !PvNode
+        &&  refinedValue < beta - razor_margin(depth)
+        &&  ttMove == MOVE_NONE
+        &&  ss[ply - 1].currentMove != MOVE_NULL
+        &&  depth < RazorDepth
+        && !isCheck
+        && !value_is_mate(beta)
+        && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
-        search_pv(pos, ss, alpha, beta, depth-2*OnePly, ply, threadID);
-        ttMove = ss[ply].pv[ply];
-        tte = TT.retrieve(pos.get_key());
+        Value rbeta = beta - razor_margin(depth);
+        Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
+        if (v < rbeta)
+            // Logically we should return (v + razor_margin(depth)), but
+            // surprisingly this did slightly weaker in tests.
+            return v;
     }
 
+    // Step 7. Static null move pruning (is omitted in PV nodes)
+    // We're betting that the opponent doesn't have a move that will reduce
+    // the score by more than futility_margin(depth) if we do a null move.
+    if (   !PvNode
+        &&  allowNullmove
+        &&  depth < RazorDepth
+        && !isCheck
+        && !value_is_mate(beta)
+        &&  ok_to_do_nullmove(pos)
+        &&  refinedValue >= beta + futility_margin(depth, 0))
+        return refinedValue - futility_margin(depth, 0);
+
+    // Step 8. Null move search with verification search (is omitted in PV nodes)
+    // When we jump directly to qsearch() we do a null move only if static value is
+    // at least beta. Otherwise we do a null move if static value is not more than
+    // NullMoveMargin under beta.
+    if (   !PvNode
+        &&  allowNullmove
+        &&  depth > OnePly
+        && !isCheck
+        && !value_is_mate(beta)
+        &&  ok_to_do_nullmove(pos)
+        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0))
+    {
+        ss[ply].currentMove = MOVE_NULL;
+
+        // Null move dynamic reduction based on depth
+        int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
+
+        // Null move dynamic reduction based on value
+        if (refinedValue - beta > PawnValueMidgame)
+            R++;
+
+        pos.do_null_move(st);
+
+        nullValue = -search<false>(pos, ss, -beta, -alpha, depth-R*OnePly, ply+1, false, threadID);
+
+        pos.undo_null_move();
+
+        if (nullValue >= beta)
+        {
+            // Do not return unproven mate scores
+            if (nullValue >= value_mate_in(PLY_MAX))
+                nullValue = beta;
+
+            if (depth < 6 * OnePly)
+                return nullValue;
+
+            // Do zugzwang verification search
+            Value v = search<false>(pos, ss, alpha, beta, depth-5*OnePly, ply, false, threadID);
+            if (v >= beta)
+                return nullValue;
+        } else {
+            // The null move failed low, which means that we may be faced with
+            // some kind of threat. If the previous move was reduced, check if
+            // the move that refuted the null move was somehow connected to the
+            // move which was reduced. If a connection is found, return a fail
+            // low score (which will cause the reduced move to fail high in the
+            // parent node, which will trigger a re-search with full depth).
+            if (nullValue == value_mated_in(ply + 2))
+                mateThreat = true;
+
+            ss[ply].threatMove = ss[ply + 1].currentMove;
+            if (   depth < ThreatDepth
+                && ss[ply - 1].reduction
+                && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
+                return beta - 1;
+        }
+    }
+
+    // Step 9. Internal iterative deepening
+    // We have different rules for PV nodes and non-pv nodes
+    if (   PvNode
+        && depth >= IIDDepthAtPVNodes
+        && ttMove == MOVE_NONE)
+    {
+        search<true>(pos, ss, alpha, beta, depth-2*OnePly, ply, false, threadID);
+        ttMove = ss[ply].pv[ply];
+        tte = TT.retrieve(posKey);
+    }
+
+    if (   !PvNode
+        && depth >= IIDDepthAtNonPVNodes
+        && ttMove == MOVE_NONE
+        && !isCheck
+        && ss[ply].eval >= beta - IIDMargin)
+    {
+        search<false>(pos, ss, alpha, beta, depth/2, ply, false, threadID);
+        ttMove = ss[ply].pv[ply];
+        tte = TT.retrieve(posKey);
+    }
+
+    // Expensive mate threat detection (only for PV nodes)
+    if (PvNode)
+        mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
+
     // Initialize a MovePicker object for the current position
-    mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
-    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply]);
+    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply], (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
-    while (   alpha < beta
+    while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !TM.thread_should_stop(threadID))
     {
       assert(move_is_ok(move));
+
+      if (move == excludedMove)
+          continue;
 
       singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension(pos, move, true, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
+      ext = extension(pos, move, PvNode, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
 
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
       // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
-      if (   depth >= SingularExtensionDepthAtPVNodes
+      if (   depth >= SingularExtensionDepth[PvNode]
           && tte
           && move == tte->move()
+          && !excludedMove // Do not allow recursive singular extension search
           && ext < OnePly
           && is_lower_bound(tte->type())
           && tte->depth() >= depth - 3 * OnePly)
@@ -1131,7 +1259,7 @@ namespace {
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
+              Value excValue = search<false>(pos, ss, ttValue - SingularExtensionMargin - 1, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
 
               if (excValue < ttValue - SingularExtensionMargin)
                   ext = OnePly;
@@ -1144,14 +1272,39 @@ namespace {
       movesSearched[moveCount++] = ss[ply].currentMove = move;
 
       // Step 12. Futility pruning (is omitted in PV nodes)
+      if (   !PvNode
+          && !isCheck
+          && !dangerous
+          && !captureOrPromotion
+          && !move_is_castle(move)
+          &&  move != ttMove)
+      {
+          // Move count based pruning
+          if (   moveCount >= futility_move_count(depth)
+              && ok_to_prune(pos, move, ss[ply].threatMove)
+              && bestValue > value_mated_in(PLY_MAX))
+              continue;
+
+          // Value based pruning
+          Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); // We illogically ignore reduction condition depth >= 3*OnePly
+          futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
+                               + H.gain(pos.piece_on(move_from(move)), move_to(move));
+
+          if (futilityValueScaled < beta)
+          {
+              if (futilityValueScaled > bestValue)
+                  bestValue = futilityValueScaled;
+              continue;
+          }
+      }
 
       // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
-      if (moveCount == 1)
-          value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
+      if (PvNode && moveCount == 1)
+          value = -search<true>(pos, ss, -beta, -alpha, newDepth, ply+1, false, threadID);
       else
       {
         // Step 14. Reduced search
@@ -1164,10 +1317,10 @@ namespace {
             && !move_is_castle(move)
             && !move_is_killer(move, ss[ply]))
         {
-            ss[ply].reduction = pv_reduction(depth, moveCount);
+            ss[ply].reduction = (PvNode ? pv_reduction(depth, moveCount) : nonpv_reduction(depth, moveCount));
             if (ss[ply].reduction)
             {
-                value = -search(pos, ss, -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+                value = -search<false>(pos, ss, -(alpha+1), -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
                 doFullDepthSearch = (value > alpha);
             }
         }
@@ -1176,11 +1329,11 @@ namespace {
         if (doFullDepthSearch)
         {
             ss[ply].reduction = Depth(0);
-            value = -search(pos, ss, -alpha, newDepth, ply+1, true, threadID);
+            value = -search<false>(pos, ss, -(alpha+1), -alpha, newDepth, ply+1, true, threadID);
 
             // Step extra. pv search (only in PV nodes)
-            if (value > alpha && value < beta)
-                value = -search_pv(pos, ss, -beta, -alpha, newDepth, ply+1, threadID);
+            if (PvNode && value > alpha && value < beta)
+                value = -search<true>(pos, ss, -beta, -alpha, newDepth, ply+1, false, threadID);
         }
       }
 
@@ -1211,342 +1364,7 @@ namespace {
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
           && TM.split(pos, ss, ply, &alpha, beta, &bestValue,
-                      depth, mateThreat, &moveCount, &mp, threadID, true))
-          break;
-    }
-
-    // Step 19. Check for mate and stalemate
-    // All legal moves have been searched and if there were
-    // no legal moves, it must be mate or stalemate.
-    if (moveCount == 0)
-        return (isCheck ? value_mated_in(ply) : VALUE_DRAW);
-
-    // Step 20. Update tables
-    // If the search is not aborted, update the transposition table,
-    // history counters, and killer moves.
-    if (AbortSearch || TM.thread_should_stop(threadID))
-        return bestValue;
-
-    if (bestValue <= oldAlpha)
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
-
-    else if (bestValue >= beta)
-    {
-        TM.incrementBetaCounter(pos.side_to_move(), depth, threadID);
-        move = ss[ply].pv[ply];
-        if (!pos.move_is_capture_or_promotion(move))
-        {
-            update_history(pos, move, depth, movesSearched, moveCount);
-            update_killers(move, ss[ply]);
-        }
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
-    }
-    else
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
-
-    return bestValue;
-  }
-
-
-  // search() is the search function for zero-width nodes.
-
-  Value search(Position& pos, SearchStack ss[], Value beta, Depth depth,
-               int ply, bool allowNullmove, int threadID, Move excludedMove) {
-
-    assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
-    assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < TM.active_threads());
-
-    Move movesSearched[256];
-    EvalInfo ei;
-    StateInfo st;
-    const TTEntry* tte;
-    Move ttMove, move;
-    Depth ext, newDepth;
-    Value bestValue, refinedValue, nullValue, value, futilityValueScaled;
-    bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
-    bool mateThreat = false;
-    int moveCount = 0;
-    refinedValue = bestValue = value = -VALUE_INFINITE;
-
-    if (depth < OnePly)
-        return qsearch(pos, ss, beta-1, beta, Depth(0), ply, threadID);
-
-    // Step 1. Initialize node and poll
-    // Polling can abort search.
-    init_node(ss, ply, threadID);
-
-    // Step 2. Check for aborted search and immediate draw
-    if (AbortSearch || TM.thread_should_stop(threadID))
-        return Value(0);
-
-    if (pos.is_draw() || ply >= PLY_MAX - 1)
-        return VALUE_DRAW;
-
-    // Step 3. Mate distance pruning
-    if (value_mated_in(ply) >= beta)
-        return beta;
-
-    if (value_mate_in(ply + 1) < beta)
-        return beta - 1;
-
-    // Step 4. Transposition table lookup
-
-    // We don't want the score of a partial search to overwrite a previous full search
-    // TT value, so we use a different position key in case of an excluded move exists.
-    Key posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
-
-    tte = TT.retrieve(posKey);
-    ttMove = (tte ? tte->move() : MOVE_NONE);
-
-    if (tte && ok_to_use_TT(tte, depth, beta, ply))
-    {
-        // Refresh tte entry to avoid aging
-        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove);
-
-        ss[ply].currentMove = ttMove; // Can be MOVE_NONE
-        return value_from_tt(tte->value(), ply);
-    }
-
-    // Step 5. Evaluate the position statically
-    isCheck = pos.is_check();
-
-    if (!isCheck)
-    {
-        if (tte && (tte->type() & VALUE_TYPE_EVAL))
-            ss[ply].eval = value_from_tt(tte->value(), ply);
-        else
-            ss[ply].eval = evaluate(pos, ei, threadID);
-
-        refinedValue = refine_eval(tte, ss[ply].eval, ply); // Enhance accuracy with TT value if possible
-        update_gains(pos, ss[ply - 1].currentMove, ss[ply - 1].eval, ss[ply].eval);
-    }
-
-    // Step 6. Razoring
-    if (    refinedValue < beta - razor_margin(depth)
-        &&  ttMove == MOVE_NONE
-        &&  ss[ply - 1].currentMove != MOVE_NULL
-        &&  depth < RazorDepth
-        && !isCheck
-        && !value_is_mate(beta)
-        && !pos.has_pawn_on_7th(pos.side_to_move()))
-    {
-        Value rbeta = beta - razor_margin(depth);
-        Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
-        if (v < rbeta)
-            // Logically we should return (v + razor_margin(depth)), but
-            // surprisingly this did slightly weaker in tests.
-            return v;
-    }
-
-    // Step 7. Static null move pruning
-    // We're betting that the opponent doesn't have a move that will reduce
-    // the score by more than futility_margin(depth) if we do a null move.
-    if (    allowNullmove
-        &&  depth < RazorDepth
-        && !isCheck
-        && !value_is_mate(beta)
-        &&  ok_to_do_nullmove(pos)
-        &&  refinedValue >= beta + futility_margin(depth, 0))
-        return refinedValue - futility_margin(depth, 0);
-
-    // Step 8. Null move search with verification search
-    // When we jump directly to qsearch() we do a null move only if static value is
-    // at least beta. Otherwise we do a null move if static value is not more than
-    // NullMoveMargin under beta.
-    if (    allowNullmove
-        &&  depth > OnePly
-        && !isCheck
-        && !value_is_mate(beta)
-        &&  ok_to_do_nullmove(pos)
-        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0))
-    {
-        ss[ply].currentMove = MOVE_NULL;
-
-        // Null move dynamic reduction based on depth
-        int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
-
-        // Null move dynamic reduction based on value
-        if (refinedValue - beta > PawnValueMidgame)
-            R++;
-
-        pos.do_null_move(st);
-
-        nullValue = -search(pos, ss, -(beta-1), depth-R*OnePly, ply+1, false, threadID);
-
-        pos.undo_null_move();
-
-        if (nullValue >= beta)
-        {
-            // Do not return unproven mate scores
-            if (nullValue >= value_mate_in(PLY_MAX))
-                nullValue = beta;
-
-            if (depth < 6 * OnePly)
-                return nullValue;
-
-            // Do zugzwang verification search
-            Value v = search(pos, ss, beta, depth-5*OnePly, ply, false, threadID);
-            if (v >= beta)
-                return nullValue;
-        } else {
-            // The null move failed low, which means that we may be faced with
-            // some kind of threat. If the previous move was reduced, check if
-            // the move that refuted the null move was somehow connected to the
-            // move which was reduced. If a connection is found, return a fail
-            // low score (which will cause the reduced move to fail high in the
-            // parent node, which will trigger a re-search with full depth).
-            if (nullValue == value_mated_in(ply + 2))
-                mateThreat = true;
-
-            ss[ply].threatMove = ss[ply + 1].currentMove;
-            if (   depth < ThreatDepth
-                && ss[ply - 1].reduction
-                && connected_moves(pos, ss[ply - 1].currentMove, ss[ply].threatMove))
-                return beta - 1;
-        }
-    }
-
-    // Step 9. Internal iterative deepening
-    if (   depth >= IIDDepthAtNonPVNodes
-        && ttMove == MOVE_NONE
-        && !isCheck
-        && ss[ply].eval >= beta - IIDMargin)
-    {
-        search(pos, ss, beta, depth/2, ply, false, threadID);
-        ttMove = ss[ply].pv[ply];
-        tte = TT.retrieve(posKey);
-    }
-
-    // Initialize a MovePicker object for the current position
-    MovePicker mp = MovePicker(pos, ttMove, depth, H, &ss[ply], beta);
-    CheckInfo ci(pos);
-
-    // Step 10. Loop through moves
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
-    while (   bestValue < beta
-           && (move = mp.get_next_move()) != MOVE_NONE
-           && !TM.thread_should_stop(threadID))
-    {
-      assert(move_is_ok(move));
-
-      if (move == excludedMove)
-          continue;
-
-      moveIsCheck = pos.move_is_check(move, ci);
-      singleEvasion = (isCheck && mp.number_of_evasions() == 1);
-      captureOrPromotion = pos.move_is_capture_or_promotion(move);
-
-      // Step 11. Decide the new search depth
-      ext = extension(pos, move, false, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
-
-      // Singular extension search. We extend the TT move if its value is much better than
-      // its siblings. To verify this we do a reduced search on all the other moves but the
-      // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
-      if (   depth >= SingularExtensionDepthAtNonPVNodes
-          && tte
-          && move == tte->move()
-          && !excludedMove // Do not allow recursive singular extension search
-          && ext < OnePly
-          && is_lower_bound(tte->type())
-          && tte->depth() >= depth - 3 * OnePly)
-      {
-          Value ttValue = value_from_tt(tte->value(), ply);
-
-          if (abs(ttValue) < VALUE_KNOWN_WIN)
-          {
-              Value excValue = search(pos, ss, ttValue - SingularExtensionMargin, depth / 2, ply, false, threadID, move);
-
-              if (excValue < ttValue - SingularExtensionMargin)
-                  ext = OnePly;
-          }
-      }
-
-      newDepth = depth - OnePly + ext;
-
-      // Update current move (this must be done after singular extension search)
-      movesSearched[moveCount++] = ss[ply].currentMove = move;
-
-      // Step 12. Futility pruning
-      if (   !isCheck
-          && !dangerous
-          && !captureOrPromotion
-          && !move_is_castle(move)
-          &&  move != ttMove)
-      {
-          // Move count based pruning
-          if (   moveCount >= futility_move_count(depth)
-              && ok_to_prune(pos, move, ss[ply].threatMove)
-              && bestValue > value_mated_in(PLY_MAX))
-              continue;
-
-          // Value based pruning
-          Depth predictedDepth = newDepth - nonpv_reduction(depth, moveCount); // We illogically ignore reduction condition depth >= 3*OnePly
-          futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
-                               + H.gain(pos.piece_on(move_from(move)), move_to(move));
-
-          if (futilityValueScaled < beta)
-          {
-              if (futilityValueScaled > bestValue)
-                  bestValue = futilityValueScaled;
-              continue;
-          }
-      }
-
-      // Step 13. Make the move
-      pos.do_move(move, st, ci, moveIsCheck);
-
-      // Step 14. Reduced search, if the move fails high
-      // will be re-searched at full depth.
-      bool doFullDepthSearch = true;
-
-      if (    depth >= 3*OnePly
-          && !dangerous
-          && !captureOrPromotion
-          && !move_is_castle(move)
-          && !move_is_killer(move, ss[ply]))
-      {
-          ss[ply].reduction = nonpv_reduction(depth, moveCount);
-          if (ss[ply].reduction)
-          {
-              value = -search(pos, ss, -(beta-1), newDepth-ss[ply].reduction, ply+1, true, threadID);
-              doFullDepthSearch = (value >= beta);
-          }
-      }
-
-      // Step 15. Full depth search
-      if (doFullDepthSearch)
-      {
-          ss[ply].reduction = Depth(0);
-          value = -search(pos, ss, -(beta-1), newDepth, ply+1, true, threadID);
-      }
-
-      // Step 16. Undo move
-      pos.undo_move(move);
-
-      assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
-
-      // Step 17. Check for new best move
-      if (value > bestValue)
-      {
-          bestValue = value;
-          if (value >= beta)
-              update_pv(ss, ply);
-
-          if (value == value_mate_in(ply + 1))
-              ss[ply].mateKiller = move;
-      }
-
-      // Step 18. Check for split
-      if (   TM.active_threads() > 1
-          && bestValue < beta
-          && depth >= MinimumSplitDepth
-          && Iteration <= 99
-          && TM.available_thread_exists(threadID)
-          && !AbortSearch
-          && !TM.thread_should_stop(threadID)
-          && TM.split(pos, ss, ply, NULL, beta, &bestValue,
-                      depth, mateThreat, &moveCount, &mp, threadID, false))
+                      depth, mateThreat, &moveCount, &mp, threadID, PvNode))
           break;
     }
 
@@ -1555,7 +1373,7 @@ namespace {
     // no legal moves, it must be mate or stalemate.
     // If one move was excluded return fail low score.
     if (!moveCount)
-        return excludedMove ? beta - 1 : (isCheck ? value_mated_in(ply) : VALUE_DRAW);
+        return excludedMove ? oldAlpha : (isCheck ? value_mated_in(ply) : VALUE_DRAW);
 
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
@@ -1563,9 +1381,10 @@ namespace {
     if (AbortSearch || TM.thread_should_stop(threadID))
         return bestValue;
 
-    if (bestValue < beta)
+    if (bestValue <= oldAlpha)
         TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
-    else
+
+    else if (bestValue >= beta)
     {
         TM.incrementBetaCounter(pos.side_to_move(), depth, threadID);
         move = ss[ply].pv[ply];
@@ -1575,8 +1394,9 @@ namespace {
             update_history(pos, move, depth, movesSearched, moveCount);
             update_killers(move, ss[ply]);
         }
-
     }
+    else
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1868,7 +1688,7 @@ namespace {
           ss[sp->ply].reduction = nonpv_reduction(sp->depth, moveCount);
           if (ss[sp->ply].reduction)
           {
-              value = -search(pos, ss, -(sp->beta-1), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              value = -search<false>(pos, ss, -(sp->alpha+1), -(sp->alpha), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
               doFullDepthSearch = (value >= sp->beta && !TM.thread_should_stop(threadID));
           }
       }
@@ -1877,7 +1697,7 @@ namespace {
       if (doFullDepthSearch)
       {
           ss[sp->ply].reduction = Depth(0);
-          value = -search(pos, ss, -(sp->beta - 1), newDepth, sp->ply+1, true, threadID);
+          value = -search<false>(pos, ss, -(sp->alpha+1), -(sp->alpha), newDepth, sp->ply+1, true, threadID);
       }
 
       // Step 16. Undo move
@@ -1974,7 +1794,7 @@ namespace {
           if (ss[sp->ply].reduction)
           {
               Value localAlpha = sp->alpha;
-              value = -search(pos, ss, -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              value = -search<false>(pos, ss, -(localAlpha+1), -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
               doFullDepthSearch = (value > localAlpha && !TM.thread_should_stop(threadID));
           }
       }
@@ -1984,7 +1804,7 @@ namespace {
       {
           Value localAlpha = sp->alpha;
           ss[sp->ply].reduction = Depth(0);
-          value = -search(pos, ss, -localAlpha, newDepth, sp->ply+1, true, threadID);
+          value = -search<false>(pos, ss, -(localAlpha+1), -localAlpha, newDepth, sp->ply+1, true, threadID);
 
           if (value > localAlpha && value < sp->beta && !TM.thread_should_stop(threadID))
           {
@@ -1992,7 +1812,7 @@ namespace {
               // to be higher or equal then beta, if so, avoid to start a PV search.
               localAlpha = sp->alpha;
               if (localAlpha < sp->beta)
-                  value = -search_pv(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, threadID);
+                  value = -search<true>(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, false, threadID);
           }
       }
 
@@ -2032,7 +1852,7 @@ namespace {
 
 
   // init_node() is called at the beginning of all the search functions
-  // (search(), search_pv(), qsearch(), and so on) and initializes the
+  // (search() qsearch(), and so on) and initializes the
   // search stack object corresponding to the current node. Once every
   // NodesBetweenPolls nodes, init_node() also calls poll(), which polls
   // for user input and checks whether it is time to stop the search.
@@ -2922,7 +2742,7 @@ namespace {
     splitPoint->ply = ply;
     splitPoint->depth = depth;
     splitPoint->mateThreat = mateThreat;
-    splitPoint->alpha = pvNode ? *alpha : beta - 1;
+    splitPoint->alpha = *alpha;
     splitPoint->beta = beta;
     splitPoint->pvNode = pvNode;
     splitPoint->bestValue = *bestValue;
@@ -2977,12 +2797,10 @@ namespace {
     idle_loop(master, splitPoint);
 
     // We have returned from the idle loop, which means that all threads are
-    // finished. Update alpha, beta and bestValue, and return.
+    // finished. Update alpha and bestValue, and return.
     lock_grab(&MPLock);
 
-    if (pvNode)
-        *alpha = splitPoint->alpha;
-
+    *alpha = splitPoint->alpha;
     *bestValue = splitPoint->bestValue;
     threads[master].activeSplitPoints--;
     threads[master].splitPoint = splitPoint->parent;
