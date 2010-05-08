@@ -282,9 +282,11 @@ namespace {
   Value search(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, bool allowNullmove, int threadID,  Move excludedMove = MOVE_NONE);
 
   template <NodeType PvNode>
+  Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
+
+  template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
-  Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
   void sp_search(SplitPoint* sp, int threadID);
   void sp_search_pv(SplitPoint* sp, int threadID);
   void init_node(SearchStack ss[], int ply, int threadID);
@@ -1030,6 +1032,7 @@ namespace {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
+    assert(PvNode || alpha == beta - 1);
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < TM.active_threads());
 
@@ -1048,7 +1051,7 @@ namespace {
     oldAlpha = alpha;
 
     if (depth < OnePly)
-        return qsearch(pos, ss, alpha, beta, Depth(0), ply, threadID);
+        return qsearch<PvNode>(pos, ss, alpha, beta, Depth(0), ply, threadID);
 
     // Step 1. Initialize node and poll
     // Polling can abort search.
@@ -1118,7 +1121,7 @@ namespace {
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
-        Value v = qsearch(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
+        Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
         if (v < rbeta)
             // Logically we should return (v + razor_margin(depth)), but
             // surprisingly this did slightly weaker in tests.
@@ -1399,11 +1402,13 @@ namespace {
   // search function when the remaining depth is zero (or, to be more precise,
   // less than OnePly).
 
+  template <NodeType PvNode>
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta,
                 Depth depth, int ply, int threadID) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
+    assert(PvNode || alpha == beta - 1);
     assert(depth <= 0);
     assert(ply >= 0 && ply < PLY_MAX);
     assert(threadID >= 0 && threadID < TM.active_threads());
@@ -1415,7 +1420,6 @@ namespace {
     bool isCheck, enoughMaterial, moveIsCheck, evasionPrunable;
     const TTEntry* tte = NULL;
     int moveCount = 0;
-    bool pvNode = (beta - alpha != 1);
     Value oldAlpha = alpha;
 
     // Initialize, and make an early exit in case of an aborted search,
@@ -1434,7 +1438,7 @@ namespace {
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (!pvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
+    if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
     {
         assert(tte->type() != VALUE_TYPE_EVAL);
 
@@ -1499,9 +1503,9 @@ namespace {
       ss[ply].currentMove = move;
 
       // Futility pruning
-      if (   enoughMaterial
+      if (   !PvNode
+          &&  enoughMaterial
           && !isCheck
-          && !pvNode
           && !moveIsCheck
           &&  move != ttMove
           && !move_is_promotion(move)
@@ -1527,8 +1531,8 @@ namespace {
                        && !pos.can_castle(pos.side_to_move());
 
       // Don't search moves with negative SEE values
-      if (   (!isCheck || evasionPrunable)
-          && !pvNode
+      if (   !PvNode
+          && (!isCheck || evasionPrunable)
           &&  move != ttMove
           && !move_is_promotion(move)
           &&  pos.see_sign(move) < 0)
@@ -1536,7 +1540,7 @@ namespace {
 
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
-      value = -qsearch(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
+      value = -qsearch<PvNode>(pos, ss, -beta, -alpha, depth-OnePly, ply+1, threadID);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -2867,7 +2871,7 @@ namespace {
         init_ss_array(ss);
         pos.do_move(cur->move, st);
         moves[count].move = cur->move;
-        moves[count].score = -qsearch(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
+        moves[count].score = -qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
         moves[count].pv[0] = cur->move;
         moves[count].pv[1] = MOVE_NONE;
         pos.undo_move(cur->move);
