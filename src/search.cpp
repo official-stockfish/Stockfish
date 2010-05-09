@@ -54,6 +54,10 @@ namespace {
   /// Types
   enum NodeType { NonPV, PV };
 
+  // Set to true to force running with one thread.
+  // Used for debugging SMP code.
+  const bool FakeSplit = false;
+
   // ThreadsManager class is used to handle all the threads related stuff in search,
   // init, starting, parking and, the most important, launching a slave thread at a
   // split point are what this class does. All the access to shared thread data is
@@ -1362,21 +1366,9 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
-          && TM.split<false>(pos, ss, ply, &alpha, beta, &bestValue,
-                      depth, mateThreat, &moveCount, &mp, threadID, PvNode))
+          && TM.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
+                                 mateThreat, &moveCount, &mp, threadID, PvNode))
           break;
-
-      // Uncomment to debug sp_search() in single thread mode
-      /*
-      if (   bestValue < beta
-          && depth >= 4
-          && Iteration <= 99
-          && !AbortSearch
-          && !TM.thread_should_stop(threadID)
-          && TM.split<true>(pos, ss, ply, &alpha, beta, &bestValue,
-                      depth, mateThreat, &moveCount, &mp, threadID, PvNode))
-          break;
-      */
     }
 
     // Step 19. Check for mate and stalemate
@@ -1618,6 +1610,7 @@ namespace {
   void sp_search(SplitPoint* sp, int threadID) {
 
     assert(threadID >= 0 && threadID < TM.active_threads());
+    assert(TM.active_threads() > 1);
 
     StateInfo st;
     Move move;
@@ -1779,8 +1772,6 @@ namespace {
     }
     ss[ply].init(ply);
     ss[ply + 2].initKillers();
-
-
   }
 
   // update_pv() is called whenever a search returns a value > alpha.
@@ -2610,10 +2601,9 @@ namespace {
   // splitPoint->cpus becomes 0), split() returns true.
 
   template <bool Fake>
-  bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply,
-             Value* alpha, const Value beta, Value* bestValue,
-             Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode) {
-
+  bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply, Value* alpha,
+                             const Value beta, Value* bestValue, Depth depth, bool mateThreat,
+                             int* moves, MovePicker* mp, int master, bool pvNode) {
     assert(p.is_ok());
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -2623,7 +2613,7 @@ namespace {
     assert(beta <= VALUE_INFINITE);
     assert(depth > Depth(0));
     assert(master >= 0 && master < ActiveThreads);
-    assert(Fake || ActiveThreads > 1);
+    assert(ActiveThreads > 1);
 
     SplitPoint* splitPoint;
 
@@ -2631,7 +2621,7 @@ namespace {
 
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
-    if (   (!Fake && !available_thread_exists(master))
+    if (   !available_thread_exists(master)
         || threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
     {
         lock_release(&MPLock);
@@ -2667,8 +2657,8 @@ namespace {
     assert(threads[master].state != THREAD_AVAILABLE);
 
     // Allocate available threads setting state to THREAD_BOOKED
-    for (int i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
-        if (!Fake && thread_is_available(i, master))
+    for (int i = 0; !Fake && i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
+        if (thread_is_available(i, master))
         {
             threads[i].state = THREAD_BOOKED;
             threads[i].splitPoint = splitPoint;
