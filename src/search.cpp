@@ -287,10 +287,11 @@ namespace {
   Value qsearch(Position& pos, SearchStack ss[], Value alpha, Value beta, Depth depth, int ply, int threadID);
 
   template <NodeType PvNode>
+  void sp_search(SplitPoint* sp, int threadID);
+
+  template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
-  void sp_search(SplitPoint* sp, int threadID);
-  void sp_search_pv(SplitPoint* sp, int threadID);
   void init_node(SearchStack ss[], int ply, int threadID);
   void update_pv(SearchStack ss[], int ply);
   void sp_update_pv(SearchStack* pss, SearchStack ss[], int ply);
@@ -1344,7 +1345,9 @@ namespace {
           bestValue = value;
           if (value > alpha)
           {
-              alpha = value;
+              if (PvNode && value < beta) // This guarantees that always: alpha < beta
+                  alpha = value;
+
               update_pv(ss, ply);
               if (value == value_mate_in(ply + 1))
                   ss[ply].mateKiller = move;
@@ -1609,15 +1612,16 @@ namespace {
   // also don't need to store anything to the hash table here:  This is taken
   // care of after we return from the split point.
 
+  template <NodeType PvNode>
   void sp_search(SplitPoint* sp, int threadID) {
 
     assert(threadID >= 0 && threadID < TM.active_threads());
-    //assert(TM.active_threads() > 1);
 
     StateInfo st;
     Move move;
     Depth ext, newDepth;
-    Value value, futilityValueScaled;
+    Value value;
+    Value futilityValueScaled; // NonPV specific
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
     int moveCount;
     value = -VALUE_INFINITE;
@@ -1644,14 +1648,15 @@ namespace {
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension<NonPV>(pos, move, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
+      ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
       newDepth = sp->depth - OnePly + ext;
 
       // Update current move
       ss[sp->ply].currentMove = move;
 
-      // Step 12. Futility pruning
-      if (   !isCheck
+      // Step 12. Futility pruning (is omitted in PV nodes)
+      if (   !PvNode
+          && !isCheck
           && !dangerous
           && !captureOrPromotion
           && !move_is_castle(move))
@@ -1692,112 +1697,7 @@ namespace {
           && !move_is_castle(move)
           && !move_is_killer(move, ss[sp->ply]))
       {
-          ss[sp->ply].reduction = reduction<NonPV>(sp->depth, moveCount);
-          if (ss[sp->ply].reduction)
-          {
-              value = -search<NonPV>(pos, ss, -(sp->alpha+1), -(sp->alpha), newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
-              doFullDepthSearch = (value >= sp->beta && !TM.thread_should_stop(threadID));
-          }
-      }
-
-      // Step 15. Full depth search
-      if (doFullDepthSearch)
-      {
-          ss[sp->ply].reduction = Depth(0);
-          value = -search<NonPV>(pos, ss, -(sp->alpha+1), -(sp->alpha), newDepth, sp->ply+1, true, threadID);
-      }
-
-      // Step 16. Undo move
-      pos.undo_move(move);
-
-      assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
-
-      // Step 17. Check for new best move
-      lock_grab(&(sp->lock));
-
-      if (value > sp->bestValue && !TM.thread_should_stop(threadID))
-      {
-          sp->bestValue = value;
-          if (sp->bestValue >= sp->beta)
-          {
-              sp->stopRequest = true;
-              sp_update_pv(sp->parentSstack, ss, sp->ply);
-          }
-      }
-    }
-
-    /* Here we have the lock still grabbed */
-
-    sp->slaves[threadID] = 0;
-    sp->cpus--;
-
-    lock_release(&(sp->lock));
-  }
-
-
-  // sp_search_pv() is used to search from a PV split point.  This function
-  // is called by each thread working at the split point.  It is similar to
-  // the normal search_pv() function, but simpler.  Because we have already
-  // probed the hash table and searched the first move before splitting, we
-  // don't have to repeat all this work in sp_search_pv().  We also don't
-  // need to store anything to the hash table here: This is taken care of
-  // after we return from the split point.
-
-  void sp_search_pv(SplitPoint* sp, int threadID) {
-
-    assert(threadID >= 0 && threadID < TM.active_threads());
-    //assert(TM.active_threads() > 1);
-
-    StateInfo st;
-    Move move;
-    Depth ext, newDepth;
-    Value value;
-    bool moveIsCheck, captureOrPromotion, dangerous;
-    int moveCount;
-    value = -VALUE_INFINITE;
-
-    Position pos(*sp->pos);
-    CheckInfo ci(pos);
-    SearchStack* ss = sp->sstack[threadID];
-
-    // Step 10. Loop through moves
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
-    lock_grab(&(sp->lock));
-
-    while (    sp->alpha < sp->beta
-           && !TM.thread_should_stop(threadID)
-           && (move = sp->mp->get_next_move()) != MOVE_NONE)
-    {
-      moveCount = ++sp->moves;
-      lock_release(&(sp->lock));
-
-      assert(move_is_ok(move));
-
-      moveIsCheck = pos.move_is_check(move, ci);
-      captureOrPromotion = pos.move_is_capture_or_promotion(move);
-
-      // Step 11. Decide the new search depth
-      ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
-      newDepth = sp->depth - OnePly + ext;
-
-      // Update current move
-      ss[sp->ply].currentMove = move;
-
-      // Step 12. Futility pruning (is omitted in PV nodes)
-
-      // Step 13. Make the move
-      pos.do_move(move, st, ci, moveIsCheck);
-
-      // Step 14. Reduced search
-      // if the move fails high will be re-searched at full depth.
-      bool doFullDepthSearch = true;
-
-      if (   !dangerous
-          && !captureOrPromotion
-          && !move_is_castle(move)
-          && !move_is_killer(move, ss[sp->ply]))
-      {
-          ss[sp->ply].reduction = reduction<PV>(sp->depth, moveCount);
+          ss[sp->ply].reduction = reduction<PvNode>(sp->depth, moveCount);
           if (ss[sp->ply].reduction)
           {
               Value localAlpha = sp->alpha;
@@ -1809,18 +1709,12 @@ namespace {
       // Step 15. Full depth search
       if (doFullDepthSearch)
       {
-          Value localAlpha = sp->alpha;
           ss[sp->ply].reduction = Depth(0);
+          Value localAlpha = sp->alpha;
           value = -search<NonPV>(pos, ss, -(localAlpha+1), -localAlpha, newDepth, sp->ply+1, true, threadID);
 
-          if (value > localAlpha && value < sp->beta && !TM.thread_should_stop(threadID))
-          {
-              // If another thread has failed high then sp->alpha has been increased
-              // to be higher or equal then beta, if so, avoid to start a PV search.
-              localAlpha = sp->alpha;
-              if (localAlpha < sp->beta)
-                  value = -search<PV>(pos, ss, -sp->beta, -localAlpha, newDepth, sp->ply+1, false, threadID);
-          }
+          if (PvNode && value > localAlpha && value < sp->beta && !TM.thread_should_stop(threadID))
+              value = -search<PV>(pos, ss, -sp->beta, -sp->alpha, newDepth, sp->ply+1, false, threadID);
       }
 
       // Step 16. Undo move
@@ -1834,16 +1728,18 @@ namespace {
       if (value > sp->bestValue && !TM.thread_should_stop(threadID))
       {
           sp->bestValue = value;
-          if (value > sp->alpha)
+
+          if (sp->bestValue > sp->alpha)
           {
-              // Ask threads to stop before to modify sp->alpha
-              if (value >= sp->beta)
+              if (!PvNode || value >= sp->beta)
                   sp->stopRequest = true;
 
-              sp->alpha = value;
+              if (PvNode && value < sp->beta) // This guarantees that always: sp->alpha < sp->beta
+                  sp->alpha = value;
 
               sp_update_pv(sp->parentSstack, ss, sp->ply);
-              if (value == value_mate_in(sp->ply + 1))
+
+              if (PvNode && value == value_mate_in(sp->ply + 1))
                   ss[sp->ply].mateKiller = move;
           }
       }
@@ -1856,7 +1752,6 @@ namespace {
 
     lock_release(&(sp->lock));
   }
-
 
   // init_node() is called at the beginning of all the search functions
   // (search() qsearch(), and so on) and initializes the
@@ -1882,8 +1777,9 @@ namespace {
     }
     ss[ply].init(ply);
     ss[ply + 2].initKillers();
-  }
 
+
+  }
 
   // update_pv() is called whenever a search returns a value > alpha.
   // It updates the PV in the SearchStack object corresponding to the
@@ -2511,9 +2407,9 @@ namespace {
             threads[threadID].state = THREAD_SEARCHING;
 
             if (threads[threadID].splitPoint->pvNode)
-                sp_search_pv(threads[threadID].splitPoint, threadID);
+                sp_search<PV>(threads[threadID].splitPoint, threadID);
             else
-                sp_search(threads[threadID].splitPoint, threadID);
+                sp_search<NonPV>(threads[threadID].splitPoint, threadID);
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
