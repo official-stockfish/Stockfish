@@ -83,6 +83,8 @@ namespace {
     void wake_sleeping_threads();
     void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* sp);
+
+    template <bool Fake>
     bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
                Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode);
 
@@ -1357,7 +1359,17 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID)
-          && TM.split(pos, ss, ply, &alpha, beta, &bestValue,
+          && TM.split<false>(pos, ss, ply, &alpha, beta, &bestValue,
+                      depth, mateThreat, &moveCount, &mp, threadID, PvNode))
+          break;
+
+      // Uncomment to debug sp_search() in single thread mode
+      if (   bestValue < beta
+          && depth >= 4
+          && Iteration <= 99
+          && !AbortSearch
+          && !TM.thread_should_stop(threadID)
+          && TM.split<true>(pos, ss, ply, &alpha, beta, &bestValue,
                       depth, mateThreat, &moveCount, &mp, threadID, PvNode))
           break;
     }
@@ -1600,7 +1612,7 @@ namespace {
   void sp_search(SplitPoint* sp, int threadID) {
 
     assert(threadID >= 0 && threadID < TM.active_threads());
-    assert(TM.active_threads() > 1);
+    //assert(TM.active_threads() > 1);
 
     StateInfo st;
     Move move;
@@ -1734,7 +1746,7 @@ namespace {
   void sp_search_pv(SplitPoint* sp, int threadID) {
 
     assert(threadID >= 0 && threadID < TM.active_threads());
-    assert(TM.active_threads() > 1);
+    //assert(TM.active_threads() > 1);
 
     StateInfo st;
     Move move;
@@ -2699,6 +2711,7 @@ namespace {
   // threads have returned from sp_search_pv (or, equivalently, when
   // splitPoint->cpus becomes 0), split() returns true.
 
+  template <bool Fake>
   bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply,
              Value* alpha, const Value beta, Value* bestValue,
              Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode) {
@@ -2707,13 +2720,12 @@ namespace {
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
-    assert(   ( pvNode && *bestValue <= *alpha)
-           || (!pvNode && *bestValue <   beta ));
-    assert(!pvNode || *alpha < beta);
+    assert(*bestValue <= *alpha);
+    assert(*alpha < beta);
     assert(beta <= VALUE_INFINITE);
     assert(depth > Depth(0));
     assert(master >= 0 && master < ActiveThreads);
-    assert(ActiveThreads > 1);
+    assert(Fake || ActiveThreads > 1);
 
     SplitPoint* splitPoint;
 
@@ -2721,7 +2733,7 @@ namespace {
 
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
-    if (   !available_thread_exists(master)
+    if (   (!Fake && !available_thread_exists(master))
         || threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
     {
         lock_release(&MPLock);
@@ -2758,7 +2770,7 @@ namespace {
 
     // Allocate available threads setting state to THREAD_BOOKED
     for (int i = 0; i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
-        if (thread_is_available(i, master))
+        if (!Fake && thread_is_available(i, master))
         {
             threads[i].state = THREAD_BOOKED;
             threads[i].splitPoint = splitPoint;
@@ -2766,7 +2778,7 @@ namespace {
             splitPoint->cpus++;
         }
 
-    assert(splitPoint->cpus > 1);
+    assert(Fake || splitPoint->cpus > 1);
 
     // We can release the lock because slave threads are already booked and master is not available
     lock_release(&MPLock);
