@@ -788,6 +788,7 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
+    Bitboard squaresToQueen, defendedSquares, unsafeSquares, supportingPawns;
     Bitboard b = ei.pi->passed_pawns() & pos.pieces_of_color(Us);
 
     while (b)
@@ -804,11 +805,11 @@ namespace {
         Value mbonus = Value(20 * tr);
         Value ebonus = Value(10 + r * r * 10);
 
-        // Adjust bonus based on king proximity
         if (tr)
         {
             Square blockSq = s + pawn_push(Us);
 
+            // Adjust bonus based on kings proximity
             ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 3 * tr);
             ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * 1 * tr);
             ebonus += Value(square_distance(pos.king_square(Them), blockSq) * 6 * tr);
@@ -816,47 +817,45 @@ namespace {
             // If the pawn is free to advance, increase bonus
             if (pos.square_is_empty(blockSq))
             {
+                squaresToQueen = squares_in_front_of(Us, s);
+                defendedSquares = squaresToQueen & ei.attacked_by(Us);
+
                 // There are no enemy pawns in the pawn's path
-                Bitboard b2 = squares_in_front_of(Us, s);
-
-                assert((b2 & pos.pieces(PAWN, Them)) == EmptyBoardBB);
-
-                // Squares attacked by us
-                Bitboard b4 = b2 & ei.attacked_by(Us);
-
-                // Squares attacked or occupied by enemy pieces
-                Bitboard b3 = b2 & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
+                assert(!(squaresToQueen & pos.pieces(PAWN, Them)));
 
                 // If there is an enemy rook or queen attacking the pawn from behind,
-                // add all X-ray attacks by the rook or queen.
+                // add all X-ray attacks by the rook or queen. Otherwise consider only
+                // the squares in the pawn's path attacked or occupied by the enemy.
                 if (   (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them))
                     && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<QUEEN>(s)))
-                    b3 = b2;
+                    unsafeSquares = squaresToQueen;
+                else
+                    unsafeSquares = squaresToQueen & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
 
-                // Are any of the squares in the pawn's path attacked or occupied by the enemy?
-                if (b3 == EmptyBoardBB)
-                    // No enemy attacks or pieces, huge bonus!
-                    // Even bigger if we protect the pawn's path
-                    ebonus += Value(tr * (b2 == b4 ? 17 : 15));
+                // If there aren't enemy attacks or pieces along the path to queen give
+                // huge bonus. Even bigger if we protect the pawn's path.
+                if (!unsafeSquares)
+                    ebonus += Value(tr * (squaresToQueen == defendedSquares ? 17 : 15));
                 else
                     // OK, there are enemy attacks or pieces (but not pawns). Are those
                     // squares which are attacked by the enemy also attacked by us ?
                     // If yes, big bonus (but smaller than when there are no enemy attacks),
                     // if no, somewhat smaller bonus.
-                    ebonus += Value(tr * ((b3 & b4) == b3 ? 13 : 8));
+                    ebonus += Value(tr * ((unsafeSquares & defendedSquares) == unsafeSquares ? 13 : 8));
 
                 // At last, add a small bonus when there are no *friendly* pieces
                 // in the pawn's path.
-                if ((b2 & pos.pieces_of_color(Us)) == EmptyBoardBB)
+                if (!(squaresToQueen & pos.pieces_of_color(Us)))
                     ebonus += Value(tr);
             }
         } // tr != 0
 
-        // If the pawn is supported by a friendly pawn, increase bonus
-        Bitboard b1 = pos.pieces(PAWN, Us) & neighboring_files_bb(s);
-        if (b1 & rank_bb(s))
+        // Increase the bonus if the passed pawn is supported by a friendly pawn
+        // on the same rank and a bit smaller if it's on the previous rank.
+        supportingPawns = pos.pieces(PAWN, Us) & neighboring_files_bb(s);
+        if (supportingPawns & rank_bb(s))
             ebonus += Value(r * 20);
-        else if (pos.attacks_from<PAWN>(s, Them) & b1)
+        else if (supportingPawns & rank_bb(s - pawn_push(Us)))
             ebonus += Value(r * 12);
 
         // Rook pawns are a special case: They are sometimes worse, and
