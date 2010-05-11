@@ -1046,14 +1046,12 @@ namespace {
     // Find the safe squares for our pieces inside the area defined by
     // SpaceMask[us]. A square is unsafe if it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
-
     Bitboard safeSquares =   SpaceMask[Us]
                           & ~pos.pieces(PAWN, Us)
                           & ~ei.attacked_by(Them, PAWN)
-                          & ~(~ei.attacked_by(Us) & ei.attacked_by(Them));
+                          & (ei.attacked_by(Us) | ~ei.attacked_by(Them));
 
-    // Find all squares which are at most three squares behind some friendly
-    // pawn.
+    // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behindFriendlyPawns = pos.pieces(PAWN, Us);
     behindFriendlyPawns |= (Us == WHITE ? behindFriendlyPawns >>  8 : behindFriendlyPawns <<  8);
     behindFriendlyPawns |= (Us == WHITE ? behindFriendlyPawns >> 16 : behindFriendlyPawns << 16);
@@ -1094,17 +1092,11 @@ namespace {
 
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight) {
 
-    Score uciWeight = make_score(get_option_value_int(mgOpt), get_option_value_int(egOpt));
+    // Scale option value from 100 to 256
+    int mg = get_option_value_int(mgOpt) * 256 / 100;
+    int eg = get_option_value_int(egOpt) * 256 / 100;
 
-    // Convert to integer to prevent overflow
-    int mg = mg_value(uciWeight);
-    int eg = eg_value(uciWeight);
-
-    mg = (mg * 0x100) / 100;
-    eg = (eg * 0x100) / 100;
-    mg = (mg * mg_value(internalWeight)) / 0x100;
-    eg = (eg * eg_value(internalWeight)) / 0x100;
-    return make_score(mg, eg);
+    return apply_weight(make_score(mg, eg), internalWeight);
   }
 
   // init_safety() initizes the king safety evaluation, based on UCI
