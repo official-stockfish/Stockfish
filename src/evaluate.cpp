@@ -1104,28 +1104,19 @@ namespace {
 
   void init_safety() {
 
-    int maxSlope = 30;
-    int peak     = 0x500;
-    double a     = 0.4;
-    double b     = 0.0;
+    const Value MaxSlope = Value(30);
+    const Value Peak = Value(1280);
     Value t[100];
 
     // First setup the base table
     for (int i = 0; i < 100; i++)
     {
-        if (i < b)
-            t[i] = Value(0);
-        else
-            t[i] = Value((int)(a * (i - b) * (i - b)));
-    }
+        t[i] = Value(int(0.4 * i * i));
 
-    for (int i = 1; i < 100; i++)
-    {
-        if (t[i] - t[i - 1] > maxSlope)
-            t[i] = t[i - 1] + Value(maxSlope);
+        if (i > 0)
+            t[i] = Min(t[i], t[i - 1] + MaxSlope);
 
-        if (t[i]  > Value(peak))
-            t[i] = Value(peak);
+        t[i] = Min(t[i], Peak);
     }
 
     // Then apply the weights and get the final KingDangerTable[] array
