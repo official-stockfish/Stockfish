@@ -1631,8 +1631,8 @@ namespace {
     lock_grab(&(sp->lock));
 
     while (    sp->bestValue < sp->beta
-           && !TM.thread_should_stop(threadID)
-           && (move = sp->mp->get_next_move()) != MOVE_NONE)
+           && (move = sp->mp->get_next_move()) != MOVE_NONE
+           && !TM.thread_should_stop(threadID))
     {
       moveCount = ++sp->moves;
       lock_release(&(sp->lock));
@@ -1697,7 +1697,7 @@ namespace {
           {
               Value localAlpha = sp->alpha;
               value = -search<NonPV>(pos, ss, -(localAlpha+1), -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
-              doFullDepthSearch = (value > localAlpha && !TM.thread_should_stop(threadID));
+              doFullDepthSearch = (value > localAlpha);
           }
       }
 
@@ -1708,7 +1708,7 @@ namespace {
           Value localAlpha = sp->alpha;
           value = -search<NonPV>(pos, ss, -(localAlpha+1), -localAlpha, newDepth, sp->ply+1, true, threadID);
 
-          if (PvNode && value > localAlpha && value < sp->beta && !TM.thread_should_stop(threadID))
+          if (PvNode && value > localAlpha && value < sp->beta)
               value = -search<PV>(pos, ss, -sp->beta, -sp->alpha, newDepth, sp->ply+1, false, threadID);
       }
 
@@ -1733,9 +1733,6 @@ namespace {
                   sp->alpha = value;
 
               sp_update_pv(sp->parentSstack, ss, sp->ply);
-
-              if (PvNode && value == value_mate_in(sp->ply + 1))
-                  ss[sp->ply].mateKiller = move;
           }
       }
     }
