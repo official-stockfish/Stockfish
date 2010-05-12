@@ -1353,6 +1353,7 @@ namespace {
                   alpha = value;
 
               update_pv(ss, ply);
+
               if (value == value_mate_in(ply + 1))
                   ss[ply].mateKiller = move;
           }
@@ -1740,7 +1741,6 @@ namespace {
     /* Here we have the lock still grabbed */
 
     sp->slaves[threadID] = 0;
-    sp->cpus--;
 
     lock_release(&(sp->lock));
   }
@@ -2406,12 +2406,15 @@ namespace {
             threads[threadID].state = THREAD_AVAILABLE;
         }
 
-        // If this thread is the master of a split point and all threads have
+        // If this thread is the master of a split point and all slaves have
         // finished their work at this split point, return from the idle loop.
-        if (sp && sp->cpus == 0)
+        int i = 0;
+        for ( ; sp && !sp->slaves[i] && i < ActiveThreads; i++) {}
+
+        if (i == ActiveThreads)
         {
-            // Because sp->cpus is decremented under lock protection,
-            // be sure sp->lock has been released before to proceed.
+            // Because sp->slaves[] is reset under lock protection,
+            // be sure sp->lock has been released before to return.
             lock_grab(&(sp->lock));
             lock_release(&(sp->lock));
 
@@ -2593,9 +2596,8 @@ namespace {
   // data that must be copied to the helper threads (the current position and
   // search stack, alpha, beta, the search depth, etc.), and we tell our
   // helper threads that they have been assigned work. This will cause them
-  // to instantly leave their idle loops and call sp_search_pv(). When all
-  // threads have returned from sp_search_pv (or, equivalently, when
-  // splitPoint->cpus becomes 0), split() returns true.
+  // to instantly leave their idle loops and call sp_search(). When all
+  // threads have returned from sp_search() then split() returns true.
 
   template <bool Fake>
   bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply, Value* alpha,
@@ -2641,7 +2643,6 @@ namespace {
     splitPoint->master = master;
     splitPoint->mp = mp;
     splitPoint->moves = *moves;
-    splitPoint->cpus = 1;
     splitPoint->pos = &p;
     splitPoint->parentSstack = sstck;
     for (int i = 0; i < ActiveThreads; i++)
@@ -2653,17 +2654,19 @@ namespace {
     // If we are here it means we are not available
     assert(threads[master].state != THREAD_AVAILABLE);
 
+    int workersCnt = 1; // At least the master is included
+
     // Allocate available threads setting state to THREAD_BOOKED
-    for (int i = 0; !Fake && i < ActiveThreads && splitPoint->cpus < MaxThreadsPerSplitPoint; i++)
+    for (int i = 0; !Fake && i < ActiveThreads && workersCnt < MaxThreadsPerSplitPoint; i++)
         if (thread_is_available(i, master))
         {
             threads[i].state = THREAD_BOOKED;
             threads[i].splitPoint = splitPoint;
             splitPoint->slaves[i] = 1;
-            splitPoint->cpus++;
+            workersCnt++;
         }
 
-    assert(Fake || splitPoint->cpus > 1);
+    assert(Fake || workersCnt > 1);
 
     // We can release the lock because slave threads are already booked and master is not available
     lock_release(&MPLock);
@@ -2684,8 +2687,7 @@ namespace {
     // which it will instantly launch a search, because its state is
     // THREAD_WORKISWAITING.  We send the split point as a second parameter to the
     // idle loop, which means that the main thread will return from the idle
-    // loop when all threads have finished their work at this split point
-    // (i.e. when splitPoint->cpus == 0).
+    // loop when all threads have finished their work at this split point.
     idle_loop(master, splitPoint);
 
     // We have returned from the idle loop, which means that all threads are

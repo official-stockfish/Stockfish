@@ -54,7 +54,7 @@ struct SplitPoint {
   Depth depth;
   bool pvNode, mateThreat;
   Value beta;
-  int ply, master, slaves[MAX_THREADS];
+  int ply, master;
   SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
 
   // Const pointers to shared data
@@ -66,8 +66,8 @@ struct SplitPoint {
   volatile Value alpha;
   volatile Value bestValue;
   volatile int moves;
-  volatile int cpus;
   volatile bool stopRequest;
+  volatile int slaves[MAX_THREADS];
 };
 
 // ThreadState type is used to represent thread's current state
