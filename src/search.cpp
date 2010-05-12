@@ -804,8 +804,8 @@ namespace {
     beta = *betaPtr;
     isCheck = pos.is_check();
 
-    // Step 1. Initialize node and poll (omitted at root, but I can see no good reason for this, FIXME)
-    // Step 2. Check for aborted search (omitted at root, because we do not initialize root node)
+    // Step 1. Initialize node and poll (omitted at root, init_ss_array() has already initialized root node)
+    // Step 2. Check for aborted search (omitted at root)
     // Step 3. Mate distance pruning (omitted at root)
     // Step 4. Transposition table lookup (omitted at root)
 
@@ -813,8 +813,6 @@ namespace {
     // At root we do this only to get reference value for child nodes
     if (!isCheck)
         ss[0].eval = evaluate(pos, ei, 0);
-    else
-        ss[0].eval = VALUE_NONE; // HACK because we do not initialize root node
 
     // Step 6. Razoring (omitted at root)
     // Step 7. Static null move pruning (omitted at root)
