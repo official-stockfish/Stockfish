@@ -2409,7 +2409,7 @@ namespace {
         // If this thread is the master of a split point and all slaves have
         // finished their work at this split point, return from the idle loop.
         int i = 0;
-        for ( ; sp && !sp->slaves[i] && i < ActiveThreads; i++) {}
+        for ( ; sp && i < ActiveThreads && !sp->slaves[i]; i++) {}
 
         if (i == ActiveThreads)
         {
