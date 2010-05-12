@@ -1283,7 +1283,9 @@ namespace {
               continue;
 
           // Value based pruning
-          Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount); // FIXME We illogically ignore reduction condition depth >= 3*OnePly
+          // We illogically ignore reduction condition depth >= 3*OnePly for predicted depth,
+          // but fixing this made program slightly weaker.
+          Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount);
           futilityValueScaled =  ss[ply].eval + futility_margin(predictedDepth, moveCount)
                                + H.gain(pos.piece_on(move_from(move)), move_to(move));
 
