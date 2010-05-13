@@ -54,7 +54,7 @@ struct SplitPoint {
   Depth depth;
   bool pvNode, mateThreat;
   Value beta;
-  int ply, master;
+  int ply;
   SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
 
   // Const pointers to shared data
@@ -65,7 +65,7 @@ struct SplitPoint {
   Lock lock;
   volatile Value alpha;
   volatile Value bestValue;
-  volatile int moves;
+  volatile int moveCount;
   volatile bool stopRequest;
   volatile int slaves[MAX_THREADS];
 };

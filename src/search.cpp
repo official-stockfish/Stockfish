@@ -89,8 +89,8 @@ namespace {
     void idle_loop(int threadID, SplitPoint* sp);
 
     template <bool Fake>
-    bool split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
-               Depth depth, bool mateThreat, int* moves, MovePicker* mp, int master, bool pvNode);
+    void split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
+               Depth depth, bool mateThreat, int* moveCount, MovePicker* mp, int master, bool pvNode);
 
   private:
     friend void poll();
@@ -1366,10 +1366,9 @@ namespace {
           && Iteration <= 99
           && TM.available_thread_exists(threadID)
           && !AbortSearch
-          && !TM.thread_should_stop(threadID)
-          && TM.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
-                                 mateThreat, &moveCount, &mp, threadID, PvNode))
-          break;
+          && !TM.thread_should_stop(threadID))
+          TM.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
+                              mateThreat, &moveCount, &mp, threadID, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
@@ -1635,7 +1634,7 @@ namespace {
            && (move = sp->mp->get_next_move()) != MOVE_NONE
            && !TM.thread_should_stop(threadID))
     {
-      moveCount = ++sp->moves;
+      moveCount = ++sp->moveCount;
       lock_release(&(sp->lock));
 
       assert(move_is_ok(move));
@@ -2589,20 +2588,19 @@ namespace {
 
 
   // split() does the actual work of distributing the work at a node between
-  // several threads at PV nodes. If it does not succeed in splitting the
+  // several available threads. If it does not succeed in splitting the
   // node (because no idle threads are available, or because we have no unused
-  // split point objects), the function immediately returns false. If
-  // splitting is possible, a SplitPoint object is initialized with all the
-  // data that must be copied to the helper threads (the current position and
-  // search stack, alpha, beta, the search depth, etc.), and we tell our
-  // helper threads that they have been assigned work. This will cause them
-  // to instantly leave their idle loops and call sp_search(). When all
-  // threads have returned from sp_search() then split() returns true.
+  // split point objects), the function immediately returns. If splitting is
+  // possible, a SplitPoint object is initialized with all the data that must be
+  // copied to the helper threads and we tell our helper threads that they have
+  // been assigned work. This will cause them to instantly leave their idle loops
+  // and call sp_search(). When all threads have returned from sp_search() then
+  // split() returns.
 
   template <bool Fake>
-  bool ThreadsManager::split(const Position& p, SearchStack* sstck, int ply, Value* alpha,
+  void ThreadsManager::split(const Position& p, SearchStack* sstck, int ply, Value* alpha,
                              const Value beta, Value* bestValue, Depth depth, bool mateThreat,
-                             int* moves, MovePicker* mp, int master, bool pvNode) {
+                             int* moveCount, MovePicker* mp, int master, bool pvNode) {
     assert(p.is_ok());
     assert(sstck != NULL);
     assert(ply >= 0 && ply < PLY_MAX);
@@ -2614,8 +2612,6 @@ namespace {
     assert(master >= 0 && master < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    SplitPoint* splitPoint;
-
     lock_grab(&MPLock);
 
     // If no other thread is available to help us, or if we have too many
@@ -2624,11 +2620,11 @@ namespace {
         || threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
     {
         lock_release(&MPLock);
-        return false;
+        return;
     }
 
     // Pick the next available split point object from the split point stack
-    splitPoint = &SplitPointStack[master][threads[master].activeSplitPoints];
+    SplitPoint* splitPoint = &SplitPointStack[master][threads[master].activeSplitPoints];
 
     // Initialize the split point object
     splitPoint->parent = threads[master].splitPoint;
@@ -2640,9 +2636,8 @@ namespace {
     splitPoint->beta = beta;
     splitPoint->pvNode = pvNode;
     splitPoint->bestValue = *bestValue;
-    splitPoint->master = master;
     splitPoint->mp = mp;
-    splitPoint->moves = *moves;
+    splitPoint->moveCount = *moveCount;
     splitPoint->pos = &p;
     splitPoint->parentSstack = sstck;
     for (int i = 0; i < ActiveThreads; i++)
@@ -2700,7 +2695,6 @@ namespace {
     threads[master].splitPoint = splitPoint->parent;
 
     lock_release(&MPLock);
-    return true;
   }
 
 
