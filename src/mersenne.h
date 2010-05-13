@@ -32,9 +32,9 @@
 //// Prototypes
 ////
 
-extern uint32_t genrand_int32(void);
-extern uint64_t genrand_int64(void);
-extern void init_mersenne(void);
+extern uint32_t genrand_int32();
+extern uint64_t genrand_int64();
+extern void init_mersenne();
 
 
 #endif // !defined(MERSENNE_H_INCLUDED)
