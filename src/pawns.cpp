@@ -252,12 +252,12 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
           backward = (b | (Us == WHITE ? b << 8 : b >> 8)) & theirPawns;
       }
 
+      assert(passed | opposed | (outpost_mask(Us, s) & theirPawns));
+
       // Test for candidate passed pawn
-      candidate =   !passed
-                 && !opposed
-                 && (  count_1s_max_15(neighboring_files_bb(f) & (behind_bb(Us, r) | rank_bb(r)) & ourPawns)
-                     - count_1s_max_15(neighboring_files_bb(f) & in_front_bb(Us, r)              & theirPawns)
-                     >= 0);
+      candidate =   !(opposed | passed)
+                 && (b = outpost_mask(opposite_color(Us), s + pawn_push(Us)) & ourPawns) != EmptyBoardBB
+                 &&  count_1s_max_15(b) >= count_1s_max_15(outpost_mask(Us, s) & theirPawns);
 
       // In order to prevent doubled passed pawns from receiving a too big
       // bonus, only the frontmost passed pawn on each file is considered as
