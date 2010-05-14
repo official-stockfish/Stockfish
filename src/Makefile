@@ -25,7 +25,6 @@ EXE = stockfish
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
-
 ### ==========================================================================
 ### Compiler speed switches for both GCC and ICC. These settings are generally
 ### fast on a broad range of systems, but may be changed experimentally
@@ -57,7 +56,6 @@ ICCFLAGS-OSX += -DNDEBUG
 ### ==========================================================================
 PGOBENCH = ./$(EXE) bench 32 1 10 default depth
 
-
 ### General compiler settings. Do not change
 GCCFLAGS += -g -Wall -fno-exceptions -fno-rtti
 ICCFLAGS += -g -Wall -fno-exceptions -fno-rtti -wd383,869,981,10187,10188,11505,11503
@@ -84,6 +82,7 @@ help:
 	@echo "Makefile options:"
 	@echo ""
 	@echo "make                >  Default: Compiler = g++"
+	@echo "make gcc-profile    >  Compiler = g++ + automatic pgo-build"
 	@echo "make gcc-popcnt     >  Compiler = g++ + popcnt-support"
 	@echo "make icc            >  Compiler = icpc"
 	@echo "make icc-profile    >  Compiler = icpc + automatic pgo-build"
@@ -117,12 +116,39 @@ gcc:
 	CXXFLAGS="$(GCCFLAGS)" \
 	all
 
+gcc-profile-make:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	CXXFLAGS+='-fprofile-generate' \
+	LDFLAGS="$(LDFLAGS)" \
+	LDFLAGS+=" -lgcov" \
+	all
+
+gcc-profile-use:
+	$(MAKE) \
+	CXX='g++' \
+	CXXFLAGS="$(GCCFLAGS)" \
+	CXXFLAGS+='-fprofile-use' \
+	all
+
+gcc-profile:
+	@touch *.cpp *.h
+	$(MAKE) gcc-profile-make
+	@echo ""
+	@echo "Running benchmark for pgo-build ..."
+	@$(PGOBENCH) > /dev/null
+	@echo "Benchmark finished. Build final executable now ..."
+	@echo ""
+	@touch *.cpp *.h
+	$(MAKE) gcc-profile-use
+	@rm -rf *.gcda bench.txt
+
 gcc-popcnt:
 	$(MAKE) \
 	CXX='g++' \
 	CXXFLAGS="$(GCCFLAGS) -DUSE_POPCNT" \
 	all
-
 
 icc:
 	$(MAKE) \
@@ -225,7 +251,7 @@ osx-x86_64:
 	CXXFLAGS+='-arch x86_64 -mdynamic-no-pic' \
 	LDFLAGS+='-arch x86_64 -mdynamic-no-pic' \
 	all
-	
+
 osx-icc32:
 	$(MAKE) \
 	CXX='icpc' \
@@ -320,7 +346,7 @@ strip:
 
 ### Compilation. Do not change
 $(EXE): $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
 ### Installation
 install: default
