@@ -228,7 +228,7 @@ Bitboard BetweenBB[64][64];
 
 Bitboard SquaresInFrontMask[2][64];
 Bitboard PassedPawnMask[2][64];
-Bitboard OutpostMask[2][64];
+Bitboard AttackSpanMask[2][64];
 
 Bitboard BishopPseudoAttacks[64];
 Bitboard RookPseudoAttacks[64];
@@ -430,7 +430,7 @@ namespace {
         {
             SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
             PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
-            OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
+            AttackSpanMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
         }
 
     for (Bitboard b = 0ULL; b < 256ULL; b++)

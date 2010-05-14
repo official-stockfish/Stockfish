@@ -76,7 +76,7 @@ extern Bitboard BetweenBB[64][64];
 
 extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
-extern Bitboard OutpostMask[2][64];
+extern Bitboard AttackSpanMask[2][64];
 
 extern const uint64_t RMult[64];
 extern const int RShift[64];
@@ -128,9 +128,8 @@ inline void do_move_bb(Bitboard *b, Bitboard move_bb) {
   *b ^= move_bb;
 }
 
-/// rank_bb() and file_bb() gives a bitboard containing all squares on a given
-/// file or rank.  It is also possible to pass a square as input to these
-/// functions.
+/// rank_bb() and file_bb() take a file or a square as input, and return
+/// a bitboard representing all squares on the given file or rank.
 
 inline Bitboard rank_bb(Rank r) {
   return RankBB[r];
@@ -301,13 +300,13 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 }
 
 
-/// outpost_mask takes a color and a square as input, and returns a bitboard
-/// mask which can be used to test whether a piece on the square can possibly
-/// be driven away by an enemy pawn. Definition of the table is:
-/// OutpostMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
+/// attack_span_mask takes a color and a square as input, and returns a bitboard
+/// representing all squares that can be attacked by a pawn of the given color
+/// when it moves along its file starting from the given square. Definition is:
+/// AttackSpanMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
 
-inline Bitboard outpost_mask(Color c, Square s) {
-  return OutpostMask[c][s];
+inline Bitboard attack_span_mask(Color c, Square s) {
+  return AttackSpanMask[c][s];
 }
 
 

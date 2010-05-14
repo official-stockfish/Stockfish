@@ -231,7 +231,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // there are friendly pawns behind on neighboring files it cannot
       // be backward either.
       if (   (passed | isolated | chain)
-          || (ourPawns & outpost_mask(opposite_color(Us), s))
+          || (ourPawns & attack_span_mask(opposite_color(Us), s))
           || (pos.attacks_from<PAWN>(s, Us) & theirPawns))
           backward = false;
       else
@@ -252,12 +252,12 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
           backward = (b | (Us == WHITE ? b << 8 : b >> 8)) & theirPawns;
       }
 
-      assert(passed | opposed | (outpost_mask(Us, s) & theirPawns));
+      assert(passed | opposed | (attack_span_mask(Us, s) & theirPawns));
 
       // Test for candidate passed pawn
       candidate =   !(opposed | passed)
-                 && (b = outpost_mask(opposite_color(Us), s + pawn_push(Us)) & ourPawns) != EmptyBoardBB
-                 &&  count_1s_max_15(b) >= count_1s_max_15(outpost_mask(Us, s) & theirPawns);
+                 && (b = attack_span_mask(opposite_color(Us), s + pawn_push(Us)) & ourPawns) != EmptyBoardBB
+                 &&  count_1s_max_15(b) >= count_1s_max_15(attack_span_mask(Us, s) & theirPawns);
 
       // In order to prevent doubled passed pawns from receiving a too big
       // bonus, only the frontmost passed pawn on each file is considered as
@@ -309,7 +309,7 @@ int PawnInfoTable::evaluate_pawn_storm(Square s, Rank r, File f, Bitboard theirP
   const int K = (Side == KingSide ? 2 : 4);
   const File RookFile = (Side == KingSide ? FILE_H : FILE_A);
 
-  Bitboard b = outpost_mask(Us, s) & theirPawns & StormFilesBB;
+  Bitboard b = attack_span_mask(Us, s) & theirPawns & StormFilesBB;
   int bonus = 0;
 
   while (b)
