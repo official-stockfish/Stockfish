@@ -143,7 +143,7 @@ void PawnInfo::clear() {
 /// in a hash table, so we don't have to recompute everything when the same
 /// pawn structure occurs again.
 
-PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
+PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
 
   assert(pos.is_ok());
 
@@ -178,13 +178,13 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) {
 
 template<Color Us>
 Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
-                                    Bitboard theirPawns, PawnInfo* pi) {
+                                    Bitboard theirPawns, PawnInfo* pi) const {
   Bitboard b;
-  Square s, s2;
+  Square s;
   File f;
-  Rank r, r2;
+  Rank r;
+  int bonus;
   bool passed, isolated, doubled, opposed, chain, backward, candidate;
-  int bonus, v;
   Score value = make_score(0, 0);
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
@@ -205,60 +205,15 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       assert(pos.piece_on(s) == piece_of_color_and_type(Us, PAWN));
 
-      // We calculate kingside and queenside pawn storm scores for
-      // both colors. These are used when evaluating middle game
-      // positions with opposite side castling.
-      //
-      // Each pawn is given a base score given by a piece square table
-      // (KStormTable[] or QStormTable[]). Pawns which seem to have good
-      // chances of creating an open file by exchanging itself against
-      // an enemy pawn on an adjacent file gets an additional bonus.
+      // Calculate kingside and queenside pawn storm scores for both colors to be
+      // used when evaluating middle game positions with opposite side castling.
+      bonus = (f >= FILE_F ? evaluate_pawn_storm<Us, KingSide>(s, r, f, theirPawns) : 0);
+      pi->ksStormValue[Us] += KStormTable[relative_square(Us, s)] + bonus;
 
-      // Kingside pawn storms
-      bonus = KStormTable[relative_square(Us, s)];
-      if (f >= FILE_F)
-      {
-          b = outpost_mask(Us, s) & theirPawns & (FileFBB | FileGBB | FileHBB);
-          while (b)
-          {
-              // Give a bonus according to the distance of the nearest enemy pawn
-              s2 = pop_1st_bit(&b);
-              r2 = square_rank(s2);
-              v = StormLeverBonus[f] - 2 * rank_distance(r, r2);
+      bonus = (f <= FILE_C ? evaluate_pawn_storm<Us, QueenSide>(s, r, f, theirPawns) : 0);
+      pi->qsStormValue[Us] += QStormTable[relative_square(Us, s)] + bonus;
 
-              // If enemy pawn has no pawn beside itself is particularly vulnerable.
-              // Big bonus, especially against a weakness on the rook file
-              if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
-                  v *= (square_file(s2) == FILE_H ? 4 : 2);
-
-              bonus += v;
-          }
-      }
-      pi->ksStormValue[Us] += bonus;
-
-      // Queenside pawn storms
-      bonus = QStormTable[relative_square(Us, s)];
-      if (f <= FILE_C)
-      {
-          b = outpost_mask(Us, s) & theirPawns & (FileABB | FileBBB | FileCBB);
-          while (b)
-          {
-              // Give a bonus according to the distance of the nearest enemy pawn
-              s2 = pop_1st_bit(&b);
-              r2 = square_rank(s2);
-              v = StormLeverBonus[f] - 4 * rank_distance(r, r2);
-
-              // If enemy pawn has no pawn beside itself is particularly vulnerable.
-              // Big bonus, especially against a weakness on the rook file
-              if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
-                  v *= (square_file(s2) == FILE_A ? 4 : 2);
-
-              bonus += v;
-          }
-      }
-      pi->qsStormValue[Us] += bonus;
-
-      // Our rank and previous one. Used for chain detection.
+      // Our rank plus previous one. Used for chain detection.
       b = rank_bb(r) | rank_bb(r + (Us == WHITE ? -1 : 1));
 
       // Passed, isolated, doubled or member of a pawn
@@ -339,6 +294,39 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   }
 
   return value;
+}
+
+
+/// PawnInfoTable::evaluate_pawn_storm() evaluates each pawn which seems
+/// to have good chances of creating an open file by exchanging itself
+/// against an enemy pawn on an adjacent file.
+
+template<Color Us, PawnInfoTable::SideType Side>
+int PawnInfoTable::evaluate_pawn_storm(Square s, Rank r, File f, Bitboard theirPawns) const {
+
+  const Bitboard StormFilesBB = (Side == KingSide ? FileFBB | FileGBB | FileHBB
+                                                  : FileABB | FileBBB | FileCBB);
+  const int K = (Side == KingSide ? 2 : 4);
+  const File RookFile = (Side == KingSide ? FILE_H : FILE_A);
+
+  Bitboard b = outpost_mask(Us, s) & theirPawns & StormFilesBB;
+  int bonus = 0;
+
+  while (b)
+  {
+      // Give a bonus according to the distance of the nearest enemy pawn
+      Square s2 = pop_1st_bit(&b);
+      Rank r2 = square_rank(s2);
+      int v = StormLeverBonus[f] - K * rank_distance(r, r2);
+
+      // If enemy pawn has no pawn beside itself is particularly vulnerable.
+      // Big bonus, especially against a weakness on the rook file
+      if (!(theirPawns & neighboring_files_bb(s2) & rank_bb(s2)))
+          v *= (square_file(s2) == RookFile ? 4 : 2);
+
+      bonus += v;
+  }
+  return bonus;
 }
 
 

@@ -78,14 +78,19 @@ private:
 
 class PawnInfoTable {
 
+  enum SideType { KingSide, QueenSide };
+
 public:
   PawnInfoTable(unsigned numOfEntries);
   ~PawnInfoTable();
-  PawnInfo* get_pawn_info(const Position& pos);
+  PawnInfo* get_pawn_info(const Position& pos) const;
 
 private:
   template<Color Us>
-  Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi);
+  Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi) const;
+
+  template<Color Us, SideType Side>
+  int evaluate_pawn_storm(Square s, Rank r, File f, Bitboard theirPawns) const;
 
   unsigned size;
   PawnInfo* entries;
