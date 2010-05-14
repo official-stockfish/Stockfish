@@ -483,7 +483,7 @@ inline bool Position::pawn_is_passed(Color c, Square s) const {
 }
 
 inline bool Position::square_is_weak(Square s, Color c) const {
-  return !(pieces(PAWN, c) & outpost_mask(opposite_color(c), s));
+  return !(pieces(PAWN, opposite_color(c)) & outpost_mask(c, s));
 }
 
 inline Key Position::get_key() const {

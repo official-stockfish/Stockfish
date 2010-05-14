@@ -556,7 +556,7 @@ namespace {
             ei.value -= Sign[Us] * ThreatedByPawnPenalty[Piece];
 
         // Bishop and knight outposts squares
-        if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Them))
+        if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Us))
             evaluate_outposts<Piece, Us>(pos, ei, s);
 
         // Special patterns: trapped bishops on a7/h7/a2/h2
