@@ -134,10 +134,10 @@ namespace {
   // piece type attacks which one.
   const Score ThreatBonus[8][8] = {
     {}, {},
-    { S(0, 0), S(18,37), S( 0, 0), S(37,47), S(55,97), S(55,97) }, // KNIGHT
-    { S(0, 0), S(18,37), S(37,47), S( 0, 0), S(55,97), S(55,97) }, // BISHOP
-    { S(0, 0), S( 9,27), S(27,47), S(27,47), S( 0, 0), S(37,47) }, // ROOK
-    { S(0, 0), S(27,37), S(27,37), S(27,37), S(27,37), S( 0, 0) }  // QUEEN
+    { S(0, 0), S( 7, 39), S( 0,  0), S(24, 49), S(41,100), S(41,100) }, // KNIGHT
+    { S(0, 0), S( 7, 39), S(24, 49), S( 0,  0), S(41,100), S(41,100) }, // BISHOP
+    { S(0, 0), S(-1, 29), S(15, 49), S(15, 49), S( 0,  0), S(24, 49) }, // ROOK
+    { S(0, 0), S(15, 39), S(15, 39), S(15, 39), S(15, 39), S( 0,  0) }  // QUEEN
   };
 
   // ThreatedByPawnPenalty[] contains a penalty according to which piece
