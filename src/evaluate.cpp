@@ -243,6 +243,9 @@ namespace {
   Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID);
 
   template<Color Us, bool HasPopCnt>
+  void init_attack_tables(const Position& pos, EvalInfo& ei);
+
+  template<Color Us, bool HasPopCnt>
   void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
@@ -285,7 +288,6 @@ namespace {
 template<bool HasPopCnt>
 Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
 
-  Bitboard b;
   ScaleFactor factor[2];
 
   assert(pos.is_ok());
@@ -315,22 +317,9 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   ei.pi = PawnTable[threadID]->get_pawn_info(pos);
   ei.value += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
 
-  // Initialize king attack bitboards and king attack zones for both sides
-  ei.attackedBy[WHITE][KING] = pos.attacks_from<KING>(pos.king_square(WHITE));
-  ei.attackedBy[BLACK][KING] = pos.attacks_from<KING>(pos.king_square(BLACK));
-  ei.kingZone[WHITE] = ei.attackedBy[BLACK][KING] | (ei.attackedBy[BLACK][KING] >> 8);
-  ei.kingZone[BLACK] = ei.attackedBy[WHITE][KING] | (ei.attackedBy[WHITE][KING] << 8);
-
-  // Initialize pawn attack bitboards for both sides
-  ei.attackedBy[WHITE][PAWN] = ei.pi->pawn_attacks(WHITE);
-  b = ei.attackedBy[WHITE][PAWN] & ei.attackedBy[BLACK][KING];
-  if (b)
-      ei.kingAttackersCount[WHITE] = count_1s_max_15<HasPopCnt>(b)/2;
-
-  ei.attackedBy[BLACK][PAWN] = ei.pi->pawn_attacks(BLACK);
-  b = ei.attackedBy[BLACK][PAWN] & ei.attackedBy[WHITE][KING];
-  if (b)
-      ei.kingAttackersCount[BLACK] = count_1s_max_15<HasPopCnt>(b)/2;
+  // Initialize attack bitboards with pawns evaluation
+  init_attack_tables<WHITE, HasPopCnt>(pos, ei);
+  init_attack_tables<BLACK, HasPopCnt>(pos, ei);
 
   // Evaluate pieces
   evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei);
@@ -480,6 +469,23 @@ void read_weights(Color us) {
 
 
 namespace {
+
+  // init_king_tables() initializes king bitboards for both sides adding
+  // pawn attacks. To be done before other evaluations.
+
+  template<Color Us, bool HasPopCnt>
+  void init_attack_tables(const Position& pos, EvalInfo& ei) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
+    ei.kingZone[Us] = (b | (Us == WHITE ? b >> 8 : b << 8));
+    ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
+    b &= ei.attackedBy[Us][PAWN];
+    if (b)
+        ei.kingAttackersCount[Us] = count_1s_max_15<HasPopCnt>(b) / 2;
+  }
+
 
   // evaluate_outposts() evaluates bishop and knight outposts squares
 
