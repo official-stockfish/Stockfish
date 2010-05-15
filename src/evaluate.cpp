@@ -761,12 +761,6 @@ namespace {
         if (b)
             attackUnits += KnightCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
-        // Analyse enemy's discovered checks (only for non-pawns right now,
-        // consider adding pawns later).
-        b = pos.discovered_check_candidates(Them) & ~pos.pieces(PAWN);
-        if (b)
-            attackUnits += DiscoveredCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
-
         // To index KingDangerTable[] attackUnits must be in [0, 99] range
         attackUnits = Min(99, Max(0, attackUnits));
 
