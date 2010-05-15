@@ -799,7 +799,7 @@ namespace {
         assert(pos.pawn_is_passed(Us, s));
 
         int r = int(relative_rank(Us, s) - RANK_2);
-        int tr = Max(0, r * (r - 1));
+        int tr = r * (r - 1);
 
         // Base bonus based on rank
         Value mbonus = Value(20 * tr);
