@@ -122,7 +122,7 @@ namespace {
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
     // than a move m2 if it has a higher score, or if the moves
-    // have equal score but m1 has the higher node count.
+    // have equal score but m1 has the higher beta cut-off count.
     bool operator<(const RootMove& m) const {
 
         return score != m.score ? score < m.score : theirBeta <= m.theirBeta;
