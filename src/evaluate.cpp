@@ -348,23 +348,23 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   // Middle-game specific evaluation terms
   if (phase > PHASE_ENDGAME)
   {
-    // Pawn storms in positions with opposite castling
-    if (   square_file(pos.king_square(WHITE)) >= FILE_E
-        && square_file(pos.king_square(BLACK)) <= FILE_D)
+      // Pawn storms in positions with opposite castling
+      if (   square_file(pos.king_square(WHITE)) >= FILE_E
+          && square_file(pos.king_square(BLACK)) <= FILE_D)
 
-        ei.value += make_score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
+          ei.value += make_score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
 
-    else if (   square_file(pos.king_square(WHITE)) <= FILE_D
-             && square_file(pos.king_square(BLACK)) >= FILE_E)
+      else if (   square_file(pos.king_square(WHITE)) <= FILE_D
+               && square_file(pos.king_square(BLACK)) >= FILE_E)
 
-        ei.value += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
+          ei.value += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
 
-    // Evaluate space for both sides
-    if (ei.mi->space_weight() > 0)
-    {
-        evaluate_space<WHITE, HasPopCnt>(pos, ei);
-        evaluate_space<BLACK, HasPopCnt>(pos, ei);
-    }
+      // Evaluate space for both sides
+      if (ei.mi->space_weight() > 0)
+      {
+          evaluate_space<WHITE, HasPopCnt>(pos, ei);
+          evaluate_space<BLACK, HasPopCnt>(pos, ei);
+      }
   }
 
   // Mobility
