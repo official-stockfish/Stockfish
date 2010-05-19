@@ -1,7 +1,7 @@
 # Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-# Copyright (C) 2004-2007 Tord Romstad
-# Copyright (C) 2008 Marco Costalba
-
+# Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+# Copyright (C) 2008-2010 Marco Costalba, Joona Kiiski, Tord Romstad
+#
 # This file is part of Stockfish.
 #
 # Stockfish is free software: you can redistribute it and/or modify
@@ -18,319 +18,483 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-### Executable name. Do not change
+### ==========================================================================
+### Section 1. General Configuration
+### ==========================================================================
+
+### Executable name
 EXE = stockfish
 
 ### Installation dir definitions
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
-### ==========================================================================
-### Compiler speed switches for both GCC and ICC. These settings are generally
-### fast on a broad range of systems, but may be changed experimentally
-### ==========================================================================
-GCCFLAGS = -O3 -msse
-ICCFLAGS = -fast -msse
-ICCFLAGS-OSX = -fast -mdynamic-no-pic
-
-
-### ==========================================================================
-### Enable/disable debugging, disabled by default
-### ==========================================================================
-GCCFLAGS += -DNDEBUG
-ICCFLAGS += -DNDEBUG
-ICCFLAGS-OSX += -DNDEBUG
-
-
-### ==========================================================================
-### Remove below comments to compile for a big-endian machine
-### ==========================================================================
-#GCCFLAGS += -DBIGENDIAN
-#ICCFLAGS += -DBIGENDIAN
-#ICCFLAGS-OSX += -DBIGENDIAN
-
-
-### ==========================================================================
-### Run built-in benchmark for pgo-builds with:  32MB hash  1 thread  10 depth
-### These settings are generally fast, but may be changed experimentally
-### ==========================================================================
+### Built-in benchmark for pgo-builds
 PGOBENCH = ./$(EXE) bench 32 1 10 default depth
 
-### General compiler settings. Do not change
-GCCFLAGS += -g -Wall -fno-exceptions -fno-rtti
-ICCFLAGS += -g -Wall -fno-exceptions -fno-rtti -wd383,869,981,10187,10188,11505,11503
-ICCFLAGS-OSX += -g -Wall -fno-exceptions -fno-rtti -wd383,869,981,10187,10188,11505,11503
-
-
-### General linker settings. Do not change
-LDFLAGS  = -lpthread
-
-
-### Object files. Do not change
+### Object files
 OBJS = application.o bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 	misc.o move.o movegen.o history.o movepick.o search.o piece.o \
 	position.o direction.o tt.o value.o uci.o ucioption.o \
 	mersenne.o book.o bitbase.o san.o benchmark.o
 
 
-### General rules. Do not change
+### ==========================================================================
+### Section 2. High-level Configuration
+### ==========================================================================
+#
+# flag                --- Comp switch --- Description
+# ----------------------------------------------------------------------------
+#
+# debug = no/yes      --- -DNDEBUG    --- Enable/Disable debug mode
+# optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
+# arch = (name)       --- (-arch)     --- Target architecture
+# os = (name)         ---             --- Target operating system
+# bits = 64/32        --- -DIS_64BIT  --- 64-/32-bit operating system
+# bigendian = no/yes  --- -DBIGENDIAN --- big/little-endian byte order
+# prefetch = no/yes   --- -DPREFETCH  --- Use prefetch x86 asm-instruction
+# bsfq = no/yes       --- -DUSE_BSFQ  --- Use bsfq x86_64 asm-instruction
+#                                     --- (Works only with GCC and ICC 64-bit)
+# popcnt = no/yes     --- -DUSE_POPCNT --- Use popcnt x86_64 asm-instruction
+#
+# Note that Makefile is space sensitive, so when adding new architectures
+# or modifying existing flags, you have to make sure there are no extra spaces
+# at the end of the line for flag values.
+
+### 2.1. General
+debug = no
+optimize = yes
+
+### 2.2 Architecture specific
+
+# General-section
+ifeq ($(ARCH),general-64)
+	arch = any
+	os = any
+	bits = 64
+	bigendian = no
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+ifeq ($(ARCH),general-32)
+	arch = any
+	os = any
+	bits = 32
+	bigendian = no
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+ifeq ($(ARCH),bigendian-64)
+	arch = any
+	os = any
+	bits = 64
+	bigendian = yes
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+ifeq ($(ARCH),bigendian-32)
+	arch = any
+	os = any
+	bits = 32
+	bigendian = yes
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+# x86-section
+ifeq ($(ARCH),x86-64)
+	arch = x86_64
+	os = any
+	bits = 64
+	bigendian = no
+	prefetch = yes
+	bsfq = yes
+	popcnt = no
+endif
+
+ifeq ($(ARCH),x86-64-modern)
+	arch = x86_64
+	os = any
+	bits = 64
+	bigendian = no
+	prefetch = yes
+	bsfq = yes
+	popcnt = yes
+endif
+
+ifeq ($(ARCH),x86-32)
+	arch = i386
+	os = any
+	bits = 32
+	bigendian = no
+	prefetch = yes
+	bsfq = no
+	popcnt = no
+endif
+
+ifeq ($(ARCH),x86-32-old)
+	arch = i386
+	os = any
+	bits = 32
+	bigendian = no
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+# osx-section
+ifeq ($(ARCH),osx-ppc-64)
+	arch = ppc64
+	os = osx
+	bits = 64
+	bigendian = yes
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+ifeq ($(ARCH),osx-ppc-32)
+	arch = ppc
+	os = osx
+	bits = 32
+	bigendian = yes
+	prefetch = no
+	bsfq = no
+	popcnt = no
+endif
+
+ifeq ($(ARCH),osx-x86-64)
+	arch = x86_64
+	os = osx
+	bits = 64
+	bigendian = no
+	prefetch = yes
+	bsfq = yes
+	popcnt = no
+endif
+
+ifeq ($(ARCH),osx-x86-32)
+	arch = i386
+	os = osx
+	bits = 32
+	bigendian = no
+	prefetch = yes
+	bsfq = no
+	popcnt = no
+endif
+
+
+### ==========================================================================
+### Section 3. Low-level configuration
+### ==========================================================================
+
+### 3.1 Selecting compiler (default = gcc)
+ifeq ($(COMP),)
+	COMP=gcc
+endif
+
+ifeq ($(COMP),gcc)
+	comp=gcc
+	CXX=g++
+	profile_prepare = gcc-profile-prepare
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
+	profile_clean = gcc-profile-clean
+endif
+
+ifeq ($(COMP),icc)
+	comp=icc
+	CXX=icpc
+	profile_prepare = icc-profile-prepare
+	profile_make = icc-profile-make
+	profile_use = icc-profile-use
+	profile_clean = icc-profile-clean
+endif
+
+### 3.2 General compiler settings
+CXXFLAGS += -g -Wall -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+
+ifeq ($(comp),icc)
+	CXXFLAGS += -wd383,869,981,10187,10188,11505,11503
+endif
+
+ifeq ($(os),osx)
+	CXXFLAGS += -arch $(arch)
+endif
+
+### 3.3 General linker settings
+LDFLAGS += -lpthread $(EXTRALDFLAGS)
+
+ifeq ($(os),osx)
+	LDFLAGS += -arch $(arch)
+endif
+
+### 3.4 Debugging
+ifeq ($(debug),no)
+	CXXFLAGS += -DNDEBUG
+endif
+
+### 3.5 Optimization
+ifeq ($(optimize),yes)
+
+	ifeq ($(comp),gcc)
+		CXXFLAGS += -O3
+
+		ifeq ($(os),osx)
+			ifeq ($(arch),i386)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
+			ifeq ($(arch),x86_64)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
+		endif
+	endif
+
+	ifeq ($(comp),icc)
+		CXXFLAGS += -fast
+
+		ifeq ($(os),osx)
+			CXXFLAGS += -mdynamic-no-pic
+		endif
+	endif
+endif
+
+### 3.6. Bits
+ifeq ($(bits),64)
+	CXXFLAGS += -DIS_64BIT
+endif
+
+### 3.7 Endianess
+ifeq ($(bigendian),yes)
+	CXXFLAGS += -DBIGENDIAN
+endif
+
+### 3.8 prefetch
+ifeq ($(prefetch),yes)
+	CXXFLAGS += -msse -DUSE_PREFETCH
+	DEPENDFLAGS += -msse
+endif
+
+### 3.9 bsfq
+ifeq ($(bsfq),yes)
+	CXXFLAGS += -DUSE_BSFQ
+endif
+
+### 3.10 popcnt
+ifeq ($(popcnt),yes)
+	CXXFLAGS += -DUSE_POPCNT
+endif
+
+### ==========================================================================
+### Section 4. Public targets
+### ==========================================================================
+
 default:
-	$(MAKE) gcc
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) build
 
 help:
 	@echo ""
-	@echo "Makefile options:"
+	@echo "To compile stockfish, type: "
 	@echo ""
-	@echo "make                >  Default: Compiler = g++"
-	@echo "make gcc-profile    >  Compiler = g++ + automatic pgo-build"
-	@echo "make gcc-popcnt     >  Compiler = g++ + popcnt-support"
-	@echo "make icc            >  Compiler = icpc"
-	@echo "make icc-profile    >  Compiler = icpc + automatic pgo-build"
-	@echo "make icc-profile-popcnt >  Compiler = icpc + automatic pgo-build + popcnt-support"
-	@echo "make osx-ppc32      >  PPC-Mac OS X 32 bit. Compiler = g++"
-	@echo "make osx-ppc64      >  PPC-Mac OS X 64 bit. Compiler = g++"
-	@echo "make osx-x86        >  x86-Mac OS X 32 bit. Compiler = g++"
-	@echo "make osx-x86_64     >  x86-Mac OS X 64 bit. Compiler = g++"
-	@echo "make osx-icc32      >  x86-Mac OS X 32 bit. Compiler = icpc"
-	@echo "make osx-icc64      >  x86-Mac OS X 64 bit. Compiler = icpc"
-	@echo "make osx-icc32-profile > OSX 32 bit. Compiler = icpc + automatic pgo-build"
-	@echo "make osx-icc64-profile > OSX 64 bit. Compiler = icpc + automatic pgo-build"
-	@echo "make hpux           >  HP-UX. Compiler = aCC"
-	@echo "make strip          >  Strip executable"
-	@echo "make clean          >  Clean up"
+	@echo "make target ARCH=arch [COMP=comp]"
 	@echo ""
+	@echo "Supported targets:"
+	@echo ""
+	@echo "build                > Build unoptimized version"
+	@echo "profile-build        > Build PGO-optimized version"
+	@echo "popcnt-profile-build > Build PGO-optimized version with optional popcnt-support"
+	@echo "strip                > Strip executable"
+	@echo "install              > Install executable"
+	@echo "clean                > Clean up"
+	@echo "testrun              > Make sample run"
+	@echo ""
+	@echo "Supported archs:"
+	@echo ""
+	@echo "x86-64               > x86 64-bit"
+	@echo "x86-64-modern        > x86 64-bit with runtime support for popcnt-instruction"
+	@echo "x86-32               > x86 32-bit excluding very old hardware without SSE-support"
+	@echo "x86-32-old           > x86 32-bit including also very old hardware"
+	@echo "osx-ppc-64           > PPC-Mac OS X 64 bit"
+	@echo "osx-ppc-32           > PPC-Mac OS X 32 bit"
+	@echo "osx-x86-64           > x86-Mac OS X 64 bit"
+	@echo "osx-x86-32           > x86-Mac OS X 32 bit"
+	@echo "general-64           > unspecified 64-bit"
+	@echo "general-32           > unspecified 32-bit"
+	@echo "bigendian-64         > unspecified 64-bit with bigendian byte order"
+	@echo "bigendian-32         > unspecified 32-bit with bigendian byte order"
+	@echo ""
+	@echo "Supported comps:"
+	@echo ""
+	@echo "gcc                  > Gnu compiler (default)"
+	@echo "icc                  > Intel compiler"
+	@echo ""
+	@echo "Non-standard targets:"
+	@echo ""
+	@echo "make hpux           >  Compile for HP-UX. Compiler = aCC"
+	@echo ""
+	@echo "Examples. If you don't know what to do, you likely want to run: "
+	@echo ""
+	@echo "make profile-build ARCH=x86-64    (This is for 64-bit systems)"
+	@echo "make profile-build ARCH=x86-32    (This is for 32-bit systems)"
+	@echo ""
+
+build:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+
+profile-build:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+	@echo ""
+	@echo "Step 0/4. Preparing for profile build."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_prepare)
+	@echo ""
+	@echo "Step 1/4. Building executable for benchmark ..."
+	@touch *.cpp *.h
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
+	@echo ""
+	@echo "Step 2/4. Running benchmark for pgo-build ..."
+	@$(PGOBENCH) > /dev/null
+	@echo ""
+	@echo "Step 3/4. Building final executable ..."
+	@touch *.cpp
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
+	@echo ""
+	@echo "Step 4/4. Deleting profile data ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
+
+popcnt-profile-build:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+	@echo ""
+	@echo "Step 0/6. Preparing for profile build."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_prepare)
+	@echo ""
+	@echo "Step 1/6. Building executable for benchmark (popcnt disabled)..."
+	@touch *.cpp *.h
+	$(MAKE) ARCH=x86-64 COMP=$(COMP) $(profile_make)
+	@echo ""
+	@echo "Step 2/6. Running benchmark for pgo-build (popcnt disabled)..."
+	@$(PGOBENCH) > /dev/null
+	@echo ""
+	@echo "Step 3/6. Building executable for benchmark (popcnt enabled)..."
+	@touch *.cpp *.h
+	$(MAKE) ARCH=x86-64-modern COMP=$(COMP) $(profile_make)
+	@echo ""
+	@echo "Step 4/6. Running benchmark for pgo-build (popcnt enabled)..."
+	@$(PGOBENCH) > /dev/null
+	@echo ""
+	@echo "Step 5/6. Building final executable ..."
+	@touch *.cpp *.h
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
+	@echo ""
+	@echo "Step 6/6. Deleting profile data ..."
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
+	@echo ""
+
+strip:
+	strip $(EXE)
+
+install: default
+	-mkdir -p -m 755 $(BINDIR)
+	-cp $(EXE) $(BINDIR)
+	-strip $(BINDIR)/$(EXE)
+
+clean:
+	$(RM) $(EXE) *.o .depend *~ core bench.txt
+
+testrun:
+	@$(PGOBENCH)
+
+### ==========================================================================
+### Section 5. Private targets
+### ==========================================================================
 
 all: $(EXE) .depend
 
-test check: default
-	@$(PGOBENCH)
+config-sanity:
+	@echo ""
+	@echo "Config:"
+	@echo "debug: '$(debug)'"
+	@echo "optimize: '$(optimize)'"
+	@echo "arch: '$(arch)'"
+	@echo "os: '$(os)'"
+	@echo "bits: '$(bits)'"
+	@echo "bigendian: '$(bigendian)'"
+	@echo "prefetch: '$(prefetch)'"
+	@echo "bsfq: '$(bsfq)'"
+	@echo "popcnt: '$(popcnt)'"
+	@echo ""
+	@echo "Flags:"
+	@echo "CXX: $(CXX)"
+	@echo "CXXFLAGS: $(CXXFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo ""
+	@echo "Testing config sanity. If this fails, try 'make help' ..."
+	@echo ""
+	@test "$(debug)" = "yes" || test "$(debug)" = "no"
+	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
+	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc"
+	@test "$(os)" = "any" || test "$(os)" = "osx"
+	@test "$(bits)" = "32" || test "$(bits)" = "64"
+	@test "$(bigendian)" = "yes" || test "$(bigendian)" = "no"
+	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
+	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
+	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icc"
 
-clean:
-	$(RM) *.o .depend *~ $(EXE) core bench.txt
+$(EXE): $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-
-### Possible targets. You may add your own ones here
-gcc:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	all
+gcc-profile-prepare:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) gcc-profile-clean
 
 gcc-profile-make:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-fprofile-generate' \
-	LDFLAGS="$(LDFLAGS)" \
-	LDFLAGS+=" -lgcov" \
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-fprofile-use' \
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-use' \
 	all
 
-gcc-profile:
-	@touch *.cpp *.h
-	$(MAKE) gcc-profile-make
-	@echo ""
-	@echo "Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
-	@echo "Benchmark finished. Build final executable now ..."
-	@echo ""
-	@touch *.cpp *.h
-	$(MAKE) gcc-profile-use
+gcc-profile-clean:
 	@rm -rf *.gcda bench.txt
 
-gcc-popcnt:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS) -DUSE_POPCNT" \
-	all
-
-icc:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS)" \
-	all
+icc-profile-prepare:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
+	@mkdir profdir
 
 icc-profile-make:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS)" \
-	CXXFLAGS+='-prof-gen=srcpos -prof_dir ./profdir' \
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-prof-gen=srcpos -prof_dir ./profdir' \
 	all
 
 icc-profile-use:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS)" \
-	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-prof_use -prof_dir ./profdir' \
 	all
 
-icc-profile:
-	@rm -rf profdir
-	@mkdir profdir
-	@touch *.cpp *.h
-	$(MAKE) icc-profile-make
-	@echo ""
-	@echo "Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
-	@echo "Benchmark finished. Build final executable now ..."
-	@echo ""
-	@touch *.cpp *.h
-	$(MAKE) icc-profile-use
+icc-profile-clean:
 	@rm -rf profdir bench.txt
 
-icc-profile-make-with-popcnt:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS) -DUSE_POPCNT" \
-	CXXFLAGS+='-prof-gen=srcpos -prof_dir ./profdir' \
-	all
+.depend:
+	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
-icc-profile-use-with-popcnt:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS) -DUSE_POPCNT" \
-	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
-	all
-
-icc-profile-popcnt:
-	@rm -rf profdir
-	@mkdir profdir
-	@touch *.cpp *.h
-	$(MAKE) icc-profile-make
-	@echo ""
-	@echo "Running benchmark for pgo-build (popcnt disabled)..."
-	@$(PGOBENCH) > /dev/null
-	@touch *.cpp *.h
-	$(MAKE) icc-profile-make-with-popcnt
-	@echo ""
-	@echo "Running benchmark for pgo-build (popcnt enabled)..."
-	@$(PGOBENCH) > /dev/null
-	@echo "Benchmarks finished. Build final executable now ..."
-	@echo ""
-	@touch *.cpp *.h
-	$(MAKE) icc-profile-use-with-popcnt
-	@rm -rf profdir bench.txt
+-include .depend
 
 
-osx-ppc32:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-arch ppc' \
-	CXXFLAGS+='-DBIGENDIAN' \
-	LDFLAGS+='-arch ppc' \
-	all
-
-osx-ppc64:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-arch ppc64' \
-	CXXFLAGS+='-DBIGENDIAN' \
-	LDFLAGS+='-arch ppc64' \
-	all
-
-osx-x86:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-arch i386 -mdynamic-no-pic' \
-	LDFLAGS+='-arch i386 -mdynamic-no-pic' \
-	all
-
-osx-x86_64:
-	$(MAKE) \
-	CXX='g++' \
-	CXXFLAGS="$(GCCFLAGS)" \
-	CXXFLAGS+='-arch x86_64 -mdynamic-no-pic' \
-	LDFLAGS+='-arch x86_64 -mdynamic-no-pic' \
-	all
-
-osx-icc32:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS-OSX)" \
-	CXXFLAGS+='-arch i386' \
-	LDFLAGS+='-arch i386' \
-	all
-
-osx-icc64:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS-OSX)" \
-	CXXFLAGS+='-arch x86_64' \
-	LDFLAGS+='-arch x86_64' \
-	all
-
-osx-icc32-profile-make:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS-OSX)" \
-	CXXFLAGS+='-arch i386' \
-	CXXFLAGS+='-prof_gen -prof_dir ./profdir' \
-	LDFLAGS+='-arch i386' \
-	all
-
-osx-icc32-profile-use:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS-OSX)" \
-	CXXFLAGS+='-arch i386' \
-	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
-	LDFLAGS+='-arch i386' \
-	all
-
-osx-icc32-profile:
-	@rm -rf profdir
-	@mkdir profdir
-	@touch *.cpp *.h
-	$(MAKE) osx-icc32-profile-make
-	@echo ""
-	@echo "Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
-	@echo "Benchmark finished. Build final executable now ..."
-	@echo ""
-	@touch *.cpp *.h
-	$(MAKE) osx-icc32-profile-use
-	@rm -rf profdir bench.txt
-
-osx-icc64-profile-make:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS-OSX)" \
-	CXXFLAGS+='-arch x86_64' \
-	CXXFLAGS+='-prof_gen -prof_dir ./profdir' \
-	LDFLAGS+='-arch x86_64' \
-	all
-
-osx-icc64-profile-use:
-	$(MAKE) \
-	CXX='icpc' \
-	CXXFLAGS="$(ICCFLAGS-OSX)" \
-	CXXFLAGS+='-arch x86_64' \
-	CXXFLAGS+='-prof_use -prof_dir ./profdir' \
-	LDFLAGS+='-arch x86_64' \
-	all
-
-osx-icc64-profile:
-	@rm -rf profdir
-	@mkdir profdir
-	@touch *.cpp *.h
-	$(MAKE) osx-icc64-profile-make
-	@echo ""
-	@echo "Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
-	@echo "Benchmark finished. Build final executable now ..."
-	@echo ""
-	@touch *.cpp *.h
-	$(MAKE) osx-icc64-profile-use
-	@rm -rf profdir bench.txt
+### ==========================================================================
+### Section 6. Non-standard targets
+### ==========================================================================
 
 hpux:
 	$(MAKE) \
@@ -339,23 +503,3 @@ hpux:
 	LDFLAGS="" \
 	all
 
-
-strip:
-	strip $(EXE)
-
-
-### Compilation. Do not change
-$(EXE): $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
-
-### Installation
-install: default
-	-mkdir -p -m 755 $(BINDIR)
-	-cp $(EXE) $(BINDIR)
-	-strip $(BINDIR)/$(EXE)
-
-### Dependencies. Do not change
-.depend:
-	-@$(CXX) -msse -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
-
--include .depend
