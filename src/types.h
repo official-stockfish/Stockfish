@@ -49,22 +49,29 @@ typedef uint64_t Bitboard;
 
 
 ////
-//// Compiler specific defines
+//// Configuration
 ////
 
-// Quiet a warning on Intel compiler
-#if !defined(__SIZEOF_INT__ )
-#define __SIZEOF_INT__ 0
-#endif
+//// For Linux configuration is done using Makefile. To get started type "make help".
+////
+//// For windows you need to set the right compiler switches manually:
+////
+//// -DNDEBUG       | Disable debugging mode. Use always.
+////
+//// -DIS_64BIT     | Compile in 64-bit mode. Use on 64-bit systems.
+////
+//// -DBIGENDIAN    | Should not be used on Windows
+////
+//// -DUSE_PREFETCH | Use prefetch asm-instruction. Gives a small speed up,
+////                | but executable won't work on some very old machines.
+////
+//// -DUSE_BSFQ     | Use bsfq asm-instruction. Works only in 64-bit mode.
+////                | Works with ICC and GCC, not with MSVC. Gives a small speed up.
+////
+//// -DUSE_POPCNT   | Add runtime support for use of popcnt asm-instruction.
+////                | Works only in 64-bit mode. For compiling requires hardware
+////                | with popcnt support. Around 4% speed-up.
 
-// Check for 64 bits for different compilers: Intel, MSVC and gcc
-#if defined(__x86_64) || defined(_M_X64) || defined(_WIN64) || (__SIZEOF_INT__ > 4)
-#define IS_64BIT
-#endif
-
-#if defined(IS_64BIT) && (defined(__GNUC__) || defined(__INTEL_COMPILER))
-#define USE_BSFQ
-#endif
 
 // Cache line alignment specification
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)

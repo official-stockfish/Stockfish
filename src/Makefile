@@ -52,7 +52,7 @@ OBJS = application.o bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 # os = (name)         ---             --- Target operating system
 # bits = 64/32        --- -DIS_64BIT  --- 64-/32-bit operating system
 # bigendian = no/yes  --- -DBIGENDIAN --- big/little-endian byte order
-# prefetch = no/yes   --- -DPREFETCH  --- Use prefetch x86 asm-instruction
+# prefetch = no/yes   --- -DUSE_PREFETCH  --- Use prefetch x86 asm-instruction
 # bsfq = no/yes       --- -DUSE_BSFQ  --- Use bsfq x86_64 asm-instruction
 #                                     --- (Works only with GCC and ICC 64-bit)
 # popcnt = no/yes     --- -DUSE_POPCNT --- Use popcnt x86_64 asm-instruction
