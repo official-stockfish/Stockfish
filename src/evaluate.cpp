@@ -820,9 +820,6 @@ namespace {
                 squaresToQueen = squares_in_front_of(Us, s);
                 defendedSquares = squaresToQueen & ei.attacked_by(Us);
 
-                // There are no enemy pawns in the pawn's path
-                assert(!(squaresToQueen & pos.pieces(PAWN, Them)));
-
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen. Otherwise consider only
                 // the squares in the pawn's path attacked or occupied by the enemy.
