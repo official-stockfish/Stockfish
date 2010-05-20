@@ -25,7 +25,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#if defined(USE_PREFETCH)
+#if !defined(NO_PREFETCH)
 #  include <xmmintrin.h>
 #endif
 
@@ -166,7 +166,7 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 /// to be loaded from RAM, that can be very slow. When we will
 /// subsequently call retrieve() the TT data will be already
 /// quickly accessible in L1/L2 CPU cache.
-#if !defined(USE_PREFETCH)
+#if defined(NO_PREFETCH)
 void TranspositionTable::prefetch(const Key) const {}
 #else
 
