@@ -400,7 +400,7 @@ popcnt-profile-build:
 strip:
 	strip $(EXE)
 
-install: default
+install:
 	-mkdir -p -m 755 $(BINDIR)
 	-cp $(EXE) $(BINDIR)
 	-strip $(BINDIR)/$(EXE)
@@ -467,7 +467,7 @@ gcc-profile-use:
 	all
 
 gcc-profile-clean:
-	@rm -rf *.gcda bench.txt
+	@rm -rf *.gcda *.gcno bench.txt
 
 icc-profile-prepare:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
