@@ -64,7 +64,6 @@ OBJS = application.o bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
 ### 2.1. General
 debug = no
 optimize = yes
-no_prefetch = yes
 
 ### 2.2 Architecture specific
 
@@ -279,12 +278,10 @@ endif
 
 ### 3.8 prefetch
 ifeq ($(prefetch),yes)
-	no_prefetch = no
-endif
-
-ifeq ($(no_prefetch),yes)
-	CXXFLAGS += -msse -DNO_PREFETCH
+	CXXFLAGS += -msse
 	DEPENDFLAGS += -msse
+else
+	CXXFLAGS += -DNO_PREFETCH
 endif
 
 ### 3.9 bsfq
