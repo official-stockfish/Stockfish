@@ -62,8 +62,8 @@ typedef uint64_t Bitboard;
 ////
 //// -DBIGENDIAN    | Should not be used on Windows
 ////
-//// -DUSE_PREFETCH | Use prefetch asm-instruction. Gives a small speed up,
-////                | but executable won't work on some very old machines.
+//// -DNO_PREFETCH  | Disable use of prefetch asm-instruction. A must if you want the
+////                | executable to run on some very old machines.
 ////
 //// -DUSE_BSFQ     | Use bsfq asm-instruction. Works only in 64-bit mode.
 ////                | Works with ICC and GCC, not with MSVC. Gives a small speed up.
