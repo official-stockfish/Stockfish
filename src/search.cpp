@@ -234,9 +234,6 @@ namespace {
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
 
-  // Maximum number of moves to try before to split (strong YBWC)
-  const int MaximumSplitMove = 3;
-
   // Last seconds noise filtering (LSN)
   const bool UseLSNFiltering = true;
   const int LSNTime = 4000; // In milliseconds
@@ -1366,7 +1363,6 @@ namespace {
       if (   TM.active_threads() > 1
           && bestValue < beta
           && depth >= MinimumSplitDepth
-          && (PvNode || moveCount > MaximumSplitMove * MinimumSplitDepth / depth)
           && Iteration <= 99
           && TM.available_thread_exists(threadID)
           && !AbortSearch
