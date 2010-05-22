@@ -54,9 +54,11 @@ class TTEntry {
 
 public:
   TTEntry() {}
-  TTEntry(uint32_t k, Value v, ValueType t, Depth d, Move m, int generation)
+  TTEntry(uint32_t k, Value v, ValueType t, Depth d, Move m, int generation,
+          Value statV, Value kingD)
         : key_ (k), data((m & 0x1FFFF) | (t << 20) | (generation << 23)),
-          value_(int16_t(v)), depth_(int16_t(d)) {}
+          value_(int16_t(v)), depth_(int16_t(d)),
+          staticValue_(int16_t(statV)), kingDanger_(int16_t(kingD)) {}
 
   uint32_t key() const { return key_; }
   Depth depth() const { return Depth(depth_); }
@@ -64,12 +66,16 @@ public:
   Value value() const { return Value(value_); }
   ValueType type() const { return ValueType((data >> 20) & 7); }
   int generation() const { return (data >> 23); }
+  Value static_value() const { return Value(staticValue_); }
+  Value king_danger() const { return Value(kingDanger_); }
 
 private:
   uint32_t key_;
   uint32_t data;
   int16_t value_;
   int16_t depth_;
+  int16_t staticValue_;
+  int16_t kingDanger_;
 };
 
 
@@ -97,7 +103,7 @@ public:
   ~TranspositionTable();
   void set_size(size_t mbSize);
   void clear();
-  void store(const Key posKey, Value v, ValueType type, Depth d, Move m);
+  void store(const Key posKey, Value v, ValueType type, Depth d, Move m, Value statV, Value kingD);
   TTEntry* retrieve(const Key posKey) const;
   void prefetch(const Key posKey) const;
   void new_search();

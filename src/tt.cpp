@@ -111,7 +111,7 @@ inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 /// is bigger than the depth of t2. A TTEntry of type VALUE_TYPE_EVAL
 /// never replaces another entry for the same position.
 
-void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m) {
+void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m, Value statV, Value kingD) {
 
   TTEntry *tte, *replace;
   uint32_t posKey32 = posKey >> 32; // Use the high 32 bits as key
@@ -125,7 +125,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           if (m == MOVE_NONE)
               m = tte->move();
 
-          *tte = TTEntry(posKey32, v, t, d, m, generation);
+          *tte = TTEntry(posKey32, v, t, d, m, generation, statV, kingD);
           return;
       }
       else if (i == 0)  // replace would be a no-op in this common case
@@ -138,7 +138,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
       if (c1 + c2 + c3 > 0)
           replace = tte;
   }
-  *replace = TTEntry(posKey32, v, t, d, m, generation);
+  *replace = TTEntry(posKey32, v, t, d, m, generation, statV, kingD);
   writes++;
 }
 
@@ -211,7 +211,7 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
   {
       TTEntry *tte = retrieve(p.get_key());
       if (!tte || tte->move() != pv[i])
-          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i]);
+          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i], VALUE_NONE, VALUE_NONE);
       p.do_move(pv[i], st);
   }
 }

@@ -1095,7 +1095,7 @@ namespace {
     if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
     {
         // Refresh tte entry to avoid aging
-        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove);
+        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove, tte->static_value(), tte->king_danger());
 
         ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
@@ -1106,8 +1106,11 @@ namespace {
     isCheck = pos.is_check();
     if (!isCheck)
     {
-        if (tte && (tte->type() & VALUE_TYPE_EVAL))
-            ss[ply].eval = value_from_tt(tte->value(), ply);
+        if (tte && tte->static_value() != VALUE_NONE)
+        {
+            ss[ply].eval = tte->static_value();
+            ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+        }
         else
             ss[ply].eval = evaluate(pos, ei, threadID);
 
@@ -1385,13 +1388,13 @@ namespace {
         return bestValue;
 
     if (bestValue <= oldAlpha)
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE);
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE, ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
 
     else if (bestValue >= beta)
     {
         TM.incrementBetaCounter(pos.side_to_move(), depth, threadID);
         move = ss[ply].pv[ply];
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move);
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move, ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
         if (!pos.move_is_capture_or_promotion(move))
         {
             update_history(pos, move, depth, movesSearched, moveCount);
@@ -1399,7 +1402,7 @@ namespace {
         }
     }
     else
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply]);
+        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss[ply].pv[ply], ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1449,8 +1452,6 @@ namespace {
 
     if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
     {
-        assert(tte->type() != VALUE_TYPE_EVAL);
-
         ss[ply].currentMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
     }
@@ -1460,8 +1461,11 @@ namespace {
     // Evaluate the position statically
     if (isCheck)
         staticValue = -VALUE_INFINITE;
-    else if (tte && (tte->type() & VALUE_TYPE_EVAL))
-        staticValue = value_from_tt(tte->value(), ply);
+    else if (tte && tte->static_value() != VALUE_NONE)
+    {
+        staticValue = tte->static_value();
+        ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+    }
     else
         staticValue = evaluate(pos, ei, threadID);
 
@@ -1479,7 +1483,7 @@ namespace {
     {
         // Store the score to avoid a future costly evaluation() call
         if (!isCheck && !tte && ei.kingDanger[pos.side_to_move()] == 0)
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EV_LO, Depth(-127*OnePly), MOVE_NONE);
+            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, Depth(-127*OnePly), MOVE_NONE, ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
 
         return bestValue;
     }
@@ -1577,20 +1581,19 @@ namespace {
     {
         // If bestValue isn't changed it means it is still the static evaluation
         // of the node, so keep this info to avoid a future evaluation() call.
-        ValueType type = (bestValue == staticValue && !ei.kingDanger[pos.side_to_move()] ? VALUE_TYPE_EV_UP : VALUE_TYPE_UPPER);
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), type, d, MOVE_NONE);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE, ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
     }
     else if (bestValue >= beta)
     {
         move = ss[ply].pv[ply];
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move, ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
 
         // Update killers only for good checking moves
         if (!pos.move_is_capture_or_promotion(move))
             update_killers(move, ss[ply]);
     }
     else
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, d, ss[ply].pv[ply]);
+        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, d, ss[ply].pv[ply], ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
