@@ -74,7 +74,7 @@ private:
 
 
 /// This is the number of TTEntry slots for each position
-const int ClusterSize = 5;
+const int ClusterSize = 4;
 
 /// Each group of ClusterSize number of TTEntry form a TTCluster
 /// that is indexed by a single position key. Cluster is padded
