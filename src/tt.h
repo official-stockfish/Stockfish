@@ -83,12 +83,12 @@ private:
 const int ClusterSize = 4;
 
 /// Each group of ClusterSize number of TTEntry form a TTCluster
-/// that is indexed by a single position key. Cluster is padded
-/// to a cache line size so to guarantee always aligned accesses.
+/// that is indexed by a single position key. TTCluster size must
+//  be not bigger then a cache line size, in case it is less then
+/// it should be padded to guarantee always aligned accesses.
 
 struct TTCluster {
   TTEntry data[ClusterSize];
-  char cache_line_padding[64 - sizeof(TTEntry[ClusterSize])];
 };
 
 
