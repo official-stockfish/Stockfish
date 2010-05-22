@@ -914,6 +914,7 @@ namespace {
             Square s = pop_1st_bit(&b);
             Square queeningSquare = relative_square(c, make_square(square_file(s), RANK_8));
             int d =  square_distance(s, queeningSquare)
+                   - (relative_rank(c, s) == RANK_2) // Double pawn push
                    - square_distance(pos.king_square(opposite_color(c)), queeningSquare)
                    + int(c != pos.side_to_move());
 
