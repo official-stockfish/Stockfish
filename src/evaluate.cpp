@@ -812,7 +812,6 @@ namespace {
     {
         Square s = pop_1st_bit(&b);
 
-        assert(pos.piece_on(s) == piece_of_color_and_type(Us, PAWN));
         assert(pos.pawn_is_passed(Us, s));
 
         int r = int(relative_rank(Us, s) - RANK_2);
