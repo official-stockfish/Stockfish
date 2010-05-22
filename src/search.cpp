@@ -1482,7 +1482,7 @@ namespace {
     if (bestValue >= beta)
     {
         // Store the score to avoid a future costly evaluation() call
-        if (!isCheck && !tte && ei.kingDanger[pos.side_to_move()] == 0)
+        if (!isCheck && !tte)
             TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, Depth(-127*OnePly), MOVE_NONE, ss[ply].eval, ei.kingDanger[pos.side_to_move()]);
 
         return bestValue;
