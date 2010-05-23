@@ -148,10 +148,6 @@ namespace {
 
   #undef S
 
-  // Threats weights indexed by sente (side to move has a bigger weight)
-  const int ConcurrentThreatsWeight[2] = { 3, 15 };
-  const int ThreatsWeight[2] = { 249, 267 };
-
   // Bonus for unstoppable passed pawns
   const Value UnstoppablePawnValue = Value(0x500);
 
@@ -640,8 +636,6 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b;
-    Value mg, eg;
-    int sente, threatCount = 0;
     Score bonus = make_score(0, 0);
 
     // Enemy pieces not defended by a pawn and under our attack
@@ -660,20 +654,9 @@ namespace {
         if (b)
             for (PieceType pt2 = PAWN; pt2 < KING; pt2++)
                 if (b & pos.pieces(pt2))
-                {
                     bonus += ThreatBonus[pt1][pt2];
-                    threatCount++;
-                }
     }
-
-    sente = (Us == pos.side_to_move());
-
-    // Non linear threat evaluation. Increase threats score according to the
-    // number of concurrent threats and to the side to move.
-    mg = (mg_value(bonus) + mg_value(bonus) * ConcurrentThreatsWeight[sente] * threatCount / 256) * ThreatsWeight[sente] / 256;
-    eg = (eg_value(bonus) + eg_value(bonus) * ConcurrentThreatsWeight[sente] * threatCount / 256) * ThreatsWeight[sente] / 256;
-
-    ei.value += Sign[Us] * make_score(mg, eg);
+    ei.value += Sign[Us] * bonus;
   }
 
 
