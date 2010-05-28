@@ -1309,8 +1309,8 @@ namespace {
           value = -search<PV>(pos, ss, -beta, -alpha, newDepth, ply+1, false, threadID);
       else
       {
-          // Step 14. Reduced search
-          // if the move fails high will be re-searched at full depth.
+          // Step 14. Reduced depth search
+          // If the move fails high will be re-searched at full depth.
           bool doFullDepthSearch = true;
 
           if (    depth >= 3 * OnePly
@@ -1322,6 +1322,16 @@ namespace {
               ss[ply].reduction = reduction<PvNode>(depth, moveCount);
               if (ss[ply].reduction)
               {
+                  value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
+                  doFullDepthSearch = (value > alpha);
+              }
+
+              // The move failed high, but if reduction is very big we could
+              // face a false positive, retry with a less aggressive reduction,
+              // if the move fails high again then go with full depth search.
+              if (doFullDepthSearch && ss[ply].reduction > 2 * OnePly)
+              {
+                  ss[ply].reduction = OnePly;
                   value = -search<NonPV>(pos, ss, -(alpha+1), -alpha, newDepth-ss[ply].reduction, ply+1, true, threadID);
                   doFullDepthSearch = (value > alpha);
               }
@@ -1687,7 +1697,7 @@ namespace {
       pos.do_move(move, st, ci, moveIsCheck);
 
       // Step 14. Reduced search
-      // if the move fails high will be re-searched at full depth.
+      // If the move fails high will be re-searched at full depth.
       bool doFullDepthSearch = true;
 
       if (   !dangerous
@@ -1698,6 +1708,17 @@ namespace {
           ss[sp->ply].reduction = reduction<PvNode>(sp->depth, moveCount);
           if (ss[sp->ply].reduction)
           {
+              Value localAlpha = sp->alpha;
+              value = -search<NonPV>(pos, ss, -(localAlpha+1), -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
+              doFullDepthSearch = (value > localAlpha);
+          }
+
+          // The move failed high, but if reduction is very big we could
+          // face a false positive, retry with a less aggressive reduction,
+          // if the move fails high again then go with full depth search.
+          if (doFullDepthSearch && ss[sp->ply].reduction > 2 * OnePly)
+          {
+              ss[sp->ply].reduction = OnePly;
               Value localAlpha = sp->alpha;
               value = -search<NonPV>(pos, ss, -(localAlpha+1), -localAlpha, newDepth-ss[sp->ply].reduction, sp->ply+1, true, threadID);
               doFullDepthSearch = (value > localAlpha);
