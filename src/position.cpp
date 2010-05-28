@@ -828,13 +828,13 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       set_bit(&(byTypeBB[promotion]), to);
       board[to] = piece_of_color_and_type(us, promotion);
 
+      // Update piece counts      
+      pieceCount[us][promotion]++;
+      pieceCount[us][PAWN]--;
+
       // Update material key
       st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
-      st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]+1];
-
-      // Update piece counts
-      pieceCount[us][PAWN]--;
-      pieceCount[us][promotion]++;
+      st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]-1];
 
       // Update piece lists, move the last pawn at index[to] position
       // and shrink the list. Add a new promotion piece to the list.
@@ -932,11 +932,11 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
     else
         st->npMaterial[them] -= piece_value_midgame(capture);
 
-    // Update material hash key
-    st->materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
-
     // Update piece count
     pieceCount[them][capture]--;
+
+    // Update material hash key
+    st->materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
 
     // Update piece list, move the last piece at index[capsq] position
     //
@@ -1598,7 +1598,7 @@ Key Position::compute_material_key() const {
       for (PieceType pt = PAWN; pt <= QUEEN; pt++)
       {
           int count = piece_count(c, pt);
-          for (int i = 0; i <= count; i++)
+          for (int i = 0; i < count; i++)
               result ^= zobMaterial[c][pt][i];
       }
   return result;
@@ -1755,10 +1755,10 @@ void Position::init_zobrist() {
 
   for (int i = 0; i < 2; i++)
       for (int j = 0; j < 8; j++)
-          for (int k = 0; k < 16; k++)
-              zobMaterial[i][j][k] = (k > 0)? Key(genrand_int64()) : Key(0LL);
+          for (int k = 0; k < 8; k++)
+              zobMaterial[i][j][k] = Key(genrand_int64());
 
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 8; i++)
       zobMaterial[0][KING][i] = zobMaterial[1][KING][i] = Key(0ULL);
 
   zobExclusion = genrand_int64();
