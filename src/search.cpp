@@ -188,7 +188,7 @@ namespace {
   const Depth IIDDepth[2] = { 8 * OnePly /* non-PV */, 5 * OnePly /* PV */};
 
   // At Non-PV nodes we do an internal iterative deepening search
-  // when the static evaluation is at most IIDMargin below beta.
+  // when the static evaluation is bigger then beta - IIDMargin.
   const Value IIDMargin = Value(0x100);
 
   // Step 11. Decide the new search depth
