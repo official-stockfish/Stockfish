@@ -47,7 +47,6 @@ using std::string;
 Key Position::zobrist[2][8][64];
 Key Position::zobEp[64];
 Key Position::zobCastle[16];
-Key Position::zobMaterial[2][8][16];
 Key Position::zobSideToMove;
 Key Position::zobExclusion;
 
@@ -833,8 +832,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       pieceCount[us][PAWN]--;
 
       // Update material key
-      st->materialKey ^= zobMaterial[us][PAWN][pieceCount[us][PAWN]];
-      st->materialKey ^= zobMaterial[us][promotion][pieceCount[us][promotion]-1];
+      st->materialKey ^= zobrist[us][PAWN][pieceCount[us][PAWN]];
+      st->materialKey ^= zobrist[us][promotion][pieceCount[us][promotion]-1];
 
       // Update piece lists, move the last pawn at index[to] position
       // and shrink the list. Add a new promotion piece to the list.
@@ -936,7 +935,7 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
     pieceCount[them][capture]--;
 
     // Update material hash key
-    st->materialKey ^= zobMaterial[them][capture][pieceCount[them][capture]];
+    st->materialKey ^= zobrist[them][capture][pieceCount[them][capture]];
 
     // Update piece list, move the last piece at index[capsq] position
     //
@@ -1599,7 +1598,7 @@ Key Position::compute_material_key() const {
       {
           int count = piece_count(c, pt);
           for (int i = 0; i < count; i++)
-              result ^= zobMaterial[c][pt][i];
+              result ^= zobrist[c][pt][i];
       }
   return result;
 }
@@ -1752,15 +1751,6 @@ void Position::init_zobrist() {
       zobCastle[i] = genrand_int64();
 
   zobSideToMove = genrand_int64();
-
-  for (int i = 0; i < 2; i++)
-      for (int j = 0; j < 8; j++)
-          for (int k = 0; k < 8; k++)
-              zobMaterial[i][j][k] = Key(genrand_int64());
-
-  for (int i = 0; i < 8; i++)
-      zobMaterial[0][KING][i] = zobMaterial[1][KING][i] = Key(0ULL);
-
   zobExclusion = genrand_int64();
 }
 

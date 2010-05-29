@@ -334,7 +334,6 @@ private:
   static Key zobrist[2][8][64];
   static Key zobEp[64];
   static Key zobCastle[16];
-  static Key zobMaterial[2][8][16];
   static Key zobSideToMove;
   static Score PieceSquareTable[16][64];
   static Key zobExclusion;
