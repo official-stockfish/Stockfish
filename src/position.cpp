@@ -697,7 +697,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   assert(is_ok());
   assert(move_is_ok(m));
 
-  Bitboard key = st->key;
+  Key key = st->key;
 
   // Copy some fields of old state to our new StateInfo object except the
   // ones which are recalculated from scratch anyway, then switch our state
@@ -896,7 +896,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 /// Position::do_capture_move() is a private method used to update captured
 /// piece info. It is called from the main Position::do_move function.
 
-void Position::do_capture_move(Bitboard& key, PieceType capture, Color them, Square to, bool ep) {
+void Position::do_capture_move(Key& key, PieceType capture, Color them, Square to, bool ep) {
 
     assert(capture != KING);
 
