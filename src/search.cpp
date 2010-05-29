@@ -1207,8 +1207,8 @@ namespace {
     }
 
     // Step 9. Internal iterative deepening
-    if (   depth >= IIDDepth[PvNode]
-        && ttMove == MOVE_NONE
+    if (    depth >= IIDDepth[PvNode]
+        && (ttMove == MOVE_NONE || (PvNode && tte->depth() <= depth - 4 * OnePly))
         && (PvNode || (!isCheck && ss[ply].eval >= beta - IIDMargin)))
     {
         Depth d = (PvNode ? depth - 2 * OnePly : depth / 2);
