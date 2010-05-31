@@ -2787,7 +2787,7 @@ namespace {
         init_ss_array(ss);
         pos.do_move(cur->move, st);
         moves[count].move = cur->move;
-        moves[count].score = -qsearch<PV>(pos, ss, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
+        moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
         moves[count].pv[0] = cur->move;
         moves[count].pv[1] = MOVE_NONE;
         pos.undo_move(cur->move);
