@@ -83,7 +83,7 @@ enum ThreadState
 };
 
 struct Thread {
-  SplitPoint* splitPoint;
+  SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
