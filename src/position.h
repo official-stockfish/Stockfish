@@ -100,7 +100,7 @@ enum Phase {
 
 struct StateInfo {
   Key pawnKey, materialKey;
-  int castleRights, rule50, pliesFromNull;
+  int castleRights, rule50, gamePly, pliesFromNull;
   Square epSquare;
   Score value;
   Value npMaterial[2];
@@ -323,7 +323,6 @@ private:
 
   // Other info
   Color sideToMove;
-  int gamePly;
   Key history[MaxGameLength];
   int castleRightsMask[64];
   StateInfo startState;

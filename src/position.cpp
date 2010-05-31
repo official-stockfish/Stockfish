@@ -703,7 +703,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // pointer to point to the new, ready to be updated, state.
   struct ReducedStateInfo {
     Key pawnKey, materialKey;
-    int castleRights, rule50, pliesFromNull;
+    int castleRights, rule50, gamePly, pliesFromNull;
     Square epSquare;
     Score value;
     Value npMaterial[2];
@@ -715,8 +715,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[gamePly] = key;
-  gamePly++;
+  history[st->gamePly++] = key;
 
   // Update side to move
   key ^= zobSideToMove;
@@ -1061,7 +1060,6 @@ void Position::undo_move(Move m) {
   assert(is_ok());
   assert(move_is_ok(m));
 
-  gamePly--;
   sideToMove = opposite_color(sideToMove);
 
   if (move_is_castle(m))
@@ -1110,7 +1108,6 @@ void Position::undo_move(Move m) {
       index[to] = pieceCount[us][PAWN] - 1;
       pieceList[us][PAWN][index[to]] = to;
   }
-
 
   // Put the piece back at the source square
   Bitboard move_bb = make_move_bb(to, from);
@@ -1246,7 +1243,7 @@ void Position::do_null_move(StateInfo& backupSt) {
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[gamePly] = st->key;
+  history[st->gamePly++] = st->key;
 
   // Update the necessary information
   if (st->epSquare != SQ_NONE)
@@ -1260,7 +1257,6 @@ void Position::do_null_move(StateInfo& backupSt) {
   st->rule50++;
   st->pliesFromNull = 0;
   st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
-  gamePly++;
 }
 
 
@@ -1282,7 +1278,7 @@ void Position::undo_null_move() {
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
   st->rule50--;
-  gamePly--;
+  st->gamePly--;
 }
 
 
@@ -1479,7 +1475,6 @@ void Position::clear() {
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
 
   sideToMove = WHITE;
-  gamePly = 0;
   initialKFile = FILE_E;
   initialKRFile = FILE_H;
   initialQRFile = FILE_A;
@@ -1494,7 +1489,7 @@ void Position::clear() {
 
 void Position::reset_game_ply() {
 
-  gamePly = 0;
+  st->gamePly = 0;
 }
 
 
@@ -1672,8 +1667,8 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by repetition?
-  for (int i = 4; i <= Min(Min(gamePly, st->rule50), st->pliesFromNull); i += 2)
-      if (history[gamePly - i] == st->key)
+  for (int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull); i <= e; i += 2)
+      if (history[st->gamePly - i] == st->key)
           return true;
 
   return false;
