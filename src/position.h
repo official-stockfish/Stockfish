@@ -271,7 +271,8 @@ public:
   bool opposite_colored_bishops() const;
   bool has_pawn_on_7th(Color c) const;
 
-  // Reset the gamePly variable to 0
+  // Game ply information
+  int ply() const;
   void reset_game_ply();
 
   // Position consistency check, for debugging
@@ -554,6 +555,10 @@ inline bool Position::move_is_capture_or_promotion(Move m) const {
 
 inline PieceType Position::captured_piece() const {
   return st->capture;
+}
+
+inline int Position::ply() const {
+  return st->gamePly;
 }
 
 #endif // !defined(POSITION_H_INCLUDED)
