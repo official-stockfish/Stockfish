@@ -89,7 +89,7 @@ namespace {
     void idle_loop(int threadID, SplitPoint* sp);
 
     template <bool Fake>
-    void split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
+    void split(const Position& pos, SearchStack* ss, Value* alpha, const Value beta, Value* bestValue,
                Depth depth, bool mateThreat, int* moveCount, MovePicker* mp, int master, bool pvNode);
 
   private:
@@ -285,10 +285,10 @@ namespace {
   Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
   template <NodeType PvNode>
-  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply, bool allowNullmove, int threadID,  Move excludedMove = MOVE_NONE);
+  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, bool allowNullmove, int threadID,  Move excludedMove = MOVE_NONE);
 
   template <NodeType PvNode>
-  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply, int threadID);
+  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int threadID);
 
   template <NodeType PvNode>
   void sp_search(SplitPoint* sp, int threadID);
@@ -637,6 +637,7 @@ namespace {
     H.clear();
     init_ss_array(ss);
     ValueByIteration[1] = rml.get_move_score(0);
+    p.reset_ply();
     Iteration = 1;
 
     // Is one move significantly better than others after initial scoring ?
@@ -877,7 +878,7 @@ namespace {
                         alpha = -VALUE_INFINITE;
 
                     // Full depth PV search, done on first move or after a fail high
-                    value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1, false, 0);
+                    value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, 0);
                 }
                 else
                 {
@@ -894,7 +895,7 @@ namespace {
                         if (ss->reduction)
                         {
                             // Reduced depth non-pv search using alpha as upperbound
-                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 1, true, 0);
+                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, true, 0);
                             doFullDepthSearch = (value > alpha);
                         }
                     }
@@ -904,12 +905,12 @@ namespace {
                     {
                         // Full depth non-pv search using alpha as upperbound
                         ss->reduction = Depth(0);
-                        value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, 1, true, 0);
+                        value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, true, 0);
 
                         // If we are above alpha then research at same depth but as PV
                         // to get a correct score or eventually a fail high above beta.
                         if (value > alpha)
-                            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1, false, 0);
+                            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, 0);
                     }
                 }
 
@@ -1033,12 +1034,12 @@ namespace {
 
   template <NodeType PvNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth,
-               int ply, bool allowNullmove, int threadID, Move excludedMove) {
+               bool allowNullmove, int threadID, Move excludedMove) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
-    assert(ply >= 0 && ply < PLY_MAX);
+    assert(pos.ply() > 0 && pos.ply() < PLY_MAX);
     assert(threadID >= 0 && threadID < TM.active_threads());
 
     Move movesSearched[256];
@@ -1052,11 +1053,12 @@ namespace {
     bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
+    int ply = pos.ply();
     refinedValue = bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
 
     if (depth < OnePly)
-        return qsearch<PvNode>(pos, ss, alpha, beta, Depth(0), ply, threadID);
+        return qsearch<PvNode>(pos, ss, alpha, beta, Depth(0), threadID);
 
     // Step 1. Initialize node and poll
     // Polling can abort search.
@@ -1129,7 +1131,7 @@ namespace {
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
-        Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, Depth(0), ply, threadID);
+        Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, Depth(0), threadID);
         if (v < rbeta)
             // Logically we should return (v + razor_margin(depth)), but
             // surprisingly this did slightly weaker in tests.
@@ -1171,7 +1173,7 @@ namespace {
 
         pos.do_null_move(st);
 
-        nullValue = -search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*OnePly, ply+1, false, threadID);
+        nullValue = -search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*OnePly, false, threadID);
 
         pos.undo_null_move();
 
@@ -1185,7 +1187,7 @@ namespace {
                 return nullValue;
 
             // Do zugzwang verification search
-            Value v = search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, ply, false, threadID);
+            Value v = search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, false, threadID);
             if (v >= beta)
                 return nullValue;
         } else {
@@ -1212,7 +1214,7 @@ namespace {
         && (PvNode || (!isCheck && ss->eval >= beta - IIDMargin)))
     {
         Depth d = (PvNode ? depth - 2 * OnePly : depth / 2);
-        search<PvNode>(pos, ss, alpha, beta, d, ply, false, threadID);
+        search<PvNode>(pos, ss, alpha, beta, d, false, threadID);
         ttMove = ss->pv[ply];
         tte = TT.retrieve(posKey);
     }
@@ -1259,7 +1261,7 @@ namespace {
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
               Value b = ttValue - SingularExtensionMargin;
-              Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply, false, threadID, move);
+              Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, false, threadID, move);
 
               if (v < ttValue - SingularExtensionMargin)
                   ext = OnePly;
@@ -1306,7 +1308,7 @@ namespace {
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
       if (PvNode && moveCount == 1)
-          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1, false, threadID);
+          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, threadID);
       else
       {
           // Step 14. Reduced depth search
@@ -1322,7 +1324,7 @@ namespace {
               ss->reduction = reduction<PvNode>(depth, moveCount);
               if (ss->reduction)
               {
-                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, ply+1, true, threadID);
+                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, true, threadID);
                   doFullDepthSearch = (value > alpha);
               }
 
@@ -1332,7 +1334,7 @@ namespace {
               if (doFullDepthSearch && ss->reduction > 2 * OnePly)
               {
                   ss->reduction = OnePly;
-                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, ply+1, true, threadID);
+                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, true, threadID);
                   doFullDepthSearch = (value > alpha);
               }
           }
@@ -1341,13 +1343,13 @@ namespace {
           if (doFullDepthSearch)
           {
               ss->reduction = Depth(0);
-              value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1, true, threadID);
+              value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, true, threadID);
 
               // Step extra. pv search (only in PV nodes)
               // Search only for possible new PV nodes, if instead value >= beta then
               // parent node fails low with value <= alpha and tries another move.
               if (PvNode && value > alpha && value < beta)
-                  value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1, false, threadID);
+                  value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, threadID);
           }
       }
 
@@ -1380,7 +1382,7 @@ namespace {
           && TM.available_thread_exists(threadID)
           && !AbortSearch
           && !TM.thread_should_stop(threadID))
-          TM.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
+          TM.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
                               mateThreat, &moveCount, &mp, threadID, PvNode);
     }
 
@@ -1425,14 +1427,13 @@ namespace {
   // less than OnePly).
 
   template <NodeType PvNode>
-  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta,
-                Depth depth, int ply, int threadID) {
+  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int threadID) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
     assert(depth <= 0);
-    assert(ply >= 0 && ply < PLY_MAX);
+    assert(pos.ply() > 0 && pos.ply() < PLY_MAX);
     assert(threadID >= 0 && threadID < TM.active_threads());
 
     EvalInfo ei;
@@ -1442,6 +1443,7 @@ namespace {
     bool isCheck, enoughMaterial, moveIsCheck, evasionPrunable;
     const TTEntry* tte = NULL;
     int moveCount = 0;
+    int ply = pos.ply();
     Value oldAlpha = alpha;
 
     // Initialize, and make an early exit in case of an aborted search,
@@ -1563,7 +1565,7 @@ namespace {
 
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
-      value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-OnePly, ply+1, threadID);
+      value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-OnePly, threadID);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -1636,6 +1638,7 @@ namespace {
 
     Position pos(*sp->pos);
     CheckInfo ci(pos);
+    int ply = pos.ply();
     SearchStack* ss = sp->sstack[threadID] + 1;
     isCheck = pos.is_check();
 
@@ -1709,7 +1712,7 @@ namespace {
           if (ss->reduction)
           {
               Value localAlpha = sp->alpha;
-              value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, sp->ply+1, true, threadID);
+              value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, true, threadID);
               doFullDepthSearch = (value > localAlpha);
           }
 
@@ -1720,7 +1723,7 @@ namespace {
           {
               ss->reduction = OnePly;
               Value localAlpha = sp->alpha;
-              value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, sp->ply+1, true, threadID);
+              value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, true, threadID);
               doFullDepthSearch = (value > localAlpha);
           }
       }
@@ -1730,10 +1733,10 @@ namespace {
       {
           ss->reduction = Depth(0);
           Value localAlpha = sp->alpha;
-          value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, sp->ply+1, true, threadID);
+          value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, true, threadID);
 
           if (PvNode && value > localAlpha && value < sp->beta)
-              value = -search<PV>(pos, ss+1, -sp->beta, -sp->alpha, newDepth, sp->ply+1, false, threadID);
+              value = -search<PV>(pos, ss+1, -sp->beta, -sp->alpha, newDepth, false, threadID);
       }
 
       // Step 16. Undo move
@@ -1756,7 +1759,7 @@ namespace {
               if (PvNode && value < sp->beta) // This guarantees that always: sp->alpha < sp->beta
                   sp->alpha = value;
 
-              sp_update_pv(sp->parentSstack, ss, sp->ply);
+              sp_update_pv(sp->parentSstack, ss, ply);
           }
       }
     }
@@ -2622,11 +2625,10 @@ namespace {
   // split() returns.
 
   template <bool Fake>
-  void ThreadsManager::split(const Position& p, SearchStack* ss, int ply, Value* alpha,
-                             const Value beta, Value* bestValue, Depth depth, bool mateThreat,
-                             int* moveCount, MovePicker* mp, int master, bool pvNode) {
+  void ThreadsManager::split(const Position& p, SearchStack* ss, Value* alpha, const Value beta,
+                             Value* bestValue, Depth depth, bool mateThreat, int* moveCount,
+                             MovePicker* mp, int master, bool pvNode) {
     assert(p.is_ok());
-    assert(ply > 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
     assert(*bestValue <= *alpha);
     assert(*alpha < beta);
@@ -2652,7 +2654,6 @@ namespace {
     // Initialize the split point object
     splitPoint->parent = threads[master].splitPoint;
     splitPoint->stopRequest = false;
-    splitPoint->ply = ply;
     splitPoint->depth = depth;
     splitPoint->mateThreat = mateThreat;
     splitPoint->alpha = *alpha;
@@ -2787,7 +2788,7 @@ namespace {
         init_ss_array(ss);
         pos.do_move(cur->move, st);
         moves[count].move = cur->move;
-        moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1, 0);
+        moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 0);
         moves[count].pv[0] = cur->move;
         moves[count].pv[1] = MOVE_NONE;
         pos.undo_move(cur->move);

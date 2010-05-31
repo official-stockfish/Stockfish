@@ -703,7 +703,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // pointer to point to the new, ready to be updated, state.
   struct ReducedStateInfo {
     Key pawnKey, materialKey;
-    int castleRights, rule50, gamePly, pliesFromNull;
+    int castleRights, rule50, ply, pliesFromNull;
     Square epSquare;
     Score value;
     Value npMaterial[2];
@@ -715,7 +715,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[st->gamePly++] = key;
+  history[st->ply++] = key;
 
   // Update side to move
   key ^= zobSideToMove;
@@ -819,7 +819,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           set_bit(&(byTypeBB[promotion]), to);
           board[to] = piece_of_color_and_type(us, promotion);
 
-          // Update piece counts      
+          // Update piece counts
           pieceCount[us][promotion]++;
           pieceCount[us][PAWN]--;
 
@@ -1243,7 +1243,7 @@ void Position::do_null_move(StateInfo& backupSt) {
 
   // Save the current key to the history[] array, in order to be able to
   // detect repetition draws.
-  history[st->gamePly++] = st->key;
+  history[st->ply++] = st->key;
 
   // Update the necessary information
   if (st->epSquare != SQ_NONE)
@@ -1278,7 +1278,7 @@ void Position::undo_null_move() {
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
   st->rule50--;
-  st->gamePly--;
+  st->ply--;
 }
 
 
@@ -1481,15 +1481,15 @@ void Position::clear() {
 }
 
 
-/// Position::reset_game_ply() simply sets gamePly to 0. It is used from the
+/// Position::reset_ply() simply sets ply to 0. It is used from the
 /// UCI interface code, whenever a non-reversible move is made in a
 /// 'position fen <fen> moves m1 m2 ...' command.  This makes it possible
 /// for the program to handle games of arbitrary length, as long as the GUI
 /// handles draws by the 50 move rule correctly.
 
-void Position::reset_game_ply() {
+void Position::reset_ply() {
 
-  st->gamePly = 0;
+  st->ply = 0;
 }
 
 
@@ -1666,9 +1666,11 @@ bool Position::is_draw() const {
   if (st->rule50 > 100 || (st->rule50 == 100 && !is_check()))
       return true;
 
-  // Draw by repetition?
-  for (int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull); i <= e; i += 2)
-      if (history[st->gamePly - i] == st->key)
+  assert(st->ply >= st->rule50);
+
+  // Draw by repetition?  
+  for (int i = 4, e = Min(st->rule50, st->pliesFromNull); i <= e; i += 2)
+      if (history[st->ply - i] == st->key)
           return true;
 
   return false;

@@ -100,7 +100,7 @@ enum Phase {
 
 struct StateInfo {
   Key pawnKey, materialKey;
-  int castleRights, rule50, gamePly, pliesFromNull;
+  int castleRights, rule50, ply, pliesFromNull;
   Square epSquare;
   Score value;
   Value npMaterial[2];
@@ -273,7 +273,7 @@ public:
 
   // Game ply information
   int ply() const;
-  void reset_game_ply();
+  void reset_ply();
 
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
@@ -558,7 +558,7 @@ inline PieceType Position::captured_piece() const {
 }
 
 inline int Position::ply() const {
-  return st->gamePly;
+  return st->ply;
 }
 
 #endif // !defined(POSITION_H_INCLUDED)

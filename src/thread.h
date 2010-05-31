@@ -54,7 +54,6 @@ struct SplitPoint {
   Depth depth;
   bool pvNode, mateThreat;
   Value beta;
-  int ply;
   SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
 
   // Const pointers to shared data
