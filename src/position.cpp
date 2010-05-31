@@ -808,6 +808,46 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
               key ^= zobEp[st->epSquare];
           }
       }
+
+      if (pm) // promotion ?
+      {
+          PieceType promotion = move_promotion_piece(m);
+
+          assert(promotion >= KNIGHT && promotion <= QUEEN);
+
+          // Insert promoted piece instead of pawn
+          clear_bit(&(byTypeBB[PAWN]), to);
+          set_bit(&(byTypeBB[promotion]), to);
+          board[to] = piece_of_color_and_type(us, promotion);
+
+          // Update piece counts      
+          pieceCount[us][promotion]++;
+          pieceCount[us][PAWN]--;
+
+          // Update material key
+          st->materialKey ^= zobrist[us][PAWN][pieceCount[us][PAWN]];
+          st->materialKey ^= zobrist[us][promotion][pieceCount[us][promotion]-1];
+
+          // Update piece lists, move the last pawn at index[to] position
+          // and shrink the list. Add a new promotion piece to the list.
+          Square lastPawnSquare = pieceList[us][PAWN][pieceCount[us][PAWN]];
+          index[lastPawnSquare] = index[to];
+          pieceList[us][PAWN][index[lastPawnSquare]] = lastPawnSquare;
+          pieceList[us][PAWN][pieceCount[us][PAWN]] = SQ_NONE;
+          index[to] = pieceCount[us][promotion] - 1;
+          pieceList[us][promotion][index[to]] = to;
+
+          // Partially revert hash keys update
+          key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
+          st->pawnKey ^= zobrist[us][PAWN][to];
+
+          // Partially revert and update incremental scores
+          st->value -= pst(us, PAWN, to);
+          st->value += pst(us, promotion, to);
+
+          // Update material
+          st->npMaterial[us] += piece_value_midgame(promotion);
+      }
   }
 
   // Update incremental scores
@@ -815,46 +855,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Set capture piece
   st->capture = capture;
-
-  if (pm) // promotion ?
-  {
-      PieceType promotion = move_promotion_piece(m);
-
-      assert(promotion >= KNIGHT && promotion <= QUEEN);
-
-      // Insert promoted piece instead of pawn
-      clear_bit(&(byTypeBB[PAWN]), to);
-      set_bit(&(byTypeBB[promotion]), to);
-      board[to] = piece_of_color_and_type(us, promotion);
-
-      // Update piece counts      
-      pieceCount[us][promotion]++;
-      pieceCount[us][PAWN]--;
-
-      // Update material key
-      st->materialKey ^= zobrist[us][PAWN][pieceCount[us][PAWN]];
-      st->materialKey ^= zobrist[us][promotion][pieceCount[us][promotion]-1];
-
-      // Update piece lists, move the last pawn at index[to] position
-      // and shrink the list. Add a new promotion piece to the list.
-      Square lastPawnSquare = pieceList[us][PAWN][pieceCount[us][PAWN]];
-      index[lastPawnSquare] = index[to];
-      pieceList[us][PAWN][index[lastPawnSquare]] = lastPawnSquare;
-      pieceList[us][PAWN][pieceCount[us][PAWN]] = SQ_NONE;
-      index[to] = pieceCount[us][promotion] - 1;
-      pieceList[us][promotion][index[to]] = to;
-
-      // Partially revert hash keys update
-      key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
-      st->pawnKey ^= zobrist[us][PAWN][to];
-
-      // Partially revert and update incremental scores
-      st->value -= pst(us, PAWN, to);
-      st->value += pst(us, promotion, to);
-
-      // Update material
-      st->npMaterial[us] += piece_value_midgame(promotion);
-  }
 
   // Update the key with the final value
   st->key = key;
@@ -901,17 +901,25 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
 
     Square capsq = to;
 
-    if (ep) // en passant ?
+    // If the captured piece was a pawn, update pawn hash key,
+    // otherwise update non-pawn material.
+    if (capture == PAWN)
     {
-        capsq = (them == BLACK)? (to - DELTA_N) : (to - DELTA_S);
+        if (ep) // en passant ?
+        {
+            capsq = (them == BLACK)? (to - DELTA_N) : (to - DELTA_S);
 
-        assert(to == st->epSquare);
-        assert(relative_rank(opposite_color(them), to) == RANK_6);
-        assert(piece_on(to) == EMPTY);
-        assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
+            assert(to == st->epSquare);
+            assert(relative_rank(opposite_color(them), to) == RANK_6);
+            assert(piece_on(to) == EMPTY);
+            assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
-        board[capsq] = EMPTY;
+            board[capsq] = EMPTY;
+        }
+        st->pawnKey ^= zobrist[them][PAWN][capsq];
     }
+    else
+        st->npMaterial[them] -= piece_value_midgame(capture);
 
     // Remove captured piece
     clear_bit(&(byColorBB[them]), capsq);
@@ -923,13 +931,6 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
 
     // Update incremental scores
     st->value -= pst(them, capture, capsq);
-
-    // If the captured piece was a pawn, update pawn hash key,
-    // otherwise update non-pawn material.
-    if (capture == PAWN)
-        st->pawnKey ^= zobrist[them][PAWN][capsq];
-    else
-        st->npMaterial[them] -= piece_value_midgame(capture);
 
     // Update piece count
     pieceCount[them][capture]--;
