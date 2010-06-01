@@ -296,7 +296,6 @@ namespace {
   template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
-  void init_node(SearchStack* ss, int ply, int threadID);
   void update_pv(SearchStack* ss, int ply);
   void sp_update_pv(SearchStack* pss, SearchStack* ss, int ply);
   bool connected_moves(const Position& pos, Move m1, Move m2);
@@ -1060,9 +1059,16 @@ namespace {
     if (depth < OnePly)
         return qsearch<PvNode>(pos, ss, alpha, beta, Depth(0), threadID);
 
-    // Step 1. Initialize node and poll
-    // Polling can abort search.
-    init_node(ss, ply, threadID);
+    // Step 1. Initialize node and poll. Polling can abort search
+    TM.incrementNodeCounter(threadID);
+    ss->init(ply);
+    (ss + 2)->initKillers();
+
+    if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
+    {
+        NodesSincePoll = 0;
+        poll();  
+    }
 
     // Step 2. Check for aborted search and immediate draw
     if (AbortSearch || TM.thread_should_stop(threadID))
@@ -1446,14 +1452,10 @@ namespace {
     int ply = pos.ply();
     Value oldAlpha = alpha;
 
-    // Initialize, and make an early exit in case of an aborted search,
-    // an instant draw, maximum ply reached, etc.
-    init_node(ss, ply, threadID);
+    TM.incrementNodeCounter(threadID);
+    ss->init(ply);
 
-    // After init_node() that calls poll()
-    if (AbortSearch || TM.thread_should_stop(threadID))
-        return Value(0);
-
+    // Check for an instant draw or maximum ply reached
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
@@ -1769,32 +1771,6 @@ namespace {
     sp->slaves[threadID] = 0;
 
     lock_release(&(sp->lock));
-  }
-
-  // init_node() is called at the beginning of all the search functions
-  // (search() qsearch(), and so on) and initializes the
-  // search stack object corresponding to the current node. Once every
-  // NodesBetweenPolls nodes, init_node() also calls poll(), which polls
-  // for user input and checks whether it is time to stop the search.
-
-  void init_node(SearchStack* ss, int ply, int threadID) {
-
-    assert(ply >= 0 && ply < PLY_MAX);
-    assert(threadID >= 0 && threadID < TM.active_threads());
-
-    TM.incrementNodeCounter(threadID);
-
-    if (threadID == 0)
-    {
-        NodesSincePoll++;
-        if (NodesSincePoll >= NodesBetweenPolls)
-        {
-            poll();
-            NodesSincePoll = 0;
-        }
-    }
-    ss->init(ply);
-    (ss + 2)->initKillers();
   }
 
   // update_pv() is called whenever a search returns a value > alpha.
@@ -2530,7 +2506,7 @@ namespace {
 
     // Wait for thread termination
     for (int i = 1; i < MAX_THREADS; i++)
-        while (threads[i].state != THREAD_TERMINATED);
+        while (threads[i].state != THREAD_TERMINATED) {}
 
     // Now we can safely destroy the locks
     for (int i = 0; i < MAX_THREADS; i++)
