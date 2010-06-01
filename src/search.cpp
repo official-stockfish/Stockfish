@@ -1229,6 +1229,11 @@ namespace {
     // Initialize a MovePicker object for the current position
     MovePicker mp = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
+    bool singularExtensionNode =   depth >= SingularExtensionDepth[PvNode]
+                                && tte && tte->move()
+                                && !excludedMove // Do not allow recursive singular extension search
+                                && is_lower_bound(tte->type())
+                                && tte->depth() >= depth - 3 * OnePly;
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
@@ -1251,13 +1256,9 @@ namespace {
       // Singular extension search. We extend the TT move if its value is much better than
       // its siblings. To verify this we do a reduced search on all the other moves but the
       // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
-      if (   depth >= SingularExtensionDepth[PvNode]
-          && tte
+      if (   singularExtensionNode
           && move == tte->move()
-          && !excludedMove // Do not allow recursive singular extension search
-          && ext < OnePly
-          && is_lower_bound(tte->type())
-          && tte->depth() >= depth - 3 * OnePly)
+          && ext < OnePly)
       {
           Value ttValue = value_from_tt(tte->value(), ply);
 
@@ -1346,12 +1347,12 @@ namespace {
                   value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, true, threadID);
                   doFullDepthSearch = (value > alpha);
               }
+              ss->reduction = Depth(0); // Restore original reduction
           }
 
           // Step 15. Full depth search
           if (doFullDepthSearch)
           {
-              ss->reduction = Depth(0);
               value = newDepth < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), threadID)
                                         : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, true, threadID);
 
