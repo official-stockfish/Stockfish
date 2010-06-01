@@ -2480,10 +2480,7 @@ namespace {
     // Initialize SplitPointStack locks
     for (i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
-        {
-            SplitPointStack[i][j].parent = NULL;
             lock_init(&(SplitPointStack[i][j].lock), NULL);
-        }
 
     // Will be set just before program exits to properly end the threads
     AllThreadsShouldExit = false;
