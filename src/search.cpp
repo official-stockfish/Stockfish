@@ -337,6 +337,51 @@ void exit_threads() { TM.exit_threads(); }
 int64_t nodes_searched() { return TM.nodes_searched(); }
 
 
+/// init_search() is called during startup. It initializes various lookup tables
+
+void init_search() {
+
+  int d;  // depth (OnePly == 2)
+  int hd; // half depth (OnePly == 1)
+  int mc; // moveCount
+
+  // Init reductions array
+  for (hd = 1; hd < 64; hd++) for (mc = 1; mc < 64; mc++)
+  {
+      double    pvRed = log(double(hd)) * log(double(mc)) / 3.0;
+      double nonPVRed = log(double(hd)) * log(double(mc)) / 1.5;
+      ReductionMatrix[PV][hd][mc]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
+      ReductionMatrix[NonPV][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
+  }
+
+  // Init futility margins array
+  for (d = 0; d < 16; d++) for (mc = 0; mc < 64; mc++)
+      FutilityMarginsMatrix[d][mc] = 112 * int(log(double(d * d) / 2) / log(2.0) + 1) - 8 * mc + 45;
+
+  // Init futility move count array
+  for (d = 0; d < 32; d++)
+      FutilityMoveCountArray[d] = 3 + (1 << (3 * d / 8));
+}
+
+
+// SearchStack::init() initializes a search stack. Used at the beginning of a
+// new search from the root.
+void SearchStack::init(int ply) {
+
+  pv[ply] = pv[ply + 1] = MOVE_NONE;
+  currentMove = threatMove = MOVE_NONE;
+  reduction = Depth(0);
+  eval = VALUE_NONE;
+}
+
+void SearchStack::initKillers() {
+
+  mateKiller = MOVE_NONE;
+  for (int i = 0; i < KILLER_MAX; i++)
+      killers[i] = MOVE_NONE;
+}
+
+
 /// perft() is our utility to verify move generation is bug free. All the legal
 /// moves up to given depth are generated and counted and the sum returned.
 
@@ -548,51 +593,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   return !Quit;
 }
 
-
-/// init_search() is called during startup. It initializes various lookup tables
-
-void init_search() {
-
-  // Init our reduction lookup tables
-  for (int i = 1; i < 64; i++) // i == depth (OnePly = 1)
-      for (int j = 1; j < 64; j++) // j == moveNumber
-      {
-          double    pvRed = log(double(i)) * log(double(j)) / 3.0;
-          double nonPVRed = log(double(i)) * log(double(j)) / 1.5;
-          ReductionMatrix[PV][i][j]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
-          ReductionMatrix[NonPV][i][j] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
-      }
-
-  // Init futility margins array
-  for (int i = 0; i < 16; i++) // i == depth (OnePly = 2)
-      for (int j = 0; j < 64; j++) // j == moveNumber
-      {
-          // FIXME: test using log instead of BSR
-          FutilityMarginsMatrix[i][j] = (i < 2 ? 0 : 112 * bitScanReverse32(i * i / 2)) - 8 * j + 45;
-      }
-
-  // Init futility move count array
-  for (int i = 0; i < 32; i++) // i == depth (OnePly = 2)
-      FutilityMoveCountArray[i] = 3 + (1 << (3 * i / 8));
-}
-
-
-// SearchStack::init() initializes a search stack. Used at the beginning of a
-// new search from the root.
-void SearchStack::init(int ply) {
-
-  pv[ply] = pv[ply + 1] = MOVE_NONE;
-  currentMove = threatMove = MOVE_NONE;
-  reduction = Depth(0);
-  eval = VALUE_NONE;
-}
-
-void SearchStack::initKillers() {
-
-  mateKiller = MOVE_NONE;
-  for (int i = 0; i < KILLER_MAX; i++)
-      killers[i] = MOVE_NONE;
-}
 
 namespace {
 

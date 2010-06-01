@@ -342,7 +342,6 @@ extern Square pop_1st_bit(Bitboard* b);
 
 extern void print_bitboard(Bitboard b);
 extern void init_bitboards();
-extern int bitScanReverse32(uint32_t b);
 
 
 #endif // !defined(BITBOARD_H_INCLUDED)
