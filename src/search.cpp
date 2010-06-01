@@ -302,8 +302,8 @@ namespace {
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, SearchStack* ss);
   bool ok_to_do_nullmove(const Position& pos);
-  bool ok_to_prune(const Position& pos, Move m, Move threat);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
+  bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, SearchStack* ss);
@@ -1286,7 +1286,7 @@ namespace {
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
-              && ok_to_prune(pos, move, ss->threatMove)
+              && !(ss->threatMove && connected_threat(pos, move, ss->threatMove))
               && bestValue > value_mated_in(PLY_MAX))
               continue;
 
@@ -1328,9 +1328,9 @@ namespace {
               ss->reduction = reduction<PvNode>(depth, moveCount);
               if (ss->reduction)
               {
-                  Depth r = newDepth - ss->reduction;
-                  value = r < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), threadID)
-                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, r, true, threadID);
+                  Depth d = newDepth - ss->reduction;
+                  value = d < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), threadID)
+                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true, threadID);
 
                   doFullDepthSearch = (value > alpha);
               }
@@ -1681,7 +1681,7 @@ namespace {
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(sp->depth)
-              && ok_to_prune(pos, move, ss->threatMove)
+              && !(ss->threatMove && connected_threat(pos, move, ss->threatMove))
               && sp->bestValue > value_mated_in(PLY_MAX))
           {
               lock_grab(&(sp->lock));
@@ -1978,23 +1978,18 @@ namespace {
   }
 
 
-  // ok_to_prune() tests whether it is safe to forward prune a move. Only
-  // non-tactical moves late in the move list close to the leaves are
-  // candidates for pruning.
+  // connected_threat() tests whether it is safe to forward prune a move or if
+  // is somehow coonected to the threat move returned by null search.
 
-  bool ok_to_prune(const Position& pos, Move m, Move threat) {
+  bool connected_threat(const Position& pos, Move m, Move threat) {
 
     assert(move_is_ok(m));
-    assert(threat == MOVE_NONE || move_is_ok(threat));
+    assert(threat && move_is_ok(threat));
     assert(!pos.move_is_check(m));
     assert(!pos.move_is_capture_or_promotion(m));
     assert(!pos.move_is_passed_pawn_push(m));
 
     Square mfrom, mto, tfrom, tto;
-
-    // Prune if there isn't any threat move
-    if (threat == MOVE_NONE)
-        return true;
 
     mfrom = move_from(m);
     mto = move_to(m);
@@ -2003,7 +1998,7 @@ namespace {
 
     // Case 1: Don't prune moves which move the threatened piece
     if (mfrom == tto)
-        return false;
+        return true;
 
     // Case 2: If the threatened piece has value less than or equal to the
     // value of the threatening piece, don't prune move which defend it.
@@ -2011,16 +2006,16 @@ namespace {
         && (   pos.midgame_value_of_piece_on(tfrom) >= pos.midgame_value_of_piece_on(tto)
             || pos.type_of_piece_on(tfrom) == KING)
         && pos.move_attacks_square(m, tto))
-        return false;
+        return true;
 
     // Case 3: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
     if (   piece_is_slider(pos.piece_on(tfrom))
         && bit_is_set(squares_between(tfrom, tto), mto)
         && pos.see_sign(m) >= 0)
-        return false;
+        return true;
 
-    return true;
+    return false;
   }
 
 
