@@ -301,7 +301,6 @@ namespace {
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, SearchStack* ss);
-  bool ok_to_do_nullmove(const Position& pos);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
@@ -1125,11 +1124,11 @@ namespace {
 
     // Step 6. Razoring (is omitted in PV nodes)
     if (   !PvNode
+        &&  depth < RazorDepth
+        && !isCheck
         &&  refinedValue < beta - razor_margin(depth)
         &&  ttMove == MOVE_NONE
         &&  (ss-1)->currentMove != MOVE_NULL
-        &&  depth < RazorDepth
-        && !isCheck
         && !value_is_mate(beta)
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
@@ -1147,10 +1146,10 @@ namespace {
     if (   !PvNode
         &&  allowNullmove
         &&  depth < RazorDepth
+        &&  refinedValue >= beta + futility_margin(depth, 0)
         && !isCheck
         && !value_is_mate(beta)
-        &&  ok_to_do_nullmove(pos)
-        &&  refinedValue >= beta + futility_margin(depth, 0))
+        &&  pos.non_pawn_material(pos.side_to_move()))
         return refinedValue - futility_margin(depth, 0);
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
@@ -1160,10 +1159,10 @@ namespace {
     if (   !PvNode
         &&  allowNullmove
         &&  depth > OnePly
+        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0)
         && !isCheck
         && !value_is_mate(beta)
-        &&  ok_to_do_nullmove(pos)
-        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0))
+        &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
 
@@ -1186,14 +1185,13 @@ namespace {
             if (nullValue >= value_mate_in(PLY_MAX))
                 nullValue = beta;
 
-            if (depth < 6 * OnePly)
+            // Do zugzwang verification search at high depths
+            if (   depth < 6 * OnePly
+                || search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, false, threadID) >= beta)
                 return nullValue;
-
-            // Do zugzwang verification search
-            Value v = search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, false, threadID);
-            if (v >= beta)
-                return nullValue;
-        } else {
+        }
+        else
+        {
             // The null move failed low, which means that we may be faced with
             // some kind of threat. If the previous move was reduced, check if
             // the move that refuted the null move was somehow connected to the
@@ -1279,11 +1277,11 @@ namespace {
 
       // Step 12. Futility pruning (is omitted in PV nodes)
       if (   !PvNode
+          && !captureOrPromotion
           && !isCheck
           && !dangerous
-          && !captureOrPromotion
-          && !move_is_castle(move)
-          &&  move != ttMove)
+          &&  move != ttMove
+          && !move_is_castle(move))
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
@@ -1321,8 +1319,8 @@ namespace {
           bool doFullDepthSearch = true;
 
           if (    depth >= 3 * OnePly
-              && !dangerous
               && !captureOrPromotion
+              && !dangerous
               && !move_is_castle(move)
               && !move_is_killer(move, ss))
           {
@@ -1387,13 +1385,13 @@ namespace {
       }
 
       // Step 18. Check for split
-      if (   TM.active_threads() > 1
+      if (   depth >= MinimumSplitDepth
+          && TM.active_threads() > 1
           && bestValue < beta
-          && depth >= MinimumSplitDepth
-          && Iteration <= 99
           && TM.available_thread_exists(threadID)
           && !AbortSearch
-          && !TM.thread_should_stop(threadID))
+          && !TM.thread_should_stop(threadID)
+          && Iteration <= 99)
           TM.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
                               mateThreat, &moveCount, &mp, threadID, PvNode);
     }
@@ -1962,20 +1960,6 @@ namespace {
     }
 
     return Min(result, OnePly);
-  }
-
-
-  // ok_to_do_nullmove() looks at the current position and decides whether
-  // doing a 'null move' should be allowed. In order to avoid zugzwang
-  // problems, null moves are not allowed when the side to move has very
-  // little material left. Currently, the test is a bit too simple: Null
-  // moves are avoided only when the side to move has only pawns left.
-  // It's probably a good idea to avoid null moves in at least some more
-  // complicated endgames, e.g. KQ vs KR.  FIXME
-
-  bool ok_to_do_nullmove(const Position& pos) {
-
-    return pos.non_pawn_material(pos.side_to_move()) != Value(0);
   }
 
 
