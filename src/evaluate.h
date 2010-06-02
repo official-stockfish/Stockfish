@@ -101,7 +101,7 @@ struct EvalInfo {
 //// Prototypes
 ////
 
-extern Value evaluate(const Position& pos, EvalInfo& ei, int threadID);
+extern Value evaluate(const Position& pos, EvalInfo& ei);
 extern void init_eval(int threads);
 extern void quit_eval();
 extern void read_weights(Color sideToMove);

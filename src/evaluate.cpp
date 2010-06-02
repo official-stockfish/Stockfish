@@ -240,7 +240,7 @@ namespace {
 
   // Function prototypes
   template<bool HasPopCnt>
-  Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID);
+  Value do_evaluate(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
   void init_attack_tables(const Position& pos, EvalInfo& ei);
@@ -277,21 +277,21 @@ namespace {
 /// evaluate() is the main evaluation function. It always computes two
 /// values, an endgame score and a middle game score, and interpolates
 /// between them based on the remaining material.
-Value evaluate(const Position& pos, EvalInfo& ei, int threadID) {
+Value evaluate(const Position& pos, EvalInfo& ei) {
 
-    return CpuHasPOPCNT ? do_evaluate<true>(pos, ei, threadID)
-                        : do_evaluate<false>(pos, ei, threadID);
+    return CpuHasPOPCNT ? do_evaluate<true>(pos, ei)
+                        : do_evaluate<false>(pos, ei);
 }
 
 namespace {
 
 template<bool HasPopCnt>
-Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
+Value do_evaluate(const Position& pos, EvalInfo& ei) {
 
   ScaleFactor factor[2];
 
   assert(pos.is_ok());
-  assert(threadID >= 0 && threadID < MAX_THREADS);
+  assert(pos.thread() >= 0 && pos.thread() < MAX_THREADS);
   assert(!pos.is_check());
 
   memset(&ei, 0, sizeof(EvalInfo));
@@ -301,7 +301,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   ei.value = pos.value();
 
   // Probe the material hash table
-  ei.mi = MaterialTable[threadID]->get_material_info(pos);
+  ei.mi = MaterialTable[pos.thread()]->get_material_info(pos);
   ei.value += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
@@ -314,7 +314,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei, int threadID) {
   factor[BLACK] = ei.mi->scale_factor(pos, BLACK);
 
   // Probe the pawn hash table
-  ei.pi = PawnTable[threadID]->get_pawn_info(pos);
+  ei.pi = PawnTable[pos.thread()]->get_pawn_info(pos);
   ei.value += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
 
   // Initialize attack bitboards with pawns evaluation
