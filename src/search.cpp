@@ -313,7 +313,7 @@ namespace {
   void poll();
   void ponderhit();
   void wait_for_stop_or_ponderhit();
-  void init_ss_array(SearchStack* ss);
+  void init_ss_array(SearchStack* ss, int size);
   void print_pv_info(const Position& pos, SearchStack* ss, Value alpha, Value beta, Value value);
 
 #if !defined(_MSC_VER)
@@ -633,7 +633,7 @@ namespace {
     // Initialize
     TT.new_search();
     H.clear();
-    init_ss_array(ss);
+    init_ss_array(ss, PLY_MAX_PLUS_2);
     ValueByIteration[1] = rml.get_move_score(0);
     p.reset_ply();
     Iteration = 1;
@@ -1058,8 +1058,6 @@ namespace {
     // Step 1. Initialize node and poll. Polling can abort search
     TM.incrementNodeCounter(threadID);
     ss->init(ply);
-    (ss + 1)->excludedMove = MOVE_NONE;
-    (ss + 1)->skipNullMove = false;
     (ss + 2)->initKillers();
 
     if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
@@ -2235,16 +2233,21 @@ namespace {
   }
 
 
-  // init_ss_array() does a fast reset of the first entries of a SearchStack array
+  // init_ss_array() does a fast reset of the first entries of a SearchStack
+  // array and of all the excludedMove and skipNullMove entries.
 
-  void init_ss_array(SearchStack* ss) {
+  void init_ss_array(SearchStack* ss, int size) {
 
-    for (int i = 0; i < 3; i++, ss++)
+    for (int i = 0; i < size; i++, ss++)
     {
-        ss->init(i);
-        ss->initKillers();
         ss->excludedMove = MOVE_NONE;
         ss->skipNullMove = false;
+
+        if (i < 3)
+        {
+            ss->init(i);
+            ss->initKillers();
+        }
     }
   }
 
@@ -2776,7 +2779,7 @@ namespace {
             continue;
 
         // Find a quick score for the move
-        init_ss_array(ss);
+        init_ss_array(ss, PLY_MAX_PLUS_2);
         pos.do_move(cur->move, st);
         moves[count].move = cur->move;
         moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 0);
