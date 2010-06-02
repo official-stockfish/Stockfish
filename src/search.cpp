@@ -892,17 +892,31 @@ namespace {
                         ss->reduction = reduction<PV>(depth, i - MultiPV + 2);
                         if (ss->reduction)
                         {
+                            assert(newDepth-ss->reduction >= OnePly);
+
                             // Reduced depth non-pv search using alpha as upperbound
                             value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction);
                             doFullDepthSearch = (value > alpha);
                         }
+
+                        // The move failed high, but if reduction is very big we could
+                        // face a false positive, retry with a less aggressive reduction,
+                        // if the move fails high again then go with full depth search.
+                        if (doFullDepthSearch && ss->reduction > 2 * OnePly)
+                        {
+                            assert(newDepth - OnePly >= OnePly);
+
+                            ss->reduction = OnePly;
+                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction);
+                            doFullDepthSearch = (value > alpha);
+                        }
+                        ss->reduction = Depth(0); // Restore original reduction
                     }
 
                     // Step 15. Full depth search
                     if (doFullDepthSearch)
                     {
                         // Full depth non-pv search using alpha as upperbound
-                        ss->reduction = Depth(0);
                         value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth);
 
                         // If we are above alpha then research at same depth but as PV
