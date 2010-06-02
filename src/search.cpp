@@ -285,7 +285,7 @@ namespace {
   Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
   template <NodeType PvNode>
-  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, bool allowNullmove, int threadID);
+  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int threadID);
 
   template <NodeType PvNode>
   Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int threadID);
@@ -876,7 +876,7 @@ namespace {
                         alpha = -VALUE_INFINITE;
 
                     // Full depth PV search, done on first move or after a fail high
-                    value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, 0);
+                    value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 0);
                 }
                 else
                 {
@@ -893,7 +893,7 @@ namespace {
                         if (ss->reduction)
                         {
                             // Reduced depth non-pv search using alpha as upperbound
-                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, true, 0);
+                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 0);
                             doFullDepthSearch = (value > alpha);
                         }
                     }
@@ -903,12 +903,12 @@ namespace {
                     {
                         // Full depth non-pv search using alpha as upperbound
                         ss->reduction = Depth(0);
-                        value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, true, 0);
+                        value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, 0);
 
                         // If we are above alpha then research at same depth but as PV
                         // to get a correct score or eventually a fail high above beta.
                         if (value > alpha)
-                            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, 0);
+                            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 0);
                     }
                 }
 
@@ -1031,8 +1031,7 @@ namespace {
   // search<>() is the main search function for both PV and non-PV nodes
 
   template <NodeType PvNode>
-  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth,
-               bool allowNullmove, int threadID) {
+  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int threadID) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
@@ -1060,6 +1059,7 @@ namespace {
     TM.incrementNodeCounter(threadID);
     ss->init(ply);
     (ss + 1)->excludedMove = MOVE_NONE;
+    (ss + 1)->skipNullMove = false;
     (ss + 2)->initKillers();
 
     if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
@@ -1147,7 +1147,7 @@ namespace {
     // We're betting that the opponent doesn't have a move that will reduce
     // the score by more than futility_margin(depth) if we do a null move.
     if (   !PvNode
-        &&  allowNullmove
+        && !ss->skipNullMove
         &&  depth < RazorDepth
         &&  refinedValue >= beta + futility_margin(depth, 0)
         && !isCheck
@@ -1160,7 +1160,7 @@ namespace {
     // at least beta. Otherwise we do a null move if static value is not more than
     // NullMoveMargin under beta.
     if (   !PvNode
-        &&  allowNullmove
+        && !ss->skipNullMove
         &&  depth > OnePly
         &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0)
         && !isCheck
@@ -1178,8 +1178,13 @@ namespace {
 
         pos.do_null_move(st);
 
+        (ss+1)->skipNullMove = true;
+
         nullValue = depth-R*OnePly < OnePly ? -qsearch<NonPV>(pos, ss+1, -beta, -alpha, Depth(0), threadID)
-                                            : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*OnePly, false, threadID);
+                                            : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*OnePly, threadID);
+
+        (ss+1)->skipNullMove = false;
+
         pos.undo_null_move();
 
         if (nullValue >= beta)
@@ -1189,8 +1194,14 @@ namespace {
                 nullValue = beta;
 
             // Do zugzwang verification search at high depths
-            if (   depth < 6 * OnePly
-                || search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, false, threadID) >= beta)
+            if (depth < 6 * OnePly)
+                return nullValue;
+
+            ss->skipNullMove = true;
+            Value v = search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, threadID);
+            ss->skipNullMove = false;
+
+            if (v  >= beta)
                 return nullValue;
         }
         else
@@ -1218,7 +1229,11 @@ namespace {
         && (PvNode || (!isCheck && ss->eval >= beta - IIDMargin)))
     {
         Depth d = (PvNode ? depth - 2 * OnePly : depth / 2);
-        search<PvNode>(pos, ss, alpha, beta, d, false, threadID);
+
+        ss->skipNullMove = true;
+        search<PvNode>(pos, ss, alpha, beta, d, threadID);
+        ss->skipNullMove = false;
+
         ttMove = ss->pv[ply];
         tte = TT.retrieve(posKey);
     }
@@ -1267,7 +1282,9 @@ namespace {
           {
               Value b = ttValue - SingularExtensionMargin;
               ss->excludedMove = move;
-              Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, false, threadID);
+              ss->skipNullMove = true;
+              Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, threadID);
+              ss->skipNullMove = false;
               ss->excludedMove = MOVE_NONE;
 
               if (v < ttValue - SingularExtensionMargin)
@@ -1316,7 +1333,7 @@ namespace {
       // The first move in list is the expected PV
       if (PvNode && moveCount == 1)
           value = newDepth < OnePly ? -qsearch<PV>(pos, ss+1, -beta, -alpha, Depth(0), threadID)
-                                    : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, threadID);
+                                    : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, threadID);
       else
       {
           // Step 14. Reduced depth search
@@ -1334,7 +1351,7 @@ namespace {
               {
                   Depth d = newDepth - ss->reduction;
                   value = d < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), threadID)
-                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true, threadID);
+                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, threadID);
 
                   doFullDepthSearch = (value > alpha);
               }
@@ -1347,7 +1364,7 @@ namespace {
                   assert(newDepth - OnePly >= OnePly);
 
                   ss->reduction = OnePly;
-                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, true, threadID);
+                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, threadID);
                   doFullDepthSearch = (value > alpha);
               }
               ss->reduction = Depth(0); // Restore original reduction
@@ -1357,14 +1374,14 @@ namespace {
           if (doFullDepthSearch)
           {
               value = newDepth < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), threadID)
-                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, true, threadID);
+                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, threadID);
 
               // Step extra. pv search (only in PV nodes)
               // Search only for possible new PV nodes, if instead value >= beta then
               // parent node fails low with value <= alpha and tries another move.
               if (PvNode && value > alpha && value < beta)
                   value = newDepth < OnePly ? -qsearch<PV>(pos, ss+1, -beta, -alpha, Depth(0), threadID)
-                                            : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, threadID);
+                                            : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, threadID);
           }
       }
 
@@ -1725,7 +1742,7 @@ namespace {
               Value localAlpha = sp->alpha;
               Depth d = newDepth - ss->reduction;
               value = d < OnePly ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), threadID)
-                                 : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, d, true, threadID);
+                                 : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, d, threadID);
               doFullDepthSearch = (value > localAlpha);
           }
 
@@ -1738,7 +1755,7 @@ namespace {
 
               ss->reduction = OnePly;
               Value localAlpha = sp->alpha;
-              value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, true, threadID);
+              value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, threadID);
               doFullDepthSearch = (value > localAlpha);
           }
           ss->reduction = Depth(0); // Restore original reduction
@@ -1749,14 +1766,14 @@ namespace {
       {
           Value localAlpha = sp->alpha;
           value = newDepth < OnePly ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), threadID)
-                                    : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, true, threadID);
+                                    : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, threadID);
 
           // Step extra. pv search (only in PV nodes)
           // Search only for possible new PV nodes, if instead value >= beta then
           // parent node fails low with value <= alpha and tries another move.
           if (PvNode && value > localAlpha && value < sp->beta)
               value = newDepth < OnePly ? -qsearch<PV>(pos, ss+1, -sp->beta, -sp->alpha, Depth(0), threadID)
-                                        : - search<PV>(pos, ss+1, -sp->beta, -sp->alpha, newDepth, false, threadID);
+                                        : - search<PV>(pos, ss+1, -sp->beta, -sp->alpha, newDepth, threadID);
       }
 
       // Step 16. Undo move
@@ -2227,6 +2244,7 @@ namespace {
         ss->init(i);
         ss->initKillers();
         ss->excludedMove = MOVE_NONE;
+        ss->skipNullMove = false;
     }
   }
 

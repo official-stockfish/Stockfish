@@ -58,6 +58,7 @@ struct SearchStack {
   Move killers[KILLER_MAX];
   Depth reduction;
   Value eval;
+  bool skipNullMove;
 
   void init(int ply);
   void initKillers();
