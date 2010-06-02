@@ -139,6 +139,9 @@ class Position {
   friend class MaterialInfo;
   friend class EndgameFunctions;
 
+  Position(); // No default or copy c'tor allowed
+  Position(const Position& pos);
+
 public:
   enum GamePhase {
       MidGame,
@@ -146,9 +149,9 @@ public:
   };
 
   // Constructors
-  Position();
-  explicit Position(const Position& pos);
-  explicit Position(const std::string& fen);
+  explicit Position(int threadID);
+  Position(const Position& pos, int threadID);
+  Position(const std::string& fen, int threadID);
 
   // Text input/output
   void from_fen(const std::string& fen);
@@ -272,6 +275,7 @@ public:
   bool has_pawn_on_7th(Color c) const;
 
   // Game ply information
+  int thread() const;
   int ply() const;
   void reset_ply();
 
@@ -328,6 +332,7 @@ private:
   int castleRightsMask[64];
   StateInfo startState;
   File initialKFile, initialKRFile, initialQRFile;
+  int threadID;
   StateInfo* st;
 
   // Static variables
@@ -555,6 +560,10 @@ inline bool Position::move_is_capture_or_promotion(Move m) const {
 
 inline PieceType Position::captured_piece() const {
   return st->capture;
+}
+
+inline int Position::thread() const {
+  return threadID;
 }
 
 inline int Position::ply() const {

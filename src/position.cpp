@@ -74,23 +74,23 @@ CheckInfo::CheckInfo(const Position& pos) {
 }
 
 
-/// Position c'tors. Here we always create a slower but safer copy of
-/// the original position or the FEN string, we want the new born Position
-/// object do not depend on any external data. Instead if we know what we
-/// are doing and we need speed we can create a position with default
-/// c'tor Position() and then use just fast_copy().
+/// Position c'tors. Here we always create a copy of the original position
+/// or the FEN string, we want the new born Position object do not depend
+/// on any external data so we detach state pointer from the source one.
 
-Position::Position() {}
+Position::Position(int th) : threadID(th) {}
 
-Position::Position(const Position& pos) {
+Position::Position(const Position& pos, int th) {
 
   memcpy(this, &pos, sizeof(Position));
   detach(); // Always detach() in copy c'tor to avoid surprises
+  threadID = th;
 }
 
-Position::Position(const string& fen) {
+Position::Position(const string& fen, int th) {
 
   from_fen(fen);
+  threadID = th;
 }
 
 
@@ -340,7 +340,7 @@ void Position::print(Move m) const {
   std::cout << std::endl;
   if (m != MOVE_NONE)
   {
-      Position p(*this);
+      Position p(*this, thread());
       string col = (color_of_piece_on(move_from(m)) == BLACK ? ".." : "");
       std::cout << "Move is: " << col << move_to_san(p, m) << std::endl;
   }
@@ -1785,6 +1785,7 @@ void Position::flipped_copy(const Position& pos) {
   assert(pos.is_ok());
 
   clear();
+  threadID = pos.thread();
 
   // Board
   for (Square s = SQ_A1; s <= SQ_H8; s++)

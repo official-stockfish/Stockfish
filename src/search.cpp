@@ -603,7 +603,7 @@ namespace {
 
   Value id_loop(const Position& pos, Move searchMoves[]) {
 
-    Position p(pos);
+    Position p(pos, pos.thread());
     SearchStack ss[PLY_MAX_PLUS_2];
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
@@ -1662,7 +1662,7 @@ namespace {
     int moveCount;
     value = -VALUE_INFINITE;
 
-    Position pos(*sp->pos);
+    Position pos(*sp->pos, threadID);
     CheckInfo ci(pos);
     int ply = pos.ply();
     SearchStack* ss = sp->sstack[threadID] + 1;

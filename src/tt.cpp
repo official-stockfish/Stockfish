@@ -205,7 +205,7 @@ void TranspositionTable::new_search() {
 void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 
   StateInfo st;
-  Position p(pos);
+  Position p(pos, pos.thread());
 
   for (int i = 0; pv[i] != MOVE_NONE; i++)
   {
@@ -227,7 +227,7 @@ void TranspositionTable::extract_pv(const Position& pos, Move pv[], const int PL
 
   const TTEntry* tte;
   StateInfo st;
-  Position p(pos);
+  Position p(pos, pos.thread());
   int ply = 0;
 
   // Update position to the end of current PV

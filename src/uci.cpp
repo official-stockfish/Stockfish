@@ -54,7 +54,7 @@ namespace {
   // The root position. This is set up when the user (or in practice, the GUI)
   // sends the "position" UCI command. The root position is sent to the think()
   // function when the program receives the "go" command.
-  Position RootPosition;
+  Position RootPosition(0);
 
   // Local functions
   bool handle_command(const string& command);
@@ -143,7 +143,7 @@ namespace {
         RootPosition.print();
     else if (token == "flip")
     {
-        Position p(RootPosition);
+        Position p(RootPosition, RootPosition.thread());
         RootPosition.flipped_copy(p);
     }
     else if (token == "eval")
@@ -308,7 +308,7 @@ namespace {
 
     string token;
     int depth, tm, n;
-    Position pos(RootPosition);
+    Position pos(RootPosition, RootPosition.thread());
 
     if (!(uip >> depth))
         return;

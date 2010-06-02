@@ -151,7 +151,7 @@ void benchmark(const string& commandLine) {
   {
       Move moves[1] = {MOVE_NONE};
       int dummy[2] = {0, 0};
-      Position pos(*it);
+      Position pos(*it, 0);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (limitType == "perft")
       {

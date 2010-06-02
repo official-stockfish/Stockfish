@@ -299,7 +299,7 @@ const string line_to_san(const Position& pos, Move line[], int startColumn, bool
   string moveStr;
   size_t length = 0;
   size_t maxLength = 80 - startColumn;
-  Position p(pos);
+  Position p(pos, pos.thread());
 
   for (int i = 0; line[i] != MOVE_NONE; i++)
   {
