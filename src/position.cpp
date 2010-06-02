@@ -1668,7 +1668,7 @@ bool Position::is_draw() const {
 
   assert(st->ply >= st->rule50);
 
-  // Draw by repetition?  
+  // Draw by repetition?
   for (int i = 4, e = Min(st->rule50, st->pliesFromNull); i <= e; i += 2)
       if (history[st->ply - i] == st->key)
           return true;

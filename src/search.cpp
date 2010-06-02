@@ -1675,7 +1675,7 @@ namespace {
       if (   !PvNode
           && !captureOrPromotion
           && !isCheck
-          && !dangerous          
+          && !dangerous
           && !move_is_castle(move))
       {
           // Move count based pruning
@@ -1717,7 +1717,7 @@ namespace {
           ss->reduction = reduction<PvNode>(sp->depth, moveCount);
           if (ss->reduction)
           {
-              Value localAlpha = sp->alpha;              
+              Value localAlpha = sp->alpha;
               Depth d = newDepth - ss->reduction;
               value = d < OnePly ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), threadID)
                                  : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, d, true, threadID);
@@ -1736,12 +1736,12 @@ namespace {
               value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, true, threadID);
               doFullDepthSearch = (value > localAlpha);
           }
+          ss->reduction = Depth(0); // Restore original reduction
       }
 
       // Step 15. Full depth search
       if (doFullDepthSearch)
       {
-          ss->reduction = Depth(0);
           Value localAlpha = sp->alpha;
           value = newDepth < OnePly ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), threadID)
                                     : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, true, threadID);
