@@ -1481,16 +1481,15 @@ namespace {
     EvalInfo ei;
     StateInfo st;
     Move ttMove, move;
-    Value staticValue, bestValue, value, futilityBase;
-    bool isCheck, enoughMaterial, moveIsCheck, evasionPrunable;
-    const TTEntry* tte = NULL;
-    int moveCount = 0;
-    int ply = pos.ply();
+    Value bestValue, value, futilityValue, futilityBase;
+    bool isCheck, deepChecks, enoughMaterial, moveIsCheck, evasionPrunable;
+    const TTEntry* tte;
     Value oldAlpha = alpha;
-    Value futilityValue = VALUE_INFINITE;
+    int ply = pos.ply();
 
     TM.incrementNodeCounter(pos.thread());
-    ss->init(ply);
+    ss->pv[ply] = ss->pv[ply + 1] = ss->currentMove = MOVE_NONE;
+    ss->eval = VALUE_NONE;
 
     // Check for an instant draw or maximum ply reached
     if (pos.is_draw() || ply >= PLY_MAX - 1)
@@ -1511,39 +1510,42 @@ namespace {
 
     // Evaluate the position statically
     if (isCheck)
-        staticValue = -VALUE_INFINITE;
-    else if (tte && tte->static_value() != VALUE_NONE)
     {
-        staticValue = tte->static_value();
-        ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+        bestValue = futilityBase = -VALUE_INFINITE;
+        deepChecks = enoughMaterial = false;
     }
     else
-        staticValue = evaluate(pos, ei);
-
-    if (!isCheck)
     {
-        ss->eval = staticValue;
+        if (tte && tte->static_value() != VALUE_NONE)
+        {
+            ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+            bestValue = tte->static_value();
+        }
+        else
+            bestValue = evaluate(pos, ei);
+
+        ss->eval = bestValue;
         update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
+
+        // Stand pat. Return immediately if static value is at least beta
+        if (bestValue >= beta)
+        {
+            if (!tte) // FIXME, remove condition
+                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, Depth(-127*OnePly), MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+           
+            return bestValue;
+        }
+
+        if (PvNode && bestValue > alpha)
+            alpha = bestValue;
+
+        // If we are near beta then try to get a cutoff pushing checks a bit further
+        deepChecks = (depth == -OnePly && bestValue >= beta - PawnValueMidgame / 8);
+
+        // Futility pruning parameters, not needed when in check
+        futilityBase = bestValue + FutilityMarginQS + ei.kingDanger[pos.side_to_move()];
+        enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
     }
-
-    // Initialize "stand pat score", and return it immediately if it is
-    // at least beta.
-    bestValue = staticValue;
-
-    if (bestValue >= beta)
-    {
-        // Store the score to avoid a future costly evaluation() call
-        if (!isCheck && !tte)
-            TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, Depth(-127*OnePly), MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
-
-        return bestValue;
-    }
-
-    if (PvNode && bestValue > alpha)
-        alpha = bestValue;
-
-    // If we are near beta then try to get a cutoff pushing checks a bit further
-    bool deepChecks = (depth == -OnePly && staticValue >= beta - PawnValueMidgame / 8);
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves. Because the depth is <= 0 here, only captures,
@@ -1551,8 +1553,6 @@ namespace {
     // and we are near beta) will be generated.
     MovePicker mp = MovePicker(pos, ttMove, deepChecks ? Depth(0) : depth, H);
     CheckInfo ci(pos);
-    enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
-    futilityBase = staticValue + FutilityMarginQS + ei.kingDanger[pos.side_to_move()];
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while (   alpha < beta
@@ -1562,24 +1562,15 @@ namespace {
 
       moveIsCheck = pos.move_is_check(move, ci);
 
-      // Update current move
-      moveCount++;
-      ss->currentMove = move;
-
       // Futility pruning
       if (   !PvNode
-          &&  enoughMaterial
           && !isCheck
           && !moveIsCheck
           &&  move != ttMove
+          &&  enoughMaterial
           && !move_is_promotion(move)
           && !pos.move_is_passed_pawn_push(move))
       {
-          // Can only decrease from previous move because of
-          // MVV ordering so we don't need to recheck.
-          if (futilityValue < alpha)
-              continue;
-
           futilityValue =  futilityBase
                          + pos.endgame_value_of_piece_on(move_to(move))
                          + (move_is_ep(move) ? PawnValueEndgame : Value(0));
@@ -1607,6 +1598,9 @@ namespace {
           &&  pos.see_sign(move) < 0)
           continue;
 
+      // Update current move
+      ss->currentMove = move;
+
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
       value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-OnePly);
@@ -1628,17 +1622,13 @@ namespace {
 
     // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
-    if (!moveCount && isCheck) // Mate!
+    if (isCheck && bestValue == -VALUE_INFINITE)
         return value_mated_in(ply);
 
     // Update transposition table
     Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
     if (bestValue <= oldAlpha)
-    {
-        // If bestValue isn't changed it means it is still the static evaluation
-        // of the node, so keep this info to avoid a future evaluation() call.
         TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
-    }
     else if (bestValue >= beta)
     {
         move = ss->pv[ply];
