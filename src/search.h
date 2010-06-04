@@ -60,7 +60,7 @@ struct SearchStack {
   Value eval;
   bool skipNullMove;
 
-  void init(int ply);
+  void init();
   void initKillers();
 };
 
