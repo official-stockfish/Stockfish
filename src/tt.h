@@ -53,29 +53,32 @@
 class TTEntry {
 
 public:
-  TTEntry() {}
-  TTEntry(uint32_t k, Value v, ValueType t, Depth d, Move m, int generation,
-          Value statV, Value kingD)
-        : key_ (k), data((m & 0x1FFFF) | (t << 20) | (generation << 23)),
-          value_(int16_t(v)), depth_(int16_t(d)),
-          staticValue_(int16_t(statV)), kingDanger_(int16_t(kingD)) {}
+  void save(uint32_t k, Value v, ValueType t, Depth d, Move m, int g, Value statV, Value kd) {
 
-  uint32_t key() const { return key_; }
-  Depth depth() const { return Depth(depth_); }
+      key32 = k;
+      data = (m & 0x1FFFF) | (t << 20) | (g << 23);
+      value16     = int16_t(v);
+      depth16     = int16_t(d);
+      staticValue = int16_t(statV);
+      kingDanger  = int16_t(kd);
+  }
+
+  uint32_t key() const { return key32; }
+  Depth depth() const { return Depth(depth16); }
   Move move() const { return Move(data & 0x1FFFF); }
-  Value value() const { return Value(value_); }
+  Value value() const { return Value(value16); }
   ValueType type() const { return ValueType((data >> 20) & 7); }
-  int generation() const { return (data >> 23); }
-  Value static_value() const { return Value(staticValue_); }
-  Value king_danger() const { return Value(kingDanger_); }
+  int generation() const { return data >> 23; }
+  Value static_value() const { return Value(staticValue); }
+  Value king_danger() const { return Value(kingDanger); }
 
 private:
-  uint32_t key_;
+  uint32_t key32;
   uint32_t data;
-  int16_t value_;
-  int16_t depth_;
-  int16_t staticValue_;
-  int16_t kingDanger_;
+  int16_t value16;
+  int16_t depth16;
+  int16_t staticValue;
+  int16_t kingDanger;
 };
 
 
@@ -84,7 +87,7 @@ const int ClusterSize = 4;
 
 /// Each group of ClusterSize number of TTEntry form a TTCluster
 /// that is indexed by a single position key. TTCluster size must
-//  be not bigger then a cache line size, in case it is less then
+///  be not bigger then a cache line size, in case it is less then
 /// it should be padded to guarantee always aligned accesses.
 
 struct TTCluster {

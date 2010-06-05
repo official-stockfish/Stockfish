@@ -125,7 +125,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           if (m == MOVE_NONE)
               m = tte->move();
 
-          *tte = TTEntry(posKey32, v, t, d, m, generation, statV, kingD);
+          tte->save(posKey32, v, t, d, m, generation, statV, kingD);
           return;
       }
       else if (i == 0)  // replace would be a no-op in this common case
@@ -138,7 +138,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
       if (c1 + c2 + c3 > 0)
           replace = tte;
   }
-  *replace = TTEntry(posKey32, v, t, d, m, generation, statV, kingD);
+  replace->save(posKey32, v, t, d, m, generation, statV, kingD);
   writes++;
 }
 
