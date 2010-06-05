@@ -255,7 +255,7 @@ namespace {
   void evaluate_threats(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_space(const Position& pos, EvalInfo& ei);
+  int evaluate_space(const Position& pos, EvalInfo& ei);
 
   template<Color Us>
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
@@ -362,8 +362,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
       // Evaluate space for both sides
       if (ei.mi->space_weight() > 0)
       {
-          evaluate_space<WHITE, HasPopCnt>(pos, ei);
-          evaluate_space<BLACK, HasPopCnt>(pos, ei);
+          int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
+          ei.value += apply_weight(make_score(s * ei.mi->space_weight(), 0), Weights[Space]);
       }
   }
 
@@ -470,7 +470,7 @@ void read_weights(Color us) {
 
 namespace {
 
-  // init_king_tables() initializes king bitboards for both sides adding
+  // init_attack_tables() initializes king bitboards for both sides adding
   // pawn attacks. To be done before other evaluations.
 
   template<Color Us, bool HasPopCnt>
@@ -1039,27 +1039,24 @@ namespace {
   // twice. Finally, the space bonus is scaled by a weight taken from the
   // material hash table.
   template<Color Us, bool HasPopCnt>
-  void evaluate_space(const Position& pos, EvalInfo& ei) {
+  int evaluate_space(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     // Find the safe squares for our pieces inside the area defined by
     // SpaceMask[us]. A square is unsafe if it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
-    Bitboard safeSquares =   SpaceMask[Us]
-                          & ~pos.pieces(PAWN, Us)
-                          & ~ei.attacked_by(Them, PAWN)
-                          & (ei.attacked_by(Us) | ~ei.attacked_by(Them));
+    Bitboard safe =   SpaceMask[Us]
+                   & ~pos.pieces(PAWN, Us)
+                   & ~ei.attacked_by(Them, PAWN)
+                   & (ei.attacked_by(Us) | ~ei.attacked_by(Them));
 
     // Find all squares which are at most three squares behind some friendly pawn
-    Bitboard behindFriendlyPawns = pos.pieces(PAWN, Us);
-    behindFriendlyPawns |= (Us == WHITE ? behindFriendlyPawns >>  8 : behindFriendlyPawns <<  8);
-    behindFriendlyPawns |= (Us == WHITE ? behindFriendlyPawns >> 16 : behindFriendlyPawns << 16);
+    Bitboard behind = pos.pieces(PAWN, Us);
+    behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
+    behind |= (Us == WHITE ? behind >> 16 : behind << 16);
 
-    int space =  count_1s_max_15<HasPopCnt>(safeSquares)
-               + count_1s_max_15<HasPopCnt>(behindFriendlyPawns & safeSquares);
-
-    ei.value += Sign[Us] * apply_weight(make_score(space * ei.mi->space_weight(), 0), Weights[Space]);
+    return count_1s_max_15<HasPopCnt>(safe) + count_1s_max_15<HasPopCnt>(behind & safe);
   }
 
 
