@@ -1148,6 +1148,10 @@ namespace {
         && !value_is_mate(beta)
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
+        // Pass ss->eval to qsearch() and avoid an evaluate call
+        if (!tte || tte->static_value() == VALUE_NONE)
+            TT.store(posKey, ss->eval, VALUE_TYPE_EXACT, Depth(-127*OnePly), MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+
         Value rbeta = beta - razor_margin(depth);
         Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, Depth(0));
         if (v < rbeta)
