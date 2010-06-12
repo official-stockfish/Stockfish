@@ -1948,7 +1948,7 @@ namespace {
 
     if (*dangerous)
     {
-        if (moveIsCheck)
+        if (moveIsCheck && pos.see_sign(m)>= 0)
             result += CheckExtension[PvNode];
 
         if (singleEvasion)
