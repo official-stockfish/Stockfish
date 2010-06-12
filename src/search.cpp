@@ -236,7 +236,7 @@ namespace {
 
   // Last seconds noise filtering (LSN)
   const bool UseLSNFiltering = true;
-  const int LSNTime = 4000; // In milliseconds
+  const int LSNTime = 100; // In milliseconds
   const Value LSNValue = value_from_centipawns(200);
   bool loseOnTime = false;
 
