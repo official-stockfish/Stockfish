@@ -100,7 +100,7 @@ enum Phase {
 
 struct StateInfo {
   Key pawnKey, materialKey;
-  int castleRights, rule50, ply, pliesFromNull;
+  int castleRights, rule50, gamePly, pliesFromNull;
   Square epSquare;
   Score value;
   Value npMaterial[2];
@@ -274,10 +274,11 @@ public:
   bool opposite_colored_bishops() const;
   bool has_pawn_on_7th(Color c) const;
 
-  // Game ply information
+  // Current thread ID searching on the position
   int thread() const;
-  int ply() const;
-  void reset_ply();
+
+  // Reset the gamePly variable to 0
+  void reset_game_ply();
 
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
@@ -564,10 +565,6 @@ inline PieceType Position::captured_piece() const {
 
 inline int Position::thread() const {
   return threadID;
-}
-
-inline int Position::ply() const {
-  return st->ply;
 }
 
 #endif // !defined(POSITION_H_INCLUDED)

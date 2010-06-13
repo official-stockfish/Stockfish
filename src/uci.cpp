@@ -206,7 +206,7 @@ namespace {
                 move = move_from_string(RootPosition, token);
                 RootPosition.do_move(move, st);
                 if (RootPosition.rule_50_counter() == 0)
-                    RootPosition.reset_ply();
+                    RootPosition.reset_game_ply();
             }
             // Our StateInfo st is about going out of scope so copy
             // its content inside RootPosition before they disappear.
