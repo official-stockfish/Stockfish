@@ -900,13 +900,16 @@ namespace {
                    - square_distance(pos.king_square(opposite_color(c)), queeningSquare)
                    + int(c != pos.side_to_move());
 
-            if (d < 0)
+            // Do we protect the path to queening ?
+            bool pathDefended = (ei.attacked_by(c) & squares_in_front_of(c, s)) == squares_in_front_of(c, s);
+
+            if (d < 0 || pathDefended)
             {
                 int mtg = RANK_8 - relative_rank(c, s);
                 int blockerCount = count_1s_max_15(squares_in_front_of(c, s) & pos.occupied_squares());
                 mtg += blockerCount;
                 d += blockerCount;
-                if (d < 0 && (!movesToGo[c] || movesToGo[c] > mtg))
+                if ((d < 0 || pathDefended) && (!movesToGo[c] || movesToGo[c] > mtg))
                 {
                     movesToGo[c] = mtg;
                     pawnToGo[c] = s;
