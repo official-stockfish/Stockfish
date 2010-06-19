@@ -1307,11 +1307,11 @@ int Position::see_sign(Move m) const {
   Square from = move_from(m);
   Square to = move_to(m);
 
-  // Early return if SEE cannot be negative because capturing piece value
-  // is not bigger then captured one.
-  if (   midgame_value_of_piece_on(from) <= midgame_value_of_piece_on(to)
-      && type_of_piece_on(from) != KING)
-         return 1;
+  // Early return if SEE cannot be negative because captured piece value
+  // is not less then capturing one. Note that king moves always return
+  // here because king midgame value is set to 0.
+  if (midgame_value_of_piece_on(to) >= midgame_value_of_piece_on(from))
+      return 1;
 
   return see(from, to);
 }
