@@ -108,15 +108,13 @@ public:
   void clear();
   void store(const Key posKey, Value v, ValueType type, Depth d, Move m, Value statV, Value kingD);
   TTEntry* retrieve(const Key posKey) const;
-  void prefetch(const Key posKey) const;
   void new_search();
   void insert_pv(const Position& pos, Move pv[]);
   void extract_pv(const Position& pos, Move pv[], const int PLY_MAX);
   int full() const;
+  TTEntry* first_entry(const Key posKey) const;
 
 private:
-  inline TTEntry* first_entry(const Key posKey) const;
-
   // Be sure 'writes' is at least one cache line away
   // from read only variables.
   unsigned char pad_before[64 - sizeof(unsigned)];
@@ -129,5 +127,15 @@ private:
 };
 
 extern TranspositionTable TT;
+
+
+/// TranspositionTable::first_entry returns a pointer to the first
+/// entry of a cluster given a position. The low 32 bits of the key
+/// are used to get the index in the table.
+
+inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
+
+  return entries[uint32_t(posKey) & (size - 1)].data;
+}
 
 #endif // !defined(TT_H_INCLUDED)

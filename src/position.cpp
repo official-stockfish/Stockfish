@@ -772,7 +772,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   }
 
   // Prefetch TT access as soon as we know key is updated
-  TT.prefetch(key);
+  prefetch((char*)TT.first_entry(key));
 
   // Move the piece
   Bitboard move_bb = make_move_bb(from, to);
@@ -1250,7 +1250,7 @@ void Position::do_null_move(StateInfo& backupSt) {
       st->key ^= zobEp[st->epSquare];
 
   st->key ^= zobSideToMove;
-  TT.prefetch(st->key);
+  prefetch((char*)TT.first_entry(st->key));
 
   sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;

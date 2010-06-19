@@ -25,9 +25,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#if !defined(NO_PREFETCH)
-#  include <xmmintrin.h>
-#endif
 
 #include "movegen.h"
 #include "tt.h"
@@ -91,16 +88,6 @@ void TranspositionTable::clear() {
 }
 
 
-/// TranspositionTable::first_entry returns a pointer to the first
-/// entry of a cluster given a position. The low 32 bits of the key
-/// are used to get the index in the table.
-
-inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
-
-  return entries[uint32_t(posKey) & (size - 1)].data;
-}
-
-
 /// TranspositionTable::store writes a new entry containing a position,
 /// a value, a value type, a search depth, and a best move to the
 /// transposition table. Transposition table is organized in clusters of
@@ -159,31 +146,6 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
   return NULL;
 }
 
-
-/// TranspositionTable::prefetch looks up the current position in the
-/// transposition table and load it in L1/L2 cache. This is a non
-/// blocking function and do not stalls the CPU waiting for data
-/// to be loaded from RAM, that can be very slow. When we will
-/// subsequently call retrieve() the TT data will be already
-/// quickly accessible in L1/L2 CPU cache.
-#if defined(NO_PREFETCH)
-void TranspositionTable::prefetch(const Key) const {}
-#else
-
-void TranspositionTable::prefetch(const Key posKey) const {
-
-#if defined(__INTEL_COMPILER) || defined(__ICL)
-   // This hack prevents prefetches to be optimized away by
-   // Intel compiler. Both MSVC and gcc seems not affected.
-   __asm__ ("");
-#endif
-
-   char const* addr = (char*)first_entry(posKey);
-  _mm_prefetch(addr, _MM_HINT_T2);
-  _mm_prefetch(addr+64, _MM_HINT_T2); // 64 bytes ahead
-}
-
-#endif
 
 /// TranspositionTable::new_search() is called at the beginning of every new
 /// search. It increments the "generation" variable, which is used to

@@ -39,6 +39,10 @@
 
 #endif
 
+#if !defined(NO_PREFETCH)
+#  include <xmmintrin.h>
+#endif
+
 #include <cassert>
 #include <cstdio>
 #include <iomanip>
@@ -287,4 +291,26 @@ int Bioskey()
         return 0;
     }
 }
+
+/// prefetch() preloads the given address in L1/L2 cache. This is a non
+/// blocking function and do not stalls the CPU waiting for data to be
+/// loaded from RAM, that can be very slow.
+#if defined(NO_PREFETCH)
+void prefetch(char*) {}
+#else
+
+void prefetch(char* addr) {
+
+#if defined(__INTEL_COMPILER) || defined(__ICL)
+   // This hack prevents prefetches to be optimized away by
+   // Intel compiler. Both MSVC and gcc seems not affected.
+   __asm__ ("");
+#endif
+
+  _mm_prefetch(addr, _MM_HINT_T2);
+  _mm_prefetch(addr+64, _MM_HINT_T2); // 64 bytes ahead
+}
+
+#endif
+
 #endif

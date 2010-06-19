@@ -55,6 +55,7 @@ extern const std::string engine_name();
 extern int get_system_time();
 extern int cpu_count();
 extern int Bioskey();
+extern void prefetch(char* addr);
 
 
 ////
