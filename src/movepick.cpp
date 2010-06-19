@@ -70,18 +70,18 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
-                       const History& h, SearchStack* ss, Value beta) : pos(p), H(h) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
+                       SearchStack* ss, Value beta) : pos(p), H(h) {
   int searchTT = ttm;
   ttMoves[0].move = ttm;
-  lastBadCapture = badCaptures;
   badCaptureThreshold = 0;
+  lastBadCapture = badCaptures;
 
   pinned = p.pinned_pieces(pos.side_to_move());
 
   if (ss && !p.is_check())
   {
-      ttMoves[1].move = (ss->mateKiller == ttm)? MOVE_NONE : ss->mateKiller;
+      ttMoves[1].move = (ss->mateKiller == ttm) ? MOVE_NONE : ss->mateKiller;
       searchTT |= ttMoves[1].move;
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
@@ -98,7 +98,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d,
           badCaptureThreshold = -PawnValueMidgame;
 
       phasePtr = MainSearchPhaseTable;
-  } else if (d == Depth(0))
+  }
+  else if (d == Depth(0))
       phasePtr = QsearchWithChecksPhaseTable;
   else
   {
@@ -312,9 +313,9 @@ Move MovePicker::get_next_move() {
           case PH_KILLERS:
               move = (curMove++)->move;
               if (   move != MOVE_NONE
+                  && move_is_legal(pos, move, pinned)
                   && move != ttMoves[0].move
                   && move != ttMoves[1].move
-                  && move_is_legal(pos, move, pinned)
                   && !pos.move_is_capture(move))
                   return move;
               break;
