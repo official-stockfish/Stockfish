@@ -292,6 +292,8 @@ int Bioskey()
     }
 }
 
+#endif
+
 /// prefetch() preloads the given address in L1/L2 cache. This is a non
 /// blocking function and do not stalls the CPU waiting for data to be
 /// loaded from RAM, that can be very slow.
@@ -313,4 +315,3 @@ void prefetch(char* addr) {
 
 #endif
 
-#endif
