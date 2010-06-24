@@ -58,7 +58,7 @@ using namespace std;
 /// Version number. If this is left empty, the current date (in the format
 /// YYMMDD) is used as a version number.
 
-static const string EngineVersion = "";
+static const string EngineVersion = "1.8 beta 1";
 static const string AppName = "Stockfish";
 static const string AppTag  = "";
 
@@ -151,7 +151,7 @@ const string engine_name() {
   const string cpu64(CpuHas64BitPath ? " 64bit" : "");
 
   if (!EngineVersion.empty())
-      return AppName+ " " + EngineVersion + cpu64;
+      return AppName + " " + EngineVersion + cpu64;
 
   string date(__DATE__); // From compiler, format is "Sep 21 2008"
   string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
