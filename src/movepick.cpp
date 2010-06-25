@@ -221,7 +221,6 @@ void MovePicker::score_noncaptures() {
   Move m;
   Piece piece;
   Square from, to;
-  int hs;
 
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
@@ -229,14 +228,7 @@ void MovePicker::score_noncaptures() {
       from = move_from(m);
       to = move_to(m);
       piece = pos.piece_on(from);
-      hs = H.move_ordering_score(piece, to);
-
-      // Ensure history has always highest priority
-      if (hs > 0)
-          hs += 10000;
-
-      // Gain table based scoring
-      cur->score = hs + 16 * H.gain(piece, to);
+      cur->score = H.move_ordering_score(piece, to);
   }
 }
 
