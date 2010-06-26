@@ -364,8 +364,8 @@ void init_search() {
 }
 
 
-// SearchStack::init() initializes a search stack. Used at the beginning of a
-// new search from the root.
+// SearchStack::init() initializes a search stack entry.
+// Called at the beginning of search() when starting to examine a new node.
 void SearchStack::init() {
 
   pv[0] = pv[1] = MOVE_NONE;
@@ -374,6 +374,7 @@ void SearchStack::init() {
   eval = VALUE_NONE;
 }
 
+// SearchStack::initKillers() initializes killers for a search stack entry
 void SearchStack::initKillers() {
 
   mateKiller = MOVE_NONE;
