@@ -55,6 +55,7 @@ struct SearchStack {
   Move mateKiller;
   Move threatMove;
   Move excludedMove;
+  Move bestMove;
   Move killers[KILLER_MAX];
   Depth reduction;
   Value eval;

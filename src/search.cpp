@@ -368,7 +368,7 @@ void init_search() {
 // Called at the beginning of search() when starting to examine a new node.
 void SearchStack::init() {
 
-  pv[0] = pv[1] = MOVE_NONE;
+  pv[0] = pv[1] = bestMove = MOVE_NONE;
   currentMove = threatMove = MOVE_NONE;
   reduction = Depth(0);
   eval = VALUE_NONE;
@@ -1247,7 +1247,7 @@ namespace {
         search<PvNode>(pos, ss, alpha, beta, d, ply);
         ss->skipNullMove = false;
 
-        ttMove = ss->pv[0];
+        ttMove = ss->bestMove;
         tte = TT.retrieve(posKey);
     }
 
@@ -1444,7 +1444,7 @@ namespace {
         return bestValue;
 
     ValueType f = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    move = (bestValue <= oldAlpha ? MOVE_NONE : ss->pv[0]);
+    move = (bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove);
     TT.store(posKey, value_to_tt(bestValue, ply), f, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
     // Update killers and history only for non capture moves that fails high
@@ -1487,7 +1487,7 @@ namespace {
     Value oldAlpha = alpha;
 
     TM.incrementNodeCounter(pos.thread());
-    ss->pv[0] = ss->pv[1] = ss->currentMove = MOVE_NONE;
+    ss->pv[0] = ss->pv[1] = ss->bestMove = ss->currentMove = MOVE_NONE;
     ss->eval = VALUE_NONE;
 
     // Check for an instant draw or maximum ply reached
@@ -1627,12 +1627,12 @@ namespace {
     // Update transposition table
     Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
     ValueType f = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ply), f, d, ss->pv[0], ss->eval, ei.kingDanger[pos.side_to_move()]);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ply), f, d, ss->bestMove, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
     // Update killers only for checking moves that fails high
     if (    bestValue >= beta
-        && !pos.move_is_capture_or_promotion(ss->pv[0]))
-        update_killers(ss->pv[0], ss);
+        && !pos.move_is_capture_or_promotion(ss->bestMove))
+        update_killers(ss->bestMove, ss);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1816,7 +1816,7 @@ namespace {
     Move* src = (ss+1)->pv;
     Move* dst = ss->pv;
 
-    *dst = ss->currentMove;
+    *dst = ss->bestMove = ss->currentMove;
 
     do
         *++dst = *src;
@@ -1834,7 +1834,7 @@ namespace {
     Move* dst = ss->pv;
     Move* pdst = pss->pv;
 
-    *dst = *pdst = ss->currentMove;
+    *dst = *pdst = pss->bestMove = ss->bestMove = ss->currentMove;
 
     do
         *++dst = *++pdst = *src;
