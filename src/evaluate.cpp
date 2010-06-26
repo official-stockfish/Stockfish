@@ -207,7 +207,6 @@ namespace {
 
   // Bonuses for enemy's safe checks
   const int QueenContactCheckBonus = 3;
-  const int DiscoveredCheckBonus   = 3;
   const int QueenCheckBonus        = 2;
   const int RookCheckBonus         = 1;
   const int BishopCheckBonus       = 1;
