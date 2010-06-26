@@ -192,9 +192,9 @@ void TranspositionTable::extract_pv(const Position& pos, Move pv[], const int PL
   Position p(pos, pos.thread());
   int ply = 0;
 
-  // Update position to the end of current PV
-  while (pv[ply] != MOVE_NONE)
-      p.do_move(pv[ply++], st);
+  assert(pv[0] != MOVE_NONE);
+
+  p.do_move(pv[ply++], st);
 
   // Try to add moves from TT while possible
   while (   (tte = retrieve(p.get_key())) != NULL

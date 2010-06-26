@@ -282,7 +282,7 @@ namespace {
   /// Local functions
 
   Value id_loop(const Position& pos, Move searchMoves[]);
-  Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
+  Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
   template <NodeType PvNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
@@ -314,7 +314,7 @@ namespace {
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
-  void print_pv_info(const Position& pos, SearchStack* ss, Value alpha, Value beta, Value value);
+  void print_pv_info(const Position& pos, Move* ss, Value alpha, Value beta, Value value);
 
 #if !defined(_MSC_VER)
   void *init_thread(void *threadID);
@@ -368,8 +368,7 @@ void init_search() {
 // Called at the beginning of search() when starting to examine a new node.
 void SearchStack::init() {
 
-  pv[0] = pv[1] = bestMove = MOVE_NONE;
-  currentMove = threatMove = MOVE_NONE;
+  currentMove = threatMove = bestMove = MOVE_NONE;
   reduction = Depth(0);
   eval = VALUE_NONE;
 }
@@ -606,6 +605,7 @@ namespace {
 
     Position p(pos, pos.thread());
     SearchStack ss[PLY_MAX_PLUS_2];
+    Move pv[PLY_MAX_PLUS_2];
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
@@ -635,6 +635,7 @@ namespace {
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
+    pv[0] = pv[1] = MOVE_NONE;
     ValueByIteration[1] = rml.get_move_score(0);
     Iteration = 1;
 
@@ -666,11 +667,11 @@ namespace {
         }
 
         // Search to the current depth, rml is updated and sorted, alpha and beta could change
-        value = root_search(p, ss, rml, &alpha, &beta);
+        value = root_search(p, ss, pv, rml, &alpha, &beta);
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
-        TT.insert_pv(p, ss->pv);
+        TT.insert_pv(p, pv);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!
@@ -679,7 +680,7 @@ namespace {
         ValueByIteration[Iteration] = value;
 
         // Drop the easy move if differs from the new best move
-        if (ss->pv[0] != EasyMove)
+        if (pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
         if (UseTimeManagement)
@@ -701,7 +702,7 @@ namespace {
             // Stop search early if one move seems to be much better than the others
             int64_t nodes = TM.nodes_searched();
             if (   Iteration >= 8
-                && EasyMove == ss->pv[0]
+                && EasyMove == pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
                        && current_search_time() > MaxSearchTime / 16)
                     ||(   rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100
@@ -744,18 +745,18 @@ namespace {
              << " hashfull " << TT.full() << endl;
 
     // Print the best move and the ponder move to the standard output
-    if (ss->pv[0] == MOVE_NONE)
+    if (pv[0] == MOVE_NONE)
     {
-        ss->pv[0] = rml.get_move(0);
-        ss->pv[1] = MOVE_NONE;
+        pv[0] = rml.get_move(0);
+        pv[1] = MOVE_NONE;
     }
 
-    assert(ss->pv[0] != MOVE_NONE);
+    assert(pv[0] != MOVE_NONE);
 
-    cout << "bestmove " << ss->pv[0];
+    cout << "bestmove " << pv[0];
 
-    if (ss->pv[1] != MOVE_NONE)
-        cout << " ponder " << ss->pv[1];
+    if (pv[1] != MOVE_NONE)
+        cout << " ponder " << pv[1];
 
     cout << endl;
 
@@ -769,12 +770,12 @@ namespace {
 
         LogFile << "\nNodes: " << TM.nodes_searched()
                 << "\nNodes/second: " << nps()
-                << "\nBest move: " << move_to_san(p, ss->pv[0]);
+                << "\nBest move: " << move_to_san(p, pv[0]);
 
         StateInfo st;
-        p.do_move(ss->pv[0], st);
+        p.do_move(pv[0], st);
         LogFile << "\nPonder move: "
-                << move_to_san(p, ss->pv[1]) // Works also with MOVE_NONE
+                << move_to_san(p, pv[1]) // Works also with MOVE_NONE
                 << endl;
     }
     return rml.get_move_score(0);
@@ -786,7 +787,7 @@ namespace {
   // scheme, prints some information to the standard output and handles
   // the fail low/high loops.
 
-  Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
+  Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
 
     EvalInfo ei;
     StateInfo st;
@@ -937,11 +938,12 @@ namespace {
                 // the score before research in case we run out of time while researching.
                 rml.set_move_score(i, value);
                 update_pv(ss);
-                TT.extract_pv(pos, ss->pv, PLY_MAX);
-                rml.set_move_pv(i, ss->pv);
+                pv[0] = ss->bestMove;
+                TT.extract_pv(pos, pv, PLY_MAX);
+                rml.set_move_pv(i, pv);
 
                 // Print information to the standard output
-                print_pv_info(pos, ss, alpha, beta, value);
+                print_pv_info(pos, pv, alpha, beta, value);
 
                 // Prepare for a research after a fail high, each time with a wider window
                 *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
@@ -977,8 +979,9 @@ namespace {
                 // Update PV
                 rml.set_move_score(i, value);
                 update_pv(ss);
-                TT.extract_pv(pos, ss->pv, PLY_MAX);
-                rml.set_move_pv(i, ss->pv);
+                pv[0] = ss->bestMove;
+                TT.extract_pv(pos, pv, PLY_MAX);
+                rml.set_move_pv(i, pv);
 
                 if (MultiPV == 1)
                 {
@@ -989,7 +992,7 @@ namespace {
                         BestMoveChangesByIteration[Iteration]++;
 
                     // Print information to the standard output
-                    print_pv_info(pos, ss, alpha, beta, value);
+                    print_pv_info(pos, pv, alpha, beta, value);
 
                     // Raise alpha to setup proper non-pv search upper bound
                     if (value > alpha)
@@ -1487,7 +1490,7 @@ namespace {
     Value oldAlpha = alpha;
 
     TM.incrementNodeCounter(pos.thread());
-    ss->pv[0] = ss->pv[1] = ss->bestMove = ss->currentMove = MOVE_NONE;
+    ss->bestMove = ss->currentMove = MOVE_NONE;
     ss->eval = VALUE_NONE;
 
     // Check for an instant draw or maximum ply reached
@@ -1813,14 +1816,7 @@ namespace {
 
   void update_pv(SearchStack* ss) {
 
-    Move* src = (ss+1)->pv;
-    Move* dst = ss->pv;
-
-    *dst = ss->bestMove = ss->currentMove;
-
-    do
-        *++dst = *src;
-    while (*src++ != MOVE_NONE);
+    ss->bestMove = ss->currentMove;
   }
 
 
@@ -1830,15 +1826,7 @@ namespace {
 
   void sp_update_pv(SearchStack* pss, SearchStack* ss) {
 
-    Move* src = (ss+1)->pv;
-    Move* dst = ss->pv;
-    Move* pdst = pss->pv;
-
-    *dst = *pdst = pss->bestMove = ss->bestMove = ss->currentMove;
-
-    do
-        *++dst = *++pdst = *src;
-    while (*src++ != MOVE_NONE);
+    pss->bestMove = ss->bestMove = ss->currentMove;
   }
 
 
@@ -2280,7 +2268,7 @@ namespace {
   // print_pv_info() prints to standard output and eventually to log file information on
   // the current PV line. It is called at each iteration or after a new pv is found.
 
-  void print_pv_info(const Position& pos, SearchStack* ss, Value alpha, Value beta, Value value) {
+  void print_pv_info(const Position& pos, Move* pv, Value alpha, Value beta, Value value) {
 
     cout << "info depth " << Iteration
          << " score " << value_to_string(value)
@@ -2291,8 +2279,8 @@ namespace {
          << " nps "   << nps()
          << " pv ";
 
-    for (int j = 0; ss->pv[j] != MOVE_NONE && j < PLY_MAX; j++)
-        cout << ss->pv[j] << " ";
+    for (int j = 0; pv[j] != MOVE_NONE && j < PLY_MAX; j++)
+        cout << pv[j] << " ";
 
     cout << endl;
 
@@ -2302,7 +2290,7 @@ namespace {
             : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
 
         LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                             TM.nodes_searched(), value, type, ss->pv) << endl;
+                             TM.nodes_searched(), value, type, pv) << endl;
     }
   }
 
