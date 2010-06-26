@@ -1443,22 +1443,20 @@ namespace {
     if (AbortSearch || TM.thread_should_stop(threadID))
         return bestValue;
 
-    if (bestValue <= oldAlpha)
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, depth, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    ValueType f = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
+    move = (bestValue <= oldAlpha ? MOVE_NONE : ss->pv[0]);
+    TT.store(posKey, value_to_tt(bestValue, ply), f, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
-    else if (bestValue >= beta)
+    // Update killers and history only for non capture moves that fails high
+    if (bestValue >= beta)
     {
         TM.incrementBetaCounter(pos.side_to_move(), depth, threadID);
-        move = ss->pv[0];
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
         if (!pos.move_is_capture_or_promotion(move))
         {
             update_history(pos, move, depth, movesSearched, moveCount);
             update_killers(move, ss);
         }
     }
-    else
-        TT.store(posKey, value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, depth, ss->pv[0], ss->eval, ei.kingDanger[pos.side_to_move()]);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1628,19 +1626,13 @@ namespace {
 
     // Update transposition table
     Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
-    if (bestValue <= oldAlpha)
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_UPPER, d, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
-    else if (bestValue >= beta)
-    {
-        move = ss->pv[0];
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, d, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    ValueType f = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ply), f, d, ss->pv[0], ss->eval, ei.kingDanger[pos.side_to_move()]);
 
-        // Update killers only for good checking moves
-        if (!pos.move_is_capture_or_promotion(move))
-            update_killers(move, ss);
-    }
-    else
-        TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_EXACT, d, ss->pv[0], ss->eval, ei.kingDanger[pos.side_to_move()]);
+    // Update killers only for checking moves that fails high
+    if (    bestValue >= beta
+        && !pos.move_is_capture_or_promotion(ss->pv[0]))
+        update_killers(ss->pv[0], ss);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1949,7 +1941,7 @@ namespace {
 
     if (*dangerous)
     {
-        if (moveIsCheck && pos.see_sign(m)>= 0)
+        if (moveIsCheck && pos.see_sign(m) >= 0)
             result += CheckExtension[PvNode];
 
         if (singleEvasion)
