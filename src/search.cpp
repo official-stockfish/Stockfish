@@ -296,8 +296,6 @@ namespace {
   template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
-  void update_pv(SearchStack* ss);
-  void sp_update_pv(SearchStack* pss, SearchStack* ss);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   bool move_is_killer(Move m, SearchStack* ss);
@@ -937,9 +935,8 @@ namespace {
                 // We are failing high and going to do a research. It's important to update
                 // the score before research in case we run out of time while researching.
                 rml.set_move_score(i, value);
-                update_pv(ss);
-                pv[0] = ss->bestMove;
-                TT.extract_pv(pos, pv, PLY_MAX);
+                ss->bestMove = move;
+                TT.extract_pv(pos, move, pv, PLY_MAX);
                 rml.set_move_pv(i, pv);
 
                 // Print information to the standard output
@@ -978,9 +975,8 @@ namespace {
 
                 // Update PV
                 rml.set_move_score(i, value);
-                update_pv(ss);
-                pv[0] = ss->bestMove;
-                TT.extract_pv(pos, pv, PLY_MAX);
+                ss->bestMove = move;
+                TT.extract_pv(pos, move, pv, PLY_MAX);
                 rml.set_move_pv(i, pv);
 
                 if (MultiPV == 1)
@@ -1414,10 +1410,10 @@ namespace {
               if (PvNode && value < beta) // This guarantees that always: alpha < beta
                   alpha = value;
 
-              update_pv(ss);
-
               if (value == value_mate_in(ply + 1))
                   ss->mateKiller = move;
+
+              ss->bestMove = move;
           }
       }
 
@@ -1617,7 +1613,7 @@ namespace {
           if (value > alpha)
           {
               alpha = value;
-              update_pv(ss);
+              ss->bestMove = move;
           }
        }
     }
@@ -1798,7 +1794,7 @@ namespace {
               if (PvNode && value < sp->beta) // This guarantees that always: sp->alpha < sp->beta
                   sp->alpha = value;
 
-              sp_update_pv(sp->parentSstack, ss);
+              sp->parentSstack->bestMove = ss->bestMove = move;
           }
       }
     }
@@ -1808,25 +1804,6 @@ namespace {
     sp->slaves[threadID] = 0;
 
     lock_release(&(sp->lock));
-  }
-
-  // update_pv() is called whenever a search returns a value > alpha.
-  // It updates the PV in the SearchStack object corresponding to the
-  // current node.
-
-  void update_pv(SearchStack* ss) {
-
-    ss->bestMove = ss->currentMove;
-  }
-
-
-  // sp_update_pv() is a variant of update_pv for use at split points. The
-  // difference between the two functions is that sp_update_pv also updates
-  // the PV at the parent node.
-
-  void sp_update_pv(SearchStack* pss, SearchStack* ss) {
-
-    pss->bestMove = ss->bestMove = ss->currentMove;
   }
 
 

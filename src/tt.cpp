@@ -185,15 +185,16 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 /// will often get single-move PVs when the search stops while failing high,
 /// and a single-move PV means that we don't have a ponder move.
 
-void TranspositionTable::extract_pv(const Position& pos, Move pv[], const int PLY_MAX) {
+void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[], const int PLY_MAX) {
 
   const TTEntry* tte;
   StateInfo st;
   Position p(pos, pos.thread());
   int ply = 0;
 
-  assert(pv[0] != MOVE_NONE);
+  assert(bestMove != MOVE_NONE);
 
+  pv[ply] = bestMove;
   p.do_move(pv[ply++], st);
 
   // Try to add moves from TT while possible
