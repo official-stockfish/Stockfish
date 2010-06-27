@@ -197,9 +197,11 @@ void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[
   pv[ply] = bestMove;
   p.do_move(pv[ply++], st);
 
-  // Try to add moves from TT while possible
+  // Extract moves from TT when possible. We try hard to always
+  // get a ponder move, that's the reason of ply < 2 conditions.
   while (   (tte = retrieve(p.get_key())) != NULL
          && tte->move() != MOVE_NONE
+         && (tte->type() == VALUE_TYPE_EXACT || ply < 2)
          && move_is_legal(p, tte->move())
          && (!p.is_draw() || ply < 2)
          && ply < PLY_MAX)
