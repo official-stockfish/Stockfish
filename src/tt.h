@@ -115,10 +115,10 @@ public:
   TTEntry* first_entry(const Key posKey) const;
 
 private:
-  // Be sure 'writes' is at least one cache line away
+  // Be sure 'overwrites' is at least one cache line away
   // from read only variables.
   unsigned char pad_before[64 - sizeof(unsigned)];
-  unsigned writes; // heavy SMP read/write access here
+  unsigned overwrites; // heavy SMP read/write access here
   unsigned char pad_after[64];
 
   size_t size;

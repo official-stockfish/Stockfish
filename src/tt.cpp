@@ -38,7 +38,7 @@ TranspositionTable TT;
 
 TranspositionTable::TranspositionTable() {
 
-  size = writes = 0;
+  size = overwrites = 0;
   entries = 0;
   generation = 0;
 }
@@ -100,6 +100,7 @@ void TranspositionTable::clear() {
 
 void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m, Value statV, Value kingD) {
 
+  int c1, c2, c3;
   TTEntry *tte, *replace;
   uint32_t posKey32 = posKey >> 32; // Use the high 32 bits as key
 
@@ -115,18 +116,19 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           tte->save(posKey32, v, t, d, m, generation, statV, kingD);
           return;
       }
-      else if (i == 0)  // replace would be a no-op in this common case
+
+      if (i == 0)  // replace would be a no-op in this common case
           continue;
 
-      int c1 = (replace->generation() == generation ?  2 : 0);
-      int c2 = (tte->generation() == generation ? -2 : 0);
-      int c3 = (tte->depth() < replace->depth() ?  1 : 0);
+      c1 = (replace->generation() == generation ?  2 : 0);
+      c2 = (tte->generation() == generation ? -2 : 0);
+      c3 = (tte->depth() < replace->depth() ?  1 : 0);
 
       if (c1 + c2 + c3 > 0)
           replace = tte;
   }
   replace->save(posKey32, v, t, d, m, generation, statV, kingD);
-  writes++;
+  overwrites++;
 }
 
 
@@ -155,7 +157,7 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 void TranspositionTable::new_search() {
 
   generation++;
-  writes = 0;
+  overwrites = 0;
 }
 
 
@@ -214,11 +216,11 @@ void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[
 
 
 /// TranspositionTable::full() returns the permill of all transposition table
-/// entries which have received at least one write during the current search.
+/// entries which have received at least one overwrite during the current search.
 /// It is used to display the "info hashfull ..." information in UCI.
 
 int TranspositionTable::full() const {
 
   double N = double(size) * ClusterSize;
-  return int(1000 * (1 - exp(writes * log(1.0 - 1.0/N))));
+  return int(1000 * (1 - exp(overwrites * log(1.0 - 1.0/N))));
 }
