@@ -861,8 +861,7 @@ namespace {
         // value if the other side has a rook or queen.
         if (square_file(s) == FILE_A || square_file(s) == FILE_H)
         {
-            if (   pos.non_pawn_material(Them) <= KnightValueMidgame
-                && pos.piece_count(Them, KNIGHT) <= 1)
+            if (pos.non_pawn_material(Them) <= KnightValueMidgame)
                 ebonus += ebonus / 4;
             else if (pos.pieces(ROOK, QUEEN, Them))
                 ebonus -= ebonus / 4;
