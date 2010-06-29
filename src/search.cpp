@@ -312,7 +312,7 @@ namespace {
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
-  void print_pv_info(const Position& pos, Move* ss, Value alpha, Value beta, Value value);
+  void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value);
 
 #if !defined(_MSC_VER)
   void *init_thread(void *threadID);
@@ -2245,29 +2245,28 @@ namespace {
   // print_pv_info() prints to standard output and eventually to log file information on
   // the current PV line. It is called at each iteration or after a new pv is found.
 
-  void print_pv_info(const Position& pos, Move* pv, Value alpha, Value beta, Value value) {
+  void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value) {
 
     cout << "info depth " << Iteration
-         << " score " << value_to_string(value)
-         << ((value >= beta) ? " lowerbound" :
-            ((value <= alpha)? " upperbound" : ""))
+         << " score "     << value_to_string(value)
+         << (value >= beta ? " lowerbound" : value <= alpha ? " upperbound" : "")
          << " time "  << current_search_time()
          << " nodes " << TM.nodes_searched()
          << " nps "   << nps()
          << " pv ";
 
-    for (int j = 0; pv[j] != MOVE_NONE && j < PLY_MAX; j++)
-        cout << pv[j] << " ";
+    for (Move* m = pv; *m != MOVE_NONE; m++)
+        cout << *m << " ";
 
     cout << endl;
 
     if (UseLogFile)
     {
-        ValueType type =  (value >= beta  ? VALUE_TYPE_LOWER
-            : (value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT));
+        ValueType t = value >= beta  ? VALUE_TYPE_LOWER :
+                      value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
 
         LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                             TM.nodes_searched(), value, type, pv) << endl;
+                             TM.nodes_searched(), value, t, pv) << endl;
     }
   }
 

@@ -641,10 +641,10 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
       }
   }
 
-  // En passant capture with check?  We have already handled the case
+  // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
-  // need to handle is the unusual case of a discovered check through the
-  // captured pawn.
+  // need to handle is the unusual case of a discovered check through
+  // the captured pawn.
   if (move_is_ep(m))
   {
       Square capsq = make_square(square_file(to), square_rank(from));

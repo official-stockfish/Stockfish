@@ -47,7 +47,7 @@ namespace {
     AMBIGUITY_BOTH
   };
 
-  const History H; // used as dummy argument for MovePicker c'tor
+  const History H; // Used as dummy argument for MovePicker c'tor
 
   Ambiguity move_ambiguity(const Position& pos, Move m);
   const string time_string(int milliseconds);
@@ -68,28 +68,25 @@ const string move_to_san(Position& pos, Move m) {
   assert(pos.is_ok());
   assert(move_is_ok(m));
 
-  Square from, to;
-  PieceType pt;
-
-  from = move_from(m);
-  to = move_to(m);
-  pt = type_of_piece(pos.piece_on(move_from(m)));
-
-  string san = "";
+  string san;
+  Square from = move_from(m);
+  Square to = move_to(m);
+  PieceType pt = type_of_piece(pos.piece_on(move_from(m)));
 
   if (m == MOVE_NONE)
       return "(none)";
   else if (m == MOVE_NULL)
       return "(null)";
-  else if (move_is_long_castle(m) || (int(to - from) == -2 && pt == KING))
+  else if (move_is_long_castle(m)  || (int(to - from) == -2 && pt == KING))
       san = "O-O-O";
-  else if (move_is_short_castle(m) || (int(to - from) == 2 && pt == KING))
+  else if (move_is_short_castle(m) || (int(to - from) ==  2 && pt == KING))
       san = "O-O";
   else
   {
       if (pt != PAWN)
       {
           san += piece_type_to_char(pt, true);
+
           switch (move_ambiguity(pos, m)) {
           case AMBIGUITY_NONE:
             break;
@@ -115,13 +112,13 @@ const string move_to_san(Position& pos, Move m) {
       san += square_to_string(move_to(m));
       if (move_is_promotion(m))
       {
-          san += '=';
+          san += "=";
           san += piece_type_to_char(move_promotion_piece(m), true);
       }
   }
-  // Is the move check?  We don't use pos.move_is_check(m) here, because
-  // Position::move_is_check doesn't detect all checks (not castling moves,
-  // promotions and en passant captures).
+
+  // The move gives check ? We don't use pos.move_is_check() here
+  // because we need to test for mate after the move is done.
   StateInfo st;
   pos.do_move(m, st);
   if (pos.is_check())
@@ -301,21 +298,21 @@ const string line_to_san(const Position& pos, Move line[], int startColumn, bool
   size_t maxLength = 80 - startColumn;
   Position p(pos, pos.thread());
 
-  for (int i = 0; line[i] != MOVE_NONE; i++)
+  for (Move* m = line; *m != MOVE_NONE; m++)
   {
-      moveStr = move_to_san(p, line[i]);
+      moveStr = move_to_san(p, *m);
       length += moveStr.length() + 1;
       if (breakLines && length > maxLength)
       {
-          s << '\n' << std::setw(startColumn) << ' ';
+          s << "\n" << std::setw(startColumn) << " ";
           length = moveStr.length() + 1;
       }
       s << moveStr << ' ';
 
-      if (line[i] == MOVE_NULL)
+      if (*m == MOVE_NULL)
           p.do_null_move(st);
       else
-          p.do_move(line[i], st);
+          p.do_move(*m, st);
   }
   return s.str();
 }
@@ -325,27 +322,31 @@ const string line_to_san(const Position& pos, Move line[], int startColumn, bool
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
 
-const string pretty_pv(const Position& pos, int time, int depth,
-                       uint64_t nodes, Value score, ValueType type, Move pv[]) {
+const string pretty_pv(const Position& pos, int time, int depth, uint64_t nodes,
+                       Value score, ValueType type, Move pv[]) {
+
+  const uint64_t K = 1000;
+  const uint64_t M = 1000000;
+
   std::stringstream s;
 
   // Depth
   s << std::setw(2) << depth << "  ";
 
   // Score
-  s << ((type == VALUE_TYPE_LOWER)? ">" : ((type == VALUE_TYPE_UPPER)? "<" : " "));
-  s << std::setw(7) << score_string(score);
+  s << (type == VALUE_TYPE_LOWER ? ">" : type == VALUE_TYPE_UPPER ? "<" : " ")
+    << std::setw(7) << score_string(score);
 
   // Time
   s << std::setw(8) << time_string(time) << " ";
 
   // Nodes
-  if (nodes < 1000000ULL)
-    s << std::setw(8) << nodes << " ";
-  else if (nodes < 1000000000ULL)
-    s << std::setw(7) << nodes/1000ULL << 'k' << " ";
+  if (nodes < M)
+      s << std::setw(8) << nodes / 1 << " ";
+  else if (nodes < K * M)
+      s << std::setw(7) << nodes / K << "K ";
   else
-    s << std::setw(7) << nodes/1000000ULL << 'M' << " ";
+      s << std::setw(7) << nodes / M << "M ";
 
   // PV
   s << line_to_san(pos, pv, 30, true);
@@ -398,14 +399,17 @@ namespace {
   }
 
 
-  const string time_string(int milliseconds) {
+  const string time_string(int millisecs) {
+
+    const int MSecMinute = 1000 * 60;
+    const int MSecHour   = 1000 * 60 * 60;
 
     std::stringstream s;
     s << std::setfill('0');
 
-    int hours = milliseconds / (1000*60*60);
-    int minutes = (milliseconds - hours*1000*60*60) / (1000*60);
-    int seconds = (milliseconds - hours*1000*60*60 - minutes*1000*60) / 1000;
+    int hours = millisecs / MSecHour;
+    int minutes = (millisecs - hours * MSecHour) / MSecMinute;
+    int seconds = (millisecs - hours * MSecHour - minutes * MSecMinute) / 1000;
 
     if (hours)
         s << hours << ':';
@@ -421,7 +425,7 @@ namespace {
 
     if (v >= VALUE_MATE - 200)
         s << "#" << (VALUE_MATE - v + 1) / 2;
-    else if(v <= -VALUE_MATE + 200)
+    else if (v <= -VALUE_MATE + 200)
         s << "-#" << (VALUE_MATE + v) / 2;
     else
     {
