@@ -1061,7 +1061,7 @@ namespace {
     Depth ext, newDepth;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityValueScaled; // Non-PV specific
-    bool isCheck, singleEvasion, moveIsCheck, captureOrPromotion, dangerous;
+    bool isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
     int threadID = pos.thread();
@@ -1257,11 +1257,12 @@ namespace {
     // Initialize a MovePicker object for the current position
     MovePicker mp = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
-    bool singularExtensionNode =   depth >= SingularExtensionDepth[PvNode]
-                                && tte && tte->move()
-                                && !excludedMove // Do not allow recursive singular extension search
-                                && is_lower_bound(tte->type())
-                                && tte->depth() >= depth - 3 * OnePly;
+    singleEvasion = isCheck && mp.number_of_evasions() == 1;
+    singularExtensionNode =   depth >= SingularExtensionDepth[PvNode]
+                           && tte && tte->move()
+                           && !excludedMove // Do not allow recursive singular extension search
+                           && is_lower_bound(tte->type())
+                           && tte->depth() >= depth - 3 * OnePly;
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
@@ -1274,7 +1275,6 @@ namespace {
       if (move == excludedMove)
           continue;
 
-      singleEvasion = (isCheck && mp.number_of_evasions() == 1);
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
