@@ -342,8 +342,8 @@ void init_search() {
   // Init reductions array
   for (hd = 1; hd < 64; hd++) for (mc = 1; mc < 64; mc++)
   {
-      double    pvRed = log(double(hd)) * log(double(mc)) / 3.0;
-      double nonPVRed = log(double(hd)) * log(double(mc)) / 1.5;
+      double    pvRed = 0.33 + log(double(hd)) * log(double(mc)) / 4.5;
+      double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
       ReductionMatrix[PV][hd][mc]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
       ReductionMatrix[NonPV][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
   }
