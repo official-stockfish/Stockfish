@@ -182,7 +182,7 @@ Phase MaterialInfoTable::game_phase(const Position& pos) {
 MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   Key key = pos.get_material_key();
-  int index = key & (size - 1);
+  unsigned index = unsigned(key & (size - 1));
   MaterialInfo* mi = entries + index;
 
   // If mi->key matches the position's material hash key, it means that we

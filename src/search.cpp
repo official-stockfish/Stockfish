@@ -214,7 +214,7 @@ namespace {
   int32_t FutilityMarginsMatrix[16][64]; // [depth][moveNumber]
   int FutilityMoveCountArray[32]; // [depth]
 
-  inline Value futility_margin(Depth d, int mn) { return Value(d < 7 * OnePly ? FutilityMarginsMatrix[Max(d, 0)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
+  inline Value futility_margin(Depth d, int mn) { return Value(d < 7 * OnePly ? FutilityMarginsMatrix[Max(d, 1)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
   inline int futility_move_count(Depth d) { return d < 16 * OnePly ? FutilityMoveCountArray[d] : 512; }
 
   // Step 14. Reduced search
@@ -353,8 +353,8 @@ void init_search() {
   }
 
   // Init futility margins array
-  for (d = 0; d < 16; d++) for (mc = 0; mc < 64; mc++)
-      FutilityMarginsMatrix[d][mc] = 112 * int(log(double(d * d) / 2) / log(2.0) + 1.001) - 8 * mc + 45;
+  for (d = 1; d < 16; d++) for (mc = 0; mc < 64; mc++)
+      FutilityMarginsMatrix[d][mc] = 112 * int(log(double(d * d) / 2) / log(2.0) + 1) - 8 * mc + 45;
 
   // Init futility move count array
   for (d = 0; d < 32; d++)

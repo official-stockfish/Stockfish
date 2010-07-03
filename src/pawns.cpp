@@ -148,7 +148,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
   assert(pos.is_ok());
 
   Key key = pos.get_pawn_key();
-  int index = int(key & (size - 1));
+  unsigned index = unsigned(key & (size - 1));
   PawnInfo* pi = entries + index;
 
   // If pi->key matches the position's pawn hash key, it means that we
