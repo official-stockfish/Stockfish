@@ -258,7 +258,7 @@ public:
   // Incremental evaluation
   Score value() const;
   Value non_pawn_material(Color c) const;
-  Score pst_delta(Piece piece, Square from, Square to) const;
+  static Score pst_delta(Piece piece, Square from, Square to);
 
   // Game termination checks
   bool is_mate() const;
@@ -310,7 +310,7 @@ private:
   Key compute_material_key() const;
 
   // Computing incremental evaluation scores and material counts
-  Score pst(Color c, PieceType pt, Square s) const;
+  static Score pst(Color c, PieceType pt, Square s);
   Score compute_value() const;
   Value compute_non_pawn_material(Color c) const;
 
@@ -507,11 +507,11 @@ inline Key Position::get_material_key() const {
   return st->materialKey;
 }
 
-inline Score Position::pst(Color c, PieceType pt, Square s) const {
+inline Score Position::pst(Color c, PieceType pt, Square s) {
   return PieceSquareTable[piece_of_color_and_type(c, pt)][s];
 }
 
-inline Score Position::pst_delta(Piece piece, Square from, Square to) const {
+inline Score Position::pst_delta(Piece piece, Square from, Square to) {
   return PieceSquareTable[piece][to] - PieceSquareTable[piece][from];
 }
 

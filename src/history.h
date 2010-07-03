@@ -49,7 +49,7 @@ public:
   void clear();
   void success(Piece p, Square to, Depth d);
   void failure(Piece p, Square to, Depth d);
-  int move_ordering_score(Piece p, Square to) const;
+  int value(Piece p, Square to) const;
   void set_gain(Piece p, Square to, Value delta);
   Value gain(Piece p, Square to) const;
 

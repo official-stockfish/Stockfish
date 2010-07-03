@@ -85,10 +85,10 @@ void History::failure(Piece p, Square to, Depth d) {
 }
 
 
-/// History::move_ordering_score() returns an integer value used to order the
+/// History::value() returns an integer value used to order the
 /// non-capturing moves in the MovePicker class.
 
-int History::move_ordering_score(Piece p, Square to) const {
+int History::value(Piece p, Square to) const {
 
   assert(piece_is_ok(p));
   assert(square_is_ok(to));
