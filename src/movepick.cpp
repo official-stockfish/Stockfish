@@ -228,7 +228,7 @@ void MovePicker::score_noncaptures() {
       from = move_from(m);
       to = move_to(m);
       piece = pos.piece_on(from);
-      cur->score = H.value(piece, to);
+      cur->score = H.value(piece, to) + H.gain(piece, to);
   }
 }
 
