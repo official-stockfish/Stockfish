@@ -366,7 +366,7 @@ void init_search() {
 
   // Init futility move count array
   for (d = 0; d < 32; d++)
-      FutilityMoveCountArray[d] = 3 + (1 << (3 * d / 8));
+      FutilityMoveCountArray[d] = int(3.001 + 0.25 * pow(d, 2.0));
 }
 
 
