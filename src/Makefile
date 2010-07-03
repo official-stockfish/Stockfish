@@ -500,7 +500,7 @@ icc-profile-clean:
 
 hpux:
 	$(MAKE) \
-	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -DBIGENDIAN -mt +O3 -DNDEBUG' \
+	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -DBIGENDIAN -mt +O3 -DNDEBUG -DNO_PREFETCH' \
 	CXXFLAGS="" \
 	LDFLAGS="" \
 	all
