@@ -36,12 +36,14 @@
 
 /// The TTEntry class is the class of transposition table entries
 ///
-/// A TTEntry needs 96 bits to be stored
+/// A TTEntry needs 128 bits to be stored
 ///
 /// bit  0-31: key
 /// bit 32-63: data
 /// bit 64-79: value
 /// bit 80-95: depth
+/// bit 96-111: static value
+/// bit 112-127: king danger value
 ///
 /// the 32 bits of the data field are so defined
 ///
