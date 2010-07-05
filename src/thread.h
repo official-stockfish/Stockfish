@@ -39,7 +39,7 @@
 ////
 
 const int MAX_THREADS = 8;
-const int ACTIVE_SPLIT_POINTS_MAX = 8;
+const int MAX_ACTIVE_SPLIT_POINTS = 8;
 
 
 ////
@@ -83,12 +83,12 @@ enum ThreadState
 };
 
 struct Thread {
-  SplitPoint* volatile splitPoint;
-  volatile int activeSplitPoints;
   uint64_t nodes;
   uint64_t betaCutOffs[2];
   volatile ThreadState state;
-  unsigned char pad[64]; // set some distance among local data for each thread
+  SplitPoint* volatile splitPoint;
+  volatile int activeSplitPoints;
+  SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
 };
 
 

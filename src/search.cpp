@@ -98,7 +98,6 @@ namespace {
     int ActiveThreads;
     volatile bool AllThreadsShouldExit, AllThreadsShouldSleep;
     Thread threads[MAX_THREADS];
-    SplitPoint SplitPointStack[MAX_THREADS][ACTIVE_SPLIT_POINTS_MAX];
 
     Lock MPLock, WaitLock;
 
@@ -2436,10 +2435,10 @@ namespace {
         SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
 #endif
 
-    // Initialize SplitPointStack locks
+    // Initialize splitPoints[] locks
     for (i = 0; i < MAX_THREADS; i++)
-        for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
-            lock_init(&(SplitPointStack[i][j].lock), NULL);
+        for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
+            lock_init(&(threads[i].splitPoints[j].lock), NULL);
 
     // Will be set just before program exits to properly end the threads
     AllThreadsShouldExit = false;
@@ -2493,8 +2492,8 @@ namespace {
 
     // Now we can safely destroy the locks
     for (int i = 0; i < MAX_THREADS; i++)
-        for (int j = 0; j < ACTIVE_SPLIT_POINTS_MAX; j++)
-            lock_destroy(&(SplitPointStack[i][j].lock));
+        for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
+            lock_destroy(&(threads[i].splitPoints[j].lock));
 
     lock_destroy(&WaitLock);
     lock_destroy(&MPLock);
@@ -2547,7 +2546,7 @@ namespace {
     // Apply the "helpful master" concept if possible. Use localActiveSplitPoints
     // that is known to be > 0, instead of threads[slave].activeSplitPoints that
     // could have been set to 0 by another thread leading to an out of bound access.
-    if (SplitPointStack[slave][localActiveSplitPoints - 1].slaves[master])
+    if (threads[slave].splitPoints[localActiveSplitPoints - 1].slaves[master])
         return true;
 
     return false;
@@ -2594,54 +2593,54 @@ namespace {
     assert(p.thread() >= 0 && p.thread() < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    int master = p.thread();
+    int i, master = p.thread();
+    Thread& masterThread = threads[master];
 
     lock_grab(&MPLock);
 
     // If no other thread is available to help us, or if we have too many
     // active split points, don't split.
     if (   !available_thread_exists(master)
-        || threads[master].activeSplitPoints >= ACTIVE_SPLIT_POINTS_MAX)
+        || masterThread.activeSplitPoints >= MAX_ACTIVE_SPLIT_POINTS)
     {
         lock_release(&MPLock);
         return;
     }
 
     // Pick the next available split point object from the split point stack
-    SplitPoint* splitPoint = &SplitPointStack[master][threads[master].activeSplitPoints];
+    SplitPoint& splitPoint = masterThread.splitPoints[masterThread.activeSplitPoints++];
 
     // Initialize the split point object
-    splitPoint->parent = threads[master].splitPoint;
-    splitPoint->stopRequest = false;
-    splitPoint->ply = ply;
-    splitPoint->depth = depth;
-    splitPoint->mateThreat = mateThreat;
-    splitPoint->alpha = *alpha;
-    splitPoint->beta = beta;
-    splitPoint->pvNode = pvNode;
-    splitPoint->bestValue = *bestValue;
-    splitPoint->mp = mp;
-    splitPoint->moveCount = *moveCount;
-    splitPoint->pos = &p;
-    splitPoint->parentSstack = ss;
-    for (int i = 0; i < ActiveThreads; i++)
-        splitPoint->slaves[i] = 0;
+    splitPoint.parent = masterThread.splitPoint;
+    splitPoint.stopRequest = false;
+    splitPoint.ply = ply;
+    splitPoint.depth = depth;
+    splitPoint.mateThreat = mateThreat;
+    splitPoint.alpha = *alpha;
+    splitPoint.beta = beta;
+    splitPoint.pvNode = pvNode;
+    splitPoint.bestValue = *bestValue;
+    splitPoint.mp = mp;
+    splitPoint.moveCount = *moveCount;
+    splitPoint.pos = &p;
+    splitPoint.parentSstack = ss;
+    for (i = 0; i < ActiveThreads; i++)
+        splitPoint.slaves[i] = 0;
 
-    threads[master].splitPoint = splitPoint;
-    threads[master].activeSplitPoints++;
+    masterThread.splitPoint = &splitPoint;
 
     // If we are here it means we are not available
-    assert(threads[master].state != THREAD_AVAILABLE);
+    assert(masterThread.state != THREAD_AVAILABLE);
 
     int workersCnt = 1; // At least the master is included
 
     // Allocate available threads setting state to THREAD_BOOKED
-    for (int i = 0; !Fake && i < ActiveThreads && workersCnt < MaxThreadsPerSplitPoint; i++)
+    for (i = 0; !Fake && i < ActiveThreads && workersCnt < MaxThreadsPerSplitPoint; i++)
         if (thread_is_available(i, master))
         {
             threads[i].state = THREAD_BOOKED;
-            threads[i].splitPoint = splitPoint;
-            splitPoint->slaves[i] = 1;
+            threads[i].splitPoint = &splitPoint;
+            splitPoint.slaves[i] = 1;
             workersCnt++;
         }
 
@@ -2652,10 +2651,10 @@ namespace {
 
     // Tell the threads that they have work to do. This will make them leave
     // their idle loop. But before copy search stack tail for each thread.
-    for (int i = 0; i < ActiveThreads; i++)
-        if (i == master || splitPoint->slaves[i])
+    for (i = 0; i < ActiveThreads; i++)
+        if (i == master || splitPoint.slaves[i])
         {
-            memcpy(splitPoint->sstack[i], ss - 1, 4 * sizeof(SearchStack));
+            memcpy(splitPoint.sstack[i], ss - 1, 4 * sizeof(SearchStack));
 
             assert(i == master || threads[i].state == THREAD_BOOKED);
 
@@ -2667,16 +2666,16 @@ namespace {
     // THREAD_WORKISWAITING.  We send the split point as a second parameter to the
     // idle loop, which means that the main thread will return from the idle
     // loop when all threads have finished their work at this split point.
-    idle_loop(master, splitPoint);
+    idle_loop(master, &splitPoint);
 
     // We have returned from the idle loop, which means that all threads are
     // finished. Update alpha and bestValue, and return.
     lock_grab(&MPLock);
 
-    *alpha = splitPoint->alpha;
-    *bestValue = splitPoint->bestValue;
-    threads[master].activeSplitPoints--;
-    threads[master].splitPoint = splitPoint->parent;
+    *alpha = splitPoint.alpha;
+    *bestValue = splitPoint.bestValue;
+    masterThread.activeSplitPoints--;
+    masterThread.splitPoint = splitPoint.parent;
 
     lock_release(&MPLock);
   }
