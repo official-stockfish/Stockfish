@@ -219,7 +219,7 @@ ifeq ($(COMP),icc)
 endif
 
 ### 3.2 General compiler settings
-CXXFLAGS += -g -Wall -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+CXXFLAGS = -g -Wall -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
 ifeq ($(comp),icc)
 	CXXFLAGS += -wd383,869,981,10187,10188,11505,11503
@@ -230,7 +230,7 @@ ifeq ($(os),osx)
 endif
 
 ### 3.3 General linker settings
-LDFLAGS += -lpthread $(EXTRALDFLAGS)
+LDFLAGS = -lpthread $(EXTRALDFLAGS)
 
 ifeq ($(os),osx)
 	LDFLAGS += -arch $(arch)
