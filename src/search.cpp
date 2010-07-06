@@ -1280,9 +1280,10 @@ namespace {
       // Step 11. Decide the new search depth
       ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
 
-      // Singular extension search. We extend the TT move if its value is much better than
-      // its siblings. To verify this we do a reduced search on all the other moves but the
-      // ttMove, if result is lower then ttValue minus a margin then we extend ttMove.
+      // Singular extension search. If all moves but one fail low on a search of (alpha-s, beta-s),
+      // and just one fails high on (alpha, beta), then that move is singular and should be extended.
+      // To verify this we do a reduced search on all the other moves but the ttMove, if result is
+      // lower then ttValue minus a margin then we extend ttMove.
       if (   singularExtensionNode
           && move == tte->move()
           && ext < OnePly)
@@ -1297,7 +1298,7 @@ namespace {
               Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply);
               ss->skipNullMove = false;
               ss->excludedMove = MOVE_NONE;
-              if (v < ttValue - SingularExtensionMargin)
+              if (v < b)
                   ext = OnePly;
           }
       }
