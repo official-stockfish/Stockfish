@@ -299,7 +299,7 @@ endif
 ### ==========================================================================
 
 default:
-	$(MAKE) ARCH=x86-32 COMP=gcc build
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) build
 
 help:
 	@echo ""
