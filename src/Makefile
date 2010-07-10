@@ -299,7 +299,7 @@ endif
 ### ==========================================================================
 
 default:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) build
+	$(MAKE) ARCH=x86-32 COMP=gcc build
 
 help:
 	@echo ""
@@ -408,7 +408,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) *.o .depend *~ core bench.txt
+	$(RM) $(EXE) *.o .depend *~ core bench.txt *.gcda
 
 testrun:
 	@$(PGOBENCH)
