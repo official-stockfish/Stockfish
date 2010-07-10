@@ -176,11 +176,11 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 }
 
 
-/// TranspositionTable::extract_pv() extends a PV by adding moves from the
-/// transposition table at the end. This should ensure that the PV is almost
-/// always at least two plies long, which is important, because otherwise we
-/// will often get single-move PVs when the search stops while failing high,
-/// and a single-move PV means that we don't have a ponder move.
+/// TranspositionTable::extract_pv() builds a PV by adding moves from the
+/// transposition table. We consider also failing high nodes and not only
+/// VALUE_TYPE_EXACT nodes. This allow to always have a ponder move even
+/// when we fail high at root and also a long PV to print that is important
+/// for position analysis.
 
 void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[], const int PLY_MAX) {
 
@@ -194,11 +194,8 @@ void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[
   pv[ply] = bestMove;
   p.do_move(pv[ply++], st);
 
-  // Extract moves from TT when possible. We try hard to always
-  // get a ponder move, that's the reason of ply < 2 conditions.
   while (   (tte = retrieve(p.get_key())) != NULL
          && tte->move() != MOVE_NONE
-         && (tte->type() == VALUE_TYPE_EXACT || ply < 2)
          && move_is_legal(p, tte->move())
          && (!p.is_draw() || ply < 2)
          && ply < PLY_MAX)
