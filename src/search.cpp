@@ -1203,12 +1203,12 @@ namespace {
             if (nullValue >= value_mate_in(PLY_MAX))
                 nullValue = beta;
 
-            // Do zugzwang verification search at high depths
             if (depth < 6 * OnePly)
                 return nullValue;
 
+            // Do verification search at high depths
             ss->skipNullMove = true;
-            Value v = search<NonPV>(pos, ss, alpha, beta, depth-5*OnePly, ply);
+            Value v = search<NonPV>(pos, ss, alpha, beta, depth-R*OnePly, ply);
             ss->skipNullMove = false;
 
             if (v >= beta)
