@@ -23,7 +23,6 @@
 ////
 
 #include <cassert>
-#include <cmath>
 #include <cstring>
 
 #include "movegen.h"
@@ -38,7 +37,7 @@ TranspositionTable TT;
 
 TranspositionTable::TranspositionTable() {
 
-  size = overwrites = 0;
+  size = 0;
   entries = 0;
   generation = 0;
 }
@@ -127,7 +126,6 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           replace = tte;
   }
   replace->save(posKey32, v, t, d, m, generation, statV, kingD);
-  overwrites++;
 }
 
 
@@ -154,9 +152,7 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 /// entries from the current search.
 
 void TranspositionTable::new_search() {
-
   generation++;
-  overwrites = 0;
 }
 
 
@@ -211,15 +207,4 @@ void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[
       p.do_move(pv[ply++], st);
   }
   pv[ply] = MOVE_NONE;
-}
-
-
-/// TranspositionTable::full() returns the permill of all transposition table
-/// entries which have received at least one overwrite during the current search.
-/// It is used to display the "info hashfull ..." information in UCI.
-
-int TranspositionTable::full() const {
-
-  double N = double(size) * ClusterSize;
-  return int(1000 * (1 - exp(overwrites * log(1.0 - 1.0/N))));
 }

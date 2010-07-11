@@ -113,16 +113,9 @@ public:
   void new_search();
   void insert_pv(const Position& pos, Move pv[]);
   void extract_pv(const Position& pos, Move bestMove, Move pv[], const int PLY_MAX);
-  int full() const;
   TTEntry* first_entry(const Key posKey) const;
 
 private:
-  // Be sure 'overwrites' is at least one cache line away
-  // from read only variables.
-  unsigned char pad_before[64 - sizeof(unsigned)];
-  unsigned overwrites; // heavy SMP read/write access here
-  unsigned char pad_after[64];
-
   size_t size;
   TTCluster* entries;
   uint8_t generation;

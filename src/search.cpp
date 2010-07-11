@@ -738,8 +738,7 @@ namespace {
         // Print final search statistics
         cout << "info nodes " << TM.nodes_searched()
              << " nps " << nps()
-             << " time " << current_search_time()
-             << " hashfull " << TT.full() << endl;
+             << " time " << current_search_time() << endl;
 
     // Print the best move and the ponder move to the standard output
     if (pv[0] == MOVE_NONE)
@@ -2154,7 +2153,7 @@ namespace {
             dbg_print_hit_rate();
 
         cout << "info nodes " << TM.nodes_searched() << " nps " << nps()
-             << " time " << t << " hashfull " << TT.full() << endl;
+             << " time " << t << endl;
     }
 
     // Should we stop the search?
