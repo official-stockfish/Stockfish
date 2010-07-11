@@ -72,7 +72,6 @@ void TranspositionTable::set_size(size_t mbSize) {
                     << " MB for transposition table." << std::endl;
           Application::exit_with_failure();
       }
-      clear();
   }
 }
 
