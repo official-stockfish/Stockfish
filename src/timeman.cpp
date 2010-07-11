@@ -1,0 +1,138 @@
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2010 Marco Costalba, Joona Kiiski, Tord Romstad
+
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+////
+//// Includes
+////
+
+#include <cmath>
+
+#include "misc.h"
+#include "ucioption.h"
+
+////
+//// Local definitions
+////
+
+namespace {
+
+  /// Constants (and their getter functions)
+
+  const int MaxMoveHorizon = 50; // Plan time management at most this many moves ahead.
+  const float MaxRatio = 3.0; // When in trouble, we can step over reserved time with this ratio.
+  const float MaxStealRatio = 0.33; // However we must not steal time from remaining moves over this ratio.
+
+  // Move importance is based on naive statistical analysis of "how many games are still undecided after n half-moves".
+  // Game is considered "undecided" as long as neither side has >275cp advantage.
+  // Data was extracted from CCRL game database with some simple filtering criteria.
+
+  const int MoveImportance[512] = { 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7780, 7778, 7778, 7776, 7776, 7776, 7773, 7770, 7768, 7766, 7763, 7757, 7751, 7743, 7735, 7724, 7713, 7696, 7689, 7670, 7656, 7627, 7605, 7571, 7549, 7522, 7493, 7462, 7425, 7385, 7350, 7308, 7272, 7230, 7180, 7139, 7094, 7055, 7010, 6959, 6902, 6841, 6778, 6705, 6651, 6569, 6508, 6435, 6378, 6323, 6253, 6152, 6085, 5995, 5931, 5859, 5794, 5717, 5646, 5544, 5462, 5364, 5282, 5172, 5078, 4988, 4901, 4831, 4764, 4688, 4609, 4536, 4443, 4365, 4293, 4225, 4155, 4085, 4005, 3927, 3844, 3765, 3693, 3634, 3560, 3479, 3404, 3331, 3268, 3207, 3146, 3077, 3011, 2947, 2894, 2828, 2776, 2727, 2676, 2626, 2589, 2538, 2490, 2442, 2394, 2345, 2302, 2243, 2192, 2156, 2115, 2078, 2043, 2004, 1967, 1922, 1893, 1845, 1809, 1772, 1736, 1702, 1674, 1640, 1605, 1566, 1536, 1509, 1479, 1452, 1423, 1388, 1362, 1332, 1304, 1289, 1266, 1250, 1228, 1206, 1180, 1160, 1134, 1118, 1100, 1080, 1068, 1051, 1034, 1012, 1001, 980, 960, 945, 934, 916, 900, 888, 878, 865, 852, 828, 807, 787, 770, 753, 744, 731, 722, 706, 700, 683, 676, 671, 664, 652, 641, 634, 627, 613, 604, 591, 582, 568, 560, 552, 540, 534, 529, 519, 509, 495, 484, 474, 467, 460, 450, 438, 427, 419, 410, 406, 399, 394, 387, 382, 377, 372, 366, 359, 353, 348, 343, 337, 333, 328, 321, 315, 309, 303, 298, 293, 287, 284, 281, 277, 273, 265, 261, 255, 251, 247, 241, 240, 235, 229, 218, 217, 213, 212, 208, 206, 197, 193, 191, 189, 185, 184, 180, 177, 172, 170, 170, 170, 166, 163, 159, 158, 156, 155, 151, 146, 141, 138, 136, 132, 130, 128, 125, 123, 122, 118, 118, 118, 117, 115, 114, 108, 107, 105, 105, 105, 102, 97, 97, 95, 94, 93, 91, 88, 86, 83, 80, 80, 79, 79, 79, 78, 76, 75, 72, 72, 71, 70, 68, 65, 63, 61, 61, 59, 59, 59, 58, 56, 55, 54, 54, 52, 49, 48, 48, 48, 48, 45, 45, 45, 44, 43, 41, 41, 41, 41, 40, 40, 38, 37, 36, 34, 34, 34, 33, 31, 29, 29, 29, 28, 28, 28, 28, 28, 28, 28, 27, 27, 27, 27, 27, 24, 24, 23, 23, 22, 21, 20, 20, 19, 19, 19, 19, 19, 18, 18, 18, 18, 17, 17, 17, 17, 17, 16, 16, 15, 15, 14, 14, 14, 12, 12, 11, 9, 9, 9, 9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1};
+
+  int move_importance(int ply) { return MoveImportance[Min(ply, 511)]; }
+
+  /// Configurable UCI options
+
+  int EmergencyMoveHorizon; // Be prepared to always play at least this many moves
+  int EmergencyBaseTime; // Always attempt to keep at least this much time (in ms) at clock
+  int EmergencyMoveTime;  // Plus attempt to keep at least this much time for each remaining emergency move
+  int MinThinkingTime; // No matter what, use at least this much thinking before doing the move
+
+
+  /// Function Prototypes
+
+  int calc_minimum_search_time_for_moves_to_go(const int myTime, const int movesToGo, const int currentPly);
+  int calc_maximum_search_time_for_moves_to_go(const int myTime, const int movesToGo, const int currentPly);
+}
+
+
+////
+//// Functions
+////
+
+void calc_search_times(const int myTime, const int myInc, const int movesToGo, const int currentPly, int &minimumSearchTime, int &maximumSearchTime)
+{
+  // We support four different kind of time controls:
+  //
+  // Inc == 0 && movesToGo == 0 means: x basetime  [sudden death!]
+  // Inc == 0 && movesToGo != 0 means: (x moves) / (y minutes)
+  // Inc > 0  && movesToGo == 0 means: x basetime + z inc.
+  // Inc > 0  && movesToGo != 0 means: (x moves) / (y minutes) + z inc
+
+  // Read uci options
+  EmergencyMoveHorizon = get_option_value_int("Emergency Move Horizon");
+  EmergencyBaseTime = get_option_value_int("Emergency Base Time");
+  EmergencyMoveTime = get_option_value_int("Emergency Move Time");
+  MinThinkingTime = get_option_value_int("Minimum Thinking Time");
+
+  // Initialize variables to maximum values
+  minimumSearchTime = myTime;
+  maximumSearchTime = myTime;
+
+  // We calculate optimum time usage for different hypothetic "moves to go"-values and
+  // choose the minimum of calculated search time values.
+  // Usually the greatest hypMTG gives the minimum values.
+  for (int hypMTG = 1; hypMTG <= ((movesToGo == 0)? MaxMoveHorizon : Min(movesToGo, MaxMoveHorizon)); hypMTG++)
+  {
+      // Calculate thinking time for hypothetic "moves to go"-value
+      int hypMyTime = Max(myTime + (hypMTG - 1) * myInc - EmergencyBaseTime - Min(hypMTG, EmergencyMoveHorizon) * EmergencyMoveTime, 0);
+
+      minimumSearchTime = Min(minimumSearchTime, MinThinkingTime + calc_minimum_search_time_for_moves_to_go(hypMyTime, hypMTG, currentPly));
+      maximumSearchTime = Min(maximumSearchTime, MinThinkingTime + calc_maximum_search_time_for_moves_to_go(hypMyTime, hypMTG, currentPly));
+  }
+
+  // Make sure that miminumSearchTime is not over maximumSearchTime.
+  minimumSearchTime = Min(minimumSearchTime, maximumSearchTime);
+}
+
+////
+//// Local functions
+////
+
+namespace {
+
+  int calc_minimum_search_time_for_moves_to_go(const int myTime, const int movesToGo, const int currentPly)
+  {
+    int thisMoveImportance = move_importance(currentPly);
+    int otherMovesImportance = 0;
+
+    for (int i = 1; i < movesToGo; i++)
+        otherMovesImportance += move_importance(currentPly + 2*i);
+
+    float ratio = thisMoveImportance / float(thisMoveImportance + otherMovesImportance);
+
+    return int(floor(myTime * ratio));
+  }
+
+  int calc_maximum_search_time_for_moves_to_go(const int myTime, const int movesToGo, const int currentPly)
+  {
+    int thisMoveImportance = move_importance(currentPly);
+    int otherMovesImportance = 0;
+
+    for (int i = 1; i < movesToGo; i++)
+        otherMovesImportance += move_importance(currentPly + 2*i);
+
+    float ratio1 = (MaxRatio * thisMoveImportance)  / float(MaxRatio * thisMoveImportance + otherMovesImportance);
+    float ratio2 = (thisMoveImportance + MaxStealRatio * otherMovesImportance) / float(thisMoveImportance + otherMovesImportance);
+    float ratio = Min(ratio1, ratio2);
+
+    return int(floor(myTime * ratio));
+  }
+}
+

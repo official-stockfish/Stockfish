@@ -206,6 +206,8 @@ namespace {
                 RootPosition.do_move(move, st);
                 if (RootPosition.rule_50_counter() == 0)
                     RootPosition.reset_game_ply();
+
+                RootPosition.inc_startpos_ply_counter(); //FIXME: make from_fen to support this and rule50
             }
             // Our StateInfo st is about going out of scope so copy
             // its content inside RootPosition before it disappears.

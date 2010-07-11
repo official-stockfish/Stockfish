@@ -38,6 +38,7 @@
 #include "lock.h"
 #include "san.h"
 #include "search.h"
+#include "timeman.h"
 #include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
@@ -473,32 +474,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   int myIncrement = increment[pos.side_to_move()];
   if (UseTimeManagement)
   {
-      if (!movesToGo) // Sudden death time control
-      {
-          if (myIncrement)
-          {
-              MaxSearchTime = myTime / 30 + myIncrement;
-              AbsoluteMaxSearchTime = Max(myTime / 4, myIncrement - 100);
-          }
-          else // Blitz game without increment
-          {
-              MaxSearchTime = myTime / 30;
-              AbsoluteMaxSearchTime = myTime / 8;
-          }
-      }
-      else // (x moves) / (y minutes)
-      {
-          if (movesToGo == 1)
-          {
-              MaxSearchTime = myTime / 2;
-              AbsoluteMaxSearchTime = (myTime > 3000)? (myTime - 500) : ((myTime * 3) / 4);
-          }
-          else
-          {
-              MaxSearchTime = myTime / Min(movesToGo, 20);
-              AbsoluteMaxSearchTime = Min((4 * myTime) / movesToGo, myTime / 3);
-          }
-      }
+      calc_search_times(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(), MaxSearchTime, AbsoluteMaxSearchTime);
 
       if (get_option_value_bool("Ponder"))
       {

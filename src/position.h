@@ -270,6 +270,8 @@ public:
   // Number of plies since the last non-reversible move
   int rule_50_counter() const;
 
+  int startpos_ply_counter() const;
+
   // Other properties of the position
   bool opposite_colored_bishops() const;
   bool has_pawn_on_7th(Color c) const;
@@ -279,6 +281,8 @@ public:
 
   // Reset the gamePly variable to 0
   void reset_game_ply();
+
+  void inc_startpos_ply_counter();
 
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
@@ -334,6 +338,7 @@ private:
   int castleRightsMask[64];
   StateInfo startState;
   File initialKFile, initialKRFile, initialQRFile;
+  int startPosPlyCounter;
   int threadID;
   StateInfo* st;
 
@@ -534,6 +539,11 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
 inline int Position::rule_50_counter() const {
 
   return st->rule50;
+}
+
+inline int Position::startpos_ply_counter() const {
+
+  return startPosPlyCounter;
 }
 
 inline bool Position::opposite_colored_bishops() const {

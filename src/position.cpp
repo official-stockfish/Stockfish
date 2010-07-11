@@ -1505,6 +1505,7 @@ void Position::clear() {
   st = &startState;
   memset(st, 0, sizeof(StateInfo));
   st->epSquare = SQ_NONE;
+  startPosPlyCounter = 0;
 
   memset(byColorBB,  0, sizeof(Bitboard) * 2);
   memset(byTypeBB,   0, sizeof(Bitboard) * 8);
@@ -1539,6 +1540,10 @@ void Position::reset_game_ply() {
   st->gamePly = 0;
 }
 
+void Position::inc_startpos_ply_counter() {
+
+  startPosPlyCounter++;
+}
 
 /// Position::put_piece() puts a piece on the given square of the board,
 /// updating the board array, bitboards, and piece counts.
