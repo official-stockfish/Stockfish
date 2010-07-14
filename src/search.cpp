@@ -233,12 +233,6 @@ namespace {
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
 
-  // Last seconds noise filtering (LSN)
-  const bool UseLSNFiltering = true;
-  const int LSNTime = 100; // In milliseconds
-  const Value LSNValue = value_from_centipawns(200);
-  bool loseOnTime = false;
-
 
   /// Global variables
 
@@ -448,10 +442,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
       }
   }
 
-  // Reset loseOnTime flag at the beginning of a new game
-  if (button_was_pressed("New Game"))
-      loseOnTime = false;
-
   // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
   if (button_was_pressed("Clear Hash"))
@@ -551,36 +541,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
               << " increment: " << myIncrement
               << " moves to go: " << movesToGo << endl;
 
-  // LSN filtering. Used only for developing purposes, disabled by default
-  if (   UseLSNFiltering
-      && loseOnTime)
-  {
-      // Step 2. If after last move we decided to lose on time, do it now!
-       while (SearchStartTime + myTime + 1000 > get_system_time())
-           /* wait here */;
-  }
-
   // We're ready to start thinking. Call the iterative deepening loop function
-  Value v = id_loop(pos, searchMoves);
-
-  if (UseLSNFiltering)
-  {
-      // Step 1. If this is sudden death game and our position is hopeless,
-      // decide to lose on time.
-      if (   !loseOnTime // If we already lost on time, go to step 3.
-          && myTime < LSNTime
-          && myIncrement == 0
-          && movesToGo == 0
-          && v < -LSNValue)
-      {
-          loseOnTime = true;
-      }
-      else if (loseOnTime)
-      {
-          // Step 3. Now after stepping over the time limit, reset flag for next match.
-          loseOnTime = false;
-      }
-  }
+  id_loop(pos, searchMoves);
 
   if (UseLogFile)
       LogFile.close();
