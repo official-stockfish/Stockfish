@@ -34,6 +34,8 @@
 #include "ucioption.h"
 
 using std::string;
+using std::cout;
+using std::endl;
 
 ////
 //// Local definitions
@@ -41,13 +43,9 @@ using std::string;
 
 namespace {
 
-  ///
-  /// Types
-  ///
-
   enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON };
 
-  typedef std::vector<string> ComboValues;
+  typedef std::vector<string> StrVector;
 
   struct Option {
 
@@ -55,23 +53,42 @@ namespace {
     OptionType type;
     size_t idx;
     int minValue, maxValue;
-    ComboValues comboValues;
+    StrVector comboValues;
 
     Option();
     Option(const char* defaultValue, OptionType = STRING);
     Option(bool defaultValue, OptionType = CHECK);
     Option(int defaultValue, int minValue, int maxValue);
 
-    bool operator<(const Option& o) const { return this->idx < o.idx; }
+    bool operator<(const Option& o) const { return idx < o.idx; }
   };
 
+  typedef std::vector<Option> OptionsVector;
   typedef std::map<string, Option> Options;
 
-  ///
-  /// Constants
-  ///
+  Options options;
 
-  // load_defaults populates the options map with the hard
+  // stringify() converts a value of type T to a std::string
+  template<typename T>
+  string stringify(const T& v) {
+
+     std::ostringstream ss;
+     ss << v;
+     return ss.str();
+  }
+
+  Option::Option() {} // To allow insertion in a std::map
+
+  Option::Option(const char* def, OptionType t)
+  : defaultValue(def), currentValue(def), type(t), idx(options.size()), minValue(0), maxValue(0) {}
+
+  Option::Option(bool def, OptionType t)
+  : defaultValue(stringify(def)), currentValue(stringify(def)), type(t), idx(options.size()), minValue(0), maxValue(0) {}
+
+  Option::Option(int def, int minv, int maxv)
+  : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), idx(options.size()), minValue(minv), maxValue(maxv) {}
+
+  // load_defaults() populates the options map with the hard
   // coded names and default values.
 
   void load_defaults(Options& o) {
@@ -119,25 +136,8 @@ namespace {
         it->second.name = it->first;
   }
 
-  ///
-  /// Variables
-  ///
-
-  Options options;
-
-  // stringify converts a value of type T to a std::string
-  template<typename T>
-  string stringify(const T& v) {
-
-     std::ostringstream ss;
-     ss << v;
-     return ss.str();
-  }
-
-
-  // get_option_value implements the various get_option_value_<type>
-  // functions defined later, because only the option value
-  // type changes a template seems a proper solution.
+  // get_option_value() implements the various get_option_value_<type>
+  // functions defined later.
 
   template<typename T>
   T get_option_value(const string& optionName) {
@@ -151,9 +151,8 @@ namespace {
       return ret;
   }
 
-  // Specialization for std::string where instruction 'ss >> ret;'
+  // Specialization for std::string where instruction 'ss >> ret'
   // would erroneusly tokenize a string with spaces.
-
   template<>
   string get_option_value<string>(const string& optionName) {
 
@@ -165,20 +164,15 @@ namespace {
 
 }
 
-////
-//// Functions
-////
 
-/// init_uci_options() initializes the UCI options.  Currently, the only
-/// thing this function does is to initialize the default value of the
-/// "Threads" parameter to the number of available CPU cores.
+/// init_uci_options() initializes the UCI options. Currently, the only thing
+/// this function does is to initialize the default value of "Threads" and
+/// "Minimum Split Depth" parameters according to the number of CPU cores.
 
 void init_uci_options() {
 
   load_defaults(options);
 
-  // Set optimal value for parameter "Minimum Split Depth"
-  // according to number of available cores.
   assert(options.find("Threads") != options.end());
   assert(options.find("Minimum Split Depth") != options.end());
 
@@ -197,39 +191,40 @@ void init_uci_options() {
 
 void print_uci_options() {
 
-  static const char optionTypeName[][16] = {
+  const char OptTypeName[][16] = {
     "spin", "combo", "check", "string", "button"
   };
 
   // Build up a vector out of the options map and sort it according to idx
   // field, that is the chronological insertion order in options map.
-  std::vector<Option> vec;
+  OptionsVector vec;
   for (Options::const_iterator it = options.begin(); it != options.end(); ++it)
       vec.push_back(it->second);
 
   std::sort(vec.begin(), vec.end());
 
-  for (std::vector<Option>::const_iterator it = vec.begin(); it != vec.end(); ++it)
+  for (OptionsVector::const_iterator it = vec.begin(); it != vec.end(); ++it)
   {
-      std::cout << "\noption name " << it->name
-                << " type "         << optionTypeName[it->type];
+      cout << "\noption name " << it->name << " type " << OptTypeName[it->type];
 
       if (it->type == BUTTON)
           continue;
 
       if (it->type == CHECK)
-          std::cout << " default " << (it->defaultValue == "1" ? "true" : "false");
+          cout << " default " << (it->defaultValue == "1" ? "true" : "false");
       else
-          std::cout << " default " << it->defaultValue;
+          cout << " default " << it->defaultValue;
 
       if (it->type == SPIN)
-          std::cout << " min " << it->minValue << " max " << it->maxValue;
+          cout << " min " << it->minValue << " max " << it->maxValue;
       else if (it->type == COMBO)
-          for (ComboValues::const_iterator itc = it->comboValues.begin();
-              itc != it->comboValues.end(); ++itc)
-              std::cout << " var " << *itc;
+      {
+          StrVector::const_iterator itc;
+          for (itc = it->comboValues.begin(); itc != it->comboValues.end(); ++itc)
+              cout << " var " << *itc;
+      }
   }
-  std::cout << std::endl;
+  cout << endl;
 }
 
 
@@ -262,11 +257,15 @@ string get_option_value_string(const string& optionName) {
 }
 
 
-/// set_option_value() inserts a new value for a UCI parameter. Note that
-/// the function does not check that the new value is legal for the given
-/// parameter: This is assumed to be the responsibility of the GUI.
+/// set_option_value() inserts a new value for a UCI parameter
 
 void set_option_value(const string& name, const string& value) {
+
+  if (options.find(name) == options.end())
+  {
+      cout << "No such option: " << name << endl;
+      return;
+  }
 
   // UCI protocol uses "true" and "false" instead of "1" and "0", so convert
   // value according to standard C++ convention before to store it.
@@ -275,12 +274,6 @@ void set_option_value(const string& name, const string& value) {
       v = "1";
   else if (v == "false")
       v = "0";
-
-  if (options.find(name) == options.end())
-  {
-      std::cout << "No such option: " << name << std::endl;
-      return;
-  }
 
   // Normally it's up to the GUI to check for option's limits,
   // but we could receive the new value directly from the user
@@ -296,7 +289,6 @@ void set_option_value(const string& name, const string& value) {
       if (val < opt.minValue || val > opt.maxValue)
           return;
   }
-
   opt.currentValue = v;
 }
 
@@ -321,22 +313,4 @@ bool button_was_pressed(const string& buttonName) {
 
   set_option_value(buttonName, "false");
   return true;
-}
-
-
-namespace {
-
-  // Define constructors of Option class.
-
-  Option::Option() {} // To allow insertion in a std::map
-
-  Option::Option(const char* def, OptionType t)
-  : defaultValue(def), currentValue(def), type(t), idx(options.size()), minValue(0), maxValue(0) {}
-
-  Option::Option(bool def, OptionType t)
-  : defaultValue(stringify(def)), currentValue(stringify(def)), type(t), idx(options.size()), minValue(0), maxValue(0) {}
-
-  Option::Option(int def, int minv, int maxv)
-  : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), idx(options.size()), minValue(minv), maxValue(maxv) {}
-
 }
