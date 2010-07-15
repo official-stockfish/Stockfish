@@ -41,12 +41,20 @@ enum ValueType {
 
 
 enum Value {
-  VALUE_DRAW = 0,
+  VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 15000,
-  VALUE_MATE = 30000,
-  VALUE_INFINITE = 30001,
-  VALUE_NONE = 30002,
+  VALUE_MATE      = 30000,
+  VALUE_INFINITE  = 30001,
+  VALUE_NONE      = 30002,
   VALUE_ENSURE_SIGNED = -1
+};
+
+
+enum ScaleFactor {
+  SCALE_FACTOR_ZERO   = 0,
+  SCALE_FACTOR_NORMAL = 64,
+  SCALE_FACTOR_MAX    = 128,
+  SCALE_FACTOR_NONE   = 255
 };
 
 

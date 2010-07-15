@@ -29,7 +29,6 @@
 #include "evaluate.h"
 #include "material.h"
 #include "pawns.h"
-#include "scale.h"
 #include "thread.h"
 #include "ucioption.h"
 
@@ -1075,7 +1074,9 @@ namespace {
     assert(eg_value(v) > -VALUE_INFINITE && eg_value(v) < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
-    Value ev = apply_scale_factor(eg_value(v), sf[(eg_value(v) > Value(0) ? WHITE : BLACK)]);
+    Value eg = eg_value(v);
+    ScaleFactor f = sf[eg > Value(0) ? WHITE : BLACK];
+    Value ev = Value((eg * f) / int(SCALE_FACTOR_NORMAL));
 
     int result = (mg_value(v) * ph + ev * (128 - ph)) / 128;
     return Value(result & ~(GrainSize - 1));

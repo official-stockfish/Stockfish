@@ -27,7 +27,6 @@
 
 #include "endgame.h"
 #include "position.h"
-#include "scale.h"
 
 
 ////

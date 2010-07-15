@@ -26,7 +26,6 @@
 ////
 
 #include "position.h"
-#include "scale.h"
 #include "value.h"
 
 
