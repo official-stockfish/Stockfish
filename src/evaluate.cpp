@@ -1064,9 +1064,8 @@ namespace {
   }
 
 
-  // scale_by_game_phase() interpolates between a middle game and an endgame
-  // score, based on game phase.  It also scales the return value by a
-  // ScaleFactor array.
+  // scale_by_game_phase() interpolates between a middle game and an endgame score,
+  // based on game phase. It also scales the return value by a ScaleFactor array.
 
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]) {
 
@@ -1076,7 +1075,7 @@ namespace {
 
     Value eg = eg_value(v);
     ScaleFactor f = sf[eg > Value(0) ? WHITE : BLACK];
-    Value ev = Value((eg * f) / int(SCALE_FACTOR_NORMAL));
+    Value ev = Value((eg * f) / SCALE_FACTOR_NORMAL);
 
     int result = (mg_value(v) * ph + ev * (128 - ph)) / 128;
     return Value(result & ~(GrainSize - 1));

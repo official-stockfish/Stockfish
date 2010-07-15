@@ -411,9 +411,8 @@ int perft(Position& pos, Depth depth)
 /// search-related global variables, and calls root_search(). It returns false
 /// when a quit command is received during the search.
 
-bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
-           int time[], int increment[], int movesToGo, int maxDepth,
-           int maxNodes, int maxTime, Move searchMoves[]) {
+bool think(const Position& pos, bool infinite, bool ponder, int time[], int increment[],
+           int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
   StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
@@ -486,8 +485,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int side_to_move,
   TM.wake_sleeping_threads();
 
   // Set thinking time
-  int myTime = time[side_to_move];
-  int myIncrement = increment[side_to_move];
+  int myTime = time[pos.side_to_move()];
+  int myIncrement = increment[pos.side_to_move()];
   if (UseTimeManagement)
   {
       if (!movesToGo) // Sudden death time control

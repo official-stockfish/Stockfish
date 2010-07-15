@@ -159,7 +159,7 @@ void benchmark(const string& commandLine) {
           cerr << "\nPerft " << maxDepth << " result (nodes searched): " << perftCnt << endl << endl;
           totalNodes += perftCnt;
       } else {
-          if (!think(pos, false, false, 0, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
+          if (!think(pos, false, false, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
               break;
           totalNodes += nodes_searched();
       }
