@@ -74,4 +74,16 @@ private:
 const int HistoryMax = 50000 * OnePly;
 
 
+////
+//// Inline functions
+////
+
+inline int History::value(Piece p, Square to) const {
+  return history[p][to];
+}
+
+inline Value History::gain(Piece p, Square to) const {
+  return Value(maxStaticValueDelta[p][to]);
+}
+
 #endif // !defined(HISTORY_H_INCLUDED)

@@ -41,8 +41,8 @@ History::History() { clear(); }
 /// History::clear() clears the history tables
 
 void History::clear() {
-  memset(history, 0, 2 * 8 * 64 * sizeof(int));
-  memset(maxStaticValueDelta, 0, 2 * 8 * 64 * sizeof(int));
+  memset(history, 0, 16 * 64 * sizeof(int));
+  memset(maxStaticValueDelta, 0, 16 * 64 * sizeof(int));
 }
 
 
@@ -85,31 +85,14 @@ void History::failure(Piece p, Square to, Depth d) {
 }
 
 
-/// History::value() returns an integer value used to order the
-/// non-capturing moves in the MovePicker class.
-
-int History::value(Piece p, Square to) const {
-
-  assert(piece_is_ok(p));
-  assert(square_is_ok(to));
-
-  return history[p][to];
-}
-
-
 /// History::set_gain() and History::gain() store and retrieve the
 /// gain of a move given the delta of the static position evaluations
 /// before and after the move.
 
-void History::set_gain(Piece p, Square to, Value delta)
-{
+void History::set_gain(Piece p, Square to, Value delta) {
+
   if (delta >= maxStaticValueDelta[p][to])
       maxStaticValueDelta[p][to] = delta;
   else
       maxStaticValueDelta[p][to]--;
-}
-
-Value History::gain(Piece p, Square to) const
-{
-  return Value(maxStaticValueDelta[p][to]);
 }
