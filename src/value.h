@@ -190,16 +190,4 @@ inline Value piece_value_endgame(Piece p) {
   return PieceValueEndgame[p];
 }
 
-
-////
-//// Prototypes
-////
-
-extern Value value_to_tt(Value v, int ply);
-extern Value value_from_tt(Value v, int ply);
-extern int value_to_centipawns(Value v);
-extern Value value_from_centipawns(int cp);
-extern const std::string value_to_string(Value v);
-
-
 #endif // !defined(VALUE_H_INCLUDED)

@@ -291,6 +291,8 @@ namespace {
 
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
+  Value value_to_tt(Value v, int ply);
+  Value value_from_tt(Value v, int ply);
   bool move_is_killer(Move m, SearchStack* ss);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
@@ -300,6 +302,7 @@ namespace {
   void update_gains(const Position& pos, Move move, Value before, Value after);
 
   int current_search_time();
+  std::string value_to_uci(Value v);
   int nps();
   void poll();
   void ponderhit();
@@ -584,7 +587,7 @@ namespace {
     // so to output information also for iteration 1.
     cout << "info depth " << 1
          << "\ninfo depth " << 1
-         << " score " << value_to_string(rml.get_move_score(0))
+         << " score " << value_to_uci(rml.get_move_score(0))
          << " time " << current_search_time()
          << " nodes " << TM.nodes_searched()
          << " nps " << nps()
@@ -960,7 +963,7 @@ namespace {
                     for (int j = 0; j < Min(MultiPV, rml.move_count()); j++)
                     {
                         cout << "info multipv " << j + 1
-                             << " score " << value_to_string(rml.get_move_score(j))
+                             << " score " << value_to_uci(rml.get_move_score(j))
                              << " depth " << (j <= i ? Iteration : Iteration - 1)
                              << " time " << current_search_time()
                              << " nodes " << TM.nodes_searched()
@@ -1824,8 +1827,8 @@ namespace {
   }
 
 
-  // value_is_mate() checks if the given value is a mate one
-  // eventually compensated for the ply.
+  // value_is_mate() checks if the given value is a mate one eventually
+  // compensated for the ply.
 
   bool value_is_mate(Value value) {
 
@@ -1836,8 +1839,38 @@ namespace {
   }
 
 
-  // move_is_killer() checks if the given move is among the
-  // killer moves of that ply.
+  // value_to_tt() adjusts a mate score from "plies to mate from the root" to
+  // "plies to mate from the current ply".  Non-mate scores are unchanged.
+  // The function is called before storing a value to the transposition table.
+
+  Value value_to_tt(Value v, int ply) {
+
+    if (v >= value_mate_in(PLY_MAX))
+      return v + ply;
+
+    if (v <= value_mated_in(PLY_MAX))
+      return v - ply;
+
+    return v;
+  }
+
+
+  // value_from_tt() is the inverse of value_to_tt(): It adjusts a mate score from
+  // the transposition table to a mate score corrected for the current ply.
+
+  Value value_from_tt(Value v, int ply) {
+
+    if (v >= value_mate_in(PLY_MAX))
+      return v - ply;
+
+    if (v <= value_mated_in(PLY_MAX))
+      return v + ply;
+
+    return v;
+  }
+
+
+  // move_is_killer() checks if the given move is among the killer moves
 
   bool move_is_killer(Move m, SearchStack* ss) {
 
@@ -2052,6 +2085,20 @@ namespace {
   }
 
 
+  // value_to_uci() converts a value to a string suitable for use with the UCI protocol
+
+  std::string value_to_uci(Value v) {
+
+    std::stringstream s;
+
+    if (abs(v) < VALUE_MATE - PLY_MAX * OnePly)
+      s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to pawn = 100
+    else
+      s << "mate " << (v > 0 ? (VALUE_MATE - v + 1) / 2 : -(VALUE_MATE + v) / 2 );
+
+    return s.str();
+  }
+
   // nps() computes the current nodes/second count.
 
   int nps() {
@@ -2209,7 +2256,7 @@ namespace {
   void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value) {
 
     cout << "info depth " << Iteration
-         << " score "     << value_to_string(value)
+         << " score "     << value_to_uci(value)
          << (value >= beta ? " lowerbound" : value <= alpha ? " upperbound" : "")
          << " time "  << current_search_time()
          << " nodes " << TM.nodes_searched()
