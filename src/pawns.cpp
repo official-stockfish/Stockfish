@@ -274,7 +274,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       if (isolated)
       {
           value -= IsolatedPawnPenalty[f];
-          if (!(theirPawns & file_bb(f)))
+          if (!opposed)
               value -= IsolatedPawnPenalty[f] / 2;
       }
       if (doubled)
@@ -283,7 +283,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       if (backward)
       {
           value -= BackwardPawnPenalty[f];
-          if (!(theirPawns & file_bb(f)))
+          if (!opposed)
               value -= BackwardPawnPenalty[f] / 2;
       }
       if (chain)
