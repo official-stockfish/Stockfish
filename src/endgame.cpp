@@ -65,12 +65,12 @@ namespace {
   // the two kings in basic endgames.
   const int DistanceBonus[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
 
-  // Bitbase for KP vs K
-  uint8_t KPKBitbase[24576];
-
   // Penalty for big distance between king and knight for the defending king
   // and knight in KR vs KN endgames.
   const int KRKNKingKnightDistancePenalty[8] = { 0, 0, 4, 10, 20, 32, 48, 70 };
+
+  // Bitbase for KP vs K
+  uint8_t KPKBitbase[24576];
 
   // Various inline functions for accessing the above arrays
   inline Value mate_table(Square s) {
@@ -99,6 +99,15 @@ namespace {
 //// Functions
 ////
 
+/// init_bitbases() is called during program initialization, and simply loads
+/// bitbases from disk into memory.  At the moment, there is only the bitbase
+/// for KP vs K, but we may decide to add other bitbases later.
+
+void init_bitbases() {
+  generate_kpk_bitbase(KPKBitbase);
+}
+
+
 /// Mate with KX vs K. This function is used to evaluate positions with
 /// King and plenty of material vs a lone king. It simply gives the
 /// attacking side a bonus for driving the defending king towards the edge
@@ -117,13 +126,13 @@ Value EvaluationFunction<KXK>::apply(const Position& pos) const {
                  + mate_table(loserKSq)
                  + distance_bonus(square_distance(winnerKSq, loserKSq));
 
-  if (   pos.piece_count(strongerSide, QUEEN) > 0
-      || pos.piece_count(strongerSide, ROOK) > 0
+  if (   pos.piece_count(strongerSide, QUEEN)
+      || pos.piece_count(strongerSide, ROOK)
       || pos.piece_count(strongerSide, BISHOP) > 1)
       // TODO: check for two equal-colored bishops!
       result += VALUE_KNOWN_WIN;
 
-  return (strongerSide == pos.side_to_move() ? result : -result);
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -153,7 +162,7 @@ Value EvaluationFunction<KBNK>::apply(const Position& pos) const {
                 + distance_bonus(square_distance(winnerKSq, loserKSq))
                 + kbnk_mate_table(loserKSq);
 
-  return (strongerSide == pos.side_to_move() ? result : -result);
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -186,9 +195,9 @@ Value EvaluationFunction<KPK>::apply(const Position& pos) const {
 
   if (square_file(wpsq) >= FILE_E)
   {
-    wksq = flop_square(wksq);
-    bksq = flop_square(bksq);
-    wpsq = flop_square(wpsq);
+      wksq = flop_square(wksq);
+      bksq = flop_square(bksq);
+      wpsq = flop_square(wpsq);
   }
 
   if (!probe_kpk(wksq, wpsq, bksq, stm))
@@ -198,7 +207,7 @@ Value EvaluationFunction<KPK>::apply(const Position& pos) const {
                 + PawnValueEndgame
                 + Value(square_rank(wpsq));
 
-  return (strongerSide == pos.side_to_move() ? result : -result);
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -239,7 +248,7 @@ Value EvaluationFunction<KRKP>::apply(const Position& pos) const {
 
   // If the weaker side's king is too far from the pawn and the rook,
   // it's a win
-  else if (   square_distance(bksq, bpsq) - (tempo^1) >= 3
+  else if (   square_distance(bksq, bpsq) - (tempo ^ 1) >= 3
            && square_distance(bksq, wrsq) >= 3)
       result = RookValueEndgame - Value(square_distance(wksq, bpsq));
 
@@ -257,7 +266,7 @@ Value EvaluationFunction<KRKP>::apply(const Position& pos) const {
               + Value(square_distance(bksq, bpsq + DELTA_S) * 8)
               + Value(square_distance(bpsq, queeningSq) * 8);
 
-  return (strongerSide == pos.side_to_move() ? result : -result);
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -273,7 +282,7 @@ Value EvaluationFunction<KRKB>::apply(const Position& pos) const {
   assert(pos.piece_count(weakerSide, BISHOP) == 1);
 
   Value result = mate_table(pos.king_square(weakerSide));
-  return (pos.side_to_move() == strongerSide ? result : -result);
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -291,10 +300,12 @@ Value EvaluationFunction<KRKN>::apply(const Position& pos) const {
   Square defendingKSq = pos.king_square(weakerSide);
   Square nSq = pos.piece_list(weakerSide, KNIGHT, 0);
 
-  Value result = Value(10) + mate_table(defendingKSq) +
-    krkn_king_knight_distance_penalty(square_distance(defendingKSq, nSq));
+  int d = square_distance(defendingKSq, nSq);
+  Value result =   Value(10)
+                 + mate_table(defendingKSq)
+                 + krkn_king_knight_distance_penalty(d);
 
-  return (strongerSide == pos.side_to_move())? result : -result;
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -319,7 +330,7 @@ Value EvaluationFunction<KQKR>::apply(const Position& pos) const {
                 + mate_table(loserKSq)
                 + distance_bonus(square_distance(winnerKSq, loserKSq));
 
-  return (strongerSide == pos.side_to_move())? result : -result;
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 template<>
@@ -345,7 +356,7 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) const {
   // Bonus for restricting the knight's mobility
   result += Value((8 - count_1s_max_15(pos.attacks_from<KNIGHT>(nsq))) * 8);
 
-  return (strongerSide == pos.side_to_move() ? result : -result);
+  return strongerSide == pos.side_to_move() ? result : -result;
 }
 
 
@@ -363,7 +374,7 @@ Value EvaluationFunction<KNNK>::apply(const Position&) const {
 
 /// KBPKScalingFunction scales endgames where the stronger side has king,
 /// bishop and one or more pawns. It checks for draws with rook pawns and a
-/// bishop of the wrong color. If such a draw is detected, ScaleFactor(0) is
+/// bishop of the wrong color. If such a draw is detected, SCALE_FACTOR_ZERO is
 /// returned. If not, the return value is SCALE_FACTOR_NONE, i.e. no scaling
 /// will be used.
 template<>
@@ -401,15 +412,15 @@ ScaleFactor ScalingFunction<KBPsK>::apply(const Position& pos) const {
           }
           else
           {
-              for(rank = RANK_2; (rank_bb(rank) & pawns) == EmptyBoardBB; rank++) {}
-              rank = Rank(rank^7);  // HACK to get the relative rank
+              for (rank = RANK_2; (rank_bb(rank) & pawns) == EmptyBoardBB; rank++) {}
+              rank = Rank(rank ^ 7);  // HACK to get the relative rank
               assert(rank >= RANK_2 && rank <= RANK_7);
           }
           // If the defending king has distance 1 to the promotion square or
           // is placed somewhere in front of the pawn, it's a draw.
           if (   square_distance(kingSq, queeningSq) <= 1
               || relative_rank(strongerSide, kingSq) >= rank)
-              return ScaleFactor(0);
+              return SCALE_FACTOR_ZERO;
       }
   }
   return SCALE_FACTOR_NONE;
@@ -438,7 +449,7 @@ ScaleFactor ScalingFunction<KQKRPs>::apply(const Position& pos) const {
   {
       Square rsq = pos.piece_list(weakerSide, ROOK, 0);
       if (pos.attacks_from<PAWN>(rsq, strongerSide) & pos.pieces(PAWN, weakerSide))
-          return ScaleFactor(0);
+          return SCALE_FACTOR_ZERO;
   }
   return SCALE_FACTOR_NONE;
 }
@@ -495,7 +506,7 @@ ScaleFactor ScalingFunction<KRPKR>::apply(const Position& pos) const {
       && square_distance(bksq, queeningSq) <= 1
       && wksq <= SQ_H5
       && (square_rank(brsq) == RANK_6 || (r <= RANK_3 && square_rank(wrsq) != RANK_6)))
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   // The defending side saves a draw by checking from behind in case the pawn
   // has advanced to the 6th rank with the king behind.
@@ -503,13 +514,13 @@ ScaleFactor ScalingFunction<KRPKR>::apply(const Position& pos) const {
       && square_distance(bksq, queeningSq) <= 1
       && square_rank(wksq) + tempo <= RANK_6
       && (square_rank(brsq) == RANK_1 || (!tempo && abs(square_file(brsq) - f) >= 3)))
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   if (   r >= RANK_6
       && bksq == queeningSq
       && square_rank(brsq) == RANK_1
       && (!tempo || square_distance(wksq, wpsq) >= 2))
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   // White pawn on a7 and rook on a8 is a draw if black's king is on g7 or h7
   // and the black rook is behind the pawn.
@@ -518,7 +529,7 @@ ScaleFactor ScalingFunction<KRPKR>::apply(const Position& pos) const {
       && (bksq == SQ_H7 || bksq == SQ_G7)
       && square_file(brsq) == FILE_A
       && (square_rank(brsq) <= RANK_3 || square_file(wksq) >= FILE_D || square_rank(wksq) <= RANK_5))
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   // If the defending king blocks the pawn and the attacking king is too far
   // away, it's a draw.
@@ -526,7 +537,7 @@ ScaleFactor ScalingFunction<KRPKR>::apply(const Position& pos) const {
       && bksq == wpsq + DELTA_N
       && square_distance(wksq, wpsq) - tempo >= 2
       && square_distance(wksq, brsq) - tempo >= 2)
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   // Pawn on the 7th rank supported by the rook from behind usually wins if the
   // attacking king is closer to the queening square than the defending king,
@@ -549,8 +560,8 @@ ScaleFactor ScalingFunction<KRPKR>::apply(const Position& pos) const {
           || (    square_distance(wksq, queeningSq) < square_distance(bksq, wrsq) + tempo
               && (square_distance(wksq, wpsq + DELTA_N) < square_distance(bksq, wrsq) + tempo))))
       return ScaleFactor(  SCALE_FACTOR_MAX
-                         - (8 * square_distance(wpsq, queeningSq)
-                         + 2 * square_distance(wksq, queeningSq)));
+                         - 8 * square_distance(wpsq, queeningSq)
+                         - 2 * square_distance(wksq, queeningSq));
 
   // If the pawn is not far advanced, and the defending king is somewhere in
   // the pawn's path, it's probably a draw.
@@ -616,36 +627,28 @@ ScaleFactor ScalingFunction<KPsK>::apply(const Position& pos) const {
   assert(pos.non_pawn_material(weakerSide) == Value(0));
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
+  Square ksq = pos.king_square(weakerSide);
   Bitboard pawns = pos.pieces(PAWN, strongerSide);
 
   // Are all pawns on the 'a' file?
   if ((pawns & ~FileABB) == EmptyBoardBB)
   {
       // Does the defending king block the pawns?
-      Square ksq = pos.king_square(weakerSide);
-      if (square_distance(ksq, relative_square(strongerSide, SQ_A8)) <= 1)
-          return ScaleFactor(0);
-      else if(   square_file(ksq) == FILE_A
-              && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB)
-          return ScaleFactor(0);
-      else
-          return SCALE_FACTOR_NONE;
+      if (   square_distance(ksq, relative_square(strongerSide, SQ_A8)) <= 1
+          || (   square_file(ksq) == FILE_A
+              && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB))
+          return SCALE_FACTOR_ZERO;
   }
   // Are all pawns on the 'h' file?
   else if ((pawns & ~FileHBB) == EmptyBoardBB)
   {
     // Does the defending king block the pawns?
-    Square ksq = pos.king_square(weakerSide);
-    if (square_distance(ksq, relative_square(strongerSide, SQ_H8)) <= 1)
-        return ScaleFactor(0);
-    else if (   square_file(ksq) == FILE_H
-             && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB)
-        return ScaleFactor(0);
-    else
-        return SCALE_FACTOR_NONE;
+    if (   square_distance(ksq, relative_square(strongerSide, SQ_H8)) <= 1
+        || (   square_file(ksq) == FILE_H
+            && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB))
+        return SCALE_FACTOR_ZERO;
   }
-  else
-      return SCALE_FACTOR_NONE;
+  return SCALE_FACTOR_NONE;
 }
 
 
@@ -674,7 +677,7 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position& pos) const {
       && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
       && (   square_color(weakerKingSq) != square_color(strongerBishopSq)
           || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   // Case 2: Opposite colored bishops
   if (square_color(strongerBishopSq) != square_color(weakerBishopSq))
@@ -690,15 +693,16 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position& pos) const {
       // reasonably well.
 
       if (relative_rank(strongerSide, pawnSq) <= RANK_5)
-          return ScaleFactor(0);
+          return SCALE_FACTOR_ZERO;
       else
       {
           Bitboard ray = ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
           if (ray & pos.pieces(KING, weakerSide))
-              return ScaleFactor(0);
-          if(  (pos.attacks_from<BISHOP>(weakerBishopSq) & ray)
-             && square_distance(weakerBishopSq, pawnSq) >= 3)
-              return ScaleFactor(0);
+              return SCALE_FACTOR_ZERO;
+
+          if (  (pos.attacks_from<BISHOP>(weakerBishopSq) & ray)
+              && square_distance(weakerBishopSq, pawnSq) >= 3)
+              return SCALE_FACTOR_ZERO;
       }
   }
   return SCALE_FACTOR_NONE;
@@ -750,7 +754,7 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) const {
     if (   square_file(ksq) == square_file(blockSq1)
         && relative_rank(strongerSide, ksq) >= relative_rank(strongerSide, blockSq1)
         && square_color(ksq) != square_color(wbsq))
-        return ScaleFactor(0);
+        return SCALE_FACTOR_ZERO;
     else
         return SCALE_FACTOR_NONE;
 
@@ -763,12 +767,13 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) const {
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
             || rank_distance(r1, r2) >= 2))
-        return ScaleFactor(0);
+        return SCALE_FACTOR_ZERO;
+
     else if (   ksq == blockSq2
              && square_color(ksq) != square_color(wbsq)
              && (   bbsq == blockSq1
                  || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(BISHOP, weakerSide))))
-        return ScaleFactor(0);
+        return SCALE_FACTOR_ZERO;
     else
         return SCALE_FACTOR_NONE;
 
@@ -801,7 +806,7 @@ ScaleFactor ScalingFunction<KBPKN>::apply(const Position& pos) const {
       && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
       && (   square_color(weakerKingSq) != square_color(strongerBishopSq)
           || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   return SCALE_FACTOR_NONE;
 }
@@ -824,11 +829,11 @@ ScaleFactor ScalingFunction<KNPK>::apply(const Position& pos) const {
 
   if (   pawnSq == relative_square(strongerSide, SQ_A7)
       && square_distance(weakerKingSq, relative_square(strongerSide, SQ_A8)) <= 1)
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   if (   pawnSq == relative_square(strongerSide, SQ_H7)
       && square_distance(weakerKingSq, relative_square(strongerSide, SQ_H8)) <= 1)
-      return ScaleFactor(0);
+      return SCALE_FACTOR_ZERO;
 
   return SCALE_FACTOR_NONE;
 }
@@ -881,32 +886,21 @@ ScaleFactor ScalingFunction<KPKP>::apply(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a
   // draw, it's probably at least a draw even with the pawn.
-  if (probe_kpk(wksq, wpsq, bksq, stm))
-      return SCALE_FACTOR_NONE;
-  else
-      return ScaleFactor(0);
-}
-
-
-/// init_bitbases() is called during program initialization, and simply loads
-/// bitbases from disk into memory.  At the moment, there is only the bitbase
-/// for KP vs K, but we may decide to add other bitbases later.
-
-void init_bitbases() {
-  generate_kpk_bitbase(KPKBitbase);
+  return probe_kpk(wksq, wpsq, bksq, stm) ? SCALE_FACTOR_NONE : SCALE_FACTOR_ZERO;
 }
 
 
 namespace {
 
-  // Probe the KP vs K bitbase:
+  // Probe the KP vs K bitbase
 
   int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm) {
 
-    int wp = int(square_file(wpsq)) + (int(square_rank(wpsq)) - 1) * 4;
-    int index = int(stm) + 2*int(bksq) + 128*int(wksq) + 8192*wp;
+    int wp = square_file(wpsq) + 4 * (square_rank(wpsq) - 1);
+    int index = int(stm) + 2 * bksq + 128 * wksq + 8192 * wp;
 
-    assert(index >= 0 && index < 24576*8);
-    return KPKBitbase[index/8] & (1 << (index&7));
+    assert(index >= 0 && index < 24576 * 8);
+
+    return KPKBitbase[index / 8] & (1 << (index & 7));
   }
 }
