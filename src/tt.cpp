@@ -25,6 +25,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "evaluate.h"
 #include "movegen.h"
 #include "tt.h"
 
@@ -164,13 +165,18 @@ void TranspositionTable::new_search() {
 void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
 
   StateInfo st;
+  EvalInfo ei;
+  Value v;
   Position p(pos, pos.thread());
 
   for (int i = 0; pv[i] != MOVE_NONE; i++)
   {
       TTEntry *tte = retrieve(p.get_key());
       if (!tte || tte->move() != pv[i])
-          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i], VALUE_NONE, VALUE_NONE);
+      {
+          v = (p.is_check() ? VALUE_NONE : evaluate(p, ei));
+          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i], v, ei.kingDanger[pos.side_to_move()]);
+      }
       p.do_move(pv[i], st);
   }
 }
