@@ -36,7 +36,6 @@
 
 const int PLY_MAX = 100;
 const int PLY_MAX_PLUS_2 = 102;
-const int KILLER_MAX = 2;
 
 
 ////
@@ -55,7 +54,7 @@ struct SearchStack {
   Move threatMove;
   Move excludedMove;
   Move bestMove;
-  Move killers[KILLER_MAX];
+  Move killers[2];
   Depth reduction;
   Value eval;
   bool skipNullMove;

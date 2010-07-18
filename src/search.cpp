@@ -368,9 +368,7 @@ void SearchStack::init() {
 // SearchStack::initKillers() initializes killers for a search stack entry
 void SearchStack::initKillers() {
 
-  mateKiller = MOVE_NONE;
-  for (int i = 0; i < KILLER_MAX; i++)
-      killers[i] = MOVE_NONE;
+  killers[0] = killers[1] = mateKiller = MOVE_NONE;
 }
 
 
@@ -1872,10 +1870,8 @@ namespace {
 
   bool move_is_killer(Move m, SearchStack* ss) {
 
-      const Move* k = ss->killers;
-      for (int i = 0; i < KILLER_MAX; i++, k++)
-          if (*k == m)
-              return true;
+      if (ss->killers[0] == m || ss->killers[1] == m)
+          return true;
 
       return false;
   }
@@ -2052,9 +2048,7 @@ namespace {
     if (m == ss->killers[0])
         return;
 
-    for (int i = KILLER_MAX - 1; i > 0; i--)
-        ss->killers[i] = ss->killers[i - 1];
-
+    ss->killers[1] = ss->killers[0];
     ss->killers[0] = m;
   }
 
