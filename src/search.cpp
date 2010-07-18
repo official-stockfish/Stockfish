@@ -760,7 +760,9 @@ namespace {
     beta = *betaPtr;
     isCheck = pos.is_check();
 
-    // Step 1. Initialize node and poll (omitted at root, init_ss_array() has already initialized root node)
+    // Step 1. Initialize node (polling is omitted at root)
+    ss->init();
+
     // Step 2. Check for aborted search (omitted at root)
     // Step 3. Mate distance pruning (omitted at root)
     // Step 4. Transposition table lookup (omitted at root)
@@ -2208,10 +2210,7 @@ namespace {
         ss->reduction = Depth(0);
 
         if (i < 3)
-        {
-            ss->init();
             ss->initKillers();
-        }
     }
   }
 
@@ -2747,6 +2746,7 @@ namespace {
 
         // Find a quick score for the move
         init_ss_array(ss, PLY_MAX_PLUS_2);
+        ss[0].init();
         ss[0].eval = VALUE_NONE;
         ss[0].currentMove = cur->move;
         pos.do_move(cur->move, st);
