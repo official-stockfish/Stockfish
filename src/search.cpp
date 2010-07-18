@@ -363,7 +363,6 @@ void init_search() {
 void SearchStack::init() {
 
   currentMove = threatMove = bestMove = MOVE_NONE;
-  reduction = Depth(0);
 }
 
 // SearchStack::initKillers() initializes killers for a search stack entry
@@ -2212,6 +2211,7 @@ namespace {
     {
         ss->excludedMove = MOVE_NONE;
         ss->skipNullMove = false;
+        ss->reduction = Depth(0);
 
         if (i < 3)
         {
