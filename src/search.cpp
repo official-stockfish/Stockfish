@@ -2730,6 +2730,11 @@ namespace {
     StateInfo st;
     bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
 
+    // Initialize search stack
+    init_ss_array(ss, PLY_MAX_PLUS_2);
+    ss[0].init();
+    ss[0].eval = VALUE_NONE;
+
     // Generate all legal moves
     MoveStack* last = generate_moves(pos, mlist);
 
@@ -2745,11 +2750,8 @@ namespace {
             continue;
 
         // Find a quick score for the move
-        init_ss_array(ss, PLY_MAX_PLUS_2);
-        ss[0].init();
-        ss[0].eval = VALUE_NONE;
-        ss[0].currentMove = cur->move;
         pos.do_move(cur->move, st);
+        ss[0].currentMove = cur->move;
         moves[count].move = cur->move;
         moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, Depth(0), 1);
         moves[count].pv[0] = cur->move;
