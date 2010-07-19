@@ -167,7 +167,8 @@ Phase MaterialInfoTable::game_phase(const Position& pos) {
 
   if (npm >= MidgameLimit)
       return PHASE_MIDGAME;
-  else if (npm <= EndgameLimit)
+
+  if (npm <= EndgameLimit)
       return PHASE_ENDGAME;
 
   return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
@@ -204,14 +205,15 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   if ((mi->evaluationFunction = funcs->get<EF>(key)) != NULL)
       return mi;
 
-  else if (is_KXK<WHITE>(pos) || is_KXK<BLACK>(pos))
+  if (is_KXK<WHITE>(pos) || is_KXK<BLACK>(pos))
   {
       mi->evaluationFunction = is_KXK<WHITE>(pos) ? &EvaluateKXK[WHITE] : &EvaluateKXK[BLACK];
       return mi;
   }
-  else if (   pos.pieces(PAWN)  == EmptyBoardBB
-           && pos.pieces(ROOK)  == EmptyBoardBB
-           && pos.pieces(QUEEN) == EmptyBoardBB)
+
+  if (   pos.pieces(PAWN)  == EmptyBoardBB
+      && pos.pieces(ROOK)  == EmptyBoardBB
+      && pos.pieces(QUEEN) == EmptyBoardBB)
   {
       // Minor piece endgame with at least one minor piece per side and
       // no pawns. Note that the case KmmK is already handled by KXK.
@@ -400,7 +402,7 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
         if (keyCode[i] == 'K')
             upcase = !upcase;
 
-        s << char(upcase? toupper(keyCode[i]) : tolower(keyCode[i]));
+        s << char(upcase ? toupper(keyCode[i]) : tolower(keyCode[i]));
     }
     s << 8 - keyCode.length() << "/8/8/8/8/8/8/8 w -";
     return Position(s.str(), 0).get_material_key();
