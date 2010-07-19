@@ -214,7 +214,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       pi->qsStormValue[Us] += QStormTable[relative_square(Us, s)] + bonus;
 
       // Our rank plus previous one. Used for chain detection.
-      b = rank_bb(r) | rank_bb(r + (Us == WHITE ? -1 : 1));
+      b = rank_bb(r) | rank_bb(Us == WHITE ? r - 1 : r + 1);
 
       // Passed, isolated, doubled or member of a pawn
       // chain (but not the backward one) ?
@@ -226,15 +226,15 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       // Test for backward pawn
       //
+      backward = false;
+
       // If the pawn is passed, isolated, or member of a pawn chain
       // it cannot be backward. If can capture an enemy pawn or if
       // there are friendly pawns behind on neighboring files it cannot
       // be backward either.
-      if (   (passed | isolated | chain)
-          || (ourPawns & attack_span_mask(opposite_color(Us), s))
-          || (pos.attacks_from<PAWN>(s, Us) & theirPawns))
-          backward = false;
-      else
+      if (   !(passed | isolated | chain)
+          && !(ourPawns & attack_span_mask(opposite_color(Us), s))
+          && !(pos.attacks_from<PAWN>(s, Us) & theirPawns))
       {
           // We now know that there are no friendly pawns beside or behind this
           // pawn on neighboring files. We now check whether the pawn is
