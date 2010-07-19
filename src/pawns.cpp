@@ -183,7 +183,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   Square s;
   File f;
   Rank r;
-  int bonus;
+  int bonus, backwardWeight;
   bool passed, isolated, doubled, opposed, chain, backward, candidate;
   Score value = make_score(0, 0);
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
@@ -227,6 +227,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // Test for backward pawn
       //
       backward = false;
+      backwardWeight = 6;
 
       // If the pawn is passed, isolated, or member of a pawn chain
       // it cannot be backward. If can capture an enemy pawn or if
@@ -245,7 +246,12 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
           // Note that we are sure to find something because pawn is not passed
           // nor isolated, so loop is potentially infinite, but it isn't.
           while (!(b & (ourPawns | theirPawns)))
+          {
               Us == WHITE ? b <<= 8 : b >>= 8;
+              backwardWeight--;
+          }
+
+          assert(backwardWeight > 0);
 
           // The friendly pawn needs to be at least two ranks closer than the enemy
           // pawn in order to help the potentially backward pawn advance.
@@ -282,7 +288,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       if (backward)
       {
-          value -= BackwardPawnPenalty[f];
+          value -= backwardWeight * BackwardPawnPenalty[f] / 4;
           if (!opposed)
               value -= BackwardPawnPenalty[f] / 2;
       }
