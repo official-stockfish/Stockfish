@@ -1090,7 +1090,10 @@ namespace {
             ei.kingDanger[pos.side_to_move()] = tte->king_danger();
         }
         else
+        {
             ss->eval = evaluate(pos, ei);
+            TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+        }
 
         refinedValue = refine_eval(tte, ss->eval, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
@@ -1108,10 +1111,6 @@ namespace {
         && !value_is_mate(beta)
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
-        // Pass ss->eval to qsearch() and avoid an evaluate call
-        if (!tte)
-            TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
-
         Value rbeta = beta - razor_margin(depth);
         Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, Depth(0), ply);
         if (v < rbeta)
