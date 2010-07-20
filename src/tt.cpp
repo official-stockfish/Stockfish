@@ -175,7 +175,7 @@ void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
       if (!tte || tte->move() != pv[i])
       {
           v = (p.is_check() ? VALUE_NONE : evaluate(p, ei));
-          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, Depth(-127*OnePly), pv[i], v, ei.kingDanger[pos.side_to_move()]);
+          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, ei.kingDanger[pos.side_to_move()]);
       }
       p.do_move(pv[i], st);
   }

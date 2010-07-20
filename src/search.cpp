@@ -1110,7 +1110,7 @@ namespace {
     {
         // Pass ss->eval to qsearch() and avoid an evaluate call
         if (!tte)
-            TT.store(posKey, ss->eval, VALUE_TYPE_EXACT, Depth(-127*OnePly), MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+            TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
         Value rbeta = beta - razor_margin(depth);
         Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, Depth(0), ply);
@@ -1493,7 +1493,7 @@ namespace {
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, Depth(-127*OnePly), MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
             return bestValue;
         }
