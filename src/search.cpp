@@ -309,6 +309,8 @@ namespace {
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
   void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value);
+  void insert_pv_in_tt(const Position& pos, Move pv[]);
+  void extract_pv_from_tt(const Position& pos, Move bestMove, Move pv[]);
 
 #if !defined(_MSC_VER)
   void *init_thread(void *threadID);
@@ -628,7 +630,7 @@ namespace {
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
-        TT.insert_pv(p, pv);
+        insert_pv_in_tt(p, pv);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!
@@ -895,7 +897,7 @@ namespace {
                 // the score before research in case we run out of time while researching.
                 rml.set_move_score(i, value);
                 ss->bestMove = move;
-                TT.extract_pv(pos, move, pv, PLY_MAX);
+                extract_pv_from_tt(pos, move, pv);
                 rml.set_move_pv(i, pv);
 
                 // Print information to the standard output
@@ -935,7 +937,7 @@ namespace {
                 // Update PV
                 rml.set_move_score(i, value);
                 ss->bestMove = move;
-                TT.extract_pv(pos, move, pv, PLY_MAX);
+                extract_pv_from_tt(pos, move, pv);
                 rml.set_move_pv(i, pv);
 
                 if (MultiPV == 1)
@@ -2269,6 +2271,61 @@ namespace {
         LogFile << pretty_pv(pos, current_search_time(), Iteration,
                              TM.nodes_searched(), value, t, pv) << endl;
     }
+  }
+
+
+  // insert_pv_in_tt() is called at the end of a search iteration, and inserts
+  // the PV back into the TT. This makes sure the old PV moves are searched
+  // first, even if the old TT entries have been overwritten.
+
+  void insert_pv_in_tt(const Position& pos, Move pv[]) {
+
+    StateInfo st;
+    TTEntry* tte;
+    Position p(pos, pos.thread());
+    EvalInfo ei;
+    Value v;
+
+    for (int i = 0; pv[i] != MOVE_NONE; i++)
+    {
+        tte = TT.retrieve(p.get_key());
+        if (!tte || tte->move() != pv[i])
+        {
+            v = (p.is_check() ? VALUE_NONE : evaluate(p, ei));
+            TT.store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, ei.kingDanger[pos.side_to_move()]);
+        }
+        p.do_move(pv[i], st);
+    }
+  }
+
+
+  // extract_pv_from_tt() builds a PV by adding moves from the transposition table.
+  // We consider also failing high nodes and not only VALUE_TYPE_EXACT nodes. This
+  // allow to always have a ponder move even when we fail high at root and also a
+  // long PV to print that is important for position analysis.
+
+  void extract_pv_from_tt(const Position& pos, Move bestMove, Move pv[]) {
+
+    StateInfo st;
+    TTEntry* tte;
+    Position p(pos, pos.thread());
+    int ply = 0;
+
+    assert(bestMove != MOVE_NONE);
+
+    pv[ply] = bestMove;
+    p.do_move(pv[ply++], st);
+
+    while (   (tte = TT.retrieve(p.get_key())) != NULL
+           && tte->move() != MOVE_NONE
+           && move_is_legal(p, tte->move())
+           && ply < PLY_MAX
+           && (!p.is_draw() || ply < 2))
+    {
+        pv[ply] = tte->move();
+        p.do_move(pv[ply++], st);
+    }
+    pv[ply] = MOVE_NONE;
   }
 
 

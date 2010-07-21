@@ -111,8 +111,6 @@ public:
   void store(const Key posKey, Value v, ValueType type, Depth d, Move m, Value statV, Value kingD);
   TTEntry* retrieve(const Key posKey) const;
   void new_search();
-  void insert_pv(const Position& pos, Move pv[]);
-  void extract_pv(const Position& pos, Move bestMove, Move pv[], const int PLY_MAX);
   TTEntry* first_entry(const Key posKey) const;
 
 private:

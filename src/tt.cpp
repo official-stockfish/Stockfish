@@ -26,7 +26,6 @@
 #include <cstring>
 
 #include "evaluate.h"
-#include "movegen.h"
 #include "tt.h"
 
 // The main transposition table
@@ -154,60 +153,4 @@ TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
 void TranspositionTable::new_search() {
   generation++;
-}
-
-
-/// TranspositionTable::insert_pv() is called at the end of a search
-/// iteration, and inserts the PV back into the PV. This makes sure
-/// the old PV moves are searched first, even if the old TT entries
-/// have been overwritten.
-
-void TranspositionTable::insert_pv(const Position& pos, Move pv[]) {
-
-  StateInfo st;
-  EvalInfo ei;
-  Value v;
-  Position p(pos, pos.thread());
-
-  for (int i = 0; pv[i] != MOVE_NONE; i++)
-  {
-      TTEntry *tte = retrieve(p.get_key());
-      if (!tte || tte->move() != pv[i])
-      {
-          v = (p.is_check() ? VALUE_NONE : evaluate(p, ei));
-          store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, ei.kingDanger[pos.side_to_move()]);
-      }
-      p.do_move(pv[i], st);
-  }
-}
-
-
-/// TranspositionTable::extract_pv() builds a PV by adding moves from the
-/// transposition table. We consider also failing high nodes and not only
-/// VALUE_TYPE_EXACT nodes. This allow to always have a ponder move even
-/// when we fail high at root and also a long PV to print that is important
-/// for position analysis.
-
-void TranspositionTable::extract_pv(const Position& pos, Move bestMove, Move pv[], const int PLY_MAX) {
-
-  const TTEntry* tte;
-  StateInfo st;
-  Position p(pos, pos.thread());
-  int ply = 0;
-
-  assert(bestMove != MOVE_NONE);
-
-  pv[ply] = bestMove;
-  p.do_move(pv[ply++], st);
-
-  while (   (tte = retrieve(p.get_key())) != NULL
-         && tte->move() != MOVE_NONE
-         && move_is_legal(p, tte->move())
-         && (!p.is_draw() || ply < 2)
-         && ply < PLY_MAX)
-  {
-      pv[ply] = tte->move();
-      p.do_move(pv[ply++], st);
-  }
-  pv[ply] = MOVE_NONE;
 }
