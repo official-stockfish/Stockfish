@@ -26,7 +26,7 @@
 ////
 
 #include "depth.h"
-#include "position.h"
+#include "move.h"
 #include "value.h"
 
 

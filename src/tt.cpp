@@ -25,7 +25,6 @@
 #include <cassert>
 #include <cstring>
 
-#include "evaluate.h"
 #include "tt.h"
 
 // The main transposition table
@@ -55,8 +54,10 @@ void TranspositionTable::set_size(size_t mbSize) {
 
   size_t newSize = 1024;
 
-  // We store a cluster of ClusterSize number of TTEntry for each position
-  // and newSize is the maximum number of storable positions.
+  // Transposition table consists of clusters and
+  // each cluster consists of ClusterSize number of TTEntries.
+  // Each non-empty entry contains information of exactly one position.
+  // newSize is the number of clusters we are going to allocate.
   while ((2 * newSize) * sizeof(TTCluster) <= (mbSize << 20))
       newSize *= 2;
 
@@ -78,7 +79,7 @@ void TranspositionTable::set_size(size_t mbSize) {
 /// TranspositionTable::clear overwrites the entire transposition table
 /// with zeroes. It is called whenever the table is resized, or when the
 /// user asks the program to clear the table (from the UCI interface).
-/// Perhaps we should also clear it when the "ucinewgame" command is recieved?
+/// Perhaps we should also clear it when the "ucinewgame" command is received?
 
 void TranspositionTable::clear() {
 
@@ -86,15 +87,15 @@ void TranspositionTable::clear() {
 }
 
 
-/// TranspositionTable::store writes a new entry containing a position,
-/// a value, a value type, a search depth, and a best move to the
-/// transposition table. Transposition table is organized in clusters of
-/// four TTEntry objects, and when a new entry is written, it replaces
-/// the least valuable of the four entries in a cluster. A TTEntry t1 is
-/// considered to be more valuable than a TTEntry t2 if t1 is from the
+/// TranspositionTable::store writes a new entry containing position key and
+/// valuable information of current position.
+/// The Lowest order bits of position key are used to decide on which cluster
+/// the position will be placed.
+/// When a new entry is written and there are no empty entries available in cluster,
+/// it replaces the least valuable of entries.
+/// A TTEntry t1 is considered to be more valuable than a TTEntry t2 if t1 is from the
 /// current search and t2 is from a previous search, or if the depth of t1
-/// is bigger than the depth of t2. A TTEntry of type VALUE_TYPE_EVAL
-/// never replaces another entry for the same position.
+/// is bigger than the depth of t2.
 
 void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m, Value statV, Value kingD) {
 
@@ -107,7 +108,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
   {
       if (!tte->key() || tte->key() == posKey32) // empty or overwrite old
       {
-          // Preserve any exsisting ttMove
+          // Preserve any existing ttMove
           if (m == MOVE_NONE)
               m = tte->move();
 
@@ -115,7 +116,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           return;
       }
 
-      if (i == 0)  // replace would be a no-op in this common case
+      if (i == 0)  // Replacing first entry is default and already set before entering for-loop
           continue;
 
       c1 = (replace->generation() == generation ?  2 : 0);
