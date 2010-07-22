@@ -48,8 +48,8 @@
 /// the 32 bits of the data field are so defined
 ///
 /// bit  0-16: move
-/// bit 17-19: not used
-/// bit 20-22: value type
+/// bit 17-20: not used
+/// bit 21-22: value type
 /// bit 23-31: generation
 
 class TTEntry {
@@ -58,7 +58,7 @@ public:
   void save(uint32_t k, Value v, ValueType t, Depth d, Move m, int g, Value statV, Value kd) {
 
       key32 = k;
-      data = (m & 0x1FFFF) | (t << 20) | (g << 23);
+      data = (m & 0x1FFFF) | (t << 21) | (g << 23);
       value16     = int16_t(v);
       depth16     = int16_t(d);
       staticValue = int16_t(statV);
@@ -69,7 +69,7 @@ public:
   Depth depth() const { return Depth(depth16); }
   Move move() const { return Move(data & 0x1FFFF); }
   Value value() const { return Value(value16); }
-  ValueType type() const { return ValueType((data >> 20) & 7); }
+  ValueType type() const { return ValueType((data >> 21) & 3); }
   int generation() const { return data >> 23; }
   Value static_value() const { return Value(staticValue); }
   Value king_danger() const { return Value(kingDanger); }
@@ -84,13 +84,12 @@ private:
 };
 
 
-/// This is the number of TTEntry slots for each position
+/// This is the number of TTEntry slots for each cluster
 const int ClusterSize = 4;
 
-/// Each group of ClusterSize number of TTEntry form a TTCluster
-/// that is indexed by a single position key. TTCluster size must
-///  be not bigger then a cache line size, in case it is less then
-/// it should be padded to guarantee always aligned accesses.
+/// TTCluster consists of ClusterSize number of TTEntries.
+/// Size of TTCluster must not be bigger than a cache line size.
+/// In case it is less, it should be padded to guarantee always aligned accesses.
 
 struct TTCluster {
   TTEntry data[ClusterSize];
@@ -98,7 +97,7 @@ struct TTCluster {
 
 
 /// The transposition table class. This is basically just a huge array
-/// containing TTEntry objects, and a few methods for writing new entries
+/// containing TTCluster objects, and a few methods for writing new entries
 /// and reading new ones.
 
 class TranspositionTable {
@@ -123,8 +122,8 @@ extern TranspositionTable TT;
 
 
 /// TranspositionTable::first_entry returns a pointer to the first
-/// entry of a cluster given a position. The low 32 bits of the key
-/// are used to get the index in the table.
+/// entry of a cluster given a position. The lowest order bits of the key
+/// are used to get the index of the cluster.
 
 inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 
