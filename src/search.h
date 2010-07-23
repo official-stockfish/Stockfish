@@ -57,9 +57,6 @@ struct SearchStack {
   Depth reduction;
   Value eval;
   bool skipNullMove;
-
-  void init();
-  void initKillers();
 };
 
 
