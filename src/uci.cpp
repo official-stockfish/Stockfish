@@ -126,7 +126,6 @@ namespace {
     else if (token == "ucinewgame")
     {
         push_button("New Game");
-        Position::init_piece_square_tables();
         RootPosition.from_fen(StartPositionFEN);
     }
     else if (token == "isready")
