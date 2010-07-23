@@ -55,6 +55,7 @@ struct SplitPoint {
   bool pvNode, mateThreat;
   Value beta;
   int ply;
+  Move threatMove;
   SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
 
   // Const pointers to shared data

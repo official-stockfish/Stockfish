@@ -51,7 +51,6 @@ struct EvalInfo;
 struct SearchStack {
   Move currentMove;
   Move mateKiller;
-  Move threatMove;
   Move excludedMove;
   Move bestMove;
   Move killers[2];

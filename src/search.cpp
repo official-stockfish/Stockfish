@@ -90,7 +90,7 @@ namespace {
 
     template <bool Fake>
     void split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
-               Depth depth, bool mateThreat, int* moveCount, MovePicker* mp, bool pvNode);
+               Depth depth, Move threatMove, bool mateThreat, int* moveCount, MovePicker* mp, bool pvNode);
 
   private:
     friend void poll();
@@ -364,7 +364,7 @@ void init_search() {
 // Called at the beginning of search() when starting to examine a new node.
 void SearchStack::init() {
 
-  currentMove = threatMove = bestMove = MOVE_NONE;
+  currentMove = bestMove = MOVE_NONE;
 }
 
 // SearchStack::initKillers() initializes killers for a search stack entry
@@ -1026,6 +1026,7 @@ namespace {
     bool mateThreat = false;
     int moveCount = 0;
     int threadID = pos.thread();
+    Move threatMove = MOVE_NONE;
     refinedValue = bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
 
@@ -1190,10 +1191,10 @@ namespace {
             if (nullValue == value_mated_in(ply + 2))
                 mateThreat = true;
 
-            ss->threatMove = (ss+1)->currentMove;
+            threatMove = (ss+1)->currentMove;
             if (   depth < ThreatDepth
                 && (ss-1)->reduction
-                && connected_moves(pos, (ss-1)->currentMove, ss->threatMove))
+                && connected_moves(pos, (ss-1)->currentMove, threatMove))
                 return beta - 1;
         }
     }
@@ -1282,7 +1283,7 @@ namespace {
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
-              && !(ss->threatMove && connected_threat(pos, move, ss->threatMove))
+              && !(threatMove && connected_threat(pos, move, threatMove))
               && bestValue > value_mated_in(PLY_MAX))
               continue;
 
@@ -1390,7 +1391,7 @@ namespace {
           && !TM.thread_should_stop(threadID)
           && Iteration <= 99)
           TM.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
-                              mateThreat, &moveCount, &mp, PvNode);
+                              threatMove, mateThreat, &moveCount, &mp, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
@@ -1664,7 +1665,7 @@ namespace {
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(sp->depth)
-              && !(ss->threatMove && connected_threat(pos, move, ss->threatMove))
+              && !(sp->threatMove && connected_threat(pos, move, sp->threatMove))
               && sp->bestValue > value_mated_in(PLY_MAX))
           {
               lock_grab(&(sp->lock));
@@ -2640,8 +2641,8 @@ namespace {
 
   template <bool Fake>
   void ThreadsManager::split(const Position& p, SearchStack* ss, int ply, Value* alpha,
-                             const Value beta, Value* bestValue, Depth depth, bool mateThreat,
-                             int* moveCount, MovePicker* mp, bool pvNode) {
+                             const Value beta, Value* bestValue, Depth depth, Move threatMove,
+                             bool mateThreat, int* moveCount, MovePicker* mp, bool pvNode) {
     assert(p.is_ok());
     assert(ply > 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
@@ -2674,6 +2675,7 @@ namespace {
     splitPoint.stopRequest = false;
     splitPoint.ply = ply;
     splitPoint.depth = depth;
+    splitPoint.threatMove = threatMove;
     splitPoint.mateThreat = mateThreat;
     splitPoint.alpha = *alpha;
     splitPoint.beta = beta;
