@@ -2470,8 +2470,8 @@ namespace {
 #endif
 
     // Initialize global locks
-    lock_init(&MPLock, NULL);
-    lock_init(&WaitLock, NULL);
+    lock_init(&MPLock);
+    lock_init(&WaitLock);
 
 #if !defined(_MSC_VER)
     pthread_cond_init(&WaitCond, NULL);
@@ -2483,7 +2483,7 @@ namespace {
     // Initialize splitPoints[] locks
     for (i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
-            lock_init(&(threads[i].splitPoints[j].lock), NULL);
+            lock_init(&(threads[i].splitPoints[j].lock));
 
     // Will be set just before program exits to properly end the threads
     AllThreadsShouldExit = false;

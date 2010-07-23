@@ -28,7 +28,7 @@
 
 typedef pthread_mutex_t Lock;
 
-#  define lock_init(x, y) pthread_mutex_init(x, y)
+#  define lock_init(x) pthread_mutex_init(x, NULL)
 #  define lock_grab(x) pthread_mutex_lock(x)
 #  define lock_release(x) pthread_mutex_unlock(x)
 #  define lock_destroy(x) pthread_mutex_destroy(x)
@@ -41,7 +41,7 @@ typedef pthread_mutex_t Lock;
 #undef WIN32_LEAN_AND_MEAN
 
 typedef CRITICAL_SECTION Lock;
-#  define lock_init(x, y) InitializeCriticalSection(x)
+#  define lock_init(x) InitializeCriticalSection(x)
 #  define lock_grab(x) EnterCriticalSection(x)
 #  define lock_release(x) LeaveCriticalSection(x)
 #  define lock_destroy(x) DeleteCriticalSection(x)
