@@ -404,7 +404,7 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
 
         s << char(upcase ? toupper(keyCode[i]) : tolower(keyCode[i]));
     }
-    s << 8 - keyCode.length() << "/8/8/8/8/8/8/8 w -";
+    s << 8 - keyCode.length() << "/8/8/8/8/8/8/8 w - -";
     return Position(s.str(), 0).get_material_key();
 }
 

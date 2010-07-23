@@ -294,6 +294,7 @@ private:
   void put_piece(Piece p, Square s);
   void allow_oo(Color c);
   void allow_ooo(Color c);
+  bool set_castling_rights(char token);
 
   // Helper functions for doing and undoing moves
   void do_capture_move(Key& key, PieceType capture, Color them, Square to, bool ep);

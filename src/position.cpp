@@ -26,6 +26,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include "bitcount.h"
 #include "mersenne.h"
@@ -38,6 +39,8 @@
 #include "ucioption.h"
 
 using std::string;
+using std::cout;
+using std::endl;
 
 
 ////
@@ -111,135 +114,104 @@ void Position::detach() {
 /// correct (this is assumed to be the responsibility of the GUI).
 
 void Position::from_fen(const string& fen) {
+/*
+   A FEN string defines a particular position using only the ASCII character set.
+
+   A FEN string contains six fields. The separator between fields is a space. The fields are:
+
+   1) Piece placement (from white's perspective). Each rank is described, starting with rank 8 and ending
+      with rank 1; within each rank, the contents of each square are described from file a through file h.
+      Following the Standard Algebraic Notation (SAN), each piece is identified by a single letter taken
+      from the standard English names. White pieces are designated using upper-case letters ("PNBRQK")
+      while Black take lowercase ("pnbrqk"). Blank squares are noted using digits 1 through 8 (the number
+      of blank squares), and "/" separate ranks.
+
+   2) Active color. "w" means white moves next, "b" means black.
+
+   3) Castling availability. If neither side can castle, this is "-". Otherwise, this has one or more
+      letters: "K" (White can castle kingside), "Q" (White can castle queenside), "k" (Black can castle
+      kingside), and/or "q" (Black can castle queenside).
+
+   4) En passant target square in algebraic notation. If there's no en passant target square, this is "-".
+      If a pawn has just made a 2-square move, this is the position "behind" the pawn. This is recorded
+      regardless of whether there is a pawn in position to make an en passant capture.
+
+   5) Halfmove clock: This is the number of halfmoves since the last pawn advance or capture. This is used
+      to determine if a draw can be claimed under the fifty-move rule.
+
+   6) Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
+*/
 
   static const string pieceLetters = "KQRBNPkqrbnp";
   static const Piece pieces[] = { WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP };
 
-  clear();
-
-  // Board
   Rank rank = RANK_8;
   File file = FILE_A;
-  size_t i = 0;
-  for ( ; fen[i] != ' '; i++)
+  size_t idx;
+
+  std::istringstream ss(fen);
+  char token;
+
+  clear();
+
+  // 1. Piece placement field
+  while (ss.get(token) && token != ' ')
   {
-      if (isdigit(fen[i]))
+      if (isdigit(token))
       {
           // Skip the given number of files
-          file += (fen[i] - '1' + 1);
+          file += token - '1' + 1;
           continue;
       }
-      else if (fen[i] == '/')
+      else if (token == '/')
       {
           file = FILE_A;
           rank--;
           continue;
       }
-      size_t idx = pieceLetters.find(fen[i]);
+
+      idx = pieceLetters.find(token);
       if (idx == string::npos)
-      {
-           std::cout << "Error in FEN at character " << i << std::endl;
-           return;
-      }
-      Square square = make_square(file, rank);
-      put_piece(pieces[idx], square);
+          goto incorrect_fen;
+
+      put_piece(pieces[idx], make_square(file, rank));
       file++;
   }
 
-  // Side to move
-  i++;
-  if (fen[i] != 'w' && fen[i] != 'b')
-  {
-      std::cout << "Error in FEN at character " << i << std::endl;
-      return;
-  }
-  sideToMove = (fen[i] == 'w' ? WHITE : BLACK);
+  // 2. Active color
+  if (!ss.get(token) || (token != 'w' && token != 'b'))
+      goto incorrect_fen;
 
-  // Castling rights
-  i++;
-  if (fen[i] != ' ')
-  {
-      std::cout << "Error in FEN at character " << i << std::endl;
-      return;
-  }
+  sideToMove = (token == 'w' ? WHITE : BLACK);
 
-  i++;
-  while (strchr("KQkqabcdefghABCDEFGH-", fen[i])) {
-      if (fen[i] == '-')
-      {
-          i++;
-          break;
-      }
-      else if (fen[i] == 'K') allow_oo(WHITE);
-      else if (fen[i] == 'Q') allow_ooo(WHITE);
-      else if (fen[i] == 'k') allow_oo(BLACK);
-      else if (fen[i] == 'q') allow_ooo(BLACK);
-      else if (fen[i] >= 'A' && fen[i] <= 'H') {
-          File rookFile, kingFile = FILE_NONE;
-          for (Square square = SQ_B1; square <= SQ_G1; square++)
-              if (piece_on(square) == WK)
-                  kingFile = square_file(square);
-          if (kingFile == FILE_NONE) {
-              std::cout << "Error in FEN at character " << i << std::endl;
-              return;
-          }
-          initialKFile = kingFile;
-          rookFile = File(fen[i] - 'A') + FILE_A;
-          if (rookFile < initialKFile) {
-              allow_ooo(WHITE);
-              initialQRFile = rookFile;
-          }
-          else {
-              allow_oo(WHITE);
-              initialKRFile = rookFile;
-          }
-      }
-      else if (fen[i] >= 'a' && fen[i] <= 'h') {
-          File rookFile, kingFile = FILE_NONE;
-          for (Square square = SQ_B8; square <= SQ_G8; square++)
-              if (piece_on(square) == BK)
-                  kingFile = square_file(square);
-          if (kingFile == FILE_NONE) {
-              std::cout << "Error in FEN at character " << i << std::endl;
-              return;
-          }
-          initialKFile = kingFile;
-          rookFile = File(fen[i] - 'a') + FILE_A;
-          if (rookFile < initialKFile) {
-              allow_ooo(BLACK);
-              initialQRFile = rookFile;
-          }
-          else {
-              allow_oo(BLACK);
-              initialKRFile = rookFile;
-          }
-      }
-      else {
-          std::cout << "Error in FEN at character " << i << std::endl;
-          return;
-      }
-      i++;
+  if (!ss.get(token) || token != ' ')
+      goto incorrect_fen;
+
+  // 3. Castling availability
+  while (ss.get(token) && token != ' ')
+  {
+      if (token == '-')
+          continue;
+
+      if (!set_castling_rights(token))
+          goto incorrect_fen;
   }
 
-  // Skip blanks
-  while (fen[i] == ' ')
-      i++;
-
-  // En passant square -- ignore if no capture is possible
-  if (    i <= fen.length() - 2
-      && (fen[i] >= 'a' && fen[i] <= 'h')
-      && (fen[i+1] == '3' || fen[i+1] == '6'))
+  // 4. En passant square -- ignore if no capture is possible
+  char col, row;
+  if (   (ss.get(col) && (col >= 'a' && col <= 'h'))
+      && (ss.get(row) && (row == '3' || row == '6')))
   {
-      Square fenEpSquare = square_from_string(fen.substr(i, 2));
+      Square fenEpSquare = make_square(file_from_char(col), rank_from_char(row));
       Color them = opposite_color(sideToMove);
+
       if (attacks_from<PAWN>(fenEpSquare, them) & this->pieces(PAWN, sideToMove))
-          st->epSquare = square_from_string(fen.substr(i, 2));
+          st->epSquare = fenEpSquare;
   }
 
-  // Various initialisation
-  for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
-      castleRightsMask[sq] = ALL_CASTLES;
+  // 5-6. Halfmove clock and fullmove number are not parsed
 
+  // Various initialisations
   castleRightsMask[make_square(initialKFile,  RANK_1)] ^= (WHITE_OO|WHITE_OOO);
   castleRightsMask[make_square(initialKFile,  RANK_8)] ^= (BLACK_OO|BLACK_OOO);
   castleRightsMask[make_square(initialKRFile, RANK_1)] ^= WHITE_OO;
@@ -255,6 +227,67 @@ void Position::from_fen(const string& fen) {
   st->value = compute_value();
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
+  return;
+
+incorrect_fen:
+  cout << "Error in FEN string: " << fen << endl;
+}
+
+
+/// Position::set_castling_rights() sets castling parameters castling avaiability.
+/// This function is compatible with 3 standards: Normal FEN standard, Shredder-FEN
+/// that uses the letters of the columns on which the rooks began the game instead
+/// of KQkq and also X-FEN standard that, in case of Chess960, if an inner Rook is
+/// associated with the castling right, the traditional castling tag will be replaced
+/// by the file letter of the involved rook as for the Shredder-FEN.
+
+bool Position::set_castling_rights(char token) {
+
+    Color c = token >= 'a' ? BLACK : WHITE;
+    Square sqA = (c == WHITE ? SQ_A1 : SQ_A8);
+    Square sqH = (c == WHITE ? SQ_H1 : SQ_H8);
+    Piece rook = (c == WHITE ? WR : BR);
+
+    initialKFile = square_file(king_square(c));
+    token = char(toupper(token));
+
+    if (token == 'K')
+    {
+        for (Square sq = sqH; sq >= sqA; sq--)
+            if (piece_on(sq) == rook)
+            {
+                allow_oo(c);
+                initialKRFile = square_file(sq);
+                break;
+            }
+    }
+    else if (token == 'Q')
+    {
+        for (Square sq = sqA; sq <= sqH; sq++)
+            if (piece_on(sq) == rook)
+            {
+                allow_ooo(c);
+                initialQRFile = square_file(sq);
+                break;
+            }
+    }
+    else if (token >= 'A' && token <= 'H')
+    {
+        File rookFile = File(token - 'A') + FILE_A;
+        if (rookFile < initialKFile)
+        {
+            allow_ooo(c);
+            initialQRFile = rookFile;
+        }
+        else
+        {
+            allow_oo(c);
+            initialKRFile = rookFile;
+        }
+    }
+    else return false;
+
+  return true;
 }
 
 
@@ -337,16 +370,16 @@ void Position::print(Move m) const {
 
   RequestPending = true;
 
-  std::cout << std::endl;
+  cout << endl;
   if (m != MOVE_NONE)
   {
       Position p(*this, thread());
       string col = (color_of_piece_on(move_from(m)) == BLACK ? ".." : "");
-      std::cout << "Move is: " << col << move_to_san(p, m) << std::endl;
+      cout << "Move is: " << col << move_to_san(p, m) << endl;
   }
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
-      std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
+      cout << "+---+---+---+---+---+---+---+---+" << endl;
       for (File file = FILE_A; file <= FILE_H; file++)
       {
           Square sq = make_square(file, rank);
@@ -355,13 +388,13 @@ void Position::print(Move m) const {
               piece = NO_PIECE;
 
           char col = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
-          std::cout << '|' << col << pieceLetters[piece] << col;
+          cout << '|' << col << pieceLetters[piece] << col;
       }
-      std::cout << '|' << std::endl;
+      cout << '|' << endl;
   }
-  std::cout << "+---+---+---+---+---+---+---+---+" << std::endl
-            << "Fen is: " << to_fen() << std::endl
-            << "Key is: " << st->key << std::endl;
+  cout << "+---+---+---+---+---+---+---+---+" << endl
+            << "Fen is: " << to_fen() << endl
+            << "Key is: " << st->key << endl;
 
   RequestPending = false;
 }
@@ -1474,6 +1507,9 @@ void Position::clear() {
       for (int j = 0; j < 16; j++)
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
 
+  for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
+      castleRightsMask[sq] = ALL_CASTLES;
+
   sideToMove = WHITE;
   initialKFile = FILE_E;
   initialKRFile = FILE_H;
@@ -1798,9 +1834,6 @@ void Position::flipped_copy(const Position& pos) {
   initialKFile  = pos.initialKFile;
   initialKRFile = pos.initialKRFile;
   initialQRFile = pos.initialQRFile;
-
-  for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
-      castleRightsMask[sq] = ALL_CASTLES;
 
   castleRightsMask[make_square(initialKFile,  RANK_1)] ^= (WHITE_OO | WHITE_OOO);
   castleRightsMask[make_square(initialKFile,  RANK_8)] ^= (BLACK_OO | BLACK_OOO);
