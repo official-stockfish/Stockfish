@@ -22,6 +22,7 @@
 //// Includes
 ////
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <fstream>
@@ -43,6 +44,8 @@ using std::string;
 using std::cout;
 using std::endl;
 
+static inline bool isZero(char c) { return c == '0'; }
+
 struct PieceLetters : std::map<char, Piece> {
 
     PieceLetters() {
@@ -53,6 +56,17 @@ struct PieceLetters : std::map<char, Piece> {
       operator[]('B') = WB; operator[]('b') = BB;
       operator[]('N') = WN; operator[]('n') = BN;
       operator[]('P') = WP; operator[]('p') = BP;
+    }
+
+    char from_piece(Piece p) const {
+
+        map<char, Piece>::const_iterator it;
+        for (it = begin(); it != end(); ++it)
+            if (it->second == p)
+                return it->first;
+
+        assert(false);
+        return 0;
     }
 };
 
@@ -69,6 +83,7 @@ Key Position::zobExclusion;
 Score Position::PieceSquareTable[16][64];
 
 static bool RequestPending = false;
+static PieceLetters pieceLetters;
 
 
 /// Constructors
@@ -154,8 +169,6 @@ void Position::from_fen(const string& fen) {
 
    6) Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
 */
-
-  static PieceLetters pieceLetters;
 
   char token;
   std::istringstream ss(fen);
@@ -299,67 +312,59 @@ bool Position::set_castling_rights(char token) {
 }
 
 
-/// Position::to_fen() converts the position object to a FEN string. This is
-/// probably only useful for debugging.
+/// Position::to_fen() returns a FEN representation of the position. In case
+/// of Chess960 the Shredder-FEN notation is used. Mainly a debugging function.
 
 const string Position::to_fen() const {
 
-  static const string pieceLetters = " PNBRQK  pnbrqk";
   string fen;
-  int skip;
+  Square sq;
+  char emptyCnt = '0';
 
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
-      skip = 0;
       for (File file = FILE_A; file <= FILE_H; file++)
       {
-          Square sq = make_square(file, rank);
-          if (!square_is_occupied(sq))
-          {   skip++;
-              continue;
-          }
-          if (skip > 0)
-          {
-              fen += (char)skip + '0';
-              skip = 0;
-          }
-          fen += pieceLetters[piece_on(sq)];
-      }
-      if (skip > 0)
-          fen += (char)skip + '0';
+          sq = make_square(file, rank);
 
-      fen += (rank > RANK_1 ? '/' : ' ');
+          if (square_is_occupied(sq))
+          {
+              fen += emptyCnt;
+              fen += pieceLetters.from_piece(piece_on(sq));
+              emptyCnt = '0';
+          } else
+              emptyCnt++;
+      }
+      fen += emptyCnt;
+      fen += '/';
+      emptyCnt = '0';
   }
-  fen += (sideToMove == WHITE ? "w " : "b ");
+
+  fen.erase(std::remove_if(fen.begin(), fen.end(), isZero), fen.end());
+  fen.erase(--fen.end());
+  fen += (sideToMove == WHITE ? " w " : " b ");
+
   if (st->castleRights != NO_CASTLES)
   {
-     if (initialKFile == FILE_E && initialQRFile == FILE_A && initialKRFile == FILE_H)
-     {
-        if (can_castle_kingside(WHITE))  fen += 'K';
-        if (can_castle_queenside(WHITE)) fen += 'Q';
-        if (can_castle_kingside(BLACK))  fen += 'k';
-        if (can_castle_queenside(BLACK)) fen += 'q';
-     }
-     else
-     {
-        if (can_castle_kingside(WHITE))
-           fen += char(toupper(file_to_char(initialKRFile)));
-        if (can_castle_queenside(WHITE))
-           fen += char(toupper(file_to_char(initialQRFile)));
-        if (can_castle_kingside(BLACK))
-           fen += file_to_char(initialKRFile);
-        if (can_castle_queenside(BLACK))
-           fen += file_to_char(initialQRFile);
-     }
+      const bool Chess960 =   initialKFile  != FILE_E
+                           || initialQRFile != FILE_A
+                           || initialKRFile != FILE_H;
+
+      if (can_castle_kingside(WHITE))
+          fen += Chess960 ? char(toupper(file_to_char(initialKRFile))) : 'K';
+
+      if (can_castle_queenside(WHITE))
+          fen += Chess960 ? char(toupper(file_to_char(initialQRFile))) : 'Q';
+
+      if (can_castle_kingside(BLACK))
+          fen += Chess960 ? file_to_char(initialKRFile) : 'k';
+
+      if (can_castle_queenside(BLACK))
+          fen += Chess960 ? file_to_char(initialQRFile) : 'q';
   } else
       fen += '-';
 
-  fen += ' ';
-  if (ep_square() != SQ_NONE)
-      fen += square_to_string(ep_square());
-  else
-      fen += '-';
-
+  fen += (ep_square() == SQ_NONE ? " -" : " " + square_to_string(ep_square()));
   return fen;
 }
 

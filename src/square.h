@@ -180,10 +180,8 @@ inline Square square_from_string(const std::string& str) {
 }
 
 inline const std::string square_to_string(Square s) {
-  std::string str;
-  str += file_to_char(square_file(s));
-  str += rank_to_char(square_rank(s));
-  return str;
+  return  std::string(1, file_to_char(square_file(s)))
+        + std::string(1, rank_to_char(square_rank(s)));
 }
 
 inline bool file_is_ok(File f) {
