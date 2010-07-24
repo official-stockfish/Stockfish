@@ -25,6 +25,7 @@
 #include <cassert>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <iostream>
 #include <sstream>
 
@@ -42,6 +43,18 @@ using std::string;
 using std::cout;
 using std::endl;
 
+struct PieceLetters : std::map<char, Piece> {
+
+    PieceLetters() {
+
+      operator[]('K') = WK; operator[]('k') = BK;
+      operator[]('Q') = WQ; operator[]('q') = BQ;
+      operator[]('R') = WR; operator[]('r') = BR;
+      operator[]('B') = WB; operator[]('b') = BB;
+      operator[]('N') = WN; operator[]('n') = BN;
+      operator[]('P') = WP; operator[]('p') = BP;
+    }
+};
 
 ////
 //// Variables
@@ -142,15 +155,12 @@ void Position::from_fen(const string& fen) {
    6) Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
 */
 
-  static const string pieceLetters = "KQRBNPkqrbnp";
-  static const Piece pieces[] = { WK, WQ, WR, WB, WN, WP, BK, BQ, BR, BB, BN, BP };
+  static PieceLetters pieceLetters;
 
+  char token;
+  std::istringstream ss(fen);
   Rank rank = RANK_8;
   File file = FILE_A;
-  size_t idx;
-
-  std::istringstream ss(fen);
-  char token;
 
   clear();
 
@@ -159,8 +169,7 @@ void Position::from_fen(const string& fen) {
   {
       if (isdigit(token))
       {
-          // Skip the given number of files
-          file += token - '1' + 1;
+          file += token - '0'; // Skip the given number of files
           continue;
       }
       else if (token == '/')
@@ -170,11 +179,10 @@ void Position::from_fen(const string& fen) {
           continue;
       }
 
-      idx = pieceLetters.find(token);
-      if (idx == string::npos)
+      if (pieceLetters.find(token) == pieceLetters.end())
           goto incorrect_fen;
 
-      put_piece(pieces[idx], make_square(file, rank));
+      put_piece(pieceLetters[token], make_square(file, rank));
       file++;
   }
 
@@ -205,15 +213,15 @@ void Position::from_fen(const string& fen) {
       Square fenEpSquare = make_square(file_from_char(col), rank_from_char(row));
       Color them = opposite_color(sideToMove);
 
-      if (attacks_from<PAWN>(fenEpSquare, them) & this->pieces(PAWN, sideToMove))
+      if (attacks_from<PAWN>(fenEpSquare, them) & pieces(PAWN, sideToMove))
           st->epSquare = fenEpSquare;
   }
 
   // 5-6. Halfmove clock and fullmove number are not parsed
 
   // Various initialisations
-  castleRightsMask[make_square(initialKFile,  RANK_1)] ^= (WHITE_OO|WHITE_OOO);
-  castleRightsMask[make_square(initialKFile,  RANK_8)] ^= (BLACK_OO|BLACK_OOO);
+  castleRightsMask[make_square(initialKFile,  RANK_1)] ^= WHITE_OO | WHITE_OOO;
+  castleRightsMask[make_square(initialKFile,  RANK_8)] ^= BLACK_OO | BLACK_OOO;
   castleRightsMask[make_square(initialKRFile, RANK_1)] ^= WHITE_OO;
   castleRightsMask[make_square(initialKRFile, RANK_8)] ^= BLACK_OO;
   castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
@@ -393,8 +401,8 @@ void Position::print(Move m) const {
       cout << '|' << endl;
   }
   cout << "+---+---+---+---+---+---+---+---+" << endl
-            << "Fen is: " << to_fen() << endl
-            << "Key is: " << st->key << endl;
+       << "Fen is: " << to_fen() << endl
+       << "Key is: " << st->key << endl;
 
   RequestPending = false;
 }
