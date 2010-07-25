@@ -60,7 +60,7 @@ struct PieceLetters : std::map<char, Piece> {
 
     char from_piece(Piece p) const {
 
-        map<char, Piece>::const_iterator it;
+        std::map<char, Piece>::const_iterator it;
         for (it = begin(); it != end(); ++it)
             if (it->second == p)
                 return it->first;
