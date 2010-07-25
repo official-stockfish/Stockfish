@@ -540,7 +540,7 @@ inline bool Position::opposite_colored_bishops() const {
 
   return   piece_count(WHITE, BISHOP) == 1
         && piece_count(BLACK, BISHOP) == 1
-        && square_color(piece_list(WHITE, BISHOP, 0)) != square_color(piece_list(BLACK, BISHOP, 0));
+        && !same_color_squares(piece_list(WHITE, BISHOP, 0), piece_list(BLACK, BISHOP, 0));
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {

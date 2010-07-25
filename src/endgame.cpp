@@ -152,7 +152,7 @@ Value EvaluationFunction<KBNK>::apply(const Position& pos) const {
   Square loserKSq = pos.king_square(weakerSide);
   Square bishopSquare = pos.piece_list(strongerSide, BISHOP, 0);
 
-  if (square_color(bishopSquare) == BLACK)
+  if (same_color_squares(bishopSquare, SQ_A1))
   {
       winnerKSq = flop_square(winnerKSq);
       loserKSq = flop_square(loserKSq);
@@ -398,7 +398,7 @@ ScaleFactor ScalingFunction<KBPsK>::apply(const Position& pos) const {
       Square queeningSq = relative_square(strongerSide, make_square(pawnFile, RANK_8));
       Square kingSq = pos.king_square(weakerSide);
 
-      if (   square_color(queeningSq) != square_color(bishopSq)
+      if (  !same_color_squares(queeningSq, bishopSq)
           && file_distance(square_file(kingSq), pawnFile) <= 1)
       {
           // The bishop has the wrong color, and the defending king is on the
@@ -675,12 +675,12 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position& pos) const {
   // Case 1: Defending king blocks the pawn, and cannot be driven away
   if (   square_file(weakerKingSq) == square_file(pawnSq)
       && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
-      && (   square_color(weakerKingSq) != square_color(strongerBishopSq)
+      && (  !same_color_squares(weakerKingSq, strongerBishopSq)
           || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
       return SCALE_FACTOR_ZERO;
 
   // Case 2: Opposite colored bishops
-  if (square_color(strongerBishopSq) != square_color(weakerBishopSq))
+  if (!same_color_squares(strongerBishopSq, weakerBishopSq))
   {
       // We assume that the position is drawn in the following three situations:
       //
@@ -724,7 +724,7 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) const {
   Square wbsq = pos.piece_list(strongerSide, BISHOP, 0);
   Square bbsq = pos.piece_list(weakerSide, BISHOP, 0);
 
-  if (square_color(wbsq) == square_color(bbsq))
+  if (same_color_squares(wbsq, bbsq))
       // Not opposite-colored bishops, no scaling
       return SCALE_FACTOR_NONE;
 
@@ -753,7 +753,7 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) const {
     // some square in the frontmost pawn's path.
     if (   square_file(ksq) == square_file(blockSq1)
         && relative_rank(strongerSide, ksq) >= relative_rank(strongerSide, blockSq1)
-        && square_color(ksq) != square_color(wbsq))
+        && !same_color_squares(ksq, wbsq))
         return SCALE_FACTOR_ZERO;
     else
         return SCALE_FACTOR_NONE;
@@ -763,14 +763,14 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) const {
     // in front of the frontmost pawn's path, and the square diagonally behind
     // this square on the file of the other pawn.
     if (   ksq == blockSq1
-        && square_color(ksq) != square_color(wbsq)
+        && !same_color_squares(ksq, wbsq)
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
             || rank_distance(r1, r2) >= 2))
         return SCALE_FACTOR_ZERO;
 
     else if (   ksq == blockSq2
-             && square_color(ksq) != square_color(wbsq)
+             && !same_color_squares(ksq, wbsq)
              && (   bbsq == blockSq1
                  || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(BISHOP, weakerSide))))
         return SCALE_FACTOR_ZERO;
@@ -804,7 +804,7 @@ ScaleFactor ScalingFunction<KBPKN>::apply(const Position& pos) const {
 
   if (   square_file(weakerKingSq) == square_file(pawnSq)
       && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
-      && (   square_color(weakerKingSq) != square_color(strongerBishopSq)
+      && (  !same_color_squares(weakerKingSq, strongerBishopSq)
           || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
       return SCALE_FACTOR_ZERO;
 

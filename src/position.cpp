@@ -400,7 +400,7 @@ void Position::print(Move move) const {
           char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
           Piece piece = piece_on(sq);
 
-          if (piece == EMPTY && square_color(sq) == BLACK)
+          if (piece == EMPTY && same_color_squares(sq, SQ_A1))
               piece = EMPTY_BLACK_SQ;
 
           cout << c << pieceLetters.from_piece(piece) << c << '|';
