@@ -56,7 +56,7 @@ struct PieceLetters : std::map<char, Piece> {
       operator[]('B') = WB; operator[]('b') = BB;
       operator[]('N') = WN; operator[]('n') = BN;
       operator[]('P') = WP; operator[]('p') = BP;
-      operator[](' ') = EMPTY; operator[]('.') = EMPTY_BLACK_SQ;
+      operator[](' ') = NO_PIECE; operator[]('.') = NO_PIECE_DARK_SQ;
     }
 
     char from_piece(Piece p) const {
@@ -400,8 +400,8 @@ void Position::print(Move move) const {
           char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
           Piece piece = piece_on(sq);
 
-          if (piece == EMPTY && same_color_squares(sq, SQ_A1))
-              piece = EMPTY_BLACK_SQ;
+          if (piece == NO_PIECE && same_color_squares(sq, SQ_A1))
+              piece = NO_PIECE_DARK_SQ;
 
           cout << c << pieceLetters.from_piece(piece) << c << '|';
       }
@@ -577,7 +577,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       assert(to == ep_square());
       assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
       assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
-      assert(piece_on(to) == EMPTY);
+      assert(piece_on(to) == NO_PIECE);
 
       clear_bit(&b, from);
       clear_bit(&b, capsq);
@@ -825,7 +825,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
   board[to] = board[from];
-  board[from] = EMPTY;
+  board[from] = NO_PIECE;
 
   // Update piece lists, note that index[from] is not updated and
   // becomes stale. This works as long as index[] is accessed just
@@ -954,10 +954,10 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
 
             assert(to == st->epSquare);
             assert(relative_rank(opposite_color(them), to) == RANK_6);
-            assert(piece_on(to) == EMPTY);
+            assert(piece_on(to) == NO_PIECE);
             assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
-            board[capsq] = EMPTY;
+            board[capsq] = NO_PIECE;
         }
         st->pawnKey ^= zobrist[them][PAWN][capsq];
     }
@@ -1051,7 +1051,7 @@ void Position::do_castle_move(Move m) {
   // Update board array
   Piece king = piece_of_color_and_type(us, KING);
   Piece rook = piece_of_color_and_type(us, ROOK);
-  board[kfrom] = board[rfrom] = EMPTY;
+  board[kfrom] = board[rfrom] = NO_PIECE;
   board[kto] = king;
   board[rto] = rook;
 
@@ -1160,7 +1160,7 @@ void Position::undo_move(Move m) {
   do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
   board[from] = piece_of_color_and_type(us, pt);
-  board[to] = EMPTY;
+  board[to] = NO_PIECE;
 
   // Update piece list
   index[from] = index[to];
@@ -1248,7 +1248,7 @@ void Position::undo_castle_move(Move m) {
   set_bit(&(byTypeBB[0]), rfrom); // HACK: byTypeBB[0] == occupied squares
 
   // Update board
-  board[rto] = board[kto] = EMPTY;
+  board[rto] = board[kto] = NO_PIECE;
   board[rfrom] = piece_of_color_and_type(us, ROOK);
   board[kfrom] = piece_of_color_and_type(us, KING);
 
@@ -1392,7 +1392,7 @@ int Position::see(Square from, Square to) const {
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
   {
-      assert(capture == EMPTY);
+      assert(capture == NO_PIECE);
 
       Square capQq = (side_to_move() == WHITE)? (to - DELTA_N) : (to - DELTA_S);
       capture = piece_on(capQq);
@@ -1512,7 +1512,7 @@ void Position::clear() {
   memset(index,      0, sizeof(int) * 64);
 
   for (int i = 0; i < 64; i++)
-      board[i] = EMPTY;
+      board[i] = NO_PIECE;
 
   for (int i = 0; i < 8; i++)
       for (int j = 0; j < 16; j++)

@@ -364,7 +364,7 @@ inline PieceType Position::type_of_piece_on(Square s) const {
 }
 
 inline bool Position::square_is_empty(Square s) const {
-  return piece_on(s) == EMPTY;
+  return piece_on(s) == NO_PIECE;
 }
 
 inline bool Position::square_is_occupied(Square s) const {
