@@ -152,7 +152,10 @@ Value EvaluationFunction<KBNK>::apply(const Position& pos) const {
   Square loserKSq = pos.king_square(weakerSide);
   Square bishopSquare = pos.piece_list(strongerSide, BISHOP, 0);
 
-  if (same_color_squares(bishopSquare, SQ_A1))
+  // kbnk_mate_table() tries to drive toward corners A1 or H8,
+  // if we have a bishop that cannot reach the above squares we
+  // mirror the kings so to drive enemy toward corners A8 or H1.
+  if (!same_color_squares(bishopSquare, SQ_A1))
   {
       winnerKSq = flop_square(winnerKSq);
       loserKSq = flop_square(loserKSq);
