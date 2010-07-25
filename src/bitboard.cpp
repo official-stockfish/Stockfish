@@ -163,7 +163,10 @@ const int RShift[64] = {
 
 #endif // defined(IS_64BIT)
 
-const Bitboard SquaresByColorBB[2] = { BlackSquaresBB, WhiteSquaresBB };
+const Bitboard LightSquaresBB = 0x55AA55AA55AA55AAULL;
+const Bitboard DarkSquaresBB  = 0xAA55AA55AA55AA55ULL;
+
+const Bitboard SquaresByColorBB[2] = { DarkSquaresBB, LightSquaresBB };
 
 const Bitboard FileBB[8] = {
   FileABB, FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB

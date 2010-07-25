@@ -135,8 +135,8 @@ inline Rank relative_rank(Color c, Square s) {
   return square_rank(relative_square(c, s));
 }
 
-inline Color square_color(Square s) {
-  return Color((int(square_file(s)) + int(square_rank(s))) & 1);
+inline SquareColor square_color(Square s) {
+  return SquareColor((int(square_file(s)) + int(square_rank(s))) & 1);
 }
 
 inline bool same_color_squares(Square s1, Square s2) {

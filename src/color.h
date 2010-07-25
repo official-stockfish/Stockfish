@@ -32,6 +32,11 @@ enum Color {
   COLOR_NONE
 };
 
+enum SquareColor {
+  DARK,
+  LIGHT
+};
+
 
 ////
 //// Inline functions

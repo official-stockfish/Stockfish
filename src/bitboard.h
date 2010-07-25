@@ -38,9 +38,6 @@
 
 const Bitboard EmptyBoardBB = 0ULL;
 
-const Bitboard WhiteSquaresBB = 0x55AA55AA55AA55AAULL;
-const Bitboard BlackSquaresBB = 0xAA55AA55AA55AA55ULL;
-
 const Bitboard FileABB = 0x0101010101010101ULL;
 const Bitboard FileBBB = 0x0202020202020202ULL;
 const Bitboard FileCBB = 0x0404040404040404ULL;
