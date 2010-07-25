@@ -56,6 +56,7 @@ struct PieceLetters : std::map<char, Piece> {
       operator[]('B') = WB; operator[]('b') = BB;
       operator[]('N') = WN; operator[]('n') = BN;
       operator[]('P') = WP; operator[]('p') = BP;
+      operator[](' ') = EMPTY; operator[]('.') = EMPTY_BLACK_SQ;
     }
 
     char from_piece(Piece p) const {
@@ -82,7 +83,6 @@ Key Position::zobExclusion;
 
 Score Position::PieceSquareTable[16][64];
 
-static bool RequestPending = false;
 static PieceLetters pieceLetters;
 
 
@@ -372,44 +372,42 @@ const string Position::to_fen() const {
 /// Position::print() prints an ASCII representation of the position to
 /// the standard output. If a move is given then also the san is print.
 
-void Position::print(Move m) const {
+void Position::print(Move move) const {
 
-  static const string pieceLetters = " PNBRQK  PNBRQK .";
+  const char* dottedLine = "\n+---+---+---+---+---+---+---+---+\n";
+  static bool requestPending = false;
 
   // Check for reentrancy, as example when called from inside
   // MovePicker that is used also here in move_to_san()
-  if (RequestPending)
+  if (requestPending)
       return;
 
-  RequestPending = true;
+  requestPending = true;
 
-  cout << endl;
-  if (m != MOVE_NONE)
+  if (move)
   {
       Position p(*this, thread());
-      string col = (color_of_piece_on(move_from(m)) == BLACK ? ".." : "");
-      cout << "Move is: " << col << move_to_san(p, m) << endl;
+      string dd = (color_of_piece_on(move_from(move)) == BLACK ? ".." : "");
+      cout << "\nMove is: " << dd << move_to_san(p, move);
   }
+
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
-      cout << "+---+---+---+---+---+---+---+---+" << endl;
+      cout << dottedLine << '|';
       for (File file = FILE_A; file <= FILE_H; file++)
       {
           Square sq = make_square(file, rank);
+          char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
           Piece piece = piece_on(sq);
-          if (piece == EMPTY && square_color(sq) == WHITE)
-              piece = NO_PIECE;
 
-          char col = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
-          cout << '|' << col << pieceLetters[piece] << col;
+          if (piece == EMPTY && square_color(sq) == BLACK)
+              piece = EMPTY_BLACK_SQ;
+
+          cout << c << pieceLetters.from_piece(piece) << c << '|';
       }
-      cout << '|' << endl;
   }
-  cout << "+---+---+---+---+---+---+---+---+" << endl
-       << "Fen is: " << to_fen() << endl
-       << "Key is: " << st->key << endl;
-
-  RequestPending = false;
+  cout << dottedLine << "Fen is: " << to_fen() << "\nKey is: " << st->key << endl;
+  requestPending = false;
 }
 
 

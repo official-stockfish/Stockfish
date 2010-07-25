@@ -39,9 +39,8 @@ enum PieceType {
 };
 
 enum Piece {
-  NO_PIECE = 0, WP = 1, WN = 2, WB = 3, WR = 4, WQ = 5, WK = 6,
-  BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14,
-  EMPTY = 16, OUTSIDE = 17
+  EMPTY_BLACK_SQ = 0, WP = 1, WN = 2, WB = 3, WR = 4, WQ = 5, WK = 6,
+  BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, EMPTY = 16
 };
 
 
