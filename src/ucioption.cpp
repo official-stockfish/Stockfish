@@ -128,9 +128,9 @@ namespace {
     o["OwnBook"] = Option(true);
     o["MultiPV"] = Option(1, 1, 500);
     o["Emergency Move Horizon"] = Option(40, 0, 50);
-    o["Emergency Base Time"] = Option(300, 0, 60000);
-    o["Emergency Move Time"] = Option(100, 0, 5000);
-    o["Minimum Thinking Time"] = Option(30, 0, 5000);
+    o["Emergency Base Time"] = Option(200, 0, 60000);
+    o["Emergency Move Time"] = Option(70, 0, 5000);
+    o["Minimum Thinking Time"] = Option(20, 0, 5000);
     o["UCI_Chess960"] = Option(false);
     o["UCI_AnalyseMode"] = Option(false);
 
