@@ -821,7 +821,7 @@ namespace {
                 // add all X-ray attacks by the rook or queen. Otherwise consider only
                 // the squares in the pawn's path attacked or occupied by the enemy.
                 if (   (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them))
-                    && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<QUEEN>(s)))
+                    && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<ROOK>(s)))
                     unsafeSquares = squaresToQueen;
                 else
                     unsafeSquares = squaresToQueen & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
@@ -902,7 +902,7 @@ namespace {
 
             if (d < 0 || pathDefended)
             {
-                int mtg = RANK_8 - relative_rank(c, s);
+                int mtg = RANK_8 - relative_rank(c, s) - int(relative_rank(c, s) == RANK_2);
                 int blockerCount = count_1s_max_15(squares_in_front_of(c, s) & pos.occupied_squares());
                 mtg += blockerCount;
                 d += blockerCount;
