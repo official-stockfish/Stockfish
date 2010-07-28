@@ -198,7 +198,7 @@ namespace {
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Minimum depth for use of singular extension
-  const Depth SingularExtensionDepth[2] = { 8 * OnePly /* non-PV */, 6 * OnePly /* PV */};
+  const Depth SingularExtensionDepth[2] = { 7 * OnePly /* non-PV */, 6 * OnePly /* PV */};
 
   // If the TT move is at least SingularExtensionMargin better then the
   // remaining ones we will extend it.
@@ -1212,6 +1212,17 @@ namespace {
                            && !excludedMove // Do not allow recursive singular extension search
                            && is_lower_bound(tte->type())
                            && tte->depth() >= depth - 3 * OnePly;
+
+    // Avoid to do an expensive singular extension search on nodes where
+    // such search had already failed in the past.
+    if (  !PvNode
+        && singularExtensionNode
+        && depth < SingularExtensionDepth[PvNode] + 5 * OnePly)
+    {
+        TTEntry* ttx = TT.retrieve(pos.get_exclusion_key());
+        if (ttx && is_lower_bound(ttx->type()))
+            singularExtensionNode = false;
+    }
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
