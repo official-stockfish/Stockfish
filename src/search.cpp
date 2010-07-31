@@ -979,7 +979,7 @@ namespace {
     Move movesSearched[256];
     EvalInfo ei;
     StateInfo st;
-    const TTEntry* tte;
+    const TTEntry *tte, *ttx;
     Key posKey;
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
@@ -1190,17 +1190,6 @@ namespace {
                            && is_lower_bound(tte->type())
                            && tte->depth() >= depth - 3 * OnePly;
 
-    // Avoid to do an expensive singular extension search on nodes where
-    // such search had already failed in the past.
-    if (  !PvNode
-        && singularExtensionNode
-        && depth < SingularExtensionDepth[PvNode] + 5 * OnePly)
-    {
-        TTEntry* ttx = TT.retrieve(pos.get_exclusion_key());
-        if (ttx && is_lower_bound(ttx->type()))
-            singularExtensionNode = false;
-    }
-
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
@@ -1226,9 +1215,22 @@ namespace {
           && move == tte->move()
           && ext < OnePly)
       {
+          // Avoid to do an expensive singular extension search on nodes where
+          // such search have already been done in the past, so assume the last
+          // singular extension search result is still valid.
+          if (  !PvNode
+              && depth < SingularExtensionDepth[PvNode] + 5 * OnePly
+              && ((ttx = TT.retrieve(pos.get_exclusion_key())) != NULL))
+          {
+              if (is_upper_bound(ttx->type()))
+                  ext = OnePly;
+
+              singularExtensionNode = false;
+          }
+
           Value ttValue = value_from_tt(tte->value(), ply);
 
-          if (abs(ttValue) < VALUE_KNOWN_WIN)
+          if (singularExtensionNode && abs(ttValue) < VALUE_KNOWN_WIN)
           {
               Value b = ttValue - SingularExtensionMargin;
               ss->excludedMove = move;
