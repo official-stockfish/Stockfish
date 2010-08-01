@@ -1043,28 +1043,27 @@ namespace {
         return value_from_tt(tte->value(), ply);
     }
 
-    // Step 5. Evaluate the position statically
-    // At PV nodes we do this only to update gain statistics
+    // Step 5. Evaluate the position statically and
+    // update gain statistics of parent move.
     isCheck = pos.is_check();
-    if (!isCheck)
+    if (isCheck)
+        ss->eval = VALUE_NONE;
+    else if (tte)
     {
-        if (tte)
-        {
-            assert(tte->static_value() != VALUE_NONE);
+        assert(tte->static_value() != VALUE_NONE);
 
-            ss->eval = tte->static_value();
-            ei.kingDanger[pos.side_to_move()] = tte->king_danger();
-        }
-        else
-        {
-            ss->eval = evaluate(pos, ei);
-            TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
-        }
-        refinedValue = refine_eval(tte, ss->eval, ply); // Enhance accuracy with TT value if possible
-        update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
+        ss->eval = tte->static_value();
+        ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+        refinedValue = refine_eval(tte, ss->eval, ply);
     }
     else
-        ss->eval = VALUE_NONE;
+    {
+        refinedValue = ss->eval = evaluate(pos, ei);
+        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    }
+
+    // Save gain for the parent non-capture move
+    update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
 
     // Step 6. Razoring (is omitted in PV nodes)
     if (   !PvNode
@@ -1090,8 +1089,8 @@ namespace {
     if (   !PvNode
         && !ss->skipNullMove
         &&  depth < RazorDepth
-        &&  refinedValue >= beta + futility_margin(depth, 0)
         && !isCheck
+        &&  refinedValue >= beta + futility_margin(depth, 0)
         && !value_is_mate(beta)
         &&  pos.non_pawn_material(pos.side_to_move()))
         return refinedValue - futility_margin(depth, 0);
@@ -1103,8 +1102,8 @@ namespace {
     if (   !PvNode
         && !ss->skipNullMove
         &&  depth > OnePly
-        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0)
         && !isCheck
+        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0)
         && !value_is_mate(beta)
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
@@ -1222,7 +1221,7 @@ namespace {
           // singular extension search result is still valid.
           if (  !PvNode
               && depth < SingularExtensionDepth[PvNode] + 5 * OnePly
-              && ((ttx = TT.retrieve(pos.get_exclusion_key())) != NULL))
+              && (ttx = TT.retrieve(pos.get_exclusion_key())) != NULL)
           {
               if (is_upper_bound(ttx->type()))
                   ext = OnePly;
@@ -1350,7 +1349,7 @@ namespace {
           bestValue = value;
           if (value > alpha)
           {
-              if (PvNode && value < beta) // This guarantees that always: alpha < beta
+              if (PvNode && value < beta) // We want always alpha < beta
                   alpha = value;
 
               if (value == value_mate_in(ply + 1))
@@ -1377,7 +1376,7 @@ namespace {
     // no legal moves, it must be mate or stalemate.
     // If one move was excluded return fail low score.
     if (!moveCount)
-        return excludedMove ? oldAlpha : (isCheck ? value_mated_in(ply) : VALUE_DRAW);
+        return excludedMove ? oldAlpha : isCheck ? value_mated_in(ply) : VALUE_DRAW;
 
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
@@ -1385,9 +1384,9 @@ namespace {
     if (AbortSearch || TM.thread_should_stop(threadID))
         return bestValue;
 
-    ValueType f = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
+    ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     move = (bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove);
-    TT.store(posKey, value_to_tt(bestValue, ply), f, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
     // Update killers and history only for non capture moves that fails high
     if (bestValue >= beta)
@@ -1460,6 +1459,7 @@ namespace {
         if (tte)
         {
             assert(tte->static_value() != VALUE_NONE);
+
             ei.kingDanger[pos.side_to_move()] = tte->king_danger();
             bestValue = tte->static_value();
         }
@@ -1569,8 +1569,8 @@ namespace {
 
     // Update transposition table
     Depth d = (depth == Depth(0) ? Depth(0) : Depth(-1));
-    ValueType f = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ply), f, d, ss->bestMove, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
     // Update killers only for checking moves that fails high
     if (    bestValue >= beta
@@ -1989,8 +1989,7 @@ namespace {
 
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply) {
 
-      if (!tte)
-          return defaultEval;
+      assert(tte);
 
       Value v = value_from_tt(tte->value(), ply);
 
@@ -2046,8 +2045,7 @@ namespace {
         && before != VALUE_NONE
         && after != VALUE_NONE
         && pos.captured_piece() == NO_PIECE_TYPE
-        && !move_is_castle(m)
-        && !move_is_promotion(m))
+        && !move_is_special(m))
         H.set_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
