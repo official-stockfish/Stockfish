@@ -1051,6 +1051,7 @@ namespace {
         if (tte)
         {
             assert(tte->static_value() != VALUE_NONE);
+
             ss->eval = tte->static_value();
             ei.kingDanger[pos.side_to_move()] = tte->king_danger();
         }
@@ -1059,7 +1060,6 @@ namespace {
             ss->eval = evaluate(pos, ei);
             TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
         }
-
         refinedValue = refine_eval(tte, ss->eval, ply); // Enhance accuracy with TT value if possible
         update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
     }
@@ -1183,9 +1183,11 @@ namespace {
     // Initialize a MovePicker object for the current position
     MovePicker mp = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
+    ss->bestMove = MOVE_NONE;
     singleEvasion = isCheck && mp.number_of_evasions() == 1;
     singularExtensionNode =   depth >= SingularExtensionDepth[PvNode]
-                           && tte && tte->move()
+                           && tte
+                           && tte->move()
                            && !excludedMove // Do not allow recursive singular extension search
                            && is_lower_bound(tte->type())
                            && tte->depth() >= depth - 3 * OnePly;
@@ -1238,6 +1240,7 @@ namespace {
               Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply);
               ss->skipNullMove = false;
               ss->excludedMove = MOVE_NONE;
+              ss->bestMove = MOVE_NONE;
               if (v < b)
                   ext = OnePly;
           }
