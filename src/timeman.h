@@ -28,4 +28,4 @@
 void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
                       int* maxSearchTime, int* absoluteMaxSearchTime);
 
-#endif // !defined(SEARCH_H_INCLUDED)
+#endif // !defined(TIMEMAN_H_INCLUDED)

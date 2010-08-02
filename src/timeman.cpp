@@ -35,9 +35,9 @@ namespace {
 
   /// Constants
 
-  const int MaxMoveHorizon  = 50;   // Plan time management at most this many moves ahead
-  const float MaxRatio      = 3.0;  // When in trouble, we can step over reserved time with this ratio
-  const float MaxStealRatio = 0.33; // However we must not steal time from remaining moves over this ratio
+  const int MoveHorizon  = 50;    // Plan time management at most this many moves ahead
+  const float MaxRatio   = 3.0f;  // When in trouble, we can step over reserved time with this ratio
+  const float StealRatio = 0.33f; // However we must not steal time from remaining moves over this ratio
 
 
   // MoveImportance[] is based on naive statistical analysis of "how many games are still undecided
@@ -76,8 +76,10 @@ namespace {
 
   /// Function Prototypes
 
-  int min_time_for_MTG(int myTime, int movesToGo, int currentPly);
-  int max_time_for_MTG(int myTime, int movesToGo, int currentPly);
+  enum TimeType { MaxTime, AbsTime };
+
+  template<TimeType>
+  int remaining(int myTime, int movesToGo, int currentPly);
 }
 
 
@@ -103,7 +105,7 @@ void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
       minThinkingTime      :No matter what, use at least this much thinking before doing the move
   */
 
-  int hypMTG, hypMyTime;
+  int hypMTG, hypMyTime, mTime, aTime;
 
   // Read uci parameters
   int emergencyMoveHorizon = get_option_value_int("Emergency Move Horizon");
@@ -116,13 +118,16 @@ void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
-  for (hypMTG = 1; hypMTG <= (movesToGo ? Min(movesToGo, MaxMoveHorizon) : MaxMoveHorizon); hypMTG++)
+  for (hypMTG = 1; hypMTG <= (movesToGo ? Min(movesToGo, MoveHorizon) : MoveHorizon); hypMTG++)
   {
       // Calculate thinking time for hypothetic "moves to go"-value
       hypMyTime = Max(myTime + (hypMTG - 1) * myInc - emergencyBaseTime - Min(hypMTG, emergencyMoveHorizon) * emergencyMoveTime, 0);
 
-      *maxSearchTime = Min(*maxSearchTime, minThinkingTime + min_time_for_MTG(hypMyTime, hypMTG, currentPly));
-      *absoluteMaxSearchTime = Min(*absoluteMaxSearchTime, minThinkingTime + max_time_for_MTG(hypMyTime, hypMTG, currentPly));
+      mTime = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
+      aTime = minThinkingTime + remaining<AbsTime>(hypMyTime, hypMTG, currentPly);
+
+      *maxSearchTime = Min(*maxSearchTime, mTime);
+      *absoluteMaxSearchTime = Min(*absoluteMaxSearchTime, aTime);
   }
 
   // Make sure that maxSearchTime is not over absoluteMaxSearchTime
@@ -135,31 +140,21 @@ void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
 
 namespace {
 
-  int min_time_for_MTG(int myTime, int movesToGo, int currentPly)
+  template<TimeType T>
+  int remaining(int myTime, int movesToGo, int currentPly)
   {
-    float thisMoveImportance = move_importance(currentPly);
-    float otherMovesImportance = 0;
+    const float TMaxRatio   = (T == MaxTime ? 1 : MaxRatio);
+    const float TStealRatio = (T == MaxTime ? 0 : StealRatio);
+
+    int thisMoveImportance = move_importance(currentPly);
+    int otherMovesImportance = 0;
 
     for (int i = 1; i < movesToGo; i++)
         otherMovesImportance += move_importance(currentPly + 2 * i);
 
-    float ratio = thisMoveImportance / (thisMoveImportance + otherMovesImportance);
-
-    return int(floor(myTime * ratio));
-  }
-
-  int max_time_for_MTG(int myTime, int movesToGo, int currentPly)
-  {
-    float thisMoveImportance = move_importance(currentPly);
-    float otherMovesImportance = 0;
-
-    for (int i = 1; i < movesToGo; i++)
-        otherMovesImportance += move_importance(currentPly + 2 * i);
-
-    float ratio1 = (MaxRatio * thisMoveImportance) / (MaxRatio * thisMoveImportance + otherMovesImportance);
-    float ratio2 = (thisMoveImportance + MaxStealRatio * otherMovesImportance) / (thisMoveImportance + otherMovesImportance);
+    float ratio1 = (TMaxRatio * thisMoveImportance) / float(TMaxRatio * thisMoveImportance + otherMovesImportance);
+    float ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / float(thisMoveImportance + otherMovesImportance);
 
     return int(floor(myTime * Min(ratio1, ratio2)));
   }
 }
-
