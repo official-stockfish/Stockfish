@@ -25,6 +25,7 @@
 //// Prototypes
 ////
 
-void calc_search_times(const int myTime, const int myInc, const int movesToGo, const int currentPly, int &minimumSearchTime, int &maximumSearchTime);
+void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
+                      int* maxSearchTime, int* absoluteMaxSearchTime);
 
 #endif // !defined(SEARCH_H_INCLUDED)

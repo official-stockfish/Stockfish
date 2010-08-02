@@ -474,7 +474,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   int myIncrement = increment[pos.side_to_move()];
   if (UseTimeManagement)
   {
-      calc_search_times(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(), MaxSearchTime, AbsoluteMaxSearchTime);
+      get_search_times(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(),
+                       &MaxSearchTime, &AbsoluteMaxSearchTime);
 
       if (get_option_value_bool("Ponder"))
       {
