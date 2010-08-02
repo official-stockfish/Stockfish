@@ -76,7 +76,7 @@ namespace {
 
   /// Function Prototypes
 
-  enum TimeType { MaxTime, AbsTime };
+  enum TimeType { OptimumTime, MaxTime };
 
   template<TimeType>
   int remaining(int myTime, int movesToGo, int currentPly);
@@ -88,7 +88,7 @@ namespace {
 ////
 
 void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
-                      int* maxSearchTime, int* absoluteMaxSearchTime)
+                      int* optimumSearchTime, int* maximumSearchTime)
 {
   /* We support four different kind of time controls:
 
@@ -114,7 +114,7 @@ void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
   int minThinkingTime      = get_option_value_int("Minimum Thinking Time");
 
   // Initialize variables to maximum values
-  *maxSearchTime = *absoluteMaxSearchTime = myTime;
+  *optimumSearchTime = *maximumSearchTime = myTime;
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
@@ -123,15 +123,15 @@ void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
       // Calculate thinking time for hypothetic "moves to go"-value
       hypMyTime = Max(myTime + (hypMTG - 1) * myInc - emergencyBaseTime - Min(hypMTG, emergencyMoveHorizon) * emergencyMoveTime, 0);
 
-      mTime = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
-      aTime = minThinkingTime + remaining<AbsTime>(hypMyTime, hypMTG, currentPly);
+      mTime = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
+      aTime = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
 
-      *maxSearchTime = Min(*maxSearchTime, mTime);
-      *absoluteMaxSearchTime = Min(*absoluteMaxSearchTime, aTime);
+      *optimumSearchTime = Min(*optimumSearchTime, mTime);
+      *maximumSearchTime = Min(*maximumSearchTime, aTime);
   }
 
   // Make sure that maxSearchTime is not over absoluteMaxSearchTime
-  *maxSearchTime = Min(*maxSearchTime, *absoluteMaxSearchTime);
+  *optimumSearchTime = Min(*optimumSearchTime, *maximumSearchTime);
 }
 
 ////
@@ -143,8 +143,8 @@ namespace {
   template<TimeType T>
   int remaining(int myTime, int movesToGo, int currentPly)
   {
-    const float TMaxRatio   = (T == MaxTime ? 1 : MaxRatio);
-    const float TStealRatio = (T == MaxTime ? 0 : StealRatio);
+    const float TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
+    const float TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
     int thisMoveImportance = move_importance(currentPly);
     int otherMovesImportance = 0;

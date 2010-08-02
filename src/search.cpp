@@ -251,8 +251,8 @@ namespace {
   int MultiPV;
 
   // Time managment variables
-  int SearchStartTime, MaxNodes, MaxDepth, MaxSearchTime;
-  int AbsoluteMaxSearchTime, ExtraSearchTime, ExactMaxTime;
+  int SearchStartTime, MaxNodes, MaxDepth, OptimumSearchTime;
+  int MaximumSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
 
@@ -401,7 +401,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
 
   // Initialize global search variables
   StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
-  MaxSearchTime = AbsoluteMaxSearchTime = ExtraSearchTime = 0;
+  OptimumSearchTime = MaximumSearchTime = ExtraSearchTime = 0;
   NodesSincePoll = 0;
   TM.resetNodeCounters();
   SearchStartTime = get_system_time();
@@ -475,12 +475,12 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   if (UseTimeManagement)
   {
       get_search_times(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(),
-                       &MaxSearchTime, &AbsoluteMaxSearchTime);
+                       &OptimumSearchTime, &MaximumSearchTime);
 
       if (get_option_value_bool("Ponder"))
       {
-          MaxSearchTime += MaxSearchTime / 4;
-          MaxSearchTime = Min(MaxSearchTime, AbsoluteMaxSearchTime);
+          OptimumSearchTime += OptimumSearchTime / 4;
+          OptimumSearchTime = Min(OptimumSearchTime, MaximumSearchTime);
       }
   }
 
@@ -626,20 +626,20 @@ namespace {
             if (   Iteration >= 8
                 && EasyMove == pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
-                       && current_search_time() > MaxSearchTime / 16)
+                       && current_search_time() > OptimumSearchTime / 16)
                     ||(   rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100
-                       && current_search_time() > MaxSearchTime / 32)))
+                       && current_search_time() > OptimumSearchTime / 32)))
                 stopSearch = true;
 
             // Add some extra time if the best move has changed during the last two iterations
             if (Iteration > 5 && Iteration <= 50)
-                ExtraSearchTime = BestMoveChangesByIteration[Iteration]   * (MaxSearchTime / 2)
-                                + BestMoveChangesByIteration[Iteration-1] * (MaxSearchTime / 3);
+                ExtraSearchTime = BestMoveChangesByIteration[Iteration]   * (OptimumSearchTime / 2)
+                                + BestMoveChangesByIteration[Iteration-1] * (OptimumSearchTime / 3);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration. We probably don't have enough time to search the first
             // move at the next iteration anyway.
-            if (current_search_time() > ((MaxSearchTime + ExtraSearchTime) * 80) / 128)
+            if (current_search_time() > ((OptimumSearchTime + ExtraSearchTime) * 80) / 128)
                 stopSearch = true;
 
             if (stopSearch)
@@ -2142,9 +2142,9 @@ namespace {
 
     bool stillAtFirstMove =    FirstRootMove
                            && !AspirationFailLow
-                           &&  t > MaxSearchTime + ExtraSearchTime;
+                           &&  t > OptimumSearchTime + ExtraSearchTime;
 
-    bool noMoreTime =   t > AbsoluteMaxSearchTime
+    bool noMoreTime =   t > MaximumSearchTime
                      || stillAtFirstMove;
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
@@ -2165,9 +2165,9 @@ namespace {
 
     bool stillAtFirstMove =    FirstRootMove
                            && !AspirationFailLow
-                           &&  t > MaxSearchTime + ExtraSearchTime;
+                           &&  t > OptimumSearchTime + ExtraSearchTime;
 
-    bool noMoreTime =   t > AbsoluteMaxSearchTime
+    bool noMoreTime =   t > MaximumSearchTime
                      || stillAtFirstMove;
 
     if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))
