@@ -25,7 +25,11 @@
 //// Prototypes
 ////
 
-void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
-                      int* optimumSearchTime, int* maximumSearchTime);
+class TimeManager {
+public:
+
+  void update(int myTime, int myInc, int movesToGo, int currentPly,
+              int* optimumSearchTime, int* maximumSearchTime);
+};
 
 #endif // !defined(TIMEMAN_H_INCLUDED)

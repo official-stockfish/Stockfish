@@ -25,6 +25,7 @@
 #include <cmath>
 
 #include "misc.h"
+#include "timeman.h"
 #include "ucioption.h"
 
 ////
@@ -87,8 +88,8 @@ namespace {
 //// Functions
 ////
 
-void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
-                      int* optimumSearchTime, int* maximumSearchTime)
+void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly,
+                         int* optimumSearchTime, int* maximumSearchTime)
 {
   /* We support four different kind of time controls:
 
@@ -129,6 +130,9 @@ void get_search_times(int myTime, int myInc, int movesToGo, int currentPly,
       *optimumSearchTime = Min(*optimumSearchTime, mTime);
       *maximumSearchTime = Min(*maximumSearchTime, aTime);
   }
+
+  if (get_option_value_bool("Ponder"))
+      *optimumSearchTime += *optimumSearchTime / 4;
 
   // Make sure that maxSearchTime is not over absoluteMaxSearchTime
   *optimumSearchTime = Min(*optimumSearchTime, *maximumSearchTime);

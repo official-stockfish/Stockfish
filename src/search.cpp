@@ -255,6 +255,7 @@ namespace {
   int MaximumSearchTime, ExtraSearchTime, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
+  TimeManager TimeMgr;
 
   // Log file
   bool UseLogFile;
@@ -473,16 +474,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   int myTime = time[pos.side_to_move()];
   int myIncrement = increment[pos.side_to_move()];
   if (UseTimeManagement)
-  {
-      get_search_times(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(),
-                       &OptimumSearchTime, &MaximumSearchTime);
-
-      if (get_option_value_bool("Ponder"))
-      {
-          OptimumSearchTime += OptimumSearchTime / 4;
-          OptimumSearchTime = Min(OptimumSearchTime, MaximumSearchTime);
-      }
-  }
+      TimeMgr.update(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(),
+                     &OptimumSearchTime, &MaximumSearchTime);
 
   // Set best NodesBetweenPolls interval to avoid lagging under
   // heavy time pressure.
