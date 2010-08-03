@@ -251,8 +251,7 @@ namespace {
   int MultiPV;
 
   // Time managment variables
-  int SearchStartTime, MaxNodes, MaxDepth, OptimumSearchTime;
-  int MaximumSearchTime, ExtraSearchTime, ExactMaxTime;
+  int SearchStartTime, MaxNodes, MaxDepth, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
   bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
   TimeManager TimeMgr;
@@ -402,7 +401,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
 
   // Initialize global search variables
   StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
-  OptimumSearchTime = MaximumSearchTime = ExtraSearchTime = 0;
   NodesSincePoll = 0;
   TM.resetNodeCounters();
   SearchStartTime = get_system_time();
@@ -474,8 +472,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   int myTime = time[pos.side_to_move()];
   int myIncrement = increment[pos.side_to_move()];
   if (UseTimeManagement)
-      TimeMgr.update(myTime, myIncrement, movesToGo, pos.startpos_ply_counter(),
-                     &OptimumSearchTime, &MaximumSearchTime);
+      TimeMgr.update(myTime, myIncrement, movesToGo, pos.startpos_ply_counter());
 
   // Set best NodesBetweenPolls interval to avoid lagging under
   // heavy time pressure.
@@ -619,20 +616,20 @@ namespace {
             if (   Iteration >= 8
                 && EasyMove == pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
-                       && current_search_time() > OptimumSearchTime / 16)
+                       && current_search_time() > TimeMgr.optimumSearchTime / 16)
                     ||(   rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100
-                       && current_search_time() > OptimumSearchTime / 32)))
+                       && current_search_time() > TimeMgr.optimumSearchTime / 32)))
                 stopSearch = true;
 
             // Add some extra time if the best move has changed during the last two iterations
             if (Iteration > 5 && Iteration <= 50)
-                ExtraSearchTime = BestMoveChangesByIteration[Iteration]   * (OptimumSearchTime / 2)
-                                + BestMoveChangesByIteration[Iteration-1] * (OptimumSearchTime / 3);
+                TimeMgr.best_move_changes(BestMoveChangesByIteration[Iteration],
+                                          BestMoveChangesByIteration[Iteration-1]);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration. We probably don't have enough time to search the first
             // move at the next iteration anyway.
-            if (current_search_time() > ((OptimumSearchTime + ExtraSearchTime) * 80) / 128)
+            if (current_search_time() > (TimeMgr.available_time() * 80) / 128)
                 stopSearch = true;
 
             if (stopSearch)
@@ -2138,9 +2135,9 @@ namespace {
 
     bool stillAtFirstMove =    FirstRootMove
                            && !AspirationFailLow
-                           &&  t > OptimumSearchTime + ExtraSearchTime;
+                           &&  t > TimeMgr.available_time();
 
-    bool noMoreTime =   t > MaximumSearchTime
+    bool noMoreTime =   t > TimeMgr.maximumSearchTime
                      || stillAtFirstMove;
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
@@ -2161,9 +2158,9 @@ namespace {
 
     bool stillAtFirstMove =    FirstRootMove
                            && !AspirationFailLow
-                           &&  t > OptimumSearchTime + ExtraSearchTime;
+                           &&  t > TimeMgr.available_time();
 
-    bool noMoreTime =   t > MaximumSearchTime
+    bool noMoreTime =   t > TimeMgr.maximumSearchTime
                      || stillAtFirstMove;
 
     if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))

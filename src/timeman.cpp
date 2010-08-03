@@ -88,8 +88,13 @@ namespace {
 //// Functions
 ////
 
-void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly,
-                         int* optimumSearchTime, int* maximumSearchTime)
+void TimeManager::best_move_changes(int curIter, int prevIter) {
+
+    extraSearchTime =  curIter  * (optimumSearchTime / 2)
+                     + prevIter * (optimumSearchTime / 3);
+}
+
+void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly)
 {
   /* We support four different kind of time controls:
 
@@ -106,7 +111,7 @@ void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly,
       minThinkingTime      :No matter what, use at least this much thinking before doing the move
   */
 
-  int hypMTG, hypMyTime, mTime, aTime;
+  int hypMTG, hypMyTime, t1, t2;
 
   // Read uci parameters
   int emergencyMoveHorizon = get_option_value_int("Emergency Move Horizon");
@@ -115,7 +120,7 @@ void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly,
   int minThinkingTime      = get_option_value_int("Minimum Thinking Time");
 
   // Initialize variables to maximum values
-  *optimumSearchTime = *maximumSearchTime = myTime;
+  optimumSearchTime = maximumSearchTime = myTime;
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
@@ -124,18 +129,18 @@ void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly,
       // Calculate thinking time for hypothetic "moves to go"-value
       hypMyTime = Max(myTime + (hypMTG - 1) * myInc - emergencyBaseTime - Min(hypMTG, emergencyMoveHorizon) * emergencyMoveTime, 0);
 
-      mTime = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
-      aTime = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
+      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
+      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
 
-      *optimumSearchTime = Min(*optimumSearchTime, mTime);
-      *maximumSearchTime = Min(*maximumSearchTime, aTime);
+      optimumSearchTime = Min(optimumSearchTime, t1);
+      maximumSearchTime = Min(maximumSearchTime, t2);
   }
 
   if (get_option_value_bool("Ponder"))
-      *optimumSearchTime += *optimumSearchTime / 4;
+      optimumSearchTime += optimumSearchTime / 4;
 
   // Make sure that maxSearchTime is not over absoluteMaxSearchTime
-  *optimumSearchTime = Min(*optimumSearchTime, *maximumSearchTime);
+  optimumSearchTime = Min(optimumSearchTime, maximumSearchTime);
 }
 
 ////
