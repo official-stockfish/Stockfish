@@ -28,13 +28,15 @@
 class TimeManager {
 public:
 
-  void update(int myTime, int myInc, int movesToGo, int currentPly);
-  void best_move_changes(int curIter, int prevIter);
-  int available_time() { return optimumSearchTime + extraSearchTime; }
+  void init(int myTime, int myInc, int movesToGo, int currentPly);
+  void pv_unstability(int curChanges, int prevChanges);
+  int available_time() const { return optimumSearchTime + unstablePVExtraTime; }
+  int maximum_time() const { return maximumSearchTime; }
 
+private:
   int optimumSearchTime;
   int maximumSearchTime;
-  int extraSearchTime;
+  int unstablePVExtraTime;
 };
 
 #endif // !defined(TIMEMAN_H_INCLUDED)

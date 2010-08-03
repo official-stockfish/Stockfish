@@ -88,13 +88,13 @@ namespace {
 //// Functions
 ////
 
-void TimeManager::best_move_changes(int curIter, int prevIter) {
+void TimeManager::pv_unstability(int curChanges, int prevChanges) {
 
-    extraSearchTime =  curIter  * (optimumSearchTime / 2)
-                     + prevIter * (optimumSearchTime / 3);
+    unstablePVExtraTime =  curChanges  * (optimumSearchTime / 2)
+                         + prevChanges * (optimumSearchTime / 3);
 }
 
-void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly)
+void TimeManager::init(int myTime, int myInc, int movesToGo, int currentPly)
 {
   /* We support four different kind of time controls:
 
@@ -119,7 +119,8 @@ void TimeManager::update(int myTime, int myInc, int movesToGo, int currentPly)
   int emergencyMoveTime    = get_option_value_int("Emergency Move Time");
   int minThinkingTime      = get_option_value_int("Minimum Thinking Time");
 
-  // Initialize variables to maximum values
+  // Initialize to maximum values but unstablePVExtraTime that is reset
+  unstablePVExtraTime = 0;
   optimumSearchTime = maximumSearchTime = myTime;
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the

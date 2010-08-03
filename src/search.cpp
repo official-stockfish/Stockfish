@@ -472,7 +472,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   int myTime = time[pos.side_to_move()];
   int myIncrement = increment[pos.side_to_move()];
   if (UseTimeManagement)
-      TimeMgr.update(myTime, myIncrement, movesToGo, pos.startpos_ply_counter());
+      TimeMgr.init(myTime, myIncrement, movesToGo, pos.startpos_ply_counter());
 
   // Set best NodesBetweenPolls interval to avoid lagging under
   // heavy time pressure.
@@ -616,15 +616,15 @@ namespace {
             if (   Iteration >= 8
                 && EasyMove == pv[0]
                 && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
-                       && current_search_time() > TimeMgr.optimumSearchTime / 16)
+                       && current_search_time() > TimeMgr.available_time() / 16)
                     ||(   rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100
-                       && current_search_time() > TimeMgr.optimumSearchTime / 32)))
+                       && current_search_time() > TimeMgr.available_time() / 32)))
                 stopSearch = true;
 
             // Add some extra time if the best move has changed during the last two iterations
             if (Iteration > 5 && Iteration <= 50)
-                TimeMgr.best_move_changes(BestMoveChangesByIteration[Iteration],
-                                          BestMoveChangesByIteration[Iteration-1]);
+                TimeMgr.pv_unstability(BestMoveChangesByIteration[Iteration],
+                                       BestMoveChangesByIteration[Iteration-1]);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration. We probably don't have enough time to search the first
@@ -2137,7 +2137,7 @@ namespace {
                            && !AspirationFailLow
                            &&  t > TimeMgr.available_time();
 
-    bool noMoreTime =   t > TimeMgr.maximumSearchTime
+    bool noMoreTime =   t > TimeMgr.maximum_time()
                      || stillAtFirstMove;
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
@@ -2160,7 +2160,7 @@ namespace {
                            && !AspirationFailLow
                            &&  t > TimeMgr.available_time();
 
-    bool noMoreTime =   t > TimeMgr.maximumSearchTime
+    bool noMoreTime =   t > TimeMgr.maximum_time()
                      || stillAtFirstMove;
 
     if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))
