@@ -366,26 +366,27 @@ void init_search() {
 
 int perft(Position& pos, Depth depth)
 {
+    MoveStack mlist[256];
     StateInfo st;
-    Move move;
+    Move m;
     int sum = 0;
-    MovePicker mp(pos, MOVE_NONE, depth, H);
+
+    // Generate all legal moves
+    MoveStack* last = generate_moves(pos, mlist);
 
     // If we are at the last ply we don't need to do and undo
     // the moves, just to count them.
-    if (depth <= OnePly) // Replace with '<' to test also qsearch
-    {
-        while (mp.get_next_move()) sum++;
-        return sum;
-    }
+    if (depth <= OnePly)
+        return int(last - mlist);
 
     // Loop through all legal moves
     CheckInfo ci(pos);
-    while ((move = mp.get_next_move()) != MOVE_NONE)
+    for (MoveStack* cur = mlist; cur != last; cur++)
     {
-        pos.do_move(move, st, ci, pos.move_is_check(move, ci));
+        m = cur->move;
+        pos.do_move(m, st, ci, pos.move_is_check(m, ci));
         sum += perft(pos, depth - OnePly);
-        pos.undo_move(move);
+        pos.undo_move(m);
     }
     return sum;
 }
