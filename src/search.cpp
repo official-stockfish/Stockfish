@@ -715,6 +715,7 @@ namespace {
     alpha = *alphaPtr;
     beta = *betaPtr;
     isCheck = pos.is_check();
+    depth = (Iteration - 2) * OnePly + InitialDepth;
 
     // Step 1. Initialize node (polling is omitted at root)
     ss->currentMove = ss->bestMove = MOVE_NONE;
@@ -764,7 +765,6 @@ namespace {
             captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
             // Step 11. Decide the new search depth
-            depth = (Iteration - 2) * OnePly + InitialDepth;
             ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, false, &dangerous);
             newDepth = depth + ext;
 
