@@ -140,6 +140,32 @@ MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
 }
 
 
+/// generate_non_evasions() generates all pseudo-legal captures and
+/// non-captures. Returns a pointer to the end of the move list.
+
+MoveStack* generate_non_evasions(const Position& pos, MoveStack* mlist) {
+
+  assert(pos.is_ok());
+  assert(!pos.is_check());
+
+  Color us = pos.side_to_move();
+  Bitboard target = pos.pieces_of_color(opposite_color(us));
+
+  mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us, target);
+  mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us, pos.empty_squares());
+
+  target |= pos.empty_squares();
+
+  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
+  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
+  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
+  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
+  mlist = generate_piece_moves<KING>(pos, mlist, us, target);
+  mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
+  return  generate_castle_moves<QUEEN_SIDE>(pos, mlist);
+}
+
+
 /// generate_non_capture_checks() generates all pseudo-legal non-captures and knight
 /// underpromotions that give check. Returns a pointer to the end of the move list.
 
@@ -260,11 +286,8 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
   // Generate pseudo-legal moves
-  if (pos.is_check())
-      last = generate_evasions(pos, mlist);
-  else
-      last = generate_noncaptures(pos, generate_captures(pos, mlist));
-
+  last = pos.is_check() ? generate_evasions(pos, mlist)
+                        : generate_non_evasions(pos, mlist);
   if (pseudoLegal)
       return last;
 
