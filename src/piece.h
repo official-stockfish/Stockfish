@@ -34,13 +34,13 @@
 ////
 
 enum PieceType {
-  NO_PIECE_TYPE = 0,
+  PIECE_TYPE_NONE = 0,
   PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6
 };
 
 enum Piece {
-  NO_PIECE_DARK_SQ = 0, WP = 1, WN = 2, WB = 3, WR = 4, WQ = 5, WK = 6,
-  BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, NO_PIECE = 16
+  PIECE_NONE_DARK_SQ = 0, WP = 1, WN = 2, WB = 3, WR = 4, WQ = 5, WK = 6,
+  BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, PIECE_NONE = 16
 };
 
 

@@ -2035,7 +2035,7 @@ namespace {
     if (   m != MOVE_NULL
         && before != VALUE_NONE
         && after != VALUE_NONE
-        && pos.captured_piece() == NO_PIECE_TYPE
+        && pos.captured_piece_type() == PIECE_TYPE_NONE
         && !move_is_special(m))
         H.set_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }

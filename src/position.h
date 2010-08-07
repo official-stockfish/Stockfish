@@ -78,12 +78,12 @@ struct CheckInfo {
 /// Castle rights, encoded as bit fields
 
 enum CastleRights {
-  NO_CASTLES  = 0,
-  WHITE_OO    = 1,
-  BLACK_OO    = 2,
-  WHITE_OOO   = 4,
-  BLACK_OOO   = 8,
-  ALL_CASTLES = 15
+  CASTLES_NONE = 0,
+  WHITE_OO     = 1,
+  BLACK_OO     = 2,
+  WHITE_OOO    = 4,
+  BLACK_OOO    = 8,
+  ALL_CASTLES  = 15
 };
 
 /// Game phase
@@ -105,7 +105,7 @@ struct StateInfo {
   Score value;
   Value npMaterial[2];
 
-  PieceType capture;
+  PieceType capturedType;
   Key key;
   Bitboard checkersBB;
   StateInfo* previous;
@@ -227,7 +227,7 @@ public:
   bool move_attacks_square(Move m, Square s) const;
 
   // Piece captured with previous moves
-  PieceType captured_piece() const;
+  PieceType captured_piece_type() const;
 
   // Information about pawns
   bool pawn_is_passed(Color c, Square s) const;
@@ -369,7 +369,7 @@ inline PieceType Position::type_of_piece_on(Square s) const {
 }
 
 inline bool Position::square_is_empty(Square s) const {
-  return piece_on(s) == NO_PIECE;
+  return piece_on(s) == PIECE_NONE;
 }
 
 inline bool Position::square_is_occupied(Square s) const {
@@ -570,8 +570,8 @@ inline bool Position::move_is_capture_or_promotion(Move m) const {
   return (m & (0x1F << 12)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
 }
 
-inline PieceType Position::captured_piece() const {
-  return st->capture;
+inline PieceType Position::captured_piece_type() const {
+  return st->capturedType;
 }
 
 inline int Position::thread() const {

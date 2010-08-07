@@ -45,5 +45,5 @@ PieceType piece_type_from_char(char c) {
 
   size_t idx = PieceChars.find(c);
 
-  return idx != string::npos ? PieceType(idx % 7) : NO_PIECE_TYPE;
+  return idx != string::npos ? PieceType(idx % 7) : PIECE_TYPE_NONE;
 }

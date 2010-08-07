@@ -56,7 +56,7 @@ struct PieceLetters : std::map<char, Piece> {
       operator[]('B') = WB; operator[]('b') = BB;
       operator[]('N') = WN; operator[]('n') = BN;
       operator[]('P') = WP; operator[]('p') = BP;
-      operator[](' ') = NO_PIECE; operator[]('.') = NO_PIECE_DARK_SQ;
+      operator[](' ') = PIECE_NONE; operator[]('.') = PIECE_NONE_DARK_SQ;
     }
 
     char from_piece(Piece p) const {
@@ -344,7 +344,7 @@ const string Position::to_fen() const {
   fen.erase(--fen.end());
   fen += (sideToMove == WHITE ? " w " : " b ");
 
-  if (st->castleRights != NO_CASTLES)
+  if (st->castleRights != CASTLES_NONE)
   {
       const bool Chess960 =   initialKFile  != FILE_E
                            || initialQRFile != FILE_A
@@ -400,8 +400,8 @@ void Position::print(Move move) const {
           char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
           Piece piece = piece_on(sq);
 
-          if (piece == NO_PIECE && square_color(sq) == DARK)
-              piece = NO_PIECE_DARK_SQ;
+          if (piece == PIECE_NONE && square_color(sq) == DARK)
+              piece = PIECE_NONE_DARK_SQ;
 
           cout << c << pieceLetters.from_piece(piece) << c << '|';
       }
@@ -577,7 +577,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       assert(to == ep_square());
       assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
       assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
-      assert(piece_on(to) == NO_PIECE);
+      assert(piece_on(to) == PIECE_NONE);
 
       clear_bit(&b, from);
       clear_bit(&b, capsq);
@@ -825,7 +825,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
   board[to] = board[from];
-  board[from] = NO_PIECE;
+  board[from] = PIECE_NONE;
 
   // Update piece lists, note that index[from] is not updated and
   // becomes stale. This works as long as index[] is accessed just
@@ -897,7 +897,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->value += pst_delta(piece, from, to);
 
   // Set capture piece
-  st->capture = capture;
+  st->capturedType = capture;
 
   // Update the key with the final value
   st->key = key;
@@ -954,10 +954,10 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
 
             assert(to == st->epSquare);
             assert(relative_rank(opposite_color(them), to) == RANK_6);
-            assert(piece_on(to) == NO_PIECE);
+            assert(piece_on(to) == PIECE_NONE);
             assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
 
-            board[capsq] = NO_PIECE;
+            board[capsq] = PIECE_NONE;
         }
         st->pawnKey ^= zobrist[them][PAWN][capsq];
     }
@@ -1012,7 +1012,7 @@ void Position::do_castle_move(Move m) {
   Color them = opposite_color(us);
 
   // Reset capture field
-  st->capture = NO_PIECE_TYPE;
+  st->capturedType = PIECE_TYPE_NONE;
 
   // Find source squares for king and rook
   Square kfrom = move_from(m);
@@ -1051,7 +1051,7 @@ void Position::do_castle_move(Move m) {
   // Update board array
   Piece king = piece_of_color_and_type(us, KING);
   Piece rook = piece_of_color_and_type(us, ROOK);
-  board[kfrom] = board[rfrom] = NO_PIECE;
+  board[kfrom] = board[rfrom] = PIECE_NONE;
   board[kto] = king;
   board[rto] = rook;
 
@@ -1160,35 +1160,35 @@ void Position::undo_move(Move m) {
   do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
   board[from] = piece_of_color_and_type(us, pt);
-  board[to] = NO_PIECE;
+  board[to] = PIECE_NONE;
 
   // Update piece list
   index[from] = index[to];
   pieceList[us][pt][index[from]] = from;
 
-  if (st->capture)
+  if (st->capturedType)
   {
       Square capsq = to;
 
       if (ep)
           capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
 
-      assert(st->capture != KING);
+      assert(st->capturedType != KING);
       assert(!ep || square_is_empty(capsq));
 
       // Restore the captured piece
       set_bit(&(byColorBB[them]), capsq);
-      set_bit(&(byTypeBB[st->capture]), capsq);
+      set_bit(&(byTypeBB[st->capturedType]), capsq);
       set_bit(&(byTypeBB[0]), capsq);
 
-      board[capsq] = piece_of_color_and_type(them, st->capture);
+      board[capsq] = piece_of_color_and_type(them, st->capturedType);
 
       // Update piece count
-      pieceCount[them][st->capture]++;
+      pieceCount[them][st->capturedType]++;
 
       // Update piece list, add a new captured piece in capsq square
-      index[capsq] = pieceCount[them][st->capture] - 1;
-      pieceList[them][st->capture][index[capsq]] = capsq;
+      index[capsq] = pieceCount[them][st->capturedType] - 1;
+      pieceList[them][st->capturedType][index[capsq]] = capsq;
   }
 
   // Finally point our state pointer back to the previous state
@@ -1248,7 +1248,7 @@ void Position::undo_castle_move(Move m) {
   set_bit(&(byTypeBB[0]), rfrom); // HACK: byTypeBB[0] == occupied squares
 
   // Update board
-  board[rto] = board[kto] = NO_PIECE;
+  board[rto] = board[kto] = PIECE_NONE;
   board[rfrom] = piece_of_color_and_type(us, ROOK);
   board[kfrom] = piece_of_color_and_type(us, KING);
 
@@ -1392,7 +1392,7 @@ int Position::see(Square from, Square to) const {
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
   {
-      assert(capture == NO_PIECE);
+      assert(capture == PIECE_NONE);
 
       Square capQq = (side_to_move() == WHITE)? (to - DELTA_N) : (to - DELTA_S);
       capture = piece_on(capQq);
@@ -1513,7 +1513,7 @@ void Position::clear() {
   memset(index,      0, sizeof(int) * 64);
 
   for (int i = 0; i < 64; i++)
-      board[i] = NO_PIECE;
+      board[i] = PIECE_NONE;
 
   for (int i = 0; i < 8; i++)
       for (int j = 0; j < 16; j++)

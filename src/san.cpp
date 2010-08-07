@@ -164,7 +164,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
   // Normal moves. We use a simple FSM to parse the san string.
   enum { START, TO_FILE, TO_RANK, PROMOTION_OR_CHECK, PROMOTION, CHECK, END };
   static const string pieceLetters = "KQRBN";
-  PieceType pt = NO_PIECE_TYPE, promotion = NO_PIECE_TYPE;
+  PieceType pt = PIECE_TYPE_NONE, promotion = PIECE_TYPE_NONE;
   File fromFile = FILE_NONE, toFile = FILE_NONE;
   Rank fromRank = RANK_NONE, toRank = RANK_NONE;
   Square to;

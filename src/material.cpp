@@ -336,7 +336,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
     //
     // We use NO_PIECE_TYPE as a place holder for the bishop pair "extended piece",
     // this allow us to be more flexible in defining bishop pair bonuses.
-    for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
+    for (pt1 = PIECE_TYPE_NONE; pt1 <= QUEEN; pt1++)
     {
         pc = pieceCount[c][pt1];
         if (!pc)
@@ -344,7 +344,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
         vv = LinearCoefficients[pt1];
 
-        for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
+        for (pt2 = PIECE_TYPE_NONE; pt2 <= pt1; pt2++)
             vv +=  pieceCount[c][pt2] * QuadraticCoefficientsSameColor[pt1][pt2]
                  + pieceCount[them][pt2] * QuadraticCoefficientsOppositeColor[pt1][pt2];
 
