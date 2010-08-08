@@ -57,6 +57,8 @@ namespace {
 
   typedef EndgameEvaluationFunctionBase EF;
   typedef EndgameScalingFunctionBase SF;
+  typedef map<Key, EF*> EFMap;
+  typedef map<Key, SF*> SFMap;
 
   // Endgame evaluation and scaling functions accessed direcly and not through
   // the function maps because correspond to more then one material hash key.
@@ -113,21 +115,17 @@ private:
   static Key buildKey(const string& keyCode);
   static const string swapColors(const string& keyCode);
 
-  // Here we store two maps, for evaluate and scaling functions
-  pair<map<Key, EF*>, map<Key, SF*> > maps;
+  // Here we store two maps, for evaluate and scaling functions...
+  pair<EFMap, SFMap> maps;
 
-  // Maps accessing functions returning const and non-const references
-  template<typename T> const map<Key, T*>& get() const { return maps.first; }
-  template<typename T> map<Key, T*>& get() { return maps.first; }
+  // ...and here is the accessing template function
+  template<typename T> const map<Key, T*>& get() const;
 };
 
 // Explicit specializations of a member function shall be declared in
 // the namespace of which the class template is a member.
-template<> const map<Key, SF*>&
-EndgameFunctions::get<SF>() const { return maps.second; }
-
-template<> map<Key, SF*>&
-EndgameFunctions::get<SF>() { return maps.second; }
+template<> const EFMap& EndgameFunctions::get<EF>() const { return maps.first; }
+template<> const SFMap& EndgameFunctions::get<SF>() const { return maps.second; }
 
 
 ////
@@ -380,11 +378,11 @@ EndgameFunctions::EndgameFunctions() {
 
 EndgameFunctions::~EndgameFunctions() {
 
-    for (map<Key, EF*>::iterator it = maps.first.begin(); it != maps.first.end(); ++it)
-        delete (*it).second;
+    for (EFMap::const_iterator it = maps.first.begin(); it != maps.first.end(); ++it)
+        delete it->second;
 
-    for (map<Key, SF*>::iterator it = maps.second.begin(); it != maps.second.end(); ++it)
-        delete (*it).second;
+    for (SFMap::const_iterator it = maps.second.begin(); it != maps.second.end(); ++it)
+        delete it->second;
 }
 
 Key EndgameFunctions::buildKey(const string& keyCode) {
@@ -419,14 +417,15 @@ template<class T>
 void EndgameFunctions::add(const string& keyCode) {
 
   typedef typename T::Base F;
+  typedef map<Key, F*> M;
 
-  get<F>().insert(pair<Key, F*>(buildKey(keyCode), new T(WHITE)));
-  get<F>().insert(pair<Key, F*>(buildKey(swapColors(keyCode)), new T(BLACK)));
+  const_cast<M&>(get<F>()).insert(pair<Key, F*>(buildKey(keyCode), new T(WHITE)));
+  const_cast<M&>(get<F>()).insert(pair<Key, F*>(buildKey(swapColors(keyCode)), new T(BLACK)));
 }
 
 template<class T>
 T* EndgameFunctions::get(Key key) const {
 
-  typename map<Key, T*>::const_iterator it(get<T>().find(key));
-  return (it != get<T>().end() ? it->second : NULL);
+  typename map<Key, T*>::const_iterator it = get<T>().find(key);
+  return it != get<T>().end() ? it->second : NULL;
 }
