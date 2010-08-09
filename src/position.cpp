@@ -1733,82 +1733,79 @@ bool Position::is_draw() const {
 bool Position::is_mate() const {
 
   MoveStack moves[256];
-  return is_check() && (generate_moves(*this, moves, false) == moves);
+  return is_check() && (generate_moves(*this, moves) == moves);
 }
 
 
-/// Position::has_mate_threat() tests whether a given color has a mate in one
-/// from the current position.
+/// Position::has_mate_threat() tests whether the side to move is under
+/// a threat of being mated in one from the current position.
 
-bool Position::has_mate_threat(Color c) {
+bool Position::has_mate_threat() {
 
+  MoveStack mlist[256], *last, *cur;
   StateInfo st1, st2;
-  Color stm = side_to_move();
+  bool mateFound = false;
 
+  // If we are under check it's up to evasions to do the job
   if (is_check())
       return false;
 
-  // If the input color is not equal to the side to move, do a null move
-  if (c != stm)
-      do_null_move(st1);
+  // First pass the move to our opponent doing a null move
+  do_null_move(st1);
 
-  MoveStack mlist[120];
-  bool result = false;
-  Bitboard pinned = pinned_pieces(sideToMove);
-
-  // Generate pseudo-legal non-capture and capture check moves
-  MoveStack* last = generate_non_capture_checks(*this, mlist);
+  // Then generate pseudo-legal moves that give check
+  last = generate_non_capture_checks(*this, mlist);
   last = generate_captures(*this, last);
 
-  // Loop through the moves, and see if one of them is mate
-  for (MoveStack* cur = mlist; cur != last; cur++)
+  // Loop through the moves, and see if one of them gives mate
+  Bitboard pinned = pinned_pieces(sideToMove);
+  CheckInfo ci(*this);
+  for (cur = mlist; cur != last && !mateFound; cur++)
   {
       Move move = cur->move;
-      if (!pl_move_is_legal(move, pinned))
+      if (   !pl_move_is_legal(move, pinned)
+          || !move_is_check(move, ci))
           continue;
 
-      do_move(move, st2);
+      do_move(move, st2, ci, true);
+
       if (is_mate())
-          result = true;
+          mateFound = true;
 
       undo_move(move);
   }
 
-  // Undo null move, if necessary
-  if (c != stm)
-      undo_null_move();
-
-  return result;
+  undo_null_move();
+  return mateFound;
 }
 
 
-/// Position::init_zobrist() is a static member function which initializes the
-/// various arrays used to compute hash keys.
+/// Position::init_zobrist() is a static member function which initializes at
+/// startup the various arrays used to compute hash keys.
 
 void Position::init_zobrist() {
 
-  for (int i = 0; i < 2; i++)
-      for (int j = 0; j < 8; j++)
-          for (int k = 0; k < 64; k++)
-              zobrist[i][j][k] = Key(genrand_int64());
+  int i,j, k;
 
-  for (int i = 0; i < 64; i++)
+  for (i = 0; i < 2; i++) for (j = 0; j < 8; j++) for (k = 0; k < 64; k++)
+      zobrist[i][j][k] = Key(genrand_int64());
+
+  for (i = 0; i < 64; i++)
       zobEp[i] = Key(genrand_int64());
 
-  for (int i = 0; i < 16; i++)
-      zobCastle[i] = genrand_int64();
+  for (i = 0; i < 16; i++)
+      zobCastle[i] = Key(genrand_int64());
 
-  zobSideToMove = genrand_int64();
-  zobExclusion = genrand_int64();
+  zobSideToMove = Key(genrand_int64());
+  zobExclusion  = Key(genrand_int64());
 }
 
 
 /// Position::init_piece_square_tables() initializes the piece square tables.
-/// This is a two-step operation:
-/// First, the white halves of the tables are
-/// copied from the MgPST[][] and EgPST[][] arrays.
-/// Second, the black halves of the tables are initialized by mirroring
-/// and changing the sign of the corresponding white scores.
+/// This is a two-step operation: First, the white halves of the tables are
+/// copied from the MgPST[][] and EgPST[][] arrays. Second, the black halves
+/// of the tables are initialized by mirroring and changing the sign of the
+/// corresponding white scores.
 
 void Position::init_piece_square_tables() {
 

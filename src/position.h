@@ -264,8 +264,8 @@ public:
   bool is_mate() const;
   bool is_draw() const;
 
-  // Check if one side threatens a mate in one
-  bool has_mate_threat(Color c);
+  // Check if side to move could be mated in one
+  bool has_mate_threat();
 
   // Number of plies since the last non-reversible move
   int rule_50_counter() const;

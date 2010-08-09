@@ -1168,7 +1168,7 @@ namespace {
 
     // Expensive mate threat detection (only for PV nodes)
     if (PvNode)
-        mateThreat = pos.has_mate_threat(opposite_color(pos.side_to_move()));
+        mateThreat = pos.has_mate_threat();
 
     // Initialize a MovePicker object for the current position
     MovePicker mp = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
