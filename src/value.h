@@ -81,13 +81,6 @@ inline Value eg_value(Score s) { return Value((int)(unsigned(s) & 0x7fffu) - (in
 
 inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
 
-inline Score operator-(Score s) { return Score(-int(s)); }
-inline Score operator+(Score s1, Score s2) { return Score(int(s1) + int(s2)); }
-inline Score operator-(Score s1, Score s2) { return Score(int(s1) - int(s2)); }
-inline void operator+=(Score& s1, Score s2) { s1 = Score(int(s1) + int(s2)); }
-inline void operator-=(Score& s1, Score s2) { s1 = Score(int(s1) - int(s2)); }
-inline Score operator*(int i, Score s) { return Score(i * int(s)); }
-
 // Division must be handled separately for each term
 inline Score operator/(Score s, int i) { return make_score(mg_value(s) / i, eg_value(s) / i); }
 
@@ -149,29 +142,15 @@ const Score TempoValue = make_score(48, 22);
 ////
 
 inline Value operator+ (Value v, int i) { return Value(int(v) + i); }
-inline Value operator+ (Value v1, Value v2) { return Value(int(v1) + int(v2)); }
-inline void operator+= (Value &v1, Value v2) {
-  v1 = Value(int(v1) + int(v2));
-}
 inline Value operator- (Value v, int i) { return Value(int(v) - i); }
-inline Value operator- (Value v) { return Value(-int(v)); }
-inline Value operator- (Value v1, Value v2) { return Value(int(v1) - int(v2)); }
-inline void operator-= (Value &v1, Value v2) {
-  v1 = Value(int(v1) - int(v2));
-}
-inline Value operator* (Value v, int i) { return Value(int(v) * i); }
-inline void operator*= (Value &v, int i) { v = Value(int(v) * i); }
-inline Value operator* (int i, Value v) { return Value(int(v) * i); }
-inline Value operator/ (Value v, int i) { return Value(int(v) / i); }
-inline void operator/= (Value &v, int i) { v = Value(int(v) / i); }
 
 
 inline Value value_mate_in(int ply) {
-  return Value(VALUE_MATE - Value(ply));
+  return VALUE_MATE - ply;
 }
 
 inline Value value_mated_in(int ply) {
-  return Value(-VALUE_MATE + Value(ply));
+  return -VALUE_MATE + ply;
 }
 
 inline bool is_upper_bound(ValueType vt) {

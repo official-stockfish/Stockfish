@@ -138,6 +138,9 @@ template<typename T>
 inline void operator+= (T& d1, const T d2) { d1 = d1 + d2; }
 
 template<typename T>
+inline void operator-= (T& d1, const T d2) { d1 = d1 - d2; }
+
+template<typename T>
 inline void operator*= (T& d, int i) { d = T(int(d) * i); }
 
 template<typename T>
