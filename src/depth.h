@@ -27,8 +27,8 @@
 
 enum Depth {
 
-  OnePly = 2,
-  DEPTH_NONE = -127 * OnePly
+  ONE_PLY = 2,
+  DEPTH_NONE = -127 * ONE_PLY
 };
 
 

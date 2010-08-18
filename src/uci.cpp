@@ -316,7 +316,7 @@ namespace {
 
     tm = get_system_time();
 
-    n = perft(pos, depth * OnePly);
+    n = perft(pos, depth * ONE_PLY);
 
     tm = get_system_time() - tm;
     std::cout << "\nNodes " << n

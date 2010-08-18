@@ -138,7 +138,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
 
   assert(pos.is_ok());
 
-  MovePicker mp = MovePicker(pos, MOVE_NONE, OnePly, H);
+  MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
   // Castling moves
@@ -368,7 +368,7 @@ namespace {
     if (type_of_piece(pc) == KING)
         return AMBIGUITY_NONE;
 
-    MovePicker mp = MovePicker(pos, MOVE_NONE, OnePly, H);
+    MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
     Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
     Move mv, moveList[8];
 

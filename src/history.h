@@ -71,7 +71,7 @@ private:
 /// recently have a bigger importance for move ordering than the moves which
 /// have been searched a long time ago.
 
-const int HistoryMax = 50000 * OnePly;
+const int HistoryMax = 50000 * ONE_PLY;
 
 
 ////

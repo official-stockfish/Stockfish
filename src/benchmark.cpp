@@ -155,7 +155,7 @@ void benchmark(const string& commandLine) {
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (limitType == "perft")
       {
-          int64_t perftCnt = perft(pos, maxDepth * OnePly);
+          int64_t perftCnt = perft(pos, maxDepth * ONE_PLY);
           cerr << "\nPerft " << maxDepth << " result (nodes searched): " << perftCnt << endl << endl;
           totalNodes += perftCnt;
       } else {

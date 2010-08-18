@@ -168,7 +168,7 @@ namespace {
   // Step 6. Razoring
 
   // Maximum depth for razoring
-  const Depth RazorDepth = 4 * OnePly;
+  const Depth RazorDepth = 4 * ONE_PLY;
 
   // Dynamic razoring margin based on depth
   inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * int(d)); }
@@ -180,12 +180,12 @@ namespace {
   const Value NullMoveMargin = Value(0x200);
 
   // Maximum depth for use of dynamic threat detection when null move fails low
-  const Depth ThreatDepth = 5 * OnePly;
+  const Depth ThreatDepth = 5 * ONE_PLY;
 
   // Step 9. Internal iterative deepening
 
   // Minimum depth for use of internal iterative deepening
-  const Depth IIDDepth[2] = { 8 * OnePly /* non-PV */, 5 * OnePly /* PV */};
+  const Depth IIDDepth[2] = { 8 * ONE_PLY /* non-PV */, 5 * ONE_PLY /* PV */};
 
   // At Non-PV nodes we do an internal iterative deepening search
   // when the static evaluation is bigger then beta - IIDMargin.
@@ -199,7 +199,7 @@ namespace {
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Minimum depth for use of singular extension
-  const Depth SingularExtensionDepth[2] = { 8 * OnePly /* non-PV */, 6 * OnePly /* PV */};
+  const Depth SingularExtensionDepth[2] = { 8 * ONE_PLY /* non-PV */, 6 * ONE_PLY /* PV */};
 
   // If the TT move is at least SingularExtensionMargin better then the
   // remaining ones we will extend it.
@@ -214,8 +214,8 @@ namespace {
   int32_t FutilityMarginsMatrix[16][64]; // [depth][moveNumber]
   int FutilityMoveCountArray[32]; // [depth]
 
-  inline Value futility_margin(Depth d, int mn) { return Value(d < 7 * OnePly ? FutilityMarginsMatrix[Max(d, 1)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
-  inline int futility_move_count(Depth d) { return d < 16 * OnePly ? FutilityMoveCountArray[d] : 512; }
+  inline Value futility_margin(Depth d, int mn) { return Value(d < 7 * ONE_PLY ? FutilityMarginsMatrix[Max(d, 1)][Min(mn, 63)] : 2 * VALUE_INFINITE); }
+  inline int futility_move_count(Depth d) { return d < 16 * ONE_PLY ? FutilityMoveCountArray[d] : 512; }
 
   // Step 14. Reduced search
 
@@ -228,7 +228,7 @@ namespace {
   // Common adjustments
 
   // Search depth at iteration 1
-  const Depth InitialDepth = OnePly;
+  const Depth InitialDepth = ONE_PLY;
 
   // Easy move margin. An easy move candidate must be at least this much
   // better than the second best move.
@@ -338,8 +338,8 @@ int64_t nodes_searched() { return ThreadsMgr.nodes_searched(); }
 
 void init_search() {
 
-  int d;  // depth (OnePly == 2)
-  int hd; // half depth (OnePly == 1)
+  int d;  // depth (ONE_PLY == 2)
+  int hd; // half depth (ONE_PLY == 1)
   int mc; // moveCount
 
   // Init reductions array
@@ -347,8 +347,8 @@ void init_search() {
   {
       double    pvRed = 0.33 + log(double(hd)) * log(double(mc)) / 4.5;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
-      ReductionMatrix[PV][hd][mc]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(OnePly)) : 0);
-      ReductionMatrix[NonPV][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(OnePly)) : 0);
+      ReductionMatrix[PV][hd][mc]    = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(ONE_PLY)) : 0);
+      ReductionMatrix[NonPV][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(ONE_PLY)) : 0);
   }
 
   // Init futility margins array
@@ -376,7 +376,7 @@ int perft(Position& pos, Depth depth)
 
     // If we are at the last ply we don't need to do and undo
     // the moves, just to count them.
-    if (depth <= OnePly)
+    if (depth <= ONE_PLY)
         return int(last - mlist);
 
     // Loop through all legal moves
@@ -385,7 +385,7 @@ int perft(Position& pos, Depth depth)
     {
         m = cur->move;
         pos.do_move(m, st, ci, pos.move_is_check(m, ci));
-        sum += perft(pos, depth - OnePly);
+        sum += perft(pos, depth - ONE_PLY);
         pos.undo_move(m);
     }
     return sum;
@@ -447,7 +447,7 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   MateThreatExtension[1]    = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
   MateThreatExtension[0]    = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
 
-  MinimumSplitDepth       = get_option_value_int("Minimum Split Depth") * OnePly;
+  MinimumSplitDepth       = get_option_value_int("Minimum Split Depth") * ONE_PLY;
   MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
   MultiPV                 = get_option_value_int("MultiPV");
   Chess960                = get_option_value_bool("UCI_Chess960");
@@ -715,7 +715,7 @@ namespace {
     alpha = *alphaPtr;
     beta = *betaPtr;
     isCheck = pos.is_check();
-    depth = (Iteration - 2) * OnePly + InitialDepth;
+    depth = (Iteration - 2) * ONE_PLY + InitialDepth;
 
     // Step 1. Initialize node (polling is omitted at root)
     ss->currentMove = ss->bestMove = MOVE_NONE;
@@ -798,7 +798,7 @@ namespace {
                     // if the move fails high will be re-searched at full depth
                     bool doFullDepthSearch = true;
 
-                    if (    depth >= 3 * OnePly
+                    if (    depth >= 3 * ONE_PLY
                         && !dangerous
                         && !captureOrPromotion
                         && !move_is_castle(move))
@@ -806,7 +806,7 @@ namespace {
                         ss->reduction = reduction<PV>(depth, i - MultiPV + 2);
                         if (ss->reduction)
                         {
-                            assert(newDepth-ss->reduction >= OnePly);
+                            assert(newDepth-ss->reduction >= ONE_PLY);
 
                             // Reduced depth non-pv search using alpha as upperbound
                             value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 1);
@@ -816,11 +816,11 @@ namespace {
                         // The move failed high, but if reduction is very big we could
                         // face a false positive, retry with a less aggressive reduction,
                         // if the move fails high again then go with full depth search.
-                        if (doFullDepthSearch && ss->reduction > 2 * OnePly)
+                        if (doFullDepthSearch && ss->reduction > 2 * ONE_PLY)
                         {
-                            assert(newDepth - OnePly >= OnePly);
+                            assert(newDepth - ONE_PLY >= ONE_PLY);
 
-                            ss->reduction = OnePly;
+                            ss->reduction = ONE_PLY;
                             value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 1);
                             doFullDepthSearch = (value > alpha);
                         }
@@ -1092,16 +1092,16 @@ namespace {
     // NullMoveMargin under beta.
     if (   !PvNode
         && !ss->skipNullMove
-        &&  depth > OnePly
+        &&  depth > ONE_PLY
         && !isCheck
-        &&  refinedValue >= beta - (depth >= 4 * OnePly ? NullMoveMargin : 0)
+        &&  refinedValue >= beta - (depth >= 4 * ONE_PLY ? NullMoveMargin : 0)
         && !value_is_mate(beta)
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
 
         // Null move dynamic reduction based on depth
-        int R = 3 + (depth >= 5 * OnePly ? depth / 8 : 0);
+        int R = 3 + (depth >= 5 * ONE_PLY ? depth / 8 : 0);
 
         // Null move dynamic reduction based on value
         if (refinedValue - beta > PawnValueMidgame)
@@ -1110,8 +1110,8 @@ namespace {
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
 
-        nullValue = depth-R*OnePly < OnePly ? -qsearch<NonPV>(pos, ss+1, -beta, -alpha, Depth(0), ply+1)
-                                            : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*OnePly, ply+1);
+        nullValue = depth-R*ONE_PLY < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -beta, -alpha, Depth(0), ply+1)
+                                              : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*ONE_PLY, ply+1);
         (ss+1)->skipNullMove = false;
         pos.undo_null_move();
 
@@ -1121,12 +1121,12 @@ namespace {
             if (nullValue >= value_mate_in(PLY_MAX))
                 nullValue = beta;
 
-            if (depth < 6 * OnePly)
+            if (depth < 6 * ONE_PLY)
                 return nullValue;
 
             // Do verification search at high depths
             ss->skipNullMove = true;
-            Value v = search<NonPV>(pos, ss, alpha, beta, depth-R*OnePly, ply);
+            Value v = search<NonPV>(pos, ss, alpha, beta, depth-R*ONE_PLY, ply);
             ss->skipNullMove = false;
 
             if (v >= beta)
@@ -1156,7 +1156,7 @@ namespace {
         &&  ttMove == MOVE_NONE
         && (PvNode || (!isCheck && ss->eval >= beta - IIDMargin)))
     {
-        Depth d = (PvNode ? depth - 2 * OnePly : depth / 2);
+        Depth d = (PvNode ? depth - 2 * ONE_PLY : depth / 2);
 
         ss->skipNullMove = true;
         search<PvNode>(pos, ss, alpha, beta, d, ply);
@@ -1180,7 +1180,7 @@ namespace {
                            && tte->move()
                            && !excludedMove // Do not allow recursive singular extension search
                            && is_lower_bound(tte->type())
-                           && tte->depth() >= depth - 3 * OnePly;
+                           && tte->depth() >= depth - 3 * ONE_PLY;
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
@@ -1205,7 +1205,7 @@ namespace {
       // lower then ttValue minus a margin then we extend ttMove.
       if (   singularExtensionNode
           && move == tte->move()
-          && ext < OnePly)
+          && ext < ONE_PLY)
       {
           Value ttValue = value_from_tt(tte->value(), ply);
 
@@ -1219,11 +1219,11 @@ namespace {
               ss->excludedMove = MOVE_NONE;
               ss->bestMove = MOVE_NONE;
               if (v < b)
-                  ext = OnePly;
+                  ext = ONE_PLY;
           }
       }
 
-      newDepth = depth - OnePly + ext;
+      newDepth = depth - ONE_PLY + ext;
 
       // Update current move (this must be done after singular extension search)
       movesSearched[moveCount++] = ss->currentMove = move;
@@ -1243,7 +1243,7 @@ namespace {
               continue;
 
           // Value based pruning
-          // We illogically ignore reduction condition depth >= 3*OnePly for predicted depth,
+          // We illogically ignore reduction condition depth >= 3*ONE_PLY for predicted depth,
           // but fixing this made program slightly weaker.
           Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount);
           futilityValueScaled =  ss->eval + futility_margin(predictedDepth, moveCount)
@@ -1263,15 +1263,15 @@ namespace {
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
       if (PvNode && moveCount == 1)
-          value = newDepth < OnePly ? -qsearch<PV>(pos, ss+1, -beta, -alpha, Depth(0), ply+1)
-                                    : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+          value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, Depth(0), ply+1)
+                                     : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
       else
       {
           // Step 14. Reduced depth search
           // If the move fails high will be re-searched at full depth.
           bool doFullDepthSearch = true;
 
-          if (    depth >= 3 * OnePly
+          if (    depth >= 3 * ONE_PLY
               && !captureOrPromotion
               && !dangerous
               && !move_is_castle(move)
@@ -1281,8 +1281,8 @@ namespace {
               if (ss->reduction)
               {
                   Depth d = newDepth - ss->reduction;
-                  value = d < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), ply+1)
-                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
+                  value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), ply+1)
+                                      : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
 
                   doFullDepthSearch = (value > alpha);
               }
@@ -1290,11 +1290,11 @@ namespace {
               // The move failed high, but if reduction is very big we could
               // face a false positive, retry with a less aggressive reduction,
               // if the move fails high again then go with full depth search.
-              if (doFullDepthSearch && ss->reduction > 2 * OnePly)
+              if (doFullDepthSearch && ss->reduction > 2 * ONE_PLY)
               {
-                  assert(newDepth - OnePly >= OnePly);
+                  assert(newDepth - ONE_PLY >= ONE_PLY);
 
-                  ss->reduction = OnePly;
+                  ss->reduction = ONE_PLY;
                   value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, ply+1);
                   doFullDepthSearch = (value > alpha);
               }
@@ -1304,15 +1304,15 @@ namespace {
           // Step 15. Full depth search
           if (doFullDepthSearch)
           {
-              value = newDepth < OnePly ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), ply+1)
-                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
+              value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, Depth(0), ply+1)
+                                         : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
 
               // Step extra. pv search (only in PV nodes)
               // Search only for possible new PV nodes, if instead value >= beta then
               // parent node fails low with value <= alpha and tries another move.
               if (PvNode && value > alpha && value < beta)
-                  value = newDepth < OnePly ? -qsearch<PV>(pos, ss+1, -beta, -alpha, Depth(0), ply+1)
-                                            : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+                  value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, Depth(0), ply+1)
+                                             : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
           }
       }
 
@@ -1385,7 +1385,7 @@ namespace {
 
   // qsearch() is the quiescence search function, which is called by the main
   // search function when the remaining depth is zero (or, to be more precise,
-  // less than OnePly).
+  // less than ONE_PLY).
 
   template <NodeType PvNode>
   Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
@@ -1460,7 +1460,7 @@ namespace {
             alpha = bestValue;
 
         // If we are near beta then try to get a cutoff pushing checks a bit further
-        deepChecks = (depth == -OnePly && bestValue >= beta - PawnValueMidgame / 8);
+        deepChecks = (depth == -ONE_PLY && bestValue >= beta - PawnValueMidgame / 8);
 
         // Futility pruning parameters, not needed when in check
         futilityBase = bestValue + FutilityMarginQS + ei.kingDanger[pos.side_to_move()];
@@ -1469,7 +1469,7 @@ namespace {
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves. Because the depth is <= 0 here, only captures,
-    // queen promotions and checks (only if depth == 0 or depth == -OnePly
+    // queen promotions and checks (only if depth == 0 or depth == -ONE_PLY
     // and we are near beta) will be generated.
     MovePicker mp = MovePicker(pos, ttMove, deepChecks ? Depth(0) : depth, H);
     CheckInfo ci(pos);
@@ -1523,7 +1523,7 @@ namespace {
 
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
-      value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-OnePly, ply+1);
+      value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-ONE_PLY, ply+1);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -1607,7 +1607,7 @@ namespace {
 
       // Step 11. Decide the new search depth
       ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, false, sp->mateThreat, &dangerous);
-      newDepth = sp->depth - OnePly + ext;
+      newDepth = sp->depth - ONE_PLY + ext;
 
       // Update current move
       ss->currentMove = move;
@@ -1660,8 +1660,8 @@ namespace {
           {
               Value localAlpha = sp->alpha;
               Depth d = newDepth - ss->reduction;
-              value = d < OnePly ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), sp->ply+1)
-                                 : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, d, sp->ply+1);
+              value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), sp->ply+1)
+                                  : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, d, sp->ply+1);
 
               doFullDepthSearch = (value > localAlpha);
           }
@@ -1669,11 +1669,11 @@ namespace {
           // The move failed high, but if reduction is very big we could
           // face a false positive, retry with a less aggressive reduction,
           // if the move fails high again then go with full depth search.
-          if (doFullDepthSearch && ss->reduction > 2 * OnePly)
+          if (doFullDepthSearch && ss->reduction > 2 * ONE_PLY)
           {
-              assert(newDepth - OnePly >= OnePly);
+              assert(newDepth - ONE_PLY >= ONE_PLY);
 
-              ss->reduction = OnePly;
+              ss->reduction = ONE_PLY;
               Value localAlpha = sp->alpha;
               value = -search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth-ss->reduction, sp->ply+1);
               doFullDepthSearch = (value > localAlpha);
@@ -1685,15 +1685,15 @@ namespace {
       if (doFullDepthSearch)
       {
           Value localAlpha = sp->alpha;
-          value = newDepth < OnePly ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), sp->ply+1)
-                                    : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, sp->ply+1);
+          value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, Depth(0), sp->ply+1)
+                                     : - search<NonPV>(pos, ss+1, -(localAlpha+1), -localAlpha, newDepth, sp->ply+1);
 
           // Step extra. pv search (only in PV nodes)
           // Search only for possible new PV nodes, if instead value >= beta then
           // parent node fails low with value <= alpha and tries another move.
           if (PvNode && value > localAlpha && value < sp->beta)
-              value = newDepth < OnePly ? -qsearch<PV>(pos, ss+1, -sp->beta, -sp->alpha, Depth(0), sp->ply+1)
-                                        : - search<PV>(pos, ss+1, -sp->beta, -sp->alpha, newDepth, sp->ply+1);
+              value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -sp->beta, -sp->alpha, Depth(0), sp->ply+1)
+                                         : - search<PV>(pos, ss+1, -sp->beta, -sp->alpha, newDepth, sp->ply+1);
       }
 
       // Step 16. Undo move
@@ -1897,11 +1897,11 @@ namespace {
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && pos.see_sign(m) >= 0)
     {
-        result += OnePly / 2;
+        result += ONE_PLY / 2;
         *dangerous = true;
     }
 
-    return Min(result, OnePly);
+    return Min(result, ONE_PLY);
   }
 
 
@@ -2043,7 +2043,7 @@ namespace {
 
     std::stringstream s;
 
-    if (abs(v) < VALUE_MATE - PLY_MAX * OnePly)
+    if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
       s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to pawn = 100
     else
       s << "mate " << (v > 0 ? (VALUE_MATE - v + 1) / 2 : -(VALUE_MATE + v) / 2 );

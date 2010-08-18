@@ -94,7 +94,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   {
       // Consider sligtly negative captures as good if at low
       // depth and far from beta.
-      if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * OnePly)
+      if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * ONE_PLY)
           badCaptureThreshold = -PawnValueMidgame;
 
       phasePtr = MainSearchPhaseTable;
