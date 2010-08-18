@@ -1546,7 +1546,7 @@ namespace {
         return value_mated_in(ply);
 
     // Update transposition table
-    Depth d = (depth == DEPTH_ZERO ? DEPTH_ZERO : Depth(-1));
+    Depth d = (depth == DEPTH_ZERO ? DEPTH_ZERO : DEPTH_ZERO - ONE_PLY);
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
