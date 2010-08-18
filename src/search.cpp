@@ -199,7 +199,7 @@ namespace {
   Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Minimum depth for use of singular extension
-  const Depth SingularExtensionDepth[2] = { 7 * OnePly /* non-PV */, 6 * OnePly /* PV */};
+  const Depth SingularExtensionDepth[2] = { 8 * OnePly /* non-PV */, 6 * OnePly /* PV */};
 
   // If the TT move is at least SingularExtensionMargin better then the
   // remaining ones we will extend it.
@@ -970,7 +970,7 @@ namespace {
     Move movesSearched[256];
     EvalInfo ei;
     StateInfo st;
-    const TTEntry *tte, *ttx;
+    const TTEntry *tte;
     Key posKey;
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
@@ -1207,22 +1207,9 @@ namespace {
           && move == tte->move()
           && ext < OnePly)
       {
-          // Avoid to do an expensive singular extension search on nodes where
-          // such search have already been done in the past, so assume the last
-          // singular extension search result is still valid.
-          if (  !PvNode
-              && depth < SingularExtensionDepth[PvNode] + 5 * OnePly
-              && (ttx = TT.retrieve(pos.get_exclusion_key())) != NULL)
-          {
-              if (is_upper_bound(ttx->type()))
-                  ext = OnePly;
-
-              singularExtensionNode = false;
-          }
-
           Value ttValue = value_from_tt(tte->value(), ply);
 
-          if (singularExtensionNode && abs(ttValue) < VALUE_KNOWN_WIN)
+          if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
               Value b = ttValue - SingularExtensionMargin;
               ss->excludedMove = move;
