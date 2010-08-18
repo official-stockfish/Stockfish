@@ -110,8 +110,10 @@ inline void __cpuid(int CPUInfo[4], int)
 #endif
 
 
-// Templetized enum operations, we avoid to repeat the same inlines for each
-// different enum.
+// Templetized operators used by enum types like Depth, Piece, Square and so on.
+// We don't want to write the same inline for each different enum. Note that we
+// pass by value (to silence scaring warnings on volatiles), so you really should
+// use only enum types with these functions to avoid hidden copies.
 
 template<typename T>
 inline T operator+ (const T d1, const T d2) { return T(int(d1) + int(d2)); }
@@ -120,7 +122,10 @@ template<typename T>
 inline T operator- (const T d1, const T d2) { return T(int(d1) - int(d2)); }
 
 template<typename T>
-inline T operator* (int i, const T d) { return T(int(d) * i); }
+inline T operator* (int i, const T d) { return T(i * int(d)); }
+
+template<typename T>
+inline T operator* (const T d, int i) { return T(int(d) * i); }
 
 template<typename T>
 inline T operator/ (const T d, int i) { return T(int(d) / i); }
@@ -144,6 +149,6 @@ template<typename T>
 inline void operator*= (T& d, int i) { d = T(int(d) * i); }
 
 template<typename T>
-inline void operator/= (T &d, int i) { d = T(int(d) / i); }
+inline void operator/= (T& d, int i) { d = T(int(d) / i); }
 
 #endif // !defined(TYPES_H_INCLUDED)

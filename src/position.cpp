@@ -1686,7 +1686,7 @@ Score Position::compute_value() const {
 
 Value Position::compute_non_pawn_material(Color c) const {
 
-  Value result = Value(0);
+  Value result = VALUE_ZERO;
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
   {

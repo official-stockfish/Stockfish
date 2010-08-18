@@ -72,7 +72,7 @@ namespace {
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return   pos.non_pawn_material(Them) == Value(0)
+    return   pos.non_pawn_material(Them) == VALUE_ZERO
           && pos.piece_count(Them, PAWN) == 0
           && pos.non_pawn_material(Us)   >= RookValueMidgame;
   }
@@ -254,7 +254,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   else if (is_KQKRPs<BLACK>(pos))
       mi->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
 
-  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == Value(0))
+  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == VALUE_ZERO)
   {
       if (pos.piece_count(BLACK, PAWN) == 0)
       {

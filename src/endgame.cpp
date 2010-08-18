@@ -115,8 +115,8 @@ void init_bitbases() {
 template<>
 Value EvaluationFunction<KXK>::apply(const Position& pos) const {
 
-  assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.piece_count(weakerSide, PAWN) == Value(0));
+  assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
+  assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
@@ -141,8 +141,8 @@ Value EvaluationFunction<KXK>::apply(const Position& pos) const {
 template<>
 Value EvaluationFunction<KBNK>::apply(const Position& pos) const {
 
-  assert(pos.non_pawn_material(weakerSide) == Value(0));
-  assert(pos.piece_count(weakerSide, PAWN) == Value(0));
+  assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
+  assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
   assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame + BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
   assert(pos.piece_count(strongerSide, KNIGHT) == 1);
@@ -173,8 +173,8 @@ Value EvaluationFunction<KBNK>::apply(const Position& pos) const {
 template<>
 Value EvaluationFunction<KPK>::apply(const Position& pos) const {
 
-  assert(pos.non_pawn_material(strongerSide) == Value(0));
-  assert(pos.non_pawn_material(weakerSide) == Value(0));
+  assert(pos.non_pawn_material(strongerSide) == VALUE_ZERO);
+  assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
@@ -367,12 +367,12 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) const {
 /// king alone are always draw.
 template<>
 Value EvaluationFunction<KmmKm>::apply(const Position&) const {
-  return Value(0);
+  return VALUE_ZERO;
 }
 
 template<>
 Value EvaluationFunction<KNNK>::apply(const Position&) const {
-  return Value(0);
+  return VALUE_ZERO;
 }
 
 /// KBPKScalingFunction scales endgames where the stronger side has king,
@@ -625,9 +625,9 @@ ScaleFactor ScalingFunction<KRPPKRP>::apply(const Position& pos) const {
 template<>
 ScaleFactor ScalingFunction<KPsK>::apply(const Position& pos) const {
 
-  assert(pos.non_pawn_material(strongerSide) == Value(0));
+  assert(pos.non_pawn_material(strongerSide) == VALUE_ZERO);
   assert(pos.piece_count(strongerSide, PAWN) >= 2);
-  assert(pos.non_pawn_material(weakerSide) == Value(0));
+  assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square ksq = pos.king_square(weakerSide);
@@ -824,7 +824,7 @@ ScaleFactor ScalingFunction<KNPK>::apply(const Position& pos) const {
   assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame);
   assert(pos.piece_count(strongerSide, KNIGHT) == 1);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
-  assert(pos.non_pawn_material(weakerSide) == Value(0));
+  assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square pawnSq = pos.piece_list(strongerSide, PAWN, 0);
@@ -851,8 +851,8 @@ ScaleFactor ScalingFunction<KNPK>::apply(const Position& pos) const {
 template<>
 ScaleFactor ScalingFunction<KPKP>::apply(const Position& pos) const {
 
-  assert(pos.non_pawn_material(strongerSide) == Value(0));
-  assert(pos.non_pawn_material(weakerSide) == Value(0));
+  assert(pos.non_pawn_material(strongerSide) == VALUE_ZERO);
+  assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(WHITE, PAWN) == 1);
   assert(pos.piece_count(BLACK, PAWN) == 1);
 

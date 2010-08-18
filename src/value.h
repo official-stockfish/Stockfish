@@ -41,6 +41,7 @@ enum ValueType {
 
 
 enum Value {
+  VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 15000,
   VALUE_MATE      = 30000,
@@ -113,23 +114,23 @@ const Value QueenValueMidgame  = Value(0x9D9);
 const Value QueenValueEndgame  = Value(0x9FE);
 
 const Value PieceValueMidgame[17] = {
-  Value(0),
+  VALUE_ZERO,
   PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
   RookValueMidgame, QueenValueMidgame,
-  Value(0), Value(0), Value(0),
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
   PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
   RookValueMidgame, QueenValueMidgame,
-  Value(0), Value(0), Value(0)
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
 };
 
 const Value PieceValueEndgame[17] = {
-  Value(0),
+  VALUE_ZERO,
   PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
   RookValueEndgame, QueenValueEndgame,
-  Value(0), Value(0), Value(0),
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
   PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
   RookValueEndgame, QueenValueEndgame,
-  Value(0), Value(0), Value(0)
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
 };
 
 /// Bonus for having the side to move (modified by Joona Kiiski)

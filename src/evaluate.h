@@ -47,7 +47,7 @@ class Position;
 
 struct EvalInfo {
 
-  EvalInfo() { kingDanger[0] = kingDanger[1] = Value(0); }
+  EvalInfo() { kingDanger[0] = kingDanger[1] = VALUE_ZERO; }
 
   // Middle game and endgame evaluations
   Score value;

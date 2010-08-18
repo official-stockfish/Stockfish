@@ -372,8 +372,8 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   // colored bishop endgames, and use a lower scale for those
   if (   phase < PHASE_MIDGAME
       && pos.opposite_colored_bishops()
-      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && eg_value(ei.value) > Value(0))
-          || (factor[BLACK] == SCALE_FACTOR_NORMAL && eg_value(ei.value) < Value(0))))
+      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && eg_value(ei.value) > VALUE_ZERO)
+          || (factor[BLACK] == SCALE_FACTOR_NORMAL && eg_value(ei.value) < VALUE_ZERO)))
   {
       ScaleFactor sf;
 
@@ -1074,7 +1074,7 @@ namespace {
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
     Value eg = eg_value(v);
-    ScaleFactor f = sf[eg > Value(0) ? WHITE : BLACK];
+    ScaleFactor f = sf[eg > VALUE_ZERO ? WHITE : BLACK];
     Value ev = Value((eg * int(f)) / SCALE_FACTOR_NORMAL);
 
     int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;

@@ -996,7 +996,7 @@ namespace {
 
     // Step 2. Check for aborted search and immediate draw
     if (AbortSearch || ThreadsMgr.thread_should_stop(threadID))
-        return Value(0);
+        return VALUE_ZERO;
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
@@ -1493,7 +1493,7 @@ namespace {
       {
           futilityValue =  futilityBase
                          + pos.endgame_value_of_piece_on(move_to(move))
-                         + (move_is_ep(move) ? PawnValueEndgame : Value(0));
+                         + (move_is_ep(move) ? PawnValueEndgame : VALUE_ZERO);
 
           if (futilityValue < alpha)
           {
@@ -1884,7 +1884,7 @@ namespace {
     if (   captureOrPromotion
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
-            - pos.midgame_value_of_piece_on(move_to(m)) == Value(0))
+            - pos.midgame_value_of_piece_on(move_to(m)) == VALUE_ZERO)
         && !move_is_promotion(m)
         && !move_is_ep(m))
     {
