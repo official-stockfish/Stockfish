@@ -90,7 +90,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
   if (p.is_check())
       phasePtr = EvasionsPhaseTable;
-  else if (d > Depth(0))
+  else if (d > DEPTH_ZERO)
   {
       // Consider sligtly negative captures as good if at low
       // depth and far from beta.
@@ -99,7 +99,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
       phasePtr = MainSearchPhaseTable;
   }
-  else if (d == Depth(0))
+  else if (d == DEPTH_ZERO)
       phasePtr = QsearchWithChecksPhaseTable;
   else
   {
