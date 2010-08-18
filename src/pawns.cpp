@@ -214,7 +214,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       pi->qsStormValue[Us] += QStormTable[relative_square(Us, s)] + bonus;
 
       // Our rank plus previous one. Used for chain detection.
-      b = rank_bb(r) | rank_bb(Us == WHITE ? r - 1 : r + 1);
+      b = rank_bb(r) | rank_bb(Us == WHITE ? r - Rank(1) : r + Rank(1));
 
       // Passed, isolated, doubled or member of a pawn
       // chain (but not the backward one) ?

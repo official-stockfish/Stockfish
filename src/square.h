@@ -77,22 +77,6 @@ const int FlopMask = 07;
 //// Inline functions
 ////
 
-inline File operator+ (File x, int i) { return File(int(x) + i); }
-inline File operator+ (File x, File y) { return x + int(y); }
-inline void operator++ (File &x, int) { x = File(int(x) + 1); }
-inline void operator+= (File &x, int i) { x = File(int(x) + i); }
-inline File operator- (File x, int i) { return File(int(x) - i); }
-inline void operator-- (File &x, int) { x = File(int(x) - 1); }
-inline void operator-= (File &x, int i) { x = File(int(x) - i); }
-
-inline Rank operator+ (Rank x, int i) { return Rank(int(x) + i); }
-inline Rank operator+ (Rank x, Rank y) { return x + int(y); }
-inline void operator++ (Rank &x, int) { x = Rank(int(x) + 1); }
-inline void operator+= (Rank &x, int i) { x = Rank(int(x) + i); }
-inline Rank operator- (Rank x, int i) { return Rank(int(x) - i); }
-inline void operator-- (Rank &x, int) { x = Rank(int(x) - 1); }
-inline void operator-= (Rank &x, int i) { x = Rank(int(x) - i); }
-
 inline Square operator+ (Square x, int i) { return Square(int(x) + i); }
 inline void operator++ (Square &x, int) { x = Square(int(x) + 1); }
 inline void operator+= (Square &x, int i) { x = Square(int(x) + i); }
@@ -103,6 +87,7 @@ inline Square operator+ (Square x, SquareDelta i) { return Square(int(x) + i); }
 inline void operator+= (Square &x, SquareDelta i) { x = Square(int(x) + i); }
 inline Square operator- (Square x, SquareDelta i) { return Square(int(x) - i); }
 inline void operator-= (Square &x, SquareDelta i) { x = Square(int(x) - i); }
+
 inline SquareDelta operator- (Square x, Square y) {
   return SquareDelta(int(x) - int(y));
 }

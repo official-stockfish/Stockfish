@@ -182,7 +182,7 @@ void Position::from_fen(const string& fen) {
   {
       if (isdigit(token))
       {
-          file += token - '0'; // Skip the given number of files
+          file += File(token - '0'); // Skip the given number of files
           continue;
       }
       else if (token == '/')
