@@ -34,18 +34,4 @@ enum Depth {
 };
 
 
-////
-//// Inline functions
-////
-
-inline void operator+= (Depth &d1, Depth d2) { d1 = Depth(int(d1) + int(d2)); }
-inline void operator*= (Depth &d, int i) { d = Depth(int(d) * i); }
-inline void operator/= (Depth &d, int i) { d = Depth(int(d) / i); }
-
-inline Depth operator+ (Depth d1, Depth d2) { return Depth(int(d1) + int(d2)); }
-inline Depth operator- (Depth d1, Depth d2) { return Depth(int(d1) - int(d2)); }
-inline Depth operator* (int i, Depth d) { return Depth(int(d) * i); }
-inline Depth operator/ (Depth d, int i) { return Depth(int(d) / i); }
-
-
 #endif // !defined(DEPTH_H_INCLUDED)

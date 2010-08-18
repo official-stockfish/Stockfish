@@ -1075,9 +1075,9 @@ namespace {
 
     Value eg = eg_value(v);
     ScaleFactor f = sf[eg > Value(0) ? WHITE : BLACK];
-    Value ev = Value((eg * f) / SCALE_FACTOR_NORMAL);
+    Value ev = Value((eg * int(f)) / SCALE_FACTOR_NORMAL);
 
-    int result = (mg_value(v) * ph + ev * (128 - ph)) / 128;
+    int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;
     return Value(result & ~(GrainSize - 1));
   }
 

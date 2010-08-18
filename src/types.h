@@ -109,4 +109,29 @@ inline void __cpuid(int CPUInfo[4], int)
 }
 #endif
 
+
+// Templetized enum operations, we avoid to repeat the same inlines for each
+// different enum.
+
+template<typename T>
+inline T operator+ (const T d1, const T d2) { return T(int(d1) + int(d2)); }
+
+template<typename T>
+inline T operator- (const T d1, const T d2) { return T(int(d1) - int(d2)); }
+
+template<typename T>
+inline T operator* (int i, const T d) { return T(int(d) * i); }
+
+template<typename T>
+inline T operator/ (const T d, int i) { return T(int(d) / i); }
+
+template<typename T>
+inline void operator+= (T& d1, const T d2) { d1 = d1 + d2; }
+
+template<typename T>
+inline void operator*= (T& d, int i) { d = T(int(d) * i); }
+
+template<typename T>
+inline void operator/= (T &d, int i) { d = T(int(d) / i); }
+
 #endif // !defined(TYPES_H_INCLUDED)
