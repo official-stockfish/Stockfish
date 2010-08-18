@@ -57,15 +57,6 @@ const int SlidingArray[18] = {
 //// Inline functions
 ////
 
-inline Piece operator+ (Piece p, int i) { return Piece(int(p) + i); }
-inline void operator++ (Piece &p, int) { p = Piece(int(p) + 1); }
-inline Piece operator- (Piece p, int i) { return Piece(int(p) - i); }
-inline void operator-- (Piece &p, int) { p = Piece(int(p) - 1); }
-inline PieceType operator+ (PieceType p, int i) {return PieceType(int(p) + i);}
-inline void operator++ (PieceType &p, int) { p = PieceType(int(p) + 1); }
-inline PieceType operator- (PieceType p, int i) {return PieceType(int(p) - i);}
-inline void operator-- (PieceType &p, int) { p = PieceType(int(p) - 1); }
-
 inline PieceType type_of_piece(Piece p)  {
   return PieceType(int(p) & 7);
 }

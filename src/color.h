@@ -42,8 +42,6 @@ enum SquareColor {
 //// Inline functions
 ////
 
-inline void operator++ (Color &c, int) { c = Color(int(c) + 1); }
-
 inline Color opposite_color(Color c) {
   return Color(int(c) ^ 1);
 }
