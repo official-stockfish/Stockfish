@@ -77,20 +77,10 @@ const int FlopMask = 07;
 //// Inline functions
 ////
 
-inline Square operator+ (Square x, int i) { return Square(int(x) + i); }
-inline void operator++ (Square &x, int) { x = Square(int(x) + 1); }
-inline void operator+= (Square &x, int i) { x = Square(int(x) + i); }
-inline Square operator- (Square x, int i) { return Square(int(x) - i); }
-inline void operator-- (Square &x, int) { x = Square(int(x) - 1); }
-inline void operator-= (Square &x, int i) { x = Square(int(x) - i); }
-inline Square operator+ (Square x, SquareDelta i) { return Square(int(x) + i); }
-inline void operator+= (Square &x, SquareDelta i) { x = Square(int(x) + i); }
-inline Square operator- (Square x, SquareDelta i) { return Square(int(x) - i); }
-inline void operator-= (Square &x, SquareDelta i) { x = Square(int(x) - i); }
-
-inline SquareDelta operator- (Square x, Square y) {
-  return SquareDelta(int(x) - int(y));
-}
+inline Square operator+ (Square x, SquareDelta i) { return x + Square(i); }
+inline void operator+= (Square& x, SquareDelta i) { x = x + Square(i); }
+inline Square operator- (Square x, SquareDelta i) { return x - Square(i); }
+inline void operator-= (Square& x, SquareDelta i) { x = x - Square(i); }
 
 inline Square make_square(File f, Rank r) {
   return Square(int(f) | (int(r) << 3));

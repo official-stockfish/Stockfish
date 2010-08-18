@@ -126,6 +126,9 @@ template<typename T>
 inline T operator/ (const T d, int i) { return T(int(d) / i); }
 
 template<typename T>
+inline T operator- (const T d) { return T(-int(d)); }
+
+template<typename T>
 inline void operator++ (T& d, int) { d = T(int(d) + 1); }
 
 template<typename T>
