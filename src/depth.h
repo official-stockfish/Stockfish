@@ -26,17 +26,10 @@
 ////
 
 enum Depth {
-  DEPTH_ZERO = 0,
-  DEPTH_MAX = 200,  //  100 * OnePly;
-  DEPTH_NONE = -254 // -127 * OnePly
+
+  OnePly = 2,
+  DEPTH_NONE = -127 * OnePly
 };
-
-
-////
-//// Constants
-////
-
-const Depth OnePly = Depth(2);
 
 
 ////

@@ -1897,7 +1897,7 @@ namespace {
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && pos.see_sign(m) >= 0)
     {
-        result += OnePly/2;
+        result += OnePly / 2;
         *dangerous = true;
     }
 
