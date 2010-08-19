@@ -1179,7 +1179,7 @@ namespace {
                            && tte
                            && tte->move()
                            && !excludedMove // Do not allow recursive singular extension search
-                           && is_lower_bound(tte->type())
+                           && (tte->type() & VALUE_TYPE_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
 
     // Step 10. Loop through moves
@@ -1957,8 +1957,8 @@ namespace {
               || v >= Max(value_mate_in(PLY_MAX), beta)
               || v < Min(value_mated_in(PLY_MAX), beta))
 
-          && (   (is_lower_bound(tte->type()) && v >= beta)
-              || (is_upper_bound(tte->type()) && v < beta));
+          && (   ((tte->type() & VALUE_TYPE_LOWER) && v >= beta)
+              || ((tte->type() & VALUE_TYPE_UPPER) && v < beta));
   }
 
 
@@ -1971,8 +1971,8 @@ namespace {
 
       Value v = value_from_tt(tte->value(), ply);
 
-      if (   (is_lower_bound(tte->type()) && v >= defaultEval)
-          || (is_upper_bound(tte->type()) && v < defaultEval))
+      if (   ((tte->type() & VALUE_TYPE_LOWER) && v >= defaultEval)
+          || ((tte->type() & VALUE_TYPE_UPPER) && v < defaultEval))
           return v;
 
       return defaultEval;

@@ -163,12 +163,4 @@ inline Value value_mated_in(int ply) {
   return -VALUE_MATE + ply;
 }
 
-inline int is_upper_bound(ValueType vt) {
-  return vt & VALUE_TYPE_UPPER;
-}
-
-inline int is_lower_bound(ValueType vt) {
-  return vt & VALUE_TYPE_LOWER;
-}
-
 #endif // !defined(VALUE_H_INCLUDED)
