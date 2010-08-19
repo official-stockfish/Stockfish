@@ -71,9 +71,15 @@ struct PieceLetters : std::map<char, Piece> {
     }
 };
 
+
 ////
-//// Variables
+//// Constants and variables
 ////
+
+/// Bonus for having the side to move (modified by Joona Kiiski)
+
+static const Score TempoValue = make_score(48, 22);
+
 
 Key Position::zobrist[2][8][64];
 Key Position::zobEp[64];

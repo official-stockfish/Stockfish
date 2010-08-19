@@ -28,6 +28,33 @@
 
 using namespace std;
 
+// Tables indexed by Piece
+
+const Value PieceValueMidgame[17] = {
+  VALUE_ZERO,
+  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+  RookValueMidgame, QueenValueMidgame,
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+  RookValueMidgame, QueenValueMidgame,
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
+};
+
+const Value PieceValueEndgame[17] = {
+  VALUE_ZERO,
+  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
+  RookValueEndgame, QueenValueEndgame,
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
+  RookValueEndgame, QueenValueEndgame,
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
+};
+
+const int SlidingArray[18] = {
+  0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0
+};
+
+
 ////
 //// Functions
 ////

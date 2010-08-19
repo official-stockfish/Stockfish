@@ -27,6 +27,7 @@
 
 #include "color.h"
 #include "square.h"
+#include "value.h"
 
 
 ////
@@ -51,9 +52,26 @@ ENABLE_OPERATORS_ON(Piece);
 //// Constants
 ////
 
-const int SlidingArray[18] = {
-  0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0
-};
+/// Important: If the material values are changed, one must also
+/// adjust the piece square tables, and the method game_phase() in the
+/// Position class!
+///
+/// Values modified by Joona Kiiski
+
+const Value PawnValueMidgame   = Value(0x0C6);
+const Value PawnValueEndgame   = Value(0x102);
+const Value KnightValueMidgame = Value(0x331);
+const Value KnightValueEndgame = Value(0x34E);
+const Value BishopValueMidgame = Value(0x344);
+const Value BishopValueEndgame = Value(0x359);
+const Value RookValueMidgame   = Value(0x4F6);
+const Value RookValueEndgame   = Value(0x4FE);
+const Value QueenValueMidgame  = Value(0x9D9);
+const Value QueenValueEndgame  = Value(0x9FE);
+
+extern const Value PieceValueMidgame[17];
+extern const Value PieceValueEndgame[17];
+extern const int SlidingArray[18];
 
 
 ////
@@ -73,7 +91,7 @@ inline Piece piece_of_color_and_type(Color c, PieceType pt) {
 }
 
 inline int piece_is_slider(Piece p) {
-  return SlidingArray[int(p)];
+  return SlidingArray[p];
 }
 
 inline SquareDelta pawn_push(Color c) {

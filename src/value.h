@@ -100,54 +100,6 @@ inline Score operator*(Score s1, Score s2);
 
 
 ////
-//// Constants and variables
-////
-
-/// Piece values, middle game and endgame
-
-/// Important: If the material values are changed, one must also
-/// adjust the piece square tables, and the method game_phase() in the
-/// Position class!
-///
-/// Values modified by Joona Kiiski
-
-const Value PawnValueMidgame   = Value(0x0C6);
-const Value PawnValueEndgame   = Value(0x102);
-const Value KnightValueMidgame = Value(0x331);
-const Value KnightValueEndgame = Value(0x34E);
-const Value BishopValueMidgame = Value(0x344);
-const Value BishopValueEndgame = Value(0x359);
-const Value RookValueMidgame   = Value(0x4F6);
-const Value RookValueEndgame   = Value(0x4FE);
-const Value QueenValueMidgame  = Value(0x9D9);
-const Value QueenValueEndgame  = Value(0x9FE);
-
-const Value PieceValueMidgame[17] = {
-  VALUE_ZERO,
-  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-  RookValueMidgame, QueenValueMidgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
-  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-  RookValueMidgame, QueenValueMidgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
-};
-
-const Value PieceValueEndgame[17] = {
-  VALUE_ZERO,
-  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
-  RookValueEndgame, QueenValueEndgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
-  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
-  RookValueEndgame, QueenValueEndgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
-};
-
-/// Bonus for having the side to move (modified by Joona Kiiski)
-
-const Score TempoValue = make_score(48, 22);
-
-
-////
 //// Inline functions
 ////
 
