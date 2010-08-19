@@ -117,7 +117,7 @@ namespace {
 
   struct RootMove {
 
-    RootMove() { nodes = cumulativeNodes = ourBeta = theirBeta = 0ULL; }
+    RootMove() { mp_score = 0; nodes = cumulativeNodes = ourBeta = theirBeta = 0ULL; }
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
@@ -125,11 +125,12 @@ namespace {
     // have equal score but m1 has the higher beta cut-off count.
     bool operator<(const RootMove& m) const {
 
-        return score != m.score ? score < m.score : theirBeta <= m.theirBeta;
+        return score != m.score ? score < m.score : mp_score <= m.mp_score;
     }
 
     Move move;
     Value score;
+    int mp_score;
     int64_t nodes, cumulativeNodes, ourBeta, theirBeta;
     Move pv[PLY_MAX_PLUS_2];
   };
@@ -142,6 +143,8 @@ namespace {
 
   public:
     RootMoveList(Position& pos, Move searchMoves[]);
+
+    void set_mp_scores(const Position &pos);
 
     int move_count() const { return count; }
     Move get_move(int moveNum) const { return moves[moveNum].move; }
@@ -739,6 +742,7 @@ namespace {
     while (1)
     {
         // Sort the moves before to (re)search
+        rml.set_mp_scores(pos);
         rml.sort();
 
         // Step 10. Loop through all moves in the root move list
@@ -2776,6 +2780,26 @@ namespace {
     sort();
   }
 
+
+  void RootMoveList::set_mp_scores(const Position &pos)
+  {
+      MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
+      Move move;
+
+      int moveCount = 0;
+      while ((move = mp.get_next_move()) != MOVE_NONE)
+      {
+          moveCount++;
+          for (int i = 0; i < count; i++)
+          {
+              if (moves[i].move == move)
+              {
+                  moves[i].mp_score = 512 - moveCount;
+                  break;
+              }
+          }
+      }
+  }
 
   // RootMoveList simple methods definitions
 
