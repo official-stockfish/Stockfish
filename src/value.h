@@ -163,28 +163,12 @@ inline Value value_mated_in(int ply) {
   return -VALUE_MATE + ply;
 }
 
-inline bool is_upper_bound(ValueType vt) {
-  return (int(vt) & int(VALUE_TYPE_UPPER)) != 0;
+inline int is_upper_bound(ValueType vt) {
+  return vt & VALUE_TYPE_UPPER;
 }
 
-inline bool is_lower_bound(ValueType vt) {
-  return (int(vt) & int(VALUE_TYPE_LOWER)) != 0;
-}
-
-inline Value piece_value_midgame(PieceType pt) {
-  return PieceValueMidgame[pt];
-}
-
-inline Value piece_value_endgame(PieceType pt) {
-  return PieceValueEndgame[pt];
-}
-
-inline Value piece_value_midgame(Piece p) {
-  return PieceValueMidgame[p];
-}
-
-inline Value piece_value_endgame(Piece p) {
-  return PieceValueEndgame[p];
+inline int is_lower_bound(ValueType vt) {
+  return vt & VALUE_TYPE_LOWER;
 }
 
 #endif // !defined(VALUE_H_INCLUDED)

@@ -889,7 +889,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->value += pst(us, promotion, to);
 
           // Update material
-          st->npMaterial[us] += piece_value_midgame(promotion);
+          st->npMaterial[us] += PieceValueMidgame[promotion];
       }
   }
 
@@ -962,7 +962,7 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
         st->pawnKey ^= zobrist[them][PAWN][capsq];
     }
     else
-        st->npMaterial[them] -= piece_value_midgame(capture);
+        st->npMaterial[them] -= PieceValueMidgame[capture];
 
     // Remove captured piece
     clear_bit(&(byColorBB[them]), capsq);
@@ -1694,8 +1694,9 @@ Value Position::compute_non_pawn_material(Color c) const {
       while (b)
       {
           assert(piece_on(first_1(b)) == piece_of_color_and_type(c, pt));
+
           pop_1st_bit(&b);
-          result += piece_value_midgame(pt);
+          result += PieceValueMidgame[pt];
       }
   }
   return result;

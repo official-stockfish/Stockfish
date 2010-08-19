@@ -377,11 +377,11 @@ inline bool Position::square_is_occupied(Square s) const {
 }
 
 inline Value Position::midgame_value_of_piece_on(Square s) const {
-  return piece_value_midgame(piece_on(s));
+  return PieceValueMidgame[piece_on(s)];
 }
 
 inline Value Position::endgame_value_of_piece_on(Square s) const {
-  return piece_value_endgame(piece_on(s));
+  return PieceValueEndgame[piece_on(s)];
 }
 
 inline Color Position::side_to_move() const {
