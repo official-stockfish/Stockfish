@@ -21,6 +21,8 @@
 #if !defined(DEPTH_H_INCLUDED)
 #define DEPTH_H_INCLUDED
 
+#include "types.h"
+
 ////
 //// Types
 ////
@@ -33,5 +35,6 @@ enum Depth {
   DEPTH_NONE = -127 * ONE_PLY
 };
 
+ENABLE_OPERATORS_ON(Depth);
 
 #endif // !defined(DEPTH_H_INCLUDED)

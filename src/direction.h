@@ -45,6 +45,8 @@ enum SignedDirection {
   SIGNED_DIR_NONE = 8
 };
 
+ENABLE_OPERATORS_ON(SignedDirection);
+
 
 ////
 //// Variables

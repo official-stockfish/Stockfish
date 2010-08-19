@@ -64,6 +64,11 @@ enum SquareDelta {
   DELTA_NN = 020, DELTA_NNE = 021
 };
 
+ENABLE_OPERATORS_ON(Square);
+ENABLE_OPERATORS_ON(File);
+ENABLE_OPERATORS_ON(Rank);
+ENABLE_OPERATORS_ON(SquareDelta);
+
 
 ////
 //// Constants

@@ -50,6 +50,8 @@ enum Value {
   VALUE_ENSURE_SIGNED = -1
 };
 
+ENABLE_OPERATORS_ON(Value);
+
 
 enum ScaleFactor {
   SCALE_FACTOR_ZERO   = 0,
@@ -65,7 +67,13 @@ enum ScaleFactor {
 
 // Compiler is free to choose the enum type as long as can keep
 // its data, so ensure Score to be an integer type.
-enum Score { ENSURE_32_BITS_SIZE_P = (1 << 16), ENSURE_32_BITS_SIZE_N = -(1 << 16)};
+enum Score {
+    ENSURE_32_BITS_SIZE_P =  (1 << 16),
+    ENSURE_32_BITS_SIZE_N = -(1 << 16)
+};
+
+ENABLE_OPERATORS_ON(Score);
+
 
 // Extracting the _signed_ lower and upper 16 bits it not so trivial
 // because according to the standard a simple cast to short is

@@ -21,6 +21,7 @@
 #if !defined(COLOR_H_INCLUDED)
 #define COLOR_H_INCLUDED
 
+#include "types.h"
 
 ////
 //// Types
@@ -36,6 +37,8 @@ enum SquareColor {
   DARK,
   LIGHT
 };
+
+ENABLE_OPERATORS_ON(Color);
 
 
 ////

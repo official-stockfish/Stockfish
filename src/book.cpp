@@ -366,7 +366,7 @@ void Book::open(const string& fName) {
 
   // Get the book size in number of entries
   seekg(0, ios::end);
-  bookSize = tellg() / EntrySize;
+  bookSize = long(tellg()) / EntrySize;
   seekg(0, ios::beg);
 
   if (!good())
