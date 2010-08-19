@@ -56,7 +56,7 @@ public:
 private:
   void score_captures();
   void score_noncaptures();
-  void score_evasions_or_checks();
+  void score_evasions();
   void go_next_phase();
 
   const Position& pos;

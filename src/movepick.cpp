@@ -157,7 +157,7 @@ void MovePicker::go_next_phase() {
   case PH_EVASIONS:
       assert(pos.is_check());
       lastMove = generate_evasions(pos, moves);
-      score_evasions_or_checks();
+      score_evasions();
       return;
 
   case PH_QCAPTURES:
@@ -167,7 +167,6 @@ void MovePicker::go_next_phase() {
 
   case PH_QCHECKS:
       lastMove = generate_non_capture_checks(pos, moves);
-      score_evasions_or_checks();
       return;
 
   case PH_STOP:
@@ -232,7 +231,7 @@ void MovePicker::score_noncaptures() {
   }
 }
 
-void MovePicker::score_evasions_or_checks() {
+void MovePicker::score_evasions() {
   // Try good captures ordered by MVV/LVA, then non-captures if
   // destination square is not under attack, ordered by history
   // value, and at the end bad-captures and non-captures with a
