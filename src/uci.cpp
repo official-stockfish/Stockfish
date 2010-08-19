@@ -46,6 +46,9 @@ using namespace std;
 
 namespace {
 
+  // FEN string for the initial position
+  const string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
   // UCIInputParser is a class for parsing UCI input. The class
   // is actually a string stream built on a given input string.
 

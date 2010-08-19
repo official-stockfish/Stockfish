@@ -50,9 +50,6 @@
 //// Constants
 ////
 
-/// FEN string for the initial position
-const std::string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 /// Maximum number of plies per game (220 should be enough, because the
 /// maximum search depth is 100, and during position setup we reset the
 /// move counter for every non-reversible move).
