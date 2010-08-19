@@ -185,7 +185,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   Rank r;
   int bonus;
   bool passed, isolated, doubled, opposed, chain, backward, candidate;
-  Score value = make_score(0, 0);
+  Score value = SCORE_ZERO;
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
   // Initialize pawn storm scores by giving bonuses for open files

@@ -634,7 +634,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b;
-    Score bonus = make_score(0, 0);
+    Score bonus = SCORE_ZERO;
 
     // Enemy pieces not defended by a pawn and under our attack
     Bitboard weakEnemies =  pos.pieces_of_color(Them)

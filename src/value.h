@@ -68,8 +68,9 @@ enum ScaleFactor {
 // Compiler is free to choose the enum type as long as can keep
 // its data, so ensure Score to be an integer type.
 enum Score {
-    ENSURE_32_BITS_SIZE_P =  (1 << 16),
-    ENSURE_32_BITS_SIZE_N = -(1 << 16)
+    SCORE_ZERO = 0,
+    SCORE_ENSURE_32_BITS_SIZE_P =  (1 << 16),
+    SCORE_ENSURE_32_BITS_SIZE_N = -(1 << 16)
 };
 
 ENABLE_OPERATORS_ON(Score);

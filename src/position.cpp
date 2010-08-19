@@ -1658,7 +1658,7 @@ Key Position::compute_material_key() const {
 /// updated by do_move and undo_move when the program is running in debug mode.
 Score Position::compute_value() const {
 
-  Score result = make_score(0, 0);
+  Score result = SCORE_ZERO;
   Bitboard b;
   Square s;
 
