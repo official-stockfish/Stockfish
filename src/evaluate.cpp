@@ -727,11 +727,14 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
+    Score bonus = SCORE_ZERO;
     Bitboard squaresToQueen, defendedSquares, unsafeSquares, supportingPawns;
     Bitboard b = ei.pi->passed_pawns(Us);
 
-    while (b)
-    {
+    if (!b)
+        return;
+
+    do {
         Square s = pop_1st_bit(&b);
 
         assert(pos.pawn_is_passed(Us, s));
@@ -806,11 +809,12 @@ namespace {
             else if (pos.pieces(ROOK, QUEEN, Them))
                 ebonus -= ebonus / 4;
         }
+        bonus += make_score(mbonus, ebonus);
 
-        // Add the scores for this pawn to the middle game and endgame eval
-        ei.value += Sign[Us] * apply_weight(make_score(mbonus, ebonus), Weights[PassedPawns]);
+    } while (b);
 
-    } // while
+    // Add the scores to the middle game and endgame eval
+    ei.value += Sign[Us] * apply_weight(bonus, Weights[PassedPawns]);
   }
 
 
