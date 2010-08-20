@@ -1035,7 +1035,7 @@ namespace {
     if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
     {
         // Refresh tte entry to avoid aging
-        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove, tte->static_value(), tte->king_danger());
+        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove, tte->static_value(), tte->static_value_margin());
 
         ss->bestMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
@@ -1051,13 +1051,13 @@ namespace {
         assert(tte->static_value() != VALUE_NONE);
 
         ss->eval = tte->static_value();
-        ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+        ei.margin[pos.side_to_move()] = tte->static_value_margin();
         refinedValue = refine_eval(tte, ss->eval, ply);
     }
     else
     {
         refinedValue = ss->eval = evaluate(pos, ei);
-        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.margin[pos.side_to_move()]);
     }
 
     // Save gain for the parent non-capture move
@@ -1371,7 +1371,7 @@ namespace {
 
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     move = (bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove);
-    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ei.margin[pos.side_to_move()]);
 
     // Update killers and history only for non capture moves that fails high
     if (    bestValue >= beta
@@ -1442,7 +1442,7 @@ namespace {
         {
             assert(tte->static_value() != VALUE_NONE);
 
-            ei.kingDanger[pos.side_to_move()] = tte->king_danger();
+            ei.margin[pos.side_to_move()] = tte->static_value_margin();
             bestValue = tte->static_value();
         }
         else
@@ -1455,7 +1455,7 @@ namespace {
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, ei.kingDanger[pos.side_to_move()]);
+                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, ei.margin[pos.side_to_move()]);
 
             return bestValue;
         }
@@ -1467,7 +1467,7 @@ namespace {
         deepChecks = (depth == -ONE_PLY && bestValue >= beta - PawnValueMidgame / 8);
 
         // Futility pruning parameters, not needed when in check
-        futilityBase = bestValue + FutilityMarginQS + ei.kingDanger[pos.side_to_move()];
+        futilityBase = bestValue + FutilityMarginQS + ei.margin[pos.side_to_move()];
         enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
     }
 
@@ -1552,7 +1552,7 @@ namespace {
     // Update transposition table
     Depth d = (depth == DEPTH_ZERO ? DEPTH_ZERO : DEPTH_ZERO - ONE_PLY);
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, ei.kingDanger[pos.side_to_move()]);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, ei.margin[pos.side_to_move()]);
 
     // Update killers only for checking moves that fails high
     if (    bestValue >= beta
@@ -2251,7 +2251,7 @@ namespace {
         if (!tte || tte->move() != pv[i])
         {
             v = (p.is_check() ? VALUE_NONE : evaluate(p, ei));
-            TT.store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, ei.kingDanger[pos.side_to_move()]);
+            TT.store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, ei.margin[pos.side_to_move()]);
         }
         p.do_move(pv[i], st);
     }

@@ -47,7 +47,7 @@ class Position;
 
 struct EvalInfo {
 
-  EvalInfo() { kingDanger[0] = kingDanger[1] = VALUE_ZERO; }
+  EvalInfo() { margin[WHITE] = margin[BLACK] = VALUE_ZERO; }
 
   // Middle game and endgame evaluations
   Score value;
@@ -89,8 +89,8 @@ struct EvalInfo {
   // 2 to kingAdjacentZoneAttacksCount[BLACK].
   int kingAdjacentZoneAttacksCount[2];
 
-  // Value of the danger for the king of the given color
-  Value kingDanger[2];
+  // Value of the score margin we should consider for the given color
+  Value margin[2];
 };
 
 

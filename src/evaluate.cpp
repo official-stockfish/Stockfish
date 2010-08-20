@@ -709,14 +709,14 @@ namespace {
         attackUnits = Min(99, Max(0, attackUnits));
 
         // Finally, extract the king danger score from the KingDangerTable[]
-        // array and subtract the score from evaluation. Set also ei.kingDanger[]
+        // array and subtract the score from evaluation. Set also ei.margin[]
         // value that will be used for pruning because this value can sometimes
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
         ei.value -= Sign[Us] * KingDangerTable[Us][attackUnits];
-        ei.kingDanger[Us] = mg_value(KingDangerTable[Us][attackUnits]);
+        ei.margin[Us] = mg_value(KingDangerTable[Us][attackUnits]);
     } else
-        ei.kingDanger[Us] = VALUE_ZERO;
+        ei.margin[Us] = VALUE_ZERO;
   }
 
 

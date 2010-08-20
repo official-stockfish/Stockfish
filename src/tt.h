@@ -43,7 +43,7 @@
 /// bit 64-79: value
 /// bit 80-95: depth
 /// bit 96-111: static value
-/// bit 112-127: king danger value
+/// bit 112-127: margin of static value
 ///
 /// the 32 bits of the data field are so defined
 ///
@@ -62,7 +62,7 @@ public:
       value16     = int16_t(v);
       depth16     = int16_t(d);
       staticValue = int16_t(statV);
-      kingDanger  = int16_t(kd);
+      staticValueMargin  = int16_t(kd);
   }
 
   uint32_t key() const { return key32; }
@@ -72,7 +72,7 @@ public:
   ValueType type() const { return ValueType((data >> 21) & 3); }
   int generation() const { return data >> 23; }
   Value static_value() const { return Value(staticValue); }
-  Value king_danger() const { return Value(kingDanger); }
+  Value static_value_margin() const { return Value(staticValueMargin); }
 
 private:
   uint32_t key32;
@@ -80,7 +80,7 @@ private:
   int16_t value16;
   int16_t depth16;
   int16_t staticValue;
-  int16_t kingDanger;
+  int16_t staticValueMargin;
 };
 
 
