@@ -147,9 +147,6 @@ namespace {
 
   #undef S
 
-  // Bonus for unstoppable passed pawns
-  const Value UnstoppablePawnValue = Value(0x500);
-
   // Rooks and queens on the 7th rank (modified by Joona Kiiski)
   const Score RookOn7thBonus  = make_score(47, 98);
   const Score QueenOn7thBonus = make_score(27, 54);
@@ -258,7 +255,6 @@ namespace {
   template<Color Us>
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
 
-  void evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei);
   void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
   void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
   inline Score apply_weight(Score v, Score weight);
@@ -336,10 +332,6 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   // Evaluate passed pawns, we need full attack info including king
   evaluate_passed_pawns<WHITE>(pos, ei);
   evaluate_passed_pawns<BLACK>(pos, ei);
-
-  // If one side has only a king, check whether exsists any unstoppable passed pawn
-  if (!pos.non_pawn_material(WHITE) || !pos.non_pawn_material(BLACK))
-      evaluate_unstoppable_pawns(pos, ei);
 
   Phase phase = ei.mi->game_phase();
 
@@ -870,98 +862,6 @@ namespace {
         ei.value += Sign[Us] * apply_weight(make_score(mbonus, ebonus), Weights[PassedPawns]);
 
     } // while
-  }
-
-
-  // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides
-
-  void evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei) {
-
-    int movesToGo[2] = {0, 0};
-    Square pawnToGo[2] = {SQ_NONE, SQ_NONE};
-
-    for (Color c = WHITE; c <= BLACK; c++)
-    {
-        // Skip evaluation if other side has non-pawn pieces
-        if (pos.non_pawn_material(opposite_color(c)))
-            continue;
-
-        Bitboard b = ei.pi->passed_pawns() & pos.pieces_of_color(c);
-
-        while (b)
-        {
-            Square s = pop_1st_bit(&b);
-            Square queeningSquare = relative_square(c, make_square(square_file(s), RANK_8));
-            int d =  square_distance(s, queeningSquare)
-                   - int(relative_rank(c, s) == RANK_2) // Double pawn push
-                   - square_distance(pos.king_square(opposite_color(c)), queeningSquare)
-                   + int(c != pos.side_to_move());
-
-            // Do we protect the path to queening ?
-            bool pathDefended = (ei.attacked_by(c) & squares_in_front_of(c, s)) == squares_in_front_of(c, s);
-
-            if (d < 0 || pathDefended)
-            {
-                int mtg = RANK_8 - relative_rank(c, s) - int(relative_rank(c, s) == RANK_2);
-                int blockerCount = count_1s_max_15(squares_in_front_of(c, s) & pos.occupied_squares());
-                mtg += blockerCount;
-                d += blockerCount;
-                if ((d < 0 || pathDefended) && (!movesToGo[c] || movesToGo[c] > mtg))
-                {
-                    movesToGo[c] = mtg;
-                    pawnToGo[c] = s;
-                }
-            }
-        }
-    }
-
-    // Neither side has an unstoppable passed pawn?
-    if (!(movesToGo[WHITE] | movesToGo[BLACK]))
-        return;
-
-    // Does only one side have an unstoppable passed pawn?
-    if (!movesToGo[WHITE] || !movesToGo[BLACK])
-    {
-        Color winnerSide = movesToGo[WHITE] ? WHITE : BLACK;
-        ei.value += make_score(0, Sign[winnerSide] * (UnstoppablePawnValue - Value(0x40 * movesToGo[winnerSide])));
-    }
-    else
-    {   // Both sides have unstoppable pawns! Try to find out who queens
-        // first. We begin by transforming 'movesToGo' to the number of
-        // plies until the pawn queens for both sides.
-        movesToGo[WHITE] *= 2;
-        movesToGo[BLACK] *= 2;
-        movesToGo[pos.side_to_move()]--;
-
-        Color winnerSide = movesToGo[WHITE] < movesToGo[BLACK] ? WHITE : BLACK;
-        Color loserSide = opposite_color(winnerSide);
-
-        // If one side queens at least three plies before the other, that side wins
-        if (movesToGo[winnerSide] <= movesToGo[loserSide] - 3)
-            ei.value += Sign[winnerSide] * make_score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
-
-        // If one side queens one ply before the other and checks the king or attacks
-        // the undefended opponent's queening square, that side wins. To avoid cases
-        // where the opponent's king could move somewhere before first pawn queens we
-        // consider only free paths to queen for both pawns.
-        else if (   !(squares_in_front_of(WHITE, pawnToGo[WHITE]) & pos.occupied_squares())
-                 && !(squares_in_front_of(BLACK, pawnToGo[BLACK]) & pos.occupied_squares()))
-        {
-            assert(movesToGo[loserSide] - movesToGo[winnerSide] == 1);
-
-            Square winnerQSq = relative_square(winnerSide, make_square(square_file(pawnToGo[winnerSide]), RANK_8));
-            Square loserQSq = relative_square(loserSide, make_square(square_file(pawnToGo[loserSide]), RANK_8));
-
-            Bitboard b = pos.occupied_squares();
-            clear_bit(&b, pawnToGo[winnerSide]);
-            clear_bit(&b, pawnToGo[loserSide]);
-            b = queen_attacks_bb(winnerQSq, b);
-
-            if (  (b & pos.pieces(KING, loserSide))
-                ||(bit_is_set(b, loserQSq) && !bit_is_set(ei.attacked_by(loserSide), loserQSq)))
-                ei.value += Sign[winnerSide] * make_score(0, UnstoppablePawnValue - Value(0x40 * (movesToGo[winnerSide]/2)));
-        }
-    }
   }
 
 
