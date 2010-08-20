@@ -982,7 +982,7 @@ namespace {
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
     Value bestValue, value, oldAlpha;
-    Value refinedValue, nullValue, futilityValueScaled; // Non-PV specific
+    Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
     bool isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
@@ -1182,6 +1182,7 @@ namespace {
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     singleEvasion = isCheck && mp.number_of_evasions() == 1;
+    futilityBase = ss->eval + margins[pos.side_to_move()];
     singularExtensionNode =   depth >= SingularExtensionDepth[PvNode]
                            && tte
                            && tte->move()
@@ -1253,7 +1254,7 @@ namespace {
           // We illogically ignore reduction condition depth >= 3*ONE_PLY for predicted depth,
           // but fixing this made program slightly weaker.
           Depth predictedDepth = newDepth - reduction<NonPV>(depth, moveCount);
-          futilityValueScaled =  ss->eval + futility_margin(predictedDepth, moveCount)
+          futilityValueScaled =  futilityBase + futility_margin(predictedDepth, moveCount)
                                + H.gain(pos.piece_on(move_from(move)), move_to(move));
 
           if (futilityValueScaled < beta)
