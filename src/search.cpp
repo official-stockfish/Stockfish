@@ -76,12 +76,9 @@ namespace {
     int active_threads() const { return ActiveThreads; }
     void set_active_threads(int newActiveThreads) { ActiveThreads = newActiveThreads; }
     void incrementNodeCounter(int threadID) { threads[threadID].nodes++; }
-    void incrementBetaCounter(Color us, Depth d, int threadID) { threads[threadID].betaCutOffs[us] += unsigned(d); }
 
     void resetNodeCounters();
-    void resetBetaCounters();
     int64_t nodes_searched() const;
-    void get_beta_counters(Color us, int64_t& our, int64_t& their) const;
     bool available_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
     bool thread_should_stop(int threadID) const;
@@ -117,7 +114,7 @@ namespace {
 
   struct RootMove {
 
-    RootMove() { mp_score = 0; nodes = cumulativeNodes = ourBeta = theirBeta = 0ULL; }
+    RootMove() : mp_score(0), nodes(0), cumulativeNodes(0) {}
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
@@ -131,7 +128,7 @@ namespace {
     Move move;
     Value score;
     int mp_score;
-    int64_t nodes, cumulativeNodes, ourBeta, theirBeta;
+    int64_t nodes, cumulativeNodes;
     Move pv[PLY_MAX_PLUS_2];
   };
 
@@ -144,17 +141,15 @@ namespace {
   public:
     RootMoveList(Position& pos, Move searchMoves[]);
 
-    void set_mp_scores(const Position &pos);
-
     int move_count() const { return count; }
     Move get_move(int moveNum) const { return moves[moveNum].move; }
     Value get_move_score(int moveNum) const { return moves[moveNum].score; }
     void set_move_score(int moveNum, Value score) { moves[moveNum].score = score; }
     Move get_move_pv(int moveNum, int i) const { return moves[moveNum].pv[i]; }
     int64_t get_move_cumulative_nodes(int moveNum) const { return moves[moveNum].cumulativeNodes; }
+    void score_moves(const Position& pos);
 
     void set_move_nodes(int moveNum, int64_t nodes);
-    void set_beta_counters(int moveNum, int64_t our, int64_t their);
     void set_move_pv(int moveNum, const Move pv[]);
     void sort();
     void sort_multipv(int n);
@@ -742,7 +737,7 @@ namespace {
     while (1)
     {
         // Sort the moves before to (re)search
-        rml.set_mp_scores(pos);
+        rml.score_moves(pos);
         rml.sort();
 
         // Step 10. Loop through all moves in the root move list
@@ -753,9 +748,6 @@ namespace {
 
             // Save the current node count before the move is searched
             nodes = ThreadsMgr.nodes_searched();
-
-            // Reset beta cut-off counters
-            ThreadsMgr.resetBetaCounters();
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
@@ -875,11 +867,7 @@ namespace {
             if (AbortSearch)
                 break;
 
-            // Remember beta-cutoff and searched nodes counts for this move. The
-            // info is used to sort the root moves for the next iteration.
-            int64_t our, their;
-            ThreadsMgr.get_beta_counters(pos.side_to_move(), our, their);
-            rml.set_beta_counters(i, our, their);
+            // Remember searched nodes counts for this move
             rml.set_move_nodes(i, ThreadsMgr.nodes_searched() - nodes);
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
@@ -1371,14 +1359,11 @@ namespace {
     TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ei.kingDanger[pos.side_to_move()]);
 
     // Update killers and history only for non capture moves that fails high
-    if (bestValue >= beta)
+    if (    bestValue >= beta
+        && !pos.move_is_capture_or_promotion(move))
     {
-        ThreadsMgr.incrementBetaCounter(pos.side_to_move(), depth, threadID);
-        if (!pos.move_is_capture_or_promotion(move))
-        {
             update_history(pos, move, depth, movesSearched, moveCount);
             update_killers(move, ss);
-        }
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -2324,12 +2309,6 @@ namespace {
         threads[i].nodes = 0ULL;
   }
 
-  void ThreadsManager::resetBetaCounters() {
-
-    for (int i = 0; i < MAX_THREADS; i++)
-        threads[i].betaCutOffs[WHITE] = threads[i].betaCutOffs[BLACK] = 0ULL;
-  }
-
   int64_t ThreadsManager::nodes_searched() const {
 
     int64_t result = 0ULL;
@@ -2337,16 +2316,6 @@ namespace {
         result += threads[i].nodes;
 
     return result;
-  }
-
-  void ThreadsManager::get_beta_counters(Color us, int64_t& our, int64_t& their) const {
-
-    our = their = 0UL;
-    for (int i = 0; i < MAX_THREADS; i++)
-    {
-        our += threads[i].betaCutOffs[us];
-        their += threads[i].betaCutOffs[opposite_color(us)];
-    }
   }
 
 
@@ -2780,25 +2749,22 @@ namespace {
     sort();
   }
 
+  // Score root moves using the standard way used in main search, the moves
+  // are scored according to the order in which are returned by MovePicker.
 
-  void RootMoveList::set_mp_scores(const Position &pos)
+  void RootMoveList::score_moves(const Position& pos)
   {
-      MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
       Move move;
+      int score = 1000;
+      MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
 
-      int moveCount = 0;
       while ((move = mp.get_next_move()) != MOVE_NONE)
-      {
-          moveCount++;
           for (int i = 0; i < count; i++)
-          {
               if (moves[i].move == move)
               {
-                  moves[i].mp_score = 512 - moveCount;
+                  moves[i].mp_score = score--;
                   break;
               }
-          }
-      }
   }
 
   // RootMoveList simple methods definitions
@@ -2807,12 +2773,6 @@ namespace {
 
     moves[moveNum].nodes = nodes;
     moves[moveNum].cumulativeNodes += nodes;
-  }
-
-  void RootMoveList::set_beta_counters(int moveNum, int64_t our, int64_t their) {
-
-    moves[moveNum].ourBeta = our;
-    moves[moveNum].theirBeta = their;
   }
 
   void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
