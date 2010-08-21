@@ -23,6 +23,7 @@
 ////
 
 #include <cassert>
+#include <cstring>
 #include <sstream>
 #include <map>
 
@@ -134,15 +135,14 @@ template<> const SFMap& EndgameFunctions::get<SF>() const { return maps.second; 
 
 /// MaterialInfoTable c'tor and d'tor, called once by each thread
 
-MaterialInfoTable::MaterialInfoTable(unsigned int numOfEntries) {
+MaterialInfoTable::MaterialInfoTable() {
 
-  size = numOfEntries;
-  entries = new MaterialInfo[size];
+  entries = new MaterialInfo[MaterialTableSize];
   funcs = new EndgameFunctions();
 
   if (!entries || !funcs)
   {
-      cerr << "Failed to allocate " << numOfEntries * sizeof(MaterialInfo)
+      cerr << "Failed to allocate " << MaterialTableSize * sizeof(MaterialInfo)
            << " bytes for material hash table." << endl;
       Application::exit_with_failure();
   }
@@ -181,7 +181,7 @@ Phase MaterialInfoTable::game_phase(const Position& pos) {
 MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   Key key = pos.get_material_key();
-  unsigned index = unsigned(key & (size - 1));
+  unsigned index = unsigned(key & (MaterialTableSize - 1));
   MaterialInfo* mi = entries + index;
 
   // If mi->key matches the position's material hash key, it means that we
@@ -191,7 +191,8 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
       return mi;
 
   // Clear the MaterialInfo object, and set its key
-  mi->clear();
+  memset(mi, 0, sizeof(MaterialInfo));
+  mi->factor[WHITE] = mi->factor[BLACK] = uint8_t(SCALE_FACTOR_NORMAL);
   mi->key = key;
 
   // Store game phase

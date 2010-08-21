@@ -229,10 +229,6 @@ namespace {
   MaterialInfoTable* MaterialTable[MAX_THREADS];
   PawnInfoTable* PawnTable[MAX_THREADS];
 
-  // Sizes of pawn and material hash tables
-  const int PawnTableSize = 16384;
-  const int MaterialTableSize = 1024;
-
   // Function prototypes
   template<bool HasPopCnt>
   Value do_evaluate(const Position& pos, EvalInfo& ei);
@@ -267,6 +263,14 @@ namespace {
 ////
 //// Functions
 ////
+
+
+/// Prefetches in pawn hash tables
+
+void prefetchPawn(Key key, int threadID) {
+
+    PawnTable[threadID]->prefetch(key);
+}
 
 /// evaluate() is the main evaluation function. It always computes two
 /// values, an endgame score and a middle game score, and interpolates
@@ -412,9 +416,9 @@ void init_eval(int threads) {
         continue;
     }
     if (!PawnTable[i])
-        PawnTable[i] = new PawnInfoTable(PawnTableSize);
+        PawnTable[i] = new PawnInfoTable();
     if (!MaterialTable[i])
-        MaterialTable[i] = new MaterialInfoTable(MaterialTableSize);
+        MaterialTable[i] = new MaterialInfoTable();
   }
 }
 
@@ -682,15 +686,11 @@ namespace {
 
     Bitboard undefended, b, b1, b2, safe;
     bool sente;
-    int attackUnits, shelter = 0;
+    int attackUnits;
     const Square ksq = pos.king_square(Us);
 
     // King shelter
-    if (relative_rank(Us, ksq) <= RANK_4)
-    {
-        shelter = ei.pi->get_king_shelter(pos, Us, ksq);
-        ei.value += Sign[Us] * make_score(shelter, 0);
-    }
+    ei.value += Sign[Us] * ei.pi->king_shelter(pos, Us, ksq);
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
@@ -717,7 +717,7 @@ namespace {
         attackUnits =  Min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended))
                      + InitKingDanger[relative_square(Us, ksq)]
-                     - shelter / 32;
+                     - mg_value(ei.pi->king_shelter(pos, Us, ksq)) / 32;
 
         // Analyse enemy's safe queen contact checks. First find undefended
         // squares around the king attacked by enemy queen...
@@ -779,7 +779,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard squaresToQueen, defendedSquares, unsafeSquares, supportingPawns;
-    Bitboard b = ei.pi->passed_pawns() & pos.pieces_of_color(Us);
+    Bitboard b = ei.pi->passed_pawns(Us);
 
     while (b)
     {

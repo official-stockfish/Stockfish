@@ -33,6 +33,8 @@
 //// Types
 ////
 
+const int MaterialTableSize = 1024;
+
 /// MaterialInfo is a class which contains various information about a
 /// material configuration. It contains a material balance evaluation,
 /// a function pointer to a special endgame evaluation function (which in
@@ -48,8 +50,6 @@ class MaterialInfo {
   friend class MaterialInfoTable;
 
 public:
-  MaterialInfo() : key(0) { clear(); }
-
   Score material_value() const;
   ScaleFactor scale_factor(const Position& pos, Color c) const;
   int space_weight() const;
@@ -58,8 +58,6 @@ public:
   Value evaluate(const Position& pos) const;
 
 private:
-  inline void clear();
-
   Key key;
   int16_t value;
   uint8_t factor[2];
@@ -78,14 +76,13 @@ class EndgameFunctions;
 class MaterialInfoTable {
 
 public:
-  MaterialInfoTable(unsigned numOfEntries);
+  MaterialInfoTable();
   ~MaterialInfoTable();
   MaterialInfo* get_material_info(const Position& pos);
 
   static Phase game_phase(const Position& pos);
 
 private:
-  unsigned size;
   MaterialInfo* entries;
   EndgameFunctions* funcs;
 };
@@ -103,20 +100,6 @@ inline Score MaterialInfo::material_value() const {
 
   return make_score(value, value);
 }
-
-
-/// MaterialInfo::clear() resets a MaterialInfo object to an empty state,
-/// with all slots at their default values but the key.
-
-inline void MaterialInfo::clear() {
-
-  value = 0;
-  factor[WHITE] = factor[BLACK] = uint8_t(SCALE_FACTOR_NORMAL);
-  evaluationFunction = NULL;
-  scalingFunction[WHITE] = scalingFunction[BLACK] = NULL;
-  spaceWeight = 0;
-}
-
 
 /// MaterialInfo::scale_factor takes a position and a color as input, and
 /// returns a scale factor for the given color. We have to provide the

@@ -110,12 +110,13 @@ namespace {
 
 /// PawnInfoTable c'tor and d'tor instantiated one each thread
 
-PawnInfoTable::PawnInfoTable(unsigned numOfEntries) : size(numOfEntries) {
+PawnInfoTable::PawnInfoTable() {
 
-  entries = new PawnInfo[size];
+  entries = new PawnInfo[PawnTableSize];
+
   if (!entries)
   {
-      std::cerr << "Failed to allocate " << (numOfEntries * sizeof(PawnInfo))
+      std::cerr << "Failed to allocate " << (PawnTableSize * sizeof(PawnInfo))
                 << " bytes for pawn hash table." << std::endl;
       Application::exit_with_failure();
   }
@@ -125,16 +126,6 @@ PawnInfoTable::PawnInfoTable(unsigned numOfEntries) : size(numOfEntries) {
 PawnInfoTable::~PawnInfoTable() {
 
   delete [] entries;
-}
-
-
-/// PawnInfo::clear() resets to zero the PawnInfo entry. Note that
-/// kingSquares[] is initialized to SQ_NONE instead.
-
-void PawnInfo::clear() {
-
-  memset(this, 0, sizeof(PawnInfo));
-  kingSquares[WHITE] = kingSquares[BLACK] = SQ_NONE;
 }
 
 
@@ -148,7 +139,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
   assert(pos.is_ok());
 
   Key key = pos.get_pawn_key();
-  unsigned index = unsigned(key & (size - 1));
+  unsigned index = unsigned(key & (PawnTableSize - 1));
   PawnInfo* pi = entries + index;
 
   // If pi->key matches the position's pawn hash key, it means that we
@@ -158,7 +149,8 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
       return pi;
 
   // Clear the PawnInfo object, and set the key
-  pi->clear();
+  memset(pi, 0, sizeof(PawnInfo));
+  pi->kingSquares[WHITE] = pi->kingSquares[BLACK] = SQ_NONE;
   pi->key = key;
 
   // Calculate pawn attacks
@@ -268,7 +260,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // Mark the pawn as passed. Pawn will be properly scored in evaluation
       // because we need full attack info to evaluate passed pawns.
       if (passed)
-          set_bit(&(pi->passedPawns), s);
+          set_bit(&(pi->passedPawns[Us]), s);
 
       // Score this pawn
       if (isolated)
@@ -331,19 +323,24 @@ int PawnInfoTable::evaluate_pawn_storm(Square s, Rank r, File f, Bitboard theirP
 
 
 /// PawnInfo::updateShelter calculates and caches king shelter. It is called
-/// only when king square changes, about 20% of total get_king_shelter() calls.
-int PawnInfo::updateShelter(const Position& pos, Color c, Square ksq) {
+/// only when king square changes, about 20% of total king_shelter() calls.
+Score PawnInfo::updateShelter(const Position& pos, Color c, Square ksq) {
 
-  Bitboard pawns = pos.pieces(PAWN, c) & this_and_neighboring_files_bb(ksq);
-  unsigned shelter = 0;
-  unsigned r = ksq & (7 << 3);
+  Bitboard pawns;
+  unsigned r, k, shelter = 0;
 
-  for (int i = 1, k = (c ? -8 : 8); i < 4; i++)
+  if (relative_rank(c, ksq) <= RANK_4)
   {
-      r += k;
-      shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (128 >> i);
+      pawns = pos.pieces(PAWN, c) & this_and_neighboring_files_bb(ksq);
+      r = ksq & (7 << 3);
+      k = (c ? -8 : 8);
+      for (int i = 1; i < 4; i++)
+      {
+          r += k;
+          shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (128 >> i);
+      }
   }
   kingSquares[c] = ksq;
-  kingShelters[c] = shelter;
-  return shelter;
+  kingShelters[c] = make_score(shelter, 0);
+  return kingShelters[c];
 }

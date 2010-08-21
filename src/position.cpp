@@ -845,8 +845,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       // Reset rule 50 draw counter
       st->rule50 = 0;
 
-      // Update pawn hash key
+      // Update pawn hash key and prefetch in L1/L2 cache
       st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
+      prefetchPawn(st->pawnKey, threadID);
 
       // Set en passant square, only if moved pawn can be captured
       if ((to ^ from) == 16)
