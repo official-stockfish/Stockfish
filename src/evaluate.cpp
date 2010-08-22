@@ -159,27 +159,6 @@ namespace {
   // right to castle.
   const Value TrappedRookPenalty = Value(180);
 
-  // Penalty for a bishop on a7/h7 (a2/h2 for black) which is trapped by
-  // enemy pawns.
-  const Score TrappedBishopA7H7Penalty = make_score(300, 300);
-
-  // Bitboard masks for detecting trapped bishops on a7/h7 (a2/h2 for black)
-  const Bitboard MaskA7H7[2] = {
-    ((1ULL << SQ_A7) | (1ULL << SQ_H7)),
-    ((1ULL << SQ_A2) | (1ULL << SQ_H2))
-  };
-
-  // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
-  // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
-  // happen in Chess960 games.
-  const Score TrappedBishopA1H1Penalty = make_score(100, 100);
-
-  // Bitboard masks for detecting trapped bishops on a1/h1 (a8/h8 for black)
-  const Bitboard MaskA1H1[2] = {
-    ((1ULL << SQ_A1) | (1ULL << SQ_H1)),
-    ((1ULL << SQ_A8) | (1ULL << SQ_H8))
-  };
-
   // The SpaceMask[color] contains the area of the board which is considered
   // by the space evaluation. In the middle game, each side is given a bonus
   // based on how many squares inside this area are safe and available for
@@ -251,8 +230,6 @@ namespace {
   template<Color Us>
   void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
 
-  void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo& ei);
-  void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei);
   inline Score apply_weight(Score v, Score weight);
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
@@ -559,17 +536,6 @@ namespace {
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Us))
             evaluate_outposts<Piece, Us>(pos, ei, s);
 
-        // Special patterns: trapped bishops on a7/h7/a2/h2
-        // and trapped bishops on a1/h1/a8/h8 in Chess960.
-        if (Piece == BISHOP)
-        {
-            if (bit_is_set(MaskA7H7[Us], s))
-                evaluate_trapped_bishop_a7h7(pos, s, Us, ei);
-
-            if (Chess960 && bit_is_set(MaskA1H1[Us], s))
-                evaluate_trapped_bishop_a1h1(pos, s, Us, ei);
-        }
-
         // Queen or rook on 7th rank
         if (  (Piece == ROOK || Piece == QUEEN)
             && relative_rank(Us, s) == RANK_7
@@ -862,70 +828,6 @@ namespace {
         ei.value += Sign[Us] * apply_weight(make_score(mbonus, ebonus), Weights[PassedPawns]);
 
     } // while
-  }
-
-
-  // evaluate_trapped_bishop_a7h7() determines whether a bishop on a7/h7
-  // (a2/h2 for black) is trapped by enemy pawns, and assigns a penalty
-  // if it is.
-
-  void evaluate_trapped_bishop_a7h7(const Position& pos, Square s, Color us, EvalInfo &ei) {
-
-    assert(square_is_ok(s));
-    assert(pos.piece_on(s) == piece_of_color_and_type(us, BISHOP));
-
-    Square b6 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B6 : SQ_G6);
-    Square b8 = relative_square(us, (square_file(s) == FILE_A) ? SQ_B8 : SQ_G8);
-
-    if (   pos.piece_on(b6) == piece_of_color_and_type(opposite_color(us), PAWN)
-        && pos.see(s, b6) < 0
-        && pos.see(s, b8) < 0)
-    {
-        ei.value -= Sign[us] * TrappedBishopA7H7Penalty;
-    }
-  }
-
-
-  // evaluate_trapped_bishop_a1h1() determines whether a bishop on a1/h1
-  // (a8/h8 for black) is trapped by a friendly pawn on b2/g2 (b7/g7 for
-  // black), and assigns a penalty if it is. This pattern can obviously
-  // only occur in Chess960 games.
-
-  void evaluate_trapped_bishop_a1h1(const Position& pos, Square s, Color us, EvalInfo& ei) {
-
-    Piece pawn = piece_of_color_and_type(us, PAWN);
-    Square b2, b3, c3;
-
-    assert(Chess960);
-    assert(square_is_ok(s));
-    assert(pos.piece_on(s) == piece_of_color_and_type(us, BISHOP));
-
-    if (square_file(s) == FILE_A)
-    {
-        b2 = relative_square(us, SQ_B2);
-        b3 = relative_square(us, SQ_B3);
-        c3 = relative_square(us, SQ_C3);
-    }
-    else
-    {
-        b2 = relative_square(us, SQ_G2);
-        b3 = relative_square(us, SQ_G3);
-        c3 = relative_square(us, SQ_F3);
-    }
-
-    if (pos.piece_on(b2) == pawn)
-    {
-        Score penalty;
-
-        if (!pos.square_is_empty(b3))
-            penalty = 2 * TrappedBishopA1H1Penalty;
-        else if (pos.piece_on(c3) == pawn)
-            penalty = TrappedBishopA1H1Penalty;
-        else
-            penalty = TrappedBishopA1H1Penalty / 2;
-
-        ei.value -= Sign[us] * penalty;
-    }
   }
 
 
