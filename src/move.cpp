@@ -104,11 +104,11 @@ Move move_from_string(const Position& pos, const std::string& str) {
 
 
 /// move_to_string() converts a move to a string in coordinate notation
-/// (g1f3, a7a8q, etc.).  The only special case is castling moves, where we
+/// (g1f3, a7a8q, etc.). The only special case is castling moves, where we
 /// print in the e1g1 notation in normal chess mode, and in e1h1 notation in
 /// Chess960 mode.
 
-const std::string move_to_string(Move move) {
+const std::string move_to_string(Move move, bool chess960) {
 
   std::string str;
   Square from = move_from(move);
@@ -120,14 +120,12 @@ const std::string move_to_string(Move move) {
       str = "0000";
   else
   {
-      if (!Chess960)
-      {
-          if (move_is_short_castle(move))
-              return (from == SQ_E1 ? "e1g1" : "e8g8");
+      if (move_is_short_castle(move) && !chess960)
+          return (from == SQ_E1 ? "e1g1" : "e8g8");
 
-          if (move_is_long_castle(move))
-              return (from == SQ_E1 ? "e1c1" : "e8c8");
-      }
+      if (move_is_long_castle(move) && !chess960)
+          return (from == SQ_E1 ? "e1c1" : "e8c8");
+
       str = square_to_string(from) + square_to_string(to);
       if (move_is_promotion(move))
           str += piece_type_to_char(move_promotion_piece(move), false);
@@ -138,9 +136,10 @@ const std::string move_to_string(Move move) {
 
 /// Overload the << operator, to make it easier to print moves.
 
-std::ostream &operator << (std::ostream& os, Move m) {
+std::ostream& operator << (std::ostream& os, Move m) {
 
-  return os << move_to_string(m);
+  bool chess960 = (os.iword(0) != 0); // See set960()
+  return os << move_to_string(m, chess960);
 }
 
 

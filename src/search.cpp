@@ -161,6 +161,21 @@ namespace {
   };
 
 
+  // When formatting a move for std::cout we must know if we are in Chess960
+  // or not. To keep using the handy operator<<() on the move the trick is to
+  // embed this flag in the stream itself. Function-like named enum set960 is
+  // used as a custom manipulator and the stream internal general-purpose array,
+  // accessed through ios_base::iword(), is used to pass the flag to the move's
+  // operator<<() that will use it to properly format castling moves.
+  enum set960 {};
+
+  std::ostream& operator<< (std::ostream& os, const set960& m) {
+
+    os.iword(0) = int(m);
+    return os;
+  }
+
+
   /// Adjustments
 
   // Step 6. Razoring
@@ -448,7 +463,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   MinimumSplitDepth       = get_option_value_int("Minimum Split Depth") * ONE_PLY;
   MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
   MultiPV                 = get_option_value_int("MultiPV");
-  Chess960                = get_option_value_bool("UCI_Chess960");
   UseLogFile              = get_option_value_bool("Use Search Log");
 
   if (UseLogFile)
@@ -534,7 +548,8 @@ namespace {
 
     // Print RootMoveList startup scoring to the standard output,
     // so to output information also for iteration 1.
-    cout << "info depth " << 1
+    cout << set960(p.is_chess960()) // Is enough to set once at the beginning
+         << "info depth " << 1
          << "\ninfo depth " << 1
          << " score " << value_to_uci(rml.get_move_score(0))
          << " time " << current_search_time()

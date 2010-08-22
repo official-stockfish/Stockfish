@@ -246,6 +246,10 @@ void Position::from_fen(const string& fen) {
   castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
+  isChess960 =   initialKFile  != FILE_E
+              || initialQRFile != FILE_A
+              || initialKRFile != FILE_H;
+
   find_checkers();
 
   st->key = compute_key();
@@ -352,21 +356,17 @@ const string Position::to_fen() const {
 
   if (st->castleRights != CASTLES_NONE)
   {
-      const bool Chess960 =   initialKFile  != FILE_E
-                           || initialQRFile != FILE_A
-                           || initialKRFile != FILE_H;
-
       if (can_castle_kingside(WHITE))
-          fen += Chess960 ? char(toupper(file_to_char(initialKRFile))) : 'K';
+          fen += isChess960 ? char(toupper(file_to_char(initialKRFile))) : 'K';
 
       if (can_castle_queenside(WHITE))
-          fen += Chess960 ? char(toupper(file_to_char(initialQRFile))) : 'Q';
+          fen += isChess960 ? char(toupper(file_to_char(initialQRFile))) : 'Q';
 
       if (can_castle_kingside(BLACK))
-          fen += Chess960 ? file_to_char(initialKRFile) : 'k';
+          fen += isChess960 ? file_to_char(initialKRFile) : 'k';
 
       if (can_castle_queenside(BLACK))
-          fen += Chess960 ? file_to_char(initialQRFile) : 'q';
+          fen += isChess960 ? file_to_char(initialQRFile) : 'q';
   } else
       fen += '-';
 

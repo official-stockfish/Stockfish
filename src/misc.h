@@ -41,13 +41,6 @@
 
 
 ////
-//// Variables
-////
-
-extern bool Chess960;
-
-
-////
 //// Prototypes
 ////
 

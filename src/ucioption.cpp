@@ -131,7 +131,6 @@ namespace {
     o["Emergency Base Time"] = Option(200, 0, 60000);
     o["Emergency Move Time"] = Option(70, 0, 5000);
     o["Minimum Thinking Time"] = Option(20, 0, 5000);
-    o["UCI_Chess960"] = Option(false);
     o["UCI_AnalyseMode"] = Option(false);
 
     // Any option should know its name so to be easily printed

@@ -272,6 +272,7 @@ public:
   // Other properties of the position
   bool opposite_colored_bishops() const;
   bool has_pawn_on_7th(Color c) const;
+  bool is_chess960() const;
 
   // Current thread ID searching on the position
   int thread() const;
@@ -335,6 +336,7 @@ private:
   int castleRightsMask[64];
   StateInfo startState;
   File initialKFile, initialKRFile, initialQRFile;
+  bool isChess960;
   int startPosPlyCounter;
   int threadID;
   StateInfo* st;
@@ -553,6 +555,11 @@ inline bool Position::opposite_colored_bishops() const {
 inline bool Position::has_pawn_on_7th(Color c) const {
 
   return pieces(PAWN, c) & relative_rank_bb(c, RANK_7);
+}
+
+inline bool Position::is_chess960() const {
+
+  return isChess960;
 }
 
 inline bool Position::move_is_capture(Move m) const {
