@@ -23,7 +23,6 @@
 ////
 
 #include <cassert>
-#include <cstring>
 
 #include "bitcount.h"
 #include "evaluate.h"
@@ -248,8 +247,6 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   assert(pos.thread() >= 0 && pos.thread() < MAX_THREADS);
   assert(!pos.is_check());
 
-  memset(&ei, 0, sizeof(EvalInfo));
-
   // Initialize by reading the incrementally updated scores included in the
   // position object (material + piece square tables).
   ei.value = pos.value();
@@ -430,8 +427,8 @@ namespace {
     ei.kingZone[Us] = (b | (Us == WHITE ? b >> 8 : b << 8));
     ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
     b &= ei.attackedBy[Us][PAWN];
-    if (b)
-        ei.kingAttackersCount[Us] = count_1s_max_15<HasPopCnt>(b) / 2;
+    ei.kingAttackersCount[Us] = b ? count_1s_max_15<HasPopCnt>(b) / 2 : 0;
+    ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = 0;
   }
 
 
@@ -474,6 +471,8 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* ptr = pos.piece_list_begin(Us, Piece);
+
+    ei.attackedBy[Us][Piece] = 0;
 
     while ((s = *ptr++) != SQ_NONE)
     {
@@ -716,7 +715,8 @@ namespace {
         // result in a score change far bigger than the value of the captured piece.
         ei.value -= Sign[Us] * KingDangerTable[Us][attackUnits];
         ei.kingDanger[Us] = mg_value(KingDangerTable[Us][attackUnits]);
-    }
+    } else
+        ei.kingDanger[Us] = VALUE_ZERO;
   }
 
 
