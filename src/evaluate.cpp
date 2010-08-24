@@ -61,8 +61,9 @@ namespace {
       S(248, 271), S(233, 201), S(252, 259), S(46, 0), S(247, 0), S(259, 0)
   };
 
-  // Pieces mobility bonus in middle game and endgame, indexed by piece type
-  // and number of attacked squares not occupied by friendly pieces.
+  // MobilityBonus[PieceType][attacked] contains mobility bonuses for middle and
+  // end game, indexed by piece type and number of attacked squares not occupied
+  // by friendly pieces.
   const Score MobilityBonus[][32] = {
      {}, {},
      { S(-38,-33), S(-25,-23), S(-12,-13), S( 0, -3), S(12,  7), S(25, 17), // Knights
@@ -81,8 +82,8 @@ namespace {
        S( 20, 35), S( 20, 35) }
   };
 
-  // Outpost bonuses for knights and bishops, indexed by square (from white's
-  // point of view).
+  // OutpostBonus[PieceType][Square] contains outpost bonuses of knights and
+  // bishops, indexed by piece type and square (from white's point of view).
   const Value OutpostBonus[][64] = {
   {
   //  A     B     C     D     E     F     G     H
@@ -105,9 +106,9 @@ namespace {
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0) }
   };
 
-  // ThreatBonus[attacking][attacked] contains bonus according to which
-  // piece type attacks which one.
-  const Score ThreatBonus[8][8] = {
+  // ThreatBonus[attacking][attacked] contains threat bonuses according to
+  // which piece type attacks which one.
+  const Score ThreatBonus[][8] = {
     {}, {},
     { S(0, 0), S( 7, 39), S( 0,  0), S(24, 49), S(41,100), S(41,100) }, // KNIGHT
     { S(0, 0), S( 7, 39), S(24, 49), S( 0,  0), S(41,100), S(41,100) }, // BISHOP
@@ -115,9 +116,9 @@ namespace {
     { S(0, 0), S(15, 39), S(15, 39), S(15, 39), S(15, 39), S( 0,  0) }  // QUEEN
   };
 
-  // ThreatedByPawnPenalty[] contains a penalty according to which piece
-  // type is attacked by an enemy pawn.
-  const Score ThreatedByPawnPenalty[8] = {
+  // ThreatedByPawnPenalty[PieceType] contains a penalty according to which
+  // piece type is attacked by an enemy pawn.
+  const Score ThreatedByPawnPenalty[] = {
     S(0, 0), S(0, 0), S(56, 70), S(56, 70), S(76, 99), S(86, 118)
   };
 
@@ -135,26 +136,26 @@ namespace {
   // right to castle.
   const Value TrappedRookPenalty = Value(180);
 
-  // The SpaceMask[color] contains the area of the board which is considered
+  // The SpaceMask[Color] contains the area of the board which is considered
   // by the space evaluation. In the middle game, each side is given a bonus
   // based on how many squares inside this area are safe and available for
   // friendly minor pieces.
   const Bitboard SpaceMask[2] = {
-    (1ULL<<SQ_C2) | (1ULL<<SQ_D2) | (1ULL<<SQ_E2) | (1ULL<<SQ_F2) |
-    (1ULL<<SQ_C3) | (1ULL<<SQ_D3) | (1ULL<<SQ_E3) | (1ULL<<SQ_F3) |
-    (1ULL<<SQ_C4) | (1ULL<<SQ_D4) | (1ULL<<SQ_E4) | (1ULL<<SQ_F4),
-    (1ULL<<SQ_C7) | (1ULL<<SQ_D7) | (1ULL<<SQ_E7) | (1ULL<<SQ_F7) |
-    (1ULL<<SQ_C6) | (1ULL<<SQ_D6) | (1ULL<<SQ_E6) | (1ULL<<SQ_F6) |
-    (1ULL<<SQ_C5) | (1ULL<<SQ_D5) | (1ULL<<SQ_E5) | (1ULL<<SQ_F5)
+    (1ULL << SQ_C2) | (1ULL << SQ_D2) | (1ULL << SQ_E2) | (1ULL << SQ_F2) |
+    (1ULL << SQ_C3) | (1ULL << SQ_D3) | (1ULL << SQ_E3) | (1ULL << SQ_F3) |
+    (1ULL << SQ_C4) | (1ULL << SQ_D4) | (1ULL << SQ_E4) | (1ULL << SQ_F4),
+    (1ULL << SQ_C7) | (1ULL << SQ_D7) | (1ULL << SQ_E7) | (1ULL << SQ_F7) |
+    (1ULL << SQ_C6) | (1ULL << SQ_D6) | (1ULL << SQ_E6) | (1ULL << SQ_F6) |
+    (1ULL << SQ_C5) | (1ULL << SQ_D5) | (1ULL << SQ_E5) | (1ULL << SQ_F5)
   };
 
-  /// King danger constants and variables. The king danger scores are taken
-  /// from the KingDangerTable[]. Various little "meta-bonuses" measuring
-  /// the strength of the enemy attack are added up into an integer, which
-  /// is used as an index to KingDangerTable[].
-
-  // KingAttackWeights[] contains king attack weights by piece type
-  const int KingAttackWeights[8] = { 0, 0, 2, 2, 3, 5 };
+  // King danger constants and variables. The king danger scores are taken
+  // from the KingDangerTable[]. Various little "meta-bonuses" measuring
+  // the strength of the enemy attack are added up into an integer, which
+  // is used as an index to KingDangerTable[].
+  //
+  // KingAttackWeights[PieceType] contains king attack weights by piece type
+  const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
 
   // Bonuses for enemy's safe checks
   const int QueenContactCheckBonus = 3;
@@ -163,9 +164,9 @@ namespace {
   const int BishopCheckBonus       = 1;
   const int KnightCheckBonus       = 1;
 
-  // InitKingDanger[] contains bonuses based on the position of the defending
-  // king.
-  const int InitKingDanger[64] = {
+  // InitKingDanger[Square] contains penalties based on the position of the
+  // defending king, indexed by king's square (from white's point of view).
+  const int InitKingDanger[] = {
      2,  0,  2,  5,  5,  2,  0,  2,
      2,  2,  4,  8,  8,  4,  2,  2,
      7, 10, 12, 12, 12, 12, 10,  7,
@@ -176,7 +177,8 @@ namespace {
     15, 15, 15, 15, 15, 15, 15, 15
   };
 
-  // KingDangerTable[color][] contains the actual king danger weighted scores
+  // KingDangerTable[Color][attackUnits] contains the actual king danger
+  // weighted scores, indexed by color and by a calculated integer number.
   Score KingDangerTable[2][128];
 
   // Pawn and material hash tables, indexed by the current thread id.
