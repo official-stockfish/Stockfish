@@ -47,8 +47,6 @@ class Position;
 
 struct EvalInfo {
 
-  EvalInfo() { margin[WHITE] = margin[BLACK] = VALUE_ZERO; }
-
   // Middle game and endgame evaluations
   Score value;
 
