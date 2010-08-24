@@ -61,72 +61,48 @@ namespace {
       S(248, 271), S(233, 201), S(252, 259), S(46, 0), S(247, 0), S(259, 0)
   };
 
-  // Knight mobility bonus in middle game and endgame, indexed by the number
-  // of attacked squares not occupied by friendly piecess.
-  const Score KnightMobilityBonus[16] = {
-    S(-38,-33), S(-25,-23), S(-12,-13), S( 0,-3),
-    S( 12,  7), S( 25, 17), S( 31, 22), S(38, 27), S(38, 27)
+  // Pieces mobility bonus in middle game and endgame, indexed by piece type
+  // and number of attacked squares not occupied by friendly pieces.
+  const Score MobilityBonus[][32] = {
+     {}, {},
+     { S(-38,-33), S(-25,-23), S(-12,-13), S( 0, -3), S(12,  7), S(25, 17), // Knights
+       S( 31, 22), S( 38, 27), S( 38, 27) },
+     { S(-25,-30), S(-11,-16), S(  3, -2), S(17, 12), S(31, 26), S(45, 40), // Bishops
+       S( 57, 52), S( 65, 60), S( 71, 65), S(74, 69), S(76, 71), S(78, 73),
+       S( 79, 74), S( 80, 75), S( 81, 76), S(81, 76) },
+     { S(-20,-36), S(-14,-19), S( -8, -3), S(-2, 13), S( 4, 29), S(10, 46), // Rooks
+       S( 14, 62), S( 19, 79), S( 23, 95), S(26,106), S(27,111), S(28,114),
+       S( 29,116), S( 30,117), S( 31,118), S(32,118) },
+     { S(-10,-18), S( -8,-13), S( -6, -7), S(-3, -2), S(-1,  3), S( 1,  8), // Queens
+       S(  3, 13), S(  5, 19), S(  8, 23), S(10, 27), S(12, 32), S(15, 34),
+       S( 16, 35), S( 17, 35), S( 18, 35), S(20, 35), S(20, 35), S(20, 35),
+       S( 20, 35), S( 20, 35), S( 20, 35), S(20, 35), S(20, 35), S(20, 35),
+       S( 20, 35), S( 20, 35), S( 20, 35), S(20, 35), S(20, 35), S(20, 35),
+       S( 20, 35), S( 20, 35) }
   };
-
-  // Bishop mobility bonus in middle game and endgame, indexed by the number
-  // of attacked squares not occupied by friendly pieces. X-ray attacks through
-  // queens are also included.
-  const Score BishopMobilityBonus[16] = {
-    S(-25,-30), S(-11,-16), S( 3, -2), S(17, 12),
-    S( 31, 26), S( 45, 40), S(57, 52), S(65, 60),
-    S( 71, 65), S( 74, 69), S(76, 71), S(78, 73),
-    S( 79, 74), S( 80, 75), S(81, 76), S(81, 76)
-  };
-
-  // Rook mobility bonus in middle game and endgame, indexed by the number
-  // of attacked squares not occupied by friendly pieces. X-ray attacks through
-  // queens and rooks are also included.
-  const Score RookMobilityBonus[16] = {
-    S(-20,-36), S(-14,-19), S(-8, -3), S(-2, 13),
-    S(  4, 29), S( 10, 46), S(14, 62), S(19, 79),
-    S( 23, 95), S( 26,106), S(27,111), S(28,114),
-    S( 29,116), S( 30,117), S(31,118), S(32,118)
-  };
-
-  // Queen mobility bonus in middle game and endgame, indexed by the number
-  // of attacked squares not occupied by friendly pieces.
-  const Score QueenMobilityBonus[32] = {
-    S(-10,-18), S(-8,-13), S(-6, -7), S(-3, -2), S(-1,  3), S( 1,  8),
-    S(  3, 13), S( 5, 19), S( 8, 23), S(10, 27), S(12, 32), S(15, 34),
-    S( 16, 35), S(17, 35), S(18, 35), S(20, 35), S(20, 35), S(20, 35),
-    S( 20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35),
-    S( 20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35), S(20, 35),
-    S( 20, 35), S(20, 35)
-  };
-
-  // Pointers table to access mobility tables through piece type
-  const Score* MobilityBonus[8] = { 0, 0, KnightMobilityBonus, BishopMobilityBonus,
-                                    RookMobilityBonus, QueenMobilityBonus, 0, 0 };
 
   // Outpost bonuses for knights and bishops, indexed by square (from white's
   // point of view).
-  const Value KnightOutpostBonus[64] = {
+  const Value OutpostBonus[][64] = {
+  {
   //  A     B     C     D     E     F     G     H
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 1
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 2
-    V(0), V(0), V(4), V(8), V(8), V(4), V(0), V(0), // 3
-    V(0), V(4),V(17),V(26),V(26),V(17), V(4), V(0), // 4
-    V(0), V(8),V(26),V(35),V(35),V(26), V(8), V(0), // 5
-    V(0), V(4),V(17),V(17),V(17),V(17), V(4), V(0), // 6
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
-  };
-
-  const Value BishopOutpostBonus[64] = {
-  //  A     B     C     D     E     F     G     H
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 1
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 2
-    V(0), V(0), V(5), V(5), V(5), V(5), V(0), V(0), // 3
-    V(0), V(5),V(10),V(10),V(10),V(10), V(5), V(0), // 4
-    V(0),V(10),V(21),V(21),V(21),V(21),V(10), V(0), // 5
-    V(0), V(5), V(8), V(8), V(8), V(8), V(5), V(0), // 6
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // 7
-    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0)  // 8
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // Knights
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0),
+    V(0), V(0), V(4), V(8), V(8), V(4), V(0), V(0),
+    V(0), V(4),V(17),V(26),V(26),V(17), V(4), V(0),
+    V(0), V(8),V(26),V(35),V(35),V(26), V(8), V(0),
+    V(0), V(4),V(17),V(17),V(17),V(17), V(4), V(0),
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0),
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0) },
+  {
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // Bishops
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0),
+    V(0), V(0), V(5), V(5), V(5), V(5), V(0), V(0),
+    V(0), V(5),V(10),V(10),V(10),V(10), V(5), V(0),
+    V(0),V(10),V(21),V(21),V(21),V(21),V(10), V(0),
+    V(0), V(5), V(8), V(8), V(8), V(8), V(5), V(0),
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0),
+    V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0) }
   };
 
   // ThreatBonus[attacking][attacked] contains bonus according to which
@@ -319,7 +295,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   // Middle-game specific evaluation terms
   if (phase > PHASE_ENDGAME)
   {
-      // Pawn storms in positions with opposite castling
+      // Evaluate pawn storms in positions with opposite castling
       if (   square_file(pos.king_square(WHITE)) >= FILE_E
           && square_file(pos.king_square(BLACK)) <= FILE_D)
 
@@ -465,9 +441,10 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
+    assert (Piece == BISHOP || Piece == KNIGHT);
+
     // Initial bonus based on square
-    Value bonus = (Piece == BISHOP ? BishopOutpostBonus[relative_square(Us, s)]
-                                   : KnightOutpostBonus[relative_square(Us, s)]);
+    Value bonus = OutpostBonus[Piece == BISHOP][relative_square(Us, s)];
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece
