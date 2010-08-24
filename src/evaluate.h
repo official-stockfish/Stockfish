@@ -89,9 +89,6 @@ struct EvalInfo {
   // 2 to kingAdjacentZoneAttacksCount[BLACK].
   int kingAdjacentZoneAttacksCount[2];
 
-  // Middle game and endgame mobility scores
-  Score mobility;
-
   // Value of the danger for the king of the given color
   Value kingDanger[2];
 };

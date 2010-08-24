@@ -194,7 +194,7 @@ namespace {
   void init_attack_tables(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
+  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
   void evaluate_king(const Position& pos, EvalInfo& ei);
@@ -242,6 +242,7 @@ template<bool HasPopCnt>
 Value do_evaluate(const Position& pos, EvalInfo& ei) {
 
   ScaleFactor factor[2];
+  Score mobility;
 
   assert(pos.is_ok());
   assert(pos.thread() >= 0 && pos.thread() < MAX_THREADS);
@@ -250,7 +251,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   memset(&ei, 0, sizeof(EvalInfo));
 
   // Initialize by reading the incrementally updated scores included in the
-  // position object (material + piece square tables)
+  // position object (material + piece square tables).
   ei.value = pos.value();
 
   // Probe the material hash table
@@ -258,7 +259,7 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   ei.value += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
-  // configuration, call it and return
+  // configuration, call it and return.
   if (ei.mi->specialized_eval_exists())
       return ei.mi->evaluate(pos);
 
@@ -274,9 +275,10 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
   init_attack_tables<WHITE, HasPopCnt>(pos, ei);
   init_attack_tables<BLACK, HasPopCnt>(pos, ei);
 
-  // Evaluate pieces
-  evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei);
-  evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei);
+  // Evaluate pieces and mobility
+  mobility =   evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei)
+             - evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei);
+  ei.value += apply_weight(mobility, Weights[Mobility]);
 
   // Kings. Kings are evaluated after all other pieces for both sides,
   // because we need complete attack information for all pieces when computing
@@ -315,9 +317,6 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
           ei.value += apply_weight(make_score(s * ei.mi->space_weight(), 0), Weights[Space]);
       }
   }
-
-  // Mobility
-  ei.value += apply_weight(ei.mobility, Weights[Mobility]);
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those
@@ -465,12 +464,13 @@ namespace {
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  void evaluate_pieces(const Position& pos, EvalInfo& ei, Bitboard no_mob_area) {
+  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Bitboard no_mob_area) {
 
     Bitboard b;
     Square s, ksq;
     int mob;
     File f;
+    Score mobility = SCORE_ZERO;
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* ptr = pos.piece_list_begin(Us, Piece);
@@ -504,7 +504,7 @@ namespace {
         mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & no_mob_area)
                               : count_1s<HasPopCnt>(b & no_mob_area));
 
-        ei.mobility += Sign[Us] * MobilityBonus[Piece][mob];
+        mobility += MobilityBonus[Piece][mob];
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
@@ -563,6 +563,7 @@ namespace {
             }
         }
     }
+    return mobility;
   }
 
 
@@ -603,22 +604,25 @@ namespace {
   // pieces of a given color.
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_pieces_of_color(const Position& pos, EvalInfo& ei) {
+  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    Score mobility = SCORE_ZERO;
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
     const Bitboard no_mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
-    evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, no_mob_area);
-    evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, no_mob_area);
-    evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, no_mob_area);
-    evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, no_mob_area);
+    mobility += evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, no_mob_area);
+    mobility += evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, no_mob_area);
+    mobility += evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, no_mob_area);
+    mobility += evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, no_mob_area);
 
     // Sum up all attacked squares
     ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
                            | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                            | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
+    return mobility;
   }
 
 
