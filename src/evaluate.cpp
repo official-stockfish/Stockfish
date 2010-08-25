@@ -42,9 +42,6 @@ namespace {
   // by the evaluation functions.
   struct EvalInfo {
 
-    // Middle and end game position's static evaluations
-    Score value;
-
     // Pointer to pawn hash table entry
     PawnInfo* pi;
 
@@ -292,7 +289,7 @@ Value do_evaluate(const Position& pos, Value margins[]) {
 
   // Initialize by reading the incrementally updated scores included in the
   // position object (material + piece square tables).
-  ei.value = pos.value();
+  Score value = pos.value();
 
   // margins[color] stores the uncertainty estimation of position's evaluation
   // and typically is used by the search for pruning decisions.
@@ -300,7 +297,7 @@ Value do_evaluate(const Position& pos, Value margins[]) {
 
   // Probe the material hash table
   MaterialInfo* mi = MaterialTable[pos.thread()]->get_material_info(pos);
-  ei.value += mi->material_value();
+  value += mi->material_value();
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return.
@@ -313,31 +310,31 @@ Value do_evaluate(const Position& pos, Value margins[]) {
 
   // Probe the pawn hash table
   ei.pi = PawnTable[pos.thread()]->get_pawn_info(pos);
-  ei.value += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
+  value += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
 
   // Initialize attack bitboards with pawns evaluation
   init_attack_tables<WHITE, HasPopCnt>(pos, ei);
   init_attack_tables<BLACK, HasPopCnt>(pos, ei);
 
   // Evaluate pieces and mobility
-  ei.value +=  evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei, w_mob)
-             - evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei, b_mob);
+  value +=  evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei, w_mob)
+          - evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei, b_mob);
 
-  ei.value += apply_weight(w_mob - b_mob, Weights[Mobility]);
+  value += apply_weight(w_mob - b_mob, Weights[Mobility]);
 
-  // Kings. Kings are evaluated after all other pieces for both sides,
-  // because we need complete attack information for all pieces when computing
+  // Evaluate kings after all other pieces for both sides, because we
+  // need complete attack information for all pieces when computing
   // the king safety evaluation.
-  ei.value +=  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins)
-             - evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
+  value +=  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins)
+          - evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
 
   // Evaluate tactical threats, we need full attack info including king
-  ei.value +=  evaluate_threats<WHITE>(pos, ei)
-             - evaluate_threats<BLACK>(pos, ei);
+  value +=  evaluate_threats<WHITE>(pos, ei)
+          - evaluate_threats<BLACK>(pos, ei);
 
   // Evaluate passed pawns, we need full attack info including king
-  ei.value +=  evaluate_passed_pawns<WHITE>(pos, ei)
-             - evaluate_passed_pawns<BLACK>(pos, ei);
+  value +=  evaluate_passed_pawns<WHITE>(pos, ei)
+          - evaluate_passed_pawns<BLACK>(pos, ei);
 
   Phase phase = mi->game_phase();
 
@@ -348,18 +345,18 @@ Value do_evaluate(const Position& pos, Value margins[]) {
       if (   square_file(pos.king_square(WHITE)) >= FILE_E
           && square_file(pos.king_square(BLACK)) <= FILE_D)
 
-          ei.value += make_score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
+          value += make_score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
 
       else if (   square_file(pos.king_square(WHITE)) <= FILE_D
                && square_file(pos.king_square(BLACK)) >= FILE_E)
 
-          ei.value += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
+          value += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
 
       // Evaluate space for both sides
       if (mi->space_weight() > 0)
       {
           int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
-          ei.value += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
+          value += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
       }
   }
 
@@ -367,8 +364,8 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   // colored bishop endgames, and use a lower scale for those
   if (   phase < PHASE_MIDGAME
       && pos.opposite_colored_bishops()
-      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && eg_value(ei.value) > VALUE_ZERO)
-          || (factor[BLACK] == SCALE_FACTOR_NORMAL && eg_value(ei.value) < VALUE_ZERO)))
+      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && eg_value(value) > VALUE_ZERO)
+          || (factor[BLACK] == SCALE_FACTOR_NORMAL && eg_value(value) < VALUE_ZERO)))
   {
       ScaleFactor sf;
 
@@ -393,7 +390,7 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   }
 
   // Interpolate between the middle game and the endgame score
-  return Sign[pos.side_to_move()] * scale_by_game_phase(ei.value, phase, factor);
+  return Sign[pos.side_to_move()] * scale_by_game_phase(value, phase, factor);
 }
 
 } // namespace
@@ -596,8 +593,8 @@ namespace {
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_right(Us, square_file(ksq)))
-                    ei.value -= Sign[Us] * make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
-                                                                         : (TrappedRookPenalty - mob * 16), 0);
+                    bonus -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                           : (TrappedRookPenalty - mob * 16), 0);
             }
             else if (    square_file(ksq) <= FILE_D
                      &&  square_file(s) < square_file(ksq)
@@ -605,8 +602,8 @@ namespace {
             {
                 // Is there a half-open file between the king and the edge of the board?
                 if (!ei.pi->has_open_file_to_left(Us, square_file(ksq)))
-                    ei.value -= Sign[Us] * make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
-                                                                         : (TrappedRookPenalty - mob * 16), 0);
+                    bonus -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                           : (TrappedRookPenalty - mob * 16), 0);
             }
         }
     }
