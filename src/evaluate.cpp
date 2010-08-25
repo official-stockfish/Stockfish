@@ -50,8 +50,7 @@ namespace {
     // typically is used by the search for pruning decisions.
     Value margin[2];
 
-    // Pointers to material and pawn hash table entries
-    MaterialInfo* mi;
+    // Pointer to pawn hash table entry
     PawnInfo* pi;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
@@ -301,17 +300,17 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   ei.value = pos.value();
 
   // Probe the material hash table
-  ei.mi = MaterialTable[pos.thread()]->get_material_info(pos);
-  ei.value += ei.mi->material_value();
+  MaterialInfo* mi = MaterialTable[pos.thread()]->get_material_info(pos);
+  ei.value += mi->material_value();
 
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return.
-  if (ei.mi->specialized_eval_exists())
-      return ei.mi->evaluate(pos);
+  if (mi->specialized_eval_exists())
+      return mi->evaluate(pos);
 
   // After get_material_info() call that modifies them
-  factor[WHITE] = ei.mi->scale_factor(pos, WHITE);
-  factor[BLACK] = ei.mi->scale_factor(pos, BLACK);
+  factor[WHITE] = mi->scale_factor(pos, WHITE);
+  factor[BLACK] = mi->scale_factor(pos, BLACK);
 
   // Probe the pawn hash table
   ei.pi = PawnTable[pos.thread()]->get_pawn_info(pos);
@@ -340,7 +339,7 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   evaluate_passed_pawns<WHITE>(pos, ei);
   evaluate_passed_pawns<BLACK>(pos, ei);
 
-  Phase phase = ei.mi->game_phase();
+  Phase phase = mi->game_phase();
 
   // Middle-game specific evaluation terms
   if (phase > PHASE_ENDGAME)
@@ -357,10 +356,10 @@ Value do_evaluate(const Position& pos, Value margins[]) {
           ei.value += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
 
       // Evaluate space for both sides
-      if (ei.mi->space_weight() > 0)
+      if (mi->space_weight() > 0)
       {
           int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
-          ei.value += apply_weight(make_score(s * ei.mi->space_weight(), 0), Weights[Space]);
+          ei.value += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
       }
   }
 
