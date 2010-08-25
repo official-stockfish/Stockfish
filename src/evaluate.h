@@ -42,13 +42,18 @@
 /// contents to make intelligent search decisions.
 ///
 /// At the moment, this is not utilized very much: The only part of the
-/// EvalInfo object which is used by the search is futilityMargin.
+/// EvalInfo object which is used by the search is margin.
 class Position;
 
 struct EvalInfo {
 
-  // Middle game and endgame evaluations
+  // Middle and end game position's static evaluations
   Score value;
+
+  // margin[color] stores the evaluation margins we should consider for
+  // the given position. This is a kind of uncertainty estimation and
+  // typically is used by the search for pruning decisions.
+  Value margin[2];
 
   // Pointers to material and pawn hash table entries
   MaterialInfo* mi;
@@ -58,8 +63,6 @@ struct EvalInfo {
   // attacked by a given color and piece type, attackedBy[color][0] contains
   // all squares attacked by the given color.
   Bitboard attackedBy[2][8];
-  Bitboard attacked_by(Color c) const { return attackedBy[c][0]; }
-  Bitboard attacked_by(Color c, PieceType pt) const { return attackedBy[c][pt]; }
 
   // kingZone[color] is the zone around the enemy king which is considered
   // by the king safety evaluation. This consists of the squares directly
@@ -86,9 +89,6 @@ struct EvalInfo {
   // king is on g8 and there's a white knight on g5, this knight adds
   // 2 to kingAdjacentZoneAttacksCount[BLACK].
   int kingAdjacentZoneAttacksCount[2];
-
-  // Value of the score margin we should consider for the given color
-  Value margin[2];
 };
 
 

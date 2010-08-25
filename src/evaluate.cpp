@@ -652,10 +652,10 @@ namespace {
 
         // Find the attacked squares around the king which has no defenders
         // apart from the king itself
-        undefended = ei.attacked_by(Them) & ei.attacked_by(Us, KING);
-        undefended &= ~(  ei.attacked_by(Us, PAWN)   | ei.attacked_by(Us, KNIGHT)
-                        | ei.attacked_by(Us, BISHOP) | ei.attacked_by(Us, ROOK)
-                        | ei.attacked_by(Us, QUEEN));
+        undefended = ei.attackedBy[Them][0] & ei.attackedBy[Us][KING];
+        undefended &= ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
+                        | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
+                        | ei.attackedBy[Us][QUEEN]);
 
         // Initialize the 'attackUnits' variable, which is used later on as an
         // index to the KingDangerTable[] array. The initial value is based on
@@ -669,39 +669,39 @@ namespace {
 
         // Analyse enemy's safe queen contact checks. First find undefended
         // squares around the king attacked by enemy queen...
-        b = undefended & ei.attacked_by(Them, QUEEN) & ~pos.pieces_of_color(Them);
+        b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces_of_color(Them);
         if (b)
         {
             // ...then remove squares not supported by another enemy piece
-            b &= (  ei.attacked_by(Them, PAWN)   | ei.attacked_by(Them, KNIGHT)
-                  | ei.attacked_by(Them, BISHOP) | ei.attacked_by(Them, ROOK));
+            b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
+                  | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]);
             if (b)
                 attackUnits += QueenContactCheckBonus * count_1s_max_15<HasPopCnt>(b) * (sente ? 2 : 1);
         }
 
         // Analyse enemy's safe distance checks for sliders and knights
-        safe = ~(pos.pieces_of_color(Them) | ei.attacked_by(Us));
+        safe = ~(pos.pieces_of_color(Them) | ei.attackedBy[Us][0]);
 
         b1 = pos.attacks_from<ROOK>(ksq) & safe;
         b2 = pos.attacks_from<BISHOP>(ksq) & safe;
 
         // Enemy queen safe checks
-        b = (b1 | b2) & ei.attacked_by(Them, QUEEN);
+        b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
         if (b)
             attackUnits += QueenCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
         // Enemy rooks safe checks
-        b = b1 & ei.attacked_by(Them, ROOK);
+        b = b1 & ei.attackedBy[Them][ROOK];
         if (b)
             attackUnits += RookCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
         // Enemy bishops safe checks
-        b = b2 & ei.attacked_by(Them, BISHOP);
+        b = b2 & ei.attackedBy[Them][BISHOP];
         if (b)
             attackUnits += BishopCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
         // Enemy knights safe checks
-        b = pos.attacks_from<KNIGHT>(ksq) & ei.attacked_by(Them, KNIGHT) & safe;
+        b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
             attackUnits += KnightCheckBonus * count_1s_max_15<HasPopCnt>(b);
 
@@ -759,7 +759,7 @@ namespace {
             if (pos.square_is_empty(blockSq))
             {
                 squaresToQueen = squares_in_front_of(Us, s);
-                defendedSquares = squaresToQueen & ei.attacked_by(Us);
+                defendedSquares = squaresToQueen & ei.attackedBy[Us][0];
 
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen. Otherwise consider only
@@ -768,7 +768,7 @@ namespace {
                     && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<ROOK>(s)))
                     unsafeSquares = squaresToQueen;
                 else
-                    unsafeSquares = squaresToQueen & (ei.attacked_by(Them) | pos.pieces_of_color(Them));
+                    unsafeSquares = squaresToQueen & (ei.attackedBy[Them][0] | pos.pieces_of_color(Them));
 
                 // If there aren't enemy attacks or pieces along the path to queen give
                 // huge bonus. Even bigger if we protect the pawn's path.
@@ -834,8 +834,8 @@ namespace {
     // pawn, or if it is undefended and attacked by an enemy piece.
     Bitboard safe =   SpaceMask[Us]
                    & ~pos.pieces(PAWN, Us)
-                   & ~ei.attacked_by(Them, PAWN)
-                   & (ei.attacked_by(Us) | ~ei.attacked_by(Them));
+                   & ~ei.attackedBy[Them][PAWN]
+                   & (ei.attackedBy[Us][0] | ~ei.attackedBy[Them][0]);
 
     // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behind = pos.pieces(PAWN, Us);
