@@ -714,7 +714,7 @@ namespace {
 
   Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
 
-    EvalInfo ei;
+    Value margins[2];
     StateInfo st;
     CheckInfo ci(pos);
     int64_t nodes;
@@ -739,7 +739,7 @@ namespace {
 
     // Step 5. Evaluate the position statically
     // At root we do this only to get reference value for child nodes
-    ss->eval = isCheck ? VALUE_NONE : evaluate(pos, ei);
+    ss->eval = isCheck ? VALUE_NONE : evaluate(pos, margins);
 
     // Step 6. Razoring (omitted at root)
     // Step 7. Static null move pruning (omitted at root)
@@ -975,7 +975,7 @@ namespace {
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
     Move movesSearched[256];
-    EvalInfo ei;
+    Value margins[2];
     StateInfo st;
     const TTEntry *tte;
     Key posKey;
@@ -1051,13 +1051,13 @@ namespace {
         assert(tte->static_value() != VALUE_NONE);
 
         ss->eval = tte->static_value();
-        ei.margin[pos.side_to_move()] = tte->static_value_margin();
+        margins[pos.side_to_move()] = tte->static_value_margin();
         refinedValue = refine_eval(tte, ss->eval, ply);
     }
     else
     {
-        refinedValue = ss->eval = evaluate(pos, ei);
-        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ei.margin[pos.side_to_move()]);
+        refinedValue = ss->eval = evaluate(pos, margins);
+        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, margins[pos.side_to_move()]);
     }
 
     // Save gain for the parent non-capture move
@@ -1371,7 +1371,7 @@ namespace {
 
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     move = (bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove);
-    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ei.margin[pos.side_to_move()]);
+    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, margins[pos.side_to_move()]);
 
     // Update killers and history only for non capture moves that fails high
     if (    bestValue >= beta
@@ -1401,7 +1401,7 @@ namespace {
     assert(ply > 0 && ply < PLY_MAX);
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
-    EvalInfo ei;
+    Value margins[2];
     StateInfo st;
     Move ttMove, move;
     Value bestValue, value, futilityValue, futilityBase;
@@ -1442,11 +1442,11 @@ namespace {
         {
             assert(tte->static_value() != VALUE_NONE);
 
-            ei.margin[pos.side_to_move()] = tte->static_value_margin();
+            margins[pos.side_to_move()] = tte->static_value_margin();
             bestValue = tte->static_value();
         }
         else
-            bestValue = evaluate(pos, ei);
+            bestValue = evaluate(pos, margins);
 
         ss->eval = bestValue;
         update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
@@ -1455,7 +1455,7 @@ namespace {
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, ei.margin[pos.side_to_move()]);
+                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, margins[pos.side_to_move()]);
 
             return bestValue;
         }
@@ -1467,7 +1467,7 @@ namespace {
         deepChecks = (depth == -ONE_PLY && bestValue >= beta - PawnValueMidgame / 8);
 
         // Futility pruning parameters, not needed when in check
-        futilityBase = bestValue + FutilityMarginQS + ei.margin[pos.side_to_move()];
+        futilityBase = bestValue + FutilityMarginQS + margins[pos.side_to_move()];
         enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
     }
 
@@ -1552,7 +1552,7 @@ namespace {
     // Update transposition table
     Depth d = (depth == DEPTH_ZERO ? DEPTH_ZERO : DEPTH_ZERO - ONE_PLY);
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, ei.margin[pos.side_to_move()]);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, margins[pos.side_to_move()]);
 
     // Update killers only for checking moves that fails high
     if (    bestValue >= beta
@@ -2242,7 +2242,7 @@ namespace {
     StateInfo st;
     TTEntry* tte;
     Position p(pos, pos.thread());
-    EvalInfo ei;
+    Value margins[2];
     Value v;
 
     for (int i = 0; pv[i] != MOVE_NONE; i++)
@@ -2250,8 +2250,8 @@ namespace {
         tte = TT.retrieve(p.get_key());
         if (!tte || tte->move() != pv[i])
         {
-            v = (p.is_check() ? VALUE_NONE : evaluate(p, ei));
-            TT.store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, ei.margin[pos.side_to_move()]);
+            v = (p.is_check() ? VALUE_NONE : evaluate(p, margins));
+            TT.store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, margins[pos.side_to_move()]);
         }
         p.do_move(pv[i], st);
     }

@@ -22,13 +22,6 @@
 #define VALUE_H_INCLUDED
 
 ////
-//// Includes
-////
-
-#include "piece.h"
-
-
-////
 //// Types
 ////
 

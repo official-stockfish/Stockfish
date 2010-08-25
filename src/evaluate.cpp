@@ -38,6 +38,54 @@
 
 namespace {
 
+  // Struct EvalInfo contains various information computed and collected
+  // by the evaluation functions.
+  struct EvalInfo {
+
+    // Middle and end game position's static evaluations
+    Score value;
+
+    // margin[color] stores the evaluation margins we should consider for
+    // the given position. This is a kind of uncertainty estimation and
+    // typically is used by the search for pruning decisions.
+    Value margin[2];
+
+    // Pointers to material and pawn hash table entries
+    MaterialInfo* mi;
+    PawnInfo* pi;
+
+    // attackedBy[color][piece type] is a bitboard representing all squares
+    // attacked by a given color and piece type, attackedBy[color][0] contains
+    // all squares attacked by the given color.
+    Bitboard attackedBy[2][8];
+
+    // kingZone[color] is the zone around the enemy king which is considered
+    // by the king safety evaluation. This consists of the squares directly
+    // adjacent to the king, and the three (or two, for a king on an edge file)
+    // squares two ranks in front of the king. For instance, if black's king
+    // is on g8, kingZone[WHITE] is a bitboard containing the squares f8, h8,
+    // f7, g7, h7, f6, g6 and h6.
+    Bitboard kingZone[2];
+
+    // kingAttackersCount[color] is the number of pieces of the given color
+    // which attack a square in the kingZone of the enemy king.
+    int kingAttackersCount[2];
+
+    // kingAttackersWeight[color] is the sum of the "weight" of the pieces of the
+    // given color which attack a square in the kingZone of the enemy king. The
+    // weights of the individual piece types are given by the variables
+    // QueenAttackWeight, RookAttackWeight, BishopAttackWeight and
+    // KnightAttackWeight in evaluate.cpp
+    int kingAttackersWeight[2];
+
+    // kingAdjacentZoneAttacksCount[color] is the number of attacks to squares
+    // directly adjacent to the king of the given color. Pieces which attack
+    // more than one square are counted multiple times. For instance, if black's
+    // king is on g8 and there's a white knight on g5, this knight adds
+    // 2 to kingAdjacentZoneAttacksCount[BLACK].
+    int kingAdjacentZoneAttacksCount[2];
+  };
+
   const int Sign[2] = { 1, -1 };
 
   // Evaluation grain size, must be a power of 2
@@ -187,7 +235,7 @@ namespace {
 
   // Function prototypes
   template<bool HasPopCnt>
-  Value do_evaluate(const Position& pos, EvalInfo& ei);
+  Value do_evaluate(const Position& pos, Value margins[]);
 
   template<Color Us, bool HasPopCnt>
   void init_attack_tables(const Position& pos, EvalInfo& ei);
@@ -229,17 +277,18 @@ void prefetchPawn(Key key, int threadID) {
 /// evaluate() is the main evaluation function. It always computes two
 /// values, an endgame score and a middle game score, and interpolates
 /// between them based on the remaining material.
-Value evaluate(const Position& pos, EvalInfo& ei) {
+Value evaluate(const Position& pos, Value margins[]) {
 
-    return CpuHasPOPCNT ? do_evaluate<true>(pos, ei)
-                        : do_evaluate<false>(pos, ei);
+    return CpuHasPOPCNT ? do_evaluate<true>(pos, margins)
+                        : do_evaluate<false>(pos, margins);
 }
 
 namespace {
 
 template<bool HasPopCnt>
-Value do_evaluate(const Position& pos, EvalInfo& ei) {
+Value do_evaluate(const Position& pos, Value margins[]) {
 
+  EvalInfo ei;
   ScaleFactor factor[2];
   Score mobility;
 
@@ -343,6 +392,10 @@ Value do_evaluate(const Position& pos, EvalInfo& ei) {
       if (factor[BLACK] == SCALE_FACTOR_NORMAL)
           factor[BLACK] = sf;
   }
+
+  // Populate margins[]
+  margins[WHITE] = ei.margin[WHITE];
+  margins[BLACK] = ei.margin[BLACK];
 
   // Interpolate between the middle game and the endgame score
   return Sign[pos.side_to_move()] * scale_by_game_phase(ei.value, phase, factor);

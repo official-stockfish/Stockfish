@@ -150,10 +150,10 @@ namespace {
     }
     else if (token == "eval")
     {
-        EvalInfo ei;
+        Value margins[2];
         cout << "Incremental mg: "   << mg_value(RootPosition.value())
              << "\nIncremental eg: " << eg_value(RootPosition.value())
-             << "\nFull eval: "      << evaluate(RootPosition, ei) << endl;
+             << "\nFull eval: "      << evaluate(RootPosition, margins) << endl;
     }
     else if (token == "key")
         cout << "key: " << hex << RootPosition.get_key()
