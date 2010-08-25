@@ -36,25 +36,25 @@
 //// Constants and variables
 ////
 
-const Bitboard EmptyBoardBB = 0ULL;
+const Bitboard EmptyBoardBB = 0;
 
-const Bitboard FileABB = 0x0101010101010101ULL;
-const Bitboard FileBBB = 0x0202020202020202ULL;
-const Bitboard FileCBB = 0x0404040404040404ULL;
-const Bitboard FileDBB = 0x0808080808080808ULL;
-const Bitboard FileEBB = 0x1010101010101010ULL;
-const Bitboard FileFBB = 0x2020202020202020ULL;
-const Bitboard FileGBB = 0x4040404040404040ULL;
-const Bitboard FileHBB = 0x8080808080808080ULL;
+const Bitboard FileABB = 0x0101010101010101;
+const Bitboard FileBBB = FileABB << 1;
+const Bitboard FileCBB = FileABB << 2;
+const Bitboard FileDBB = FileABB << 3;
+const Bitboard FileEBB = FileABB << 4;
+const Bitboard FileFBB = FileABB << 5;
+const Bitboard FileGBB = FileABB << 6;
+const Bitboard FileHBB = FileABB << 7;
 
-const Bitboard Rank1BB = 0xFFULL;
-const Bitboard Rank2BB = 0xFF00ULL;
-const Bitboard Rank3BB = 0xFF0000ULL;
-const Bitboard Rank4BB = 0xFF000000ULL;
-const Bitboard Rank5BB = 0xFF00000000ULL;
-const Bitboard Rank6BB = 0xFF0000000000ULL;
-const Bitboard Rank7BB = 0xFF000000000000ULL;
-const Bitboard Rank8BB = 0xFF00000000000000ULL;
+const Bitboard Rank1BB = 0xFF;
+const Bitboard Rank2BB = Rank1BB << (8 * 1);
+const Bitboard Rank3BB = Rank1BB << (8 * 2);
+const Bitboard Rank4BB = Rank1BB << (8 * 3);
+const Bitboard Rank5BB = Rank1BB << (8 * 4);
+const Bitboard Rank6BB = Rank1BB << (8 * 5);
+const Bitboard Rank7BB = Rank1BB << (8 * 6);
+const Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern const Bitboard SquaresByColorBB[2];
 extern const Bitboard FileBB[8];
