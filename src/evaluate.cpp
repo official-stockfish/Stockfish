@@ -45,11 +45,6 @@ namespace {
     // Middle and end game position's static evaluations
     Score value;
 
-    // margin[color] stores the evaluation margins we should consider for
-    // the given position. This is a kind of uncertainty estimation and
-    // typically is used by the search for pruning decisions.
-    Value margin[2];
-
     // Pointer to pawn hash table entry
     PawnInfo* pi;
 
@@ -243,7 +238,7 @@ namespace {
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_king(const Position& pos, EvalInfo& ei);
+  void evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
 
   template<Color Us>
   void evaluate_threats(const Position& pos, EvalInfo& ei);
@@ -299,6 +294,10 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   // position object (material + piece square tables).
   ei.value = pos.value();
 
+  // margins[color] stores the uncertainty estimation of position's evaluation
+  // and typically is used by the search for pruning decisions.
+  margins[WHITE] = margins[BLACK] = VALUE_ZERO;
+
   // Probe the material hash table
   MaterialInfo* mi = MaterialTable[pos.thread()]->get_material_info(pos);
   ei.value += mi->material_value();
@@ -328,8 +327,8 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   // Kings. Kings are evaluated after all other pieces for both sides,
   // because we need complete attack information for all pieces when computing
   // the king safety evaluation.
-  evaluate_king<WHITE, HasPopCnt>(pos, ei);
-  evaluate_king<BLACK, HasPopCnt>(pos, ei);
+  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins);
+  evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
 
   // Evaluate tactical threats, we need full attack info including king
   evaluate_threats<WHITE>(pos, ei);
@@ -391,10 +390,6 @@ Value do_evaluate(const Position& pos, Value margins[]) {
       if (factor[BLACK] == SCALE_FACTOR_NORMAL)
           factor[BLACK] = sf;
   }
-
-  // Populate margins[]
-  margins[WHITE] = ei.margin[WHITE];
-  margins[BLACK] = ei.margin[BLACK];
 
   // Interpolate between the middle game and the endgame score
   return Sign[pos.side_to_move()] * scale_by_game_phase(ei.value, phase, factor);
@@ -680,7 +675,7 @@ namespace {
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_king(const Position& pos, EvalInfo& ei) {
+  void evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -766,9 +761,8 @@ namespace {
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
         ei.value -= Sign[Us] * KingDangerTable[Us][attackUnits];
-        ei.margin[Us] = mg_value(KingDangerTable[Us][attackUnits]);
-    } else
-        ei.margin[Us] = VALUE_ZERO;
+        margins[Us] += mg_value(KingDangerTable[Us][attackUnits]);
+    }
   }
 
 
