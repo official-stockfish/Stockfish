@@ -235,19 +235,19 @@ namespace {
   void init_attack_tables(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
-  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei);
+  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility);
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
+  Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
 
   template<Color Us>
-  void evaluate_threats(const Position& pos, EvalInfo& ei);
+  Score evaluate_threats(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool HasPopCnt>
   int evaluate_space(const Position& pos, EvalInfo& ei);
 
   template<Color Us>
-  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
+  Score evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
 
   inline Score apply_weight(Score v, Score weight);
   Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
@@ -284,7 +284,7 @@ Value do_evaluate(const Position& pos, Value margins[]) {
 
   EvalInfo ei;
   ScaleFactor factor[2];
-  Score mobility;
+  Score w_mob, b_mob;
 
   assert(pos.is_ok());
   assert(pos.thread() >= 0 && pos.thread() < MAX_THREADS);
@@ -320,23 +320,24 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   init_attack_tables<BLACK, HasPopCnt>(pos, ei);
 
   // Evaluate pieces and mobility
-  mobility =   evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei)
-             - evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei);
-  ei.value += apply_weight(mobility, Weights[Mobility]);
+  ei.value +=  evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei, w_mob)
+             - evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei, b_mob);
+
+  ei.value += apply_weight(w_mob - b_mob, Weights[Mobility]);
 
   // Kings. Kings are evaluated after all other pieces for both sides,
   // because we need complete attack information for all pieces when computing
   // the king safety evaluation.
-  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins);
-  evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
+  ei.value +=  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins)
+             - evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
 
   // Evaluate tactical threats, we need full attack info including king
-  evaluate_threats<WHITE>(pos, ei);
-  evaluate_threats<BLACK>(pos, ei);
+  ei.value +=  evaluate_threats<WHITE>(pos, ei)
+             - evaluate_threats<BLACK>(pos, ei);
 
   // Evaluate passed pawns, we need full attack info including king
-  evaluate_passed_pawns<WHITE>(pos, ei);
-  evaluate_passed_pawns<BLACK>(pos, ei);
+  ei.value +=  evaluate_passed_pawns<WHITE>(pos, ei)
+             - evaluate_passed_pawns<BLACK>(pos, ei);
 
   Phase phase = mi->game_phase();
 
@@ -482,7 +483,7 @@ namespace {
   // evaluate_outposts() evaluates bishop and knight outposts squares
 
   template<PieceType Piece, Color Us>
-  void evaluate_outposts(const Position& pos, EvalInfo& ei, Square s) {
+  Score evaluate_outposts(const Position& pos, EvalInfo& ei, Square s) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -501,20 +502,20 @@ namespace {
         else
             bonus += bonus / 2;
     }
-    ei.value += Sign[Us] * make_score(bonus, bonus);
+    return make_score(bonus, bonus);
   }
 
 
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Bitboard no_mob_area) {
+  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score& mobility, Bitboard no_mob_area) {
 
     Bitboard b;
     Square s, ksq;
     int mob;
     File f;
-    Score mobility = SCORE_ZERO;
+    Score bonus = SCORE_ZERO;
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* ptr = pos.piece_list_begin(Us, Piece);
@@ -555,18 +556,18 @@ namespace {
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (bit_is_set(ei.attackedBy[Them][PAWN], s))
-            ei.value -= Sign[Us] * ThreatedByPawnPenalty[Piece];
+            bonus -= ThreatedByPawnPenalty[Piece];
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Us))
-            evaluate_outposts<Piece, Us>(pos, ei, s);
+            bonus += evaluate_outposts<Piece, Us>(pos, ei, s);
 
         // Queen or rook on 7th rank
         if (  (Piece == ROOK || Piece == QUEEN)
             && relative_rank(Us, s) == RANK_7
             && relative_rank(Us, pos.king_square(Them)) == RANK_8)
         {
-            ei.value += Sign[Us] * (Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus);
+            bonus += (Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus);
         }
 
         // Special extra evaluation for rooks
@@ -577,9 +578,9 @@ namespace {
             if (ei.pi->file_is_half_open(Us, f))
             {
                 if (ei.pi->file_is_half_open(Them, f))
-                    ei.value += Sign[Us] * RookOpenFileBonus;
+                    bonus += RookOpenFileBonus;
                 else
-                    ei.value += Sign[Us] * RookHalfOpenFileBonus;
+                    bonus += RookHalfOpenFileBonus;
             }
 
             // Penalize rooks which are trapped inside a king. Penalize more if
@@ -609,7 +610,7 @@ namespace {
             }
         }
     }
-    return mobility;
+    return bonus;
   }
 
 
@@ -617,7 +618,7 @@ namespace {
   // and the type of attacked one.
 
   template<Color Us>
-  void evaluate_threats(const Position& pos, EvalInfo& ei) {
+  Score evaluate_threats(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -629,7 +630,7 @@ namespace {
                           & ~ei.attackedBy[Them][PAWN]
                           & ei.attackedBy[Us][0];
     if (!weakEnemies)
-        return;
+        return SCORE_ZERO;
 
     // Add bonus according to type of attacked enemy pieces and to the
     // type of attacking piece, from knights to queens. Kings are not
@@ -642,7 +643,7 @@ namespace {
                 if (b & pos.pieces(pt2))
                     bonus += ThreatBonus[pt1][pt2];
     }
-    ei.value += Sign[Us] * bonus;
+    return bonus;
   }
 
 
@@ -650,32 +651,34 @@ namespace {
   // pieces of a given color.
 
   template<Color Us, bool HasPopCnt>
-  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei) {
+  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Score mobility = SCORE_ZERO;
+    Score bonus = SCORE_ZERO;
+
+    mobility = SCORE_ZERO;
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
     const Bitboard no_mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
-    mobility += evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, no_mob_area);
-    mobility += evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, no_mob_area);
-    mobility += evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, no_mob_area);
-    mobility += evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, no_mob_area);
+    bonus += evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
+    bonus += evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
+    bonus += evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
+    bonus += evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
 
     // Sum up all attacked squares
     ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
                            | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                            | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
-    return mobility;
+    return bonus;
   }
 
 
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool HasPopCnt>
-  void evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
+  Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -685,7 +688,7 @@ namespace {
     const Square ksq = pos.king_square(Us);
 
     // King shelter
-    ei.value += Sign[Us] * ei.pi->king_shelter(pos, Us, ksq);
+    Score bonus = ei.pi->king_shelter(pos, Us, ksq);
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
@@ -756,20 +759,21 @@ namespace {
         attackUnits = Min(99, Max(0, attackUnits));
 
         // Finally, extract the king danger score from the KingDangerTable[]
-        // array and subtract the score from evaluation. Set also ei.margin[]
+        // array and subtract the score from evaluation. Set also margins[]
         // value that will be used for pruning because this value can sometimes
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
-        ei.value -= Sign[Us] * KingDangerTable[Us][attackUnits];
+        bonus -= KingDangerTable[Us][attackUnits];
         margins[Us] += mg_value(KingDangerTable[Us][attackUnits]);
     }
+    return bonus;
   }
 
 
   // evaluate_passed_pawns<>() evaluates the passed pawns of the given color
 
   template<Color Us>
-  void evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
+  Score evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -778,7 +782,7 @@ namespace {
     Bitboard b = ei.pi->passed_pawns(Us);
 
     if (!b)
-        return;
+        return SCORE_ZERO;
 
     do {
         Square s = pop_1st_bit(&b);
@@ -860,7 +864,7 @@ namespace {
     } while (b);
 
     // Add the scores to the middle game and endgame eval
-    ei.value += Sign[Us] * apply_weight(bonus, Weights[PassedPawns]);
+    return apply_weight(bonus, Weights[PassedPawns]);
   }
 
 
