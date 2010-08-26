@@ -677,7 +677,7 @@ namespace {
     const Square ksq = pos.king_square(Us);
 
     // King shelter
-    Score bonus = ei.pi->king_shelter(pos, Us, ksq);
+    Score bonus = ei.pi->king_shelter<Us>(pos, ksq);
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
@@ -701,7 +701,7 @@ namespace {
         attackUnits =  Min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + count_1s_max_15<HasPopCnt>(undefended))
                      + InitKingDanger[relative_square(Us, ksq)]
-                     - mg_value(ei.pi->king_shelter(pos, Us, ksq)) / 32;
+                     - mg_value(ei.pi->king_shelter<Us>(pos, ksq)) / 32;
 
         // Analyse enemy's safe queen contact checks. First find undefended
         // squares around the king attacked by enemy queen...

@@ -26,6 +26,7 @@
 ////
 
 #include "bitboard.h"
+#include "position.h"
 #include "value.h"
 
 ////
@@ -40,8 +41,6 @@ const int PawnTableSize = 16384;
 /// to add further information in the future. A lookup to the pawn hash table
 /// (performed by calling the get_pawn_info method in a PawnInfoTable object)
 /// returns a pointer to a PawnInfo object.
-class Position;
-
 class PawnInfo {
 
   friend class PawnInfoTable;
@@ -55,10 +54,13 @@ public:
   int file_is_half_open(Color c, File f) const;
   int has_open_file_to_left(Color c, File f) const;
   int has_open_file_to_right(Color c, File f) const;
-  Score king_shelter(const Position& pos, Color c, Square ksq);
+
+  template<Color Us>
+  Score king_shelter(const Position& pos, Square ksq);
 
 private:
-  Score updateShelter(const Position& pos, Color c, Square ksq);
+  template<Color Us>
+  Score updateShelter(const Position& pos, Square ksq);
 
   Key key;
   Bitboard passedPawns[2];
@@ -140,8 +142,34 @@ inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
   return halfOpenFiles[c] & ~((1 << int(f+1)) - 1);
 }
 
-inline Score PawnInfo::king_shelter(const Position& pos, Color c, Square ksq) {
-  return kingSquares[c] == ksq ? kingShelters[c] : updateShelter(pos, c, ksq);
+/// PawnInfo::updateShelter() calculates and caches king shelter. It is called
+/// only when king square changes, about 20% of total king_shelter() calls.
+template<Color Us>
+Score PawnInfo::updateShelter(const Position& pos, Square ksq) {
+
+  const int Shift = (Us == WHITE ? 8 : -8);
+
+  Bitboard pawns;
+  int r, shelter = 0;
+
+  if (relative_rank(Us, ksq) <= RANK_4)
+  {
+      pawns = pos.pieces(PAWN, Us) & this_and_neighboring_files_bb(ksq);
+      r = square_rank(ksq) * 8;
+      for (int i = 1; i < 4; i++)
+      {
+          r += Shift;
+          shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (128 >> i);
+      }
+  }
+  kingSquares[Us] = ksq;
+  kingShelters[Us] = make_score(shelter, 0);
+  return kingShelters[Us];
+}
+
+template<Color Us>
+inline Score PawnInfo::king_shelter(const Position& pos, Square ksq) {
+  return kingSquares[Us] == ksq ? kingShelters[Us] : updateShelter<Us>(pos, ksq);
 }
 
 #endif // !defined(PAWNS_H_INCLUDED)

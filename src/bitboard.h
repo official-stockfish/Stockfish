@@ -38,7 +38,7 @@
 
 const Bitboard EmptyBoardBB = 0;
 
-const Bitboard FileABB = 0x0101010101010101;
+const Bitboard FileABB = 0x0101010101010101ULL;
 const Bitboard FileBBB = FileABB << 1;
 const Bitboard FileCBB = FileABB << 2;
 const Bitboard FileDBB = FileABB << 3;

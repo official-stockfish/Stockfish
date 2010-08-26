@@ -320,27 +320,3 @@ int PawnInfoTable::evaluate_pawn_storm(Square s, Rank r, File f, Bitboard theirP
   }
   return bonus;
 }
-
-
-/// PawnInfo::updateShelter calculates and caches king shelter. It is called
-/// only when king square changes, about 20% of total king_shelter() calls.
-Score PawnInfo::updateShelter(const Position& pos, Color c, Square ksq) {
-
-  Bitboard pawns;
-  unsigned r, k, shelter = 0;
-
-  if (relative_rank(c, ksq) <= RANK_4)
-  {
-      pawns = pos.pieces(PAWN, c) & this_and_neighboring_files_bb(ksq);
-      r = ksq & (7 << 3);
-      k = (c ? -8 : 8);
-      for (int i = 1; i < 4; i++)
-      {
-          r += k;
-          shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (128 >> i);
-      }
-  }
-  kingSquares[c] = ksq;
-  kingShelters[c] = make_score(shelter, 0);
-  return kingShelters[c];
-}
