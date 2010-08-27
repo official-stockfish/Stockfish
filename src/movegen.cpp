@@ -429,10 +429,13 @@ namespace {
     Square from;
     const Square* ptr = pos.piece_list_begin(us, Piece);
 
-    while ((from = *ptr++) != SQ_NONE)
+    if (*ptr != SQ_NONE)
     {
-        b = pos.attacks_from<Piece>(from) & target;
-        SERIALIZE_MOVES(b);
+        do {
+            from = *ptr;
+            b = pos.attacks_from<Piece>(from) & target;
+            SERIALIZE_MOVES(b);
+        } while (*++ptr != SQ_NONE);
     }
     return mlist;
   }
