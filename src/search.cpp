@@ -114,7 +114,7 @@ namespace {
 
   struct RootMove {
 
-    RootMove() : mp_score(0), nodes(0), cumulativeNodes(0) {}
+    RootMove() : mp_score(0), nodes(0) {}
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
@@ -128,7 +128,7 @@ namespace {
     Move move;
     Value score;
     int mp_score;
-    int64_t nodes, cumulativeNodes;
+    int64_t nodes;
     Move pv[PLY_MAX_PLUS_2];
   };
 
@@ -146,10 +146,10 @@ namespace {
     Value get_move_score(int moveNum) const { return moves[moveNum].score; }
     void set_move_score(int moveNum, Value score) { moves[moveNum].score = score; }
     Move get_move_pv(int moveNum, int i) const { return moves[moveNum].pv[i]; }
-    int64_t get_move_cumulative_nodes(int moveNum) const { return moves[moveNum].cumulativeNodes; }
+    int64_t get_move_nodes(int moveNum) const { return moves[moveNum].nodes; }
     void score_moves(const Position& pos);
 
-    void set_move_nodes(int moveNum, int64_t nodes);
+    void add_move_nodes(int moveNum, int64_t nodes) { moves[moveNum].nodes += nodes; }
     void set_move_pv(int moveNum, const Move pv[]);
     void sort();
     void sort_multipv(int n);
@@ -629,9 +629,9 @@ namespace {
             int64_t nodes = ThreadsMgr.nodes_searched();
             if (   Iteration >= 8
                 && EasyMove == pv[0]
-                && (  (   rml.get_move_cumulative_nodes(0) > (nodes * 85) / 100
+                && (  (   rml.get_move_nodes(0) > (nodes * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
-                    ||(   rml.get_move_cumulative_nodes(0) > (nodes * 98) / 100
+                    ||(   rml.get_move_nodes(0) > (nodes * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
                 stopSearch = true;
 
@@ -883,7 +883,7 @@ namespace {
                 break;
 
             // Remember searched nodes counts for this move
-            rml.set_move_nodes(i, ThreadsMgr.nodes_searched() - nodes);
+            rml.add_move_nodes(i, ThreadsMgr.nodes_searched() - nodes);
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
             assert(value < beta);
@@ -2784,12 +2784,6 @@ namespace {
   }
 
   // RootMoveList simple methods definitions
-
-  void RootMoveList::set_move_nodes(int moveNum, int64_t nodes) {
-
-    moves[moveNum].nodes = nodes;
-    moves[moveNum].cumulativeNodes += nodes;
-  }
 
   void RootMoveList::set_move_pv(int moveNum, const Move pv[]) {
 
