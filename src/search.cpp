@@ -52,7 +52,10 @@ using std::endl;
 
 namespace {
 
-  /// Types
+  // Maximum number of allowed moves per position
+  const int MOVES_MAX = 256;
+
+  // Types
   enum NodeType { NonPV, PV };
 
   // Set to true to force running with one thread.
@@ -141,22 +144,21 @@ namespace {
   public:
     RootMoveList(Position& pos, Move searchMoves[]);
 
+    Move move(int moveNum) const { return moves[moveNum].move; }
+    Move move_pv(int moveNum, int i) const { return moves[moveNum].pv[i]; }
     int move_count() const { return count; }
-    Move get_move(int moveNum) const { return moves[moveNum].move; }
-    Value get_move_score(int moveNum) const { return moves[moveNum].score; }
-    void set_move_score(int moveNum, Value score) { moves[moveNum].score = score; }
-    Move get_move_pv(int moveNum, int i) const { return moves[moveNum].pv[i]; }
-    int64_t get_move_nodes(int moveNum) const { return moves[moveNum].nodes; }
-    void score_moves(const Position& pos);
-
+    Value move_score(int moveNum) const { return moves[moveNum].score; }
+    int64_t move_nodes(int moveNum) const { return moves[moveNum].nodes; }
     void add_move_nodes(int moveNum, int64_t nodes) { moves[moveNum].nodes += nodes; }
+    void set_move_score(int moveNum, Value score) { moves[moveNum].score = score; }
+
     void set_move_pv(int moveNum, const Move pv[]);
+    void score_moves(const Position& pos);
     void sort();
     void sort_multipv(int n);
 
   private:
-    static const int MaxRootMoves = 500;
-    RootMove moves[MaxRootMoves];
+    RootMove moves[MOVES_MAX];
     int count;
   };
 
@@ -379,7 +381,7 @@ void init_search() {
 
 int perft(Position& pos, Depth depth)
 {
-    MoveStack mlist[256];
+    MoveStack mlist[MOVES_MAX];
     StateInfo st;
     Move m;
     int sum = 0;
@@ -551,24 +553,24 @@ namespace {
     cout << set960(p.is_chess960()) // Is enough to set once at the beginning
          << "info depth " << 1
          << "\ninfo depth " << 1
-         << " score " << value_to_uci(rml.get_move_score(0))
+         << " score " << value_to_uci(rml.move_score(0))
          << " time " << current_search_time()
          << " nodes " << ThreadsMgr.nodes_searched()
          << " nps " << nps()
-         << " pv " << rml.get_move(0) << "\n";
+         << " pv " << rml.move(0) << "\n";
 
     // Initialize
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
     pv[0] = pv[1] = MOVE_NONE;
-    ValueByIteration[1] = rml.get_move_score(0);
+    ValueByIteration[1] = rml.move_score(0);
     Iteration = 1;
 
     // Is one move significantly better than others after initial scoring ?
     if (   rml.move_count() == 1
-        || rml.get_move_score(0) > rml.get_move_score(1) + EasyMoveMargin)
-        EasyMove = rml.get_move(0);
+        || rml.move_score(0) > rml.move_score(1) + EasyMoveMargin)
+        EasyMove = rml.move(0);
 
     // Iterative deepening loop
     while (Iteration < PLY_MAX)
@@ -629,9 +631,9 @@ namespace {
             int64_t nodes = ThreadsMgr.nodes_searched();
             if (   Iteration >= 8
                 && EasyMove == pv[0]
-                && (  (   rml.get_move_nodes(0) > (nodes * 85) / 100
+                && (  (   rml.move_nodes(0) > (nodes * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
-                    ||(   rml.get_move_nodes(0) > (nodes * 98) / 100
+                    ||(   rml.move_nodes(0) > (nodes * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
                 stopSearch = true;
 
@@ -672,7 +674,7 @@ namespace {
     // Print the best move and the ponder move to the standard output
     if (pv[0] == MOVE_NONE)
     {
-        pv[0] = rml.get_move(0);
+        pv[0] = rml.move(0);
         pv[1] = MOVE_NONE;
     }
 
@@ -703,7 +705,7 @@ namespace {
                 << move_to_san(p, pv[1]) // Works also with MOVE_NONE
                 << endl;
     }
-    return rml.get_move_score(0);
+    return rml.move_score(0);
   }
 
 
@@ -766,7 +768,7 @@ namespace {
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
-            move = ss->currentMove = rml.get_move(i);
+            move = ss->currentMove = rml.move(i);
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
@@ -922,19 +924,19 @@ namespace {
                     for (int j = 0; j < Min(MultiPV, rml.move_count()); j++)
                     {
                         cout << "info multipv " << j + 1
-                             << " score " << value_to_uci(rml.get_move_score(j))
+                             << " score " << value_to_uci(rml.move_score(j))
                              << " depth " << (j <= i ? Iteration : Iteration - 1)
                              << " time " << current_search_time()
                              << " nodes " << ThreadsMgr.nodes_searched()
                              << " nps " << nps()
                              << " pv ";
 
-                        for (int k = 0; rml.get_move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
-                            cout << rml.get_move_pv(j, k) << " ";
+                        for (int k = 0; rml.move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
+                            cout << rml.move_pv(j, k) << " ";
 
                         cout << endl;
                     }
-                    alpha = rml.get_move_score(Min(i, MultiPV - 1));
+                    alpha = rml.move_score(Min(i, MultiPV - 1));
                 }
             } // PV move or new best move
 
@@ -974,7 +976,7 @@ namespace {
     assert(ply > 0 && ply < PLY_MAX);
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
-    Move movesSearched[256];
+    Move movesSearched[MOVES_MAX];
     Value margins[2];
     StateInfo st;
     const TTEntry *tte;
@@ -2726,17 +2728,17 @@ namespace {
 
   // RootMoveList c'tor
 
-  RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) : count(0) {
+  RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
-    MoveStack mlist[MaxRootMoves];
+    MoveStack mlist[MOVES_MAX];
     StateInfo st;
     bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
 
     // Initialize search stack
     init_ss_array(ss, PLY_MAX_PLUS_2);
-    ss[0].currentMove = ss[0].bestMove = MOVE_NONE;
     ss[0].eval = VALUE_NONE;
+    count = 0;
 
     // Generate all legal moves
     MoveStack* last = generate_moves(pos, mlist);
@@ -2753,12 +2755,10 @@ namespace {
             continue;
 
         // Find a quick score for the move
-        pos.do_move(cur->move, st);
-        ss[0].currentMove = cur->move;
-        moves[count].move = cur->move;
-        moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
-        moves[count].pv[0] = cur->move;
+        moves[count].move = ss[0].currentMove = moves[count].pv[0] = cur->move;
         moves[count].pv[1] = MOVE_NONE;
+        pos.do_move(cur->move, st);
+        moves[count].score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
         pos.undo_move(cur->move);
         count++;
     }
@@ -2823,4 +2823,4 @@ namespace {
     }
   }
 
-} // namspace
+} // namespace
