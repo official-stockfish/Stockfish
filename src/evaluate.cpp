@@ -336,26 +336,11 @@ Value do_evaluate(const Position& pos, Value margins[]) {
 
   Phase phase = mi->game_phase();
 
-  // Middle-game specific evaluation terms
-  if (phase > PHASE_ENDGAME)
+  // Evaluate space for both sides, only in middle-game.
+  if (phase > PHASE_ENDGAME && mi->space_weight() > 0)
   {
-      // Evaluate pawn storms in positions with opposite castling
-      if (   square_file(pos.king_square(WHITE)) >= FILE_E
-          && square_file(pos.king_square(BLACK)) <= FILE_D)
-
-          bonus += make_score(ei.pi->queenside_storm_value(WHITE) - ei.pi->kingside_storm_value(BLACK), 0);
-
-      else if (   square_file(pos.king_square(WHITE)) <= FILE_D
-               && square_file(pos.king_square(BLACK)) >= FILE_E)
-
-          bonus += make_score(ei.pi->kingside_storm_value(WHITE) - ei.pi->queenside_storm_value(BLACK), 0);
-
-      // Evaluate space for both sides
-      if (mi->space_weight() > 0)
-      {
-          int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
-          bonus += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
-      }
+      int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
+      bonus += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
   }
 
   // If we don't already have an unusual scale factor, check for opposite

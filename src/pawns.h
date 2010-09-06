@@ -47,8 +47,6 @@ class PawnInfo {
 
 public:
   Score pawns_value() const;
-  Value kingside_storm_value(Color c) const;
-  Value queenside_storm_value(Color c) const;
   Bitboard pawn_attacks(Color c) const;
   Bitboard passed_pawns(Color c) const;
   int file_is_half_open(Color c, File f) const;
@@ -67,8 +65,6 @@ private:
   Bitboard pawnAttacks[2];
   Square kingSquares[2];
   Score value;
-  int ksStormValue[2];
-  int qsStormValue[2];
   int halfOpenFiles[2];
   Score kingShelters[2];
 };
@@ -92,9 +88,6 @@ private:
   template<Color Us>
   Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi) const;
 
-  template<Color Us, SideType Side>
-  int evaluate_pawn_storm(Square s, Rank r, File f, Bitboard theirPawns) const;
-
   PawnInfo* entries;
 };
 
@@ -116,14 +109,6 @@ inline Score PawnInfo::pawns_value() const {
 
 inline Bitboard PawnInfo::pawn_attacks(Color c) const {
   return pawnAttacks[c];
-}
-
-inline Value PawnInfo::kingside_storm_value(Color c) const {
-  return Value(ksStormValue[c]);
-}
-
-inline Value PawnInfo::queenside_storm_value(Color c) const {
-  return Value(qsStormValue[c]);
 }
 
 inline Bitboard PawnInfo::passed_pawns(Color c) const {
