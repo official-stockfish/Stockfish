@@ -199,9 +199,9 @@ namespace {
   const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
 
   // Bonuses for enemy's safe checks
-  const int QueenContactCheckBonus = 3;
-  const int QueenCheckBonus        = 2;
-  const int RookCheckBonus         = 1;
+  const int QueenContactCheckBonus = 6;
+  const int QueenCheckBonus        = 3;
+  const int RookCheckBonus         = 2;
   const int BishopCheckBonus       = 1;
   const int KnightCheckBonus       = 1;
 
