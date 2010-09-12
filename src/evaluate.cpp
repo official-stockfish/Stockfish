@@ -200,6 +200,7 @@ namespace {
 
   // Bonuses for enemy's safe checks
   const int QueenContactCheckBonus = 6;
+  const int RookContactCheckBonus  = 4;
   const int QueenCheckBonus        = 3;
   const int RookCheckBonus         = 2;
   const int BishopCheckBonus       = 1;
@@ -706,6 +707,24 @@ namespace {
                   | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]);
             if (b)
                 attackUnits +=  QueenContactCheckBonus
+                              * count_1s_max_15<HasPopCnt>(b)
+                              * (Them == pos.side_to_move() ? 2 : 1);
+        }
+
+        // Analyse enemy's safe rook contact checks. First find undefended
+        // squares around the king attacked by enemy rooks...
+        b = undefended & ei.attackedBy[Them][ROOK] & ~pos.pieces_of_color(Them);
+
+        // Consider only squares where the enemy rook gives check
+        b &= RookPseudoAttacks[ksq];
+
+        if (b)
+        {
+            // ...then remove squares not supported by another enemy piece
+            b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
+                  | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][QUEEN]);
+            if (b)
+                attackUnits +=  RookContactCheckBonus
                               * count_1s_max_15<HasPopCnt>(b)
                               * (Them == pos.side_to_move() ? 2 : 1);
         }
