@@ -188,12 +188,6 @@ namespace {
   // Dynamic razoring margin based on depth
   inline Value razor_margin(Depth d) { return Value(0x200 + 0x10 * int(d)); }
 
-  // Step 8. Null move search with verification search
-
-  // Null move margin. A null move search will not be done if the static
-  // evaluation of the position is more than NullMoveMargin below beta.
-  const Value NullMoveMargin = Value(0x200);
-
   // Maximum depth for use of dynamic threat detection when null move fails low
   const Depth ThreatDepth = 5 * ONE_PLY;
 
@@ -1094,14 +1088,11 @@ namespace {
         return refinedValue - futility_margin(depth, 0);
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
-    // When we jump directly to qsearch() we do a null move only if static value is
-    // at least beta. Otherwise we do a null move if static value is not more than
-    // NullMoveMargin under beta.
     if (   !PvNode
         && !ss->skipNullMove
         &&  depth > ONE_PLY
         && !isCheck
-        &&  refinedValue >= beta - (depth >= 4 * ONE_PLY ? NullMoveMargin : 0)
+        &&  refinedValue >= beta
         && !value_is_mate(beta)
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
