@@ -65,8 +65,8 @@ private:
   MoveStack ttMoves[2], killers[2];
   int badCaptureThreshold, phase;
   const uint8_t* phasePtr;
-  MoveStack *curMove, *lastMove, *lastGoodNonCapture, *lastBadCapture;
-  MoveStack moves[256], badCaptures[64];
+  MoveStack *curMove, *lastMove, *lastGoodNonCapture, *badCaptures;
+  MoveStack moves[256];
 };
 
 

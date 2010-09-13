@@ -75,7 +75,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   int searchTT = ttm;
   ttMoves[0].move = ttm;
   badCaptureThreshold = 0;
-  lastBadCapture = badCaptures;
+  badCaptures = moves + 256;
 
   pinned = p.pinned_pieces(pos.side_to_move());
 
@@ -148,10 +148,10 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_BAD_CAPTURES:
-      // Bad captures SEE value is already calculated so just sort them
-      // to get SEE move ordering.
+      // Bad captures SEE value is already calculated so just pick
+      // them in order to get SEE move ordering.
       curMove = badCaptures;
-      lastMove = lastBadCapture;
+      lastMove = moves + 256;
       return;
 
   case PH_EVASIONS:
@@ -292,12 +292,10 @@ Move MovePicker::get_next_move() {
                   if (seeValue >= badCaptureThreshold)
                       return move;
 
-                  // Losing capture, move it to the badCaptures[] array, note
+                  // Losing capture, move it to the tail of the array, note
                   // that move has now been already checked for legality.
-                  assert(int(lastBadCapture - badCaptures) < 63);
-                  lastBadCapture->move = move;
-                  lastBadCapture->score = seeValue;
-                  lastBadCapture++;
+                  (--badCaptures)->move = move;
+                  badCaptures->score = seeValue;
               }
               break;
 
