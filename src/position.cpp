@@ -46,7 +46,7 @@ using std::endl;
 
 static inline bool isZero(char c) { return c == '0'; }
 
-struct PieceLetters : std::map<char, Piece> {
+struct PieceLetters : public std::map<char, Piece> {
 
     PieceLetters() {
 
