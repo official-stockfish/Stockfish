@@ -1544,11 +1544,6 @@ namespace {
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, evalMargin);
 
-    // Update killers only for checking moves that fails high
-    if (    bestValue >= beta
-        && !pos.move_is_capture_or_promotion(ss->bestMove))
-        update_killers(ss->bestMove, ss);
-
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     return bestValue;
