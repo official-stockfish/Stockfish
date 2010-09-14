@@ -230,7 +230,7 @@ namespace {
 
   // Function prototypes
   template<bool HasPopCnt>
-  Value do_evaluate(const Position& pos, Value margins[]);
+  Value do_evaluate(const Position& pos, Value& margin);
 
   template<Color Us, bool HasPopCnt>
   void init_eval_info(const Position& pos, EvalInfo& ei);
@@ -239,7 +239,7 @@ namespace {
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility);
 
   template<Color Us, bool HasPopCnt>
-  Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
+  Score evaluate_king(const Position& pos, EvalInfo& ei, Value& margin);
 
   template<Color Us>
   Score evaluate_threats(const Position& pos, EvalInfo& ei);
@@ -273,16 +273,16 @@ void prefetchPawn(Key key, int threadID) {
 /// evaluate() is the main evaluation function. It always computes two
 /// values, an endgame score and a middle game score, and interpolates
 /// between them based on the remaining material.
-Value evaluate(const Position& pos, Value margins[]) {
+Value evaluate(const Position& pos, Value& margin) {
 
-    return CpuHasPOPCNT ? do_evaluate<true>(pos, margins)
-                        : do_evaluate<false>(pos, margins);
+    return CpuHasPOPCNT ? do_evaluate<true>(pos, margin)
+                        : do_evaluate<false>(pos, margin);
 }
 
 namespace {
 
 template<bool HasPopCnt>
-Value do_evaluate(const Position& pos, Value margins[]) {
+Value do_evaluate(const Position& pos, Value& margin) {
 
   EvalInfo ei;
   ScaleFactor factor[2];
@@ -296,9 +296,9 @@ Value do_evaluate(const Position& pos, Value margins[]) {
   // in the position object (material + piece square tables).
   Score bonus = pos.value();
 
-  // margins[color] is the uncertainty estimation of position's evaluation
+  // margin is the uncertainty estimation of position's evaluation
   // and typically is used by the search for pruning decisions.
-  margins[WHITE] = margins[BLACK] = VALUE_ZERO;
+  margin = VALUE_ZERO;
 
   // Probe the material hash table
   MaterialInfo* mi = MaterialTable[pos.thread()]->get_material_info(pos);
@@ -329,8 +329,8 @@ Value do_evaluate(const Position& pos, Value margins[]) {
 
   // Evaluate kings after all other pieces because we need complete attack
   // information when computing the king safety evaluation.
-  bonus +=  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins)
-          - evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
+  bonus +=  evaluate_king<WHITE, HasPopCnt>(pos, ei, margin)
+          - evaluate_king<BLACK, HasPopCnt>(pos, ei, margin);
 
   // Evaluate tactical threats, we need full attack information including king
   bonus +=  evaluate_threats<WHITE>(pos, ei)
@@ -663,7 +663,7 @@ namespace {
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool HasPopCnt>
-  Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
+  Score evaluate_king(const Position& pos, EvalInfo& ei, Value& margin) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -764,7 +764,8 @@ namespace {
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
         bonus -= KingDangerTable[Us][attackUnits];
-        margins[Us] += mg_value(KingDangerTable[Us][attackUnits]);
+        if (pos.side_to_move() == Us)
+            margin += mg_value(KingDangerTable[Us][attackUnits]);
     }
     return bonus;
   }
