@@ -1502,7 +1502,6 @@ namespace {
       evasionPrunable =   isCheck
                        && bestValue > value_mated_in(PLY_MAX)
                        && !pos.move_is_capture(move)
-                       && pos.type_of_piece_on(move_from(move)) != KING
                        && !pos.can_castle(pos.side_to_move());
 
       // Don't search moves with negative SEE values
