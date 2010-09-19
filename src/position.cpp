@@ -91,6 +91,12 @@ Score Position::PieceSquareTable[16][64];
 
 static PieceLetters pieceLetters;
 
+// Material values used by SEE, indexed by PieceType
+const Value Position::seeValues[] = {
+  VALUE_ZERO, PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+  RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10
+};
+
 
 /// Constructors
 
@@ -1339,12 +1345,6 @@ void Position::undo_null_move() {
 /// move, and one which takes a 'from' and a 'to' square. The function does
 /// not yet understand promotions captures.
 
-int Position::see(Square to) const {
-
-  assert(square_is_ok(to));
-  return see(SQ_NONE, to);
-}
-
 int Position::see(Move m) const {
 
   assert(move_is_ok(m));
@@ -1369,82 +1369,50 @@ int Position::see_sign(Move m) const {
 
 int Position::see(Square from, Square to) const {
 
-  // Material values
-  static const int seeValues[18] = {
-    0, PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-       RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10, 0,
-    0, PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-       RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10, 0,
-    0, 0
-  };
+  Bitboard occ, attackers, stmAttackers, b;
+  int swapList[32], slIndex = 1;
+  PieceType capturedType, pt;
+  Color stm;
 
-  Bitboard attackers, stmAttackers, b;
-
-  assert(square_is_ok(from) || from == SQ_NONE);
+  assert(square_is_ok(from));
   assert(square_is_ok(to));
 
-  // Initialize colors
-  Color us = (from != SQ_NONE ? color_of_piece_on(from) : opposite_color(color_of_piece_on(to)));
-  Color them = opposite_color(us);
-
-  // Initialize pieces
-  Piece piece = piece_on(from);
-  Piece capture = piece_on(to);
-  Bitboard occ = occupied_squares();
+  capturedType = type_of_piece_on(to);
 
   // King cannot be recaptured
-  if (type_of_piece(piece) == KING)
-      return seeValues[capture];
+  if (capturedType == KING)
+      return seeValues[capturedType];
+
+  occ = occupied_squares();
 
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
   {
-      assert(capture == PIECE_NONE);
+      Square capQq = (side_to_move() == WHITE) ? (to - DELTA_N) : (to - DELTA_S);
 
-      Square capQq = (side_to_move() == WHITE)? (to - DELTA_N) : (to - DELTA_S);
-      capture = piece_on(capQq);
+      assert(capturedType == PIECE_TYPE_NONE);
       assert(type_of_piece_on(capQq) == PAWN);
 
       // Remove the captured pawn
       clear_bit(&occ, capQq);
+      capturedType = PAWN;
   }
 
-  while (true)
-  {
-      // Find all attackers to the destination square, with the moving piece
-      // removed, but possibly an X-ray attacker added behind it.
-      clear_bit(&occ, from);
-      attackers =  (rook_attacks_bb(to, occ)      & pieces(ROOK, QUEEN))
-                 | (bishop_attacks_bb(to, occ)    & pieces(BISHOP, QUEEN))
-                 | (attacks_from<KNIGHT>(to)      & pieces(KNIGHT))
-                 | (attacks_from<KING>(to)        & pieces(KING))
-                 | (attacks_from<PAWN>(to, WHITE) & pieces(PAWN, BLACK))
-                 | (attacks_from<PAWN>(to, BLACK) & pieces(PAWN, WHITE));
-
-      if (from != SQ_NONE)
-          break;
-
-      // If we don't have any attacker we are finished
-      if ((attackers & pieces_of_color(us)) == EmptyBoardBB)
-          return 0;
-
-      // Locate the least valuable attacker to the destination square
-      // and use it to initialize from square.
-      stmAttackers = attackers & pieces_of_color(us);
-      PieceType pt;
-      for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
-          assert(pt < KING);
-
-      from = first_1(stmAttackers & pieces(pt));
-      piece = piece_on(from);
-  }
+  // Find all attackers to the destination square, with the moving piece
+  // removed, but possibly an X-ray attacker added behind it.
+  clear_bit(&occ, from);
+  attackers =  (rook_attacks_bb(to, occ)      & pieces(ROOK, QUEEN))
+             | (bishop_attacks_bb(to, occ)    & pieces(BISHOP, QUEEN))
+             | (attacks_from<KNIGHT>(to)      & pieces(KNIGHT))
+             | (attacks_from<KING>(to)        & pieces(KING))
+             | (attacks_from<PAWN>(to, WHITE) & pieces(PAWN, BLACK))
+             | (attacks_from<PAWN>(to, BLACK) & pieces(PAWN, WHITE));
 
   // If the opponent has no attackers we are finished
-  stmAttackers = attackers & pieces_of_color(them);
+  stm = opposite_color(color_of_piece_on(from));
+  stmAttackers = attackers & pieces_of_color(stm);
   if (!stmAttackers)
-      return seeValues[capture];
-
-  attackers &= occ; // Remove the moving piece
+      return seeValues[capturedType];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1452,12 +1420,8 @@ int Position::see(Square from, Square to) const {
   // destination square, where the sides alternately capture, and always
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
-  int lastCapturingPieceValue = seeValues[piece];
-  int swapList[32], n = 1;
-  Color c = them;
-  PieceType pt;
-
-  swapList[0] = seeValues[capture];
+  swapList[0] = seeValues[capturedType];
+  capturedType = type_of_piece_on(from);
 
   do {
       // Locate the least valuable attacker for the side to move. The loop
@@ -1470,35 +1434,35 @@ int Position::see(Square from, Square to) const {
       // and scan for new X-ray attacks behind the attacker.
       b = stmAttackers & pieces(pt);
       occ ^= (b & (~b + 1));
-      attackers |=  (rook_attacks_bb(to, occ) &  pieces(ROOK, QUEEN))
+      attackers |=  (rook_attacks_bb(to, occ)   & pieces(ROOK, QUEEN))
                   | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN));
 
-      attackers &= occ;
+      attackers &= occ; // Cut out pieces we've already done
 
       // Add the new entry to the swap list
-      assert(n < 32);
-      swapList[n] = -swapList[n - 1] + lastCapturingPieceValue;
-      n++;
+      assert(slIndex < 32);
+      swapList[slIndex] = -swapList[slIndex - 1] + seeValues[capturedType];
+      slIndex++;
 
       // Remember the value of the capturing piece, and change the side to move
       // before beginning the next iteration
-      lastCapturingPieceValue = seeValues[pt];
-      c = opposite_color(c);
-      stmAttackers = attackers & pieces_of_color(c);
+      capturedType = pt;
+      stm = opposite_color(stm);
+      stmAttackers = attackers & pieces_of_color(stm);
 
       // Stop after a king capture
       if (pt == KING && stmAttackers)
       {
-          assert(n < 32);
-          swapList[n++] = QueenValueMidgame*10;
+          assert(slIndex < 32);
+          swapList[slIndex++] = QueenValueMidgame*10;
           break;
       }
   } while (stmAttackers);
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move
-  while (--n)
-      swapList[n-1] = Min(-swapList[n], swapList[n-1]);
+  while (--slIndex)
+      swapList[slIndex-1] = Min(-swapList[slIndex], swapList[slIndex-1]);
 
   return swapList[0];
 }

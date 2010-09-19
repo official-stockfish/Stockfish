@@ -243,7 +243,6 @@ public:
   // Static exchange evaluation
   int see(Square from, Square to) const;
   int see(Move m) const;
-  int see(Square to) const;
   int see_sign(Move m) const;
 
   // Accessing hash keys
@@ -348,6 +347,7 @@ private:
   static Key zobSideToMove;
   static Score PieceSquareTable[16][64];
   static Key zobExclusion;
+  static const Value seeValues[8];
 };
 
 
