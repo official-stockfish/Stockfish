@@ -1434,12 +1434,11 @@ namespace {
             assert(tte->static_value() != VALUE_NONE);
 
             evalMargin = tte->static_value_margin();
-            bestValue = tte->static_value();
+            ss->eval = bestValue = tte->static_value();
         }
         else
-            bestValue = evaluate(pos, evalMargin);
+            ss->eval = bestValue = evaluate(pos, evalMargin);
 
-        ss->eval = bestValue;
         update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
 
         // Stand pat. Return immediately if static value is at least beta
@@ -1458,7 +1457,7 @@ namespace {
         deepChecks = (depth == -ONE_PLY && bestValue >= beta - PawnValueMidgame / 8);
 
         // Futility pruning parameters, not needed when in check
-        futilityBase = bestValue + FutilityMarginQS + evalMargin;
+        futilityBase = ss->eval + evalMargin + FutilityMarginQS;
         enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
     }
 
@@ -1498,7 +1497,7 @@ namespace {
           }
       }
 
-      // Detect blocking evasions that are candidate to be pruned
+      // Detect non-capture evasions that are candidate to be pruned
       evasionPrunable =   isCheck
                        && bestValue > value_mated_in(PLY_MAX)
                        && !pos.move_is_capture(move)
