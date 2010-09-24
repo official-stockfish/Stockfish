@@ -251,7 +251,7 @@ namespace {
   Score evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
 
   Score apply_weight(Score v, Score weight);
-  Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]);
+  Value scale_by_game_phase(const Score& v, Phase ph, ScaleFactor sf);
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
   void init_safety();
 }
@@ -285,7 +285,6 @@ template<bool HasPopCnt>
 Value do_evaluate(const Position& pos, Value& margin) {
 
   EvalInfo ei;
-  ScaleFactor factor[2];
   Score mobilityWhite, mobilityBlack;
 
   assert(pos.is_ok());
@@ -308,10 +307,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // configuration, call it and return.
   if (mi->specialized_eval_exists())
       return mi->evaluate(pos);
-
-  // After get_material_info() call that modifies them
-  factor[WHITE] = mi->scale_factor(pos, WHITE);
-  factor[BLACK] = mi->scale_factor(pos, BLACK);
 
   // Probe the pawn hash table
   ei.pi = PawnTable[pos.thread()]->get_pawn_info(pos);
@@ -349,15 +344,16 @@ Value do_evaluate(const Position& pos, Value& margin) {
       bonus += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
   }
 
+  // Scale winning side if position is more drawish that what it appears
+  ScaleFactor sf = eg_value(bonus) > VALUE_ZERO ? mi->scale_factor(pos, WHITE)
+                                                : mi->scale_factor(pos, BLACK);
+
   // If we don't already have an unusual scale factor, check for opposite
-  // colored bishop endgames, and use a lower scale for those
+  // colored bishop endgames, and use a lower scale for those.
   if (   phase < PHASE_MIDGAME
       && pos.opposite_colored_bishops()
-      && (   (factor[WHITE] == SCALE_FACTOR_NORMAL && eg_value(bonus) > VALUE_ZERO)
-          || (factor[BLACK] == SCALE_FACTOR_NORMAL && eg_value(bonus) < VALUE_ZERO)))
+      && sf == SCALE_FACTOR_NORMAL)
   {
-      ScaleFactor sf;
-
       // Only the two bishops ?
       if (   pos.non_pawn_material(WHITE) == BishopValueMidgame
           && pos.non_pawn_material(BLACK) == BishopValueMidgame)
@@ -371,15 +367,10 @@ Value do_evaluate(const Position& pos, Value& margin) {
           // Endgame with opposite-colored bishops, but also other pieces. Still
           // a bit drawish, but not as drawish as with only the two bishops.
            sf = ScaleFactor(50);
-
-      if (factor[WHITE] == SCALE_FACTOR_NORMAL)
-          factor[WHITE] = sf;
-      if (factor[BLACK] == SCALE_FACTOR_NORMAL)
-          factor[BLACK] = sf;
   }
 
   // Interpolate between the middle game and the endgame score
-  Value v = scale_by_game_phase(bonus, phase, factor);
+  Value v = scale_by_game_phase(bonus, phase, sf);
   return pos.side_to_move() == WHITE ? v : -v;
 }
 
@@ -908,15 +899,14 @@ namespace {
   // scale_by_game_phase() interpolates between a middle game and an endgame score,
   // based on game phase. It also scales the return value by a ScaleFactor array.
 
-  Value scale_by_game_phase(const Score& v, Phase ph, const ScaleFactor sf[]) {
+  Value scale_by_game_phase(const Score& v, Phase ph, ScaleFactor sf) {
 
     assert(mg_value(v) > -VALUE_INFINITE && mg_value(v) < VALUE_INFINITE);
     assert(eg_value(v) > -VALUE_INFINITE && eg_value(v) < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
     Value eg = eg_value(v);
-    ScaleFactor f = sf[eg > VALUE_ZERO ? WHITE : BLACK];
-    Value ev = Value((eg * int(f)) / SCALE_FACTOR_NORMAL);
+    Value ev = Value((eg * int(sf)) / SCALE_FACTOR_NORMAL);
 
     int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;
     return Value(result & ~(GrainSize - 1));
