@@ -496,7 +496,7 @@ namespace {
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool HasPopCnt>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score& mobility, Bitboard no_mob_area) {
+  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score& mobility, Bitboard mobilityArea) {
 
     Bitboard b;
     Square s, ksq;
@@ -535,8 +535,8 @@ namespace {
         }
 
         // Mobility
-        mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & no_mob_area)
-                              : count_1s<HasPopCnt>(b & no_mob_area));
+        mob = (Piece != QUEEN ? count_1s_max_15<HasPopCnt>(b & mobilityArea)
+                              : count_1s<HasPopCnt>(b & mobilityArea));
 
         mobility += MobilityBonus[Piece][mob];
 
@@ -645,12 +645,12 @@ namespace {
     Score bonus = mobility = SCORE_ZERO;
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
-    const Bitboard no_mob_area = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
+    const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
-    bonus += evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
-    bonus += evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
-    bonus += evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
-    bonus += evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, mobility, no_mob_area);
+    bonus += evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
 
     // Sum up all attacked squares
     ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
