@@ -333,7 +333,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
     // Second-degree polynomial material imbalance by Tord Romstad
     //
-    // We use NO_PIECE_TYPE as a place holder for the bishop pair "extended piece",
+    // We use PIECE_TYPE_NONE as a place holder for the bishop pair "extended piece",
     // this allow us to be more flexible in defining bishop pair bonuses.
     for (pt1 = PIECE_TYPE_NONE; pt1 <= QUEEN; pt1++)
     {
