@@ -335,7 +335,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
   Piece pc = pos.piece_on(from);
 
   // Use a slower but simpler function for uncommon cases
-  if (move_is_ep(m) || move_is_castle(m))
+  if (move_is_special(m))
       return move_is_legal(pos, m);
 
   // If the from square is not occupied by a piece belonging to the side to
@@ -355,14 +355,9 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       if ((us == WHITE) != (direction > 0))
           return false;
 
-      // A pawn move is a promotion iff the destination square is
-      // on the 8/1th rank.
-      if ((  (square_rank(to) == RANK_8 && us == WHITE)
-           ||(square_rank(to) == RANK_1 && us != WHITE)) != bool(move_is_promotion(m)))
-          return false;
-
-      // The promotion piece, if any, must be valid
-      if (move_promotion_piece(m) > QUEEN || move_promotion_piece(m) == PAWN)
+      // We have already handled promotion moves, so destination
+      // cannot be on the 8/1th rank.
+      if (square_rank(to) == RANK_8 || square_rank(to) == RANK_1)
           return false;
 
       // Proceed according to the square delta between the origin and
@@ -409,14 +404,12 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
       default:
           return false;
       }
-      // The move is pseudo-legal, check if it is also legal
-      return pos.is_check() ? pos.pl_move_is_evasion(m, pinned) : pos.pl_move_is_legal(m, pinned);
   }
+  else if (!bit_is_set(pos.attacks_from(pc, from), to))
+      return false;
 
-  // Luckly we can handle all the other pieces in one go
-  return    bit_is_set(pos.attacks_from(pc, from), to)
-        && (pos.is_check() ? pos.pl_move_is_evasion(m, pinned) : pos.pl_move_is_legal(m, pinned))
-        && !move_is_promotion(m);
+  // The move is pseudo-legal, check if it is also legal
+  return pos.is_check() ? pos.pl_move_is_evasion(m, pinned) : pos.pl_move_is_legal(m, pinned);
 }
 
 
