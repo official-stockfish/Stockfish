@@ -24,27 +24,23 @@
 
 #include "types.h"
 
-// Select type of intrinsic bit count instruction to use, see
-// README.txt on how to pgo compile with POPCNT support.
-#if !defined(USE_POPCNT)
-#define POPCNT_INTRINSIC(x) 0
-#elif defined(_MSC_VER)
-#define POPCNT_INTRINSIC(x) (int)__popcnt64(x)
-#elif defined(__GNUC__)
+enum BitCountType {
+    CNT64,
+    CNT64_MAX15,
+    CNT32,
+    CNT32_MAX15,
+    CNT_POPCNT
+};
 
-#define POPCNT_INTRINSIC(x) ({ \
-   unsigned long __ret; \
-   __asm__("popcnt %1, %0" : "=r" (__ret) : "r" (x)); \
-   __ret; })
+/// count_1s() counts the number of nonzero bits in a bitboard.
+/// We have different optimized versions according if platform
+/// is 32 or 64 bits, and to the maximum number of nonzero bits.
+/// We also support hardware popcnt instruction. See Readme.txt
+/// on how to pgo compile with popcnt support.
+template<BitCountType> inline int count_1s(Bitboard);
 
-#endif
-
-
-/// Software implementation of bit count functions
-
-#if defined(IS_64BIT)
-
-inline int count_1s(Bitboard b) {
+template<>
+inline int count_1s<CNT64>(Bitboard b) {
   b -= ((b>>1) & 0x5555555555555555ULL);
   b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
   b = ((b>>4) + b) & 0x0F0F0F0F0F0F0F0FULL;
@@ -52,16 +48,16 @@ inline int count_1s(Bitboard b) {
   return int(b >> 56);
 }
 
-inline int count_1s_max_15(Bitboard b) {
+template<>
+inline int count_1s<CNT64_MAX15>(Bitboard b) {
   b -= (b>>1) & 0x5555555555555555ULL;
   b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
   b *= 0x1111111111111111ULL;
   return int(b >> 60);
 }
 
-#else // if !defined(IS_64BIT)
-
-inline int count_1s(Bitboard b) {
+template<>
+inline int count_1s<CNT32>(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
@@ -73,7 +69,8 @@ inline int count_1s(Bitboard b) {
   return int(v >> 24);
 }
 
-inline int count_1s_max_15(Bitboard b) {
+template<>
+inline int count_1s<CNT32_MAX15>(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
@@ -84,27 +81,21 @@ inline int count_1s_max_15(Bitboard b) {
   return int(v >> 28);
 }
 
-#endif // BITCOUNT
-
-
-/// count_1s() counts the number of nonzero bits in a bitboard.
-/// If template parameter is true an intrinsic is called, otherwise
-/// we fallback on a software implementation.
-
-template<bool UseIntrinsic>
-inline int count_1s(Bitboard b) {
-
-  return UseIntrinsic ? POPCNT_INTRINSIC(b) : count_1s(b);
-}
-
-template<bool UseIntrinsic>
-inline int count_1s_max_15(Bitboard b) {
-
-  return UseIntrinsic ? POPCNT_INTRINSIC(b) : count_1s_max_15(b);
+template<>
+inline int count_1s<CNT_POPCNT>(Bitboard b) {
+#if !defined(USE_POPCNT)
+  return int(b != 0); // Avoid 'b not used' warning
+#elif defined(_MSC_VER)
+  return __popcnt64(b);
+#elif defined(__GNUC__)
+  unsigned long ret;
+  __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
+  return ret;
+#endif
 }
 
 
-// Detect hardware POPCNT support
+/// cpu_has_popcnt() detects support for popcnt instruction at runtime
 inline bool cpu_has_popcnt() {
 
   int CPUInfo[4] = {-1};
@@ -113,9 +104,9 @@ inline bool cpu_has_popcnt() {
 }
 
 
-// Global constant initialized at startup that is set to true if
-// CPU on which application runs supports POPCNT intrinsic. Unless
-// USE_POPCNT is not defined.
+/// CpuHasPOPCNT is a global constant initialized at startup that
+/// is set to true if CPU on which application runs supports popcnt
+/// hardware instruction. Unless USE_POPCNT is not defined.
 #if defined(USE_POPCNT)
 const bool CpuHasPOPCNT = cpu_has_popcnt();
 #else
@@ -123,12 +114,12 @@ const bool CpuHasPOPCNT = false;
 #endif
 
 
-// Global constant used to print info about the use of 64 optimized
-// functions to verify that a 64 bit compile has been correctly built.
+/// CpuIs64Bit is a global constant initialized at compile time that
+/// is set to true if CPU on which application runs is a 64 bits.
 #if defined(IS_64BIT)
-const bool CpuHas64BitPath = true;
+const bool CpuIs64Bit = true;
 #else
-const bool CpuHas64BitPath = false;
+const bool CpuIs64Bit = false;
 #endif
 
 #endif // !defined(BITCOUNT_H_INCLUDED)

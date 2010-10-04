@@ -147,6 +147,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   Rank r;
   bool passed, isolated, doubled, opposed, chain, backward, candidate;
   Score value = SCORE_ZERO;
+  const BitCountType Max15 = CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
   // Initialize halfOpenFiles[]
@@ -206,7 +207,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // Test for candidate passed pawn
       candidate =   !(opposed | passed)
                  && (b = attack_span_mask(opposite_color(Us), s + pawn_push(Us)) & ourPawns) != EmptyBoardBB
-                 &&  count_1s_max_15(b) >= count_1s_max_15(attack_span_mask(Us, s) & theirPawns);
+                 &&  count_1s<Max15>(b) >= count_1s<Max15>(attack_span_mask(Us, s) & theirPawns);
 
       // In order to prevent doubled passed pawns from receiving a too big
       // bonus, only the frontmost passed pawn on each file is considered as

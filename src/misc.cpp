@@ -146,7 +146,7 @@ void dbg_print_mean(ofstream& logFile) {
 
 const string engine_name() {
 
-  const string cpu64(CpuHas64BitPath ? " 64bit" : "");
+  const string cpu64(CpuIs64Bit ? " 64bit" : "");
 
   if (!EngineVersion.empty())
       return AppName + " " + EngineVersion + cpu64;
