@@ -442,11 +442,11 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
-    ei.kingZone[Us] = (b | (Us == WHITE ? b >> 8 : b << 8));
     ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
     ei.updateKingTables[Us] = pos.piece_count(Us, QUEEN) && pos.non_pawn_material(Us) >= QueenValueMidgame + RookValueMidgame;
     if (ei.updateKingTables[Us])
     {
+        ei.kingZone[Us] = (b | (Us == WHITE ? b >> 8 : b << 8));
         b &= ei.attackedBy[Us][PAWN];
         ei.kingAttackersCount[Us] = b ? count_1s<Max15>(b) / 2 : EmptyBoardBB;
         ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = EmptyBoardBB;
