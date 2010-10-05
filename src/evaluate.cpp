@@ -331,10 +331,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
   bonus +=  evaluate_passed_pawns<WHITE>(pos, ei)
           - evaluate_passed_pawns<BLACK>(pos, ei);
 
-  Phase phase = mi->game_phase();
-
   // Evaluate space for both sides, only in middle-game.
-  if (phase > PHASE_ENDGAME && mi->space_weight() > 0)
+  if (mi->space_weight())
   {
       int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
       bonus += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
@@ -343,6 +341,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // Scale winning side if position is more drawish that what it appears
   ScaleFactor sf = eg_value(bonus) > VALUE_ZERO ? mi->scale_factor(pos, WHITE)
                                                 : mi->scale_factor(pos, BLACK);
+  Phase phase = mi->game_phase();
 
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those.
