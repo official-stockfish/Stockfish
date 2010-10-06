@@ -45,11 +45,6 @@ namespace {
     // Pointer to pawn hash table entry
     PawnInfo* pi;
 
-    // updateKingTables[color] is set to true if we have enough material
-    // to trigger the opponent's king safety calculation. When is false we
-    // skip the time consuming update of the king attackers tables.
-    bool updateKingTables[2];
-
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type, attackedBy[color][0] contains
     // all squares attacked by the given color.
@@ -443,14 +438,17 @@ namespace {
 
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
     ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
-    ei.updateKingTables[Us] = pos.piece_count(Us, QUEEN) && pos.non_pawn_material(Us) >= QueenValueMidgame + RookValueMidgame;
-    if (ei.updateKingTables[Us])
+
+    // Init king safety tables only if we are going to use them
+    if (   pos.piece_count(Us, QUEEN)
+        && pos.non_pawn_material(Us) >= QueenValueMidgame + RookValueMidgame)
     {
         ei.kingZone[Us] = (b | (Us == WHITE ? b >> 8 : b << 8));
         b &= ei.attackedBy[Us][PAWN];
-        ei.kingAttackersCount[Us] = b ? count_1s<Max15>(b) / 2 : EmptyBoardBB;
-        ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = EmptyBoardBB;
-    }
+        ei.kingAttackersCount[Us] = b ? count_1s<Max15>(b) / 2 : 0;
+        ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = 0;
+    } else
+        ei.kingZone[Us] = ei.kingAttackersCount[Us] = 0;
   }
 
 
@@ -514,7 +512,7 @@ namespace {
         ei.attackedBy[Us][Piece] |= b;
 
         // King attacks
-        if (ei.updateKingTables[Us] && (b & ei.kingZone[Us]))
+        if (b & ei.kingZone[Us])
         {
             ei.kingAttackersCount[Us]++;
             ei.kingAttackersWeight[Us] += KingAttackWeights[Piece];
@@ -666,8 +664,7 @@ namespace {
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
-    if (   ei.updateKingTables[Them]
-        && ei.kingAttackersCount[Them] >= 2
+    if (   ei.kingAttackersCount[Them] >= 2
         && ei.kingAdjacentZoneAttacksCount[Them])
     {
         // Find the attacked squares around the king which has no defenders
