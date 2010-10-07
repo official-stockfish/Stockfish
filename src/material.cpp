@@ -146,6 +146,7 @@ MaterialInfoTable::MaterialInfoTable() {
            << " bytes for material hash table." << endl;
       Application::exit_with_failure();
   }
+  memset(entries, 0, MaterialTableSize * sizeof(MaterialInfo));
 }
 
 MaterialInfoTable::~MaterialInfoTable() {

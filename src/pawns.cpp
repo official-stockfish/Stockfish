@@ -90,6 +90,7 @@ PawnInfoTable::PawnInfoTable() {
                 << " bytes for pawn hash table." << std::endl;
       Application::exit_with_failure();
   }
+  memset(entries, 0, PawnTableSize * sizeof(PawnInfo));
 }
 
 
