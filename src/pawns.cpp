@@ -124,18 +124,19 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
 
   // Clear the PawnInfo object, and set the key
   memset(pi, 0, sizeof(PawnInfo));
+  pi->halfOpenFiles[WHITE] = pi->halfOpenFiles[BLACK] = 0xFF;
   pi->kingSquares[WHITE] = pi->kingSquares[BLACK] = SQ_NONE;
   pi->key = key;
 
   // Calculate pawn attacks
-  Bitboard whitePawns = pos.pieces(PAWN, WHITE);
-  Bitboard blackPawns = pos.pieces(PAWN, BLACK);
-  pi->pawnAttacks[WHITE] = ((whitePawns << 9) & ~FileABB) | ((whitePawns << 7) & ~FileHBB);
-  pi->pawnAttacks[BLACK] = ((blackPawns >> 7) & ~FileABB) | ((blackPawns >> 9) & ~FileHBB);
+  Bitboard wPawns = pos.pieces(PAWN, WHITE);
+  Bitboard bPawns = pos.pieces(PAWN, BLACK);
+  pi->pawnAttacks[WHITE] = ((wPawns << 9) & ~FileABB) | ((wPawns << 7) & ~FileHBB);
+  pi->pawnAttacks[BLACK] = ((bPawns >> 7) & ~FileABB) | ((bPawns >> 9) & ~FileHBB);
 
   // Evaluate pawns for both colors
-  pi->value =  evaluate_pawns<WHITE>(pos, whitePawns, blackPawns, pi)
-             - evaluate_pawns<BLACK>(pos, blackPawns, whitePawns, pi);
+  pi->value =  evaluate_pawns<WHITE>(pos, wPawns, bPawns, pi)
+             - evaluate_pawns<BLACK>(pos, bPawns, wPawns, pi);
   return pi;
 }
 
@@ -154,11 +155,6 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   const BitCountType Max15 = CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
   const Square* ptr = pos.piece_list_begin(Us, PAWN);
 
-  // Initialize halfOpenFiles[]
-  for (f = FILE_A; f <= FILE_H; f++)
-      if (!(ourPawns & file_bb(f)))
-          pi->halfOpenFiles[Us] |= (1 << f);
-
   // Loop through all pawns of the current color and score each pawn
   while ((s = *ptr++) != SQ_NONE)
   {
@@ -166,6 +162,9 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       f = square_file(s);
       r = square_rank(s);
+
+      // This file cannot be half open
+      pi->halfOpenFiles[Us] &= ~(1 << f);
 
       // Our rank plus previous one. Used for chain detection.
       b = rank_bb(r) | rank_bb(Us == WHITE ? r - Rank(1) : r + Rank(1));
