@@ -31,6 +31,8 @@
 #include "piece.h"
 #include "square.h"
 
+// Maximum number of allowed moves per position
+const int MOVES_MAX = 256;
 
 ////
 //// Types

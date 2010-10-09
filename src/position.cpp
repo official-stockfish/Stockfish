@@ -382,7 +382,7 @@ const string Position::to_fen() const {
 
 
 /// Position::print() prints an ASCII representation of the position to
-/// the standard output. If a move is given then also the san is print.
+/// the standard output. If a move is given then also the san is printed.
 
 void Position::print(Move move) const {
 
@@ -1561,7 +1561,7 @@ void Position::allow_ooo(Color c) {
 
 Key Position::compute_key() const {
 
-  Key result = Key(0ULL);
+  Key result = 0;
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (square_is_occupied(s))
@@ -1586,7 +1586,7 @@ Key Position::compute_key() const {
 
 Key Position::compute_pawn_key() const {
 
-  Key result = Key(0ULL);
+  Key result = 0;
   Bitboard b;
   Square s;
 
@@ -1611,7 +1611,7 @@ Key Position::compute_pawn_key() const {
 
 Key Position::compute_material_key() const {
 
-  Key result = Key(0ULL);
+  Key result = 0;
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= QUEEN; pt++)
       {
@@ -1703,7 +1703,7 @@ bool Position::is_draw() const {
 
 bool Position::is_mate() const {
 
-  MoveStack moves[256];
+  MoveStack moves[MOVES_MAX];
   return is_check() && (generate_moves(*this, moves) == moves);
 }
 
@@ -1713,7 +1713,7 @@ bool Position::is_mate() const {
 
 bool Position::has_mate_threat() {
 
-  MoveStack mlist[256], *last, *cur;
+  MoveStack mlist[MOVES_MAX], *last, *cur;
   StateInfo st1, st2;
   bool mateFound = false;
 

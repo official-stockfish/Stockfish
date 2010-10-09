@@ -403,7 +403,7 @@ namespace {
             AttackSpanMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
         }
 
-    for (Bitboard b = 0ULL; b < 256ULL; b++)
+    for (Bitboard b = 0; b < 256; b++)
         BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
   }
 
@@ -511,7 +511,7 @@ namespace {
     for (int i = 0, index = 0; i < 64; i++)
     {
         attackIndex[i] = index;
-        mask[i] = sliding_attacks(i, 0ULL, 4, deltas, 1, 6, 1, 6);
+        mask[i] = sliding_attacks(i, 0, 4, deltas, 1, 6, 1, 6);
 
 #if defined(IS_64BIT)
         int j = (1 << (64 - shift[i]));

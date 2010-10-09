@@ -441,7 +441,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
   if (!bookMove)
       return MOVE_NONE;
 
-  MoveStack mlist[256];
+  MoveStack mlist[MOVES_MAX];
   MoveStack* last = generate_moves(pos, mlist);
   for (MoveStack* cur = mlist; cur != last; cur++)
       if ((int(cur->move) & 07777) == bookMove)
@@ -515,7 +515,7 @@ uint64_t Book::read_integer(int size) {
   read(buf, size);
 
   // Numbers are stored on disk as a binary byte stream
-  uint64_t n = 0ULL;
+  uint64_t n = 0;
   for (int i = 0; i < size; i++)
       n = (n << 8) + (unsigned char)buf[i];
 
@@ -531,7 +531,7 @@ namespace {
 
   uint64_t book_key(const Position& pos) {
 
-    uint64_t result = 0ULL;
+    uint64_t result = 0;
 
     for (Color c = WHITE; c <= BLACK; c++)
     {
@@ -566,7 +566,7 @@ namespace {
 
   uint64_t book_castle_key(const Position& pos) {
 
-    uint64_t result = 0ULL;
+    uint64_t result = 0;
 
     if (pos.can_castle_kingside(WHITE))
         result ^= Random64[RandomCastle+0];
@@ -585,11 +585,11 @@ namespace {
 
 
   uint64_t book_ep_key(const Position& pos) {
-    return (pos.ep_square() == SQ_NONE ? 0ULL : Random64[RandomEnPassant + square_file(pos.ep_square())]);
+    return pos.ep_square() == SQ_NONE ? 0 : Random64[RandomEnPassant + square_file(pos.ep_square())];
   }
 
 
   uint64_t book_color_key(const Position& pos) {
-    return (pos.side_to_move() == WHITE ? Random64[RandomTurn] : 0ULL);
+    return pos.side_to_move() == WHITE ? Random64[RandomTurn] : 0;
   }
 }

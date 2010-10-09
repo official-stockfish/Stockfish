@@ -52,9 +52,6 @@ using std::endl;
 
 namespace {
 
-  // Maximum number of allowed moves per position
-  const int MOVES_MAX = 256;
-
   // Types
   enum NodeType { NonPV, PV };
 
@@ -633,7 +630,7 @@ namespace {
 
             // Add some extra time if the best move has changed during the last two iterations
             if (Iteration > 5 && Iteration <= 50)
-                TimeMgr.pv_unstability(BestMoveChangesByIteration[Iteration],
+                TimeMgr.pv_instability(BestMoveChangesByIteration[Iteration],
                                        BestMoveChangesByIteration[Iteration-1]);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the

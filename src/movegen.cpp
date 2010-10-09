@@ -308,7 +308,7 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 
 bool move_is_legal(const Position& pos, const Move m) {
 
-  MoveStack mlist[256];
+  MoveStack mlist[MOVES_MAX];
   MoveStack *cur, *last = generate_moves(pos, mlist, true);
 
    for (cur = mlist; cur != last; cur++)

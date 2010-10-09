@@ -88,7 +88,7 @@ namespace {
 //// Functions
 ////
 
-void TimeManager::pv_unstability(int curChanges, int prevChanges) {
+void TimeManager::pv_instability(int curChanges, int prevChanges) {
 
     unstablePVExtraTime =  curChanges  * (optimumSearchTime / 2)
                          + prevChanges * (optimumSearchTime / 3);
