@@ -40,23 +40,26 @@ namespace {
 
   #define S(mg, eg) make_score(mg, eg)
 
-  // Doubled pawn penalty by file
-  const Score DoubledPawnPenalty[8] = {
-    S(13, 43), S(20, 48), S(23, 48), S(23, 48),
-    S(23, 48), S(23, 48), S(20, 48), S(13, 43)
-  };
+  // Doubled pawn penalty by opposed flag and file
+  const Score DoubledPawnPenalty[2][8] = {
+  { S(13, 43), S(20, 48), S(23, 48), S(23, 48),
+    S(23, 48), S(23, 48), S(20, 48), S(13, 43) },
+  { S(13, 43), S(20, 48), S(23, 48), S(23, 48),
+    S(23, 48), S(23, 48), S(20, 48), S(13, 43) }};
 
-  // Isolated pawn penalty by file
-  const Score IsolatedPawnPenalty[8] = {
-    S(25, 30), S(36, 35), S(40, 35), S(40, 35),
-    S(40, 35), S(40, 35), S(36, 35), S(25, 30)
-  };
+  // Isolated pawn penalty by opposed flag and file
+  const Score IsolatedPawnPenalty[2][8] = {
+  { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
+    S(60, 52), S(60, 52), S(54, 52), S(37, 45) },
+  { S(25, 30), S(36, 35), S(40, 35), S(40, 35),
+    S(40, 35), S(40, 35), S(36, 35), S(25, 30) }};
 
-  // Backward pawn penalty by file
-  const Score BackwardPawnPenalty[8] = {
-    S(20, 28), S(29, 31), S(33, 31), S(33, 31),
-    S(33, 31), S(33, 31), S(29, 31), S(20, 28)
-  };
+  // Backward pawn penalty by opposed flag and file
+  const Score BackwardPawnPenalty[2][8] = {
+  { S(30, 42), S(43, 46), S(49, 46), S(49, 46),
+    S(49, 46), S(49, 46), S(43, 46), S(30, 42) },
+  { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
+    S(33, 31), S(33, 31), S(29, 31), S(20, 28) }};
 
   // Pawn chain membership bonus by file
   const Score ChainBonus[8] = {
@@ -223,20 +226,14 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       // Score this pawn
       if (isolated)
-      {
-          value -= IsolatedPawnPenalty[f];
-          if (!opposed)
-              value -= IsolatedPawnPenalty[f] / 2;
-      }
+          value -= IsolatedPawnPenalty[opposed][f];
+
       if (doubled)
-          value -= DoubledPawnPenalty[f];
+          value -= DoubledPawnPenalty[opposed][f];
 
       if (backward)
-      {
-          value -= BackwardPawnPenalty[f];
-          if (!opposed)
-              value -= BackwardPawnPenalty[f] / 2;
-      }
+          value -= BackwardPawnPenalty[opposed][f];
+
       if (chain)
           value += ChainBonus[f];
 
@@ -246,4 +243,3 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
   return value;
 }
-
