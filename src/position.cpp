@@ -523,6 +523,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   assert(move_is_ok(m));
   assert(square_is_ok(s));
 
+  Bitboard occ, xray;
   Square f = move_from(m), t = move_to(m);
 
   assert(square_is_occupied(f));
@@ -531,12 +532,11 @@ bool Position::move_attacks_square(Move m, Square s) const {
       return true;
 
   // Move the piece and scan for X-ray attacks behind it
-  Bitboard occ = occupied_squares();
-  Color us = color_of_piece_on(f);
-  clear_bit(&occ, f);
-  set_bit(&occ, t);
-  Bitboard xray = ( (rook_attacks_bb(s, occ) &  pieces(ROOK, QUEEN))
-                   |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN))) & pieces_of_color(us);
+  occ = occupied_squares();
+  do_move_bb(&occ, make_move_bb(f, t));
+  xray = ( (rook_attacks_bb(s, occ)   & pieces(ROOK, QUEEN))
+          |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN)))
+         & pieces_of_color(color_of_piece_on(f));
 
   // If we have attacks we need to verify that are caused by our move
   // and are not already existent ones.
