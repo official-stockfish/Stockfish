@@ -172,7 +172,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // Passed, isolated, doubled or member of a pawn
       // chain (but not the backward one) ?
       passed   = !(theirPawns & passed_pawn_mask(Us, s));
-      doubled  =   ourPawns   & squares_behind(Us, s);
+      doubled  =   ourPawns   & squares_in_front_of(Us, s);
       opposed  =   theirPawns & squares_in_front_of(Us, s);
       isolated = !(ourPawns   & neighboring_files_bb(f));
       chain    =   ourPawns   & neighboring_files_bb(f) & b;
@@ -212,15 +212,10 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
                  && (b = attack_span_mask(opposite_color(Us), s + pawn_push(Us)) & ourPawns) != EmptyBoardBB
                  &&  count_1s<Max15>(b) >= count_1s<Max15>(attack_span_mask(Us, s) & theirPawns);
 
-      // In order to prevent doubled passed pawns from receiving a too big
-      // bonus, only the frontmost passed pawn on each file is considered as
-      // a true passed pawn.
-      if (passed && (ourPawns & squares_in_front_of(Us, s)))
-          passed = false;
-
       // Mark the pawn as passed. Pawn will be properly scored in evaluation
-      // because we need full attack info to evaluate passed pawns.
-      if (passed)
+      // because we need full attack info to evaluate passed pawns. Only the
+      // frontmost passed pawn on each file is considered a true passed pawn.
+      if (passed && !doubled)
           set_bit(&(pi->passedPawns[Us]), s);
 
       // Score this pawn
@@ -239,6 +234,5 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       if (candidate)
           value += CandidateBonus[relative_rank(Us, s)];
   }
-
   return value;
 }
