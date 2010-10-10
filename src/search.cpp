@@ -994,7 +994,7 @@ namespace {
 
     // Step 2. Check for aborted search and immediate draw
     if (AbortSearch || ThreadsMgr.thread_should_stop(threadID))
-        return VALUE_ZERO;
+        return VALUE_DRAW;
 
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;

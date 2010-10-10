@@ -334,7 +334,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
   // Scale winning side if position is more drawish that what it appears
-  ScaleFactor sf = eg_value(bonus) > VALUE_ZERO ? mi->scale_factor(pos, WHITE)
+  ScaleFactor sf = eg_value(bonus) > VALUE_DRAW ? mi->scale_factor(pos, WHITE)
                                                 : mi->scale_factor(pos, BLACK);
   Phase phase = mi->game_phase();
 

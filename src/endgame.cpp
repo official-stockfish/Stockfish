@@ -367,12 +367,12 @@ Value EvaluationFunction<KBBKN>::apply(const Position& pos) const {
 /// king alone are always draw.
 template<>
 Value EvaluationFunction<KmmKm>::apply(const Position&) const {
-  return VALUE_ZERO;
+  return VALUE_DRAW;
 }
 
 template<>
 Value EvaluationFunction<KNNK>::apply(const Position&) const {
-  return VALUE_ZERO;
+  return VALUE_DRAW;
 }
 
 /// KBPKScalingFunction scales endgames where the stronger side has king,
