@@ -2384,6 +2384,8 @@ namespace {
             lock_grab(&(sp->lock));
             lock_release(&(sp->lock));
 
+            // In helpful master concept a master can help only a sub-tree, and
+            // because here is all finished is not possible master is booked.
             assert(threads[threadID].state == THREAD_AVAILABLE);
 
             threads[threadID].state = THREAD_SEARCHING;
