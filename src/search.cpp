@@ -2463,12 +2463,10 @@ namespace {
 
   void ThreadsManager::exit_threads() {
 
-    ActiveThreads = MAX_THREADS;  // HACK
-    AllThreadsShouldSleep = true;  // HACK
+    ActiveThreads = MAX_THREADS;  // Wake up all the threads
+    AllThreadsShouldExit = true;  // Let the woken up threads to exit idle_loop()
+    AllThreadsShouldSleep = true; // Avoid an assert in wake_sleeping_threads()
     wake_sleeping_threads();
-
-    // This makes the threads to exit idle_loop()
-    AllThreadsShouldExit = true;
 
     // Wait for thread termination
     for (int i = 1; i < MAX_THREADS; i++)
@@ -2492,9 +2490,9 @@ namespace {
 
     assert(threadID >= 0 && threadID < ActiveThreads);
 
-    SplitPoint* sp;
+    SplitPoint* sp = threads[threadID].splitPoint;
 
-    for (sp = threads[threadID].splitPoint; sp && !sp->stopRequest; sp = sp->parent) {}
+    for ( ; sp && !sp->stopRequest; sp = sp->parent) {}
     return sp != NULL;
   }
 
@@ -2519,12 +2517,9 @@ namespace {
     // Make a local copy to be sure doesn't change under our feet
     int localActiveSplitPoints = threads[slave].activeSplitPoints;
 
-    if (localActiveSplitPoints == 0)
-        // No active split points means that the thread is available as
-        // a slave for any other thread.
-        return true;
-
-    if (ActiveThreads == 2)
+    // No active split points means that the thread is available as
+    // a slave for any other thread.
+    if (localActiveSplitPoints == 0 || ActiveThreads == 2)
         return true;
 
     // Apply the "helpful master" concept if possible. Use localActiveSplitPoints
