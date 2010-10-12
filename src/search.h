@@ -47,6 +47,7 @@ const int PLY_MAX_PLUS_2 = 102;
 /// search thread has its own array of SearchStack objects, indexed by the
 /// current ply.
 struct EvalInfo;
+struct SplitPoint;
 
 struct SearchStack {
   Move currentMove;
@@ -57,6 +58,7 @@ struct SearchStack {
   Depth reduction;
   Value eval;
   bool skipNullMove;
+  SplitPoint* sp;
 };
 
 
