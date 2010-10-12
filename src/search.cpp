@@ -1692,13 +1692,12 @@ namespace {
       if (value > sp->bestValue && !ThreadsMgr.thread_should_stop(threadID))
       {
           sp->bestValue = value;
-
-          if (sp->bestValue > sp->alpha)
+          if (value > sp->alpha)
           {
               if (!PvNode || value >= sp->beta)
                   sp->stopRequest = true;
 
-              if (PvNode && value < sp->beta) // This guarantees that always: sp->alpha < sp->beta
+              if (PvNode && value < sp->beta) // We want always sp->alpha < sp->beta
                   sp->alpha = value;
 
               sp->parentSstack->bestMove = ss->bestMove = move;
