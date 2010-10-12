@@ -88,7 +88,7 @@ namespace {
 
     template <bool Fake>
     void split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
-               Depth depth, Move threatMove, bool mateThreat, int* moveCount, MovePicker* mp, bool pvNode);
+               Depth depth, Move threatMove, bool mateThreat, int moveCount, MovePicker* mp, bool pvNode);
 
   private:
     friend void poll();
@@ -1342,7 +1342,7 @@ namespace {
           && !ThreadsMgr.thread_should_stop(threadID)
           && Iteration <= 99)
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
-                                      threatMove, mateThreat, &moveCount, &mp, PvNode);
+                                      threatMove, mateThreat, moveCount, &mp, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
@@ -2560,7 +2560,7 @@ namespace {
   template <bool Fake>
   void ThreadsManager::split(const Position& p, SearchStack* ss, int ply, Value* alpha,
                              const Value beta, Value* bestValue, Depth depth, Move threatMove,
-                             bool mateThreat, int* moveCount, MovePicker* mp, bool pvNode) {
+                             bool mateThreat, int moveCount, MovePicker* mp, bool pvNode) {
     assert(p.is_ok());
     assert(ply > 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
@@ -2600,7 +2600,7 @@ namespace {
     splitPoint.pvNode = pvNode;
     splitPoint.bestValue = *bestValue;
     splitPoint.mp = mp;
-    splitPoint.moveCount = *moveCount;
+    splitPoint.moveCount = moveCount;
     splitPoint.pos = &p;
     splitPoint.parentSstack = ss;
     for (i = 0; i < ActiveThreads; i++)
