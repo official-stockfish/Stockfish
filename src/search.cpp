@@ -296,9 +296,6 @@ namespace {
   Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
 
   template <NodeType PvNode>
-  void do_sp_search(SplitPoint* sp, int threadID);
-
-  template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
   bool connected_moves(const Position& pos, Move m1, Move m2);
@@ -961,7 +958,12 @@ namespace {
   }
 
 
-  // search<>() is the main search function for both PV and non-PV nodes
+  // search<>() is the main search function for both PV and non-PV nodes and for
+  // normal and SplitPoint nodes. When called just after a split point the search
+  // is simpler because we have already probed the hash table, done a null move
+  // search, and searched the first move before splitting, we don't have to repeat
+  // all this work again. We also don't need to store anything to the hash table
+  // here: This is taken care of after we return from the split point.
 
   template <NodeType PvNode, bool SplitPoint>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
@@ -994,7 +996,7 @@ namespace {
         ttMove = excludedMove = MOVE_NONE;
         threatMove = ss->sp->threatMove;
         mateThreat = ss->sp->mateThreat;
-        goto split_start;
+        goto split_point_start;
     }
 
     // Step 1. Initialize node and poll. Polling can abort search
@@ -1180,7 +1182,7 @@ namespace {
     if (PvNode)
         mateThreat = pos.has_mate_threat();
 
-split_start:
+split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
     // FIXME currently MovePicker() c'tor is needless called also in SplitPoint
@@ -1613,28 +1615,6 @@ split_start:
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     return bestValue;
-  }
-
-
-  // sp_search() is used to search from a split point.  This function is called
-  // by each thread working at the split point.  It is similar to the normal
-  // search() function, but simpler.  Because we have already probed the hash
-  // table, done a null move search, and searched the first move before
-  // splitting, we don't have to repeat all this work in sp_search().  We
-  // also don't need to store anything to the hash table here:  This is taken
-  // care of after we return from the split point.
-
-  template <NodeType PvNode>
-  void do_sp_search(SplitPoint* sp, int threadID) {
-
-    assert(threadID >= 0 && threadID < ThreadsMgr.active_threads());
-    assert(ThreadsMgr.active_threads() > 1);
-
-    Position pos(*sp->pos, threadID);
-    SearchStack* ss = sp->sstack[threadID] + 1;
-    ss->sp = sp;
-
-    search<PvNode, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->ply);
   }
 
 
@@ -2287,10 +2267,16 @@ split_start:
 
             threads[threadID].state = THREAD_SEARCHING;
 
-            if (threads[threadID].splitPoint->pvNode)
-                do_sp_search<PV>(threads[threadID].splitPoint, threadID);
+            // Here we call search() with SplitPoint template parameter set to true
+            SplitPoint* sp = threads[threadID].splitPoint;
+            Position pos(*sp->pos, threadID);
+            SearchStack* ss = sp->sstack[threadID] + 1;
+            ss->sp = sp;
+
+            if (sp->pvNode)
+                search<PV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->ply);
             else
-                do_sp_search<NonPV>(threads[threadID].splitPoint, threadID);
+                search<NonPV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->ply);
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
