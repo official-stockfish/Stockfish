@@ -57,7 +57,6 @@ struct SearchStack {
   Move killers[2];
   Depth reduction;
   Value eval;
-  Value evalMargin;
   bool skipNullMove;
   SplitPoint* sp;
 };
