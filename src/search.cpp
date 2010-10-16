@@ -2268,15 +2268,15 @@ split_point_start: // At split points actual search starts from here
             threads[threadID].state = THREAD_SEARCHING;
 
             // Here we call search() with SplitPoint template parameter set to true
-            SplitPoint* sp = threads[threadID].splitPoint;
-            Position pos(*sp->pos, threadID);
-            SearchStack* ss = sp->sstack[threadID] + 1;
-            ss->sp = sp;
+            SplitPoint* tsp = threads[threadID].splitPoint;
+            Position pos(*tsp->pos, threadID);
+            SearchStack* ss = tsp->sstack[threadID] + 1;
+            ss->sp = tsp;
 
-            if (sp->pvNode)
-                search<PV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->ply);
+            if (tsp->pvNode)
+                search<PV, true>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
             else
-                search<NonPV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->ply);
+                search<NonPV, true>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
