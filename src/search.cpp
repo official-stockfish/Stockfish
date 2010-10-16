@@ -284,7 +284,7 @@ namespace {
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
-  template <NodeType PvNode, bool SplitPoint>
+  template <NodeType PvNode, bool SpNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
 
   template <NodeType PvNode>
@@ -302,7 +302,6 @@ namespace {
   bool value_is_mate(Value value);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
-  bool move_is_killer(Move m, SearchStack* ss);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
@@ -965,7 +964,7 @@ namespace {
   // all this work again. We also don't need to store anything to the hash table
   // here: This is taken care of after we return from the split point.
 
-  template <NodeType PvNode, bool SplitPoint>
+  template <NodeType PvNode, bool SpNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
@@ -986,16 +985,18 @@ namespace {
     bool mateThreat = false;
     int moveCount = 0;
     int threadID = pos.thread();
+    SplitPoint* sp = NULL;
     refinedValue = bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
     isCheck = pos.is_check();
 
-    if (SplitPoint)
+    if (SpNode)
     {
+        sp = ss->sp;
         tte = NULL;
         ttMove = excludedMove = MOVE_NONE;
-        threatMove = ss->sp->threatMove;
-        mateThreat = ss->sp->mateThreat;
+        threatMove = sp->threatMove;
+        mateThreat = sp->mateThreat;
         goto split_point_start;
     }
 
@@ -1187,35 +1188,34 @@ split_point_start: // At split points actual search starts from here
     // Initialize a MovePicker object for the current position
     // FIXME currently MovePicker() c'tor is needless called also in SplitPoint
     MovePicker mpBase = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
-    MovePicker& mp = SplitPoint ? *ss->sp->mp : mpBase;
+    MovePicker& mp = SpNode ? *sp->mp : mpBase;
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
-    singleEvasion = !SplitPoint && isCheck && mp.number_of_evasions() == 1;
+    singleEvasion = !SpNode && isCheck && mp.number_of_evasions() == 1;
     futilityBase = ss->eval + ss->evalMargin;
-    singularExtensionNode =  !SplitPoint
+    singularExtensionNode =  !SpNode
                            && depth >= SingularExtensionDepth[PvNode]
                            && tte
                            && tte->move()
                            && !excludedMove // Do not allow recursive singular extension search
                            && (tte->type() & VALUE_TYPE_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
+    if (SpNode)
+    {
+        lock_grab(&(sp->lock));
+        bestValue = sp->bestValue;
+    }
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
-    if (SplitPoint)
-    {
-        lock_grab(&(ss->sp->lock));
-        bestValue = ss->sp->bestValue;
-    }
-
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !ThreadsMgr.thread_should_stop(threadID))
     {
-      if (SplitPoint)
+      if (SpNode)
       {
-          moveCount = ++ss->sp->moveCount;
-          lock_release(&(ss->sp->lock));
+          moveCount = ++sp->moveCount;
+          lock_release(&(sp->lock));
       }
 
       assert(move_is_ok(move));
@@ -1271,8 +1271,9 @@ split_point_start: // At split points actual search starts from here
               && !(threatMove && connected_threat(pos, move, threatMove))
               && bestValue > value_mated_in(PLY_MAX)) // FIXME bestValue is racy
           {
-              if (SplitPoint)
-                  lock_grab(&(ss->sp->lock));
+              if (SpNode)
+                  lock_grab(&(sp->lock));
+
               continue;
           }
 
@@ -1285,14 +1286,15 @@ split_point_start: // At split points actual search starts from here
 
           if (futilityValueScaled < beta)
           {
-              if (SplitPoint)
+              if (SpNode)
               {
-                  lock_grab(&(ss->sp->lock));
-                  if (futilityValueScaled > ss->sp->bestValue)
-                      ss->sp->bestValue = bestValue = futilityValueScaled;
+                  lock_grab(&(sp->lock));
+                  if (futilityValueScaled > sp->bestValue)
+                      sp->bestValue = bestValue = futilityValueScaled;
               }
               else if (futilityValueScaled > bestValue)
                   bestValue = futilityValueScaled;
+
               continue;
           }
       }
@@ -1302,7 +1304,7 @@ split_point_start: // At split points actual search starts from here
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
-      if (!SplitPoint && PvNode && moveCount == 1)
+      if (!SpNode && PvNode && moveCount == 1)
           value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO, ply+1)
                                      : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
       else
@@ -1315,12 +1317,12 @@ split_point_start: // At split points actual search starts from here
               && !captureOrPromotion
               && !dangerous
               && !move_is_castle(move)
-              && !move_is_killer(move, ss))
+              && !(ss->killers[0] == move || ss->killers[1] == move))
           {
               ss->reduction = reduction<PvNode>(depth, moveCount);
               if (ss->reduction)
               {
-                  alpha = SplitPoint ? ss->sp->alpha : alpha;
+                  alpha = SpNode ? sp->alpha : alpha;
                   Depth d = newDepth - ss->reduction;
                   value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO, ply+1)
                                       : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
@@ -1336,7 +1338,7 @@ split_point_start: // At split points actual search starts from here
                   assert(newDepth - ONE_PLY >= ONE_PLY);
 
                   ss->reduction = ONE_PLY;
-                  alpha = SplitPoint ? ss->sp->alpha : alpha;
+                  alpha = SpNode ? sp->alpha : alpha;
                   value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, ply+1);
                   doFullDepthSearch = (value > alpha);
               }
@@ -1346,7 +1348,7 @@ split_point_start: // At split points actual search starts from here
           // Step 15. Full depth search
           if (doFullDepthSearch)
           {
-              alpha = SplitPoint ? ss->sp->alpha : alpha;
+              alpha = SpNode ? sp->alpha : alpha;
               value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO, ply+1)
                                          : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
 
@@ -1365,20 +1367,20 @@ split_point_start: // At split points actual search starts from here
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // Step 17. Check for new best move
-      if (SplitPoint)
+      if (SpNode)
       {
-          lock_grab(&(ss->sp->lock));
-          bestValue = ss->sp->bestValue;
-          alpha = ss->sp->alpha;
+          lock_grab(&(sp->lock));
+          bestValue = sp->bestValue;
+          alpha = sp->alpha;
       }
 
-      if (value > bestValue && !(SplitPoint && ThreadsMgr.thread_should_stop(threadID)))
+      if (value > bestValue && !(SpNode && ThreadsMgr.thread_should_stop(threadID)))
       {
           bestValue = value;
           if (value > alpha)
           {
-              if (SplitPoint && (!PvNode || value >= beta))
-                  ss->sp->stopRequest = true;
+              if (SpNode && (!PvNode || value >= beta))
+                  sp->stopRequest = true;
 
               if (PvNode && value < beta) // We want always alpha < beta
                   alpha = value;
@@ -1388,16 +1390,16 @@ split_point_start: // At split points actual search starts from here
 
               ss->bestMove = move;
           }
-          if (SplitPoint)
+          if (SpNode)
           {
-              ss->sp->bestValue = bestValue;
-              ss->sp->alpha = alpha;
-              ss->sp->parentSstack->bestMove = ss->bestMove;
+              sp->bestValue = bestValue;
+              sp->alpha = alpha;
+              sp->parentSstack->bestMove = ss->bestMove;
           }
       }
 
       // Step 18. Check for split
-      if (   !SplitPoint
+      if (   !SpNode
           && depth >= MinimumSplitDepth
           && ThreadsMgr.active_threads() > 1
           && bestValue < beta
@@ -1409,11 +1411,11 @@ split_point_start: // At split points actual search starts from here
                                       threatMove, mateThreat, moveCount, &mp, PvNode);
     }
 
-    if (SplitPoint)
+    if (SpNode)
     {
         /* Here we have the lock still grabbed */
-        ss->sp->slaves[threadID] = 0;
-        lock_release(&(ss->sp->lock));
+        sp->slaves[threadID] = 0;
+        lock_release(&(sp->lock));
         return bestValue;
     }
 
@@ -1717,17 +1719,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // move_is_killer() checks if the given move is among the killer moves
-
-  bool move_is_killer(Move m, SearchStack* ss) {
-
-      if (ss->killers[0] == m || ss->killers[1] == m)
-          return true;
-
-      return false;
-  }
-
-
   // extension() decides whether a move should be searched with normal depth,
   // or with extended depth. Certain classes of moves (checking moves, in
   // particular) are searched with bigger depth than ordinary moves and in
@@ -1873,7 +1864,6 @@ split_point_start: // At split points actual search starts from here
 
   void update_history(const Position& pos, Move move, Depth depth,
                       Move movesSearched[], int moveCount) {
-
     Move m;
 
     H.success(pos.piece_on(move_from(move)), move_to(move), depth);
