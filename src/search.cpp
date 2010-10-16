@@ -284,8 +284,13 @@ namespace {
   Value id_loop(const Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
-  template <NodeType PvNode>
+  template <NodeType PvNode, bool SplitPoint>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
+
+  template <NodeType PvNode>
+  inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
+      return search<PvNode, false>(pos, ss, alpha, beta, depth, ply);
+  }
 
   template <NodeType PvNode>
   void sp_search(Position& pos, SearchStack* ss, Value dumy, Value beta, Depth depth, int ply);
@@ -960,7 +965,7 @@ namespace {
 
   // search<>() is the main search function for both PV and non-PV nodes
 
-  template <NodeType PvNode>
+  template <NodeType PvNode, bool SplitPoint>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
@@ -983,6 +988,16 @@ namespace {
     int threadID = pos.thread();
     refinedValue = bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
+    isCheck = pos.is_check();
+
+    if (SplitPoint)
+    {
+        tte = NULL;
+        ttMove = excludedMove = MOVE_NONE;
+        threatMove = ss->sp->threatMove;
+        mateThreat = ss->sp->mateThreat;
+        goto split_start;
+    }
 
     // Step 1. Initialize node and poll. Polling can abort search
     ThreadsMgr.incrementNodeCounter(threadID);
@@ -1037,7 +1052,6 @@ namespace {
 
     // Step 5. Evaluate the position statically and
     // update gain statistics of parent move.
-    isCheck = pos.is_check();
     if (isCheck)
         ss->eval = evalMargin = VALUE_NONE;
     else if (tte)
@@ -1168,13 +1182,17 @@ namespace {
     if (PvNode)
         mateThreat = pos.has_mate_threat();
 
+split_start:
+
     // Initialize a MovePicker object for the current position
-    MovePicker mp = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
+    MovePicker mpBase = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
+    MovePicker& mp = SplitPoint ? *ss->sp->mp : mpBase;
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
-    singleEvasion = isCheck && mp.number_of_evasions() == 1;
-    futilityBase = ss->eval + evalMargin;
-    singularExtensionNode =   depth >= SingularExtensionDepth[PvNode]
+    singleEvasion = SplitPoint ? false : isCheck && mp.number_of_evasions() == 1;
+    futilityBase = SplitPoint ? ss->eval : ss->eval + evalMargin;
+    singularExtensionNode =  !SplitPoint
+                           && depth >= SingularExtensionDepth[PvNode]
                            && tte
                            && tte->move()
                            && !excludedMove // Do not allow recursive singular extension search
@@ -1183,10 +1201,22 @@ namespace {
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
+    if (SplitPoint)
+    {
+        lock_grab(&(ss->sp->lock));
+        bestValue = ss->sp->bestValue;
+    }
+
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !ThreadsMgr.thread_should_stop(threadID))
     {
+      if (SplitPoint)
+      {
+          moveCount = ++ss->sp->moveCount;
+          lock_release(&(ss->sp->lock));
+      }
+
       assert(move_is_ok(move));
 
       if (move == excludedMove)
@@ -1238,8 +1268,12 @@ namespace {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
               && !(threatMove && connected_threat(pos, move, threatMove))
-              && bestValue > value_mated_in(PLY_MAX))
+              && bestValue > value_mated_in(PLY_MAX)) // FIXME bestValue is racy
+          {
+              if (SplitPoint)
+                  lock_grab(&(ss->sp->lock));
               continue;
+          }
 
           // Value based pruning
           // We illogically ignore reduction condition depth >= 3*ONE_PLY for predicted depth,
@@ -1250,7 +1284,13 @@ namespace {
 
           if (futilityValueScaled < beta)
           {
-              if (futilityValueScaled > bestValue)
+              if (SplitPoint)
+              {
+                  lock_grab(&(ss->sp->lock));
+                  if (futilityValueScaled > ss->sp->bestValue)
+                      ss->sp->bestValue = futilityValueScaled;
+              }
+              else if (futilityValueScaled > bestValue)
                   bestValue = futilityValueScaled;
               continue;
           }
@@ -1261,7 +1301,7 @@ namespace {
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
-      if (PvNode && moveCount == 1)
+      if (!SplitPoint && PvNode && moveCount == 1)
           value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO, ply+1)
                                      : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
       else
@@ -1279,6 +1319,7 @@ namespace {
               ss->reduction = reduction<PvNode>(depth, moveCount);
               if (ss->reduction)
               {
+                  alpha = SplitPoint ? ss->sp->alpha : alpha;
                   Depth d = newDepth - ss->reduction;
                   value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO, ply+1)
                                       : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
@@ -1294,6 +1335,7 @@ namespace {
                   assert(newDepth - ONE_PLY >= ONE_PLY);
 
                   ss->reduction = ONE_PLY;
+                  alpha = SplitPoint ? ss->sp->alpha : alpha;
                   value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, ply+1);
                   doFullDepthSearch = (value > alpha);
               }
@@ -1303,6 +1345,7 @@ namespace {
           // Step 15. Full depth search
           if (doFullDepthSearch)
           {
+              alpha = SplitPoint ? ss->sp->alpha : alpha;
               value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO, ply+1)
                                          : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
 
@@ -1321,11 +1364,21 @@ namespace {
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // Step 17. Check for new best move
-      if (value > bestValue)
+      if (SplitPoint)
+      {
+          lock_grab(&(ss->sp->lock));
+          bestValue = ss->sp->bestValue;
+          alpha = ss->sp->alpha;
+      }
+
+      if (value > bestValue && !(SplitPoint && ThreadsMgr.thread_should_stop(threadID)))
       {
           bestValue = value;
           if (value > alpha)
           {
+              if (SplitPoint && (!PvNode || value >= beta))
+                  ss->sp->stopRequest = true;
+
               if (PvNode && value < beta) // We want always alpha < beta
                   alpha = value;
 
@@ -1334,10 +1387,17 @@ namespace {
 
               ss->bestMove = move;
           }
+          if (SplitPoint)
+          {
+              ss->sp->bestValue = bestValue;
+              ss->sp->alpha = alpha;
+              ss->sp->parentSstack->bestMove = ss->bestMove;
+          }
       }
 
       // Step 18. Check for split
-      if (   depth >= MinimumSplitDepth
+      if (   !SplitPoint
+          && depth >= MinimumSplitDepth
           && ThreadsMgr.active_threads() > 1
           && bestValue < beta
           && ThreadsMgr.available_thread_exists(threadID)
@@ -1346,6 +1406,14 @@ namespace {
           && Iteration <= 99)
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
                                       threatMove, mateThreat, moveCount, &mp, PvNode);
+    }
+
+    if (SplitPoint)
+    {
+        /* Here we have the lock still grabbed */
+        ss->sp->slaves[threadID] = 0;
+        lock_release(&(ss->sp->lock));
+        return bestValue;
     }
 
     // Step 19. Check for mate and stalemate
@@ -1567,7 +1635,7 @@ namespace {
     SearchStack* ss = sp->sstack[threadID] + 1;
     ss->sp = sp;
 
-    sp_search<PvNode>(pos, ss, Value(threadID), sp->beta, sp->depth, sp->ply);
+    search<PvNode, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->ply);
   }
 
   template <NodeType PvNode>
