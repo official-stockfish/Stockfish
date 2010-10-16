@@ -75,6 +75,9 @@ class EndgameFunctions;
 
 class MaterialInfoTable {
 
+  MaterialInfoTable(const MaterialInfoTable&);
+  MaterialInfoTable& operator=(const MaterialInfoTable&);
+
 public:
   MaterialInfoTable();
   ~MaterialInfoTable();

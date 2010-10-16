@@ -78,6 +78,9 @@ class PawnInfoTable {
 
   enum SideType { KingSide, QueenSide };
 
+  PawnInfoTable(const PawnInfoTable&);
+  PawnInfoTable& operator=(const PawnInfoTable&);
+
 public:
   PawnInfoTable();
   ~PawnInfoTable();

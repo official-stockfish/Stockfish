@@ -150,10 +150,10 @@ template<typename T>
 inline T operator- (const T d) { OK(T); return T(-int(d)); }
 
 template<typename T>
-inline void operator++ (T& d, int) { OK(T); d = T(int(d) + 1); }
+inline T operator++ (T& d, int) { OK(T); d = T(int(d) + 1); return d; }
 
 template<typename T>
-inline void operator-- (T& d, int) { OK(T); d = T(int(d) - 1); }
+inline T operator-- (T& d, int) { OK(T); d = T(int(d) - 1); return d; }
 
 template<typename T>
 inline void operator+= (T& d1, const T d2) { OK(T); d1 = d1 + d2; }

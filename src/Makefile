@@ -219,14 +219,14 @@ ifeq ($(COMP),icc)
 endif
 
 ### 3.2 General compiler settings
-CXXFLAGS = -g -Wall -Wcast-qual -ansi -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+CXXFLAGS = -g -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
 ifeq ($(comp),gcc)
-	CXXFLAGS += -pedantic -Wno-long-long -Wextra
+	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra
 endif
 
 ifeq ($(comp),icc)
-	CXXFLAGS += -wd383,869,981,10187,10188,11505,11503
+	CXXFLAGS += -wd383,981,10187,10188,11505,11503 -Wcheck -Wabi -Wdeprecated -strict-ansi
 endif
 
 ifeq ($(os),osx)

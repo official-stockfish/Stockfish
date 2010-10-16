@@ -102,6 +102,9 @@ struct TTCluster {
 
 class TranspositionTable {
 
+  TranspositionTable(const TranspositionTable&);
+  TranspositionTable& operator=(const TranspositionTable&);
+
 public:
   TranspositionTable();
   ~TranspositionTable();
