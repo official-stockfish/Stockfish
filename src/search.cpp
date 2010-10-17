@@ -83,7 +83,6 @@ namespace {
     bool thread_is_available(int slave, int master) const;
     bool thread_should_stop(int threadID) const;
     void wake_sleeping_thread(int threadID);
-    void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* sp);
 
     template <bool Fake>
@@ -501,7 +500,8 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
   if (UseLogFile)
       LogFile.close();
 
-  ThreadsMgr.put_threads_to_sleep();
+  // This makes all the threads to go to sleep
+  ThreadsMgr.set_active_threads(1);
 
   return !Quit;
 }
@@ -2574,16 +2574,6 @@ split_point_start: // At split points actual search starts from here
 #endif
   }
 
-
-  // put_threads_to_sleep() makes all the threads go to sleep just before
-  // to leave think(), at the end of the search. Threads should have already
-  // finished the job and should be idle.
-
-  void ThreadsManager::put_threads_to_sleep() {
-
-    // This makes the threads to go to sleep
-    ActiveThreads = 1;
-  }
 
   /// The RootMoveList class
 
