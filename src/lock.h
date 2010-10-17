@@ -27,12 +27,13 @@
 #  include <pthread.h>
 
 typedef pthread_mutex_t Lock;
+typedef pthread_cond_t WaitCondition;
 
 #  define lock_init(x) pthread_mutex_init(x, NULL)
 #  define lock_grab(x) pthread_mutex_lock(x)
 #  define lock_release(x) pthread_mutex_unlock(x)
 #  define lock_destroy(x) pthread_mutex_destroy(x)
-
+#  define cond_destroy(x) pthread_cond_destroy(x);
 
 #else
 
@@ -41,11 +42,13 @@ typedef pthread_mutex_t Lock;
 #undef WIN32_LEAN_AND_MEAN
 
 typedef CRITICAL_SECTION Lock;
+typedef HANDLE WaitCondition;
+
 #  define lock_init(x) InitializeCriticalSection(x)
 #  define lock_grab(x) EnterCriticalSection(x)
 #  define lock_release(x) LeaveCriticalSection(x)
 #  define lock_destroy(x) DeleteCriticalSection(x)
-
+#  define cond_destroy(x) CloseHandle(*x);
 
 #endif
 

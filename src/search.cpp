@@ -96,15 +96,8 @@ namespace {
     int ActiveThreads;
     volatile bool AllThreadsShouldExit, AllThreadsShouldSleep;
     Thread threads[MAX_THREADS];
-
     Lock MPLock, WaitLock;
-
-#if !defined(_MSC_VER)
-    pthread_cond_t WaitCond[MAX_THREADS];
-#else
-    HANDLE SitIdleEvent[MAX_THREADS];
-#endif
-
+    WaitCondition WaitCond[MAX_THREADS];
   };
 
 
@@ -2243,7 +2236,7 @@ split_point_start: // At split points actual search starts from here
                 pthread_cond_wait(&WaitCond[threadID], &WaitLock);
             lock_release(&WaitLock);
 #else
-            WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
+            WaitForSingleObject(WaitCond[threadID], INFINITE);
 #endif
         }
 
@@ -2306,10 +2299,6 @@ split_point_start: // At split points actual search starts from here
     volatile int i;
     bool ok;
 
-#if !defined(_MSC_VER)
-    pthread_t pthread[1];
-#endif
-
     // Initialize global locks
     lock_init(&MPLock);
     lock_init(&WaitLock);
@@ -2318,7 +2307,7 @@ split_point_start: // At split points actual search starts from here
 #if !defined(_MSC_VER)
         pthread_cond_init(&WaitCond[i], NULL);
 #else
-        SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
+        WaitCond[i] = CreateEvent(0, FALSE, FALSE, 0);
 #endif
 
     // Initialize splitPoints[] locks
@@ -2343,6 +2332,7 @@ split_point_start: // At split points actual search starts from here
     {
 
 #if !defined(_MSC_VER)
+        pthread_t pthread[1];
         ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
 #else
         ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, NULL) != NULL);
@@ -2382,6 +2372,10 @@ split_point_start: // At split points actual search starts from here
 
     lock_destroy(&WaitLock);
     lock_destroy(&MPLock);
+
+    // Now we can safely destroy the wait conditions
+    for (int i = 0; i < MAX_THREADS; i++)
+        cond_destroy(&WaitCond[i]);
   }
 
 
@@ -2579,7 +2573,7 @@ split_point_start: // At split points actual search starts from here
         pthread_cond_signal(&WaitCond[threadID]);
         pthread_mutex_unlock(&WaitLock);
 #else
-        SetEvent(SitIdleEvent[threadID]);
+        SetEvent(WaitCond[threadID]);
 #endif
   }
 
