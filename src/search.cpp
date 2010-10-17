@@ -95,7 +95,7 @@ namespace {
     int ActiveThreads;
     volatile bool AllThreadsShouldExit;
     Thread threads[MAX_THREADS];
-    Lock MPLock, WaitLock;
+    Lock MPLock;
     WaitCondition WaitCond[MAX_THREADS];
   };
 
@@ -2224,7 +2224,9 @@ split_point_start: // At split points actual search starts from here
 
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (threadID >= ActiveThreads || threads[threadID].state == THREAD_INITIALIZING)
+        while (   threadID >= ActiveThreads
+               || threads[threadID].state == THREAD_INITIALIZING
+               || (!sp && threads[threadID].state == THREAD_AVAILABLE))
         {
             assert(!sp);
             assert(threadID != 0);
@@ -2232,14 +2234,21 @@ split_point_start: // At split points actual search starts from here
             if (AllThreadsShouldExit)
                 break;
 
+            lock_grab(&MPLock);
+
+            // Retest condition under lock protection
+            if (!(   threadID >= ActiveThreads
+                  || threads[threadID].state == THREAD_INITIALIZING
+                  || (!sp && threads[threadID].state == THREAD_AVAILABLE)))
+            {
+                lock_release(&MPLock);
+                continue;
+            }
+
+            // Put thread to sleep
             threads[threadID].state = THREAD_AVAILABLE;
-
-            lock_grab(&WaitLock);
-
-            if (threadID >= ActiveThreads || threads[threadID].state == THREAD_INITIALIZING)
-                cond_wait(&WaitCond[threadID], &WaitLock);
-
-            lock_release(&WaitLock);
+            cond_wait(&WaitCond[threadID], &MPLock);
+            lock_release(&MPLock);
         }
 
         // If this thread has been assigned work, launch a search
@@ -2299,7 +2308,6 @@ split_point_start: // At split points actual search starts from here
 
     // Initialize global locks
     lock_init(&MPLock);
-    lock_init(&WaitLock);
 
     for (i = 0; i < MAX_THREADS; i++)
         cond_init(&WaitCond[i]);
@@ -2362,7 +2370,6 @@ split_point_start: // At split points actual search starts from here
         for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
             lock_destroy(&(threads[i].splitPoints[j].lock));
 
-    lock_destroy(&WaitLock);
     lock_destroy(&MPLock);
 
     // Now we can safely destroy the wait conditions
@@ -2528,6 +2535,8 @@ split_point_start: // At split points actual search starts from here
             assert(i == master || threads[i].state == THREAD_BOOKED);
 
             threads[i].state = THREAD_WORKISWAITING; // This makes the slave to exit from idle_loop()
+            if (i != master)
+                wake_sleeping_thread(i);
         }
 
     // Everything is set up. The master thread enters the idle loop, from
@@ -2555,9 +2564,9 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::wake_sleeping_thread(int threadID) {
 
-     lock_grab(&WaitLock);
+     lock_grab(&MPLock);
      cond_signal(&WaitCond[threadID]);
-     lock_release(&WaitLock);
+     lock_release(&MPLock);
   }
 
 
