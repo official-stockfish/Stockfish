@@ -94,7 +94,7 @@ namespace {
     friend void poll();
 
     int ActiveThreads;
-    volatile bool AllThreadsShouldExit, AllThreadsShouldSleep;
+    volatile bool AllThreadsShouldExit;
     Thread threads[MAX_THREADS];
     Lock MPLock, WaitLock;
     WaitCondition WaitCond[MAX_THREADS];
@@ -2224,7 +2224,7 @@ split_point_start: // At split points actual search starts from here
 
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (AllThreadsShouldSleep || threadID >= ActiveThreads)
+        while (threadID >= ActiveThreads)
         {
             assert(!sp);
             assert(threadID != 0);
@@ -2232,7 +2232,7 @@ split_point_start: // At split points actual search starts from here
 
 #if !defined(_MSC_VER)
             lock_grab(&WaitLock);
-            if (AllThreadsShouldSleep || threadID >= ActiveThreads)
+            if (threadID >= ActiveThreads)
                 pthread_cond_wait(&WaitCond[threadID], &WaitLock);
             lock_release(&WaitLock);
 #else
@@ -2247,7 +2247,7 @@ split_point_start: // At split points actual search starts from here
         // If this thread has been assigned work, launch a search
         if (threads[threadID].state == THREAD_WORKISWAITING)
         {
-            assert(!AllThreadsShouldExit && !AllThreadsShouldSleep);
+            assert(!AllThreadsShouldExit);
 
             threads[threadID].state = THREAD_SEARCHING;
 
@@ -2319,10 +2319,9 @@ split_point_start: // At split points actual search starts from here
     AllThreadsShouldExit = false;
 
     // Threads will be put to sleep as soon as created
-    AllThreadsShouldSleep = true;
+    ActiveThreads = 1;
 
     // All threads except the main thread should be initialized to THREAD_AVAILABLE
-    ActiveThreads = 1;
     threads[0].state = THREAD_SEARCHING;
     for (i = 1; i < MAX_THREADS; i++)
         threads[i].state = THREAD_AVAILABLE;
@@ -2566,8 +2565,6 @@ split_point_start: // At split points actual search starts from here
     assert(threadID > 0);
     assert(threads[threadID].state == THREAD_SLEEPING);
 
-    AllThreadsShouldSleep = false; // Avoid the woken up thread comes back to sleep
-
 #if !defined(_MSC_VER)
         pthread_mutex_lock(&WaitLock);
         pthread_cond_signal(&WaitCond[threadID]);
@@ -2584,10 +2581,8 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::put_threads_to_sleep() {
 
-    assert(!AllThreadsShouldSleep || ActiveThreads == 1);
-
     // This makes the threads to go to sleep
-    AllThreadsShouldSleep = true;
+    ActiveThreads = 1;
   }
 
   /// The RootMoveList class
