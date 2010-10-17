@@ -2224,8 +2224,7 @@ split_point_start: // At split points actual search starts from here
 
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (   threadID >= ActiveThreads
-               || threads[threadID].state == THREAD_INITIALIZING)
+        while (threadID >= ActiveThreads || threads[threadID].state == THREAD_INITIALIZING)
         {
             assert(!sp);
             assert(threadID != 0);
@@ -2235,14 +2234,12 @@ split_point_start: // At split points actual search starts from here
 
             threads[threadID].state = THREAD_AVAILABLE;
 
-#if !defined(_MSC_VER)
             lock_grab(&WaitLock);
-            if (threadID >= ActiveThreads)
-                pthread_cond_wait(&WaitCond[threadID], &WaitLock);
+
+            if (threadID >= ActiveThreads || threads[threadID].state == THREAD_INITIALIZING)
+                cond_wait(&WaitCond[threadID], &WaitLock);
+
             lock_release(&WaitLock);
-#else
-            WaitForSingleObject(WaitCond[threadID], INFINITE);
-#endif
         }
 
         // If this thread has been assigned work, launch a search
@@ -2305,11 +2302,7 @@ split_point_start: // At split points actual search starts from here
     lock_init(&WaitLock);
 
     for (i = 0; i < MAX_THREADS; i++)
-#if !defined(_MSC_VER)
-        pthread_cond_init(&WaitCond[i], NULL);
-#else
-        WaitCond[i] = CreateEvent(0, FALSE, FALSE, 0);
-#endif
+        cond_init(&WaitCond[i]);
 
     // Initialize splitPoints[] locks
     for (i = 0; i < MAX_THREADS; i++)

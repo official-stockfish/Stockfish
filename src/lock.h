@@ -34,7 +34,9 @@ typedef pthread_cond_t WaitCondition;
 #  define lock_release(x) pthread_mutex_unlock(x)
 #  define lock_destroy(x) pthread_mutex_destroy(x)
 #  define cond_destroy(x) pthread_cond_destroy(x);
+#  define cond_init(x) pthread_cond_init(x, NULL);
 #  define cond_signal(x) pthread_cond_signal(x);
+#  define cond_wait(x,y) pthread_cond_wait(x,y);
 
 #else
 
@@ -42,15 +44,17 @@ typedef pthread_cond_t WaitCondition;
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
 
-typedef CRITICAL_SECTION Lock;
-typedef HANDLE WaitCondition;
+typedef SRWLOCK Lock;
+typedef CONDITION_VARIABLE WaitCondition;
 
-#  define lock_init(x) InitializeCriticalSection(x)
-#  define lock_grab(x) EnterCriticalSection(x)
-#  define lock_release(x) LeaveCriticalSection(x)
-#  define lock_destroy(x) DeleteCriticalSection(x)
-#  define cond_destroy(x) CloseHandle(*x);
-#  define cond_signal(x) SetEvent(*x);
+#  define lock_init(x) InitializeSRWLock(x)
+#  define lock_grab(x) AcquireSRWLockExclusive(x)
+#  define lock_release(x) ReleaseSRWLockExclusive(x)
+#  define lock_destroy(x) (x)
+#  define cond_destroy(x) (x);
+#  define cond_init(x) InitializeConditionVariable(x);
+#  define cond_signal(x) WakeConditionVariable(x);
+#  define cond_wait(x,y) SleepConditionVariableSRW(x, y, INFINITE,0);
 
 #endif
 
