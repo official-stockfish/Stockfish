@@ -2224,11 +2224,16 @@ split_point_start: // At split points actual search starts from here
 
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (threadID >= ActiveThreads)
+        while (   threadID >= ActiveThreads
+               || threads[threadID].state == THREAD_INITIALIZING)
         {
             assert(!sp);
             assert(threadID != 0);
-            threads[threadID].state = THREAD_SLEEPING;
+
+            if (AllThreadsShouldExit)
+                break;
+
+            threads[threadID].state = THREAD_AVAILABLE;
 
 #if !defined(_MSC_VER)
             lock_grab(&WaitLock);
@@ -2239,10 +2244,6 @@ split_point_start: // At split points actual search starts from here
             WaitForSingleObject(WaitCond[threadID], INFINITE);
 #endif
         }
-
-        // If thread has just woken up, mark it as available
-        if (threads[threadID].state == THREAD_SLEEPING)
-            threads[threadID].state = THREAD_AVAILABLE;
 
         // If this thread has been assigned work, launch a search
         if (threads[threadID].state == THREAD_WORKISWAITING)
@@ -2318,13 +2319,13 @@ split_point_start: // At split points actual search starts from here
     // Will be set just before program exits to properly end the threads
     AllThreadsShouldExit = false;
 
-    // Threads will be put to sleep as soon as created
+    // Threads will be put all threads to sleep as soon as created
     ActiveThreads = 1;
 
-    // All threads except the main thread should be initialized to THREAD_AVAILABLE
+    // All threads except the main thread should be initialized to THREAD_INITIALIZING
     threads[0].state = THREAD_SEARCHING;
     for (i = 1; i < MAX_THREADS; i++)
-        threads[i].state = THREAD_AVAILABLE;
+        threads[i].state = THREAD_INITIALIZING;
 
     // Launch the helper threads
     for (i = 1; i < MAX_THREADS; i++)
@@ -2344,7 +2345,7 @@ split_point_start: // At split points actual search starts from here
         }
 
         // Wait until the thread has finished launching and is gone to sleep
-        while (threads[i].state != THREAD_SLEEPING) {}
+        while (threads[i].state == THREAD_INITIALIZING) {}
     }
   }
 
@@ -2355,7 +2356,6 @@ split_point_start: // At split points actual search starts from here
   void ThreadsManager::exit_threads() {
 
     AllThreadsShouldExit = true; // Let the woken up threads to exit idle_loop()
-    ActiveThreads = MAX_THREADS; // Avoid any woken up thread comes back to sleep
 
     // Wake up all the threads and waits for termination
     for (int i = 1; i < MAX_THREADS; i++)
@@ -2563,7 +2563,7 @@ split_point_start: // At split points actual search starts from here
   void ThreadsManager::wake_sleeping_thread(int threadID) {
 
     assert(threadID > 0);
-    assert(threads[threadID].state == THREAD_SLEEPING);
+    assert(threads[threadID].state == THREAD_AVAILABLE);
 
 #if !defined(_MSC_VER)
         pthread_mutex_lock(&WaitLock);

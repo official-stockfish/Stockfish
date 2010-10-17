@@ -75,9 +75,9 @@ struct SplitPoint {
 
 enum ThreadState
 {
+  THREAD_INITIALIZING,  // thread is initializing itself
   THREAD_SEARCHING,     // thread is performing work
-  THREAD_AVAILABLE,     // thread is polling for work
-  THREAD_SLEEPING,      // we are not thinking, so thread is sleeping
+  THREAD_AVAILABLE,     // thread is waiting for work
   THREAD_BOOKED,        // other thread (master) has booked us as a slave
   THREAD_WORKISWAITING, // master has ordered us to start
   THREAD_TERMINATED     // we are quitting and thread is terminated
