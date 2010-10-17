@@ -82,7 +82,7 @@ namespace {
     bool available_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
     bool thread_should_stop(int threadID) const;
-    void wake_sleeping_threads();
+    void wake_sleeping_thread(int threadID);
     void put_threads_to_sleep();
     void idle_loop(int threadID, SplitPoint* sp);
 
@@ -100,7 +100,7 @@ namespace {
     Lock MPLock, WaitLock;
 
 #if !defined(_MSC_VER)
-    pthread_cond_t WaitCond;
+    pthread_cond_t WaitCond[MAX_THREADS];
 #else
     HANDLE SitIdleEvent[MAX_THREADS];
 #endif
@@ -472,8 +472,9 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
       init_eval(ThreadsMgr.active_threads());
   }
 
-  // Wake up sleeping threads
-  ThreadsMgr.wake_sleeping_threads();
+  // Wake up needed threads
+  for (int i = 1; i < newActiveThreads; i++)
+      ThreadsMgr.wake_sleeping_thread(i);
 
   // Set thinking time
   int myTime = time[pos.side_to_move()];
@@ -2239,7 +2240,7 @@ split_point_start: // At split points actual search starts from here
 #if !defined(_MSC_VER)
             lock_grab(&WaitLock);
             if (AllThreadsShouldSleep || threadID >= ActiveThreads)
-                pthread_cond_wait(&WaitCond, &WaitLock);
+                pthread_cond_wait(&WaitCond[threadID], &WaitLock);
             lock_release(&WaitLock);
 #else
             WaitForSingleObject(SitIdleEvent[threadID], INFINITE);
@@ -2313,10 +2314,10 @@ split_point_start: // At split points actual search starts from here
     lock_init(&MPLock);
     lock_init(&WaitLock);
 
-#if !defined(_MSC_VER)
-    pthread_cond_init(&WaitCond, NULL);
-#else
     for (i = 0; i < MAX_THREADS; i++)
+#if !defined(_MSC_VER)
+        pthread_cond_init(&WaitCond[i], NULL);
+#else
         SitIdleEvent[i] = CreateEvent(0, FALSE, FALSE, 0);
 #endif
 
@@ -2364,14 +2365,15 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::exit_threads() {
 
-    ActiveThreads = MAX_THREADS;  // Wake up all the threads
-    AllThreadsShouldExit = true;  // Let the woken up threads to exit idle_loop()
-    AllThreadsShouldSleep = true; // Avoid an assert in wake_sleeping_threads()
-    wake_sleeping_threads();
+    AllThreadsShouldExit = true; // Let the woken up threads to exit idle_loop()
+    ActiveThreads = MAX_THREADS; // Avoid any woken up thread comes back to sleep
 
-    // Wait for thread termination
+    // Wake up all the threads and waits for termination
     for (int i = 1; i < MAX_THREADS; i++)
+    {
+        wake_sleeping_thread(i);
         while (threads[i].state != THREAD_TERMINATED) {}
+    }
 
     // Now we can safely destroy the locks
     for (int i = 0; i < MAX_THREADS; i++)
@@ -2562,28 +2564,23 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // wake_sleeping_threads() wakes up all sleeping threads when it is time
+  // wake_sleeping_thread() wakes up all sleeping threads when it is time
   // to start a new search from the root.
 
-  void ThreadsManager::wake_sleeping_threads() {
+  void ThreadsManager::wake_sleeping_thread(int threadID) {
 
-    assert(AllThreadsShouldSleep);
-    assert(ActiveThreads > 0);
+    assert(threadID > 0);
+    assert(threads[threadID].state == THREAD_SLEEPING);
 
-    AllThreadsShouldSleep = false;
-
-    if (ActiveThreads == 1)
-        return;
+    AllThreadsShouldSleep = false; // Avoid the woken up thread comes back to sleep
 
 #if !defined(_MSC_VER)
-    pthread_mutex_lock(&WaitLock);
-    pthread_cond_broadcast(&WaitCond);
-    pthread_mutex_unlock(&WaitLock);
+        pthread_mutex_lock(&WaitLock);
+        pthread_cond_signal(&WaitCond[threadID]);
+        pthread_mutex_unlock(&WaitLock);
 #else
-    for (int i = 1; i < MAX_THREADS; i++)
-        SetEvent(SitIdleEvent[i]);
+        SetEvent(SitIdleEvent[threadID]);
 #endif
-
   }
 
 
@@ -2593,7 +2590,7 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::put_threads_to_sleep() {
 
-    assert(!AllThreadsShouldSleep);
+    assert(!AllThreadsShouldSleep || ActiveThreads == 1);
 
     // This makes the threads to go to sleep
     AllThreadsShouldSleep = true;
