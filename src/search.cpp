@@ -2562,16 +2562,9 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::wake_sleeping_thread(int threadID) {
 
-    assert(threadID > 0);
-    assert(threads[threadID].state == THREAD_AVAILABLE);
-
-#if !defined(_MSC_VER)
-        pthread_mutex_lock(&WaitLock);
-        pthread_cond_signal(&WaitCond[threadID]);
-        pthread_mutex_unlock(&WaitLock);
-#else
-        SetEvent(WaitCond[threadID]);
-#endif
+     lock_grab(&WaitLock);
+     cond_signal(&WaitCond[threadID]);
+     lock_release(&WaitLock);
   }
 
 

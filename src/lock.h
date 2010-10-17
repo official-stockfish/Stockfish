@@ -34,6 +34,7 @@ typedef pthread_cond_t WaitCondition;
 #  define lock_release(x) pthread_mutex_unlock(x)
 #  define lock_destroy(x) pthread_mutex_destroy(x)
 #  define cond_destroy(x) pthread_cond_destroy(x);
+#  define cond_signal(x) pthread_cond_signal(x);
 
 #else
 
@@ -49,6 +50,7 @@ typedef HANDLE WaitCondition;
 #  define lock_release(x) LeaveCriticalSection(x)
 #  define lock_destroy(x) DeleteCriticalSection(x)
 #  define cond_destroy(x) CloseHandle(*x);
+#  define cond_signal(x) SetEvent(*x);
 
 #endif
 
