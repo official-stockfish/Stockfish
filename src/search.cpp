@@ -464,10 +464,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
       init_eval(ThreadsMgr.active_threads());
   }
 
-  // Wake up needed threads
-  for (int i = 1; i < newActiveThreads; i++)
-      ThreadsMgr.wake_sleeping_thread(i);
-
   // Set thinking time
   int myTime = time[pos.side_to_move()];
   int myIncrement = increment[pos.side_to_move()];
@@ -499,9 +495,6 @@ bool think(const Position& pos, bool infinite, bool ponder, int time[], int incr
 
   if (UseLogFile)
       LogFile.close();
-
-  // This makes all the threads to go to sleep
-  ThreadsMgr.set_active_threads(1);
 
   return !Quit;
 }
