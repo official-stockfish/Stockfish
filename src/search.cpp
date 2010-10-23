@@ -700,7 +700,7 @@ namespace {
     int64_t nodes;
     Move move;
     Depth depth, ext, newDepth;
-    Value value, evalMargin, alpha, beta;
+    Value value, alpha, beta;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
     int researchCountFH, researchCountFL;
 
@@ -719,7 +719,8 @@ namespace {
 
     // Step 5. Evaluate the position statically
     // At root we do this only to get reference value for child nodes
-    ss->eval = isCheck ? VALUE_NONE : evaluate(pos, evalMargin);
+    ss->evalMargin = VALUE_NONE;
+    ss->eval = isCheck ? VALUE_NONE : evaluate(pos, ss->evalMargin);
 
     // Step 6. Razoring (omitted at root)
     // Step 7. Static null move pruning (omitted at root)
@@ -965,7 +966,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
-    Value bestValue, value, evalMargin, oldAlpha;
+    Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
     bool isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
@@ -980,7 +981,6 @@ namespace {
     {
         sp = ss->sp;
         tte = NULL;
-        evalMargin = VALUE_ZERO;
         ttMove = excludedMove = MOVE_NONE;
         threatMove = sp->threatMove;
         mateThreat = sp->mateThreat;
@@ -1041,19 +1041,19 @@ namespace {
     // Step 5. Evaluate the position statically and
     // update gain statistics of parent move.
     if (isCheck)
-        ss->eval = evalMargin = VALUE_NONE;
+        ss->eval = ss->evalMargin = VALUE_NONE;
     else if (tte)
     {
         assert(tte->static_value() != VALUE_NONE);
 
         ss->eval = tte->static_value();
-        evalMargin = tte->static_value_margin();
+        ss->evalMargin = tte->static_value_margin();
         refinedValue = refine_eval(tte, ss->eval, ply);
     }
     else
     {
-        refinedValue = ss->eval = evaluate(pos, evalMargin);
-        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
+        refinedValue = ss->eval = evaluate(pos, ss->evalMargin);
+        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
     }
 
     // Save gain for the parent non-capture move
@@ -1174,12 +1174,12 @@ split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
     // FIXME currently MovePicker() c'tor is needless called also in SplitPoint
-    MovePicker mpBase = MovePicker(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
+    MovePicker mpBase(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     MovePicker& mp = SpNode ? *sp->mp : mpBase;
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     singleEvasion = !SpNode && isCheck && mp.number_of_evasions() == 1;
-    futilityBase = ss->eval + evalMargin;
+    futilityBase = ss->eval + ss->evalMargin;
     singularExtensionNode =  !SpNode
                            && depth >= SingularExtensionDepth[PvNode]
                            && tte
@@ -1383,7 +1383,7 @@ split_point_start: // At split points actual search starts from here
                       sp->alpha = value;
               }
 
-              if (!SpNode && value == value_mate_in(ply + 1))
+              if (value == value_mate_in(ply + 1))
                   ss->mateKiller = move;
 
               ss->bestMove = move;
@@ -1429,7 +1429,7 @@ split_point_start: // At split points actual search starts from here
 
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     move = (bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove);
-    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, evalMargin);
+    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ss->evalMargin);
 
     // Update killers and history only for non capture moves that fails high
     if (    bestValue >= beta
@@ -2583,7 +2583,7 @@ split_point_start: // At split points actual search starts from here
 
     // Initialize search stack
     init_ss_array(ss, PLY_MAX_PLUS_2);
-    ss[0].eval = VALUE_NONE;
+    ss[0].eval = ss[0].evalMargin = VALUE_NONE;
     count = 0;
 
     // Generate all legal moves
