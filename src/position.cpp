@@ -765,7 +765,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
     Value npMaterial[2];
   };
 
-  memcpy(&newSt, st, sizeof(ReducedStateInfo));
+  if (&newSt != st)
+      memcpy(&newSt, st, sizeof(ReducedStateInfo));
+
   newSt.previous = st;
   st = &newSt;
 
