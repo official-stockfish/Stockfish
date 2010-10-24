@@ -2212,9 +2212,6 @@ split_point_start: // At split points actual search starts from here
 
     assert(threadID >= 0 && threadID < MAX_THREADS);
 
-    int i;
-    bool allFinished = false;
-
     while (true)
     {
         // Slave threads can exit as soon as AllThreadsShouldExit raises,
@@ -2230,23 +2227,23 @@ split_point_start: // At split points actual search starts from here
         // instead of wasting CPU time polling for work.
         while (   threadID >= ActiveThreads
                || threads[threadID].state == THREAD_INITIALIZING
-               || threads[threadID].state == THREAD_AVAILABLE)
+               || (!sp && threads[threadID].state == THREAD_AVAILABLE))
         {
+            assert(!sp);
+            assert(threadID != 0);
+
+            if (AllThreadsShouldExit)
+                break;
+
             lock_grab(&MPLock);
 
-            // Test with lock held to avoid races with wake_sleeping_thread()
-            for (i = 0; sp && i < ActiveThreads && !sp->slaves[i]; i++) {}
-            allFinished = (i == ActiveThreads);
-
-            // Retest sleep conditions under lock protection
-            if (   AllThreadsShouldExit
-                || allFinished
-                || !(   threadID >= ActiveThreads
-                     || threads[threadID].state == THREAD_INITIALIZING
-                     || threads[threadID].state == THREAD_AVAILABLE))
+            // Retest condition under lock protection
+            if (!(   threadID >= ActiveThreads
+                  || threads[threadID].state == THREAD_INITIALIZING
+                  || (!sp && threads[threadID].state == THREAD_AVAILABLE)))
             {
                 lock_release(&MPLock);
-                break;
+                continue;
             }
 
             // Put thread to sleep
@@ -2276,19 +2273,14 @@ split_point_start: // At split points actual search starts from here
             assert(threads[threadID].state == THREAD_SEARCHING);
 
             threads[threadID].state = THREAD_AVAILABLE;
-
-            // Wake up master thread so to allow it to return from the idle loop in
-            // case we are the last slave of the split point.
-            if (threadID != tsp->master && threads[tsp->master].state == THREAD_AVAILABLE)
-                wake_sleeping_thread(tsp->master);
         }
 
         // If this thread is the master of a split point and all slaves have
         // finished their work at this split point, return from the idle loop.
-        for (i = 0; sp && i < ActiveThreads && !sp->slaves[i]; i++) {}
-        allFinished = (i == ActiveThreads);
+        int i = 0;
+        for ( ; sp && i < ActiveThreads && !sp->slaves[i]; i++) {}
 
-        if (allFinished)
+        if (i == ActiveThreads)
         {
             // Because sp->slaves[] is reset under lock protection,
             // be sure sp->lock has been released before to return.
@@ -2495,7 +2487,6 @@ split_point_start: // At split points actual search starts from here
 
     // Initialize the split point object
     splitPoint.parent = masterThread.splitPoint;
-    splitPoint.master = master;
     splitPoint.stopRequest = false;
     splitPoint.ply = ply;
     splitPoint.depth = depth;
