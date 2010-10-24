@@ -2336,6 +2336,7 @@ split_point_start: // At split points actual search starts from here
 #if !defined(_MSC_VER)
         pthread_t pthread[1];
         ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
+        pthread_detach(pthread[0]);
 #else
         ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, NULL) != NULL);
 #endif
