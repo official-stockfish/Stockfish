@@ -968,6 +968,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
+    ValueType vt;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
     bool isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
@@ -987,7 +988,7 @@ namespace {
         threatMove = sp->threatMove;
         mateThreat = sp->mateThreat;
         goto split_point_start;
-    }
+    } else {} // Hack to fix icc's "statement is unreachable" warning
 
     // Step 1. Initialize node and poll. Polling can abort search
     ThreadsMgr.incrementNodeCounter(threadID);
@@ -1394,37 +1395,38 @@ split_point_start: // At split points actual search starts from here
                                       threatMove, mateThreat, moveCount, &mp, PvNode);
     }
 
-    if (SpNode)
-    {
-        // Here we have the lock still grabbed
-        sp->slaves[threadID] = 0;
-        lock_release(&(sp->lock));
-        return bestValue;
-    }
-
     // Step 19. Check for mate and stalemate
     // All legal moves have been searched and if there are
     // no legal moves, it must be mate or stalemate.
     // If one move was excluded return fail low score.
-    if (!moveCount)
+    if (!SpNode && !moveCount)
         return excludedMove ? oldAlpha : isCheck ? value_mated_in(ply) : VALUE_DRAW;
 
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (AbortSearch || ThreadsMgr.thread_should_stop(threadID))
-        return bestValue;
-
-    ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    move = (bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove);
-    TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ss->evalMargin);
-
-    // Update killers and history only for non capture moves that fails high
-    if (    bestValue >= beta
-        && !pos.move_is_capture_or_promotion(move))
+    if (!SpNode && !AbortSearch && !ThreadsMgr.thread_should_stop(threadID))
     {
+        move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
+        vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
+             : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
+
+        TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ss->evalMargin);
+
+        // Update killers and history only for non capture moves that fails high
+        if (    bestValue >= beta
+            && !pos.move_is_capture_or_promotion(move))
+        {
             update_history(pos, move, depth, movesSearched, moveCount);
             update_killers(move, ss);
+        }
+    }
+
+    if (SpNode)
+    {
+        // Here we have the lock still grabbed
+        sp->slaves[threadID] = 0;
+        lock_release(&(sp->lock));
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
