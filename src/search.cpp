@@ -1001,10 +1001,8 @@ namespace {
     }
 
     // Step 2. Check for aborted search and immediate draw
-    if (AbortSearch || ThreadsMgr.thread_should_stop(threadID))
-        return VALUE_DRAW;
-
-    if (pos.is_draw() || ply >= PLY_MAX - 1)
+    if (   AbortSearch   || ThreadsMgr.thread_should_stop(threadID)
+        || pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
     // Step 3. Mate distance pruning
@@ -1021,7 +1019,7 @@ namespace {
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
 
     tte = TT.retrieve(posKey);
-    ttMove = (tte ? tte->move() : MOVE_NONE);
+    ttMove = tte ? tte->move() : MOVE_NONE;
 
     // At PV nodes, we don't use the TT for pruning, but only for move ordering.
     // This is to avoid problems in the following areas:
@@ -1030,12 +1028,9 @@ namespace {
     // * Fifty move rule detection
     // * Searching for a mate
     // * Printing of full PV line
-
     if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
     {
-        // Refresh tte entry to avoid aging
-        TT.store(posKey, tte->value(), tte->type(), tte->depth(), ttMove, tte->static_value(), tte->static_value_margin());
-
+        TT.refresh(tte);
         ss->bestMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
     }
