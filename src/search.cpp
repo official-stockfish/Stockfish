@@ -1194,16 +1194,17 @@ split_point_start: // At split points actual search starts from here
            && (move = mp.get_next_move()) != MOVE_NONE
            && !ThreadsMgr.thread_should_stop(threadID))
     {
+      assert(move_is_ok(move));
+
       if (SpNode)
       {
           moveCount = ++sp->moveCount;
           lock_release(&(sp->lock));
       }
-
-      assert(move_is_ok(move));
-
-      if (move == excludedMove)
+      else if (move == excludedMove)
           continue;
+      else
+          movesSearched[moveCount++] = move;
 
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
@@ -1235,13 +1236,9 @@ split_point_start: // At split points actual search starts from here
           }
       }
 
-      newDepth = depth - ONE_PLY + ext;
-
       // Update current move (this must be done after singular extension search)
-      movesSearched[moveCount] = ss->currentMove = move;
-
-      if (!SpNode)
-          moveCount++;
+      ss->currentMove = move;
+      newDepth = depth - ONE_PLY + ext;
 
       // Step 12. Futility pruning (is omitted in PV nodes)
       if (   !PvNode
@@ -1399,7 +1396,7 @@ split_point_start: // At split points actual search starts from here
 
     if (SpNode)
     {
-        /* Here we have the lock still grabbed */
+        // Here we have the lock still grabbed
         sp->slaves[threadID] = 0;
         lock_release(&(sp->lock));
         return bestValue;
