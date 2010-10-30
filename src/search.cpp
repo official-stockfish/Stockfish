@@ -280,12 +280,14 @@ namespace {
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
 
   template <NodeType PvNode>
-  inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
-      return search<PvNode, false>(pos, ss, alpha, beta, depth, ply);
-  }
+  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
 
   template <NodeType PvNode>
-  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
+  inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
+
+      return depth < ONE_PLY ? qsearch<PvNode>(pos, ss, alpha, beta, DEPTH_ZERO, ply)
+                             : search<PvNode, false>(pos, ss, alpha, beta, depth, ply);
+  }
 
   template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
@@ -1109,9 +1111,7 @@ namespace {
 
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
-
-        nullValue = depth-R*ONE_PLY < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO, ply+1)
-                                              : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*ONE_PLY, ply+1);
+        nullValue = -search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*ONE_PLY, ply+1);
         (ss+1)->skipNullMove = false;
         pos.undo_null_move();
 
@@ -1295,8 +1295,7 @@ split_point_start: // At split points actual search starts from here
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
       if (!SpNode && PvNode && moveCount == 1)
-          value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO, ply+1)
-                                     : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
       else
       {
           // Step 14. Reduced depth search
@@ -1314,8 +1313,7 @@ split_point_start: // At split points actual search starts from here
               {
                   alpha = SpNode ? sp->alpha : alpha;
                   Depth d = newDepth - ss->reduction;
-                  value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO, ply+1)
-                                      : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
+                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
 
                   doFullDepthSearch = (value > alpha);
               }
@@ -1339,15 +1337,13 @@ split_point_start: // At split points actual search starts from here
           if (doFullDepthSearch)
           {
               alpha = SpNode ? sp->alpha : alpha;
-              value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO, ply+1)
-                                         : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
+              value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
 
               // Step extra. pv search (only in PV nodes)
               // Search only for possible new PV nodes, if instead value >= beta then
               // parent node fails low with value <= alpha and tries another move.
               if (PvNode && value > alpha && value < beta)
-                  value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO, ply+1)
-                                             : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+                  value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
           }
       }
 
