@@ -1070,7 +1070,6 @@ namespace {
         && !isCheck
         &&  refinedValue < beta - razor_margin(depth)
         &&  ttMove == MOVE_NONE
-        &&  (ss-1)->currentMove != MOVE_NULL
         && !value_is_mate(beta)
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
