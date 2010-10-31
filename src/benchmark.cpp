@@ -161,7 +161,7 @@ void benchmark(const string& commandLine) {
       } else {
           if (!think(pos, false, false, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
               break;
-          totalNodes += nodes_searched();
+          totalNodes += pos.nodes_searched();
       }
   }
 

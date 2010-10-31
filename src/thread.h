@@ -64,6 +64,7 @@ struct SplitPoint {
 
   // Shared data
   Lock lock;
+  volatile int64_t nodes;
   volatile Value alpha;
   volatile Value bestValue;
   volatile int moveCount;
@@ -84,7 +85,6 @@ enum ThreadState
 };
 
 struct Thread {
-  uint64_t nodes;
   volatile ThreadState state;
   SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;

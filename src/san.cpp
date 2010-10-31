@@ -322,7 +322,7 @@ const string line_to_san(const Position& pos, Move line[], int startColumn, bool
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
 
-const string pretty_pv(const Position& pos, int time, int depth, uint64_t nodes,
+const string pretty_pv(const Position& pos, int time, int depth,
                        Value score, ValueType type, Move pv[]) {
 
   const uint64_t K = 1000;
@@ -341,12 +341,12 @@ const string pretty_pv(const Position& pos, int time, int depth, uint64_t nodes,
   s << std::setw(8) << time_string(time) << " ";
 
   // Nodes
-  if (nodes < M)
-      s << std::setw(8) << nodes / 1 << " ";
-  else if (nodes < K * M)
-      s << std::setw(7) << nodes / K << "K ";
+  if (pos.nodes_searched() < M)
+      s << std::setw(8) << pos.nodes_searched() / 1 << " ";
+  else if (pos.nodes_searched() < K * M)
+      s << std::setw(7) << pos.nodes_searched() / K << "K ";
   else
-      s << std::setw(7) << nodes / M << "M ";
+      s << std::setw(7) << pos.nodes_searched() / M << "M ";
 
   // PV
   s << line_to_san(pos, pv, 30, true);

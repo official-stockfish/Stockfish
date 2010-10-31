@@ -75,10 +75,7 @@ namespace {
 
     int active_threads() const { return ActiveThreads; }
     void set_active_threads(int newActiveThreads) { ActiveThreads = newActiveThreads; }
-    void incrementNodeCounter(int threadID) { threads[threadID].nodes++; }
 
-    void resetNodeCounters();
-    int64_t nodes_searched() const;
     bool available_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
     bool thread_should_stop(int threadID) const;
@@ -86,12 +83,10 @@ namespace {
     void idle_loop(int threadID, SplitPoint* sp);
 
     template <bool Fake>
-    void split(const Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
+    void split(Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
                Depth depth, Move threatMove, bool mateThreat, int moveCount, MovePicker* mp, bool pvNode);
 
   private:
-    friend void poll();
-
     int ActiveThreads;
     volatile bool AllThreadsShouldExit;
     Thread threads[MAX_THREADS];
@@ -273,7 +268,7 @@ namespace {
 
   /// Local functions
 
-  Value id_loop(const Position& pos, Move searchMoves[]);
+  Value id_loop(Position& pos, Move searchMoves[]);
   Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
   template <NodeType PvNode, bool SpNode>
@@ -305,8 +300,8 @@ namespace {
 
   int current_search_time();
   std::string value_to_uci(Value v);
-  int nps();
-  void poll();
+  int nps(const Position& pos);
+  void poll(const Position& pos);
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
@@ -332,7 +327,6 @@ namespace {
 
 void init_threads() { ThreadsMgr.init_threads(); }
 void exit_threads() { ThreadsMgr.exit_threads(); }
-int64_t nodes_searched() { return ThreadsMgr.nodes_searched(); }
 
 
 /// init_search() is called during startup. It initializes various lookup tables
@@ -398,13 +392,12 @@ int perft(Position& pos, Depth depth)
 /// search-related global variables, and calls root_search(). It returns false
 /// when a quit command is received during the search.
 
-bool think(const Position& pos, bool infinite, bool ponder, int time[], int increment[],
+bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[],
            int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
   StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
   NodesSincePoll = 0;
-  ThreadsMgr.resetNodeCounters();
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
   MaxDepth = maxDepth;
@@ -509,16 +502,15 @@ namespace {
   // been consumed, the user stops the search, or the maximum search depth is
   // reached.
 
-  Value id_loop(const Position& pos, Move searchMoves[]) {
+  Value id_loop(Position& pos, Move searchMoves[]) {
 
-    Position p(pos, pos.thread());
     SearchStack ss[PLY_MAX_PLUS_2];
     Move pv[PLY_MAX_PLUS_2];
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
     // Moves to search are verified, copied, scored and sorted
-    RootMoveList rml(p, searchMoves);
+    RootMoveList rml(pos, searchMoves);
 
     // Handle special case of searching on a mate/stale position
     if (rml.move_count() == 0)
@@ -531,13 +523,13 @@ namespace {
 
     // Print RootMoveList startup scoring to the standard output,
     // so to output information also for iteration 1.
-    cout << set960(p.is_chess960()) // Is enough to set once at the beginning
+    cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
          << "info depth " << 1
          << "\ninfo depth " << 1
          << " score " << value_to_uci(rml.move_score(0))
          << " time " << current_search_time()
-         << " nodes " << ThreadsMgr.nodes_searched()
-         << " nps " << nps()
+         << " nodes " << pos.nodes_searched()
+         << " nps " << nps(pos)
          << " pv " << rml.move(0) << "\n";
 
     // Initialize
@@ -576,11 +568,11 @@ namespace {
         }
 
         // Search to the current depth, rml is updated and sorted, alpha and beta could change
-        value = root_search(p, ss, pv, rml, &alpha, &beta);
+        value = root_search(pos, ss, pv, rml, &alpha, &beta);
 
         // Write PV to transposition table, in case the relevant entries have
         // been overwritten during the search.
-        insert_pv_in_tt(p, pv);
+        insert_pv_in_tt(pos, pv);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!
@@ -609,12 +601,11 @@ namespace {
                 stopSearch = true;
 
             // Stop search early if one move seems to be much better than the others
-            int64_t nodes = ThreadsMgr.nodes_searched();
             if (   Iteration >= 8
                 && EasyMove == pv[0]
-                && (  (   rml.move_nodes(0) > (nodes * 85) / 100
+                && (  (   rml.move_nodes(0) > (pos.nodes_searched() * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
-                    ||(   rml.move_nodes(0) > (nodes * 98) / 100
+                    ||(   rml.move_nodes(0) > (pos.nodes_searched() * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
                 stopSearch = true;
 
@@ -648,8 +639,8 @@ namespace {
         wait_for_stop_or_ponderhit();
     else
         // Print final search statistics
-        cout << "info nodes " << ThreadsMgr.nodes_searched()
-             << " nps " << nps()
+        cout << "info nodes " << pos.nodes_searched()
+             << " nps " << nps(pos)
              << " time " << current_search_time() << endl;
 
     // Print the best move and the ponder move to the standard output
@@ -676,14 +667,14 @@ namespace {
         if (dbg_show_hit_rate)
             dbg_print_hit_rate(LogFile);
 
-        LogFile << "\nNodes: " << ThreadsMgr.nodes_searched()
-                << "\nNodes/second: " << nps()
-                << "\nBest move: " << move_to_san(p, pv[0]);
+        LogFile << "\nNodes: " << pos.nodes_searched()
+                << "\nNodes/second: " << nps(pos)
+                << "\nBest move: " << move_to_san(pos, pv[0]);
 
         StateInfo st;
-        p.do_move(pv[0], st);
+        pos.do_move(pv[0], st);
         LogFile << "\nPonder move: "
-                << move_to_san(p, pv[1]) // Works also with MOVE_NONE
+                << move_to_san(pos, pv[1]) // Works also with MOVE_NONE
                 << endl;
     }
     return rml.move_score(0);
@@ -745,7 +736,7 @@ namespace {
             FirstRootMove = (i == 0);
 
             // Save the current node count before the move is searched
-            nodes = ThreadsMgr.nodes_searched();
+            nodes = pos.nodes_searched();
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
@@ -866,7 +857,7 @@ namespace {
                 break;
 
             // Remember searched nodes counts for this move
-            rml.add_move_nodes(i, ThreadsMgr.nodes_searched() - nodes);
+            rml.add_move_nodes(i, pos.nodes_searched() - nodes);
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
             assert(value < beta);
@@ -908,8 +899,8 @@ namespace {
                              << " score " << value_to_uci(rml.move_score(j))
                              << " depth " << (j <= i ? Iteration : Iteration - 1)
                              << " time " << current_search_time()
-                             << " nodes " << ThreadsMgr.nodes_searched()
-                             << " nps " << nps()
+                             << " nodes " << pos.nodes_searched()
+                             << " nps " << nps(pos)
                              << " pv ";
 
                         for (int k = 0; rml.move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
@@ -991,14 +982,13 @@ namespace {
     } else {} // Hack to fix icc's "statement is unreachable" warning
 
     // Step 1. Initialize node and poll. Polling can abort search
-    ThreadsMgr.incrementNodeCounter(threadID);
     ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
     (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
 
     if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
     {
         NodesSincePoll = 0;
-        poll();
+        poll(pos);
     }
 
     // Step 2. Check for aborted search and immediate draw
@@ -1426,6 +1416,7 @@ split_point_start: // At split points actual search starts from here
     {
         // Here we have the lock still grabbed
         sp->slaves[threadID] = 0;
+        sp->nodes += pos.nodes_searched();
         lock_release(&(sp->lock));
     }
 
@@ -1456,7 +1447,6 @@ split_point_start: // At split points actual search starts from here
     const TTEntry* tte;
     Value oldAlpha = alpha;
 
-    ThreadsMgr.incrementNodeCounter(pos.thread());
     ss->bestMove = ss->currentMove = MOVE_NONE;
 
     // Check for an instant draw or maximum ply reached
@@ -1917,10 +1907,10 @@ split_point_start: // At split points actual search starts from here
 
   // nps() computes the current nodes/second count.
 
-  int nps() {
+  int nps(const Position& pos) {
 
     int t = current_search_time();
-    return (t > 0 ? int((ThreadsMgr.nodes_searched() * 1000) / t) : 0);
+    return (t > 0 ? int((pos.nodes_searched() * 1000) / t) : 0);
   }
 
 
@@ -1928,7 +1918,7 @@ split_point_start: // At split points actual search starts from here
   // looks at the time consumed so far and decides if it's time to abort the
   // search.
 
-  void poll() {
+  void poll(const Position& pos) {
 
     static int lastInfoTime;
     int t = current_search_time();
@@ -1977,7 +1967,7 @@ split_point_start: // At split points actual search starts from here
         if (dbg_show_hit_rate)
             dbg_print_hit_rate();
 
-        cout << "info nodes " << ThreadsMgr.nodes_searched() << " nps " << nps()
+        cout << "info nodes " << pos.nodes_searched() << " nps " << nps(pos)
              << " time " << t << endl;
     }
 
@@ -1994,7 +1984,7 @@ split_point_start: // At split points actual search starts from here
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
-        || (Iteration >= 3 && MaxNodes && ThreadsMgr.nodes_searched() >= MaxNodes))
+        || (Iteration >= 3 && MaxNodes && pos.nodes_searched() >= MaxNodes))
         AbortSearch = true;
   }
 
@@ -2074,8 +2064,8 @@ split_point_start: // At split points actual search starts from here
          << " score "     << value_to_uci(value)
          << (value >= beta ? " lowerbound" : value <= alpha ? " upperbound" : "")
          << " time "  << current_search_time()
-         << " nodes " << ThreadsMgr.nodes_searched()
-         << " nps "   << nps()
+         << " nodes " << pos.nodes_searched()
+         << " nps "   << nps(pos)
          << " pv ";
 
     for (Move* m = pv; *m != MOVE_NONE; m++)
@@ -2088,8 +2078,7 @@ split_point_start: // At split points actual search starts from here
         ValueType t = value >= beta  ? VALUE_TYPE_LOWER :
                       value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
 
-        LogFile << pretty_pv(pos, current_search_time(), Iteration,
-                             ThreadsMgr.nodes_searched(), value, t, pv) << endl;
+        LogFile << pretty_pv(pos, current_search_time(), Iteration, value, t, pv) << endl;
     }
   }
 
@@ -2173,25 +2162,6 @@ split_point_start: // At split points actual search starts from here
 
 
   /// The ThreadsManager class
-
-  // resetNodeCounters(), resetBetaCounters(), searched_nodes() and
-  // get_beta_counters() are getters/setters for the per thread
-  // counters used to sort the moves at root.
-
-  void ThreadsManager::resetNodeCounters() {
-
-    for (int i = 0; i < MAX_THREADS; i++)
-        threads[i].nodes = 0ULL;
-  }
-
-  int64_t ThreadsManager::nodes_searched() const {
-
-    int64_t result = 0ULL;
-    for (int i = 0; i < ActiveThreads; i++)
-        result += threads[i].nodes;
-
-    return result;
-  }
 
 
   // idle_loop() is where the threads are parked when they have no work to do.
@@ -2446,20 +2416,20 @@ split_point_start: // At split points actual search starts from here
   // call search().When all threads have returned from search() then split() returns.
 
   template <bool Fake>
-  void ThreadsManager::split(const Position& p, SearchStack* ss, int ply, Value* alpha,
+  void ThreadsManager::split(Position& pos, SearchStack* ss, int ply, Value* alpha,
                              const Value beta, Value* bestValue, Depth depth, Move threatMove,
                              bool mateThreat, int moveCount, MovePicker* mp, bool pvNode) {
-    assert(p.is_ok());
+    assert(pos.is_ok());
     assert(ply > 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
     assert(*bestValue <= *alpha);
     assert(*alpha < beta);
     assert(beta <= VALUE_INFINITE);
     assert(depth > DEPTH_ZERO);
-    assert(p.thread() >= 0 && p.thread() < ActiveThreads);
+    assert(pos.thread() >= 0 && pos.thread() < ActiveThreads);
     assert(ActiveThreads > 1);
 
-    int i, master = p.thread();
+    int i, master = pos.thread();
     Thread& masterThread = threads[master];
 
     lock_grab(&MPLock);
@@ -2489,7 +2459,8 @@ split_point_start: // At split points actual search starts from here
     splitPoint.bestValue = *bestValue;
     splitPoint.mp = mp;
     splitPoint.moveCount = moveCount;
-    splitPoint.pos = &p;
+    splitPoint.pos = &pos;
+    splitPoint.nodes = 0;
     splitPoint.parentSstack = ss;
     for (i = 0; i < ActiveThreads; i++)
         splitPoint.slaves[i] = 0;
@@ -2545,6 +2516,7 @@ split_point_start: // At split points actual search starts from here
     *bestValue = splitPoint.bestValue;
     masterThread.activeSplitPoints--;
     masterThread.splitPoint = splitPoint.parent;
+    pos.set_nodes_searched(pos.nodes_searched() + splitPoint.nodes);
 
     lock_release(&MPLock);
   }

@@ -121,13 +121,12 @@ CheckInfo::CheckInfo(const Position& pos) {
 /// or the FEN string, we want the new born Position object do not depend
 /// on any external data so we detach state pointer from the source one.
 
-Position::Position(int th) : threadID(th) {}
-
 Position::Position(const Position& pos, int th) {
 
   memcpy(this, &pos, sizeof(Position));
   detach(); // Always detach() in copy c'tor to avoid surprises
   threadID = th;
+  nodes = 0;
 }
 
 Position::Position(const string& fen, int th) {
@@ -752,6 +751,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   assert(is_ok());
   assert(move_is_ok(m));
 
+  nodes++;
   Key key = st->key;
 
   // Copy some fields of old state to our new StateInfo object except the
@@ -1479,6 +1479,7 @@ void Position::clear() {
   memset(st, 0, sizeof(StateInfo));
   st->epSquare = SQ_NONE;
   startPosPlyCounter = 0;
+  nodes = 0;
 
   memset(byColorBB,  0, sizeof(Bitboard) * 2);
   memset(byTypeBB,   0, sizeof(Bitboard) * 8);

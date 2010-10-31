@@ -146,7 +146,6 @@ public:
   };
 
   // Constructors
-  explicit Position(int threadID);
   Position(const Position& pos, int threadID);
   Position(const std::string& fen, int threadID);
 
@@ -278,8 +277,9 @@ public:
 
   // Reset the gamePly variable to 0
   void reset_game_ply();
-
   void inc_startpos_ply_counter();
+  int64_t nodes_searched() const;
+  void set_nodes_searched(int64_t n);
 
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
@@ -338,6 +338,7 @@ private:
   bool isChess960;
   int startPosPlyCounter;
   int threadID;
+  int64_t nodes;
   StateInfo* st;
 
   // Static variables
@@ -354,6 +355,14 @@ private:
 ////
 //// Inline functions
 ////
+
+inline int64_t Position::nodes_searched() const {
+  return nodes;
+}
+
+inline void Position::set_nodes_searched(int64_t n) {
+  nodes = n;
+}
 
 inline Piece Position::piece_on(Square s) const {
   return board[s];
