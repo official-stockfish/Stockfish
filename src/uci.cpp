@@ -51,20 +51,14 @@ namespace {
 
   // UCIInputParser is a class for parsing UCI input. The class
   // is actually a string stream built on a given input string.
-
   typedef istringstream UCIInputParser;
 
-  // The root position. This is set up when the user (or in practice, the GUI)
-  // sends the "position" UCI command. The root position is sent to the think()
-  // function when the program receives the "go" command.
-  Position RootPosition(StartPositionFEN, 0);
-
   // Local functions
-  bool handle_command(const string& command);
+  bool handle_command(Position& pos, const string& command);
   void set_option(UCIInputParser& uip);
-  void set_position(UCIInputParser& uip);
-  bool go(UCIInputParser& uip);
-  void perft(UCIInputParser& uip);
+  void set_position(Position& pos, UCIInputParser& uip);
+  bool go(Position& pos, UCIInputParser& uip);
+  void perft(Position& pos, UCIInputParser& uip);
 }
 
 
@@ -82,6 +76,7 @@ namespace {
 
 void uci_main_loop() {
 
+  Position pos(StartPositionFEN, 0); // The root position
   string command;
 
   do {
@@ -89,7 +84,7 @@ void uci_main_loop() {
       if (!getline(cin, command))
           command = "quit";
 
-  } while (handle_command(command));
+  } while (handle_command(pos, command));
 }
 
 
@@ -104,7 +99,7 @@ namespace {
   // and calls the appropriate functions. In addition to the UCI
   // commands, the function also supports a few debug commands.
 
-  bool handle_command(const string& command) {
+  bool handle_command(Position& pos, const string& command) {
 
     UCIInputParser uip(command);
     string token;
@@ -116,7 +111,7 @@ namespace {
         return false;
 
     if (token == "go")
-        return go(uip);
+        return go(pos, uip);
 
     if (token == "uci")
     {
@@ -128,12 +123,12 @@ namespace {
     else if (token == "ucinewgame")
     {
         push_button("New Game");
-        RootPosition.from_fen(StartPositionFEN);
+        pos.from_fen(StartPositionFEN);
     }
     else if (token == "isready")
         cout << "readyok" << endl;
     else if (token == "position")
-        set_position(uip);
+        set_position(pos, uip);
     else if (token == "setoption")
         set_option(uip);
 
@@ -141,25 +136,22 @@ namespace {
     // Perhaps they should be removed later in order to reduce the
     // size of the program binary.
     else if (token == "d")
-        RootPosition.print();
+        pos.print();
     else if (token == "flip")
-    {
-        Position p(RootPosition, RootPosition.thread());
-        RootPosition.flipped_copy(p);
-    }
+        pos.flipped_copy(Position(pos, pos.thread()));
     else if (token == "eval")
     {
         Value evalMargin;
-        cout << "Incremental mg: "   << mg_value(RootPosition.value())
-             << "\nIncremental eg: " << eg_value(RootPosition.value())
-             << "\nFull eval: "      << evaluate(RootPosition, evalMargin) << endl;
+        cout << "Incremental mg: "   << mg_value(pos.value())
+             << "\nIncremental eg: " << eg_value(pos.value())
+             << "\nFull eval: "      << evaluate(pos, evalMargin) << endl;
     }
     else if (token == "key")
-        cout << "key: " << hex << RootPosition.get_key()
-             << "\nmaterial key: " << RootPosition.get_material_key()
-             << "\npawn key: " << RootPosition.get_pawn_key() << endl;
+        cout << "key: " << hex << pos.get_key()
+             << "\nmaterial key: " << pos.get_material_key()
+             << "\npawn key: " << pos.get_pawn_key() << endl;
     else if (token == "perft")
-        perft(uip);
+        perft(pos, uip);
     else
         cout << "Unknown command: " << command << endl;
 
@@ -173,7 +165,7 @@ namespace {
   // ("position"), and is ready to read the second token ("startpos"
   // or "fen", if the input is well-formed).
 
-  void set_position(UCIInputParser& uip) {
+  void set_position(Position& pos, UCIInputParser& uip) {
 
     string token;
 
@@ -181,7 +173,7 @@ namespace {
         return;
 
     if (token == "startpos")
-        RootPosition.from_fen(StartPositionFEN);
+        pos.from_fen(StartPositionFEN);
     else if (token == "fen")
     {
         string fen;
@@ -190,7 +182,7 @@ namespace {
             fen += token;
             fen += ' ';
         }
-        RootPosition.from_fen(fen);
+        pos.from_fen(fen);
     }
 
     if (uip.good())
@@ -204,16 +196,16 @@ namespace {
             StateInfo st;
             while (uip >> token)
             {
-                move = move_from_string(RootPosition, token);
-                RootPosition.do_move(move, st);
-                if (RootPosition.rule_50_counter() == 0)
-                    RootPosition.reset_game_ply();
+                move = move_from_string(pos, token);
+                pos.do_move(move, st);
+                if (pos.rule_50_counter() == 0)
+                    pos.reset_game_ply();
 
-                RootPosition.inc_startpos_ply_counter(); //FIXME: make from_fen to support this and rule50
+                pos.inc_startpos_ply_counter(); //FIXME: make from_fen to support this and rule50
             }
             // Our StateInfo st is about going out of scope so copy
-            // its content inside RootPosition before it disappears.
-            RootPosition.detach();
+            // its content inside pos before it disappears.
+            pos.detach();
         }
     }
   }
@@ -258,7 +250,7 @@ namespace {
   // parameters. Returns false if a quit command is received while
   // thinking, returns true otherwise.
 
-  bool go(UCIInputParser& uip) {
+  bool go(Position& pos, UCIInputParser& uip) {
 
     string token;
 
@@ -295,19 +287,19 @@ namespace {
         {
             int numOfMoves = 0;
             while (uip >> token)
-                searchMoves[numOfMoves++] = move_from_string(RootPosition, token);
+                searchMoves[numOfMoves++] = move_from_string(pos, token);
 
             searchMoves[numOfMoves] = MOVE_NONE;
         }
     }
 
-    assert(RootPosition.is_ok());
+    assert(pos.is_ok());
 
-    return think(RootPosition, infinite, ponder, time, inc, movesToGo,
+    return think(pos, infinite, ponder, time, inc, movesToGo,
                  depth, nodes, moveTime, searchMoves);
   }
 
-  void perft(UCIInputParser& uip) {
+  void perft(Position& pos, UCIInputParser& uip) {
 
     string token;
     int depth, tm, n;
@@ -317,7 +309,7 @@ namespace {
 
     tm = get_system_time();
 
-    n = perft(RootPosition, depth * ONE_PLY);
+    n = perft(pos, depth * ONE_PLY);
 
     tm = get_system_time() - tm;
     std::cout << "\nNodes " << n
