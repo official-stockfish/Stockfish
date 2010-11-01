@@ -200,6 +200,15 @@ ifeq ($(COMP),)
 	COMP=gcc
 endif
 
+ifeq ($(COMP),mingw)
+	comp=mingw
+	CXX=g++
+	profile_prepare = gcc-profile-prepare
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
+	profile_clean = gcc-profile-clean
+endif
+
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
@@ -223,6 +232,10 @@ CXXFLAGS = -g -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
 ifeq ($(comp),gcc)
 	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra
+endif
+
+ifeq ($(comp),mingw)
+	CXXFLAGS += -Wno-long-long -Wextra
 endif
 
 ifeq ($(comp),icc)
@@ -259,6 +272,10 @@ ifeq ($(optimize),yes)
 				CXXFLAGS += -mdynamic-no-pic
 			endif
 		endif
+	endif
+
+	ifeq ($(comp),mingw)
+		CXXFLAGS += -O3
 	endif
 
 	ifeq ($(comp),icc)
@@ -340,6 +357,7 @@ help:
 	@echo ""
 	@echo "gcc                  > Gnu compiler (default)"
 	@echo "icc                  > Intel compiler"
+	@echo "mingw                > Gnu compiler with MinGW under Windows"
 	@echo ""
 	@echo "Non-standard targets:"
 	@echo ""
@@ -453,7 +471,7 @@ config-sanity:
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc"
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw"
 
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
