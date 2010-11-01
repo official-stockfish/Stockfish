@@ -310,7 +310,7 @@ namespace {
   void extract_pv_from_tt(const Position& pos, Move bestMove, Move pv[]);
 
 #if !defined(_MSC_VER)
-  void *init_thread(void *threadID);
+  void* init_thread(void* threadID);
 #else
   DWORD WINAPI init_thread(LPVOID threadID);
 #endif
@@ -2144,7 +2144,7 @@ split_point_start: // At split points actual search starts from here
 
 #if !defined(_MSC_VER)
 
-  void* init_thread(void *threadID) {
+  void* init_thread(void* threadID) {
 
     ThreadsMgr.idle_loop(*(int*)threadID, NULL);
     return NULL;
@@ -2264,7 +2264,7 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::init_threads() {
 
-    volatile int i;
+    int i, arg[MAX_THREADS];
     bool ok;
 
     // Initialize global locks
@@ -2292,15 +2292,15 @@ split_point_start: // At split points actual search starts from here
     // Launch the helper threads
     for (i = 1; i < MAX_THREADS; i++)
     {
+        arg[i] = i;
 
 #if !defined(_MSC_VER)
         pthread_t pthread[1];
-        ok = (pthread_create(pthread, NULL, init_thread, (void*)(&i)) == 0);
+        ok = (pthread_create(pthread, NULL, init_thread, (void*)(&arg[i])) == 0);
         pthread_detach(pthread[0]);
 #else
-        ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&i), 0, NULL) != NULL);
+        ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&arg[i]), 0, NULL) != NULL);
 #endif
-
         if (!ok)
         {
             cout << "Failed to create thread number " << i << endl;

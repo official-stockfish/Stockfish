@@ -138,7 +138,10 @@ namespace {
     else if (token == "d")
         pos.print();
     else if (token == "flip")
-        pos.flipped_copy(Position(pos, pos.thread()));
+    {
+        Position p(pos, pos.thread());
+        pos.flipped_copy(p);
+    }
     else if (token == "eval")
     {
         Value evalMargin;

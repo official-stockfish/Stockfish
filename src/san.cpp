@@ -325,8 +325,8 @@ const string line_to_san(const Position& pos, Move line[], int startColumn, bool
 const string pretty_pv(const Position& pos, int time, int depth,
                        Value score, ValueType type, Move pv[]) {
 
-  const uint64_t K = 1000;
-  const uint64_t M = 1000000;
+  const int64_t K = 1000;
+  const int64_t M = 1000000;
 
   std::stringstream s;
 
