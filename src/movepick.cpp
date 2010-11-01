@@ -51,10 +51,10 @@ namespace {
   };
 
   CACHE_LINE_ALIGNMENT
-  const uint8_t MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const uint8_t EvasionsPhaseTable[] = { PH_TT_MOVES, PH_EVASIONS, PH_STOP};
-  const uint8_t QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
-  const uint8_t QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
+  const int MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
+  const int EvasionsPhaseTable[] = { PH_TT_MOVES, PH_EVASIONS, PH_STOP};
+  const int QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
+  const int QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
 }
 
 

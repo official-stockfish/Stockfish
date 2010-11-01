@@ -120,7 +120,7 @@ public:
 private:
   size_t size;
   TTCluster* entries;
-  uint8_t generation;
+  int generation;
 };
 
 extern TranspositionTable TT;

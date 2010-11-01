@@ -430,7 +430,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) *.o .depend *~ core bench.txt *.gcda
+	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda
 
 testrun:
 	@$(PGOBENCH)

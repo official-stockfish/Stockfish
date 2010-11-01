@@ -64,7 +64,7 @@ private:
   Bitboard pinned;
   MoveStack ttMoves[2], killers[2];
   int badCaptureThreshold, phase;
-  const uint8_t* phasePtr;
+  const int* phasePtr;
   MoveStack *curMove, *lastMove, *lastGoodNonCapture, *badCaptures;
   MoveStack moves[MOVES_MAX];
 };
