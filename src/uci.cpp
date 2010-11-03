@@ -122,7 +122,7 @@ namespace {
     }
     else if (token == "ucinewgame")
     {
-        push_button("New Game");
+        set_option_value("New Game", "true");
         pos.from_fen(StartPositionFEN);
     }
     else if (token == "isready")
@@ -227,20 +227,22 @@ namespace {
     if (!(uip >> token)) // operator>>() skips any whitespace
         return;
 
-    if (token == "name" && uip >> name)
+    if (token != "name" || !(uip >> name))
+        return;
+
+    while (uip >> token && token != "value")
+        name += (" " + token);
+
+    if (token != "value" || !(uip >> value))
     {
-        while (uip >> token && token != "value")
-            name += (" " + token);
-
-        if (token == "value" && uip >> value)
-        {
-            while (uip >> token)
-                value += (" " + token);
-
-            set_option_value(name, value);
-        } else
-            push_button(name);
+        set_option_value(name, "true");
+        return;
     }
+
+    while (uip >> token)
+        value += (" " + token);
+
+    set_option_value(name, value);
   }
 
 
@@ -260,7 +262,7 @@ namespace {
     int time[2] = {0, 0}, inc[2] = {0, 0};
     int movesToGo = 0, depth = 0, nodes = 0, moveTime = 0;
     bool infinite = false, ponder = false;
-    Move searchMoves[500];
+    Move searchMoves[MOVES_MAX];
 
     searchMoves[0] = MOVE_NONE;
 
@@ -317,6 +319,6 @@ namespace {
     tm = get_system_time() - tm;
     std::cout << "\nNodes " << n
               << "\nTime (ms) " << tm
-              << "\nNodes/second " << (int)(n/(tm/1000.0)) << std::endl;
+              << "\nNodes/second " << int(n / (tm / 1000.0)) << std::endl;
   }
 }

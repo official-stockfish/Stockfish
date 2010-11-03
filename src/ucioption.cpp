@@ -286,34 +286,11 @@ void set_option_value(const string& name, const string& value) {
   if (opt.type == CHECK && v != "0" && v != "1")
       return;
 
-  else if (opt.type == SPIN)
+  if (opt.type == SPIN)
   {
       int val = atoi(v.c_str());
       if (val < opt.minValue || val > opt.maxValue)
           return;
   }
   opt.currentValue = v;
-}
-
-
-/// push_button() is used to tell the engine that a UCI parameter of type
-/// "button" has been selected:
-
-void push_button(const string& buttonName) {
-
-  set_option_value(buttonName, "true");
-}
-
-
-/// button_was_pressed() tests whether a UCI parameter of type "button" has
-/// been selected since the last time the function was called, in this case
-/// it also resets the button.
-
-bool button_was_pressed(const string& buttonName) {
-
-  if (!get_option_value<bool>(buttonName))
-      return false;
-
-  set_option_value(buttonName, "false");
-  return true;
 }

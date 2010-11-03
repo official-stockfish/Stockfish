@@ -425,8 +425,11 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // Read UCI option values
   TT.set_size(get_option_value_int("Hash"));
-  if (button_was_pressed("Clear Hash"))
+  if (get_option_value_bool("Clear Hash"))
+  {
+      set_option_value("Clear Hash", "false");
       TT.clear();
+  }
 
   CheckExtension[1]         = Depth(get_option_value_int("Check Extension (PV nodes)"));
   CheckExtension[0]         = Depth(get_option_value_int("Check Extension (non-PV nodes)"));
