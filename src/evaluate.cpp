@@ -423,7 +423,7 @@ void read_weights(Color us) {
 
   // If running in analysis mode, make sure we use symmetrical king safety. We do this
   // by replacing both Weights[kingDangerUs] and Weights[kingDangerThem] by their average.
-  if (get_option_value_bool("UCI_AnalyseMode"))
+  if (Options["UCI_AnalyseMode"].value<bool>())
       Weights[kingDangerUs] = Weights[kingDangerThem] = (Weights[kingDangerUs] + Weights[kingDangerThem]) / 2;
 
   init_safety();
@@ -920,8 +920,8 @@ namespace {
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight) {
 
     // Scale option value from 100 to 256
-    int mg = get_option_value_int(mgOpt) * 256 / 100;
-    int eg = get_option_value_int(egOpt) * 256 / 100;
+    int mg = Options[mgOpt].value<int>() * 256 / 100;
+    int eg = Options[egOpt].value<int>() * 256 / 100;
 
     return apply_weight(make_score(mg, eg), internalWeight);
   }

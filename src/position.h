@@ -21,18 +21,6 @@
 #if !defined(POSITION_H_INCLUDED)
 #define POSITION_H_INCLUDED
 
-// Disable some silly and noisy warning from MSVC compiler
-#if defined(_MSC_VER)
-
-// Forcing value to bool 'true' or 'false' (performance warning)
-#pragma warning(disable: 4800)
-
-// Conditional expression is constant
-#pragma warning(disable: 4127)
-
-
-#endif
-
 ////
 //// Includes
 ////

@@ -407,12 +407,12 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   UseTimeManagement = !ExactMaxTime && !MaxDepth && !MaxNodes && !InfiniteSearch;
 
   // Look for a book move, only during games, not tests
-  if (UseTimeManagement && get_option_value_bool("OwnBook"))
+  if (UseTimeManagement && Options["OwnBook"].value<bool>())
   {
-      if (get_option_value_string("Book File") != OpeningBook.file_name())
-          OpeningBook.open(get_option_value_string("Book File"));
+      if (Options["Book File"].value<std::string>() != OpeningBook.file_name())
+          OpeningBook.open(Options["Book File"].value<std::string>());
 
-      Move bookMove = OpeningBook.get_move(pos, get_option_value_bool("Best Book Move"));
+      Move bookMove = OpeningBook.get_move(pos, Options["Best Book Move"].value<bool>());
       if (bookMove != MOVE_NONE)
       {
           if (PonderSearch)
@@ -424,38 +424,38 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   }
 
   // Read UCI option values
-  TT.set_size(get_option_value_int("Hash"));
-  if (get_option_value_bool("Clear Hash"))
+  TT.set_size(Options["Hash"].value<int>());
+  if (Options["Clear Hash"].value<bool>())
   {
-      set_option_value("Clear Hash", "false");
+      Options["Clear Hash"].set_value("false");
       TT.clear();
   }
 
-  CheckExtension[1]         = Depth(get_option_value_int("Check Extension (PV nodes)"));
-  CheckExtension[0]         = Depth(get_option_value_int("Check Extension (non-PV nodes)"));
-  SingleEvasionExtension[1] = Depth(get_option_value_int("Single Evasion Extension (PV nodes)"));
-  SingleEvasionExtension[0] = Depth(get_option_value_int("Single Evasion Extension (non-PV nodes)"));
-  PawnPushTo7thExtension[1] = Depth(get_option_value_int("Pawn Push to 7th Extension (PV nodes)"));
-  PawnPushTo7thExtension[0] = Depth(get_option_value_int("Pawn Push to 7th Extension (non-PV nodes)"));
-  PassedPawnExtension[1]    = Depth(get_option_value_int("Passed Pawn Extension (PV nodes)"));
-  PassedPawnExtension[0]    = Depth(get_option_value_int("Passed Pawn Extension (non-PV nodes)"));
-  PawnEndgameExtension[1]   = Depth(get_option_value_int("Pawn Endgame Extension (PV nodes)"));
-  PawnEndgameExtension[0]   = Depth(get_option_value_int("Pawn Endgame Extension (non-PV nodes)"));
-  MateThreatExtension[1]    = Depth(get_option_value_int("Mate Threat Extension (PV nodes)"));
-  MateThreatExtension[0]    = Depth(get_option_value_int("Mate Threat Extension (non-PV nodes)"));
+  CheckExtension[1]         = Options["Check Extension (PV nodes)"].value<Depth>();
+  CheckExtension[0]         = Options["Check Extension (non-PV nodes)"].value<Depth>();
+  SingleEvasionExtension[1] = Options["Single Evasion Extension (PV nodes)"].value<Depth>();
+  SingleEvasionExtension[0] = Options["Single Evasion Extension (non-PV nodes)"].value<Depth>();
+  PawnPushTo7thExtension[1] = Options["Pawn Push to 7th Extension (PV nodes)"].value<Depth>();
+  PawnPushTo7thExtension[0] = Options["Pawn Push to 7th Extension (non-PV nodes)"].value<Depth>();
+  PassedPawnExtension[1]    = Options["Passed Pawn Extension (PV nodes)"].value<Depth>();
+  PassedPawnExtension[0]    = Options["Passed Pawn Extension (non-PV nodes)"].value<Depth>();
+  PawnEndgameExtension[1]   = Options["Pawn Endgame Extension (PV nodes)"].value<Depth>();
+  PawnEndgameExtension[0]   = Options["Pawn Endgame Extension (non-PV nodes)"].value<Depth>();
+  MateThreatExtension[1]    = Options["Mate Threat Extension (PV nodes)"].value<Depth>();
+  MateThreatExtension[0]    = Options["Mate Threat Extension (non-PV nodes)"].value<Depth>();
 
-  MinimumSplitDepth       = get_option_value_int("Minimum Split Depth") * ONE_PLY;
-  MaxThreadsPerSplitPoint = get_option_value_int("Maximum Number of Threads per Split Point");
-  MultiPV                 = get_option_value_int("MultiPV");
-  UseLogFile              = get_option_value_bool("Use Search Log");
+  MinimumSplitDepth       = Options["Minimum Split Depth"].value<int>() * ONE_PLY;
+  MaxThreadsPerSplitPoint = Options["Maximum Number of Threads per Split Point"].value<int>();
+  MultiPV                 = Options["MultiPV"].value<int>();
+  UseLogFile              = Options["Use Search Log"].value<bool>();
 
   if (UseLogFile)
-      LogFile.open(get_option_value_string("Search Log Filename").c_str(), std::ios::out | std::ios::app);
+      LogFile.open(Options["Search Log Filename"].value<std::string>().c_str(), std::ios::out | std::ios::app);
 
   read_weights(pos.side_to_move());
 
   // Set the number of active threads
-  int newActiveThreads = get_option_value_int("Threads");
+  int newActiveThreads = Options["Threads"].value<int>();
   if (newActiveThreads != ThreadsMgr.active_threads())
   {
       ThreadsMgr.set_active_threads(newActiveThreads);

@@ -89,11 +89,11 @@ void benchmark(const string& commandLine) {
       cerr << "The number of threads must be between 1 and " << MAX_THREADS << endl;
       Application::exit_with_failure();
   }
-  set_option_value("Hash", ttSize);
-  set_option_value("Threads", threads);
-  set_option_value("OwnBook", "false");
-  set_option_value("Use Search Log", "true");
-  set_option_value("Search Log Filename", "bench.txt");
+  Options["Hash"].set_value(ttSize);
+  Options["Threads"].set_value(threads);
+  Options["OwnBook"].set_value("false");
+  Options["Use Search Log"].set_value("true");
+  Options["Search Log Filename"].set_value("bench.txt");
 
   csVal >> val;
   csVal >> fileName;

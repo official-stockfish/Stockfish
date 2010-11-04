@@ -17,17 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
-#include <algorithm>
-#include <cassert>
-#include <map>
-#include <string>
+#include <iostream>
 #include <sstream>
-#include <vector>
 
 #include "misc.h"
 #include "thread.h"
@@ -37,150 +28,68 @@ using std::string;
 using std::cout;
 using std::endl;
 
-////
-//// Local definitions
-////
+OptionsMap Options;
 
-namespace {
+// stringify() converts a value of type T to a std::string
+template<typename T>
+static string stringify(const T& v) {
 
-  enum OptionType { SPIN, COMBO, CHECK, STRING, BUTTON };
-
-  typedef std::vector<string> StrVector;
-
-  struct Option {
-
-    string name, defaultValue, currentValue;
-    OptionType type;
-    size_t idx;
-    int minValue, maxValue;
-    StrVector comboValues;
-
-    Option();
-    Option(const char* defaultValue, OptionType = STRING);
-    Option(bool defaultValue, OptionType = CHECK);
-    Option(int defaultValue, int minValue, int maxValue);
-
-    bool operator<(const Option& o) const { return idx < o.idx; }
-  };
-
-  typedef std::vector<Option> OptionsVector;
-  typedef std::map<string, Option> Options;
-
-  Options options;
-
-  // stringify() converts a value of type T to a std::string
-  template<typename T>
-  string stringify(const T& v) {
-
-     std::ostringstream ss;
-     ss << v;
-     return ss.str();
-  }
-
-  Option::Option() {} // To allow insertion in a std::map
-
-  Option::Option(const char* def, OptionType t)
-  : defaultValue(def), currentValue(def), type(t), idx(options.size()), minValue(0), maxValue(0) {}
-
-  Option::Option(bool def, OptionType t)
-  : defaultValue(stringify(def)), currentValue(stringify(def)), type(t), idx(options.size()), minValue(0), maxValue(0) {}
-
-  Option::Option(int def, int minv, int maxv)
-  : defaultValue(stringify(def)), currentValue(stringify(def)), type(SPIN), idx(options.size()), minValue(minv), maxValue(maxv) {}
-
-  // load_defaults() populates the options map with the hard
-  // coded names and default values.
-
-  void load_defaults(Options& o) {
-
-    o["Use Search Log"] = Option(false);
-    o["Search Log Filename"] = Option("SearchLog.txt");
-    o["Book File"] = Option("book.bin");
-    o["Best Book Move"] = Option(false);
-    o["Mobility (Middle Game)"] = Option(100, 0, 200);
-    o["Mobility (Endgame)"] = Option(100, 0, 200);
-    o["Pawn Structure (Middle Game)"] = Option(100, 0, 200);
-    o["Pawn Structure (Endgame)"] = Option(100, 0, 200);
-    o["Passed Pawns (Middle Game)"] = Option(100, 0, 200);
-    o["Passed Pawns (Endgame)"] = Option(100, 0, 200);
-    o["Space"] = Option(100, 0, 200);
-    o["Aggressiveness"] = Option(100, 0, 200);
-    o["Cowardice"] = Option(100, 0, 200);
-    o["Check Extension (PV nodes)"] = Option(2, 0, 2);
-    o["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
-    o["Single Evasion Extension (PV nodes)"] = Option(2, 0, 2);
-    o["Single Evasion Extension (non-PV nodes)"] = Option(2, 0, 2);
-    o["Mate Threat Extension (PV nodes)"] = Option(2, 0, 2);
-    o["Mate Threat Extension (non-PV nodes)"] = Option(2, 0, 2);
-    o["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
-    o["Pawn Push to 7th Extension (non-PV nodes)"] = Option(1, 0, 2);
-    o["Passed Pawn Extension (PV nodes)"] = Option(1, 0, 2);
-    o["Passed Pawn Extension (non-PV nodes)"] = Option(0, 0, 2);
-    o["Pawn Endgame Extension (PV nodes)"] = Option(2, 0, 2);
-    o["Pawn Endgame Extension (non-PV nodes)"] = Option(2, 0, 2);
-    o["Minimum Split Depth"] = Option(4, 4, 7);
-    o["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
-    o["Threads"] = Option(1, 1, MAX_THREADS);
-    o["Hash"] = Option(32, 4, 8192);
-    o["Clear Hash"] = Option(false, BUTTON);
-    o["New Game"] = Option(false, BUTTON);
-    o["Ponder"] = Option(true);
-    o["OwnBook"] = Option(true);
-    o["MultiPV"] = Option(1, 1, 500);
-    o["Emergency Move Horizon"] = Option(40, 0, 50);
-    o["Emergency Base Time"] = Option(200, 0, 60000);
-    o["Emergency Move Time"] = Option(70, 0, 5000);
-    o["Minimum Thinking Time"] = Option(20, 0, 5000);
-    o["UCI_Chess960"] = Option(false); // Just a dummy but needed by GUIs
-    o["UCI_AnalyseMode"] = Option(false);
-
-    // Any option should know its name so to be easily printed
-    for (Options::iterator it = o.begin(); it != o.end(); ++it)
-        it->second.name = it->first;
-  }
-
-  // get_option_value() implements the various get_option_value_<type>
-  // functions defined later.
-
-  template<typename T>
-  T get_option_value(const string& optionName) {
-
-      T ret = T();
-      if (options.find(optionName) == options.end())
-          return ret;
-
-      std::istringstream ss(options[optionName].currentValue);
-      ss >> ret;
-      return ret;
-  }
-
-  // Specialization for std::string where instruction 'ss >> ret'
-  // would erroneusly tokenize a string with spaces.
-  template<>
-  string get_option_value<string>(const string& optionName) {
-
-      if (options.find(optionName) == options.end())
-          return string();
-
-      return options[optionName].currentValue;
-  }
-
+  std::ostringstream ss;
+  ss << v;
+  return ss.str();
 }
 
 
-/// init_uci_options() initializes the UCI options. Currently, the only thing
-/// this function does is to initialize the default value of "Threads" and
-/// "Minimum Split Depth" parameters according to the number of CPU cores.
+/// init_uci_options() initializes the UCI options to their hard coded default
+/// values and initializes the default value of "Threads" and "Minimum Split Depth"
+/// parameters according to the number of CPU cores.
 
 void init_uci_options() {
 
-  load_defaults(options);
+  Options["Use Search Log"] = Option(false);
+  Options["Search Log Filename"] = Option("SearchLog.txt");
+  Options["Book File"] = Option("book.bin");
+  Options["Best Book Move"] = Option(false);
+  Options["Mobility (Middle Game)"] = Option(100, 0, 200);
+  Options["Mobility (Endgame)"] = Option(100, 0, 200);
+  Options["Pawn Structure (Middle Game)"] = Option(100, 0, 200);
+  Options["Pawn Structure (Endgame)"] = Option(100, 0, 200);
+  Options["Passed Pawns (Middle Game)"] = Option(100, 0, 200);
+  Options["Passed Pawns (Endgame)"] = Option(100, 0, 200);
+  Options["Space"] = Option(100, 0, 200);
+  Options["Aggressiveness"] = Option(100, 0, 200);
+  Options["Cowardice"] = Option(100, 0, 200);
+  Options["Check Extension (PV nodes)"] = Option(2, 0, 2);
+  Options["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
+  Options["Single Evasion Extension (PV nodes)"] = Option(2, 0, 2);
+  Options["Single Evasion Extension (non-PV nodes)"] = Option(2, 0, 2);
+  Options["Mate Threat Extension (PV nodes)"] = Option(2, 0, 2);
+  Options["Mate Threat Extension (non-PV nodes)"] = Option(2, 0, 2);
+  Options["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
+  Options["Pawn Push to 7th Extension (non-PV nodes)"] = Option(1, 0, 2);
+  Options["Passed Pawn Extension (PV nodes)"] = Option(1, 0, 2);
+  Options["Passed Pawn Extension (non-PV nodes)"] = Option(0, 0, 2);
+  Options["Pawn Endgame Extension (PV nodes)"] = Option(2, 0, 2);
+  Options["Pawn Endgame Extension (non-PV nodes)"] = Option(2, 0, 2);
+  Options["Minimum Split Depth"] = Option(4, 4, 7);
+  Options["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
+  Options["Threads"] = Option(1, 1, MAX_THREADS);
+  Options["Hash"] = Option(32, 4, 8192);
+  Options["Clear Hash"] = Option(false, "button");
+  Options["New Game"] = Option(false, "button");
+  Options["Ponder"] = Option(true);
+  Options["OwnBook"] = Option(true);
+  Options["MultiPV"] = Option(1, 1, 500);
+  Options["Emergency Move Horizon"] = Option(40, 0, 50);
+  Options["Emergency Base Time"] = Option(200, 0, 60000);
+  Options["Emergency Move Time"] = Option(70, 0, 5000);
+  Options["Minimum Thinking Time"] = Option(20, 0, 5000);
+  Options["UCI_Chess960"] = Option(false); // Just a dummy but needed by GUIs
+  Options["UCI_AnalyseMode"] = Option(false);
 
-  assert(options.find("Threads") != options.end());
-  assert(options.find("Minimum Split Depth") != options.end());
-
-  Option& thr = options["Threads"];
-  Option& msd = options["Minimum Split Depth"];
+  // Set some SMP parameters accordingly to the detected CPU count
+  Option& thr = Options["Threads"];
+  Option& msd = Options["Minimum Split Depth"];
 
   thr.defaultValue = thr.currentValue = stringify(cpu_count());
 
@@ -190,85 +99,55 @@ void init_uci_options() {
 
 
 /// print_uci_options() prints all the UCI options to the standard output,
-/// in the format defined by the UCI protocol.
+/// in chronological insertion order (the idx field) and in the format
+/// defined by the UCI protocol.
 
 void print_uci_options() {
 
-  const char OptTypeName[][16] = {
-    "spin", "combo", "check", "string", "button"
-  };
+  for (size_t i = 0; i < Options.size(); i++)
+      for (OptionsMap::const_iterator it = Options.begin(); it != Options.end(); ++it)
+          if (it->second.idx == i)
+          {
+              const Option& o = it->second;
+              cout << "\noption name " << it->first << " type " << o.type;
 
-  // Build up a vector out of the options map and sort it according to idx
-  // field, that is the chronological insertion order in options map.
-  OptionsVector vec;
-  for (Options::const_iterator it = options.begin(); it != options.end(); ++it)
-      vec.push_back(it->second);
+              if (o.type == "check")
+                  cout << " default " << (o.defaultValue == "1" ? "true" : "false");
+              else if (o.type == "string")
+                  cout << " default " << o.defaultValue;
+              else if (o.type == "spin")
+              {
+                  cout << " default " << o.defaultValue
+                       << " min " << o.minValue << " max " << o.maxValue;
+              }
+              else if (o.type != "button")
+                  assert(false);
 
-  std::sort(vec.begin(), vec.end());
-
-  for (OptionsVector::const_iterator it = vec.begin(); it != vec.end(); ++it)
-  {
-      cout << "\noption name " << it->name << " type " << OptTypeName[it->type];
-
-      if (it->type == BUTTON)
-          continue;
-
-      if (it->type == CHECK)
-          cout << " default " << (it->defaultValue == "1" ? "true" : "false");
-      else
-          cout << " default " << it->defaultValue;
-
-      if (it->type == SPIN)
-          cout << " min " << it->minValue << " max " << it->maxValue;
-      else if (it->type == COMBO)
-      {
-          StrVector::const_iterator itc;
-          for (itc = it->comboValues.begin(); itc != it->comboValues.end(); ++itc)
-              cout << " var " << *itc;
-      }
-  }
+              break;
+          }
   cout << endl;
 }
 
 
-/// get_option_value_bool() returns the current value of a UCI parameter of
-/// type "check".
+// Option class c'tors
 
-bool get_option_value_bool(const string& optionName) {
+Option::Option(): type("UNDEFINED") {}
 
-  return get_option_value<bool>(optionName);
-}
+Option::Option(const char* def, string t) : type(t), idx(Options.size()), minValue(0), maxValue(0)
+{ defaultValue = currentValue = def; }
 
+Option::Option(bool def, string t) : type(t), idx(Options.size()), minValue(0), maxValue(0)
+{ defaultValue = currentValue = (def ? "1" : "0"); }
 
-/// get_option_value_int() returns the value of a UCI parameter as an integer.
-/// Normally, this function will be used for a parameter of type "spin", but
-/// it could also be used with a "combo" parameter, where all the available
-/// values are integers.
-
-int get_option_value_int(const string& optionName) {
-
-  return get_option_value<int>(optionName);
-}
+Option::Option(int def, int minv, int maxv) : type("spin"), idx(Options.size()), minValue(minv), maxValue(maxv)
+{ defaultValue = currentValue = stringify(def); }
 
 
-/// get_option_value_string() returns the current value of a UCI parameter as
-/// a string. It is used with parameters of type "combo" and "string".
+// set_value() updates currentValue of the Option object to the passed value
 
-string get_option_value_string(const string& optionName) {
+void Option::set_value(const string& value) {
 
-   return get_option_value<string>(optionName);
-}
-
-
-/// set_option_value() inserts a new value for a UCI parameter
-
-void set_option_value(const string& name, const string& value) {
-
-  if (options.find(name) == options.end())
-  {
-      cout << "No such option: " << name << endl;
-      return;
-  }
+  assert(type != "UNDEFINED");
 
   // UCI protocol uses "true" and "false" instead of "1" and "0", so convert
   // value according to standard C++ convention before to store it.
@@ -281,16 +160,14 @@ void set_option_value(const string& name, const string& value) {
   // Normally it's up to the GUI to check for option's limits,
   // but we could receive the new value directly from the user
   // by teminal window. So let's check the bounds anyway.
-  Option& opt = options[name];
-
-  if (opt.type == CHECK && v != "0" && v != "1")
+  if (type == "check" && v != "0" && v != "1")
       return;
 
-  if (opt.type == SPIN)
+  if (type == "spin")
   {
       int val = atoi(v.c_str());
-      if (val < opt.minValue || val > opt.maxValue)
+      if (val < minValue || val > maxValue)
           return;
   }
-  opt.currentValue = v;
+  currentValue = v;
 }

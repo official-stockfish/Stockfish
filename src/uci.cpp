@@ -122,7 +122,7 @@ namespace {
     }
     else if (token == "ucinewgame")
     {
-        set_option_value("New Game", "true");
+        Options["New Game"].set_value("true");
         pos.from_fen(StartPositionFEN);
     }
     else if (token == "isready")
@@ -233,16 +233,22 @@ namespace {
     while (uip >> token && token != "value")
         name += (" " + token);
 
+    if (Options.find(name) == Options.end())
+    {
+        cout << "No such option: " << name << endl;
+        return;
+    }
+
     if (token != "value" || !(uip >> value))
     {
-        set_option_value(name, "true");
+        Options[name].set_value("true");
         return;
     }
 
     while (uip >> token)
         value += (" " + token);
 
-    set_option_value(name, value);
+    Options[name].set_value(value);
   }
 
 

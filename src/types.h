@@ -27,6 +27,10 @@
 
 #else
 
+// Disable some silly and noisy warning from MSVC compiler
+#pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
+#pragma warning(disable: 4127) // Conditional expression is constant
+
 typedef __int8 int8_t;
 typedef unsigned __int8 uint8_t;
 typedef __int16 int16;
