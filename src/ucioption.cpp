@@ -104,7 +104,7 @@ void init_uci_options() {
 
 void print_uci_options() {
 
-  for (size_t i = 0; i < Options.size(); i++)
+  for (size_t i = 0; i <= Options.size(); i++)
       for (OptionsMap::const_iterator it = Options.begin(); it != Options.end(); ++it)
           if (it->second.idx == i)
           {
