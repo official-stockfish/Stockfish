@@ -24,7 +24,6 @@
 
 #include <cassert>
 
-#include "bitbase.h"
 #include "bitcount.h"
 #include "endgame.h"
 
@@ -102,6 +101,7 @@ namespace {
 /// init_bitbases() is called during program initialization, and simply loads
 /// bitbases from disk into memory.  At the moment, there is only the bitbase
 /// for KP vs K, but we may decide to add other bitbases later.
+extern void generate_kpk_bitbase(uint8_t bitbase[]);
 
 void init_bitbases() {
   generate_kpk_bitbase(KPKBitbase);

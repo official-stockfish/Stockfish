@@ -24,7 +24,6 @@
 
 #include <cassert>
 
-#include "bitbase.h"
 #include "bitboard.h"
 #include "square.h"
 

@@ -101,5 +101,4 @@ struct ScalingFunction : public EndgameScalingFunctionBase {
 
 extern void init_bitbases();
 
-
 #endif // !defined(ENDGAME_H_INCLUDED)
