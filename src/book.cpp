@@ -37,13 +37,6 @@
 using namespace std;
 
 ////
-//// Global variables
-////
-
-Book OpeningBook;
-
-
-////
 //// Local definitions
 ////
 

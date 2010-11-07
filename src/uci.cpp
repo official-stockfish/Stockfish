@@ -27,7 +27,6 @@
 #include <sstream>
 #include <string>
 
-#include "book.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "move.h"

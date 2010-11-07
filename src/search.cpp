@@ -228,7 +228,10 @@ namespace {
   const Value EasyMoveMargin = Value(0x200);
 
 
-  /// Global variables
+  /// Namespace variables
+
+  // Book object
+  Book OpeningBook;
 
   // Iteration counter
   int Iteration;

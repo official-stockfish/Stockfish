@@ -78,12 +78,4 @@ private:
   RKISS RKiss;
 };
 
-
-////
-//// Global variables
-////
-
-extern Book OpeningBook;
-
-
 #endif // !defined(BOOK_H_INCLUDED)
