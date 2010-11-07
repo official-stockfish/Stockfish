@@ -1763,16 +1763,16 @@ void Position::init_zobrist() {
   int i,j, k;
 
   for (i = 0; i < 2; i++) for (j = 0; j < 8; j++) for (k = 0; k < 64; k++)
-      zobrist[i][j][k] = Key(RKiss.rand64());
+      zobrist[i][j][k] = RKiss.rand<Key>();
 
   for (i = 0; i < 64; i++)
-      zobEp[i] = Key(RKiss.rand64());
+      zobEp[i] = RKiss.rand<Key>();
 
   for (i = 0; i < 16; i++)
-      zobCastle[i] = Key(RKiss.rand64());
+      zobCastle[i] = RKiss.rand<Key>();
 
-  zobSideToMove = Key(RKiss.rand64());
-  zobExclusion  = Key(RKiss.rand64());
+  zobSideToMove = RKiss.rand<Key>();
+  zobExclusion  = RKiss.rand<Key>();
 }
 
 

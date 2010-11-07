@@ -27,51 +27,56 @@
 
  ** *********************************************************************** **/
 
-#ifndef _RKISS_H_
-#define _RKISS_H_
-
-/** Includes **/
-#include <cstdlib>    // srand(), rand()
-#include <ctime>      // time()
-#include "types.h"    // (u)int8_t .. (u)int64_t
+#if !defined(RKISS_H_INCLUDED)
+#define RKISS_H_INCLUDED
 
 
-/** Random class **/
+////
+//// Includes
+////
+
+#include <cstdlib>
+#include <ctime>
+
+#include "types.h"
+
+
+////
+//// Types
+////
+
 class RKISS {
 
-private:
 	// Keep variables always together
-	struct S { uint64_t a; uint64_t b; uint64_t c; uint64_t d; } s;
-
-	// Init seed and scramble a few rounds
-	void raninit ( uint64_t seed ) {
-		s.a = 0xf1ea5eed; s.b = s.c = s.d = seed;
-		for ( uint64_t i=0; i<8; i++ ) rand64();
-	}
-
-public:
-	// Instance seed random or implicite
-	RKISS() { ::srand ( (uint32_t)time(NULL) ); raninit ( (uint64_t)::rand() ); }
-	// RKISS( uint64_t s ) { raninit ( s ); }
-
-	// (Re)init seed
-	// void init ( uint64_t seed ) { raninit ( seed ); }
-
-	// Return 32 bit unsigned integer in between [0,2^32-1]
-	uint32_t rand32 () { return (uint32_t) rand64 (); }
+	struct S { uint64_t a, b, c, d; } s;
 
 	// Return 64 bit unsigned integer in between [0,2^64-1]
-	uint64_t rand64 () {
-		const uint64_t e = s.a - ((s.b<<7) | (s.b>>57));
-		s.a = s.b ^ ((s.c<<13) | (s.c>>51));
-		s.b = s.c + ((s.d<<37) | (s.d>>27));
+	uint64_t rand64() {
+
+		const uint64_t
+          e = s.a - ((s.b <<  7) | (s.b >> 57));
+		s.a = s.b ^ ((s.c << 13) | (s.c >> 51));
+		s.b = s.c + ((s.d << 37) | (s.d >> 27));
 		s.c = s.d + e;
 		return s.d = e + s.a;
 	}
 
-	// Return double in between [0,1). Keep full 53 bit mantissa
-	// double frand () { return (int64_t)(rand64()>>11) * (1.0/(67108864.0*134217728.0)); }
+	// Init seed and scramble a few rounds
+	void raninit(uint64_t seed) {
+
+		s.a = 0xf1ea5eed;
+        s.b = s.c = s.d = seed;
+		for (uint64_t i = 0; i < 8; i++)
+            rand64();
+	}
+
+public:
+	// Instance seed random or implicite
+	RKISS() { ::srand(uint32_t(time(NULL))); raninit(uint64_t(::rand())); }
+
+	// Return random number of type T (must be castable from uint64_t)
+    template<typename T>
+	T rand() { return T(rand64()); }
 };
 
-// _RKISS_H_
-#endif
+#endif // !defined(RKISS_H_INCLUDED)

@@ -346,7 +346,7 @@ namespace {
 Book::Book() {
 
   for (int i = abs(get_system_time() % 10000); i > 0; i--)
-      RKiss.rand32();
+      RKiss.rand<unsigned>();
 }
 
 
@@ -412,7 +412,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
 
   BookEntry entry;
   int bookMove = MOVE_NONE;
-  int scoresSum = 0, bestScore = 0;
+  unsigned scoresSum = 0, bestScore = 0;
   uint64_t key = book_key(pos);
 
   // Choose a book move among the possible moves for the given position
@@ -422,9 +422,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
       if (entry.key != key)
           break;
 
-      int score = entry.count;
-
-      assert(score > 0);
+      unsigned score = entry.count;
 
       // If findBestMove is true choose highest rated book move
       if (findBestMove)
@@ -441,7 +439,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
       // high score it has more probability to be choosen then a one with
       // lower score. Note that first entry is always chosen.
       scoresSum += score;
-      if (int(RKiss.rand32() % scoresSum) < score)
+      if (RKiss.rand<unsigned>() % scoresSum < score)
           bookMove = entry.move;
   }
   if (!bookMove)
