@@ -44,9 +44,35 @@ using std::string;
 using std::cout;
 using std::endl;
 
-static inline bool isZero(char c) { return c == '0'; }
 
-struct PieceLetters : public std::map<char, Piece> {
+////
+//// Position's static data definitions
+////
+
+Key Position::zobrist[2][8][64];
+Key Position::zobEp[64];
+Key Position::zobCastle[16];
+Key Position::zobSideToMove;
+Key Position::zobExclusion;
+
+Score Position::PieceSquareTable[16][64];
+
+// Material values used by SEE, indexed by PieceType
+const Value Position::seeValues[] = {
+    VALUE_ZERO,
+    PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+    RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10
+};
+
+
+namespace {
+
+  // Bonus for having the side to move (modified by Joona Kiiski)
+  const Score TempoValue = make_score(48, 22);
+
+  bool isZero(char c) { return c == '0'; }
+
+  struct PieceLetters : public std::map<char, Piece> {
 
     PieceLetters() {
 
@@ -69,36 +95,11 @@ struct PieceLetters : public std::map<char, Piece> {
         assert(false);
         return 0;
     }
-};
+  } pieceLetters;
+}
 
 
-////
-//// Constants and variables
-////
-
-/// Bonus for having the side to move (modified by Joona Kiiski)
-
-static const Score TempoValue = make_score(48, 22);
-
-
-Key Position::zobrist[2][8][64];
-Key Position::zobEp[64];
-Key Position::zobCastle[16];
-Key Position::zobSideToMove;
-Key Position::zobExclusion;
-
-Score Position::PieceSquareTable[16][64];
-
-static PieceLetters pieceLetters;
-
-// Material values used by SEE, indexed by PieceType
-const Value Position::seeValues[] = {
-  VALUE_ZERO, PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-  RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10
-};
-
-
-/// Constructors
+/// CheckInfo c'tor
 
 CheckInfo::CheckInfo(const Position& pos) {
 
