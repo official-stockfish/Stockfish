@@ -55,6 +55,7 @@ struct SplitPoint {
   bool pvNode, mateThreat;
   Value beta;
   int ply;
+  int master;
   Move threatMove;
   SearchStack sstack[MAX_THREADS][PLY_MAX_PLUS_2];
 
