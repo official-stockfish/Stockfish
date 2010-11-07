@@ -31,11 +31,11 @@
 #include <sstream>
 
 #include "bitcount.h"
-#include "mersenne.h"
 #include "movegen.h"
 #include "movepick.h"
 #include "position.h"
 #include "psqtab.h"
+#include "rkiss.h"
 #include "san.h"
 #include "tt.h"
 #include "ucioption.h"
@@ -1759,19 +1759,20 @@ bool Position::has_mate_threat() {
 
 void Position::init_zobrist() {
 
+  RKISS RKiss;
   int i,j, k;
 
   for (i = 0; i < 2; i++) for (j = 0; j < 8; j++) for (k = 0; k < 64; k++)
-      zobrist[i][j][k] = Key(genrand_int64());
+      zobrist[i][j][k] = Key(RKiss.rand64());
 
   for (i = 0; i < 64; i++)
-      zobEp[i] = Key(genrand_int64());
+      zobEp[i] = Key(RKiss.rand64());
 
   for (i = 0; i < 16; i++)
-      zobCastle[i] = Key(genrand_int64());
+      zobCastle[i] = Key(RKiss.rand64());
 
-  zobSideToMove = Key(genrand_int64());
-  zobExclusion  = Key(genrand_int64());
+  zobSideToMove = Key(RKiss.rand64());
+  zobExclusion  = Key(RKiss.rand64());
 }
 
 

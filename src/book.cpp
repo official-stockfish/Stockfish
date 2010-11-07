@@ -32,7 +32,6 @@
 #include <cassert>
 
 #include "book.h"
-#include "mersenne.h"
 #include "movegen.h"
 
 using namespace std;
@@ -343,6 +342,13 @@ namespace {
 //// Functions
 ////
 
+// C'tor. Make random number generation less deterministic, for book moves
+Book::Book() {
+
+  for (int i = abs(get_system_time() % 10000); i > 0; i--)
+      RKiss.rand32();
+}
+
 
 /// Destructor. Be sure file is closed before we leave.
 
@@ -435,7 +441,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
       // high score it has more probability to be choosen then a one with
       // lower score. Note that first entry is always chosen.
       scoresSum += score;
-      if (int(genrand_int32() % scoresSum) < score)
+      if (int(RKiss.rand32() % scoresSum) < score)
           bookMove = entry.move;
   }
   if (!bookMove)
