@@ -34,7 +34,6 @@
 #include "position.h"
 #include "san.h"
 #include "search.h"
-#include "uci.h"
 #include "ucioption.h"
 
 using namespace std;

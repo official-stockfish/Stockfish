@@ -28,10 +28,8 @@
 #include <iostream>
 #include <string>
 
-#include "benchmark.h"
 #include "bitcount.h"
 #include "misc.h"
-#include "uci.h"
 
 #ifdef USE_CALLGRIND
 #include <valgrind/callgrind.h>
@@ -39,6 +37,8 @@
 
 using namespace std;
 
+extern void uci_main_loop();
+extern void benchmark(const std::string& commandLine);
 
 ////
 //// Functions

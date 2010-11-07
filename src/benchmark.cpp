@@ -25,7 +25,6 @@
 #include <sstream>
 #include <vector>
 
-#include "benchmark.h"
 #include "search.h"
 #include "thread.h"
 #include "ucioption.h"
