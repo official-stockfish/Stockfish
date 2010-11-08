@@ -337,6 +337,8 @@ private:
   static Score PieceSquareTable[16][64];
   static Key zobExclusion;
   static const Value seeValues[8];
+  static const Value PieceValueMidgame[17];
+  static const Value PieceValueEndgame[17];
 };
 
 

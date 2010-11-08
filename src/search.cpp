@@ -59,6 +59,10 @@ namespace {
   // Used for debugging SMP code.
   const bool FakeSplit = false;
 
+  // Fast lookup table of sliding pieces indexed by Piece
+  const bool Slidings[18] = { 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1 };
+  inline bool piece_is_slider(Piece p) { return Slidings[p]; }
+
   // ThreadsManager class is used to handle all the threads related stuff in search,
   // init, starting, parking and, the most important, launching a slave thread at a
   // split point are what this class does. All the access to shared thread data is

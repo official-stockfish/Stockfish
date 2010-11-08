@@ -17,60 +17,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <string>
 
 #include "piece.h"
 
-using namespace std;
+static const std::string PieceChars(" pnbrqk PNBRQK");
 
-// Tables indexed by Piece
-
-const Value PieceValueMidgame[17] = {
-  VALUE_ZERO,
-  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-  RookValueMidgame, QueenValueMidgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
-  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-  RookValueMidgame, QueenValueMidgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
-};
-
-const Value PieceValueEndgame[17] = {
-  VALUE_ZERO,
-  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
-  RookValueEndgame, QueenValueEndgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
-  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
-  RookValueEndgame, QueenValueEndgame,
-  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO
-};
-
-const int SlidingArray[18] = {
-  0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0
-};
-
-
-////
-//// Functions
-////
 
 /// Translating piece types to/from English piece letters
 
-static const string PieceChars(" pnbrqk PNBRQK");
-
 char piece_type_to_char(PieceType pt, bool upcase) {
 
-  return PieceChars[pt + int(upcase) * 7];
+  return PieceChars[pt + (upcase ? 7 : 0)];
 }
 
 PieceType piece_type_from_char(char c) {
 
   size_t idx = PieceChars.find(c);
 
-  return idx != string::npos ? PieceType(idx % 7) : PIECE_TYPE_NONE;
+  return idx != std::string::npos ? PieceType(idx % 7) : PIECE_TYPE_NONE;
 }

@@ -69,10 +69,6 @@ const Value RookValueEndgame   = Value(0x4FE);
 const Value QueenValueMidgame  = Value(0x9D9);
 const Value QueenValueEndgame  = Value(0x9FE);
 
-extern const Value PieceValueMidgame[17];
-extern const Value PieceValueEndgame[17];
-extern const int SlidingArray[18];
-
 
 ////
 //// Inline functions
@@ -88,10 +84,6 @@ inline Color color_of_piece(Piece p) {
 
 inline Piece piece_of_color_and_type(Color c, PieceType pt) {
   return Piece((int(c) << 3) | int(pt));
-}
-
-inline int piece_is_slider(Piece p) {
-  return SlidingArray[p];
 }
 
 inline SquareDelta pawn_push(Color c) {

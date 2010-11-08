@@ -57,7 +57,26 @@ Key Position::zobExclusion;
 
 Score Position::PieceSquareTable[16][64];
 
-// Material values used by SEE, indexed by PieceType
+// Material values arrays, indexed by Piece
+const Value Position::PieceValueMidgame[17] = {
+  VALUE_ZERO,
+  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+  RookValueMidgame, QueenValueMidgame, VALUE_ZERO,
+  VALUE_ZERO, VALUE_ZERO,
+  PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
+  RookValueMidgame, QueenValueMidgame
+};
+
+const Value Position::PieceValueEndgame[17] = {
+  VALUE_ZERO,
+  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
+  RookValueEndgame, QueenValueEndgame, VALUE_ZERO,
+  VALUE_ZERO, VALUE_ZERO,
+  PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
+  RookValueEndgame, QueenValueEndgame
+};
+
+// Material values array used by SEE, indexed by PieceType
 const Value Position::seeValues[] = {
     VALUE_ZERO,
     PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
