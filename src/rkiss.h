@@ -72,7 +72,7 @@ class RKISS {
 
       s.a = 0xf1ea5eed;
       s.b = s.c = s.d = 0xd4e12c77;
-      for (uint64_t i = 0; i < 73; i++)
+      for (int i = 0; i < 73; i++)
           rand64();
   }
 
