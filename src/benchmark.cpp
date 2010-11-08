@@ -35,7 +35,7 @@ using namespace std;
 //// Variables
 ////
 
-const string BenchmarkPositions[] = {
+static const string BenchmarkPositions[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
@@ -69,53 +69,35 @@ const string BenchmarkPositions[] = {
 
 void benchmark(const string& commandLine) {
 
-  istringstream csVal(commandLine);
   istringstream csStr(commandLine);
-  string ttSize, threads, fileName, limitType, timFile;
+  vector<string> positions;
+  string ttSize, threads, limit, posFile, limitType;
   int val, secsPerPos, maxDepth, maxNodes;
 
-  csStr >> ttSize;
-  csVal >> val;
-  if (val < 4 || val > 1024)
-  {
-      cerr << "The hash table size must be between 4 and 1024" << endl;
-      Application::exit_with_failure();
-  }
-  csStr >> threads;
-  csVal >> val;
-  if (val < 1 || val > MAX_THREADS)
-  {
-      cerr << "The number of threads must be between 1 and " << MAX_THREADS << endl;
-      Application::exit_with_failure();
-  }
+  csStr >> ttSize >> threads >> limit >> posFile >> limitType;
+
   Options["Hash"].set_value(ttSize);
   Options["Threads"].set_value(threads);
   Options["OwnBook"].set_value("false");
   Options["Use Search Log"].set_value("true");
   Options["Search Log Filename"].set_value("bench.txt");
 
-  csVal >> val;
-  csVal >> fileName;
-  csVal >> limitType;
-  csVal >> timFile;
-
   secsPerPos = maxDepth = maxNodes = 0;
+  val = atoi(limit.c_str());
 
-  if (limitType == "time")
-      secsPerPos = val * 1000;
-  else if (limitType == "depth" || limitType == "perft")
+  if (limitType == "depth" || limitType == "perft")
       maxDepth = val;
+  else if (limitType == "time")
+      secsPerPos = val * 1000;
   else
       maxNodes = val;
 
-  vector<string> positions;
-
-  if (fileName != "default")
+  if (posFile != "default")
   {
-      ifstream fenFile(fileName.c_str());
+      ifstream fenFile(posFile.c_str());
       if (!fenFile.is_open())
       {
-          cerr << "Unable to open positions file " << fileName << endl;
+          cerr << "Unable to open positions file " << posFile << endl;
           Application::exit_with_failure();
       }
       string pos;
@@ -130,17 +112,6 @@ void benchmark(const string& commandLine) {
       for (int i = 0; i < 16; i++)
           positions.push_back(string(BenchmarkPositions[i]));
 
-  ofstream timingFile;
-  if (!timFile.empty())
-  {
-      timingFile.open(timFile.c_str(), ios::out | ios::app);
-      if (!timingFile.is_open())
-      {
-          cerr << "Unable to open timing file " << timFile << endl;
-          Application::exit_with_failure();
-      }
-  }
-
   vector<string>::iterator it;
   int cnt = 1;
   int64_t totalNodes = 0;
@@ -148,8 +119,8 @@ void benchmark(const string& commandLine) {
 
   for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
   {
-      Move moves[1] = {MOVE_NONE};
-      int dummy[2] = {0, 0};
+      Move moves[1] = { MOVE_NONE };
+      int dummy[2] = { 0, 0 };
       Position pos(*it, 0);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (limitType == "perft")
@@ -170,16 +141,10 @@ void benchmark(const string& commandLine) {
        << "\nNodes searched  : " << totalNodes
        << "\nNodes/second    : " << (int)(totalNodes/(cnt/1000.0)) << endl << endl;
 
-  if (!timFile.empty())
-  {
-      timingFile << cnt << endl << endl;
-      timingFile.close();
-  }
-
   // Under MS Visual C++ debug window always unconditionally closes
   // when program exits, this is bad because we want to read results before.
   #if (defined(WINDOWS) || defined(WIN32) || defined(WIN64))
   cerr << "Press any key to exit" << endl;
-  cin >> fileName;
+  cin >> ttSize;
   #endif
 }
