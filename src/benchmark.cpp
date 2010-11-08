@@ -22,7 +22,6 @@
 //// Includes
 ////
 #include <fstream>
-#include <sstream>
 #include <vector>
 
 #include "search.h"
@@ -60,21 +59,25 @@ static const string BenchmarkPositions[] = {
 ////
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
-/// of positions for a given time each.  There are four parameters; the
+/// of positions for a given limit each.  There are five parameters; the
 /// transposition table size, the number of search threads that should
-/// be used, the time in seconds spent for each position (optional, default
-/// is 60) and an optional file name where to look for positions in fen
-/// format (default are the BenchmarkPositions defined above).
+/// be used, the limit value spent for each position (optional, default
+/// is ply 12), an optional file name where to look for positions in fen
+/// format (default are the BenchmarkPositions defined above) and the type
+/// of the limit value: depth (default), time in secs or number of nodes.
 /// The analysis is written to a file named bench.txt.
 
-void benchmark(const string& commandLine) {
+void benchmark(int argc, char* argv[]) {
 
-  istringstream csStr(commandLine);
   vector<string> positions;
-  string ttSize, threads, limit, posFile, limitType;
+  string ttSize, threads, valStr, posFile, valType;
   int val, secsPerPos, maxDepth, maxNodes;
 
-  csStr >> ttSize >> threads >> limit >> posFile >> limitType;
+  ttSize  = argc > 2 ? argv[2] : "128";
+  threads = argc > 3 ? argv[3] : "1";
+  valStr  = argc > 4 ? argv[4] : "12";
+  posFile = argc > 5 ? argv[5] : "default";
+  valType = argc > 6 ? argv[6] : "depth";
 
   Options["Hash"].set_value(ttSize);
   Options["Threads"].set_value(threads);
@@ -83,11 +86,11 @@ void benchmark(const string& commandLine) {
   Options["Search Log Filename"].set_value("bench.txt");
 
   secsPerPos = maxDepth = maxNodes = 0;
-  val = atoi(limit.c_str());
+  val = atoi(valStr.c_str());
 
-  if (limitType == "depth" || limitType == "perft")
+  if (valType == "depth" || valType == "perft")
       maxDepth = val;
-  else if (limitType == "time")
+  else if (valType == "time")
       secsPerPos = val * 1000;
   else
       maxNodes = val;
@@ -123,7 +126,7 @@ void benchmark(const string& commandLine) {
       int dummy[2] = { 0, 0 };
       Position pos(*it, 0);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
-      if (limitType == "perft")
+      if (valType == "perft")
       {
           int64_t perftCnt = perft(pos, maxDepth * ONE_PLY);
           cerr << "\nPerft " << maxDepth << " result (nodes searched): " << perftCnt << endl << endl;

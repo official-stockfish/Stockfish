@@ -38,13 +38,13 @@
 using namespace std;
 
 extern void uci_main_loop();
-extern void benchmark(const std::string& commandLine);
+extern void benchmark(int argc, char* argv[]);
 
 ////
 //// Functions
 ////
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
 
   // Disable IO buffering
   cout.rdbuf()->pubsetbuf(NULL, 0);
@@ -71,17 +71,12 @@ int main(int argc, char *argv[]) {
   }
   else // Process command line arguments
   {
-      if (string(argv[1]) != "bench" || argc < 4 || argc > 7)
-          cout << "Usage: stockfish bench <hash size> <threads> "
+      if (string(argv[1]) != "bench" || argc > 7)
+          cout << "Usage: stockfish bench [hash size = 128] [threads = 1] "
                << "[limit = 12] [fen positions file = default] "
                << "[depth, time, perft or node limited = depth]" << endl;
       else
-      {
-          string val = argc > 4 ? argv[4] : "12";
-          string fen = argc > 5 ? argv[5] : "default";
-          string lim = argc > 6 ? argv[6] : "depth";
-          benchmark(string(argv[2]) + " " + string(argv[3]) + " " + val + " " + fen + " " + lim);
-      }
+          benchmark(argc, argv);
   }
 
   Application::free_resources();
