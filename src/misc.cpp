@@ -218,20 +218,18 @@ int cpu_count() {
 #endif
 
 
-/*
-  From Beowulf, from Olithink
-*/
+/// Check for console input. Original code from Beowulf and Olithink
+
 #ifndef _WIN32
-/* Non-windows version */
-int Bioskey()
+
+int data_available()
 {
-  fd_set          readfds;
+  fd_set readfds;
   struct timeval  timeout;
 
   FD_ZERO(&readfds);
   FD_SET(fileno(stdin), &readfds);
-  /* Set to timeout immediately */
-  timeout.tv_sec = 0;
+  timeout.tv_sec = 0; // Set to timeout immediately
   timeout.tv_usec = 0;
   select(16, &readfds, 0, 0, &timeout);
 
@@ -239,58 +237,48 @@ int Bioskey()
 }
 
 #else
-/* Windows-version */
-#include <windows.h>
-#include <conio.h>
-int Bioskey()
-{
-    static int      init = 0,
-                    pipe;
-    static HANDLE   inh;
-    DWORD           dw;
-    /* If we're running under XBoard then we can't use _kbhit() as the input
-     * commands are sent to us directly over the internal pipe */
 
-#if defined(FILE_CNT)
-    if (stdin->_cnt > 0)
-        return stdin->_cnt;
-#endif
-    if (!init) {
-        init = 1;
+int data_available()
+{
+    static HANDLE inh = NULL;
+    static bool usePipe;
+    INPUT_RECORD rec[256];
+    DWORD dw, recCnt;
+
+    if (!inh)
+    {
         inh = GetStdHandle(STD_INPUT_HANDLE);
-        pipe = !GetConsoleMode(inh, &dw);
-        if (!pipe) {
+        usePipe = !GetConsoleMode(inh, &dw);
+        if (!usePipe)
+        {
             SetConsoleMode(inh, dw & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
             FlushConsoleInputBuffer(inh);
         }
     }
-    if (pipe) {
-        if (!PeekNamedPipe(inh, NULL, 0, NULL, &dw, NULL))
-            return 1;
-        return dw;
-    } else {
-        // Count the number of unread input records, including keyboard,
-        // mouse, and window-resizing input records.
-        GetNumberOfConsoleInputEvents(inh, &dw);
-        if (dw <= 0)
-            return 0;
 
-        // Read data from console without removing it from the buffer
-        INPUT_RECORD rec[256];
-        DWORD recCnt;
-        if (!PeekConsoleInput(inh, rec, Min(dw, 256), &recCnt))
-            return 0;
+    // If we're running under XBoard then we can't use PeekConsoleInput() as
+    // the input commands are sent to us directly over the internal pipe.
+    if (usePipe)
+        return PeekNamedPipe(inh, NULL, 0, NULL, &dw, NULL) ? dw : 1;
 
-        // Search for at least one keyboard event
-        for (DWORD i = 0; i < recCnt; i++)
-            if (rec[i].EventType == KEY_EVENT)
-                return 1;
+    // Count the number of unread input records, including keyboard,
+    // mouse, and window-resizing input records.
+    GetNumberOfConsoleInputEvents(inh, &dw);
 
+    // Read data from console without removing it from the buffer
+    if (dw <= 0 || !PeekConsoleInput(inh, rec, Min(dw, 256), &recCnt))
         return 0;
-    }
+
+    // Search for at least one keyboard event
+    for (DWORD i = 0; i < recCnt; i++)
+        if (rec[i].EventType == KEY_EVENT)
+            return 1;
+
+    return 0;
 }
 
 #endif
+
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non
 /// blocking function and do not stalls the CPU waiting for data to be

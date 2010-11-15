@@ -47,7 +47,7 @@
 extern const std::string engine_name();
 extern int get_system_time();
 extern int cpu_count();
-extern int Bioskey();
+extern int data_available();
 extern void prefetch(char* addr);
 extern void prefetchPawn(Key, int);
 

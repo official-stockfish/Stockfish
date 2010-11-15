@@ -1936,7 +1936,7 @@ split_point_start: // At split points actual search starts from here
     int t = current_search_time();
 
     //  Poll for input
-    if (Bioskey())
+    if (data_available())
     {
         // We are line oriented, don't read single chars
         std::string command;
