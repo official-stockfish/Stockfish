@@ -528,7 +528,7 @@ namespace {
   uint64_t book_key(const Position& pos) {
 
     uint64_t result = 0;
-    Bitboard b = pos.pieces_of_color(WHITE) | pos.pieces_of_color(BLACK);
+    Bitboard b = pos.occupied_squares();
 
     while (b)
     {
