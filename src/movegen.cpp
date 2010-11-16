@@ -452,50 +452,67 @@ namespace {
            Delta == DELTA_NW ? p << 7 : Delta == DELTA_SW ? p >> 9 : p;
   }
 
-  template<Color Us, MoveType Type, SquareDelta Delta>
+  template<MoveType Type, SquareDelta Delta>
   inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard target) {
+
+    // Calculate our parametrized parameters at compile time
+    const Bitboard TRank8BB = (Delta == DELTA_NE || Delta == DELTA_NW ? Rank8BB : Rank1BB);
+    const Bitboard TFileABB = (Delta == DELTA_NE || Delta == DELTA_SE ? FileABB : FileHBB);
+
+    Bitboard b;
+    Square to;
+
+    // Captures in the a1-h8 (a8-h1 for black) diagonal or in the h1-a8 (h8-a1 for black)
+    if (Type == CAPTURE || Type == EVASION)
+    {
+        b = move_pawns<Delta>(pawns) & target & ~TFileABB & ~TRank8BB;
+        SERIALIZE_MOVES_D(b, -Delta);
+    }
+    return mlist;
+  }
+
+  template<Color Us, MoveType Type, SquareDelta Delta>
+  inline MoveStack* generate_promotions(const Position& pos, MoveStack* mlist, Bitboard pawns, Bitboard target) {
 
     // Calculate our parametrized parameters at compile time
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB : Rank1BB);
     const Bitboard TFileABB = (Delta == DELTA_NE || Delta == DELTA_SE ? FileABB : FileHBB);
+    const bool IsPush = (Delta == DELTA_N  || Delta == DELTA_S);
 
-    Bitboard b1, b2;
+    Bitboard b;
     Square to;
 
-    // Captures in the a1-h8 (a8-h1 for black) diagonal or in the h1-a8 (h8-a1 for black)
-    b1 = move_pawns<Delta>(pawns) & ~TFileABB & target;
+    // Promotions and under-promotions
+    b = move_pawns<Delta>(pawns) & target & TRank8BB;
 
-    // Capturing promotions and under-promotions
-    if (b1 & TRank8BB)
+    if (Delta != DELTA_N && Delta != DELTA_S)
+        b &= ~TFileABB;
+
+    while (b)
     {
-        b2 = b1 & TRank8BB;
-        b1 &= ~TRank8BB;
-        while (b2)
+        to = pop_1st_bit(&b);
+
+        if (Type == CAPTURE || Type == EVASION)
+            (*mlist++).move = make_promotion_move(to - Delta, to, QUEEN);
+
+        if (Type == NON_CAPTURE || Type == EVASION)
         {
-            to = pop_1st_bit(&b2);
-
-            if (Type == CAPTURE || Type == EVASION)
-                (*mlist++).move = make_promotion_move(to - Delta, to, QUEEN);
-
-            if (Type == NON_CAPTURE || Type == EVASION)
-            {
-                (*mlist++).move = make_promotion_move(to - Delta, to, ROOK);
-                (*mlist++).move = make_promotion_move(to - Delta, to, BISHOP);
-                (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
-            }
-
-            // This is the only possible under promotion that can give a check
-            // not already included in the queen-promotion. It is not sure that
-            // the promoted knight will give check, but it doesn't worth to verify.
-            if (Type == CHECK)
-                (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
+            (*mlist++).move = make_promotion_move(to - Delta, to, ROOK);
+            (*mlist++).move = make_promotion_move(to - Delta, to, BISHOP);
+            (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
         }
+
+        // This is the only possible under promotion that can give a check
+        // not already included in the queen-promotion. It is not sure that
+        // the promoted knight will give check, but it doesn't worth to verify.
+        if (Type == CHECK && !IsPush)
+            (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
+
+        // This is the only possible under promotion that can give a check
+        // not already included in the queen-promotion.
+        if (Type == CHECK && IsPush && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(opposite_color(Us))))
+            (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
     }
-
-    // Serialize standard captures
-    if (Type == CAPTURE || Type == EVASION)
-        SERIALIZE_MOVES_D(b1, -Delta);
-
     return mlist;
   }
 
@@ -523,37 +540,21 @@ namespace {
         if (Type == EVASION)
             enemyPieces &= target; // Capture only the checker piece
 
-        mlist = generate_pawn_captures<Us, Type, TDELTA_NE>(mlist, pawns, enemyPieces);
-        mlist = generate_pawn_captures<Us, Type, TDELTA_NW>(mlist, pawns, enemyPieces);
+        mlist = generate_promotions<Us, Type, TDELTA_NE>(pos, mlist, pawns, enemyPieces);
+        mlist = generate_pawn_captures<Type, TDELTA_NE>(mlist, pawns, enemyPieces);
+        mlist = generate_promotions<Us, Type, TDELTA_NW>(pos, mlist, pawns, enemyPieces);
+        mlist = generate_pawn_captures<Type, TDELTA_NW>(mlist, pawns, enemyPieces);
     }
 
     // Non-capturing promotions and underpromotions
     if (pawns & TRank7BB)
     {
-        b1 = move_pawns<TDELTA_N>(pawns) & TRank8BB & pos.empty_squares();
+        b1 = pos.empty_squares();
 
         if (Type == EVASION)
             b1 &= target; // Only blocking promotion pushes
 
-        while (b1)
-        {
-            to = pop_1st_bit(&b1);
-
-            if (Type == CAPTURE || Type == EVASION)
-                (*mlist++).move = make_promotion_move(to - TDELTA_N, to, QUEEN);
-
-            if (Type == NON_CAPTURE || Type == EVASION)
-            {
-                (*mlist++).move = make_promotion_move(to - TDELTA_N, to, ROOK);
-                (*mlist++).move = make_promotion_move(to - TDELTA_N, to, BISHOP);
-                (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
-            }
-
-            // This is the only possible under promotion that can give a check
-            // not already included in the queen-promotion.
-            if (Type == CHECK && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(Them)))
-                (*mlist++).move = make_promotion_move(to - TDELTA_N, to, KNIGHT);
-        }
+        mlist = generate_promotions<Us, Type, TDELTA_N>(pos, mlist, pawns, b1);
     }
 
     // Standard pawn pushes and double pushes
