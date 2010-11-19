@@ -140,29 +140,27 @@ void dbg_print_mean(ofstream& logFile) {
 }
 
 /// engine_name() returns the full name of the current Stockfish version.
-/// This will be either "Stockfish YYMMDD" (where YYMMDD is the date when the
-/// program was compiled) or "Stockfish <version number>", depending on whether
-/// the constant EngineVersion (defined in misc.h) is empty.
+/// This will be either "Stockfish YYMMDD" (where YYMMDD is the date when
+/// the program was compiled) or "Stockfish <version number>", depending
+/// on whether the constant EngineVersion (defined in misc.h) is empty.
 
 const string engine_name() {
 
+  const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   const string cpu64(CpuIs64Bit ? " 64bit" : "");
 
   if (!EngineVersion.empty())
       return AppName + " " + EngineVersion + cpu64;
 
-  string date(__DATE__); // From compiler, format is "Sep 21 2008"
-  string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+  stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
+  string month, day, year;
 
-  size_t mon = 1 + months.find(date.substr(0, 3)) / 4;
+  date >> month >> day >> year;
 
-  stringstream s;
-  string day = (date[4] == ' ' ? date.substr(5, 1) : date.substr(4, 2));
-
-  string name = AppName + " " + AppTag + " ";
-
-  s << name << date.substr(date.length() - 2) << setfill('0')
-    << setw(2) << mon << setw(2) << day << cpu64;
+  s << setfill('0') << AppName + " " + AppTag + " "
+    << year.substr(2, 2) << setw(2)
+    << (1 + months.find(month) / 4) << setw(2)
+    << day << cpu64;
 
   return s.str();
 }
