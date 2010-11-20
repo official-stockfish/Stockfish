@@ -59,9 +59,6 @@ extern void prefetchPawn(Key, int);
 extern bool dbg_show_mean;
 extern bool dbg_show_hit_rate;
 
-extern uint64_t dbg_cnt0;
-extern uint64_t dbg_cnt1;
-
 extern void dbg_hit_on(bool b);
 extern void dbg_hit_on_c(bool c, bool b);
 extern void dbg_before();

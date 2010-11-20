@@ -67,8 +67,8 @@ static const string AppTag  = "";
 //// Variables
 ////
 
-uint64_t dbg_cnt0 = 0;
-uint64_t dbg_cnt1 = 0;
+static uint64_t dbg_cnt0 = 0;
+static uint64_t dbg_cnt1 = 0;
 
 bool dbg_show_mean = false;
 bool dbg_show_hit_rate = false;
