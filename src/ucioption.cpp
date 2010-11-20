@@ -30,7 +30,8 @@ using std::endl;
 
 OptionsMap Options;
 
-// stringify() converts a value of type T to a std::string
+
+// stringify() converts a numeric value of type T to a std::string
 template<typename T>
 static string stringify(const T& v) {
 
@@ -112,17 +113,11 @@ void print_uci_options() {
               const Option& o = it->second;
               cout << "\noption name " << it->first << " type " << o.type;
 
-              if (o.type == "check")
-                  cout << " default " << (o.defaultValue == "1" ? "true" : "false");
-              else if (o.type == "string")
+              if (o.type != "button")
                   cout << " default " << o.defaultValue;
-              else if (o.type == "spin")
-              {
-                  cout << " default " << o.defaultValue
-                       << " min " << o.minValue << " max " << o.maxValue;
-              }
-              else if (o.type != "button")
-                  assert(false);
+
+              if (o.type == "spin")
+                  cout << " min " << o.minValue << " max " << o.maxValue;
 
               break;
           }
@@ -130,45 +125,36 @@ void print_uci_options() {
 }
 
 
-// Option class c'tors
+/// Option class c'tors
 
-Option::Option(): type("UNDEFINED") {}
-
-Option::Option(const char* def, string t) : type(t), idx(Options.size()), minValue(0), maxValue(0)
+Option::Option(const char* def) : type("string"), idx(Options.size()), minValue(0), maxValue(0)
 { defaultValue = currentValue = def; }
 
 Option::Option(bool def, string t) : type(t), idx(Options.size()), minValue(0), maxValue(0)
-{ defaultValue = currentValue = (def ? "1" : "0"); }
+{ defaultValue = currentValue = (def ? "true" : "false"); }
 
 Option::Option(int def, int minv, int maxv) : type("spin"), idx(Options.size()), minValue(minv), maxValue(maxv)
 { defaultValue = currentValue = stringify(def); }
 
 
-// set_value() updates currentValue of the Option object to the passed value
+/// set_value() updates currentValue of the Option object. Normally it's up to
+/// the GUI to check for option's limits, but we could receive the new value
+/// directly from the user by teminal window. So let's check the bounds anyway.
 
 void Option::set_value(const string& value) {
 
-  assert(type != "UNDEFINED");
+  assert(!type.empty());
 
-  // UCI protocol uses "true" and "false" instead of "1" and "0", so convert
-  // value according to standard C++ convention before to store it.
-  string v(value);
-  if (v == "true")
-      v = "1";
-  else if (v == "false")
-      v = "0";
-
-  // Normally it's up to the GUI to check for option's limits,
-  // but we could receive the new value directly from the user
-  // by teminal window. So let's check the bounds anyway.
-  if (type == "check" && v != "0" && v != "1")
+  if (    (type == "check" || type == "button")
+      && !(value == "true" || value == "false"))
       return;
 
   if (type == "spin")
   {
-      int val = atoi(v.c_str());
-      if (val < minValue || val > maxValue)
+      int v = atoi(value.c_str());
+      if (v < minValue || v > maxValue)
           return;
   }
-  currentValue = v;
+
+  currentValue = value;
 }

@@ -27,8 +27,8 @@
 
 class Option {
 public:
-  Option(); // To allow insertion in a std::map
-  Option(const char* defaultValue, std::string type = "string");
+  Option() {} // To allow insertion in a std::map
+  Option(const char* defaultValue);
   Option(bool defaultValue, std::string type = "check");
   Option(int defaultValue, int minValue, int maxValue);
 
@@ -47,15 +47,22 @@ private:
 template<typename T>
 inline T Option::value() const {
 
-    assert(type != "UNDEFINED");
+    assert(type == "spin");
     return T(atoi(currentValue.c_str()));
 }
 
 template<>
 inline std::string Option::value<std::string>() const {
 
-    assert(type != "UNDEFINED");
+    assert(type == "string");
     return currentValue;
+}
+
+template<>
+inline bool Option::value<bool>() const {
+
+    assert(type == "check" || type == "button");
+    return currentValue == "true";
 }
 
 typedef std::map<std::string, Option> OptionsMap;
