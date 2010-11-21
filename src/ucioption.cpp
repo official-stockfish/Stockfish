@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cctype>
 #include <iostream>
 #include <sstream>
 
@@ -28,7 +29,25 @@ using std::string;
 using std::cout;
 using std::endl;
 
-OptionsMap Options;
+OptionsMap Options; // Global object
+
+
+// Our case insensitive less() function as required by UCI protocol
+bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
+
+  int c1, c2;
+  size_t i = 0;
+
+  while (i < s1.size() && i < s2.size())
+  {
+      c1 = tolower(s1[i]);
+      c2 = tolower(s2[i++]);
+
+      if (c1 != c2)
+          return c1 < c2;
+  }
+  return s1.size() < s2.size();
+}
 
 
 // stringify() converts a numeric value of type T to a std::string

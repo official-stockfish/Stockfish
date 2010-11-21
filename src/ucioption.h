@@ -47,25 +47,31 @@ private:
 template<typename T>
 inline T Option::value() const {
 
-    assert(type == "spin");
-    return T(atoi(currentValue.c_str()));
+  assert(type == "spin");
+  return T(atoi(currentValue.c_str()));
 }
 
 template<>
 inline std::string Option::value<std::string>() const {
 
-    assert(type == "string");
-    return currentValue;
+  assert(type == "string");
+  return currentValue;
 }
 
 template<>
 inline bool Option::value<bool>() const {
 
-    assert(type == "check" || type == "button");
-    return currentValue == "true";
+  assert(type == "check" || type == "button");
+  return currentValue == "true";
 }
 
-typedef std::map<std::string, Option> OptionsMap;
+
+// Custom comparator because UCI options should not be case sensitive
+struct CaseInsensitiveLess {
+  bool operator() (const std::string&, const std::string&) const;
+};
+
+typedef std::map<std::string, Option, CaseInsensitiveLess> OptionsMap;
 
 extern OptionsMap Options;
 extern void init_uci_options();
