@@ -588,22 +588,18 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   if (move_is_castle(m))
       return true;
 
-  Color us = side_to_move();
-  Square from = move_from(m);
-
-  assert(color_of_piece_on(from) == us);
-  assert(piece_on(king_square(us)) == piece_of_color_and_type(us, KING));
-
   // En passant captures are a tricky special case. Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
   // after the move is made
   if (move_is_ep(m))
   {
+      Color us = side_to_move();
       Color them = opposite_color(us);
+      Square from = move_from(m);
       Square to = move_to(m);
       Square capsq = make_square(square_file(to), square_rank(from));
-      Bitboard b = occupied_squares();
       Square ksq = king_square(us);
+      Bitboard b = occupied_squares();
 
       assert(to == ep_square());
       assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
@@ -617,6 +613,12 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       return   !(rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, them))
             && !(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, them));
   }
+
+  Color us = side_to_move();
+  Square from = move_from(m);
+
+  assert(color_of_piece_on(from) == us);
+  assert(piece_on(king_square(us)) == piece_of_color_and_type(us, KING));
 
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
