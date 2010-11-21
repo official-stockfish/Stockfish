@@ -119,10 +119,7 @@ namespace {
         cout << "uciok" << endl;
     }
     else if (token == "ucinewgame")
-    {
-        Options["New Game"].set_value("true");
         pos.from_fen(StartPositionFEN);
-    }
     else if (token == "isready")
         cout << "readyok" << endl;
     else if (token == "position")

@@ -78,7 +78,6 @@ void init_uci_options() {
   Options["Use Sleeping Master"] = Option(false);
   Options["Hash"] = Option(32, 4, 8192);
   Options["Clear Hash"] = Option(false, "button");
-  Options["New Game"] = Option(false, "button");
   Options["Ponder"] = Option(true);
   Options["OwnBook"] = Option(true);
   Options["MultiPV"] = Option(1, 1, 500);
