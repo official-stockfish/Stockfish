@@ -50,7 +50,8 @@ static const string BenchmarkPositions[] = {
   "3r1rk1/p5pp/bpp1pp2/8/q1PP1P2/b3P3/P2NQRPP/1R2B1K1 b - - 6 22",
   "r1q2rk1/2p1bppp/2Pp4/p6b/Q1PNp3/4B3/PP1R1PPP/2K4R w - - 2 18",
   "4k2r/1pb2ppp/1p2p3/1R1p4/3P4/2r1PN2/P4PPP/1R4K1 b - - 3 22",
-  "3q2k1/pb3p1p/4pbp1/2r5/PpN2N2/1P2P2P/5PP1/Q2R2K1 b - - 4 26"
+  "3q2k1/pb3p1p/4pbp1/2r5/PpN2N2/1P2P2P/5PP1/Q2R2K1 b - - 4 26",
+  ""
 };
 
 
@@ -112,8 +113,8 @@ void benchmark(int argc, char* argv[]) {
       }
       fenFile.close();
   } else
-      for (int i = 0; i < 16; i++)
-          positions.push_back(string(BenchmarkPositions[i]));
+      for (int i = 0; !BenchmarkPositions[i].empty(); i++)
+          positions.push_back(BenchmarkPositions[i]);
 
   vector<string>::iterator it;
   int cnt = 1;
