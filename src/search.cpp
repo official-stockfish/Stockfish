@@ -2324,7 +2324,7 @@ split_point_start: // At split points actual search starts from here
         if (!ok)
         {
             cout << "Failed to create thread number " << i << endl;
-            Application::exit_with_failure();
+            exit(EXIT_FAILURE);
         }
 
         // Wait until the thread has finished launching and is gone to sleep

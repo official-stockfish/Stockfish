@@ -28,8 +28,17 @@
 #include <iostream>
 #include <string>
 
+#include "bitboard.h"
 #include "bitcount.h"
+#include "direction.h"
+#include "endgame.h"
+#include "evaluate.h"
+#include "material.h"
 #include "misc.h"
+#include "position.h"
+#include "search.h"
+#include "thread.h"
+#include "ucioption.h"
 
 #ifdef USE_CALLGRIND
 #include <valgrind/callgrind.h>
@@ -50,8 +59,16 @@ int main(int argc, char* argv[]) {
   cout.rdbuf()->pubsetbuf(NULL, 0);
   cin.rdbuf()->pubsetbuf(NULL, 0);
 
-  // Initialization through global resources manager
-  Application::initialize();
+  // Startup initializations
+  init_direction_table();
+  init_bitboards();
+  init_uci_options();
+  Position::init_zobrist();
+  Position::init_piece_square_tables();
+  init_eval(1);
+  init_bitbases();
+  init_search();
+  init_threads();
 
 #ifdef USE_CALLGRIND
   CALLGRIND_START_INSTRUMENTATION;
@@ -79,6 +96,7 @@ int main(int argc, char* argv[]) {
           benchmark(argc, argv);
   }
 
-  Application::free_resources();
+  exit_threads();
+  quit_eval();
   return 0;
 }

@@ -91,7 +91,7 @@ PawnInfoTable::PawnInfoTable() {
   {
       std::cerr << "Failed to allocate " << (PawnTableSize * sizeof(PawnInfo))
                 << " bytes for pawn hash table." << std::endl;
-      Application::exit_with_failure();
+      exit(EXIT_FAILURE);
   }
   memset(entries, 0, PawnTableSize * sizeof(PawnInfo));
 }

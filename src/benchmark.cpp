@@ -102,7 +102,7 @@ void benchmark(int argc, char* argv[]) {
       if (!fenFile.is_open())
       {
           cerr << "Unable to open positions file " << posFile << endl;
-          Application::exit_with_failure();
+          exit(EXIT_FAILURE);
       }
       string pos;
       while (fenFile.good())

@@ -376,7 +376,7 @@ void Book::open(const string& fName) {
           return;
   }
   cerr << "Failed to open book file " << fileName << endl;
-  Application::exit_with_failure();
+  exit(EXIT_FAILURE);
 }
 
 
@@ -496,7 +496,7 @@ void Book::read_entry(BookEntry& entry, int idx) {
   if (!good())
   {
       cerr << "Failed to read book entry at index " << idx << endl;
-      Application::exit_with_failure();
+      exit(EXIT_FAILURE);
   }
 }
 

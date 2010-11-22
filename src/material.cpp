@@ -144,7 +144,7 @@ MaterialInfoTable::MaterialInfoTable() {
   {
       cerr << "Failed to allocate " << MaterialTableSize * sizeof(MaterialInfo)
            << " bytes for material hash table." << endl;
-      Application::exit_with_failure();
+      exit(EXIT_FAILURE);
   }
   memset(entries, 0, MaterialTableSize * sizeof(MaterialInfo));
 }

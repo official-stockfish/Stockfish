@@ -29,7 +29,6 @@
 #include <fstream>
 #include <string>
 
-#include "application.h"
 #include "types.h"
 
 ////
