@@ -25,6 +25,8 @@
 //// Includes
 ////
 
+#include <string>
+
 #include "color.h"
 #include "square.h"
 #include "value.h"
@@ -98,13 +100,12 @@ inline bool piece_is_ok(Piece pc) {
   return piece_type_is_ok(type_of_piece(pc)) && color_is_ok(color_of_piece(pc));
 }
 
+inline char piece_type_to_char(PieceType pt) {
+  return std::string(" PNBRQK")[pt];
+}
 
-////
-//// Prototypes
-////
-
-extern char piece_type_to_char(PieceType pt, bool upcase = false);
-extern PieceType piece_type_from_char(char c);
-
+inline PieceType piece_type_from_char(char c) {
+  return PieceType(std::string(" PNBRQK").find(c));
+}
 
 #endif // !defined(PIECE_H_INCLUDED)

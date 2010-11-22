@@ -23,6 +23,7 @@
 ////
 
 #include <cassert>
+#include <cctype>
 
 #include "move.h"
 #include "piece.h"
@@ -128,7 +129,7 @@ const std::string move_to_string(Move move, bool chess960) {
 
       str = square_to_string(from) + square_to_string(to);
       if (move_is_promotion(move))
-          str += piece_type_to_char(move_promotion_piece(move), false);
+          str += char(tolower(piece_type_to_char(move_promotion_piece(move))));
   }
   return str;
 }

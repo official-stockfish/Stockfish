@@ -85,7 +85,7 @@ const string move_to_san(Position& pos, Move m) {
   {
       if (pt != PAWN)
       {
-          san += piece_type_to_char(pt, true);
+          san += piece_type_to_char(pt);
 
           switch (move_ambiguity(pos, m)) {
           case AMBIGUITY_NONE:
@@ -113,7 +113,7 @@ const string move_to_san(Position& pos, Move m) {
       if (move_is_promotion(m))
       {
           san += "=";
-          san += piece_type_to_char(move_promotion_piece(m), true);
+          san += piece_type_to_char(move_promotion_piece(m));
       }
   }
 
