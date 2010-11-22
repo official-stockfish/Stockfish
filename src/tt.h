@@ -120,7 +120,7 @@ public:
 private:
   size_t size;
   TTCluster* entries;
-  int generation;
+  uint8_t generation; // To properly compare, size must be smaller then TT stored value
 };
 
 extern TranspositionTable TT;
