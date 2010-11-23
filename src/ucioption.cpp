@@ -94,7 +94,6 @@ void init_uci_options() {
   Options["Minimum Split Depth"] = Option(4, 4, 7);
   Options["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
   Options["Threads"] = Option(1, 1, MAX_THREADS);
-  Options["Use Sleeping Master"] = Option(false);
   Options["Hash"] = Option(32, 4, 8192);
   Options["Clear Hash"] = Option(false, "button");
   Options["Ponder"] = Option(true);
