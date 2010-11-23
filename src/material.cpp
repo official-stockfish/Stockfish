@@ -24,7 +24,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <sstream>
 #include <map>
 
 #include "material.h"
@@ -48,11 +47,11 @@ namespace {
 
   const int LinearCoefficients[6] = { 1617, -162, -1172, -190, 105, 26 };
 
-  const int QuadraticCoefficientsSameColor[][6] = {
+  const int QuadraticCoefficientsSameColor[][8] = {
   { 7, 7, 7, 7, 7, 7 }, { 39, 2, 7, 7, 7, 7 }, { 35, 271, -4, 7, 7, 7 },
   { 7, 25, 4, 7, 7, 7 }, { -27, -2, 46, 100, 56, 7 }, { 58, 29, 83, 148, -3, -25 } };
 
-  const int QuadraticCoefficientsOppositeColor[][6] = {
+  const int QuadraticCoefficientsOppositeColor[][8] = {
   { 41, 41, 41, 41, 41, 41 }, { 37, 41, 41, 41, 41, 41 }, { 10, 62, 41, 41, 41, 41 },
   { 57, 64, 39, 41, 41, 41 }, { 50, 40, 23, -22, 41, 41 }, { 106, 101, 3, 151, 171, 41 } };
 
@@ -290,10 +289,12 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
   }
 
   // Evaluate the material balance
-  const int pieceCount[2][6] = { { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(WHITE, PAWN), pos.piece_count(WHITE, KNIGHT),
-                                   pos.piece_count(WHITE, BISHOP), pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
-                                 { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
-                                   pos.piece_count(BLACK, BISHOP), pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
+  const int pieceCount[2][8] = {
+  { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(WHITE, PAWN), pos.piece_count(WHITE, KNIGHT),
+    pos.piece_count(WHITE, BISHOP), pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
+  { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
+    pos.piece_count(BLACK, BISHOP), pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
+
   Color c, them;
   int sign, pt1, pt2, pc;
   int v, vv, matValue = 0;
@@ -357,7 +358,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 }
 
 
-/// EndgameFunctions member definitions.
+/// EndgameFunctions member definitions
 
 EndgameFunctions::EndgameFunctions() {
 
@@ -389,10 +390,10 @@ EndgameFunctions::~EndgameFunctions() {
 
 Key EndgameFunctions::buildKey(const string& keyCode) {
 
-    assert(keyCode.length() > 0 && keyCode[0] == 'K');
-    assert(keyCode.length() < 8);
+    assert(keyCode.length() > 0 && keyCode.length() < 8);
+    assert(keyCode[0] == 'K');
 
-    stringstream s;
+    string fen;
     bool upcase = false;
 
     // Build up a fen string with the given pieces, note that
@@ -402,16 +403,17 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
         if (keyCode[i] == 'K')
             upcase = !upcase;
 
-        s << char(upcase ? toupper(keyCode[i]) : tolower(keyCode[i]));
+        fen += char(upcase ? toupper(keyCode[i]) : tolower(keyCode[i]));
     }
-    s << 8 - keyCode.length() << "/8/8/8/8/8/8/8 w - -";
-    return Position(s.str(), 0).get_material_key();
+    fen += char(8 - keyCode.length() + '0');
+    fen += "/8/8/8/8/8/8/8 w - -";
+    return Position(fen, 0).get_material_key();
 }
 
 const string EndgameFunctions::swapColors(const string& keyCode) {
 
     // Build corresponding key for the opposite color: "KBPKN" -> "KNKBP"
-    size_t idx = keyCode.find("K", 1);
+    size_t idx = keyCode.find('K', 1);
     return keyCode.substr(idx) + keyCode.substr(0, idx);
 }
 
