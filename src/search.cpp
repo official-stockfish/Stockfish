@@ -661,7 +661,7 @@ namespace {
              << " time " << current_search_time() << endl;
 
     // Print the best move and the ponder move to the standard output
-    if (pv[0] == MOVE_NONE)
+    if (pv[0] == MOVE_NONE || MultiPV > 1)
     {
         pv[0] = rml.move(0);
         pv[1] = MOVE_NONE;
