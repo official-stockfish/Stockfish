@@ -1287,6 +1287,17 @@ split_point_start: // At split points actual search starts from here
 
               continue;
           }
+
+          // Prune neg. see moves at low depths
+          if (   predictedDepth < 2 * ONE_PLY
+              && bestValue > value_mated_in(PLY_MAX)
+              && pos.see_sign(move) < 0)
+          {
+              if (SpNode)
+                  lock_grab(&(sp->lock));
+
+              continue;
+          }
       }
 
       // Step 13. Make the move
