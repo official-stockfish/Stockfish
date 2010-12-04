@@ -38,7 +38,7 @@
 //// Constants and variables
 ////
 
-const int MAX_THREADS = 8;
+const int MAX_THREADS = 16;
 const int MAX_ACTIVE_SPLIT_POINTS = 8;
 
 
