@@ -365,18 +365,20 @@ void Book::open(const string& fName) {
   fileName = fName;
   ifstream::open(fileName.c_str(), ifstream::in | ifstream::binary);
 
-  if (is_open())
-  {
-      // Get the book size in number of entries
-      seekg(0, ios::end);
-      bookSize = long(tellg()) / EntrySize;
-      seekg(0, ios::beg);
+  // Silently return when asked to open a non-exsistent file
+  if (!is_open())
+      return;
 
-      if (good())
-          return;
+  // Get the book size in number of entries
+  seekg(0, ios::end);
+  bookSize = long(tellg()) / EntrySize;
+  seekg(0, ios::beg);
+
+  if (!good())
+  {
+      cerr << "Failed to open book file " << fileName << endl;
+      exit(EXIT_FAILURE);
   }
-  cerr << "Failed to open book file " << fileName << endl;
-  exit(EXIT_FAILURE);
 }
 
 
