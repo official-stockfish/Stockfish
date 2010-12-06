@@ -312,7 +312,7 @@ bool Position::set_castling_rights(char token) {
         for (Square sq = sqH; sq >= sqA; sq--)
             if (piece_on(sq) == rook)
             {
-                allow_oo(c);
+                do_allow_oo(c);
                 initialKRFile = square_file(sq);
                 break;
             }
@@ -322,7 +322,7 @@ bool Position::set_castling_rights(char token) {
         for (Square sq = sqA; sq <= sqH; sq++)
             if (piece_on(sq) == rook)
             {
-                allow_ooo(c);
+                do_allow_ooo(c);
                 initialQRFile = square_file(sq);
                 break;
             }
@@ -332,12 +332,12 @@ bool Position::set_castling_rights(char token) {
         File rookFile = File(token - 'A') + FILE_A;
         if (rookFile < initialKFile)
         {
-            allow_ooo(c);
+            do_allow_ooo(c);
             initialQRFile = rookFile;
         }
         else
         {
-            allow_oo(c);
+            do_allow_oo(c);
             initialKRFile = rookFile;
         }
     }
@@ -1393,7 +1393,7 @@ int Position::see_sign(Move m) const {
 
 int Position::see(Square from, Square to) const {
 
-  Bitboard occ, attackers, stmAttackers, b;
+  Bitboard occupied, attackers, stmAttackers, b;
   int swapList[32], slIndex = 1;
   PieceType capturedType, pt;
   Color stm;
@@ -1407,30 +1407,30 @@ int Position::see(Square from, Square to) const {
   if (capturedType == KING)
       return seeValues[capturedType];
 
-  occ = occupied_squares();
+  occupied = occupied_squares();
 
   // Handle en passant moves
   if (st->epSquare == to && type_of_piece_on(from) == PAWN)
   {
-      Square capQq = (side_to_move() == WHITE) ? (to - DELTA_N) : (to - DELTA_S);
+      Square capQq = (side_to_move() == WHITE ? to - DELTA_N : to - DELTA_S);
 
       assert(capturedType == PIECE_TYPE_NONE);
       assert(type_of_piece_on(capQq) == PAWN);
 
       // Remove the captured pawn
-      clear_bit(&occ, capQq);
+      clear_bit(&occupied, capQq);
       capturedType = PAWN;
   }
 
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
-  clear_bit(&occ, from);
-  attackers =  (rook_attacks_bb(to, occ)      & pieces(ROOK, QUEEN))
-             | (bishop_attacks_bb(to, occ)    & pieces(BISHOP, QUEEN))
-             | (attacks_from<KNIGHT>(to)      & pieces(KNIGHT))
-             | (attacks_from<KING>(to)        & pieces(KING))
-             | (attacks_from<PAWN>(to, WHITE) & pieces(PAWN, BLACK))
-             | (attacks_from<PAWN>(to, BLACK) & pieces(PAWN, WHITE));
+  clear_bit(&occupied, from);
+  attackers =  (rook_attacks_bb(to, occupied)  & pieces(ROOK, QUEEN))
+             | (bishop_attacks_bb(to, occupied)& pieces(BISHOP, QUEEN))
+             | (attacks_from<KNIGHT>(to)       & pieces(KNIGHT))
+             | (attacks_from<KING>(to)         & pieces(KING))
+             | (attacks_from<PAWN>(to, WHITE)  & pieces(PAWN, BLACK))
+             | (attacks_from<PAWN>(to, BLACK)  & pieces(PAWN, WHITE));
 
   // If the opponent has no attackers we are finished
   stm = opposite_color(color_of_piece_on(from));
@@ -1454,28 +1454,28 @@ int Position::see(Square from, Square to) const {
       for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
           assert(pt < KING);
 
-      // Remove the attacker we just found from the 'attackers' bitboard,
+      // Remove the attacker we just found from the 'occupied' bitboard,
       // and scan for new X-ray attacks behind the attacker.
       b = stmAttackers & pieces(pt);
-      occ ^= (b & (~b + 1));
-      attackers |=  (rook_attacks_bb(to, occ)   & pieces(ROOK, QUEEN))
-                  | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN));
+      occupied ^= (b & (~b + 1));
+      attackers |=  (rook_attacks_bb(to, occupied)   & pieces(ROOK, QUEEN))
+                  | (bishop_attacks_bb(to, occupied) & pieces(BISHOP, QUEEN));
 
-      attackers &= occ; // Cut out pieces we've already done
+      attackers &= occupied; // Cut out pieces we've already done
 
       // Add the new entry to the swap list
       assert(slIndex < 32);
       swapList[slIndex] = -swapList[slIndex - 1] + seeValues[capturedType];
       slIndex++;
 
-      // Remember the value of the capturing piece, and change the side to move
-      // before beginning the next iteration
+      // Remember the value of the capturing piece, and change the side to
+      // move before beginning the next iteration.
       capturedType = pt;
       stm = opposite_color(stm);
       stmAttackers = attackers & pieces_of_color(stm);
 
-      // Stop after a king capture
-      if (pt == KING && stmAttackers)
+      // Stop before processing a king capture
+      if (capturedType == KING && stmAttackers)
       {
           assert(slIndex < 32);
           swapList[slIndex++] = QueenValueMidgame*10;
@@ -1484,7 +1484,7 @@ int Position::see(Square from, Square to) const {
   } while (stmAttackers);
 
   // Having built the swap list, we negamax through it to find the best
-  // achievable score from the point of view of the side to move
+  // achievable score from the point of view of the side to move.
   while (--slIndex)
       swapList[slIndex-1] = Min(-swapList[slIndex], swapList[slIndex-1]);
 
@@ -1542,7 +1542,7 @@ void Position::inc_startpos_ply_counter() {
 }
 
 /// Position::put_piece() puts a piece on the given square of the board,
-/// updating the board array, bitboards, and piece counts.
+/// updating the board array, pieces list, bitboards, and piece counts.
 
 void Position::put_piece(Piece p, Square s) {
 
@@ -1550,32 +1550,12 @@ void Position::put_piece(Piece p, Square s) {
   PieceType pt = type_of_piece(p);
 
   board[s] = p;
-  index[s] = pieceCount[c][pt];
+  index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
 
   set_bit(&(byTypeBB[pt]), s);
   set_bit(&(byColorBB[c]), s);
-  set_bit(&byTypeBB[0], s); // HACK: byTypeBB[0] contains all occupied squares.
-
-  pieceCount[c][pt]++;
-}
-
-
-/// Position::allow_oo() gives the given side the right to castle kingside.
-/// Used when setting castling rights during parsing of FEN strings.
-
-void Position::allow_oo(Color c) {
-
-  st->castleRights |= (1 + int(c));
-}
-
-
-/// Position::allow_ooo() gives the given side the right to castle queenside.
-/// Used when setting castling rights during parsing of FEN strings.
-
-void Position::allow_ooo(Color c) {
-
-  st->castleRights |= (4 + 4*int(c));
+  set_bit(&(byTypeBB[0]), s); // HACK: byTypeBB[0] contains all occupied squares.
 }
 
 
@@ -1586,7 +1566,7 @@ void Position::allow_ooo(Color c) {
 
 Key Position::compute_key() const {
 
-  Key result = 0;
+  Key result = zobCastle[st->castleRights];
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (square_is_occupied(s))
@@ -1595,7 +1575,6 @@ Key Position::compute_key() const {
   if (ep_square() != SQ_NONE)
       result ^= zobEp[ep_square()];
 
-  result ^= zobCastle[st->castleRights];
   if (side_to_move() == BLACK)
       result ^= zobSideToMove;
 
@@ -1611,18 +1590,14 @@ Key Position::compute_key() const {
 
 Key Position::compute_pawn_key() const {
 
-  Key result = 0;
   Bitboard b;
-  Square s;
+  Key result = 0;
 
   for (Color c = WHITE; c <= BLACK; c++)
   {
       b = pieces(PAWN, c);
       while (b)
-      {
-          s = pop_1st_bit(&b);
-          result ^= zobrist[c][PAWN][s];
-      }
+          result ^= zobrist[c][PAWN][pop_1st_bit(&b)];
   }
   return result;
 }
@@ -1636,11 +1611,13 @@ Key Position::compute_pawn_key() const {
 
 Key Position::compute_material_key() const {
 
+  int count;
   Key result = 0;
+
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= QUEEN; pt++)
       {
-          int count = piece_count(c, pt);
+          count = piece_count(c, pt);
           for (int i = 0; i < count; i++)
               result ^= zobrist[c][pt][i];
       }
@@ -1654,20 +1631,15 @@ Key Position::compute_material_key() const {
 /// updated by do_move and undo_move when the program is running in debug mode.
 Score Position::compute_value() const {
 
-  Score result = SCORE_ZERO;
   Bitboard b;
-  Square s;
+  Score result = SCORE_ZERO;
 
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= KING; pt++)
       {
           b = pieces(pt, c);
           while (b)
-          {
-              s = pop_1st_bit(&b);
-              assert(piece_on(s) == piece_of_color_and_type(c, pt));
-              result += pst(c, pt, s);
-          }
+              result += pst(c, pt, pop_1st_bit(&b));
       }
 
   result += (side_to_move() == WHITE ? TempoValue / 2 : -TempoValue / 2);
@@ -1676,7 +1648,7 @@ Score Position::compute_value() const {
 
 
 /// Position::compute_non_pawn_material() computes the total non-pawn middle
-/// game material score for the given side. Material scores are updated
+/// game material value for the given side. Material values are updated
 /// incrementally during the search, this function is only used while
 /// initializing a new Position object.
 
@@ -1685,16 +1657,8 @@ Value Position::compute_non_pawn_material(Color c) const {
   Value result = VALUE_ZERO;
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
-  {
-      Bitboard b = pieces(pt, c);
-      while (b)
-      {
-          assert(piece_on(first_1(b)) == piece_of_color_and_type(c, pt));
+      result += piece_count(c, pt) * PieceValueMidgame[pt];
 
-          pop_1st_bit(&b);
-          result += PieceValueMidgame[pt];
-      }
-  }
   return result;
 }
 
@@ -1729,7 +1693,7 @@ bool Position::is_draw() const {
 bool Position::is_mate() const {
 
   MoveStack moves[MOVES_MAX];
-  return is_check() && (generate_moves(*this, moves) == moves);
+  return is_check() && generate_moves(*this, moves) == moves;
 }
 
 
@@ -1749,7 +1713,7 @@ bool Position::has_mate_threat() {
   // First pass the move to our opponent doing a null move
   do_null_move(st1);
 
-  // Then generate pseudo-legal moves that give check
+  // Then generate pseudo-legal moves that could give check
   last = generate_non_capture_checks(*this, mlist);
   last = generate_captures(*this, last);
 
@@ -1781,20 +1745,20 @@ bool Position::has_mate_threat() {
 
 void Position::init_zobrist() {
 
-  RKISS RKiss;
   int i,j, k;
+  RKISS rk;
 
   for (i = 0; i < 2; i++) for (j = 0; j < 8; j++) for (k = 0; k < 64; k++)
-      zobrist[i][j][k] = RKiss.rand<Key>();
+      zobrist[i][j][k] = rk.rand<Key>();
 
   for (i = 0; i < 64; i++)
-      zobEp[i] = RKiss.rand<Key>();
+      zobEp[i] = rk.rand<Key>();
 
   for (i = 0; i < 16; i++)
-      zobCastle[i] = RKiss.rand<Key>();
+      zobCastle[i] = rk.rand<Key>();
 
-  zobSideToMove = RKiss.rand<Key>();
-  zobExclusion  = RKiss.rand<Key>();
+  zobSideToMove = rk.rand<Key>();
+  zobExclusion  = rk.rand<Key>();
 }
 
 
@@ -1830,16 +1794,16 @@ void Position::flipped_copy(const Position& pos) {
   // Board
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (!pos.square_is_empty(s))
-          put_piece(Piece(int(pos.piece_on(s)) ^ 8), flip_square(s));
+          put_piece(Piece(pos.piece_on(s) ^ 8), flip_square(s));
 
   // Side to move
   sideToMove = opposite_color(pos.side_to_move());
 
   // Castling rights
-  if (pos.can_castle_kingside(WHITE))  allow_oo(BLACK);
-  if (pos.can_castle_queenside(WHITE)) allow_ooo(BLACK);
-  if (pos.can_castle_kingside(BLACK))  allow_oo(WHITE);
-  if (pos.can_castle_queenside(BLACK)) allow_ooo(WHITE);
+  if (pos.can_castle_kingside(WHITE))  do_allow_oo(BLACK);
+  if (pos.can_castle_queenside(WHITE)) do_allow_ooo(BLACK);
+  if (pos.can_castle_kingside(BLACK))  do_allow_oo(WHITE);
+  if (pos.can_castle_queenside(BLACK)) do_allow_ooo(WHITE);
 
   initialKFile  = pos.initialKFile;
   initialKRFile = pos.initialKRFile;
@@ -1881,18 +1845,20 @@ void Position::flipped_copy(const Position& pos) {
 bool Position::is_ok(int* failedStep) const {
 
   // What features of the position should be verified?
-  static const bool debugBitboards = false;
-  static const bool debugKingCount = false;
-  static const bool debugKingCapture = false;
-  static const bool debugCheckerCount = false;
-  static const bool debugKey = false;
-  static const bool debugMaterialKey = false;
-  static const bool debugPawnKey = false;
-  static const bool debugIncrementalEval = false;
-  static const bool debugNonPawnMaterial = false;
-  static const bool debugPieceCounts = false;
-  static const bool debugPieceList = false;
-  static const bool debugCastleSquares = false;
+  const bool debugAll = false;
+
+  const bool debugBitboards       = debugAll || false;
+  const bool debugKingCount       = debugAll || false;
+  const bool debugKingCapture     = debugAll || false;
+  const bool debugCheckerCount    = debugAll || false;
+  const bool debugKey             = debugAll || false;
+  const bool debugMaterialKey     = debugAll || false;
+  const bool debugPawnKey         = debugAll || false;
+  const bool debugIncrementalEval = debugAll || false;
+  const bool debugNonPawnMaterial = debugAll || false;
+  const bool debugPieceCounts     = debugAll || false;
+  const bool debugPieceList       = debugAll || false;
+  const bool debugCastleSquares   = debugAll || false;
 
   if (failedStep) *failedStep = 1;
 

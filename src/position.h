@@ -281,8 +281,8 @@ private:
   // Initialization helper functions (used while setting up a position)
   void clear();
   void put_piece(Piece p, Square s);
-  void allow_oo(Color c);
-  void allow_ooo(Color c);
+  void do_allow_oo(Color c);
+  void do_allow_ooo(Color c);
   bool set_castling_rights(char token);
 
   // Helper functions for doing and undoing moves
@@ -391,7 +391,7 @@ inline Bitboard Position::occupied_squares() const {
 }
 
 inline Bitboard Position::empty_squares() const {
-  return ~(occupied_squares());
+  return ~occupied_squares();
 }
 
 inline Bitboard Position::pieces_of_color(Color c) const {
@@ -535,12 +535,10 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
 }
 
 inline int Position::rule_50_counter() const {
-
   return st->rule50;
 }
 
 inline int Position::startpos_ply_counter() const {
-
   return startPosPlyCounter;
 }
 
@@ -552,12 +550,10 @@ inline bool Position::opposite_colored_bishops() const {
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {
-
   return pieces(PAWN, c) & relative_rank_bb(c, RANK_7);
 }
 
 inline bool Position::is_chess960() const {
-
   return isChess960;
 }
 
@@ -579,6 +575,14 @@ inline PieceType Position::captured_piece_type() const {
 
 inline int Position::thread() const {
   return threadID;
+}
+
+inline void Position::do_allow_oo(Color c) {
+  st->castleRights |= (1 + int(c));
+}
+
+inline void Position::do_allow_ooo(Color c) {
+  st->castleRights |= (4 + 4*int(c));
 }
 
 #endif // !defined(POSITION_H_INCLUDED)
