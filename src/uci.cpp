@@ -194,7 +194,7 @@ namespace {
             StateInfo st;
             while (uip >> token)
             {
-                move = move_from_string(pos, token);
+                move = move_from_uci(pos, token);
                 pos.do_move(move, st);
                 if (pos.rule_50_counter() == 0)
                     pos.reset_game_ply();
@@ -293,7 +293,7 @@ namespace {
         {
             int numOfMoves = 0;
             while (uip >> token)
-                searchMoves[numOfMoves++] = move_from_string(pos, token);
+                searchMoves[numOfMoves++] = move_from_uci(pos, token);
 
             searchMoves[numOfMoves] = MOVE_NONE;
         }

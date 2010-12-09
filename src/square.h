@@ -160,10 +160,6 @@ inline char rank_to_char(Rank r) {
   return char(r - RANK_1 + int('1'));
 }
 
-inline Square square_from_string(const std::string& str) {
-  return make_square(file_from_char(str[0]), rank_from_char(str[1]));
-}
-
 inline const std::string square_to_string(Square s) {
   return  std::string(1, file_to_char(square_file(s)))
         + std::string(1, rank_to_char(square_rank(s)));

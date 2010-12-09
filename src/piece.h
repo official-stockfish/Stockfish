@@ -92,12 +92,12 @@ inline SquareDelta pawn_push(Color c) {
     return (c == WHITE ? DELTA_N : DELTA_S);
 }
 
-inline bool piece_type_is_ok(PieceType pc) {
-  return pc >= PAWN && pc <= KING;
+inline bool piece_type_is_ok(PieceType pt) {
+  return pt >= PAWN && pt <= KING;
 }
 
-inline bool piece_is_ok(Piece pc) {
-  return piece_type_is_ok(type_of_piece(pc)) && color_is_ok(color_of_piece(pc));
+inline bool piece_is_ok(Piece p) {
+  return piece_type_is_ok(type_of_piece(p)) && color_is_ok(color_of_piece(p));
 }
 
 inline char piece_type_to_char(PieceType pt) {

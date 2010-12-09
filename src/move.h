@@ -204,8 +204,8 @@ inline Move make_ep_move(Square from, Square to) {
 ////
 
 extern std::ostream& operator<<(std::ostream& os, Move m);
-extern Move move_from_string(const Position& pos, const std::string &str);
-extern const std::string move_to_string(Move m, bool chess960);
+extern Move move_from_uci(const Position& pos, const std::string &str);
+extern const std::string move_to_uci(Move m, bool chess960);
 extern bool move_is_ok(Move m);
 
 
