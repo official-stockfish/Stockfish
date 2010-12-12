@@ -1448,6 +1448,89 @@ split_point_start: // At split points actual search starts from here
     return bestValue;
   }
 
+  Bitboard attacks(const Piece P, const Square sq, const Bitboard occ)
+  {
+    switch(P)
+    {
+      case WP:
+      case BP:
+      case WN:
+      case BN:
+      case WK:
+      case BK:
+        return StepAttackBB[P][sq];
+      case WB:
+      case BB:
+        return bishop_attacks_bb(sq, occ);
+      case WR:
+      case BR:
+        return rook_attacks_bb(sq, occ);
+      case WQ:
+      case BQ:
+        return bishop_attacks_bb(sq, occ) | rook_attacks_bb(sq, occ);
+      default:
+        assert(false);
+        return 0ULL;
+    }
+  }
+
+  bool check_is_useless(Position &pos, Move move, Value eval, Value futilityBase, Value beta, Value *bValue)
+  {
+    Value bestValue = *bValue;
+
+    /// Rule 1. Using checks to reposition pieces when close to beta
+    if (eval + PawnValueMidgame / 4 < beta)
+    {
+        if (eval + PawnValueMidgame / 4 > bestValue)
+            bestValue = eval + PawnValueMidgame / 4;
+    }
+    else
+        return false;
+
+    Square from = move_from(move);
+    Square to = move_to(move);
+    Color oppColor = opposite_color(pos.side_to_move());
+    Square oppKing = pos.king_square(oppColor);
+
+    Bitboard occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL <<oppKing);
+    Bitboard oppOcc = pos.pieces_of_color(oppColor) & ~(1ULL <<oppKing);
+    Bitboard oldAtt = attacks(pos.piece_on(from), from, occ);
+    Bitboard newAtt = attacks(pos.piece_on(from),   to, occ);
+
+    // Rule 2. Checks which give opponent's king at most one escape square are dangerous
+    Bitboard escapeBB = attacks(WK, oppKing, 0) & ~oppOcc & ~newAtt & ~(1ULL << to);
+
+    if (!escapeBB)
+        return false;
+
+    if (!(escapeBB & (escapeBB - 1)))
+        return false;
+
+    /// Rule 3. Queen contact check is very dangerous
+    if (   pos.type_of_piece_on(from) == QUEEN
+        && bit_is_set(attacks(WK, oppKing, 0), to))
+        return false;
+
+    /// Rule 4. Creating new double threats with checks
+    Bitboard newVictims = oppOcc & ~oldAtt & newAtt;
+
+    while(newVictims)
+    {
+        Square victimSq = pop_1st_bit(&newVictims);
+
+        Value futilityValue = futilityBase + pos.endgame_value_of_piece_on(victimSq);
+
+        // Note that here we generate illegal "double move"!
+        if (futilityValue >= beta && pos.see_sign(make_move(from, victimSq)) >= 0)
+            return false;
+
+        if (futilityValue > bestValue)
+            bestValue = futilityValue;
+    }
+
+    *bValue = bestValue;
+    return true;
+  }
 
   // qsearch() is the quiescence search function, which is called by the main
   // search function when the remaining depth is zero (or, to be more precise,
@@ -1466,7 +1549,7 @@ split_point_start: // At split points actual search starts from here
     StateInfo st;
     Move ttMove, move;
     Value bestValue, value, evalMargin, futilityValue, futilityBase;
-    bool isCheck, deepChecks, enoughMaterial, moveIsCheck, evasionPrunable;
+    bool isCheck, enoughMaterial, moveIsCheck, evasionPrunable;
     const TTEntry* tte;
     Value oldAlpha = alpha;
 
@@ -1476,25 +1559,32 @@ split_point_start: // At split points actual search starts from here
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
+    // Decide whether or not to include checks
+    isCheck = pos.is_check();
+
+    Depth d;
+    if (isCheck || depth >= -ONE_PLY)
+        d = DEPTH_ZERO;
+    else
+        d = DEPTH_ZERO - ONE_PLY;
+
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (!PvNode && tte && ok_to_use_TT(tte, depth, beta, ply))
+    if (!PvNode && tte && ok_to_use_TT(tte, d, beta, ply))
     {
         ss->bestMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
     }
-
-    isCheck = pos.is_check();
 
     // Evaluate the position statically
     if (isCheck)
     {
         bestValue = futilityBase = -VALUE_INFINITE;
         ss->eval = evalMargin = VALUE_NONE;
-        deepChecks = enoughMaterial = false;
+        enoughMaterial = false;
     }
     else
     {
@@ -1522,9 +1612,6 @@ split_point_start: // At split points actual search starts from here
         if (PvNode && bestValue > alpha)
             alpha = bestValue;
 
-        // If we are near beta then try to get a cutoff pushing checks a bit further
-        deepChecks = (depth == -ONE_PLY && bestValue >= beta - PawnValueMidgame / 8);
-
         // Futility pruning parameters, not needed when in check
         futilityBase = ss->eval + evalMargin + FutilityMarginQS;
         enoughMaterial = pos.non_pawn_material(pos.side_to_move()) > RookValueMidgame;
@@ -1534,7 +1621,7 @@ split_point_start: // At split points actual search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth == 0 or depth == -ONE_PLY
     // and we are near beta) will be generated.
-    MovePicker mp = MovePicker(pos, ttMove, deepChecks ? DEPTH_ZERO : depth, H);
+    MovePicker mp = MovePicker(pos, ttMove, d, H);
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1580,6 +1667,16 @@ split_point_start: // At split points actual search starts from here
           &&  pos.see_sign(move) < 0)
           continue;
 
+      // Don't search useless checks
+      if (   !PvNode
+          && !isCheck
+          && move != ttMove
+          && !move_is_promotion(move)
+          && !pos.move_is_capture(move)
+          && moveIsCheck
+          && check_is_useless(pos, move, ss->eval, futilityBase, beta, &bestValue))
+          continue;
+
       // Update current move
       ss->currentMove = move;
 
@@ -1608,7 +1705,6 @@ split_point_start: // At split points actual search starts from here
         return value_mated_in(ply);
 
     // Update transposition table
-    Depth d = (depth == DEPTH_ZERO ? DEPTH_ZERO : DEPTH_ZERO - ONE_PLY);
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
     TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, evalMargin);
 
