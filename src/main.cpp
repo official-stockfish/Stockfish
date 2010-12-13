@@ -46,7 +46,7 @@
 
 using namespace std;
 
-extern void uci_main_loop();
+extern bool execute_uci_command(const string& cmd);
 extern void benchmark(int argc, char* argv[]);
 
 ////
@@ -83,8 +83,18 @@ int main(int argc, char* argv[]) {
       if (CpuHasPOPCNT)
           cout << "Good! CPU has hardware POPCNT." << endl;
 
-      // Enter UCI mode
-      uci_main_loop();
+      // Wait for a command from the user, and passes this command to
+      // execute_uci_command() and also intercepts EOF from stdin, by
+      // translating EOF to the "quit" command. This ensures that we
+      // exit gracefully if the GUI dies unexpectedly.
+      string cmd;
+
+      do {
+          // Wait for a command from stdin
+          if (!getline(cin, cmd))
+              cmd = "quit";
+
+      } while (execute_uci_command(cmd));
   }
   else // Process command line arguments
   {

@@ -38,9 +38,6 @@
 
 using namespace std;
 
-////
-//// Local definitions:
-////
 
 namespace {
 
@@ -52,7 +49,6 @@ namespace {
   typedef istringstream UCIParser;
 
   // Local functions
-  bool handle_command(Position& pos, const string& command);
   void set_option(UCIParser& uip);
   void set_position(Position& pos, UCIParser& uip);
   bool go(Position& pos, UCIParser& uip);
@@ -60,29 +56,73 @@ namespace {
 }
 
 
-////
-//// Functions
-////
+/// execute_uci_command() takes a string as input, uses a UCIParser
+/// object to parse this text string as a UCI command, and calls
+/// the appropriate functions. In addition to the UCI commands,
+/// the function also supports a few debug commands.
 
-/// uci_main_loop() is the only global function in this file. It is
-/// called immediately after the program has finished initializing.
-/// The program remains in this loop until it receives the "quit" UCI
-/// command. It waits for a command from the user, and passes this
-/// command to handle_command() and also intercepts EOF from stdin,
-/// by translating EOF to the "quit" command. This ensures that Stockfish
-/// exits gracefully if the GUI dies unexpectedly.
+bool execute_uci_command(const string& cmd) {
 
-void uci_main_loop() {
+  static Position pos(StartPositionFEN, 0); // The root position
+  UCIParser up(cmd);
+  string token;
 
-  Position pos(StartPositionFEN, 0); // The root position
-  string command;
+  if (!(up >> token)) // operator>>() skips any whitespace
+      return true;
 
-  do {
-      // Wait for a command from stdin
-      if (!getline(cin, command))
-          command = "quit";
+  if (token == "quit")
+      return false;
 
-  } while (handle_command(pos, command));
+  if (token == "go")
+      return go(pos, up);
+
+  if (token == "uci")
+  {
+      cout << "id name " << engine_name()
+           << "\nid author Tord Romstad, Marco Costalba, Joona Kiiski\n";
+      print_uci_options();
+      cout << "uciok" << endl;
+  }
+  else if (token == "ucinewgame")
+      pos.from_fen(StartPositionFEN);
+
+  else if (token == "isready")
+      cout << "readyok" << endl;
+
+  else if (token == "position")
+      set_position(pos, up);
+
+  else if (token == "setoption")
+      set_option(up);
+
+  // The remaining commands are for debugging purposes only
+  else if (token == "d")
+      pos.print();
+
+  else if (token == "flip")
+  {
+      Position p(pos, pos.thread());
+      pos.flipped_copy(p);
+  }
+  else if (token == "eval")
+  {
+      Value evalMargin;
+      cout << "Incremental mg: "   << mg_value(pos.value())
+           << "\nIncremental eg: " << eg_value(pos.value())
+           << "\nFull eval: "      << evaluate(pos, evalMargin) << endl;
+  }
+  else if (token == "key")
+      cout << "key: " << hex << pos.get_key()
+           << "\nmaterial key: " << pos.get_material_key()
+           << "\npawn key: " << pos.get_pawn_key() << endl;
+
+  else if (token == "perft")
+      perft(pos, up);
+
+  else
+      cout << "Unknown command: " << cmd << endl;
+
+  return true;
 }
 
 
@@ -91,75 +131,6 @@ void uci_main_loop() {
 ////
 
 namespace {
-
-  // handle_command() takes a string as input, uses a UCIParser
-  // object to parse this text string as a UCI command, and calls
-  // the appropriate functions. In addition to the UCI commands,
-  // the function also supports a few debug commands.
-
-  bool handle_command(Position& pos, const string& command) {
-
-    UCIParser up(command);
-    string token;
-
-    if (!(up >> token)) // operator>>() skips any whitespace
-        return true;
-
-    if (token == "quit")
-        return false;
-
-    if (token == "go")
-        return go(pos, up);
-
-    if (token == "uci")
-    {
-        cout << "id name " << engine_name()
-             << "\nid author Tord Romstad, Marco Costalba, Joona Kiiski\n";
-        print_uci_options();
-        cout << "uciok" << endl;
-    }
-    else if (token == "ucinewgame")
-        pos.from_fen(StartPositionFEN);
-
-    else if (token == "isready")
-        cout << "readyok" << endl;
-
-    else if (token == "position")
-        set_position(pos, up);
-
-    else if (token == "setoption")
-        set_option(up);
-
-    // The remaining commands are for debugging purposes only
-    else if (token == "d")
-        pos.print();
-
-    else if (token == "flip")
-    {
-        Position p(pos, pos.thread());
-        pos.flipped_copy(p);
-    }
-    else if (token == "eval")
-    {
-        Value evalMargin;
-        cout << "Incremental mg: "   << mg_value(pos.value())
-             << "\nIncremental eg: " << eg_value(pos.value())
-             << "\nFull eval: "      << evaluate(pos, evalMargin) << endl;
-    }
-    else if (token == "key")
-        cout << "key: " << hex << pos.get_key()
-             << "\nmaterial key: " << pos.get_material_key()
-             << "\npawn key: " << pos.get_pawn_key() << endl;
-
-    else if (token == "perft")
-        perft(pos, up);
-
-    else
-        cout << "Unknown command: " << command << endl;
-
-    return true;
-  }
-
 
   // set_position() is called when Stockfish receives the "position" UCI
   // command. The input parameter is a UCIParser. It is assumed
@@ -171,12 +142,16 @@ namespace {
 
     string token;
 
-    if (!(up >> token)) // operator>>() skips any whitespace
+    if (!(up >> token) || (token != "startpos" && token != "fen"))
         return;
 
     if (token == "startpos")
+    {
         pos.from_fen(StartPositionFEN);
-    else if (token == "fen")
+        if (!(up >> token))
+            return;
+    }
+    else // fen
     {
         string fen;
         while (up >> token && token != "moves")
@@ -187,29 +162,24 @@ namespace {
         pos.from_fen(fen);
     }
 
-    if (up.good())
+    if (token != "moves")
+        return;
+
+    // Parse optional move list
+    Move move;
+    StateInfo st;
+    while (up >> token)
     {
-        if (token != "moves")
-          up >> token;
+        move = move_from_uci(pos, token);
+        pos.do_move(move, st);
+        if (pos.rule_50_counter() == 0)
+            pos.reset_game_ply();
 
-        if (token == "moves")
-        {
-            Move move;
-            StateInfo st;
-            while (up >> token)
-            {
-                move = move_from_uci(pos, token);
-                pos.do_move(move, st);
-                if (pos.rule_50_counter() == 0)
-                    pos.reset_game_ply();
-
-                pos.inc_startpos_ply_counter(); //FIXME: make from_fen to support this and rule50
-            }
-            // Our StateInfo st is about going out of scope so copy
-            // its content inside pos before it disappears.
-            pos.detach();
-        }
+        pos.inc_startpos_ply_counter(); //FIXME: make from_fen to support this and rule50
     }
+    // Our StateInfo st is about going out of scope so copy
+    // its content inside pos before it disappears.
+    pos.detach();
   }
 
 
