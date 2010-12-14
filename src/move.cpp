@@ -75,7 +75,7 @@ Move move_from_uci(const Position& pos, const std::string& str) {
   // En passant move? We assume that a pawn move is an en passant move
   // if the destination square is epSquare.
   if (to == pos.ep_square() && piece == piece_of_color_and_type(us, PAWN))
-      make_ep_move(from, to);
+      return make_ep_move(from, to);
 
   // Is this a castling move? A king move is assumed to be a castling move
   // if the destination square is occupied by a friendly rook, or if the
