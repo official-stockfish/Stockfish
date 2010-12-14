@@ -297,6 +297,8 @@ namespace {
   template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
+  bool check_is_useless(Position &pos, Move move, Value eval, Value futilityBase, Value beta, Value *bValue);
+  Bitboard attacks(const Piece P, const Square sq, const Bitboard occ);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   Value value_to_tt(Value v, int ply);
@@ -1448,90 +1450,6 @@ split_point_start: // At split points actual search starts from here
     return bestValue;
   }
 
-  Bitboard attacks(const Piece P, const Square sq, const Bitboard occ)
-  {
-    switch(P)
-    {
-      case WP:
-      case BP:
-      case WN:
-      case BN:
-      case WK:
-      case BK:
-        return StepAttackBB[P][sq];
-      case WB:
-      case BB:
-        return bishop_attacks_bb(sq, occ);
-      case WR:
-      case BR:
-        return rook_attacks_bb(sq, occ);
-      case WQ:
-      case BQ:
-        return bishop_attacks_bb(sq, occ) | rook_attacks_bb(sq, occ);
-      default:
-        assert(false);
-        return 0ULL;
-    }
-  }
-
-  bool check_is_useless(Position &pos, Move move, Value eval, Value futilityBase, Value beta, Value *bValue)
-  {
-    Value bestValue = *bValue;
-
-    /// Rule 1. Using checks to reposition pieces when close to beta
-    if (eval + PawnValueMidgame / 4 < beta)
-    {
-        if (eval + PawnValueMidgame / 4 > bestValue)
-            bestValue = eval + PawnValueMidgame / 4;
-    }
-    else
-        return false;
-
-    Square from = move_from(move);
-    Square to = move_to(move);
-    Color oppColor = opposite_color(pos.side_to_move());
-    Square oppKing = pos.king_square(oppColor);
-
-    Bitboard occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL <<oppKing);
-    Bitboard oppOcc = pos.pieces_of_color(oppColor) & ~(1ULL <<oppKing);
-    Bitboard oldAtt = attacks(pos.piece_on(from), from, occ);
-    Bitboard newAtt = attacks(pos.piece_on(from),   to, occ);
-
-    // Rule 2. Checks which give opponent's king at most one escape square are dangerous
-    Bitboard escapeBB = attacks(WK, oppKing, 0) & ~oppOcc & ~newAtt & ~(1ULL << to);
-
-    if (!escapeBB)
-        return false;
-
-    if (!(escapeBB & (escapeBB - 1)))
-        return false;
-
-    /// Rule 3. Queen contact check is very dangerous
-    if (   pos.type_of_piece_on(from) == QUEEN
-        && bit_is_set(attacks(WK, oppKing, 0), to))
-        return false;
-
-    /// Rule 4. Creating new double threats with checks
-    Bitboard newVictims = oppOcc & ~oldAtt & newAtt;
-
-    while(newVictims)
-    {
-        Square victimSq = pop_1st_bit(&newVictims);
-
-        Value futilityValue = futilityBase + pos.endgame_value_of_piece_on(victimSq);
-
-        // Note that here we generate illegal "double move"!
-        if (futilityValue >= beta && pos.see_sign(make_move(from, victimSq)) >= 0)
-            return false;
-
-        if (futilityValue > bestValue)
-            bestValue = futilityValue;
-    }
-
-    *bValue = bestValue;
-    return true;
-  }
-
   // qsearch() is the quiescence search function, which is called by the main
   // search function when the remaining depth is zero (or, to be more precise,
   // less than ONE_PLY).
@@ -1670,10 +1588,10 @@ split_point_start: // At split points actual search starts from here
       // Don't search useless checks
       if (   !PvNode
           && !isCheck
-          && move != ttMove
-          && !move_is_promotion(move)
-          && !pos.move_is_capture(move)
           && moveIsCheck
+          && move != ttMove
+          && !pos.move_is_capture(move)
+          && !move_is_promotion(move)
           && check_is_useless(pos, move, ss->eval, futilityBase, beta, &bestValue))
           continue;
 
@@ -1713,6 +1631,94 @@ split_point_start: // At split points actual search starts from here
     return bestValue;
   }
 
+  // check_is_useless() tests if a checking move can be pruned in qsearch().
+  // bestValue is updated when necesary.
+
+  bool check_is_useless(Position &pos, Move move, Value eval, Value futilityBase, Value beta, Value *bValue)
+  {
+    Value bestValue = *bValue;
+
+    /// Rule 1. Using checks to reposition pieces when close to beta
+    if (eval + PawnValueMidgame / 4 < beta)
+    {
+        if (eval + PawnValueMidgame / 4 > bestValue)
+            bestValue = eval + PawnValueMidgame / 4;
+    }
+    else
+        return false;
+
+    Square from = move_from(move);
+    Square to = move_to(move);
+    Color oppColor = opposite_color(pos.side_to_move());
+    Square oppKing = pos.king_square(oppColor);
+
+    Bitboard occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL <<oppKing);
+    Bitboard oppOcc = pos.pieces_of_color(oppColor) & ~(1ULL <<oppKing);
+    Bitboard oldAtt = attacks(pos.piece_on(from), from, occ);
+    Bitboard newAtt = attacks(pos.piece_on(from),   to, occ);
+
+    // Rule 2. Checks which give opponent's king at most one escape square are dangerous
+    Bitboard escapeBB = attacks(WK, oppKing, 0) & ~oppOcc & ~newAtt & ~(1ULL << to);
+
+    if (!escapeBB)
+        return false;
+
+    if (!(escapeBB & (escapeBB - 1)))
+        return false;
+
+    /// Rule 3. Queen contact check is very dangerous
+    if (   pos.type_of_piece_on(from) == QUEEN
+        && bit_is_set(attacks(WK, oppKing, 0), to))
+        return false;
+
+    /// Rule 4. Creating new double threats with checks
+    Bitboard newVictims = oppOcc & ~oldAtt & newAtt;
+
+    while(newVictims)
+    {
+        Square victimSq = pop_1st_bit(&newVictims);
+
+        Value futilityValue = futilityBase + pos.endgame_value_of_piece_on(victimSq);
+
+        // Note that here we generate illegal "double move"!
+        if (futilityValue >= beta && pos.see_sign(make_move(from, victimSq)) >= 0)
+            return false;
+
+        if (futilityValue > bestValue)
+            bestValue = futilityValue;
+    }
+
+    *bValue = bestValue;
+    return true;
+  }
+
+  // attacks() returns attacked squares.
+
+  Bitboard attacks(const Piece P, const Square sq, const Bitboard occ)
+  {
+    switch(P)
+    {
+      case WP:
+      case BP:
+      case WN:
+      case BN:
+      case WK:
+      case BK:
+        return StepAttackBB[P][sq];
+      case WB:
+      case BB:
+        return bishop_attacks_bb(sq, occ);
+      case WR:
+      case BR:
+        return rook_attacks_bb(sq, occ);
+      case WQ:
+      case BQ:
+        return bishop_attacks_bb(sq, occ) | rook_attacks_bb(sq, occ);
+      default:
+        assert(false);
+        return 0ULL;
+    }
+  }
 
   // connected_moves() tests whether two moves are 'connected' in the sense
   // that the first move somehow made the second move possible (for instance
