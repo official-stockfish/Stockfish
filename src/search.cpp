@@ -297,8 +297,7 @@ namespace {
   template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
 
-  bool check_is_useless(Position &pos, Move move, Value eval, Value futilityBase, Value beta, Value *bValue);
-  Bitboard attacks(const Piece P, const Square sq, const Bitboard occ);
+  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   bool value_is_mate(Value value);
   Value value_to_tt(Value v, int ply);
@@ -1588,12 +1587,17 @@ split_point_start: // At split points actual search starts from here
       // Don't search useless checks
       if (   !PvNode
           && !isCheck
-          && moveIsCheck
-          && move != ttMove
-          && !pos.move_is_capture(move)
-          && !move_is_promotion(move)
-          && check_is_useless(pos, move, ss->eval, futilityBase, beta, &bestValue))
+          &&  moveIsCheck
+          &&  move != ttMove
+          && !pos.move_is_capture_or_promotion(move)
+          &&  ss->eval + PawnValueMidgame / 4 < beta
+          && !check_is_dangerous(pos, move, futilityBase, beta, &bestValue))
+      {
+          if (ss->eval + PawnValueMidgame / 4 > bestValue)
+              bestValue = ss->eval + PawnValueMidgame / 4;
+
           continue;
+      }
 
       // Update current move
       ss->currentMove = move;
@@ -1631,94 +1635,63 @@ split_point_start: // At split points actual search starts from here
     return bestValue;
   }
 
-  // check_is_useless() tests if a checking move can be pruned in qsearch().
-  // bestValue is updated when necesary.
 
-  bool check_is_useless(Position &pos, Move move, Value eval, Value futilityBase, Value beta, Value *bValue)
+  // check_is_dangerous() tests if a checking move can be pruned in qsearch().
+  // bestValue is updated only when returning false because in that case move
+  // will be pruned.
+
+  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bestValue)
   {
-    Value bestValue = *bValue;
+    Bitboard b, occ, oldAtt, newAtt, kingAtt;
+    Square from, to, ksq, victimSq;
+    Piece pc;
+    Color them;
+    Value futilityValue, bv = *bestValue;
 
-    /// Rule 1. Using checks to reposition pieces when close to beta
-    if (eval + PawnValueMidgame / 4 < beta)
+    from = move_from(move);
+    to = move_to(move);
+    them = opposite_color(pos.side_to_move());
+    ksq = pos.king_square(them);
+    kingAtt = pos.attacks_from<KING>(ksq);
+    pc = pos.piece_on(from);
+
+    occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL << ksq);
+    oldAtt = pos.attacks_from(pc, from, occ);
+    newAtt = pos.attacks_from(pc,   to, occ);
+
+    // Rule 1. Checks which give opponent's king at most one escape square are dangerous
+    b = kingAtt & ~pos.pieces_of_color(them) & ~newAtt & ~(1ULL << to);
+
+    if (!(b && (b & (b - 1))))
+        return true;
+
+    // Rule 2. Queen contact check is very dangerous
+    if (   type_of_piece(pc) == QUEEN
+        && bit_is_set(kingAtt, to))
+        return true;
+
+    // Rule 3. Creating new double threats with checks
+    b = pos.pieces_of_color(them) & newAtt & ~oldAtt & ~(1ULL << ksq);
+
+    while (b)
     {
-        if (eval + PawnValueMidgame / 4 > bestValue)
-            bestValue = eval + PawnValueMidgame / 4;
-    }
-    else
-        return false;
-
-    Square from = move_from(move);
-    Square to = move_to(move);
-    Color oppColor = opposite_color(pos.side_to_move());
-    Square oppKing = pos.king_square(oppColor);
-
-    Bitboard occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL <<oppKing);
-    Bitboard oppOcc = pos.pieces_of_color(oppColor) & ~(1ULL <<oppKing);
-    Bitboard oldAtt = attacks(pos.piece_on(from), from, occ);
-    Bitboard newAtt = attacks(pos.piece_on(from),   to, occ);
-
-    // Rule 2. Checks which give opponent's king at most one escape square are dangerous
-    Bitboard escapeBB = attacks(WK, oppKing, 0) & ~oppOcc & ~newAtt & ~(1ULL << to);
-
-    if (!escapeBB)
-        return false;
-
-    if (!(escapeBB & (escapeBB - 1)))
-        return false;
-
-    /// Rule 3. Queen contact check is very dangerous
-    if (   pos.type_of_piece_on(from) == QUEEN
-        && bit_is_set(attacks(WK, oppKing, 0), to))
-        return false;
-
-    /// Rule 4. Creating new double threats with checks
-    Bitboard newVictims = oppOcc & ~oldAtt & newAtt;
-
-    while(newVictims)
-    {
-        Square victimSq = pop_1st_bit(&newVictims);
-
-        Value futilityValue = futilityBase + pos.endgame_value_of_piece_on(victimSq);
+        victimSq = pop_1st_bit(&b);
+        futilityValue = futilityBase + pos.endgame_value_of_piece_on(victimSq);
 
         // Note that here we generate illegal "double move"!
-        if (futilityValue >= beta && pos.see_sign(make_move(from, victimSq)) >= 0)
-            return false;
+        if (   futilityValue >= beta
+            && pos.see_sign(make_move(from, victimSq)) >= 0)
+            return true;
 
-        if (futilityValue > bestValue)
-            bestValue = futilityValue;
+        if (futilityValue > bv)
+            bv = futilityValue;
     }
 
-    *bValue = bestValue;
-    return true;
+    // Update bestValue only if check is not dangerous (because we will prune the move)
+    *bestValue = bv;
+    return false;
   }
 
-  // attacks() returns attacked squares.
-
-  Bitboard attacks(const Piece P, const Square sq, const Bitboard occ)
-  {
-    switch(P)
-    {
-      case WP:
-      case BP:
-      case WN:
-      case BN:
-      case WK:
-      case BK:
-        return StepAttackBB[P][sq];
-      case WB:
-      case BB:
-        return bishop_attacks_bb(sq, occ);
-      case WR:
-      case BR:
-        return rook_attacks_bb(sq, occ);
-      case WQ:
-      case BQ:
-        return bishop_attacks_bb(sq, occ) | rook_attacks_bb(sq, occ);
-      default:
-        assert(false);
-        return 0ULL;
-    }
-  }
 
   // connected_moves() tests whether two moves are 'connected' in the sense
   // that the first move somehow made the second move possible (for instance

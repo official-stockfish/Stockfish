@@ -197,6 +197,7 @@ public:
   // Information about attacks to or from a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attacks_from(Piece p, Square s) const;
+  static Bitboard attacks_from(Piece p, Square s, Bitboard occ);
   template<PieceType> Bitboard attacks_from(Square s) const;
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
 

@@ -521,16 +521,24 @@ Bitboard Position::attacks_from(Piece p, Square s) const {
 
   switch (p)
   {
-  case WP:          return attacks_from<PAWN>(s, WHITE);
-  case BP:          return attacks_from<PAWN>(s, BLACK);
-  case WN: case BN: return attacks_from<KNIGHT>(s);
   case WB: case BB: return attacks_from<BISHOP>(s);
   case WR: case BR: return attacks_from<ROOK>(s);
   case WQ: case BQ: return attacks_from<QUEEN>(s);
-  case WK: case BK: return attacks_from<KING>(s);
-  default: break;
+  default: return StepAttackBB[p][s];
   }
-  return false;
+}
+
+Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
+
+  assert(square_is_ok(s));
+
+  switch (p)
+  {
+  case WB: case BB: return bishop_attacks_bb(s, occ);
+  case WR: case BR: return rook_attacks_bb(s, occ);
+  case WQ: case BQ: return bishop_attacks_bb(s, occ) | rook_attacks_bb(s, occ);
+  default: return StepAttackBB[p][s];
+  }
 }
 
 
