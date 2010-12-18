@@ -31,7 +31,10 @@ enum Depth {
 
   ONE_PLY = 2,
 
-  DEPTH_ZERO = 0,
+  DEPTH_ZERO         =  0 * ONE_PLY,
+  DEPTH_QS_CHECKS    = -1 * ONE_PLY,
+  DEPTH_QS_NO_CHECKS = -2 * ONE_PLY,
+
   DEPTH_NONE = -127 * ONE_PLY
 };
 

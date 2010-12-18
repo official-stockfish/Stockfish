@@ -1468,6 +1468,7 @@ split_point_start: // At split points actual search starts from here
     Value bestValue, value, evalMargin, futilityValue, futilityBase;
     bool isCheck, enoughMaterial, moveIsCheck, evasionPrunable;
     const TTEntry* tte;
+    Depth ttDepth;
     Value oldAlpha = alpha;
 
     ss->bestMove = ss->currentMove = MOVE_NONE;
@@ -1476,21 +1477,18 @@ split_point_start: // At split points actual search starts from here
     if (pos.is_draw() || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
-    // Decide whether or not to include checks
+    // Decide whether or not to include checks, this fixes also the type of
+    // TT entry depth that we are going to use. Note that in qsearch we use
+    // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
     isCheck = pos.is_check();
-
-    Depth d;
-    if (isCheck || depth >= -ONE_PLY)
-        d = DEPTH_ZERO;
-    else
-        d = DEPTH_ZERO - ONE_PLY;
+    ttDepth = (isCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NO_CHECKS);
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (!PvNode && tte && ok_to_use_TT(tte, d, beta, ply))
+    if (!PvNode && tte && ok_to_use_TT(tte, ttDepth, beta, ply))
     {
         ss->bestMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ply);
@@ -1536,9 +1534,9 @@ split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position, and prepare
     // to search the moves. Because the depth is <= 0 here, only captures,
-    // queen promotions and checks (only if depth == 0 or depth == -ONE_PLY
-    // and we are near beta) will be generated.
-    MovePicker mp = MovePicker(pos, ttMove, d, H);
+    // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
+    // be generated.
+    MovePicker mp = MovePicker(pos, ttMove, depth, H);
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1628,7 +1626,7 @@ split_point_start: // At split points actual search starts from here
 
     // Update transposition table
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, d, ss->bestMove, ss->eval, evalMargin);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, ttDepth, ss->bestMove, ss->eval, evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 

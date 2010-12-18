@@ -99,7 +99,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
       phasePtr = MainSearchPhaseTable;
   }
-  else if (d == DEPTH_ZERO)
+  else if (d >= DEPTH_QS_CHECKS)
       phasePtr = QsearchWithChecksPhaseTable;
   else
   {
