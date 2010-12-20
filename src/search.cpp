@@ -828,18 +828,6 @@ namespace {
                             value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 1);
                             doFullDepthSearch = (value > alpha);
                         }
-
-                        // The move failed high, but if reduction is very big we could
-                        // face a false positive, retry with a less aggressive reduction,
-                        // if the move fails high again then go with full depth search.
-                        if (doFullDepthSearch && ss->reduction > 2 * ONE_PLY)
-                        {
-                            assert(newDepth - ONE_PLY >= ONE_PLY);
-
-                            ss->reduction = ONE_PLY;
-                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 1);
-                            doFullDepthSearch = (value > alpha);
-                        }
                         ss->reduction = DEPTH_ZERO; // Restore original reduction
                     }
 
@@ -1345,19 +1333,6 @@ split_point_start: // At split points actual search starts from here
                   Depth d = newDepth - ss->reduction;
                   value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
 
-                  doFullDepthSearch = (value > alpha);
-              }
-
-              // The move failed high, but if reduction is very big we could
-              // face a false positive, retry with a less aggressive reduction,
-              // if the move fails high again then go with full depth search.
-              if (doFullDepthSearch && ss->reduction > 2 * ONE_PLY)
-              {
-                  assert(newDepth - ONE_PLY >= ONE_PLY);
-
-                  ss->reduction = ONE_PLY;
-                  alpha = SpNode ? sp->alpha : alpha;
-                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, ply+1);
                   doFullDepthSearch = (value > alpha);
               }
               ss->reduction = DEPTH_ZERO; // Restore original reduction
