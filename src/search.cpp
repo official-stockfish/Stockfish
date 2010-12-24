@@ -993,7 +993,8 @@ namespace {
         threatMove = sp->threatMove;
         mateThreat = sp->mateThreat;
         goto split_point_start;
-    } else {} // Hack to fix icc's "statement is unreachable" warning
+    }
+    else {} // Hack to fix icc's "statement is unreachable" warning
 
     // Step 1. Initialize node and poll. Polling can abort search
     ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
@@ -1145,6 +1146,7 @@ namespace {
             threatMove = (ss+1)->bestMove;
             if (   depth < ThreatDepth
                 && (ss-1)->reduction
+                && threatMove != MOVE_NONE
                 && connected_moves(pos, (ss-1)->currentMove, threatMove))
                 return beta - 1;
         }
@@ -1284,7 +1286,7 @@ split_point_start: // At split points actual search starts from here
               continue;
           }
 
-          // Prune neg. see moves at low depths
+          // Prune moves with negative SEE at low depths
           if (   predictedDepth < 2 * ONE_PLY
               && bestValue > value_mated_in(PLY_MAX)
               && pos.see_sign(move) < 0)
@@ -1301,7 +1303,7 @@ split_point_start: // At split points actual search starts from here
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
-      if (!SpNode && PvNode && moveCount == 1)
+      if (PvNode && moveCount == 1)
           value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
       else
       {
@@ -1313,9 +1315,11 @@ split_point_start: // At split points actual search starts from here
               && !captureOrPromotion
               && !dangerous
               && !move_is_castle(move)
-              && !(ss->killers[0] == move || ss->killers[1] == move))
+              &&  ss->killers[0] != move
+              &&  ss->killers[1] != move)
           {
               ss->reduction = reduction<PvNode>(depth, moveCount);
+
               if (ss->reduction)
               {
                   alpha = SpNode ? sp->alpha : alpha;
@@ -1702,11 +1706,8 @@ split_point_start: // At split points actual search starts from here
     Square f1, t1, f2, t2;
     Piece p;
 
-    assert(move_is_ok(m1));
-    assert(move_is_ok(m2));
-
-    if (m2 == MOVE_NONE)
-        return false;
+    assert(m1 && move_is_ok(m1));
+    assert(m2 && move_is_ok(m2));
 
     // Case 1: The moving piece is the same in both moves
     f2 = move_from(m2);

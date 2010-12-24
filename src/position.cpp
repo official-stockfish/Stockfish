@@ -101,20 +101,23 @@ namespace {
       operator[]('B') = WB; operator[]('b') = BB;
       operator[]('N') = WN; operator[]('n') = BN;
       operator[]('P') = WP; operator[]('p') = BP;
-      operator[](' ') = PIECE_NONE; operator[]('.') = PIECE_NONE_DARK_SQ;
+      operator[](' ') = PIECE_NONE;
+      operator[]('.') = PIECE_NONE_DARK_SQ;
     }
 
     char from_piece(Piece p) const {
 
-        std::map<char, Piece>::const_iterator it;
-        for (it = begin(); it != end(); ++it)
-            if (it->second == p)
-                return it->first;
+      std::map<char, Piece>::const_iterator it;
+      for (it = begin(); it != end(); ++it)
+          if (it->second == p)
+              return it->first;
 
-        assert(false);
-        return 0;
+      assert(false);
+      return 0;
     }
-  } pieceLetters;
+  };
+
+  PieceLetters pieceLetters;
 }
 
 
