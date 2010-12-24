@@ -1380,15 +1380,15 @@ split_point_start: // At split points actual search starts from here
 
           if (value > alpha)
           {
-              if (SpNode && (!PvNode || value >= beta))
-                  sp->stopRequest = true;
-
               if (PvNode && value < beta) // We want always alpha < beta
               {
                   alpha = value;
+
                   if (SpNode)
                       sp->alpha = value;
               }
+              else if (SpNode)
+                  sp->stopRequest = true;
 
               if (value == value_mate_in(ply + 1))
                   ss->mateKiller = move;
