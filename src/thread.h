@@ -69,7 +69,7 @@ struct SplitPoint {
   volatile Value alpha;
   volatile Value bestValue;
   volatile int moveCount;
-  volatile bool stopRequest;
+  volatile bool betaCutoff;
   volatile int slaves[MAX_THREADS];
 };
 

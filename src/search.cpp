@@ -84,7 +84,7 @@ namespace {
     void read_uci_options();
     bool available_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
-    bool thread_should_stop(int threadID) const;
+    bool cutoff_at_splitpoint(int threadID) const;
     void wake_sleeping_thread(int threadID);
     void idle_loop(int threadID, SplitPoint* sp);
 
@@ -1007,8 +1007,10 @@ namespace {
     }
 
     // Step 2. Check for aborted search and immediate draw
-    if (   AbortSearch   || ThreadsMgr.thread_should_stop(threadID)
-        || pos.is_draw() || ply >= PLY_MAX - 1)
+    if (   AbortSearch
+        || ThreadsMgr.cutoff_at_splitpoint(threadID)
+        || pos.is_draw()
+        || ply >= PLY_MAX - 1)
         return VALUE_DRAW;
 
     // Step 3. Mate distance pruning
@@ -1198,7 +1200,7 @@ split_point_start: // At split points actual search starts from here
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
-           && !ThreadsMgr.thread_should_stop(threadID))
+           && !ThreadsMgr.cutoff_at_splitpoint(threadID))
     {
       assert(move_is_ok(move));
 
@@ -1371,7 +1373,7 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      if (value > bestValue && !(SpNode && ThreadsMgr.thread_should_stop(threadID)))
+      if (value > bestValue && !(SpNode && ThreadsMgr.cutoff_at_splitpoint(threadID)))
       {
           bestValue = value;
 
@@ -1388,7 +1390,7 @@ split_point_start: // At split points actual search starts from here
                       sp->alpha = value;
               }
               else if (SpNode)
-                  sp->stopRequest = true;
+                  sp->betaCutoff = true;
 
               if (value == value_mate_in(ply + 1))
                   ss->mateKiller = move;
@@ -1407,7 +1409,7 @@ split_point_start: // At split points actual search starts from here
           && bestValue < beta
           && ThreadsMgr.available_thread_exists(threadID)
           && !AbortSearch
-          && !ThreadsMgr.thread_should_stop(threadID)
+          && !ThreadsMgr.cutoff_at_splitpoint(threadID)
           && Iteration <= 99)
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
                                       threatMove, mateThreat, moveCount, &mp, PvNode);
@@ -1423,7 +1425,7 @@ split_point_start: // At split points actual search starts from here
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (!SpNode && !AbortSearch && !ThreadsMgr.thread_should_stop(threadID))
+    if (!SpNode && !AbortSearch && !ThreadsMgr.cutoff_at_splitpoint(threadID))
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
         vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
@@ -2466,17 +2468,17 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // thread_should_stop() checks whether the thread should stop its search.
-  // This can happen if a beta cutoff has occurred in the thread's currently
-  // active split point, or in some ancestor of the current split point.
+  // cutoff_at_splitpoint() checks whether a beta cutoff has occurred in
+  // the thread's currently active split point, or in some ancestor of
+  // the current split point.
 
-  bool ThreadsManager::thread_should_stop(int threadID) const {
+  bool ThreadsManager::cutoff_at_splitpoint(int threadID) const {
 
     assert(threadID >= 0 && threadID < activeThreads);
 
     SplitPoint* sp = threads[threadID].splitPoint;
 
-    for ( ; sp && !sp->stopRequest; sp = sp->parent) {}
+    for ( ; sp && !sp->betaCutoff; sp = sp->parent) {}
     return sp != NULL;
   }
 
@@ -2575,7 +2577,7 @@ split_point_start: // At split points actual search starts from here
     // Initialize the split point object
     splitPoint.parent = masterThread.splitPoint;
     splitPoint.master = master;
-    splitPoint.stopRequest = false;
+    splitPoint.betaCutoff = false;
     splitPoint.ply = ply;
     splitPoint.depth = depth;
     splitPoint.threatMove = threatMove;
