@@ -28,8 +28,7 @@
 #include <string>
 #include <sstream>
 
-#include "history.h"
-#include "movepick.h"
+#include "movegen.h"
 #include "san.h"
 
 using std::string;
@@ -41,13 +40,8 @@ using std::string;
 namespace {
 
   enum Ambiguity {
-    AMBIGUITY_NONE,
-    AMBIGUITY_FILE,
-    AMBIGUITY_RANK,
-    AMBIGUITY_BOTH
+    AMBIGUITY_NONE, AMBIGUITY_FILE, AMBIGUITY_RANK, AMBIGUITY_BOTH
   };
-
-  const History H; // Used as dummy argument for MovePicker c'tor
 
   Ambiguity move_ambiguity(const Position& pos, Move m);
   const string time_string(int milliseconds);
@@ -71,13 +65,15 @@ const string move_to_san(Position& pos, Move m) {
   string san;
   Square from = move_from(m);
   Square to = move_to(m);
-  PieceType pt = type_of_piece(pos.piece_on(move_from(m)));
+  PieceType pt = type_of_piece(pos.piece_on(from));
 
   if (m == MOVE_NONE)
       return "(none)";
-  else if (m == MOVE_NULL)
+
+  if (m == MOVE_NULL)
       return "(null)";
-  else if (move_is_long_castle(m)  || (int(to - from) == -2 && pt == KING))
+
+  if (move_is_long_castle(m)  || (int(to - from) == -2 && pt == KING))
       san = "O-O-O";
   else if (move_is_short_castle(m) || (int(to - from) ==  2 && pt == KING))
       san = "O-O";
@@ -103,16 +99,19 @@ const string move_to_san(Position& pos, Move m) {
             assert(false);
           }
       }
+
       if (pos.move_is_capture(m))
       {
           if (pt == PAWN)
-              san += file_to_char(square_file(move_from(m)));
-          san += "x";
+              san += file_to_char(square_file(from));
+
+          san += 'x';
       }
-      san += square_to_string(move_to(m));
+      san += square_to_string(to);
+
       if (move_is_promotion(m))
       {
-          san += "=";
+          san += '=';
           san += piece_type_to_char(move_promotion_piece(m));
       }
   }
@@ -138,41 +137,43 @@ Move move_from_san(const Position& pos, const string& movestr) {
 
   assert(pos.is_ok());
 
-  MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
-  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+  enum { START, TO_FILE, TO_RANK, PROMOTION_OR_CHECK, PROMOTION, CHECK, END };
+  static const string pieceLetters = "KQRBN";
+
+  MoveStack mlist[MOVES_MAX], *last;
+  PieceType pt = PIECE_TYPE_NONE, promotion = PIECE_TYPE_NONE;
+  File fromFile = FILE_NONE, toFile = FILE_NONE;
+  Rank fromRank = RANK_NONE, toRank = RANK_NONE;
+  Move move = MOVE_NONE;
+  Square from, to;
+  int matches, state = START;
+
+  // Generate all legal moves for the given position
+  last = generate_moves(pos, mlist);
 
   // Castling moves
   if (movestr == "O-O-O" || movestr == "O-O-O+")
   {
-      Move m;
-      while ((m = mp.get_next_move()) != MOVE_NONE)
-          if (move_is_long_castle(m) && pos.pl_move_is_legal(m, pinned))
-              return m;
+     for (MoveStack* cur = mlist; cur != last; cur++)
+          if (move_is_long_castle(cur->move))
+              return cur->move;
 
       return MOVE_NONE;
   }
   else if (movestr == "O-O" || movestr == "O-O+")
   {
-      Move m;
-      while ((m = mp.get_next_move()) != MOVE_NONE)
-          if (move_is_short_castle(m) && pos.pl_move_is_legal(m, pinned))
-              return m;
+      for (MoveStack* cur = mlist; cur != last; cur++)
+           if (move_is_short_castle(cur->move))
+               return cur->move;
 
     return MOVE_NONE;
   }
 
-  // Normal moves. We use a simple FSM to parse the san string.
-  enum { START, TO_FILE, TO_RANK, PROMOTION_OR_CHECK, PROMOTION, CHECK, END };
-  static const string pieceLetters = "KQRBN";
-  PieceType pt = PIECE_TYPE_NONE, promotion = PIECE_TYPE_NONE;
-  File fromFile = FILE_NONE, toFile = FILE_NONE;
-  Rank fromRank = RANK_NONE, toRank = RANK_NONE;
-  Square to;
-  int state = START;
-
+  // Normal moves. We use a simple FSM to parse the san string
   for (size_t i = 0; i < movestr.length(); i++)
   {
       char type, c = movestr[i];
+
       if (pieceLetters.find(c) != string::npos)
           type = 'P';
       else if (c >= 'a' && c <= 'h')
@@ -192,7 +193,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
           else if (state == PROMOTION)
           {
               promotion = piece_type_from_char(c);
-              state = (i < movestr.length() - 1) ? CHECK : END;
+              state = (i < movestr.length() - 1 ? CHECK : END);
           }
           else
               return MOVE_NONE;
@@ -232,7 +233,8 @@ Move move_from_san(const Position& pos, const string& movestr) {
           else
               return MOVE_NONE;
           break;
-      case 'x': case 'X':
+      case 'x':
+      case 'X':
           if (state == TO_RANK)
           {
               // Previous file was for disambiguation, or it's a pawn capture
@@ -248,7 +250,8 @@ Move move_from_san(const Position& pos, const string& movestr) {
           else
               return MOVE_NONE;
           break;
-      case '+': case '#':
+      case '+':
+      case '#':
           if (state == PROMOTION_OR_CHECK || state == CHECK)
               state = END;
           else
@@ -263,22 +266,25 @@ Move move_from_san(const Position& pos, const string& movestr) {
   if (state != END)
       return MOVE_NONE;
 
-  // Look for a matching move
-  Move m, move = MOVE_NONE;
+  // Look for an unambiguous matching move
   to = make_square(toFile, toRank);
-  int matches = 0;
+  matches = 0;
 
-  while ((m = mp.get_next_move()) != MOVE_NONE)
-      if (   pos.type_of_piece_on(move_from(m)) == pt
-          && move_to(m) == to
-          && move_promotion_piece(m) == promotion
-          && (fromFile == FILE_NONE || fromFile == square_file(move_from(m)))
-          && (fromRank == RANK_NONE || fromRank == square_rank(move_from(m))))
+  for (MoveStack* cur = mlist; cur != last; cur++)
+  {
+      from = move_from(cur->move);
+
+      if (   pos.type_of_piece_on(from) == pt
+          && move_to(cur->move) == to
+          && move_promotion_piece(cur->move) == promotion
+          && (fromFile == FILE_NONE || fromFile == square_file(from))
+          && (fromRank == RANK_NONE || fromRank == square_rank(from)))
       {
-          move = m;
+          move = cur->move;
           matches++;
       }
-  return (matches == 1 ? move : MOVE_NONE);
+  }
+  return matches == 1 ? move : MOVE_NONE;
 }
 
 
@@ -359,43 +365,36 @@ namespace {
 
   Ambiguity move_ambiguity(const Position& pos, Move m) {
 
+    MoveStack mlist[MOVES_MAX], *last;
+    Move candidates[8];
     Square from = move_from(m);
     Square to = move_to(m);
     Piece pc = pos.piece_on(from);
+    int matches = 0, f = 0, r = 0;
 
-    // King moves are never ambiguous, because there is never two kings of
-    // the same color.
-    if (type_of_piece(pc) == KING)
+    // If there is only one piece 'pc' then move cannot be ambiguous
+    if (pos.piece_count(pos.side_to_move(), type_of_piece(pc)) == 1)
         return AMBIGUITY_NONE;
 
-    MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
-    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
-    Move mv, moveList[8];
+    // Collect all legal moves of piece 'pc' with destination 'to'
+    last = generate_moves(pos, mlist);
+    for (MoveStack* cur = mlist; cur != last; cur++)
+        if (move_to(cur->move) == to && pos.piece_on(move_from(cur->move)) == pc)
+            candidates[matches++] = cur->move;
 
-    int n = 0;
-    while ((mv = mp.get_next_move()) != MOVE_NONE)
-        if (move_to(mv) == to && pos.piece_on(move_from(mv)) == pc && pos.pl_move_is_legal(mv, pinned))
-            moveList[n++] = mv;
-
-    if (n == 1)
+    if (matches == 1)
         return AMBIGUITY_NONE;
 
-    int f = 0, r = 0;
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < matches; i++)
     {
-        if (square_file(move_from(moveList[i])) == square_file(from))
+        if (square_file(move_from(candidates[i])) == square_file(from))
             f++;
 
-        if (square_rank(move_from(moveList[i])) == square_rank(from))
+        if (square_rank(move_from(candidates[i])) == square_rank(from))
             r++;
     }
-    if (f == 1)
-        return AMBIGUITY_FILE;
 
-    if (r == 1)
-        return AMBIGUITY_RANK;
-
-    return AMBIGUITY_BOTH;
+    return f == 1 ? AMBIGUITY_FILE : r == 1 ? AMBIGUITY_RANK : AMBIGUITY_BOTH;
   }
 
 

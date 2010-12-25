@@ -659,7 +659,7 @@ namespace {
 
     Color us = pos.side_to_move();
 
-    if (  (Side == KING_SIDE && pos.can_castle_kingside(us))
+    if (  (Side == KING_SIDE  && pos.can_castle_kingside(us))
         ||(Side == QUEEN_SIDE && pos.can_castle_queenside(us)))
     {
         Color them = opposite_color(us);
