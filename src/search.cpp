@@ -1542,7 +1542,7 @@ split_point_start: // At split points actual search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp = MovePicker(pos, ttMove, depth, H);
+    MovePicker mp(pos, ttMove, depth, H);
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -2711,7 +2711,7 @@ split_point_start: // At split points actual search starts from here
   {
       Move move;
       int score = 1000;
-      MovePicker mp = MovePicker(pos, MOVE_NONE, ONE_PLY, H);
+      MovePicker mp(pos, MOVE_NONE, ONE_PLY, H);
 
       while ((move = mp.get_next_move()) != MOVE_NONE)
           for (int i = 0; i < count; i++)
