@@ -236,6 +236,7 @@ Bitboard RookPseudoAttacks[64];
 Bitboard QueenPseudoAttacks[64];
 
 uint8_t BitCount8Bit[256];
+int8_t  DirectionTable[64][64];
 
 
 ////
@@ -244,6 +245,8 @@ uint8_t BitCount8Bit[256];
 
 namespace {
 
+  SquareDelta get_direction(Square orig, Square dest);
+  void init_direction_table();
   void init_masks();
   void init_attacks();
   void init_between_bitboards();
@@ -285,6 +288,7 @@ void init_bitboards() {
   int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
   int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
 
+  init_direction_table();
   init_masks();
   init_attacks();
   init_between_bitboards();
@@ -379,6 +383,36 @@ namespace {
   // program initialization.  Some of the functions may be difficult to
   // understand, but they all seem to work correctly, and it should never
   // be necessary to touch any of them.
+
+  SquareDelta get_direction(Square orig, Square dest) {
+
+    const SquareDelta directions[] = {
+        DELTA_E, DELTA_N, DELTA_NE, DELTA_NW, DELTA_W, DELTA_S, DELTA_SW, DELTA_SE
+    };
+
+    for (int idx = 0; idx < 8; idx++)
+    {
+        Square from = orig;
+        Square to = from + directions[idx];
+
+        while (to != dest && square_distance(to, from) == 1 && square_is_ok(to))
+        {
+            from = to;
+            to += directions[idx];
+        }
+
+        if (to == dest && square_distance(from, to) == 1)
+            return directions[idx];
+    }
+    return DELTA_NONE;
+  }
+
+  void init_direction_table() {
+
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
+        for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+            DirectionTable[s1][s2] = uint8_t(get_direction(s1, s2));
+  }
 
   void init_masks() {
 

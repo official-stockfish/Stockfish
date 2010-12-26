@@ -90,6 +90,7 @@ extern Bitboard RookPseudoAttacks[64];
 extern Bitboard QueenPseudoAttacks[64];
 
 extern uint8_t BitCount8Bit[256];
+extern int8_t DirectionTable[64][64];
 
 
 ////
@@ -294,6 +295,24 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 
 inline Bitboard attack_span_mask(Color c, Square s) {
   return AttackSpanMask[c][s];
+}
+
+
+/// squares_aligned returns true if the squares s1, s2 and s3 are aligned
+/// either on a straight or on a diagonal line.
+
+inline bool squares_aligned(Square s1, Square s2, Square s3) {
+  return   DirectionTable[s1][s2] != DELTA_NONE
+        && abs(DirectionTable[s1][s2]) ==  abs(DirectionTable[s2][s3]);
+}
+
+
+/// squares_straight_aligned returns true if the squares s1 and s2 are aligned
+/// on a straight line, either veritical or horizontal.
+
+inline bool squares_straight_aligned(Square s1, Square s2) {
+  return   abs(DirectionTable[s1][s2]) == DELTA_N
+        || abs(DirectionTable[s1][s2]) == DELTA_E;
 }
 
 

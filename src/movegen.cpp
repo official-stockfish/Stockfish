@@ -244,7 +244,7 @@ MoveStack* generate_evasions(const Position& pos, MoveStack* mlist) {
       case QUEEN:
           // In case of a queen remove also squares attacked in the other direction to
           // avoid possible illegal moves when queen and king are on adjacent squares.
-          if (direction_is_straight(checksq, ksq))
+          if (squares_straight_aligned(checksq, ksq))
               sliderAttacks |= RookPseudoAttacks[checksq] | pos.attacks_from<BISHOP>(checksq);
           else
               sliderAttacks |= BishopPseudoAttacks[checksq] | pos.attacks_from<ROOK>(checksq);

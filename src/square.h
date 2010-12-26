@@ -81,9 +81,6 @@ ENABLE_OPERATORS_ON(SquareDelta);
 const int FlipMask = 56;
 const int FlopMask =  7;
 
-extern int8_t DirectionTable[64][64];
-
-
 ////
 //// Inline functions
 ////
@@ -182,21 +179,5 @@ inline bool rank_is_ok(Rank r) {
 inline bool square_is_ok(Square s) {
   return file_is_ok(square_file(s)) && rank_is_ok(square_rank(s));
 }
-
-inline bool squares_aligned(Square s1, Square s2, Square s3) {
-  return   DirectionTable[s1][s2] != DELTA_NONE
-        && abs(DirectionTable[s1][s2]) ==  abs(DirectionTable[s2][s3]);
-}
-
-inline bool direction_is_straight(Square s1, Square s2) {
-  return   abs(DirectionTable[s1][s2]) == DELTA_N
-        || abs(DirectionTable[s1][s2]) == DELTA_E;
-}
-
-////
-//// Prototypes
-////
-
-extern void init_direction_table();
 
 #endif // !defined(SQUARE_H_INCLUDED)

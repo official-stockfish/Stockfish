@@ -59,7 +59,6 @@ int main(int argc, char* argv[]) {
   cin.rdbuf()->pubsetbuf(NULL, 0);
 
   // Startup initializations
-  init_direction_table();
   init_bitboards();
   init_uci_options();
   Position::init_zobrist();
