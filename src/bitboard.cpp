@@ -455,25 +455,19 @@ namespace {
 
   void init_between_bitboards() {
 
-    const SquareDelta directionToDelta[] = {
-        DELTA_E, DELTA_N, DELTA_NE, DELTA_NW, DELTA_W, DELTA_S, DELTA_SW, DELTA_SE
-    };
-
     Square s1, s2, s3;
-    Direction d;
+    SquareDelta d;
 
     for (s1 = SQ_A1; s1 <= SQ_H8; s1++)
         for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
         {
             BetweenBB[s1][s2] = EmptyBoardBB;
-            d = direction_between_squares(s1, s2);
+            d = SquareDelta(DirectionTable[s1][s2]);
 
-            if (d == DIR_NONE)
+            if (d == DELTA_NONE)
                 continue;
 
-            SquareDelta sd = directionToDelta[s2 > s1 ? d : d + 4];
-
-            for (s3 = s1 + sd; s3 != s2; s3 += sd)
+            for (s3 = s1 + d; s3 != s2; s3 += d)
                 set_bit(&(BetweenBB[s1][s2]), s3);
       }
   }

@@ -58,26 +58,20 @@ enum Rank {
 
 enum SquareDelta {
 
-  DELTA_N = 8, DELTA_E = 1, DELTA_S = -8, DELTA_W = -1,
+  DELTA_N = 8, DELTA_E = 1, DELTA_S = -8, DELTA_W = -1, DELTA_NONE = 0,
 
   DELTA_NN = DELTA_N + DELTA_N,
   DELTA_NE = DELTA_N + DELTA_E,
   DELTA_SE = DELTA_S + DELTA_E,
   DELTA_SS = DELTA_S + DELTA_S,
   DELTA_SW = DELTA_S + DELTA_W,
-  DELTA_NW = DELTA_N + DELTA_W,
+  DELTA_NW = DELTA_N + DELTA_W
 };
-
-enum Direction {
-  DIR_E = 0, DIR_N = 1, DIR_NE = 2, DIR_NW = 3, DIR_NONE = 4
-};
-
 
 ENABLE_OPERATORS_ON(Square);
 ENABLE_OPERATORS_ON(File);
 ENABLE_OPERATORS_ON(Rank);
 ENABLE_OPERATORS_ON(SquareDelta);
-ENABLE_OPERATORS_ON(Direction);
 
 
 ////
@@ -87,7 +81,7 @@ ENABLE_OPERATORS_ON(Direction);
 const int FlipMask = 56;
 const int FlopMask =  7;
 
-extern uint8_t DirectionTable[64][64];
+extern int8_t DirectionTable[64][64];
 
 
 ////
@@ -189,16 +183,14 @@ inline bool square_is_ok(Square s) {
   return file_is_ok(square_file(s)) && rank_is_ok(square_rank(s));
 }
 
-inline Direction direction_between_squares(Square s1, Square s2) {
-  return Direction(DirectionTable[s1][s2]);
-}
-
-inline int direction_is_diagonal(Square s1, Square s2) {
-  return DirectionTable[s1][s2] & 2;
+inline bool squares_aligned(Square s1, Square s2, Square s3) {
+  return   DirectionTable[s1][s2] != DELTA_NONE
+        && abs(DirectionTable[s1][s2]) ==  abs(DirectionTable[s2][s3]);
 }
 
 inline bool direction_is_straight(Square s1, Square s2) {
-  return DirectionTable[s1][s2] < 2;
+  return   abs(DirectionTable[s1][s2]) == DELTA_N
+        || abs(DirectionTable[s1][s2]) == DELTA_E;
 }
 
 ////

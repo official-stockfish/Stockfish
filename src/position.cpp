@@ -638,9 +638,9 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return (   !pinned
-          || !bit_is_set(pinned, from)
-          || (direction_between_squares(from, king_square(us)) == direction_between_squares(move_to(m), king_square(us))));
+  return   !pinned
+        || !bit_is_set(pinned, from)
+        ||  squares_aligned(from, move_to(m), king_square(us));
 }
 
 
@@ -698,7 +698,7 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
   {
       // For pawn and king moves we need to verify also direction
       if (  (pt != PAWN && pt != KING)
-          ||(direction_between_squares(from, ci.ksq) != direction_between_squares(to, ci.ksq)))
+          || !squares_aligned(from, to, ci.ksq))
           return true;
   }
 
