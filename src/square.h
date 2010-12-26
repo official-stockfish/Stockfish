@@ -68,10 +68,23 @@ enum SquareDelta {
   DELTA_NW = DELTA_N + DELTA_W,
 };
 
+enum Direction {
+  DIR_E = 0, DIR_N = 1, DIR_NE = 2, DIR_NW = 3, DIR_NONE = 4
+};
+
+enum SignedDirection {
+  SIGNED_DIR_E  = 0, SIGNED_DIR_W  = 1,
+  SIGNED_DIR_N  = 2, SIGNED_DIR_S  = 3,
+  SIGNED_DIR_NE = 4, SIGNED_DIR_SW = 5,
+  SIGNED_DIR_NW = 6, SIGNED_DIR_SE = 7,
+  SIGNED_DIR_NONE = 8
+};
+
 ENABLE_OPERATORS_ON(Square);
 ENABLE_OPERATORS_ON(File);
 ENABLE_OPERATORS_ON(Rank);
 ENABLE_OPERATORS_ON(SquareDelta);
+ENABLE_OPERATORS_ON(SignedDirection);
 
 
 ////
@@ -80,6 +93,9 @@ ENABLE_OPERATORS_ON(SquareDelta);
 
 const int FlipMask = 56;
 const int FlopMask =  7;
+
+extern uint8_t DirectionTable[64][64];
+extern uint8_t SignedDirectionTable[64][64];
 
 
 ////
@@ -180,5 +196,23 @@ inline bool rank_is_ok(Rank r) {
 inline bool square_is_ok(Square s) {
   return file_is_ok(square_file(s)) && rank_is_ok(square_rank(s));
 }
+
+inline Direction direction_between_squares(Square s1, Square s2) {
+  return Direction(DirectionTable[s1][s2]);
+}
+
+inline int direction_is_diagonal(Square s1, Square s2) {
+  return DirectionTable[s1][s2] & 2;
+}
+
+inline bool direction_is_straight(Square s1, Square s2) {
+  return DirectionTable[s1][s2] < 2;
+}
+
+////
+//// Prototypes
+////
+
+extern void init_direction_table();
 
 #endif // !defined(SQUARE_H_INCLUDED)

@@ -22,7 +22,6 @@
 //// Includes
 ////
 
-#include "direction.h"
 #include "square.h"
 
 

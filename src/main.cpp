@@ -30,7 +30,6 @@
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "direction.h"
 #include "endgame.h"
 #include "evaluate.h"
 #include "material.h"

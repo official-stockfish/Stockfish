@@ -27,7 +27,6 @@
 
 #include "bitboard.h"
 #include "color.h"
-#include "direction.h"
 #include "move.h"
 #include "piece.h"
 #include "square.h"

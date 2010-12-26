@@ -26,7 +26,6 @@
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "direction.h"
 
 
 #if defined(IS_64BIT)
@@ -481,7 +480,7 @@ namespace {
         for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
         {
             BetweenBB[s1][s2] = EmptyBoardBB;
-            SignedDirection d = signed_direction_between_squares(s1, s2);
+            SignedDirection d = SignedDirection(SignedDirectionTable[s1][s2]);
 
             if (d != SIGNED_DIR_NONE)
             {
