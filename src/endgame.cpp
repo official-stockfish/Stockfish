@@ -699,11 +699,12 @@ ScaleFactor ScalingFunction<KBPKB>::apply(const Position& pos) const {
           return SCALE_FACTOR_ZERO;
       else
       {
-          Bitboard ray = ray_bb(pawnSq, (strongerSide == WHITE)? SIGNED_DIR_N : SIGNED_DIR_S);
-          if (ray & pos.pieces(KING, weakerSide))
+          Bitboard path = squares_in_front_of(strongerSide, pawnSq);
+
+          if (path & pos.pieces(KING, weakerSide))
               return SCALE_FACTOR_ZERO;
 
-          if (  (pos.attacks_from<BISHOP>(weakerBishopSq) & ray)
+          if (  (pos.attacks_from<BISHOP>(weakerBishopSq) & path)
               && square_distance(weakerBishopSq, pawnSq) >= 3)
               return SCALE_FACTOR_ZERO;
       }

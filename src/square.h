@@ -72,19 +72,12 @@ enum Direction {
   DIR_E = 0, DIR_N = 1, DIR_NE = 2, DIR_NW = 3, DIR_NONE = 4
 };
 
-enum SignedDirection {
-  SIGNED_DIR_E  = 0, SIGNED_DIR_W  = 1,
-  SIGNED_DIR_N  = 2, SIGNED_DIR_S  = 3,
-  SIGNED_DIR_NE = 4, SIGNED_DIR_SW = 5,
-  SIGNED_DIR_NW = 6, SIGNED_DIR_SE = 7,
-  SIGNED_DIR_NONE = 8
-};
 
 ENABLE_OPERATORS_ON(Square);
 ENABLE_OPERATORS_ON(File);
 ENABLE_OPERATORS_ON(Rank);
 ENABLE_OPERATORS_ON(SquareDelta);
-ENABLE_OPERATORS_ON(SignedDirection);
+ENABLE_OPERATORS_ON(Direction);
 
 
 ////
@@ -95,7 +88,6 @@ const int FlipMask = 56;
 const int FlopMask =  7;
 
 extern uint8_t DirectionTable[64][64];
-extern uint8_t SignedDirectionTable[64][64];
 
 
 ////

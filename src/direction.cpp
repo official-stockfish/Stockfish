@@ -24,44 +24,26 @@
 
 #include "square.h"
 
+uint8_t DirectionTable[64][64];
 
-////
-//// Local definitions
-////
 
-namespace {
+static bool reachable(Square orig, Square dest, Direction d) {
 
   const SquareDelta directionToDelta[] = {
-      DELTA_E, DELTA_W, DELTA_N, DELTA_S, DELTA_NE, DELTA_SW, DELTA_NW, DELTA_SE
+      DELTA_E, DELTA_N, DELTA_NE, DELTA_NW, DELTA_W, DELTA_S, DELTA_SW, DELTA_SE
   };
 
-  bool reachable(Square orig, Square dest, SignedDirection dir) {
+  SquareDelta delta = directionToDelta[dest > orig ? d : d + 4];
+  Square from = orig;
+  Square to = from + delta;
 
-    SquareDelta delta = directionToDelta[dir];
-    Square from = orig;
-    Square to = from + delta;
-    while (to != dest && square_distance(to, from) == 1 && square_is_ok(to))
-    {
-        from = to;
-        to += delta;
-    }
-    return (to == dest && square_distance(from, to) == 1);
+  while (to != dest && square_distance(to, from) == 1 && square_is_ok(to))
+  {
+      from = to;
+      to += delta;
   }
-
+  return to == dest && square_distance(from, to) == 1;
 }
-
-
-////
-//// Variables
-////
-
-uint8_t DirectionTable[64][64];
-uint8_t SignedDirectionTable[64][64];
-
-
-////
-//// Functions
-////
 
 void init_direction_table() {
 
@@ -69,16 +51,15 @@ void init_direction_table() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
       {
           DirectionTable[s1][s2] = uint8_t(DIR_NONE);
-          SignedDirectionTable[s1][s2] = uint8_t(SIGNED_DIR_NONE);
+
           if (s1 == s2)
               continue;
 
-          for (SignedDirection d = SIGNED_DIR_E; d != SIGNED_DIR_NONE; d++)
+          for (Direction d = DIR_E; d != DIR_NONE; d++)
           {
               if (reachable(s1, s2, d))
               {
-                  SignedDirectionTable[s1][s2] = uint8_t(d);
-                  DirectionTable[s1][s2] = uint8_t(d / 2);
+                  DirectionTable[s1][s2] = uint8_t(d);
                   break;
               }
           }

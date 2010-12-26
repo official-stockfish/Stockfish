@@ -225,7 +225,6 @@ Bitboard SetMaskBB[65];
 Bitboard ClearMaskBB[65];
 
 Bitboard StepAttackBB[16][64];
-Bitboard RayBB[64][8];
 Bitboard BetweenBB[64][64];
 
 Bitboard SquaresInFrontMask[2][64];
@@ -246,7 +245,6 @@ uint8_t BitCount8Bit[256];
 namespace {
 
   void init_masks();
-  void init_ray_bitboards();
   void init_attacks();
   void init_between_bitboards();
   void init_pseudo_attacks();
@@ -288,7 +286,6 @@ void init_bitboards() {
   int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
 
   init_masks();
-  init_ray_bitboards();
   init_attacks();
   init_between_bitboards();
   init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
@@ -406,21 +403,6 @@ namespace {
         BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
   }
 
-  int remove_bit_8(int i) { return ((i & ~15) >> 1) | (i & 7); }
-
-  void init_ray_bitboards() {
-
-    int d[8] = {1, -1, 16, -16, 17, -17, 15, -15};
-
-    for (int i = 0; i < 128; i = (i + 9) & ~8)
-        for (int j = 0; j < 8; j++)
-        {
-            RayBB[remove_bit_8(i)][j] = EmptyBoardBB;
-            for (int k = i + d[j]; (k & 0x88) == 0; k += d[j])
-                set_bit(&(RayBB[remove_bit_8(i)][j]), Square(remove_bit_8(k)));
-        }
-  }
-
   void init_attacks() {
 
     const int step[16][8] =  {
@@ -473,20 +455,26 @@ namespace {
 
   void init_between_bitboards() {
 
-    const SquareDelta step[8] = { DELTA_E, DELTA_W, DELTA_N, DELTA_S,
-                                  DELTA_NE, DELTA_SW, DELTA_NW, DELTA_SE };
+    const SquareDelta directionToDelta[] = {
+        DELTA_E, DELTA_N, DELTA_NE, DELTA_NW, DELTA_W, DELTA_S, DELTA_SW, DELTA_SE
+    };
 
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-        for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+    Square s1, s2, s3;
+    Direction d;
+
+    for (s1 = SQ_A1; s1 <= SQ_H8; s1++)
+        for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
         {
             BetweenBB[s1][s2] = EmptyBoardBB;
-            SignedDirection d = SignedDirection(SignedDirectionTable[s1][s2]);
+            d = direction_between_squares(s1, s2);
 
-            if (d != SIGNED_DIR_NONE)
-            {
-                for (Square s3 = s1 + step[d]; s3 != s2; s3 += step[d])
-                    set_bit(&(BetweenBB[s1][s2]), s3);
-            }
+            if (d == DIR_NONE)
+                continue;
+
+            SquareDelta sd = directionToDelta[s2 > s1 ? d : d + 4];
+
+            for (s3 = s1 + sd; s3 != s2; s3 += sd)
+                set_bit(&(BetweenBB[s1][s2]), s3);
       }
   }
 

@@ -67,7 +67,6 @@ extern Bitboard SetMaskBB[65];
 extern Bitboard ClearMaskBB[65];
 
 extern Bitboard StepAttackBB[16][64];
-extern Bitboard RayBB[64][8];
 extern Bitboard BetweenBB[64][64];
 
 extern Bitboard SquaresInFrontMask[2][64];
@@ -205,14 +204,6 @@ inline Bitboard behind_bb(Color c, Rank r) {
 
 inline Bitboard behind_bb(Color c, Square s) {
   return InFrontBB[opposite_color(c)][square_rank(s)];
-}
-
-
-/// ray_bb() gives a bitboard representing all squares along the ray in a
-/// given direction from a given square.
-
-inline Bitboard ray_bb(Square s, SignedDirection d) {
-  return RayBB[s][d];
 }
 
 
