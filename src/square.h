@@ -57,11 +57,15 @@ enum Rank {
 };
 
 enum SquareDelta {
-  DELTA_SSW = -021, DELTA_SS = -020, DELTA_SSE = -017, DELTA_SWW = -012,
-  DELTA_SW = -011, DELTA_S = -010, DELTA_SE = -07, DELTA_SEE = -06,
-  DELTA_W = -01, DELTA_ZERO = 0, DELTA_E = 01, DELTA_NWW = 06, DELTA_NW = 07,
-  DELTA_N = 010, DELTA_NE = 011, DELTA_NEE = 012, DELTA_NNW = 017,
-  DELTA_NN = 020, DELTA_NNE = 021
+
+  DELTA_N = 8, DELTA_E = 1, DELTA_S = -8, DELTA_W = -1,
+
+  DELTA_NN = DELTA_N + DELTA_N,
+  DELTA_NE = DELTA_N + DELTA_E,
+  DELTA_SE = DELTA_S + DELTA_E,
+  DELTA_SS = DELTA_S + DELTA_S,
+  DELTA_SW = DELTA_S + DELTA_W,
+  DELTA_NW = DELTA_N + DELTA_W,
 };
 
 ENABLE_OPERATORS_ON(Square);
@@ -74,8 +78,8 @@ ENABLE_OPERATORS_ON(SquareDelta);
 //// Constants
 ////
 
-const int FlipMask = 070;
-const int FlopMask = 07;
+const int FlipMask = 56;
+const int FlopMask =  7;
 
 
 ////
