@@ -236,7 +236,6 @@ Bitboard RookPseudoAttacks[64];
 Bitboard QueenPseudoAttacks[64];
 
 uint8_t BitCount8Bit[256];
-int8_t  DirectionTable[64][64];
 
 
 ////
@@ -245,12 +244,11 @@ int8_t  DirectionTable[64][64];
 
 namespace {
 
-  SquareDelta get_direction(Square orig, Square dest);
-  void init_direction_table();
   void init_masks();
   void init_attacks();
   void init_between_bitboards();
   void init_pseudo_attacks();
+  SquareDelta squares_delta(Square orig, Square dest);
   Bitboard index_to_bitboard(int index, Bitboard mask);
   Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
                            int fmin, int fmax, int rmin, int rmax);
@@ -288,7 +286,6 @@ void init_bitboards() {
   int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
   int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
 
-  init_direction_table();
   init_masks();
   init_attacks();
   init_between_bitboards();
@@ -384,36 +381,6 @@ namespace {
   // understand, but they all seem to work correctly, and it should never
   // be necessary to touch any of them.
 
-  SquareDelta get_direction(Square orig, Square dest) {
-
-    const SquareDelta directions[] = {
-        DELTA_E, DELTA_N, DELTA_NE, DELTA_NW, DELTA_W, DELTA_S, DELTA_SW, DELTA_SE
-    };
-
-    for (int idx = 0; idx < 8; idx++)
-    {
-        Square from = orig;
-        Square to = from + directions[idx];
-
-        while (to != dest && square_distance(to, from) == 1 && square_is_ok(to))
-        {
-            from = to;
-            to += directions[idx];
-        }
-
-        if (to == dest && square_distance(from, to) == 1)
-            return directions[idx];
-    }
-    return DELTA_NONE;
-  }
-
-  void init_direction_table() {
-
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-        for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
-            DirectionTable[s1][s2] = uint8_t(get_direction(s1, s2));
-  }
-
   void init_masks() {
 
     SetMaskBB[SQ_NONE] = 0ULL;
@@ -487,6 +454,26 @@ namespace {
     return result;
   }
 
+  SquareDelta squares_delta(Square orig, Square dest) {
+
+    const SquareDelta deltas[] = { DELTA_N, DELTA_NE, DELTA_E, DELTA_SE,
+                                   DELTA_S, DELTA_SW, DELTA_W, DELTA_NW };
+
+    for (int idx = 0; idx < 8; idx++)
+    {
+        Square s = orig + deltas[idx];
+
+        while (square_is_ok(s) && square_distance(s, s - deltas[idx]) == 1)
+        {
+            if (s == dest)
+                return deltas[idx];
+
+            s += deltas[idx];
+        }
+    }
+    return DELTA_NONE;
+  }
+
   void init_between_bitboards() {
 
     Square s1, s2, s3;
@@ -496,13 +483,11 @@ namespace {
         for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
         {
             BetweenBB[s1][s2] = EmptyBoardBB;
-            d = SquareDelta(DirectionTable[s1][s2]);
+            d = squares_delta(s1, s2);
 
-            if (d == DELTA_NONE)
-                continue;
-
-            for (s3 = s1 + d; s3 != s2; s3 += d)
-                set_bit(&(BetweenBB[s1][s2]), s3);
+            if (d != DELTA_NONE)
+                for (s3 = s1 + d; s3 != s2; s3 += d)
+                    set_bit(&(BetweenBB[s1][s2]), s3);
       }
   }
 
