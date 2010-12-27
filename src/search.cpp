@@ -113,7 +113,9 @@ namespace {
 
   struct RootMove {
 
-    RootMove() : nodes(0) { pv_score = non_pv_score = -VALUE_INFINITE; }
+    RootMove() : nodes(0) { pv_score = non_pv_score = -VALUE_INFINITE; move = pv[0] = MOVE_NONE; }
+    RootMove(const RootMove& rm) { *this = rm; }
+    RootMove& operator=(const RootMove& rm); // Skip costly full pv[] copy
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
@@ -125,12 +127,18 @@ namespace {
     }
     void set_pv(const Move newPv[]);
 
-    Move move;
-    Value pv_score;
-    Value non_pv_score;
     int64_t nodes;
-    Move pv[PLY_MAX_PLUS_2];
+    Value pv_score, non_pv_score;
+    Move move, pv[PLY_MAX_PLUS_2];
   };
+
+  RootMove& RootMove::operator=(const RootMove& rm) {
+
+      pv_score = rm.pv_score; non_pv_score = rm.non_pv_score;
+      nodes = rm.nodes; move = rm.move;
+      set_pv(rm.pv);
+      return *this;
+  }
 
   void RootMove::set_pv(const Move newPv[]) {
 
