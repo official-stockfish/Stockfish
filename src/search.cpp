@@ -28,6 +28,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include "book.h"
 #include "evaluate.h"
@@ -112,7 +113,7 @@ namespace {
 
   struct RootMove {
 
-    RootMove() : nodes(0) { pvScore = nonPvScore = -VALUE_INFINITE; }
+    RootMove() : nodes(0) { pv_score = non_pv_score = -VALUE_INFINITE; }
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
@@ -120,41 +121,40 @@ namespace {
     // equal pvScore but m1 has the higher nonPvScore. In this way
     // we are guaranteed that PV moves are always sorted as first.
     bool operator<(const RootMove& m) const {
-      return pvScore != m.pvScore ? pvScore < m.pvScore : nonPvScore <= m.nonPvScore;
+      return pv_score != m.pv_score ? pv_score < m.pv_score : non_pv_score <= m.non_pv_score;
     }
+    void set_pv(const Move newPv[]);
 
     Move move;
-    Value pvScore;
-    Value nonPvScore;
+    Value pv_score;
+    Value non_pv_score;
     int64_t nodes;
     Move pv[PLY_MAX_PLUS_2];
   };
 
+  void RootMove::set_pv(const Move newPv[]) {
 
-  // The RootMoveList class is essentially an array of RootMove objects, with
-  // a handful of methods for accessing the data in the individual moves.
+    int i = -1;
 
-  class RootMoveList {
+    while (newPv[++i] != MOVE_NONE)
+        pv[i] = newPv[i];
 
-  public:
+    pv[i] = MOVE_NONE;
+  }
+
+
+  // The RootMoveList struct is essentially a std::vector<> of RootMove objects,
+  // with an handful of methods above the standard ones.
+
+  struct RootMoveList : public std::vector<RootMove> {
+
+    typedef std::vector<RootMove> Base;
+
     RootMoveList(Position& pos, Move searchMoves[]);
+    void sort() { sort_multipv((int)size() - 1); } // Sort all items
 
-    Move move(int moveNum) const { return moves[moveNum].move; }
-    Move move_pv(int moveNum, int i) const { return moves[moveNum].pv[i]; }
-    int size() const { return count; }
-    Value pv_score(int moveNum) const { return moves[moveNum].pvScore; }
-    int64_t nodes(int moveNum) const { return moves[moveNum].nodes; }
-    void add_nodes(int moveNum, int64_t n) { moves[moveNum].nodes += n; }
-    void set_pv_score(int moveNum, Value v) { moves[moveNum].pvScore = v; }
-
-    void set_pv(int moveNum, const Move pv[]);
     void set_non_pv_scores(const Position& pos);
-    void sort();
     void sort_multipv(int n);
-
-  private:
-    RootMove moves[MOVES_MAX];
-    int count;
   };
 
 
@@ -542,24 +542,24 @@ namespace {
     cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
          << "info depth " << 1
          << "\ninfo depth " << 1
-         << " score " << value_to_uci(rml.pv_score(0))
+         << " score " << value_to_uci(rml[0].pv_score)
          << " time " << current_search_time()
          << " nodes " << pos.nodes_searched()
          << " nps " << nps(pos)
-         << " pv " << rml.move(0) << "\n";
+         << " pv " << rml[0].move << "\n";
 
     // Initialize
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
     pv[0] = pv[1] = MOVE_NONE;
-    ValueByIteration[1] = rml.pv_score(0);
+    ValueByIteration[1] = rml[0].pv_score;
     Iteration = 1;
 
     // Is one move significantly better than others after initial scoring ?
     if (   rml.size() == 1
-        || rml.pv_score(0) > rml.pv_score(1) + EasyMoveMargin)
-        EasyMove = rml.move(0);
+        || rml[0].pv_score > rml[1].pv_score + EasyMoveMargin)
+        EasyMove = rml[0].move;
 
     // Iterative deepening loop
     while (Iteration < PLY_MAX)
@@ -619,9 +619,9 @@ namespace {
             // Stop search early if one move seems to be much better than the others
             if (   Iteration >= 8
                 && EasyMove == pv[0]
-                && (  (   rml.nodes(0) > (pos.nodes_searched() * 85) / 100
+                && (  (   rml[0].nodes > (pos.nodes_searched() * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
-                    ||(   rml.nodes(0) > (pos.nodes_searched() * 98) / 100
+                    ||(   rml[0].nodes > (pos.nodes_searched() * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
                 stopSearch = true;
 
@@ -662,7 +662,7 @@ namespace {
     // Print the best move and the ponder move to the standard output
     if (pv[0] == MOVE_NONE || MultiPV > 1)
     {
-        pv[0] = rml.move(0);
+        pv[0] = rml[0].move;
         pv[1] = MOVE_NONE;
     }
 
@@ -693,7 +693,7 @@ namespace {
                 << move_to_san(pos, pv[1]) // Works also with MOVE_NONE
                 << endl;
     }
-    return rml.pv_score(0);
+    return rml[0].pv_score;
   }
 
 
@@ -746,7 +746,7 @@ namespace {
         rml.sort();
 
         // Step 10. Loop through all moves in the root move list
-        for (int i = 0; i <  rml.size() && !AbortSearch; i++)
+        for (int i = 0; i < (int)rml.size() && !AbortSearch; i++)
         {
             // This is used by time management
             FirstRootMove = (i == 0);
@@ -756,7 +756,7 @@ namespace {
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
-            move = ss->currentMove = rml.move(i);
+            move = ss->currentMove = rml[i].move;
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
@@ -850,10 +850,10 @@ namespace {
 
                 // We are failing high and going to do a research. It's important to update
                 // the score before research in case we run out of time while researching.
-                rml.set_pv_score(i, value);
+                rml[i].pv_score = value;
                 ss->bestMove = move;
                 extract_pv_from_tt(pos, move, pv);
-                rml.set_pv(i, pv);
+                rml[i].set_pv(pv);
 
                 // Print information to the standard output
                 print_pv_info(pos, pv, alpha, beta, value);
@@ -873,23 +873,23 @@ namespace {
                 break;
 
             // Remember searched nodes counts for this move
-            rml.add_nodes(i, pos.nodes_searched() - nodes);
+            rml[i].nodes += pos.nodes_searched() - nodes;
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
             assert(value < beta);
 
             // Step 17. Check for new best move
             if (value <= alpha && i >= MultiPV)
-                rml.set_pv_score(i, -VALUE_INFINITE);
+                rml[i].pv_score = -VALUE_INFINITE;
             else
             {
                 // PV move or new best move!
 
                 // Update PV
-                rml.set_pv_score(i, value);
+                rml[i].pv_score = value;
                 ss->bestMove = move;
                 extract_pv_from_tt(pos, move, pv);
-                rml.set_pv(i, pv);
+                rml[i].set_pv(pv);
 
                 if (MultiPV == 1)
                 {
@@ -909,22 +909,22 @@ namespace {
                 else // MultiPV > 1
                 {
                     rml.sort_multipv(i);
-                    for (int j = 0; j < Min(MultiPV, rml.size()); j++)
+                    for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
                     {
                         cout << "info multipv " << j + 1
-                             << " score " << value_to_uci(rml.pv_score(j))
+                             << " score " << value_to_uci(rml[j].pv_score)
                              << " depth " << (j <= i ? Iteration : Iteration - 1)
                              << " time " << current_search_time()
                              << " nodes " << pos.nodes_searched()
                              << " nps " << nps(pos)
                              << " pv ";
 
-                        for (int k = 0; rml.move_pv(j, k) != MOVE_NONE && k < PLY_MAX; k++)
-                            cout << rml.move_pv(j, k) << " ";
+                        for (int k = 0; rml[j].pv[k] != MOVE_NONE && k < PLY_MAX; k++)
+                            cout << rml[j].pv[k] << " ";
 
                         cout << endl;
                     }
-                    alpha = rml.pv_score(Min(i, MultiPV - 1));
+                    alpha = rml[Min(i, MultiPV - 1)].pv_score;
                 }
             } // PV move or new best move
 
@@ -2679,7 +2679,6 @@ split_point_start: // At split points actual search starts from here
     // Initialize search stack
     init_ss_array(ss, PLY_MAX_PLUS_2);
     ss[0].eval = ss[0].evalMargin = VALUE_NONE;
-    count = 0;
 
     // Generate all legal moves
     MoveStack* last = generate_moves(pos, mlist);
@@ -2695,13 +2694,14 @@ split_point_start: // At split points actual search starts from here
         if (!includeMove)
             continue;
 
-        // Find a quick score for the move
-        moves[count].move = ss[0].currentMove = moves[count].pv[0] = cur->move;
-        moves[count].pv[1] = MOVE_NONE;
+        // Find a quick score for the move and add to the list
+        RootMove rm;
+        rm.move = ss[0].currentMove = rm.pv[0] = cur->move;
+        rm.pv[1] = MOVE_NONE;
         pos.do_move(cur->move, st);
-        moves[count].pvScore = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
+        rm.pv_score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
         pos.undo_move(cur->move);
-        count++;
+        push_back(rm);
     }
     sort();
   }
@@ -2718,35 +2718,13 @@ split_point_start: // At split points actual search starts from here
       MovePicker mp(pos, MOVE_NONE, ONE_PLY, H);
 
       while ((move = mp.get_next_move()) != MOVE_NONE)
-          for (int i = 0; i < count; i++)
-              if (moves[i].move == move)
+          for (Base::iterator it = begin(); it != end(); ++it)
+              if (it->move == move)
               {
-                  moves[i].nonPvScore = score--;
+                  it->non_pv_score = score--;
                   break;
               }
   }
-
-  // RootMoveList simple methods definitions
-
-  void RootMoveList::set_pv(int moveNum, const Move pv[]) {
-
-    int j;
-
-    for (j = 0; pv[j] != MOVE_NONE; j++)
-        moves[moveNum].pv[j] = pv[j];
-
-    moves[moveNum].pv[j] = MOVE_NONE;
-  }
-
-
-  // RootMoveList::sort() sorts the root move list at the beginning of a new
-  // iteration.
-
-  void RootMoveList::sort() {
-
-    sort_multipv(count - 1); // Sort all items
-  }
-
 
   // RootMoveList::sort_multipv() sorts the first few moves in the root move
   // list by their scores and depths. It is used to order the different PVs
@@ -2758,11 +2736,11 @@ split_point_start: // At split points actual search starts from here
 
     for (i = 1; i <= n; i++)
     {
-        RootMove rm = moves[i];
-        for (j = i; j > 0 && moves[j - 1] < rm; j--)
-            moves[j] = moves[j - 1];
+        const RootMove& rm = this->at(i);
+        for (j = i; j > 0 && this->at(j - 1) < rm; j--)
+            (*this)[j] = this->at(j - 1);
 
-        moves[j] = rm;
+        (*this)[j] = rm;
     }
   }
 
