@@ -129,32 +129,34 @@ namespace {
     void set_pv(const Move newPv[]);
 
     int64_t nodes;
-    Value pv_score, non_pv_score;
-    Move move, pv[PLY_MAX_PLUS_2];
+    Value pv_score;
+    Value non_pv_score;
+    Move move;
+    Move pv[PLY_MAX_PLUS_2];
   };
 
-  RootMove::RootMove() : nodes(0) {
+  RootMove::RootMove() {
 
-      pv_score = non_pv_score = -VALUE_INFINITE;
-      move = pv[0] = MOVE_NONE;
+    nodes = 0;
+    pv_score = non_pv_score = -VALUE_INFINITE;
+    move = pv[0] = MOVE_NONE;
   }
 
   RootMove& RootMove::operator=(const RootMove& rm) {
 
-      pv_score = rm.pv_score; non_pv_score = rm.non_pv_score;
-      nodes = rm.nodes; move = rm.move;
-      set_pv(rm.pv); // Skip costly full pv[] copy
-      return *this;
+    nodes = rm.nodes;
+    pv_score = rm.pv_score;
+    non_pv_score = rm.non_pv_score;
+    move = rm.move;
+    set_pv(rm.pv); // Skip costly full pv[] copy
+    return *this;
   }
 
   void RootMove::set_pv(const Move newPv[]) {
 
     Move* p = pv;
 
-    while (*newPv != MOVE_NONE)
-        *p++ = *newPv++;
-
-    *p = MOVE_NONE;
+    do *p++ = *newPv; while (*newPv++ != MOVE_NONE);
   }
 
 
@@ -2657,14 +2659,12 @@ split_point_start: // At split points actual search starts from here
 
   /// The RootMoveList class
 
-  // RootMoveList c'tor
-
   RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
     MoveStack mlist[MOVES_MAX];
     StateInfo st;
-    bool includeAllMoves = (searchMoves[0] == MOVE_NONE);
+    Move* sm;
 
     // Initialize search stack
     init_ss_array(ss, PLY_MAX_PLUS_2);
@@ -2673,25 +2673,26 @@ split_point_start: // At split points actual search starts from here
     // Generate all legal moves
     MoveStack* last = generate_moves(pos, mlist);
 
-    // Add each move to the moves[] array
+    // Add each move to the RootMoveList's vector
     for (MoveStack* cur = mlist; cur != last; cur++)
     {
-        bool includeMove = includeAllMoves;
+        // If we have a searchMoves[] list then verify cur->move
+        // is in the list before to add it.
+        for (sm = searchMoves; *sm && *sm != cur->move; sm++) {}
 
-        for (int k = 0; !includeMove && searchMoves[k] != MOVE_NONE; k++)
-            includeMove = (searchMoves[k] == cur->move);
-
-        if (!includeMove)
+        if (searchMoves[0] && *sm != cur->move)
             continue;
 
         // Find a quick score for the move and add to the list
+        pos.do_move(cur->move, st);
+
         RootMove rm;
         rm.move = ss[0].currentMove = rm.pv[0] = cur->move;
         rm.pv[1] = MOVE_NONE;
-        pos.do_move(cur->move, st);
         rm.pv_score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
-        pos.undo_move(cur->move);
         push_back(rm);
+
+        pos.undo_move(cur->move);
     }
     sort();
   }
