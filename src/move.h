@@ -64,8 +64,7 @@ struct MoveStack {
   int score;
 };
 
-// Note that operator< is set up such that sorting will be in descending order
-inline bool operator<(const MoveStack& f, const MoveStack& s) { return s.score < f.score; }
+inline bool operator<(const MoveStack& f, const MoveStack& s) { return f.score < s.score; }
 
 // An helper insertion sort implementation
 template<typename T>
@@ -79,10 +78,10 @@ inline void insertion_sort(T* firstMove, T* lastMove)
         {
             p = d = cur;
             value = *p--;
-            if (value < *p)
+            if (*p < value)
             {
                 do *d = *p;
-                while (--d != firstMove && value < *--p);
+                while (--d != firstMove && *--p < value);
                 *d = value;
             }
         }
@@ -132,7 +131,7 @@ inline T pick_best(T* curMove, T* lastMove)
     bestMove = *curMove;
     while (++curMove != lastMove)
     {
-        if (*curMove < bestMove)
+        if (bestMove < *curMove)
         {
             tmp = *curMove;
             *curMove = bestMove;
