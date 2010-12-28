@@ -313,7 +313,7 @@ Move MovePicker::get_next_move() {
 
               // Sort negative scored moves only when we get there
               if (curMove == lastGoodNonCapture)
-                  insertion_sort(lastGoodNonCapture, lastMove);
+                  insertion_sort<MoveStack>(lastGoodNonCapture, lastMove);
 
               move = (curMove++)->move;
               if (   move != ttMoves[0].move

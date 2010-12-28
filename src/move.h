@@ -66,12 +66,12 @@ struct MoveStack {
 
 inline bool operator<(const MoveStack& f, const MoveStack& s) { return f.score < s.score; }
 
-// An helper insertion sort implementation
-template<typename T>
-inline void insertion_sort(T* firstMove, T* lastMove)
+// An helper insertion sort implementation, works with pointers and iterators
+template<typename T, typename K>
+inline void insertion_sort(K firstMove, K lastMove)
 {
     T value;
-    T *cur, *p, *d;
+    K cur, p, d;
 
     if (firstMove != lastMove)
         for (cur = firstMove + 1; cur != lastMove; cur++)
@@ -116,7 +116,7 @@ inline void sort_moves(T* firstMove, T* lastMove, T** lastPositive)
     } while (p != d);
 
     // Sort just positive scored moves, remaining only when we get there
-    insertion_sort<T>(firstMove, p);
+    insertion_sort<T, T*>(firstMove, p);
     *lastPositive = p;
 }
 

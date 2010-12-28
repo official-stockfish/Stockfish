@@ -107,23 +107,24 @@ namespace {
 
   // RootMove struct is used for moves at the root at the tree. For each root
   // move, we store two scores, a node count, and a PV (really a refutation
-  // in the case of moves which fail low). Value pvScore is normally set at
-  // -VALUE_INFINITE for all non-pv moves, while nonPvScore is computed
+  // in the case of moves which fail low). Value pv_score is normally set at
+  // -VALUE_INFINITE for all non-pv moves, while non_pv_score is computed
   // according to the order in which moves are returned by MovePicker.
 
   struct RootMove {
 
-    RootMove() : nodes(0) { pv_score = non_pv_score = -VALUE_INFINITE; move = pv[0] = MOVE_NONE; }
+    RootMove();
     RootMove(const RootMove& rm) { *this = rm; }
-    RootMove& operator=(const RootMove& rm); // Skip costly full pv[] copy
+    RootMove& operator=(const RootMove& rm);
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
-    // than a move m2 if it has an higher pvScore, or if it has
-    // equal pvScore but m1 has the higher nonPvScore. In this way
-    // we are guaranteed that PV moves are always sorted as first.
+    // than a move m2 if it has an higher pv_score, or if it has
+    // equal pv_score but m1 has the higher non_pv_score. In this
+    // way we are guaranteed that PV moves are always sorted as first.
     bool operator<(const RootMove& m) const {
-      return pv_score != m.pv_score ? pv_score < m.pv_score : non_pv_score <= m.non_pv_score;
+      return pv_score != m.pv_score ? pv_score < m.pv_score
+                                    : non_pv_score <= m.non_pv_score;
     }
     void set_pv(const Move newPv[]);
 
@@ -132,26 +133,32 @@ namespace {
     Move move, pv[PLY_MAX_PLUS_2];
   };
 
+  RootMove::RootMove() : nodes(0) {
+
+      pv_score = non_pv_score = -VALUE_INFINITE;
+      move = pv[0] = MOVE_NONE;
+  }
+
   RootMove& RootMove::operator=(const RootMove& rm) {
 
       pv_score = rm.pv_score; non_pv_score = rm.non_pv_score;
       nodes = rm.nodes; move = rm.move;
-      set_pv(rm.pv);
+      set_pv(rm.pv); // Skip costly full pv[] copy
       return *this;
   }
 
   void RootMove::set_pv(const Move newPv[]) {
 
-    int i = -1;
+    Move* p = pv;
 
-    while (newPv[++i] != MOVE_NONE)
-        pv[i] = newPv[i];
+    while (*newPv != MOVE_NONE)
+        *p++ = *newPv++;
 
-    pv[i] = MOVE_NONE;
+    *p = MOVE_NONE;
   }
 
 
-  // The RootMoveList struct is essentially a std::vector<> of RootMove objects,
+  // RootMoveList struct is essentially a std::vector<> of RootMove objects,
   // with an handful of methods above the standard ones.
 
   struct RootMoveList : public std::vector<RootMove> {
@@ -159,10 +166,10 @@ namespace {
     typedef std::vector<RootMove> Base;
 
     RootMoveList(Position& pos, Move searchMoves[]);
-    void sort() { sort_multipv((int)size() - 1); } // Sort all items
-
     void set_non_pv_scores(const Position& pos);
-    void sort_multipv(int n);
+
+    void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
+    void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
   };
 
 
@@ -2732,24 +2739,6 @@ split_point_start: // At split points actual search starts from here
                   it->non_pv_score = score--;
                   break;
               }
-  }
-
-  // RootMoveList::sort_multipv() sorts the first few moves in the root move
-  // list by their scores and depths. It is used to order the different PVs
-  // correctly in MultiPV mode.
-
-  void RootMoveList::sort_multipv(int n) {
-
-    int i,j;
-
-    for (i = 1; i <= n; i++)
-    {
-        const RootMove rm = this->at(i);
-        for (j = i; j > 0 && this->at(j - 1) < rm; j--)
-            (*this)[j] = this->at(j - 1);
-
-        (*this)[j] = rm;
-    }
   }
 
 } // namespace
