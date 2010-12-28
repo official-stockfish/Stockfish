@@ -2744,7 +2744,7 @@ split_point_start: // At split points actual search starts from here
 
     for (i = 1; i <= n; i++)
     {
-        const RootMove& rm = this->at(i);
+        const RootMove rm = this->at(i);
         for (j = i; j > 0 && this->at(j - 1) < rm; j--)
             (*this)[j] = this->at(j - 1);
 
