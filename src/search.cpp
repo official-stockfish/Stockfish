@@ -127,32 +127,14 @@ namespace {
                                     : non_pv_score < m.non_pv_score;
     }
 
+    void extract_pv_from_tt(Position& pos);
+    void insert_pv_in_tt(Position& pos);
+
     int64_t nodes;
     Value pv_score;
     Value non_pv_score;
     Move pv[PLY_MAX_PLUS_2];
   };
-
-  RootMove::RootMove() {
-
-    nodes = 0;
-    pv_score = non_pv_score = -VALUE_INFINITE;
-    pv[0] = MOVE_NONE;
-  }
-
-  RootMove& RootMove::operator=(const RootMove& rm) {
-
-    const Move* src = rm.pv;
-    Move* dst = pv;
-
-    // Avoid a costly full rm.pv[] copy
-    do *dst++ = *src; while (*src++ != MOVE_NONE);
-
-    nodes = rm.nodes;
-    pv_score = rm.pv_score;
-    non_pv_score = rm.non_pv_score;
-    return *this;
-  }
 
 
   // RootMoveList struct is essentially a std::vector<> of RootMove objects,
@@ -293,7 +275,7 @@ namespace {
   /// Local functions
 
   Value id_loop(Position& pos, Move searchMoves[]);
-  Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
+  Value root_search(Position& pos, SearchStack* ss, Value* alphaPtr, Value* betaPtr, Depth depth, RootMoveList& rml);
 
   template <NodeType PvNode, bool SpNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
@@ -331,8 +313,6 @@ namespace {
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
   void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value);
-  void insert_pv_in_tt(const Position& pos, Move pv[]);
-  void extract_pv_from_tt(const Position& pos, Move bestMove, Move pv[]);
 
 #if !defined(_MSC_VER)
   void* init_thread(void* threadID);
@@ -533,6 +513,7 @@ namespace {
   Value id_loop(Position& pos, Move searchMoves[]) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
+    Depth depth;
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
@@ -593,8 +574,11 @@ namespace {
             beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
         }
 
-        // Search to the current depth, rml is updated and sorted, alpha and beta could change
-        value = root_search(pos, ss, rml, &alpha, &beta);
+        // Search to the current depth, rml is updated and sorted,
+        // alpha and beta could change.
+        depth = (Iteration - 2) * ONE_PLY + InitialDepth;
+
+        value = root_search(pos, ss, &alpha, &beta, depth, rml);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!
@@ -700,13 +684,13 @@ namespace {
   // scheme, prints some information to the standard output and handles
   // the fail low/high loops.
 
-  Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
-
+  Value root_search(Position& pos, SearchStack* ss, Value* alphaPtr,
+                    Value* betaPtr, Depth depth, RootMoveList& rml) {
     StateInfo st;
     CheckInfo ci(pos);
     int64_t nodes;
     Move move;
-    Depth depth, ext, newDepth;
+    Depth ext, newDepth;
     Value value, alpha, beta;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
     int researchCountFH, researchCountFL;
@@ -715,7 +699,6 @@ namespace {
     alpha = *alphaPtr;
     beta = *betaPtr;
     isCheck = pos.is_check();
-    depth = (Iteration - 2) * ONE_PLY + InitialDepth;
 
     // Step 1. Initialize node (polling is omitted at root)
     ss->currentMove = ss->bestMove = MOVE_NONE;
@@ -836,9 +819,9 @@ namespace {
 
                 // We are failing high and going to do a research. It's important to update
                 // the score before research in case we run out of time while researching.
-                rml[i].pv_score = value;
                 ss->bestMove = move;
-                extract_pv_from_tt(pos, move, rml[i].pv);
+                rml[i].pv_score = value;
+                rml[i].extract_pv_from_tt(pos);
 
                 // Print information to the standard output
                 print_pv_info(pos, rml[i].pv, alpha, beta, value);
@@ -871,9 +854,9 @@ namespace {
                 // PV move or new best move!
 
                 // Update PV
-                rml[i].pv_score = value;
                 ss->bestMove = move;
-                extract_pv_from_tt(pos, move, rml[i].pv);
+                rml[i].pv_score = value;
+                rml[i].extract_pv_from_tt(pos);
 
                 if (MultiPV == 1)
                 {
@@ -933,9 +916,10 @@ namespace {
     // Sort the moves before to return
     rml.sort();
 
-    // Write PV to transposition table, in case the relevant entries have
-    // been overwritten during the search.
-    insert_pv_in_tt(pos, rml[0].pv);
+    // Write PV lines to transposition table, in case the relevant entries
+    // have been overwritten during the search.
+    for (int i = 0; i < MultiPV; i++)
+        rml[i].insert_pv_in_tt(pos);
 
     return alpha;
   }
@@ -2159,60 +2143,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // insert_pv_in_tt() is called at the end of a search iteration, and inserts
-  // the PV back into the TT. This makes sure the old PV moves are searched
-  // first, even if the old TT entries have been overwritten.
-
-  void insert_pv_in_tt(const Position& pos, Move pv[]) {
-
-    StateInfo st;
-    TTEntry* tte;
-    Position p(pos, pos.thread());
-    Value v, m = VALUE_NONE;
-
-    for (int i = 0; pv[i] != MOVE_NONE; i++)
-    {
-        tte = TT.retrieve(p.get_key());
-        if (!tte || tte->move() != pv[i])
-        {
-            v = (p.is_check() ? VALUE_NONE : evaluate(p, m));
-            TT.store(p.get_key(), VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[i], v, m);
-        }
-        p.do_move(pv[i], st);
-    }
-  }
-
-
-  // extract_pv_from_tt() builds a PV by adding moves from the transposition table.
-  // We consider also failing high nodes and not only VALUE_TYPE_EXACT nodes. This
-  // allow to always have a ponder move even when we fail high at root and also a
-  // long PV to print that is important for position analysis.
-
-  void extract_pv_from_tt(const Position& pos, Move bestMove, Move pv[]) {
-
-    StateInfo st;
-    TTEntry* tte;
-    Position p(pos, pos.thread());
-    int ply = 0;
-
-    assert(bestMove != MOVE_NONE);
-
-    pv[ply] = bestMove;
-    p.do_move(pv[ply++], st);
-
-    while (   (tte = TT.retrieve(p.get_key())) != NULL
-           && tte->move() != MOVE_NONE
-           && move_is_legal(p, tte->move())
-           && ply < PLY_MAX
-           && (!p.is_draw() || ply < 2))
-    {
-        pv[ply] = tte->move();
-        p.do_move(pv[ply++], st);
-    }
-    pv[ply] = MOVE_NONE;
-  }
-
-
   // init_thread() is the function which is called when a new thread is
   // launched. It simply calls the idle_loop() function with the supplied
   // threadID. There are two versions of this function; one for POSIX
@@ -2640,7 +2570,89 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  /// The RootMoveList class
+  /// RootMove and RootMoveList method's definitions
+
+  RootMove::RootMove() {
+
+    nodes = 0;
+    pv_score = non_pv_score = -VALUE_INFINITE;
+    pv[0] = MOVE_NONE;
+  }
+
+  RootMove& RootMove::operator=(const RootMove& rm) {
+
+    const Move* src = rm.pv;
+    Move* dst = pv;
+
+    // Avoid a costly full rm.pv[] copy
+    do *dst++ = *src; while (*src++ != MOVE_NONE);
+
+    nodes = rm.nodes;
+    pv_score = rm.pv_score;
+    non_pv_score = rm.non_pv_score;
+    return *this;
+  }
+
+  // extract_pv_from_tt() builds a PV by adding moves from the transposition table.
+  // We consider also failing high nodes and not only VALUE_TYPE_EXACT nodes. This
+  // allow to always have a ponder move even when we fail high at root and also a
+  // long PV to print that is important for position analysis.
+
+  void RootMove::extract_pv_from_tt(Position& pos) {
+
+    StateInfo state[PLY_MAX_PLUS_2], *st = state;
+    TTEntry* tte;
+    int ply = 1;
+
+    assert(pv[0] != MOVE_NONE && move_is_legal(pos, pv[0]));
+
+    pos.do_move(pv[0], *st++);
+
+    while (   (tte = TT.retrieve(pos.get_key())) != NULL
+           && tte->move() != MOVE_NONE
+           && move_is_legal(pos, tte->move())
+           && ply < PLY_MAX
+           && (!pos.is_draw() || ply < 2))
+    {
+        pv[ply] = tte->move();
+        pos.do_move(pv[ply++], *st++);
+    }
+    pv[ply] = MOVE_NONE;
+
+    do pos.undo_move(pv[--ply]); while (ply);
+  }
+
+  // insert_pv_in_tt() is called at the end of a search iteration, and inserts
+  // the PV back into the TT. This makes sure the old PV moves are searched
+  // first, even if the old TT entries have been overwritten.
+
+  void RootMove::insert_pv_in_tt(Position& pos) {
+
+    StateInfo state[PLY_MAX_PLUS_2], *st = state;
+    TTEntry* tte;
+    Key k;
+    Value v, m = VALUE_NONE;
+    int ply = 0;
+
+    assert(pv[0] != MOVE_NONE && move_is_legal(pos, pv[0]));
+
+    do {
+        k = pos.get_key();
+        tte = TT.retrieve(k);
+
+        // Don't overwrite exsisting correct entries
+        if (!tte || tte->move() != pv[ply])
+        {
+            v = (pos.is_check() ? VALUE_NONE : evaluate(pos, m));
+            TT.store(k, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[ply], v, m);
+        }
+        pos.do_move(pv[ply], *st++);
+
+    } while (pv[++ply] != MOVE_NONE);
+
+    do pos.undo_move(pv[--ply]); while (ply);
+  }
+
 
   RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) {
 

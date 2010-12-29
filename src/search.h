@@ -35,7 +35,7 @@
 ////
 
 const int PLY_MAX = 100;
-const int PLY_MAX_PLUS_2 = 102;
+const int PLY_MAX_PLUS_2 = PLY_MAX + 2;
 
 
 ////
