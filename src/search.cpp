@@ -124,14 +124,12 @@ namespace {
     // way we are guaranteed that PV moves are always sorted as first.
     bool operator<(const RootMove& m) const {
       return pv_score != m.pv_score ? pv_score < m.pv_score
-                                    : non_pv_score <= m.non_pv_score;
+                                    : non_pv_score < m.non_pv_score;
     }
-    void set_pv(const Move newPv[]);
 
     int64_t nodes;
     Value pv_score;
     Value non_pv_score;
-    Move move;
     Move pv[PLY_MAX_PLUS_2];
   };
 
@@ -139,24 +137,21 @@ namespace {
 
     nodes = 0;
     pv_score = non_pv_score = -VALUE_INFINITE;
-    move = pv[0] = MOVE_NONE;
+    pv[0] = MOVE_NONE;
   }
 
   RootMove& RootMove::operator=(const RootMove& rm) {
 
+    const Move* src = rm.pv;
+    Move* dst = pv;
+
+    // Avoid a costly full rm.pv[] copy
+    do *dst++ = *src; while (*src++ != MOVE_NONE);
+
     nodes = rm.nodes;
     pv_score = rm.pv_score;
     non_pv_score = rm.non_pv_score;
-    move = rm.move;
-    set_pv(rm.pv); // Skip costly full pv[] copy
     return *this;
-  }
-
-  void RootMove::set_pv(const Move newPv[]) {
-
-    Move* p = pv;
-
-    do *p++ = *newPv; while (*newPv++ != MOVE_NONE);
   }
 
 
@@ -298,7 +293,7 @@ namespace {
   /// Local functions
 
   Value id_loop(Position& pos, Move searchMoves[]);
-  Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
+  Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr);
 
   template <NodeType PvNode, bool SpNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
@@ -538,7 +533,6 @@ namespace {
   Value id_loop(Position& pos, Move searchMoves[]) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
-    Move pv[PLY_MAX_PLUS_2];
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
@@ -563,20 +557,19 @@ namespace {
          << " time " << current_search_time()
          << " nodes " << pos.nodes_searched()
          << " nps " << nps(pos)
-         << " pv " << rml[0].move << "\n";
+         << " pv " << rml[0].pv[0] << "\n";
 
     // Initialize
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
-    pv[0] = pv[1] = MOVE_NONE;
     ValueByIteration[1] = rml[0].pv_score;
     Iteration = 1;
 
     // Is one move significantly better than others after initial scoring ?
     if (   rml.size() == 1
         || rml[0].pv_score > rml[1].pv_score + EasyMoveMargin)
-        EasyMove = rml[0].move;
+        EasyMove = rml[0].pv[0];
 
     // Iterative deepening loop
     while (Iteration < PLY_MAX)
@@ -601,11 +594,7 @@ namespace {
         }
 
         // Search to the current depth, rml is updated and sorted, alpha and beta could change
-        value = root_search(pos, ss, pv, rml, &alpha, &beta);
-
-        // Write PV to transposition table, in case the relevant entries have
-        // been overwritten during the search.
-        insert_pv_in_tt(pos, pv);
+        value = root_search(pos, ss, rml, &alpha, &beta);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!
@@ -614,7 +603,7 @@ namespace {
         ValueByIteration[Iteration] = value;
 
         // Drop the easy move if differs from the new best move
-        if (pv[0] != EasyMove)
+        if (rml[0].pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
         if (UseTimeManagement)
@@ -635,7 +624,7 @@ namespace {
 
             // Stop search early if one move seems to be much better than the others
             if (   Iteration >= 8
-                && EasyMove == pv[0]
+                && EasyMove == rml[0].pv[0]
                 && (  (   rml[0].nodes > (pos.nodes_searched() * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
                     ||(   rml[0].nodes > (pos.nodes_searched() * 98) / 100
@@ -677,18 +666,10 @@ namespace {
              << " time " << current_search_time() << endl;
 
     // Print the best move and the ponder move to the standard output
-    if (pv[0] == MOVE_NONE || MultiPV > 1)
-    {
-        pv[0] = rml[0].move;
-        pv[1] = MOVE_NONE;
-    }
+    cout << "bestmove " << rml[0].pv[0];
 
-    assert(pv[0] != MOVE_NONE);
-
-    cout << "bestmove " << pv[0];
-
-    if (pv[1] != MOVE_NONE)
-        cout << " ponder " << pv[1];
+    if (rml[0].pv[1] != MOVE_NONE)
+        cout << " ponder " << rml[0].pv[1];
 
     cout << endl;
 
@@ -702,12 +683,12 @@ namespace {
 
         LogFile << "\nNodes: " << pos.nodes_searched()
                 << "\nNodes/second: " << nps(pos)
-                << "\nBest move: " << move_to_san(pos, pv[0]);
+                << "\nBest move: " << move_to_san(pos, rml[0].pv[0]);
 
         StateInfo st;
-        pos.do_move(pv[0], st);
+        pos.do_move(rml[0].pv[0], st);
         LogFile << "\nPonder move: "
-                << move_to_san(pos, pv[1]) // Works also with MOVE_NONE
+                << move_to_san(pos, rml[0].pv[1]) // Works also with MOVE_NONE
                 << endl;
     }
     return rml[0].pv_score;
@@ -719,7 +700,7 @@ namespace {
   // scheme, prints some information to the standard output and handles
   // the fail low/high loops.
 
-  Value root_search(Position& pos, SearchStack* ss, Move* pv, RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
+  Value root_search(Position& pos, SearchStack* ss, RootMoveList& rml, Value* alphaPtr, Value* betaPtr) {
 
     StateInfo st;
     CheckInfo ci(pos);
@@ -773,7 +754,7 @@ namespace {
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
-            move = ss->currentMove = rml[i].move;
+            move = ss->currentMove = rml[i].pv[0];
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
@@ -857,11 +838,10 @@ namespace {
                 // the score before research in case we run out of time while researching.
                 rml[i].pv_score = value;
                 ss->bestMove = move;
-                extract_pv_from_tt(pos, move, pv);
-                rml[i].set_pv(pv);
+                extract_pv_from_tt(pos, move, rml[i].pv);
 
                 // Print information to the standard output
-                print_pv_info(pos, pv, alpha, beta, value);
+                print_pv_info(pos, rml[i].pv, alpha, beta, value);
 
                 // Prepare for a research after a fail high, each time with a wider window
                 *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
@@ -893,8 +873,7 @@ namespace {
                 // Update PV
                 rml[i].pv_score = value;
                 ss->bestMove = move;
-                extract_pv_from_tt(pos, move, pv);
-                rml[i].set_pv(pv);
+                extract_pv_from_tt(pos, move, rml[i].pv);
 
                 if (MultiPV == 1)
                 {
@@ -905,7 +884,7 @@ namespace {
                         BestMoveChangesByIteration[Iteration]++;
 
                     // Print information to the standard output
-                    print_pv_info(pos, pv, alpha, beta, value);
+                    print_pv_info(pos, rml[i].pv, alpha, beta, value);
 
                     // Raise alpha to setup proper non-pv search upper bound
                     if (value > alpha)
@@ -953,6 +932,10 @@ namespace {
 
     // Sort the moves before to return
     rml.sort();
+
+    // Write PV to transposition table, in case the relevant entries have
+    // been overwritten during the search.
+    insert_pv_in_tt(pos, rml[0].pv);
 
     return alpha;
   }
@@ -2687,7 +2670,7 @@ split_point_start: // At split points actual search starts from here
         pos.do_move(cur->move, st);
 
         RootMove rm;
-        rm.move = ss[0].currentMove = rm.pv[0] = cur->move;
+        rm.pv[0] = ss[0].currentMove = cur->move;
         rm.pv[1] = MOVE_NONE;
         rm.pv_score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
         push_back(rm);
@@ -2710,7 +2693,7 @@ split_point_start: // At split points actual search starts from here
 
       while ((move = mp.get_next_move()) != MOVE_NONE)
           for (Base::iterator it = begin(); it != end(); ++it)
-              if (it->move == move)
+              if (it->pv[0] == move)
               {
                   it->non_pv_score = score--;
                   break;
