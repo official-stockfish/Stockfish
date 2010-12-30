@@ -499,14 +499,6 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
        << " nps " << nps(pos)
        << " time " << current_search_time() << endl;
 
-  // If we are pondering or in infinite search, we shouldn't print the
-  // best move before we are told to do so.
-  if (!AbortSearch && (PonderSearch || InfiniteSearch))
-      wait_for_stop_or_ponderhit();
-
-  // Could be both MOVE_NONE when searching on a stalemate position
-  cout << "bestmove " << bestMove << " ponder " << ponderMove << endl;
-
   if (UseLogFile)
   {
       if (dbg_show_mean)
@@ -531,6 +523,14 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // This makes all the threads to go to sleep
   ThreadsMgr.set_active_threads(1);
+
+  // If we are pondering or in infinite search, we shouldn't print the
+  // best move before we are told to do so.
+  if (!AbortSearch && (PonderSearch || InfiniteSearch))
+      wait_for_stop_or_ponderhit();
+
+  // Could be both MOVE_NONE when searching on a stalemate position
+  cout << "bestmove " << bestMove << " ponder " << ponderMove << endl;
 
   return !Quit;
 }
