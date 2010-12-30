@@ -275,7 +275,7 @@ namespace {
 
   /// Local functions
 
-  Value id_loop(Position& pos, Move searchMoves[]);
+  Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove);
   Value root_search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, RootMoveList& rml);
 
   template <NodeType PvNode, bool SpNode>
@@ -491,7 +491,40 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
               << " moves to go: " << movesToGo << endl;
 
   // We're ready to start thinking. Call the iterative deepening loop function
-  id_loop(pos, searchMoves);
+  Move ponderMove = MOVE_NONE;
+  Move bestMove = id_loop(pos, searchMoves, &ponderMove);
+
+  // Print final search statistics
+  cout << "info nodes " << pos.nodes_searched()
+       << " nps " << nps(pos)
+       << " time " << current_search_time() << endl;
+
+  // If we are pondering or in infinite search, we shouldn't print the
+  // best move before we are told to do so.
+  if (!AbortSearch && (PonderSearch || InfiniteSearch))
+      wait_for_stop_or_ponderhit();
+
+  // Could be both MOVE_NONE when searching on a stalemate position
+  cout << "bestmove " << bestMove << " ponder " << ponderMove << endl;
+
+  if (UseLogFile)
+  {
+      if (dbg_show_mean)
+          dbg_print_mean(LogFile);
+
+      if (dbg_show_hit_rate)
+          dbg_print_hit_rate(LogFile);
+
+      LogFile << "\nNodes: " << pos.nodes_searched()
+              << "\nNodes/second: " << nps(pos)
+              << "\nBest move: " << move_to_san(pos, bestMove);
+
+      StateInfo st;
+      pos.do_move(bestMove, st);
+      LogFile << "\nPonder move: "
+              << move_to_san(pos, ponderMove) // Works also with MOVE_NONE
+              << endl;
+  }
 
   if (UseLogFile)
       LogFile.close();
@@ -510,7 +543,7 @@ namespace {
   // been consumed, the user stops the search, or the maximum search depth is
   // reached.
 
-  Value id_loop(Position& pos, Move searchMoves[]) {
+  Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
     Depth depth;
@@ -523,10 +556,12 @@ namespace {
     // Handle special case of searching on a mate/stale position
     if (rml.size() == 0)
     {
-        if (PonderSearch)
-            wait_for_stop_or_ponderhit();
+        Value s = (pos.is_check() ? -VALUE_MATE : VALUE_DRAW);
 
-        return pos.is_check() ? -VALUE_MATE : VALUE_DRAW;
+        cout << "info depth " << 1
+             << " score " << value_to_uci(s) << endl;
+
+        return MOVE_NONE;
     }
 
     // Initialize
@@ -632,43 +667,8 @@ namespace {
             break;
     }
 
-    // If we are pondering or in infinite search, we shouldn't print the
-    // best move before we are told to do so.
-    if (!AbortSearch && (PonderSearch || InfiniteSearch))
-        wait_for_stop_or_ponderhit();
-    else
-        // Print final search statistics
-        cout << "info nodes " << pos.nodes_searched()
-             << " nps " << nps(pos)
-             << " time " << current_search_time() << endl;
-
-    // Print the best move and the ponder move to the standard output
-    cout << "bestmove " << rml[0].pv[0];
-
-    if (rml[0].pv[1] != MOVE_NONE)
-        cout << " ponder " << rml[0].pv[1];
-
-    cout << endl;
-
-    if (UseLogFile)
-    {
-        if (dbg_show_mean)
-            dbg_print_mean(LogFile);
-
-        if (dbg_show_hit_rate)
-            dbg_print_hit_rate(LogFile);
-
-        LogFile << "\nNodes: " << pos.nodes_searched()
-                << "\nNodes/second: " << nps(pos)
-                << "\nBest move: " << move_to_san(pos, rml[0].pv[0]);
-
-        StateInfo st;
-        pos.do_move(rml[0].pv[0], st);
-        LogFile << "\nPonder move: "
-                << move_to_san(pos, rml[0].pv[1]) // Works also with MOVE_NONE
-                << endl;
-    }
-    return rml[0].pv_score;
+    *ponderMove = rml[0].pv[1];
+    return rml[0].pv[0];
   }
 
 
