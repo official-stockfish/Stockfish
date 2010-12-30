@@ -129,6 +129,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
+    std::string pv_info_to_uci(const Position& pos, Value alpha, Value beta);
 
     int64_t nodes;
     Value pv_score;
@@ -312,7 +313,6 @@ namespace {
   void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
-  void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value);
 
 #if !defined(_MSC_VER)
   void* init_thread(void* threadID);
@@ -517,7 +517,7 @@ namespace {
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
-    // Moves to search are verified, copied, scored and sorted
+    // Moves to search are verified, scored and sorted
     RootMoveList rml(pos, searchMoves);
 
     // Handle special case of searching on a mate/stale position
@@ -529,23 +529,17 @@ namespace {
         return pos.is_check() ? -VALUE_MATE : VALUE_DRAW;
     }
 
-    // Print RootMoveList startup scoring to the standard output,
-    // so to output information also for iteration 1.
-    cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
-         << "info depth " << 1
-         << "\ninfo depth " << 1
-         << " score " << value_to_uci(rml[0].pv_score)
-         << " time " << current_search_time()
-         << " nodes " << pos.nodes_searched()
-         << " nps " << nps(pos)
-         << " pv " << rml[0].pv[0] << "\n";
-
     // Initialize
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
     ValueByIteration[1] = rml[0].pv_score;
     Iteration = 1;
+
+    // Send initial RootMoveList scoring (iteration 1)
+    cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
+         << "info depth " << Iteration
+         << "\n" << rml[0].pv_info_to_uci(pos, alpha, beta) << endl;
 
     // Is one move significantly better than others after initial scoring ?
     if (   rml.size() == 1
@@ -820,8 +814,8 @@ namespace {
                 rml[i].pv_score = value;
                 rml[i].extract_pv_from_tt(pos);
 
-                // Print information to the standard output
-                print_pv_info(pos, rml[i].pv, alpha, beta, value);
+                // Inform GUI that PV has changed
+                cout << rml[i].pv_info_to_uci(pos, alpha, beta) << endl;
 
                 // Prepare for a research after a fail high, each time with a wider window
                 beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
@@ -863,8 +857,8 @@ namespace {
                     if (i > 0)
                         BestMoveChangesByIteration[Iteration]++;
 
-                    // Print information to the standard output
-                    print_pv_info(pos, rml[i].pv, alpha, beta, value);
+                    // Inform GUI that PV has changed
+                    cout << rml[i].pv_info_to_uci(pos, alpha, beta) << endl;
 
                     // Raise alpha to setup proper non-pv search upper bound
                     if (value > alpha)
@@ -2117,34 +2111,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // print_pv_info() prints to standard output and eventually to log file information on
-  // the current PV line. It is called at each iteration or after a new pv is found.
-
-  void print_pv_info(const Position& pos, Move pv[], Value alpha, Value beta, Value value) {
-
-    cout << "info depth " << Iteration
-         << " score "     << value_to_uci(value)
-         << (value >= beta ? " lowerbound" : value <= alpha ? " upperbound" : "")
-         << " time "  << current_search_time()
-         << " nodes " << pos.nodes_searched()
-         << " nps "   << nps(pos)
-         << " pv ";
-
-    for (Move* m = pv; *m != MOVE_NONE; m++)
-        cout << *m << " ";
-
-    cout << endl;
-
-    if (UseLogFile)
-    {
-        ValueType t = value >= beta  ? VALUE_TYPE_LOWER :
-                      value <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
-
-        LogFile << pretty_pv(pos, current_search_time(), Iteration, value, t, pv) << endl;
-    }
-  }
-
-
   // init_thread() is the function which is called when a new thread is
   // launched. It simply calls the idle_loop() function with the supplied
   // threadID. There are two versions of this function; one for POSIX
@@ -2653,6 +2619,35 @@ split_point_start: // At split points actual search starts from here
     } while (pv[++ply] != MOVE_NONE);
 
     do pos.undo_move(pv[--ply]); while (ply);
+  }
+
+  // pv_info_to_uci() returns a string with information on the current PV line
+  // formatted according to UCI specification and eventually writes the info
+  // to a log file. It is called at each iteration or after a new pv is found.
+
+  std::string RootMove::pv_info_to_uci(const Position& pos, Value alpha, Value beta) {
+
+    std::stringstream s;
+
+    s << "info depth " << Iteration
+      << " score "     << value_to_uci(pv_score)
+      << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
+      << " time "  << current_search_time()
+      << " nodes " << pos.nodes_searched()
+      << " nps "   << nps(pos)
+      << " pv ";
+
+    for (Move* m = pv; *m != MOVE_NONE; m++)
+        s << *m << " ";
+
+    if (UseLogFile)
+    {
+        ValueType t = pv_score >= beta  ? VALUE_TYPE_LOWER :
+                      pv_score <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
+
+        LogFile << pretty_pv(pos, current_search_time(), Iteration, pv_score, t, pv) << endl;
+    }
+    return s.str();
   }
 
 
