@@ -65,7 +65,5 @@ extern void dbg_after();
 extern void dbg_mean_of(int v);
 extern void dbg_print_hit_rate();
 extern void dbg_print_mean();
-extern void dbg_print_hit_rate(std::ofstream& logFile);
-extern void dbg_print_mean(std::ofstream& logFile);
 
 #endif // !defined(MISC_H_INCLUDED)

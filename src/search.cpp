@@ -451,9 +451,6 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   MultiPV                   = Options["MultiPV"].value<int>();
   UseLogFile                = Options["Use Search Log"].value<bool>();
 
-  if (UseLogFile)
-      LogFile.open(Options["Search Log Filename"].value<std::string>().c_str(), std::ios::out | std::ios::app);
-
   read_weights(pos.side_to_move());
 
   // Set the number of active threads
@@ -483,12 +480,17 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // Write search information to log file
   if (UseLogFile)
-      LogFile << "Searching: " << pos.to_fen() << endl
-              << "infinite: "  << infinite
-              << " ponder: "   << ponder
-              << " time: "     << myTime
+  {
+      std::string name = Options["Search Log Filename"].value<std::string>();
+      LogFile.open(name.c_str(), std::ios::out | std::ios::app);
+
+      LogFile << "Searching: "  << pos.to_fen()
+              << "\ninfinite: " << infinite
+              << " ponder: "    << ponder
+              << " time: "      << myTime
               << " increment: " << myIncrement
               << " moves to go: " << movesToGo << endl;
+  }
 
   // We're ready to start thinking. Call the iterative deepening loop function
   Move ponderMove = MOVE_NONE;
@@ -501,12 +503,6 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   if (UseLogFile)
   {
-      if (dbg_show_mean)
-          dbg_print_mean(LogFile);
-
-      if (dbg_show_hit_rate)
-          dbg_print_hit_rate(LogFile);
-
       LogFile << "\nNodes: " << pos.nodes_searched()
               << "\nNodes/second: " << nps(pos)
               << "\nBest move: " << move_to_san(pos, bestMove);
@@ -516,10 +512,9 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       LogFile << "\nPonder move: "
               << move_to_san(pos, ponderMove) // Works also with MOVE_NONE
               << endl;
-  }
 
-  if (UseLogFile)
       LogFile.close();
+  }
 
   // This makes all the threads to go to sleep
   ThreadsMgr.set_active_threads(1);
