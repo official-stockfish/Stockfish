@@ -129,7 +129,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(const Position& pos, Value alpha, Value beta);
+    std::string pv_info_to_uci(const Position& pos, Value alpha, Value beta, int pvLine = 0);
 
     int64_t nodes;
     Value pv_score;
@@ -849,41 +849,29 @@ namespace {
                 rml[i].pv_score = value;
                 rml[i].extract_pv_from_tt(pos);
 
+                // We record how often the best move has been changed in each
+                // iteration. This information is used for time managment: When
+                // the best move changes frequently, we allocate some more time.
+                if (MultiPV == 1 && i > 0)
+                    BestMoveChangesByIteration[Iteration]++;
+
+                // Inform GUI that PV has changed, in case of multi-pv UCI protocol
+                // requires we send all the PV lines properly sorted.
+                rml.sort_multipv(i);
+
+                for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
+                    cout << rml[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
+
+                // Update alpha. In multi-pv we don't use aspiration window
                 if (MultiPV == 1)
                 {
-                    // We record how often the best move has been changed in each
-                    // iteration. This information is used for time managment: When
-                    // the best move changes frequently, we allocate some more time.
-                    if (i > 0)
-                        BestMoveChangesByIteration[Iteration]++;
-
-                    // Inform GUI that PV has changed
-                    cout << rml[i].pv_info_to_uci(pos, alpha, beta) << endl;
-
                     // Raise alpha to setup proper non-pv search upper bound
                     if (value > alpha)
                         alpha = value;
                 }
-                else // MultiPV > 1
-                {
-                    rml.sort_multipv(i);
-                    for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
-                    {
-                        cout << "info multipv " << j + 1
-                             << " score " << value_to_uci(rml[j].pv_score)
-                             << " depth " << (j <= i ? Iteration : Iteration - 1)
-                             << " time " << current_search_time()
-                             << " nodes " << pos.nodes_searched()
-                             << " nps " << nps(pos)
-                             << " pv ";
-
-                        for (int k = 0; rml[j].pv[k] != MOVE_NONE && k < PLY_MAX; k++)
-                            cout << rml[j].pv[k] << " ";
-
-                        cout << endl;
-                    }
+                else // Set alpha equal to minimum score among the PV lines
                     alpha = rml[Min(i, MultiPV - 1)].pv_score;
-                }
+
             } // PV move or new best move
 
             assert(alpha >= oldAlpha);
@@ -892,7 +880,8 @@ namespace {
 
             if (AspirationFailLow && StopOnPonderhit)
                 StopOnPonderhit = false;
-        }
+
+        } // Root moves loop
 
         // Can we exit fail low loop ?
         if (AbortSearch || !AspirationFailLow)
@@ -2625,12 +2614,13 @@ split_point_start: // At split points actual search starts from here
   // formatted according to UCI specification and eventually writes the info
   // to a log file. It is called at each iteration or after a new pv is found.
 
-  std::string RootMove::pv_info_to_uci(const Position& pos, Value alpha, Value beta) {
+  std::string RootMove::pv_info_to_uci(const Position& pos, Value alpha, Value beta, int pvLine) {
 
     std::stringstream s;
 
-    s << "info depth " << Iteration
-      << " score "     << value_to_uci(pv_score)
+    s << "info depth " << Iteration // FIXME
+      << " multipv " << pvLine + 1
+      << " score " << value_to_uci(pv_score)
       << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
       << " time "  << current_search_time()
       << " nodes " << pos.nodes_searched()
@@ -2640,7 +2630,7 @@ split_point_start: // At split points actual search starts from here
     for (Move* m = pv; *m != MOVE_NONE; m++)
         s << *m << " ";
 
-    if (UseLogFile)
+    if (UseLogFile && pvLine == 0)
     {
         ValueType t = pv_score >= beta  ? VALUE_TYPE_LOWER :
                       pv_score <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
