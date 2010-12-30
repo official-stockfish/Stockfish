@@ -275,7 +275,7 @@ namespace {
   /// Local functions
 
   Value id_loop(Position& pos, Move searchMoves[]);
-  Value root_search(Position& pos, SearchStack* ss, Value* alphaPtr, Value* betaPtr, Depth depth, RootMoveList& rml);
+  Value root_search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, RootMoveList& rml);
 
   template <NodeType PvNode, bool SpNode>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
@@ -574,11 +574,10 @@ namespace {
             beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
         }
 
-        // Search to the current depth, rml is updated and sorted,
-        // alpha and beta could change.
         depth = (Iteration - 2) * ONE_PLY + InitialDepth;
 
-        value = root_search(pos, ss, &alpha, &beta, depth, rml);
+        // Search to the current depth, rml is updated and sorted
+        value = root_search(pos, ss, alpha, beta, depth, rml);
 
         if (AbortSearch)
             break; // Value cannot be trusted. Break out immediately!
@@ -680,24 +679,22 @@ namespace {
 
 
   // root_search() is the function which searches the root node. It is
-  // similar to search_pv except that it uses a different move ordering
-  // scheme, prints some information to the standard output and handles
-  // the fail low/high loops.
+  // similar to search_pv except that it prints some information to the
+  // standard output and handles the fail low/high loops.
 
-  Value root_search(Position& pos, SearchStack* ss, Value* alphaPtr,
-                    Value* betaPtr, Depth depth, RootMoveList& rml) {
+  Value root_search(Position& pos, SearchStack* ss, Value alpha,
+                    Value beta, Depth depth, RootMoveList& rml) {
     StateInfo st;
     CheckInfo ci(pos);
     int64_t nodes;
     Move move;
     Depth ext, newDepth;
-    Value value, alpha, beta;
+    Value value, oldAlpha;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
     int researchCountFH, researchCountFL;
 
     researchCountFH = researchCountFL = 0;
-    alpha = *alphaPtr;
-    beta = *betaPtr;
+    oldAlpha = alpha;
     isCheck = pos.is_check();
 
     // Step 1. Initialize node (polling is omitted at root)
@@ -827,7 +824,7 @@ namespace {
                 print_pv_info(pos, rml[i].pv, alpha, beta, value);
 
                 // Prepare for a research after a fail high, each time with a wider window
-                *betaPtr = beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
+                beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
                 researchCountFH++;
 
             } // End of fail high loop
@@ -895,9 +892,9 @@ namespace {
                 }
             } // PV move or new best move
 
-            assert(alpha >= *alphaPtr);
+            assert(alpha >= oldAlpha);
 
-            AspirationFailLow = (alpha == *alphaPtr);
+            AspirationFailLow = (alpha == oldAlpha);
 
             if (AspirationFailLow && StopOnPonderhit)
                 StopOnPonderhit = false;
@@ -908,7 +905,7 @@ namespace {
             break;
 
         // Prepare for a research after a fail low, each time with a wider window
-        *alphaPtr = alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
+        oldAlpha = alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
         researchCountFL++;
 
     } // Fail low loop
