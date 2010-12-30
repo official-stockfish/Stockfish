@@ -1948,14 +1948,19 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // value_to_uci() converts a value to a string suitable for use with the UCI protocol
+  // value_to_uci() converts a value to a string suitable for use with the UCI
+  // protocol specifications:
+  //
+  // cp <x>     The score from the engine's point of view in centipawns.
+  // mate <y>   Mate in y moves, not plies. If the engine is getting mated
+  //            use negative values for y.
 
   std::string value_to_uci(Value v) {
 
     std::stringstream s;
 
     if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
-      s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to pawn = 100
+      s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
     else
       s << "mate " << (v > 0 ? (VALUE_MATE - v + 1) / 2 : -(VALUE_MATE + v) / 2 );
 
