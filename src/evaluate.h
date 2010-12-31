@@ -29,6 +29,6 @@ class Position;
 extern Value evaluate(const Position& pos, Value& margin);
 extern void init_eval(int threads);
 extern void quit_eval();
-extern void read_weights(Color sideToMove);
+extern void read_evaluation_uci_options(Color sideToMove);
 
 #endif // !defined(EVALUATE_H_INCLUDED)

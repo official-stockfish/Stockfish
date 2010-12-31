@@ -414,7 +414,7 @@ void quit_eval() {
 
 /// read_weights() reads evaluation weights from the corresponding UCI parameters
 
-void read_weights(Color us) {
+void read_evaluation_uci_options(Color us) {
 
   // King safety is asymmetrical. Our king danger level is weighted by
   // "Cowardice" UCI parameter, instead the opponent one by "Aggressiveness".

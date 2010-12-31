@@ -451,7 +451,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   MultiPV                   = Options["MultiPV"].value<int>();
   UseLogFile                = Options["Use Search Log"].value<bool>();
 
-  read_weights(pos.side_to_move());
+  read_evaluation_uci_options(pos.side_to_move());
 
   // Set the number of active threads
   ThreadsMgr.read_uci_options();
@@ -2611,19 +2611,21 @@ split_point_start: // At split points actual search starts from here
 
   std::string RootMove::pv_info_to_uci(const Position& pos, Value alpha, Value beta, int pvLine) {
 
-    std::stringstream s;
+    std::stringstream s, l;
+    Move* m = pv;
+
+    while (*m != MOVE_NONE)
+        l << *m++ << " ";
 
     s << "info depth " << Iteration // FIXME
+      << " seldepth " << int(m - pv)
       << " multipv " << pvLine + 1
       << " score " << value_to_uci(pv_score)
       << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
       << " time "  << current_search_time()
       << " nodes " << pos.nodes_searched()
       << " nps "   << nps(pos)
-      << " pv ";
-
-    for (Move* m = pv; *m != MOVE_NONE; m++)
-        s << *m << " ";
+      << " pv "    << l.str();
 
     if (UseLogFile && pvLine == 0)
     {
