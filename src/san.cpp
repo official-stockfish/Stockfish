@@ -73,9 +73,9 @@ const string move_to_san(Position& pos, Move m) {
   if (m == MOVE_NULL)
       return "(null)";
 
-  if (move_is_long_castle(m)  || (int(to - from) == -2 && pt == KING))
+  if (move_is_long_castle(m))
       san = "O-O-O";
-  else if (move_is_short_castle(m) || (int(to - from) ==  2 && pt == KING))
+  else if (move_is_short_castle(m))
       san = "O-O";
   else
   {
