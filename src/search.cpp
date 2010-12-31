@@ -267,6 +267,7 @@ namespace {
 
   // Node counters, used only by thread[0] but try to keep in different cache
   // lines (64 bytes each) from the heavy multi-thread read accessed variables.
+  bool SendSearchedNodes;
   int NodesSincePoll;
   int NodesBetweenPolls = 30000;
 
@@ -401,7 +402,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
            int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
-  StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = false;
+  StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = SendSearchedNodes = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
@@ -720,6 +721,16 @@ namespace {
 
             // Save the current node count before the move is searched
             nodes = pos.nodes_searched();
+
+            // If it's time to send nodes info, do it here where we have the
+            // correct accumulated node counts searched by each thread.
+            if (SendSearchedNodes)
+            {
+                SendSearchedNodes = false;
+                cout << "info nodes " << nodes
+                     << " nps " << nps(pos)
+                     << " time " << current_search_time() << endl;
+            }
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
@@ -2007,8 +2018,8 @@ split_point_start: // At split points actual search starts from here
         if (dbg_show_hit_rate)
             dbg_print_hit_rate();
 
-        cout << "info nodes " << pos.nodes_searched() << " nps " << nps(pos)
-             << " time " << t << endl;
+        // Send info on searched nodes as soon as we return to root
+        SendSearchedNodes = true;
     }
 
     // Should we stop the search?
