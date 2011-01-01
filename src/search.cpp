@@ -254,8 +254,8 @@ namespace {
 
   // Time managment variables
   int SearchStartTime, MaxNodes, MaxDepth, ExactMaxTime;
-  bool UseTimeManagement, InfiniteSearch, PonderSearch, StopOnPonderhit;
-  bool FirstRootMove, AbortSearch, Quit, AspirationFailLow;
+  bool UseTimeManagement, InfiniteSearch, Pondering, StopOnPonderhit;
+  bool FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
   TimeManager TimeMgr;
 
   // Log file
@@ -311,7 +311,6 @@ namespace {
   std::string value_to_uci(Value v);
   int nps(const Position& pos);
   void poll(const Position& pos);
-  void ponderhit();
   void wait_for_stop_or_ponderhit();
   void init_ss_array(SearchStack* ss, int size);
 
@@ -402,14 +401,14 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
            int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]) {
 
   // Initialize global search variables
-  StopOnPonderhit = AbortSearch = Quit = AspirationFailLow = SendSearchedNodes = false;
+  StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = SendSearchedNodes = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
   ExactMaxTime = maxTime;
   MaxDepth = maxDepth;
   MaxNodes = maxNodes;
   InfiniteSearch = infinite;
-  PonderSearch = ponder;
+  Pondering = ponder;
   UseTimeManagement = !ExactMaxTime && !MaxDepth && !MaxNodes && !InfiniteSearch;
 
   // Look for a book move, only during games, not tests
@@ -421,7 +420,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       Move bookMove = OpeningBook.get_move(pos, Options["Best Book Move"].value<bool>());
       if (bookMove != MOVE_NONE)
       {
-          if (PonderSearch)
+          if (Pondering)
               wait_for_stop_or_ponderhit();
 
           cout << "bestmove " << bookMove << endl;
@@ -522,13 +521,13 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // If we are pondering or in infinite search, we shouldn't print the
   // best move before we are told to do so.
-  if (!AbortSearch && (PonderSearch || InfiniteSearch))
+  if (!StopRequest && (Pondering || InfiniteSearch))
       wait_for_stop_or_ponderhit();
 
   // Could be both MOVE_NONE when searching on a stalemate position
   cout << "bestmove " << bestMove << " ponder " << ponderMove << endl;
 
-  return !Quit;
+  return !QuitRequest;
 }
 
 
@@ -604,7 +603,7 @@ namespace {
         // Search to the current depth, rml is updated and sorted
         value = root_search(pos, ss, alpha, beta, depth, rml);
 
-        if (AbortSearch)
+        if (StopRequest)
             break; // Value cannot be trusted. Break out immediately!
 
         //Save info about search result
@@ -652,7 +651,7 @@ namespace {
 
             if (stopSearch)
             {
-                if (PonderSearch)
+                if (Pondering)
                     StopOnPonderhit = true;
                 else
                     break;
@@ -714,7 +713,7 @@ namespace {
         rml.sort();
 
         // Step 10. Loop through all moves in the root move list
-        for (int i = 0; i < (int)rml.size() && !AbortSearch; i++)
+        for (int i = 0; i < (int)rml.size() && !StopRequest; i++)
         {
             // This is used by time management
             FirstRootMove = (i == 0);
@@ -811,7 +810,7 @@ namespace {
                 pos.undo_move(move);
 
                 // Can we exit fail high loop ?
-                if (AbortSearch || value < beta)
+                if (StopRequest || value < beta)
                     break;
 
                 // We are failing high and going to do a research. It's important to update
@@ -834,7 +833,7 @@ namespace {
             // ran out of time. In this case, the return value of the search cannot
             // be trusted, and we break out of the loop without updating the best
             // move and/or PV.
-            if (AbortSearch)
+            if (StopRequest)
                 break;
 
             // Remember searched nodes counts for this move
@@ -890,7 +889,7 @@ namespace {
         } // Root moves loop
 
         // Can we exit fail low loop ?
-        if (AbortSearch || !AspirationFailLow)
+        if (StopRequest || !AspirationFailLow)
             break;
 
         // Prepare for a research after a fail low, each time with a wider window
@@ -967,7 +966,7 @@ namespace {
     }
 
     // Step 2. Check for aborted search and immediate draw
-    if (   AbortSearch
+    if (   StopRequest
         || ThreadsMgr.cutoff_at_splitpoint(threadID)
         || pos.is_draw()
         || ply >= PLY_MAX - 1)
@@ -1355,7 +1354,7 @@ split_point_start: // At split points actual search starts from here
           && ThreadsMgr.active_threads() > 1
           && bestValue < beta
           && ThreadsMgr.available_thread_exists(threadID)
-          && !AbortSearch
+          && !StopRequest
           && !ThreadsMgr.cutoff_at_splitpoint(threadID)
           && Iteration <= 99)
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
@@ -1372,7 +1371,7 @@ split_point_start: // At split points actual search starts from here
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (!SpNode && !AbortSearch && !ThreadsMgr.cutoff_at_splitpoint(threadID))
+    if (!SpNode && !StopRequest && !ThreadsMgr.cutoff_at_splitpoint(threadID))
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
         vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
@@ -1974,6 +1973,13 @@ split_point_start: // At split points actual search starts from here
     static int lastInfoTime;
     int t = current_search_time();
 
+    bool stillAtFirstMove =    FirstRootMove
+                           && !AspirationFailLow
+                           &&  t > TimeMgr.available_time();
+
+    bool noMoreTime =   t > TimeMgr.maximum_time()
+                     || stillAtFirstMove;
+
     //  Poll for input
     if (data_available())
     {
@@ -1985,18 +1991,29 @@ split_point_start: // At split points actual search starts from here
 
         if (command == "quit")
         {
-            AbortSearch = true;
-            PonderSearch = false;
-            Quit = true;
+            // Quit the program as soon as possible
+            Pondering = false;
+            QuitRequest = StopRequest = true;
             return;
         }
         else if (command == "stop")
         {
-            AbortSearch = true;
-            PonderSearch = false;
+            // Stop calculating as soon as possible, but still send the "bestmove"
+            // and possibly the "ponder" token when finishing the search.
+            Pondering = false;
+            StopRequest = true;
         }
         else if (command == "ponderhit")
-            ponderhit();
+        {
+            // The opponent has played the expected move. GUI sends "ponderhit" if
+            // we were told to ponder on the same move the opponent has played. We
+            // should continue searching but switching from pondering to normal search.
+            Pondering = false;
+
+            if (   Iteration >= 3 && UseTimeManagement
+                && (noMoreTime || StopOnPonderhit))
+                StopRequest = true;
+        }
     }
 
     // Print search information
@@ -2023,41 +2040,13 @@ split_point_start: // At split points actual search starts from here
     }
 
     // Should we stop the search?
-    if (PonderSearch)
+    if (Pondering)
         return;
-
-    bool stillAtFirstMove =    FirstRootMove
-                           && !AspirationFailLow
-                           &&  t > TimeMgr.available_time();
-
-    bool noMoreTime =   t > TimeMgr.maximum_time()
-                     || stillAtFirstMove;
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
         || (Iteration >= 3 && MaxNodes && pos.nodes_searched() >= MaxNodes))
-        AbortSearch = true;
-  }
-
-
-  // ponderhit() is called when the program is pondering (i.e. thinking while
-  // it's the opponent's turn to move) in order to let the engine know that
-  // it correctly predicted the opponent's move.
-
-  void ponderhit() {
-
-    int t = current_search_time();
-    PonderSearch = false;
-
-    bool stillAtFirstMove =    FirstRootMove
-                           && !AspirationFailLow
-                           &&  t > TimeMgr.available_time();
-
-    bool noMoreTime =   t > TimeMgr.maximum_time()
-                     || stillAtFirstMove;
-
-    if (Iteration >= 3 && UseTimeManagement && (noMoreTime || StopOnPonderhit))
-        AbortSearch = true;
+        StopRequest = true;
   }
 
 
@@ -2097,7 +2086,7 @@ split_point_start: // At split points actual search starts from here
 
         if (command == "quit")
         {
-            Quit = true;
+            QuitRequest = true;
             break;
         }
         else if (command == "ponderhit" || command == "stop")
