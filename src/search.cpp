@@ -1973,13 +1973,6 @@ split_point_start: // At split points actual search starts from here
     static int lastInfoTime;
     int t = current_search_time();
 
-    bool stillAtFirstMove =    FirstRootMove
-                           && !AspirationFailLow
-                           &&  t > TimeMgr.available_time();
-
-    bool noMoreTime =   t > TimeMgr.maximum_time()
-                     || stillAtFirstMove;
-
     //  Poll for input
     if (data_available())
     {
@@ -2010,8 +2003,7 @@ split_point_start: // At split points actual search starts from here
             // should continue searching but switching from pondering to normal search.
             Pondering = false;
 
-            if (   Iteration >= 3 && UseTimeManagement
-                && (noMoreTime || StopOnPonderhit))
+            if (StopOnPonderhit)
                 StopRequest = true;
         }
     }
@@ -2042,6 +2034,13 @@ split_point_start: // At split points actual search starts from here
     // Should we stop the search?
     if (Pondering)
         return;
+
+    bool stillAtFirstMove =    FirstRootMove
+                           && !AspirationFailLow
+                           &&  t > TimeMgr.available_time();
+
+    bool noMoreTime =   t > TimeMgr.maximum_time()
+                     || stillAtFirstMove;
 
     if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
