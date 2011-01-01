@@ -424,7 +424,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
               wait_for_stop_or_ponderhit();
 
           cout << "bestmove " << bookMove << endl;
-          return true;
+          return !QuitRequest;
       }
   }
 
@@ -2072,7 +2072,7 @@ split_point_start: // At split points actual search starts from here
   // the UCI protocol: When pondering, the engine is not allowed to give a
   // "bestmove" before the GUI sends it a "stop" or "ponderhit" command.
   // We simply wait here until one of these commands is sent, and return,
-  // after which the bestmove and pondermove will be printed (in id_loop()).
+  // after which the bestmove and pondermove will be printed.
 
   void wait_for_stop_or_ponderhit() {
 
