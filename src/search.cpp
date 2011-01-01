@@ -903,7 +903,7 @@ namespace {
 
     // Write PV lines to transposition table, in case the relevant entries
     // have been overwritten during the search.
-    for (int i = 0; i < MultiPV; i++)
+    for (int i = 0; i < Min(MultiPV, (int)rml.size()); i++)
         rml[i].insert_pv_in_tt(pos);
 
     return alpha;
