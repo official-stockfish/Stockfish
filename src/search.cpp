@@ -149,7 +149,7 @@ namespace {
     void set_non_pv_scores(const Position& pos);
 
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
-    void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
+    void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n + 1); }
   };
 
 
