@@ -1927,12 +1927,21 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // current_search_time() returns the number of milliseconds which have passed
-  // since the beginning of the current search.
+  // init_ss_array() does a fast reset of the first entries of a SearchStack
+  // array and of all the excludedMove and skipNullMove entries.
 
-  int current_search_time() {
+  void init_ss_array(SearchStack* ss, int size) {
 
-    return get_system_time() - SearchStartTime;
+    for (int i = 0; i < size; i++, ss++)
+    {
+        ss->excludedMove = MOVE_NONE;
+        ss->skipNullMove = false;
+        ss->reduction = DEPTH_ZERO;
+        ss->sp = NULL;
+
+        if (i < 3)
+            ss->killers[0] = ss->killers[1] = ss->mateKiller = MOVE_NONE;
+    }
   }
 
 
@@ -1955,7 +1964,17 @@ split_point_start: // At split points actual search starts from here
     return s.str();
   }
 
-  // nps() computes the current nodes/second count.
+
+  // current_search_time() returns the number of milliseconds which have passed
+  // since the beginning of the current search.
+
+  int current_search_time() {
+
+    return get_system_time() - SearchStartTime;
+  }
+
+
+  // nps() computes the current nodes/second count
 
   int nps(const Position& pos) {
 
@@ -2042,28 +2061,10 @@ split_point_start: // At split points actual search starts from here
     bool noMoreTime =   t > TimeMgr.maximum_time()
                      || stillAtFirstMove;
 
-    if (   (Iteration >= 3 && UseTimeManagement && noMoreTime)
+    if (   (UseTimeManagement && noMoreTime)
         || (ExactMaxTime && t >= ExactMaxTime)
-        || (Iteration >= 3 && MaxNodes && pos.nodes_searched() >= MaxNodes))
+        || (MaxNodes && pos.nodes_searched() >= MaxNodes)) // FIXME
         StopRequest = true;
-  }
-
-
-  // init_ss_array() does a fast reset of the first entries of a SearchStack
-  // array and of all the excludedMove and skipNullMove entries.
-
-  void init_ss_array(SearchStack* ss, int size) {
-
-    for (int i = 0; i < size; i++, ss++)
-    {
-        ss->excludedMove = MOVE_NONE;
-        ss->skipNullMove = false;
-        ss->reduction = DEPTH_ZERO;
-        ss->sp = NULL;
-
-        if (i < 3)
-            ss->killers[0] = ss->killers[1] = ss->mateKiller = MOVE_NONE;
-    }
   }
 
 
@@ -2080,6 +2081,7 @@ split_point_start: // At split points actual search starts from here
 
     while (true)
     {
+        // Wait for a command from stdin
         if (!std::getline(std::cin, command))
             command = "quit";
 
