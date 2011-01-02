@@ -513,6 +513,9 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
               << move_to_san(pos, ponderMove) // Works also with MOVE_NONE
               << endl;
 
+      // Return from think() with unchanged position
+      pos.undo_move(bestMove);
+
       LogFile.close();
   }
 
