@@ -248,7 +248,7 @@ namespace {
   void init_attacks();
   void init_between_bitboards();
   void init_pseudo_attacks();
-  SquareDelta squares_delta(Square orig, Square dest);
+  SquareDelta ray_direction(Square orig, Square dest);
   Bitboard index_to_bitboard(int index, Bitboard mask);
   Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
                            int fmin, int fmax, int rmin, int rmax);
@@ -454,23 +454,14 @@ namespace {
     return result;
   }
 
-  SquareDelta squares_delta(Square orig, Square dest) {
+  SquareDelta ray_direction(Square orig, Square dest) {
 
-    const SquareDelta deltas[] = { DELTA_N, DELTA_NE, DELTA_E, DELTA_SE,
-                                   DELTA_S, DELTA_SW, DELTA_W, DELTA_NW };
+    int df = file_distance(orig, dest);
+    int dr = rank_distance(orig, dest);
 
-    for (int idx = 0; idx < 8; idx++)
-    {
-        Square s = orig + deltas[idx];
+    if (orig != dest && (!df || !dr || df == dr))
+        return SquareDelta(dest - orig) / Max(df, dr);
 
-        while (square_is_ok(s) && square_distance(s, s - deltas[idx]) == 1)
-        {
-            if (s == dest)
-                return deltas[idx];
-
-            s += deltas[idx];
-        }
-    }
     return DELTA_NONE;
   }
 
@@ -483,7 +474,7 @@ namespace {
         for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
         {
             BetweenBB[s1][s2] = EmptyBoardBB;
-            d = squares_delta(s1, s2);
+            d = ray_direction(s1, s2);
 
             if (d != DELTA_NONE)
                 for (s3 = s1 + d; s3 != s2; s3 += d)

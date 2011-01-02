@@ -562,7 +562,7 @@ namespace {
 
         if (Type == CHECK)
         {
-            // Condider only pawn moves which give direct checks
+            // Consider only pawn moves which give direct checks
             b1 &= pos.attacks_from<PAWN>(ksq, Them);
             b2 &= pos.attacks_from<PAWN>(ksq, Them);
 
