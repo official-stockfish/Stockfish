@@ -274,10 +274,6 @@ void Position::from_fen(const string& fen) {
   castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
-  isChess960 =   initialKFile  != FILE_E
-              || initialQRFile != FILE_A
-              || initialKRFile != FILE_H;
-
   find_checkers();
 
   st->key = compute_key();
@@ -353,7 +349,7 @@ bool Position::set_castling_rights(char token) {
 /// Position::to_fen() returns a FEN representation of the position. In case
 /// of Chess960 the Shredder-FEN notation is used. Mainly a debugging function.
 
-const string Position::to_fen() const {
+const string Position::to_fen(bool isChess960) const {
 
   string fen;
   Square sq;
@@ -440,7 +436,8 @@ void Position::print(Move move) const {
           cout << c << pieceLetters.from_piece(piece) << c << '|';
       }
   }
-  cout << dottedLine << "Fen is: " << to_fen() << "\nKey is: " << st->key << endl;
+  bool chess960 = (cout.iword(0) != 0); // See set960()
+  cout << dottedLine << "Fen is: " << to_fen(chess960) << "\nKey is: " << st->key << endl;
   requestPending = false;
 }
 
