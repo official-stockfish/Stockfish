@@ -213,6 +213,8 @@ const Bitboard InFrontBB[2][8] = {
   }
 };
 
+// Global bitboards definitions with static storage duration are
+// automatically set to zero before enter main().
 Bitboard RMask[64];
 int RAttackIndex[64];
 Bitboard RAttacks[0x19000];
@@ -224,7 +226,7 @@ Bitboard BAttacks[0x1480];
 Bitboard SetMaskBB[65];
 Bitboard ClearMaskBB[65];
 
-Bitboard StepAttackBB[16][64];
+Bitboard NonSlidingAttacksBB[16][64];
 Bitboard BetweenBB[64][64];
 
 Bitboard SquaresInFrontMask[2][64];
@@ -238,16 +240,12 @@ Bitboard QueenPseudoAttacks[64];
 uint8_t BitCount8Bit[256];
 
 
-////
-//// Local definitions
-////
-
 namespace {
 
   void init_masks();
-  void init_attacks();
-  void init_between_bitboards();
+  void init_non_sliding_attacks();
   void init_pseudo_attacks();
+  void init_between_bitboards();
   Bitboard index_to_bitboard(int index, Bitboard mask);
   Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
                            int fmin, int fmax, int rmin, int rmax);
@@ -256,41 +254,20 @@ namespace {
 }
 
 
-////
-//// Functions
-////
-
 /// print_bitboard() prints a bitboard in an easily readable format to the
-/// standard output.  This is sometimes useful for debugging.
+/// standard output. This is sometimes useful for debugging.
 
 void print_bitboard(Bitboard b) {
 
   for (Rank r = RANK_8; r >= RANK_1; r--)
   {
-      std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
+      std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
       for (File f = FILE_A; f <= FILE_H; f++)
           std::cout << "| " << (bit_is_set(b, make_square(f, r))? 'X' : ' ') << ' ';
 
-      std::cout << "|" << std::endl;
+      std::cout << "|\n";
   }
   std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
-}
-
-
-/// init_bitboards() initializes various bitboard arrays.  It is called during
-/// program initialization.
-
-void init_bitboards() {
-
-  int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
-  int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
-
-  init_masks();
-  init_attacks();
-  init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
-  init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
-  init_pseudo_attacks();
-  init_between_bitboards();
 }
 
 
@@ -373,6 +350,22 @@ Square pop_1st_bit(Bitboard* bb) {
 #endif
 
 
+/// init_bitboards() initializes various bitboard arrays. It is called during
+/// program initialization.
+
+void init_bitboards() {
+
+  int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
+  int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
+
+  init_masks();
+  init_non_sliding_attacks();
+  init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
+  init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
+  init_pseudo_attacks();
+  init_between_bitboards();
+}
+
 namespace {
 
   // All functions below are used to precompute various bitboards during
@@ -382,7 +375,7 @@ namespace {
 
   void init_masks() {
 
-    SetMaskBB[SQ_NONE] = 0ULL;
+    SetMaskBB[SQ_NONE] = EmptyBoardBB;
     ClearMaskBB[SQ_NONE] = ~SetMaskBB[SQ_NONE];
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
@@ -403,32 +396,30 @@ namespace {
         BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
   }
 
-  void init_attacks() {
+  void init_non_sliding_attacks() {
 
-    const int step[16][8] =  {
+    const int step[][9] =  {
       {0},
-      {7,9,0}, {17,15,10,6,-6,-10,-15,-17}, {9,7,-7,-9,0}, {8,1,-1,-8,0},
-      {9,7,-7,-9,8,1,-1,-8}, {9,7,-7,-9,8,1,-1,-8}, {0}, {0},
-      {-7,-9,0}, {17,15,10,6,-6,-10,-15,-17}, {9,7,-7,-9,0}, {8,1,-1,-8,0},
-      {9,7,-7,-9,8,1,-1,-8}, {9,7,-7,-9,8,1,-1,-8}
+      {7,9,0}, {17,15,10,6,-6,-10,-15,-17,0}, {0}, {0}, {0},
+      {9,7,-7,-9,8,1,-1,-8,0}, {0}, {0},
+      {-7,-9,0}, {17,15,10,6,-6,-10,-15,-17,0}, {0}, {0}, {0},
+      {9,7,-7,-9,8,1,-1,-8,0}
     };
 
-    for (int i = 0; i < 64; i++)
-        for (int j = 0; j <= int(BK); j++)
-        {
-            StepAttackBB[j][i] = EmptyBoardBB;
-            for (int k = 0; k < 8 && step[j][k] != 0; k++)
+    for (Square s = SQ_A1; s <= SQ_H8; s++)
+        for (Piece pc = WP; pc <= BK; pc++)
+            for (int k = 0; step[pc][k] != 0; k++)
             {
-                int l = i + step[j][k];
-                if (l >= 0 && l < 64 && abs((i & 7) - (l & 7)) < 3)
-                    StepAttackBB[j][i] |= (1ULL << l);
+                Square to = s + Square(step[pc][k]);
+
+                if (square_is_ok(to) && square_distance(s, to) < 3)
+                    set_bit(&NonSlidingAttacksBB[pc][s], to);
            }
-        }
   }
 
   Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
                            int fmin=0, int fmax=7, int rmin=0, int rmax=7) {
-    Bitboard result = 0ULL;
+    Bitboard result = 0;
     int rk = sq / 8;
     int fl = sq % 8;
 
@@ -453,40 +444,17 @@ namespace {
     return result;
   }
 
-  void init_between_bitboards() {
-
-    Square s1, s2, s3;
-    SquareDelta d;
-    int f, r;
-
-    for (s1 = SQ_A1; s1 <= SQ_H8; s1++)
-        for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
-        {
-            BetweenBB[s1][s2] = EmptyBoardBB;
-
-            if (bit_is_set(QueenPseudoAttacks[s1], s2))
-            {
-                f = file_distance(s1, s2);
-                r = rank_distance(s1, s2);
-
-                d = SquareDelta(s2 - s1) / Max(f, r);
-
-                for (s3 = s1 + d; s3 != s2; s3 += d)
-                    set_bit(&(BetweenBB[s1][s2]), s3);
-            }
-      }
-  }
-
   Bitboard index_to_bitboard(int index, Bitboard mask) {
 
-    Bitboard result = 0ULL;
-    int bits = count_1s<CNT32>(mask);
+    Bitboard result = EmptyBoardBB;
+    int sq, cnt = 0;
 
-    for (int i = 0; i < bits; i++)
+    while (mask)
     {
-        int j = pop_1st_bit(&mask);
-        if (index & (1 << i))
-            result |= (1ULL << j);
+        sq = pop_1st_bit(&mask);
+
+        if (index & (1 << cnt++))
+            result |= (1ULL << sq);
     }
     return result;
   }
@@ -528,6 +496,26 @@ namespace {
         RookPseudoAttacks[s]   = rook_attacks_bb(s, EmptyBoardBB);
         QueenPseudoAttacks[s]  = queen_attacks_bb(s, EmptyBoardBB);
     }
+  }
+
+  void init_between_bitboards() {
+
+    Square s1, s2, s3;
+    SquareDelta d;
+    int f, r;
+
+    for (s1 = SQ_A1; s1 <= SQ_H8; s1++)
+        for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
+            if (bit_is_set(QueenPseudoAttacks[s1], s2))
+            {
+                f = file_distance(s1, s2);
+                r = rank_distance(s1, s2);
+
+                d = SquareDelta(s2 - s1) / Max(f, r);
+
+                for (s3 = s1 + d; s3 != s2; s3 += d)
+                    set_bit(&(BetweenBB[s1][s2]), s3);
+            }
   }
 
 }

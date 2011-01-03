@@ -47,9 +47,9 @@ namespace {
     bool is_legal() const;
     bool is_immediate_draw() const;
     bool is_immediate_win() const;
-    Bitboard wk_attacks()   const { return StepAttackBB[WK][whiteKingSquare]; }
-    Bitboard bk_attacks()   const { return StepAttackBB[BK][blackKingSquare]; }
-    Bitboard pawn_attacks() const { return StepAttackBB[WP][pawnSquare]; }
+    Bitboard wk_attacks()   const { return NonSlidingAttacksBB[WK][whiteKingSquare]; }
+    Bitboard bk_attacks()   const { return NonSlidingAttacksBB[BK][blackKingSquare]; }
+    Bitboard pawn_attacks() const { return NonSlidingAttacksBB[WP][pawnSquare]; }
 
     Square whiteKingSquare, blackKingSquare, pawnSquare;
     Color sideToMove;

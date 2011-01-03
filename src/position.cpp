@@ -524,7 +524,7 @@ Bitboard Position::attacks_from(Piece p, Square s) const {
   case WB: case BB: return attacks_from<BISHOP>(s);
   case WR: case BR: return attacks_from<ROOK>(s);
   case WQ: case BQ: return attacks_from<QUEEN>(s);
-  default: return StepAttackBB[p][s];
+  default: return NonSlidingAttacksBB[p][s];
   }
 }
 
@@ -537,7 +537,7 @@ Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
   case WB: case BB: return bishop_attacks_bb(s, occ);
   case WR: case BR: return rook_attacks_bb(s, occ);
   case WQ: case BQ: return bishop_attacks_bb(s, occ) | rook_attacks_bb(s, occ);
-  default: return StepAttackBB[p][s];
+  default: return NonSlidingAttacksBB[p][s];
   }
 }
 
