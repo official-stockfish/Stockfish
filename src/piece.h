@@ -46,8 +46,8 @@ enum Piece {
   BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, PIECE_NONE = 16
 };
 
-ENABLE_OPERATORS_ON(PieceType);
-ENABLE_OPERATORS_ON(Piece);
+ENABLE_OPERATORS_ON(PieceType)
+ENABLE_OPERATORS_ON(Piece)
 
 
 ////

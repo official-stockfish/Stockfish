@@ -38,6 +38,6 @@ enum Depth {
   DEPTH_NONE = -127 * ONE_PLY
 };
 
-ENABLE_OPERATORS_ON(Depth);
+ENABLE_OPERATORS_ON(Depth)
 
 #endif // !defined(DEPTH_H_INCLUDED)

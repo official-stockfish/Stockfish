@@ -38,7 +38,7 @@ enum SquareColor {
   LIGHT
 };
 
-ENABLE_OPERATORS_ON(Color);
+ENABLE_OPERATORS_ON(Color)
 
 
 ////

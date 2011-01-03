@@ -43,7 +43,7 @@ enum Value {
   VALUE_ENSURE_SIGNED = -1
 };
 
-ENABLE_OPERATORS_ON(Value);
+ENABLE_OPERATORS_ON(Value)
 
 
 enum ScaleFactor {
@@ -66,9 +66,6 @@ enum Score {
     SCORE_ENSURE_32_BITS_SIZE_N = -(1 << 16)
 };
 
-ENABLE_OPERATORS_ON(Score);
-
-
 // Extracting the _signed_ lower and upper 16 bits it not so trivial
 // because according to the standard a simple cast to short is
 // implementation defined and so is a right shift of a signed integer.
@@ -90,6 +87,17 @@ inline Score operator/(Score s, int i) { return make_score(mg_value(s) / i, eg_v
 // Only declared but not defined. We don't want to multiply two scores due to
 // a very high risk of overflow. So user should explicitly convert to integer.
 inline Score operator*(Score s1, Score s2);
+
+// Rest of operators are standard:
+inline Score operator+ (const Score d1, const Score d2) { return Score(int(d1) + int(d2)); }
+inline Score operator- (const Score d1, const Score d2) { return Score(int(d1) - int(d2)); }
+inline Score operator* (int i, const Score d) {  return Score(i * int(d)); }
+inline Score operator* (const Score d, int i) {  return Score(int(d) * i); }
+inline Score operator- (const Score d) { return Score(-int(d)); }
+inline void operator+= (Score& d1, const Score d2) { d1 = d1 + d2; }
+inline void operator-= (Score& d1, const Score d2) { d1 = d1 - d2; }
+inline void operator*= (Score& d, int i) { d = Score(int(d) * i); }
+inline void operator/= (Score& d, int i) { d = Score(int(d) / i); }
 
 
 ////

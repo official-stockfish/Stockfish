@@ -117,64 +117,20 @@ inline void __cpuid(int CPUInfo[4], int)
 }
 #endif
 
+// Operators used by enum types like Depth, Piece, Square and so on.
 
-// Templetized operators used by enum types like Depth, Piece, Square and so on.
-// We don't want to write the same inline for each different enum. Note that we
-// pass by value to silence scaring warnings when using volatiles.
-// Because these templates override common operators and are included in all the
-// files, there is a possibility that the compiler silently performs some unwanted
-// overrides. To avoid possible very nasty bugs the templates are disabled by default
-// and must be enabled for each type on a case by case base. The enabling trick
-// uses template specialization, namely we just declare following struct.
-template<typename T> struct TempletizedOperator;
-
-// Then to enable the enum type we use following macro that defines a specialization
-// of TempletizedOperator for the given enum T. Here is defined typedef Not_Enabled.
-// Name of typedef is chosen to produce somewhat informative compile error messages.
-#define ENABLE_OPERATORS_ON(T)  \
-        template<> struct TempletizedOperator<T> { typedef T Not_Enabled; }
-
-// Finally we use macro OK(T) to check if type T is enabled. The macro simply
-// tries to use Not_Enabled, if was not previously defined a compile error occurs.
-// The check is done fully at compile time and there is zero overhead at runtime.
-#define OK(T) typedef typename TempletizedOperator<T>::Not_Enabled Type
-
-template<typename T>
-inline T operator+ (const T d1, const T d2) { OK(T); return T(int(d1) + int(d2)); }
-
-template<typename T>
-inline T operator- (const T d1, const T d2) { OK(T); return T(int(d1) - int(d2)); }
-
-template<typename T>
-inline T operator* (int i, const T d) { OK(T); return T(i * int(d)); }
-
-template<typename T>
-inline T operator* (const T d, int i) { OK(T); return T(int(d) * i); }
-
-template<typename T>
-inline T operator/ (const T d, int i) { OK(T); return T(int(d) / i); }
-
-template<typename T>
-inline T operator- (const T d) { OK(T); return T(-int(d)); }
-
-template<typename T>
-inline T operator++ (T& d, int) { OK(T); d = T(int(d) + 1); return d; }
-
-template<typename T>
-inline T operator-- (T& d, int) { OK(T); d = T(int(d) - 1); return d; }
-
-template<typename T>
-inline void operator+= (T& d1, const T d2) { OK(T); d1 = d1 + d2; }
-
-template<typename T>
-inline void operator-= (T& d1, const T d2) { OK(T); d1 = d1 - d2; }
-
-template<typename T>
-inline void operator*= (T& d, int i) { OK(T); d = T(int(d) * i); }
-
-template<typename T>
-inline void operator/= (T& d, int i) { OK(T); d = T(int(d) / i); }
-
-#undef OK
+#define ENABLE_OPERATORS_ON(T) \
+inline T operator+ (const T d1, const T d2) { return T(int(d1) + int(d2)); } \
+inline T operator- (const T d1, const T d2) { return T(int(d1) - int(d2)); } \
+inline T operator* (int i, const T d) {  return T(i * int(d)); } \
+inline T operator* (const T d, int i) {  return T(int(d) * i); } \
+inline T operator/ (const T d, int i) { return T(int(d) / i); } \
+inline T operator- (const T d) { return T(-int(d)); } \
+inline T operator++ (T& d, int) {d = T(int(d) + 1); return d; } \
+inline T operator-- (T& d, int) { d = T(int(d) - 1); return d; } \
+inline void operator+= (T& d1, const T d2) { d1 = d1 + d2; } \
+inline void operator-= (T& d1, const T d2) { d1 = d1 - d2; } \
+inline void operator*= (T& d, int i) { d = T(int(d) * i); } \
+inline void operator/= (T& d, int i) { d = T(int(d) / i); }
 
 #endif // !defined(TYPES_H_INCLUDED)
