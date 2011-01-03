@@ -8,8 +8,8 @@ Chess Partner, or Fritz) in order to be used comfortably.  Read the
 documentation for your GUI of choice for information about how to use
 Stockfish with your GUI.
 
-This version of Stockfish supports up to 8 CPUs, but has not been
-tested thoroughly with more than 2.  The program tries to detect the
+This version of Stockfish supports up to 16 CPUs, but has not been
+tested thoroughly with more than 4.  The program tries to detect the
 number of CPUs on your computer and set the number of search threads
 accordingly, but please be aware that the detection is not always
 correct.  It is therefore recommended to inspect the value of the
@@ -41,10 +41,10 @@ This distribution of Stockfish consists of the following files:
 3. Opening books
 ----------------
 
-This version of Stockfish has experimental support for PolyGlot opening
-books. For information about how to create such books, consult the
-PolyGlot documentation.  The book file can be selected by setting the
-UCI parameter "Book File".
+This version of Stockfish has support for PolyGlot opening books.
+For information about how to create such books, consult the PolyGlot
+documentation.  The book file can be selected by setting the UCI
+parameter "Book File".
 
 
 4. Compiling it yourself
@@ -63,6 +63,9 @@ compile with 'make icc-profile-popcnt'
 On 64 bit Unix-like systems the 'bsfq' assembly instruction will be used
 for bit counting. Detection is automatic at compile time, but in case you
 experience compile problems you can comment out #define USE_BSFQ line in types.h
+
+In general is recommended to run 'make help' to see a list of make targets
+with corresponding descriptions.
 
 
 5. Terms of use
