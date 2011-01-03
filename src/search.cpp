@@ -484,7 +484,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       std::string name = Options["Search Log Filename"].value<std::string>();
       LogFile.open(name.c_str(), std::ios::out | std::ios::app);
 
-      LogFile << "Searching: "  << pos.to_fen(Options["UCI_Chess960"].value<bool>())
+      LogFile << "Searching: "  << pos.to_fen()
               << "\ninfinite: " << infinite
               << " ponder: "    << ponder
               << " time: "      << myTime
@@ -570,7 +570,7 @@ namespace {
     Iteration = 1;
 
     // Send initial RootMoveList scoring (iteration 1)
-    cout << set960(Options["UCI_Chess960"].value<bool>()) // Is enough to set once at the beginning
+    cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
          << "info depth " << Iteration
          << "\n" << rml[0].pv_info_to_uci(pos, alpha, beta) << endl;
 

@@ -138,7 +138,7 @@ public:
 
   // Text input/output
   void from_fen(const std::string& fen);
-  const std::string to_fen(bool isChess960) const;
+  const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;
 
   // Copying
@@ -258,6 +258,7 @@ public:
   // Other properties of the position
   bool opposite_colored_bishops() const;
   bool has_pawn_on_7th(Color c) const;
+  bool is_chess960() const;
 
   // Current thread ID searching on the position
   int thread() const;
@@ -322,6 +323,7 @@ private:
   int castleRightsMask[64];
   StateInfo startState;
   File initialKFile, initialKRFile, initialQRFile;
+  bool isChess960;
   int startPosPlyCounter;
   int threadID;
   int64_t nodes;
@@ -549,6 +551,10 @@ inline bool Position::opposite_colored_bishops() const {
 
 inline bool Position::has_pawn_on_7th(Color c) const {
   return pieces(PAWN, c) & relative_rank_bb(c, RANK_7);
+}
+
+inline bool Position::is_chess960() const {
+  return isChess960;
 }
 
 inline bool Position::move_is_capture(Move m) const {
