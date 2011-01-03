@@ -59,10 +59,10 @@ public:
 
       key32 = k;
       data = (m & 0x1FFFF) | (t << 21) | (g << 23);
-      value16     = int16_t(v);
-      depth16     = int16_t(d);
-      staticValue = int16_t(statV);
-      staticValueMargin  = int16_t(kd);
+      value16     = (int16_t)v;
+      depth16     = (int16_t)d;
+      staticValue = (int16_t)statV;
+      staticValueMargin  = (int16_t)kd;
   }
   void set_generation(int g) { data = move() | (type() << 21) | (g << 23); }
 
@@ -132,7 +132,7 @@ extern TranspositionTable TT;
 
 inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 
-  return entries[uint32_t(posKey) & (size - 1)].data;
+  return entries[((uint32_t)posKey) & (size - 1)].data;
 }
 
 

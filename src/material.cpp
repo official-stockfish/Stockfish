@@ -192,7 +192,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   // Clear the MaterialInfo object, and set its key
   memset(mi, 0, sizeof(MaterialInfo));
-  mi->factor[WHITE] = mi->factor[BLACK] = uint8_t(SCALE_FACTOR_NORMAL);
+  mi->factor[WHITE] = mi->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
   mi->key = key;
 
   // Store game phase
@@ -353,7 +353,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
     }
     matValue += sign * v;
   }
-  mi->value = int16_t(matValue / 16);
+  mi->value = (int16_t)(matValue / 16);
   return mi;
 }
 
