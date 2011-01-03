@@ -168,6 +168,11 @@ namespace {
   // right to castle.
   const Value TrappedRookPenalty = Value(180);
 
+  // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
+  // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
+  // happen in Chess960 games.
+  const Score TrappedBishopA1H1Penalty = make_score(100, 100);
+
   // The SpaceMask[Color] contains the area of the board which is considered
   // by the space evaluation. In the middle game, each side is given a bonus
   // based on how many squares inside this area are safe and available for
@@ -554,6 +559,28 @@ namespace {
             && relative_rank(Us, pos.king_square(Them)) == RANK_8)
         {
             bonus += (Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus);
+        }
+
+        // Special extra evaluation for bishops
+        if (Piece == BISHOP)
+        {
+            // An important Chess960 pattern: A cornered bishop blocked by
+            // a friendly pawn diagonally in front of it is a very serious
+            // problem, especially when that pawn is also blocked.
+            if (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1))
+            {
+                SquareDelta d = pawn_push(Us) 
+                   + (square_file(s) == FILE_A ? DELTA_E : DELTA_W);
+                if (pos.piece_on(s + d) == piece_of_color_and_type(Us, PAWN))
+                {
+                    if (!pos.square_is_empty(s + d + pawn_push(Us)))
+                        bonus -= 2*TrappedBishopA1H1Penalty;
+                    else if (pos.piece_on(s + 2*d) == piece_of_color_and_type(Us, PAWN))
+                        bonus -= TrappedBishopA1H1Penalty;
+                    else
+                        bonus -= TrappedBishopA1H1Penalty / 2;
+                }
+            }
         }
 
         // Special extra evaluation for rooks
