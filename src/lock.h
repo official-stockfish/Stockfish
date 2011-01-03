@@ -44,6 +44,25 @@ typedef pthread_cond_t WaitCondition;
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
 
+// Default fast and race free locks and condition variables
+#if !defined(OLD_LOCKS)
+
+typedef SRWLOCK Lock;
+typedef CONDITION_VARIABLE WaitCondition;
+
+#  define lock_init(x) InitializeSRWLock(x)
+#  define lock_grab(x) AcquireSRWLockExclusive(x)
+#  define lock_release(x) ReleaseSRWLockExclusive(x)
+#  define lock_destroy(x) (x)
+#  define cond_destroy(x) (x)
+#  define cond_init(x) InitializeConditionVariable(x)
+#  define cond_signal(x) WakeConditionVariable(x)
+#  define cond_wait(x,y) SleepConditionVariableSRW(x, y, INFINITE,0)
+
+// Fallback solution to build for Windows XP and older versions, note that
+// cond_wait() is racy between lock_release() and WaitForSingleObject().
+#else
+
 typedef CRITICAL_SECTION Lock;
 typedef HANDLE WaitCondition;
 
@@ -55,6 +74,8 @@ typedef HANDLE WaitCondition;
 #  define cond_destroy(x) CloseHandle(*x)
 #  define cond_signal(x) SetEvent(*x)
 #  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(*x, INFINITE); lock_grab(y); }
+#endif
+
 #endif
 
 #endif // !defined(LOCK_H_INCLUDED)

@@ -70,6 +70,10 @@ typedef uint64_t Bitboard;
 //// -DUSE_POPCNT   | Add runtime support for use of popcnt asm-instruction.
 ////                | Works only in 64-bit mode. For compiling requires hardware
 ////                | with popcnt support. Around 4% speed-up.
+////
+//// -DOLD_LOCKS    | By default under Windows are used the fast Slim Reader/Writer (SRW)
+////                | Locks and Condition Variables: these are not supported by Windows XP
+////                | and older, to compile for those platforms you should enable OLD_LOCKS.
 
 // Automatic detection for 64-bit under Windows
 #if defined(_WIN64)
