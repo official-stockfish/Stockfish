@@ -134,10 +134,10 @@ public:
 
   // Constructors
   Position(const Position& pos, int threadID);
-  Position(const std::string& fen, int threadID);
+  Position(const std::string& fen, bool isChess960, int threadID);
 
   // Text input/output
-  void from_fen(const std::string& fen);
+  void from_fen(const std::string& fen, bool isChess960);
   const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;
 

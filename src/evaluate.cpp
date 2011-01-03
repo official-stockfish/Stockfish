@@ -562,7 +562,7 @@ namespace {
         }
 
         // Special extra evaluation for bishops
-        if (Piece == BISHOP)
+        if (Piece == BISHOP && pos.is_chess960())
         {
             // An important Chess960 pattern: A cornered bishop blocked by
             // a friendly pawn diagonally in front of it is a very serious

@@ -152,9 +152,9 @@ Position::Position(const Position& pos, int th) {
   nodes = 0;
 }
 
-Position::Position(const string& fen, int th) {
+Position::Position(const string& fen, bool isChess960, int th) {
 
-  from_fen(fen);
+  from_fen(fen, isChess960);
   threadID = th;
 }
 
@@ -175,7 +175,7 @@ void Position::detach() {
 /// string. This function is not very robust - make sure that input FENs are
 /// correct (this is assumed to be the responsibility of the GUI).
 
-void Position::from_fen(const string& fen) {
+void Position::from_fen(const string& fen, bool c960) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -274,10 +274,7 @@ void Position::from_fen(const string& fen) {
   castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
-  isChess960 =   initialKFile  != FILE_E
-              || initialQRFile != FILE_A
-              || initialKRFile != FILE_H;
-
+  isChess960 = c960;
   find_checkers();
 
   st->key = compute_key();

@@ -125,7 +125,7 @@ void benchmark(int argc, char* argv[]) {
   {
       Move moves[1] = { MOVE_NONE };
       int dummy[2] = { 0, 0 };
-      Position pos(*it, 0);
+      Position pos(*it, false, 0);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (valType == "perft")
       {

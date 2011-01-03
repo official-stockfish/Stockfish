@@ -407,7 +407,7 @@ Key EndgameFunctions::buildKey(const string& keyCode) {
     }
     fen += char(8 - keyCode.length() + '0');
     fen += "/8/8/8/8/8/8/8 w - -";
-    return Position(fen, 0).get_material_key();
+    return Position(fen, false, 0).get_material_key();
 }
 
 const string EndgameFunctions::swapColors(const string& keyCode) {

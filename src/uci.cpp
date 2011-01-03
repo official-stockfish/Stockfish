@@ -63,7 +63,7 @@ namespace {
 
 bool execute_uci_command(const string& cmd) {
 
-  static Position pos(StartPositionFEN, 0); // The root position
+  static Position pos(StartPositionFEN, false, 0); // The root position
   UCIParser up(cmd);
   string token;
 
@@ -84,7 +84,7 @@ bool execute_uci_command(const string& cmd) {
       cout << "uciok" << endl;
   }
   else if (token == "ucinewgame")
-      pos.from_fen(StartPositionFEN);
+      pos.from_fen(StartPositionFEN, false);
 
   else if (token == "isready")
       cout << "readyok" << endl;
@@ -147,7 +147,7 @@ namespace {
 
     if (token == "startpos")
     {
-        pos.from_fen(StartPositionFEN);
+        pos.from_fen(StartPositionFEN, false);
         if (!(up >> token))
             return;
     }
@@ -159,7 +159,7 @@ namespace {
             fen += token;
             fen += ' ';
         }
-        pos.from_fen(fen);
+        pos.from_fen(fen, Options["UCI_Chess960"].value<bool>());
     }
 
     if (token != "moves")
