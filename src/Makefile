@@ -278,10 +278,10 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),icc)
-		CXXFLAGS += -fast
-
 		ifeq ($(os),osx)
-			CXXFLAGS += -mdynamic-no-pic
+			CXXFLAGS += -fast -mdynamic-no-pic
+		else
+			CXXFLAGS += -O3
 		endif
 	endif
 endif
