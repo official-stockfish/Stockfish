@@ -716,10 +716,10 @@ namespace {
         rml.sort();
 
         // Step 10. Loop through all moves in the root move list
-        for (int i = 0; i < (int)rml.size() && !StopRequest; i++)
+        for (int moveCount = 0; moveCount < (int)rml.size() && !StopRequest; moveCount++)
         {
             // This is used by time management
-            FirstRootMove = (i == 0);
+            FirstRootMove = (moveCount == 0);
 
             // Save the current node count before the move is searched
             nodes = pos.nodes_searched();
@@ -736,11 +736,11 @@ namespace {
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
-            move = ss->currentMove = rml[i].pv[0];
+            move = ss->currentMove = rml[moveCount].pv[0];
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
-                     << " currmovenumber " << i + 1 << endl;
+                     << " currmovenumber " << moveCount + 1 << endl;
 
             moveIsCheck = pos.move_is_check(move);
             captureOrPromotion = pos.move_is_capture_or_promotion(move);
@@ -764,7 +764,7 @@ namespace {
                 // Step extra. pv search
                 // We do pv search for first moves (i < MultiPV)
                 // and for fail high research (value > alpha)
-                if (i < MultiPV || value > alpha)
+                if (moveCount < MultiPV || value > alpha)
                 {
                     // Aspiration window is disabled in multi-pv case
                     if (MultiPV > 1)
@@ -784,7 +784,7 @@ namespace {
                         && !captureOrPromotion
                         && !move_is_castle(move))
                     {
-                        ss->reduction = reduction<PV>(depth, i - MultiPV + 2);
+                        ss->reduction = reduction<PV>(depth, moveCount - MultiPV + 2);
                         if (ss->reduction)
                         {
                             assert(newDepth-ss->reduction >= ONE_PLY);
@@ -819,11 +819,11 @@ namespace {
                 // We are failing high and going to do a research. It's important to update
                 // the score before research in case we run out of time while researching.
                 ss->bestMove = move;
-                rml[i].pv_score = value;
-                rml[i].extract_pv_from_tt(pos);
+                rml[moveCount].pv_score = value;
+                rml[moveCount].extract_pv_from_tt(pos);
 
                 // Inform GUI that PV has changed
-                cout << rml[i].pv_info_to_uci(pos, alpha, beta) << endl;
+                cout << rml[moveCount].pv_info_to_uci(pos, alpha, beta) << endl;
 
                 // Prepare for a research after a fail high, each time with a wider window
                 beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
@@ -840,32 +840,32 @@ namespace {
                 break;
 
             // Remember searched nodes counts for this move
-            rml[i].nodes += pos.nodes_searched() - nodes;
+            rml[moveCount].nodes += pos.nodes_searched() - nodes;
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
             assert(value < beta);
 
             // Step 17. Check for new best move
-            if (value <= alpha && i >= MultiPV)
-                rml[i].pv_score = -VALUE_INFINITE;
+            if (value <= alpha && moveCount >= MultiPV)
+                rml[moveCount].pv_score = -VALUE_INFINITE;
             else
             {
                 // PV move or new best move!
 
                 // Update PV
                 ss->bestMove = move;
-                rml[i].pv_score = value;
-                rml[i].extract_pv_from_tt(pos);
+                rml[moveCount].pv_score = value;
+                rml[moveCount].extract_pv_from_tt(pos);
 
                 // We record how often the best move has been changed in each
                 // iteration. This information is used for time managment: When
                 // the best move changes frequently, we allocate some more time.
-                if (MultiPV == 1 && i > 0)
+                if (MultiPV == 1 && moveCount > 0)
                     BestMoveChangesByIteration[Iteration]++;
 
                 // Inform GUI that PV has changed, in case of multi-pv UCI protocol
                 // requires we send all the PV lines properly sorted.
-                rml.sort_multipv(i);
+                rml.sort_multipv(moveCount);
 
                 for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
                     cout << rml[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
@@ -878,7 +878,7 @@ namespace {
                         alpha = value;
                 }
                 else // Set alpha equal to minimum score among the PV lines
-                    alpha = rml[Min(i, MultiPV - 1)].pv_score;
+                    alpha = rml[Min(moveCount, MultiPV - 1)].pv_score;
 
             } // PV move or new best move
 
