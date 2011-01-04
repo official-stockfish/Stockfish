@@ -146,7 +146,7 @@ namespace {
     typedef std::vector<RootMove> Base;
 
     RootMoveList(Position& pos, Move searchMoves[]);
-    void set_non_pv_scores(const Position& pos);
+    void set_non_pv_scores(const Position& pos, Move ttm, SearchStack* ss);
 
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
     void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n + 1); }
@@ -677,6 +677,7 @@ namespace {
   Value root_search(Position& pos, SearchStack* ss, Value alpha,
                     Value beta, Depth depth, RootMoveList& rml) {
     StateInfo st;
+    Move movesSearched[MOVES_MAX];
     CheckInfo ci(pos);
     int64_t nodes;
     Move move;
@@ -712,7 +713,7 @@ namespace {
     while (1)
     {
         // Sort the moves before to (re)search
-        rml.set_non_pv_scores(pos);
+        rml.set_non_pv_scores(pos, rml[0].pv[0], ss);
         rml.sort();
 
         // Step 10. Loop through all moves in the root move list
@@ -737,6 +738,7 @@ namespace {
             // Pick the next root move, and print the move and the move number to
             // the standard output.
             move = ss->currentMove = rml[moveCount].pv[0];
+            movesSearched[moveCount] = move;
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
@@ -821,6 +823,13 @@ namespace {
                 ss->bestMove = move;
                 rml[moveCount].pv_score = value;
                 rml[moveCount].extract_pv_from_tt(pos);
+
+                // Update killers and history only for non capture moves that fails high
+                if (!pos.move_is_capture_or_promotion(move))
+                {
+                    update_history(pos, move, depth, movesSearched, moveCount + 1);
+                    update_killers(move, ss);
+                }
 
                 // Inform GUI that PV has changed
                 cout << rml[moveCount].pv_info_to_uci(pos, alpha, beta) << endl;
@@ -2685,11 +2694,11 @@ split_point_start: // At split points actual search starts from here
   // This is the second order score that is used to compare the moves when
   // the first order pv scores of both moves are equal.
 
-  void RootMoveList::set_non_pv_scores(const Position& pos)
+  void RootMoveList::set_non_pv_scores(const Position& pos, Move ttm, SearchStack* ss)
   {
       Move move;
       Value score = VALUE_ZERO;
-      MovePicker mp(pos, MOVE_NONE, ONE_PLY, H);
+      MovePicker mp(pos, ttm, ONE_PLY, H, ss);
 
       while ((move = mp.get_next_move()) != MOVE_NONE)
           for (Base::iterator it = begin(); it != end(); ++it)
