@@ -86,6 +86,11 @@ typedef uint64_t Bitboard;
 #define USE_BSFQ
 #endif
 
+// Intel header for _mm_popcnt_u64() intrinsic
+#if defined(USE_POPCNT) && defined(_MSC_VER) && defined(__INTEL_COMPILER)
+#include <nmmintrin.h>
+#endif
+
 // Cache line alignment specification
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #define CACHE_LINE_ALIGNMENT __declspec(align(64))

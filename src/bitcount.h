@@ -85,6 +85,8 @@ template<>
 inline int count_1s<CNT_POPCNT>(Bitboard b) {
 #if !defined(USE_POPCNT)
   return int(b != 0); // Avoid 'b not used' warning
+#elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
+  return _mm_popcnt_u64(b);
 #elif defined(_MSC_VER)
   return __popcnt64(b);
 #elif defined(__GNUC__)
