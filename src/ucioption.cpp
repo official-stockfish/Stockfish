@@ -104,7 +104,7 @@ void init_uci_options() {
   Options["Emergency Base Time"] = Option(200, 0, 60000);
   Options["Emergency Move Time"] = Option(70, 0, 5000);
   Options["Minimum Thinking Time"] = Option(20, 0, 5000);
-  Options["UCI_Chess960"] = Option(false); // Just a dummy but needed by GUIs
+  Options["UCI_Chess960"] = Option(false);
   Options["UCI_AnalyseMode"] = Option(false);
 
   // Set some SMP parameters accordingly to the detected CPU count
