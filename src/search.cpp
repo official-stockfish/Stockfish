@@ -364,12 +364,12 @@ void init_search() {
 /// perft() is our utility to verify move generation is bug free. All the legal
 /// moves up to given depth are generated and counted and the sum returned.
 
-int perft(Position& pos, Depth depth)
+int64_t perft(Position& pos, Depth depth)
 {
     MoveStack mlist[MOVES_MAX];
     StateInfo st;
     Move m;
-    int sum = 0;
+    int64_t sum = 0;
 
     // Generate all legal moves
     MoveStack* last = generate_moves(pos, mlist);

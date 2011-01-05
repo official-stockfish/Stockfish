@@ -287,7 +287,8 @@ namespace {
 
   void perft(Position& pos, UCIParser& up) {
 
-    int depth, tm, n;
+    int depth, tm;
+    int64_t n;
 
     if (!(up >> depth))
         return;
