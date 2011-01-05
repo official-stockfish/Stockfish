@@ -702,6 +702,7 @@ namespace {
 
     // Step 1. Initialize node (polling is omitted at root)
     ss->currentMove = ss->bestMove = MOVE_NONE;
+    (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
 
     // Step 2. Check for aborted search (omitted at root)
     // Step 3. Mate distance pruning (omitted at root)
