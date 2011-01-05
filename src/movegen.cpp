@@ -52,19 +52,65 @@ namespace {
     EVASION
   };
 
-  // Helper templates
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position&, MoveStack*);
 
   template<Color Us, MoveType Type>
   MoveStack* generate_pawn_moves(const Position&, MoveStack*, Bitboard, Square);
 
-  // Template generate_piece_moves (captures and non-captures) with specializations and overloads
-  template<PieceType>
-  MoveStack* generate_piece_moves(const Position&, MoveStack*, Color, Bitboard);
+  template<PieceType Piece>
+  inline MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from) {
+
+    assert(Piece != QUEEN);
+
+    Bitboard b = pos.attacks_from<Piece>(from) & pos.empty_squares();
+    if (Piece == KING)
+    {
+        Square ksq = pos.king_square(opposite_color(pos.side_to_move()));
+        b &= ~QueenPseudoAttacks[ksq];
+    }
+    SERIALIZE_MOVES(b);
+    return mlist;
+  }
+
+  template<PieceType Piece>
+  inline MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist, Color us,
+                                           Bitboard dc, Square ksq) {
+    assert(Piece != KING);
+
+    Bitboard checkSqs, b;
+    Square from;
+    const Square* ptr = pos.piece_list_begin(us, Piece);
+
+    if ((from = *ptr++) == SQ_NONE)
+        return mlist;
+
+    checkSqs = pos.attacks_from<Piece>(ksq) & pos.empty_squares();
+
+    do
+    {
+        if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
+            || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
+            || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
+            continue;
+
+        if (dc && bit_is_set(dc, from))
+            continue;
+
+        b = pos.attacks_from<Piece>(from) & checkSqs;
+        SERIALIZE_MOVES(b);
+
+    } while ((from = *ptr++) != SQ_NONE);
+
+    return mlist;
+  }
 
   template<>
-  MoveStack* generate_piece_moves<KING>(const Position&, MoveStack*, Color, Bitboard);
+  inline MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
+
+    return (us == WHITE ? generate_pawn_moves<WHITE, CHECK>(p, m, dc, ksq)
+                        : generate_pawn_moves<BLACK, CHECK>(p, m, dc, ksq));
+  }
 
   template<PieceType Piece, MoveType Type>
   inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
@@ -76,20 +122,35 @@ namespace {
                         : generate_pawn_moves<BLACK, Type>(p, m, t, SQ_NONE));
   }
 
-  // Templates for non-capture checks generation
-
   template<PieceType Piece>
-  MoveStack* generate_discovered_checks(const Position&, MoveStack*, Square);
+  inline MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
-  template<PieceType>
-  MoveStack* generate_direct_checks(const Position&, MoveStack*, Color, Bitboard, Square);
+    Bitboard b;
+    Square from;
+    const Square* ptr = pos.piece_list_begin(us, Piece);
+
+    if (*ptr != SQ_NONE)
+    {
+        do {
+            from = *ptr;
+            b = pos.attacks_from<Piece>(from) & target;
+            SERIALIZE_MOVES(b);
+        } while (*++ptr != SQ_NONE);
+    }
+    return mlist;
+  }
 
   template<>
-  inline MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
+  inline MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
-    return (us == WHITE ? generate_pawn_moves<WHITE, CHECK>(p, m, dc, ksq)
-                        : generate_pawn_moves<BLACK, CHECK>(p, m, dc, ksq));
+    Bitboard b;
+    Square from = pos.king_square(us);
+
+    b = pos.attacks_from<KING>(from) & target;
+    SERIALIZE_MOVES(b);
+    return mlist;
   }
+
 }
 
 
@@ -415,35 +476,6 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
 namespace {
 
-  template<PieceType Piece>
-  MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
-
-    Bitboard b;
-    Square from;
-    const Square* ptr = pos.piece_list_begin(us, Piece);
-
-    if (*ptr != SQ_NONE)
-    {
-        do {
-            from = *ptr;
-            b = pos.attacks_from<Piece>(from) & target;
-            SERIALIZE_MOVES(b);
-        } while (*++ptr != SQ_NONE);
-    }
-    return mlist;
-  }
-
-  template<>
-  MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
-
-    Bitboard b;
-    Square from = pos.king_square(us);
-
-    b = pos.attacks_from<KING>(from) & target;
-    SERIALIZE_MOVES(b);
-    return mlist;
-  }
-
   template<SquareDelta Delta>
   inline Bitboard move_pawns(Bitboard p) {
 
@@ -604,53 +636,6 @@ namespace {
             (*mlist++).move = make_ep_move(to, pos.ep_square());
         }
     }
-    return mlist;
-  }
-
-  template<PieceType Piece>
-  MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from) {
-
-    assert(Piece != QUEEN);
-
-    Bitboard b = pos.attacks_from<Piece>(from) & pos.empty_squares();
-    if (Piece == KING)
-    {
-        Square ksq = pos.king_square(opposite_color(pos.side_to_move()));
-        b &= ~QueenPseudoAttacks[ksq];
-    }
-    SERIALIZE_MOVES(b);
-    return mlist;
-  }
-
-  template<PieceType Piece>
-  MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist, Color us,
-                                   Bitboard dc, Square ksq) {
-    assert(Piece != KING);
-
-    Bitboard checkSqs, b;
-    Square from;
-    const Square* ptr = pos.piece_list_begin(us, Piece);
-
-    if ((from = *ptr++) == SQ_NONE)
-        return mlist;
-
-    checkSqs = pos.attacks_from<Piece>(ksq) & pos.empty_squares();
-
-    do
-    {
-        if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
-            || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
-            || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
-            continue;
-
-        if (dc && bit_is_set(dc, from))
-            continue;
-
-        b = pos.attacks_from<Piece>(from) & checkSqs;
-        SERIALIZE_MOVES(b);
-
-    } while ((from = *ptr++) != SQ_NONE);
-
     return mlist;
   }
 
