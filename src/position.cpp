@@ -1730,8 +1730,8 @@ bool Position::has_mate_threat() {
   do_null_move(st1);
 
   // Then generate pseudo-legal moves that could give check
-  last = generate_non_capture_checks(*this, mlist);
-  last = generate_captures(*this, last);
+  last = generate<NON_CAPTURE_CHECKS>(*this, mlist);
+  last = generate<CAPTURES>(*this, last);
 
   // Loop through the moves, and see if one of them gives mate
   Bitboard pinned = pinned_pieces(sideToMove);

@@ -161,8 +161,8 @@ namespace {
 
 /// generate_captures() generates all pseudo-legal captures and queen
 /// promotions. Returns a pointer to the end of the move list.
-
-MoveStack* generate_captures(const Position& pos, MoveStack* mlist) {
+template<>
+MoveStack* generate<CAPTURES>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -181,8 +181,8 @@ MoveStack* generate_captures(const Position& pos, MoveStack* mlist) {
 
 /// generate_noncaptures() generates all pseudo-legal non-captures and
 /// underpromotions. Returns a pointer to the end of the move list.
-
-MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
+template<>
+MoveStack* generate<NON_CAPTURES>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -203,8 +203,8 @@ MoveStack* generate_noncaptures(const Position& pos, MoveStack* mlist) {
 
 /// generate_non_evasions() generates all pseudo-legal captures and
 /// non-captures. Returns a pointer to the end of the move list.
-
-MoveStack* generate_non_evasions(const Position& pos, MoveStack* mlist) {
+template<>
+MoveStack* generate<NON_EVASIONS>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -229,8 +229,8 @@ MoveStack* generate_non_evasions(const Position& pos, MoveStack* mlist) {
 
 /// generate_non_capture_checks() generates all pseudo-legal non-captures and knight
 /// underpromotions that give check. Returns a pointer to the end of the move list.
-
-MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist) {
+template<>
+MoveStack* generate<NON_CAPTURE_CHECKS>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -270,8 +270,8 @@ MoveStack* generate_non_capture_checks(const Position& pos, MoveStack* mlist) {
 
 /// generate_evasions() generates all pseudo-legal check evasions when
 /// the side to move is in check. Returns a pointer to the end of the move list.
-
-MoveStack* generate_evasions(const Position& pos, MoveStack* mlist) {
+template<>
+MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
@@ -347,8 +347,8 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
   // Generate pseudo-legal moves
-  last = pos.is_check() ? generate_evasions(pos, mlist)
-                        : generate_non_evasions(pos, mlist);
+  last = pos.is_check() ? generate<EVASIONS>(pos, mlist)
+                        : generate<NON_EVASIONS>(pos, mlist);
   if (pseudoLegal)
       return last;
 
