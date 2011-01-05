@@ -437,7 +437,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
 
   // Verify the book move is legal
   MoveStack mlist[MOVES_MAX];
-  MoveStack* last = generate_moves(pos, mlist);
+  MoveStack* last = generate<MV_LEGAL>(pos, mlist);
   for (MoveStack* cur = mlist; cur != last; cur++)
       if ((int(cur->move) & 07777) == bookMove)
           return cur->move;

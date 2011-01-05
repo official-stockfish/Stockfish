@@ -1709,7 +1709,7 @@ bool Position::is_draw() const {
 bool Position::is_mate() const {
 
   MoveStack moves[MOVES_MAX];
-  return is_check() && generate_moves(*this, moves) == moves;
+  return is_check() && generate<MV_LEGAL>(*this, moves) == moves;
 }
 
 
@@ -1730,8 +1730,8 @@ bool Position::has_mate_threat() {
   do_null_move(st1);
 
   // Then generate pseudo-legal moves that could give check
-  last = generate<NON_CAPTURE_CHECKS>(*this, mlist);
-  last = generate<CAPTURES>(*this, last);
+  last = generate<MV_NON_CAPTURE_CHECK>(*this, mlist);
+  last = generate<MV_CAPTURE>(*this, last);
 
   // Loop through the moves, and see if one of them gives mate
   Bitboard pinned = pinned_pieces(sideToMove);

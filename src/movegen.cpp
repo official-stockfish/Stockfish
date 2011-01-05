@@ -45,13 +45,6 @@ namespace {
     QUEEN_SIDE
   };
 
-  enum MoveType {
-    CAPTURE,
-    NON_CAPTURE,
-    CHECK,
-    EVASION
-  };
-
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position&, MoveStack*);
 
@@ -108,15 +101,15 @@ namespace {
   template<>
   inline MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
 
-    return (us == WHITE ? generate_pawn_moves<WHITE, CHECK>(p, m, dc, ksq)
-                        : generate_pawn_moves<BLACK, CHECK>(p, m, dc, ksq));
+    return (us == WHITE ? generate_pawn_moves<WHITE, MV_CHECK>(p, m, dc, ksq)
+                        : generate_pawn_moves<BLACK, MV_CHECK>(p, m, dc, ksq));
   }
 
   template<PieceType Piece, MoveType Type>
   inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
 
     assert(Piece == PAWN);
-    assert(Type == CAPTURE || Type == NON_CAPTURE || Type == EVASION);
+    assert(Type == MV_CAPTURE || Type == MV_NON_CAPTURE || Type == MV_EVASION);
 
     return (us == WHITE ? generate_pawn_moves<WHITE, Type>(p, m, t, SQ_NONE)
                         : generate_pawn_moves<BLACK, Type>(p, m, t, SQ_NONE));
@@ -153,84 +146,70 @@ namespace {
 
 }
 
-
 ////
 //// Functions
 ////
 
 
-/// generate_captures() generates all pseudo-legal captures and queen
+/// generate<MV_CAPTURE> generates all pseudo-legal captures and queen
 /// promotions. Returns a pointer to the end of the move list.
-template<>
-MoveStack* generate<CAPTURES>(const Position& pos, MoveStack* mlist) {
-
-  assert(pos.is_ok());
-  assert(!pos.is_check());
-
-  Color us = pos.side_to_move();
-  Bitboard target = pos.pieces_of_color(opposite_color(us));
-
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us, target);
-  return  generate_piece_moves<KING>(pos, mlist, us, target);
-}
-
-
-/// generate_noncaptures() generates all pseudo-legal non-captures and
+///
+/// generate<MV_NON_CAPTURE> generates all pseudo-legal non-captures and
 /// underpromotions. Returns a pointer to the end of the move list.
-template<>
-MoveStack* generate<NON_CAPTURES>(const Position& pos, MoveStack* mlist) {
-
-  assert(pos.is_ok());
-  assert(!pos.is_check());
-
-  Color us = pos.side_to_move();
-  Bitboard target = pos.empty_squares();
-
-  mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us, target);
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
-  mlist = generate_piece_moves<KING>(pos, mlist, us, target);
-  mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
-  return  generate_castle_moves<QUEEN_SIDE>(pos, mlist);
-}
-
-
-/// generate_non_evasions() generates all pseudo-legal captures and
+///
+/// generate<MV_NON_EVASION> generates all pseudo-legal captures and
 /// non-captures. Returns a pointer to the end of the move list.
-template<>
-MoveStack* generate<NON_EVASIONS>(const Position& pos, MoveStack* mlist) {
+
+template<MoveType T>
+MoveStack* generate(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
 
   Color us = pos.side_to_move();
-  Bitboard target = pos.pieces_of_color(opposite_color(us));
+  Bitboard target;
 
-  mlist = generate_piece_moves<PAWN, CAPTURE>(pos, mlist, us, target);
-  mlist = generate_piece_moves<PAWN, NON_CAPTURE>(pos, mlist, us, pos.empty_squares());
+  if (T == MV_CAPTURE || T == MV_NON_EVASION)
+      target = pos.pieces_of_color(opposite_color(us));
+  else if (T == MV_NON_CAPTURE)
+      target = pos.empty_squares();
+  else
+      assert(false);
 
-  target |= pos.empty_squares();
+  if (T == MV_NON_EVASION)
+  {
+      mlist = generate_piece_moves<PAWN, MV_CAPTURE>(pos, mlist, us, target);
+      mlist = generate_piece_moves<PAWN, MV_NON_CAPTURE>(pos, mlist, us, pos.empty_squares());
+      target |= pos.empty_squares();
+  }
+  else
+      mlist = generate_piece_moves<PAWN, T>(pos, mlist, us, target);
 
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
   mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
-  mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
-  return  generate_castle_moves<QUEEN_SIDE>(pos, mlist);
+
+  if (T != MV_CAPTURE)
+  {
+      mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
+      mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
+  }
+
+  return mlist;
 }
+
+// Explicit template instantiation
+template MoveStack* generate<MV_CAPTURE>(const Position& pos, MoveStack* mlist);
+template MoveStack* generate<MV_NON_CAPTURE>(const Position& pos, MoveStack* mlist);
+template MoveStack* generate<MV_NON_EVASION>(const Position& pos, MoveStack* mlist);
 
 
 /// generate_non_capture_checks() generates all pseudo-legal non-captures and knight
 /// underpromotions that give check. Returns a pointer to the end of the move list.
 template<>
-MoveStack* generate<NON_CAPTURE_CHECKS>(const Position& pos, MoveStack* mlist) {
+MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(!pos.is_check());
@@ -271,7 +250,7 @@ MoveStack* generate<NON_CAPTURE_CHECKS>(const Position& pos, MoveStack* mlist) {
 /// generate_evasions() generates all pseudo-legal check evasions when
 /// the side to move is in check. Returns a pointer to the end of the move list.
 template<>
-MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
+MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
   assert(pos.is_check());
@@ -327,7 +306,7 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
   // checker piece is possible.
   target = squares_between(checksq, ksq) | checkers;
 
-  mlist = generate_piece_moves<PAWN, EVASION>(pos, mlist, us, target);
+  mlist = generate_piece_moves<PAWN, MV_EVASION>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
@@ -335,22 +314,26 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
 }
 
 
-/// generate_moves() computes a complete list of legal or pseudo-legal moves in
-/// the current position. This function is not very fast, and should be used
-/// only in non time-critical paths.
+/// generate<MV_LEGAL / MV_PSEUDO_LEGAL> computes a complete list of legal
+/// or pseudo-legal moves in the current position.
+template<>
+inline MoveStack* generate<MV_PSEUDO_LEGAL>(const Position& pos, MoveStack* mlist) {
 
-MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLegal) {
+  assert(pos.is_ok());
+
+  return pos.is_check() ? generate<MV_EVASION>(pos, mlist)
+                        : generate<MV_NON_EVASION>(pos, mlist);
+}
+
+template<>
+MoveStack* generate<MV_LEGAL>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
   MoveStack *last, *cur = mlist;
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
-  // Generate pseudo-legal moves
-  last = pos.is_check() ? generate<EVASIONS>(pos, mlist)
-                        : generate<NON_EVASIONS>(pos, mlist);
-  if (pseudoLegal)
-      return last;
+  last = generate<MV_PSEUDO_LEGAL>(pos, mlist);
 
   // Remove illegal moves from the list
   while (cur != last)
@@ -370,7 +353,7 @@ MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLega
 bool move_is_legal(const Position& pos, const Move m) {
 
   MoveStack mlist[MOVES_MAX];
-  MoveStack *cur, *last = generate_moves(pos, mlist, true);
+  MoveStack *cur, *last = generate<MV_PSEUDO_LEGAL>(pos, mlist);
 
    for (cur = mlist; cur != last; cur++)
       if (cur->move == m)
@@ -515,10 +498,10 @@ namespace {
     {
         to = pop_1st_bit(&b);
 
-        if (Type == CAPTURE || Type == EVASION)
+        if (Type == MV_CAPTURE || Type == MV_EVASION)
             (*mlist++).move = make_promotion_move(to - Delta, to, QUEEN);
 
-        if (Type == NON_CAPTURE || Type == EVASION)
+        if (Type == MV_NON_CAPTURE || Type == MV_EVASION)
         {
             (*mlist++).move = make_promotion_move(to - Delta, to, ROOK);
             (*mlist++).move = make_promotion_move(to - Delta, to, BISHOP);
@@ -527,7 +510,7 @@ namespace {
 
         // This is the only possible under promotion that can give a check
         // not already included in the queen-promotion.
-        if (   Type == CHECK
+        if (   Type == MV_CHECK
             && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(opposite_color(Us))))
             (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
         else (void)pos; // Silence a warning under MSVC
@@ -551,16 +534,16 @@ namespace {
     Bitboard b1, b2, dc1, dc2, pawnPushes, emptySquares;
     Bitboard pawns = pos.pieces(PAWN, Us);
     Bitboard pawnsOn7 = pawns & TRank7BB;
-    Bitboard enemyPieces = (Type == CAPTURE ? target : pos.pieces_of_color(Them));
+    Bitboard enemyPieces = (Type == MV_CAPTURE ? target : pos.pieces_of_color(Them));
 
     // Pre-calculate pawn pushes before changing emptySquares definition
-    if (Type != CAPTURE)
+    if (Type != MV_CAPTURE)
     {
-        emptySquares = (Type == NON_CAPTURE ? target : pos.empty_squares());
+        emptySquares = (Type == MV_NON_CAPTURE ? target : pos.empty_squares());
         pawnPushes = move_pawns<TDELTA_N>(pawns & ~TRank7BB) & emptySquares;
     }
 
-    if (Type == EVASION)
+    if (Type == MV_EVASION)
     {
         emptySquares &= target; // Only blocking squares
         enemyPieces  &= target; // Capture only the checker piece
@@ -569,7 +552,7 @@ namespace {
     // Promotions and underpromotions
     if (pawnsOn7)
     {
-        if (Type == CAPTURE)
+        if (Type == MV_CAPTURE)
             emptySquares = pos.empty_squares();
 
         pawns &= ~TRank7BB;
@@ -579,19 +562,19 @@ namespace {
     }
 
     // Standard captures
-    if (Type == CAPTURE || Type == EVASION)
+    if (Type == MV_CAPTURE || Type == MV_EVASION)
     {
         mlist = generate_pawn_captures<Type, TDELTA_NE>(mlist, pawns, enemyPieces);
         mlist = generate_pawn_captures<Type, TDELTA_NW>(mlist, pawns, enemyPieces);
     }
 
     // Single and double pawn pushes
-    if (Type != CAPTURE)
+    if (Type != MV_CAPTURE)
     {
         b1 = pawnPushes & emptySquares;
         b2 = move_pawns<TDELTA_N>(pawnPushes & TRank3BB) & emptySquares;
 
-        if (Type == CHECK)
+        if (Type == MV_CHECK)
         {
             // Consider only pawn moves which give direct checks
             b1 &= pos.attacks_from<PAWN>(ksq, Them);
@@ -614,7 +597,7 @@ namespace {
     }
 
     // En passant captures
-    if ((Type == CAPTURE || Type == EVASION) && pos.ep_square() != SQ_NONE)
+    if ((Type == MV_CAPTURE || Type == MV_EVASION) && pos.ep_square() != SQ_NONE)
     {
         assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
         assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
@@ -622,7 +605,7 @@ namespace {
         // An en passant capture can be an evasion only if the checking piece
         // is the double pushed pawn and so is in the target. Otherwise this
         // is a discovery check and we are forced to do otherwise.
-        if (Type == EVASION && !bit_is_set(target, pos.ep_square() - TDELTA_N))
+        if (Type == MV_EVASION && !bit_is_set(target, pos.ep_square() - TDELTA_N))
             return mlist;
 
         b1 = pawns & pos.attacks_from<PAWN>(pos.ep_square(), Them);

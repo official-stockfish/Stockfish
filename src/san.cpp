@@ -149,7 +149,7 @@ Move move_from_san(const Position& pos, const string& movestr) {
   int matches, state = START;
 
   // Generate all legal moves for the given position
-  last = generate_moves(pos, mlist);
+  last = generate<MV_LEGAL>(pos, mlist);
 
   // Castling moves
   if (movestr == "O-O-O" || movestr == "O-O-O+")
@@ -377,7 +377,7 @@ namespace {
         return AMBIGUITY_NONE;
 
     // Collect all legal moves of piece 'pc' with destination 'to'
-    last = generate_moves(pos, mlist);
+    last = generate<MV_LEGAL>(pos, mlist);
     for (MoveStack* cur = mlist; cur != last; cur++)
         if (move_to(cur->move) == to && pos.piece_on(move_from(cur->move)) == pc)
             candidates[matches++] = cur->move;

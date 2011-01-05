@@ -378,7 +378,7 @@ int64_t perft(Position& pos, Depth depth)
     int64_t sum = 0;
 
     // Generate all legal moves
-    MoveStack* last = generate_moves(pos, mlist);
+    MoveStack* last = generate<MV_LEGAL>(pos, mlist);
 
     // If we are at the last ply we don't need to do and undo
     // the moves, just to count them.
@@ -2671,7 +2671,7 @@ split_point_start: // At split points actual search starts from here
     ss[0].eval = ss[0].evalMargin = VALUE_NONE;
 
     // Generate all legal moves
-    MoveStack* last = generate_moves(pos, mlist);
+    MoveStack* last = generate<MV_LEGAL>(pos, mlist);
 
     // Add each move to the RootMoveList's vector
     for (MoveStack* cur = mlist; cur != last; cur++)

@@ -132,7 +132,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_GOOD_CAPTURES:
-      lastMove = generate<CAPTURES>(pos, moves);
+      lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
 
@@ -142,7 +142,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_NONCAPTURES:
-      lastMove = generate<NON_CAPTURES>(pos, moves);
+      lastMove = generate<MV_NON_CAPTURE>(pos, moves);
       score_noncaptures();
       sort_moves(moves, lastMove, &lastGoodNonCapture);
       return;
@@ -156,17 +156,17 @@ void MovePicker::go_next_phase() {
 
   case PH_EVASIONS:
       assert(pos.is_check());
-      lastMove = generate<EVASIONS>(pos, moves);
+      lastMove = generate<MV_EVASION>(pos, moves);
       score_evasions();
       return;
 
   case PH_QCAPTURES:
-      lastMove = generate<CAPTURES>(pos, moves);
+      lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
 
   case PH_QCHECKS:
-      lastMove = generate<NON_CAPTURE_CHECKS>(pos, moves);
+      lastMove = generate<MV_NON_CAPTURE_CHECK>(pos, moves);
       return;
 
   case PH_STOP:

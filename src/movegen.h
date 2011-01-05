@@ -23,21 +23,21 @@
 
 #include "position.h"
 
-enum MoveGeneration {
-  CAPTURES,
-  NON_CAPTURES,
-  NON_CAPTURE_CHECKS,
-  EVASIONS,
-  NON_EVASIONS,
-  ALL_MOVES
+enum MoveType {
+  MV_CAPTURE,
+  MV_NON_CAPTURE,
+  MV_CHECK,
+  MV_NON_CAPTURE_CHECK,
+  MV_EVASION,
+  MV_NON_EVASION,
+  MV_LEGAL,
+  MV_PSEUDO_LEGAL
 };
 
-template<MoveGeneration T>
+template<MoveType T>
 MoveStack* generate(const Position& pos, MoveStack* mlist);
 
-extern MoveStack* generate_moves(const Position& pos, MoveStack* mlist, bool pseudoLegal = false);
 extern bool move_is_legal(const Position& pos, const Move m, Bitboard pinned);
 extern bool move_is_legal(const Position& pos, const Move m);
-
 
 #endif // !defined(MOVEGEN_H_INCLUDED)
