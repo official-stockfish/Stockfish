@@ -149,7 +149,7 @@ namespace {
     void set_non_pv_scores(const Position& pos, Move ttm, SearchStack* ss);
 
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
-    void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n + 1); }
+    void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
   };
 
 
@@ -683,8 +683,9 @@ namespace {
     Move move;
     Depth ext, newDepth;
     Value value, oldAlpha;
-    bool isCheck, moveIsCheck, captureOrPromotion, dangerous;
-    int researchCountFH, researchCountFL;
+    RootMoveList::iterator rm;
+    bool isCheck, moveIsCheck, captureOrPromotion, dangerous, isPvMove;
+    int moveCount, researchCountFH, researchCountFL;
 
     researchCountFH = researchCountFL = 0;
     oldAlpha = alpha;
@@ -715,12 +716,13 @@ namespace {
         // Sort the moves before to (re)search
         rml.set_non_pv_scores(pos, rml[0].pv[0], ss);
         rml.sort();
+        moveCount = 0;
 
         // Step 10. Loop through all moves in the root move list
-        for (int moveCount = 0; moveCount < (int)rml.size() && !StopRequest; moveCount++)
+        for (rm = rml.begin(); rm != rml.end() && !StopRequest; ++rm)
         {
             // This is used by time management
-            FirstRootMove = (moveCount == 0);
+            FirstRootMove = (rm == rml.begin());
 
             // Save the current node count before the move is searched
             nodes = pos.nodes_searched();
@@ -737,12 +739,13 @@ namespace {
 
             // Pick the next root move, and print the move and the move number to
             // the standard output.
-            move = ss->currentMove = rml[moveCount].pv[0];
-            movesSearched[moveCount] = move;
+            move = ss->currentMove = rm->pv[0];
+            movesSearched[moveCount++] = move;
+            isPvMove = (moveCount <= MultiPV);
 
             if (current_search_time() >= 1000)
                 cout << "info currmove " << move
-                     << " currmovenumber " << moveCount + 1 << endl;
+                     << " currmovenumber " << moveCount << endl;
 
             moveIsCheck = pos.move_is_check(move);
             captureOrPromotion = pos.move_is_capture_or_promotion(move);
@@ -764,9 +767,8 @@ namespace {
                 pos.do_move(move, st, ci, moveIsCheck);
 
                 // Step extra. pv search
-                // We do pv search for first moves (i < MultiPV)
-                // and for fail high research (value > alpha)
-                if (moveCount < MultiPV || value > alpha)
+                // We do pv search for PV moves and when failing high
+                if (isPvMove || value > alpha)
                 {
                     // Aspiration window is disabled in multi-pv case
                     if (MultiPV > 1)
@@ -786,7 +788,7 @@ namespace {
                         && !captureOrPromotion
                         && !move_is_castle(move))
                     {
-                        ss->reduction = reduction<PV>(depth, moveCount - MultiPV + 2);
+                        ss->reduction = reduction<PV>(depth, moveCount - MultiPV + 1);
                         if (ss->reduction)
                         {
                             assert(newDepth-ss->reduction >= ONE_PLY);
@@ -821,18 +823,18 @@ namespace {
                 // We are failing high and going to do a research. It's important to update
                 // the score before research in case we run out of time while researching.
                 ss->bestMove = move;
-                rml[moveCount].pv_score = value;
-                rml[moveCount].extract_pv_from_tt(pos);
+                rm->pv_score = value;
+                rm->extract_pv_from_tt(pos);
 
                 // Update killers and history only for non capture moves that fails high
                 if (!pos.move_is_capture_or_promotion(move))
                 {
-                    update_history(pos, move, depth, movesSearched, moveCount + 1);
+                    update_history(pos, move, depth, movesSearched, moveCount);
                     update_killers(move, ss);
                 }
 
                 // Inform GUI that PV has changed
-                cout << rml[moveCount].pv_info_to_uci(pos, alpha, beta) << endl;
+                cout << rm->pv_info_to_uci(pos, alpha, beta) << endl;
 
                 // Prepare for a research after a fail high, each time with a wider window
                 beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
@@ -849,27 +851,27 @@ namespace {
                 break;
 
             // Remember searched nodes counts for this move
-            rml[moveCount].nodes += pos.nodes_searched() - nodes;
+            rm->nodes += pos.nodes_searched() - nodes;
 
             assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
             assert(value < beta);
 
             // Step 17. Check for new best move
-            if (value <= alpha && moveCount >= MultiPV)
-                rml[moveCount].pv_score = -VALUE_INFINITE;
+            if (!isPvMove && value <= alpha)
+                rm->pv_score = -VALUE_INFINITE;
             else
             {
                 // PV move or new best move!
 
                 // Update PV
                 ss->bestMove = move;
-                rml[moveCount].pv_score = value;
-                rml[moveCount].extract_pv_from_tt(pos);
+                rm->pv_score = value;
+                rm->extract_pv_from_tt(pos);
 
                 // We record how often the best move has been changed in each
                 // iteration. This information is used for time managment: When
                 // the best move changes frequently, we allocate some more time.
-                if (MultiPV == 1 && moveCount > 0)
+                if (!isPvMove && MultiPV == 1)
                     BestMoveChangesByIteration[Iteration]++;
 
                 // Inform GUI that PV has changed, in case of multi-pv UCI protocol
@@ -887,7 +889,7 @@ namespace {
                         alpha = value;
                 }
                 else // Set alpha equal to minimum score among the PV lines
-                    alpha = rml[Min(moveCount, MultiPV - 1)].pv_score;
+                    alpha = rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
 
             } // PV move or new best move
 
