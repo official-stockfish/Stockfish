@@ -49,10 +49,10 @@ namespace {
   typedef istringstream UCIParser;
 
   // Local functions
-  void set_option(UCIParser& uip);
-  void set_position(Position& pos, UCIParser& uip);
-  bool go(Position& pos, UCIParser& uip);
-  void perft(Position& pos, UCIParser& uip);
+  void set_option(UCIParser& up);
+  void set_position(Position& pos, UCIParser& up);
+  bool go(Position& pos, UCIParser& up);
+  void perft(Position& pos, UCIParser& up);
 }
 
 
