@@ -45,6 +45,10 @@ enum Value {
 
 ENABLE_OPERATORS_ON(Value)
 
+// Extra operators
+inline Value operator+ (Value v, int i) { return Value(int(v) + i); }
+inline Value operator- (Value v, int i) { return Value(int(v) - i); }
+
 
 enum ScaleFactor {
   SCALE_FACTOR_ZERO   = 0,
@@ -103,10 +107,6 @@ inline void operator/= (Score& d, int i) { d = Score(int(d) / i); }
 ////
 //// Inline functions
 ////
-
-inline Value operator+ (Value v, int i) { return Value(int(v) + i); }
-inline Value operator- (Value v, int i) { return Value(int(v) - i); }
-
 
 inline Value value_mate_in(int ply) {
   return VALUE_MATE - ply;
