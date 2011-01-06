@@ -386,7 +386,6 @@ bool move_is_legal(const Position& pos, const Move m) {
 bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
   assert(pos.is_ok());
-  assert(move_is_ok(m));
   assert(pinned == pos.pinned_pieces(pos.side_to_move()));
 
   Color us = pos.side_to_move();
