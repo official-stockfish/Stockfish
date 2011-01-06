@@ -205,6 +205,7 @@ void Position::from_fen(const string& fen, bool c960) {
 */
 
   char token;
+  int hmc, fmn;
   std::istringstream ss(fen);
   Rank rank = RANK_8;
   File file = FILE_A;
@@ -265,12 +266,10 @@ void Position::from_fen(const string& fen, bool c960) {
   }
 
   // 5. Halfmove clock
-  int hmc;
   if (ss >> hmc)
       st->rule50 = hmc;
 
   // 6. Fullmove number
-  int fmn;
   if (ss >> fmn)
       startPosPlyCounter = (fmn - 1) * 2 + int(sideToMove == BLACK);
 
@@ -773,6 +772,23 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
   return false;
 }
 
+
+/// Position::do_setup_move() makes a permanent move on the board.
+/// It should be used when setting up a position on board.
+/// You can't undo the move.
+
+void Position::do_setup_move(Move m, StateInfo& newSt) {
+
+  do_move(m, newSt);
+
+  // Reset "game ply" in case we made a non-reversible move.
+  // "game ply" is used for repetition detection.
+  if (st->rule50 == 0)
+      st->gamePly = 0;
+
+  // Update the number of plies played from the starting position
+  startPosPlyCounter++;
+}
 
 /// Position::do_move() makes a move, and saves all information necessary
 /// to a StateInfo object. The move is assumed to be legal.
@@ -1540,22 +1556,6 @@ void Position::clear() {
   initialQRFile = FILE_A;
 }
 
-
-/// Position::reset_game_ply() simply sets gamePly to 0. It is used from the
-/// UCI interface code, whenever a non-reversible move is made in a
-/// 'position fen <fen> moves m1 m2 ...' command.  This makes it possible
-/// for the program to handle games of arbitrary length, as long as the GUI
-/// handles draws by the 50 move rule correctly.
-
-void Position::reset_game_ply() {
-
-  st->gamePly = 0;
-}
-
-void Position::inc_startpos_ply_counter() {
-
-  startPosPlyCounter++;
-}
 
 /// Position::put_piece() puts a piece on the given square of the board,
 /// updating the board array, pieces list, bitboards, and piece counts.

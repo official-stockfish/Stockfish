@@ -171,11 +171,7 @@ namespace {
     while (up >> token)
     {
         move = move_from_uci(pos, token);
-        pos.do_move(move, st);
-        if (pos.rule_50_counter() == 0)
-            pos.reset_game_ply();
-
-        pos.inc_startpos_ply_counter(); //FIXME: make from_fen to support this and rule50
+        pos.do_setup_move(move, st);
     }
     // Our StateInfo st is about going out of scope so copy
     // its content inside pos before it disappears.

@@ -221,6 +221,7 @@ public:
 
   // Doing and undoing moves
   void detach();
+  void do_setup_move(Move m, StateInfo& St);
   void do_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);
@@ -250,9 +251,7 @@ public:
   // Check if side to move could be mated in one
   bool has_mate_threat();
 
-  // Number of plies since the last non-reversible move
-  int rule_50_counter() const;
-
+  // Number of plies from starting position
   int startpos_ply_counter() const;
 
   // Other properties of the position
@@ -263,9 +262,6 @@ public:
   // Current thread ID searching on the position
   int thread() const;
 
-  // Reset the gamePly variable to 0
-  void reset_game_ply();
-  void inc_startpos_ply_counter();
   int64_t nodes_searched() const;
   void set_nodes_searched(int64_t n);
 
@@ -532,10 +528,6 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
   Color c = side_to_move();
   return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
         && pawn_is_passed(c, move_to(m));
-}
-
-inline int Position::rule_50_counter() const {
-  return st->rule50;
 }
 
 inline int Position::startpos_ply_counter() const {
