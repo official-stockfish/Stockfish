@@ -177,7 +177,7 @@ inline bool rank_is_ok(Rank r) {
 }
 
 inline bool square_is_ok(Square s) {
-  return file_is_ok(square_file(s)) && rank_is_ok(square_rank(s));
+  return s >= SQ_A1 && s <= SQ_H8;
 }
 
 #endif // !defined(SQUARE_H_INCLUDED)

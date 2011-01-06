@@ -135,7 +135,7 @@ const std::string move_to_uci(Move move, bool chess960) {
 }
 
 
-/// Overload the << operator, to make it easier to print moves.
+/// Overload the << operator, to make it easier to print moves
 
 std::ostream& operator << (std::ostream& os, Move m) {
 
@@ -144,9 +144,9 @@ std::ostream& operator << (std::ostream& os, Move m) {
 }
 
 
-/// move_is_ok(), for debugging.
+/// move_is_ok(), for debugging
 
 bool move_is_ok(Move m) {
 
-  return square_is_ok(move_from(m)) && square_is_ok(move_to(m));
+  return move_from(m) != move_to(m); // Catches also MOVE_NONE
 }
