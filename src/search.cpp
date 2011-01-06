@@ -304,7 +304,7 @@ namespace {
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
-  void update_killers(Move m, SearchStack* ss);
+  void update_killers(Move m, Move killers[]);
   void update_gains(const Position& pos, Move move, Value before, Value after);
 
   int current_search_time();
@@ -830,7 +830,7 @@ namespace {
                 if (!pos.move_is_capture_or_promotion(move))
                 {
                     update_history(pos, move, depth, movesSearched, moveCount);
-                    update_killers(move, ss);
+                    update_killers(move, ss->killers);
                 }
 
                 // Inform GUI that PV has changed
@@ -1398,7 +1398,7 @@ split_point_start: // At split points actual search starts from here
             && !pos.move_is_capture_or_promotion(move))
         {
             update_history(pos, move, depth, movesSearched, moveCount);
-            update_killers(move, ss);
+            update_killers(move, ss->killers);
         }
     }
 
@@ -1917,13 +1917,13 @@ split_point_start: // At split points actual search starts from here
   // update_killers() add a good move that produced a beta-cutoff
   // among the killer moves of that ply.
 
-  void update_killers(Move m, SearchStack* ss) {
+  void update_killers(Move m, Move killers[]) {
 
-    if (m == ss->killers[0])
+    if (m == killers[0])
         return;
 
-    ss->killers[1] = ss->killers[0];
-    ss->killers[0] = m;
+    killers[1] = killers[0];
+    killers[0] = m;
   }
 
 
