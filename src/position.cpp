@@ -1691,7 +1691,7 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by the 50 moves rule?
-  if (st->rule50 > 99 && (st->rule50 > 100 || !is_mate()))
+  if (st->rule50 > 99 && !is_mate())
       return true;
 
   // Draw by repetition?
