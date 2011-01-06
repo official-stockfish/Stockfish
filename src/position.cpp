@@ -264,7 +264,15 @@ void Position::from_fen(const string& fen, bool c960) {
           st->epSquare = fenEpSquare;
   }
 
-  // 5-6. Halfmove clock and fullmove number are not parsed
+  // 5. Halfmove clock
+  int hmc;
+  if (ss >> hmc)
+      st->rule50 = hmc;
+
+  // 6. Fullmove number
+  int fmn;
+  if (ss >> fmn)
+      startPosPlyCounter = (fmn - 1) * 2 + int(sideToMove == BLACK);
 
   // Various initialisations
   castleRightsMask[make_square(initialKFile,  RANK_1)] ^= WHITE_OO | WHITE_OOO;
