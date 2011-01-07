@@ -46,7 +46,7 @@ namespace {
   };
 
   template<CastlingSide Side>
-  MoveStack* generate_castle_moves(const Position&, MoveStack*);
+  MoveStack* generate_castle_moves(const Position&, MoveStack*, Color us);
 
   template<Color Us, MoveType Type>
   MoveStack* generate_pawn_moves(const Position&, MoveStack*, Bitboard, Square);
@@ -193,8 +193,11 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
 
   if (T != MV_CAPTURE)
   {
-      mlist = generate_castle_moves<KING_SIDE>(pos, mlist);
-      mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist);
+      if (pos.can_castle_kingside(us))
+          mlist = generate_castle_moves<KING_SIDE>(pos, mlist, us);
+
+      if (pos.can_castle_queenside(us))
+          mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist, us);
   }
 
   return mlist;
@@ -622,45 +625,41 @@ namespace {
   }
 
   template<CastlingSide Side>
-  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist) {
+  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, Color us) {
 
-    Color us = pos.side_to_move();
+    Color them = opposite_color(us);
+    Square ksq = pos.king_square(us);
 
-    if (  (Side == KING_SIDE  && pos.can_castle_kingside(us))
-        ||(Side == QUEEN_SIDE && pos.can_castle_queenside(us)))
-    {
-        Color them = opposite_color(us);
-        Square ksq = pos.king_square(us);
+    assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
 
-        assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
+    Square rsq = (Side == KING_SIDE ? pos.initial_kr_square(us) : pos.initial_qr_square(us));
+    Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
+    Square s2 = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
+    Square s;
+    bool illegal = false;
 
-        Square rsq = (Side == KING_SIDE ? pos.initial_kr_square(us) : pos.initial_qr_square(us));
-        Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
-        Square s2 = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
-        Square s;
-        bool illegal = false;
+    assert(pos.piece_on(rsq) == piece_of_color_and_type(us, ROOK));
 
-        assert(pos.piece_on(rsq) == piece_of_color_and_type(us, ROOK));
-
-        // It is a bit complicated to correctly handle Chess960
-        for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
-            if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
-                ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
-                illegal = true;
-
-        for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)
-            if (s != ksq && s != rsq && pos.square_is_occupied(s))
-                illegal = true;
-
-        if (   Side == QUEEN_SIDE
-            && square_file(rsq) == FILE_B
-            && (   pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, ROOK)
-                || pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, QUEEN)))
+    // It is a bit complicated to correctly handle Chess960
+    for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
+        if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
+            ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
             illegal = true;
 
-        if (!illegal)
-            (*mlist++).move = make_castle_move(ksq, rsq);
-    }
+    for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)
+        if (s != ksq && s != rsq && pos.square_is_occupied(s))
+            illegal = true;
+
+    if (   Side == QUEEN_SIDE
+        && square_file(rsq) == FILE_B
+        && (   pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, ROOK)
+            || pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, QUEEN)))
+        illegal = true;
+
+    if (!illegal)
+        (*mlist++).move = make_castle_move(ksq, rsq);
+
     return mlist;
   }
-}
+
+} // namespace
