@@ -80,8 +80,8 @@ protected:
 ///
 /// the 32 bits of the data field are so defined
 ///
-/// bit  0-16: move
-/// bit 17-20: not used
+/// bit  0-15: move
+/// bit 16-20: not used
 /// bit 21-22: value type
 /// bit 23-31: generation
 
@@ -91,7 +91,7 @@ public:
   void save(uint32_t k, Value v, ValueType t, Depth d, Move m, int g, Value statV, Value kd) {
 
       key32 = k;
-      data = (m & 0x1FFFF) | (t << 21) | (g << 23);
+      data = (m & 0xFFFF) | (t << 21) | (g << 23);
       value16     = (int16_t)v;
       depth16     = (int16_t)d;
       staticValue = (int16_t)statV;
@@ -101,7 +101,7 @@ public:
 
   uint32_t key() const { return key32; }
   Depth depth() const { return Depth(depth16); }
-  Move move() const { return Move(data & 0x1FFFF); }
+  Move move() const { return Move(data & 0xFFFF); }
   Value value() const { return Value(value16); }
   ValueType type() const { return ValueType((data >> 21) & 3); }
   int generation() const { return data >> 23; }

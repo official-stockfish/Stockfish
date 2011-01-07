@@ -40,13 +40,12 @@ const int MOVES_MAX = 256;
 
 class Position;
 
-/// A move needs 17 bits to be stored
+/// A move needs 16 bits to be stored
 ///
 /// bit  0- 5: destination square (from 0 to 63)
 /// bit  6-11: origin square (from 0 to 63)
-/// bit 12-14: promotion piece type
-/// bit    15: en passant flag
-/// bit    16: castle flag
+/// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
+/// bit 14-15: special move flag: promotion (1), en passant (2), castle (3)
 ///
 /// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in
 /// because in any normal move destination square is always different
@@ -153,24 +152,20 @@ inline Square move_to(Move m) {
   return Square(m & 0x3F);
 }
 
-inline PieceType move_promotion_piece(Move m) {
-  return PieceType((int(m) >> 12) & 7);
+inline bool move_is_special(Move m) {
+  return m & (3 << 14);
 }
 
-inline int move_is_special(Move m) {
-  return m & (0x1F << 12);
-}
-
-inline int move_is_promotion(Move m) {
-  return m & (7 << 12);
+inline bool move_is_promotion(Move m) {
+  return (m & (3 << 14)) == (1 << 14);
 }
 
 inline int move_is_ep(Move m) {
-  return m & (1 << 15);
+  return (m & (3 << 14)) == (2 << 14);
 }
 
 inline int move_is_castle(Move m) {
-  return m & (1 << 16);
+  return (m & (3 << 14)) == (3 << 14);
 }
 
 inline bool move_is_short_castle(Move m) {
@@ -181,20 +176,24 @@ inline bool move_is_long_castle(Move m) {
   return move_is_castle(m) && (move_to(m) < move_from(m));
 }
 
-inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
-  return Move(int(to) | (int(from) << 6) | (int(promotion) << 12));
+inline PieceType move_promotion_piece(Move m) {
+  return move_is_promotion(m) ? PieceType(((int(m) >> 12) & 3) + 2) : PIECE_TYPE_NONE;
 }
 
 inline Move make_move(Square from, Square to) {
   return Move(int(to) | (int(from) << 6));
 }
 
-inline Move make_castle_move(Square from, Square to) {
-  return Move(int(to) | (int(from) << 6) | (1 << 16));
+inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
+  return Move(int(to) | (int(from) << 6) | ((int(promotion) - 2) << 12) | (1 << 14));
 }
 
 inline Move make_ep_move(Square from, Square to) {
-  return Move(int(to) | (int(from) << 6) | (1 << 15));
+  return Move(int(to) | (int(from) << 6) | (2 << 14));
+}
+
+inline Move make_castle_move(Square from, Square to) {
+  return Move(int(to) | (int(from) << 6) | (3 << 14));
 }
 
 
