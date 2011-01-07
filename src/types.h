@@ -119,6 +119,15 @@ inline void __cpuid(int CPUInfo[4], int)
 }
 #endif
 
+// Define FORCE_INLINE macro to force inlining overriding compiler choice
+#if defined(_MSC_VER)
+#define FORCE_INLINE  __forceinline
+#elif defined(__GNUC__)
+#define FORCE_INLINE  inline __attribute__((always_inline))
+#elif
+#define FORCE_INLINE  inline
+#endif
+
 // Operators used by enum types like Depth, Piece, Square and so on.
 
 #define ENABLE_OPERATORS_ON(T) \

@@ -26,6 +26,7 @@
 
 #include "bitcount.h"
 #include "movegen.h"
+#include "types.h"
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,
 // hardcoded list name 'mlist' and from square 'from'.
@@ -99,14 +100,14 @@ namespace {
   }
 
   template<>
-  inline MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
+  FORCE_INLINE MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
 
     return (us == WHITE ? generate_pawn_moves<WHITE, MV_CHECK>(p, m, dc, ksq)
                         : generate_pawn_moves<BLACK, MV_CHECK>(p, m, dc, ksq));
   }
 
   template<PieceType Piece, MoveType Type>
-  inline MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
+  FORCE_INLINE MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
 
     assert(Piece == PAWN);
     assert(Type == MV_CAPTURE || Type == MV_NON_CAPTURE || Type == MV_EVASION);
@@ -116,7 +117,7 @@ namespace {
   }
 
   template<PieceType Piece>
-  inline MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+  FORCE_INLINE MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
     Bitboard b;
     Square from;
@@ -134,7 +135,7 @@ namespace {
   }
 
   template<>
-  inline MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+  FORCE_INLINE MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
     Bitboard b;
     Square from = pos.king_square(us);
@@ -160,7 +161,7 @@ namespace {
 /// generate<MV_NON_EVASION> generates all pseudo-legal captures and
 /// non-captures. Returns a pointer to the end of the move list.
 
-template<MoveType T>
+template<MoveType Type>
 MoveStack* generate(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
@@ -169,21 +170,21 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   Color us = pos.side_to_move();
   Bitboard target;
 
-  if (T == MV_CAPTURE || T == MV_NON_EVASION)
+  if (Type == MV_CAPTURE || Type == MV_NON_EVASION)
       target = pos.pieces_of_color(opposite_color(us));
-  else if (T == MV_NON_CAPTURE)
+  else if (Type == MV_NON_CAPTURE)
       target = pos.empty_squares();
   else
       assert(false);
 
-  if (T == MV_NON_EVASION)
+  if (Type == MV_NON_EVASION)
   {
       mlist = generate_piece_moves<PAWN, MV_CAPTURE>(pos, mlist, us, target);
       mlist = generate_piece_moves<PAWN, MV_NON_CAPTURE>(pos, mlist, us, pos.empty_squares());
       target |= pos.empty_squares();
   }
   else
-      mlist = generate_piece_moves<PAWN, T>(pos, mlist, us, target);
+      mlist = generate_piece_moves<PAWN, Type>(pos, mlist, us, target);
 
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
@@ -191,7 +192,7 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
 
-  if (T != MV_CAPTURE)
+  if (Type != MV_CAPTURE)
   {
       if (pos.can_castle_kingside(us))
           mlist = generate_castle_moves<KING_SIDE>(pos, mlist, us);
