@@ -101,7 +101,7 @@ void init_uci_options() {
   Options["OwnBook"] = Option(true);
   Options["MultiPV"] = Option(1, 1, 500);
   Options["Emergency Move Horizon"] = Option(40, 0, 50);
-  Options["Emergency Base Time"] = Option(200, 0, 60000);
+  Options["Emergency Base Time"] = Option(200, 0, 30000);
   Options["Emergency Move Time"] = Option(70, 0, 5000);
   Options["Minimum Thinking Time"] = Option(20, 0, 5000);
   Options["UCI_Chess960"] = Option(false);
