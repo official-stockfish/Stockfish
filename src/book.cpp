@@ -30,6 +30,7 @@
 ////
 
 #include <cassert>
+#include <iostream>
 
 #include "book.h"
 #include "movegen.h"

@@ -22,6 +22,7 @@
 //// Includes
 ////
 #include <fstream>
+#include <iostream>
 #include <vector>
 
 #include "search.h"

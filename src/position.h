@@ -47,6 +47,8 @@ const int MaxGameLength = 220;
 //// Types
 ////
 
+class Position;
+
 /// struct checkInfo is initialized at c'tor time and keeps
 /// info used to detect if a move gives check.
 

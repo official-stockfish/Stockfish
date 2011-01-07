@@ -21,24 +21,12 @@
 #if !defined(MOVE_H_INCLUDED)
 #define MOVE_H_INCLUDED
 
-////
-//// Includes
-////
-
-#include <iostream>
-
 #include "misc.h"
 #include "piece.h"
 #include "square.h"
 
 // Maximum number of allowed moves per position
 const int MOVES_MAX = 256;
-
-////
-//// Types
-////
-
-class Position;
 
 /// A move needs 16 bits to be stored
 ///
@@ -140,9 +128,6 @@ inline T pick_best(T* curMove, T* lastMove)
     return bestMove;
 }
 
-////
-//// Inline functions
-////
 
 inline Square move_from(Move m) {
   return Square((int(m) >> 6) & 0x3F);
@@ -196,14 +181,8 @@ inline Move make_castle_move(Square from, Square to) {
   return Move(int(to) | (int(from) << 6) | (3 << 14));
 }
 
-
-////
-//// Prototypes
-////
-
-extern std::ostream& operator<<(std::ostream& os, Move m);
-extern Move move_from_uci(const Position& pos, const std::string &str);
-extern const std::string move_to_uci(Move m, bool chess960);
-extern bool move_is_ok(Move m);
+inline bool move_is_ok(Move m) {
+  return move_from(m) != move_to(m); // Catches also MOVE_NONE
+}
 
 #endif // !defined(MOVE_H_INCLUDED)

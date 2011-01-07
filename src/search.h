@@ -66,6 +66,7 @@ struct SearchStack {
 ////
 //// Prototypes
 ////
+class Position;
 
 extern void init_search();
 extern void init_threads();

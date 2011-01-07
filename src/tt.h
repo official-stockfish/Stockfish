@@ -21,9 +21,7 @@
 #if !defined(TT_H_INCLUDED)
 #define TT_H_INCLUDED
 
-////
-//// Includes
-////
+#include <iostream>
 
 #include "depth.h"
 #include "move.h"
