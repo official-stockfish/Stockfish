@@ -81,27 +81,6 @@ namespace {
 //// Functions
 ////
 
-/// PawnInfoTable c'tor and d'tor instantiated one each thread
-
-PawnInfoTable::PawnInfoTable() {
-
-  entries = new PawnInfo[PawnTableSize];
-
-  if (!entries)
-  {
-      std::cerr << "Failed to allocate " << (PawnTableSize * sizeof(PawnInfo))
-                << " bytes for pawn hash table." << std::endl;
-      exit(EXIT_FAILURE);
-  }
-  memset(entries, 0, PawnTableSize * sizeof(PawnInfo));
-}
-
-
-PawnInfoTable::~PawnInfoTable() {
-
-  delete [] entries;
-}
-
 
 /// PawnInfoTable::get_pawn_info() takes a position object as input, computes
 /// a PawnInfo object, and returns a pointer to it. The result is also stored
@@ -113,8 +92,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
   assert(pos.is_ok());
 
   Key key = pos.get_pawn_key();
-  unsigned index = unsigned(key & (PawnTableSize - 1));
-  PawnInfo* pi = entries + index;
+  PawnInfo* pi = find(key);
 
   // If pi->key matches the position's pawn hash key, it means that we
   // have analysed this pawn structure before, and we can simply return

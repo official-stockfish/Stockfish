@@ -132,28 +132,8 @@ template<> const SFMap& EndgameFunctions::get<SF>() const { return maps.second; 
 //// Functions
 ////
 
-/// MaterialInfoTable c'tor and d'tor, called once by each thread
-
-MaterialInfoTable::MaterialInfoTable() {
-
-  entries = new MaterialInfo[MaterialTableSize];
-  funcs = new EndgameFunctions();
-
-  if (!entries || !funcs)
-  {
-      cerr << "Failed to allocate " << MaterialTableSize * sizeof(MaterialInfo)
-           << " bytes for material hash table." << endl;
-      exit(EXIT_FAILURE);
-  }
-  memset(entries, 0, MaterialTableSize * sizeof(MaterialInfo));
-}
-
-MaterialInfoTable::~MaterialInfoTable() {
-
-  delete funcs;
-  delete [] entries;
-}
-
+MaterialInfoTable::MaterialInfoTable() { funcs = new EndgameFunctions(); }
+MaterialInfoTable::~MaterialInfoTable() { delete funcs; }
 
 /// MaterialInfoTable::game_phase() calculates the phase given the current
 /// position. Because the phase is strictly a function of the material, it
@@ -181,8 +161,7 @@ Phase MaterialInfoTable::game_phase(const Position& pos) {
 MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) {
 
   Key key = pos.get_material_key();
-  unsigned index = unsigned(key & (MaterialTableSize - 1));
-  MaterialInfo* mi = entries + index;
+  MaterialInfo* mi = find(key);
 
   // If mi->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply

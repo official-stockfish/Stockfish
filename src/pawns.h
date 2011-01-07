@@ -27,7 +27,9 @@
 
 #include "bitboard.h"
 #include "position.h"
+#include "tt.h"
 #include "value.h"
+
 
 ////
 //// Types
@@ -69,29 +71,21 @@ private:
   Score kingShelters[2];
 };
 
-/// The PawnInfoTable class represents a pawn hash table.  It is basically
-/// just an array of PawnInfo objects and a few methods for accessing these
-/// objects.  The most important method is get_pawn_info, which looks up a
-/// position in the table and returns a pointer to a PawnInfo object.
 
-class PawnInfoTable {
+/// The PawnInfoTable class represents a pawn hash table. The most important
+/// method is get_pawn_info, which returns a pointer to a PawnInfo object.
+
+class PawnInfoTable : public SimpleHash<PawnInfo, PawnTableSize> {
 
   enum SideType { KingSide, QueenSide };
 
-  PawnInfoTable(const PawnInfoTable&);
-  PawnInfoTable& operator=(const PawnInfoTable&);
-
 public:
-  PawnInfoTable();
-  ~PawnInfoTable();
   PawnInfo* get_pawn_info(const Position& pos) const;
   void prefetch(Key key) const;
 
 private:
   template<Color Us>
   Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi) const;
-
-  PawnInfo* entries;
 };
 
 

@@ -34,6 +34,39 @@
 //// Types
 ////
 
+
+/// A simple fixed size hash table used to store pawns and material
+/// configurations. It is basically just an array of Entry objects.
+/// Without cluster concept or overwrite policy.
+
+template<class Entry, int HashSize>
+class SimpleHash {
+
+  SimpleHash(const SimpleHash&);
+  SimpleHash& operator=(const SimpleHash&);
+
+public:
+  SimpleHash() {
+
+    entries = new Entry[HashSize];
+    if (!entries)
+    {
+        std::cerr << "Failed to allocate " << HashSize * sizeof(Entry)
+                  << " bytes for material hash table." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    memset(entries, 0, HashSize * sizeof(Entry));
+  }
+
+  ~SimpleHash() { delete [] entries; }
+
+  Entry* find(Key key) const { return entries + unsigned(key & (HashSize - 1)); }
+
+protected:
+  Entry* entries;
+};
+
+
 /// The TTEntry class is the class of transposition table entries
 ///
 /// A TTEntry needs 128 bits to be stored

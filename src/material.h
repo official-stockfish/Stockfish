@@ -27,6 +27,7 @@
 
 #include "endgame.h"
 #include "position.h"
+#include "tt.h"
 
 
 ////
@@ -67,26 +68,17 @@ private:
   Phase gamePhase;
 };
 
-/// The MaterialInfoTable class represents a pawn hash table. It is basically
-/// just an array of MaterialInfo objects and a few methods for accessing these
-/// objects. The most important method is get_material_info, which looks up a
-/// position in the table and returns a pointer to a MaterialInfo object.
+/// The MaterialInfoTable class represents a pawn hash table. The most important
+/// method is get_material_info, which returns a pointer to a MaterialInfo object.
 class EndgameFunctions;
 
-class MaterialInfoTable {
-
-  MaterialInfoTable(const MaterialInfoTable&);
-  MaterialInfoTable& operator=(const MaterialInfoTable&);
-
+class MaterialInfoTable : public SimpleHash<MaterialInfo, MaterialTableSize> {
 public:
   MaterialInfoTable();
   ~MaterialInfoTable();
   MaterialInfo* get_material_info(const Position& pos);
-
   static Phase game_phase(const Position& pos);
-
 private:
-  MaterialInfo* entries;
   EndgameFunctions* funcs;
 };
 
