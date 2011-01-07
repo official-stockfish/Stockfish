@@ -60,7 +60,7 @@ public:
 
   ~SimpleHash() { delete [] entries; }
 
-  Entry* find(Key key) const { return entries + unsigned(key & (HashSize - 1)); }
+  Entry* find(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
 
 protected:
   Entry* entries;
