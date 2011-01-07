@@ -2,8 +2,6 @@
 # Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
 # Copyright (C) 2008-2010 Marco Costalba, Joona Kiiski, Tord Romstad
 #
-# This file is part of Stockfish.
-#
 # Stockfish is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
