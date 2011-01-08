@@ -435,11 +435,27 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
   if (!bookMove)
       return MOVE_NONE;
 
+  // A PolyGlot book move is encoded as follows:
+  //
+  // bit  0- 5: destination square (from 0 to 63)
+  // bit  6-11: origin square (from 0 to 63)
+  // bit 12-13-14: promotion piece (from KNIGHT == 1 to QUEEN == 4)
+  //
+  // Castling moves follow "king captures rook" representation. So in case
+  // book move is a promotion we have to convert to our representation, in
+  // all other cases we can directly compare with a Move after having
+  // masked out special Move's flags that are not supported by PolyGlot.
+  int p = (bookMove >> 12) & 7;
+
+  if (p)
+      bookMove = int(make_promotion_move(move_from(Move(bookMove)),
+                 move_to(Move(bookMove)), PieceType(p + 1)));
+
   // Verify the book move is legal
   MoveStack mlist[MOVES_MAX];
   MoveStack* last = generate<MV_LEGAL>(pos, mlist);
   for (MoveStack* cur = mlist; cur != last; cur++)
-      if ((int(cur->move) & 07777) == bookMove)
+      if ((int(cur->move) & ~(3 << 14)) == bookMove) // Mask out special flags
           return cur->move;
 
   return MOVE_NONE;
