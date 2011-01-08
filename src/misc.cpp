@@ -228,19 +228,19 @@ int data_available()
 int data_available()
 {
     static HANDLE inh = NULL;
-    static bool usePipe;
+    static bool usePipe = false;
     INPUT_RECORD rec[256];
     DWORD dw, recCnt;
 
     if (!inh)
     {
         inh = GetStdHandle(STD_INPUT_HANDLE);
-        usePipe = !GetConsoleMode(inh, &dw);
-        if (!usePipe)
+        if (GetConsoleMode(inh, &dw))
         {
             SetConsoleMode(inh, dw & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
             FlushConsoleInputBuffer(inh);
-        }
+        } else
+            usePipe = true;
     }
 
     // If we're running under XBoard then we can't use PeekConsoleInput() as
