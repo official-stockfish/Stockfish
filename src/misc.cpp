@@ -209,7 +209,7 @@ int cpu_count() {
 
 #ifndef _WIN32
 
-int data_available()
+int input_available()
 {
   fd_set readfds;
   struct timeval  timeout;
