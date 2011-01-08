@@ -170,8 +170,11 @@ namespace {
 
   // Overload operator << for moves to make it easier to print moves in
   // coordinate notation compatible with UCI protocol.
+  std::ostream& operator<<(std::ostream& os, Move m) {
 
-  std::ostream& operator<<(std::ostream& os, Move m);
+    bool chess960 = (os.iword(0) != 0); // See set960()
+    return os << move_to_uci(m, chess960);
+  }
 
 
   /// Adjustments
@@ -2715,37 +2718,6 @@ split_point_start: // At split points actual search starts from here
                   it->non_pv_score = score--;
                   break;
               }
-  }
-
-  // Overload operator << to make it easier to print moves in coordinate notation
-  // (g1f3, a7a8q, etc.). The only special case is castling moves, where we
-  // print in the e1g1 notation in normal chess mode, and in e1h1 notation in
-  // Chess960 mode.
-
-  std::ostream& operator<<(std::ostream& os, Move m) {
-
-    Square from = move_from(m);
-    Square to = move_to(m);
-    bool chess960 = (os.iword(0) != 0); // See set960()
-
-    if (m == MOVE_NONE)
-        return os << "(none)";
-
-    if (m == MOVE_NULL)
-        return os << "0000";
-
-    if (move_is_short_castle(m) && !chess960)
-        return os << (from == SQ_E1 ? "e1g1" : "e8g8");
-
-    if (move_is_long_castle(m) && !chess960)
-        return os << (from == SQ_E1 ? "e1c1" : "e8c8");
-
-    os << square_to_string(from) << square_to_string(to);
-
-    if (move_is_promotion(m))
-        os << char(tolower(piece_type_to_char(move_promotion_piece(m))));
-
-    return os;
   }
 
 } // namespace
