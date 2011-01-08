@@ -60,7 +60,7 @@ namespace {
 
 const std::string move_to_uci(Move m, bool chess960) {
 
-  std::string str;
+  std::string promotion;
   Square from = move_from(m);
   Square to = move_to(m);
 
@@ -76,80 +76,26 @@ const std::string move_to_uci(Move m, bool chess960) {
   if (move_is_long_castle(m) && !chess960)
       return from == SQ_E1 ? "e1c1" : "e8c8";
 
-  str = square_to_string(from) + square_to_string(to);
-
   if (move_is_promotion(m))
-      str += char(tolower(piece_type_to_char(move_promotion_piece(m))));
+      promotion = char(tolower(piece_type_to_char(move_promotion_piece(m))));
 
-  return str;
+  return square_to_string(from) + square_to_string(to) + promotion;
 }
 
-/// move_from_uci() takes a position and a string as input, and attempts to
-/// convert the string to a move, using simple coordinate notation (g1f3,
-/// a7a8q, etc.). This function is not robust, and expects that the input
-/// move is legal and correctly formatted.
+
+/// move_from_uci() takes a position and a string representing a move in
+/// simple coordinate notation and returns an equivalent Move.
 
 Move move_from_uci(const Position& pos, const std::string& str) {
 
-  Square from, to;
-  Piece piece;
-  Color us = pos.side_to_move();
+  MoveStack mlist[MOVES_MAX];
+  MoveStack* last = generate<MV_LEGAL>(pos, mlist);
 
-  if (str.length() < 4)
-      return MOVE_NONE;
+  for (MoveStack* cur = mlist; cur != last; cur++)
+      if (str == move_to_uci(cur->move, pos.is_chess960()))
+          return cur->move;
 
-  // Read the from and to squares
-  from = make_square(file_from_char(str[0]), rank_from_char(str[1]));
-  to   = make_square(file_from_char(str[2]), rank_from_char(str[3]));
-
-  // Find the moving piece
-  piece = pos.piece_on(from);
-
-  // If the string has more than 4 characters, try to interpret the 5th
-  // character as a promotion.
-  if (str.length() > 4 && piece == piece_of_color_and_type(us, PAWN))
-  {
-      switch (tolower(str[4])) {
-      case 'n':
-          return make_promotion_move(from, to, KNIGHT);
-      case 'b':
-          return make_promotion_move(from, to, BISHOP);
-      case 'r':
-          return make_promotion_move(from, to, ROOK);
-      case 'q':
-          return make_promotion_move(from, to, QUEEN);
-      }
-  }
-
-  // En passant move? We assume that a pawn move is an en passant move
-  // if the destination square is epSquare.
-  if (to == pos.ep_square() && piece == piece_of_color_and_type(us, PAWN))
-      return make_ep_move(from, to);
-
-  // Is this a castling move? A king move is assumed to be a castling move
-  // if the destination square is occupied by a friendly rook, or if the
-  // distance between the source and destination squares is more than 1.
-  if (piece == piece_of_color_and_type(us, KING))
-  {
-      if (pos.piece_on(to) == piece_of_color_and_type(us, ROOK))
-          return make_castle_move(from, to);
-
-      if (square_distance(from, to) > 1)
-      {
-          // This is a castling move, but we have to translate it to the
-          // internal "king captures rook" representation.
-          SquareDelta delta = (to > from ? DELTA_E : DELTA_W);
-          Square s = from;
-
-          do s += delta;
-          while (   pos.piece_on(s) != piece_of_color_and_type(us, ROOK)
-                 && relative_rank(us, s) == RANK_1);
-
-          return relative_rank(us, s) == RANK_1 ? make_castle_move(from, s) : MOVE_NONE;
-      }
-  }
-
-  return make_move(from, to);
+  return MOVE_NONE;
 }
 
 
