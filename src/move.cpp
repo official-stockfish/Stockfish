@@ -174,42 +174,6 @@ const string move_to_san(Position& pos, Move m) {
 }
 
 
-/// line_to_san() takes a position and a line (an array of moves representing
-/// a sequence of legal moves from the position) as input, and returns a
-/// string containing the line in short algebraic notation.  If the boolean
-/// parameter 'breakLines' is true, line breaks are inserted, with a line
-/// length of 80 characters.  After a line break, 'startColumn' spaces are
-/// inserted at the beginning of the new line.
-
-const string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines) {
-
-  StateInfo st;
-  std::stringstream s;
-  string moveStr;
-  size_t length = 0;
-  size_t maxLength = 80 - startColumn;
-  Position p(pos, pos.thread());
-
-  for (Move* m = line; *m != MOVE_NONE; m++)
-  {
-      moveStr = move_to_san(p, *m);
-      length += moveStr.length() + 1;
-      if (breakLines && length > maxLength)
-      {
-          s << "\n" << std::setw(startColumn) << " ";
-          length = moveStr.length() + 1;
-      }
-      s << moveStr << ' ';
-
-      if (*m == MOVE_NULL)
-          p.do_null_move(st);
-      else
-          p.do_move(*m, st);
-  }
-  return s.str();
-}
-
-
 /// pretty_pv() creates a human-readable string from a position and a PV.
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
@@ -219,29 +183,45 @@ const string pretty_pv(const Position& pos, int time, int depth,
 
   const int64_t K = 1000;
   const int64_t M = 1000000;
+  const int startColumn = 29;
+  const size_t maxLength = 80 - startColumn;
+  const string lf = string("\n") + string(startColumn, ' ');
 
+  StateInfo st;
   std::stringstream s;
+  string san;
+  size_t length = 0;
 
-  // Depth
-  s << std::setw(2) << depth << "  ";
+  Position p(pos, pos.thread());
 
-  // Score
-  s << (type == VALUE_TYPE_LOWER ? ">" : type == VALUE_TYPE_UPPER ? "<" : " ")
-    << std::setw(7) << score_string(score);
+  // First print depth, score, time and searched nodes...
+  s << std::setw(2) << depth
+    << (type == VALUE_TYPE_LOWER ? " >" : type == VALUE_TYPE_UPPER ? " <" : "  ")
+    << std::setw(7) << score_string(score)
+    << std::setw(8) << time_string(time);
 
-  // Time
-  s << std::setw(8) << time_string(time) << " ";
-
-  // Nodes
   if (pos.nodes_searched() < M)
-      s << std::setw(8) << pos.nodes_searched() / 1 << " ";
+      s << std::setw(8) << pos.nodes_searched() / 1 << "  ";
   else if (pos.nodes_searched() < K * M)
-      s << std::setw(7) << pos.nodes_searched() / K << "K ";
+      s << std::setw(7) << pos.nodes_searched() / K << " K ";
   else
-      s << std::setw(7) << pos.nodes_searched() / M << "M ";
+      s << std::setw(7) << pos.nodes_searched() / M << " M ";
 
-  // PV
-  s << line_to_san(pos, pv, 30, true);
+  // ...then print the full PV line in short algebraic notation
+  for (Move* m = pv; *m != MOVE_NONE; m++)
+  {
+      san = move_to_san(p, *m);
+      length += san.length() + 1;
+
+      if (length > maxLength)
+      {
+          length = san.length() + 1;
+          s << lf;
+      }
+      s << san << ' ';
+
+      p.do_move(*m, st);
+  }
 
   return s.str();
 }
