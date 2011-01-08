@@ -17,13 +17,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(MOVE_H_INCLUDED)
 #define MOVE_H_INCLUDED
+
+#include <string>
 
 #include "misc.h"
 #include "piece.h"
 #include "square.h"
+#include "value.h"
 
 // Maximum number of allowed moves per position
 const int MOVES_MAX = 256;
@@ -184,5 +186,13 @@ inline Move make_castle_move(Square from, Square to) {
 inline bool move_is_ok(Move m) {
   return move_from(m) != move_to(m); // Catches also MOVE_NONE
 }
+
+class Position;
+
+extern const std::string move_to_uci(Move m, bool chess960);
+extern Move move_from_uci(const Position& pos, const std::string& str);
+extern const std::string move_to_san(Position& pos, Move m);
+extern const std::string line_to_san(const Position& pos, Move line[], int startColumn, bool breakLines);
+extern const std::string pretty_pv(const Position& pos, int time, int depth, Value score, ValueType type, Move pv[]);
 
 #endif // !defined(MOVE_H_INCLUDED)

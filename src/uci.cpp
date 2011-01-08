@@ -33,7 +33,6 @@
 #include "move.h"
 #include "movegen.h"
 #include "position.h"
-#include "san.h"
 #include "search.h"
 #include "ucioption.h"
 

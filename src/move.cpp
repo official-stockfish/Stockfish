@@ -28,8 +28,8 @@
 #include <string>
 #include <sstream>
 
+#include "move.h"
 #include "movegen.h"
-#include "san.h"
 
 using std::string;
 

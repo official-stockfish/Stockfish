@@ -36,7 +36,6 @@
 #include "position.h"
 #include "psqtab.h"
 #include "rkiss.h"
-#include "san.h"
 #include "tt.h"
 #include "ucioption.h"
 
