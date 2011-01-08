@@ -86,33 +86,37 @@ protected:
 class TTEntry {
 
 public:
-  void save(uint32_t k, Value v, ValueType t, Depth d, Move m, int g, Value statV, Value kd) {
+  void save(uint32_t k, Value v, ValueType t, Depth d, Move m, int g, Value statV, Value statM) {
 
-      key32 = k;
-      data = (m & 0xFFFF) | (t << 21) | (g << 23);
-      value16     = (int16_t)v;
-      depth16     = (int16_t)d;
-      staticValue = (int16_t)statV;
-      staticValueMargin  = (int16_t)kd;
+    key32        = (uint32_t)k;
+    move16       = (uint16_t)m;
+    valueType    = (uint8_t)t;
+    generation8  = (uint8_t)g;
+    value16      = (int16_t)v;
+    depth16      = (int16_t)d;
+    staticValue  = (int16_t)statV;
+    staticMargin = (int16_t)statM;
   }
-  void set_generation(int g) { data = move() | (type() << 21) | (g << 23); }
+  void set_generation(int g) { generation8 = (uint8_t)g; }
 
   uint32_t key() const { return key32; }
   Depth depth() const { return Depth(depth16); }
-  Move move() const { return Move(data & 0xFFFF); }
+  Move move() const { return Move(move16); }
   Value value() const { return Value(value16); }
-  ValueType type() const { return ValueType((data >> 21) & 3); }
-  int generation() const { return data >> 23; }
+  ValueType type() const { return ValueType(valueType); }
+  int generation() const { return generation8; }
   Value static_value() const { return Value(staticValue); }
-  Value static_value_margin() const { return Value(staticValueMargin); }
+  Value static_value_margin() const { return Value(staticMargin); }
 
 private:
   uint32_t key32;
-  uint32_t data;
+  uint16_t move16;
+  uint8_t valueType;
+  uint8_t generation8;
   int16_t value16;
   int16_t depth16;
   int16_t staticValue;
-  int16_t staticValueMargin;
+  int16_t staticMargin;
 };
 
 
