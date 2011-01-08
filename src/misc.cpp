@@ -205,7 +205,7 @@ int cpu_count() {
 #endif
 
 
-/// Check for console input. Original code from Beowulf and Olithink
+/// Check for console input. Original code from Beowulf, Olithink and Greko
 
 #ifndef _WIN32
 
@@ -225,35 +225,46 @@ int data_available()
 
 #else
 
-int data_available()
+int input_available()
 {
     static HANDLE inh = NULL;
     static bool usePipe = false;
     INPUT_RECORD rec[256];
-    DWORD dw, recCnt;
+    DWORD nchars, recCnt;
 
     if (!inh)
     {
         inh = GetStdHandle(STD_INPUT_HANDLE);
-        if (GetConsoleMode(inh, &dw))
+        if (GetConsoleMode(inh, &nchars))
         {
-            SetConsoleMode(inh, dw & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
+            SetConsoleMode(inh, nchars & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
             FlushConsoleInputBuffer(inh);
         } else
             usePipe = true;
     }
 
-    // If we're running under XBoard then we can't use PeekConsoleInput() as
-    // the input commands are sent to us directly over the internal pipe.
+    // When using Standard C input functions, also check if there
+    // is anything in the buffer. After a call to such functions,
+    // the input waiting in the pipe will be copied to the buffer,
+    // and the call to PeekNamedPipe can indicate no input available.
+    // Setting stdin to unbuffered was not enough. [from Greko]
+    if (stdin->_cnt > 0)
+        return 1;
+
+    // When running under a GUI the input commands are sent to us
+    // directly over the internal pipe. If PeekNamedPipe() returns 0
+    // then something went wrong. Probably the parent program exited.
+    // Returning 1 will make the next call to the input function
+    // return EOF, where this should be catched then.
     if (usePipe)
-        return PeekNamedPipe(inh, NULL, 0, NULL, &dw, NULL) ? dw : 1;
+        return PeekNamedPipe(inh, NULL, 0, NULL, &nchars, NULL) ? nchars : 1;
 
     // Count the number of unread input records, including keyboard,
     // mouse, and window-resizing input records.
-    GetNumberOfConsoleInputEvents(inh, &dw);
+    GetNumberOfConsoleInputEvents(inh, &nchars);
 
     // Read data from console without removing it from the buffer
-    if (dw <= 0 || !PeekConsoleInput(inh, rec, Min(dw, 256), &recCnt))
+    if (nchars <= 0 || !PeekConsoleInput(inh, rec, Min(nchars, 256), &recCnt))
         return 0;
 
     // Search for at least one keyboard event
