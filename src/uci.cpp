@@ -140,7 +140,7 @@ namespace {
 
   void set_position(Position& pos, UCIParser& up) {
 
-    string token;
+    string fen, token;
 
     if (!(up >> token) || (token != "startpos" && token != "fen"))
         return;
@@ -148,34 +148,19 @@ namespace {
     if (token == "startpos")
     {
         pos.from_fen(StartPositionFEN, false);
-        if (!(up >> token))
-            return;
+        up >> token; // Consume "moves" token
     }
     else // fen
     {
-        string fen;
         while (up >> token && token != "moves")
-        {
-            fen += token;
-            fen += ' ';
-        }
+            fen += token + string(" ");
+
         pos.from_fen(fen, Options["UCI_Chess960"].value<bool>());
     }
 
-    if (token != "moves")
-        return;
-
-    // Parse optional move list
-    Move move;
-    StateInfo st;
+    // Parse move list (if any)
     while (up >> token)
-    {
-        move = move_from_uci(pos, token);
-        pos.do_setup_move(move, st);
-    }
-    // Our StateInfo st is about going out of scope so copy
-    // its content inside pos before it disappears.
-    pos.detach();
+        pos.do_setup_move(move_from_uci(pos, token));
   }
 
 

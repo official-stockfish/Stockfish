@@ -222,8 +222,7 @@ public:
   bool square_is_weak(Square s, Color c) const;
 
   // Doing and undoing moves
-  void detach();
-  void do_setup_move(Move m, StateInfo& St);
+  void do_setup_move(Move m);
   void do_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);
@@ -278,6 +277,7 @@ private:
 
   // Initialization helper functions (used while setting up a position)
   void clear();
+  void detach();
   void put_piece(Piece p, Square s);
   void do_allow_oo(Color c);
   void do_allow_ooo(Color c);

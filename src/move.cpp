@@ -30,6 +30,7 @@
 
 #include "move.h"
 #include "movegen.h"
+#include "search.h"
 
 using std::string;
 
@@ -178,7 +179,7 @@ const string move_to_san(Position& pos, Move m) {
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
 
-const string pretty_pv(const Position& pos, int time, int depth,
+const string pretty_pv(Position& pos, int time, int depth,
                        Value score, ValueType type, Move pv[]) {
 
   const int64_t K = 1000;
@@ -187,12 +188,11 @@ const string pretty_pv(const Position& pos, int time, int depth,
   const size_t maxLength = 80 - startColumn;
   const string lf = string("\n") + string(startColumn, ' ');
 
-  StateInfo st;
+  StateInfo state[PLY_MAX_PLUS_2], *st = state;
+  Move* m = pv;
   std::stringstream s;
   string san;
   size_t length = 0;
-
-  Position p(pos, pos.thread());
 
   // First print depth, score, time and searched nodes...
   s << std::setw(2) << depth
@@ -208,9 +208,9 @@ const string pretty_pv(const Position& pos, int time, int depth,
       s << std::setw(7) << pos.nodes_searched() / M << " M ";
 
   // ...then print the full PV line in short algebraic notation
-  for (Move* m = pv; *m != MOVE_NONE; m++)
+  while (*m != MOVE_NONE)
   {
-      san = move_to_san(p, *m);
+      san = move_to_san(pos, *m);
       length += san.length() + 1;
 
       if (length > maxLength)
@@ -220,8 +220,11 @@ const string pretty_pv(const Position& pos, int time, int depth,
       }
       s << san << ' ';
 
-      p.do_move(*m, st);
+      pos.do_move(*m++, *st++);
   }
+
+  // Restore original position before to leave
+  while (m != pv) pos.undo_move(*--m);
 
   return s.str();
 }

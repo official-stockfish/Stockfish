@@ -129,7 +129,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(const Position& pos, Value alpha, Value beta, int pvLine = 0);
+    std::string pv_info_to_uci(Position& pos, Value alpha, Value beta, int pvLine = 0);
 
     int64_t nodes;
     Value pv_score;
@@ -2633,7 +2633,7 @@ split_point_start: // At split points actual search starts from here
   // formatted according to UCI specification and eventually writes the info
   // to a log file. It is called at each iteration or after a new pv is found.
 
-  std::string RootMove::pv_info_to_uci(const Position& pos, Value alpha, Value beta, int pvLine) {
+  std::string RootMove::pv_info_to_uci(Position& pos, Value alpha, Value beta, int pvLine) {
 
     std::stringstream s, l;
     Move* m = pv;

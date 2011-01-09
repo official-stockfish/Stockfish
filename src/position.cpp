@@ -776,7 +776,9 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
 /// It should be used when setting up a position on board.
 /// You can't undo the move.
 
-void Position::do_setup_move(Move m, StateInfo& newSt) {
+void Position::do_setup_move(Move m) {
+
+  StateInfo newSt;
 
   do_move(m, newSt);
 
@@ -787,6 +789,10 @@ void Position::do_setup_move(Move m, StateInfo& newSt) {
 
   // Update the number of plies played from the starting position
   startPosPlyCounter++;
+
+  // Our StateInfo newSt is about going out of scope so copy
+  // its content inside pos before it disappears.
+  detach();
 }
 
 /// Position::do_move() makes a move, and saves all information necessary
@@ -803,6 +809,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   assert(is_ok());
   assert(move_is_ok(m));
+  assert(&newSt != st);
 
   nodes++;
   Key key = st->key;
@@ -818,8 +825,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
     Value npMaterial[2];
   };
 
-  if (&newSt != st)
-      memcpy(&newSt, st, sizeof(ReducedStateInfo));
+  memcpy(&newSt, st, sizeof(ReducedStateInfo));
 
   newSt.previous = st;
   st = &newSt;
