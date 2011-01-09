@@ -37,7 +37,7 @@ public:
 
 private:
   friend void init_uci_options();
-  friend void print_uci_options();
+  friend std::string options_to_uci();
 
   std::string defaultValue, currentValue, type;
   size_t idx;
@@ -75,6 +75,6 @@ typedef std::map<std::string, Option, CaseInsensitiveLess> OptionsMap;
 
 extern OptionsMap Options;
 extern void init_uci_options();
-extern void print_uci_options();
+extern std::string options_to_uci();
 
 #endif // !defined(UCIOPTION_H_INCLUDED)

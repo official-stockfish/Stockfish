@@ -118,28 +118,29 @@ void init_uci_options() {
 }
 
 
-/// print_uci_options() prints all the UCI options to the standard output,
-/// in chronological insertion order (the idx field) and in the format
-/// defined by the UCI protocol.
+/// options_to_uci() returns a string with all the UCI options in chronological
+/// insertion order (the idx field) and in the format defined by the UCI protocol.
 
-void print_uci_options() {
+string options_to_uci() {
+
+  std::stringstream s;
 
   for (size_t i = 0; i <= Options.size(); i++)
       for (OptionsMap::const_iterator it = Options.begin(); it != Options.end(); ++it)
           if (it->second.idx == i)
           {
               const Option& o = it->second;
-              cout << "\noption name " << it->first << " type " << o.type;
+              s << "\noption name " << it->first << " type " << o.type;
 
               if (o.type != "button")
-                  cout << " default " << o.defaultValue;
+                  s << " default " << o.defaultValue;
 
               if (o.type == "spin")
-                  cout << " min " << o.minValue << " max " << o.maxValue;
+                  s << " min " << o.minValue << " max " << o.maxValue;
 
               break;
           }
-  cout << endl;
+  return s.str();
 }
 
 

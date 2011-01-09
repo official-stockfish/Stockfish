@@ -44,6 +44,7 @@
 ////
 
 extern const std::string engine_name();
+extern const std::string engine_author();
 extern int get_system_time();
 extern int cpu_count();
 extern int input_available();

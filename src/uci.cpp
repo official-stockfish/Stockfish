@@ -65,24 +65,23 @@ bool execute_uci_command(const string& cmd) {
 
   static Position pos(StartPositionFEN, false, 0); // The root position
   UCIParser up(cmd);
+  Value dummy;
   string token;
 
-  if (!(up >> token)) // operator>>() skips any whitespace
-      return true;
+  up >> token; // operator>>() skips any whitespace
 
   if (token == "quit")
       return false;
 
-  if (token == "go")
+  else if (token == "go")
       return go(pos, up);
 
-  if (token == "uci")
-  {
+  else if (token == "uci")
       cout << "id name " << engine_name()
-           << "\nid author Tord Romstad, Marco Costalba, Joona Kiiski\n";
-      print_uci_options();
-      cout << "uciok" << endl;
-  }
+           << "\nid author " << engine_author()
+           << "\n" << options_to_uci()
+           << "\nuciok" << endl;
+
   else if (token == "ucinewgame")
       pos.from_fen(StartPositionFEN, false);
 
@@ -95,30 +94,27 @@ bool execute_uci_command(const string& cmd) {
   else if (token == "setoption")
       set_option(up);
 
-  // The remaining commands are for debugging purposes only
   else if (token == "d")
       pos.print();
+
+  else if (token == "eval")
+      cout << "Incremental mg: "   << mg_value(pos.value())
+           << "\nIncremental eg: " << eg_value(pos.value())
+           << "\nFull eval: "      << evaluate(pos, dummy) << endl;
+
+  else if (token == "key")
+      cout << "key: " << hex     << pos.get_key()
+           << "\nmaterial key: " << pos.get_material_key()
+           << "\npawn key: "     << pos.get_pawn_key() << endl;
+
+  else if (token == "perft")
+      perft(pos, up);
 
   else if (token == "flip")
   {
       Position p(pos, pos.thread());
       pos.flipped_copy(p);
   }
-  else if (token == "eval")
-  {
-      Value evalMargin;
-      cout << "Incremental mg: "   << mg_value(pos.value())
-           << "\nIncremental eg: " << eg_value(pos.value())
-           << "\nFull eval: "      << evaluate(pos, evalMargin) << endl;
-  }
-  else if (token == "key")
-      cout << "key: " << hex << pos.get_key()
-           << "\nmaterial key: " << pos.get_material_key()
-           << "\npawn key: " << pos.get_pawn_key() << endl;
-
-  else if (token == "perft")
-      perft(pos, up);
-
   else
       cout << "Unknown command: " << cmd << endl;
 
@@ -207,13 +203,14 @@ namespace {
   bool go(Position& pos, UCIParser& up) {
 
     string token;
-
-    int time[2] = {0, 0}, inc[2] = {0, 0};
-    int movesToGo = 0, depth = 0, nodes = 0, moveTime = 0;
-    bool infinite = false, ponder = false;
     Move searchMoves[MOVES_MAX];
+    int movesToGo, depth, nodes, moveTime, numOfMoves;
+    bool infinite, ponder;
+    int time[2] = {0, 0}, inc[2] = {0, 0};
 
     searchMoves[0] = MOVE_NONE;
+    infinite = ponder = false;
+    movesToGo = depth = nodes = moveTime = numOfMoves = 0;
 
     while (up >> token)
     {
@@ -239,7 +236,6 @@ namespace {
             up >> moveTime;
         else if (token == "searchmoves")
         {
-            int numOfMoves = 0;
             while (up >> token)
                 searchMoves[numOfMoves++] = move_from_uci(pos, token);
 

@@ -154,6 +154,8 @@ const string engine_name() {
   return s.str();
 }
 
+const string engine_author() { return "Tord Romstad, Marco Costalba and Joona Kiiski"; }
+
 
 /// get_system_time() returns the current system time, measured in
 /// milliseconds.
