@@ -142,21 +142,21 @@ namespace {
 
     string fen, token;
 
-    if (!(up >> token) || (token != "startpos" && token != "fen"))
-        return;
+    up >> token; // operator>>() skips any whitespace
 
     if (token == "startpos")
     {
         pos.from_fen(StartPositionFEN, false);
         up >> token; // Consume "moves" token
     }
-    else // fen
+    else if (token == "fen")
     {
         while (up >> token && token != "moves")
-            fen += token + string(" ");
+            fen += token + " ";
 
         pos.from_fen(fen, Options["UCI_Chess960"].value<bool>());
     }
+    else return;
 
     // Parse move list (if any)
     while (up >> token)
@@ -172,39 +172,26 @@ namespace {
 
   void set_option(UCIParser& up) {
 
-    string token, name, value;
+    string value = "true"; // UCI buttons don't have a "value" field
+    string token, name;
 
-    if (!(up >> token) || token != "name") // operator>>() skips any whitespace
-        return;
-
-    if (!(up >> name))
-        return;
+    up >> token; // Consume "name" token
+    up >> name;  // Read option name
 
     // Handle names with included spaces
     while (up >> token && token != "value")
-        name += (" " + token);
+        name += " " + token;
 
-    if (Options.find(name) == Options.end())
-    {
-        cout << "No such option: " << name << endl;
-        return;
-    }
-
-    // Is a button ?
-    if (token != "value")
-    {
-        Options[name].set_value("true");
-        return;
-    }
-
-    if (!(up >> value))
-        return;
+    up >> value; // Read option value
 
     // Handle values with included spaces
     while (up >> token)
-        value += (" " + token);
+        value += " " + token;
 
-    Options[name].set_value(value);
+    if (Options.find(name) != Options.end())
+        Options[name].set_value(value);
+    else
+        cout << "No such option: " << name << endl;
   }
 
 

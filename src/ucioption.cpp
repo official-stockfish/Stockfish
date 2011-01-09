@@ -163,8 +163,11 @@ void Option::set_value(const string& value) {
 
   assert(!type.empty());
 
-  if (    (type == "check" || type == "button")
-      && !(value == "true" || value == "false"))
+  if (value.empty())
+      return;
+
+  if (   (type == "check" || type == "button")
+      != (value == "true" || value == "false"))
       return;
 
   if (type == "spin")
