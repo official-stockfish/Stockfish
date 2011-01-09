@@ -70,8 +70,9 @@ private:
 /// the effect that parts of the search tree which have been searched
 /// recently have a bigger importance for move ordering than the moves which
 /// have been searched a long time ago.
+/// Current policy is to set this as high as possible, but avoid overflow.
 
-const int HistoryMax = 50000 * ONE_PLY;
+const int HistoryMax = (1 << 28);
 
 
 ////
