@@ -423,7 +423,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   // Look for a book move, only during games, not tests
   if (UseTimeManagement && Options["OwnBook"].value<bool>())
   {
-      if (Options["Book File"].value<std::string>() != OpeningBook.file_name())
+      if (Options["Book File"].value<std::string>() != OpeningBook.name())
           OpeningBook.open(Options["Book File"].value<std::string>());
 
       Move bookMove = OpeningBook.get_move(pos, Options["Best Book Move"].value<bool>());
