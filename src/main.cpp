@@ -25,6 +25,7 @@
 //// Includes
 ////
 
+#include <cstdio>
 #include <iostream>
 #include <string>
 
@@ -54,7 +55,9 @@ extern void benchmark(int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
 
-  // Disable IO buffering
+  // Disable IO buffering for C and C++ standard libraries
+  setvbuf(stdin, NULL, _IONBF, 0);
+  setvbuf(stdout, NULL, _IONBF, 0);
   cout.rdbuf()->pubsetbuf(NULL, 0);
   cin.rdbuf()->pubsetbuf(NULL, 0);
 
