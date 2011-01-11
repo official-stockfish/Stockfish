@@ -556,6 +556,7 @@ namespace {
     Depth depth;
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
+    int researchCountFL, researchCountFH;
 
     // Moves to search are verified, scored and sorted
     RootMoveList rml(pos, searchMoves);
@@ -612,8 +613,42 @@ namespace {
 
         depth = (Iteration - 2) * ONE_PLY + InitialDepth;
 
-        // Search to the current depth, rml is updated and sorted
-        value = root_search(pos, ss, alpha, beta, depth, rml);
+        researchCountFL = researchCountFH = 0;
+
+        // We start with small aspiration window and in case of fail high/low, we
+        // research with bigger window until we are not failing high/low anymore.
+        while (true)
+        {
+            // Sort the moves before to (re)search
+            rml.set_non_pv_scores(pos, rml[0].pv[0], ss);
+            rml.sort();
+
+            // Search to the current depth, rml is updated and sorted
+            value = root_search(pos, ss, alpha, beta, depth, rml);
+
+            if (StopRequest)
+                break;
+
+            assert(value >= alpha);
+
+            if (value >= beta)
+            {
+                // Prepare for a research after a fail high, each time with a wider window
+                beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
+                researchCountFH++;
+            }
+            else if (value <= alpha)
+            {
+                AspirationFailLow = true;
+                StopOnPonderhit = false;
+
+                // Prepare for a research after a fail low, each time with a wider window
+                alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
+                researchCountFL++;
+            }
+            else
+                break;
+        }
 
         if (StopRequest)
             break; // Value cannot be trusted. Break out immediately!
@@ -636,7 +671,7 @@ namespace {
                 stopSearch = true;
 
             // Stop search early when the last two iterations returned a mate score
-            if (  Iteration >= 6
+            if (   Iteration >= 6
                 && abs(ValueByIteration[Iteration]) >= abs(VALUE_MATE) - 100
                 && abs(ValueByIteration[Iteration-1]) >= abs(VALUE_MATE) - 100)
                 stopSearch = true;
@@ -685,18 +720,22 @@ namespace {
 
   Value root_search(Position& pos, SearchStack* ss, Value alpha,
                     Value beta, Depth depth, RootMoveList& rml) {
-    StateInfo st;
+
+    assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
+    assert(beta > alpha && beta <= VALUE_INFINITE);
+    assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
+
     Move movesSearched[MOVES_MAX];
-    CheckInfo ci(pos);
-    int64_t nodes;
+    StateInfo st;
+    Key posKey;
     Move move;
     Depth ext, newDepth;
+    ValueType vt;
     Value value, oldAlpha;
-    RootMoveList::iterator rm;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous, isPvMove;
-    int moveCount, researchCountFH, researchCountFL;
+    int moveCount = 0;
 
-    researchCountFH = researchCountFL = 0;
+    value = -VALUE_INFINITE;
     oldAlpha = alpha;
     isCheck = pos.is_check();
 
@@ -707,6 +746,7 @@ namespace {
     // Step 2. Check for aborted search (omitted at root)
     // Step 3. Mate distance pruning (omitted at root)
     // Step 4. Transposition table lookup (omitted at root)
+    posKey = pos.get_key();
 
     // Step 5. Evaluate the position statically
     // At root we do this only to get reference value for child nodes
@@ -718,209 +758,177 @@ namespace {
     // Step 8. Null move search with verification search (omitted at root)
     // Step 9. Internal iterative deepening (omitted at root)
 
-    // Step extra. Fail low loop
-    // We start with small aspiration window and in case of fail low, we research
-    // with bigger window until we are not failing low anymore.
-    while (1)
+    CheckInfo ci(pos);
+    int64_t nodes;
+    RootMoveList::iterator rm = rml.begin();
+
+    // Step 10. Loop through moves
+    // Loop through all legal moves until no moves remain or a beta cutoff occurs
+    while (   alpha < beta
+           && rm != rml.end()
+           && !StopRequest)
     {
-        // Sort the moves before to (re)search
-        rml.set_non_pv_scores(pos, rml[0].pv[0], ss);
-        rml.sort();
-        moveCount = 0;
+        move = ss->currentMove = rm->pv[0];
+        movesSearched[moveCount++] = move;
+        isPvMove = (moveCount <= MultiPV);
 
-        // Step 10. Loop through all moves in the root move list
-        for (rm = rml.begin(); rm != rml.end() && !StopRequest; ++rm)
+        // This is used by time management
+        FirstRootMove = (rm == rml.begin());
+
+        // Save the current node count before the move is searched
+        nodes = pos.nodes_searched();
+
+        // If it's time to send nodes info, do it here where we have the
+        // correct accumulated node counts searched by each thread.
+        if (SendSearchedNodes)
         {
-            // This is used by time management
-            FirstRootMove = (rm == rml.begin());
+            SendSearchedNodes = false;
+            cout << "info nodes " << nodes
+                 << " nps " << nps(pos)
+                 << " time " << current_search_time() << endl;
+        }
 
-            // Save the current node count before the move is searched
-            nodes = pos.nodes_searched();
+        if (current_search_time() >= 1000)
+            cout << "info currmove " << move
+                 << " currmovenumber " << moveCount << endl;
 
-            // If it's time to send nodes info, do it here where we have the
-            // correct accumulated node counts searched by each thread.
-            if (SendSearchedNodes)
+        moveIsCheck = pos.move_is_check(move);
+        captureOrPromotion = pos.move_is_capture_or_promotion(move);
+
+        // Step 11. Decide the new search depth
+        ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, false, &dangerous);
+        newDepth = depth + ext;
+
+        // Step 12. Futility pruning (omitted at root)
+        // Step 13. Make the move
+        pos.do_move(move, st, ci, moveIsCheck);
+
+        // Step extra. pv search
+        // We do pv search for PV moves
+        if (isPvMove)
+        {
+            // Aspiration window is disabled in multi-pv case
+            if (MultiPV > 1)
+                alpha = -VALUE_INFINITE;
+
+            // Full depth PV search, done on first move or after a fail high
+            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1);
+        }
+        else
+        {
+            // Step 14. Reduced search
+            // if the move fails high will be re-searched at full depth
+            bool doFullDepthSearch = true;
+
+            if (    depth >= 3 * ONE_PLY
+                && !captureOrPromotion
+                && !dangerous
+                && !move_is_castle(move)
+                &&  ss->killers[0] != move
+                &&  ss->killers[1] != move)
             {
-                SendSearchedNodes = false;
-                cout << "info nodes " << nodes
-                     << " nps " << nps(pos)
-                     << " time " << current_search_time() << endl;
+                ss->reduction = reduction<PV>(depth, moveCount - MultiPV + 1);
+
+                if (ss->reduction)
+                {
+                    Depth d = newDepth - ss->reduction;
+                    value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, 1);
+
+                    doFullDepthSearch = (value > alpha);
+                }
+                ss->reduction = DEPTH_ZERO; // Restore original reduction
             }
 
-            // Pick the next root move, and print the move and the move number to
-            // the standard output.
-            move = ss->currentMove = rm->pv[0];
-            movesSearched[moveCount++] = move;
-            isPvMove = (moveCount <= MultiPV);
-
-            if (current_search_time() >= 1000)
-                cout << "info currmove " << move
-                     << " currmovenumber " << moveCount << endl;
-
-            moveIsCheck = pos.move_is_check(move);
-            captureOrPromotion = pos.move_is_capture_or_promotion(move);
-
-            // Step 11. Decide the new search depth
-            ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, false, &dangerous);
-            newDepth = depth + ext;
-
-            // Step 12. Futility pruning (omitted at root)
-
-            // Step extra. Fail high loop
-            // If move fails high, we research with bigger window until we are not failing
-            // high anymore.
-            value = -VALUE_INFINITE;
-
-            while (1)
+            // Step 15. Full depth search
+            if (doFullDepthSearch)
             {
-                // Step 13. Make the move
-                pos.do_move(move, st, ci, moveIsCheck);
+                // Full depth non-pv search using alpha as upperbound
+                value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, 1);
 
-                // Step extra. pv search
-                // We do pv search for PV moves and when failing high
-                if (isPvMove || value > alpha)
-                {
-                    // Aspiration window is disabled in multi-pv case
-                    if (MultiPV > 1)
-                        alpha = -VALUE_INFINITE;
-
-                    // Full depth PV search, done on first move or after a fail high
+                // If we are above alpha then research at same depth but as PV
+                // to get a correct score or eventually a fail high above beta.
+                if (value > alpha)
                     value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1);
-                }
-                else
-                {
-                    // Step 14. Reduced search
-                    // if the move fails high will be re-searched at full depth
-                    bool doFullDepthSearch = true;
+            }
+        }
 
-                    if (    depth >= 3 * ONE_PLY
-                        && !dangerous
-                        && !captureOrPromotion
-                        && !move_is_castle(move))
-                    {
-                        ss->reduction = reduction<PV>(depth, moveCount - MultiPV + 1);
-                        if (ss->reduction)
-                        {
-                            assert(newDepth-ss->reduction >= ONE_PLY);
+        // Step 16. Undo move
+        pos.undo_move(move);
 
-                            // Reduced depth non-pv search using alpha as upperbound
-                            value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth-ss->reduction, 1);
-                            doFullDepthSearch = (value > alpha);
-                        }
-                        ss->reduction = DEPTH_ZERO; // Restore original reduction
-                    }
+        assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-                    // Step 15. Full depth search
-                    if (doFullDepthSearch)
-                    {
-                        // Full depth non-pv search using alpha as upperbound
-                        value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, 1);
-
-                        // If we are above alpha then research at same depth but as PV
-                        // to get a correct score or eventually a fail high above beta.
-                        if (value > alpha)
-                            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1);
-                    }
-                }
-
-                // Step 16. Undo move
-                pos.undo_move(move);
-
-                // Can we exit fail high loop ?
-                if (StopRequest || value < beta)
-                    break;
-
-                // We are failing high and going to do a research. It's important to update
-                // the score before research in case we run out of time while researching.
-                ss->bestMove = move;
-                rm->pv_score = value;
-                rm->extract_pv_from_tt(pos);
-
-                // Update killers and history only for non capture moves that fails high
-                if (!pos.move_is_capture_or_promotion(move))
-                {
-                    update_history(pos, move, depth, movesSearched, moveCount);
-                    update_killers(move, ss->killers);
-                }
-
-                // Inform GUI that PV has changed
-                cout << rm->pv_info_to_uci(pos, alpha, beta) << endl;
-
-                // Prepare for a research after a fail high, each time with a wider window
-                beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
-                researchCountFH++;
-
-            } // End of fail high loop
-
-            // Finished searching the move. If AbortSearch is true, the search
-            // was aborted because the user interrupted the search or because we
-            // ran out of time. In this case, the return value of the search cannot
-            // be trusted, and we break out of the loop without updating the best
-            // move and/or PV.
-            if (StopRequest)
-                break;
-
-            // Remember searched nodes counts for this move
-            rm->nodes += pos.nodes_searched() - nodes;
-
-            assert(value >= -VALUE_INFINITE && value <= VALUE_INFINITE);
-            assert(value < beta);
-
-            // Step 17. Check for new best move
-            if (!isPvMove && value <= alpha)
-                rm->pv_score = -VALUE_INFINITE;
-            else
-            {
-                // PV move or new best move!
-
-                // Update PV
-                ss->bestMove = move;
-                rm->pv_score = value;
-                rm->extract_pv_from_tt(pos);
-
-                // We record how often the best move has been changed in each
-                // iteration. This information is used for time managment: When
-                // the best move changes frequently, we allocate some more time.
-                if (!isPvMove && MultiPV == 1)
-                    BestMoveChangesByIteration[Iteration]++;
-
-                // Inform GUI that PV has changed, in case of multi-pv UCI protocol
-                // requires we send all the PV lines properly sorted.
-                rml.sort_multipv(moveCount);
-
-                for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
-                    cout << rml[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
-
-                // Update alpha. In multi-pv we don't use aspiration window
-                if (MultiPV == 1)
-                {
-                    // Raise alpha to setup proper non-pv search upper bound
-                    if (value > alpha)
-                        alpha = value;
-                }
-                else // Set alpha equal to minimum score among the PV lines
-                    alpha = rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
-
-            } // PV move or new best move
-
-            assert(alpha >= oldAlpha);
-
-            AspirationFailLow = (alpha == oldAlpha);
-
-            if (AspirationFailLow && StopOnPonderhit)
-                StopOnPonderhit = false;
-
-        } // Root moves loop
-
-        // Can we exit fail low loop ?
-        if (StopRequest || !AspirationFailLow)
+        // Finished searching the move. If StopRequest is true, the search
+        // was aborted because the user interrupted the search or because we
+        // ran out of time. In this case, the return value of the search cannot
+        // be trusted, and we break out of the loop without updating the best
+        // move and/or PV.
+        if (StopRequest)
             break;
 
-        // Prepare for a research after a fail low, each time with a wider window
-        oldAlpha = alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
-        researchCountFL++;
+        // Remember searched nodes counts for this move
+        rm->nodes += pos.nodes_searched() - nodes;
 
-    } // Fail low loop
+        // Step 17. Check for new best move
+        if (!isPvMove && value <= alpha)
+            rm->pv_score = -VALUE_INFINITE;
+        else
+        {
+            // PV move or new best move!
+
+            // Update PV
+            ss->bestMove = move;
+            rm->pv_score = value;
+            rm->extract_pv_from_tt(pos);
+
+            // We record how often the best move has been changed in each
+            // iteration. This information is used for time managment: When
+            // the best move changes frequently, we allocate some more time.
+            if (!isPvMove && MultiPV == 1)
+                BestMoveChangesByIteration[Iteration]++;
+
+            // Inform GUI that PV has changed, in case of multi-pv UCI protocol
+            // requires we send all the PV lines properly sorted.
+            rml.sort_multipv(moveCount);
+
+            for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
+                cout << rml[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
+
+            // Update alpha. In multi-pv we don't use aspiration window
+            if (MultiPV == 1)
+            {
+                // Raise alpha to setup proper non-pv search upper bound
+                if (value > alpha)
+                    alpha = value;
+            }
+            else // Set alpha equal to minimum score among the PV lines
+                alpha = rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+
+        } // PV move or new best move
+
+        ++rm;
+
+    } // Root moves loop
+
+
+    // Step 20. Update tables
+    // If the search is not aborted, update the transposition table,
+    // history counters, and killer moves.
+    if (!StopRequest)
+    {
+        move = alpha <= oldAlpha ? MOVE_NONE : ss->bestMove;
+        vt   = alpha <= oldAlpha ? VALUE_TYPE_UPPER
+                                 : alpha >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
+
+        TT.store(posKey, value_to_tt(alpha, 0), vt, depth, move, ss->eval, ss->evalMargin);
+
+        // Update killers and history only for non capture moves that fails high
+        if (    alpha >= beta
+            && !pos.move_is_capture_or_promotion(move))
+        {
+            update_history(pos, move, depth, movesSearched, moveCount);
+            update_killers(move, ss->killers);
+        }
+    }
 
     // Sort the moves before to return
     rml.sort();
@@ -929,6 +937,8 @@ namespace {
     // have been overwritten during the search.
     for (int i = 0; i < Min(MultiPV, (int)rml.size()); i++)
         rml[i].insert_pv_in_tt(pos);
+
+    assert(alpha > -VALUE_INFINITE && alpha < VALUE_INFINITE);
 
     return alpha;
   }
