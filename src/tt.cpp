@@ -55,18 +55,18 @@ void TranspositionTable::set_size(size_t mbSize) {
 
   size_t newSize = 1024;
 
-  // Transposition table consists of clusters and
-  // each cluster consists of ClusterSize number of TTEntries.
-  // Each non-empty entry contains information of exactly one position.
-  // newSize is the number of clusters we are going to allocate.
-  while ((2 * newSize) * sizeof(TTCluster) <= (mbSize << 20))
+  // Transposition table consists of clusters and each cluster consists
+  // of ClusterSize number of TTEntries. Each non-empty entry contains
+  // information of exactly one position and newSize is the number of
+  // clusters we are going to allocate.
+  while (2ULL * newSize * sizeof(TTCluster) <= (mbSize << 20))
       newSize *= 2;
 
   if (newSize != size)
   {
       size = newSize;
       delete [] entries;
-      entries = new TTCluster[size];
+      entries = new (std::nothrow) TTCluster[size];
       if (!entries)
       {
           std::cerr << "Failed to allocate " << mbSize

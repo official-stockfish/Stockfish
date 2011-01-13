@@ -46,7 +46,7 @@ class SimpleHash {
 public:
   SimpleHash() {
 
-    entries = new Entry[HashSize];
+    entries = new (std::nothrow) Entry[HashSize];
     if (!entries)
     {
         std::cerr << "Failed to allocate " << HashSize * sizeof(Entry)
