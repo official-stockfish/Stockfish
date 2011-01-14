@@ -181,7 +181,7 @@ void Position::from_fen(const string& fen, bool c960) {
    A FEN string contains six fields. The separator between fields is a space. The fields are:
 
    1) Piece placement (from white's perspective). Each rank is described, starting with rank 8 and ending
-      with rank 1; within each rank, the contents of each square are described from file a through file h.
+      with rank 1; within each rank, the contents of each square are described from file A through file H.
       Following the Standard Algebraic Notation (SAN), each piece is identified by a single letter taken
       from the standard English names. White pieces are designated using upper-case letters ("PNBRQK")
       while Black take lowercase ("pnbrqk"). Blank squares are noted using digits 1 through 8 (the number
@@ -206,31 +206,24 @@ void Position::from_fen(const string& fen, bool c960) {
   char token;
   int hmc, fmn;
   std::istringstream ss(fen);
-  Rank rank = RANK_8;
-  File file = FILE_A;
+  Square sq = SQ_A8;
 
   clear();
 
   // 1. Piece placement field
   while (ss.get(token) && token != ' ')
   {
-      if (isdigit(token))
+      if (pieceLetters.find(token) != pieceLetters.end())
       {
-          file += File(token - '0'); // Skip the given number of files
-          continue;
+          put_piece(pieceLetters[token], sq);
+          sq++;
       }
+      else if (isdigit(token))
+          sq += Square(token - '0'); // Skip the given number of files
       else if (token == '/')
-      {
-          file = FILE_A;
-          rank--;
-          continue;
-      }
-
-      if (pieceLetters.find(token) == pieceLetters.end())
+          sq -= SQ_A3; // Jump back of 2 rows
+      else
           goto incorrect_fen;
-
-      put_piece(pieceLetters[token], make_square(file, rank));
-      file++;
   }
 
   // 2. Active color
@@ -244,24 +237,20 @@ void Position::from_fen(const string& fen, bool c960) {
 
   // 3. Castling availability
   while (ss.get(token) && token != ' ')
-  {
-      if (token == '-')
-          continue;
-
       if (!set_castling_rights(token))
           goto incorrect_fen;
-  }
 
-  // 4. En passant square -- ignore if no capture is possible
+  // 4. En passant square
   char col, row;
   if (   (ss.get(col) && (col >= 'a' && col <= 'h'))
       && (ss.get(row) && (row == '3' || row == '6')))
   {
-      Square fenEpSquare = make_square(file_from_char(col), rank_from_char(row));
-      Color them = opposite_color(sideToMove);
+      st->epSquare = make_square(file_from_char(col), rank_from_char(row));
 
-      if (attacks_from<PAWN>(fenEpSquare, them) & pieces(PAWN, sideToMove))
-          st->epSquare = fenEpSquare;
+      // Ignore if no capture is possible
+      Color them = opposite_color(sideToMove);
+      if (!(attacks_from<PAWN>(st->epSquare, them) & pieces(PAWN, sideToMove)))
+          st->epSquare = SQ_NONE;
   }
 
   // 5. Halfmove clock
@@ -347,7 +336,8 @@ bool Position::set_castling_rights(char token) {
             initialKRFile = rookFile;
         }
     }
-    else return false;
+    else
+        return token == '-';
 
   return true;
 }
