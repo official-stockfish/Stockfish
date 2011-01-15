@@ -20,6 +20,8 @@
 #if !defined(HISTORY_H_INCLUDED)
 #define HISTORY_H_INCLUDED
 
+#include <cstring>
+
 #include "depth.h"
 #include "move.h"
 #include "piece.h"
@@ -36,25 +38,41 @@
 class History {
 
 public:
-  History();
+  History() { clear(); }
   void clear();
-  void success(Piece p, Square to, Depth d);
-  void failure(Piece p, Square to, Depth d);
   int value(Piece p, Square to) const;
-  void set_gain(Piece p, Square to, Value delta);
+  void update(Piece p, Square to, Value delta);
   Value gain(Piece p, Square to) const;
+  void update_gain(Piece p, Square to, Value delta);
 
 private:
-  int history[16][64];  // [piece][square]
-  int maxStaticValueDelta[16][64];  // [piece][from_square][to_square]
+  Value history[16][64];  // [piece][to_square]
+  Value maxGains[16][64]; // [piece][to_square]
 };
+
+inline void History::clear() {
+  memset(history,  0, 16 * 64 * sizeof(int));
+  memset(maxGains, 0, 16 * 64 * sizeof(int));
+}
 
 inline int History::value(Piece p, Square to) const {
   return history[p][to];
 }
 
+inline void History::update(Piece p, Square to, Value bonus) {
+  history[p][to] += bonus;
+}
+
 inline Value History::gain(Piece p, Square to) const {
-  return Value(maxStaticValueDelta[p][to]);
+  return maxGains[p][to];
+}
+
+inline void History::update_gain(Piece p, Square to, Value gain) {
+
+  if (gain >= maxGains[p][to])
+      maxGains[p][to] = gain;
+  else
+      maxGains[p][to]--;
 }
 
 #endif // !defined(HISTORY_H_INCLUDED)

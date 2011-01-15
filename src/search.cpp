@@ -1909,8 +1909,9 @@ split_point_start: // At split points actual search starts from here
   void update_history(const Position& pos, Move move, Depth depth,
                       Move movesSearched[], int moveCount) {
     Move m;
+    Value bonus = Value(int(depth) * int(depth));
 
-    H.success(pos.piece_on(move_from(move)), move_to(move), depth);
+    H.update(pos.piece_on(move_from(move)), move_to(move), bonus);
 
     for (int i = 0; i < moveCount - 1; i++)
     {
@@ -1919,7 +1920,7 @@ split_point_start: // At split points actual search starts from here
         assert(m != move);
 
         if (!pos.move_is_capture_or_promotion(m))
-            H.failure(pos.piece_on(move_from(m)), move_to(m), depth);
+            H.update(pos.piece_on(move_from(m)), move_to(m), -bonus);
     }
   }
 
@@ -1947,7 +1948,7 @@ split_point_start: // At split points actual search starts from here
         && after != VALUE_NONE
         && pos.captured_piece_type() == PIECE_TYPE_NONE
         && !move_is_special(m))
-        H.set_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
+        H.update_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
 

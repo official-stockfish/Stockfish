@@ -32,7 +32,7 @@ PGOBENCH = ./$(EXE) bench 32 1 10 default depth
 
 ### Object files
 OBJS = bitboard.o pawns.o material.o endgame.o evaluate.o main.o \
-	misc.o move.o movegen.o history.o movepick.o search.o position.o \
+	misc.o move.o movegen.o movepick.o search.o position.o \
 	tt.o uci.o ucioption.o book.o bitbase.o benchmark.o timeman.o
 
 
