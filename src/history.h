@@ -45,6 +45,8 @@ public:
   Value gain(Piece p, Square to) const;
   void update_gain(Piece p, Square to, Value delta);
 
+  static const int MaxValue = (1 << 29); // To avoid an overflow
+
 private:
   Value history[16][64];  // [piece][to_square]
   Value maxGains[16][64]; // [piece][to_square]
@@ -60,7 +62,7 @@ inline int History::value(Piece p, Square to) const {
 }
 
 inline void History::update(Piece p, Square to, Value bonus) {
-  history[p][to] += bonus;
+  if (abs(history[p][to]) < MaxValue) history[p][to] += bonus;
 }
 
 inline Value History::gain(Piece p, Square to) const {
@@ -68,11 +70,7 @@ inline Value History::gain(Piece p, Square to) const {
 }
 
 inline void History::update_gain(Piece p, Square to, Value gain) {
-
-  if (gain >= maxGains[p][to])
-      maxGains[p][to] = gain;
-  else
-      maxGains[p][to]--;
+  maxGains[p][to] = (gain >= maxGains[p][to] ? gain : maxGains[p][to] - 1);
 }
 
 #endif // !defined(HISTORY_H_INCLUDED)
