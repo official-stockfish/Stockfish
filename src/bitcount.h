@@ -88,7 +88,7 @@ inline int count_1s<CNT_POPCNT>(Bitboard b) {
 #elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
   return _mm_popcnt_u64(b);
 #elif defined(_MSC_VER)
-  return __popcnt64(b);
+  return (int)__popcnt64(b);
 #elif defined(__GNUC__)
   unsigned long ret;
   __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
