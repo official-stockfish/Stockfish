@@ -17,18 +17,18 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(VALUE_H_INCLUDED)
 #define VALUE_H_INCLUDED
 
-////
-//// Types
-////
+#include <climits>
+
+#include "types.h"
+
 
 enum ValueType {
   VALUE_TYPE_NONE  = 0,
-  VALUE_TYPE_UPPER = 1,  // Upper bound
-  VALUE_TYPE_LOWER = 2,  // Lower bound
+  VALUE_TYPE_UPPER = 1,
+  VALUE_TYPE_LOWER = 2,
   VALUE_TYPE_EXACT = VALUE_TYPE_UPPER | VALUE_TYPE_LOWER
 };
 
@@ -40,7 +40,8 @@ enum Value {
   VALUE_MATE      = 30000,
   VALUE_INFINITE  = 30001,
   VALUE_NONE      = 30002,
-  VALUE_ENSURE_SIGNED = -1
+  VALUE_ENSURE_INTEGER_SIZE_P = INT_MAX,
+  VALUE_ENSURE_INTEGER_SIZE_N = INT_MIN
 };
 
 ENABLE_OPERATORS_ON(Value)
@@ -66,8 +67,8 @@ enum ScaleFactor {
 // its data, so ensure Score to be an integer type.
 enum Score {
     SCORE_ZERO = 0,
-    SCORE_ENSURE_32_BITS_SIZE_P =  (1 << 16),
-    SCORE_ENSURE_32_BITS_SIZE_N = -(1 << 16)
+    SCORE_ENSURE_INTEGER_SIZE_P = INT_MAX,
+    SCORE_ENSURE_INTEGER_SIZE_N = INT_MIN
 };
 
 // Extracting the _signed_ lower and upper 16 bits it not so trivial
@@ -92,7 +93,7 @@ inline Score operator/(Score s, int i) { return make_score(mg_value(s) / i, eg_v
 // a very high risk of overflow. So user should explicitly convert to integer.
 inline Score operator*(Score s1, Score s2);
 
-// Rest of operators are standard:
+// Remaining operators are standard
 inline Score operator+ (const Score d1, const Score d2) { return Score(int(d1) + int(d2)); }
 inline Score operator- (const Score d1, const Score d2) { return Score(int(d1) - int(d2)); }
 inline Score operator* (int i, const Score d) {  return Score(i * int(d)); }
@@ -102,11 +103,6 @@ inline void operator+= (Score& d1, const Score d2) { d1 = d1 + d2; }
 inline void operator-= (Score& d1, const Score d2) { d1 = d1 - d2; }
 inline void operator*= (Score& d, int i) { d = Score(int(d) * i); }
 inline void operator/= (Score& d, int i) { d = Score(int(d) / i); }
-
-
-////
-//// Inline functions
-////
 
 inline Value value_mate_in(int ply) {
   return VALUE_MATE - ply;
