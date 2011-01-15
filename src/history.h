@@ -23,8 +23,8 @@
 #include <cstring>
 
 #include "depth.h"
-#include "move.h"
 #include "piece.h"
+#include "square.h"
 #include "value.h"
 
 
@@ -40,12 +40,12 @@ class History {
 public:
   History() { clear(); }
   void clear();
-  int value(Piece p, Square to) const;
-  void update(Piece p, Square to, Value delta);
+  Value value(Piece p, Square to) const;
+  void update(Piece p, Square to, Value bonus);
   Value gain(Piece p, Square to) const;
-  void update_gain(Piece p, Square to, Value delta);
+  void update_gain(Piece p, Square to, Value gain);
 
-  static const int MaxValue = (1 << 29); // To avoid an overflow
+  static const Value MaxValue = Value(1 << 29); // To avoid an overflow
 
 private:
   Value history[16][64];  // [piece][to_square]
@@ -53,11 +53,11 @@ private:
 };
 
 inline void History::clear() {
-  memset(history,  0, 16 * 64 * sizeof(int));
-  memset(maxGains, 0, 16 * 64 * sizeof(int));
+  memset(history,  0, 16 * 64 * sizeof(Value));
+  memset(maxGains, 0, 16 * 64 * sizeof(Value));
 }
 
-inline int History::value(Piece p, Square to) const {
+inline Value History::value(Piece p, Square to) const {
   return history[p][to];
 }
 
@@ -70,7 +70,7 @@ inline Value History::gain(Piece p, Square to) const {
 }
 
 inline void History::update_gain(Piece p, Square to, Value gain) {
-  maxGains[p][to] = (gain >= maxGains[p][to] ? gain : maxGains[p][to] - 1);
+  maxGains[p][to] = Max(gain, maxGains[p][to] - 1);
 }
 
 #endif // !defined(HISTORY_H_INCLUDED)
