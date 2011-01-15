@@ -57,12 +57,6 @@ void History::success(Piece p, Square to, Depth d) {
   assert(square_is_ok(to));
 
   history[p][to] += int(d) * int(d);
-
-  // Prevent history overflow
-  if (history[p][to] >= HistoryMax)
-      for (int i = 0; i < 16; i++)
-          for (int j = 0; j < 64; j++)
-              history[i][j] /= 2;
 }
 
 
@@ -76,12 +70,6 @@ void History::failure(Piece p, Square to, Depth d) {
   assert(square_is_ok(to));
 
   history[p][to] -= int(d) * int(d);
-
-  // Prevent history underflow
-  if (history[p][to] <= -HistoryMax)
-      for (int i = 0; i < 16; i++)
-          for (int j = 0; j < 64; j++)
-              history[i][j] /= 2;
 }
 
 

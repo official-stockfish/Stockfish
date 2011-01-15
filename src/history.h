@@ -17,23 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(HISTORY_H_INCLUDED)
 #define HISTORY_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include "depth.h"
 #include "move.h"
 #include "piece.h"
 #include "value.h"
 
-
-////
-//// Types
-////
 
 /// The History class stores statistics about how often different moves
 /// have been successful or unsuccessful during the current search. These
@@ -57,27 +48,6 @@ private:
   int history[16][64];  // [piece][square]
   int maxStaticValueDelta[16][64];  // [piece][from_square][to_square]
 };
-
-
-////
-//// Constants and variables
-////
-
-/// HistoryMax controls how often the history counters will be scaled down:
-/// When the history score for a move gets bigger than HistoryMax, all
-/// entries in the table are divided by 2. It is difficult to guess what
-/// the ideal value of this constant is. Scaling down the scores often has
-/// the effect that parts of the search tree which have been searched
-/// recently have a bigger importance for move ordering than the moves which
-/// have been searched a long time ago.
-/// Current policy is to set this as high as possible, but avoid overflow.
-
-const int HistoryMax = (1 << 28);
-
-
-////
-//// Inline functions
-////
 
 inline int History::value(Piece p, Square to) const {
   return history[p][to];
