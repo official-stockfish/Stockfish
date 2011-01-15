@@ -20,16 +20,15 @@
 #if !defined(TYPES_H_INCLUDED)
 #define TYPES_H_INCLUDED
 
-#if !defined(_MSC_VER)
+#include <cstdlib>
 
-#include <inttypes.h>
-
-#else
+#if defined(_MSC_VER)
 
 // Disable some silly and noisy warning from MSVC compiler
 #pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
 #pragma warning(disable: 4127) // Conditional expression is constant
 
+// MSVC does not support <inttypes.h>
 typedef   signed __int8    int8_t;
 typedef unsigned __int8   uint8_t;
 typedef   signed __int16  int16_t;
@@ -39,15 +38,18 @@ typedef unsigned __int32 uint32_t;
 typedef   signed __int64  int64_t;
 typedef unsigned __int64 uint64_t;
 
-#endif // !defined(_MSC_VER)
+#else
 
-// Hash keys
+#include <inttypes.h>
+
+#endif
+
+// Our hash key and bitboard types
 typedef uint64_t Key;
-
-// Bitboard type
 typedef uint64_t Bitboard;
 
-#include <cstdlib>
+#define Min(x, y) (((x) < (y)) ? (x) : (y))
+#define Max(x, y) (((x) < (y)) ? (y) : (x))
 
 ////
 //// Configuration
