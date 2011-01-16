@@ -248,6 +248,9 @@ namespace {
   // Book object
   Book OpeningBook;
 
+  // Pointer to root move list
+  RootMoveList* Rml;
+
   // Iteration counter
   int Iteration;
 
@@ -288,7 +291,7 @@ namespace {
   Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove);
   Value root_search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, RootMoveList& rml);
 
-  template <NodeType PvNode, bool SpNode>
+  template <NodeType PvNode, bool SpNode, bool Root>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
 
   template <NodeType PvNode>
@@ -298,7 +301,7 @@ namespace {
   inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
 
       return depth < ONE_PLY ? qsearch<PvNode>(pos, ss, alpha, beta, DEPTH_ZERO, ply)
-                             : search<PvNode, false>(pos, ss, alpha, beta, depth, ply);
+                             : search<PvNode, false, false>(pos, ss, alpha, beta, depth, ply);
   }
 
   template <NodeType PvNode>
@@ -560,6 +563,7 @@ namespace {
 
     // Moves to search are verified, scored and sorted
     RootMoveList rml(pos, searchMoves);
+    Rml = &rml;
 
     // Handle special case of searching on a mate/stale position
     if (rml.size() == 0)
@@ -625,6 +629,7 @@ namespace {
 
             // Search to the current depth, rml is updated and sorted
             value = root_search(pos, ss, alpha, beta, depth, rml);
+            //value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
 
             // Sort the moves before to return
             rml.sort();
@@ -951,16 +956,18 @@ namespace {
   // all this work again. We also don't need to store anything to the hash table
   // here: This is taken care of after we return from the split point.
 
-  template <NodeType PvNode, bool SpNode>
+  template <NodeType PvNode, bool SpNode, bool Root>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
-    assert(ply > 0 && ply < PLY_MAX);
+    assert((Root || ply > 0) && ply < PLY_MAX);
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
     Move movesSearched[MOVES_MAX];
+    int64_t nodes;
+    RootMoveList::iterator rm;
     StateInfo st;
     const TTEntry *tte;
     Key posKey;
@@ -969,11 +976,12 @@ namespace {
     ValueType vt;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
-    bool isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
+    bool isPvMove, isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0;
     int threadID = pos.thread();
     SplitPoint* sp = NULL;
+
     refinedValue = bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
     isCheck = pos.is_check();
@@ -993,24 +1001,27 @@ namespace {
     ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
     (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
 
-    if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
+    if (!Root)
     {
-        NodesSincePoll = 0;
-        poll(pos);
+        if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
+        {
+            NodesSincePoll = 0;
+            poll(pos);
+        }
+
+        // Step 2. Check for aborted search and immediate draw
+        if (   StopRequest
+            || ThreadsMgr.cutoff_at_splitpoint(threadID)
+            || pos.is_draw()
+            || ply >= PLY_MAX - 1)
+            return VALUE_DRAW;
+
+        // Step 3. Mate distance pruning
+        alpha = Max(value_mated_in(ply), alpha);
+        beta = Min(value_mate_in(ply+1), beta);
+        if (alpha >= beta)
+            return alpha;
     }
-
-    // Step 2. Check for aborted search and immediate draw
-    if (   StopRequest
-        || ThreadsMgr.cutoff_at_splitpoint(threadID)
-        || pos.is_draw()
-        || ply >= PLY_MAX - 1)
-        return VALUE_DRAW;
-
-    // Step 3. Mate distance pruning
-    alpha = Max(value_mated_in(ply), alpha);
-    beta = Min(value_mate_in(ply+1), beta);
-    if (alpha >= beta)
-        return alpha;
 
     // Step 4. Transposition table lookup
 
@@ -1055,7 +1066,8 @@ namespace {
     }
 
     // Save gain for the parent non-capture move
-    update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
+    if (!Root)
+        update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
 
     // Step 6. Razoring (is omitted in PV nodes)
     if (   !PvNode
@@ -1148,7 +1160,8 @@ namespace {
     }
 
     // Step 9. Internal iterative deepening
-    if (    depth >= IIDDepth[PvNode]
+    if (   !Root
+        &&  depth >= IIDDepth[PvNode]
         &&  ttMove == MOVE_NONE
         && (PvNode || (!isCheck && ss->eval >= beta - IIDMargin)))
     {
@@ -1163,7 +1176,7 @@ namespace {
     }
 
     // Expensive mate threat detection (only for PV nodes)
-    if (PvNode)
+    if (PvNode && !Root) // FIXME
         mateThreat = pos.has_mate_threat();
 
 split_point_start: // At split points actual search starts from here
@@ -1176,13 +1189,20 @@ split_point_start: // At split points actual search starts from here
     ss->bestMove = MOVE_NONE;
     singleEvasion = !SpNode && isCheck && mp.number_of_evasions() == 1;
     futilityBase = ss->eval + ss->evalMargin;
-    singularExtensionNode =  !SpNode
+    singularExtensionNode =   !Root
+                           && !SpNode
                            && depth >= SingularExtensionDepth[PvNode]
                            && tte
                            && tte->move()
                            && !excludedMove // Do not allow recursive singular extension search
                            && (tte->type() & VALUE_TYPE_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
+    if (Root)
+    {
+        rm = Rml->begin();
+        bestValue = alpha;
+    }
+
     if (SpNode)
     {
         lock_grab(&(sp->lock));
@@ -1192,9 +1212,35 @@ split_point_start: // At split points actual search starts from here
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
-           && (move = mp.get_next_move()) != MOVE_NONE
+           && (!Root || rm != Rml->end())
+           && ( Root || (move = mp.get_next_move()) != MOVE_NONE)
            && !ThreadsMgr.cutoff_at_splitpoint(threadID))
     {
+      if (Root)
+      {
+          move = rm->pv[0];
+
+          // This is used by time management
+          FirstRootMove = (rm == Rml->begin());
+
+          // Save the current node count before the move is searched
+          nodes = pos.nodes_searched();
+
+          // If it's time to send nodes info, do it here where we have the
+          // correct accumulated node counts searched by each thread.
+          if (SendSearchedNodes)
+          {
+              SendSearchedNodes = false;
+              cout << "info nodes " << nodes
+                   << " nps " << nps(pos)
+                   << " time " << current_search_time() << endl;
+          }
+
+          if (current_search_time() >= 1000)
+              cout << "info currmove " << move
+                   << " currmovenumber " << moveCount << endl;
+      }
+
       assert(move_is_ok(move));
 
       if (SpNode)
@@ -1207,6 +1253,7 @@ split_point_start: // At split points actual search starts from here
       else
           movesSearched[moveCount++] = move;
 
+      isPvMove = (PvNode && moveCount <= (Root ? MultiPV : 1));
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
@@ -1239,7 +1286,7 @@ split_point_start: // At split points actual search starts from here
 
       // Update current move (this must be done after singular extension search)
       ss->currentMove = move;
-      newDepth = depth - ONE_PLY + ext;
+      newDepth = depth - (!Root ? ONE_PLY : DEPTH_ZERO) + ext;
 
       // Step 12. Futility pruning (is omitted in PV nodes)
       if (   !PvNode
@@ -1298,8 +1345,14 @@ split_point_start: // At split points actual search starts from here
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
-      if (PvNode && moveCount == 1)
+      if (isPvMove)
+      {
+          // Aspiration window is disabled in multi-pv case
+          if (Root && MultiPV > 1)
+              alpha = -VALUE_INFINITE;
+
           value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+      }
       else
       {
           // Step 14. Reduced depth search
@@ -1313,8 +1366,8 @@ split_point_start: // At split points actual search starts from here
               &&  ss->killers[0] != move
               &&  ss->killers[1] != move)
           {
-              ss->reduction = reduction<PvNode>(depth, moveCount);
-
+              ss->reduction = Root ? reduction<PvNode>(depth, moveCount - MultiPV + 1)
+                                   : reduction<PvNode>(depth, moveCount);
               if (ss->reduction)
               {
                   alpha = SpNode ? sp->alpha : alpha;
@@ -1335,7 +1388,7 @@ split_point_start: // At split points actual search starts from here
               // Step extra. pv search (only in PV nodes)
               // Search only for possible new PV nodes, if instead value >= beta then
               // parent node fails low with value <= alpha and tries another move.
-              if (PvNode && value > alpha && value < beta)
+              if (PvNode && value > alpha && (Root || value < beta))
                   value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
           }
       }
@@ -1353,7 +1406,7 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      if (value > bestValue && !(SpNode && ThreadsMgr.cutoff_at_splitpoint(threadID)))
+      if (!Root && value > bestValue && !(SpNode && ThreadsMgr.cutoff_at_splitpoint(threadID)))
       {
           bestValue = value;
 
@@ -1382,8 +1435,62 @@ split_point_start: // At split points actual search starts from here
           }
       }
 
+      if (Root)
+      {
+          // Finished searching the move. If StopRequest is true, the search
+          // was aborted because the user interrupted the search or because we
+          // ran out of time. In this case, the return value of the search cannot
+          // be trusted, and we break out of the loop without updating the best
+          // move and/or PV.
+          if (StopRequest)
+              break;
+
+          // Remember searched nodes counts for this move
+          rm->nodes += pos.nodes_searched() - nodes;
+
+          // Step 17. Check for new best move
+          if (!isPvMove && value <= alpha)
+              rm->pv_score = -VALUE_INFINITE;
+          else
+          {
+              // PV move or new best move!
+
+              // Update PV
+              ss->bestMove = move;
+              rm->pv_score = value;
+              rm->extract_pv_from_tt(pos);
+
+              // We record how often the best move has been changed in each
+              // iteration. This information is used for time managment: When
+              // the best move changes frequently, we allocate some more time.
+              if (!isPvMove && MultiPV == 1)
+                  BestMoveChangesByIteration[Iteration]++;
+
+              // Inform GUI that PV has changed, in case of multi-pv UCI protocol
+              // requires we send all the PV lines properly sorted.
+              Rml->sort_multipv(moveCount);
+
+              for (int j = 0; j < Min(MultiPV, (int)Rml->size()); j++)
+                  cout << (*Rml)[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
+
+              // Update alpha. In multi-pv we don't use aspiration window
+              if (MultiPV == 1)
+              {
+                  // Raise alpha to setup proper non-pv search upper bound
+                  if (value > alpha)
+                      alpha = bestValue = value;
+              }
+              else // Set alpha equal to minimum score among the PV lines
+                  alpha = bestValue = (*Rml)[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+
+          } // PV move or new best move
+
+          ++rm;
+      }
+
       // Step 18. Check for split
-      if (   !SpNode
+      if (   !Root
+          && !SpNode
           && depth >= ThreadsMgr.min_split_depth()
           && ThreadsMgr.active_threads() > 1
           && bestValue < beta
@@ -2238,9 +2345,9 @@ split_point_start: // At split points actual search starts from here
             ss->sp = tsp;
 
             if (tsp->pvNode)
-                search<PV, true>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
+                search<PV, true, false>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
             else
-                search<NonPV, true>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
+                search<NonPV, true, false>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
