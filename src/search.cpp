@@ -628,8 +628,8 @@ namespace {
             rml.sort();
 
             // Search to the current depth, rml is updated and sorted
-            value = root_search(pos, ss, alpha, beta, depth, rml);
-            //value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
+            //value = root_search(pos, ss, alpha, beta, depth, rml);
+            value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
 
             // Sort the moves before to return
             rml.sort();
