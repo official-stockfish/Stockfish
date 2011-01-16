@@ -289,7 +289,6 @@ namespace {
   /// Local functions
 
   Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove);
-  Value root_search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, RootMoveList& rml);
 
   template <NodeType PvNode, bool SpNode, bool Root>
   Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
@@ -406,7 +405,7 @@ int64_t perft(Position& pos, Depth depth)
 
 /// think() is the external interface to Stockfish's search, and is called when
 /// the program receives the UCI 'go' command. It initializes various
-/// search-related global variables, and calls root_search(). It returns false
+/// search-related global variables, and calls id_loop(). It returns false
 /// when a quit command is received during the search.
 
 bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[],
@@ -548,7 +547,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
 namespace {
 
-  // id_loop() is the main iterative deepening loop. It calls root_search
+  // id_loop() is the main iterative deepening loop. It calls search()
   // repeatedly with increasing depth until the allocated thinking time has
   // been consumed, the user stops the search, or the maximum search depth is
   // reached.
@@ -628,7 +627,6 @@ namespace {
             rml.sort();
 
             // Search to the current depth, rml is updated and sorted
-            //value = root_search(pos, ss, alpha, beta, depth, rml);
             value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
 
             // Sort the moves before to return
@@ -724,228 +722,6 @@ namespace {
 
     *ponderMove = rml[0].pv[1];
     return rml[0].pv[0];
-  }
-
-
-  // root_search() is the function which searches the root node. It is
-  // similar to search_pv except that it prints some information to the
-  // standard output and handles the fail low/high loops.
-
-  Value root_search(Position& pos, SearchStack* ss, Value alpha,
-                    Value beta, Depth depth, RootMoveList& rml) {
-
-    assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
-    assert(beta > alpha && beta <= VALUE_INFINITE);
-    assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
-
-    Move movesSearched[MOVES_MAX];
-    StateInfo st;
-    Key posKey;
-    Move move;
-    Depth ext, newDepth;
-    ValueType vt;
-    Value bestValue, value, oldAlpha;
-    bool isCheck, moveIsCheck, captureOrPromotion, dangerous, isPvMove;
-    int moveCount = 0;
-
-    bestValue = value = -VALUE_INFINITE;
-    oldAlpha = alpha;
-    isCheck = pos.is_check();
-
-    // Step 1. Initialize node (polling is omitted at root)
-    ss->currentMove = ss->bestMove = MOVE_NONE;
-    (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
-
-    // Step 2. Check for aborted search (omitted at root)
-    // Step 3. Mate distance pruning (omitted at root)
-    // Step 4. Transposition table lookup (omitted at root)
-    posKey = pos.get_key();
-
-    // Step 5. Evaluate the position statically
-    // At root we do this only to get reference value for child nodes
-    ss->evalMargin = VALUE_NONE;
-    ss->eval = isCheck ? VALUE_NONE : evaluate(pos, ss->evalMargin);
-
-    // Step 6. Razoring (omitted at root)
-    // Step 7. Static null move pruning (omitted at root)
-    // Step 8. Null move search with verification search (omitted at root)
-    // Step 9. Internal iterative deepening (omitted at root)
-
-    CheckInfo ci(pos);
-    int64_t nodes;
-    RootMoveList::iterator rm = rml.begin();
-    bestValue = alpha;
-
-    // Step 10. Loop through moves
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
-    while (   bestValue < beta
-           && rm != rml.end()
-           && !StopRequest)
-    {
-        move = ss->currentMove = rm->pv[0];
-        movesSearched[moveCount++] = move;
-        isPvMove = (moveCount <= MultiPV);
-
-        // This is used by time management
-        FirstRootMove = (rm == rml.begin());
-
-        // Save the current node count before the move is searched
-        nodes = pos.nodes_searched();
-
-        // If it's time to send nodes info, do it here where we have the
-        // correct accumulated node counts searched by each thread.
-        if (SendSearchedNodes)
-        {
-            SendSearchedNodes = false;
-            cout << "info nodes " << nodes
-                 << " nps " << nps(pos)
-                 << " time " << current_search_time() << endl;
-        }
-
-        if (current_search_time() >= 1000)
-            cout << "info currmove " << move
-                 << " currmovenumber " << moveCount << endl;
-
-        moveIsCheck = pos.move_is_check(move);
-        captureOrPromotion = pos.move_is_capture_or_promotion(move);
-
-        // Step 11. Decide the new search depth
-        ext = extension<PV>(pos, move, captureOrPromotion, moveIsCheck, false, false, &dangerous);
-        newDepth = depth + ext;
-
-        // Step 12. Futility pruning (omitted at root)
-        // Step 13. Make the move
-        pos.do_move(move, st, ci, moveIsCheck);
-
-        // Step extra. pv search
-        // We do pv search for PV moves
-        if (isPvMove)
-        {
-            // Aspiration window is disabled in multi-pv case
-            if (MultiPV > 1)
-                alpha = -VALUE_INFINITE;
-
-            // Full depth PV search, done on first move or after a fail high
-            value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1);
-        }
-        else
-        {
-            // Step 14. Reduced search
-            // if the move fails high will be re-searched at full depth
-            bool doFullDepthSearch = true;
-
-            if (    depth >= 3 * ONE_PLY
-                && !captureOrPromotion
-                && !dangerous
-                && !move_is_castle(move)
-                &&  ss->killers[0] != move
-                &&  ss->killers[1] != move)
-            {
-                ss->reduction = reduction<PV>(depth, moveCount - MultiPV + 1);
-
-                if (ss->reduction)
-                {
-                    Depth d = newDepth - ss->reduction;
-                    value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, 1);
-
-                    doFullDepthSearch = (value > alpha);
-                }
-                ss->reduction = DEPTH_ZERO; // Restore original reduction
-            }
-
-            // Step 15. Full depth search
-            if (doFullDepthSearch)
-            {
-                // Full depth non-pv search using alpha as upperbound
-                value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, 1);
-
-                // If we are above alpha then research at same depth but as PV
-                // to get a correct score or eventually a fail high above beta.
-                if (value > alpha)
-                    value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, 1);
-            }
-        }
-
-        // Step 16. Undo move
-        pos.undo_move(move);
-
-        assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
-
-        // Finished searching the move. If StopRequest is true, the search
-        // was aborted because the user interrupted the search or because we
-        // ran out of time. In this case, the return value of the search cannot
-        // be trusted, and we break out of the loop without updating the best
-        // move and/or PV.
-        if (StopRequest)
-            break;
-
-        // Remember searched nodes counts for this move
-        rm->nodes += pos.nodes_searched() - nodes;
-
-        // Step 17. Check for new best move
-        if (!isPvMove && value <= alpha)
-            rm->pv_score = -VALUE_INFINITE;
-        else
-        {
-            // PV move or new best move!
-
-            // Update PV
-            ss->bestMove = move;
-            rm->pv_score = value;
-            rm->extract_pv_from_tt(pos);
-
-            // We record how often the best move has been changed in each
-            // iteration. This information is used for time managment: When
-            // the best move changes frequently, we allocate some more time.
-            if (!isPvMove && MultiPV == 1)
-                BestMoveChangesByIteration[Iteration]++;
-
-            // Inform GUI that PV has changed, in case of multi-pv UCI protocol
-            // requires we send all the PV lines properly sorted.
-            rml.sort_multipv(moveCount);
-
-            for (int j = 0; j < Min(MultiPV, (int)rml.size()); j++)
-                cout << rml[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
-
-            // Update alpha. In multi-pv we don't use aspiration window
-            if (MultiPV == 1)
-            {
-                // Raise alpha to setup proper non-pv search upper bound
-                if (value > alpha)
-                    alpha = bestValue = value;
-            }
-            else // Set alpha equal to minimum score among the PV lines
-                alpha = bestValue = rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
-
-        } // PV move or new best move
-
-        ++rm;
-
-    } // Root moves loop
-
-    // Step 20. Update tables
-    // If the search is not aborted, update the transposition table,
-    // history counters, and killer moves.
-    if (!StopRequest)
-    {
-        move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
-        vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
-             : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
-
-        TT.store(posKey, value_to_tt(bestValue, 0), vt, depth, move, ss->eval, ss->evalMargin);
-
-        // Update killers and history only for non capture moves that fails high
-        if (    bestValue >= beta
-            && !pos.move_is_capture_or_promotion(move))
-        {
-            update_history(pos, move, depth, movesSearched, moveCount);
-            update_killers(move, ss->killers);
-        }
-    }
-
-    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
-
-    return bestValue;
   }
 
 
