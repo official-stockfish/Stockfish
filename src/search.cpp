@@ -793,7 +793,7 @@ namespace {
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
     bool isPvMove, isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
-    int moveCount = 0;
+    int moveCount = 0, playedMoveCount = 0;
     int threadID = pos.thread();
     SplitPoint* sp = NULL;
 
@@ -1027,7 +1027,7 @@ split_point_start: // At split points actual search starts from here
       else if (move == excludedMove)
           continue;
       else
-          movesSearched[moveCount++] = move;
+          moveCount++;
 
       if (Root)
       {
@@ -1141,6 +1141,9 @@ split_point_start: // At split points actual search starts from here
 
       // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
+
+      if (!SpNode && !captureOrPromotion)
+          movesSearched[playedMoveCount++] = move;
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
@@ -1321,7 +1324,7 @@ split_point_start: // At split points actual search starts from here
         if (    bestValue >= beta
             && !pos.move_is_capture_or_promotion(move))
         {
-            update_history(pos, move, depth, movesSearched, moveCount);
+            update_history(pos, move, depth, movesSearched, playedMoveCount);
             update_killers(move, ss->killers);
         }
     }
@@ -1833,8 +1836,7 @@ split_point_start: // At split points actual search starts from here
 
         assert(m != move);
 
-        if (!pos.move_is_capture_or_promotion(m))
-            H.update(pos.piece_on(move_from(m)), move_to(m), -bonus);
+        H.update(pos.piece_on(move_from(m)), move_to(m), -bonus);
     }
   }
 
@@ -1844,11 +1846,11 @@ split_point_start: // At split points actual search starts from here
 
   void update_killers(Move m, Move killers[]) {
 
-    if (m == killers[0])
-        return;
-
-    killers[1] = killers[0];
-    killers[0] = m;
+    if (m != killers[0])
+    {
+        killers[1] = killers[0];
+        killers[0] = m;
+    }
   }
 
 
