@@ -331,7 +331,54 @@ namespace {
   DWORD WINAPI init_thread(LPVOID threadID);
 #endif
 
-}
+
+  // A dispatcher to choose among different move sources according to the type of node
+  template<bool SpNode, bool Root> struct MovePickerExt;
+
+  // In Root nodes use RootMoveList Rml as source
+  template<> struct MovePickerExt<false, true> {
+
+      MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value)
+                  : rm(Rml->begin()), firstCall(true) {}
+
+      Move get_next_move() {
+
+        if (!firstCall)
+            ++rm;
+        else
+            firstCall = false;
+
+        return rm != Rml->end() ? rm->pv[0] : MOVE_NONE;
+      }
+      int number_of_evasions() const { return (int)Rml->size(); }
+
+      RootMoveList::iterator rm;
+      bool firstCall;
+  };
+
+  // In SpNodes use split point's shared MovePicker as move source
+  template<> struct MovePickerExt<true, false> {
+
+      MovePickerExt(const Position&, Move, Depth, const History&, SearchStack* ss, Value)
+                  : mp(ss->sp->mp) {}
+
+      Move get_next_move() { return mp->get_next_move(); }
+      int number_of_evasions() const { return mp->number_of_evasions(); }
+
+      RootMoveList::iterator rm; // Dummy, never used
+      MovePicker* mp;
+  };
+
+  // Normal case, create and use a MovePicker object as source
+  template<> struct MovePickerExt<false, false> : public MovePicker {
+
+      MovePickerExt(const Position& p, Move ttm, Depth d, const History& h,
+                    SearchStack* ss, Value beta) : MovePicker(p, ttm, d, h, ss, beta) {}
+
+      RootMoveList::iterator rm; // Dummy, never used
+  };
+
+} // namespace
 
 
 ////
@@ -743,7 +790,6 @@ namespace {
 
     Move movesSearched[MOVES_MAX];
     int64_t nodes;
-    RootMoveList::iterator rm;
     StateInfo st;
     const TTEntry *tte;
     Key posKey;
@@ -958,9 +1004,7 @@ namespace {
 split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
-    // FIXME currently MovePicker() c'tor is needless called also in SplitPoint
-    MovePicker mpBase(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
-    MovePicker& mp = SpNode ? *sp->mp : mpBase;
+    MovePickerExt<SpNode, Root> mp(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     singleEvasion = !SpNode && isCheck && mp.number_of_evasions() == 1;
@@ -974,10 +1018,7 @@ split_point_start: // At split points actual search starts from here
                            && (tte->type() & VALUE_TYPE_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
     if (Root)
-    {
-        rm = Rml->begin();
         bestValue = alpha;
-    }
 
     if (SpNode)
     {
@@ -988,16 +1029,25 @@ split_point_start: // At split points actual search starts from here
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
-           && (!Root || rm != Rml->end())
-           && ( Root || (move = mp.get_next_move()) != MOVE_NONE)
+           && (move = mp.get_next_move()) != MOVE_NONE
            && !ThreadsMgr.cutoff_at_splitpoint(threadID))
     {
+      assert(move_is_ok(move));
+
+      if (SpNode)
+      {
+          moveCount = ++sp->moveCount;
+          lock_release(&(sp->lock));
+      }
+      else if (move == excludedMove)
+          continue;
+      else
+          movesSearched[moveCount++] = move;
+
       if (Root)
       {
-          move = rm->pv[0];
-
           // This is used by time management
-          FirstRootMove = (rm == Rml->begin());
+          FirstRootMove = (moveCount == 1);
 
           // Save the current node count before the move is searched
           nodes = pos.nodes_searched();
@@ -1016,18 +1066,6 @@ split_point_start: // At split points actual search starts from here
               cout << "info currmove " << move
                    << " currmovenumber " << moveCount << endl;
       }
-
-      assert(move_is_ok(move));
-
-      if (SpNode)
-      {
-          moveCount = ++sp->moveCount;
-          lock_release(&(sp->lock));
-      }
-      else if (move == excludedMove)
-          continue;
-      else
-          movesSearched[moveCount++] = move;
 
       isPvMove = (PvNode && moveCount <= (Root ? MultiPV : 1));
       moveIsCheck = pos.move_is_check(move, ci);
@@ -1222,19 +1260,19 @@ split_point_start: // At split points actual search starts from here
               break;
 
           // Remember searched nodes counts for this move
-          rm->nodes += pos.nodes_searched() - nodes;
+          mp.rm->nodes += pos.nodes_searched() - nodes;
 
           // Step 17. Check for new best move
           if (!isPvMove && value <= alpha)
-              rm->pv_score = -VALUE_INFINITE;
+              mp.rm->pv_score = -VALUE_INFINITE;
           else
           {
               // PV move or new best move!
 
               // Update PV
               ss->bestMove = move;
-              rm->pv_score = value;
-              rm->extract_pv_from_tt(pos);
+              mp.rm->pv_score = value;
+              mp.rm->extract_pv_from_tt(pos);
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time managment: When
@@ -1260,8 +1298,6 @@ split_point_start: // At split points actual search starts from here
                   alpha = bestValue = (*Rml)[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
 
           } // PV move or new best move
-
-          ++rm;
       }
 
       // Step 18. Check for split
@@ -1275,7 +1311,7 @@ split_point_start: // At split points actual search starts from here
           && !ThreadsMgr.cutoff_at_splitpoint(threadID)
           && Iteration <= 99)
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
-                                      threatMove, mateThreat, moveCount, &mp, PvNode);
+                                      threatMove, mateThreat, moveCount, (MovePicker*)&mp, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
