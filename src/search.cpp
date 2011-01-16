@@ -626,6 +626,14 @@ namespace {
             // Search to the current depth, rml is updated and sorted
             value = root_search(pos, ss, alpha, beta, depth, rml);
 
+            // Sort the moves before to return
+            rml.sort();
+
+            // Write PV lines to transposition table, in case the relevant entries
+            // have been overwritten during the search.
+            for (int i = 0; i < Min(MultiPV, (int)rml.size()); i++)
+                rml[i].insert_pv_in_tt(pos);
+
             if (StopRequest)
                 break;
 
@@ -731,11 +739,11 @@ namespace {
     Move move;
     Depth ext, newDepth;
     ValueType vt;
-    Value value, oldAlpha;
+    Value bestValue, value, oldAlpha;
     bool isCheck, moveIsCheck, captureOrPromotion, dangerous, isPvMove;
     int moveCount = 0;
 
-    value = -VALUE_INFINITE;
+    bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
     isCheck = pos.is_check();
 
@@ -761,10 +769,11 @@ namespace {
     CheckInfo ci(pos);
     int64_t nodes;
     RootMoveList::iterator rm = rml.begin();
+    bestValue = alpha;
 
     // Step 10. Loop through moves
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
-    while (   alpha < beta
+    while (   bestValue < beta
            && rm != rml.end()
            && !StopRequest)
     {
@@ -898,10 +907,10 @@ namespace {
             {
                 // Raise alpha to setup proper non-pv search upper bound
                 if (value > alpha)
-                    alpha = value;
+                    alpha = bestValue = value;
             }
             else // Set alpha equal to minimum score among the PV lines
-                alpha = rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+                alpha = bestValue = rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
 
         } // PV move or new best move
 
@@ -909,20 +918,19 @@ namespace {
 
     } // Root moves loop
 
-
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
     if (!StopRequest)
     {
-        move = alpha <= oldAlpha ? MOVE_NONE : ss->bestMove;
-        vt   = alpha <= oldAlpha ? VALUE_TYPE_UPPER
-                                 : alpha >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
+        move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
+        vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
+             : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
 
-        TT.store(posKey, value_to_tt(alpha, 0), vt, depth, move, ss->eval, ss->evalMargin);
+        TT.store(posKey, value_to_tt(bestValue, 0), vt, depth, move, ss->eval, ss->evalMargin);
 
         // Update killers and history only for non capture moves that fails high
-        if (    alpha >= beta
+        if (    bestValue >= beta
             && !pos.move_is_capture_or_promotion(move))
         {
             update_history(pos, move, depth, movesSearched, moveCount);
@@ -930,17 +938,9 @@ namespace {
         }
     }
 
-    // Sort the moves before to return
-    rml.sort();
+    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
-    // Write PV lines to transposition table, in case the relevant entries
-    // have been overwritten during the search.
-    for (int i = 0; i < Min(MultiPV, (int)rml.size()); i++)
-        rml[i].insert_pv_in_tt(pos);
-
-    assert(alpha > -VALUE_INFINITE && alpha < VALUE_INFINITE);
-
-    return alpha;
+    return bestValue;
   }
 
 
