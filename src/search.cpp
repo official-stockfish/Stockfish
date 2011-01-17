@@ -594,39 +594,36 @@ namespace {
   Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
-
-    Depth depth;
-    Move EasyMove = MOVE_NONE;
-    Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
-    int researchCountFL, researchCountFH;
-
-    int iteration;
+    Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    Value values[PLY_MAX_PLUS_2];
-    int aspirationDelta = 0;
+    int iteration, researchCountFL, researchCountFH, aspirationDelta;
+    Value value, alpha, beta;
+    Depth depth;
+    Move EasyMove;
 
     // Moves to search are verified, scored and sorted
     Rml.init(pos, searchMoves);
 
+    // Initialize FIXME move before Rml.init()
+    TT.new_search();
+    H.clear();
+    init_ss_array(ss, PLY_MAX_PLUS_2);
+    alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
+    EasyMove = MOVE_NONE;
+    aspirationDelta = 0;
+    iteration = 1;
+
     // Handle special case of searching on a mate/stale position
     if (Rml.size() == 0)
     {
-        Value s = (pos.is_check() ? -VALUE_MATE : VALUE_DRAW);
-
-        cout << "info depth " << 1
-             << " score " << value_to_uci(s) << endl;
+        cout << "info depth " << iteration << " score "
+             << value_to_uci(pos.is_check() ? -VALUE_MATE : VALUE_DRAW)
+             << endl;
 
         return MOVE_NONE;
     }
 
-    // Initialize
-    TT.new_search();
-    H.clear();
-    init_ss_array(ss, PLY_MAX_PLUS_2);
-    values[1] = Rml[0].pv_score;
-    iteration = 1;
-
-    // Send initial RootMoveList scoring (iteration 1)
+    // Send initial scoring (iteration 1)
     cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
          << "info depth " << iteration
          << "\n" << Rml[0].pv_info_to_uci(pos, ONE_PLY, alpha, beta) << endl;
@@ -637,30 +634,25 @@ namespace {
         EasyMove = Rml[0].pv[0];
 
     // Iterative deepening loop
-    while (iteration < PLY_MAX)
+    while (++iteration <= PLY_MAX && (!MaxDepth || iteration <= MaxDepth) && !StopRequest)
     {
-        // Initialize iteration
-        iteration++;
-        Rml.bestMoveChanges = 0;
-
         cout << "info depth " << iteration << endl;
 
+        Rml.bestMoveChanges = researchCountFL = researchCountFH = 0;
+        depth = (iteration - 2) * ONE_PLY + InitialDepth;
+
         // Calculate dynamic aspiration window based on previous iterations
-        if (MultiPV == 1 && iteration >= 6 && abs(values[iteration - 1]) < VALUE_KNOWN_WIN)
+        if (MultiPV == 1 && iteration >= 6 && abs(bestValues[iteration - 1]) < VALUE_KNOWN_WIN)
         {
-            int prevDelta1 = values[iteration - 1] - values[iteration - 2];
-            int prevDelta2 = values[iteration - 2] - values[iteration - 3];
+            int prevDelta1 = bestValues[iteration - 1] - bestValues[iteration - 2];
+            int prevDelta2 = bestValues[iteration - 2] - bestValues[iteration - 3];
 
             aspirationDelta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
             aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-            alpha = Max(values[iteration - 1] - aspirationDelta, -VALUE_INFINITE);
-            beta  = Min(values[iteration - 1] + aspirationDelta,  VALUE_INFINITE);
+            alpha = Max(bestValues[iteration - 1] - aspirationDelta, -VALUE_INFINITE);
+            beta  = Min(bestValues[iteration - 1] + aspirationDelta,  VALUE_INFINITE);
         }
-
-        depth = (iteration - 2) * ONE_PLY + InitialDepth;
-
-        researchCountFL = researchCountFH = 0;
 
         // We start with small aspiration window and in case of fail high/low, we
         // research with bigger window until we are not failing high/low anymore.
@@ -679,16 +671,18 @@ namespace {
             for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
                 Rml[i].insert_pv_in_tt(pos);
 
-            bestMoveChanges[iteration] = Rml.bestMoveChanges;
-
+            // Value cannot be trusted. Break out immediately!
             if (StopRequest)
                 break;
 
             assert(value >= alpha);
 
+            bestMoveChanges[iteration] = Rml.bestMoveChanges; // FIXME move outside fail high/low loop
+
+            // In case of failing high/low increase aspiration window and research,
+            // otherwise exit the fail high/low loop.
             if (value >= beta)
             {
-                // Prepare for a research after a fail high, each time with a wider window
                 beta = Min(beta + aspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
                 researchCountFH++;
             }
@@ -697,7 +691,6 @@ namespace {
                 AspirationFailLow = true;
                 StopOnPonderhit = false;
 
-                // Prepare for a research after a fail low, each time with a wider window
                 alpha = Max(alpha - aspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
                 researchCountFL++;
             }
@@ -705,17 +698,14 @@ namespace {
                 break;
         }
 
-        if (StopRequest)
-            break; // Value cannot be trusted. Break out immediately!
-
         //Save info about search result
-        values[iteration] = value;
+        bestValues[iteration] = value;
 
         // Drop the easy move if differs from the new best move
         if (Rml[0].pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
-        if (UseTimeManagement)
+        if (UseTimeManagement && !StopRequest)
         {
             // Time to stop?
             bool noMoreTime = false;
@@ -727,8 +717,8 @@ namespace {
 
             // Stop search early when the last two iterations returned a mate score
             if (   iteration >= 6
-                && abs(values[iteration]) >= abs(VALUE_MATE) - 100
-                && abs(values[iteration-1]) >= abs(VALUE_MATE) - 100)
+                && abs(bestValues[iteration])   >= abs(VALUE_MATE) - 100
+                && abs(bestValues[iteration-1]) >= abs(VALUE_MATE) - 100)
                 noMoreTime = true;
 
             // Stop search early if one move seems to be much better than the others
@@ -758,9 +748,6 @@ namespace {
                     break;
             }
         }
-
-        if (MaxDepth && iteration >= MaxDepth)
-            break;
     }
 
     *ponderMove = Rml[0].pv[1];
@@ -813,6 +800,8 @@ namespace {
         mateThreat = sp->mateThreat;
         goto split_point_start;
     }
+    else if (Root)
+        bestValue = alpha;
     else {} // Hack to fix icc's "statement is unreachable" warning
 
     // Step 1. Initialize node and poll. Polling can abort search
@@ -1013,9 +1002,6 @@ split_point_start: // At split points actual search starts from here
                            && !excludedMove // Do not allow recursive singular extension search
                            && (tte->type() & VALUE_TYPE_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
-    if (Root)
-        bestValue = alpha;
-
     if (SpNode)
     {
         lock_grab(&(sp->lock));
