@@ -62,7 +62,7 @@ inline Value History::value(Piece p, Square to) const {
 }
 
 inline void History::update(Piece p, Square to, Value bonus) {
-  if (abs(history[p][to]) < MaxValue) history[p][to] += bonus;
+  if (abs(history[p][to] + bonus) < MaxValue) history[p][to] += bonus;
 }
 
 inline Value History::gain(Piece p, Square to) const {
