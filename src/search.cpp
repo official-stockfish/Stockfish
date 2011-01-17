@@ -145,7 +145,7 @@ namespace {
 
     typedef std::vector<RootMove> Base;
 
-    RootMoveList(Position& pos, Move searchMoves[]);
+    void init(Position& pos, Move searchMoves[]);
     void set_non_pv_scores(const Position& pos, Move ttm, SearchStack* ss);
 
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
@@ -251,7 +251,7 @@ namespace {
   Book OpeningBook;
 
   // Pointer to root move list
-  RootMoveList* Rml;
+  RootMoveList Rml;
 
   // MultiPV mode
   int MultiPV;
@@ -331,7 +331,7 @@ namespace {
   template<> struct MovePickerExt<false, true> {
 
       MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value)
-                  : rm(Rml->begin()), firstCall(true) {}
+                  : rm(Rml.begin()), firstCall(true) {}
 
       Move get_next_move() {
 
@@ -340,9 +340,9 @@ namespace {
         else
             firstCall = false;
 
-        return rm != Rml->end() ? rm->pv[0] : MOVE_NONE;
+        return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
       }
-      int number_of_evasions() const { return (int)Rml->size(); }
+      int number_of_evasions() const { return (int)Rml.size(); }
 
       RootMoveList::iterator rm;
       bool firstCall;
@@ -606,11 +606,10 @@ namespace {
     int aspirationDelta = 0;
 
     // Moves to search are verified, scored and sorted
-    RootMoveList rml(pos, searchMoves);
-    Rml = &rml;
+    Rml.init(pos, searchMoves);
 
     // Handle special case of searching on a mate/stale position
-    if (rml.size() == 0)
+    if (Rml.size() == 0)
     {
         Value s = (pos.is_check() ? -VALUE_MATE : VALUE_DRAW);
 
@@ -624,25 +623,25 @@ namespace {
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
-    values[1] = rml[0].pv_score;
+    values[1] = Rml[0].pv_score;
     iteration = 1;
 
     // Send initial RootMoveList scoring (iteration 1)
     cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
          << "info depth " << iteration
-         << "\n" << rml[0].pv_info_to_uci(pos, ONE_PLY, alpha, beta) << endl;
+         << "\n" << Rml[0].pv_info_to_uci(pos, ONE_PLY, alpha, beta) << endl;
 
     // Is one move significantly better than others after initial scoring ?
-    if (   rml.size() == 1
-        || rml[0].pv_score > rml[1].pv_score + EasyMoveMargin)
-        EasyMove = rml[0].pv[0];
+    if (   Rml.size() == 1
+        || Rml[0].pv_score > Rml[1].pv_score + EasyMoveMargin)
+        EasyMove = Rml[0].pv[0];
 
     // Iterative deepening loop
     while (iteration < PLY_MAX)
     {
         // Initialize iteration
         iteration++;
-        Rml->bestMoveChanges = 0;
+        Rml.bestMoveChanges = 0;
 
         cout << "info depth " << iteration << endl;
 
@@ -668,19 +667,19 @@ namespace {
         while (true)
         {
             // Sort the moves before to (re)search
-            rml.set_non_pv_scores(pos, rml[0].pv[0], ss);
-            rml.sort();
+            Rml.set_non_pv_scores(pos, Rml[0].pv[0], ss);
+            Rml.sort();
 
             // Search to the current depth
             value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
 
             // Sort the moves and write PV lines to transposition table, in case
             // the relevant entries have been overwritten during the search.
-            rml.sort();
-            for (int i = 0; i < Min(MultiPV, (int)rml.size()); i++)
-                rml[i].insert_pv_in_tt(pos);
+            Rml.sort();
+            for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
+                Rml[i].insert_pv_in_tt(pos);
 
-            bestMoveChanges[iteration] = Rml->bestMoveChanges;
+            bestMoveChanges[iteration] = Rml.bestMoveChanges;
 
             if (StopRequest)
                 break;
@@ -713,7 +712,7 @@ namespace {
         values[iteration] = value;
 
         // Drop the easy move if differs from the new best move
-        if (rml[0].pv[0] != EasyMove)
+        if (Rml[0].pv[0] != EasyMove)
             EasyMove = MOVE_NONE;
 
         if (UseTimeManagement)
@@ -723,7 +722,7 @@ namespace {
 
             // Stop search early if there is only a single legal move,
             // we search up to Iteration 6 anyway to get a proper score.
-            if (iteration >= 6 && rml.size() == 1)
+            if (iteration >= 6 && Rml.size() == 1)
                 noMoreTime = true;
 
             // Stop search early when the last two iterations returned a mate score
@@ -734,10 +733,10 @@ namespace {
 
             // Stop search early if one move seems to be much better than the others
             if (   iteration >= 8
-                && EasyMove == rml[0].pv[0]
-                && (  (   rml[0].nodes > (pos.nodes_searched() * 85) / 100
+                && EasyMove == Rml[0].pv[0]
+                && (  (   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
-                    ||(   rml[0].nodes > (pos.nodes_searched() * 98) / 100
+                    ||(   Rml[0].nodes > (pos.nodes_searched() * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
                 noMoreTime = true;
 
@@ -764,8 +763,8 @@ namespace {
             break;
     }
 
-    *ponderMove = rml[0].pv[1];
-    return rml[0].pv[0];
+    *ponderMove = Rml[0].pv[1];
+    return Rml[0].pv[0];
   }
 
 
@@ -1275,14 +1274,14 @@ split_point_start: // At split points actual search starts from here
               // iteration. This information is used for time managment: When
               // the best move changes frequently, we allocate some more time.
               if (!isPvMove && MultiPV == 1)
-                  Rml->bestMoveChanges++;
+                  Rml.bestMoveChanges++;
 
               // Inform GUI that PV has changed, in case of multi-pv UCI protocol
               // requires we send all the PV lines properly sorted.
-              Rml->sort_multipv(moveCount);
+              Rml.sort_multipv(moveCount);
 
-              for (int j = 0; j < Min(MultiPV, (int)Rml->size()); j++)
-                  cout << (*Rml)[j].pv_info_to_uci(pos, depth, alpha, beta, j) << endl;
+              for (int j = 0; j < Min(MultiPV, (int)Rml.size()); j++)
+                  cout << Rml[j].pv_info_to_uci(pos, depth, alpha, beta, j) << endl;
 
               // Update alpha. In multi-pv we don't use aspiration window
               if (MultiPV == 1)
@@ -1292,7 +1291,7 @@ split_point_start: // At split points actual search starts from here
                       alpha = bestValue = value;
               }
               else // Set alpha equal to minimum score among the PV lines
-                  alpha = bestValue = (*Rml)[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+                  alpha = bestValue = Rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
 
           } // PV move or new best move
       }
@@ -2583,13 +2582,13 @@ split_point_start: // At split points actual search starts from here
         ValueType t = pv_score >= beta  ? VALUE_TYPE_LOWER :
                       pv_score <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
 
-        LogFile << pretty_pv(pos, current_search_time(), depth, pv_score, t, pv) << endl;
+        LogFile << pretty_pv(pos, current_search_time(), depth / ONE_PLY, pv_score, t, pv) << endl;
     }
     return s.str();
   }
 
 
-  RootMoveList::RootMoveList(Position& pos, Move searchMoves[]) {
+  void RootMoveList::init(Position& pos, Move searchMoves[]) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
     MoveStack mlist[MOVES_MAX];
@@ -2600,6 +2599,7 @@ split_point_start: // At split points actual search starts from here
     init_ss_array(ss, PLY_MAX_PLUS_2);
     ss[0].eval = ss[0].evalMargin = VALUE_NONE;
     bestMoveChanges = 0;
+    clear();
 
     // Generate all legal moves
     MoveStack* last = generate<MV_LEGAL>(pos, mlist);
