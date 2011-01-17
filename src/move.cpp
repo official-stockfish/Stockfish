@@ -195,7 +195,7 @@ const string pretty_pv(Position& pos, int time, int depth,
   size_t length = 0;
 
   // First print depth, score, time and searched nodes...
-  s << std::setw(2) << depth
+  s << std::setw(2) << depth / 2
     << (type == VALUE_TYPE_LOWER ? " >" : type == VALUE_TYPE_UPPER ? " <" : "  ")
     << std::setw(7) << score_string(score)
     << std::setw(8) << time_string(time);

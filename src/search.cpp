@@ -129,7 +129,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, Value alpha, Value beta, int pvLine = 0);
+    std::string pv_info_to_uci(Position& pos, Depth depth, Value alpha, Value beta, int pvLine = 0);
 
     int64_t nodes;
     Value pv_score;
@@ -150,6 +150,8 @@ namespace {
 
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
     void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
+
+    int bestMoveChanges;
   };
 
 
@@ -250,16 +252,6 @@ namespace {
 
   // Pointer to root move list
   RootMoveList* Rml;
-
-  // Iteration counter
-  int Iteration;
-
-  // Scores and number of times the best move changed for each iteration
-  Value ValueByIteration[PLY_MAX_PLUS_2];
-  int BestMoveChangesByIteration[PLY_MAX_PLUS_2];
-
-  // Search window management
-  int AspirationDelta;
 
   // MultiPV mode
   int MultiPV;
@@ -602,10 +594,16 @@ namespace {
   Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove) {
 
     SearchStack ss[PLY_MAX_PLUS_2];
+
     Depth depth;
     Move EasyMove = MOVE_NONE;
     Value value, alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     int researchCountFL, researchCountFH;
+
+    int iteration;
+    int bestMoveChanges[PLY_MAX_PLUS_2];
+    Value values[PLY_MAX_PLUS_2];
+    int aspirationDelta = 0;
 
     // Moves to search are verified, scored and sorted
     RootMoveList rml(pos, searchMoves);
@@ -626,13 +624,13 @@ namespace {
     TT.new_search();
     H.clear();
     init_ss_array(ss, PLY_MAX_PLUS_2);
-    ValueByIteration[1] = rml[0].pv_score;
-    Iteration = 1;
+    values[1] = rml[0].pv_score;
+    iteration = 1;
 
     // Send initial RootMoveList scoring (iteration 1)
     cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
-         << "info depth " << Iteration
-         << "\n" << rml[0].pv_info_to_uci(pos, alpha, beta) << endl;
+         << "info depth " << iteration
+         << "\n" << rml[0].pv_info_to_uci(pos, ONE_PLY, alpha, beta) << endl;
 
     // Is one move significantly better than others after initial scoring ?
     if (   rml.size() == 1
@@ -640,28 +638,28 @@ namespace {
         EasyMove = rml[0].pv[0];
 
     // Iterative deepening loop
-    while (Iteration < PLY_MAX)
+    while (iteration < PLY_MAX)
     {
         // Initialize iteration
-        Iteration++;
-        BestMoveChangesByIteration[Iteration] = 0;
+        iteration++;
+        Rml->bestMoveChanges = 0;
 
-        cout << "info depth " << Iteration << endl;
+        cout << "info depth " << iteration << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
-        if (MultiPV == 1 && Iteration >= 6 && abs(ValueByIteration[Iteration - 1]) < VALUE_KNOWN_WIN)
+        if (MultiPV == 1 && iteration >= 6 && abs(values[iteration - 1]) < VALUE_KNOWN_WIN)
         {
-            int prevDelta1 = ValueByIteration[Iteration - 1] - ValueByIteration[Iteration - 2];
-            int prevDelta2 = ValueByIteration[Iteration - 2] - ValueByIteration[Iteration - 3];
+            int prevDelta1 = values[iteration - 1] - values[iteration - 2];
+            int prevDelta2 = values[iteration - 2] - values[iteration - 3];
 
-            AspirationDelta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
-            AspirationDelta = (AspirationDelta + 7) / 8 * 8; // Round to match grainSize
+            aspirationDelta = Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16);
+            aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-            alpha = Max(ValueByIteration[Iteration - 1] - AspirationDelta, -VALUE_INFINITE);
-            beta  = Min(ValueByIteration[Iteration - 1] + AspirationDelta,  VALUE_INFINITE);
+            alpha = Max(values[iteration - 1] - aspirationDelta, -VALUE_INFINITE);
+            beta  = Min(values[iteration - 1] + aspirationDelta,  VALUE_INFINITE);
         }
 
-        depth = (Iteration - 2) * ONE_PLY + InitialDepth;
+        depth = (iteration - 2) * ONE_PLY + InitialDepth;
 
         researchCountFL = researchCountFH = 0;
 
@@ -673,16 +671,16 @@ namespace {
             rml.set_non_pv_scores(pos, rml[0].pv[0], ss);
             rml.sort();
 
-            // Search to the current depth, rml is updated and sorted
+            // Search to the current depth
             value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
 
-            // Sort the moves before to return
+            // Sort the moves and write PV lines to transposition table, in case
+            // the relevant entries have been overwritten during the search.
             rml.sort();
-
-            // Write PV lines to transposition table, in case the relevant entries
-            // have been overwritten during the search.
             for (int i = 0; i < Min(MultiPV, (int)rml.size()); i++)
                 rml[i].insert_pv_in_tt(pos);
+
+            bestMoveChanges[iteration] = Rml->bestMoveChanges;
 
             if (StopRequest)
                 break;
@@ -692,7 +690,7 @@ namespace {
             if (value >= beta)
             {
                 // Prepare for a research after a fail high, each time with a wider window
-                beta = Min(beta + AspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
+                beta = Min(beta + aspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
                 researchCountFH++;
             }
             else if (value <= alpha)
@@ -701,7 +699,7 @@ namespace {
                 StopOnPonderhit = false;
 
                 // Prepare for a research after a fail low, each time with a wider window
-                alpha = Max(alpha - AspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
+                alpha = Max(alpha - aspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
                 researchCountFL++;
             }
             else
@@ -712,7 +710,7 @@ namespace {
             break; // Value cannot be trusted. Break out immediately!
 
         //Save info about search result
-        ValueByIteration[Iteration] = value;
+        values[iteration] = value;
 
         // Drop the easy move if differs from the new best move
         if (rml[0].pv[0] != EasyMove)
@@ -721,40 +719,39 @@ namespace {
         if (UseTimeManagement)
         {
             // Time to stop?
-            bool stopSearch = false;
+            bool noMoreTime = false;
 
             // Stop search early if there is only a single legal move,
             // we search up to Iteration 6 anyway to get a proper score.
-            if (Iteration >= 6 && rml.size() == 1)
-                stopSearch = true;
+            if (iteration >= 6 && rml.size() == 1)
+                noMoreTime = true;
 
             // Stop search early when the last two iterations returned a mate score
-            if (   Iteration >= 6
-                && abs(ValueByIteration[Iteration]) >= abs(VALUE_MATE) - 100
-                && abs(ValueByIteration[Iteration-1]) >= abs(VALUE_MATE) - 100)
-                stopSearch = true;
+            if (   iteration >= 6
+                && abs(values[iteration]) >= abs(VALUE_MATE) - 100
+                && abs(values[iteration-1]) >= abs(VALUE_MATE) - 100)
+                noMoreTime = true;
 
             // Stop search early if one move seems to be much better than the others
-            if (   Iteration >= 8
+            if (   iteration >= 8
                 && EasyMove == rml[0].pv[0]
                 && (  (   rml[0].nodes > (pos.nodes_searched() * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
                     ||(   rml[0].nodes > (pos.nodes_searched() * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
-                stopSearch = true;
+                noMoreTime = true;
 
             // Add some extra time if the best move has changed during the last two iterations
-            if (Iteration > 5 && Iteration <= 50)
-                TimeMgr.pv_instability(BestMoveChangesByIteration[Iteration],
-                                       BestMoveChangesByIteration[Iteration-1]);
+            if (iteration > 5 && iteration <= 50)
+                TimeMgr.pv_instability(bestMoveChanges[iteration], bestMoveChanges[iteration-1]);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration. We probably don't have enough time to search the first
             // move at the next iteration anyway.
             if (current_search_time() > (TimeMgr.available_time() * 80) / 128)
-                stopSearch = true;
+                noMoreTime = true;
 
-            if (stopSearch)
+            if (noMoreTime)
             {
                 if (Pondering)
                     StopOnPonderhit = true;
@@ -763,7 +760,7 @@ namespace {
             }
         }
 
-        if (MaxDepth && Iteration >= MaxDepth)
+        if (MaxDepth && iteration >= MaxDepth)
             break;
     }
 
@@ -1278,14 +1275,14 @@ split_point_start: // At split points actual search starts from here
               // iteration. This information is used for time managment: When
               // the best move changes frequently, we allocate some more time.
               if (!isPvMove && MultiPV == 1)
-                  BestMoveChangesByIteration[Iteration]++;
+                  Rml->bestMoveChanges++;
 
               // Inform GUI that PV has changed, in case of multi-pv UCI protocol
               // requires we send all the PV lines properly sorted.
               Rml->sort_multipv(moveCount);
 
               for (int j = 0; j < Min(MultiPV, (int)Rml->size()); j++)
-                  cout << (*Rml)[j].pv_info_to_uci(pos, alpha, beta, j) << endl;
+                  cout << (*Rml)[j].pv_info_to_uci(pos, depth, alpha, beta, j) << endl;
 
               // Update alpha. In multi-pv we don't use aspiration window
               if (MultiPV == 1)
@@ -1308,8 +1305,7 @@ split_point_start: // At split points actual search starts from here
           && bestValue < beta
           && ThreadsMgr.available_thread_exists(threadID)
           && !StopRequest
-          && !ThreadsMgr.cutoff_at_splitpoint(threadID)
-          && Iteration <= 99)
+          && !ThreadsMgr.cutoff_at_splitpoint(threadID))
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
                                       threatMove, mateThreat, moveCount, (MovePicker*)&mp, PvNode);
     }
@@ -2564,7 +2560,7 @@ split_point_start: // At split points actual search starts from here
   // formatted according to UCI specification and eventually writes the info
   // to a log file. It is called at each iteration or after a new pv is found.
 
-  std::string RootMove::pv_info_to_uci(Position& pos, Value alpha, Value beta, int pvLine) {
+  std::string RootMove::pv_info_to_uci(Position& pos, Depth depth, Value alpha, Value beta, int pvLine) {
 
     std::stringstream s, l;
     Move* m = pv;
@@ -2572,7 +2568,7 @@ split_point_start: // At split points actual search starts from here
     while (*m != MOVE_NONE)
         l << *m++ << " ";
 
-    s << "info depth " << Iteration // FIXME
+    s << "info depth " << depth / ONE_PLY
       << " seldepth " << int(m - pv)
       << " multipv " << pvLine + 1
       << " score " << value_to_uci(pv_score)
@@ -2587,7 +2583,7 @@ split_point_start: // At split points actual search starts from here
         ValueType t = pv_score >= beta  ? VALUE_TYPE_LOWER :
                       pv_score <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
 
-        LogFile << pretty_pv(pos, current_search_time(), Iteration, pv_score, t, pv) << endl;
+        LogFile << pretty_pv(pos, current_search_time(), depth, pv_score, t, pv) << endl;
     }
     return s.str();
   }
@@ -2603,6 +2599,7 @@ split_point_start: // At split points actual search starts from here
     // Initialize search stack
     init_ss_array(ss, PLY_MAX_PLUS_2);
     ss[0].eval = ss[0].evalMargin = VALUE_NONE;
+    bestMoveChanges = 0;
 
     // Generate all legal moves
     MoveStack* last = generate<MV_LEGAL>(pos, mlist);
