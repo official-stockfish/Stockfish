@@ -146,8 +146,6 @@ namespace {
     typedef std::vector<RootMove> Base;
 
     void init(Position& pos, Move searchMoves[]);
-    void set_non_pv_scores(const Position& pos, Move ttm, SearchStack* ss);
-
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
     void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
 
@@ -327,11 +325,30 @@ namespace {
   // A dispatcher to choose among different move sources according to the type of node
   template<bool SpNode, bool Root> struct MovePickerExt;
 
-  // In Root nodes use RootMoveList Rml as source
-  template<> struct MovePickerExt<false, true> {
+  // In Root nodes use RootMoveList Rml as source. Score and sort the moves before to search them.
+  template<> struct MovePickerExt<false, true> : private MovePicker {
 
-      MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value)
-                  : rm(Rml.begin()), firstCall(true) {}
+      MovePickerExt(const Position& p, Move, Depth, const History& h, SearchStack* ss, Value beta)
+                  : MovePicker(p, Rml[0].pv[0], ONE_PLY, h, ss, beta), firstCall(true) { // FIXME use depth
+
+        Move move;
+        Value score = VALUE_ZERO;
+
+        // Score root moves using the standard way used in main search, the moves
+        // are scored according to the order in which are returned by MovePicker.
+        // This is the second order score that is used to compare the moves when
+        // the first order pv scores of both moves are equal.
+        while ((move = MovePicker::get_next_move()) != MOVE_NONE)
+            for (rm = Rml.begin(); rm != Rml.end(); ++rm)
+                if (rm->pv[0] == move)
+                {
+                    rm->non_pv_score = score--;
+                    break;
+                }
+
+        Rml.sort();
+        rm = Rml.begin();
+      }
 
       Move get_next_move() {
 
@@ -658,14 +675,10 @@ namespace {
         // research with bigger window until we are not failing high/low anymore.
         while (true)
         {
-            // Sort the moves before to (re)search
-            Rml.set_non_pv_scores(pos, Rml[0].pv[0], ss);
-            Rml.sort();
-
             // Search to the current depth
             value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
 
-            // Sort the moves and write PV lines to transposition table, in case
+            // Sort root moves and write PV lines to transposition table, in case
             // the relevant entries have been overwritten during the search.
             Rml.sort();
             for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
@@ -673,7 +686,7 @@ namespace {
 
             // Value cannot be trusted. Break out immediately!
             if (StopRequest)
-                break;
+                break; // FIXME move to 'while' condition
 
             assert(value >= alpha);
 
@@ -802,13 +815,12 @@ namespace {
     }
     else if (Root)
         bestValue = alpha;
-    else {} // Hack to fix icc's "statement is unreachable" warning FIXME
 
     // Step 1. Initialize node and poll. Polling can abort search
     ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
     (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
 
-    if (!Root)
+    if (!Root) // FIXME remove
     {
         if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
         {
@@ -1273,15 +1285,12 @@ split_point_start: // At split points actual search starts from here
               for (int j = 0; j < Min(MultiPV, (int)Rml.size()); j++)
                   cout << Rml[j].pv_info_to_uci(pos, depth, alpha, beta, j) << endl;
 
-              // Update alpha. In multi-pv we don't use aspiration window
-              if (MultiPV == 1)
-              {
-                  // Raise alpha to setup proper non-pv search upper bound
-                  if (value > alpha)
-                      alpha = value;
-              }
-              else // Set alpha equal to minimum score among the PV lines
+              // Update alpha. In multi-pv we don't use aspiration window, so
+              // set alpha equal to minimum score among the PV lines.
+              if (MultiPV > 1)
                   alpha = Rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+              else if (value > alpha)
+                  alpha = value;
 
           } // PV move or new best move
       }
@@ -2616,26 +2625,6 @@ split_point_start: // At split points actual search starts from here
         pos.undo_move(cur->move);
     }
     sort();
-  }
-
-  // Score root moves using the standard way used in main search, the moves
-  // are scored according to the order in which are returned by MovePicker.
-  // This is the second order score that is used to compare the moves when
-  // the first order pv scores of both moves are equal.
-
-  void RootMoveList::set_non_pv_scores(const Position& pos, Move ttm, SearchStack* ss)
-  {
-      Move move;
-      Value score = VALUE_ZERO;
-      MovePicker mp(pos, ttm, ONE_PLY, H, ss);
-
-      while ((move = mp.get_next_move()) != MOVE_NONE)
-          for (Base::iterator it = begin(); it != end(); ++it)
-              if (it->pv[0] == move)
-              {
-                  it->non_pv_score = score--;
-                  break;
-              }
   }
 
 } // namespace
