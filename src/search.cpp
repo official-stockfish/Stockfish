@@ -802,7 +802,7 @@ namespace {
     }
     else if (Root)
         bestValue = alpha;
-    else {} // Hack to fix icc's "statement is unreachable" warning
+    else {} // Hack to fix icc's "statement is unreachable" warning FIXME
 
     // Step 1. Initialize node and poll. Polling can abort search
     ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
@@ -1233,6 +1233,10 @@ split_point_start: // At split points actual search starts from here
 
       if (Root)
       {
+          // To avoid to exit with bestValue == -VALUE_INFINITE
+          if (value > bestValue)
+              bestValue = value;
+
           // Finished searching the move. If StopRequest is true, the search
           // was aborted because the user interrupted the search or because we
           // ran out of time. In this case, the return value of the search cannot
@@ -1274,10 +1278,10 @@ split_point_start: // At split points actual search starts from here
               {
                   // Raise alpha to setup proper non-pv search upper bound
                   if (value > alpha)
-                      alpha = bestValue = value;
+                      alpha = value;
               }
               else // Set alpha equal to minimum score among the PV lines
-                  alpha = bestValue = Rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+                  alpha = Rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
 
           } // PV move or new best move
       }
