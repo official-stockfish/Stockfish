@@ -56,7 +56,7 @@ public:
     memset(entries, 0, HashSize * sizeof(Entry));
   }
 
-  ~SimpleHash() { delete [] entries; }
+  virtual ~SimpleHash() { delete [] entries; }
 
   Entry* find(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
 

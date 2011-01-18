@@ -38,7 +38,6 @@
 class History {
 
 public:
-  History() { clear(); }
   void clear();
   Value value(Piece p, Square to) const;
   void update(Piece p, Square to, Value bonus);
