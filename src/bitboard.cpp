@@ -162,10 +162,9 @@ const int RShift[64] = {
 
 #endif // defined(IS_64BIT)
 
-const Bitboard LightSquaresBB = 0x55AA55AA55AA55AAULL;
-const Bitboard DarkSquaresBB  = 0xAA55AA55AA55AA55ULL;
+static const Bitboard DarkSquaresBB  = 0xAA55AA55AA55AA55ULL;
 
-const Bitboard SquaresByColorBB[2] = { DarkSquaresBB, LightSquaresBB };
+const Bitboard SquaresByColorBB[2] = { DarkSquaresBB, ~DarkSquaresBB };
 
 const Bitboard FileBB[8] = {
   FileABB, FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB
@@ -185,11 +184,6 @@ const Bitboard ThisAndNeighboringFilesBB[8] = {
 
 const Bitboard RankBB[8] = {
   Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB
-};
-
-const Bitboard RelativeRankBB[2][8] = {
-  { Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB },
-  { Rank8BB, Rank7BB, Rank6BB, Rank5BB, Rank4BB, Rank3BB, Rank2BB, Rank1BB }
 };
 
 const Bitboard InFrontBB[2][8] = {

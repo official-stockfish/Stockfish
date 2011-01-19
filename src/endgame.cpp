@@ -446,8 +446,8 @@ ScaleFactor ScalingFunction<KQKRPs>::apply(const Position& pos) const {
   Square kingSq = pos.king_square(weakerSide);
   if (   relative_rank(weakerSide, kingSq) <= RANK_2
       && relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4
-      && (pos.pieces(ROOK, weakerSide) & relative_rank_bb(weakerSide, RANK_3))
-      && (pos.pieces(PAWN, weakerSide) & relative_rank_bb(weakerSide, RANK_2))
+      && (pos.pieces(ROOK, weakerSide) & rank_bb(relative_rank(weakerSide, RANK_3)))
+      && (pos.pieces(PAWN, weakerSide) & rank_bb(relative_rank(weakerSide, RANK_2)))
       && (pos.attacks_from<KING>(kingSq) & pos.pieces(PAWN, weakerSide)))
   {
       Square rsq = pos.piece_list(weakerSide, ROOK, 0);

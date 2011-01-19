@@ -50,7 +50,6 @@ extern const Bitboard FileBB[8];
 extern const Bitboard NeighboringFilesBB[8];
 extern const Bitboard ThisAndNeighboringFilesBB[8];
 extern const Bitboard RankBB[8];
-extern const Bitboard RelativeRankBB[2][8];
 extern const Bitboard InFrontBB[2][8];
 
 extern Bitboard SetMaskBB[65];
@@ -151,17 +150,6 @@ inline Bitboard this_and_neighboring_files_bb(File f) {
 
 inline Bitboard this_and_neighboring_files_bb(Square s) {
   return ThisAndNeighboringFilesBB[square_file(s)];
-}
-
-
-/// relative_rank_bb() takes a color and a rank as input, and returns a bitboard
-/// representing all squares on the given rank from the given color's point of
-/// view. For instance, relative_rank_bb(WHITE, 7) gives all squares on the
-/// 7th rank, while relative_rank_bb(BLACK, 7) gives all squares on the 2nd
-/// rank.
-
-inline Bitboard relative_rank_bb(Color c, Rank r) {
-  return RelativeRankBB[c][r];
 }
 
 

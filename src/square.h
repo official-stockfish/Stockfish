@@ -17,24 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(SQUARE_H_INCLUDED)
 #define SQUARE_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include <cstdlib> // for abs()
 #include <string>
 
 #include "color.h"
 #include "misc.h"
-
-
-////
-//// Types
-////
 
 enum Square {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
@@ -49,11 +39,11 @@ enum Square {
 };
 
 enum File {
-  FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NONE
+  FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H
 };
 
 enum Rank {
-  RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NONE
+  RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8
 };
 
 enum SquareDelta {
@@ -73,17 +63,8 @@ ENABLE_OPERATORS_ON(File)
 ENABLE_OPERATORS_ON(Rank)
 ENABLE_OPERATORS_ON(SquareDelta)
 
-
-////
-//// Constants
-////
-
 const int FlipMask = 56;
 const int FlopMask =  7;
-
-////
-//// Inline functions
-////
 
 inline Square operator+ (Square x, SquareDelta i) { return x + Square(i); }
 inline void operator+= (Square& x, SquareDelta i) { x = x + Square(i); }
@@ -114,8 +95,12 @@ inline Square relative_square(Color c, Square s) {
   return Square(int(s) ^ (int(c) * FlipMask));
 }
 
+inline Rank relative_rank(Color c, Rank r) {
+  return Rank(int(r) ^ (int(c) * 7));
+}
+
 inline Rank relative_rank(Color c, Square s) {
-  return square_rank(relative_square(c, s));
+  return relative_rank(c, square_rank(s));
 }
 
 inline SquareColor square_color(Square s) {

@@ -544,7 +544,7 @@ inline bool Position::opposite_colored_bishops() const {
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {
-  return pieces(PAWN, c) & relative_rank_bb(c, RANK_7);
+  return pieces(PAWN, c) & rank_bb(relative_rank(c, RANK_7));
 }
 
 inline bool Position::is_chess960() const {
