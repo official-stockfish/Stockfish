@@ -569,7 +569,7 @@ namespace {
             // problem, especially when that pawn is also blocked.
             if (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1))
             {
-                SquareDelta d = pawn_push(Us) 
+                SquareDelta d = pawn_push(Us)
                    + (square_file(s) == FILE_A ? DELTA_E : DELTA_W);
                 if (pos.piece_on(s + d) == piece_of_color_and_type(Us, PAWN))
                 {
@@ -840,8 +840,8 @@ namespace {
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen. Otherwise consider only
                 // the squares in the pawn's path attacked or occupied by the enemy.
-                if (   (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them))
-                    && (squares_behind(Us, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<ROOK>(s)))
+                if (   (squares_in_front_of(Them, s) & pos.pieces(ROOK, QUEEN, Them))
+                    && (squares_in_front_of(Them, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<ROOK>(s)))
                     unsafeSquares = squaresToQueen;
                 else
                     unsafeSquares = squaresToQueen & (ei.attackedBy[Them][0] | pos.pieces_of_color(Them));

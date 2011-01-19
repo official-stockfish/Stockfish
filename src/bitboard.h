@@ -18,22 +18,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(BITBOARD_H_INCLUDED)
 #define BITBOARD_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include "piece.h"
 #include "square.h"
 #include "types.h"
-
-
-////
-//// Constants and variables
-////
 
 const Bitboard EmptyBoardBB = 0;
 
@@ -92,10 +82,6 @@ extern Bitboard QueenPseudoAttacks[64];
 extern uint8_t BitCount8Bit[256];
 
 
-////
-//// Inline functions
-////
-
 /// Functions for testing whether a given bit is set in a bitboard, and for
 /// setting and clearing bits.
 
@@ -123,7 +109,8 @@ inline void do_move_bb(Bitboard *b, Bitboard move_bb) {
   *b ^= move_bb;
 }
 
-/// rank_bb() and file_bb() take a file or a square as input, and return
+
+/// rank_bb() and file_bb() take a file or a square as input and return
 /// a bitboard representing all squares on the given file or rank.
 
 inline Bitboard rank_bb(Rank r) {
@@ -131,7 +118,7 @@ inline Bitboard rank_bb(Rank r) {
 }
 
 inline Bitboard rank_bb(Square s) {
-  return rank_bb(square_rank(s));
+  return RankBB[square_rank(s)];
 }
 
 inline Bitboard file_bb(File f) {
@@ -139,11 +126,11 @@ inline Bitboard file_bb(File f) {
 }
 
 inline Bitboard file_bb(Square s) {
-  return file_bb(square_file(s));
+  return FileBB[square_file(s)];
 }
 
 
-/// neighboring_files_bb takes a file or a square as input, and returns a
+/// neighboring_files_bb takes a file or a square as input and returns a
 /// bitboard representing all squares on the neighboring files.
 
 inline Bitboard neighboring_files_bb(File f) {
@@ -155,9 +142,8 @@ inline Bitboard neighboring_files_bb(Square s) {
 }
 
 
-/// this_and_neighboring_files_bb takes a file or a square as input, and
-/// returns a bitboard representing all squares on the given and neighboring
-/// files.
+/// this_and_neighboring_files_bb takes a file or a square as input and returns
+/// a bitboard representing all squares on the given and neighboring files.
 
 inline Bitboard this_and_neighboring_files_bb(File f) {
   return ThisAndNeighboringFilesBB[f];
@@ -191,19 +177,6 @@ inline Bitboard in_front_bb(Color c, Rank r) {
 
 inline Bitboard in_front_bb(Color c, Square s) {
   return InFrontBB[c][square_rank(s)];
-}
-
-
-/// behind_bb() takes a color and a rank or square as input, and returns a
-/// bitboard representing all the squares on all ranks behind of the rank
-/// (or square), from the given color's point of view.
-
-inline Bitboard behind_bb(Color c, Rank r) {
-  return InFrontBB[opposite_color(c)][r];
-}
-
-inline Bitboard behind_bb(Color c, Square s) {
-  return InFrontBB[opposite_color(c)][square_rank(s)];
 }
 
 
@@ -269,14 +242,6 @@ inline Bitboard squares_in_front_of(Color c, Square s) {
 }
 
 
-/// squares_behind is similar to squares_in_front, but returns the squares
-/// behind the square instead of in front of the square.
-
-inline Bitboard squares_behind(Color c, Square s) {
-  return SquaresInFrontMask[opposite_color(c)][s];
-}
-
-
 /// passed_pawn_mask takes a color and a square as input, and returns a
 /// bitboard mask which can be used to test if a pawn of the given color on
 /// the given square is a passed pawn. Definition of the table is:
@@ -332,12 +297,7 @@ extern Square pop_1st_bit(Bitboard* b);
 #endif
 
 
-////
-//// Prototypes
-////
-
 extern void print_bitboard(Bitboard b);
 extern void init_bitboards();
-
 
 #endif // !defined(BITBOARD_H_INCLUDED)
