@@ -235,7 +235,7 @@ namespace {
   void init_pseudo_attacks();
   void init_between_bitboards();
   Bitboard index_to_bitboard(int index, Bitboard mask);
-  Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
+  Bitboard sliding_attacks(int sq, Bitboard occupied, int deltas[][2],
                            int fmin, int fmax, int rmin, int rmax);
   void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
                             const int shift[], const Bitboard mult[], int deltas[][2]);
@@ -405,31 +405,33 @@ namespace {
            }
   }
 
-  Bitboard sliding_attacks(int sq, Bitboard block, int dirs, int deltas[][2],
-                           int fmin=0, int fmax=7, int rmin=0, int rmax=7) {
-    Bitboard result = 0;
+  Bitboard sliding_attacks(int sq, Bitboard occupied, int deltas[][2],
+                           int fmin, int fmax, int rmin, int rmax) {
+    int dx, dy, f, r;
     int rk = sq / 8;
     int fl = sq % 8;
+    Bitboard attacks = EmptyBoardBB;
 
-    for (int i = 0; i < dirs; i++)
+    for (int i = 0; i < 4; i++)
     {
-        int dx = deltas[i][0];
-        int dy = deltas[i][1];
-        int f = fl + dx;
-        int r = rk + dy;
+        dx = deltas[i][0];
+        dy = deltas[i][1];
+        f = fl + dx;
+        r = rk + dy;
 
         while (   (dx == 0 || (f >= fmin && f <= fmax))
                && (dy == 0 || (r >= rmin && r <= rmax)))
         {
-            result |= (1ULL << (f + r*8));
-            if (block & (1ULL << (f + r*8)))
+            attacks |= (1ULL << (f + r * 8));
+
+            if (occupied & (1ULL << (f + r * 8)))
                 break;
 
             f += dx;
             r += dy;
         }
     }
-    return result;
+    return attacks;
   }
 
   Bitboard index_to_bitboard(int index, Bitboard mask) {
@@ -453,7 +455,7 @@ namespace {
     for (int i = 0, index = 0; i < 64; i++)
     {
         attackIndex[i] = index;
-        mask[i] = sliding_attacks(i, 0, 4, deltas, 1, 6, 1, 6);
+        mask[i] = sliding_attacks(i, 0, deltas, 1, 6, 1, 6);
 
 #if defined(IS_64BIT)
         int j = (1 << (64 - shift[i]));
@@ -463,14 +465,14 @@ namespace {
 
         for (int k = 0; k < j; k++)
         {
+            Bitboard b = index_to_bitboard(k, mask[i]);
+
 #if defined(IS_64BIT)
-            Bitboard b = index_to_bitboard(k, mask[i]);
-            attacks[index + ((b * mult[i]) >> shift[i])] = sliding_attacks(i, b, 4, deltas);
+            Bitboard v = b * mult[i];
 #else
-            Bitboard b = index_to_bitboard(k, mask[i]);
             unsigned v = int(b) * int(mult[i]) ^ int(b >> 32) * int(mult[i] >> 32);
-            attacks[index + (v >> shift[i])] = sliding_attacks(i, b, 4, deltas);
 #endif
+            attacks[index + (v >> shift[i])] = sliding_attacks(i, b, deltas, 0, 7, 0, 7);
         }
         index += j;
     }

@@ -190,17 +190,13 @@ inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
 inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
   Bitboard b = blockers & RMask[s];
   return RAttacks[RAttackIndex[s] +
-                  (unsigned(int(b) * int(RMult[s]) ^
-                            int(b >> 32) * int(RMult[s] >> 32))
-                   >> RShift[s])];
+        (unsigned(int(b) * int(RMult[s]) ^ int(b >> 32) * int(RMult[s] >> 32)) >> RShift[s])];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
   Bitboard b = blockers & BMask[s];
   return BAttacks[BAttackIndex[s] +
-                  (unsigned(int(b) * int(BMult[s]) ^
-                            int(b >> 32) * int(BMult[s] >> 32))
-                   >> BShift[s])];
+        (unsigned(int(b) * int(BMult[s]) ^ int(b >> 32) * int(BMult[s] >> 32)) >> BShift[s])];
 }
 
 #endif
