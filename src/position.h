@@ -17,13 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(POSITION_H_INCLUDED)
 #define POSITION_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include "bitboard.h"
 #include "color.h"
@@ -32,20 +27,10 @@
 #include "square.h"
 #include "value.h"
 
-
-////
-//// Constants
-////
-
 /// Maximum number of plies per game (220 should be enough, because the
 /// maximum search depth is 100, and during position setup we reset the
 /// move counter for every non-reversible move).
 const int MaxGameLength = 220;
-
-
-////
-//// Types
-////
 
 class Position;
 
@@ -339,11 +324,6 @@ private:
   static const Value PieceValueEndgame[17];
 };
 
-
-////
-//// Inline functions
-////
-
 inline int64_t Position::nodes_searched() const {
   return nodes;
 }
@@ -538,9 +518,8 @@ inline int Position::startpos_ply_counter() const {
 
 inline bool Position::opposite_colored_bishops() const {
 
-  return   piece_count(WHITE, BISHOP) == 1
-        && piece_count(BLACK, BISHOP) == 1
-        && !same_color_squares(piece_list(WHITE, BISHOP, 0), piece_list(BLACK, BISHOP, 0));
+  return   piece_count(WHITE, BISHOP) == 1 && piece_count(BLACK, BISHOP) == 1
+        && opposite_color_squares(piece_list(WHITE, BISHOP, 0), piece_list(BLACK, BISHOP, 0));
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {
