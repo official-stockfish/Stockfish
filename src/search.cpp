@@ -313,7 +313,6 @@ namespace {
   int nps(const Position& pos);
   void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
-  void init_ss_array(SearchStack* ss, int size);
 
 #if !defined(_MSC_VER)
   void* init_thread(void* threadID);
@@ -624,7 +623,7 @@ namespace {
     // Initialize FIXME move before Rml.init()
     TT.new_search();
     H.clear();
-    init_ss_array(ss, PLY_MAX_PLUS_2);
+    memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     EasyMove = MOVE_NONE;
     aspirationDelta = 0;
@@ -1875,24 +1874,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // init_ss_array() does a fast reset of the first entries of a SearchStack
-  // array and of all the excludedMove and skipNullMove entries.
-
-  void init_ss_array(SearchStack* ss, int size) {
-
-    for (int i = 0; i < size; i++, ss++)
-    {
-        ss->excludedMove = MOVE_NONE;
-        ss->skipNullMove = false;
-        ss->reduction = DEPTH_ZERO;
-        ss->sp = NULL;
-
-        if (i < 3)
-            ss->killers[0] = ss->killers[1] = ss->mateKiller = MOVE_NONE;
-    }
-  }
-
-
   // value_to_uci() converts a value to a string suitable for use with the UCI
   // protocol specifications:
   //
@@ -2595,7 +2576,7 @@ split_point_start: // At split points actual search starts from here
     Move* sm;
 
     // Initialize search stack
-    init_ss_array(ss, PLY_MAX_PLUS_2);
+    memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
     ss[0].eval = ss[0].evalMargin = VALUE_NONE;
     bestMoveChanges = 0;
     clear();
