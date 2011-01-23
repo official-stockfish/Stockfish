@@ -302,6 +302,7 @@ namespace {
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, Move killers[]);
   void update_gains(const Position& pos, Move move, Value before, Value after);
+  void qsearch_scoring(Position& pos, MoveStack* mlist, MoveStack* last);
 
   int current_search_time();
   std::string value_to_uci(Value v);
@@ -1522,6 +1523,26 @@ split_point_start: // At split points actual search starts from here
   }
 
 
+  // qsearch_scoring() scores each move of a list using a qsearch() evaluation,
+  // it is used in RootMoveList to get an initial scoring.
+  void qsearch_scoring(Position& pos, MoveStack* mlist, MoveStack* last) {
+
+    SearchStack ss[PLY_MAX_PLUS_2];
+    StateInfo st;
+
+    memset(ss, 0, 4 * sizeof(SearchStack));
+    ss[0].eval = ss[0].evalMargin = VALUE_NONE;
+
+    for (MoveStack* cur = mlist; cur != last; cur++)
+    {
+        ss[0].currentMove = cur->move;
+        pos.do_move(cur->move, st);
+        cur->score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
+        pos.undo_move(cur->move);
+    }
+  }
+
+
   // check_is_dangerous() tests if a checking move can be pruned in qsearch().
   // bestValue is updated only when returning false because in that case move
   // will be pruned.
@@ -2559,19 +2580,15 @@ split_point_start: // At split points actual search starts from here
 
   void RootMoveList::init(Position& pos, Move searchMoves[]) {
 
-    SearchStack ss[PLY_MAX_PLUS_2];
     MoveStack mlist[MOVES_MAX];
-    StateInfo st;
     Move* sm;
 
-    // Initialize search stack
-    memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
-    ss[0].eval = ss[0].evalMargin = VALUE_NONE;
-    bestMoveChanges = 0;
     clear();
+    bestMoveChanges = 0;
 
-    // Generate all legal moves
+    // Generate all legal moves and score them
     MoveStack* last = generate<MV_LEGAL>(pos, mlist);
+    qsearch_scoring(pos, mlist, last);
 
     // Add each move to the RootMoveList's vector
     for (MoveStack* cur = mlist; cur != last; cur++)
@@ -2583,16 +2600,11 @@ split_point_start: // At split points actual search starts from here
         if (searchMoves[0] && *sm != cur->move)
             continue;
 
-        // Find a quick score for the move and add to the list
-        pos.do_move(cur->move, st);
-
         RootMove rm;
-        rm.pv[0] = ss[0].currentMove = cur->move;
+        rm.pv[0] = cur->move;
         rm.pv[1] = MOVE_NONE;
-        rm.pv_score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
+        rm.pv_score = Value(cur->score);
         push_back(rm);
-
-        pos.undo_move(cur->move);
     }
     sort();
   }
