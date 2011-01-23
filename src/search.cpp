@@ -233,11 +233,6 @@ namespace {
   template <NodeType PV>
   inline Depth reduction(Depth d, int mn) { return (Depth) ReductionMatrix[PV][Min(d / 2, 63)][Min(mn, 63)]; }
 
-  // Common adjustments
-
-  // Search depth at iteration 1
-  const Depth InitialDepth = ONE_PLY;
-
   // Easy move margin. An easy move candidate must be at least this much
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x200);
@@ -656,7 +651,7 @@ namespace {
         cout << "info depth " << iteration << endl;
 
         Rml.bestMoveChanges = researchCountFL = researchCountFH = 0;
-        depth = (iteration - 2) * ONE_PLY + InitialDepth;
+        depth = (iteration - 1) * ONE_PLY;
 
         // Calculate dynamic aspiration window based on previous iterations
         if (MultiPV == 1 && iteration >= 6 && abs(bestValues[iteration - 1]) < VALUE_KNOWN_WIN)
