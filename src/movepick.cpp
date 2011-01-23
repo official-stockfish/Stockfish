@@ -18,11 +18,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 
 #include "history.h"
@@ -30,11 +25,6 @@
 #include "movepick.h"
 #include "search.h"
 #include "value.h"
-
-
-////
-//// Local definitions
-////
 
 namespace {
 
@@ -58,11 +48,6 @@ namespace {
 }
 
 
-////
-//// Functions
-////
-
-
 /// Constructor for the MovePicker class. Apart from the position for which
 /// it is asked to pick legal moves, MovePicker also wants some information
 /// to help it to return the presumably good moves first, to decide which
@@ -77,21 +62,22 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   badCaptureThreshold = 0;
   badCaptures = moves + MOVES_MAX;
 
+  assert(d > DEPTH_ZERO);
+
   pinned = p.pinned_pieces(pos.side_to_move());
 
-  if (ss && !p.is_check())
+  if (p.is_check())
+  {
+      ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
+      phasePtr = EvasionsPhaseTable;
+  }
+  else
   {
       ttMoves[1].move = (ss->mateKiller == ttm) ? MOVE_NONE : ss->mateKiller;
       searchTT |= ttMoves[1].move;
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
-  } else
-      ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
 
-  if (p.is_check())
-      phasePtr = EvasionsPhaseTable;
-  else if (d > DEPTH_ZERO)
-  {
       // Consider sligtly negative captures as good if at low
       // depth and far from beta.
       if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * ONE_PLY)
@@ -99,6 +85,23 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
       phasePtr = MainSearchPhaseTable;
   }
+
+  phasePtr += int(!searchTT) - 1;
+  go_next_phase();
+}
+
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
+                      : pos(p), H(h) {
+  int searchTT = ttm;
+  ttMoves[0].move = ttm;
+  ttMoves[1].move = MOVE_NONE;
+
+  assert(d <= DEPTH_ZERO);
+
+  pinned = p.pinned_pieces(pos.side_to_move());
+
+  if (p.is_check())
+      phasePtr = EvasionsPhaseTable;
   else if (d >= DEPTH_QS_CHECKS)
       phasePtr = QsearchWithChecksPhaseTable;
   else
@@ -354,4 +357,3 @@ Move MovePicker::get_next_move() {
       go_next_phase();
   }
 }
-

@@ -17,22 +17,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include "depth.h"
 #include "history.h"
 #include "position.h"
-
-
-////
-//// Types
-////
 
 struct SearchStack;
 
@@ -49,7 +39,8 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // silence a warning under MSVC
 
 public:
-  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss = NULL, Value beta = -VALUE_INFINITE);
+  MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value beta);
+  MovePicker(const Position& p, Move ttm, Depth d, const History& h);
   Move get_next_move();
   int number_of_evasions() const;
 
@@ -69,10 +60,6 @@ private:
   MoveStack moves[MOVES_MAX];
 };
 
-
-////
-//// Inline functions
-////
 
 /// MovePicker::number_of_evasions() simply returns the number of moves in
 /// evasions phase. It is intended to be used in positions where the side to
