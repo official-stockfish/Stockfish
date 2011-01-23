@@ -248,7 +248,7 @@ namespace {
   // Book object
   Book OpeningBook;
 
-  // Pointer to root move list
+  // Root move list
   RootMoveList Rml;
 
   // MultiPV mode
@@ -321,69 +321,70 @@ namespace {
 #endif
 
 
-  // A dispatcher to choose among different move sources according to the type of node
+  // MovePickerExt is an extended MovePicker used to choose at compile time
+  // the proper move source according to the type of node.
   template<bool SpNode, bool Root> struct MovePickerExt;
 
-  // In Root nodes use RootMoveList Rml as source. Score and sort the moves before to search them.
-  template<> struct MovePickerExt<false, true> : private MovePicker {
+  // In Root nodes use RootMoveList Rml as source. Score and sort the root moves
+  // before to search them.
+  template<> struct MovePickerExt<false, true> : public MovePicker {
 
-      MovePickerExt(const Position& p, Move, Depth, const History& h, SearchStack* ss, Value beta)
-                  : MovePicker(p, Rml[0].pv[0], ONE_PLY, h, ss, beta), firstCall(true) { // FIXME use depth
+    MovePickerExt(const Position& p, Move, Depth d, const History& h, SearchStack* ss, Value b)
+                 : MovePicker(p, Rml[0].pv[0], d, h, ss, b), firstCall(true) {
+      Move move;
+      Value score = VALUE_ZERO;
 
-        Move move;
-        Value score = VALUE_ZERO;
+      // Score root moves using the standard way used in main search, the moves
+      // are scored according to the order in which are returned by MovePicker.
+      // This is the second order score that is used to compare the moves when
+      // the first order pv scores of both moves are equal.
+      while ((move = MovePicker::get_next_move()) != MOVE_NONE)
+          for (rm = Rml.begin(); rm != Rml.end(); ++rm)
+              if (rm->pv[0] == move)
+              {
+                  rm->non_pv_score = score--;
+                  break;
+              }
 
-        // Score root moves using the standard way used in main search, the moves
-        // are scored according to the order in which are returned by MovePicker.
-        // This is the second order score that is used to compare the moves when
-        // the first order pv scores of both moves are equal.
-        while ((move = MovePicker::get_next_move()) != MOVE_NONE)
-            for (rm = Rml.begin(); rm != Rml.end(); ++rm)
-                if (rm->pv[0] == move)
-                {
-                    rm->non_pv_score = score--;
-                    break;
-                }
+      Rml.sort();
+      rm = Rml.begin();
+    }
 
-        Rml.sort();
-        rm = Rml.begin();
-      }
+    Move get_next_move() {
 
-      Move get_next_move() {
+      if (!firstCall)
+          ++rm;
+      else
+          firstCall = false;
 
-        if (!firstCall)
-            ++rm;
-        else
-            firstCall = false;
+      return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
+    }
+    int number_of_evasions() const { return (int)Rml.size(); }
 
-        return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
-      }
-      int number_of_evasions() const { return (int)Rml.size(); }
-
-      RootMoveList::iterator rm;
-      bool firstCall;
+    RootMoveList::iterator rm;
+    bool firstCall;
   };
 
-  // In SpNodes use split point's shared MovePicker as move source
-  template<> struct MovePickerExt<true, false> {
+  // In SpNodes use split point's shared MovePicker object as move source
+  template<> struct MovePickerExt<true, false> : public MovePicker {
 
-      MovePickerExt(const Position&, Move, Depth, const History&, SearchStack* ss, Value)
-                  : mp(ss->sp->mp) {}
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h,
+                  SearchStack* ss, Value b) : MovePicker(p, ttm, d, h, ss, b),
+                  mp(ss->sp->mp) {}
 
-      Move get_next_move() { return mp->get_next_move(); }
-      int number_of_evasions() const { return mp->number_of_evasions(); }
+    Move get_next_move() { return mp->get_next_move(); }
 
-      RootMoveList::iterator rm; // Dummy, never used
-      MovePicker* mp;
+    RootMoveList::iterator rm; // Dummy, needed to compile
+    MovePicker* mp;
   };
 
-  // Normal case, create and use a MovePicker object as source
+  // Default case, create and use a MovePicker object as source
   template<> struct MovePickerExt<false, false> : public MovePicker {
 
-      MovePickerExt(const Position& p, Move ttm, Depth d, const History& h,
-                    SearchStack* ss, Value beta) : MovePicker(p, ttm, d, h, ss, beta) {}
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h,
+                  SearchStack* ss, Value b) : MovePicker(p, ttm, d, h, ss, b) {}
 
-      RootMoveList::iterator rm; // Dummy, never used
+    RootMoveList::iterator rm; // Dummy, needed to compile
   };
 
 } // namespace
@@ -602,10 +603,9 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
 namespace {
 
-  // id_loop() is the main iterative deepening loop. It calls search()
-  // repeatedly with increasing depth until the allocated thinking time has
-  // been consumed, the user stops the search, or the maximum search depth is
-  // reached.
+  // id_loop() is the main iterative deepening loop. It calls search() repeatedly
+  // with increasing depth until the allocated thinking time has been consumed,
+  // user stops the search, or the maximum search depth is reached.
 
   Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove) {
 
@@ -615,7 +615,7 @@ namespace {
     int iteration, researchCountFL, researchCountFH, aspirationDelta;
     Value value, alpha, beta;
     Depth depth;
-    Move EasyMove;
+    Move bestMove, easyMove;
 
     // Moves to search are verified, scored and sorted
     Rml.init(pos, searchMoves);
@@ -625,9 +625,10 @@ namespace {
     H.clear();
     memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
-    EasyMove = MOVE_NONE;
+    *ponderMove = bestMove = easyMove = MOVE_NONE;
     aspirationDelta = 0;
     iteration = 1;
+    ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
 
     // Handle special case of searching on a mate/stale position
     if (Rml.size() == 0)
@@ -647,7 +648,7 @@ namespace {
     // Is one move significantly better than others after initial scoring ?
     if (   Rml.size() == 1
         || Rml[0].pv_score > Rml[1].pv_score + EasyMoveMargin)
-        EasyMove = Rml[0].pv[0];
+        easyMove = Rml[0].pv[0];
 
     // Iterative deepening loop
     while (++iteration <= PLY_MAX && (!MaxDepth || iteration <= MaxDepth) && !StopRequest)
@@ -670,26 +671,23 @@ namespace {
             beta  = Min(bestValues[iteration - 1] + aspirationDelta,  VALUE_INFINITE);
         }
 
-        // We start with small aspiration window and in case of fail high/low, we
-        // research with bigger window until we are not failing high/low anymore.
+        // Start with a small aspiration window and, in case of fail high/low,
+        // research with bigger window until not failing high/low anymore.
         while (true)
         {
-            // Search to the current depth
-            value = search<PV, false, true>(pos, ss, alpha, beta, depth, 0);
+            // Search starting from ss+1 to allow calling update_gains()
+            value = search<PV, false, true>(pos, ss+1, alpha, beta, depth, 0);
 
-            // Sort root moves and write PV lines to transposition table, in case
-            // the relevant entries have been overwritten during the search.
-            Rml.sort();
+            // Write PV lines to transposition table, in case the relevant entries
+            // have been overwritten during the search.
             for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
                 Rml[i].insert_pv_in_tt(pos);
 
             // Value cannot be trusted. Break out immediately!
             if (StopRequest)
-                break; // FIXME move to 'while' condition
+                break;
 
             assert(value >= alpha);
-
-            bestMoveChanges[iteration] = Rml.bestMoveChanges; // FIXME move outside fail high/low loop
 
             // In case of failing high/low increase aspiration window and research,
             // otherwise exit the fail high/low loop.
@@ -710,22 +708,19 @@ namespace {
                 break;
         }
 
-        //Save info about search result
+        // Collect info about search result
+        bestMove = Rml[0].pv[0];
         bestValues[iteration] = value;
+        bestMoveChanges[iteration] = Rml.bestMoveChanges;
 
         // Drop the easy move if differs from the new best move
-        if (Rml[0].pv[0] != EasyMove)
-            EasyMove = MOVE_NONE;
+        if (bestMove != easyMove)
+            easyMove = MOVE_NONE;
 
         if (UseTimeManagement && !StopRequest)
         {
             // Time to stop?
             bool noMoreTime = false;
-
-            // Stop search early if there is only a single legal move,
-            // we search up to Iteration 6 anyway to get a proper score.
-            if (iteration >= 6 && Rml.size() == 1)
-                noMoreTime = true;
 
             // Stop search early when the last two iterations returned a mate score
             if (   iteration >= 6
@@ -733,10 +728,13 @@ namespace {
                 && abs(bestValues[iteration-1]) >= abs(VALUE_MATE) - 100)
                 noMoreTime = true;
 
-            // Stop search early if one move seems to be much better than the others
+            // Stop search early if one move seems to be much better than the
+            // others or if there is only a single legal move. In this latter
+            // case we search up to Iteration 8 anyway to get a proper score.
             if (   iteration >= 8
-                && EasyMove == Rml[0].pv[0]
-                && (  (   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
+                && easyMove == bestMove
+                && (   Rml.size() == 1
+                    ||(   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
                        && current_search_time() > TimeMgr.available_time() / 16)
                     ||(   Rml[0].nodes > (pos.nodes_searched() * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
@@ -763,7 +761,7 @@ namespace {
     }
 
     *ponderMove = Rml[0].pv[1];
-    return Rml[0].pv[0];
+    return bestMove;
   }
 
 
@@ -819,30 +817,26 @@ namespace {
     ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
     (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
 
-    if (!Root) // FIXME remove
+    if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
     {
-        if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
-        {
-            NodesSincePoll = 0;
-            poll(pos);
-        }
-
-        // Step 2. Check for aborted search and immediate draw
-        if (   StopRequest
-            || ThreadsMgr.cutoff_at_splitpoint(threadID)
-            || pos.is_draw()
-            || ply >= PLY_MAX - 1)
-            return VALUE_DRAW;
-
-        // Step 3. Mate distance pruning
-        alpha = Max(value_mated_in(ply), alpha);
-        beta = Min(value_mate_in(ply+1), beta);
-        if (alpha >= beta)
-            return alpha;
+        NodesSincePoll = 0;
+        poll(pos);
     }
 
-    // Step 4. Transposition table lookup
+    // Step 2. Check for aborted search and immediate draw
+    if ((   StopRequest
+         || ThreadsMgr.cutoff_at_splitpoint(threadID)
+         || pos.is_draw()
+         || ply >= PLY_MAX - 1) && !Root)
+        return VALUE_DRAW;
 
+    // Step 3. Mate distance pruning
+    alpha = Max(value_mated_in(ply), alpha);
+    beta = Min(value_mate_in(ply+1), beta);
+    if (alpha >= beta)
+        return alpha;
+
+    // Step 4. Transposition table lookup
     // We don't want the score of a partial search to overwrite a previous full search
     // TT value, so we use a different position key in case of an excluded move exists.
     excludedMove = ss->excludedMove;
@@ -884,8 +878,7 @@ namespace {
     }
 
     // Save gain for the parent non-capture move
-    if (!Root)
-        update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
+    update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
 
     // Step 6. Razoring (is omitted in PV nodes)
     if (   !PvNode
@@ -978,9 +971,8 @@ namespace {
     }
 
     // Step 9. Internal iterative deepening
-    if (   !Root
-        &&  depth >= IIDDepth[PvNode]
-        &&  ttMove == MOVE_NONE
+    if (   depth >= IIDDepth[PvNode]
+        && ttMove == MOVE_NONE
         && (PvNode || (!isCheck && ss->eval >= beta - IIDMargin)))
     {
         Depth d = (PvNode ? depth - 2 * ONE_PLY : depth / 2);
@@ -994,7 +986,7 @@ namespace {
     }
 
     // Expensive mate threat detection (only for PV nodes)
-    if (PvNode && !Root) // FIXME
+    if (PvNode)
         mateThreat = pos.has_mate_threat();
 
 split_point_start: // At split points actual search starts from here
@@ -1304,7 +1296,7 @@ split_point_start: // At split points actual search starts from here
           && !StopRequest
           && !ThreadsMgr.cutoff_at_splitpoint(threadID))
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
-                                      threatMove, mateThreat, moveCount, (MovePicker*)&mp, PvNode);
+                                      threatMove, mateThreat, moveCount, &mp, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
