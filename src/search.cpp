@@ -329,8 +329,8 @@ namespace {
   // before to search them.
   template<> struct MovePickerExt<false, true> : public MovePicker {
 
-    MovePickerExt(const Position& p, Move, Depth d, const History& h, SearchStack* ss, Value b)
-                 : MovePicker(p, Rml[0].pv[0], d, h, ss, b), firstCall(true) {
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                 : MovePicker(p, ttm, d, h, ss, b), firstCall(true) {
       Move move;
       Value score = VALUE_ZERO;
 
