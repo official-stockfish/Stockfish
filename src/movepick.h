@@ -42,7 +42,6 @@ public:
   MovePicker(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value beta);
   MovePicker(const Position& p, Move ttm, Depth d, const History& h);
   Move get_next_move();
-  int number_of_evasions() const;
 
 private:
   void score_captures();
@@ -59,16 +58,5 @@ private:
   MoveStack *curMove, *lastMove, *lastGoodNonCapture, *badCaptures;
   MoveStack moves[MOVES_MAX];
 };
-
-
-/// MovePicker::number_of_evasions() simply returns the number of moves in
-/// evasions phase. It is intended to be used in positions where the side to
-/// move is in check, for detecting checkmates or situations where there is
-/// only a single reply to check.
-/// WARNING: It works as long as PH_EVASIONS is the _only_ phase for evasions.
-
-inline int MovePicker::number_of_evasions() const {
-  return int(lastMove - moves);
-}
 
 #endif // !defined(MOVEPICK_H_INCLUDED)

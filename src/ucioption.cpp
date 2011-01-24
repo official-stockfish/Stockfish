@@ -81,8 +81,6 @@ void init_uci_options() {
   Options["Cowardice"] = Option(100, 0, 200);
   Options["Check Extension (PV nodes)"] = Option(2, 0, 2);
   Options["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
-  Options["Single Evasion Extension (PV nodes)"] = Option(2, 0, 2);
-  Options["Single Evasion Extension (non-PV nodes)"] = Option(2, 0, 2);
   Options["Mate Threat Extension (PV nodes)"] = Option(2, 0, 2);
   Options["Mate Threat Extension (non-PV nodes)"] = Option(2, 0, 2);
   Options["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);

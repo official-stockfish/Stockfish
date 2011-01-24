@@ -203,8 +203,8 @@ namespace {
 
   // Extensions. Configurable UCI options
   // Array index 0 is used at non-PV nodes, index 1 at PV nodes.
-  Depth CheckExtension[2], SingleEvasionExtension[2], PawnPushTo7thExtension[2];
-  Depth PassedPawnExtension[2], PawnEndgameExtension[2], MateThreatExtension[2];
+  Depth CheckExtension[2], PawnPushTo7thExtension[2], PassedPawnExtension[2];
+  Depth PawnEndgameExtension[2], MateThreatExtension[2];
 
   // Minimum depth for use of singular extension
   const Depth SingularExtensionDepth[2] = { 8 * ONE_PLY /* non-PV */, 6 * ONE_PLY /* PV */};
@@ -289,7 +289,7 @@ namespace {
   }
 
   template <NodeType PvNode>
-  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool singleEvasion, bool mateThreat, bool* dangerous);
+  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool mateThreat, bool* dangerous);
 
   bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
   bool connected_moves(const Position& pos, Move m1, Move m2);
@@ -355,7 +355,6 @@ namespace {
 
       return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
     }
-    int number_of_evasions() const { return (int)Rml.size(); }
 
     RootMoveList::iterator rm;
     bool firstCall;
@@ -501,8 +500,6 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   CheckExtension[1]         = Options["Check Extension (PV nodes)"].value<Depth>();
   CheckExtension[0]         = Options["Check Extension (non-PV nodes)"].value<Depth>();
-  SingleEvasionExtension[1] = Options["Single Evasion Extension (PV nodes)"].value<Depth>();
-  SingleEvasionExtension[0] = Options["Single Evasion Extension (non-PV nodes)"].value<Depth>();
   PawnPushTo7thExtension[1] = Options["Pawn Push to 7th Extension (PV nodes)"].value<Depth>();
   PawnPushTo7thExtension[0] = Options["Pawn Push to 7th Extension (non-PV nodes)"].value<Depth>();
   PassedPawnExtension[1]    = Options["Passed Pawn Extension (PV nodes)"].value<Depth>();
@@ -787,7 +784,7 @@ namespace {
     ValueType vt;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
-    bool isPvMove, isCheck, singleEvasion, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
+    bool isPvMove, isCheck, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
     bool mateThreat = false;
     int moveCount = 0, playedMoveCount = 0;
     int threadID = pos.thread();
@@ -991,7 +988,6 @@ split_point_start: // At split points actual search starts from here
     MovePickerExt<SpNode, Root> mp(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
-    singleEvasion = !SpNode && isCheck && mp.number_of_evasions() == 1;
     futilityBase = ss->eval + ss->evalMargin;
     singularExtensionNode =   !Root
                            && !SpNode
@@ -1053,7 +1049,7 @@ split_point_start: // At split points actual search starts from here
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, singleEvasion, mateThreat, &dangerous);
+      ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, mateThreat, &dangerous);
 
       // Singular extension search. If all moves but one fail low on a search of (alpha-s, beta-s),
       // and just one fails high on (alpha, beta), then that move is singular and should be extended.
@@ -1703,21 +1699,18 @@ split_point_start: // At split points actual search starts from here
   // extended, as example because the corresponding UCI option is set to zero,
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
   template <NodeType PvNode>
-  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck,
-                  bool singleEvasion, bool mateThreat, bool* dangerous) {
+  Depth extension(const Position& pos, Move m, bool captureOrPromotion,
+                  bool moveIsCheck, bool mateThreat, bool* dangerous) {
 
     assert(m != MOVE_NONE);
 
     Depth result = DEPTH_ZERO;
-    *dangerous = moveIsCheck | singleEvasion | mateThreat;
+    *dangerous = moveIsCheck | mateThreat;
 
     if (*dangerous)
     {
         if (moveIsCheck && pos.see_sign(m) >= 0)
             result += CheckExtension[PvNode];
-
-        if (singleEvasion)
-            result += SingleEvasionExtension[PvNode];
 
         if (mateThreat)
             result += MateThreatExtension[PvNode];
