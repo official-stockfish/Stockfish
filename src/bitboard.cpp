@@ -451,27 +451,19 @@ namespace {
 
   void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
                             const int shift[], const Bitboard mult[], int deltas[][2]) {
+    Bitboard b, v;
+    int i, j, index;
 
-    for (int i = 0, index = 0; i < 64; i++)
+    for (i = index = 0; i < 64; i++)
     {
         attackIndex[i] = index;
         mask[i] = sliding_attacks(i, 0, deltas, 1, 6, 1, 6);
-
-#if defined(IS_64BIT)
-        int j = (1 << (64 - shift[i]));
-#else
-        int j = (1 << (32 - shift[i]));
-#endif
+        j = 1 << ((CpuIs64Bit ? 64 : 32) - shift[i]);
 
         for (int k = 0; k < j; k++)
         {
-            Bitboard b = index_to_bitboard(k, mask[i]);
-
-#if defined(IS_64BIT)
-            Bitboard v = b * mult[i];
-#else
-            unsigned v = int(b) * int(mult[i]) ^ int(b >> 32) * int(mult[i] >> 32);
-#endif
+            b = index_to_bitboard(k, mask[i]);
+            v = CpuIs64Bit ? b * mult[i] : unsigned(b * mult[i] ^ (b >> 32) * (mult[i] >> 32));
             attacks[index + (v >> shift[i])] = sliding_attacks(i, b, deltas, 0, 7, 0, 7);
         }
         index += j;

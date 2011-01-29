@@ -96,32 +96,4 @@ inline int count_1s<CNT_POPCNT>(Bitboard b) {
 #endif
 }
 
-
-/// cpu_has_popcnt() detects support for popcnt instruction at runtime
-inline bool cpu_has_popcnt() {
-
-  int CPUInfo[4] = {-1};
-  __cpuid(CPUInfo, 0x00000001);
-  return (CPUInfo[2] >> 23) & 1;
-}
-
-
-/// CpuHasPOPCNT is a global constant initialized at startup that
-/// is set to true if CPU on which application runs supports popcnt
-/// hardware instruction. Unless USE_POPCNT is not defined.
-#if defined(USE_POPCNT)
-const bool CpuHasPOPCNT = cpu_has_popcnt();
-#else
-const bool CpuHasPOPCNT = false;
-#endif
-
-
-/// CpuIs64Bit is a global constant initialized at compile time that
-/// is set to true if CPU on which application runs is a 64 bits.
-#if defined(IS_64BIT)
-const bool CpuIs64Bit = true;
-#else
-const bool CpuIs64Bit = false;
-#endif
-
 #endif // !defined(BITCOUNT_H_INCLUDED)
