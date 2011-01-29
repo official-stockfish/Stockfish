@@ -17,11 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -32,7 +27,6 @@
 
 #include "bitcount.h"
 #include "movegen.h"
-#include "movepick.h"
 #include "position.h"
 #include "psqtab.h"
 #include "rkiss.h"
@@ -42,11 +36,6 @@
 using std::string;
 using std::cout;
 using std::endl;
-
-
-////
-//// Position's static data definitions
-////
 
 Key Position::zobrist[2][8][64];
 Key Position::zobEp[64];
@@ -402,14 +391,6 @@ const string Position::to_fen() const {
 void Position::print(Move move) const {
 
   const char* dottedLine = "\n+---+---+---+---+---+---+---+---+\n";
-  static bool requestPending = false;
-
-  // Check for reentrancy, as example when called from inside
-  // MovePicker that is used also here in move_to_san()
-  if (requestPending)
-      return;
-
-  requestPending = true;
 
   if (move)
   {
@@ -424,17 +405,16 @@ void Position::print(Move move) const {
       for (File file = FILE_A; file <= FILE_H; file++)
       {
           Square sq = make_square(file, rank);
-          char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
           Piece piece = piece_on(sq);
 
           if (piece == PIECE_NONE && square_color(sq) == DARK)
               piece = PIECE_NONE_DARK_SQ;
 
+          char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
           cout << c << pieceLetters.from_piece(piece) << c << '|';
       }
   }
   cout << dottedLine << "Fen is: " << to_fen() << "\nKey is: " << st->key << endl;
-  requestPending = false;
 }
 
 
