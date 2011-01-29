@@ -17,7 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <fstream>
@@ -76,8 +75,6 @@ namespace {
 
   // Bonus for having the side to move (modified by Joona Kiiski)
   const Score TempoValue = make_score(48, 22);
-
-  bool isZero(char c) { return c == '0'; }
 
   struct PieceLetters : public std::map<char, Piece> {
 
@@ -341,7 +338,7 @@ const string Position::to_fen() const {
   Square sq;
   char emptyCnt = '0';
 
-  for (Rank rank = RANK_8; rank >= RANK_1; rank--)
+  for (Rank rank = RANK_8; rank >= RANK_1; rank--, fen += '/')
   {
       for (File file = FILE_A; file <= FILE_H; file++)
       {
@@ -349,19 +346,23 @@ const string Position::to_fen() const {
 
           if (square_is_occupied(sq))
           {
-              fen += emptyCnt;
+              if (emptyCnt != '0')
+              {
+                  fen += emptyCnt;
+                  emptyCnt = '0';
+              }
               fen += pieceLetters.from_piece(piece_on(sq));
-              emptyCnt = '0';
           } else
               emptyCnt++;
       }
-      fen += emptyCnt;
-      fen += '/';
-      emptyCnt = '0';
+
+      if (emptyCnt != '0')
+      {
+          fen += emptyCnt;
+          emptyCnt = '0';
+      }
   }
 
-  fen.erase(std::remove_if(fen.begin(), fen.end(), isZero), fen.end());
-  fen.erase(--fen.end());
   fen += (sideToMove == WHITE ? " w " : " b ");
 
   if (st->castleRights != CASTLES_NONE)
