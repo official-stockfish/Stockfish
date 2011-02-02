@@ -1815,10 +1815,7 @@ split_point_start: // At split points actual search starts from here
     Value v = value_from_tt(tte->value(), ply);
 
      return   tte->depth() >= depth
-           && tte->type() == VALUE_TYPE_EXACT
-           && tte->move() != MOVE_NONE
-           && v < beta
-           && v > alpha;
+           && tte->type() == VALUE_TYPE_EXACT;
   }
 
 
