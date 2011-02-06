@@ -297,7 +297,6 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
-  bool ok_to_use_TT_PV(const TTEntry* tte, Depth depth, Value alpha, Value beta, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
@@ -839,10 +838,13 @@ namespace {
     tte = TT.retrieve(posKey);
     ttMove = tte ? tte->move() : MOVE_NONE;
 
-    // At PV nodes we check for exact scores within (alha, beta) range, while
-    // at non-PV nodes we check for and return a fail high/low. Biggest advantage
-    // at probing at PV nodes is to have a smooth experience in analysis mode.
-    if (!Root && tte && (PvNode ? ok_to_use_TT_PV(tte, depth, alpha, beta, ply) : ok_to_use_TT(tte, depth, beta, ply)))
+    // At PV nodes we check for exact scores, while at non-PV nodes we check for
+    // and return a fail high/low. Biggest advantage at probing at PV nodes is
+    // to have a smooth experience in analysis mode.
+    if (   !Root
+        && tte
+        && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
+                   : ok_to_use_TT(tte, depth, beta, ply)))
     {
         TT.refresh(tte);
         ss->bestMove = ttMove; // Can be MOVE_NONE
@@ -1794,9 +1796,7 @@ split_point_start: // At split points actual search starts from here
 
 
   // ok_to_use_TT() returns true if a transposition table score
-  // can be used at a given point in search. There are two versions
-  // one to be used in non-PV nodes and one in PV nodes where we look
-  // for an exact score that falls between (alha, beta) boundaries.
+  // can be used at a given point in search.
 
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply) {
 
@@ -1808,14 +1808,6 @@ split_point_start: // At split points actual search starts from here
 
           && (   ((tte->type() & VALUE_TYPE_LOWER) && v >= beta)
               || ((tte->type() & VALUE_TYPE_UPPER) && v < beta));
-  }
-
-  bool ok_to_use_TT_PV(const TTEntry* tte, Depth depth, Value alpha, Value beta, int ply) {
-
-    Value v = value_from_tt(tte->value(), ply);
-
-     return   tte->depth() >= depth
-           && tte->type() == VALUE_TYPE_EXACT;
   }
 
 
