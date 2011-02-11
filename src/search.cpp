@@ -671,10 +671,13 @@ namespace {
             // Search starting from ss+1 to allow calling update_gains()
             value = search<PV, false, true>(pos, ss+1, alpha, beta, depth, 0);
 
-            // Write PV lines to transposition table, in case the relevant entries
-            // have been overwritten during the search.
+            // Send PV line to GUI and write to transposition table in case the
+            // relevant entries have been overwritten during the search.
             for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
+            {
+                cout << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
                 Rml[i].insert_pv_in_tt(pos);
+            }
 
             // Value cannot be trusted. Break out immediately!
             if (StopRequest)
@@ -1263,12 +1266,7 @@ split_point_start: // At split points actual search starts from here
               if (!isPvMove && MultiPV == 1)
                   Rml.bestMoveChanges++;
 
-              // Inform GUI that PV has changed, in case of multi-pv UCI protocol
-              // requires we send all the PV lines properly sorted.
               Rml.sort_multipv(moveCount);
-
-              for (int j = 0; j < Min(MultiPV, (int)Rml.size()); j++)
-                  cout << Rml[j].pv_info_to_uci(pos, depth, alpha, beta, j) << endl;
 
               // Update alpha. In multi-pv we don't use aspiration window, so
               // set alpha equal to minimum score among the PV lines.
