@@ -209,7 +209,7 @@ namespace {
   // Minimum depth for use of singular extension
   const Depth SingularExtensionDepth[2] = { 8 * ONE_PLY /* non-PV */, 6 * ONE_PLY /* PV */};
 
-  // If the TT move is at least SingularExtensionMargin better then the
+  // If the TT move is at least SingularExtensionMargin better than the
   // remaining ones we will extend it.
   const Value SingularExtensionMargin = Value(0x20);
 
@@ -249,7 +249,7 @@ namespace {
   // MultiPV mode
   int MultiPV;
 
-  // Time managment variables
+  // Time management variables
   int SearchStartTime, MaxNodes, MaxDepth, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, Pondering, StopOnPonderhit;
   bool FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
@@ -331,7 +331,7 @@ namespace {
       Value score = VALUE_ZERO;
 
       // Score root moves using the standard way used in main search, the moves
-      // are scored according to the order in which are returned by MovePicker.
+      // are scored according to the order in which they are returned by MovePicker.
       // This is the second order score that is used to compare the moves when
       // the first order pv scores of both moves are equal.
       while ((move = MovePicker::get_next_move()) != MOVE_NONE)
@@ -621,7 +621,7 @@ namespace {
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
-    // Handle special case of searching on a mate/stale position
+    // Handle special case of searching on a mate/stalemate position
     if (Rml.size() == 0)
     {
         cout << "info depth 0 score "
@@ -826,7 +826,7 @@ namespace {
 
     // Step 4. Transposition table lookup
     // We don't want the score of a partial search to overwrite a previous full search
-    // TT value, so we use a different position key in case of an excluded move exists.
+    // TT value, so we use a different position key in case of an excluded move.
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
 
@@ -1048,7 +1048,7 @@ split_point_start: // At split points actual search starts from here
       // Singular extension search. If all moves but one fail low on a search of (alpha-s, beta-s),
       // and just one fails high on (alpha, beta), then that move is singular and should be extended.
       // To verify this we do a reduced search on all the other moves but the ttMove, if result is
-      // lower then ttValue minus a margin then we extend ttMove.
+      // lower than ttValue minus a margin then we extend ttMove.
       if (   singularExtensionNode
           && move == tte->move()
           && ext < ONE_PLY)
@@ -1253,7 +1253,7 @@ split_point_start: // At split points actual search starts from here
               mp.rm->extract_pv_from_tt(pos);
 
               // We record how often the best move has been changed in each
-              // iteration. This information is used for time managment: When
+              // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
               if (!isPvMove && MultiPV == 1)
                   Rml.bestMoveChanges++;
@@ -1745,7 +1745,7 @@ split_point_start: // At split points actual search starts from here
 
 
   // connected_threat() tests whether it is safe to forward prune a move or if
-  // is somehow coonected to the threat move returned by null search.
+  // is somehow connected to the threat move returned by null search.
 
   bool connected_threat(const Position& pos, Move m, Move threat) {
 
@@ -1767,7 +1767,7 @@ split_point_start: // At split points actual search starts from here
         return true;
 
     // Case 2: If the threatened piece has value less than or equal to the
-    // value of the threatening piece, don't prune move which defend it.
+    // value of the threatening piece, don't prune moves which defend it.
     if (   pos.move_is_capture(threat)
         && (   pos.midgame_value_of_piece_on(tfrom) >= pos.midgame_value_of_piece_on(tto)
             || pos.type_of_piece_on(tfrom) == KING)
@@ -2514,7 +2514,7 @@ split_point_start: // At split points actual search starts from here
         k = pos.get_key();
         tte = TT.retrieve(k);
 
-        // Don't overwrite exsisting correct entries
+        // Don't overwrite existing correct entries
         if (!tte || tte->move() != pv[ply])
         {
             v = (pos.is_check() ? VALUE_NONE : evaluate(pos, m));
