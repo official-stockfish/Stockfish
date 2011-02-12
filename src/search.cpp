@@ -617,16 +617,15 @@ namespace {
     TT.new_search();
     H.clear();
     memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
-    alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     *ponderMove = bestMove = easyMove = MOVE_NONE;
-    aspirationDelta = 0;
-    iteration = 1;
+    iteration = aspirationDelta = 0;
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
+    alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
     // Handle special case of searching on a mate/stale position
     if (Rml.size() == 0)
     {
-        cout << "info depth " << iteration << " score "
+        cout << "info depth 0 score "
              << value_to_uci(pos.is_check() ? -VALUE_MATE : VALUE_DRAW)
              << endl;
 
@@ -642,7 +641,7 @@ namespace {
     while (++iteration <= PLY_MAX && !StopRequest)
     {
         Rml.bestMoveChanges = researchCountFL = researchCountFH = 0;
-        depth = (iteration - 1) * ONE_PLY;
+        depth = iteration * ONE_PLY;
 
         if (MaxDepth && depth > MaxDepth * ONE_PLY)
             break;
@@ -650,7 +649,7 @@ namespace {
         cout << "info depth " << depth / ONE_PLY << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
-        if (MultiPV == 1 && iteration >= 6 && abs(bestValues[iteration - 1]) < VALUE_KNOWN_WIN)
+        if (MultiPV == 1 && iteration >= 5 && abs(bestValues[iteration - 1]) < VALUE_KNOWN_WIN)
         {
             int prevDelta1 = bestValues[iteration - 1] - bestValues[iteration - 2];
             int prevDelta2 = bestValues[iteration - 2] - bestValues[iteration - 3];
@@ -718,15 +717,15 @@ namespace {
             bool noMoreTime = false;
 
             // Stop search early when the last two iterations returned a mate score
-            if (   iteration >= 6
-                && abs(bestValues[iteration])   >= abs(VALUE_MATE) - 100
-                && abs(bestValues[iteration-1]) >= abs(VALUE_MATE) - 100)
+            if (   iteration >= 5
+                && abs(bestValues[iteration])     >= abs(VALUE_MATE) - 100
+                && abs(bestValues[iteration - 1]) >= abs(VALUE_MATE) - 100)
                 noMoreTime = true;
 
             // Stop search early if one move seems to be much better than the
             // others or if there is only a single legal move. In this latter
             // case we search up to Iteration 8 anyway to get a proper score.
-            if (   iteration >= 8
+            if (   iteration >= 7
                 && easyMove == bestMove
                 && (   Rml.size() == 1
                     ||(   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
@@ -736,7 +735,7 @@ namespace {
                 noMoreTime = true;
 
             // Add some extra time if the best move has changed during the last two iterations
-            if (iteration > 5 && iteration <= 50)
+            if (iteration > 4 && iteration < 50)
                 TimeMgr.pv_instability(bestMoveChanges[iteration], bestMoveChanges[iteration-1]);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
