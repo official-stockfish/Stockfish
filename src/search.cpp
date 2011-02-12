@@ -129,7 +129,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, Depth depth, Value alpha, Value beta, int pvLine = 0);
+    std::string pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine = 0);
 
     int64_t nodes;
     Value pv_score;
@@ -605,9 +605,8 @@ namespace {
     SearchStack ss[PLY_MAX_PLUS_2];
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int iteration, researchCountFL, researchCountFH, aspirationDelta;
+    int depth, researchCountFL, researchCountFH, aspirationDelta;
     Value value, alpha, beta;
-    Depth depth;
     Move bestMove, easyMove;
 
     // Moves to search are verified, scored and sorted
@@ -618,7 +617,7 @@ namespace {
     H.clear();
     memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
     *ponderMove = bestMove = easyMove = MOVE_NONE;
-    iteration = aspirationDelta = 0;
+    depth = aspirationDelta = 0;
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
 
@@ -638,27 +637,22 @@ namespace {
         easyMove = Rml[0].pv[0];
 
     // Iterative deepening loop
-    while (++iteration <= PLY_MAX && !StopRequest)
+    while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
     {
         Rml.bestMoveChanges = researchCountFL = researchCountFH = 0;
-        depth = iteration * ONE_PLY;
-
-        if (MaxDepth && depth > MaxDepth * ONE_PLY)
-            break;
-
-        cout << "info depth " << depth / ONE_PLY << endl;
+        cout << "info depth " << depth << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
-        if (MultiPV == 1 && iteration >= 5 && abs(bestValues[iteration - 1]) < VALUE_KNOWN_WIN)
+        if (MultiPV == 1 && depth >= 5 && abs(bestValues[depth - 1]) < VALUE_KNOWN_WIN)
         {
-            int prevDelta1 = bestValues[iteration - 1] - bestValues[iteration - 2];
-            int prevDelta2 = bestValues[iteration - 2] - bestValues[iteration - 3];
+            int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
+            int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
 
             aspirationDelta = Min(Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
             aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-            alpha = Max(bestValues[iteration - 1] - aspirationDelta, -VALUE_INFINITE);
-            beta  = Min(bestValues[iteration - 1] + aspirationDelta,  VALUE_INFINITE);
+            alpha = Max(bestValues[depth - 1] - aspirationDelta, -VALUE_INFINITE);
+            beta  = Min(bestValues[depth - 1] + aspirationDelta,  VALUE_INFINITE);
         }
 
         // Start with a small aspiration window and, in case of fail high/low,
@@ -666,7 +660,7 @@ namespace {
         while (true)
         {
             // Search starting from ss+1 to allow calling update_gains()
-            value = search<PV, false, true>(pos, ss+1, alpha, beta, depth, 0);
+            value = search<PV, false, true>(pos, ss+1, alpha, beta, depth * ONE_PLY, 0);
 
             // Send PV line to GUI and write to transposition table in case the
             // relevant entries have been overwritten during the search.
@@ -704,8 +698,8 @@ namespace {
 
         // Collect info about search result
         bestMove = Rml[0].pv[0];
-        bestValues[iteration] = value;
-        bestMoveChanges[iteration] = Rml.bestMoveChanges;
+        bestValues[depth] = value;
+        bestMoveChanges[depth] = Rml.bestMoveChanges;
 
         // Drop the easy move if differs from the new best move
         if (bestMove != easyMove)
@@ -717,15 +711,15 @@ namespace {
             bool noMoreTime = false;
 
             // Stop search early when the last two iterations returned a mate score
-            if (   iteration >= 5
-                && abs(bestValues[iteration])     >= abs(VALUE_MATE) - 100
-                && abs(bestValues[iteration - 1]) >= abs(VALUE_MATE) - 100)
+            if (   depth >= 5
+                && abs(bestValues[depth])     >= abs(VALUE_MATE) - 100
+                && abs(bestValues[depth - 1]) >= abs(VALUE_MATE) - 100)
                 noMoreTime = true;
 
             // Stop search early if one move seems to be much better than the
             // others or if there is only a single legal move. In this latter
             // case we search up to Iteration 8 anyway to get a proper score.
-            if (   iteration >= 7
+            if (   depth >= 7
                 && easyMove == bestMove
                 && (   Rml.size() == 1
                     ||(   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
@@ -735,8 +729,8 @@ namespace {
                 noMoreTime = true;
 
             // Add some extra time if the best move has changed during the last two iterations
-            if (iteration > 4 && iteration < 50)
-                TimeMgr.pv_instability(bestMoveChanges[iteration], bestMoveChanges[iteration-1]);
+            if (depth > 4 && depth < 50)
+                TimeMgr.pv_instability(bestMoveChanges[depth], bestMoveChanges[depth-1]);
 
             // Stop search if most of MaxSearchTime is consumed at the end of the
             // iteration. We probably don't have enough time to search the first
@@ -2537,7 +2531,7 @@ split_point_start: // At split points actual search starts from here
   // formatted according to UCI specification and eventually writes the info
   // to a log file. It is called at each iteration or after a new pv is found.
 
-  std::string RootMove::pv_info_to_uci(Position& pos, Depth depth, Value alpha, Value beta, int pvLine) {
+  std::string RootMove::pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine) {
 
     std::stringstream s, l;
     Move* m = pv;
@@ -2545,7 +2539,7 @@ split_point_start: // At split points actual search starts from here
     while (*m != MOVE_NONE)
         l << *m++ << " ";
 
-    s << "info depth " << depth / ONE_PLY
+    s << "info depth " << depth
       << " seldepth " << int(m - pv)
       << " multipv " << pvLine + 1
       << " score " << value_to_uci(pv_score)
@@ -2560,7 +2554,7 @@ split_point_start: // At split points actual search starts from here
         ValueType t = pv_score >= beta  ? VALUE_TYPE_LOWER :
                       pv_score <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
 
-        LogFile << pretty_pv(pos, current_search_time(), depth / ONE_PLY, pv_score, t, pv) << endl;
+        LogFile << pretty_pv(pos, current_search_time(), depth, pv_score, t, pv) << endl;
     }
     return s.str();
   }
