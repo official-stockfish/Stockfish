@@ -77,7 +77,7 @@ void benchmark(int argc, char* argv[]) {
 
   ttSize  = argc > 2 ? argv[2] : "128";
   threads = argc > 3 ? argv[3] : "1";
-  valStr  = argc > 4 ? argv[4] : "12";
+  valStr  = argc > 4 ? argv[4] : "11";
   posFile = argc > 5 ? argv[5] : "default";
   valType = argc > 6 ? argv[6] : "depth";
 

@@ -633,23 +633,21 @@ namespace {
         return MOVE_NONE;
     }
 
-    // Send initial scoring (iteration 1)
-    cout << set960(pos.is_chess960()) // Is enough to set once at the beginning
-         << "info depth " << iteration
-         << "\n" << Rml[0].pv_info_to_uci(pos, ONE_PLY, alpha, beta) << endl;
-
     // Is one move significantly better than others after initial scoring ?
     if (   Rml.size() == 1
         || Rml[0].pv_score > Rml[1].pv_score + EasyMoveMargin)
         easyMove = Rml[0].pv[0];
 
     // Iterative deepening loop
-    while (++iteration <= PLY_MAX && (!MaxDepth || iteration <= MaxDepth) && !StopRequest)
+    while (++iteration <= PLY_MAX && !StopRequest)
     {
-        cout << "info depth " << iteration << endl;
-
         Rml.bestMoveChanges = researchCountFL = researchCountFH = 0;
         depth = (iteration - 1) * ONE_PLY;
+
+        if (MaxDepth && depth > MaxDepth * ONE_PLY)
+            break;
+
+        cout << "info depth " << depth / ONE_PLY << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
         if (MultiPV == 1 && iteration >= 6 && abs(bestValues[iteration - 1]) < VALUE_KNOWN_WIN)
@@ -675,8 +673,9 @@ namespace {
             // relevant entries have been overwritten during the search.
             for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
             {
-                cout << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
                 Rml[i].insert_pv_in_tt(pos);
+                cout << set960(pos.is_chess960())
+                     << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
             }
 
             // Value cannot be trusted. Break out immediately!
