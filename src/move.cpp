@@ -179,12 +179,11 @@ const string move_to_san(Position& pos, Move m) {
 /// It is used to write search information to the log file (which is created
 /// when the UCI parameter "Use Search Log" is "true").
 
-const string pretty_pv(Position& pos, int time, int depth,
-                       Value score, ValueType type, Move pv[]) {
+const string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[]) {
 
   const int64_t K = 1000;
   const int64_t M = 1000000;
-  const int startColumn = 29;
+  const int startColumn = 28;
   const size_t maxLength = 80 - startColumn;
   const string lf = string("\n") + string(startColumn, ' ');
 
@@ -196,8 +195,7 @@ const string pretty_pv(Position& pos, int time, int depth,
 
   // First print depth, score, time and searched nodes...
   s << std::setw(2) << depth
-    << (type == VALUE_TYPE_LOWER ? " >" : type == VALUE_TYPE_UPPER ? " <" : "  ")
-    << std::setw(7) << score_string(score)
+    << std::setw(8) << score_string(score)
     << std::setw(8) << time_string(time);
 
   if (pos.nodes_searched() < M)

@@ -129,7 +129,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine = 0);
+    std::string pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine);
 
     int64_t nodes;
     Value pv_score;
@@ -544,12 +544,13 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       std::string name = Options["Search Log Filename"].value<std::string>();
       LogFile.open(name.c_str(), std::ios::out | std::ios::app);
 
-      LogFile << "Searching: "  << pos.to_fen()
-              << "\ninfinite: " << infinite
-              << " ponder: "    << ponder
-              << " time: "      << myTime
-              << " increment: " << myIncrement
-              << " moves to go: " << movesToGo << endl;
+      LogFile << "\nSearching: "  << pos.to_fen()
+              << "\ninfinite: "   << infinite
+              << " ponder: "      << ponder
+              << " time: "        << myTime
+              << " increment: "   << myIncrement
+              << " moves to go: " << movesToGo
+              << endl;
   }
 
   // We're ready to start thinking. Call the iterative deepening loop function
@@ -563,19 +564,14 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   if (UseLogFile)
   {
-      LogFile << "\nNodes: " << pos.nodes_searched()
+      LogFile << "Nodes: "          << pos.nodes_searched()
               << "\nNodes/second: " << nps(pos)
-              << "\nBest move: " << move_to_san(pos, bestMove);
+              << "\nBest move: "    << move_to_san(pos, bestMove);
 
       StateInfo st;
       pos.do_move(bestMove, st);
-      LogFile << "\nPonder move: "
-              << move_to_san(pos, ponderMove) // Works also with MOVE_NONE
-              << endl;
-
-      // Return from think() with unchanged position
-      pos.undo_move(bestMove);
-
+      LogFile << "\nPonder move: " << move_to_san(pos, ponderMove) << endl;
+      pos.undo_move(bestMove); // Return from think() with unchanged position
       LogFile.close();
   }
 
@@ -700,6 +696,9 @@ namespace {
         bestMove = Rml[0].pv[0];
         bestValues[depth] = value;
         bestMoveChanges[depth] = Rml.bestMoveChanges;
+
+        if (UseLogFile)
+            LogFile << pretty_pv(pos, depth, value, current_search_time(), Rml[0].pv) << endl;
 
         // Drop the easy move if differs from the new best move
         if (bestMove != easyMove)
@@ -1880,7 +1879,7 @@ split_point_start: // At split points actual search starts from here
     if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
       s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
     else
-      s << "mate " << (v > 0 ? (VALUE_MATE - v + 1) / 2 : -(VALUE_MATE + v) / 2 );
+      s << "mate " << (v > 0 ? (VALUE_MATE - v + 1) / 2 : -(VALUE_MATE + v) / 2);
 
     return s.str();
   }
@@ -2528,8 +2527,8 @@ split_point_start: // At split points actual search starts from here
   }
 
   // pv_info_to_uci() returns a string with information on the current PV line
-  // formatted according to UCI specification and eventually writes the info
-  // to a log file. It is called at each iteration or after a new pv is found.
+  // formatted according to UCI specification. It is called at each iteration
+  // or after a new pv is found.
 
   std::string RootMove::pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine) {
 
@@ -2549,13 +2548,6 @@ split_point_start: // At split points actual search starts from here
       << " nps "   << nps(pos)
       << " pv "    << l.str();
 
-    if (UseLogFile && pvLine == 0)
-    {
-        ValueType t = pv_score >= beta  ? VALUE_TYPE_LOWER :
-                      pv_score <= alpha ? VALUE_TYPE_UPPER : VALUE_TYPE_EXACT;
-
-        LogFile << pretty_pv(pos, current_search_time(), depth, pv_score, t, pv) << endl;
-    }
     return s.str();
   }
 
