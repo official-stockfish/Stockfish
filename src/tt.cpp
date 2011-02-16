@@ -122,7 +122,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           continue;
 
       c1 = (replace->generation() == generation ?  2 : 0);
-      c2 = (tte->generation() == generation || tte->type() == VALUE_TYPE_EXACT ? -2 : 0);
+      c2 = (tte->generation() == generation ? -2 : 0);
       c3 = (tte->depth() < replace->depth() ?  1 : 0);
 
       if (c1 + c2 + c3 > 0)
