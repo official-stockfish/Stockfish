@@ -1153,8 +1153,7 @@ split_point_start: // At split points actual search starts from here
               &&  ss->killers[0] != move
               &&  ss->killers[1] != move)
           {
-              ss->reduction = Root ? reduction<PvNode>(depth, moveCount - MultiPV + 1)
-                                   : reduction<PvNode>(depth, moveCount);
+              ss->reduction = reduction<PvNode>(depth, moveCount);
               if (ss->reduction)
               {
                   alpha = SpNode ? sp->alpha : alpha;
