@@ -1192,14 +1192,14 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      if (!Root && value > bestValue && !(SpNode && ThreadsMgr.cutoff_at_splitpoint(threadID)))
+      if (value > bestValue && !(SpNode && ThreadsMgr.cutoff_at_splitpoint(threadID)))
       {
           bestValue = value;
 
           if (SpNode)
               sp->bestValue = value;
 
-          if (value > alpha)
+          if (!Root && value > alpha)
           {
               if (PvNode && value < beta) // We want always alpha < beta
               {
@@ -1223,10 +1223,6 @@ split_point_start: // At split points actual search starts from here
 
       if (Root)
       {
-          // To avoid to exit with bestValue == -VALUE_INFINITE
-          if (value > bestValue)
-              bestValue = value;
-
           // Finished searching the move. If StopRequest is true, the search
           // was aborted because the user interrupted the search or because we
           // ran out of time. In this case, the return value of the search cannot
@@ -1238,13 +1234,9 @@ split_point_start: // At split points actual search starts from here
           // Remember searched nodes counts for this move
           mp.rm->nodes += pos.nodes_searched() - nodes;
 
-          // Step 17. Check for new best move
-          if (!isPvMove && value <= alpha)
-              mp.rm->pv_score = -VALUE_INFINITE;
-          else
+          // PV move or new best move ?
+          if (isPvMove || value > alpha)
           {
-              // PV move or new best move!
-
               // Update PV
               ss->bestMove = move;
               mp.rm->pv_score = value;
@@ -1264,9 +1256,11 @@ split_point_start: // At split points actual search starts from here
                   alpha = Rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
               else if (value > alpha)
                   alpha = value;
+          }
+          else
+              mp.rm->pv_score = -VALUE_INFINITE;
 
-          } // PV move or new best move
-      }
+      } // Root
 
       // Step 18. Check for split
       if (   !Root
