@@ -209,10 +209,6 @@ namespace {
   // Minimum depth for use of singular extension
   const Depth SingularExtensionDepth[2] = { 8 * ONE_PLY /* non-PV */, 6 * ONE_PLY /* PV */};
 
-  // If the TT move is at least SingularExtensionMargin better than the
-  // remaining ones we will extend it.
-  const Value SingularExtensionMargin = Value(0x20);
-
   // Step 12. Futility pruning
 
   // Futility margin for quiescence search
@@ -1055,7 +1051,7 @@ split_point_start: // At split points actual search starts from here
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value b = ttValue - SingularExtensionMargin;
+              Value b = ttValue - depth;
               ss->excludedMove = move;
               ss->skipNullMove = true;
               Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply);
