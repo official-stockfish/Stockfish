@@ -1070,7 +1070,7 @@ split_point_start: // At split points actual search starts from here
 
       // Update current move (this must be done after singular extension search)
       ss->currentMove = move;
-      newDepth = depth - (!Root ? ONE_PLY : DEPTH_ZERO) + ext;
+      newDepth = depth - ONE_PLY + ext;
 
       // Step 12. Futility pruning (is omitted in PV nodes)
       if (   !PvNode

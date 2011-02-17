@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
   {
       if (string(argv[1]) != "bench" || argc > 7)
           cout << "Usage: stockfish bench [hash size = 128] [threads = 1] "
-               << "[limit = 11] [fen positions file = default] "
+               << "[limit = 12] [fen positions file = default] "
                << "[depth, time, perft or node limited = depth]" << endl;
       else
           benchmark(argc, argv);
