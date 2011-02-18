@@ -611,7 +611,7 @@ namespace {
     // Initialize FIXME move before Rml.init()
     TT.new_search();
     H.clear();
-    memset(ss, 0, PLY_MAX_PLUS_2 * sizeof(SearchStack));
+    memset(ss, 0, 4 * sizeof(SearchStack));
     *ponderMove = bestMove = easyMove = MOVE_NONE;
     depth = aspirationDelta = 0;
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
@@ -801,7 +801,8 @@ namespace {
         bestValue = alpha;
 
     // Step 1. Initialize node and poll. Polling can abort search
-    ss->currentMove = ss->bestMove = threatMove = MOVE_NONE;
+    ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
+    (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
 
     if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
@@ -2109,16 +2110,19 @@ split_point_start: // At split points actual search starts from here
 
             threads[threadID].state = THREAD_SEARCHING;
 
-            // Here we call search() with SplitPoint template parameter set to true
+            // Copy SplitPoint position and search stack and call search()
+            // with SplitPoint template parameter set to true.
+            SearchStack ss[PLY_MAX_PLUS_2];
             SplitPoint* tsp = threads[threadID].splitPoint;
             Position pos(*tsp->pos, threadID);
-            SearchStack* ss = tsp->sstack[threadID] + 1;
-            ss->sp = tsp;
+
+            memcpy(ss, tsp->parentSstack - 1, 4 * sizeof(SearchStack));
+            (ss+1)->sp = tsp;
 
             if (tsp->pvNode)
-                search<PV, true, false>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
+                search<PV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
             else
-                search<NonPV, true, false>(pos, ss, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
+                search<NonPV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
@@ -2394,8 +2398,6 @@ split_point_start: // At split points actual search starts from here
     for (i = 0; i < activeThreads; i++)
         if (i == master || splitPoint.slaves[i])
         {
-            memcpy(splitPoint.sstack[i], ss - 1, 4 * sizeof(SearchStack));
-
             assert(i == master || threads[i].state == THREAD_BOOKED);
 
             threads[i].state = THREAD_WORKISWAITING; // This makes the slave to exit from idle_loop()
