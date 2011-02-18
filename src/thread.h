@@ -60,7 +60,7 @@ struct SplitPoint {
 
   // Const pointers to shared data
   MovePicker* mp;
-  SearchStack* parentSstack;
+  SearchStack* ss;
 
   // Shared data
   Lock lock;

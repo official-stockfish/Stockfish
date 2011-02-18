@@ -1218,7 +1218,7 @@ split_point_start: // At split points actual search starts from here
               ss->bestMove = move;
 
               if (SpNode)
-                  sp->parentSstack->bestMove = move;
+                  sp->ss->bestMove = move;
           }
       }
 
@@ -2116,7 +2116,7 @@ split_point_start: // At split points actual search starts from here
             SplitPoint* tsp = threads[threadID].splitPoint;
             Position pos(*tsp->pos, threadID);
 
-            memcpy(ss, tsp->parentSstack - 1, 4 * sizeof(SearchStack));
+            memcpy(ss, tsp->ss - 1, 4 * sizeof(SearchStack));
             (ss+1)->sp = tsp;
 
             if (tsp->pvNode)
@@ -2367,7 +2367,7 @@ split_point_start: // At split points actual search starts from here
     splitPoint.moveCount = moveCount;
     splitPoint.pos = &pos;
     splitPoint.nodes = 0;
-    splitPoint.parentSstack = ss;
+    splitPoint.ss = ss;
     for (i = 0; i < activeThreads; i++)
         splitPoint.slaves[i] = 0;
 
@@ -2394,7 +2394,7 @@ split_point_start: // At split points actual search starts from here
     lock_release(&mpLock);
 
     // Tell the threads that they have work to do. This will make them leave
-    // their idle loop. But before copy search stack tail for each thread.
+    // their idle loop.
     for (i = 0; i < activeThreads; i++)
         if (i == master || splitPoint.slaves[i])
         {
