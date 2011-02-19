@@ -306,7 +306,7 @@ namespace {
 
   int current_search_time();
   std::string value_to_uci(Value v);
-  int nps(const Position& pos);
+  std::string speed_to_uci(int64_t nodes);
   void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
 
@@ -558,14 +558,14 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
 
   // Print final search statistics
-  cout << "info nodes " << pos.nodes_searched()
-       << " nps " << nps(pos)
-       << " time " << current_search_time() << endl;
+  cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
 
   if (UseLogFile)
   {
+      int t = current_search_time();
+
       LogFile << "Nodes: "          << pos.nodes_searched()
-              << "\nNodes/second: " << nps(pos)
+              << "\nNodes/second: " << (t > 0 ? int(pos.nodes_searched() * 1000 / t) : 0)
               << "\nBest move: "    << move_to_san(pos, bestMove);
 
       StateInfo st;
@@ -1028,9 +1028,7 @@ split_point_start: // At split points actual search starts from here
           if (SendSearchedNodes)
           {
               SendSearchedNodes = false;
-              cout << "info nodes " << nodes
-                   << " nps " << nps(pos)
-                   << " time " << current_search_time() << endl;
+              cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
           }
 
           if (current_search_time() >= 1000)
@@ -1858,6 +1856,14 @@ split_point_start: // At split points actual search starts from here
         H.update_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
+  // current_search_time() returns the number of milliseconds which have passed
+  // since the beginning of the current search.
+
+  int current_search_time() {
+
+    return get_system_time() - SearchStartTime;
+  }
+
 
   // value_to_uci() converts a value to a string suitable for use with the UCI
   // protocol specifications:
@@ -1879,21 +1885,19 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // current_search_time() returns the number of milliseconds which have passed
-  // since the beginning of the current search.
+  // speed_to_uci() returns a string with time stats of current search suitable
+  // to be sent to UCI gui.
 
-  int current_search_time() {
+  std::string speed_to_uci(int64_t nodes) {
 
-    return get_system_time() - SearchStartTime;
-  }
-
-
-  // nps() computes the current nodes/second count
-
-  int nps(const Position& pos) {
-
+    std::stringstream s;
     int t = current_search_time();
-    return (t > 0 ? int((pos.nodes_searched() * 1000) / t) : 0);
+
+    s << " nodes " << nodes
+      << " nps "   << (t > 0 ? int(nodes * 1000 / t) : 0)
+      << " time "  << t;
+
+    return s.str();
   }
 
 
@@ -2538,9 +2542,7 @@ split_point_start: // At split points actual search starts from here
       << " multipv " << pvLine + 1
       << " score " << value_to_uci(pv_score)
       << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
-      << " time "  << current_search_time()
-      << " nodes " << pos.nodes_searched()
-      << " nps "   << nps(pos)
+      << speed_to_uci(pos.nodes_searched())
       << " pv "    << l.str();
 
     return s.str();
