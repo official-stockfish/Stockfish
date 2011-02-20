@@ -27,7 +27,7 @@
 #include "position.h"
 #include "search.h"
 
-const int MAX_THREADS = 16;
+const int MAX_THREADS = 32;
 const int MAX_ACTIVE_SPLIT_POINTS = 8;
 
 struct SplitPoint {
