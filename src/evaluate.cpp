@@ -1105,7 +1105,7 @@ namespace {
     Value ev = Value((eg * int(sf)) / SCALE_FACTOR_NORMAL);
 
     int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;
-    return Value(result & ~(GrainSize - 1));
+    return Value((result + GrainSize / 2) & ~(GrainSize - 1));
   }
 
 
