@@ -1427,6 +1427,13 @@ split_point_start: // At split points actual search starts from here
                   bestValue = futilityValue;
               continue;
           }
+
+          // Prune moves with negative or equal SEE
+          if (   futilityBase < beta
+              && depth < DEPTH_ZERO
+              && bestValue > value_mated_in(PLY_MAX)
+              && pos.see(move) <= 0)
+              continue;
       }
 
       // Detect non-capture evasions that are candidate to be pruned
