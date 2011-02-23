@@ -20,23 +20,13 @@
 // To profile with callgrind uncomment following line
 //#define USE_CALLGRIND
 
-
-////
-//// Includes
-////
-
 #include <cstdio>
 #include <iostream>
 #include <string>
 
 #include "bitboard.h"
-#include "bitcount.h"
-#include "endgame.h"
 #include "evaluate.h"
-#include "material.h"
-#include "misc.h"
 #include "position.h"
-#include "search.h"
 #include "thread.h"
 #include "ucioption.h"
 
@@ -48,10 +38,7 @@ using namespace std;
 
 extern bool execute_uci_command(const string& cmd);
 extern void benchmark(int argc, char* argv[]);
-
-////
-//// Functions
-////
+extern void init_bitbases();
 
 int main(int argc, char* argv[]) {
 

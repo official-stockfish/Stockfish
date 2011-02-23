@@ -21,12 +21,7 @@
 #define HISTORY_H_INCLUDED
 
 #include <cstring>
-
-#include "depth.h"
-#include "piece.h"
-#include "square.h"
-#include "value.h"
-
+#include "types.h"
 
 /// The History class stores statistics about how often different moves
 /// have been successful or unsuccessful during the current search. These

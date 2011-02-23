@@ -22,9 +22,7 @@
 
 #include "bitboard.h"
 #include "move.h"
-#include "piece.h"
-#include "square.h"
-#include "value.h"
+#include "types.h"
 
 /// Maximum number of plies per game (220 should be enough, because the
 /// maximum search depth is 100, and during position setup we reset the

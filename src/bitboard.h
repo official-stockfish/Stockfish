@@ -21,8 +21,6 @@
 #if !defined(BITBOARD_H_INCLUDED)
 #define BITBOARD_H_INCLUDED
 
-#include "piece.h"
-#include "square.h"
 #include "types.h"
 
 const Bitboard EmptyBoardBB = 0;

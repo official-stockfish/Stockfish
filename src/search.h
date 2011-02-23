@@ -17,30 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(SEARCH_H_INCLUDED)
 #define SEARCH_H_INCLUDED
 
-////
-//// Includes
-////
-
-#include "depth.h"
 #include "move.h"
-#include "value.h"
-
-
-////
-//// Constants
-////
+#include "types.h"
 
 const int PLY_MAX = 100;
 const int PLY_MAX_PLUS_2 = PLY_MAX + 2;
-
-
-////
-//// Types
-////
 
 /// The SearchStack struct keeps track of the information we need to remember
 /// from nodes shallower and deeper in the tree during the search.  Each
@@ -62,10 +46,6 @@ struct SearchStack {
   SplitPoint* sp;
 };
 
-
-////
-//// Prototypes
-////
 class Position;
 
 extern void init_search();

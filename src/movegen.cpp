@@ -17,16 +17,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 
 #include "bitcount.h"
 #include "movegen.h"
-#include "types.h"
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,
 // hardcoded list name 'mlist' and from square 'from'.
@@ -34,10 +28,6 @@
 
 // Version used for pawns, where the 'from' square is given as a delta from the 'to' square
 #define SERIALIZE_MOVES_D(b, d) while (b) { to = pop_1st_bit(&b); (*mlist++).move = make_move(to + (d), to); }
-
-////
-//// Local definitions
-////
 
 namespace {
 

@@ -23,9 +23,7 @@
 #include <string>
 
 #include "misc.h"
-#include "piece.h"
-#include "square.h"
-#include "value.h"
+#include "types.h"
 
 // Maximum number of allowed moves per position
 const int MOVES_MAX = 256;

@@ -17,21 +17,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(ENDGAME_H_INCLUDED)
 #define ENDGAME_H_INCLUDED
 
-////
-//// Includes
-////
-
 #include "position.h"
-#include "value.h"
-
-
-////
-//// Types
-////
+#include "types.h"
 
 enum EndgameType {
 
@@ -93,12 +83,5 @@ struct ScalingFunction : public EndgameScalingFunctionBase {
   explicit ScalingFunction(Color c) : EndgameScalingFunctionBase(c) {}
   ScaleFactor apply(const Position&) const;
 };
-
-
-////
-//// Prototypes
-////
-
-extern void init_bitbases();
 
 #endif // !defined(ENDGAME_H_INCLUDED)

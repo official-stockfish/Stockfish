@@ -17,20 +17,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 
 #include "bitboard.h"
-#include "square.h"
-
-
-////
-//// Local definitions
-////
+#include "types.h"
 
 namespace {
 
@@ -62,10 +52,6 @@ namespace {
   int compute_index(Square wksq, Square bksq, Square psq, Color stm);
 }
 
-
-////
-//// Functions
-////
 
 void generate_kpk_bitbase(uint8_t bitbase[]) {
 

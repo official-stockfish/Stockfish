@@ -21,7 +21,6 @@
 #define MISC_H_INCLUDED
 
 #include <string>
-
 #include "types.h"
 
 extern const std::string engine_name();

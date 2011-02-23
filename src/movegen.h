@@ -17,7 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(MOVEGEN_H_INCLUDED)
 #define MOVEGEN_H_INCLUDED
 

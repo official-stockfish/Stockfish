@@ -17,14 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(THREAD_H_INCLUDED)
 #define THREAD_H_INCLUDED
-
-
-////
-//// Includes
-////
 
 #include <cstring>
 
@@ -33,18 +27,8 @@
 #include "position.h"
 #include "search.h"
 
-
-////
-//// Constants and variables
-////
-
 const int MAX_THREADS = 16;
 const int MAX_ACTIVE_SPLIT_POINTS = 8;
-
-
-////
-//// Types
-////
 
 struct SplitPoint {
 
@@ -73,7 +57,6 @@ struct SplitPoint {
 };
 
 // ThreadState type is used to represent thread's current state
-
 enum ThreadState
 {
   THREAD_INITIALIZING,  // thread is initializing itself
@@ -90,6 +73,5 @@ struct Thread {
   volatile int activeSplitPoints;
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
 };
-
 
 #endif // !defined(THREAD_H_INCLUDED)

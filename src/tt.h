@@ -17,21 +17,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(TT_H_INCLUDED)
 #define TT_H_INCLUDED
 
 #include <iostream>
 
-#include "depth.h"
 #include "move.h"
-#include "value.h"
-
-
-////
-//// Types
-////
-
+#include "types.h"
 
 /// A simple fixed size hash table used to store pawns and material
 /// configurations. It is basically just an array of Entry objects.

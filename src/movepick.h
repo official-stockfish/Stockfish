@@ -20,9 +20,9 @@
 #if !defined MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include "depth.h"
 #include "history.h"
 #include "position.h"
+#include "types.h"
 
 struct SearchStack;
 

@@ -17,13 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(TIMEMAN_H_INCLUDED)
 #define TIMEMAN_H_INCLUDED
-
-////
-//// Prototypes
-////
 
 class TimeManager {
 public:

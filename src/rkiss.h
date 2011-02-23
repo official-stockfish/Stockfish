@@ -39,17 +39,7 @@
 #if !defined(RKISS_H_INCLUDED)
 #define RKISS_H_INCLUDED
 
-
-////
-//// Includes
-////
-
 #include "types.h"
-
-
-////
-//// Types
-////
 
 class RKISS {
 

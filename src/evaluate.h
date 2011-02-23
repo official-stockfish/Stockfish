@@ -17,12 +17,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(EVALUATE_H_INCLUDED)
 #define EVALUATE_H_INCLUDED
 
-#include "piece.h"
-#include "value.h"
+#include "types.h"
 
 class Position;
 

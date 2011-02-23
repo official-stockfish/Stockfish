@@ -20,6 +20,7 @@
 #if !defined(TYPES_H_INCLUDED)
 #define TYPES_H_INCLUDED
 
+#include <climits>
 #include <cstdlib>
 
 #if defined(_MSC_VER)
@@ -44,10 +45,6 @@ typedef unsigned __int64 uint64_t;
 #include <inttypes.h>
 
 #endif
-
-// Our hash key and bitboard types
-typedef uint64_t Key;
-typedef uint64_t Bitboard;
 
 #define Min(x, y) (((x) < (y)) ? (x) : (y))
 #define Max(x, y) (((x) < (y)) ? (y) : (x))
@@ -131,23 +128,6 @@ inline void __cpuid(int CPUInfo[4], int)
 #define FORCE_INLINE  inline
 #endif
 
-// Operators used by enum types like Depth, Piece, Square and so on.
-
-#define ENABLE_OPERATORS_ON(T) \
-inline T operator+ (const T d1, const T d2) { return T(int(d1) + int(d2)); } \
-inline T operator- (const T d1, const T d2) { return T(int(d1) - int(d2)); } \
-inline T operator* (int i, const T d) {  return T(i * int(d)); } \
-inline T operator* (const T d, int i) {  return T(int(d) * i); } \
-inline T operator/ (const T d, int i) { return T(int(d) / i); } \
-inline T operator- (const T d) { return T(-int(d)); } \
-inline T operator++ (T& d, int) {d = T(int(d) + 1); return d; } \
-inline T operator-- (T& d, int) { d = T(int(d) - 1); return d; } \
-inline void operator+= (T& d1, const T d2) { d1 = d1 + d2; } \
-inline void operator-= (T& d1, const T d2) { d1 = d1 - d2; } \
-inline void operator*= (T& d, int i) { d = T(int(d) * i); } \
-inline void operator/= (T& d, int i) { d = T(int(d) / i); }
-
-
 /// cpu_has_popcnt() detects support for popcnt instruction at runtime
 inline bool cpu_has_popcnt() {
 
@@ -173,5 +153,308 @@ const bool CpuIs64Bit = true;
 #else
 const bool CpuIs64Bit = false;
 #endif
+
+#include <string>
+
+typedef uint64_t Key;
+typedef uint64_t Bitboard;
+
+enum ValueType {
+  VALUE_TYPE_NONE  = 0,
+  VALUE_TYPE_UPPER = 1,
+  VALUE_TYPE_LOWER = 2,
+  VALUE_TYPE_EXACT = VALUE_TYPE_UPPER | VALUE_TYPE_LOWER
+};
+
+enum Value {
+  VALUE_ZERO      = 0,
+  VALUE_DRAW      = 0,
+  VALUE_KNOWN_WIN = 15000,
+  VALUE_MATE      = 30000,
+  VALUE_INFINITE  = 30001,
+  VALUE_NONE      = 30002,
+  VALUE_ENSURE_INTEGER_SIZE_P = INT_MAX,
+  VALUE_ENSURE_INTEGER_SIZE_N = INT_MIN
+};
+
+enum PieceType {
+  PIECE_TYPE_NONE = 0,
+  PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6
+};
+
+enum Piece {
+  PIECE_NONE_DARK_SQ = 0, WP = 1, WN = 2, WB = 3, WR = 4, WQ = 5, WK = 6,
+  BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, PIECE_NONE = 16
+};
+
+enum Color {
+  WHITE, BLACK, COLOR_NONE
+};
+
+enum Depth {
+
+  ONE_PLY = 2,
+
+  DEPTH_ZERO         =  0 * ONE_PLY,
+  DEPTH_QS_CHECKS    = -1 * ONE_PLY,
+  DEPTH_QS_NO_CHECKS = -2 * ONE_PLY,
+
+  DEPTH_NONE = -127 * ONE_PLY
+};
+
+enum Square {
+  SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
+  SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
+  SQ_A3, SQ_B3, SQ_C3, SQ_D3, SQ_E3, SQ_F3, SQ_G3, SQ_H3,
+  SQ_A4, SQ_B4, SQ_C4, SQ_D4, SQ_E4, SQ_F4, SQ_G4, SQ_H4,
+  SQ_A5, SQ_B5, SQ_C5, SQ_D5, SQ_E5, SQ_F5, SQ_G5, SQ_H5,
+  SQ_A6, SQ_B6, SQ_C6, SQ_D6, SQ_E6, SQ_F6, SQ_G6, SQ_H6,
+  SQ_A7, SQ_B7, SQ_C7, SQ_D7, SQ_E7, SQ_F7, SQ_G7, SQ_H7,
+  SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
+  SQ_NONE,
+
+  DELTA_N =  8,
+  DELTA_E =  1,
+  DELTA_S = -8,
+  DELTA_W = -1,
+
+  DELTA_NN = DELTA_N + DELTA_N,
+  DELTA_NE = DELTA_N + DELTA_E,
+  DELTA_SE = DELTA_S + DELTA_E,
+  DELTA_SS = DELTA_S + DELTA_S,
+  DELTA_SW = DELTA_S + DELTA_W,
+  DELTA_NW = DELTA_N + DELTA_W
+};
+
+enum File {
+  FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H
+};
+
+enum Rank {
+  RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8
+};
+
+enum SquareColor {
+  DARK, LIGHT
+};
+
+enum ScaleFactor {
+  SCALE_FACTOR_ZERO   = 0,
+  SCALE_FACTOR_NORMAL = 64,
+  SCALE_FACTOR_MAX    = 128,
+  SCALE_FACTOR_NONE   = 255
+};
+
+
+/// Score enum keeps a midgame and an endgame value in a single
+/// integer (enum), first LSB 16 bits are used to store endgame
+/// value, while upper bits are used for midgame value. Compiler
+/// is free to choose the enum type as long as can keep its data,
+/// so ensure Score to be an integer type.
+enum Score {
+    SCORE_ZERO = 0,
+    SCORE_ENSURE_INTEGER_SIZE_P = INT_MAX,
+    SCORE_ENSURE_INTEGER_SIZE_N = INT_MIN
+};
+
+#define ENABLE_OPERATORS_ON(T) \
+inline T operator+ (const T d1, const T d2) { return T(int(d1) + int(d2)); } \
+inline T operator- (const T d1, const T d2) { return T(int(d1) - int(d2)); } \
+inline T operator* (int i, const T d) {  return T(i * int(d)); } \
+inline T operator* (const T d, int i) {  return T(int(d) * i); } \
+inline T operator/ (const T d, int i) { return T(int(d) / i); } \
+inline T operator- (const T d) { return T(-int(d)); } \
+inline T operator++ (T& d, int) {d = T(int(d) + 1); return d; } \
+inline T operator-- (T& d, int) { d = T(int(d) - 1); return d; } \
+inline void operator+= (T& d1, const T d2) { d1 = d1 + d2; } \
+inline void operator-= (T& d1, const T d2) { d1 = d1 - d2; } \
+inline void operator*= (T& d, int i) { d = T(int(d) * i); } \
+inline void operator/= (T& d, int i) { d = T(int(d) / i); }
+
+ENABLE_OPERATORS_ON(Value)
+ENABLE_OPERATORS_ON(PieceType)
+ENABLE_OPERATORS_ON(Piece)
+ENABLE_OPERATORS_ON(Color)
+ENABLE_OPERATORS_ON(Depth)
+ENABLE_OPERATORS_ON(Square)
+ENABLE_OPERATORS_ON(File)
+ENABLE_OPERATORS_ON(Rank)
+
+#undef ENABLE_OPERATORS_ON
+
+// Extra operators for adding integers to a Value
+inline Value operator+ (Value v, int i) { return Value(int(v) + i); }
+inline Value operator- (Value v, int i) { return Value(int(v) - i); }
+
+// Extracting the _signed_ lower and upper 16 bits it not so trivial
+// because according to the standard a simple cast to short is
+// implementation defined and so is a right shift of a signed integer.
+inline Value mg_value(Score s) { return Value(((int(s) + 32768) & ~0xffff) / 0x10000); }
+
+// Unfortunatly on Intel 64 bit we have a small speed regression, so use a faster code in
+// this case, although not 100% standard compliant it seems to work for Intel and MSVC.
+#if defined(IS_64BIT) && (!defined(__GNUC__) || defined(__INTEL_COMPILER))
+inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
+#else
+inline Value eg_value(Score s) { return Value((int)(unsigned(s) & 0x7fffu) - (int)(unsigned(s) & 0x8000u)); }
+#endif
+
+inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
+
+// Division must be handled separately for each term
+inline Score operator/(Score s, int i) { return make_score(mg_value(s) / i, eg_value(s) / i); }
+
+// Only declared but not defined. We don't want to multiply two scores due to
+// a very high risk of overflow. So user should explicitly convert to integer.
+inline Score operator*(Score s1, Score s2);
+
+// Remaining Score operators are standard
+inline Score operator+ (const Score d1, const Score d2) { return Score(int(d1) + int(d2)); }
+inline Score operator- (const Score d1, const Score d2) { return Score(int(d1) - int(d2)); }
+inline Score operator* (int i, const Score d) {  return Score(i * int(d)); }
+inline Score operator* (const Score d, int i) {  return Score(int(d) * i); }
+inline Score operator- (const Score d) { return Score(-int(d)); }
+inline void operator+= (Score& d1, const Score d2) { d1 = d1 + d2; }
+inline void operator-= (Score& d1, const Score d2) { d1 = d1 - d2; }
+inline void operator*= (Score& d, int i) { d = Score(int(d) * i); }
+inline void operator/= (Score& d, int i) { d = Score(int(d) / i); }
+
+const Value PawnValueMidgame   = Value(0x0C6);
+const Value PawnValueEndgame   = Value(0x102);
+const Value KnightValueMidgame = Value(0x331);
+const Value KnightValueEndgame = Value(0x34E);
+const Value BishopValueMidgame = Value(0x344);
+const Value BishopValueEndgame = Value(0x359);
+const Value RookValueMidgame   = Value(0x4F6);
+const Value RookValueEndgame   = Value(0x4FE);
+const Value QueenValueMidgame  = Value(0x9D9);
+const Value QueenValueEndgame  = Value(0x9FE);
+
+inline Value value_mate_in(int ply) {
+  return VALUE_MATE - ply;
+}
+
+inline Value value_mated_in(int ply) {
+  return -VALUE_MATE + ply;
+}
+
+inline Piece make_piece(Color c, PieceType pt) {
+  return Piece((int(c) << 3) | int(pt));
+}
+
+inline PieceType type_of_piece(Piece p)  {
+  return PieceType(int(p) & 7);
+}
+
+inline Color color_of_piece(Piece p) {
+  return Color(int(p) >> 3);
+}
+
+inline Color opposite_color(Color c) {
+  return Color(int(c) ^ 1);
+}
+
+inline bool color_is_ok(Color c) {
+  return c == WHITE || c == BLACK;
+}
+
+inline bool piece_type_is_ok(PieceType pt) {
+  return pt >= PAWN && pt <= KING;
+}
+
+inline bool piece_is_ok(Piece p) {
+  return piece_type_is_ok(type_of_piece(p)) && color_is_ok(color_of_piece(p));
+}
+
+inline char piece_type_to_char(PieceType pt) {
+  static const char ch[] = " PNBRQK";
+  return ch[pt];
+}
+
+inline Square make_square(File f, Rank r) {
+  return Square((int(r) << 3) | int(f));
+}
+
+inline File square_file(Square s) {
+  return File(int(s) & 7);
+}
+
+inline Rank square_rank(Square s) {
+  return Rank(int(s) >> 3);
+}
+
+inline Square flip_square(Square s) {
+  return Square(int(s) ^ 56);
+}
+
+inline Square flop_square(Square s) {
+  return Square(int(s) ^ 7);
+}
+
+inline Square relative_square(Color c, Square s) {
+  return Square(int(s) ^ (int(c) * 56));
+}
+
+inline Rank relative_rank(Color c, Rank r) {
+  return Rank(int(r) ^ (int(c) * 7));
+}
+
+inline Rank relative_rank(Color c, Square s) {
+  return relative_rank(c, square_rank(s));
+}
+
+inline SquareColor square_color(Square s) {
+  return SquareColor(int(square_rank(s) + s) & 1);
+}
+
+inline bool opposite_color_squares(Square s1, Square s2) {
+  int s = int(s1) ^ int(s2);
+  return ((s >> 3) ^ s) & 1;
+}
+
+inline int file_distance(Square s1, Square s2) {
+  return abs(square_file(s1) - square_file(s2));
+}
+
+inline int rank_distance(Square s1, Square s2) {
+  return abs(square_rank(s1) - square_rank(s2));
+}
+
+inline int square_distance(Square s1, Square s2) {
+  return Max(file_distance(s1, s2), rank_distance(s1, s2));
+}
+
+inline File file_from_char(char c) {
+  return File(c - 'a') + FILE_A;
+}
+
+inline char file_to_char(File f) {
+  return char(f - FILE_A + int('a'));
+}
+
+inline Rank rank_from_char(char c) {
+  return Rank(c - '1') + RANK_1;
+}
+
+inline char rank_to_char(Rank r) {
+  return char(r - RANK_1 + int('1'));
+}
+
+inline const std::string square_to_string(Square s) {
+  char ch[] = { file_to_char(square_file(s)), rank_to_char(square_rank(s)), 0 };
+  return std::string(ch);
+}
+
+inline bool file_is_ok(File f) {
+  return f >= FILE_A && f <= FILE_H;
+}
+
+inline bool rank_is_ok(Rank r) {
+  return r >= RANK_1 && r <= RANK_8;
+}
+
+inline bool square_is_ok(Square s) {
+  return s >= SQ_A1 && s <= SQ_H8;
+}
 
 #endif // !defined(TYPES_H_INCLUDED)

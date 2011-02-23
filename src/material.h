@@ -17,22 +17,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(MATERIAL_H_INCLUDED)
 #define MATERIAL_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include "endgame.h"
 #include "position.h"
 #include "tt.h"
-
-
-////
-//// Types
-////
 
 const int MaterialTableSize = 1024;
 
@@ -83,11 +73,6 @@ private:
 };
 
 
-////
-//// Inline functions
-////
-
-
 /// MaterialInfo::material_value simply returns the material balance
 /// evaluation that is independent from game phase.
 
@@ -95,6 +80,7 @@ inline Score MaterialInfo::material_value() const {
 
   return make_score(value, value);
 }
+
 
 /// MaterialInfo::scale_factor takes a position and a color as input, and
 /// returns a scale factor for the given color. We have to provide the
@@ -122,6 +108,7 @@ inline int MaterialInfo::space_weight() const {
 
   return spaceWeight;
 }
+
 
 /// MaterialInfo::game_phase() returns the game phase according
 /// to this material configuration.

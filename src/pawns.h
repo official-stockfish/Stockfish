@@ -17,23 +17,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(PAWNS_H_INCLUDED)
 #define PAWNS_H_INCLUDED
-
-////
-//// Includes
-////
 
 #include "bitboard.h"
 #include "position.h"
 #include "tt.h"
-#include "value.h"
-
-
-////
-//// Types
-////
+#include "types.h"
 
 const int PawnTableSize = 16384;
 
@@ -87,11 +77,6 @@ private:
   template<Color Us>
   Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi) const;
 };
-
-
-////
-//// Inline functions
-////
 
 inline Square pawn_push(Color c) {
   return c == WHITE ? DELTA_N : DELTA_S;

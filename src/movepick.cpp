@@ -24,7 +24,7 @@
 #include "movegen.h"
 #include "movepick.h"
 #include "search.h"
-#include "value.h"
+#include "types.h"
 
 namespace {
 

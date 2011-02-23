@@ -17,15 +17,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(PSQTAB_H_INCLUDED)
 #define PSQTAB_H_INCLUDED
 
-////
-//// Includes
-////
-
-#include "value.h"
+#include "types.h"
 
 namespace {
 
