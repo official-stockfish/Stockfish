@@ -434,7 +434,7 @@ inline Square Position::initial_qr_square(Color c) const {
 
 template<>
 inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
-  return NonSlidingAttacksBB[piece_of_color_and_type(c, PAWN)][s];
+  return NonSlidingAttacksBB[make_piece(c, PAWN)][s];
 }
 
 template<PieceType Piece> // Knight and King and white pawns
@@ -490,7 +490,7 @@ inline Key Position::get_material_key() const {
 }
 
 inline Score Position::pst(Color c, PieceType pt, Square s) {
-  return PieceSquareTable[piece_of_color_and_type(c, pt)][s];
+  return PieceSquareTable[make_piece(c, pt)][s];
 }
 
 inline Score Position::pst_delta(Piece piece, Square from, Square to) {
@@ -508,7 +508,7 @@ inline Value Position::non_pawn_material(Color c) const {
 inline bool Position::move_is_passed_pawn_push(Move m) const {
 
   Color c = side_to_move();
-  return   piece_on(move_from(m)) == piece_of_color_and_type(c, PAWN)
+  return   piece_on(move_from(m)) == make_piece(c, PAWN)
         && pawn_is_passed(c, move_to(m));
 }
 

@@ -136,7 +136,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   // Loop through all pawns of the current color and score each pawn
   while ((s = *ptr++) != SQ_NONE)
   {
-      assert(pos.piece_on(s) == piece_of_color_and_type(Us, PAWN));
+      assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
       f = square_file(s);
       r = square_rank(s);

@@ -223,7 +223,7 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(opposite_color(us));
 
-  assert(pos.piece_on(ksq) == piece_of_color_and_type(opposite_color(us), KING));
+  assert(pos.piece_on(ksq) == make_piece(opposite_color(us), KING));
 
   // Discovered non-capture checks
   b = dc = pos.discovered_check_candidates(us);
@@ -267,7 +267,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   Bitboard checkers = pos.checkers();
   Bitboard sliderAttacks = EmptyBoardBB;
 
-  assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
+  assert(pos.piece_on(ksq) == make_piece(us, KING));
   assert(checkers);
 
   // Find squares attacked by slider checkers, we will remove
@@ -631,7 +631,7 @@ namespace {
     Color them = opposite_color(us);
     Square ksq = pos.king_square(us);
 
-    assert(pos.piece_on(ksq) == piece_of_color_and_type(us, KING));
+    assert(pos.piece_on(ksq) == make_piece(us, KING));
 
     Square rsq = (Side == KING_SIDE ? pos.initial_kr_square(us) : pos.initial_qr_square(us));
     Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
@@ -639,7 +639,7 @@ namespace {
     Square s;
     bool illegal = false;
 
-    assert(pos.piece_on(rsq) == piece_of_color_and_type(us, ROOK));
+    assert(pos.piece_on(rsq) == make_piece(us, ROOK));
 
     // It is a bit complicated to correctly handle Chess960
     for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
@@ -653,8 +653,8 @@ namespace {
 
     if (   Side == QUEEN_SIDE
         && square_file(rsq) == FILE_B
-        && (   pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, ROOK)
-            || pos.piece_on(relative_square(us, SQ_A1)) == piece_of_color_and_type(them, QUEEN)))
+        && (   pos.piece_on(relative_square(us, SQ_A1)) == make_piece(them, ROOK)
+            || pos.piece_on(relative_square(us, SQ_A1)) == make_piece(them, QUEEN)))
         illegal = true;
 
     if (!illegal)

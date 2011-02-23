@@ -570,11 +570,11 @@ namespace {
             if (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1))
             {
                 Square d = pawn_push(Us) + (square_file(s) == FILE_A ? DELTA_E : DELTA_W);
-                if (pos.piece_on(s + d) == piece_of_color_and_type(Us, PAWN))
+                if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                 {
                     if (!pos.square_is_empty(s + d + pawn_push(Us)))
                         bonus -= 2*TrappedBishopA1H1Penalty;
-                    else if (pos.piece_on(s + 2*d) == piece_of_color_and_type(Us, PAWN))
+                    else if (pos.piece_on(s + 2*d) == make_piece(Us, PAWN))
                         bonus -= TrappedBishopA1H1Penalty;
                     else
                         bonus -= TrappedBishopA1H1Penalty / 2;

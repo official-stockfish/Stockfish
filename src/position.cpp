@@ -587,8 +587,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       Bitboard b = occupied_squares();
 
       assert(to == ep_square());
-      assert(piece_on(from) == piece_of_color_and_type(us, PAWN));
-      assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
+      assert(piece_on(from) == make_piece(us, PAWN));
+      assert(piece_on(capsq) == make_piece(them, PAWN));
       assert(piece_on(to) == PIECE_NONE);
 
       clear_bit(&b, from);
@@ -603,7 +603,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   Square from = move_from(m);
 
   assert(color_of_piece_on(from) == us);
-  assert(piece_on(king_square(us)) == piece_of_color_and_type(us, KING));
+  assert(piece_on(king_square(us)) == make_piece(us, KING));
 
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent.
@@ -657,7 +657,7 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
   assert(move_is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates(side_to_move()));
   assert(color_of_piece_on(move_from(m)) == side_to_move());
-  assert(piece_on(ci.ksq) == piece_of_color_and_type(opposite_color(side_to_move()), KING));
+  assert(piece_on(ci.ksq) == make_piece(opposite_color(side_to_move()), KING));
 
   Square from = move_from(m);
   Square to = move_to(m);
@@ -833,7 +833,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   assert(color_of_piece_on(from) == us);
   assert(color_of_piece_on(to) == them || square_is_empty(to));
-  assert(!(ep || pm) || piece == piece_of_color_and_type(us, PAWN));
+  assert(!(ep || pm) || piece == make_piece(us, PAWN));
   assert(!pm || relative_rank(us, to) == RANK_8);
 
   if (capture)
@@ -906,7 +906,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           // Insert promoted piece instead of pawn
           clear_bit(&(byTypeBB[PAWN]), to);
           set_bit(&(byTypeBB[promotion]), to);
-          board[to] = piece_of_color_and_type(us, promotion);
+          board[to] = make_piece(us, promotion);
 
           // Update piece counts
           pieceCount[us][promotion]++;
@@ -1000,7 +1000,7 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
             assert(to == st->epSquare);
             assert(relative_rank(opposite_color(them), to) == RANK_6);
             assert(piece_on(to) == PIECE_NONE);
-            assert(piece_on(capsq) == piece_of_color_and_type(them, PAWN));
+            assert(piece_on(capsq) == make_piece(them, PAWN));
 
             board[capsq] = PIECE_NONE;
         }
@@ -1064,8 +1064,8 @@ void Position::do_castle_move(Move m) {
   Square rfrom = move_to(m);  // HACK: See comment at beginning of function
   Square kto, rto;
 
-  assert(piece_on(kfrom) == piece_of_color_and_type(us, KING));
-  assert(piece_on(rfrom) == piece_of_color_and_type(us, ROOK));
+  assert(piece_on(kfrom) == make_piece(us, KING));
+  assert(piece_on(rfrom) == make_piece(us, ROOK));
 
   // Find destination squares for king and rook
   if (rfrom > kfrom) // O-O
@@ -1094,8 +1094,8 @@ void Position::do_castle_move(Move m) {
   set_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
 
   // Update board array
-  Piece king = piece_of_color_and_type(us, KING);
-  Piece rook = piece_of_color_and_type(us, ROOK);
+  Piece king = make_piece(us, KING);
+  Piece rook = make_piece(us, ROOK);
   board[kfrom] = board[rfrom] = PIECE_NONE;
   board[kto] = king;
   board[rto] = rook;
@@ -1171,7 +1171,7 @@ void Position::undo_move(Move m) {
   assert(!pm || relative_rank(us, to) == RANK_8);
   assert(!ep || to == st->previous->epSquare);
   assert(!ep || relative_rank(us, to) == RANK_6);
-  assert(!ep || piece_on(to) == piece_of_color_and_type(us, PAWN));
+  assert(!ep || piece_on(to) == make_piece(us, PAWN));
 
   if (pm) // promotion ?
   {
@@ -1179,7 +1179,7 @@ void Position::undo_move(Move m) {
       pt = PAWN;
 
       assert(promotion >= KNIGHT && promotion <= QUEEN);
-      assert(piece_on(to) == piece_of_color_and_type(us, promotion));
+      assert(piece_on(to) == make_piece(us, promotion));
 
       // Replace promoted piece with a pawn
       clear_bit(&(byTypeBB[promotion]), to);
@@ -1204,7 +1204,7 @@ void Position::undo_move(Move m) {
   do_move_bb(&(byTypeBB[pt]), move_bb);
   do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
 
-  board[from] = piece_of_color_and_type(us, pt);
+  board[from] = make_piece(us, pt);
   board[to] = PIECE_NONE;
 
   // Update piece list
@@ -1226,7 +1226,7 @@ void Position::undo_move(Move m) {
       set_bit(&(byTypeBB[st->capturedType]), capsq);
       set_bit(&(byTypeBB[0]), capsq);
 
-      board[capsq] = piece_of_color_and_type(them, st->capturedType);
+      board[capsq] = make_piece(them, st->capturedType);
 
       // Update piece count
       pieceCount[them][st->capturedType]++;
@@ -1273,8 +1273,8 @@ void Position::undo_castle_move(Move m) {
       rto = relative_square(us, SQ_D1);
   }
 
-  assert(piece_on(kto) == piece_of_color_and_type(us, KING));
-  assert(piece_on(rto) == piece_of_color_and_type(us, ROOK));
+  assert(piece_on(kto) == make_piece(us, KING));
+  assert(piece_on(rto) == make_piece(us, ROOK));
 
   // Remove pieces from destination squares:
   clear_bit(&(byColorBB[us]), kto);
@@ -1294,8 +1294,8 @@ void Position::undo_castle_move(Move m) {
 
   // Update board
   board[rto] = board[kto] = PIECE_NONE;
-  board[rfrom] = piece_of_color_and_type(us, ROOK);
-  board[kfrom] = piece_of_color_and_type(us, KING);
+  board[rfrom] = make_piece(us, ROOK);
+  board[kfrom] = make_piece(us, KING);
 
   // Update piece lists
   pieceList[us][KING][index[kto]] = kfrom;
@@ -1980,7 +1980,7 @@ bool Position::is_ok(int* failedStep) const {
           for (PieceType pt = PAWN; pt <= KING; pt++)
               for (int i = 0; i < pieceCount[c][pt]; i++)
               {
-                  if (piece_on(piece_list(c, pt, i)) != piece_of_color_and_type(c, pt))
+                  if (piece_on(piece_list(c, pt, i)) != make_piece(c, pt))
                       return false;
 
                   if (index[piece_list(c, pt, i)] != i)
@@ -1991,9 +1991,9 @@ bool Position::is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugCastleSquares) {
       for (Color c = WHITE; c <= BLACK; c++) {
-          if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != piece_of_color_and_type(c, ROOK))
+          if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != make_piece(c, ROOK))
               return false;
-          if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != piece_of_color_and_type(c, ROOK))
+          if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != make_piece(c, ROOK))
               return false;
       }
       if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))

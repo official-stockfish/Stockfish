@@ -53,16 +53,16 @@ const Value RookValueEndgame   = Value(0x4FE);
 const Value QueenValueMidgame  = Value(0x9D9);
 const Value QueenValueEndgame  = Value(0x9FE);
 
+inline Piece make_piece(Color c, PieceType pt) {
+  return Piece((int(c) << 3) | int(pt));
+}
+
 inline PieceType type_of_piece(Piece p)  {
   return PieceType(int(p) & 7);
 }
 
 inline Color color_of_piece(Piece p) {
   return Color(int(p) >> 3);
-}
-
-inline Piece piece_of_color_and_type(Color c, PieceType pt) {
-  return Piece((int(c) << 3) | int(pt));
 }
 
 inline bool piece_type_is_ok(PieceType pt) {
