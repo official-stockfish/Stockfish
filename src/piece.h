@@ -17,24 +17,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #if !defined(PIECE_H_INCLUDED)
 #define PIECE_H_INCLUDED
 
-////
-//// Includes
-////
-
-#include <string>
-
 #include "color.h"
-#include "square.h"
 #include "value.h"
-
-
-////
-//// Types
-////
 
 enum PieceType {
   PIECE_TYPE_NONE = 0,
@@ -48,11 +35,6 @@ enum Piece {
 
 ENABLE_OPERATORS_ON(PieceType)
 ENABLE_OPERATORS_ON(Piece)
-
-
-////
-//// Constants
-////
 
 /// Important: If the material values are changed, one must also
 /// adjust the piece square tables, and the method game_phase() in the
@@ -71,11 +53,6 @@ const Value RookValueEndgame   = Value(0x4FE);
 const Value QueenValueMidgame  = Value(0x9D9);
 const Value QueenValueEndgame  = Value(0x9FE);
 
-
-////
-//// Inline functions
-////
-
 inline PieceType type_of_piece(Piece p)  {
   return PieceType(int(p) & 7);
 }
@@ -88,10 +65,6 @@ inline Piece piece_of_color_and_type(Color c, PieceType pt) {
   return Piece((int(c) << 3) | int(pt));
 }
 
-inline Square pawn_push(Color c) {
-    return (c == WHITE ? DELTA_N : DELTA_S);
-}
-
 inline bool piece_type_is_ok(PieceType pt) {
   return pt >= PAWN && pt <= KING;
 }
@@ -101,11 +74,8 @@ inline bool piece_is_ok(Piece p) {
 }
 
 inline char piece_type_to_char(PieceType pt) {
-  return std::string(" PNBRQK")[pt];
-}
-
-inline PieceType piece_type_from_char(char c) {
-  return PieceType(std::string(" PNBRQK").find(c));
+  static const char ch[] = " PNBRQK";
+  return ch[pt];
 }
 
 #endif // !defined(PIECE_H_INCLUDED)

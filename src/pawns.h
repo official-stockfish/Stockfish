@@ -93,6 +93,10 @@ private:
 //// Inline functions
 ////
 
+inline Square pawn_push(Color c) {
+  return c == WHITE ? DELTA_N : DELTA_S;
+}
+
 inline void PawnInfoTable::prefetch(Key key) const {
 
     unsigned index = unsigned(key & (PawnTableSize - 1));
