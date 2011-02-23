@@ -72,7 +72,7 @@ inline Square operator- (Square x, SquareDelta i) { return x - Square(i); }
 inline void operator-= (Square& x, SquareDelta i) { x = x - Square(i); }
 
 inline Square make_square(File f, Rank r) {
-  return Square(int(f) | (int(r) << 3));
+  return Square((int(r) << 3) | int(f));
 }
 
 inline File square_file(Square s) {
@@ -104,7 +104,7 @@ inline Rank relative_rank(Color c, Square s) {
 }
 
 inline SquareColor square_color(Square s) {
-  return SquareColor((int(square_file(s)) + int(square_rank(s))) & 1);
+  return SquareColor(int(square_rank(s) + s) & 1);
 }
 
 inline bool opposite_color_squares(Square s1, Square s2) {
@@ -112,20 +112,12 @@ inline bool opposite_color_squares(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline int file_distance(File f1, File f2) {
-  return abs(int(f1) - int(f2));
-}
-
 inline int file_distance(Square s1, Square s2) {
-  return file_distance(square_file(s1), square_file(s2));
-}
-
-inline int rank_distance(Rank r1, Rank r2) {
-  return abs(int(r1) - int(r2));
+  return abs(square_file(s1) - square_file(s2));
 }
 
 inline int rank_distance(Square s1, Square s2) {
-  return rank_distance(square_rank(s1), square_rank(s2));
+  return abs(square_rank(s1) - square_rank(s2));
 }
 
 inline int square_distance(Square s1, Square s2) {
@@ -149,8 +141,8 @@ inline char rank_to_char(Rank r) {
 }
 
 inline const std::string square_to_string(Square s) {
-  return  std::string(1, file_to_char(square_file(s)))
-        + std::string(1, rank_to_char(square_rank(s)));
+  char ch[] = { file_to_char(square_file(s)), rank_to_char(square_rank(s)), 0 };
+  return std::string(ch);
 }
 
 inline bool file_is_ok(File f) {

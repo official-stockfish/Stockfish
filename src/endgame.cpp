@@ -402,7 +402,7 @@ ScaleFactor ScalingFunction<KBPsK>::apply(const Position& pos) const {
       Square kingSq = pos.king_square(weakerSide);
 
       if (   opposite_color_squares(queeningSq, bishopSq)
-          && file_distance(square_file(kingSq), pawnFile) <= 1)
+          && abs(square_file(kingSq) - pawnFile) <= 1)
       {
           // The bishop has the wrong color, and the defending king is on the
           // file of the pawn(s) or the neighboring file. Find the rank of the
@@ -769,7 +769,7 @@ ScaleFactor ScalingFunction<KBPPKB>::apply(const Position& pos) const {
         && opposite_color_squares(ksq, wbsq)
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
-            || rank_distance(r1, r2) >= 2))
+            || abs(r1 - r2) >= 2))
         return SCALE_FACTOR_ZERO;
 
     else if (   ksq == blockSq2
