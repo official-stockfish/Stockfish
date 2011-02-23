@@ -23,8 +23,8 @@
 #include <cstdlib> // for abs()
 #include <string>
 
-#include "color.h"
 #include "misc.h"
+#include "piece.h"
 
 enum Square {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
@@ -58,12 +58,13 @@ enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8
 };
 
+enum SquareColor {
+  DARK, LIGHT
+};
+
 ENABLE_OPERATORS_ON(Square)
 ENABLE_OPERATORS_ON(File)
 ENABLE_OPERATORS_ON(Rank)
-
-const int FlipMask = 56;
-const int FlopMask =  7;
 
 inline Square make_square(File f, Rank r) {
   return Square((int(r) << 3) | int(f));
@@ -78,15 +79,15 @@ inline Rank square_rank(Square s) {
 }
 
 inline Square flip_square(Square s) {
-  return Square(int(s) ^ FlipMask);
+  return Square(int(s) ^ 56);
 }
 
 inline Square flop_square(Square s) {
-  return Square(int(s) ^ FlopMask);
+  return Square(int(s) ^ 7);
 }
 
 inline Square relative_square(Color c, Square s) {
-  return Square(int(s) ^ (int(c) * FlipMask));
+  return Square(int(s) ^ (int(c) * 56));
 }
 
 inline Rank relative_rank(Color c, Rank r) {

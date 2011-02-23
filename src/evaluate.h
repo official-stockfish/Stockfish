@@ -21,7 +21,7 @@
 #if !defined(EVALUATE_H_INCLUDED)
 #define EVALUATE_H_INCLUDED
 
-#include "color.h"
+#include "piece.h"
 #include "value.h"
 
 class Position;

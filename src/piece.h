@@ -20,7 +20,6 @@
 #if !defined(PIECE_H_INCLUDED)
 #define PIECE_H_INCLUDED
 
-#include "color.h"
 #include "value.h"
 
 enum PieceType {
@@ -33,8 +32,13 @@ enum Piece {
   BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, PIECE_NONE = 16
 };
 
+enum Color {
+  WHITE, BLACK, COLOR_NONE
+};
+
 ENABLE_OPERATORS_ON(PieceType)
 ENABLE_OPERATORS_ON(Piece)
+ENABLE_OPERATORS_ON(Color)
 
 /// Important: If the material values are changed, one must also
 /// adjust the piece square tables, and the method game_phase() in the
@@ -63,6 +67,14 @@ inline PieceType type_of_piece(Piece p)  {
 
 inline Color color_of_piece(Piece p) {
   return Color(int(p) >> 3);
+}
+
+inline Color opposite_color(Color c) {
+  return Color(int(c) ^ 1);
+}
+
+inline bool color_is_ok(Color c) {
+  return c == WHITE || c == BLACK;
 }
 
 inline bool piece_type_is_ok(PieceType pt) {

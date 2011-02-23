@@ -21,7 +21,6 @@
 #define POSITION_H_INCLUDED
 
 #include "bitboard.h"
-#include "color.h"
 #include "move.h"
 #include "piece.h"
 #include "square.h"
