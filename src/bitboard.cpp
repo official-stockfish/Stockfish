@@ -482,8 +482,7 @@ namespace {
 
   void init_between_bitboards() {
 
-    Square s1, s2, s3;
-    SquareDelta d;
+    Square s1, s2, s3, d;
     int f, r;
 
     for (s1 = SQ_A1; s1 <= SQ_H8; s1++)
@@ -493,7 +492,7 @@ namespace {
                 f = file_distance(s1, s2);
                 r = rank_distance(s1, s2);
 
-                d = SquareDelta(s2 - s1) / Max(f, r);
+                d = (s2 - s1) / Max(f, r);
 
                 for (s3 = s1 + d; s3 != s2; s3 += d)
                     set_bit(&(BetweenBB[s1][s2]), s3);

@@ -569,8 +569,7 @@ namespace {
             // problem, especially when that pawn is also blocked.
             if (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1))
             {
-                SquareDelta d = pawn_push(Us)
-                   + (square_file(s) == FILE_A ? DELTA_E : DELTA_W);
+                Square d = pawn_push(Us) + (square_file(s) == FILE_A ? DELTA_E : DELTA_W);
                 if (pos.piece_on(s + d) == piece_of_color_and_type(Us, PAWN))
                 {
                     if (!pos.square_is_empty(s + d + pawn_push(Us)))

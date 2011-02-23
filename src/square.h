@@ -35,7 +35,19 @@ enum Square {
   SQ_A6, SQ_B6, SQ_C6, SQ_D6, SQ_E6, SQ_F6, SQ_G6, SQ_H6,
   SQ_A7, SQ_B7, SQ_C7, SQ_D7, SQ_E7, SQ_F7, SQ_G7, SQ_H7,
   SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
-  SQ_NONE
+  SQ_NONE,
+
+  DELTA_N =  8,
+  DELTA_E =  1,
+  DELTA_S = -8,
+  DELTA_W = -1,
+
+  DELTA_NN = DELTA_N + DELTA_N,
+  DELTA_NE = DELTA_N + DELTA_E,
+  DELTA_SE = DELTA_S + DELTA_E,
+  DELTA_SS = DELTA_S + DELTA_S,
+  DELTA_SW = DELTA_S + DELTA_W,
+  DELTA_NW = DELTA_N + DELTA_W
 };
 
 enum File {
@@ -46,30 +58,12 @@ enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8
 };
 
-enum SquareDelta {
-
-  DELTA_N = 8, DELTA_E = 1, DELTA_S = -8, DELTA_W = -1, DELTA_NONE = 0,
-
-  DELTA_NN = DELTA_N + DELTA_N,
-  DELTA_NE = DELTA_N + DELTA_E,
-  DELTA_SE = DELTA_S + DELTA_E,
-  DELTA_SS = DELTA_S + DELTA_S,
-  DELTA_SW = DELTA_S + DELTA_W,
-  DELTA_NW = DELTA_N + DELTA_W
-};
-
 ENABLE_OPERATORS_ON(Square)
 ENABLE_OPERATORS_ON(File)
 ENABLE_OPERATORS_ON(Rank)
-ENABLE_OPERATORS_ON(SquareDelta)
 
 const int FlipMask = 56;
 const int FlopMask =  7;
-
-inline Square operator+ (Square x, SquareDelta i) { return x + Square(i); }
-inline void operator+= (Square& x, SquareDelta i) { x = x + Square(i); }
-inline Square operator- (Square x, SquareDelta i) { return x - Square(i); }
-inline void operator-= (Square& x, SquareDelta i) { x = x - Square(i); }
 
 inline Square make_square(File f, Rank r) {
   return Square((int(r) << 3) | int(f));

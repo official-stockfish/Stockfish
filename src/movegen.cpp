@@ -462,7 +462,7 @@ bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
 
 namespace {
 
-  template<SquareDelta Delta>
+  template<Square Delta>
   inline Bitboard move_pawns(Bitboard p) {
 
     return Delta == DELTA_N  ? p << 8 : Delta == DELTA_S  ? p >> 8 :
@@ -470,7 +470,7 @@ namespace {
            Delta == DELTA_NW ? p << 7 : Delta == DELTA_SW ? p >> 9 : p;
   }
 
-  template<MoveType Type, SquareDelta Delta>
+  template<MoveType Type, Square Delta>
   inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard target) {
 
     const Bitboard TFileABB = (Delta == DELTA_NE || Delta == DELTA_SE ? FileABB : FileHBB);
@@ -484,7 +484,7 @@ namespace {
     return mlist;
   }
 
-  template<Color Us, MoveType Type, SquareDelta Delta>
+  template<Color Us, MoveType Type, Square Delta>
   inline MoveStack* generate_promotions(const Position& pos, MoveStack* mlist, Bitboard pawnsOn7, Bitboard target) {
 
     const Bitboard TFileABB = (Delta == DELTA_NE || Delta == DELTA_SE ? FileABB : FileHBB);
@@ -527,12 +527,12 @@ namespace {
 
     // Calculate our parametrized parameters at compile time, named
     // according to the point of view of white side.
-    const Color       Them      = (Us == WHITE ? BLACK    : WHITE);
-    const Bitboard    TRank7BB  = (Us == WHITE ? Rank7BB  : Rank2BB);
-    const Bitboard    TRank3BB  = (Us == WHITE ? Rank3BB  : Rank6BB);
-    const SquareDelta TDELTA_N  = (Us == WHITE ? DELTA_N  : DELTA_S);
-    const SquareDelta TDELTA_NE = (Us == WHITE ? DELTA_NE : DELTA_SE);
-    const SquareDelta TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
+    const Color    Them      = (Us == WHITE ? BLACK    : WHITE);
+    const Bitboard TRank7BB  = (Us == WHITE ? Rank7BB  : Rank2BB);
+    const Bitboard TRank3BB  = (Us == WHITE ? Rank3BB  : Rank6BB);
+    const Square   TDELTA_N  = (Us == WHITE ? DELTA_N  : DELTA_S);
+    const Square   TDELTA_NE = (Us == WHITE ? DELTA_NE : DELTA_SE);
+    const Square   TDELTA_NW = (Us == WHITE ? DELTA_NW : DELTA_SW);
 
     Square to;
     Bitboard b1, b2, dc1, dc2, pawnPushes, emptySquares;

@@ -88,7 +88,7 @@ inline Piece piece_of_color_and_type(Color c, PieceType pt) {
   return Piece((int(c) << 3) | int(pt));
 }
 
-inline SquareDelta pawn_push(Color c) {
+inline Square pawn_push(Color c) {
     return (c == WHITE ? DELTA_N : DELTA_S);
 }
 
