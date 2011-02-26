@@ -298,7 +298,6 @@ namespace {
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_killers(Move m, Move killers[]);
   void update_gains(const Position& pos, Move move, Value before, Value after);
-  void qsearch_scoring(Position& pos, MoveStack* mlist, MoveStack* last);
 
   int current_search_time();
   std::string value_to_uci(Value v);
@@ -601,7 +600,7 @@ namespace {
     Value value, alpha, beta;
     Move bestMove, easyMove;
 
-    // Moves to search are verified, scored and sorted
+    // Moves to search are verified and copied
     Rml.init(pos, searchMoves);
 
     // Initialize FIXME move before Rml.init()
@@ -622,11 +621,6 @@ namespace {
 
         return MOVE_NONE;
     }
-
-    // Is one move significantly better than others after initial scoring ?
-    if (   Rml.size() == 1
-        || Rml[0].pv_score > Rml[1].pv_score + EasyMoveMargin)
-        easyMove = Rml[0].pv[0];
 
     // Iterative deepening loop
     while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
@@ -696,8 +690,10 @@ namespace {
         if (UseLogFile)
             LogFile << pretty_pv(pos, depth, value, current_search_time(), Rml[0].pv) << endl;
 
-        // Drop the easy move if differs from the new best move
-        if (bestMove != easyMove)
+        // Init easyMove after first iteration or drop if differs from the best move
+        if (depth == 1 && (Rml.size() == 1 || Rml[0].pv_score > Rml[1].pv_score + EasyMoveMargin))
+            easyMove = bestMove;
+        else if (bestMove != easyMove)
             easyMove = MOVE_NONE;
 
         if (UseTimeManagement && !StopRequest)
@@ -1032,7 +1028,9 @@ split_point_start: // At split points actual search starts from here
                    << " currmovenumber " << moveCount << endl;
       }
 
-      isPvMove = (PvNode && moveCount <= (Root ? MultiPV : 1));
+      // At Root and at first iteration do a PV search on all the moves
+      // to score root moves. Otherwise only the first one is the PV.
+      isPvMove = (PvNode && moveCount <= (Root ? MultiPV + 1000 * (depth <= ONE_PLY) : 1));
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
@@ -1498,26 +1496,6 @@ split_point_start: // At split points actual search starts from here
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
     return bestValue;
-  }
-
-
-  // qsearch_scoring() scores each move of a list using a qsearch() evaluation,
-  // it is used in RootMoveList to get an initial scoring.
-  void qsearch_scoring(Position& pos, MoveStack* mlist, MoveStack* last) {
-
-    SearchStack ss[PLY_MAX_PLUS_2];
-    StateInfo st;
-
-    memset(ss, 0, 4 * sizeof(SearchStack));
-    ss[0].eval = ss[0].evalMargin = VALUE_NONE;
-
-    for (MoveStack* cur = mlist; cur != last; cur++)
-    {
-        ss[0].currentMove = cur->move;
-        pos.do_move(cur->move, st);
-        cur->score = -qsearch<PV>(pos, ss+1, -VALUE_INFINITE, VALUE_INFINITE, DEPTH_ZERO, 1);
-        pos.undo_move(cur->move);
-    }
   }
 
 
@@ -2559,11 +2537,8 @@ split_point_start: // At split points actual search starts from here
     clear();
     bestMoveChanges = 0;
 
-    // Generate all legal moves and score them
+    // Generate all legal moves and add them to RootMoveList
     MoveStack* last = generate<MV_LEGAL>(pos, mlist);
-    qsearch_scoring(pos, mlist, last);
-
-    // Add each move to the RootMoveList's vector
     for (MoveStack* cur = mlist; cur != last; cur++)
     {
         // If we have a searchMoves[] list then verify cur->move
@@ -2576,10 +2551,9 @@ split_point_start: // At split points actual search starts from here
         RootMove rm;
         rm.pv[0] = cur->move;
         rm.pv[1] = MOVE_NONE;
-        rm.pv_score = Value(cur->score);
+        rm.pv_score = -VALUE_INFINITE;
         push_back(rm);
     }
-    sort();
   }
 
 } // namespace
