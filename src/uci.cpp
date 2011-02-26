@@ -65,7 +65,6 @@ bool execute_uci_command(const string& cmd) {
 
   static Position pos(StartPositionFEN, false, 0); // The root position
   UCIParser up(cmd);
-  Value dummy;
   string token;
 
   up >> token; // operator>>() skips any whitespace
@@ -98,9 +97,7 @@ bool execute_uci_command(const string& cmd) {
       pos.print();
 
   else if (token == "eval")
-      cout << "Incremental mg: "   << mg_value(pos.value())
-           << "\nIncremental eg: " << eg_value(pos.value())
-           << "\nFull eval: "      << evaluate(pos, dummy) << endl;
+      cout << trace_evaluate(pos) << endl;
 
   else if (token == "key")
       cout << "key: " << hex     << pos.get_key()

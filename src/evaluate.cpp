@@ -23,6 +23,9 @@
 ////
 
 #include <cassert>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
 
 #include "bitcount.h"
 #include "evaluate.h"
@@ -219,22 +222,32 @@ namespace {
   // weighted scores, indexed by color and by a calculated integer number.
   Score KingDangerTable[2][128];
 
+  // TracedTerms[Color][PieceType || TracedType] contains a breakdown of the
+  // evaluation terms, used when tracing.
+  Score TracedTerms[2][16];
+  std::stringstream TraceStream;
+
+  enum TracedType {
+      PST = 8, IMBALANCE = 9, MOBILITY = 10, THREAT = 11,
+      PASSED = 12, UNSTOPPABLE = 13, SPACE = 14, TOTAL = 15
+  };
+
   // Pawn and material hash tables, indexed by the current thread id.
   // Note that they will be initialized at 0 being global variables.
   MaterialInfoTable* MaterialTable[MAX_THREADS];
   PawnInfoTable* PawnTable[MAX_THREADS];
 
   // Function prototypes
-  template<bool HasPopCnt>
+  template<bool HasPopCnt, bool Trace>
   Value do_evaluate(const Position& pos, Value& margin);
 
   template<Color Us, bool HasPopCnt>
   void init_eval_info(const Position& pos, EvalInfo& ei);
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us, bool HasPopCnt, bool Trace>
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility);
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us, bool HasPopCnt, bool Trace>
   Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
 
   template<Color Us>
@@ -274,13 +287,21 @@ void prefetchPawn(Key key, int threadID) {
 /// between them based on the remaining material.
 Value evaluate(const Position& pos, Value& margin) {
 
-    return CpuHasPOPCNT ? do_evaluate<true>(pos, margin)
-                        : do_evaluate<false>(pos, margin);
+    return CpuHasPOPCNT ? do_evaluate<true, false>(pos, margin)
+                        : do_evaluate<false, false>(pos, margin);
 }
 
 namespace {
 
-template<bool HasPopCnt>
+double to_cp(Value v) { return double(v) / double(PawnValueMidgame); }
+
+void trace_add(int idx, Score term_w, Score term_b = Score(0)) {
+
+    TracedTerms[WHITE][idx] = term_w;
+    TracedTerms[BLACK][idx] = term_b;
+}
+
+template<bool HasPopCnt, bool Trace>
 Value do_evaluate(const Position& pos, Value& margin) {
 
   EvalInfo ei;
@@ -320,15 +341,15 @@ Value do_evaluate(const Position& pos, Value& margin) {
   init_eval_info<BLACK, HasPopCnt>(pos, ei);
 
   // Evaluate pieces and mobility
-  bonus +=  evaluate_pieces_of_color<WHITE, HasPopCnt>(pos, ei, mobilityWhite)
-          - evaluate_pieces_of_color<BLACK, HasPopCnt>(pos, ei, mobilityBlack);
+  bonus +=  evaluate_pieces_of_color<WHITE, HasPopCnt, Trace>(pos, ei, mobilityWhite)
+          - evaluate_pieces_of_color<BLACK, HasPopCnt, Trace>(pos, ei, mobilityBlack);
 
   bonus += apply_weight(mobilityWhite - mobilityBlack, Weights[Mobility]);
 
   // Evaluate kings after all other pieces because we need complete attack
   // information when computing the king safety evaluation.
-  bonus +=  evaluate_king<WHITE, HasPopCnt>(pos, ei, margins)
-          - evaluate_king<BLACK, HasPopCnt>(pos, ei, margins);
+  bonus +=  evaluate_king<WHITE, HasPopCnt, Trace>(pos, ei, margins)
+          - evaluate_king<BLACK, HasPopCnt, Trace>(pos, ei, margins);
 
   // Evaluate tactical threats, we need full attack information including king
   bonus +=  evaluate_threats<WHITE>(pos, ei)
@@ -340,13 +361,23 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   // If one side has only a king, check whether exists any unstoppable passed pawn
   if (!pos.non_pawn_material(WHITE) || !pos.non_pawn_material(BLACK))
+  {
       bonus += evaluate_unstoppable_pawns<HasPopCnt>(pos, ei);
+
+      if (Trace)
+          trace_add(UNSTOPPABLE, evaluate_unstoppable_pawns<HasPopCnt>(pos, ei));
+  }
 
   // Evaluate space for both sides, only in middle-game.
   if (mi->space_weight())
   {
-      int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
-      bonus += apply_weight(make_score(s * mi->space_weight(), 0), Weights[Space]);
+      int s_w = evaluate_space<WHITE, HasPopCnt>(pos, ei);
+      int s_b = evaluate_space<BLACK, HasPopCnt>(pos, ei);
+      bonus += apply_weight(make_score((s_w - s_b) * mi->space_weight(), 0), Weights[Space]);
+
+      if (Trace)
+          trace_add(SPACE, apply_weight(make_score(s_w * mi->space_weight(), make_score(0, 0)), Weights[Space]),
+                           apply_weight(make_score(s_b * mi->space_weight(), make_score(0, 0)), Weights[Space]));
   }
 
   // Scale winning side if position is more drawish that what it appears
@@ -378,6 +409,25 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // Interpolate between the middle game and the endgame score
   margin = margins[pos.side_to_move()];
   Value v = scale_by_game_phase(bonus, phase, sf);
+
+  if (Trace)
+  {
+      trace_add(PST, pos.value());
+      trace_add(IMBALANCE, mi->material_value());
+      trace_add(PAWN, apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]));
+      trace_add(MOBILITY, apply_weight(mobilityWhite, Weights[Mobility]), apply_weight(mobilityBlack, Weights[Mobility]));
+      trace_add(THREAT, evaluate_threats<WHITE>(pos, ei), evaluate_threats<BLACK>(pos, ei));
+      trace_add(PASSED, evaluate_passed_pawns<WHITE>(pos, ei), evaluate_passed_pawns<BLACK>(pos, ei));
+      trace_add(TOTAL, bonus);
+      TraceStream << "\nUncertainty margin: White: " << to_cp(margins[WHITE])
+                  << ", Black: " << to_cp(margins[BLACK])
+                  << "\nScaling: " << std::noshowpos
+                  << std::setw(6) << 100.0 * phase/128.0 << "% MG, "
+                  << std::setw(6) << 100.0 * (1.0 - phase/128.0) << "% * "
+                  << std::setw(6) << (100.0 * sf) / SCALE_FACTOR_NORMAL << "% EG.\n"
+                  << "Total evaluation: " << to_cp(v);
+  }
+
   return pos.side_to_move() == WHITE ? v : -v;
 }
 
@@ -497,7 +547,7 @@ namespace {
 
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
-  template<PieceType Piece, Color Us, bool HasPopCnt>
+  template<PieceType Piece, Color Us, bool HasPopCnt, bool Trace>
   Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score& mobility, Bitboard mobilityArea) {
 
     Bitboard b;
@@ -622,6 +672,10 @@ namespace {
             }
         }
     }
+
+    if (Trace)
+        TracedTerms[Us][Piece] = bonus;
+
     return bonus;
   }
 
@@ -662,7 +716,7 @@ namespace {
   // evaluate_pieces_of_color<>() assigns bonuses and penalties to all the
   // pieces of a given color.
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us, bool HasPopCnt, bool Trace>
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -672,10 +726,10 @@ namespace {
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
     const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
 
-    bonus += evaluate_pieces<KNIGHT, Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
-    bonus += evaluate_pieces<BISHOP, Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
-    bonus += evaluate_pieces<ROOK,   Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
-    bonus += evaluate_pieces<QUEEN,  Us, HasPopCnt>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<KNIGHT, Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<BISHOP, Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<ROOK,   Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
+    bonus += evaluate_pieces<QUEEN,  Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
 
     // Sum up all attacked squares
     ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
@@ -687,7 +741,7 @@ namespace {
 
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us, bool HasPopCnt, bool Trace>
   Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
 
     const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
@@ -791,6 +845,10 @@ namespace {
         bonus -= KingDangerTable[Us][attackUnits];
         margins[Us] += mg_value(KingDangerTable[Us][attackUnits]);
     }
+
+    if (Trace)
+        TracedTerms[Us][KING] = bonus;
+
     return bonus;
   }
 
@@ -1147,4 +1205,75 @@ namespace {
         for (int i = 0; i < 100; i++)
             KingDangerTable[c][i] = apply_weight(make_score(t[i], 0), Weights[KingDangerUs + c]);
   }
+
+
+  // trace_row() is an helper function used by tracing code to register the
+  // values of a single evaluation term.
+
+  void trace_row(const char *name, int idx) {
+
+    Score term_w = TracedTerms[WHITE][idx];
+    Score term_b = TracedTerms[BLACK][idx];
+
+    switch (idx) {
+    case PST: case IMBALANCE: case PAWN: case UNSTOPPABLE: case TOTAL:
+        TraceStream << std::setw(20) << name << " |   ---   --- |   ---   --- | "
+                    << std::setw(6)  << to_cp(mg_value(term_w)) << " "
+                    << std::setw(6)  << to_cp(eg_value(term_w)) << " \n";
+        break;
+    default:
+        TraceStream << std::setw(20) << name << " | " << std::noshowpos
+                    << std::setw(5)  << to_cp(mg_value(term_w)) << " "
+                    << std::setw(5)  << to_cp(eg_value(term_w)) << " | "
+                    << std::setw(5)  << to_cp(mg_value(term_b)) << " "
+                    << std::setw(5)  << to_cp(eg_value(term_b)) << " | "
+                    << std::showpos
+                    << std::setw(6)  << to_cp(mg_value(term_w - term_b)) << " "
+                    << std::setw(6)  << to_cp(eg_value(term_w - term_b)) << " \n";
+    }
+  }
+}
+
+
+/// trace_evaluate() is like evaluate() but instead of a value returns a string
+/// suitable to be print on stdout with the detailed descriptions and values of
+/// each evaluation term. Used mainly for debugging.
+
+std::string trace_evaluate(const Position& pos) {
+
+    Value margin;
+    std::string totals;
+
+    TraceStream.str("");
+    TraceStream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
+    memset(TracedTerms, 0, 2 * 16 * sizeof(Score));
+
+    do_evaluate<false, true>(pos, margin);
+
+    totals = TraceStream.str();
+    TraceStream.str("");
+
+    TraceStream << std::setw(21) << "Eval term " << "|    White    |    Black    |     Total     \n"
+                <<             "                     |   MG    EG  |   MG    EG  |   MG     EG   \n"
+                <<             "---------------------+-------------+-------------+---------------\n";
+
+    trace_row("Material, PST, Tempo", PST);
+    trace_row("Material imbalance", IMBALANCE);
+    trace_row("Pawns", PAWN);
+    trace_row("Knights", KNIGHT);
+    trace_row("Bishops", BISHOP);
+    trace_row("Rooks", ROOK);
+    trace_row("Queens", QUEEN);
+    trace_row("Mobility", MOBILITY);
+    trace_row("King safety", KING);
+    trace_row("Threats", THREAT);
+    trace_row("Passed pawns", PASSED);
+    trace_row("Unstoppable pawns", UNSTOPPABLE);
+    trace_row("Space", SPACE);
+
+    TraceStream <<             "---------------------+-------------+-------------+---------------\n";
+    trace_row("Total", TOTAL);
+    TraceStream << totals;
+
+    return TraceStream.str();
 }
