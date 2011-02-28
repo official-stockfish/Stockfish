@@ -643,8 +643,7 @@ namespace {
 
         // Start with a small aspiration window and, in case of fail high/low,
         // research with bigger window until not failing high/low anymore.
-        while (true)
-        {
+        do {
             // Search starting from ss+1 to allow calling update_gains()
             value = search<PV, false, true>(pos, ss+1, alpha, beta, depth * ONE_PLY, 0);
 
@@ -680,7 +679,8 @@ namespace {
             }
             else
                 break;
-        }
+
+        } while (abs(value) < VALUE_KNOWN_WIN);
 
         // Collect info about search result
         bestMove = Rml[0].pv[0];
