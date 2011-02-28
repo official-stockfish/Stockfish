@@ -600,17 +600,17 @@ namespace {
     Value value, alpha, beta;
     Move bestMove, easyMove;
 
-    // Moves to search are verified and copied
-    Rml.init(pos, searchMoves);
-
-    // Initialize FIXME move before Rml.init()
+    // Initialize stuff before a new search
+    memset(ss, 0, 4 * sizeof(SearchStack));
     TT.new_search();
     H.clear();
-    memset(ss, 0, 4 * sizeof(SearchStack));
     *ponderMove = bestMove = easyMove = MOVE_NONE;
     depth = aspirationDelta = 0;
-    ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
+    ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
+
+    // Moves to search are verified and copied
+    Rml.init(pos, searchMoves);
 
     // Handle special case of searching on a mate/stalemate position
     if (Rml.size() == 0)
