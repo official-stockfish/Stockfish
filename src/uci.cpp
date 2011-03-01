@@ -97,7 +97,10 @@ bool execute_uci_command(const string& cmd) {
       pos.print();
 
   else if (token == "eval")
+  {
+      read_evaluation_uci_options(pos.side_to_move());
       cout << trace_evaluate(pos) << endl;
+  }
 
   else if (token == "key")
       cout << "key: " << hex     << pos.get_key()
