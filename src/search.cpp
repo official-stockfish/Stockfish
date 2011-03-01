@@ -596,7 +596,7 @@ namespace {
     SearchStack ss[PLY_MAX_PLUS_2];
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth, researchCountFL, researchCountFH, aspirationDelta;
+    int depth, aspirationDelta;
     Value value, alpha, beta;
     Move bestMove, easyMove;
 
@@ -625,7 +625,7 @@ namespace {
     // Iterative deepening loop
     while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
     {
-        Rml.bestMoveChanges = researchCountFL = researchCountFH = 0;
+        Rml.bestMoveChanges = 0;
         cout << "info depth " << depth << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
@@ -666,16 +666,16 @@ namespace {
             // otherwise exit the fail high/low loop.
             if (value >= beta)
             {
-                beta = Min(beta + aspirationDelta * (1 << researchCountFH), VALUE_INFINITE);
-                researchCountFH++;
+                beta = Min(beta + aspirationDelta, VALUE_INFINITE);
+                aspirationDelta += aspirationDelta / 2;
             }
             else if (value <= alpha)
             {
                 AspirationFailLow = true;
                 StopOnPonderhit = false;
 
-                alpha = Max(alpha - aspirationDelta * (1 << researchCountFL), -VALUE_INFINITE);
-                researchCountFL++;
+                alpha = Max(alpha - aspirationDelta, -VALUE_INFINITE);
+                aspirationDelta += aspirationDelta / 2;
             }
             else
                 break;
