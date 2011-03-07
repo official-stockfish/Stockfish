@@ -46,24 +46,28 @@ class RKISS {
   // Keep variables always together
   struct S { uint64_t a, b, c, d; } s;
 
-  // Return 64 bit unsigned integer in between [0,2^64-1]
+  uint64_t rot(uint64_t x, uint64_t k) const {
+    return (x << k) | (x >> (64 - k));
+  }
+
+  // Return 64 bit unsigned integer in between [0, 2^64 - 1]
   uint64_t rand64() {
 
-      const uint64_t
-        e = s.a - ((s.b <<  7) | (s.b >> 57));
-      s.a = s.b ^ ((s.c << 13) | (s.c >> 51));
-      s.b = s.c + ((s.d << 37) | (s.d >> 27));
-      s.c = s.d + e;
-      return s.d = e + s.a;
+    const uint64_t
+      e = s.a - rot(s.b,  7);
+    s.a = s.b ^ rot(s.c, 13);
+    s.b = s.c + rot(s.d, 37);
+    s.c = s.d + e;
+    return s.d = e + s.a;
   }
 
   // Init seed and scramble a few rounds
   void raninit() {
 
-      s.a = 0xf1ea5eed;
-      s.b = s.c = s.d = 0xd4e12c77;
-      for (int i = 0; i < 73; i++)
-          rand64();
+    s.a = 0xf1ea5eed;
+    s.b = s.c = s.d = 0xd4e12c77;
+    for (int i = 0; i < 73; i++)
+        rand64();
   }
 
 public:
