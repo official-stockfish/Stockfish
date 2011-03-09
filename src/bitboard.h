@@ -53,7 +53,7 @@ extern const Bitboard InFrontBB[2][8];
 extern Bitboard SetMaskBB[65];
 extern Bitboard ClearMaskBB[65];
 
-extern Bitboard NonSlidingAttacksBB[16][64];
+extern Bitboard StepAttacksBB[16][64];
 extern Bitboard BetweenBB[64][64];
 
 extern Bitboard SquaresInFrontMask[2][64];

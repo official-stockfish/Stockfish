@@ -431,12 +431,12 @@ inline Square Position::initial_qr_square(Color c) const {
 
 template<>
 inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
-  return NonSlidingAttacksBB[make_piece(c, PAWN)][s];
+  return StepAttacksBB[make_piece(c, PAWN)][s];
 }
 
 template<PieceType Piece> // Knight and King and white pawns
 inline Bitboard Position::attacks_from(Square s) const {
-  return NonSlidingAttacksBB[Piece][s];
+  return StepAttacksBB[Piece][s];
 }
 
 template<>

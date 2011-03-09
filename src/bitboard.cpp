@@ -214,7 +214,7 @@ Bitboard BAttacks[0x1480];
 Bitboard SetMaskBB[65];
 Bitboard ClearMaskBB[65];
 
-Bitboard NonSlidingAttacksBB[16][64];
+Bitboard StepAttacksBB[16][64];
 Bitboard BetweenBB[64][64];
 
 Bitboard SquaresInFrontMask[2][64];
@@ -231,7 +231,7 @@ uint8_t BitCount8Bit[256];
 namespace {
 
   void init_masks();
-  void init_non_sliding_attacks();
+  void init_step_attacks();
   void init_pseudo_attacks();
   void init_between_bitboards();
   Bitboard index_to_bitboard(int index, Bitboard mask);
@@ -347,7 +347,7 @@ void init_bitboards() {
   int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
 
   init_masks();
-  init_non_sliding_attacks();
+  init_step_attacks();
   init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
   init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
   init_pseudo_attacks();
@@ -384,7 +384,7 @@ namespace {
         BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
   }
 
-  void init_non_sliding_attacks() {
+  void init_step_attacks() {
 
     const int step[][9] =  {
       {0},
@@ -401,7 +401,7 @@ namespace {
                 Square to = s + Square(step[pc][k]);
 
                 if (square_is_ok(to) && square_distance(s, to) < 3)
-                    set_bit(&NonSlidingAttacksBB[pc][s], to);
+                    set_bit(&StepAttacksBB[pc][s], to);
            }
   }
 
