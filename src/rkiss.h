@@ -21,7 +21,9 @@
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
- ** A small "keep it simple and stupid" RNG with some fancy merits:
+ ** George Marsaglia invented the RNG-Kiss-family in the early 90's.
+ ** This is a specific version that Heinz van Saanen derived and
+ ** tested from some public domain code by Bob Jenkins:
  **
  ** Quite platform independent
  ** Passes ALL dieharder tests! Here *nix sys-rand() e.g. fails miserably:-)
@@ -31,9 +33,6 @@
  ** 64 bit seed
  ** Return doubles with a full 53 bit mantissa
  ** Thread safe
- **
- ** (c) Heinz van Saanen
-
 */
 
 #if !defined(RKISS_H_INCLUDED)
@@ -46,7 +45,7 @@ class RKISS {
   // Keep variables always together
   struct S { uint64_t a, b, c, d; } s;
 
-  uint64_t rot(uint64_t x, uint64_t k) const {
+  uint64_t rotate(uint64_t x, uint64_t k) const {
     return (x << k) | (x >> (64 - k));
   }
 
@@ -54,9 +53,9 @@ class RKISS {
   uint64_t rand64() {
 
     const uint64_t
-      e = s.a - rot(s.b,  7);
-    s.a = s.b ^ rot(s.c, 13);
-    s.b = s.c + rot(s.d, 37);
+      e = s.a - rotate(s.b,  7);
+    s.a = s.b ^ rotate(s.c, 13);
+    s.b = s.c + rotate(s.d, 37);
     s.c = s.d + e;
     return s.d = e + s.a;
   }
