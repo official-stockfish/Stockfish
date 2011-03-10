@@ -43,12 +43,12 @@ const Bitboard Rank6BB = Rank1BB << (8 * 5);
 const Bitboard Rank7BB = Rank1BB << (8 * 6);
 const Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-extern Bitboard SquaresByColorBB[2];
-extern Bitboard FileBB[8];
-extern Bitboard NeighboringFilesBB[8];
-extern Bitboard ThisAndNeighboringFilesBB[8];
-extern Bitboard RankBB[8];
-extern Bitboard InFrontBB[2][8];
+extern const Bitboard SquaresByColorBB[2];
+extern const Bitboard FileBB[8];
+extern const Bitboard NeighboringFilesBB[8];
+extern const Bitboard ThisAndNeighboringFilesBB[8];
+extern const Bitboard RankBB[8];
+extern const Bitboard InFrontBB[2][8];
 
 extern Bitboard SetMaskBB[65];
 extern Bitboard ClearMaskBB[65];

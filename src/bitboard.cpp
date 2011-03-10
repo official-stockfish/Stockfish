@@ -156,6 +156,51 @@ const int RShift[64] = {
 
 #endif // defined(IS_64BIT)
 
+static const Bitboard DarkSquaresBB  = 0xAA55AA55AA55AA55ULL;
+
+const Bitboard SquaresByColorBB[2] = { DarkSquaresBB, ~DarkSquaresBB };
+
+const Bitboard FileBB[8] = {
+  FileABB, FileBBB, FileCBB, FileDBB, FileEBB, FileFBB, FileGBB, FileHBB
+};
+
+const Bitboard NeighboringFilesBB[8] = {
+  FileBBB, FileABB|FileCBB, FileBBB|FileDBB, FileCBB|FileEBB,
+  FileDBB|FileFBB, FileEBB|FileGBB, FileFBB|FileHBB, FileGBB
+};
+
+const Bitboard ThisAndNeighboringFilesBB[8] = {
+  FileABB|FileBBB, FileABB|FileBBB|FileCBB,
+  FileBBB|FileCBB|FileDBB, FileCBB|FileDBB|FileEBB,
+  FileDBB|FileEBB|FileFBB, FileEBB|FileFBB|FileGBB,
+  FileFBB|FileGBB|FileHBB, FileGBB|FileHBB
+};
+
+const Bitboard RankBB[8] = {
+  Rank1BB, Rank2BB, Rank3BB, Rank4BB, Rank5BB, Rank6BB, Rank7BB, Rank8BB
+};
+
+const Bitboard InFrontBB[2][8] = {
+  { Rank2BB | Rank3BB | Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank3BB | Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank4BB | Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank5BB | Rank6BB | Rank7BB | Rank8BB,
+    Rank6BB | Rank7BB | Rank8BB,
+    Rank7BB | Rank8BB,
+    Rank8BB,
+    EmptyBoardBB
+  },
+  { EmptyBoardBB,
+    Rank1BB,
+    Rank2BB | Rank1BB,
+    Rank3BB | Rank2BB | Rank1BB,
+    Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB,
+    Rank7BB | Rank6BB | Rank5BB | Rank4BB | Rank3BB | Rank2BB | Rank1BB
+  }
+};
+
 // Global bitboards definitions with static storage duration are
 // automatically set to zero before enter main().
 Bitboard RMask[64];
@@ -169,14 +214,9 @@ Bitboard BAttacks[0x1480];
 Bitboard SetMaskBB[65];
 Bitboard ClearMaskBB[65];
 
-Bitboard SquaresByColorBB[2];
-Bitboard FileBB[8];
-Bitboard RankBB[8];
-Bitboard NeighboringFilesBB[8];
-Bitboard ThisAndNeighboringFilesBB[8];
-Bitboard InFrontBB[2][8];
 Bitboard NonSlidingAttacksBB[16][64];
 Bitboard BetweenBB[64][64];
+
 Bitboard SquaresInFrontMask[2][64];
 Bitboard PassedPawnMask[2][64];
 Bitboard AttackSpanMask[2][64];
@@ -322,30 +362,6 @@ namespace {
   // be necessary to touch any of them.
 
   void init_masks() {
-
-    SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
-    SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
-
-    FileBB[FILE_A] = FileABB;
-    RankBB[RANK_1] = Rank1BB;
-
-    for (File f = FILE_B; f <= FILE_H; f++)
-    {
-        FileBB[f] = FileBB[f - 1] << 1;
-        RankBB[f] = RankBB[f - 1] << 8;
-    }
-
-    for (File f = FILE_A; f <= FILE_H; f++)
-    {
-        NeighboringFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
-        ThisAndNeighboringFilesBB[f] = FileBB[f] | NeighboringFilesBB[f];
-    }
-
-    for (Rank rw = RANK_7, rb = RANK_1; rw >= RANK_1; rw--, rb++)
-    {
-        InFrontBB[WHITE][rw] = InFrontBB[WHITE][rw + 1] | RankBB[rw + 1];
-        InFrontBB[BLACK][rb] = InFrontBB[BLACK][rb - 1] | RankBB[rb - 1];
-    }
 
     SetMaskBB[SQ_NONE] = EmptyBoardBB;
     ClearMaskBB[SQ_NONE] = ~SetMaskBB[SQ_NONE];
