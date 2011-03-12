@@ -162,6 +162,11 @@ namespace {
             && pawnSquare == SQ_A7
             && (blackKingSquare == SQ_C7 || blackKingSquare == SQ_C8))
             return true;
+
+        if (   whiteKingSquare == SQ_H8
+            && pawnSquare == SQ_H7
+            && (blackKingSquare == SQ_F7 || blackKingSquare == SQ_F8))
+            return true;
     }
     return false;
   }
@@ -172,6 +177,7 @@ namespace {
     // white pawn can be promoted without getting captured.
     return   sideToMove == WHITE
           && square_rank(pawnSquare) == RANK_7
+          && whiteKingSquare != pawnSquare + DELTA_N
           && (   square_distance(blackKingSquare, pawnSquare + DELTA_N) > 1
               || bit_is_set(wk_attacks(), pawnSquare + DELTA_N));
   }
