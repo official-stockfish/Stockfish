@@ -23,7 +23,7 @@
 #include "endgame.h"
 #include "pawns.h"
 
-extern int probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm);
+extern uint32_t probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm);
 
 namespace {
 

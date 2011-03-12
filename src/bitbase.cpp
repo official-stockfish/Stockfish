@@ -45,9 +45,11 @@ namespace {
     Color sideToMove;
   };
 
-  const int IndexMax = 2 * 24 * 64 * 64;
+  // The possible pawns squares are 24, the first 4 files and ranks from 2 to 7
+  const int IndexMax = 2 * 24 * 64 * 64; // color * wp_sq * wk_sq * bk_sq
 
-  uint8_t KPKBitbase[IndexMax / 8];
+  // Each uint32_t stores results of 32 positions, one per bit
+  uint32_t KPKBitbase[IndexMax / 32];
 
   Result classify_wtm(const KPKPosition& pos, const Result bb[]);
   Result classify_btm(const KPKPosition& pos, const Result bb[]);
@@ -55,23 +57,22 @@ namespace {
 }
 
 
-int probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm) {
+uint32_t probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm) {
 
   int index = compute_index(wksq, bksq, wpsq, stm);
 
-  return KPKBitbase[index / 8] & (1 << (index & 7));
+  return KPKBitbase[index / 32] & (1 << (index & 31));
 }
 
 
 void init_kpk_bitbase() {
 
-  bool repeat;
-  int i, j, b;
-  KPKPosition pos;
   Result bb[IndexMax];
+  KPKPosition pos;
+  bool repeat;
 
   // Initialize table
-  for (i = 0; i < IndexMax; i++)
+  for (int i = 0; i < IndexMax; i++)
   {
       pos.from_index(i);
       bb[i] = !pos.is_legal()          ? RESULT_INVALID
@@ -83,7 +84,7 @@ void init_kpk_bitbase() {
   do {
       repeat = false;
 
-      for (i = 0; i < IndexMax; i++)
+      for (int i = 0; i < IndexMax; i++)
           if (bb[i] == RESULT_UNKNOWN)
           {
               pos.from_index(i);
@@ -96,29 +97,36 @@ void init_kpk_bitbase() {
 
   } while (repeat);
 
-  // Compress result and map into KPKBitbase[]
-  for (i = 0; i < 24576; i++)
-  {
-      b = 0;
-      for (j = 0; j < 8; j++)
-          if (bb[8*i+j] == RESULT_WIN || bb[8*i+j] == RESULT_LOSS)
-              b |= (1 << j);
-
-      KPKBitbase[i] = (uint8_t)b;
-  }
+  // Map 32 position results into one KPKBitbase[] entry
+  for (int i = 0; i < IndexMax / 32; i++)
+      for (int j = 0; j < 32; j++)
+          if (bb[32 * i + j] == RESULT_WIN || bb[32 * i + j] == RESULT_LOSS)
+              KPKBitbase[i] |= (1 << j);
 }
 
 
 namespace {
 
+ // A KPK bitbase index is an integer in [0, IndexMax] range
+ //
+ // Information is mapped in this way
+ //
+ // bit     0: side to move (WHITE or BLACK)
+ // bit  1- 6: black king square (from SQ_A1 to SQ_H8)
+ // bit  7-12: white king square (from SQ_A1 to SQ_H8)
+ // bit 13-14: white pawn file (from FILE_A to FILE_D)
+ // bit 15-17: white pawn rank - 1 (from RANK_2 - 1 to RANK_7 - 1)
+
   int compute_index(Square wksq, Square bksq, Square wpsq, Color stm) {
 
-      int p = int(square_file(wpsq)) + (int(square_rank(wpsq)) - 1) * 4;
-      int r = int(stm) + 2 * int(bksq) + 128 * int(wksq) + 8192 * p;
+    assert(square_file(wpsq) <= FILE_D);
 
-      assert(r >= 0 && r < IndexMax);
+    int p = int(square_file(wpsq)) + 4 * int(square_rank(wpsq) - 1);
+    int r = int(stm) + 2 * int(bksq) + 128 * int(wksq) + 8192 * p;
 
-      return r;
+    assert(r >= 0 && r < IndexMax);
+
+    return r;
   }
 
   void KPKPosition::from_index(int index) {
@@ -135,7 +143,7 @@ namespace {
 
     if (   whiteKingSquare == pawnSquare
         || whiteKingSquare == blackKingSquare
-        || pawnSquare == blackKingSquare)
+        || blackKingSquare == pawnSquare)
         return false;
 
     if (sideToMove == WHITE)
@@ -167,15 +175,10 @@ namespace {
     }
     else
     {
-        // Case 1: Stalemate
+        // Case 1: Stalemate (possible pawn files are only from A to D)
         if (   whiteKingSquare == SQ_A8
             && pawnSquare == SQ_A7
             && (blackKingSquare == SQ_C7 || blackKingSquare == SQ_C8))
-            return true;
-
-        if (   whiteKingSquare == SQ_H8
-            && pawnSquare == SQ_H7
-            && (blackKingSquare == SQ_F7 || blackKingSquare == SQ_F8))
             return true;
     }
     return false;
@@ -202,53 +205,33 @@ namespace {
     bool unknownFound = false;
     Bitboard b;
     Square s;
-    int idx;
+    Result r;
 
     // King moves
     b = pos.wk_attacks();
     while (b)
     {
         s = pop_1st_bit(&b);
-        idx = compute_index(s, pos.blackKingSquare, pos.pawnSquare, BLACK);
+        r = bb[compute_index(s, pos.blackKingSquare, pos.pawnSquare, BLACK)];
 
-        switch (bb[idx]) {
-
-        case RESULT_LOSS:
+        if (r == RESULT_LOSS)
             return RESULT_WIN;
 
-        case RESULT_UNKNOWN:
+        if (r == RESULT_UNKNOWN)
             unknownFound = true;
-
-        case RESULT_DRAW:
-        case RESULT_INVALID:
-             break;
-
-         default:
-             assert(false);
-        }
     }
 
     // Pawn moves
     if (square_rank(pos.pawnSquare) < RANK_7)
     {
         s = pos.pawnSquare + DELTA_N;
-        idx = compute_index(pos.whiteKingSquare, pos.blackKingSquare, s, BLACK);
+        r = bb[compute_index(pos.whiteKingSquare, pos.blackKingSquare, s, BLACK)];
 
-        switch (bb[idx]) {
-
-        case RESULT_LOSS:
+        if (r == RESULT_LOSS)
             return RESULT_WIN;
 
-        case RESULT_UNKNOWN:
+        if (r == RESULT_UNKNOWN)
             unknownFound = true;
-
-        case RESULT_DRAW:
-        case RESULT_INVALID:
-            break;
-
-        default:
-            assert(false);
-        }
 
         // Double pawn push
         if (   square_rank(s) == RANK_3
@@ -256,23 +239,13 @@ namespace {
             && s != pos.blackKingSquare)
         {
             s += DELTA_N;
-            idx = compute_index(pos.whiteKingSquare, pos.blackKingSquare, s, BLACK);
+            r = bb[compute_index(pos.whiteKingSquare, pos.blackKingSquare, s, BLACK)];
 
-            switch (bb[idx]) {
-
-            case RESULT_LOSS:
+            if (r == RESULT_LOSS)
                 return RESULT_WIN;
 
-            case RESULT_UNKNOWN:
+            if (r == RESULT_UNKNOWN)
                 unknownFound = true;
-
-            case RESULT_DRAW:
-            case RESULT_INVALID:
-                break;
-
-            default:
-                assert(false);
-            }
         }
     }
     return unknownFound ? RESULT_UNKNOWN : RESULT_DRAW;
@@ -290,30 +263,20 @@ namespace {
     bool unknownFound = false;
     Bitboard b;
     Square s;
-    int idx;
+    Result r;
 
     // King moves
     b = pos.bk_attacks();
     while (b)
     {
         s = pop_1st_bit(&b);
-        idx = compute_index(pos.whiteKingSquare, s, pos.pawnSquare, WHITE);
+        r = bb[compute_index(pos.whiteKingSquare, s, pos.pawnSquare, WHITE)];
 
-        switch (bb[idx]) {
-
-        case RESULT_DRAW:
+        if (r == RESULT_DRAW)
             return RESULT_DRAW;
 
-        case RESULT_UNKNOWN:
+        if (r == RESULT_UNKNOWN)
             unknownFound = true;
-
-        case RESULT_WIN:
-        case RESULT_INVALID:
-            break;
-
-        default:
-            assert(false);
-        }
     }
     return unknownFound ? RESULT_UNKNOWN : RESULT_LOSS;
   }
