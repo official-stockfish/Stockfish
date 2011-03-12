@@ -17,21 +17,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 
 #include "bitcount.h"
 #include "endgame.h"
 #include "pawns.h"
 
-
-////
-//// Local definitions
-////
+extern int probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm);
 
 namespace {
 
@@ -69,9 +61,6 @@ namespace {
   // and knight in KR vs KN endgames.
   const int KRKNKingKnightDistancePenalty[8] = { 0, 0, 4, 10, 20, 32, 48, 70 };
 
-  // Bitbase for KP vs K
-  uint8_t KPKBitbase[24576];
-
   // Various inline functions for accessing the above arrays
   inline Value mate_table(Square s) {
     return Value(MateTable[s]);
@@ -89,23 +78,6 @@ namespace {
     return Value(KRKNKingKnightDistancePenalty[d]);
   }
 
-  // Function for probing the KP vs K bitbase
-  int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm);
-
-}
-
-
-////
-//// Functions
-////
-
-/// init_bitbases() is called during program initialization, and simply loads
-/// bitbases from disk into memory.  At the moment, there is only the bitbase
-/// for KP vs K, but we may decide to add other bitbases later.
-extern void generate_kpk_bitbase(uint8_t bitbase[]);
-
-void init_bitbases() {
-  generate_kpk_bitbase(KPKBitbase);
 }
 
 
@@ -204,7 +176,7 @@ Value EvaluationFunction<KPK>::apply(const Position& pos) const {
       wpsq = flop_square(wpsq);
   }
 
-  if (!probe_kpk(wksq, wpsq, bksq, stm))
+  if (!probe_kpk_bitbase(wksq, wpsq, bksq, stm))
       return VALUE_DRAW;
 
   Value result =  VALUE_KNOWN_WIN
@@ -890,21 +862,5 @@ ScaleFactor ScalingFunction<KPKP>::apply(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a
   // draw, it's probably at least a draw even with the pawn.
-  return probe_kpk(wksq, wpsq, bksq, stm) ? SCALE_FACTOR_NONE : SCALE_FACTOR_ZERO;
-}
-
-
-namespace {
-
-  // Probe the KP vs K bitbase
-
-  int probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm) {
-
-    int wp = square_file(wpsq) + 4 * (square_rank(wpsq) - 1);
-    int index = int(stm) + 2 * bksq + 128 * wksq + 8192 * wp;
-
-    assert(index >= 0 && index < 24576 * 8);
-
-    return KPKBitbase[index / 8] & (1 << (index & 7));
-  }
+  return probe_kpk_bitbase(wksq, wpsq, bksq, stm) ? SCALE_FACTOR_NONE : SCALE_FACTOR_ZERO;
 }

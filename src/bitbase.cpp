@@ -47,13 +47,23 @@ namespace {
 
   const int IndexMax = 2 * 24 * 64 * 64;
 
+  uint8_t KPKBitbase[IndexMax / 8];
+
   Result classify_wtm(const KPKPosition& pos, const Result bb[]);
   Result classify_btm(const KPKPosition& pos, const Result bb[]);
-  int compute_index(Square wksq, Square bksq, Square psq, Color stm);
+  int compute_index(Square wksq, Square bksq, Square wpsq, Color stm);
 }
 
 
-void generate_kpk_bitbase(uint8_t bitbase[]) {
+int probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm) {
+
+  int index = compute_index(wksq, bksq, wpsq, stm);
+
+  return KPKBitbase[index / 8] & (1 << (index & 7));
+}
+
+
+void init_kpk_bitbase() {
 
   bool repeat;
   int i, j, b;
@@ -86,7 +96,7 @@ void generate_kpk_bitbase(uint8_t bitbase[]) {
 
   } while (repeat);
 
-  // Compress result and map into supplied bitbase parameter
+  // Compress result and map into KPKBitbase[]
   for (i = 0; i < 24576; i++)
   {
       b = 0;
@@ -94,16 +104,16 @@ void generate_kpk_bitbase(uint8_t bitbase[]) {
           if (bb[8*i+j] == RESULT_WIN || bb[8*i+j] == RESULT_LOSS)
               b |= (1 << j);
 
-      bitbase[i] = (uint8_t)b;
+      KPKBitbase[i] = (uint8_t)b;
   }
 }
 
 
 namespace {
 
-  int compute_index(Square wksq, Square bksq, Square psq, Color stm) {
+  int compute_index(Square wksq, Square bksq, Square wpsq, Color stm) {
 
-      int p = int(square_file(psq)) + (int(square_rank(psq)) - 1) * 4;
+      int p = int(square_file(wpsq)) + (int(square_rank(wpsq)) - 1) * 4;
       int r = int(stm) + 2 * int(bksq) + 128 * int(wksq) + 8192 * p;
 
       assert(r >= 0 && r < IndexMax);

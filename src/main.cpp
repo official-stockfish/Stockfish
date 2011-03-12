@@ -38,7 +38,7 @@ using namespace std;
 
 extern bool execute_uci_command(const string& cmd);
 extern void benchmark(int argc, char* argv[]);
-extern void init_bitbases();
+extern void init_kpk_bitbase();
 
 int main(int argc, char* argv[]) {
 
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
   Position::init_zobrist();
   Position::init_piece_square_tables();
   init_eval(1);
-  init_bitbases();
+  init_kpk_bitbase();
   init_search();
   init_threads();
 
