@@ -257,15 +257,25 @@ inline bool squares_aligned(Square s1, Square s2, Square s3) {
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
 
-#if defined(USE_BSFQ) // Assembly code by Heinz van Saanen
+#if defined(USE_BSFQ)
 
-inline Square first_1(Bitboard b) {
+#if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
+
+FORCE_INLINE Square first_1(Bitboard b) {
+   unsigned long index;
+   _BitScanForward64(&index, b);
+   return (Square) index;
+}
+#else
+
+FORCE_INLINE Square first_1(Bitboard b) { // Assembly code by Heinz van Saanen
   Bitboard dummy;
   __asm__("bsfq %1, %0": "=r"(dummy): "rm"(b) );
-  return (Square)(dummy);
+  return (Square) dummy;
 }
+#endif
 
-inline Square pop_1st_bit(Bitboard* b) {
+FORCE_INLINE Square pop_1st_bit(Bitboard* b) {
   const Square s = first_1(*b);
   *b &= ~(1ULL<<s);
   return s;

@@ -77,9 +77,8 @@ typedef unsigned __int64 uint64_t;
 #define IS_64BIT
 #endif
 
-// Automatic detection for use of bsfq asm-instruction under Windows.
-// Works only in 64-bit mode. Does not work with MSVC.
-#if defined(_WIN64) && defined(__INTEL_COMPILER)
+// Automatic detection for use of bsfq asm-instruction under Windows
+#if defined(_WIN64)
 #define USE_BSFQ
 #endif
 
