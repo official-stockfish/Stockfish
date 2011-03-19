@@ -578,8 +578,15 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   if (!StopRequest && (Pondering || InfiniteSearch))
       wait_for_stop_or_ponderhit();
 
-  // Could be both MOVE_NONE when searching on a stalemate position
-  cout << "bestmove " << bestMove << " ponder " << ponderMove << endl;
+  // Could be MOVE_NONE when searching on a stalemate position
+  cout << "bestmove " << bestMove;
+
+  // UCI protol is not clear on allowing sending an empty ponder move, instead
+  // it is clear that ponder move is optional. So skip it if empty.
+  if (ponderMove != MOVE_NONE)
+      cout << " ponder " << ponderMove;
+
+  cout << endl;
 
   return !QuitRequest;
 }
