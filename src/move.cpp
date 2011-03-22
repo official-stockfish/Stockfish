@@ -232,36 +232,30 @@ namespace {
 
   Ambiguity move_ambiguity(const Position& pos, Move m) {
 
-    MoveStack mlist[MOVES_MAX], *last;
-    Move candidates[8];
-    Square from = move_from(m);
-    Square to = move_to(m);
-    Piece pc = pos.piece_on(from);
-    int matches = 0, f = 0, r = 0;
+    MoveStack mlist[MOVES_MAX];
+    Piece pc = pos.piece_on(move_from(m));
+    int f = 0, r = 0;
 
-    // If there is only one piece 'pc' then move cannot be ambiguous
-    if (pos.piece_count(pos.side_to_move(), type_of_piece(pc)) == 1)
-        return AMBIGUITY_NONE;
+    MoveStack* last = generate<MV_LEGAL>(pos, mlist);
 
     // Collect all legal moves of piece 'pc' with destination 'to'
-    last = generate<MV_LEGAL>(pos, mlist);
     for (MoveStack* cur = mlist; cur != last; cur++)
-        if (move_to(cur->move) == to && pos.piece_on(move_from(cur->move)) == pc)
-            candidates[matches++] = cur->move;
-
-    if (matches == 1)
-        return AMBIGUITY_NONE;
-
-    for (int i = 0; i < matches; i++)
     {
-        if (square_file(move_from(candidates[i])) == square_file(from))
-            f++;
+        if (   move_to(cur->move) == move_to(m)
+            && pos.piece_on(move_from(cur->move)) == pc)
+        {
+            if (square_file(move_from(cur->move)) == square_file(move_from(m)))
+                f++;
 
-        if (square_rank(move_from(candidates[i])) == square_rank(from))
-            r++;
+            if (square_rank(move_from(cur->move)) == square_rank(move_from(m)))
+                r++;
+        }
     }
 
-    return f == 1 ? AMBIGUITY_FILE : r == 1 ? AMBIGUITY_RANK : AMBIGUITY_BOTH;
+    assert(f > 0 && r > 0);
+
+    return f == 1 ? (r == 1 ? AMBIGUITY_NONE : AMBIGUITY_FILE)
+                  : (r == 1 ? AMBIGUITY_RANK : AMBIGUITY_BOTH);
   }
 
 
@@ -270,17 +264,16 @@ namespace {
     const int MSecMinute = 1000 * 60;
     const int MSecHour   = 1000 * 60 * 60;
 
-    std::stringstream s;
-    s << std::setfill('0');
-
     int hours = millisecs / MSecHour;
-    int minutes = (millisecs - hours * MSecHour) / MSecMinute;
-    int seconds = (millisecs - hours * MSecHour - minutes * MSecMinute) / 1000;
+    int minutes =  (millisecs % MSecHour) / MSecMinute;
+    int seconds = ((millisecs % MSecHour) % MSecMinute) / 1000;
+
+    std::stringstream s;
 
     if (hours)
         s << hours << ':';
 
-    s << std::setw(2) << minutes << ':' << std::setw(2) << seconds;
+    s << std::setfill('0') << std::setw(2) << minutes << ':' << std::setw(2) << seconds;
     return s.str();
   }
 
@@ -294,13 +287,8 @@ namespace {
     else if (v <= -VALUE_MATE + 200)
         s << "-#" << (VALUE_MATE + v) / 2;
     else
-    {
-        float floatScore = float(v) / float(PawnValueMidgame);
-        if (v >= 0)
-            s << '+';
+        s << std::setprecision(2) << std::fixed << std::showpos << float(v) / PawnValueMidgame;
 
-        s << std::setprecision(2) << std::fixed << floatScore;
-    }
     return s.str();
   }
 }
