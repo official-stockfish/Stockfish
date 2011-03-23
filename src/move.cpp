@@ -17,11 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 #include <cstring>
 #include <iomanip>
@@ -34,36 +29,22 @@
 
 using std::string;
 
-////
-//// Local definitions
-////
-
 namespace {
-
-  enum Ambiguity {
-    AMBIGUITY_NONE, AMBIGUITY_FILE, AMBIGUITY_RANK, AMBIGUITY_BOTH
-  };
-
-  Ambiguity move_ambiguity(const Position& pos, Move m);
   const string time_string(int milliseconds);
   const string score_string(Value v);
 }
 
-
-////
-//// Functions
-////
 
 /// move_to_uci() converts a move to a string in coordinate notation
 /// (g1f3, a7a8q, etc.). The only special case is castling moves, where we
 /// print in the e1g1 notation in normal chess mode, and in e1h1 notation in
 /// Chess960 mode.
 
-const std::string move_to_uci(Move m, bool chess960) {
+const string move_to_uci(Move m, bool chess960) {
 
-  std::string promotion;
   Square from = move_from(m);
   Square to = move_to(m);
+  string promotion;
 
   if (m == MOVE_NONE)
       return "(none)";
@@ -87,7 +68,7 @@ const std::string move_to_uci(Move m, bool chess960) {
 /// move_from_uci() takes a position and a string representing a move in
 /// simple coordinate notation and returns an equivalent Move.
 
-Move move_from_uci(const Position& pos, const std::string& str) {
+Move move_from_uci(const Position& pos, const string& str) {
 
   MoveStack mlist[MOVES_MAX];
   MoveStack* last = generate<MV_LEGAL>(pos, mlist);
@@ -109,10 +90,11 @@ const string move_to_san(Position& pos, Move m) {
   assert(pos.is_ok());
   assert(move_is_ok(m));
 
-  string san;
+  MoveStack mlist[MOVES_MAX];
   Square from = move_from(m);
   Square to = move_to(m);
-  PieceType pt = type_of_piece(pos.piece_on(from));
+  PieceType pt = pos.type_of_piece_on(from);
+  string san;
 
   if (m == MOVE_NONE)
       return "(none)";
@@ -128,23 +110,32 @@ const string move_to_san(Position& pos, Move m) {
   {
       if (pt != PAWN)
       {
-          san += piece_type_to_char(pt);
+          san = piece_type_to_char(pt);
 
-          switch (move_ambiguity(pos, m)) {
-          case AMBIGUITY_NONE:
-            break;
-          case AMBIGUITY_FILE:
-            san += file_to_char(square_file(from));
-            break;
-          case AMBIGUITY_RANK:
-            san += rank_to_char(square_rank(from));
-            break;
-          case AMBIGUITY_BOTH:
-            san += square_to_string(from);
-            break;
-          default:
-            assert(false);
-          }
+          // Collect all legal moves of piece type 'pt' with destination 'to'
+          MoveStack* last = generate<MV_LEGAL>(pos, mlist);
+          int f = 0, r = 0;
+
+          for (MoveStack* cur = mlist; cur != last; cur++)
+              if (   move_to(cur->move) == to
+                  && pos.type_of_piece_on(move_from(cur->move)) == pt)
+              {
+                  if (square_file(move_from(cur->move)) == square_file(from))
+                      f++;
+
+                  if (square_rank(move_from(cur->move)) == square_rank(from))
+                      r++;
+              }
+
+          assert(f > 0 && r > 0);
+
+          // Disambiguation if we have more then one piece with destination 'to'
+          if (f == 1 && r > 1)
+              san += file_to_char(square_file(from));
+          else if (f > 1 && r == 1)
+              san += rank_to_char(square_rank(from));
+          else if (f > 1 && r > 1)
+              san += square_to_string(from);
       }
 
       if (pos.move_is_capture(m))
@@ -154,6 +145,7 @@ const string move_to_san(Position& pos, Move m) {
 
           san += 'x';
       }
+
       san += square_to_string(to);
 
       if (move_is_promotion(m))
@@ -163,8 +155,8 @@ const string move_to_san(Position& pos, Move m) {
       }
   }
 
-  // The move gives check ? We don't use pos.move_is_check() here
-  // because we need to test for mate after the move is done.
+  // The move gives check? We don't use pos.move_is_check() here
+  // because we need to test for a mate after the move is done.
   StateInfo st;
   pos.do_move(m, st);
   if (pos.is_check())
@@ -189,8 +181,8 @@ const string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[
 
   StateInfo state[PLY_MAX_PLUS_2], *st = state;
   Move* m = pv;
-  std::stringstream s;
   string san;
+  std::stringstream s;
   size_t length = 0;
 
   // First print depth, score, time and searched nodes...
@@ -201,9 +193,9 @@ const string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[
   if (pos.nodes_searched() < M)
       s << std::setw(8) << pos.nodes_searched() / 1 << "  ";
   else if (pos.nodes_searched() < K * M)
-      s << std::setw(7) << pos.nodes_searched() / K << " K ";
+      s << std::setw(7) << pos.nodes_searched() / K << "K  ";
   else
-      s << std::setw(7) << pos.nodes_searched() / M << " M ";
+      s << std::setw(7) << pos.nodes_searched() / M << "M  ";
 
   // ...then print the full PV line in short algebraic notation
   while (*m != MOVE_NONE)
@@ -229,35 +221,6 @@ const string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[
 
 
 namespace {
-
-  Ambiguity move_ambiguity(const Position& pos, Move m) {
-
-    MoveStack mlist[MOVES_MAX];
-    Piece pc = pos.piece_on(move_from(m));
-    int f = 0, r = 0;
-
-    MoveStack* last = generate<MV_LEGAL>(pos, mlist);
-
-    // Collect all legal moves of piece 'pc' with destination 'to'
-    for (MoveStack* cur = mlist; cur != last; cur++)
-    {
-        if (   move_to(cur->move) == move_to(m)
-            && pos.piece_on(move_from(cur->move)) == pc)
-        {
-            if (square_file(move_from(cur->move)) == square_file(move_from(m)))
-                f++;
-
-            if (square_rank(move_from(cur->move)) == square_rank(move_from(m)))
-                r++;
-        }
-    }
-
-    assert(f > 0 && r > 0);
-
-    return f == 1 ? (r == 1 ? AMBIGUITY_NONE : AMBIGUITY_FILE)
-                  : (r == 1 ? AMBIGUITY_RANK : AMBIGUITY_BOTH);
-  }
-
 
   const string time_string(int millisecs) {
 
