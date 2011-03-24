@@ -633,7 +633,7 @@ namespace {
     while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
     {
         Rml.bestMoveChanges = 0;
-        cout << "info depth " << depth << endl;
+        cout << set960(pos.is_chess960()) << "info depth " << depth << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
         if (MultiPV == 1 && depth >= 5 && abs(bestValues[depth - 1]) < VALUE_KNOWN_WIN)
@@ -654,14 +654,10 @@ namespace {
             // Search starting from ss+1 to allow calling update_gains()
             value = search<PV, false, true>(pos, ss+1, alpha, beta, depth * ONE_PLY, 0);
 
-            // Send PV line to GUI and write to transposition table in case the
-            // relevant entries have been overwritten during the search.
+            // Write PV back to transposition table in case the relevant entries
+            // have been overwritten during the search.
             for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
-            {
                 Rml[i].insert_pv_in_tt(pos);
-                cout << set960(pos.is_chess960())
-                     << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
-            }
 
             // Value cannot be trusted. Break out immediately!
             if (StopRequest)
@@ -693,6 +689,10 @@ namespace {
         bestMove = Rml[0].pv[0];
         bestValues[depth] = value;
         bestMoveChanges[depth] = Rml.bestMoveChanges;
+
+        // Send PV line to GUI and to log file
+        for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
+            cout << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
 
         if (UseLogFile)
             LogFile << pretty_pv(pos, depth, value, current_search_time(), Rml[0].pv) << endl;
