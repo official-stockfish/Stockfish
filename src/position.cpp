@@ -1712,7 +1712,7 @@ bool Position::has_mate_threat() {
   // Loop through the moves, and see if one of them gives mate
   Bitboard pinned = pinned_pieces(sideToMove);
   CheckInfo ci(*this);
-  for (cur = mlist; cur != last && !mateFound; cur++)
+  for (cur = mlist; !mateFound && cur != last; cur++)
   {
       Move move = cur->move;
       if (   !pl_move_is_legal(move, pinned)
@@ -1720,10 +1720,7 @@ bool Position::has_mate_threat() {
           continue;
 
       do_move(move, st2, ci, true);
-
-      if (is_mate())
-          mateFound = true;
-
+      mateFound = is_mate();
       undo_move(move);
   }
 
@@ -1975,7 +1972,6 @@ bool Position::is_ok(int* failedStep) const {
 
   if (failedStep) (*failedStep)++;
   if (debugPieceList)
-  {
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
               for (int i = 0; i < pieceCount[c][pt]; i++)
@@ -1986,13 +1982,15 @@ bool Position::is_ok(int* failedStep) const {
                   if (index[piece_list(c, pt, i)] != i)
                       return false;
               }
-  }
 
   if (failedStep) (*failedStep)++;
-  if (debugCastleSquares) {
-      for (Color c = WHITE; c <= BLACK; c++) {
+  if (debugCastleSquares)
+  {
+      for (Color c = WHITE; c <= BLACK; c++)
+      {
           if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != make_piece(c, ROOK))
               return false;
+
           if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != make_piece(c, ROOK))
               return false;
       }
