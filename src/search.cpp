@@ -1749,15 +1749,6 @@ split_point_start: // At split points actual search starts from here
         *dangerous = true;
     }
 
-    if (   PvNode
-        && captureOrPromotion
-        && pos.type_of_piece_on(move_to(m)) != PAWN
-        && pos.see_sign(m) >= 0)
-    {
-        result += ONE_PLY / 2;
-        *dangerous = true;
-    }
-
     return Min(result, ONE_PLY);
   }
 
