@@ -1056,7 +1056,7 @@ split_point_start: // At split points actual search starts from here
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value b = ttValue - depth;
+              Value b = ttValue - int(depth);
               ss->excludedMove = move;
               ss->skipNullMove = true;
               Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply);
