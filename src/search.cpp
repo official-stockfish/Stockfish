@@ -243,7 +243,7 @@ namespace {
   RootMoveList Rml;
 
   // MultiPV mode
-  int MultiPV;
+  int MultiPV, UCIMultiPV;
 
   // Time management variables
   int SearchStartTime, MaxNodes, MaxDepth, ExactMaxTime;
@@ -254,6 +254,10 @@ namespace {
   // Log file
   bool UseLogFile;
   std::ofstream LogFile;
+
+  // Skill level adjustment
+  int SkillLevel;
+  RKISS RK;
 
   // Multi-threads manager object
   ThreadsManager ThreadsMgr;
@@ -503,10 +507,15 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   PawnEndgameExtension[0]   = Options["Pawn Endgame Extension (non-PV nodes)"].value<Depth>();
   MateThreatExtension[1]    = Options["Mate Threat Extension (PV nodes)"].value<Depth>();
   MateThreatExtension[0]    = Options["Mate Threat Extension (non-PV nodes)"].value<Depth>();
-  MultiPV                   = Options["MultiPV"].value<int>();
+  UCIMultiPV                = Options["MultiPV"].value<int>();
+  SkillLevel                = Options["Skill level"].value<int>();
   UseLogFile                = Options["Use Search Log"].value<bool>();
 
   read_evaluation_uci_options(pos.side_to_move());
+
+  // Do we have to play with skill handicap? In this case enable MultiPV that
+  // we will use behind the scenes to retrieve a set of possible moves.
+  MultiPV = (SkillLevel < 10 ? Max(UCIMultiPV, 4) : UCIMultiPV);
 
   // Set the number of active threads
   ThreadsMgr.read_uci_options();
@@ -687,11 +696,12 @@ namespace {
 
         // Collect info about search result
         bestMove = Rml[0].pv[0];
+        *ponderMove = Rml[0].pv[1];
         bestValues[depth] = value;
         bestMoveChanges[depth] = Rml.bestMoveChanges;
 
         // Send PV line to GUI and to log file
-        for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
+        for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
             cout << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
 
         if (UseLogFile)
@@ -746,7 +756,47 @@ namespace {
         }
     }
 
-    *ponderMove = Rml[0].pv[1];
+    // When playing with strength handicap choose best move among the MultiPV
+    // set using a statistical rule dependent on SkillLevel.
+    if (SkillLevel < 10)
+    {
+        assert(MultiPV > 1);
+
+        // Rml list is already sorted by pv_score in descending order
+        int s;
+        int max_s = -VALUE_INFINITE;
+        int size = Min(MultiPV, (int)Rml.size());
+        int max = Rml[0].pv_score;
+        int var = Min(max - Rml[size - 1].pv_score, PawnValueMidgame);
+        int wk = 128 - 8 * SkillLevel;
+
+        // PRNG sequence should be non deterministic
+        for (int i = abs(get_system_time() % 50); i > 0; i--)
+            RK.rand<unsigned>();
+
+        // Choose best move. For each move's score we add two terms both dependent
+        // on wk, one deterministic and bigger for weaker moves, and one random,
+        // then we choose the move with the resulting highest score.
+        for (int i = 0; i < size; i++)
+        {
+            s = Rml[i].pv_score;
+
+            // Don't allow crazy blunders even at very low skills
+            if (i > 0 && Rml[i-1].pv_score > s + EasyMoveMargin)
+                break;
+
+            // This is our magical formula
+            s += ((max - s) * wk + var * (RK.rand<unsigned>() % wk)) / 128;
+
+            if (s > max_s)
+            {
+                max_s = s;
+                bestMove = Rml[i].pv[0];
+                *ponderMove = Rml[i].pv[1];
+            }
+        }
+    }
+
     return bestMove;
   }
 
