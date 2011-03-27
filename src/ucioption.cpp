@@ -98,7 +98,7 @@ void init_uci_options() {
   Options["Ponder"] = Option(true);
   Options["OwnBook"] = Option(true);
   Options["MultiPV"] = Option(1, 1, 500);
-  Options["Skill level"] = Option(10, 0, 10);
+  Options["Skill level"] = Option(20, 0, 20);
   Options["Emergency Move Horizon"] = Option(40, 0, 50);
   Options["Emergency Base Time"] = Option(200, 0, 30000);
   Options["Emergency Move Time"] = Option(70, 0, 5000);

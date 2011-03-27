@@ -515,7 +515,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
-  MultiPV = (SkillLevel < 10 ? Max(UCIMultiPV, 4) : UCIMultiPV);
+  MultiPV = (SkillLevel < 20 ? Max(UCIMultiPV, 4) : UCIMultiPV);
 
   // Set the number of active threads
   ThreadsMgr.read_uci_options();
@@ -756,9 +756,9 @@ namespace {
         }
     }
 
-    // When playing with strength handicap choose best move among the MultiPV
-    // set using a statistical rule dependent on SkillLevel.
-    if (SkillLevel < 10)
+    // When playing with strength handicap choose best move among the MultiPV set
+    // using a statistical rule dependent on SkillLevel. Idea by Heinz van Saanen.
+    if (SkillLevel < 20)
     {
         assert(MultiPV > 1);
 
@@ -768,7 +768,7 @@ namespace {
         int size = Min(MultiPV, (int)Rml.size());
         int max = Rml[0].pv_score;
         int var = Min(max - Rml[size - 1].pv_score, PawnValueMidgame);
-        int wk = 128 - 8 * SkillLevel;
+        int wk = 120 - 2 * SkillLevel;
 
         // PRNG sequence should be non deterministic
         for (int i = abs(get_system_time() % 50); i > 0; i--)
