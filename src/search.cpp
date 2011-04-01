@@ -300,7 +300,6 @@ namespace {
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
-  void update_killers(Move m, Move killers[]);
   void update_gains(const Position& pos, Move move, Value before, Value after);
 
   int current_search_time();
@@ -1347,8 +1346,12 @@ split_point_start: // At split points actual search starts from here
         if (    bestValue >= beta
             && !pos.move_is_capture_or_promotion(move))
         {
+            if (move != ss->killers[0])
+            {
+                ss->killers[1] = ss->killers[0];
+                ss->killers[0] = move;
+            }
             update_history(pos, move, depth, movesSearched, playedMoveCount);
-            update_killers(move, ss->killers);
         }
     }
 
@@ -1867,19 +1870,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // update_killers() add a good move that produced a beta-cutoff
-  // among the killer moves of that ply.
-
-  void update_killers(Move m, Move killers[]) {
-
-    if (m != killers[0])
-    {
-        killers[1] = killers[0];
-        killers[0] = m;
-    }
-  }
-
-
   // update_gains() updates the gains table of a non-capture move given
   // the static position evaluation before and after the move.
 
@@ -1892,6 +1882,7 @@ split_point_start: // At split points actual search starts from here
         && !move_is_special(m))
         H.update_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
+
 
   // current_search_time() returns the number of milliseconds which have passed
   // since the beginning of the current search.
