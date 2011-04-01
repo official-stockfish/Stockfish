@@ -1944,10 +1944,7 @@ split_point_start: // At split points actual search starts from here
         // We are line oriented, don't read single chars
         std::string command;
 
-        if (!std::getline(std::cin, command))
-            command = "quit";
-
-        if (command == "quit")
+        if (!std::getline(std::cin, command) || command == "quit")
         {
             // Quit the program as soon as possible
             Pondering = false;
@@ -2025,20 +2022,12 @@ split_point_start: // At split points actual search starts from here
 
     std::string command;
 
-    while (true)
-    {
-        // Wait for a command from stdin
-        if (!std::getline(std::cin, command))
-            command = "quit";
+    // Wait for a command from stdin
+    while (   std::getline(std::cin, command)
+           && command != "ponderhit" && command != "stop" && command != "quit") {};
 
-        if (command == "quit")
-        {
-            QuitRequest = true;
-            break;
-        }
-        else if (command == "ponderhit" || command == "stop")
-            break;
-    }
+    if (command != "ponderhit" && command != "stop")
+        QuitRequest = true; // Must be "quit" or getline() returned false
   }
 
 
