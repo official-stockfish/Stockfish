@@ -158,6 +158,9 @@ const bool CpuIs64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
+const int PLY_MAX = 100;
+const int PLY_MAX_PLUS_2 = PLY_MAX + 2;
+
 enum ValueType {
   VALUE_TYPE_NONE  = 0,
   VALUE_TYPE_UPPER = 1,
@@ -172,6 +175,10 @@ enum Value {
   VALUE_MATE      = 30000,
   VALUE_INFINITE  = 30001,
   VALUE_NONE      = 30002,
+
+  VALUE_MATE_IN_PLY_MAX  =  VALUE_MATE - PLY_MAX,
+  VALUE_MATED_IN_PLY_MAX = -VALUE_MATE + PLY_MAX,
+
   VALUE_ENSURE_INTEGER_SIZE_P = INT_MAX,
   VALUE_ENSURE_INTEGER_SIZE_N = INT_MIN
 };

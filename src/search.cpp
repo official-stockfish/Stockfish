@@ -920,7 +920,7 @@ namespace {
         && !isCheck
         &&  refinedValue < beta - razor_margin(depth)
         &&  ttMove == MOVE_NONE
-        &&  abs(beta) < value_mate_in(PLY_MAX)
+        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
@@ -939,7 +939,7 @@ namespace {
         &&  depth < RazorDepth
         && !isCheck
         &&  refinedValue >= beta + futility_margin(depth, 0)
-        &&  abs(beta) < value_mate_in(PLY_MAX)
+        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
         &&  pos.non_pawn_material(pos.side_to_move()))
         return refinedValue - futility_margin(depth, 0);
 
@@ -949,7 +949,7 @@ namespace {
         &&  depth > ONE_PLY
         && !isCheck
         &&  refinedValue >= beta
-        &&  abs(beta) < value_mate_in(PLY_MAX)
+        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
@@ -970,7 +970,7 @@ namespace {
         if (nullValue >= beta)
         {
             // Do not return unproven mate scores
-            if (nullValue >= value_mate_in(PLY_MAX))
+            if (nullValue >= VALUE_MATE_IN_PLY_MAX)
                 nullValue = beta;
 
             if (depth < 6 * ONE_PLY)
@@ -1131,7 +1131,7 @@ split_point_start: // At split points actual search starts from here
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
               && !(threatMove && connected_threat(pos, move, threatMove))
-              && bestValue > value_mated_in(PLY_MAX)) // FIXME bestValue is racy
+              && bestValue > VALUE_MATED_IN_PLY_MAX) // FIXME bestValue is racy
           {
               if (SpNode)
                   lock_grab(&(sp->lock));
@@ -1162,7 +1162,7 @@ split_point_start: // At split points actual search starts from here
 
           // Prune moves with negative SEE at low depths
           if (   predictedDepth < 2 * ONE_PLY
-              && bestValue > value_mated_in(PLY_MAX)
+              && bestValue > VALUE_MATED_IN_PLY_MAX
               && pos.see_sign(move) < 0)
           {
               if (SpNode)
@@ -1494,7 +1494,7 @@ split_point_start: // At split points actual search starts from here
 
       // Detect non-capture evasions that are candidate to be pruned
       evasionPrunable =   isCheck
-                       && bestValue > value_mated_in(PLY_MAX)
+                       && bestValue > VALUE_MATED_IN_PLY_MAX
                        && !pos.move_is_capture(move)
                        && !pos.can_castle(pos.side_to_move());
 
@@ -1674,10 +1674,10 @@ split_point_start: // At split points actual search starts from here
 
   Value value_to_tt(Value v, int ply) {
 
-    if (v >= value_mate_in(PLY_MAX))
+    if (v >= VALUE_MATE_IN_PLY_MAX)
       return v + ply;
 
-    if (v <= value_mated_in(PLY_MAX))
+    if (v <= VALUE_MATED_IN_PLY_MAX)
       return v - ply;
 
     return v;
@@ -1689,10 +1689,10 @@ split_point_start: // At split points actual search starts from here
 
   Value value_from_tt(Value v, int ply) {
 
-    if (v >= value_mate_in(PLY_MAX))
+    if (v >= VALUE_MATE_IN_PLY_MAX)
       return v - ply;
 
-    if (v <= value_mated_in(PLY_MAX))
+    if (v <= VALUE_MATED_IN_PLY_MAX)
       return v + ply;
 
     return v;
@@ -1811,8 +1811,8 @@ split_point_start: // At split points actual search starts from here
     Value v = value_from_tt(tte->value(), ply);
 
     return   (   tte->depth() >= depth
-              || v >= Max(value_mate_in(PLY_MAX), beta)
-              || v < Min(value_mated_in(PLY_MAX), beta))
+              || v >= Max(VALUE_MATE_IN_PLY_MAX, beta)
+              || v < Min(VALUE_MATED_IN_PLY_MAX, beta))
 
           && (   ((tte->type() & VALUE_TYPE_LOWER) && v >= beta)
               || ((tte->type() & VALUE_TYPE_UPPER) && v < beta));

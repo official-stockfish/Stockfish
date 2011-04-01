@@ -23,8 +23,6 @@
 #include "move.h"
 #include "types.h"
 
-const int PLY_MAX = 100;
-const int PLY_MAX_PLUS_2 = PLY_MAX + 2;
 
 /// The SearchStack struct keeps track of the information we need to remember
 /// from nodes shallower and deeper in the tree during the search.  Each
