@@ -293,7 +293,6 @@ namespace {
 
   bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
   bool connected_moves(const Position& pos, Move m1, Move m2);
-  bool value_is_mate(Value value);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
@@ -921,7 +920,7 @@ namespace {
         && !isCheck
         &&  refinedValue < beta - razor_margin(depth)
         &&  ttMove == MOVE_NONE
-        && !value_is_mate(beta)
+        &&  abs(beta) < value_mate_in(PLY_MAX)
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
@@ -940,7 +939,7 @@ namespace {
         &&  depth < RazorDepth
         && !isCheck
         &&  refinedValue >= beta + futility_margin(depth, 0)
-        && !value_is_mate(beta)
+        &&  abs(beta) < value_mate_in(PLY_MAX)
         &&  pos.non_pawn_material(pos.side_to_move()))
         return refinedValue - futility_margin(depth, 0);
 
@@ -950,7 +949,7 @@ namespace {
         &&  depth > ONE_PLY
         && !isCheck
         &&  refinedValue >= beta
-        && !value_is_mate(beta)
+        &&  abs(beta) < value_mate_in(PLY_MAX)
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
@@ -1669,18 +1668,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // value_is_mate() checks if the given value is a mate one eventually
-  // compensated for the ply.
-
-  bool value_is_mate(Value value) {
-
-    assert(abs(value) <= VALUE_INFINITE);
-
-    return   value <= value_mated_in(PLY_MAX)
-          || value >= value_mate_in(PLY_MAX);
-  }
-
-
   // value_to_tt() adjusts a mate score from "plies to mate from the root" to
   // "plies to mate from the current ply".  Non-mate scores are unchanged.
   // The function is called before storing a value to the transposition table.
@@ -1907,7 +1894,7 @@ split_point_start: // At split points actual search starts from here
     if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
       s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
     else
-      s << "mate " << (v > 0 ? (VALUE_MATE - v + 1) / 2 : -(VALUE_MATE + v) / 2);
+      s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
     return s.str();
   }
