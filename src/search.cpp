@@ -825,7 +825,7 @@ namespace {
     ValueType vt;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
-    bool isPvMove, isCheck, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous;
+    bool isPvMove, isCheck, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous, isBadCap;
     bool mateThreat = false;
     int moveCount = 0, playedMoveCount = 0;
     int threadID = pos.thread();
@@ -1172,6 +1172,16 @@ split_point_start: // At split points actual search starts from here
           }
       }
 
+      // Bad capture detection. Will be used by prob-cut search
+      isBadCap =   depth >= 3 * ONE_PLY
+                && depth < 8 * ONE_PLY
+                && captureOrPromotion
+                && move != ttMove
+                && !dangerous
+                && !move_is_promotion(move)
+                &&  abs(alpha) < VALUE_MATE_IN_PLY_MAX
+                &&  pos.see_sign(move) < 0;
+
       // Step 13. Make the move
       pos.do_move(move, st, ci, moveIsCheck);
 
@@ -1193,6 +1203,7 @@ split_point_start: // At split points actual search starts from here
           // Step 14. Reduced depth search
           // If the move fails high will be re-searched at full depth.
           bool doFullDepthSearch = true;
+          alpha = SpNode ? sp->alpha : alpha;
 
           if (    depth >= 3 * ONE_PLY
               && !captureOrPromotion
@@ -1210,6 +1221,18 @@ split_point_start: // At split points actual search starts from here
 
                   doFullDepthSearch = (value > alpha);
               }
+              ss->reduction = DEPTH_ZERO; // Restore original reduction
+          }
+
+          // Probcut search for bad captures. If a reduced search returns a value
+          // very below beta then we can (almost) safely prune the bad capture.
+          if (isBadCap)
+          {
+              ss->reduction = 3 * ONE_PLY;
+              Value redAlpha = alpha - 300;
+              Depth d = newDepth - ss->reduction;
+              value = -search<NonPV>(pos, ss+1, -(redAlpha+1), -redAlpha, d, ply+1);
+              doFullDepthSearch = (value > redAlpha);
               ss->reduction = DEPTH_ZERO; // Restore original reduction
           }
 
