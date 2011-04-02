@@ -257,6 +257,7 @@ namespace {
 
   // Skill level adjustment
   int SkillLevel;
+  bool SkillLevelEnabled;
   RKISS RK;
 
   // Multi-threads manager object
@@ -300,6 +301,7 @@ namespace {
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void update_gains(const Position& pos, Move move, Value before, Value after);
+  void do_skill_level(Move* best, Move* ponder);
 
   int current_search_time();
   std::string value_to_uci(Value v);
@@ -513,7 +515,8 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
-  MultiPV = (SkillLevel < 20 ? Max(UCIMultiPV, 4) : UCIMultiPV);
+  SkillLevelEnabled = (SkillLevel < 20);
+  MultiPV = (SkillLevelEnabled ? Max(UCIMultiPV, 4) : UCIMultiPV);
 
   // Set the number of active threads
   ThreadsMgr.read_uci_options();
@@ -610,16 +613,16 @@ namespace {
     SearchStack ss[PLY_MAX_PLUS_2];
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth, aspirationDelta;
+    int depth, aspirationDelta, skillSamplingDepth;
     Value value, alpha, beta;
-    Move bestMove, easyMove;
+    Move bestMove, easyMove, skillBest, skillPonder;
 
     // Initialize stuff before a new search
     memset(ss, 0, 4 * sizeof(SearchStack));
     TT.new_search();
     H.clear();
-    *ponderMove = bestMove = easyMove = MOVE_NONE;
-    depth = aspirationDelta = 0;
+    *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
+    depth = aspirationDelta = skillSamplingDepth = 0;
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
 
@@ -635,6 +638,11 @@ namespace {
 
         return MOVE_NONE;
     }
+
+    // Choose a random sampling depth according to SkillLevel so that at low
+    // skills there is an higher risk to pick up a blunder.
+    if (SkillLevelEnabled)
+        skillSamplingDepth = 4 + SkillLevel + (RK.rand<unsigned>() % 4);
 
     // Iterative deepening loop
     while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
@@ -698,6 +706,10 @@ namespace {
         bestValues[depth] = value;
         bestMoveChanges[depth] = Rml.bestMoveChanges;
 
+        // Do we need to pick now the best and the ponder moves ?
+        if (SkillLevelEnabled && depth == skillSamplingDepth)
+            do_skill_level(&skillBest, &skillPonder);
+
         // Send PV line to GUI and to log file
         for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
             cout << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
@@ -754,45 +766,14 @@ namespace {
         }
     }
 
-    // When playing with strength handicap choose best move among the MultiPV set
-    // using a statistical rule dependent on SkillLevel. Idea by Heinz van Saanen.
-    if (SkillLevel < 20)
+    // When using skills fake best and ponder moves with the sub-optimal ones
+    if (SkillLevelEnabled)
     {
-        assert(MultiPV > 1);
+        if (skillBest == MOVE_NONE) // Still unassigned ?
+            do_skill_level(&skillBest, &skillPonder);
 
-        // Rml list is already sorted by pv_score in descending order
-        int s;
-        int max_s = -VALUE_INFINITE;
-        int size = Min(MultiPV, (int)Rml.size());
-        int max = Rml[0].pv_score;
-        int var = Min(max - Rml[size - 1].pv_score, PawnValueMidgame);
-        int wk = 120 - 2 * SkillLevel;
-
-        // PRNG sequence should be non deterministic
-        for (int i = abs(get_system_time() % 50); i > 0; i--)
-            RK.rand<unsigned>();
-
-        // Choose best move. For each move's score we add two terms both dependent
-        // on wk, one deterministic and bigger for weaker moves, and one random,
-        // then we choose the move with the resulting highest score.
-        for (int i = 0; i < size; i++)
-        {
-            s = Rml[i].pv_score;
-
-            // Don't allow crazy blunders even at very low skills
-            if (i > 0 && Rml[i-1].pv_score > s + EasyMoveMargin)
-                break;
-
-            // This is our magical formula
-            s += ((max - s) * wk + var * (RK.rand<unsigned>() % wk)) / 128;
-
-            if (s > max_s)
-            {
-                max_s = s;
-                bestMove = Rml[i].pv[0];
-                *ponderMove = Rml[i].pv[1];
-            }
-        }
+        bestMove = skillBest;
+        *ponderMove = skillPonder;
     }
 
     return bestMove;
@@ -2591,6 +2572,48 @@ split_point_start: // At split points actual search starts from here
         rm.pv[1] = MOVE_NONE;
         rm.pv_score = -VALUE_INFINITE;
         push_back(rm);
+    }
+  }
+
+
+  // When playing with strength handicap choose best move among the MultiPV set
+  // using a statistical rule dependent on SkillLevel. Idea by Heinz van Saanen.
+  void do_skill_level(Move* best, Move* ponder) {
+
+    assert(MultiPV > 1);
+
+    // Rml list is already sorted by pv_score in descending order
+    int s;
+    int max_s = -VALUE_INFINITE;
+    int size = Min(MultiPV, (int)Rml.size());
+    int max = Rml[0].pv_score;
+    int var = Min(max - Rml[size - 1].pv_score, PawnValueMidgame);
+    int wk = 120 - 2 * SkillLevel;
+
+    // PRNG sequence should be non deterministic
+    for (int i = abs(get_system_time() % 50); i > 0; i--)
+        RK.rand<unsigned>();
+
+    // Choose best move. For each move's score we add two terms both dependent
+    // on wk, one deterministic and bigger for weaker moves, and one random,
+    // then we choose the move with the resulting highest score.
+    for (int i = 0; i < size; i++)
+    {
+        s = Rml[i].pv_score;
+
+        // Don't allow crazy blunders even at very low skills
+        if (i > 0 && Rml[i-1].pv_score > s + EasyMoveMargin)
+            break;
+
+        // This is our magical formula
+        s += ((max - s) * wk + var * (RK.rand<unsigned>() % wk)) / 128;
+
+        if (s > max_s)
+        {
+            max_s = s;
+            *best = Rml[i].pv[0];
+            *ponder = Rml[i].pv[1];
+        }
     }
   }
 
