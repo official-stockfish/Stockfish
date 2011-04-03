@@ -62,19 +62,19 @@ void TranspositionTable::set_size(size_t mbSize) {
   while (2ULL * newSize * sizeof(TTCluster) <= (mbSize << 20))
       newSize *= 2;
 
-  if (newSize != size)
+  if (newSize == size)
+      return;
+
+  size = newSize;
+  delete [] entries;
+  entries = new (std::nothrow) TTCluster[size];
+  if (!entries)
   {
-      size = newSize;
-      delete [] entries;
-      entries = new (std::nothrow) TTCluster[size];
-      if (!entries)
-      {
-          std::cerr << "Failed to allocate " << mbSize
-                    << " MB for transposition table." << std::endl;
-          exit(EXIT_FAILURE);
-      }
-      clear();
+      std::cerr << "Failed to allocate " << mbSize
+                << " MB for transposition table." << std::endl;
+      exit(EXIT_FAILURE);
   }
+  clear();
 }
 
 
@@ -108,7 +108,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
   tte = replace = first_entry(posKey);
   for (int i = 0; i < ClusterSize; i++, tte++)
   {
-      if (!tte->key() || tte->key() == posKey32) // empty or overwrite old
+      if (!tte->key() || tte->key() == posKey32) // Empty or overwrite old
       {
           // Preserve any existing ttMove
           if (m == MOVE_NONE)
@@ -118,7 +118,8 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           return;
       }
 
-      if (i == 0)  // Replacing first entry is default and already set before entering for-loop
+      // Replacing first entry is default and already set before entering for-loop
+      if (i == 0)
           continue;
 
       c1 = (replace->generation() == generation ?  2 : 0);

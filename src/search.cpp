@@ -17,11 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -47,27 +42,21 @@
 using std::cout;
 using std::endl;
 
-////
-//// Local definitions
-////
-
 namespace {
 
-  // Types
+  // Different node types, used as template parameter
   enum NodeType { NonPV, PV };
 
-  // Set to true to force running with one thread.
-  // Used for debugging SMP code.
+  // Set to true to force running with one thread. Used for debugging.
   const bool FakeSplit = false;
 
-  // Fast lookup table of sliding pieces indexed by Piece
+  // Lookup table to check if a Piece is a slider and its access function
   const bool Slidings[18] = { 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1 };
   inline bool piece_is_slider(Piece p) { return Slidings[p]; }
 
-  // ThreadsManager class is used to handle all the threads related stuff in search,
-  // init, starting, parking and, the most important, launching a slave thread at a
-  // split point are what this class does. All the access to shared thread data is
-  // done through this class, so that we avoid using global variables instead.
+  // ThreadsManager class is used to handle all the threads related stuff like init,
+  // starting, parking and, the most important, launching a slave thread at a split
+  // point. All the access to shared thread data is done through this class.
 
   class ThreadsManager {
     /* As long as the single ThreadsManager object is defined as a global we don't
@@ -105,7 +94,7 @@ namespace {
   };
 
 
-  // RootMove struct is used for moves at the root at the tree. For each root
+  // RootMove struct is used for moves at the root of the tree. For each root
   // move, we store two scores, a node count, and a PV (really a refutation
   // in the case of moves which fail low). Value pv_score is normally set at
   // -VALUE_INFINITE for all non-pv moves, while non_pv_score is computed
@@ -120,8 +109,8 @@ namespace {
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
     // than a move m2 if it has an higher pv_score, or if it has
-    // equal pv_score but m1 has the higher non_pv_score. In this
-    // way we are guaranteed that PV moves are always sorted as first.
+    // equal pv_score but m1 has the higher non_pv_score. In this way
+    // we are guaranteed that PV moves are always sorted as first.
     bool operator<(const RootMove& m) const {
       return pv_score != m.pv_score ? pv_score < m.pv_score
                                     : non_pv_score < m.non_pv_score;
@@ -129,7 +118,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine);
+    std::string pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvIdx);
 
     int64_t nodes;
     Value pv_score;
@@ -138,7 +127,7 @@ namespace {
   };
 
 
-  // RootMoveList struct is essentially a std::vector<> of RootMove objects,
+  // RootMoveList struct is just a std::vector<> of RootMove objects,
   // with an handful of methods above the standard ones.
 
   struct RootMoveList : public std::vector<RootMove> {
@@ -153,27 +142,27 @@ namespace {
   };
 
 
+  // Overload operator<<() to make it easier to print moves in a coordinate
+  // notation compatible with UCI protocol.
+  std::ostream& operator<<(std::ostream& os, Move m) {
+
+    bool chess960 = (os.iword(0) != 0); // See set960()
+    return os << move_to_uci(m, chess960);
+  }
+
+
   // When formatting a move for std::cout we must know if we are in Chess960
   // or not. To keep using the handy operator<<() on the move the trick is to
   // embed this flag in the stream itself. Function-like named enum set960 is
   // used as a custom manipulator and the stream internal general-purpose array,
   // accessed through ios_base::iword(), is used to pass the flag to the move's
-  // operator<<() that will use it to properly format castling moves.
+  // operator<<() that will read it to properly format castling moves.
   enum set960 {};
 
   std::ostream& operator<< (std::ostream& os, const set960& f) {
 
     os.iword(0) = int(f);
     return os;
-  }
-
-
-  // Overload operator << for moves to make it easier to print moves in
-  // coordinate notation compatible with UCI protocol.
-  std::ostream& operator<<(std::ostream& os, Move m) {
-
-    bool chess960 = (os.iword(0) != 0); // See set960()
-    return os << move_to_uci(m, chess960);
   }
 
 
@@ -214,7 +203,7 @@ namespace {
   // Futility margin for quiescence search
   const Value FutilityMarginQS = Value(0x80);
 
-  // Futility lookup tables (initialized at startup) and their getter functions
+  // Futility lookup tables (initialized at startup) and their access functions
   Value FutilityMarginsMatrix[16][64]; // [depth][moveNumber]
   int FutilityMoveCountArray[32]; // [depth]
 
@@ -236,7 +225,7 @@ namespace {
 
   /// Namespace variables
 
-  // Book object
+  // Book
   Book OpeningBook;
 
   // Root move list
@@ -260,7 +249,7 @@ namespace {
   bool SkillLevelEnabled;
   RKISS RK;
 
-  // Multi-threads manager object
+  // Multi-threads manager
   ThreadsManager ThreadsMgr;
 
   // Node counters, used only by thread[0] but try to keep in different cache
@@ -271,6 +260,7 @@ namespace {
 
   // History table
   History H;
+
 
   /// Local functions
 
@@ -285,8 +275,8 @@ namespace {
   template <NodeType PvNode>
   inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
 
-      return depth < ONE_PLY ? qsearch<PvNode>(pos, ss, alpha, beta, DEPTH_ZERO, ply)
-                             : search<PvNode, false, false>(pos, ss, alpha, beta, depth, ply);
+    return depth < ONE_PLY ? qsearch<PvNode>(pos, ss, alpha, beta, DEPTH_ZERO, ply)
+                           : search<PvNode, false, false>(pos, ss, alpha, beta, depth, ply);
   }
 
   template <NodeType PvNode>
@@ -320,7 +310,7 @@ namespace {
   // the proper move source according to the type of node.
   template<bool SpNode, bool Root> struct MovePickerExt;
 
-  // In Root nodes use RootMoveList Rml as source. Score and sort the root moves
+  // In Root nodes use RootMoveList as source. Score and sort the root moves
   // before to search them.
   template<> struct MovePickerExt<false, true> : public MovePicker {
 
@@ -329,10 +319,10 @@ namespace {
       Move move;
       Value score = VALUE_ZERO;
 
-      // Score root moves using the standard way used in main search, the moves
+      // Score root moves using standard ordering used in main search, the moves
       // are scored according to the order in which they are returned by MovePicker.
       // This is the second order score that is used to compare the moves when
-      // the first order pv scores of both moves are equal.
+      // the first orders pv_score of both moves are equal.
       while ((move = MovePicker::get_next_move()) != MOVE_NONE)
           for (rm = Rml.begin(); rm != Rml.end(); ++rm)
               if (rm->pv[0] == move)
@@ -362,9 +352,8 @@ namespace {
   // In SpNodes use split point's shared MovePicker object as move source
   template<> struct MovePickerExt<true, false> : public MovePicker {
 
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h,
-                  SearchStack* ss, Value b) : MovePicker(p, ttm, d, h, ss, b),
-                  mp(ss->sp->mp) {}
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
 
     Move get_next_move() { return mp->get_next_move(); }
 
@@ -375,8 +364,8 @@ namespace {
   // Default case, create and use a MovePicker object as source
   template<> struct MovePickerExt<false, false> : public MovePicker {
 
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h,
-                  SearchStack* ss, Value b) : MovePicker(p, ttm, d, h, ss, b) {}
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePicker(p, ttm, d, h, ss, b) {}
 
     RootMoveList::iterator rm; // Dummy, needed to compile
   };
@@ -384,20 +373,10 @@ namespace {
 } // namespace
 
 
-////
-//// Functions
-////
+/// init_threads() is called during startup. It initializes various lookup tables
+/// and creates and launches search threads.
 
-/// init_threads(), exit_threads() and nodes_searched() are helpers to
-/// give accessibility to some TM methods from outside of current file.
-
-void init_threads() { ThreadsMgr.init_threads(); }
-void exit_threads() { ThreadsMgr.exit_threads(); }
-
-
-/// init_search() is called during startup. It initializes various lookup tables
-
-void init_search() {
+void init_threads() {
 
   int d;  // depth (ONE_PLY == 2)
   int hd; // half depth (ONE_PLY == 1)
@@ -419,49 +398,56 @@ void init_search() {
   // Init futility move count array
   for (d = 0; d < 32; d++)
       FutilityMoveCountArray[d] = int(3.001 + 0.25 * pow(d, 2.0));
+
+  // Create and startup threads
+  ThreadsMgr.init_threads();
 }
 
 
-/// perft() is our utility to verify move generation is bug free. All the legal
-/// moves up to given depth are generated and counted and the sum returned.
+/// exit_threads() is a trampoline to access ThreadsMgr from outside of current file
+void exit_threads() { ThreadsMgr.exit_threads(); }
 
-int64_t perft(Position& pos, Depth depth)
-{
-    MoveStack mlist[MOVES_MAX];
-    StateInfo st;
-    Move m;
-    int64_t sum = 0;
 
-    // Generate all legal moves
-    MoveStack* last = generate<MV_LEGAL>(pos, mlist);
+/// perft() is our utility to verify move generation. All the legal moves up to
+/// given depth are generated and counted and the sum returned.
 
-    // If we are at the last ply we don't need to do and undo
-    // the moves, just to count them.
-    if (depth <= ONE_PLY)
-        return int(last - mlist);
+int64_t perft(Position& pos, Depth depth) {
 
-    // Loop through all legal moves
-    CheckInfo ci(pos);
-    for (MoveStack* cur = mlist; cur != last; cur++)
-    {
-        m = cur->move;
-        pos.do_move(m, st, ci, pos.move_is_check(m, ci));
-        sum += perft(pos, depth - ONE_PLY);
-        pos.undo_move(m);
-    }
-    return sum;
+  MoveStack mlist[MOVES_MAX];
+  StateInfo st;
+  Move m;
+  int64_t sum = 0;
+
+  // Generate all legal moves
+  MoveStack* last = generate<MV_LEGAL>(pos, mlist);
+
+  // If we are at the last ply we don't need to do and undo
+  // the moves, just to count them.
+  if (depth <= ONE_PLY)
+      return int(last - mlist);
+
+  // Loop through all legal moves
+  CheckInfo ci(pos);
+  for (MoveStack* cur = mlist; cur != last; cur++)
+  {
+      m = cur->move;
+      pos.do_move(m, st, ci, pos.move_is_check(m, ci));
+      sum += perft(pos, depth - ONE_PLY);
+      pos.undo_move(m);
+  }
+  return sum;
 }
 
 
 /// think() is the external interface to Stockfish's search, and is called when
-/// the program receives the UCI 'go' command. It initializes various
-/// search-related global variables, and calls id_loop(). It returns false
-/// when a quit command is received during the search.
+/// the program receives the UCI 'go' command. It initializes various global
+/// variables, and calls id_loop(). It returns false when a quit command is
+/// received during the search.
 
 bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[],
            int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]) {
 
-  // Initialize global search variables
+  // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = SendSearchedNodes = false;
   NodesSincePoll = 0;
   SearchStartTime = get_system_time();
@@ -489,14 +475,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       }
   }
 
-  // Read UCI option values
-  TT.set_size(Options["Hash"].value<int>());
-  if (Options["Clear Hash"].value<bool>())
-  {
-      Options["Clear Hash"].set_value("false");
-      TT.clear();
-  }
-
+  // Read UCI options
   CheckExtension[1]         = Options["Check Extension (PV nodes)"].value<Depth>();
   CheckExtension[0]         = Options["Check Extension (non-PV nodes)"].value<Depth>();
   PawnPushTo7thExtension[1] = Options["Pawn Push to 7th Extension (PV nodes)"].value<Depth>();
@@ -513,6 +492,13 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   read_evaluation_uci_options(pos.side_to_move());
 
+  if (Options["Clear Hash"].value<bool>())
+  {
+      Options["Clear Hash"].set_value("false");
+      TT.clear();
+  }
+  TT.set_size(Options["Hash"].value<int>());
+
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
   SkillLevelEnabled = (SkillLevel < 20);
@@ -522,7 +508,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   ThreadsMgr.read_uci_options();
   init_eval(ThreadsMgr.active_threads());
 
-  // Wake up needed threads
+  // Wake up needed threads. Main thread, with threadID == 0, is always active
   for (int i = 1; i < ThreadsMgr.active_threads(); i++)
       ThreadsMgr.wake_sleeping_thread(i);
 
@@ -532,8 +518,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   if (UseTimeManagement)
       TimeMgr.init(myTime, myIncrement, movesToGo, pos.startpos_ply_counter());
 
-  // Set best NodesBetweenPolls interval to avoid lagging under
-  // heavy time pressure.
+  // Set best NodesBetweenPolls interval to avoid lagging under time pressure
   if (MaxNodes)
       NodesBetweenPolls = Min(MaxNodes, 30000);
   else if (myTime && myTime < 1000)
@@ -862,8 +847,8 @@ namespace {
     ttMove = tte ? tte->move() : MOVE_NONE;
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
-    // and return a fail high/low. Biggest advantage at probing at PV nodes is
-    // to have a smooth experience in analysis mode.
+    // a fail high/low. Biggest advantage at probing at PV nodes is to have a
+    // smooth experience in analysis mode.
     if (   !Root
         && tte
         && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
@@ -874,8 +859,7 @@ namespace {
         return value_from_tt(tte->value(), ply);
     }
 
-    // Step 5. Evaluate the position statically and
-    // update gain statistics of parent move.
+    // Step 5. Evaluate the position statically and update parent's gain statistics
     if (isCheck)
         ss->eval = ss->evalMargin = VALUE_NONE;
     else if (tte)
@@ -899,7 +883,7 @@ namespace {
     if (   !PvNode
         &&  depth < RazorDepth
         && !isCheck
-        &&  refinedValue < beta - razor_margin(depth)
+        &&  refinedValue + razor_margin(depth) < beta
         &&  ttMove == MOVE_NONE
         &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
         && !pos.has_pawn_on_7th(pos.side_to_move()))
@@ -919,7 +903,7 @@ namespace {
         && !ss->skipNullMove
         &&  depth < RazorDepth
         && !isCheck
-        &&  refinedValue >= beta + futility_margin(depth, 0)
+        &&  refinedValue - futility_margin(depth, 0) >= beta
         &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
         &&  pos.non_pawn_material(pos.side_to_move()))
         return refinedValue - futility_margin(depth, 0);
@@ -939,7 +923,7 @@ namespace {
         int R = 3 + (depth >= 5 * ONE_PLY ? depth / 8 : 0);
 
         // Null move dynamic reduction based on value
-        if (refinedValue - beta > PawnValueMidgame)
+        if (refinedValue - PawnValueMidgame > beta)
             R++;
 
         pos.do_null_move(st);
@@ -977,6 +961,7 @@ namespace {
                 mateThreat = true;
 
             threatMove = (ss+1)->bestMove;
+
             if (   depth < ThreatDepth
                 && (ss-1)->reduction
                 && threatMove != MOVE_NONE
@@ -988,7 +973,7 @@ namespace {
     // Step 9. Internal iterative deepening
     if (   depth >= IIDDepth[PvNode]
         && ttMove == MOVE_NONE
-        && (PvNode || (!isCheck && ss->eval >= beta - IIDMargin)))
+        && (PvNode || (!isCheck && ss->eval + IIDMargin >= beta)))
     {
         Depth d = (PvNode ? depth - 2 * ONE_PLY : depth / 2);
 
@@ -1000,7 +985,7 @@ namespace {
         tte = TT.retrieve(posKey);
     }
 
-    // Expensive mate threat detection (only for PV nodes)
+    // Mate threat detection for PV nodes, otherwise we use null move search
     if (PvNode)
         mateThreat = pos.has_mate_threat();
 
@@ -1059,24 +1044,24 @@ split_point_start: // At split points actual search starts from here
               cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
           }
 
-          if (current_search_time() >= 1000)
+          if (current_search_time() > 2000)
               cout << "info currmove " << move
                    << " currmovenumber " << moveCount << endl;
       }
 
-      // At Root and at first iteration do a PV search on all the moves
-      // to score root moves. Otherwise only the first one is the PV.
-      isPvMove = (PvNode && moveCount <= (Root ? MultiPV + 1000 * (depth <= ONE_PLY) : 1));
+      // At Root and at first iteration do a PV search on all the moves to score root moves
+      isPvMove = (PvNode && moveCount <= (Root ? depth <= ONE_PLY ? 1000 : MultiPV : 1));
       moveIsCheck = pos.move_is_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
       ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, mateThreat, &dangerous);
 
-      // Singular extension search. If all moves but one fail low on a search of (alpha-s, beta-s),
-      // and just one fails high on (alpha, beta), then that move is singular and should be extended.
-      // To verify this we do a reduced search on all the other moves but the ttMove, if result is
-      // lower than ttValue minus a margin then we extend ttMove.
+      // Singular extension search. If all moves but one fail low on a search of
+      // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
+      // is singular and should be extended. To verify this we do a reduced search
+      // on all the other moves but the ttMove, if result is lower than ttValue minus
+      // a margin then we extend ttMove.
       if (   singularExtensionNode
           && move == tte->move()
           && ext < ONE_PLY)
@@ -1085,14 +1070,14 @@ split_point_start: // At split points actual search starts from here
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
-              Value b = ttValue - int(depth);
+              Value rBeta = ttValue - int(depth);
               ss->excludedMove = move;
               ss->skipNullMove = true;
-              Value v = search<NonPV>(pos, ss, b - 1, b, depth / 2, ply);
+              Value v = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2, ply);
               ss->skipNullMove = false;
               ss->excludedMove = MOVE_NONE;
               ss->bestMove = MOVE_NONE;
-              if (v < b)
+              if (v < rBeta)
                   ext = ONE_PLY;
           }
       }
@@ -1111,7 +1096,7 @@ split_point_start: // At split points actual search starts from here
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
-              && !(threatMove && connected_threat(pos, move, threatMove))
+              && (!threatMove || !connected_threat(pos, move, threatMove))
               && bestValue > VALUE_MATED_IN_PLY_MAX) // FIXME bestValue is racy
           {
               if (SpNode)
@@ -1210,10 +1195,10 @@ split_point_start: // At split points actual search starts from here
           if (isBadCap)
           {
               ss->reduction = 3 * ONE_PLY;
-              Value redAlpha = alpha - 300;
+              Value rAlpha = alpha - 300;
               Depth d = newDepth - ss->reduction;
-              value = -search<NonPV>(pos, ss+1, -(redAlpha+1), -redAlpha, d, ply+1);
-              doFullDepthSearch = (value > redAlpha);
+              value = -search<NonPV>(pos, ss+1, -(rAlpha+1), -rAlpha, d, ply+1);
+              doFullDepthSearch = (value > rAlpha);
               ss->reduction = DEPTH_ZERO; // Restore original reduction
           }
 
@@ -2525,11 +2510,10 @@ split_point_start: // At split points actual search starts from here
   }
 
   // pv_info_to_uci() returns a string with information on the current PV line
-  // formatted according to UCI specification. It is called at each iteration
-  // or after a new pv is found.
+  // formatted according to UCI specification.
 
-  std::string RootMove::pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvLine) {
-
+  std::string RootMove::pv_info_to_uci(Position& pos, int depth, Value alpha,
+                                       Value beta, int pvIdx) {
     std::stringstream s, l;
     Move* m = pv;
 
@@ -2538,7 +2522,7 @@ split_point_start: // At split points actual search starts from here
 
     s << "info depth " << depth
       << " seldepth " << int(m - pv)
-      << " multipv " << pvLine + 1
+      << " multipv " << pvIdx + 1
       << " score " << value_to_uci(pv_score)
       << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
       << speed_to_uci(pos.nodes_searched())

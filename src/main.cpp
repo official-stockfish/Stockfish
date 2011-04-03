@@ -55,7 +55,6 @@ int main(int argc, char* argv[]) {
   Position::init_piece_square_tables();
   init_eval(1);
   init_kpk_bitbase();
-  init_search();
   init_threads();
 
 #ifdef USE_CALLGRIND

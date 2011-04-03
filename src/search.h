@@ -46,7 +46,6 @@ struct SearchStack {
 
 class Position;
 
-extern void init_search();
 extern void init_threads();
 extern void exit_threads();
 extern int64_t perft(Position& pos, Depth depth);
