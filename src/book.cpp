@@ -367,8 +367,8 @@ Book::~Book() {
 
 void Book::close() {
 
-  if (is_open())
-      ifstream::close();
+  if (bookFile.is_open())
+      bookFile.close();
 
   bookName = "";
 }
@@ -381,17 +381,17 @@ void Book::open(const string& fileName) {
   // Close old file before opening the new
   close();
 
-  ifstream::open(fileName.c_str(), ifstream::in | ifstream::binary);
+  bookFile.open(fileName.c_str(), ifstream::in | ifstream::binary);
 
   // Silently return when asked to open a non-exsistent file
-  if (!is_open())
+  if (!bookFile.is_open())
       return;
 
   // Get the book size in number of entries
-  seekg(0, ios::end);
-  bookSize = long(tellg()) / sizeof(BookEntry);
+  bookFile.seekg(0, ios::end);
+  bookSize = long(bookFile.tellg()) / sizeof(BookEntry);
 
-  if (!good())
+  if (!bookFile.good())
   {
       cerr << "Failed to open book file " << fileName << endl;
       exit(EXIT_FAILURE);
@@ -408,7 +408,7 @@ void Book::open(const string& fileName) {
 
 Move Book::get_move(const Position& pos, bool findBestMove) {
 
-  if (!is_open() || bookSize == 0)
+  if (!bookFile.is_open() || bookSize == 0)
       return MOVE_NONE;
 
   BookEntry entry;
@@ -512,11 +512,11 @@ BookEntry Book::read_entry(int idx) {
 
   BookEntry e;
 
-  seekg(idx * sizeof(BookEntry), ios_base::beg);
+  bookFile.seekg(idx * sizeof(BookEntry), ios_base::beg);
 
   *this >> e.key >> e.move >> e.count >> e.learn;
 
-  if (!good())
+  if (!bookFile.good())
   {
       cerr << "Failed to read book entry at index " << idx << endl;
       exit(EXIT_FAILURE);

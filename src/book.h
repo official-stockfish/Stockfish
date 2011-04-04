@@ -38,9 +38,7 @@ struct BookEntry {
   uint32_t learn;
 };
 
-class Book : private std::ifstream {
-  Book(const Book&); // just decleared..
-  Book& operator=(const Book&); // ..to avoid a warning
+class Book {
 public:
   Book();
   ~Book();
@@ -60,14 +58,15 @@ private:
   BookEntry read_entry(int idx);
   int find_entry(uint64_t key);
 
+  std::ifstream bookFile;
   std::string bookName;
   int bookSize;
   RKISS RKiss;
 };
 
 // Yes, we indulge a bit here ;-)
-template<int n> inline uint64_t Book::get_int() { return 256 * get_int<n-1>() + get(); }
-template<> inline uint64_t Book::get_int<1>() { return get(); }
+template<int n> inline uint64_t Book::get_int() { return 256 * get_int<n-1>() + bookFile.get(); }
+template<> inline uint64_t Book::get_int<1>() { return bookFile.get(); }
 
 
 #endif // !defined(BOOK_H_INCLUDED)

@@ -303,7 +303,7 @@ private:
   int castleRightsMask[64];
   StateInfo startState;
   File initialKFile, initialKRFile, initialQRFile;
-  bool isChess960;
+  bool chess960;
   int startPosPlyCounter;
   int threadID;
   int64_t nodes;
@@ -524,7 +524,7 @@ inline bool Position::has_pawn_on_7th(Color c) const {
 }
 
 inline bool Position::is_chess960() const {
-  return isChess960;
+  return chess960;
 }
 
 inline bool Position::move_is_capture(Move m) const {

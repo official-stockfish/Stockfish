@@ -228,11 +228,11 @@ endif
 CXXFLAGS = -g -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
 ifeq ($(comp),gcc)
-	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra
+	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
 endif
 
 ifeq ($(comp),mingw)
-	CXXFLAGS += -Wno-long-long -Wextra
+	CXXFLAGS += -Wextra -Wshadow
 endif
 
 ifeq ($(comp),icc)

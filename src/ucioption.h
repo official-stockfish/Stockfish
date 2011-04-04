@@ -32,7 +32,7 @@ public:
   Option(bool defaultValue, std::string type = "check");
   Option(int defaultValue, int minValue, int maxValue);
 
-  void set_value(const std::string& value);
+  void set_value(const std::string& v);
   template<typename T> T value() const;
 
 private:

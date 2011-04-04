@@ -160,7 +160,7 @@ void Position::detach() {
 /// string. This function is not very robust - make sure that input FENs are
 /// correct (this is assumed to be the responsibility of the GUI).
 
-void Position::from_fen(const string& fen, bool c960) {
+void Position::from_fen(const string& fen, bool isChess960) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -255,7 +255,7 @@ void Position::from_fen(const string& fen, bool c960) {
   castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
   castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
 
-  isChess960 = c960;
+  chess960 = isChess960;
   find_checkers();
 
   st->key = compute_key();
@@ -368,16 +368,16 @@ const string Position::to_fen() const {
   if (st->castleRights != CASTLES_NONE)
   {
       if (can_castle_kingside(WHITE))
-          fen += isChess960 ? char(toupper(file_to_char(initialKRFile))) : 'K';
+          fen += chess960 ? char(toupper(file_to_char(initialKRFile))) : 'K';
 
       if (can_castle_queenside(WHITE))
-          fen += isChess960 ? char(toupper(file_to_char(initialQRFile))) : 'Q';
+          fen += chess960 ? char(toupper(file_to_char(initialQRFile))) : 'Q';
 
       if (can_castle_kingside(BLACK))
-          fen += isChess960 ? file_to_char(initialKRFile) : 'k';
+          fen += chess960 ? file_to_char(initialKRFile) : 'k';
 
       if (can_castle_queenside(BLACK))
-          fen += isChess960 ? file_to_char(initialQRFile) : 'q';
+          fen += chess960 ? file_to_char(initialQRFile) : 'q';
   } else
       fen += '-';
 

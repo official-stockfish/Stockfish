@@ -159,23 +159,23 @@ Option::Option(int def, int minv, int maxv) : type("spin"), idx(Options.size()),
 /// the GUI to check for option's limits, but we could receive the new value
 /// directly from the user by teminal window. So let's check the bounds anyway.
 
-void Option::set_value(const string& value) {
+void Option::set_value(const string& v) {
 
   assert(!type.empty());
 
-  if (value.empty())
+  if (v.empty())
       return;
 
   if (   (type == "check" || type == "button")
-      != (value == "true" || value == "false"))
+      != (v == "true" || v == "false"))
       return;
 
   if (type == "spin")
   {
-      int v = atoi(value.c_str());
-      if (v < minValue || v > maxValue)
+      int val = atoi(v.c_str());
+      if (val < minValue || val > maxValue)
           return;
   }
 
-  currentValue = value;
+  currentValue = v;
 }
