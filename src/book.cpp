@@ -508,7 +508,7 @@ int Book::find_entry(uint64_t key) {
 BookEntry Book::read_entry(int idx) {
 
   assert(idx >= 0 && idx < bookSize);
-  assert(is_open());
+  assert(bookFile.is_open());
 
   BookEntry e;
 
