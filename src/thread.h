@@ -36,7 +36,7 @@ struct SplitPoint {
   SplitPoint* parent;
   const Position* pos;
   Depth depth;
-  bool pvNode, mateThreat;
+  bool pvNode;
   Value beta;
   int ply;
   int master;

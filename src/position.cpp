@@ -1689,46 +1689,6 @@ bool Position::is_mate() const {
 }
 
 
-/// Position::has_mate_threat() tests whether the side to move is under
-/// a threat of being mated in one from the current position.
-
-bool Position::has_mate_threat() {
-
-  MoveStack mlist[MOVES_MAX], *last, *cur;
-  StateInfo st1, st2;
-  bool mateFound = false;
-
-  // If we are under check it's up to evasions to do the job
-  if (is_check())
-      return false;
-
-  // First pass the move to our opponent doing a null move
-  do_null_move(st1);
-
-  // Then generate pseudo-legal moves that could give check
-  last = generate<MV_NON_CAPTURE_CHECK>(*this, mlist);
-  last = generate<MV_CAPTURE>(*this, last);
-
-  // Loop through the moves, and see if one of them gives mate
-  Bitboard pinned = pinned_pieces(sideToMove);
-  CheckInfo ci(*this);
-  for (cur = mlist; !mateFound && cur != last; cur++)
-  {
-      Move move = cur->move;
-      if (   !pl_move_is_legal(move, pinned)
-          || !move_is_check(move, ci))
-          continue;
-
-      do_move(move, st2, ci, true);
-      mateFound = is_mate();
-      undo_move(move);
-  }
-
-  undo_null_move();
-  return mateFound;
-}
-
-
 /// Position::init_zobrist() is a static member function which initializes at
 /// startup the various arrays used to compute hash keys.
 

@@ -231,9 +231,6 @@ public:
   bool is_mate() const;
   bool is_draw() const;
 
-  // Check if side to move could be mated in one
-  bool has_mate_threat();
-
   // Number of plies from starting position
   int startpos_ply_counter() const;
 

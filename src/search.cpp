@@ -80,7 +80,7 @@ namespace {
 
     template <bool Fake>
     void split(Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
-               Depth depth, Move threatMove, bool mateThreat, int moveCount, MovePicker* mp, bool pvNode);
+               Depth depth, Move threatMove, int moveCount, MovePicker* mp, bool pvNode);
 
   private:
     Depth minimumSplitDepth;
@@ -192,8 +192,8 @@ namespace {
 
   // Extensions. Configurable UCI options
   // Array index 0 is used at non-PV nodes, index 1 at PV nodes.
-  Depth CheckExtension[2], PawnPushTo7thExtension[2], PassedPawnExtension[2];
-  Depth PawnEndgameExtension[2], MateThreatExtension[2];
+  Depth CheckExtension[2], PawnPushTo7thExtension[2];
+  Depth PassedPawnExtension[2], PawnEndgameExtension[2];
 
   // Minimum depth for use of singular extension
   const Depth SingularExtensionDepth[2] = { 8 * ONE_PLY /* non-PV */, 6 * ONE_PLY /* PV */};
@@ -280,7 +280,7 @@ namespace {
   }
 
   template <NodeType PvNode>
-  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool mateThreat, bool* dangerous);
+  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool* dangerous);
 
   bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
   bool connected_moves(const Position& pos, Move m1, Move m2);
@@ -484,8 +484,6 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   PassedPawnExtension[0]    = Options["Passed Pawn Extension (non-PV nodes)"].value<Depth>();
   PawnEndgameExtension[1]   = Options["Pawn Endgame Extension (PV nodes)"].value<Depth>();
   PawnEndgameExtension[0]   = Options["Pawn Endgame Extension (non-PV nodes)"].value<Depth>();
-  MateThreatExtension[1]    = Options["Mate Threat Extension (PV nodes)"].value<Depth>();
-  MateThreatExtension[0]    = Options["Mate Threat Extension (non-PV nodes)"].value<Depth>();
   UCIMultiPV                = Options["MultiPV"].value<int>();
   SkillLevel                = Options["Skill level"].value<int>();
   UseLogFile                = Options["Use Search Log"].value<bool>();
@@ -792,7 +790,6 @@ namespace {
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
     bool isPvMove, isCheck, singularExtensionNode, moveIsCheck, captureOrPromotion, dangerous, isBadCap;
-    bool mateThreat = false;
     int moveCount = 0, playedMoveCount = 0;
     int threadID = pos.thread();
     SplitPoint* sp = NULL;
@@ -807,7 +804,6 @@ namespace {
         tte = NULL;
         ttMove = excludedMove = MOVE_NONE;
         threatMove = sp->threatMove;
-        mateThreat = sp->mateThreat;
         goto split_point_start;
     }
     else if (Root)
@@ -957,9 +953,6 @@ namespace {
             // move which was reduced. If a connection is found, return a fail
             // low score (which will cause the reduced move to fail high in the
             // parent node, which will trigger a re-search with full depth).
-            if (nullValue == value_mated_in(ply + 2))
-                mateThreat = true;
-
             threatMove = (ss+1)->bestMove;
 
             if (   depth < ThreatDepth
@@ -984,10 +977,6 @@ namespace {
         ttMove = ss->bestMove;
         tte = TT.retrieve(posKey);
     }
-
-    // Mate threat detection for PV nodes, otherwise we use null move search
-    if (PvNode)
-        mateThreat = pos.has_mate_threat();
 
 split_point_start: // At split points actual search starts from here
 
@@ -1055,7 +1044,7 @@ split_point_start: // At split points actual search starts from here
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
       // Step 11. Decide the new search depth
-      ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, mateThreat, &dangerous);
+      ext = extension<PvNode>(pos, move, captureOrPromotion, moveIsCheck, &dangerous);
 
       // Singular extension search. If all moves but one fail low on a search of
       // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
@@ -1309,7 +1298,7 @@ split_point_start: // At split points actual search starts from here
           && !StopRequest
           && !ThreadsMgr.cutoff_at_splitpoint(threadID))
           ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
-                                      threatMove, mateThreat, moveCount, &mp, PvNode);
+                                      threatMove, moveCount, &mp, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
@@ -1696,21 +1685,15 @@ split_point_start: // At split points actual search starts from here
   // the move is marked as 'dangerous' so, at least, we avoid to prune it.
   template <NodeType PvNode>
   Depth extension(const Position& pos, Move m, bool captureOrPromotion,
-                  bool moveIsCheck, bool mateThreat, bool* dangerous) {
+                  bool moveIsCheck, bool* dangerous) {
 
     assert(m != MOVE_NONE);
 
     Depth result = DEPTH_ZERO;
-    *dangerous = moveIsCheck | mateThreat;
+    *dangerous = moveIsCheck;
 
-    if (*dangerous)
-    {
-        if (moveIsCheck && pos.see_sign(m) >= 0)
-            result += CheckExtension[PvNode];
-
-        if (mateThreat)
-            result += MateThreatExtension[PvNode];
-    }
+    if (moveIsCheck && pos.see_sign(m) >= 0)
+        result += CheckExtension[PvNode];
 
     if (pos.type_of_piece_on(move_from(m)) == PAWN)
     {
@@ -2311,7 +2294,7 @@ split_point_start: // At split points actual search starts from here
   template <bool Fake>
   void ThreadsManager::split(Position& pos, SearchStack* ss, int ply, Value* alpha,
                              const Value beta, Value* bestValue, Depth depth, Move threatMove,
-                             bool mateThreat, int moveCount, MovePicker* mp, bool pvNode) {
+                             int moveCount, MovePicker* mp, bool pvNode) {
     assert(pos.is_ok());
     assert(ply > 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
@@ -2346,7 +2329,6 @@ split_point_start: // At split points actual search starts from here
     splitPoint.ply = ply;
     splitPoint.depth = depth;
     splitPoint.threatMove = threatMove;
-    splitPoint.mateThreat = mateThreat;
     splitPoint.alpha = *alpha;
     splitPoint.beta = beta;
     splitPoint.pvNode = pvNode;
