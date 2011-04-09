@@ -463,4 +463,8 @@ inline bool square_is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
 
+inline Square pawn_push(Color c) {
+  return c == WHITE ? DELTA_N : DELTA_S;
+}
+
 #endif // !defined(TYPES_H_INCLUDED)

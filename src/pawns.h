@@ -20,7 +20,6 @@
 #if !defined(PAWNS_H_INCLUDED)
 #define PAWNS_H_INCLUDED
 
-#include "bitboard.h"
 #include "position.h"
 #include "tt.h"
 #include "types.h"
@@ -66,28 +65,14 @@ private:
 /// method is get_pawn_info, which returns a pointer to a PawnInfo object.
 
 class PawnInfoTable : public SimpleHash<PawnInfo, PawnTableSize> {
-
-  enum SideType { KingSide, QueenSide };
-
 public:
   PawnInfo* get_pawn_info(const Position& pos) const;
-  void prefetch(Key key) const;
 
 private:
   template<Color Us>
   Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi) const;
 };
 
-inline Square pawn_push(Color c) {
-  return c == WHITE ? DELTA_N : DELTA_S;
-}
-
-inline void PawnInfoTable::prefetch(Key key) const {
-
-    unsigned index = unsigned(key & (PawnTableSize - 1));
-    PawnInfo* pi = entries + index;
-    ::prefetch((char*) pi);
-}
 
 inline Score PawnInfo::pawns_value() const {
   return value;
@@ -102,7 +87,7 @@ inline Bitboard PawnInfo::passed_pawns(Color c) const {
 }
 
 inline int PawnInfo::file_is_half_open(Color c, File f) const {
-  return (halfOpenFiles[c] & (1 << int(f)));
+  return halfOpenFiles[c] & (1 << int(f));
 }
 
 inline int PawnInfo::has_open_file_to_left(Color c, File f) const {
@@ -111,31 +96,6 @@ inline int PawnInfo::has_open_file_to_left(Color c, File f) const {
 
 inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
   return halfOpenFiles[c] & ~((1 << int(f+1)) - 1);
-}
-
-/// PawnInfo::updateShelter() calculates and caches king shelter. It is called
-/// only when king square changes, about 20% of total king_shelter() calls.
-template<Color Us>
-Score PawnInfo::updateShelter(const Position& pos, Square ksq) {
-
-  const int Shift = (Us == WHITE ? 8 : -8);
-
-  Bitboard pawns;
-  int r, shelter = 0;
-
-  if (relative_rank(Us, ksq) <= RANK_4)
-  {
-      pawns = pos.pieces(PAWN, Us) & this_and_neighboring_files_bb(ksq);
-      r = square_rank(ksq) * 8;
-      for (int i = 1; i < 4; i++)
-      {
-          r += Shift;
-          shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (128 >> i);
-      }
-  }
-  kingSquares[Us] = ksq;
-  kingShelters[Us] = make_score(shelter, 0);
-  return kingShelters[Us];
 }
 
 template<Color Us>
