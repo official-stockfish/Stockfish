@@ -885,7 +885,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
       // Update pawn hash key and prefetch in L1/L2 cache
       st->pawnKey ^= zobrist[us][PAWN][from] ^ zobrist[us][PAWN][to];
-      prefetchPawn(st->pawnKey, threadID);
 
       // Set en passant square, only if moved pawn can be captured
       if ((to ^ from) == 16)
@@ -937,6 +936,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->npMaterial[us] += PieceValueMidgame[promotion];
       }
   }
+
+  // Prefetch pawn and material hash tables
+  prefetchTables(st->pawnKey, st->materialKey, threadID);
 
   // Update incremental scores
   st->value += pst_delta(piece, from, to);

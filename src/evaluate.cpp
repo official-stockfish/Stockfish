@@ -269,16 +269,13 @@ namespace {
 }
 
 
-////
-//// Functions
-////
+/// prefetchTables() is called in do_move() to prefetch pawn and material
+/// hash tables data that will be needed shortly after in evaluation.
 
+void prefetchTables(Key pKey, Key mKey, int threadID) {
 
-/// Prefetches in pawn hash tables
-
-void prefetchPawn(Key key, int threadID) {
-
-    PawnTable[threadID]->prefetch(key);
+    PawnTable[threadID]->prefetch(pKey);
+    MaterialTable[threadID]->prefetch(mKey);
 }
 
 

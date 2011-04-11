@@ -29,7 +29,7 @@ extern int get_system_time();
 extern int cpu_count();
 extern int input_available();
 extern void prefetch(char* addr);
-extern void prefetchPawn(Key, int);
+extern void prefetchTables(Key pKey, Key mKey, int threadID);
 
 // Debug functions
 extern bool dbg_show_mean;
