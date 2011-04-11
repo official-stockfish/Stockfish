@@ -32,6 +32,7 @@ const int PawnTableSize = 16384;
 /// to add further information in the future. A lookup to the pawn hash table
 /// (performed by calling the get_pawn_info method in a PawnInfoTable object)
 /// returns a pointer to a PawnInfo object.
+
 class PawnInfo {
 
   friend class PawnInfoTable;
