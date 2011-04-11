@@ -53,8 +53,8 @@ private:
   Key key;
   int16_t value;
   uint8_t factor[2];
-  EndgameEvaluationFunctionBase* evaluationFunction;
-  EndgameScalingFunctionBase* scalingFunction[2];
+  EndgameBase<Value>* evaluationFunction;
+  EndgameBase<ScaleFactor>* scalingFunction[2];
   int spaceWeight;
   Phase gamePhase;
 };
@@ -62,7 +62,6 @@ private:
 
 /// The MaterialInfoTable class represents a pawn hash table. The most important
 /// method is get_material_info, which returns a pointer to a MaterialInfo object.
-class EndgameFunctions;
 
 class MaterialInfoTable : public SimpleHash<MaterialInfo, MaterialTableSize> {
 public:
@@ -75,7 +74,7 @@ private:
   template<Color Us>
   static int imbalance(const int pieceCount[][8]);
 
-  EndgameFunctions* funcs;
+  Endgames* funcs;
 };
 
 
@@ -95,6 +94,10 @@ inline ScaleFactor MaterialInfo::scale_factor(const Position& pos, Color c) cons
   return sf == SCALE_FACTOR_NONE ? ScaleFactor(factor[c]) : sf;
 }
 
+inline Value MaterialInfo::evaluate(const Position& pos) const {
+  return evaluationFunction->apply(pos);
+}
+
 inline Score MaterialInfo::material_value() const {
   return make_score(value, value);
 }
@@ -109,10 +112,6 @@ inline Phase MaterialInfo::game_phase() const {
 
 inline bool MaterialInfo::specialized_eval_exists() const {
   return evaluationFunction != NULL;
-}
-
-inline Value MaterialInfo::evaluate(const Position& pos) const {
-  return evaluationFunction->apply(pos);
 }
 
 #endif // !defined(MATERIAL_H_INCLUDED)

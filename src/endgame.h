@@ -20,43 +20,52 @@
 #if !defined(ENDGAME_H_INCLUDED)
 #define ENDGAME_H_INCLUDED
 
+#include <string>
+#include <map>
+
 #include "position.h"
 #include "types.h"
 
+
+/// EndgameType lists all supported endgames
+
 enum EndgameType {
 
-    // Evaluation functions
-    KXK,   // Generic "mate lone king" eval
-    KBNK,  // KBN vs K
-    KPK,   // KP vs K
-    KRKP,  // KR vs KP
-    KRKB,  // KR vs KB
-    KRKN,  // KR vs KN
-    KQKR,  // KQ vs KR
-    KBBKN, // KBB vs KN
-    KNNK,  // KNN vs K
-    KmmKm, // K and two minors vs K and one or two minors
+  // Evaluation functions
+  KXK,   // Generic "mate lone king" eval
+  KBNK,  // KBN vs K
+  KPK,   // KP vs K
+  KRKP,  // KR vs KP
+  KRKB,  // KR vs KB
+  KRKN,  // KR vs KN
+  KQKR,  // KQ vs KR
+  KBBKN, // KBB vs KN
+  KNNK,  // KNN vs K
+  KmmKm, // K and two minors vs K and one or two minors
 
-    // Scaling functions
-    KBPsK,   // KB+pawns vs K
-    KQKRPs,  // KQ vs KR+pawns
-    KRPKR,   // KRP vs KR
-    KRPPKRP, // KRPP vs KRP
-    KPsK,    // King and pawns vs king
-    KBPKB,   // KBP vs KB
-    KBPPKB,  // KBPP vs KB
-    KBPKN,   // KBP vs KN
-    KNPK,    // KNP vs K
-    KPKP     // KP vs KP
+  // Scaling functions
+  KBPsK,   // KB+pawns vs K
+  KQKRPs,  // KQ vs KR+pawns
+  KRPKR,   // KRP vs KR
+  KRPPKRP, // KRPP vs KRP
+  KPsK,    // King and pawns vs king
+  KBPKB,   // KBP vs KB
+  KBPPKB,  // KBPP vs KB
+  KBPKN,   // KBP vs KN
+  KNPK,    // KNP vs K
+  KPKP     // KP vs KP
 };
 
-/// Template abstract base class for all special endgame functions
+
+/// Base and derived template class for endgame evaluation and scaling functions
 
 template<typename T>
-class EndgameFunctionBase {
-public:
-  EndgameFunctionBase(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
-  virtual ~EndgameFunctionBase() {}
+struct EndgameBase {
+
+  typedef EndgameBase<T> Base;
+
+  EndgameBase(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
+  virtual ~EndgameBase() {}
   virtual T apply(const Position&) const = 0;
   Color color() const { return strongerSide; }
 
@@ -64,24 +73,37 @@ protected:
   Color strongerSide, weakerSide;
 };
 
-typedef EndgameFunctionBase<Value> EndgameEvaluationFunctionBase;
-typedef EndgameFunctionBase<ScaleFactor> EndgameScalingFunctionBase;
 
+template<typename T, EndgameType>
+struct Endgame : public EndgameBase<T> {
 
-/// Templates subclass for various concrete endgames
-
-template<EndgameType>
-struct EvaluationFunction : public EndgameEvaluationFunctionBase {
-  typedef EndgameEvaluationFunctionBase Base;
-  explicit EvaluationFunction(Color c): EndgameEvaluationFunctionBase(c) {}
-  Value apply(const Position&) const;
+  explicit Endgame(Color c): EndgameBase<T>(c) {}
+  T apply(const Position&) const;
 };
 
-template<EndgameType>
-struct ScalingFunction : public EndgameScalingFunctionBase {
-  typedef EndgameScalingFunctionBase Base;
-  explicit ScalingFunction(Color c) : EndgameScalingFunctionBase(c) {}
-  ScaleFactor apply(const Position&) const;
+
+/// Endgames class stores in two std::map the pointers to endgame evaluation
+/// and scaling base objects. Then we use polymorphism to invoke the actual
+/// endgame function calling its apply() method that is virtual.
+
+class Endgames {
+
+  typedef std::map<Key, EndgameBase<Value>*> EFMap;
+  typedef std::map<Key, EndgameBase<ScaleFactor>*> SFMap;
+
+public:
+  Endgames();
+  ~Endgames();
+  template<class T> T* get(Key key) const;
+
+private:
+  template<class T> void add(const std::string& keyCode);
+
+  // Here we store two maps, for evaluate and scaling functions...
+  std::pair<EFMap, SFMap> maps;
+
+  // ...and here is the accessing template function
+  template<typename T> const std::map<Key, T*>& get() const;
 };
 
 #endif // !defined(ENDGAME_H_INCLUDED)

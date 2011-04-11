@@ -104,9 +104,6 @@ struct StateInfo {
 
 class Position {
 
-  friend class MaterialInfo;
-  friend class EndgameFunctions;
-
   Position(); // No default or copy c'tor allowed
   Position(const Position& pos);
 

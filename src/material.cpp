@@ -19,7 +19,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <map>
 
 #include "material.h"
 
@@ -48,19 +47,15 @@ namespace {
   { 41, 41, 41, 41, 41, 41 }, { 37, 41, 41, 41, 41, 41 }, { 10, 62, 41, 41, 41, 41 },
   { 57, 64, 39, 41, 41, 41 }, { 50, 40, 23, -22, 41, 41 }, { 106, 101, 3, 151, 171, 41 } };
 
-  typedef EndgameEvaluationFunctionBase EF;
-  typedef EndgameScalingFunctionBase SF;
-  typedef map<Key, EF*> EFMap;
-  typedef map<Key, SF*> SFMap;
-
   // Endgame evaluation and scaling functions accessed direcly and not through
   // the function maps because correspond to more then one material hash key.
-  EvaluationFunction<KmmKm> EvaluateKmmKm[] = { EvaluationFunction<KmmKm>(WHITE), EvaluationFunction<KmmKm>(BLACK) };
-  EvaluationFunction<KXK>   EvaluateKXK[]   = { EvaluationFunction<KXK>(WHITE),   EvaluationFunction<KXK>(BLACK) };
-  ScalingFunction<KBPsK>    ScaleKBPsK[]    = { ScalingFunction<KBPsK>(WHITE),    ScalingFunction<KBPsK>(BLACK) };
-  ScalingFunction<KQKRPs>   ScaleKQKRPs[]   = { ScalingFunction<KQKRPs>(WHITE),   ScalingFunction<KQKRPs>(BLACK) };
-  ScalingFunction<KPsK>     ScaleKPsK[]     = { ScalingFunction<KPsK>(WHITE),     ScalingFunction<KPsK>(BLACK) };
-  ScalingFunction<KPKP>     ScaleKPKP[]     = { ScalingFunction<KPKP>(WHITE),     ScalingFunction<KPKP>(BLACK) };
+  Endgame<Value, KmmKm> EvaluateKmmKm[] = { Endgame<Value, KmmKm>(WHITE), Endgame<Value, KmmKm>(BLACK) };
+  Endgame<Value, KXK>   EvaluateKXK[]   = { Endgame<Value, KXK>(WHITE),   Endgame<Value, KXK>(BLACK) };
+
+  Endgame<ScaleFactor, KBPsK>  ScaleKBPsK[]  = { Endgame<ScaleFactor, KBPsK>(WHITE),  Endgame<ScaleFactor, KBPsK>(BLACK) };
+  Endgame<ScaleFactor, KQKRPs> ScaleKQKRPs[] = { Endgame<ScaleFactor, KQKRPs>(WHITE), Endgame<ScaleFactor, KQKRPs>(BLACK) };
+  Endgame<ScaleFactor, KPsK>   ScaleKPsK[]   = { Endgame<ScaleFactor, KPsK>(WHITE),   Endgame<ScaleFactor, KPsK>(BLACK) };
+  Endgame<ScaleFactor, KPKP>   ScaleKPKP[]   = { Endgame<ScaleFactor, KPKP>(WHITE),   Endgame<ScaleFactor, KPKP>(BLACK) };
 
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {
@@ -84,42 +79,13 @@ namespace {
           && pos.piece_count(Them, ROOK)  == 1
           && pos.piece_count(Them, PAWN)  >= 1;
   }
-}
+
+} // namespace
 
 
-/// EndgameFunctions class stores endgame evaluation and scaling functions
-/// in two std::map. Because STL library is not guaranteed to be thread
-/// safe even for read access, the maps, although with identical content,
-/// are replicated for each thread. This is faster then using locks.
+/// MaterialInfoTable c'tor and d'tor allocate and free the space for Endgames
 
-class EndgameFunctions {
-public:
-  EndgameFunctions();
-  ~EndgameFunctions();
-  template<class T> T* get(Key key) const;
-
-private:
-  template<class T> void add(const string& keyCode);
-
-  static Key buildKey(const string& keyCode);
-  static const string swapColors(const string& keyCode);
-
-  // Here we store two maps, for evaluate and scaling functions...
-  pair<EFMap, SFMap> maps;
-
-  // ...and here is the accessing template function
-  template<typename T> const map<Key, T*>& get() const;
-};
-
-// Explicit specializations of a member function shall be declared in
-// the namespace of which the class template is a member.
-template<> const EFMap& EndgameFunctions::get<EF>() const { return maps.first; }
-template<> const SFMap& EndgameFunctions::get<SF>() const { return maps.second; }
-
-
-/// MaterialInfoTable c'tor and d'tor allocate and free the space for EndgameFunctions
-
-MaterialInfoTable::MaterialInfoTable() { funcs = new EndgameFunctions(); }
+MaterialInfoTable::MaterialInfoTable() { funcs = new Endgames(); }
 MaterialInfoTable::~MaterialInfoTable() { delete funcs; }
 
 
@@ -151,7 +117,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
   // configuration one, then a generic one if previous search failed.
-  if ((mi->evaluationFunction = funcs->get<EF>(key)) != NULL)
+  if ((mi->evaluationFunction = funcs->get<EndgameBase<Value> >(key)) != NULL)
       return mi;
 
   if (is_KXK<WHITE>(pos))
@@ -186,9 +152,9 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   //
   // We face problems when there are several conflicting applicable
   // scaling functions and we need to decide which one to use.
-  SF* sf;
+  EndgameBase<ScaleFactor>* sf;
 
-  if ((sf = funcs->get<SF>(key)) != NULL)
+  if ((sf = funcs->get<EndgameBase<ScaleFactor> >(key)) != NULL)
   {
       mi->scalingFunction[sf->color()] = sf;
       return mi;
@@ -277,7 +243,7 @@ int MaterialInfoTable::imbalance(const int pieceCount[][8]) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-  int pt1, pt2, pc, vv;
+  int pt1, pt2, pc, v;
   int value = 0;
 
   // Redundancy of major pieces, formula based on Kaufman's paper
@@ -293,13 +259,13 @@ int MaterialInfoTable::imbalance(const int pieceCount[][8]) {
       if (!pc)
           continue;
 
-      vv = LinearCoefficients[pt1];
+      v = LinearCoefficients[pt1];
 
       for (pt2 = PIECE_TYPE_NONE; pt2 <= pt1; pt2++)
-          vv +=  QuadraticCoefficientsSameColor[pt1][pt2] * pieceCount[Us][pt2]
-               + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
+          v +=  QuadraticCoefficientsSameColor[pt1][pt2] * pieceCount[Us][pt2]
+              + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
 
-      value += pc * vv;
+      value += pc * v;
   }
   return value;
 }
@@ -313,88 +279,7 @@ Phase MaterialInfoTable::game_phase(const Position& pos) {
 
   Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
 
-  if (npm >= MidgameLimit)
-      return PHASE_MIDGAME;
-
-  if (npm <= EndgameLimit)
-      return PHASE_ENDGAME;
-
-  return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
-}
-
-
-/// EndgameFunctions member definitions
-
-EndgameFunctions::EndgameFunctions() {
-
-  add<EvaluationFunction<KNNK>  >("KNNK");
-  add<EvaluationFunction<KPK>   >("KPK");
-  add<EvaluationFunction<KBNK>  >("KBNK");
-  add<EvaluationFunction<KRKP>  >("KRKP");
-  add<EvaluationFunction<KRKB>  >("KRKB");
-  add<EvaluationFunction<KRKN>  >("KRKN");
-  add<EvaluationFunction<KQKR>  >("KQKR");
-  add<EvaluationFunction<KBBKN> >("KBBKN");
-
-  add<ScalingFunction<KNPK>    >("KNPK");
-  add<ScalingFunction<KRPKR>   >("KRPKR");
-  add<ScalingFunction<KBPKB>   >("KBPKB");
-  add<ScalingFunction<KBPPKB>  >("KBPPKB");
-  add<ScalingFunction<KBPKN>   >("KBPKN");
-  add<ScalingFunction<KRPPKRP> >("KRPPKRP");
-}
-
-EndgameFunctions::~EndgameFunctions() {
-
-    for (EFMap::const_iterator it = maps.first.begin(); it != maps.first.end(); ++it)
-        delete it->second;
-
-    for (SFMap::const_iterator it = maps.second.begin(); it != maps.second.end(); ++it)
-        delete it->second;
-}
-
-Key EndgameFunctions::buildKey(const string& keyCode) {
-
-    assert(keyCode.length() > 0 && keyCode.length() < 8);
-    assert(keyCode[0] == 'K');
-
-    string fen;
-    bool upcase = false;
-
-    // Build up a fen string with the given pieces, note that
-    // the fen string could be of an illegal position.
-    for (size_t i = 0; i < keyCode.length(); i++)
-    {
-        if (keyCode[i] == 'K')
-            upcase = !upcase;
-
-        fen += char(upcase ? toupper(keyCode[i]) : tolower(keyCode[i]));
-    }
-    fen += char(8 - keyCode.length() + '0');
-    fen += "/8/8/8/8/8/8/8 w - -";
-    return Position(fen, false, 0).get_material_key();
-}
-
-const string EndgameFunctions::swapColors(const string& keyCode) {
-
-    // Build corresponding key for the opposite color: "KBPKN" -> "KNKBP"
-    size_t idx = keyCode.find('K', 1);
-    return keyCode.substr(idx) + keyCode.substr(0, idx);
-}
-
-template<class T>
-void EndgameFunctions::add(const string& keyCode) {
-
-  typedef typename T::Base F;
-  typedef map<Key, F*> M;
-
-  const_cast<M&>(get<F>()).insert(pair<Key, F*>(buildKey(keyCode), new T(WHITE)));
-  const_cast<M&>(get<F>()).insert(pair<Key, F*>(buildKey(swapColors(keyCode)), new T(BLACK)));
-}
-
-template<class T>
-T* EndgameFunctions::get(Key key) const {
-
-  typename map<Key, T*>::const_iterator it = get<T>().find(key);
-  return it != get<T>().end() ? it->second : NULL;
+  return  npm >= MidgameLimit ? PHASE_MIDGAME
+        : npm <= EndgameLimit ? PHASE_ENDGAME
+        : Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
