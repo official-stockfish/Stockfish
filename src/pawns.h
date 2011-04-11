@@ -71,7 +71,7 @@ public:
 
 private:
   template<Color Us>
-  Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi) const;
+  static Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi);
 };
 
 

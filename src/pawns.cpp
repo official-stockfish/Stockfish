@@ -106,7 +106,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
 
 template<Color Us>
 Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
-                                    Bitboard theirPawns, PawnInfo* pi) const {
+                                    Bitboard theirPawns, PawnInfo* pi) {
 
   const BitCountType Max15 = CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
   const Color Them = (Us == WHITE ? BLACK : WHITE);
