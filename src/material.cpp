@@ -31,6 +31,9 @@ namespace {
   const Value MidgameLimit = Value(15581);
   const Value EndgameLimit = Value(3998);
 
+  // Scale factors used when one side has no more pawns
+  const int NoPawnsSF[4] = { 6, 12, 32 };
+
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
   const Value RedundantRookPenalty  = Value(554);
@@ -206,7 +209,10 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   else if (is_KQKRPs<BLACK>(pos))
       mi->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
 
-  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) == VALUE_ZERO)
+  Value npm_w = pos.non_pawn_material(WHITE);
+  Value npm_b = pos.non_pawn_material(BLACK);
+
+  if (npm_w + npm_b == VALUE_ZERO)
   {
       if (pos.piece_count(BLACK, PAWN) == 0)
       {
@@ -228,37 +234,23 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   }
 
   // No pawns makes it difficult to win, even with a material advantage
-  for (Color c = WHITE; c <= BLACK; c++)
-      if (   pos.piece_count(c, PAWN) == 0
-          && pos.non_pawn_material(c) - pos.non_pawn_material(opposite_color(c)) <= BishopValueMidgame)
-      {
-          if (   pos.non_pawn_material(c) == pos.non_pawn_material(opposite_color(c))
-              || pos.non_pawn_material(c) < RookValueMidgame)
-              mi->factor[c] = 0;
-          else
-          {
-              switch (pos.piece_count(c, BISHOP)) {
-              case 2:
-                  mi->factor[c] = 32;
-                  break;
-              case 1:
-                  mi->factor[c] = 12;
-                  break;
-              case 0:
-                  mi->factor[c] = 6;
-                  break;
-              }
-          }
-      }
+  if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMidgame)
+  {
+      mi->factor[WHITE] =
+      (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[Min(pos.piece_count(WHITE, BISHOP), 2)]);
+  }
+
+  if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMidgame)
+  {
+      mi->factor[BLACK] =
+      (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[Min(pos.piece_count(BLACK, BISHOP), 2)]);
+  }
 
   // Compute the space weight
-  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >=
-      2*QueenValueMidgame + 4*RookValueMidgame + 2*KnightValueMidgame)
+  if (npm_w + npm_b >= 2 * QueenValueMidgame + 4 * RookValueMidgame + 2 * KnightValueMidgame)
   {
-      int minorPieceCount =  pos.piece_count(WHITE, KNIGHT)
-                           + pos.piece_count(WHITE, BISHOP)
-                           + pos.piece_count(BLACK, KNIGHT)
-                           + pos.piece_count(BLACK, BISHOP);
+      int minorPieceCount =  pos.piece_count(WHITE, KNIGHT) + pos.piece_count(WHITE, BISHOP)
+                           + pos.piece_count(BLACK, KNIGHT) + pos.piece_count(BLACK, BISHOP);
 
       mi->spaceWeight = minorPieceCount * minorPieceCount;
   }
@@ -268,9 +260,9 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   // in defining bishop pair bonuses.
   const int pieceCount[2][8] = {
   { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(WHITE, PAWN), pos.piece_count(WHITE, KNIGHT),
-    pos.piece_count(WHITE, BISHOP), pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
+    pos.piece_count(WHITE, BISHOP)    , pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
   { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
-    pos.piece_count(BLACK, BISHOP), pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
+    pos.piece_count(BLACK, BISHOP)    , pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
 
   mi->value = (int16_t)(imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16;
   return mi;
