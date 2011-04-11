@@ -25,7 +25,7 @@
 #include "tt.h"
 #include "types.h"
 
-const int MaterialTableSize = 1024;
+const int MaterialTableSize = 8192;
 
 /// MaterialInfo is a class which contains various information about a
 /// material configuration. It contains a material balance evaluation,

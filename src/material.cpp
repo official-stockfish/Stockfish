@@ -32,7 +32,7 @@ namespace {
   const Value EndgameLimit = Value(3998);
 
   // Scale factors used when one side has no more pawns
-  const int NoPawnsSF[4] = { 6, 12, 32 };
+  const uint8_t NoPawnsSF[4] = { 6, 12, 32 };
 
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
