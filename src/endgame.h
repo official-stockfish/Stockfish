@@ -64,21 +64,21 @@ struct EndgameBase {
 
   typedef EndgameBase<T> Base;
 
-  EndgameBase(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
   virtual ~EndgameBase() {}
+  virtual Color color() const = 0;
   virtual T apply(const Position&) const = 0;
-  Color color() const { return strongerSide; }
-
-protected:
-  Color strongerSide, weakerSide;
 };
 
 
 template<typename T, EndgameType>
 struct Endgame : public EndgameBase<T> {
 
-  explicit Endgame(Color c): EndgameBase<T>(c) {}
+  explicit Endgame(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
+  Color color() const { return strongerSide; }
   T apply(const Position&) const;
+
+private:
+  Color strongerSide, weakerSide;
 };
 
 

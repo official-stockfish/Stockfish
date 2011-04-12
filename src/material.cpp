@@ -31,7 +31,7 @@ namespace {
   const Value EndgameLimit = Value(3998);
 
   // Scale factors used when one side has no more pawns
-  const uint8_t NoPawnsSF[4] = { 6, 12, 32 };
+  const int NoPawnsSF[4] = { 6, 12, 32 };
 
   // Polynomial material balance parameters
   const Value RedundantQueenPenalty = Value(320);
@@ -202,13 +202,13 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   // No pawns makes it difficult to win, even with a material advantage
   if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMidgame)
   {
-      mi->factor[WHITE] =
+      mi->factor[WHITE] = uint8_t
       (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[Min(pos.piece_count(WHITE, BISHOP), 2)]);
   }
 
   if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMidgame)
   {
-      mi->factor[BLACK] =
+      mi->factor[BLACK] = uint8_t
       (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[Min(pos.piece_count(BLACK, BISHOP), 2)]);
   }
 
@@ -230,7 +230,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
     pos.piece_count(BLACK, BISHOP)    , pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
 
-  mi->value = (int16_t)(imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16;
+  mi->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
   return mi;
 }
 
