@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
   if (argc < 2)
   {
       // Print copyright notice
-      cout << engine_name() << " by " << engine_author() << endl;
+      cout << engine_name() << " by " << engine_authors() << endl;
 
       if (CpuHasPOPCNT)
           cout << "Good! CPU has hardware POPCNT." << endl;

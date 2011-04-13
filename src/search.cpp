@@ -1933,11 +1933,8 @@ split_point_start: // At split points actual search starts from here
     {
         lastInfoTime = t;
 
-        if (dbg_show_mean)
-            dbg_print_mean();
-
-        if (dbg_show_hit_rate)
-            dbg_print_hit_rate();
+        dbg_print_mean();
+        dbg_print_hit_rate();
 
         // Send info on searched nodes as soon as we return to root
         SendSearchedNodes = true;

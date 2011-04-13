@@ -24,16 +24,13 @@
 #include "types.h"
 
 extern const std::string engine_name();
-extern const std::string engine_author();
+extern const std::string engine_authors();
 extern int get_system_time();
 extern int cpu_count();
 extern int input_available();
 extern void prefetch(char* addr);
 extern void prefetchTables(Key pKey, Key mKey, int threadID);
 
-// Debug functions
-extern bool dbg_show_mean;
-extern bool dbg_show_hit_rate;
 extern void dbg_hit_on(bool b);
 extern void dbg_hit_on_c(bool c, bool b);
 extern void dbg_before();

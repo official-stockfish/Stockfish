@@ -33,7 +33,7 @@ enum MoveType {
   MV_PSEUDO_LEGAL
 };
 
-template<MoveType T>
+template<MoveType>
 MoveStack* generate(const Position& pos, MoveStack* mlist);
 
 #endif // !defined(MOVEGEN_H_INCLUDED)
