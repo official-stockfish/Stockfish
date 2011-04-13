@@ -643,6 +643,115 @@ bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
   return bit_is_set(target, to) && pl_move_is_legal(m, pinned);
 }
 
+/// Position::move_is_legal() takes a position and a (not necessarily pseudo-legal)
+/// move and tests whether the move is legal. This version is not very fast and
+/// should be used only in non time-critical paths.
+
+bool Position::move_is_legal(const Move m) const {
+
+  MoveStack mlist[MOVES_MAX];
+  MoveStack *cur, *last = generate<MV_PSEUDO_LEGAL>(*this, mlist);
+
+   for (cur = mlist; cur != last; cur++)
+      if (cur->move == m)
+          return pl_move_is_legal(m, pinned_pieces(sideToMove));
+
+  return false;
+}
+
+
+/// Fast version of Position::move_is_legal() that takes a position a move and
+/// a bitboard of pinned pieces as input, and tests whether the move is legal.
+
+bool Position::move_is_legal(const Move m, Bitboard pinned) const {
+
+  assert(is_ok());
+  assert(pinned == pinned_pieces(sideToMove));
+
+  Color us = sideToMove;
+  Color them = opposite_color(sideToMove);
+  Square from = move_from(m);
+  Square to = move_to(m);
+  Piece pc = piece_on(from);
+
+  // Use a slower but simpler function for uncommon cases
+  if (move_is_special(m))
+      return move_is_legal(m);
+
+  // If the from square is not occupied by a piece belonging to the side to
+  // move, the move is obviously not legal.
+  if (color_of_piece(pc) != us)
+      return false;
+
+  // The destination square cannot be occupied by a friendly piece
+  if (color_of_piece_on(to) == us)
+      return false;
+
+  // Handle the special case of a pawn move
+  if (type_of_piece(pc) == PAWN)
+  {
+      // Move direction must be compatible with pawn color
+      int direction = to - from;
+      if ((us == WHITE) != (direction > 0))
+          return false;
+
+      // We have already handled promotion moves, so destination
+      // cannot be on the 8/1th rank.
+      if (square_rank(to) == RANK_8 || square_rank(to) == RANK_1)
+          return false;
+
+      // Proceed according to the square delta between the origin and
+      // destination squares.
+      switch (direction)
+      {
+      case DELTA_NW:
+      case DELTA_NE:
+      case DELTA_SW:
+      case DELTA_SE:
+      // Capture. The destination square must be occupied by an enemy
+      // piece (en passant captures was handled earlier).
+          if (color_of_piece_on(to) != them)
+              return false;
+          break;
+
+      case DELTA_N:
+      case DELTA_S:
+      // Pawn push. The destination square must be empty.
+          if (!square_is_empty(to))
+              return false;
+          break;
+
+      case DELTA_NN:
+      // Double white pawn push. The destination square must be on the fourth
+      // rank, and both the destination square and the square between the
+      // source and destination squares must be empty.
+      if (   square_rank(to) != RANK_4
+          || !square_is_empty(to)
+          || !square_is_empty(from + DELTA_N))
+          return false;
+          break;
+
+      case DELTA_SS:
+      // Double black pawn push. The destination square must be on the fifth
+      // rank, and both the destination square and the square between the
+      // source and destination squares must be empty.
+          if (   square_rank(to) != RANK_5
+              || !square_is_empty(to)
+              || !square_is_empty(from + DELTA_S))
+              return false;
+          break;
+
+      default:
+          return false;
+      }
+  }
+  else if (!bit_is_set(attacks_from(pc, from), to))
+      return false;
+
+  // The move is pseudo-legal, check if it is also legal
+  return is_check() ? pl_move_is_evasion(m, pinned) : pl_move_is_legal(m, pinned);
+}
+
 
 /// Position::move_is_check() tests whether a pseudo-legal move is a check
 

@@ -280,7 +280,7 @@ Move MovePicker::get_next_move() {
           case PH_TT_MOVES:
               move = (curMove++)->move;
               if (   move != MOVE_NONE
-                  && move_is_legal(pos, move, pinned))
+                  && pos.move_is_legal(move, pinned))
                   return move;
               break;
 
@@ -305,7 +305,7 @@ Move MovePicker::get_next_move() {
           case PH_KILLERS:
               move = (curMove++)->move;
               if (   move != MOVE_NONE
-                  && move_is_legal(pos, move, pinned)
+                  && pos.move_is_legal(move, pinned)
                   && move != ttMoves[0].move
                   && move != ttMoves[1].move
                   && !pos.move_is_capture(move))

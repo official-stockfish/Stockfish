@@ -36,7 +36,4 @@ enum MoveType {
 template<MoveType T>
 MoveStack* generate(const Position& pos, MoveStack* mlist);
 
-extern bool move_is_legal(const Position& pos, const Move m, Bitboard pinned);
-extern bool move_is_legal(const Position& pos, const Move m);
-
 #endif // !defined(MOVEGEN_H_INCLUDED)

@@ -184,6 +184,8 @@ public:
   // Properties of moves
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool pl_move_is_evasion(Move m, Bitboard pinned) const;
+  bool move_is_legal(const Move m) const;
+  bool move_is_legal(const Move m, Bitboard pinned) const;
   bool move_is_check(Move m) const;
   bool move_is_check(Move m, const CheckInfo& ci) const;
   bool move_is_capture(Move m) const;

@@ -2442,13 +2442,13 @@ split_point_start: // At split points actual search starts from here
     TTEntry* tte;
     int ply = 1;
 
-    assert(pv[0] != MOVE_NONE && move_is_legal(pos, pv[0]));
+    assert(pv[0] != MOVE_NONE && pos.move_is_legal(pv[0]));
 
     pos.do_move(pv[0], *st++);
 
     while (   (tte = TT.retrieve(pos.get_key())) != NULL
            && tte->move() != MOVE_NONE
-           && move_is_legal(pos, tte->move())
+           && pos.move_is_legal(tte->move())
            && ply < PLY_MAX
            && (!pos.is_draw() || ply < 2))
     {
@@ -2472,7 +2472,7 @@ split_point_start: // At split points actual search starts from here
     Value v, m = VALUE_NONE;
     int ply = 0;
 
-    assert(pv[0] != MOVE_NONE && move_is_legal(pos, pv[0]));
+    assert(pv[0] != MOVE_NONE && pos.move_is_legal(pv[0]));
 
     do {
         k = pos.get_key();

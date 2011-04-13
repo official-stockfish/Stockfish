@@ -36,19 +36,19 @@ namespace {
     QUEEN_SIDE
   };
 
-  template<CastlingSide Side>
+  template<CastlingSide>
   MoveStack* generate_castle_moves(const Position&, MoveStack*, Color us);
 
-  template<Color Us, MoveType Type>
+  template<Color, MoveType>
   MoveStack* generate_pawn_moves(const Position&, MoveStack*, Bitboard, Square);
 
-  template<PieceType Piece>
+  template<PieceType Pt>
   inline MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from) {
 
-    assert(Piece != QUEEN);
+    assert(Pt != QUEEN);
 
-    Bitboard b = pos.attacks_from<Piece>(from) & pos.empty_squares();
-    if (Piece == KING)
+    Bitboard b = pos.attacks_from<Pt>(from) & pos.empty_squares();
+    if (Pt == KING)
     {
         Square ksq = pos.king_square(opposite_color(pos.side_to_move()));
         b &= ~QueenPseudoAttacks[ksq];
@@ -57,31 +57,31 @@ namespace {
     return mlist;
   }
 
-  template<PieceType Piece>
+  template<PieceType Pt>
   inline MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist, Color us,
                                            Bitboard dc, Square ksq) {
-    assert(Piece != KING);
+    assert(Pt != KING);
 
     Bitboard checkSqs, b;
     Square from;
-    const Square* ptr = pos.piece_list_begin(us, Piece);
+    const Square* ptr = pos.piece_list_begin(us, Pt);
 
     if ((from = *ptr++) == SQ_NONE)
         return mlist;
 
-    checkSqs = pos.attacks_from<Piece>(ksq) & pos.empty_squares();
+    checkSqs = pos.attacks_from<Pt>(ksq) & pos.empty_squares();
 
     do
     {
-        if (   (Piece == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
-            || (Piece == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
-            || (Piece == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
+        if (   (Pt == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
+            || (Pt == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
+            || (Pt == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
             continue;
 
         if (dc && bit_is_set(dc, from))
             continue;
 
-        b = pos.attacks_from<Piece>(from) & checkSqs;
+        b = pos.attacks_from<Pt>(from) & checkSqs;
         SERIALIZE_MOVES(b);
 
     } while ((from = *ptr++) != SQ_NONE);
@@ -96,28 +96,28 @@ namespace {
                         : generate_pawn_moves<BLACK, MV_CHECK>(p, m, dc, ksq));
   }
 
-  template<PieceType Piece, MoveType Type>
+  template<PieceType Pt, MoveType Type>
   FORCE_INLINE MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
 
-    assert(Piece == PAWN);
+    assert(Pt == PAWN);
     assert(Type == MV_CAPTURE || Type == MV_NON_CAPTURE || Type == MV_EVASION);
 
     return (us == WHITE ? generate_pawn_moves<WHITE, Type>(p, m, t, SQ_NONE)
                         : generate_pawn_moves<BLACK, Type>(p, m, t, SQ_NONE));
   }
 
-  template<PieceType Piece>
+  template<PieceType Pt>
   FORCE_INLINE MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
 
     Bitboard b;
     Square from;
-    const Square* ptr = pos.piece_list_begin(us, Piece);
+    const Square* ptr = pos.piece_list_begin(us, Pt);
 
     if (*ptr != SQ_NONE)
     {
         do {
             from = *ptr;
-            b = pos.attacks_from<Piece>(from) & target;
+            b = pos.attacks_from<Pt>(from) & target;
             SERIALIZE_MOVES(b);
         } while (*++ptr != SQ_NONE);
     }
@@ -136,10 +136,6 @@ namespace {
   }
 
 }
-
-////
-//// Functions
-////
 
 
 /// generate<MV_CAPTURE> generates all pseudo-legal captures and queen
@@ -194,7 +190,7 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   return mlist;
 }
 
-// Explicit template instantiation
+// Explicit template instantiations
 template MoveStack* generate<MV_CAPTURE>(const Position& pos, MoveStack* mlist);
 template MoveStack* generate<MV_NON_CAPTURE>(const Position& pos, MoveStack* mlist);
 template MoveStack* generate<MV_NON_EVASION>(const Position& pos, MoveStack* mlist);
@@ -311,7 +307,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
 /// generate<MV_LEGAL / MV_PSEUDO_LEGAL> computes a complete list of legal
 /// or pseudo-legal moves in the current position.
 template<>
-inline MoveStack* generate<MV_PSEUDO_LEGAL>(const Position& pos, MoveStack* mlist) {
+MoveStack* generate<MV_PSEUDO_LEGAL>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
@@ -331,122 +327,12 @@ MoveStack* generate<MV_LEGAL>(const Position& pos, MoveStack* mlist) {
 
   // Remove illegal moves from the list
   while (cur != last)
-      if (pos.pl_move_is_legal(cur->move, pinned))
-          cur++;
-      else
+      if (!pos.pl_move_is_legal(cur->move, pinned))
           cur->move = (--last)->move;
+      else
+          cur++;
 
   return last;
-}
-
-
-/// move_is_legal() takes a position and a (not necessarily pseudo-legal)
-/// move and tests whether the move is legal. This version is not very fast
-/// and should be used only in non time-critical paths.
-
-bool move_is_legal(const Position& pos, const Move m) {
-
-  MoveStack mlist[MOVES_MAX];
-  MoveStack *cur, *last = generate<MV_PSEUDO_LEGAL>(pos, mlist);
-
-   for (cur = mlist; cur != last; cur++)
-      if (cur->move == m)
-          return pos.pl_move_is_legal(m, pos.pinned_pieces(pos.side_to_move()));
-
-  return false;
-}
-
-
-/// Fast version of move_is_legal() that takes a position a move and a
-/// bitboard of pinned pieces as input, and tests whether the move is legal.
-
-bool move_is_legal(const Position& pos, const Move m, Bitboard pinned) {
-
-  assert(pos.is_ok());
-  assert(pinned == pos.pinned_pieces(pos.side_to_move()));
-
-  Color us = pos.side_to_move();
-  Color them = opposite_color(us);
-  Square from = move_from(m);
-  Square to = move_to(m);
-  Piece pc = pos.piece_on(from);
-
-  // Use a slower but simpler function for uncommon cases
-  if (move_is_special(m))
-      return move_is_legal(pos, m);
-
-  // If the from square is not occupied by a piece belonging to the side to
-  // move, the move is obviously not legal.
-  if (color_of_piece(pc) != us)
-      return false;
-
-  // The destination square cannot be occupied by a friendly piece
-  if (pos.color_of_piece_on(to) == us)
-      return false;
-
-  // Handle the special case of a pawn move
-  if (type_of_piece(pc) == PAWN)
-  {
-      // Move direction must be compatible with pawn color
-      int direction = to - from;
-      if ((us == WHITE) != (direction > 0))
-          return false;
-
-      // We have already handled promotion moves, so destination
-      // cannot be on the 8/1th rank.
-      if (square_rank(to) == RANK_8 || square_rank(to) == RANK_1)
-          return false;
-
-      // Proceed according to the square delta between the origin and
-      // destination squares.
-      switch (direction)
-      {
-      case DELTA_NW:
-      case DELTA_NE:
-      case DELTA_SW:
-      case DELTA_SE:
-      // Capture. The destination square must be occupied by an enemy
-      // piece (en passant captures was handled earlier).
-          if (pos.color_of_piece_on(to) != them)
-              return false;
-          break;
-
-      case DELTA_N:
-      case DELTA_S:
-      // Pawn push. The destination square must be empty.
-          if (!pos.square_is_empty(to))
-              return false;
-          break;
-
-      case DELTA_NN:
-      // Double white pawn push. The destination square must be on the fourth
-      // rank, and both the destination square and the square between the
-      // source and destination squares must be empty.
-      if (   square_rank(to) != RANK_4
-          || !pos.square_is_empty(to)
-          || !pos.square_is_empty(from + DELTA_N))
-          return false;
-          break;
-
-      case DELTA_SS:
-      // Double black pawn push. The destination square must be on the fifth
-      // rank, and both the destination square and the square between the
-      // source and destination squares must be empty.
-          if (   square_rank(to) != RANK_5
-              || !pos.square_is_empty(to)
-              || !pos.square_is_empty(from + DELTA_S))
-              return false;
-          break;
-
-      default:
-          return false;
-      }
-  }
-  else if (!bit_is_set(pos.attacks_from(pc, from), to))
-      return false;
-
-  // The move is pseudo-legal, check if it is also legal
-  return pos.is_check() ? pos.pl_move_is_evasion(m, pinned) : pos.pl_move_is_legal(m, pinned);
 }
 
 
