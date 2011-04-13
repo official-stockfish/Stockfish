@@ -31,7 +31,7 @@ namespace {
 
   // Table used to drive the defending king towards the edge of the board
   // in KX vs K and KQ vs KR endgames.
-  const uint8_t MateTable[64] = {
+  const int MateTable[64] = {
     100, 90, 80, 70, 70, 80, 90, 100,
      90, 70, 60, 50, 50, 60, 70,  90,
      80, 60, 40, 30, 30, 40, 60,  80,
@@ -44,7 +44,7 @@ namespace {
 
   // Table used to drive the defending king towards a corner square of the
   // right color in KBN vs K endgames.
-  const uint8_t KBNKMateTable[64] = {
+  const int KBNKMateTable[64] = {
     200, 190, 180, 170, 160, 150, 140, 130,
     190, 180, 170, 160, 150, 140, 130, 140,
     180, 170, 155, 140, 140, 125, 140, 150,
@@ -63,49 +63,33 @@ namespace {
   // and knight in KR vs KN endgames.
   const int KRKNKingKnightDistancePenalty[8] = { 0, 0, 4, 10, 20, 32, 48, 70 };
 
-  // Various inline functions for accessing the above arrays
-  inline Value mate_table(Square s) {
-    return Value(MateTable[s]);
-  }
-
-  inline Value kbnk_mate_table(Square s) {
-    return Value(KBNKMateTable[s]);
-  }
-
-  inline Value distance_bonus(int d) {
-    return Value(DistanceBonus[d]);
-  }
-
-  inline Value krkn_king_knight_distance_penalty(int d) {
-    return Value(KRKNKingKnightDistancePenalty[d]);
-  }
-
-  // Build corresponding key for the opposite color: "KBPKN" -> "KNKBP"
-  const string swapColors(const string& keyCode) {
+  // Build corresponding key code for the opposite color: "KBPKN" -> "KNKBP"
+  const string swap_colors(const string& keyCode) {
 
     size_t idx = keyCode.find('K', 1);
     return keyCode.substr(idx) + keyCode.substr(0, idx);
   }
 
-  // Build up a fen string with the given pieces, note that the fen string
-  // could be of an illegal position.
-  Key buildKey(const string& keyCode) {
+  // Get the material key of a position out of the given endgame key code
+  // like "KBPKN". The trick here is to first build up a FEN string and then
+  // let a Position object to do the work for us. Note that the FEN string
+  // could correspond to an illegal position.
+  Key mat_key(const string& keyCode) {
 
     assert(keyCode.length() > 0 && keyCode.length() < 8);
     assert(keyCode[0] == 'K');
 
     string fen;
-    bool upcase = false;
+    size_t i = 0;
 
-    for (size_t i = 0; i < keyCode.length(); i++)
-    {
-        if (keyCode[i] == 'K')
-            upcase = !upcase;
+    // First add white and then black pieces
+    do fen += keyCode[i];                while (keyCode[++i] != 'K');
+    do fen += char(tolower(keyCode[i])); while (++i < keyCode.length());
 
-        fen += char(upcase ? toupper(keyCode[i]) : tolower(keyCode[i]));
-    }
-    fen += char(8 - keyCode.length() + '0');
-    fen += "/8/8/8/8/8/8/8 w - -";
+    // Add file padding and remaining empty ranks
+    fen += string(1, '0' + int(8 - keyCode.length())) + "/8/8/8/8/8/8/8 w - -";
+
+    // Build a Position out of the fen string and get its material key
     return Position(fen, false, 0).get_material_key();
   }
 
@@ -154,8 +138,8 @@ void Endgames::add(const string& keyCode) {
   typedef typename T::Base F;
   typedef std::map<Key, F*> M;
 
-  const_cast<M&>(get<F>()).insert(std::pair<Key, F*>(buildKey(keyCode), new T(WHITE)));
-  const_cast<M&>(get<F>()).insert(std::pair<Key, F*>(buildKey(swapColors(keyCode)), new T(BLACK)));
+  const_cast<M&>(get<F>()).insert(std::pair<Key, F*>(mat_key(keyCode), new T(WHITE)));
+  const_cast<M&>(get<F>()).insert(std::pair<Key, F*>(mat_key(swap_colors(keyCode)), new T(BLACK)));
 }
 
 template<class T>
@@ -185,8 +169,8 @@ Value Endgame<Value, KXK>::apply(const Position& pos) const {
 
   Value result =   pos.non_pawn_material(strongerSide)
                  + pos.piece_count(strongerSide, PAWN) * PawnValueEndgame
-                 + mate_table(loserKSq)
-                 + distance_bonus(square_distance(winnerKSq, loserKSq));
+                 + MateTable[loserKSq]
+                 + DistanceBonus[square_distance(winnerKSq, loserKSq)];
 
   if (   pos.piece_count(strongerSide, QUEEN)
       || pos.piece_count(strongerSide, ROOK)
@@ -224,8 +208,8 @@ Value Endgame<Value, KBNK>::apply(const Position& pos) const {
   }
 
   Value result =  VALUE_KNOWN_WIN
-                + distance_bonus(square_distance(winnerKSq, loserKSq))
-                + kbnk_mate_table(loserKSq);
+                + DistanceBonus[square_distance(winnerKSq, loserKSq)]
+                + KBNKMateTable[loserKSq];
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
@@ -346,7 +330,7 @@ Value Endgame<Value, KRKB>::apply(const Position& pos) const {
   assert(pos.piece_count(weakerSide, PAWN) == 0);
   assert(pos.piece_count(weakerSide, BISHOP) == 1);
 
-  Value result = mate_table(pos.king_square(weakerSide));
+  Value result = Value(MateTable[pos.king_square(weakerSide)]);
   return strongerSide == pos.side_to_move() ? result : -result;
 }
 
@@ -367,8 +351,8 @@ Value Endgame<Value, KRKN>::apply(const Position& pos) const {
 
   int d = square_distance(defendingKSq, nSq);
   Value result =   Value(10)
-                 + mate_table(defendingKSq)
-                 + krkn_king_knight_distance_penalty(d);
+                 + MateTable[defendingKSq]
+                 + KRKNKingKnightDistancePenalty[d];
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
@@ -392,8 +376,8 @@ Value Endgame<Value, KQKR>::apply(const Position& pos) const {
 
   Value result =  QueenValueEndgame
                 - RookValueEndgame
-                + mate_table(loserKSq)
-                + distance_bonus(square_distance(winnerKSq, loserKSq));
+                + MateTable[loserKSq]
+                + DistanceBonus[square_distance(winnerKSq, loserKSq)];
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
@@ -413,7 +397,7 @@ Value Endgame<Value, KBBKN>::apply(const Position& pos) const {
   Square nsq = pos.piece_list(weakerSide, KNIGHT, 0);
 
   // Bonus for attacking king close to defending king
-  result += distance_bonus(square_distance(wksq, bksq));
+  result += Value(DistanceBonus[square_distance(wksq, bksq)]);
 
   // Bonus for driving the defending king and knight apart
   result += Value(square_distance(bksq, nsq) * 32);

@@ -32,6 +32,7 @@
 enum EndgameType {
 
   // Evaluation functions
+
   KXK,   // Generic "mate lone king" eval
   KBNK,  // KBN vs K
   KPK,   // KP vs K
@@ -43,7 +44,9 @@ enum EndgameType {
   KNNK,  // KNN vs K
   KmmKm, // K and two minors vs K and one or two minors
 
+
   // Scaling functions
+
   KBPsK,   // KB+pawns vs K
   KQKRPs,  // KQ vs KR+pawns
   KRPKR,   // KRP vs KR
@@ -57,7 +60,7 @@ enum EndgameType {
 };
 
 
-/// Base and derived template class for endgame evaluation and scaling functions
+/// Base and derived templates for endgame evaluation and scaling functions
 
 template<typename T>
 struct EndgameBase {
@@ -88,8 +91,8 @@ private:
 
 class Endgames {
 
-  typedef std::map<Key, EndgameBase<Value>*> EFMap;
-  typedef std::map<Key, EndgameBase<ScaleFactor>*> SFMap;
+  typedef std::map<Key, EndgameBase<Value>* > EFMap;
+  typedef std::map<Key, EndgameBase<ScaleFactor>* > SFMap;
 
 public:
   Endgames();
