@@ -60,53 +60,55 @@ static string stringify(const T& v) {
 }
 
 
-/// init_uci_options() initializes the UCI options to their hard coded default
+/// OptionsMap c'tor initializes the UCI options to their hard coded default
 /// values and initializes the default value of "Threads" and "Minimum Split Depth"
 /// parameters according to the number of CPU cores.
 
-void init_uci_options() {
+OptionsMap::OptionsMap() {
 
-  Options["Use Search Log"] = Option(false);
-  Options["Search Log Filename"] = Option("SearchLog.txt");
-  Options["Book File"] = Option("book.bin");
-  Options["Best Book Move"] = Option(false);
-  Options["Mobility (Middle Game)"] = Option(100, 0, 200);
-  Options["Mobility (Endgame)"] = Option(100, 0, 200);
-  Options["Pawn Structure (Middle Game)"] = Option(100, 0, 200);
-  Options["Pawn Structure (Endgame)"] = Option(100, 0, 200);
-  Options["Passed Pawns (Middle Game)"] = Option(100, 0, 200);
-  Options["Passed Pawns (Endgame)"] = Option(100, 0, 200);
-  Options["Space"] = Option(100, 0, 200);
-  Options["Aggressiveness"] = Option(100, 0, 200);
-  Options["Cowardice"] = Option(100, 0, 200);
-  Options["Check Extension (PV nodes)"] = Option(2, 0, 2);
-  Options["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
-  Options["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
-  Options["Pawn Push to 7th Extension (non-PV nodes)"] = Option(1, 0, 2);
-  Options["Passed Pawn Extension (PV nodes)"] = Option(1, 0, 2);
-  Options["Passed Pawn Extension (non-PV nodes)"] = Option(0, 0, 2);
-  Options["Pawn Endgame Extension (PV nodes)"] = Option(2, 0, 2);
-  Options["Pawn Endgame Extension (non-PV nodes)"] = Option(2, 0, 2);
-  Options["Minimum Split Depth"] = Option(4, 4, 7);
-  Options["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
-  Options["Threads"] = Option(1, 1, MAX_THREADS);
-  Options["Use Sleeping Threads"] = Option(true);
-  Options["Hash"] = Option(32, 4, 8192);
-  Options["Clear Hash"] = Option(false, "button");
-  Options["Ponder"] = Option(true);
-  Options["OwnBook"] = Option(true);
-  Options["MultiPV"] = Option(1, 1, 500);
-  Options["Skill level"] = Option(20, 0, 20);
-  Options["Emergency Move Horizon"] = Option(40, 0, 50);
-  Options["Emergency Base Time"] = Option(200, 0, 30000);
-  Options["Emergency Move Time"] = Option(70, 0, 5000);
-  Options["Minimum Thinking Time"] = Option(20, 0, 5000);
-  Options["UCI_Chess960"] = Option(false);
-  Options["UCI_AnalyseMode"] = Option(false);
+  OptionsMap& o = *this;
+
+  o["Use Search Log"] = Option(false);
+  o["Search Log Filename"] = Option("SearchLog.txt");
+  o["Book File"] = Option("book.bin");
+  o["Best Book Move"] = Option(false);
+  o["Mobility (Middle Game)"] = Option(100, 0, 200);
+  o["Mobility (Endgame)"] = Option(100, 0, 200);
+  o["Pawn Structure (Middle Game)"] = Option(100, 0, 200);
+  o["Pawn Structure (Endgame)"] = Option(100, 0, 200);
+  o["Passed Pawns (Middle Game)"] = Option(100, 0, 200);
+  o["Passed Pawns (Endgame)"] = Option(100, 0, 200);
+  o["Space"] = Option(100, 0, 200);
+  o["Aggressiveness"] = Option(100, 0, 200);
+  o["Cowardice"] = Option(100, 0, 200);
+  o["Check Extension (PV nodes)"] = Option(2, 0, 2);
+  o["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
+  o["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
+  o["Pawn Push to 7th Extension (non-PV nodes)"] = Option(1, 0, 2);
+  o["Passed Pawn Extension (PV nodes)"] = Option(1, 0, 2);
+  o["Passed Pawn Extension (non-PV nodes)"] = Option(0, 0, 2);
+  o["Pawn Endgame Extension (PV nodes)"] = Option(2, 0, 2);
+  o["Pawn Endgame Extension (non-PV nodes)"] = Option(2, 0, 2);
+  o["Minimum Split Depth"] = Option(4, 4, 7);
+  o["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
+  o["Threads"] = Option(1, 1, MAX_THREADS);
+  o["Use Sleeping Threads"] = Option(true);
+  o["Hash"] = Option(32, 4, 8192);
+  o["Clear Hash"] = Option(false, "button");
+  o["Ponder"] = Option(true);
+  o["OwnBook"] = Option(true);
+  o["MultiPV"] = Option(1, 1, 500);
+  o["Skill level"] = Option(20, 0, 20);
+  o["Emergency Move Horizon"] = Option(40, 0, 50);
+  o["Emergency Base Time"] = Option(200, 0, 30000);
+  o["Emergency Move Time"] = Option(70, 0, 5000);
+  o["Minimum Thinking Time"] = Option(20, 0, 5000);
+  o["UCI_Chess960"] = Option(false);
+  o["UCI_AnalyseMode"] = Option(false);
 
   // Set some SMP parameters accordingly to the detected CPU count
-  Option& thr = Options["Threads"];
-  Option& msd = Options["Minimum Split Depth"];
+  Option& thr = o["Threads"];
+  Option& msd = o["Minimum Split Depth"];
 
   thr.defaultValue = thr.currentValue = stringify(cpu_count());
 
@@ -115,15 +117,15 @@ void init_uci_options() {
 }
 
 
-/// options_to_uci() returns a string with all the UCI options in chronological
+/// OptionsMap::print_all() returns a string with all the UCI options in chronological
 /// insertion order (the idx field) and in the format defined by the UCI protocol.
 
-string options_to_uci() {
+string OptionsMap::print_all() const {
 
   std::stringstream s;
 
-  for (size_t i = 0; i <= Options.size(); i++)
-      for (OptionsMap::const_iterator it = Options.begin(); it != Options.end(); ++it)
+  for (size_t i = 0; i <= size(); i++)
+      for (OptionsMap::const_iterator it = begin(); it != end(); ++it)
           if (it->second.idx == i)
           {
               const Option& o = it->second;
@@ -143,13 +145,13 @@ string options_to_uci() {
 
 /// Option class c'tors
 
-Option::Option(const char* def) : type("string"), idx(Options.size()), minValue(0), maxValue(0)
+Option::Option(const char* def) : type("string"), minValue(0), maxValue(0), idx(Options.size())
 { defaultValue = currentValue = def; }
 
-Option::Option(bool def, string t) : type(t), idx(Options.size()), minValue(0), maxValue(0)
+Option::Option(bool def, string t) : type(t), minValue(0), maxValue(0), idx(Options.size())
 { defaultValue = currentValue = (def ? "true" : "false"); }
 
-Option::Option(int def, int minv, int maxv) : type("spin"), idx(Options.size()), minValue(minv), maxValue(maxv)
+Option::Option(int def, int minv, int maxv) : type("spin"), minValue(minv), maxValue(maxv), idx(Options.size())
 { defaultValue = currentValue = stringify(def); }
 
 
@@ -164,8 +166,7 @@ void Option::set_value(const string& v) {
   if (v.empty())
       return;
 
-  if (   (type == "check" || type == "button")
-      != (v == "true" || v == "false"))
+  if ((type == "check" || type == "button") != (v == "true" || v == "false"))
       return;
 
   if (type == "spin")

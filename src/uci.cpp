@@ -78,7 +78,7 @@ bool execute_uci_command(const string& cmd) {
   else if (token == "uci")
       cout << "id name " << engine_name()
            << "\nid author " << engine_authors()
-           << "\n" << options_to_uci()
+           << "\n" << Options.print_all()
            << "\nuciok" << endl;
 
   else if (token == "ucinewgame")

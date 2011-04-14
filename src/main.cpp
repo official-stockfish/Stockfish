@@ -50,7 +50,6 @@ int main(int argc, char* argv[]) {
 
   // Startup initializations
   init_bitboards();
-  init_uci_options();
   Position::init_zobrist();
   Position::init_piece_square_tables();
   init_eval(1);
