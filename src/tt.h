@@ -25,40 +25,8 @@
 #include "move.h"
 #include "types.h"
 
-/// A simple fixed size hash table used to store pawns and material
-/// configurations. It is basically just an array of Entry objects.
-/// Without cluster concept or overwrite policy.
 
-template<class Entry, int HashSize>
-class SimpleHash {
-
-  SimpleHash(const SimpleHash&);
-  SimpleHash& operator=(const SimpleHash&);
-
-public:
-  SimpleHash() {
-
-    entries = new (std::nothrow) Entry[HashSize];
-    if (!entries)
-    {
-        std::cerr << "Failed to allocate " << HashSize * sizeof(Entry)
-                  << " bytes for material hash table." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    memset(entries, 0, HashSize * sizeof(Entry));
-  }
-
-  virtual ~SimpleHash() { delete [] entries; }
-
-  Entry* find(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
-  void prefetch(Key key) const { ::prefetch((char*)find(key)); }
-
-protected:
-  Entry* entries;
-};
-
-
-/// The TTEntry class is the class of transposition table entries
+/// The TTEntry is the class of transposition table entries
 ///
 /// A TTEntry needs 128 bits to be stored
 ///
@@ -92,42 +60,38 @@ public:
   }
   void set_generation(int g) { generation8 = (uint8_t)g; }
 
-  uint32_t key() const { return key32; }
-  Depth depth() const { return Depth(depth16); }
-  Move move() const { return Move(move16); }
-  Value value() const { return Value(value16); }
-  ValueType type() const { return ValueType(valueType); }
-  int generation() const { return generation8; }
-  Value static_value() const { return Value(staticValue); }
-  Value static_value_margin() const { return Value(staticMargin); }
+  uint32_t key() const              { return key32; }
+  Depth depth() const               { return (Depth)depth16; }
+  Move move() const                 { return (Move)move16; }
+  Value value() const               { return (Value)value16; }
+  ValueType type() const            { return (ValueType)valueType; }
+  int generation() const            { return (int)generation8; }
+  Value static_value() const        { return (Value)staticValue; }
+  Value static_value_margin() const { return (Value)staticMargin; }
 
 private:
   uint32_t key32;
   uint16_t move16;
-  uint8_t valueType;
-  uint8_t generation8;
-  int16_t value16;
-  int16_t depth16;
-  int16_t staticValue;
-  int16_t staticMargin;
+  uint8_t valueType, generation8;
+  int16_t value16, depth16, staticValue, staticMargin;
 };
 
 
 /// This is the number of TTEntry slots for each cluster
 const int ClusterSize = 4;
 
-/// TTCluster consists of ClusterSize number of TTEntries.
-/// Size of TTCluster must not be bigger than a cache line size.
-/// In case it is less, it should be padded to guarantee always aligned accesses.
+
+/// TTCluster consists of ClusterSize number of TTEntries. Size of TTCluster
+/// must not be bigger than a cache line size. In case it is less, it should
+/// be padded to guarantee always aligned accesses.
 
 struct TTCluster {
   TTEntry data[ClusterSize];
 };
 
 
-/// The transposition table class. This is basically just a huge array
-/// containing TTCluster objects, and a few methods for writing new entries
-/// and reading new ones.
+/// The transposition table class. This is basically just a huge array containing
+/// TTCluster objects, and a few methods for writing and reading entries.
 
 class TranspositionTable {
 
@@ -148,15 +112,15 @@ public:
 private:
   size_t size;
   TTCluster* entries;
-  uint8_t generation; // To properly compare, size must be smaller then TT stored value
+  uint8_t generation; // Size must be not bigger then TTEntry::generation8
 };
 
 extern TranspositionTable TT;
 
 
-/// TranspositionTable::first_entry returns a pointer to the first
-/// entry of a cluster given a position. The lowest order bits of the key
-/// are used to get the index of the cluster.
+/// TranspositionTable::first_entry() returns a pointer to the first entry of
+/// a cluster given a position. The lowest order bits of the key are used to
+/// get the index of the cluster.
 
 inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 
@@ -164,12 +128,45 @@ inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
 }
 
 
-/// TranspositionTable::refresh updates the 'generation' value of the TTEntry
-/// to avoid aging. Normally called after a TT hit, before to return.
+/// TranspositionTable::refresh() updates the 'generation' value of the TTEntry
+/// to avoid aging. Normally called after a TT hit.
 
 inline void TranspositionTable::refresh(const TTEntry* tte) const {
 
   const_cast<TTEntry*>(tte)->set_generation(generation);
 }
+
+
+/// A simple fixed size hash table used to store pawns and material
+/// configurations. It is basically just an array of Entry objects.
+/// Without cluster concept or overwrite policy.
+
+template<class Entry, int HashSize>
+class SimpleHash {
+
+  SimpleHash(const SimpleHash&);
+  SimpleHash& operator=(const SimpleHash&);
+
+public:
+  SimpleHash() {
+
+    entries = new (std::nothrow) Entry[HashSize];
+    if (!entries)
+    {
+        std::cerr << "Failed to allocate " << HashSize * sizeof(Entry)
+                  << " bytes for material hash table." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    memset(entries, 0, HashSize * sizeof(Entry));
+  }
+
+  virtual ~SimpleHash() { delete [] entries; }
+
+  Entry* find(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
+  void prefetch(Key key) const { ::prefetch((char*)find(key)); }
+
+protected:
+  Entry* entries;
+};
 
 #endif // !defined(TT_H_INCLUDED)

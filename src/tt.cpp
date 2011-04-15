@@ -17,29 +17,18 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
 #include <cstring>
 #include <iostream>
 
 #include "tt.h"
 
-// The main transposition table
-TranspositionTable TT;
-
-////
-//// Functions
-////
+TranspositionTable TT; // Our global transposition table
 
 TranspositionTable::TranspositionTable() {
 
-  size = 0;
-  entries = 0;
-  generation = 0;
+  size = generation = 0;
+  entries = NULL;
 }
 
 TranspositionTable::~TranspositionTable() {
@@ -48,7 +37,7 @@ TranspositionTable::~TranspositionTable() {
 }
 
 
-/// TranspositionTable::set_size sets the size of the transposition table,
+/// TranspositionTable::set_size() sets the size of the transposition table,
 /// measured in megabytes.
 
 void TranspositionTable::set_size(size_t mbSize) {
@@ -78,10 +67,9 @@ void TranspositionTable::set_size(size_t mbSize) {
 }
 
 
-/// TranspositionTable::clear overwrites the entire transposition table
+/// TranspositionTable::clear() overwrites the entire transposition table
 /// with zeroes. It is called whenever the table is resized, or when the
 /// user asks the program to clear the table (from the UCI interface).
-/// Perhaps we should also clear it when the "ucinewgame" command is received?
 
 void TranspositionTable::clear() {
 
@@ -89,23 +77,22 @@ void TranspositionTable::clear() {
 }
 
 
-/// TranspositionTable::store writes a new entry containing position key and
-/// valuable information of current position.
-/// The Lowest order bits of position key are used to decide on which cluster
-/// the position will be placed.
+/// TranspositionTable::store() writes a new entry containing position key and
+/// valuable information of current position. The lowest order bits of position
+/// key are used to decide on which cluster the position will be placed.
 /// When a new entry is written and there are no empty entries available in cluster,
-/// it replaces the least valuable of entries.
-/// A TTEntry t1 is considered to be more valuable than a TTEntry t2 if t1 is from the
-/// current search and t2 is from a previous search, or if the depth of t1
-/// is bigger than the depth of t2.
+/// it replaces the least valuable of entries. A TTEntry t1 is considered to be
+/// more valuable than a TTEntry t2 if t1 is from the current search and t2 is from
+/// a previous search, or if the depth of t1 is bigger than the depth of t2.
 
 void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m, Value statV, Value kingD) {
 
   int c1, c2, c3;
   TTEntry *tte, *replace;
-  uint32_t posKey32 = posKey >> 32; // Use the high 32 bits as key
+  uint32_t posKey32 = posKey >> 32; // Use the high 32 bits as key inside the cluster
 
   tte = replace = first_entry(posKey);
+
   for (int i = 0; i < ClusterSize; i++, tte++)
   {
       if (!tte->key() || tte->key() == posKey32) // Empty or overwrite old
@@ -118,10 +105,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
           return;
       }
 
-      // Replacing first entry is default and already set before entering for-loop
-      if (i == 0)
-          continue;
-
+      // Implement replace strategy
       c1 = (replace->generation() == generation ?  2 : 0);
       c2 = (tte->generation() == generation ? -2 : 0);
       c3 = (tte->depth() < replace->depth() ?  1 : 0);
@@ -133,9 +117,9 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
 }
 
 
-/// TranspositionTable::retrieve looks up the current position in the
-/// transposition table. Returns a pointer to the TTEntry or NULL
-/// if position is not found.
+/// TranspositionTable::retrieve() looks up the current position in the
+/// transposition table. Returns a pointer to the TTEntry or NULL if
+/// position is not found.
 
 TTEntry* TranspositionTable::retrieve(const Key posKey) const {
 
