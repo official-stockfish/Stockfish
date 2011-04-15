@@ -216,7 +216,7 @@ namespace {
   int8_t ReductionMatrix[2][64][64]; // [pv][depth][moveNumber]
 
   template <NodeType PV>
-  inline Depth reduction(Depth d, int mn) { return (Depth) ReductionMatrix[PV][Min(d / 2, 63)][Min(mn, 63)]; }
+  inline Depth reduction(Depth d, int mn) { return (Depth) ReductionMatrix[PV][Min(d / ONE_PLY, 63)][Min(mn, 63)]; }
 
   // Easy move margin. An easy move candidate must be at least this much
   // better than the second best move.
