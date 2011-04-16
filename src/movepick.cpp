@@ -217,9 +217,7 @@ void MovePicker::score_captures() {
 }
 
 void MovePicker::score_noncaptures() {
-  // First score by history, when no history is available then use
-  // piece/square tables values. This seems to be better then a
-  // random choice when we don't have an history for any move.
+  // Score by history and max gain for the move.
   Move m;
   Piece piece;
   Square from, to;
