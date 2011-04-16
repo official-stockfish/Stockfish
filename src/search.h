@@ -32,6 +32,7 @@ struct EvalInfo;
 struct SplitPoint;
 
 struct SearchStack {
+  int ply;
   Move currentMove;
   Move mateKiller;
   Move excludedMove;

@@ -79,7 +79,7 @@ namespace {
     void idle_loop(int threadID, SplitPoint* sp);
 
     template <bool Fake>
-    void split(Position& pos, SearchStack* ss, int ply, Value* alpha, const Value beta, Value* bestValue,
+    void split(Position& pos, SearchStack* ss, Value* alpha, const Value beta, Value* bestValue,
                Depth depth, Move threatMove, int moveCount, MovePicker* mp, bool pvNode);
 
   private:
@@ -267,16 +267,16 @@ namespace {
   Move id_loop(Position& pos, Move searchMoves[], Move* ponderMove);
 
   template <NodeType PvNode, bool SpNode, bool Root>
-  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
+  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth);
 
   template <NodeType PvNode>
-  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply);
+  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth);
 
   template <NodeType PvNode>
-  inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
+  inline Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth) {
 
-    return depth < ONE_PLY ? qsearch<PvNode>(pos, ss, alpha, beta, DEPTH_ZERO, ply)
-                           : search<PvNode, false, false>(pos, ss, alpha, beta, depth, ply);
+    return depth < ONE_PLY ? qsearch<PvNode>(pos, ss, alpha, beta, DEPTH_ZERO)
+                           : search<PvNode, false, false>(pos, ss, alpha, beta, depth);
   }
 
   template <NodeType PvNode>
@@ -650,7 +650,7 @@ namespace {
         // research with bigger window until not failing high/low anymore.
         do {
             // Search starting from ss+1 to allow calling update_gains()
-            value = search<PV, false, true>(pos, ss+1, alpha, beta, depth * ONE_PLY, 0);
+            value = search<PV, false, true>(pos, ss+1, alpha, beta, depth * ONE_PLY);
 
             // Write PV back to transposition table in case the relevant entries
             // have been overwritten during the search.
@@ -771,12 +771,11 @@ namespace {
   // here: This is taken care of after we return from the split point.
 
   template <NodeType PvNode, bool SpNode, bool Root>
-  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
+  Value search(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
-    assert((Root || ply > 0) && ply < PLY_MAX);
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
     Move movesSearched[MOVES_MAX];
@@ -797,6 +796,7 @@ namespace {
     refinedValue = bestValue = value = -VALUE_INFINITE;
     oldAlpha = alpha;
     isCheck = pos.is_check();
+    ss->ply = (ss-1)->ply + 1;
 
     if (SpNode)
     {
@@ -824,12 +824,12 @@ namespace {
     if ((   StopRequest
          || ThreadsMgr.cutoff_at_splitpoint(threadID)
          || pos.is_draw()
-         || ply >= PLY_MAX - 1) && !Root)
+         || ss->ply > PLY_MAX) && !Root)
         return VALUE_DRAW;
 
     // Step 3. Mate distance pruning
-    alpha = Max(value_mated_in(ply), alpha);
-    beta = Min(value_mate_in(ply+1), beta);
+    alpha = Max(value_mated_in(ss->ply), alpha);
+    beta = Min(value_mate_in(ss->ply+1), beta);
     if (alpha >= beta)
         return alpha;
 
@@ -848,11 +848,11 @@ namespace {
     if (   !Root
         && tte
         && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
-                   : ok_to_use_TT(tte, depth, beta, ply)))
+                   : ok_to_use_TT(tte, depth, beta, ss->ply)))
     {
         TT.refresh(tte);
         ss->bestMove = ttMove; // Can be MOVE_NONE
-        return value_from_tt(tte->value(), ply);
+        return value_from_tt(tte->value(), ss->ply);
     }
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
@@ -864,7 +864,7 @@ namespace {
 
         ss->eval = tte->static_value();
         ss->evalMargin = tte->static_value_margin();
-        refinedValue = refine_eval(tte, ss->eval, ply);
+        refinedValue = refine_eval(tte, ss->eval, ss->ply);
     }
     else
     {
@@ -885,7 +885,7 @@ namespace {
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
-        Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, DEPTH_ZERO, ply);
+        Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, DEPTH_ZERO);
         if (v < rbeta)
             // Logically we should return (v + razor_margin(depth)), but
             // surprisingly this did slightly weaker in tests.
@@ -924,7 +924,7 @@ namespace {
 
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
-        nullValue = -search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*ONE_PLY, ply+1);
+        nullValue = -search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*ONE_PLY);
         (ss+1)->skipNullMove = false;
         pos.undo_null_move();
 
@@ -939,7 +939,7 @@ namespace {
 
             // Do verification search at high depths
             ss->skipNullMove = true;
-            Value v = search<NonPV>(pos, ss, alpha, beta, depth-R*ONE_PLY, ply);
+            Value v = search<NonPV>(pos, ss, alpha, beta, depth-R*ONE_PLY);
             ss->skipNullMove = false;
 
             if (v >= beta)
@@ -971,7 +971,7 @@ namespace {
         Depth d = (PvNode ? depth - 2 * ONE_PLY : depth / 2);
 
         ss->skipNullMove = true;
-        search<PvNode>(pos, ss, alpha, beta, d, ply);
+        search<PvNode>(pos, ss, alpha, beta, d);
         ss->skipNullMove = false;
 
         ttMove = ss->bestMove;
@@ -1055,14 +1055,14 @@ split_point_start: // At split points actual search starts from here
           && move == tte->move()
           && ext < ONE_PLY)
       {
-          Value ttValue = value_from_tt(tte->value(), ply);
+          Value ttValue = value_from_tt(tte->value(), ss->ply);
 
           if (abs(ttValue) < VALUE_KNOWN_WIN)
           {
               Value rBeta = ttValue - int(depth);
               ss->excludedMove = move;
               ss->skipNullMove = true;
-              Value v = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2, ply);
+              Value v = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2);
               ss->skipNullMove = false;
               ss->excludedMove = MOVE_NONE;
               ss->bestMove = MOVE_NONE;
@@ -1151,7 +1151,7 @@ split_point_start: // At split points actual search starts from here
           if (Root && MultiPV > 1)
               alpha = -VALUE_INFINITE;
 
-          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+          value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth);
       }
       else
       {
@@ -1172,7 +1172,7 @@ split_point_start: // At split points actual search starts from here
               {
                   alpha = SpNode ? sp->alpha : alpha;
                   Depth d = newDepth - ss->reduction;
-                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, ply+1);
+                  value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
 
                   doFullDepthSearch = (value > alpha);
               }
@@ -1186,7 +1186,7 @@ split_point_start: // At split points actual search starts from here
               ss->reduction = 3 * ONE_PLY;
               Value rAlpha = alpha - 300;
               Depth d = newDepth - ss->reduction;
-              value = -search<NonPV>(pos, ss+1, -(rAlpha+1), -rAlpha, d, ply+1);
+              value = -search<NonPV>(pos, ss+1, -(rAlpha+1), -rAlpha, d);
               doFullDepthSearch = (value > rAlpha);
               ss->reduction = DEPTH_ZERO; // Restore original reduction
           }
@@ -1195,13 +1195,13 @@ split_point_start: // At split points actual search starts from here
           if (doFullDepthSearch)
           {
               alpha = SpNode ? sp->alpha : alpha;
-              value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, ply+1);
+              value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth);
 
               // Step extra. pv search (only in PV nodes)
               // Search only for possible new PV nodes, if instead value >= beta then
               // parent node fails low with value <= alpha and tries another move.
               if (PvNode && value > alpha && (Root || value < beta))
-                  value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth, ply+1);
+                  value = -search<PV>(pos, ss+1, -beta, -alpha, newDepth);
           }
       }
 
@@ -1237,7 +1237,7 @@ split_point_start: // At split points actual search starts from here
               else if (SpNode)
                   sp->betaCutoff = true;
 
-              if (value == value_mate_in(ply + 1))
+              if (value == value_mate_in(ss->ply + 1))
                   ss->mateKiller = move;
 
               ss->bestMove = move;
@@ -1297,7 +1297,7 @@ split_point_start: // At split points actual search starts from here
           && ThreadsMgr.available_thread_exists(threadID)
           && !StopRequest
           && !ThreadsMgr.cutoff_at_splitpoint(threadID))
-          ThreadsMgr.split<FakeSplit>(pos, ss, ply, &alpha, beta, &bestValue, depth,
+          ThreadsMgr.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
                                       threatMove, moveCount, &mp, PvNode);
     }
 
@@ -1306,7 +1306,7 @@ split_point_start: // At split points actual search starts from here
     // no legal moves, it must be mate or stalemate.
     // If one move was excluded return fail low score.
     if (!SpNode && !moveCount)
-        return excludedMove ? oldAlpha : isCheck ? value_mated_in(ply) : VALUE_DRAW;
+        return excludedMove ? oldAlpha : isCheck ? value_mated_in(ss->ply) : VALUE_DRAW;
 
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
@@ -1317,7 +1317,7 @@ split_point_start: // At split points actual search starts from here
         vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
              : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
 
-        TT.store(posKey, value_to_tt(bestValue, ply), vt, depth, move, ss->eval, ss->evalMargin);
+        TT.store(posKey, value_to_tt(bestValue, ss->ply), vt, depth, move, ss->eval, ss->evalMargin);
 
         // Update killers and history only for non capture moves that fails high
         if (    bestValue >= beta
@@ -1350,13 +1350,12 @@ split_point_start: // At split points actual search starts from here
   // less than ONE_PLY).
 
   template <NodeType PvNode>
-  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth, int ply) {
+  Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth) {
 
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
     assert(depth <= 0);
-    assert(ply > 0 && ply < PLY_MAX);
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
     StateInfo st;
@@ -1368,9 +1367,10 @@ split_point_start: // At split points actual search starts from here
     Value oldAlpha = alpha;
 
     ss->bestMove = ss->currentMove = MOVE_NONE;
+    ss->ply = (ss-1)->ply + 1;
 
     // Check for an instant draw or maximum ply reached
-    if (pos.is_draw() || ply >= PLY_MAX - 1)
+    if (ss->ply > PLY_MAX || pos.is_draw())
         return VALUE_DRAW;
 
     // Decide whether or not to include checks, this fixes also the type of
@@ -1384,10 +1384,10 @@ split_point_start: // At split points actual search starts from here
     tte = TT.retrieve(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (!PvNode && tte && ok_to_use_TT(tte, ttDepth, beta, ply))
+    if (!PvNode && tte && ok_to_use_TT(tte, ttDepth, beta, ss->ply))
     {
         ss->bestMove = ttMove; // Can be MOVE_NONE
-        return value_from_tt(tte->value(), ply);
+        return value_from_tt(tte->value(), ss->ply);
     }
 
     // Evaluate the position statically
@@ -1415,7 +1415,7 @@ split_point_start: // At split points actual search starts from here
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.get_key(), value_to_tt(bestValue, ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
+                TT.store(pos.get_key(), value_to_tt(bestValue, ss->ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
 
             return bestValue;
         }
@@ -1504,7 +1504,7 @@ split_point_start: // At split points actual search starts from here
 
       // Make and search the move
       pos.do_move(move, st, ci, moveIsCheck);
-      value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-ONE_PLY, ply+1);
+      value = -qsearch<PvNode>(pos, ss+1, -beta, -alpha, depth-ONE_PLY);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -1524,11 +1524,11 @@ split_point_start: // At split points actual search starts from here
     // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
     if (isCheck && bestValue == -VALUE_INFINITE)
-        return value_mated_in(ply);
+        return value_mated_in(ss->ply);
 
     // Update transposition table
     ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ply), vt, ttDepth, ss->bestMove, ss->eval, evalMargin);
+    TT.store(pos.get_key(), value_to_tt(bestValue, ss->ply), vt, ttDepth, ss->bestMove, ss->eval, evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -2088,9 +2088,9 @@ split_point_start: // At split points actual search starts from here
             (ss+1)->sp = tsp;
 
             if (tsp->pvNode)
-                search<PV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
+                search<PV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
             else
-                search<NonPV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth, tsp->ply);
+                search<NonPV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
 
             assert(threads[threadID].state == THREAD_SEARCHING);
 
@@ -2289,11 +2289,10 @@ split_point_start: // At split points actual search starts from here
   // call search().When all threads have returned from search() then split() returns.
 
   template <bool Fake>
-  void ThreadsManager::split(Position& pos, SearchStack* ss, int ply, Value* alpha,
-                             const Value beta, Value* bestValue, Depth depth, Move threatMove,
+  void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const Value beta,
+                             Value* bestValue, Depth depth, Move threatMove,
                              int moveCount, MovePicker* mp, bool pvNode) {
     assert(pos.is_ok());
-    assert(ply > 0 && ply < PLY_MAX);
     assert(*bestValue >= -VALUE_INFINITE);
     assert(*bestValue <= *alpha);
     assert(*alpha < beta);
@@ -2323,7 +2322,6 @@ split_point_start: // At split points actual search starts from here
     splitPoint.parent = masterThread.splitPoint;
     splitPoint.master = master;
     splitPoint.betaCutoff = false;
-    splitPoint.ply = ply;
     splitPoint.depth = depth;
     splitPoint.threatMove = threatMove;
     splitPoint.alpha = *alpha;
