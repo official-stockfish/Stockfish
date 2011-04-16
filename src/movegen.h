@@ -20,6 +20,7 @@
 #if !defined(MOVEGEN_H_INCLUDED)
 #define MOVEGEN_H_INCLUDED
 
+#include "move.h"
 #include "position.h"
 
 enum MoveType {

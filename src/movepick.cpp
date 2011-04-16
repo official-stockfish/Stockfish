@@ -20,7 +20,6 @@
 
 #include <cassert>
 
-#include "history.h"
 #include "movegen.h"
 #include "movepick.h"
 #include "search.h"
@@ -29,22 +28,22 @@
 namespace {
 
   enum MovegenPhase {
-    PH_TT_MOVES,       // Transposition table move and mate killer
-    PH_GOOD_CAPTURES,  // Queen promotions and captures with SEE values >= 0
-    PH_KILLERS,        // Killer moves from the current ply
-    PH_NONCAPTURES,    // Non-captures and underpromotions
-    PH_BAD_CAPTURES,   // Queen promotions and captures with SEE values < 0
-    PH_EVASIONS,       // Check evasions
-    PH_QCAPTURES,      // Captures in quiescence search
-    PH_QCHECKS,        // Non-capture checks in quiescence search
+    PH_TT_MOVES,      // Transposition table move and mate killer
+    PH_GOOD_CAPTURES, // Queen promotions and captures with SEE values >= 0
+    PH_KILLERS,       // Killer moves from the current ply
+    PH_NONCAPTURES,   // Non-captures and underpromotions
+    PH_BAD_CAPTURES,  // Queen promotions and captures with SEE values < 0
+    PH_EVASIONS,      // Check evasions
+    PH_QCAPTURES,     // Captures in quiescence search
+    PH_QCHECKS,       // Non-capture checks in quiescence search
     PH_STOP
   };
 
   CACHE_LINE_ALIGNMENT
-  const uint8_t MainSearchPhaseTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP};
-  const uint8_t EvasionsPhaseTable[] = { PH_TT_MOVES, PH_EVASIONS, PH_STOP};
-  const uint8_t QsearchWithChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP};
-  const uint8_t QsearchWithoutChecksPhaseTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP};
+  const uint8_t MainSearchTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP };
+  const uint8_t EvasionTable[] = { PH_TT_MOVES, PH_EVASIONS, PH_STOP };
+  const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
+  const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP };
 }
 
 
@@ -69,7 +68,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   if (p.is_check())
   {
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
-      phasePtr = EvasionsPhaseTable;
+      phasePtr = EvasionTable;
   }
   else
   {
@@ -83,7 +82,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * ONE_PLY)
           badCaptureThreshold = -PawnValueMidgame;
 
-      phasePtr = MainSearchPhaseTable;
+      phasePtr = MainSearchTable;
   }
 
   phasePtr += int(!searchTT) - 1;
@@ -101,12 +100,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
   pinned = p.pinned_pieces(pos.side_to_move());
 
   if (p.is_check())
-      phasePtr = EvasionsPhaseTable;
+      phasePtr = EvasionTable;
   else if (d >= DEPTH_QS_CHECKS)
-      phasePtr = QsearchWithChecksPhaseTable;
+      phasePtr = QsearchWithChecksTable;
   else
   {
-      phasePtr = QsearchWithoutChecksPhaseTable;
+      phasePtr = QsearchWithoutChecksTable;
 
       // Skip TT move if is not a capture or a promotion, this avoids
       // qsearch tree explosion due to a possible perpetual check or
@@ -173,7 +172,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_STOP:
-      lastMove = curMove + 1; // Avoids another go_next_phase() call
+      lastMove = curMove + 1; // Avoid another go_next_phase() call
       return;
 
   default:
@@ -259,11 +258,10 @@ void MovePicker::score_evasions() {
 
 /// MovePicker::get_next_move() is the most important method of the MovePicker
 /// class. It returns a new legal move every time it is called, until there
-/// are no more moves left.
-/// It picks the move with the biggest score from a list of generated moves taking
-/// care not to return the tt move if has already been searched previously.
-/// Note that this function is not thread safe so should be lock protected by
-/// caller when accessed through a shared MovePicker object.
+/// are no more moves left. It picks the move with the biggest score from a list
+/// of generated moves taking care not to return the tt move if has already been
+/// searched previously. Note that this function is not thread safe so should be
+/// lock protected by caller when accessed through a shared MovePicker object.
 
 Move MovePicker::get_next_move() {
 
@@ -271,87 +269,85 @@ Move MovePicker::get_next_move() {
 
   while (true)
   {
-      while (curMove != lastMove)
-      {
-          switch (phase) {
+      while (curMove == lastMove)
+          go_next_phase();
 
-          case PH_TT_MOVES:
-              move = (curMove++)->move;
-              if (   move != MOVE_NONE
-                  && pos.move_is_legal(move, pinned))
-                  return move;
-              break;
+      switch (phase) {
 
-          case PH_GOOD_CAPTURES:
-              move = pick_best(curMove++, lastMove).move;
-              if (   move != ttMoves[0].move
-                  && move != ttMoves[1].move
-                  && pos.pl_move_is_legal(move, pinned))
-              {
-                  // Check for a non negative SEE now
-                  int seeValue = pos.see_sign(move);
-                  if (seeValue >= badCaptureThreshold)
-                      return move;
-
-                  // Losing capture, move it to the tail of the array, note
-                  // that move has now been already checked for legality.
-                  (--badCaptures)->move = move;
-                  badCaptures->score = seeValue;
-              }
-              break;
-
-          case PH_KILLERS:
-              move = (curMove++)->move;
-              if (   move != MOVE_NONE
-                  && pos.move_is_legal(move, pinned)
-                  && move != ttMoves[0].move
-                  && move != ttMoves[1].move
-                  && !pos.move_is_capture(move))
-                  return move;
-              break;
-
-          case PH_NONCAPTURES:
-
-              // Sort negative scored moves only when we get there
-              if (curMove == lastGoodNonCapture)
-                  insertion_sort<MoveStack>(lastGoodNonCapture, lastMove);
-
-              move = (curMove++)->move;
-              if (   move != ttMoves[0].move
-                  && move != ttMoves[1].move
-                  && move != killers[0].move
-                  && move != killers[1].move
-                  && pos.pl_move_is_legal(move, pinned))
-                  return move;
-              break;
-
-          case PH_BAD_CAPTURES:
-              move = pick_best(curMove++, lastMove).move;
+      case PH_TT_MOVES:
+          move = (curMove++)->move;
+          if (   move != MOVE_NONE
+              && pos.move_is_legal(move, pinned))
               return move;
+          break;
 
-          case PH_EVASIONS:
-          case PH_QCAPTURES:
-              move = pick_best(curMove++, lastMove).move;
-              if (   move != ttMoves[0].move
-                  && pos.pl_move_is_legal(move, pinned))
+      case PH_GOOD_CAPTURES:
+          move = pick_best(curMove++, lastMove).move;
+          if (   move != ttMoves[0].move
+              && move != ttMoves[1].move
+              && pos.pl_move_is_legal(move, pinned))
+          {
+              // Check for a non negative SEE now
+              int seeValue = pos.see_sign(move);
+              if (seeValue >= badCaptureThreshold)
                   return move;
-              break;
 
-          case PH_QCHECKS:
-              move = (curMove++)->move;
-              if (   move != ttMoves[0].move
-                  && pos.pl_move_is_legal(move, pinned))
-                  return move;
-              break;
-
-          case PH_STOP:
-              return MOVE_NONE;
-
-          default:
-              assert(false);
-              break;
+              // Losing capture, move it to the tail of the array, note
+              // that move has now been already checked for legality.
+              (--badCaptures)->move = move;
+              badCaptures->score = seeValue;
           }
+          break;
+
+      case PH_KILLERS:
+          move = (curMove++)->move;
+          if (   move != MOVE_NONE
+              && pos.move_is_legal(move, pinned)
+              && move != ttMoves[0].move
+              && move != ttMoves[1].move
+              && !pos.move_is_capture(move))
+              return move;
+          break;
+
+      case PH_NONCAPTURES:
+          // Sort negative scored moves only when we get there
+          if (curMove == lastGoodNonCapture)
+              insertion_sort<MoveStack>(lastGoodNonCapture, lastMove);
+
+          move = (curMove++)->move;
+          if (   move != ttMoves[0].move
+              && move != ttMoves[1].move
+              && move != killers[0].move
+              && move != killers[1].move
+              && pos.pl_move_is_legal(move, pinned))
+              return move;
+          break;
+
+      case PH_BAD_CAPTURES:
+          move = pick_best(curMove++, lastMove).move;
+          return move;
+
+      case PH_EVASIONS:
+      case PH_QCAPTURES:
+          move = pick_best(curMove++, lastMove).move;
+          if (   move != ttMoves[0].move
+              && pos.pl_move_is_legal(move, pinned))
+              return move;
+          break;
+
+      case PH_QCHECKS:
+          move = (curMove++)->move;
+          if (   move != ttMoves[0].move
+              && pos.pl_move_is_legal(move, pinned))
+              return move;
+          break;
+
+      case PH_STOP:
+          return MOVE_NONE;
+
+      default:
+          assert(false);
+          break;
       }
-      go_next_phase();
   }
 }
