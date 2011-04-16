@@ -216,18 +216,15 @@ void MovePicker::score_captures() {
 }
 
 void MovePicker::score_noncaptures() {
-  // Score by history and max gain for the move.
+
   Move m;
-  Piece piece;
-  Square from, to;
+  Square from;
 
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
       from = move_from(m);
-      to = move_to(m);
-      piece = pos.piece_on(from);
-      cur->score = H.value(piece, to) + H.gain(piece, to);
+      cur->score = H.value(pos.piece_on(from), move_to(m));
   }
 }
 
