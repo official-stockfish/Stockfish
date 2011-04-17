@@ -1156,9 +1156,7 @@ namespace {
     assert(eg_value(v) > -VALUE_INFINITE && eg_value(v) < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
-    Value eg = eg_value(v);
-    Value ev = Value((eg * int(sf)) / SCALE_FACTOR_NORMAL);
-
+    int ev = (eg_value(v) * int(sf)) / SCALE_FACTOR_NORMAL;
     int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;
     return Value((result + GrainSize / 2) & ~(GrainSize - 1));
   }
