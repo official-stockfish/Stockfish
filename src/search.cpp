@@ -64,6 +64,7 @@ namespace {
        static storage duration are automatically set to zero before enter main()
     */
   public:
+    Thread& operator[](int threadID) { return threads[threadID]; }
     void init_threads();
     void exit_threads();
 
@@ -117,7 +118,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, int depth, Value alpha, Value beta, int pvIdx);
+    std::string pv_info_to_uci(Position& pos, int depth, int selDepth, Value alpha, Value beta, int pvIdx);
 
     int64_t nodes;
     Value pv_score;
@@ -505,9 +506,12 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   ThreadsMgr.read_uci_options();
   init_eval(ThreadsMgr.active_threads());
 
-  // Wake up needed threads. Main thread, with threadID == 0, is always active
-  for (int i = 1; i < ThreadsMgr.active_threads(); i++)
+  // Wake up needed threads and reset maxPly counter
+  for (int i = 0; i < ThreadsMgr.active_threads(); i++)
+  {
       ThreadsMgr.wake_sleeping_thread(i);
+      ThreadsMgr[i].maxPly = 0;
+  }
 
   // Set thinking time
   int myTime = time[pos.side_to_move()];
@@ -595,7 +599,7 @@ namespace {
     SearchStack ss[PLY_MAX_PLUS_2];
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth, aspirationDelta;
+    int depth, selDepth, aspirationDelta;
     Value value, alpha, beta;
     Move bestMove, easyMove, skillBest, skillPonder;
 
@@ -687,9 +691,15 @@ namespace {
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             do_skill_level(&skillBest, &skillPonder);
 
+        // Retrieve max searched depth among threads
+        selDepth = 0;
+        for (int i = 0; i < ThreadsMgr.active_threads(); i++)
+            if (ThreadsMgr[i].maxPly > selDepth)
+                selDepth = ThreadsMgr[i].maxPly;
+
         // Send PV line to GUI and to log file
         for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
-            cout << Rml[i].pv_info_to_uci(pos, depth, alpha, beta, i) << endl;
+            cout << Rml[i].pv_info_to_uci(pos, depth, selDepth, alpha, beta, i) << endl;
 
         if (UseLogFile)
             LogFile << pretty_pv(pos, depth, value, current_search_time(), Rml[0].pv) << endl;
@@ -791,6 +801,10 @@ namespace {
     oldAlpha = alpha;
     isCheck = pos.is_check();
     ss->ply = (ss-1)->ply + 1;
+
+    // Used to send selDepth info to GUI
+    if (PvNode && ThreadsMgr[threadID].maxPly < ss->ply)
+        ThreadsMgr[threadID].maxPly = ss->ply;
 
     if (SpNode)
     {
@@ -2483,21 +2497,20 @@ split_point_start: // At split points actual search starts from here
   // pv_info_to_uci() returns a string with information on the current PV line
   // formatted according to UCI specification.
 
-  std::string RootMove::pv_info_to_uci(Position& pos, int depth, Value alpha,
+  std::string RootMove::pv_info_to_uci(Position& pos, int depth, int selDepth, Value alpha,
                                        Value beta, int pvIdx) {
-    std::stringstream s, l;
-    Move* m = pv;
-
-    while (*m != MOVE_NONE)
-        l << *m++ << " ";
+    std::stringstream s;
 
     s << "info depth " << depth
-      << " seldepth " << int(m - pv)
+      << " seldepth " << selDepth
       << " multipv " << pvIdx + 1
       << " score " << value_to_uci(pv_score)
       << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
       << speed_to_uci(pos.nodes_searched())
-      << " pv "    << l.str();
+      << " pv ";
+
+    for (Move* m = pv; *m != MOVE_NONE; m++)
+        s << *m << " ";
 
     return s.str();
   }

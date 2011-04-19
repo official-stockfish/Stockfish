@@ -68,6 +68,7 @@ enum ThreadState
 };
 
 struct Thread {
+  int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
   volatile ThreadState state;
