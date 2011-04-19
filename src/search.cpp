@@ -596,7 +596,7 @@ namespace {
     SearchStack ss[PLY_MAX_PLUS_2];
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth, aspirationDelta, skillSamplingDepth;
+    int depth, aspirationDelta;
     Value value, alpha, beta;
     Move bestMove, easyMove, skillBest, skillPonder;
 
@@ -605,7 +605,7 @@ namespace {
     TT.new_search();
     H.clear();
     *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
-    depth = aspirationDelta = skillSamplingDepth = 0;
+    depth = aspirationDelta = 0;
     alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
 
@@ -621,11 +621,6 @@ namespace {
 
         return MOVE_NONE;
     }
-
-    // Choose a random sampling depth according to SkillLevel so that at low
-    // skills there is an higher risk to pick up a blunder.
-    if (SkillLevelEnabled)
-        skillSamplingDepth = 4 + SkillLevel + (RK.rand<unsigned>() % 4);
 
     // Iterative deepening loop
     while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
@@ -690,7 +685,7 @@ namespace {
         bestMoveChanges[depth] = Rml.bestMoveChanges;
 
         // Do we need to pick now the best and the ponder moves ?
-        if (SkillLevelEnabled && depth == skillSamplingDepth)
+        if (SkillLevelEnabled && depth == 1 + SkillLevel)
             do_skill_level(&skillBest, &skillPonder);
 
         // Send PV line to GUI and to log file
