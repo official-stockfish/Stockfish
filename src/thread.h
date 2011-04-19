@@ -68,6 +68,8 @@ enum ThreadState
 };
 
 struct Thread {
+  Lock sleepLock;
+  WaitCondition sleepCond;
   volatile ThreadState state;
   SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;

@@ -83,14 +83,13 @@ namespace {
                Depth depth, Move threatMove, int moveCount, MovePicker* mp, bool pvNode);
 
   private:
+    Lock mpLock;
     Depth minimumSplitDepth;
     int maxThreadsPerSplitPoint;
     bool useSleepingThreads;
     int activeThreads;
     volatile bool allThreadsShouldExit;
     Thread threads[MAX_THREADS];
-    Lock mpLock, sleepLock[MAX_THREADS];
-    WaitCondition sleepCond[MAX_THREADS];
   };
 
 
@@ -2047,7 +2046,7 @@ split_point_start: // At split points actual search starts from here
                 threads[threadID].state = THREAD_AVAILABLE;
 
             // Grab the lock to avoid races with wake_sleeping_thread()
-            lock_grab(&sleepLock[threadID]);
+            lock_grab(&threads[threadID].sleepLock);
 
             // If we are master and all slaves have finished do not go to sleep
             for (i = 0; sp && i < activeThreads && !sp->slaves[i]; i++) {}
@@ -2055,15 +2054,15 @@ split_point_start: // At split points actual search starts from here
 
             if (allFinished || allThreadsShouldExit)
             {
-                lock_release(&sleepLock[threadID]);
+                lock_release(&threads[threadID].sleepLock);
                 break;
             }
 
             // Do sleep here after retesting sleep conditions
             if (threadID >= activeThreads || threads[threadID].state == THREAD_AVAILABLE)
-                cond_wait(&sleepCond[threadID], &sleepLock[threadID]);
+                cond_wait(&threads[threadID].sleepCond, &threads[threadID].sleepLock);
 
-            lock_release(&sleepLock[threadID]);
+            lock_release(&threads[threadID].sleepLock);
         }
 
         // If this thread has been assigned work, launch a search
@@ -2134,8 +2133,8 @@ split_point_start: // At split points actual search starts from here
 
     for (i = 0; i < MAX_THREADS; i++)
     {
-        lock_init(&sleepLock[i]);
-        cond_init(&sleepCond[i]);
+        lock_init(&threads[i].sleepLock);
+        cond_init(&threads[i].sleepCond);
     }
 
     // Initialize splitPoints[] locks
@@ -2202,8 +2201,8 @@ split_point_start: // At split points actual search starts from here
     // Now we can safely destroy the wait conditions
     for (int i = 0; i < MAX_THREADS; i++)
     {
-        lock_destroy(&sleepLock[i]);
-        cond_destroy(&sleepCond[i]);
+        lock_destroy(&threads[i].sleepLock);
+        cond_destroy(&threads[i].sleepCond);
     }
   }
 
@@ -2392,9 +2391,9 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::wake_sleeping_thread(int threadID) {
 
-     lock_grab(&sleepLock[threadID]);
-     cond_signal(&sleepCond[threadID]);
-     lock_release(&sleepLock[threadID]);
+     lock_grab(&threads[threadID].sleepLock);
+     cond_signal(&threads[threadID].sleepCond);
+     lock_release(&threads[threadID].sleepLock);
   }
 
 
