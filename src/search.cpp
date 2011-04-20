@@ -76,7 +76,6 @@ namespace {
     bool available_thread_exists(int master) const;
     bool thread_is_available(int slave, int master) const;
     bool cutoff_at_splitpoint(int threadID) const;
-    void wake_sleeping_thread(int threadID);
     void idle_loop(int threadID, SplitPoint* sp);
 
     template <bool Fake>
@@ -509,7 +508,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   // Wake up needed threads and reset maxPly counter
   for (int i = 0; i < ThreadsMgr.active_threads(); i++)
   {
-      ThreadsMgr.wake_sleeping_thread(i);
+      ThreadsMgr[i].wake_up();
       ThreadsMgr[i].maxPly = 0;
   }
 
@@ -2107,7 +2106,7 @@ split_point_start: // At split points actual search starts from here
             // Wake up master thread so to allow it to return from the idle loop in
             // case we are the last slave of the split point.
             if (useSleepingThreads && threadID != tsp->master && threads[tsp->master].state == THREAD_AVAILABLE)
-                wake_sleeping_thread(tsp->master);
+                threads[tsp->master].wake_up();
         }
 
         // If this thread is the master of a split point and all slaves have
@@ -2201,7 +2200,7 @@ split_point_start: // At split points actual search starts from here
     // Wake up all the threads and waits for termination
     for (int i = 1; i < MAX_THREADS; i++)
     {
-        wake_sleeping_thread(i);
+        threads[i].wake_up();
         while (threads[i].state != THREAD_TERMINATED) {}
     }
 
@@ -2376,7 +2375,7 @@ split_point_start: // At split points actual search starts from here
             threads[i].state = THREAD_WORKISWAITING; // This makes the slave to exit from idle_loop()
 
             if (useSleepingThreads && i != master)
-                wake_sleeping_thread(i);
+                threads[i].wake_up();
         }
 
     // Everything is set up. The master thread enters the idle loop, from
@@ -2397,17 +2396,6 @@ split_point_start: // At split points actual search starts from here
     pos.set_nodes_searched(pos.nodes_searched() + splitPoint.nodes);
 
     lock_release(&mpLock);
-  }
-
-
-  // wake_sleeping_thread() wakes up the thread with the given threadID
-  // when it is time to start a new search.
-
-  void ThreadsManager::wake_sleeping_thread(int threadID) {
-
-     lock_grab(&threads[threadID].sleepLock);
-     cond_signal(&threads[threadID].sleepCond);
-     lock_release(&threads[threadID].sleepLock);
   }
 
 

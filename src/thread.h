@@ -75,6 +75,12 @@ struct Thread {
   SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
+
+  void wake_up() {
+    lock_grab(&sleepLock);
+    cond_signal(&sleepCond);
+    lock_release(&sleepLock);
+  }
 };
 
 #endif // !defined(THREAD_H_INCLUDED)
