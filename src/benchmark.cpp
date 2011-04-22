@@ -73,7 +73,7 @@ void benchmark(int argc, char* argv[]) {
 
   vector<string> positions;
   string ttSize, threads, valStr, posFile, valType;
-  int val, secsPerPos, maxDepth, maxNodes;
+  int val, maxTime, maxDepth, maxNodes;
 
   ttSize  = argc > 2 ? argv[2] : "128";
   threads = argc > 3 ? argv[3] : "1";
@@ -87,13 +87,13 @@ void benchmark(int argc, char* argv[]) {
   Options["Use Search Log"].set_value("true");
   Options["Search Log Filename"].set_value("bench.txt");
 
-  secsPerPos = maxDepth = maxNodes = 0;
+  maxTime = maxDepth = maxNodes = 0;
   val = atoi(valStr.c_str());
 
   if (valType == "depth" || valType == "perft")
       maxDepth = val;
   else if (valType == "time")
-      secsPerPos = val * 1000;
+      maxTime = val * 1000;
   else
       maxNodes = val;
 
@@ -124,8 +124,7 @@ void benchmark(int argc, char* argv[]) {
 
   for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
   {
-      Move moves[1] = { MOVE_NONE };
-      int dummy[2] = { 0, 0 };
+      Move moves[] = { MOVE_NONE };
       Position pos(*it, false, 0);
       cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
       if (valType == "perft")
@@ -134,7 +133,7 @@ void benchmark(int argc, char* argv[]) {
           cerr << "\nPerft " << maxDepth << " result (nodes searched): " << perftCnt << endl << endl;
           totalNodes += perftCnt;
       } else {
-          if (!think(pos, false, false, dummy, dummy, 0, maxDepth, maxNodes, secsPerPos, moves))
+          if (!think(pos, SearchLimits(0, 0, 0, maxTime, maxDepth, maxNodes, false, false), moves))
               break;
           totalNodes += pos.nodes_searched();
       }

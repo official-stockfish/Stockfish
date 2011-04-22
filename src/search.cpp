@@ -116,8 +116,8 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, int depth, int selDepth, Value alpha, Value beta, int pvIdx);
-
+    std::string pv_info_to_uci(Position& pos, int depth, int selDepth,
+                               Value alpha, Value beta, int pvIdx);
     int64_t nodes;
     Value pv_score;
     Value non_pv_score;
@@ -125,7 +125,7 @@ namespace {
   };
 
 
-  // RootMoveList struct is just a std::vector<> of RootMove objects,
+  // RootMoveList struct is just a vector of RootMove objects,
   // with an handful of methods above the standard ones.
 
   struct RootMoveList : public std::vector<RootMove> {
@@ -188,8 +188,8 @@ namespace {
 
   // Step 11. Decide the new search depth
 
-  // Extensions. Configurable UCI options
-  // Array index 0 is used at non-PV nodes, index 1 at PV nodes.
+  // Extensions. Configurable UCI options. Array index 0 is used at
+  // non-PV nodes, index 1 at PV nodes.
   Depth CheckExtension[2], PawnPushTo7thExtension[2];
   Depth PassedPawnExtension[2], PawnEndgameExtension[2];
 
@@ -203,14 +203,14 @@ namespace {
 
   // Futility lookup tables (initialized at startup) and their access functions
   Value FutilityMarginsMatrix[16][64]; // [depth][moveNumber]
-  int FutilityMoveCountArray[32]; // [depth]
+  int FutilityMoveCountArray[32];      // [depth]
 
   inline Value futility_margin(Depth d, int mn) { return d < 7 * ONE_PLY ? FutilityMarginsMatrix[Max(d, 1)][Min(mn, 63)] : 2 * VALUE_INFINITE; }
   inline int futility_move_count(Depth d) { return d < 16 * ONE_PLY ? FutilityMoveCountArray[d] : 512; }
 
   // Step 14. Reduced search
 
-  // Reduction lookup tables (initialized at startup) and their getter functions
+  // Reduction lookup tables (initialized at startup) and their access function
   int8_t ReductionMatrix[2][64][64]; // [pv][depth][moveNumber]
 
   template <NodeType PV>
@@ -233,10 +233,9 @@ namespace {
   int MultiPV, UCIMultiPV;
 
   // Time management variables
-  int MaxNodes, MaxDepth, ExactMaxTime;
-  bool UseTimeManagement, InfiniteSearch, Pondering, StopOnPonderhit;
-  bool FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
+  bool StopOnPonderhit, FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
   TimeManager TimeMgr;
+  SearchLimits Limits;
 
   // Log file
   bool UseLogFile;
@@ -304,7 +303,7 @@ namespace {
 #endif
 
 
-  // MovePickerExt is an extended MovePicker used to choose at compile time
+  // MovePickerExt is an extended MovePicker class used to choose at compile time
   // the proper move source according to the type of node.
   template<bool SpNode, bool Root> struct MovePickerExt;
 
@@ -439,25 +438,30 @@ int64_t perft(Position& pos, Depth depth) {
 
 /// think() is the external interface to Stockfish's search, and is called when
 /// the program receives the UCI 'go' command. It initializes various global
-/// variables, and calls id_loop(). It returns false when a quit command is
+/// variables, and calls id_loop(). It returns false when a "quit" command is
 /// received during the search.
 
-bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[],
-           int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]) {
+bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
   // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = SendSearchedNodes = false;
   NodesSincePoll = 0;
   current_search_time(get_system_time());
-  ExactMaxTime = maxTime;
-  MaxDepth = maxDepth;
-  MaxNodes = maxNodes;
-  InfiniteSearch = infinite;
-  Pondering = ponder;
-  UseTimeManagement = !ExactMaxTime && !MaxDepth && !MaxNodes && !InfiniteSearch;
+  Limits = limits;
+  TimeMgr.init(Limits, pos.startpos_ply_counter());
+
+  // Set best NodesBetweenPolls interval to avoid lagging under time pressure
+  if (Limits.maxNodes)
+      NodesBetweenPolls = Min(Limits.maxNodes, 30000);
+  else if (Limits.time && Limits.time < 1000)
+      NodesBetweenPolls = 1000;
+  else if (Limits.time && Limits.time < 5000)
+      NodesBetweenPolls = 5000;
+  else
+      NodesBetweenPolls = 30000;
 
   // Look for a book move, only during games, not tests
-  if (UseTimeManagement && Options["OwnBook"].value<bool>())
+  if (Limits.useTimeManagement() && Options["OwnBook"].value<bool>())
   {
       if (Options["Book File"].value<std::string>() != OpeningBook.name())
           OpeningBook.open(Options["Book File"].value<std::string>());
@@ -465,7 +469,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       Move bookMove = OpeningBook.get_move(pos, Options["Best Book Move"].value<bool>());
       if (bookMove != MOVE_NONE)
       {
-          if (Pondering)
+          if (Limits.ponder)
               wait_for_stop_or_ponderhit();
 
           cout << "bestmove " << bookMove << endl;
@@ -511,34 +515,18 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
       ThreadsMgr[i].maxPly = 0;
   }
 
-  // Set thinking time
-  int myTime = time[pos.side_to_move()];
-  int myIncrement = increment[pos.side_to_move()];
-  if (UseTimeManagement)
-      TimeMgr.init(myTime, myIncrement, movesToGo, pos.startpos_ply_counter());
-
-  // Set best NodesBetweenPolls interval to avoid lagging under time pressure
-  if (MaxNodes)
-      NodesBetweenPolls = Min(MaxNodes, 30000);
-  else if (myTime && myTime < 1000)
-      NodesBetweenPolls = 1000;
-  else if (myTime && myTime < 5000)
-      NodesBetweenPolls = 5000;
-  else
-      NodesBetweenPolls = 30000;
-
-  // Write search information to log file
+  // Write to log file and keep it open to be accessed during the search
   if (UseLogFile)
   {
       std::string name = Options["Search Log Filename"].value<std::string>();
       LogFile.open(name.c_str(), std::ios::out | std::ios::app);
 
       LogFile << "\nSearching: "  << pos.to_fen()
-              << "\ninfinite: "   << infinite
-              << " ponder: "      << ponder
-              << " time: "        << myTime
-              << " increment: "   << myIncrement
-              << " moves to go: " << movesToGo
+              << "\ninfinite: "   << Limits.infinite
+              << " ponder: "      << Limits.ponder
+              << " time: "        << Limits.time
+              << " increment: "   << Limits.increment
+              << " moves to go: " << Limits.movesToGo
               << endl;
   }
 
@@ -546,15 +534,15 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   Move ponderMove = MOVE_NONE;
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
 
-  // Print final search statistics
   cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
 
+  // Write final search statistics and close log file
   if (UseLogFile)
   {
       int t = current_search_time();
 
       LogFile << "Nodes: "          << pos.nodes_searched()
-              << "\nNodes/second: " << (t > 0 ? int(pos.nodes_searched() * 1000 / t) : 0)
+              << "\nNodes/second: " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
               << "\nBest move: "    << move_to_san(pos, bestMove);
 
       StateInfo st;
@@ -569,7 +557,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
 
   // If we are pondering or in infinite search, we shouldn't print the
   // best move before we are told to do so.
-  if (!StopRequest && (Pondering || InfiniteSearch))
+  if (!StopRequest && (Limits.ponder || Limits.infinite))
       wait_for_stop_or_ponderhit();
 
   // Could be MOVE_NONE when searching on a stalemate position
@@ -624,7 +612,7 @@ namespace {
     }
 
     // Iterative deepening loop
-    while (++depth <= PLY_MAX && (!MaxDepth || depth <= MaxDepth) && !StopRequest)
+    while (++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth) && !StopRequest)
     {
         Rml.bestMoveChanges = 0;
         cout << set960(pos.is_chess960()) << "info depth " << depth << endl;
@@ -708,7 +696,7 @@ namespace {
         else if (bestMove != easyMove)
             easyMove = MOVE_NONE;
 
-        if (UseTimeManagement && !StopRequest)
+        if (Limits.useTimeManagement() && !StopRequest)
         {
             // Time to stop?
             bool noMoreTime = false;
@@ -743,7 +731,7 @@ namespace {
 
             if (noMoreTime)
             {
-                if (Pondering)
+                if (Limits.ponder)
                     StopOnPonderhit = true;
                 else
                     break;
@@ -1907,7 +1895,7 @@ split_point_start: // At split points actual search starts from here
         if (!std::getline(std::cin, command) || command == "quit")
         {
             // Quit the program as soon as possible
-            Pondering = false;
+            Limits.ponder = false;
             QuitRequest = StopRequest = true;
             return;
         }
@@ -1915,7 +1903,7 @@ split_point_start: // At split points actual search starts from here
         {
             // Stop calculating as soon as possible, but still send the "bestmove"
             // and possibly the "ponder" token when finishing the search.
-            Pondering = false;
+            Limits.ponder = false;
             StopRequest = true;
         }
         else if (command == "ponderhit")
@@ -1923,7 +1911,7 @@ split_point_start: // At split points actual search starts from here
             // The opponent has played the expected move. GUI sends "ponderhit" if
             // we were told to ponder on the same move the opponent has played. We
             // should continue searching but switching from pondering to normal search.
-            Pondering = false;
+            Limits.ponder = false;
 
             if (StopOnPonderhit)
                 StopRequest = true;
@@ -1951,7 +1939,7 @@ split_point_start: // At split points actual search starts from here
     }
 
     // Should we stop the search?
-    if (Pondering)
+    if (Limits.ponder)
         return;
 
     bool stillAtFirstMove =    FirstRootMove
@@ -1961,9 +1949,9 @@ split_point_start: // At split points actual search starts from here
     bool noMoreTime =   t > TimeMgr.maximum_time()
                      || stillAtFirstMove;
 
-    if (   (UseTimeManagement && noMoreTime)
-        || (ExactMaxTime && t >= ExactMaxTime)
-        || (MaxNodes && pos.nodes_searched() >= MaxNodes)) // FIXME
+    if (   (Limits.useTimeManagement() && noMoreTime)
+        || (Limits.maxTime && t >= Limits.maxTime)
+        || (Limits.maxNodes && pos.nodes_searched() >= Limits.maxNodes)) // FIXME
         StopRequest = true;
   }
 

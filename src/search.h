@@ -23,13 +23,13 @@
 #include "move.h"
 #include "types.h"
 
+class Position;
+struct SplitPoint;
 
 /// The SearchStack struct keeps track of the information we need to remember
 /// from nodes shallower and deeper in the tree during the search.  Each
 /// search thread has its own array of SearchStack objects, indexed by the
 /// current ply.
-struct EvalInfo;
-struct SplitPoint;
 
 struct SearchStack {
   int ply;
@@ -45,12 +45,27 @@ struct SearchStack {
   SplitPoint* sp;
 };
 
-class Position;
+
+/// The SearchLimits struct stores information sent by GUI about available time
+/// to search the current move, maximum depth/time, if we are in analysis mode
+/// or if we have to ponder while is our opponent's side to move.
+
+struct SearchLimits {
+
+  SearchLimits() {}
+  SearchLimits(int t, int i, int mtg, int mt, int md, int mn, bool inf, bool pon)
+              : time(t), increment(i), movesToGo(mtg), maxTime(mt), maxDepth(md),
+                maxNodes(mn), infinite(inf), ponder(pon) {}
+
+  bool useTimeManagement() const { return !(maxTime | maxDepth | maxNodes | int(infinite)); }
+
+  int time, increment, movesToGo, maxTime, maxDepth, maxNodes;
+  bool infinite, ponder;
+};
 
 extern void init_threads();
 extern void exit_threads();
 extern int64_t perft(Position& pos, Depth depth);
-extern bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[],
-                  int movesToGo, int maxDepth, int maxNodes, int maxTime, Move searchMoves[]);
+extern bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]);
 
 #endif // !defined(SEARCH_H_INCLUDED)

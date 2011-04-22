@@ -203,50 +203,48 @@ namespace {
   bool go(Position& pos, UCIParser& up) {
 
     string token;
-    Move searchMoves[MOVES_MAX];
-    int movesToGo, depth, nodes, moveTime, numOfMoves;
-    bool infinite, ponder;
-    int time[2] = {0, 0}, inc[2] = {0, 0};
-
-    searchMoves[0] = MOVE_NONE;
-    infinite = ponder = false;
-    movesToGo = depth = nodes = moveTime = numOfMoves = 0;
+    int time[] = { 0, 0 }, inc[] = { 0, 0 };
+    SearchLimits limits(0, 0, 0, 0, 0, 0, false, false);
+    Move searchMoves[MOVES_MAX] = { MOVE_NONE };
+    Move* cur = searchMoves;
 
     while (up >> token)
     {
         if (token == "infinite")
-            infinite = true;
+            limits.infinite = true;
         else if (token == "ponder")
-            ponder = true;
+            limits.ponder = true;
         else if (token == "wtime")
-            up >> time[0];
+            up >> time[WHITE];
         else if (token == "btime")
-            up >> time[1];
+            up >> time[BLACK];
         else if (token == "winc")
-            up >> inc[0];
+            up >> inc[WHITE];
         else if (token == "binc")
-            up >> inc[1];
+            up >> inc[BLACK];
         else if (token == "movestogo")
-            up >> movesToGo;
+            up >> limits.movesToGo;
         else if (token == "depth")
-            up >> depth;
+            up >> limits.maxDepth;
         else if (token == "nodes")
-            up >> nodes;
+            up >> limits.maxNodes;
         else if (token == "movetime")
-            up >> moveTime;
+            up >> limits.maxTime;
         else if (token == "searchmoves")
         {
             while (up >> token)
-                searchMoves[numOfMoves++] = move_from_uci(pos, token);
+                *cur++ = move_from_uci(pos, token);
 
-            searchMoves[numOfMoves] = MOVE_NONE;
+            *cur = MOVE_NONE;
         }
     }
 
     assert(pos.is_ok());
 
-    return think(pos, infinite, ponder, time, inc, movesToGo,
-                 depth, nodes, moveTime, searchMoves);
+    limits.time = time[pos.side_to_move()];
+    limits.increment = inc[pos.side_to_move()];
+
+    return think(pos, limits, searchMoves);
   }
 
   void perft(Position& pos, UCIParser& up) {

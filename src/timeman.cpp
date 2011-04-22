@@ -17,20 +17,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cmath>
 
 #include "misc.h"
+#include "search.h"
 #include "timeman.h"
 #include "ucioption.h"
-
-////
-//// Local definitions
-////
 
 namespace {
 
@@ -84,31 +76,28 @@ namespace {
 }
 
 
-////
-//// Functions
-////
-
 void TimeManager::pv_instability(int curChanges, int prevChanges) {
 
     unstablePVExtraTime =  curChanges  * (optimumSearchTime / 2)
                          + prevChanges * (optimumSearchTime / 3);
 }
 
-void TimeManager::init(int myTime, int myInc, int movesToGo, int currentPly)
+
+void TimeManager::init(const SearchLimits& limits, int currentPly)
 {
   /* We support four different kind of time controls:
 
-      Inc == 0 && movesToGo == 0 means: x basetime  [sudden death!]
-      Inc == 0 && movesToGo != 0 means: (x moves) / (y minutes)
-      Inc > 0  && movesToGo == 0 means: x basetime + z inc.
-      Inc > 0  && movesToGo != 0 means: (x moves) / (y minutes) + z inc
+      increment == 0 && movesToGo == 0 means: x basetime  [sudden death!]
+      increment == 0 && movesToGo != 0 means: x moves in y minutes
+      increment >  0 && movesToGo == 0 means: x basetime + z increment
+      increment >  0 && movesToGo != 0 means: x moves in y minutes + z increment
 
     Time management is adjusted by following UCI parameters:
 
-      emergencyMoveHorizon :Be prepared to always play at least this many moves
-      emergencyBaseTime    :Always attempt to keep at least this much time (in ms) at clock
-      emergencyMoveTime    :Plus attempt to keep at least this much time for each remaining emergency move
-      minThinkingTime      :No matter what, use at least this much thinking before doing the move
+      emergencyMoveHorizon: Be prepared to always play at least this many moves
+      emergencyBaseTime   : Always attempt to keep at least this much time (in ms) at clock
+      emergencyMoveTime   : Plus attempt to keep at least this much time for each remaining emergency move
+      minThinkingTime     : No matter what, use at least this much thinking before doing the move
   */
 
   int hypMTG, hypMyTime, t1, t2;
@@ -121,14 +110,19 @@ void TimeManager::init(int myTime, int myInc, int movesToGo, int currentPly)
 
   // Initialize to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
-  optimumSearchTime = maximumSearchTime = myTime;
+  optimumSearchTime = maximumSearchTime = limits.time;
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
-  for (hypMTG = 1; hypMTG <= (movesToGo ? Min(movesToGo, MoveHorizon) : MoveHorizon); hypMTG++)
+  for (hypMTG = 1; hypMTG <= (limits.movesToGo ? Min(limits.movesToGo, MoveHorizon) : MoveHorizon); hypMTG++)
   {
       // Calculate thinking time for hypothetic "moves to go"-value
-      hypMyTime = Max(myTime + (hypMTG - 1) * myInc - emergencyBaseTime - Min(hypMTG, emergencyMoveHorizon) * emergencyMoveTime, 0);
+      hypMyTime =  limits.time
+                 + limits.increment * (hypMTG - 1)
+                 - emergencyBaseTime
+                 - emergencyMoveTime * Min(hypMTG, emergencyMoveHorizon);
+
+      hypMyTime = Max(hypMyTime, 0);
 
       t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
       t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
@@ -144,9 +138,6 @@ void TimeManager::init(int myTime, int myInc, int movesToGo, int currentPly)
   optimumSearchTime = Min(optimumSearchTime, maximumSearchTime);
 }
 
-////
-//// Local functions
-////
 
 namespace {
 

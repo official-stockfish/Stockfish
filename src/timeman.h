@@ -20,10 +20,12 @@
 #if !defined(TIMEMAN_H_INCLUDED)
 #define TIMEMAN_H_INCLUDED
 
+struct SearchLimits;
+
 class TimeManager {
 public:
 
-  void init(int myTime, int myInc, int movesToGo, int currentPly);
+  void init(const SearchLimits& limits, int currentPly);
   void pv_instability(int curChanges, int prevChanges);
   int available_time() const { return optimumSearchTime + unstablePVExtraTime; }
   int maximum_time() const { return maximumSearchTime; }
