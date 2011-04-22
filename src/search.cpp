@@ -233,7 +233,7 @@ namespace {
   int MultiPV, UCIMultiPV;
 
   // Time management variables
-  int SearchStartTime, MaxNodes, MaxDepth, ExactMaxTime;
+  int MaxNodes, MaxDepth, ExactMaxTime;
   bool UseTimeManagement, InfiniteSearch, Pondering, StopOnPonderhit;
   bool FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
   TimeManager TimeMgr;
@@ -291,7 +291,7 @@ namespace {
   void update_gains(const Position& pos, Move move, Value before, Value after);
   void do_skill_level(Move* best, Move* ponder);
 
-  int current_search_time();
+  int current_search_time(int set = 0);
   std::string value_to_uci(Value v);
   std::string speed_to_uci(int64_t nodes);
   void poll(const Position& pos);
@@ -448,7 +448,7 @@ bool think(Position& pos, bool infinite, bool ponder, int time[], int increment[
   // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = SendSearchedNodes = false;
   NodesSincePoll = 0;
-  SearchStartTime = get_system_time();
+  current_search_time(get_system_time());
   ExactMaxTime = maxTime;
   MaxDepth = maxDepth;
   MaxNodes = maxNodes;
@@ -1843,9 +1843,14 @@ split_point_start: // At split points actual search starts from here
   // current_search_time() returns the number of milliseconds which have passed
   // since the beginning of the current search.
 
-  int current_search_time() {
+  int current_search_time(int set) {
 
-    return get_system_time() - SearchStartTime;
+    static int searchStartTime;
+
+    if (set)
+        searchStartTime = set;
+
+    return get_system_time() - searchStartTime;
   }
 
 
@@ -1861,9 +1866,9 @@ split_point_start: // At split points actual search starts from here
     std::stringstream s;
 
     if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
-      s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
+        s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
     else
-      s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+        s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
     return s.str();
   }
@@ -2033,7 +2038,7 @@ split_point_start: // At split points actual search starts from here
     assert(threadID >= 0 && threadID < MAX_THREADS);
 
     int i;
-    bool allFinished = false;
+    bool allFinished;
 
     while (true)
     {
@@ -2058,7 +2063,7 @@ split_point_start: // At split points actual search starts from here
             if (threads[threadID].state == THREAD_INITIALIZING)
                 threads[threadID].state = THREAD_AVAILABLE;
 
-            // Grab the lock to avoid races with wake_sleeping_thread()
+            // Grab the lock to avoid races with Thread::wake_up()
             lock_grab(&threads[threadID].sleepLock);
 
             // If we are master and all slaves have finished do not go to sleep
