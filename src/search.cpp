@@ -81,7 +81,6 @@ namespace {
     template <bool Fake>
     void split(Position& pos, SearchStack* ss, Value* alpha, const Value beta, Value* bestValue,
                Depth depth, Move threatMove, int moveCount, MovePicker* mp, bool pvNode);
-
   private:
     Lock mpLock;
     Depth minimumSplitDepth;
@@ -2049,7 +2048,8 @@ split_point_start: // At split points actual search starts from here
 
         // If we are not thinking, wait for a condition to be signaled
         // instead of wasting CPU time polling for work.
-        while (   threadID >= activeThreads || threads[threadID].state == THREAD_INITIALIZING
+        while (   threadID >= activeThreads
+               || threads[threadID].state == THREAD_INITIALIZING
                || (useSleepingThreads && threads[threadID].state == THREAD_AVAILABLE))
         {
             assert(!sp || useSleepingThreads);
@@ -2085,7 +2085,7 @@ split_point_start: // At split points actual search starts from here
 
             threads[threadID].state = THREAD_SEARCHING;
 
-            // Copy SplitPoint position and search stack and call search()
+            // Copy split point position and search stack and call search()
             // with SplitPoint template parameter set to true.
             SearchStack ss[PLY_MAX_PLUS_2];
             SplitPoint* tsp = threads[threadID].splitPoint;
@@ -2105,7 +2105,9 @@ split_point_start: // At split points actual search starts from here
 
             // Wake up master thread so to allow it to return from the idle loop in
             // case we are the last slave of the split point.
-            if (useSleepingThreads && threadID != tsp->master && threads[tsp->master].state == THREAD_AVAILABLE)
+            if (   useSleepingThreads
+                && threadID != tsp->master
+                && threads[tsp->master].state == THREAD_AVAILABLE)
                 threads[tsp->master].wake_up();
         }
 
@@ -2132,41 +2134,36 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // init_threads() is called during startup. It launches all helper threads,
-  // and initializes the split point stack and the global locks and condition
-  // objects.
+  // init_threads() is called during startup. Initializes locks and condition
+  // variables and launches all threads sending them immediately to sleep.
 
   void ThreadsManager::init_threads() {
 
     int i, arg[MAX_THREADS];
     bool ok;
 
-    // Initialize global locks
+    // This flag is needed to properly end the threads when program exits
+    allThreadsShouldExit = false;
+
+    // Threads will sent to sleep as soon as created, only main thread is kept alive
+    activeThreads = 1;
+
     lock_init(&mpLock);
 
     for (i = 0; i < MAX_THREADS; i++)
     {
+        // Initialize thread and split point locks
         lock_init(&threads[i].sleepLock);
         cond_init(&threads[i].sleepCond);
-    }
 
-    // Initialize splitPoints[] locks
-    for (i = 0; i < MAX_THREADS; i++)
         for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
             lock_init(&(threads[i].splitPoints[j].lock));
 
-    // Will be set just before program exits to properly end the threads
-    allThreadsShouldExit = false;
+        // All threads but first should be set to THREAD_INITIALIZING
+        threads[i].state = (i == 0 ? THREAD_SEARCHING : THREAD_INITIALIZING);
+    }
 
-    // Threads will be put all threads to sleep as soon as created
-    activeThreads = 1;
-
-    // All threads except the main thread should be initialized to THREAD_INITIALIZING
-    threads[0].state = THREAD_SEARCHING;
-    for (i = 1; i < MAX_THREADS; i++)
-        threads[i].state = THREAD_INITIALIZING;
-
-    // Launch the helper threads
+    // Create and startup the threads
     for (i = 1; i < MAX_THREADS; i++)
     {
         arg[i] = i;
@@ -2195,28 +2192,27 @@ split_point_start: // At split points actual search starts from here
 
   void ThreadsManager::exit_threads() {
 
-    allThreadsShouldExit = true; // Let the woken up threads to exit idle_loop()
+    // Force the woken up threads to exit idle_loop() and hence terminate
+    allThreadsShouldExit = true;
 
-    // Wake up all the threads and waits for termination
-    for (int i = 1; i < MAX_THREADS; i++)
-    {
-        threads[i].wake_up();
-        while (threads[i].state != THREAD_TERMINATED) {}
-    }
-
-    // Now we can safely destroy the locks
-    for (int i = 0; i < MAX_THREADS; i++)
-        for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
-            lock_destroy(&(threads[i].splitPoints[j].lock));
-
-    lock_destroy(&mpLock);
-
-    // Now we can safely destroy the wait conditions
     for (int i = 0; i < MAX_THREADS; i++)
     {
+        // Wake up all the threads and waits for termination
+        if (i != 0)
+        {
+            threads[i].wake_up();
+            while (threads[i].state != THREAD_TERMINATED) {}
+        }
+
+        // Now we can safely destroy the locks and wait conditions
         lock_destroy(&threads[i].sleepLock);
         cond_destroy(&threads[i].sleepCond);
+
+        for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
+            lock_destroy(&(threads[i].splitPoints[j].lock));
     }
+
+    lock_destroy(&mpLock);
   }
 
 
