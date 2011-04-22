@@ -1720,8 +1720,7 @@ split_point_start: // At split points actual search starts from here
         && pos.type_of_piece_on(move_to(m)) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - pos.midgame_value_of_piece_on(move_to(m)) == VALUE_ZERO)
-        && !move_is_promotion(m)
-        && !move_is_ep(m))
+        && !move_is_special(m))
     {
         result += PawnEndgameExtension[PvNode];
         *dangerous = true;
