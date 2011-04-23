@@ -238,7 +238,6 @@ namespace {
   SearchLimits Limits;
 
   // Log file
-  bool UseLogFile;
   std::ofstream LogFile;
 
   // Skill level adjustment
@@ -488,7 +487,6 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   PawnEndgameExtension[0]   = Options["Pawn Endgame Extension (non-PV nodes)"].value<Depth>();
   UCIMultiPV                = Options["MultiPV"].value<int>();
   SkillLevel                = Options["Skill level"].value<int>();
-  UseLogFile                = Options["Use Search Log"].value<bool>();
 
   read_evaluation_uci_options(pos.side_to_move());
 
@@ -516,18 +514,19 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   }
 
   // Write to log file and keep it open to be accessed during the search
-  if (UseLogFile)
+  if (Options["Use Search Log"].value<bool>())
   {
       std::string name = Options["Search Log Filename"].value<std::string>();
       LogFile.open(name.c_str(), std::ios::out | std::ios::app);
 
-      LogFile << "\nSearching: "  << pos.to_fen()
-              << "\ninfinite: "   << Limits.infinite
-              << " ponder: "      << Limits.ponder
-              << " time: "        << Limits.time
-              << " increment: "   << Limits.increment
-              << " moves to go: " << Limits.movesToGo
-              << endl;
+      if (LogFile.is_open())
+          LogFile << "\nSearching: "  << pos.to_fen()
+                  << "\ninfinite: "   << Limits.infinite
+                  << " ponder: "      << Limits.ponder
+                  << " time: "        << Limits.time
+                  << " increment: "   << Limits.increment
+                  << " moves to go: " << Limits.movesToGo
+                  << endl;
   }
 
   // We're ready to start thinking. Call the iterative deepening loop function
@@ -537,7 +536,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
 
   // Write final search statistics and close log file
-  if (UseLogFile)
+  if (LogFile.is_open())
   {
       int t = current_search_time();
 
@@ -687,7 +686,7 @@ namespace {
         for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
             cout << Rml[i].pv_info_to_uci(pos, depth, selDepth, alpha, beta, i) << endl;
 
-        if (UseLogFile)
+        if (LogFile.is_open())
             LogFile << pretty_pv(pos, depth, value, current_search_time(), Rml[0].pv) << endl;
 
         // Init easyMove after first iteration or drop if differs from the best move
