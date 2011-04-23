@@ -610,8 +610,8 @@ namespace {
         return MOVE_NONE;
     }
 
-    // Iterative deepening loop
-    while (++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth) && !StopRequest)
+    // Iterative deepening loop until requested to stop or target depth reached
+    while (!StopRequest && ++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth))
     {
         Rml.bestMoveChanges = 0;
         cout << set960(pos.is_chess960()) << "info depth " << depth << endl;
@@ -695,20 +695,18 @@ namespace {
         else if (bestMove != easyMove)
             easyMove = MOVE_NONE;
 
-        if (Limits.useTimeManagement() && !StopRequest)
+        // Check for some early stop condition
+        if (!StopRequest && Limits.useTimeManagement())
         {
-            // Time to stop?
-            bool noMoreTime = false;
-
             // Stop search early when the last two iterations returned a mate score
             if (   depth >= 5
-                && abs(bestValues[depth])     >= abs(VALUE_MATE) - 100
-                && abs(bestValues[depth - 1]) >= abs(VALUE_MATE) - 100)
-                noMoreTime = true;
+                && abs(bestValues[depth])     >= VALUE_MATE_IN_PLY_MAX
+                && abs(bestValues[depth - 1]) >= VALUE_MATE_IN_PLY_MAX)
+                StopRequest = true;
 
             // Stop search early if one move seems to be much better than the
-            // others or if there is only a single legal move. In this latter
-            // case we search up to Iteration 8 anyway to get a proper score.
+            // others or if there is only a single legal move. Also in the latter
+            // case we search up to some depth anyway to get a proper score.
             if (   depth >= 7
                 && easyMove == bestMove
                 && (   Rml.size() == 1
@@ -716,29 +714,27 @@ namespace {
                        && current_search_time() > TimeMgr.available_time() / 16)
                     ||(   Rml[0].nodes > (pos.nodes_searched() * 98) / 100
                        && current_search_time() > TimeMgr.available_time() / 32)))
-                noMoreTime = true;
+                StopRequest = true;
 
-            // Add some extra time if the best move has changed during the last two iterations
+            // Take in account some extra time if the best move has changed
             if (depth > 4 && depth < 50)
-                TimeMgr.pv_instability(bestMoveChanges[depth], bestMoveChanges[depth-1]);
+                TimeMgr.pv_instability(bestMoveChanges[depth], bestMoveChanges[depth - 1]);
 
-            // Stop search if most of MaxSearchTime is consumed at the end of the
-            // iteration. We probably don't have enough time to search the first
-            // move at the next iteration anyway.
-            if (current_search_time() > (TimeMgr.available_time() * 80) / 128)
-                noMoreTime = true;
+            // Stop search if most of available time is already consumed. We probably don't
+            // have enough time to search the first move at the next iteration anyway.
+            if (current_search_time() > (TimeMgr.available_time() * 62) / 100)
+                StopRequest = true;
 
-            if (noMoreTime)
+            // If we are allowed to ponder do not stop the search now but keep pondering
+            if (StopRequest && Limits.ponder)
             {
-                if (Limits.ponder)
-                    StopOnPonderhit = true;
-                else
-                    break;
+                StopRequest = false;
+                StopOnPonderhit = true;
             }
         }
     }
 
-    // When using skills fake best and ponder moves with the sub-optimal ones
+    // When using skills overwrite best and ponder moves with the sub-optimal ones
     if (SkillLevelEnabled)
     {
         if (skillBest == MOVE_NONE) // Still unassigned ?
