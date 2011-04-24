@@ -233,7 +233,9 @@ namespace {
   };
 
   // Pawn and material hash tables, indexed by the current thread id.
-  // Note that they will be initialized at 0 being global variables.
+  // We use per-thread tables so that once we get a pointer to an entry
+  // its life time is unlimited and we don't have to care about someone
+  // changing the entry under our feet.
   MaterialInfoTable* MaterialTable[MAX_THREADS];
   PawnInfoTable* PawnTable[MAX_THREADS];
 
