@@ -148,11 +148,14 @@ struct SimpleHash {
 
   void init() {
 
+    if (entries)
+        return;
+
     entries = new (std::nothrow) Entry[HashSize];
     if (!entries)
     {
         std::cerr << "Failed to allocate " << HashSize * sizeof(Entry)
-                  << " bytes for material hash table." << std::endl;
+                  << " bytes for hash table." << std::endl;
         exit(EXIT_FAILURE);
     }
     memset(entries, 0, HashSize * sizeof(Entry));

@@ -64,50 +64,48 @@ void ThreadsManager::read_uci_options() {
   activeThreads           = Options["Threads"].value<int>();
 }
 
+
 // init_threads() is called during startup. Initializes locks and condition
 // variables and launches all threads sending them immediately to sleep.
 
 void ThreadsManager::init_threads() {
 
-  int i, arg[MAX_THREADS];
-  bool ok;
+  int arg[MAX_THREADS];
 
   // This flag is needed to properly end the threads when program exits
   allThreadsShouldExit = false;
 
   // Threads will sent to sleep as soon as created, only main thread is kept alive
   activeThreads = 1;
+  threads[0].state = THREAD_SEARCHING;
+
+  // Allocate pawn and material hash tables for main thread
+  init_hash_tables();
 
   lock_init(&mpLock);
 
-  for (i = 0; i < MAX_THREADS; i++)
+  // Initialize thread and split point locks
+  for (int i = 0; i < MAX_THREADS; i++)
   {
-      // Initialize thread and split point locks
       lock_init(&threads[i].sleepLock);
       cond_init(&threads[i].sleepCond);
 
       for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
           lock_init(&(threads[i].splitPoints[j].lock));
-
-      // All threads but first should be set to THREAD_INITIALIZING
-      threads[i].state = (i == 0 ? THREAD_SEARCHING : THREAD_INITIALIZING);
-
-      // Not in Threads c'tor to avoid global initialization order issues
-      threads[i].pawnTable.init();
-      threads[i].materialTable.init();
   }
 
-  // Create and startup the threads
-  for (i = 1; i < MAX_THREADS; i++)
+  // Create and startup all the threads but the main that is already running
+  for (int i = 1; i < MAX_THREADS; i++)
   {
+      threads[i].state = THREAD_INITIALIZING;
       arg[i] = i;
 
 #if !defined(_MSC_VER)
       pthread_t pthread[1];
-      ok = (pthread_create(pthread, NULL, init_thread, (void*)(&arg[i])) == 0);
+      bool ok = (pthread_create(pthread, NULL, init_thread, (void*)(&arg[i])) == 0);
       pthread_detach(pthread[0]);
 #else
-      ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&arg[i]), 0, NULL) != NULL);
+      bool ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&arg[i]), 0, NULL) != NULL);
 #endif
       if (!ok)
       {
@@ -147,6 +145,22 @@ void ThreadsManager::exit_threads() {
   }
 
   lock_destroy(&mpLock);
+}
+
+
+// init_hash_tables() dynamically allocates pawn and material hash tables
+// according to the number of active threads. This avoids preallocating
+// memory for all possible threads if only few are used as, for instance,
+// on mobile devices where memory is scarce and allocating for MAX_THREADS
+// threads could even result in a crash.
+
+void ThreadsManager::init_hash_tables() {
+
+  for (int i = 0; i < activeThreads; i++)
+  {
+      threads[i].pawnTable.init();
+      threads[i].materialTable.init();
+  }
 }
 
 

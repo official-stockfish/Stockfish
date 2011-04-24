@@ -105,6 +105,7 @@ public:
   Thread& operator[](int threadID) { return threads[threadID]; }
   void init_threads();
   void exit_threads();
+  void init_hash_tables();
 
   int min_split_depth() const { return minimumSplitDepth; }
   int active_threads() const { return activeThreads; }

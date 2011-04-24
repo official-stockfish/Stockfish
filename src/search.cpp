@@ -435,15 +435,18 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   UCIMultiPV = Options["MultiPV"].value<int>();
   SkillLevel = Options["Skill level"].value<int>();
 
-  ThreadsMgr.read_uci_options();
   read_evaluation_uci_options(pos.side_to_move());
+  ThreadsMgr.read_uci_options();
+
+  // If needed allocate pawn and material hash tables and adjust TT size
+  ThreadsMgr.init_hash_tables();
+  TT.set_size(Options["Hash"].value<int>());
 
   if (Options["Clear Hash"].value<bool>())
   {
       Options["Clear Hash"].set_value("false");
       TT.clear();
   }
-  TT.set_size(Options["Hash"].value<int>());
 
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
