@@ -214,7 +214,7 @@ namespace {
 
   inline int futility_move_count(Depth d) {
 
-      return d < 16 * ONE_PLY ? FutilityMoveCountArray[d] : MOVES_MAX;
+      return d < 16 * ONE_PLY ? FutilityMoveCountArray[d] : MAX_MOVES;
   }
 
   // Step 14. Reduced search
@@ -418,7 +418,7 @@ void exit_threads() { ThreadsMgr.exit_threads(); }
 
 int64_t perft(Position& pos, Depth depth) {
 
-  MoveStack mlist[MOVES_MAX];
+  MoveStack mlist[MAX_MOVES];
   StateInfo st;
   Move m;
   int64_t sum = 0;
@@ -764,7 +764,7 @@ namespace {
     assert(PvNode || alpha == beta - 1);
     assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
 
-    Move movesSearched[MOVES_MAX];
+    Move movesSearched[MAX_MOVES];
     int64_t nodes;
     StateInfo st;
     const TTEntry *tte;
@@ -2490,7 +2490,7 @@ split_point_start: // At split points actual search starts from here
 
   void RootMoveList::init(Position& pos, Move searchMoves[]) {
 
-    MoveStack mlist[MOVES_MAX];
+    MoveStack mlist[MAX_MOVES];
     Move* sm;
 
     clear();

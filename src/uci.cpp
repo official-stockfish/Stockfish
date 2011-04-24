@@ -205,7 +205,7 @@ namespace {
     string token;
     int time[] = { 0, 0 }, inc[] = { 0, 0 };
     SearchLimits limits(0, 0, 0, 0, 0, 0, false, false);
-    Move searchMoves[MOVES_MAX] = { MOVE_NONE };
+    Move searchMoves[MAX_MOVES] = { MOVE_NONE };
     Move* cur = searchMoves;
 
     while (up >> token)

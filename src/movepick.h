@@ -57,7 +57,7 @@ private:
   int badCaptureThreshold, phase;
   const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastGoodNonCapture, *badCaptures;
-  MoveStack moves[MOVES_MAX];
+  MoveStack moves[MAX_MOVES];
 };
 
 #endif // !defined(MOVEPICK_H_INCLUDED)

@@ -59,7 +59,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   int searchTT = ttm;
   ttMoves[0].move = ttm;
   badCaptureThreshold = 0;
-  badCaptures = moves + MOVES_MAX;
+  badCaptures = moves + MAX_MOVES;
 
   assert(d > DEPTH_ZERO);
 
@@ -153,7 +153,7 @@ void MovePicker::go_next_phase() {
       // Bad captures SEE value is already calculated so just pick
       // them in order to get SEE move ordering.
       curMove = badCaptures;
-      lastMove = moves + MOVES_MAX;
+      lastMove = moves + MAX_MOVES;
       return;
 
   case PH_EVASIONS:

@@ -70,7 +70,7 @@ const string move_to_uci(Move m, bool chess960) {
 
 Move move_from_uci(const Position& pos, const string& str) {
 
-  MoveStack mlist[MOVES_MAX];
+  MoveStack mlist[MAX_MOVES];
   MoveStack* last = generate<MV_LEGAL>(pos, mlist);
 
   for (MoveStack* cur = mlist; cur != last; cur++)
@@ -90,7 +90,7 @@ const string move_to_san(Position& pos, Move m) {
   assert(pos.is_ok());
   assert(move_is_ok(m));
 
-  MoveStack mlist[MOVES_MAX];
+  MoveStack mlist[MAX_MOVES];
   Square from = move_from(m);
   Square to = move_to(m);
   PieceType pt = pos.type_of_piece_on(from);

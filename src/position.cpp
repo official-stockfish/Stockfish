@@ -649,7 +649,7 @@ bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
 
 bool Position::move_is_legal(const Move m) const {
 
-  MoveStack mlist[MOVES_MAX];
+  MoveStack mlist[MAX_MOVES];
   MoveStack *cur, *last = generate<MV_PSEUDO_LEGAL>(*this, mlist);
 
    for (cur = mlist; cur != last; cur++)
@@ -1795,7 +1795,7 @@ bool Position::is_draw() const {
 
 bool Position::is_mate() const {
 
-  MoveStack moves[MOVES_MAX];
+  MoveStack moves[MAX_MOVES];
   return is_check() && generate<MV_LEGAL>(*this, moves) == moves;
 }
 

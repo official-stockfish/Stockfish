@@ -26,7 +26,7 @@
 #include "types.h"
 
 // Maximum number of allowed moves per position
-const int MOVES_MAX = 256;
+const int MAX_MOVES = 256;
 
 /// A move needs 16 bits to be stored
 ///
