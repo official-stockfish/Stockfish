@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
   Position::init_piece_square_tables();
   init_kpk_bitbase();
   init_search();
-  ThreadsMgr.init_threads();
+  Threads.init();
 
 #ifdef USE_CALLGRIND
   CALLGRIND_START_INSTRUMENTATION;
@@ -82,6 +82,6 @@ int main(int argc, char* argv[]) {
            << "[limit = 12] [fen positions file = default] "
            << "[depth, time, perft or node limited = depth]" << endl;
 
-  ThreadsMgr.exit_threads();
+  Threads.exit();
   return 0;
 }

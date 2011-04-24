@@ -53,27 +53,32 @@ struct SplitPoint {
   volatile Value alpha;
   volatile Value bestValue;
   volatile int moveCount;
-  volatile bool betaCutoff;
-  volatile int slaves[MAX_THREADS];
-};
-
-// ThreadState type is used to represent thread's current state
-enum ThreadState
-{
-  THREAD_INITIALIZING,  // thread is initializing itself
-  THREAD_SEARCHING,     // thread is performing work
-  THREAD_AVAILABLE,     // thread is waiting for work
-  THREAD_BOOKED,        // other thread (master) has booked us as a slave
-  THREAD_WORKISWAITING, // master has ordered us to start
-  THREAD_TERMINATED     // we are quitting and thread is terminated
+  volatile bool is_betaCutoff;
+  volatile bool is_slave[MAX_THREADS];
 };
 
 
-// We use per-thread Pawn and material hash tables so that once we get a
-// pointer to an entry its life time is unlimited and we don't have to
-// care about someone changing the entry under our feet.
+/// Thread struct is used to keep together all the thread related stuff like locks,
+/// state and especially split points. We also use per-thread pawn and material hash
+/// tables so that once we get a pointer to an entry its life time is unlimited and
+/// we don't have to care about someone changing the entry under our feet.
 
 struct Thread {
+
+  enum ThreadState
+  {
+    INITIALIZING,  // Thread is initializing itself
+    SEARCHING,     // Thread is performing work
+    AVAILABLE,     // Thread is waiting for work
+    BOOKED,        // Other thread (master) has booked us as a slave
+    WORKISWAITING, // Master has ordered us to start
+    TERMINATED     // We are quitting and thread is terminated
+  };
+
+  void wake_up();
+  bool cutoff_occurred() const;
+  bool is_available_to(int master) const;
+
   MaterialInfoTable materialTable;
   PawnInfoTable pawnTable;
   int maxPly;
@@ -83,18 +88,12 @@ struct Thread {
   SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
-
-  void wake_up() {
-    lock_grab(&sleepLock);
-    cond_signal(&sleepCond);
-    lock_release(&sleepLock);
-  }
 };
 
 
-// ThreadsManager class is used to handle all the threads related stuff like init,
-// starting, parking and, the most important, launching a slave thread at a split
-// point. All the access to shared thread data is done through this class.
+/// ThreadsManager class is used to handle all the threads related stuff like init,
+/// starting, parking and, the most important, launching a slave thread at a split
+/// point. All the access to shared thread data is done through this class.
 
 class ThreadsManager {
   /* As long as the single ThreadsManager object is defined as a global we don't
@@ -103,18 +102,16 @@ class ThreadsManager {
   */
 public:
   Thread& operator[](int threadID) { return threads[threadID]; }
-  void init_threads();
-  void exit_threads();
+  void init();
+  void exit();
   void init_hash_tables();
 
   int min_split_depth() const { return minimumSplitDepth; }
-  int active_threads() const { return activeThreads; }
-  void set_active_threads(int cnt) { activeThreads = cnt; }
+  int size() const { return activeThreads; }
+  void set_size(int cnt) { activeThreads = cnt; }
 
   void read_uci_options();
-  bool available_thread_exists(int master) const;
-  bool thread_is_available(int slave, int master) const;
-  bool cutoff_at_splitpoint(int threadID) const;
+  bool available_slave_exists(int master) const;
   void idle_loop(int threadID, SplitPoint* sp);
 
   template <bool Fake>
@@ -130,6 +127,6 @@ private:
   Thread threads[MAX_THREADS];
 };
 
-extern ThreadsManager ThreadsMgr;
+extern ThreadsManager Threads;
 
 #endif // !defined(THREAD_H_INCLUDED)

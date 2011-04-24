@@ -436,10 +436,10 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   SkillLevel = Options["Skill level"].value<int>();
 
   read_evaluation_uci_options(pos.side_to_move());
-  ThreadsMgr.read_uci_options();
+  Threads.read_uci_options();
 
   // If needed allocate pawn and material hash tables and adjust TT size
-  ThreadsMgr.init_hash_tables();
+  Threads.init_hash_tables();
   TT.set_size(Options["Hash"].value<int>());
 
   if (Options["Clear Hash"].value<bool>())
@@ -454,10 +454,10 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   MultiPV = (SkillLevelEnabled ? Max(UCIMultiPV, 4) : UCIMultiPV);
 
   // Wake up needed threads and reset maxPly counter
-  for (int i = 0; i < ThreadsMgr.active_threads(); i++)
+  for (int i = 0; i < Threads.size(); i++)
   {
-      ThreadsMgr[i].wake_up();
-      ThreadsMgr[i].maxPly = 0;
+      Threads[i].wake_up();
+      Threads[i].maxPly = 0;
   }
 
   // Write to log file and keep it open to be accessed during the search
@@ -499,7 +499,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   }
 
   // This makes all the threads to go to sleep
-  ThreadsMgr.set_active_threads(1);
+  Threads.set_size(1);
 
   // If we are pondering or in infinite search, we shouldn't print the
   // best move before we are told to do so.
@@ -625,9 +625,9 @@ namespace {
 
         // Retrieve max searched depth among threads
         selDepth = 0;
-        for (int i = 0; i < ThreadsMgr.active_threads(); i++)
-            if (ThreadsMgr[i].maxPly > selDepth)
-                selDepth = ThreadsMgr[i].maxPly;
+        for (int i = 0; i < Threads.size(); i++)
+            if (Threads[i].maxPly > selDepth)
+                selDepth = Threads[i].maxPly;
 
         // Send PV line to GUI and to log file
         for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
@@ -708,7 +708,7 @@ namespace {
     assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
     assert(beta > alpha && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
-    assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
+    assert(pos.thread() >= 0 && pos.thread() < Threads.size());
 
     Move movesSearched[MAX_MOVES];
     int64_t nodes;
@@ -731,8 +731,8 @@ namespace {
     ss->ply = (ss-1)->ply + 1;
 
     // Used to send selDepth info to GUI
-    if (PvNode && ThreadsMgr[threadID].maxPly < ss->ply)
-        ThreadsMgr[threadID].maxPly = ss->ply;
+    if (PvNode && Threads[threadID].maxPly < ss->ply)
+        Threads[threadID].maxPly = ss->ply;
 
     if (SpNode)
     {
@@ -758,7 +758,7 @@ namespace {
 
     // Step 2. Check for aborted search and immediate draw
     if ((   StopRequest
-         || ThreadsMgr.cutoff_at_splitpoint(threadID)
+         || Threads[threadID].cutoff_occurred()
          || pos.is_draw()
          || ss->ply > PLY_MAX) && !Root)
         return VALUE_DRAW;
@@ -939,7 +939,7 @@ split_point_start: // At split points actual search starts from here
     // Loop through all legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
-           && !ThreadsMgr.cutoff_at_splitpoint(threadID))
+           && !Threads[threadID].cutoff_occurred())
     {
       assert(move_is_ok(move));
 
@@ -1154,7 +1154,7 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      if (value > bestValue && !(SpNode && ThreadsMgr.cutoff_at_splitpoint(threadID)))
+      if (value > bestValue && !(SpNode && Threads[threadID].cutoff_occurred()))
       {
           bestValue = value;
 
@@ -1171,7 +1171,7 @@ split_point_start: // At split points actual search starts from here
                       sp->alpha = value;
               }
               else if (SpNode)
-                  sp->betaCutoff = true;
+                  sp->is_betaCutoff = true;
 
               if (value == value_mate_in(ss->ply + 1))
                   ss->mateKiller = move;
@@ -1227,14 +1227,13 @@ split_point_start: // At split points actual search starts from here
       // Step 18. Check for split
       if (   !Root
           && !SpNode
-          && depth >= ThreadsMgr.min_split_depth()
-          && ThreadsMgr.active_threads() > 1
+          && depth >= Threads.min_split_depth()
           && bestValue < beta
-          && ThreadsMgr.available_thread_exists(threadID)
+          && Threads.available_slave_exists(threadID)
           && !StopRequest
-          && !ThreadsMgr.cutoff_at_splitpoint(threadID))
-          ThreadsMgr.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
-                                      threatMove, moveCount, &mp, PvNode);
+          && !Threads[threadID].cutoff_occurred())
+          Threads.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
+                                   threatMove, moveCount, &mp, PvNode);
     }
 
     // Step 19. Check for mate and stalemate
@@ -1247,7 +1246,7 @@ split_point_start: // At split points actual search starts from here
     // Step 20. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (!SpNode && !StopRequest && !ThreadsMgr.cutoff_at_splitpoint(threadID))
+    if (!SpNode && !StopRequest && !Threads[threadID].cutoff_occurred())
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
         vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
@@ -1271,7 +1270,7 @@ split_point_start: // At split points actual search starts from here
     if (SpNode)
     {
         // Here we have the lock still grabbed
-        sp->slaves[threadID] = 0;
+        sp->is_slave[threadID] = false;
         sp->nodes += pos.nodes_searched();
         lock_release(&(sp->lock));
     }
@@ -1292,7 +1291,7 @@ split_point_start: // At split points actual search starts from here
     assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
     assert(PvNode || alpha == beta - 1);
     assert(depth <= 0);
-    assert(pos.thread() >= 0 && pos.thread() < ThreadsMgr.active_threads());
+    assert(pos.thread() >= 0 && pos.thread() < Threads.size());
 
     StateInfo st;
     Move ttMove, move;
@@ -2112,27 +2111,27 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
       if (allThreadsShouldExit)
       {
           assert(!sp);
-          threads[threadID].state = THREAD_TERMINATED;
+          threads[threadID].state = Thread::TERMINATED;
           return;
       }
 
       // If we are not thinking, wait for a condition to be signaled
       // instead of wasting CPU time polling for work.
       while (   threadID >= activeThreads
-             || threads[threadID].state == THREAD_INITIALIZING
-             || (useSleepingThreads && threads[threadID].state == THREAD_AVAILABLE))
+             || threads[threadID].state == Thread::INITIALIZING
+             || (useSleepingThreads && threads[threadID].state == Thread::AVAILABLE))
       {
           assert(!sp || useSleepingThreads);
           assert(threadID != 0 || useSleepingThreads);
 
-          if (threads[threadID].state == THREAD_INITIALIZING)
-              threads[threadID].state = THREAD_AVAILABLE;
+          if (threads[threadID].state == Thread::INITIALIZING)
+              threads[threadID].state = Thread::AVAILABLE;
 
           // Grab the lock to avoid races with Thread::wake_up()
           lock_grab(&threads[threadID].sleepLock);
 
           // If we are master and all slaves have finished do not go to sleep
-          for (i = 0; sp && i < activeThreads && !sp->slaves[i]; i++) {}
+          for (i = 0; sp && i < activeThreads && !sp->is_slave[i]; i++) {}
           allFinished = (i == activeThreads);
 
           if (allFinished || allThreadsShouldExit)
@@ -2142,18 +2141,18 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
           }
 
           // Do sleep here after retesting sleep conditions
-          if (threadID >= activeThreads || threads[threadID].state == THREAD_AVAILABLE)
+          if (threadID >= activeThreads || threads[threadID].state == Thread::AVAILABLE)
               cond_wait(&threads[threadID].sleepCond, &threads[threadID].sleepLock);
 
           lock_release(&threads[threadID].sleepLock);
       }
 
       // If this thread has been assigned work, launch a search
-      if (threads[threadID].state == THREAD_WORKISWAITING)
+      if (threads[threadID].state == Thread::WORKISWAITING)
       {
           assert(!allThreadsShouldExit);
 
-          threads[threadID].state = THREAD_SEARCHING;
+          threads[threadID].state = Thread::SEARCHING;
 
           // Copy split point position and search stack and call search()
           // with SplitPoint template parameter set to true.
@@ -2169,21 +2168,21 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
           else
               search<NonPV, true, false>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
 
-          assert(threads[threadID].state == THREAD_SEARCHING);
+          assert(threads[threadID].state == Thread::SEARCHING);
 
-          threads[threadID].state = THREAD_AVAILABLE;
+          threads[threadID].state = Thread::AVAILABLE;
 
           // Wake up master thread so to allow it to return from the idle loop in
           // case we are the last slave of the split point.
           if (   useSleepingThreads
               && threadID != tsp->master
-              && threads[tsp->master].state == THREAD_AVAILABLE)
+              && threads[tsp->master].state == Thread::AVAILABLE)
               threads[tsp->master].wake_up();
       }
 
       // If this thread is the master of a split point and all slaves have
       // finished their work at this split point, return from the idle loop.
-      for (i = 0; sp && i < activeThreads && !sp->slaves[i]; i++) {}
+      for (i = 0; sp && i < activeThreads && !sp->is_slave[i]; i++) {}
       allFinished = (i == activeThreads);
 
       if (allFinished)
@@ -2195,9 +2194,9 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
 
           // In helpful master concept a master can help only a sub-tree, and
           // because here is all finished is not possible master is booked.
-          assert(threads[threadID].state == THREAD_AVAILABLE);
+          assert(threads[threadID].state == Thread::AVAILABLE);
 
-          threads[threadID].state = THREAD_SEARCHING;
+          threads[threadID].state = Thread::SEARCHING;
           return;
       }
   }
