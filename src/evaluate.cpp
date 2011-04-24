@@ -232,13 +232,6 @@ namespace {
       PASSED = 12, UNSTOPPABLE = 13, SPACE = 14, TOTAL = 15
   };
 
-  // Pawn and material hash tables, indexed by the current thread id.
-  // We use per-thread tables so that once we get a pointer to an entry
-  // its life time is unlimited and we don't have to care about someone
-  // changing the entry under our feet.
-  MaterialInfoTable* MaterialTable[MAX_THREADS];
-  PawnInfoTable* PawnTable[MAX_THREADS];
-
   // Function prototypes
   template<bool HasPopCnt, bool Trace>
   Value do_evaluate(const Position& pos, Value& margin);
@@ -268,16 +261,6 @@ namespace {
   Value scale_by_game_phase(const Score& v, Phase ph, ScaleFactor sf);
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
   void init_safety();
-}
-
-
-/// prefetchTables() is called in do_move() to prefetch pawn and material
-/// hash tables data that will be needed shortly after in evaluation.
-
-void prefetchTables(Key pKey, Key mKey, int threadID) {
-
-    PawnTable[threadID]->prefetch(pKey);
-    MaterialTable[threadID]->prefetch(mKey);
 }
 
 
@@ -320,7 +303,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   margins[WHITE] = margins[BLACK] = VALUE_ZERO;
 
   // Probe the material hash table
-  MaterialInfo* mi = MaterialTable[pos.thread()]->get_material_info(pos);
+  MaterialInfo* mi = ThreadsMgr[pos.thread()].materialTable.get_material_info(pos);
   bonus += mi->material_value();
 
   // If we have a specialized evaluation function for the current material
@@ -332,7 +315,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
   // Probe the pawn hash table
-  ei.pi = PawnTable[pos.thread()]->get_pawn_info(pos);
+  ei.pi = ThreadsMgr[pos.thread()].pawnTable.get_pawn_info(pos);
   bonus += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
 
   // Initialize attack and king safety bitboards
@@ -431,39 +414,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
 }
 
 } // namespace
-
-
-/// init_eval() initializes various tables used by the evaluation function
-
-void init_eval(int threads) {
-
-  assert(threads <= MAX_THREADS);
-
-  for (int i = 0; i < MAX_THREADS; i++)
-  {
-      if (i >= threads)
-      {
-          delete PawnTable[i];
-          delete MaterialTable[i];
-          PawnTable[i] = NULL;
-          MaterialTable[i] = NULL;
-          continue;
-      }
-      if (!PawnTable[i])
-          PawnTable[i] = new PawnInfoTable();
-
-      if (!MaterialTable[i])
-          MaterialTable[i] = new MaterialInfoTable();
-  }
-}
-
-
-/// quit_eval() releases heap-allocated memory at program termination
-
-void quit_eval() {
-
-  init_eval(0);
-}
 
 
 /// read_weights() reads evaluation weights from the corresponding UCI parameters

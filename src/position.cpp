@@ -29,6 +29,7 @@
 #include "position.h"
 #include "psqtab.h"
 #include "rkiss.h"
+#include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
 
@@ -1047,7 +1048,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   }
 
   // Prefetch pawn and material hash tables
-  prefetchTables(st->pawnKey, st->materialKey, threadID);
+  ThreadsMgr[threadID].pawnTable.prefetch(st->pawnKey);
+  ThreadsMgr[threadID].materialTable.prefetch(st->materialKey);
 
   // Update incremental scores
   st->value += pst_delta(piece, from, to);

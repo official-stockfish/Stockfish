@@ -142,13 +142,11 @@ inline void TranspositionTable::refresh(const TTEntry* tte) const {
 /// Without cluster concept or overwrite policy.
 
 template<class Entry, int HashSize>
-class SimpleHash {
+struct SimpleHash {
 
-  SimpleHash(const SimpleHash&);
-  SimpleHash& operator=(const SimpleHash&);
+  typedef SimpleHash<Entry, HashSize> Base;
 
-public:
-  SimpleHash() {
+  void init() {
 
     entries = new (std::nothrow) Entry[HashSize];
     if (!entries)

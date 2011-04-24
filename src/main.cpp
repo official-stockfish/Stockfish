@@ -28,6 +28,7 @@
 #include "evaluate.h"
 #include "position.h"
 #include "thread.h"
+#include "search.h"
 #include "ucioption.h"
 
 #ifdef USE_CALLGRIND
@@ -52,9 +53,9 @@ int main(int argc, char* argv[]) {
   init_bitboards();
   Position::init_zobrist();
   Position::init_piece_square_tables();
-  init_eval(1);
   init_kpk_bitbase();
-  init_threads();
+  init_search();
+  ThreadsMgr.init_threads();
 
 #ifdef USE_CALLGRIND
   CALLGRIND_START_INSTRUMENTATION;
@@ -81,7 +82,6 @@ int main(int argc, char* argv[]) {
            << "[limit = 12] [fen positions file = default] "
            << "[depth, time, perft or node limited = depth]" << endl;
 
-  exit_threads();
-  quit_eval();
+  ThreadsMgr.exit_threads();
   return 0;
 }

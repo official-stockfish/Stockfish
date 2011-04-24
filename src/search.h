@@ -63,8 +63,7 @@ struct SearchLimits {
   bool infinite, ponder;
 };
 
-extern void init_threads();
-extern void exit_threads();
+extern void init_search();
 extern int64_t perft(Position& pos, Depth depth);
 extern bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]);
 

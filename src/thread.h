@@ -23,9 +23,10 @@
 #include <cstring>
 
 #include "lock.h"
+#include "material.h"
 #include "movepick.h"
+#include "pawns.h"
 #include "position.h"
-#include "search.h"
 
 const int MAX_THREADS = 32;
 const int MAX_ACTIVE_SPLIT_POINTS = 8;
@@ -67,7 +68,14 @@ enum ThreadState
   THREAD_TERMINATED     // we are quitting and thread is terminated
 };
 
+
+// We use per-thread Pawn and material hash tables so that once we get a
+// pointer to an entry its life time is unlimited and we don't have to
+// care about someone changing the entry under our feet.
+
 struct Thread {
+  MaterialInfoTable materialTable;
+  PawnInfoTable pawnTable;
   int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
@@ -82,5 +90,45 @@ struct Thread {
     lock_release(&sleepLock);
   }
 };
+
+
+// ThreadsManager class is used to handle all the threads related stuff like init,
+// starting, parking and, the most important, launching a slave thread at a split
+// point. All the access to shared thread data is done through this class.
+
+class ThreadsManager {
+  /* As long as the single ThreadsManager object is defined as a global we don't
+     need to explicitly initialize to zero its data members because variables with
+     static storage duration are automatically set to zero before enter main()
+  */
+public:
+  Thread& operator[](int threadID) { return threads[threadID]; }
+  void init_threads();
+  void exit_threads();
+
+  int min_split_depth() const { return minimumSplitDepth; }
+  int active_threads() const { return activeThreads; }
+  void set_active_threads(int cnt) { activeThreads = cnt; }
+
+  void read_uci_options();
+  bool available_thread_exists(int master) const;
+  bool thread_is_available(int slave, int master) const;
+  bool cutoff_at_splitpoint(int threadID) const;
+  void idle_loop(int threadID, SplitPoint* sp);
+
+  template <bool Fake>
+  void split(Position& pos, SearchStack* ss, Value* alpha, const Value beta, Value* bestValue,
+             Depth depth, Move threatMove, int moveCount, MovePicker* mp, bool pvNode);
+private:
+  Lock mpLock;
+  Depth minimumSplitDepth;
+  int maxThreadsPerSplitPoint;
+  bool useSleepingThreads;
+  int activeThreads;
+  volatile bool allThreadsShouldExit;
+  Thread threads[MAX_THREADS];
+};
+
+extern ThreadsManager ThreadsMgr;
 
 #endif // !defined(THREAD_H_INCLUDED)

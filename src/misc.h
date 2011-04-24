@@ -29,7 +29,6 @@ extern int get_system_time();
 extern int cpu_count();
 extern int input_available();
 extern void prefetch(char* addr);
-extern void prefetchTables(Key pKey, Key mKey, int threadID);
 
 extern void dbg_hit_on(bool b);
 extern void dbg_hit_on_c(bool c, bool b);

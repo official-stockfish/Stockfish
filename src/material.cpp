@@ -85,7 +85,7 @@ namespace {
 
 /// MaterialInfoTable c'tor and d'tor allocate and free the space for Endgames
 
-MaterialInfoTable::MaterialInfoTable() { funcs = new Endgames(); }
+void MaterialInfoTable::init() { Base::init(); funcs = new Endgames(); }
 MaterialInfoTable::~MaterialInfoTable() { delete funcs; }
 
 

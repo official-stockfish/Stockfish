@@ -65,8 +65,8 @@ private:
 
 class MaterialInfoTable : public SimpleHash<MaterialInfo, MaterialTableSize> {
 public:
-  MaterialInfoTable();
   ~MaterialInfoTable();
+  void init();
   MaterialInfo* get_material_info(const Position& pos) const;
   static Phase game_phase(const Position& pos);
 
