@@ -180,7 +180,7 @@ namespace {
   // Step 9. Internal iterative deepening
 
   // Minimum depth for use of internal iterative deepening
-  const Depth IIDDepth[2] = { 8 * ONE_PLY /* non-PV */, 5 * ONE_PLY /* PV */};
+  const Depth IIDDepth[] = { 8 * ONE_PLY, 5 * ONE_PLY };
 
   // At Non-PV nodes we do an internal iterative deepening search
   // when the static evaluation is bigger then beta - IIDMargin.
@@ -188,13 +188,14 @@ namespace {
 
   // Step 11. Decide the new search depth
 
-  // Extensions. Configurable UCI options. Array index 0 is used at
-  // non-PV nodes, index 1 at PV nodes.
-  Depth CheckExtension[2], PawnPushTo7thExtension[2];
-  Depth PassedPawnExtension[2], PawnEndgameExtension[2];
+  // Extensions. Array index 0 is used for non-PV nodes, index 1 for PV nodes
+  const Depth CheckExtension[]         = { ONE_PLY / 2, ONE_PLY / 1 };
+  const Depth PawnEndgameExtension[]   = { ONE_PLY / 1, ONE_PLY / 1 };
+  const Depth PawnPushTo7thExtension[] = { ONE_PLY / 2, ONE_PLY / 2 };
+  const Depth PassedPawnExtension[]    = {  DEPTH_ZERO, ONE_PLY / 2 };
 
   // Minimum depth for use of singular extension
-  const Depth SingularExtensionDepth[2] = { 8 * ONE_PLY /* non-PV */, 6 * ONE_PLY /* PV */};
+  const Depth SingularExtensionDepth[] = { 8 * ONE_PLY, 6 * ONE_PLY };
 
   // Step 12. Futility pruning
 
@@ -205,8 +206,16 @@ namespace {
   Value FutilityMarginsMatrix[16][64]; // [depth][moveNumber]
   int FutilityMoveCountArray[32];      // [depth]
 
-  inline Value futility_margin(Depth d, int mn) { return d < 7 * ONE_PLY ? FutilityMarginsMatrix[Max(d, 1)][Min(mn, 63)] : 2 * VALUE_INFINITE; }
-  inline int futility_move_count(Depth d) { return d < 16 * ONE_PLY ? FutilityMoveCountArray[d] : 512; }
+  inline Value futility_margin(Depth d, int mn) {
+
+      return d < 7 * ONE_PLY ? FutilityMarginsMatrix[Max(d, 1)][Min(mn, 63)]
+                             : 2 * VALUE_INFINITE;
+  }
+
+  inline int futility_move_count(Depth d) {
+
+      return d < 16 * ONE_PLY ? FutilityMoveCountArray[d] : MOVES_MAX;
+  }
 
   // Step 14. Reduced search
 
@@ -477,16 +486,8 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   }
 
   // Read UCI options
-  CheckExtension[1]         = Options["Check Extension (PV nodes)"].value<Depth>();
-  CheckExtension[0]         = Options["Check Extension (non-PV nodes)"].value<Depth>();
-  PawnPushTo7thExtension[1] = Options["Pawn Push to 7th Extension (PV nodes)"].value<Depth>();
-  PawnPushTo7thExtension[0] = Options["Pawn Push to 7th Extension (non-PV nodes)"].value<Depth>();
-  PassedPawnExtension[1]    = Options["Passed Pawn Extension (PV nodes)"].value<Depth>();
-  PassedPawnExtension[0]    = Options["Passed Pawn Extension (non-PV nodes)"].value<Depth>();
-  PawnEndgameExtension[1]   = Options["Pawn Endgame Extension (PV nodes)"].value<Depth>();
-  PawnEndgameExtension[0]   = Options["Pawn Endgame Extension (non-PV nodes)"].value<Depth>();
-  UCIMultiPV                = Options["MultiPV"].value<int>();
-  SkillLevel                = Options["Skill level"].value<int>();
+  UCIMultiPV = Options["MultiPV"].value<int>();
+  SkillLevel = Options["Skill level"].value<int>();
 
   read_evaluation_uci_options(pos.side_to_move());
 

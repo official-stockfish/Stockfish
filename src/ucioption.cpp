@@ -81,14 +81,6 @@ OptionsMap::OptionsMap() {
   o["Space"] = Option(100, 0, 200);
   o["Aggressiveness"] = Option(100, 0, 200);
   o["Cowardice"] = Option(100, 0, 200);
-  o["Check Extension (PV nodes)"] = Option(2, 0, 2);
-  o["Check Extension (non-PV nodes)"] = Option(1, 0, 2);
-  o["Pawn Push to 7th Extension (PV nodes)"] = Option(1, 0, 2);
-  o["Pawn Push to 7th Extension (non-PV nodes)"] = Option(1, 0, 2);
-  o["Passed Pawn Extension (PV nodes)"] = Option(1, 0, 2);
-  o["Passed Pawn Extension (non-PV nodes)"] = Option(0, 0, 2);
-  o["Pawn Endgame Extension (PV nodes)"] = Option(2, 0, 2);
-  o["Pawn Endgame Extension (non-PV nodes)"] = Option(2, 0, 2);
   o["Minimum Split Depth"] = Option(4, 4, 7);
   o["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
   o["Threads"] = Option(1, 1, MAX_THREADS);
