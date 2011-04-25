@@ -2084,7 +2084,7 @@ split_point_start: // At split points actual search starts from here
         firstCall = false;
 
     return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
-  };
+  }
 
 } // namespace
 
