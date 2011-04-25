@@ -43,22 +43,17 @@ using std::endl;
 
 namespace {
 
-  // Different node types, used as template parameter
-  enum NodeType { NonPV, PV };
-
-  // Set to true to force running with one thread. Used for debugging.
+  // Set to true to force running with one thread. Used for debugging
   const bool FakeSplit = false;
 
-  // Lookup table to check if a Piece is a slider and its access function
-  const bool Slidings[18] = { 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1 };
-  inline bool piece_is_slider(Piece p) { return Slidings[p]; }
+  // Different node types, used as template parameter
+  enum NodeType { NonPV, PV };
 
   // RootMove struct is used for moves at the root of the tree. For each root
   // move, we store two scores, a node count, and a PV (really a refutation
   // in the case of moves which fail low). Value pv_score is normally set at
   // -VALUE_INFINITE for all non-pv moves, while non_pv_score is computed
   // according to the order in which moves are returned by MovePicker.
-
   struct RootMove {
 
     RootMove();
@@ -85,10 +80,8 @@ namespace {
     Move pv[PLY_MAX_PLUS_2];
   };
 
-
   // RootMoveList struct is just a vector of RootMove objects,
   // with an handful of methods above the standard ones.
-
   struct RootMoveList : public std::vector<RootMove> {
 
     typedef std::vector<RootMove> Base;
@@ -100,32 +93,45 @@ namespace {
     int bestMoveChanges;
   };
 
+  // MovePickerExt template class extends MovePicker and allows to choose at compile
+  // time the proper moves source according to the type of node. In the default case
+  // we simply create and use a standard MovePicker object.
+  template<bool SpNode, bool Root> struct MovePickerExt : public MovePicker {
 
-  // Overload operator<<() to make it easier to print moves in a coordinate
-  // notation compatible with UCI protocol.
-  std::ostream& operator<<(std::ostream& os, Move m) {
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePicker(p, ttm, d, h, ss, b) {}
 
-    bool chess960 = (os.iword(0) != 0); // See set960()
-    return os << move_to_uci(m, chess960);
-  }
+    RootMoveList::iterator rm; // Dummy, needed to compile
+  };
+
+  // In case of a SpNode we use split point's shared MovePicker object as moves source
+  template<> struct MovePickerExt<true, false> : public MovePicker {
+
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
+
+    Move get_next_move() { return mp->get_next_move(); }
+
+    RootMoveList::iterator rm; // Dummy, needed to compile
+    MovePicker* mp;
+  };
+
+  // In case of a Root node we use RootMoveList as moves source
+  template<> struct MovePickerExt<false, true> : public MovePicker {
+
+    MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value);
+    Move get_next_move();
+
+    RootMoveList::iterator rm;
+    bool firstCall;
+  };
 
 
-  // When formatting a move for std::cout we must know if we are in Chess960
-  // or not. To keep using the handy operator<<() on the move the trick is to
-  // embed this flag in the stream itself. Function-like named enum set960 is
-  // used as a custom manipulator and the stream internal general-purpose array,
-  // accessed through ios_base::iword(), is used to pass the flag to the move's
-  // operator<<() that will read it to properly format castling moves.
-  enum set960 {};
+  /// Constants
 
-  std::ostream& operator<< (std::ostream& os, const set960& f) {
-
-    os.iword(0) = int(f);
-    return os;
-  }
-
-
-  /// Adjustments
+  // Lookup table to check if a Piece is a slider and its access function
+  const bool Slidings[18] = { 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1 };
+  inline bool piece_is_slider(Piece p) { return Slidings[p]; }
 
   // Step 6. Razoring
 
@@ -264,70 +270,27 @@ namespace {
   void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
 
+  // Overload operator<<() to make it easier to print moves in a coordinate
+  // notation compatible with UCI protocol.
+  std::ostream& operator<<(std::ostream& os, Move m) {
 
-  // MovePickerExt is an extended MovePicker class used to choose at compile time
-  // the proper move source according to the type of node.
-  template<bool SpNode, bool Root> struct MovePickerExt;
+    bool chess960 = (os.iword(0) != 0); // See set960()
+    return os << move_to_uci(m, chess960);
+  }
 
-  // In Root nodes use RootMoveList as source. Score and sort the root moves
-  // before to search them.
-  template<> struct MovePickerExt<false, true> : public MovePicker {
+  // When formatting a move for std::cout we must know if we are in Chess960
+  // or not. To keep using the handy operator<<() on the move the trick is to
+  // embed this flag in the stream itself. Function-like named enum set960 is
+  // used as a custom manipulator and the stream internal general-purpose array,
+  // accessed through ios_base::iword(), is used to pass the flag to the move's
+  // operator<<() that will read it to properly format castling moves.
+  enum set960 {};
 
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                 : MovePicker(p, ttm, d, h, ss, b), firstCall(true) {
-      Move move;
-      Value score = VALUE_ZERO;
+  std::ostream& operator<< (std::ostream& os, const set960& f) {
 
-      // Score root moves using standard ordering used in main search, the moves
-      // are scored according to the order in which they are returned by MovePicker.
-      // This is the second order score that is used to compare the moves when
-      // the first orders pv_score of both moves are equal.
-      while ((move = MovePicker::get_next_move()) != MOVE_NONE)
-          for (rm = Rml.begin(); rm != Rml.end(); ++rm)
-              if (rm->pv[0] == move)
-              {
-                  rm->non_pv_score = score--;
-                  break;
-              }
-
-      Rml.sort();
-      rm = Rml.begin();
-    }
-
-    Move get_next_move() {
-
-      if (!firstCall)
-          ++rm;
-      else
-          firstCall = false;
-
-      return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
-    }
-
-    RootMoveList::iterator rm;
-    bool firstCall;
-  };
-
-  // In SpNodes use split point's shared MovePicker object as move source
-  template<> struct MovePickerExt<true, false> : public MovePicker {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
-
-    Move get_next_move() { return mp->get_next_move(); }
-
-    RootMoveList::iterator rm; // Dummy, needed to compile
-    MovePicker* mp;
-  };
-
-  // Default case, create and use a MovePicker object as source
-  template<> struct MovePickerExt<false, false> : public MovePicker {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePicker(p, ttm, d, h, ss, b) {}
-
-    RootMoveList::iterator rm; // Dummy, needed to compile
-  };
+    os.iword(0) = int(f);
+    return os;
+  }
 
 } // namespace
 
@@ -2089,6 +2052,39 @@ split_point_start: // At split points actual search starts from here
 
     return s.str();
   }
+
+  // Specializations for MovePickerExt in case of Root node
+  MovePickerExt<false, true>::MovePickerExt(const Position& p, Move ttm, Depth d,
+                                            const History& h, SearchStack* ss, Value b)
+                            : MovePicker(p, ttm, d, h, ss, b), firstCall(true) {
+    Move move;
+    Value score = VALUE_ZERO;
+
+    // Score root moves using standard ordering used in main search, the moves
+    // are scored according to the order in which they are returned by MovePicker.
+    // This is the second order score that is used to compare the moves when
+    // the first orders pv_score of both moves are equal.
+    while ((move = MovePicker::get_next_move()) != MOVE_NONE)
+        for (rm = Rml.begin(); rm != Rml.end(); ++rm)
+            if (rm->pv[0] == move)
+            {
+                rm->non_pv_score = score--;
+                break;
+            }
+
+    Rml.sort();
+    rm = Rml.begin();
+  }
+
+  Move MovePickerExt<false, true>::get_next_move() {
+
+    if (!firstCall)
+        ++rm;
+    else
+        firstCall = false;
+
+    return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
+  };
 
 } // namespace
 
