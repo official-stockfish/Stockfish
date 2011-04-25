@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
   else
       cout << "Usage: stockfish bench [hash size = 128] [threads = 1] "
            << "[limit = 12] [fen positions file = default] "
-           << "[depth, time, perft or node limited = depth]" << endl;
+           << "[limited by depth, time, nodes or perft = depth]" << endl;
 
   Threads.exit();
   return 0;

@@ -414,8 +414,8 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   else
       NodesBetweenPolls = 30000;
 
-  // Look for a book move, only during games, not tests
-  if (Limits.useTimeManagement() && Options["OwnBook"].value<bool>())
+  // Look for a book move
+  if (Options["OwnBook"].value<bool>())
   {
       if (Options["Book File"].value<std::string>() != OpeningBook.name())
           OpeningBook.open(Options["Book File"].value<std::string>());

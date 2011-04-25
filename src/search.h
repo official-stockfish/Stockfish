@@ -20,6 +20,8 @@
 #if !defined(SEARCH_H_INCLUDED)
 #define SEARCH_H_INCLUDED
 
+#include <cstring>
+
 #include "move.h"
 #include "types.h"
 
@@ -52,7 +54,8 @@ struct SearchStack {
 
 struct SearchLimits {
 
-  SearchLimits() {}
+  SearchLimits() { memset(this, 0, sizeof(SearchLimits)); }
+
   SearchLimits(int t, int i, int mtg, int mt, int md, int mn, bool inf, bool pon)
               : time(t), increment(i), movesToGo(mtg), maxTime(mt), maxDepth(md),
                 maxNodes(mn), infinite(inf), ponder(pon) {}

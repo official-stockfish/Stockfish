@@ -203,10 +203,10 @@ namespace {
   bool go(Position& pos, UCIParser& up) {
 
     string token;
-    int time[] = { 0, 0 }, inc[] = { 0, 0 };
-    SearchLimits limits(0, 0, 0, 0, 0, 0, false, false);
+    SearchLimits limits;
     Move searchMoves[MAX_MOVES] = { MOVE_NONE };
     Move* cur = searchMoves;
+    int time[] = { 0, 0 }, inc[] = { 0, 0 };
 
     while (up >> token)
     {

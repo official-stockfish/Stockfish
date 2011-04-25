@@ -17,25 +17,17 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
 #include <fstream>
 #include <iostream>
 #include <vector>
 
+#include "position.h"
 #include "search.h"
-#include "thread.h"
 #include "ucioption.h"
 
 using namespace std;
 
-////
-//// Variables
-////
-
-static const string BenchmarkPositions[] = {
+static const string Defaults[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
@@ -56,10 +48,6 @@ static const string BenchmarkPositions[] = {
 };
 
 
-////
-//// Functions
-////
-
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
 /// of positions for a given limit each.  There are five parameters; the
 /// transposition table size, the number of search threads that should
@@ -71,84 +59,95 @@ static const string BenchmarkPositions[] = {
 
 void benchmark(int argc, char* argv[]) {
 
-  vector<string> positions;
-  string ttSize, threads, valStr, posFile, valType;
-  int val, maxTime, maxDepth, maxNodes;
+  vector<string> fenList;
+  SearchLimits limits;
+  int64_t totalNodes;
+  int time;
 
-  ttSize  = argc > 2 ? argv[2] : "128";
-  threads = argc > 3 ? argv[3] : "1";
-  valStr  = argc > 4 ? argv[4] : "12";
-  posFile = argc > 5 ? argv[5] : "default";
-  valType = argc > 6 ? argv[6] : "depth";
+  // Load default positions
+  for (int i = 0; !Defaults[i].empty(); i++)
+      fenList.push_back(Defaults[i]);
+
+  // Assign default values to missing arguments
+  string ttSize  = argc > 2 ? argv[2] : "128";
+  string threads = argc > 3 ? argv[3] : "1";
+  string valStr  = argc > 4 ? argv[4] : "12";
+  string fenFile = argc > 5 ? argv[5] : "default";
+  string valType = argc > 6 ? argv[6] : "depth";
 
   Options["Hash"].set_value(ttSize);
   Options["Threads"].set_value(threads);
   Options["OwnBook"].set_value("false");
-  Options["Use Search Log"].set_value("true");
-  Options["Search Log Filename"].set_value("bench.txt");
 
-  maxTime = maxDepth = maxNodes = 0;
-  val = atoi(valStr.c_str());
-
-  if (valType == "depth" || valType == "perft")
-      maxDepth = val;
+  // Search should be limited by nodes, time or depth ?
+  if (valType == "nodes")
+      limits.maxNodes = atoi(valStr.c_str());
   else if (valType == "time")
-      maxTime = val * 1000;
+      limits.maxTime = 1000 * atoi(valStr.c_str()); // maxTime is in ms
   else
-      maxNodes = val;
+      limits.maxDepth = atoi(valStr.c_str());
 
-  if (posFile != "default")
+  // Do we need to load positions from a given FEN file ?
+  if (fenFile != "default")
   {
-      ifstream fenFile(posFile.c_str());
-      if (!fenFile.is_open())
+      string fen;
+      ifstream f(fenFile.c_str());
+
+      if (f.is_open())
       {
-          cerr << "Unable to open positions file " << posFile << endl;
+          fenList.clear();
+
+          while (getline(f, fen))
+              if (!fen.empty())
+                  fenList.push_back(fen);
+
+          f.close();
+      }
+      else
+      {
+          cerr << "Unable to open FEN file " << fenFile << endl;
           exit(EXIT_FAILURE);
       }
-      string pos;
-      while (fenFile.good())
-      {
-          getline(fenFile, pos);
-          if (!pos.empty())
-              positions.push_back(pos);
-      }
-      fenFile.close();
-  } else
-      for (int i = 0; !BenchmarkPositions[i].empty(); i++)
-          positions.push_back(BenchmarkPositions[i]);
+  }
 
-  vector<string>::iterator it;
-  int cnt = 1;
-  int64_t totalNodes = 0;
-  int startTime = get_system_time();
+  // Ok, let's start the benchmark !
+  totalNodes = 0;
+  time = get_system_time();
 
-  for (it = positions.begin(); it != positions.end(); ++it, ++cnt)
+  for (size_t i = 0; i < fenList.size(); i++)
   {
       Move moves[] = { MOVE_NONE };
-      Position pos(*it, false, 0);
-      cerr << "\nBench position: " << cnt << '/' << positions.size() << endl << endl;
+      Position pos(fenList[i], false, 0);
+
+      cerr << "\nBench position: " << i + 1 << '/' << fenList.size() << endl;
+
       if (valType == "perft")
       {
-          int64_t perftCnt = perft(pos, maxDepth * ONE_PLY);
-          cerr << "\nPerft " << maxDepth << " result (nodes searched): " << perftCnt << endl << endl;
-          totalNodes += perftCnt;
-      } else {
-          if (!think(pos, SearchLimits(0, 0, 0, maxTime, maxDepth, maxNodes, false, false), moves))
+          int64_t cnt = perft(pos, limits.maxDepth * ONE_PLY);
+          totalNodes += cnt;
+
+          cerr << "\nPerft " << limits.maxDepth << " nodes counted: " << cnt << endl;
+      }
+      else
+      {
+          if (!think(pos, limits, moves))
               break;
+
           totalNodes += pos.nodes_searched();
       }
   }
 
-  cnt = get_system_time() - startTime;
-  cerr << "==============================="
-       << "\nTotal time (ms) : " << cnt
-       << "\nNodes searched  : " << totalNodes
-       << "\nNodes/second    : " << (int)(totalNodes/(cnt/1000.0)) << endl << endl;
+  time = get_system_time() - time;
 
-  // Under MS Visual C++ debug window always unconditionally closes
-  // when program exits, this is bad because we want to read results before.
+  cerr << "\n==============================="
+       << "\nTotal time (ms) : " << time
+       << "\nNodes searched  : " << totalNodes
+       << "\nNodes/second    : " << (int)(totalNodes / (time / 1000.0)) << endl << endl;
+
+  // MS Visual C++ debug window always unconditionally closes when program
+  // exits, this is bad because we want to read results before.
   #if (defined(WINDOWS) || defined(WIN32) || defined(WIN64))
   cerr << "Press any key to exit" << endl;
-  cin >> ttSize;
+  cin >> time;
   #endif
 }
