@@ -123,7 +123,7 @@ public:
   void print(Move m = MOVE_NONE) const;
 
   // Copying
-  void flipped_copy(const Position& pos);
+  void flip();
 
   // The piece on a given square
   Piece piece_on(Square s) const;

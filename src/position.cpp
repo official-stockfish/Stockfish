@@ -853,9 +853,8 @@ bool Position::move_is_check(Move m, const CheckInfo& ci) const {
 }
 
 
-/// Position::do_setup_move() makes a permanent move on the board.
-/// It should be used when setting up a position on board.
-/// You can't undo the move.
+/// Position::do_setup_move() makes a permanent move on the board. It should
+/// be used when setting up a position on board. You can't undo the move.
 
 void Position::do_setup_move(Move m) {
 
@@ -872,13 +871,14 @@ void Position::do_setup_move(Move m) {
   startPosPlyCounter++;
 
   // Our StateInfo newSt is about going out of scope so copy
-  // its content inside pos before it disappears.
+  // its content before it disappears.
   detach();
 }
 
+
 /// Position::do_move() makes a move, and saves all information necessary
-/// to a StateInfo object. The move is assumed to be legal.
-/// Pseudo-legal moves should be filtered out before this function is called.
+/// to a StateInfo object. The move is assumed to be legal. Pseudo-legal
+/// moves should be filtered out before this function is called.
 
 void Position::do_move(Move m, StateInfo& newSt) {
 
@@ -1842,13 +1842,15 @@ void Position::init_piece_square_tables() {
 }
 
 
-/// Position::flipped_copy() makes a copy of the input position, but with
-/// the white and black sides reversed. This is only useful for debugging,
-/// especially for finding evaluation symmetry bugs.
+/// Position::flip() flips position with the white and black sides reversed. This
+/// is only useful for debugging especially for finding evaluation symmetry bugs.
 
-void Position::flipped_copy(const Position& pos) {
+void Position::flip() {
 
-  assert(pos.is_ok());
+  assert(is_ok());
+
+  // Make a copy of current position before to start changing
+  const Position pos(*this, threadID);
 
   clear();
   threadID = pos.thread();

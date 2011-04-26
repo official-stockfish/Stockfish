@@ -66,7 +66,8 @@ const string move_to_uci(Move m, bool chess960) {
 
 
 /// move_from_uci() takes a position and a string representing a move in
-/// simple coordinate notation and returns an equivalent Move.
+/// simple coordinate notation and returns an equivalent Move if any.
+/// Moves are guaranteed to be legal.
 
 Move move_from_uci(const Position& pos, const string& str) {
 

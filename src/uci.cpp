@@ -17,13 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-////
-//// Includes
-////
-
 #include <cassert>
-#include <cctype>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -31,13 +25,11 @@
 #include "evaluate.h"
 #include "misc.h"
 #include "move.h"
-#include "movegen.h"
 #include "position.h"
 #include "search.h"
 #include "ucioption.h"
 
 using namespace std;
-
 
 namespace {
 
@@ -48,7 +40,6 @@ namespace {
   // is actually a string stream built on a given input string.
   typedef istringstream UCIParser;
 
-  // Local functions
   void set_option(UCIParser& up);
   void set_position(Position& pos, UCIParser& up);
   bool go(Position& pos, UCIParser& up);
@@ -64,6 +55,7 @@ namespace {
 bool execute_uci_command(const string& cmd) {
 
   static Position pos(StartPositionFEN, false, 0); // The root position
+
   UCIParser up(cmd);
   string token;
 
@@ -72,16 +64,10 @@ bool execute_uci_command(const string& cmd) {
   if (token == "quit")
       return false;
 
-  else if (token == "go")
+  if (token == "go")
       return go(pos, up);
 
-  else if (token == "uci")
-      cout << "id name " << engine_name()
-           << "\nid author " << engine_authors()
-           << "\n" << Options.print_all()
-           << "\nuciok" << endl;
-
-  else if (token == "ucinewgame")
+  if (token == "ucinewgame")
       pos.from_fen(StartPositionFEN, false);
 
   else if (token == "isready")
@@ -93,8 +79,14 @@ bool execute_uci_command(const string& cmd) {
   else if (token == "setoption")
       set_option(up);
 
+  else if (token == "perft")
+      perft(pos, up);
+
   else if (token == "d")
       pos.print();
+
+  else if (token == "flip")
+      pos.flip();
 
   else if (token == "eval")
   {
@@ -107,14 +99,11 @@ bool execute_uci_command(const string& cmd) {
            << "\nmaterial key: " << pos.get_material_key()
            << "\npawn key: "     << pos.get_pawn_key() << endl;
 
-  else if (token == "perft")
-      perft(pos, up);
-
-  else if (token == "flip")
-  {
-      Position p(pos, pos.thread());
-      pos.flipped_copy(p);
-  }
+  else if (token == "uci")
+      cout << "id name "     << engine_name()
+           << "\nid author " << engine_authors()
+           << "\n"           << Options.print_all()
+           << "\nuciok"      << endl;
   else
       cout << "Unknown command: " << cmd << endl;
 
@@ -122,28 +111,23 @@ bool execute_uci_command(const string& cmd) {
 }
 
 
-////
-//// Local functions
-////
-
 namespace {
 
-  // set_position() is called when Stockfish receives the "position" UCI
-  // command. The input parameter is a UCIParser. It is assumed
-  // that this parser has consumed the first token of the UCI command
-  // ("position"), and is ready to read the second token ("startpos"
-  // or "fen", if the input is well-formed).
+  // set_position() is called when engine receives the "position" UCI
+  // command. The function sets up the position described in the given
+  // fen string ("fen") or the starting position ("startpos") and then
+  // makes the moves given in the following move list ("moves").
 
   void set_position(Position& pos, UCIParser& up) {
 
-    string fen, token;
+    string token, fen;
 
     up >> token; // operator>>() skips any whitespace
 
     if (token == "startpos")
     {
         pos.from_fen(StartPositionFEN, false);
-        up >> token; // Consume "moves" token
+        up >> token; // Consume "moves" token if any
     }
     else if (token == "fen")
     {
@@ -160,16 +144,14 @@ namespace {
   }
 
 
-  // set_option() is called when Stockfish receives the "setoption" UCI
-  // command. The input parameter is a UCIParser. It is assumed
-  // that this parser has consumed the first token of the UCI command
-  // ("setoption"), and is ready to read the second token ("name", if
-  // the input is well-formed).
+  // set_option() is called when engine receives the "setoption" UCI
+  // command. The function updates the corresponding UCI option ("name")
+  // to the given value ("value").
 
   void set_option(UCIParser& up) {
 
-    string value = "true"; // UCI buttons don't have a "value" field
     string token, name;
+    string value = "true"; // UCI buttons don't have a "value" field
 
     up >> token; // Consume "name" token
     up >> name;  // Read option name
@@ -191,14 +173,10 @@ namespace {
   }
 
 
-  // go() is called when Stockfish receives the "go" UCI command. The
-  // input parameter is a UCIParser. It is assumed that this
-  // parser has consumed the first token of the UCI command ("go"),
-  // and is ready to read the second token. The function sets the
-  // thinking time and other parameters from the input string, and
-  // calls think() (defined in search.cpp) with the appropriate
-  // parameters. Returns false if a quit command is received while
-  // thinking, returns true otherwise.
+  // go() is called when engine receives the "go" UCI command. The
+  // function sets the thinking time and other parameters from the input
+  // string, and then calls think(). Returns false if a quit command
+  // is received while thinking, true otherwise.
 
   bool go(Position& pos, UCIParser& up) {
 
@@ -247,21 +225,27 @@ namespace {
     return think(pos, limits, searchMoves);
   }
 
+
+  // perft() is called when engine receives the "perft" command.
+  // The function calls perft() passing the required search depth
+  // then prints counted nodes and elapsed time.
+
   void perft(Position& pos, UCIParser& up) {
 
-    int depth, tm;
+    int depth, time;
     int64_t n;
 
     if (!(up >> depth))
         return;
 
-    tm = get_system_time();
+    time = get_system_time();
 
     n = perft(pos, depth * ONE_PLY);
 
-    tm = get_system_time() - tm;
+    time = get_system_time() - time;
+
     std::cout << "\nNodes " << n
-              << "\nTime (ms) " << tm
-              << "\nNodes/second " << int(n / (tm / 1000.0)) << std::endl;
+              << "\nTime (ms) " << time
+              << "\nNodes/second " << int(n / (time / 1000.0)) << std::endl;
   }
 }
