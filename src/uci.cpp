@@ -182,8 +182,7 @@ namespace {
 
     string token;
     SearchLimits limits;
-    Move searchMoves[MAX_MOVES] = { MOVE_NONE };
-    Move* cur = searchMoves;
+    Move searchMoves[MAX_MOVES], *cur = searchMoves;
     int time[] = { 0, 0 }, inc[] = { 0, 0 };
 
     while (up >> token)
@@ -209,18 +208,15 @@ namespace {
         else if (token == "movetime")
             up >> limits.maxTime;
         else if (token == "searchmoves")
-        {
             while (up >> token)
                 *cur++ = move_from_uci(pos, token);
-
-            *cur = MOVE_NONE;
-        }
     }
 
-    assert(pos.is_ok());
-
+    *cur = MOVE_NONE;
     limits.time = time[pos.side_to_move()];
     limits.increment = inc[pos.side_to_move()];
+
+    assert(pos.is_ok());
 
     return think(pos, limits, searchMoves);
   }

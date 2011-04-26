@@ -117,11 +117,11 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
 }
 
 
-/// TranspositionTable::retrieve() looks up the current position in the
+/// TranspositionTable::probe() looks up the current position in the
 /// transposition table. Returns a pointer to the TTEntry or NULL if
 /// position is not found.
 
-TTEntry* TranspositionTable::retrieve(const Key posKey) const {
+TTEntry* TranspositionTable::probe(const Key posKey) const {
 
   uint32_t posKey32 = posKey >> 32;
   TTEntry* tte = first_entry(posKey);

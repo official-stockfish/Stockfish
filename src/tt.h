@@ -104,7 +104,7 @@ public:
   void set_size(size_t mbSize);
   void clear();
   void store(const Key posKey, Value v, ValueType type, Depth d, Move m, Value statV, Value kingD);
-  TTEntry* retrieve(const Key posKey) const;
+  TTEntry* probe(const Key posKey) const;
   void new_search();
   TTEntry* first_entry(const Key posKey) const;
   void refresh(const TTEntry* tte) const;
@@ -163,8 +163,8 @@ struct SimpleHash {
 
   virtual ~SimpleHash() { delete [] entries; }
 
-  Entry* find(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
-  void prefetch(Key key) const { ::prefetch((char*)find(key)); }
+  Entry* probe(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
+  void prefetch(Key key) const { ::prefetch((char*)probe(key)); }
 
 protected:
   Entry* entries;

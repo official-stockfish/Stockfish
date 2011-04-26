@@ -75,7 +75,7 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
   assert(pos.is_ok());
 
   Key key = pos.get_pawn_key();
-  PawnInfo* pi = find(key);
+  PawnInfo* pi = probe(key);
 
   // If pi->key matches the position's pawn hash key, it means that we
   // have analysed this pawn structure before, and we can simply return

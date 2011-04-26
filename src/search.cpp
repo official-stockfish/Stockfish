@@ -736,7 +736,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
 
-    tte = TT.retrieve(posKey);
+    tte = TT.probe(posKey);
     ttMove = tte ? tte->move() : MOVE_NONE;
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
@@ -872,7 +872,7 @@ namespace {
         ss->skipNullMove = false;
 
         ttMove = ss->bestMove;
-        tte = TT.retrieve(posKey);
+        tte = TT.probe(posKey);
     }
 
 split_point_start: // At split points actual search starts from here
@@ -1277,7 +1277,7 @@ split_point_start: // At split points actual search starts from here
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
-    tte = TT.retrieve(pos.get_key());
+    tte = TT.probe(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
     if (!PvNode && tte && ok_to_use_TT(tte, ttDepth, beta, ss->ply))
@@ -1987,7 +1987,7 @@ split_point_start: // At split points actual search starts from here
 
     pos.do_move(pv[0], *st++);
 
-    while (   (tte = TT.retrieve(pos.get_key())) != NULL
+    while (   (tte = TT.probe(pos.get_key())) != NULL
            && tte->move() != MOVE_NONE
            && pos.move_is_legal(tte->move())
            && ply < PLY_MAX
@@ -2017,7 +2017,7 @@ split_point_start: // At split points actual search starts from here
 
     do {
         k = pos.get_key();
-        tte = TT.retrieve(k);
+        tte = TT.probe(k);
 
         // Don't overwrite existing correct entries
         if (!tte || tte->move() != pv[ply])

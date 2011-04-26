@@ -98,7 +98,7 @@ MaterialInfoTable::~MaterialInfoTable() { delete funcs; }
 MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
 
   Key key = pos.get_material_key();
-  MaterialInfo* mi = find(key);
+  MaterialInfo* mi = probe(key);
 
   // If mi->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
