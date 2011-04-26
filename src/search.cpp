@@ -201,9 +201,6 @@ namespace {
 
   /// Namespace variables
 
-  // Book
-  Book OpeningBook;
-
   // Root move list
   RootMoveList Rml;
 
@@ -221,7 +218,6 @@ namespace {
   // Skill level adjustment
   int SkillLevel;
   bool SkillLevelEnabled;
-  RKISS RK;
 
   // Node counters, used only by thread[0] but try to keep in different cache
   // lines (64 bytes each) from the heavy multi-thread read accessed variables.
@@ -360,6 +356,8 @@ int64_t perft(Position& pos, Depth depth) {
 
 bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
+  static Book book;
+
   // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = SendSearchedNodes = false;
   NodesSincePoll = 0;
@@ -380,10 +378,10 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   // Look for a book move
   if (Options["OwnBook"].value<bool>())
   {
-      if (Options["Book File"].value<std::string>() != OpeningBook.name())
-          OpeningBook.open(Options["Book File"].value<std::string>());
+      if (Options["Book File"].value<std::string>() != book.name())
+          book.open(Options["Book File"].value<std::string>());
 
-      Move bookMove = OpeningBook.get_move(pos, Options["Best Book Move"].value<bool>());
+      Move bookMove = book.get_move(pos, Options["Best Book Move"].value<bool>());
       if (bookMove != MOVE_NONE)
       {
           if (Limits.ponder)
@@ -1886,6 +1884,8 @@ split_point_start: // At split points actual search starts from here
 
     assert(MultiPV > 1);
 
+    static RKISS rk;
+
     // Rml list is already sorted by pv_score in descending order
     int s;
     int max_s = -VALUE_INFINITE;
@@ -1896,7 +1896,7 @@ split_point_start: // At split points actual search starts from here
 
     // PRNG sequence should be non deterministic
     for (int i = abs(get_system_time() % 50); i > 0; i--)
-        RK.rand<unsigned>();
+        rk.rand<unsigned>();
 
     // Choose best move. For each move's score we add two terms both dependent
     // on wk, one deterministic and bigger for weaker moves, and one random,
@@ -1910,7 +1910,7 @@ split_point_start: // At split points actual search starts from here
             break;
 
         // This is our magical formula
-        s += ((max - s) * wk + var * (RK.rand<unsigned>() % wk)) / 128;
+        s += ((max - s) * wk + var * (rk.rand<unsigned>() % wk)) / 128;
 
         if (s > max_s)
         {
