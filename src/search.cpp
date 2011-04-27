@@ -318,8 +318,8 @@ void init_search() {
 }
 
 
-/// perft() is our utility to verify move generation. All the legal moves up to
-/// given depth are generated and counted and the sum returned.
+/// perft() is our utility to verify move generation. All the leaf nodes up to
+/// the given depth are generated and counted and the sum returned.
 
 int64_t perft(Position& pos, Depth depth) {
 

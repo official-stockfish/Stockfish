@@ -224,7 +224,7 @@ namespace {
 
   // perft() is called when engine receives the "perft" command.
   // The function calls perft() passing the required search depth
-  // then prints counted nodes and elapsed time.
+  // then prints counted leaf nodes and elapsed time.
 
   void perft(Position& pos, UCIParser& up) {
 
