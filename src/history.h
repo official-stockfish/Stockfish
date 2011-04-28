@@ -39,7 +39,7 @@ public:
   Value gain(Piece p, Square to) const;
   void update_gain(Piece p, Square to, Value g);
 
-  static const Value MaxValue = Value(1 << 29); // To avoid an overflow
+  static const Value MaxValue = Value(2000);
 
 private:
   Value history[16][64];  // [piece][to_square]
