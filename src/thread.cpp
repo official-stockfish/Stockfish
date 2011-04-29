@@ -24,32 +24,32 @@
 
 ThreadsManager Threads; // Global object definition
 
-namespace {
+namespace { extern "C" {
 
- // init_thread() is the function which is called when a new thread is
- // launched. It simply calls the idle_loop() function with the supplied
- // threadID. There are two versions of this function; one for POSIX
- // threads and one for Windows threads.
+ // start_routine() is the C function which is called when a new thread
+ // is launched. It simply calls idle_loop() with the supplied threadID.
+ // There are two versions of this function; one for POSIX threads and
+ // one for Windows threads.
 
-#if !defined(_MSC_VER)
+#if defined(_MSC_VER)
 
-  void* init_thread(void* threadID) {
-
-    Threads.idle_loop(*(int*)threadID, NULL);
-    return NULL;
-  }
-
-#else
-
-  DWORD WINAPI init_thread(LPVOID threadID) {
+  DWORD WINAPI start_routine(LPVOID threadID) {
 
     Threads.idle_loop(*(int*)threadID, NULL);
     return 0;
   }
 
+#else
+
+  void* start_routine(void* threadID) {
+
+    Threads.idle_loop(*(int*)threadID, NULL);
+    return NULL;
+  }
+
 #endif
 
-}
+} }
 
 
 // wake_up() wakes up the thread, normally at the beginning of the search or,
@@ -115,12 +115,12 @@ void ThreadsManager::read_uci_options() {
 }
 
 
-// init_threads() is called during startup. Initializes locks and condition
-// variables and launches all threads sending them immediately to sleep.
+// init() is called during startup. Initializes locks and condition variables
+// and launches all threads sending them immediately to sleep.
 
 void ThreadsManager::init() {
 
-  int arg[MAX_THREADS];
+  int threadID[MAX_THREADS];
 
   // This flag is needed to properly end the threads when program exits
   allThreadsShouldExit = false;
@@ -148,14 +148,14 @@ void ThreadsManager::init() {
   for (int i = 1; i < MAX_THREADS; i++)
   {
       threads[i].state = Thread::INITIALIZING;
-      arg[i] = i;
+      threadID[i] = i;
 
-#if !defined(_MSC_VER)
-      pthread_t pthread[1];
-      bool ok = (pthread_create(pthread, NULL, init_thread, (void*)(&arg[i])) == 0);
-      pthread_detach(pthread[0]);
+#if defined(_MSC_VER)
+      bool ok = (CreateThread(NULL, 0, start_routine, (LPVOID)&threadID[i], 0, NULL) != NULL);
 #else
-      bool ok = (CreateThread(NULL, 0, init_thread, (LPVOID)(&arg[i]), 0, NULL) != NULL);
+      pthread_t pthreadID;
+      bool ok = (pthread_create(&pthreadID, NULL, start_routine, (void*)&threadID[i]) == 0);
+      pthread_detach(pthreadID);
 #endif
       if (!ok)
       {
@@ -169,8 +169,7 @@ void ThreadsManager::init() {
 }
 
 
-// exit_threads() is called when the program exits. It makes all the
-// helper threads exit cleanly.
+// exit() is called to cleanly exit the threads when the program finishes
 
 void ThreadsManager::exit() {
 
