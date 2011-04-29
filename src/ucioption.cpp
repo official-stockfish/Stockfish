@@ -68,39 +68,39 @@ OptionsMap::OptionsMap() {
 
   OptionsMap& o = *this;
 
-  o["Use Search Log"] = Option(false);
-  o["Search Log Filename"] = Option("SearchLog.txt");
-  o["Book File"] = Option("book.bin");
-  o["Best Book Move"] = Option(false);
-  o["Mobility (Middle Game)"] = Option(100, 0, 200);
-  o["Mobility (Endgame)"] = Option(100, 0, 200);
-  o["Pawn Structure (Middle Game)"] = Option(100, 0, 200);
-  o["Pawn Structure (Endgame)"] = Option(100, 0, 200);
-  o["Passed Pawns (Middle Game)"] = Option(100, 0, 200);
-  o["Passed Pawns (Endgame)"] = Option(100, 0, 200);
-  o["Space"] = Option(100, 0, 200);
-  o["Aggressiveness"] = Option(100, 0, 200);
-  o["Cowardice"] = Option(100, 0, 200);
-  o["Minimum Split Depth"] = Option(4, 4, 7);
-  o["Maximum Number of Threads per Split Point"] = Option(5, 4, 8);
-  o["Threads"] = Option(1, 1, MAX_THREADS);
-  o["Use Sleeping Threads"] = Option(true);
-  o["Hash"] = Option(32, 4, 8192);
-  o["Clear Hash"] = Option(false, "button");
-  o["Ponder"] = Option(true);
-  o["OwnBook"] = Option(true);
-  o["MultiPV"] = Option(1, 1, 500);
-  o["Skill level"] = Option(20, 0, 20);
-  o["Emergency Move Horizon"] = Option(40, 0, 50);
-  o["Emergency Base Time"] = Option(200, 0, 30000);
-  o["Emergency Move Time"] = Option(70, 0, 5000);
-  o["Minimum Thinking Time"] = Option(20, 0, 5000);
-  o["UCI_Chess960"] = Option(false);
-  o["UCI_AnalyseMode"] = Option(false);
+  o["Use Search Log"] = UCIOption(false);
+  o["Search Log Filename"] = UCIOption("SearchLog.txt");
+  o["Book File"] = UCIOption("book.bin");
+  o["Best Book Move"] = UCIOption(false);
+  o["Mobility (Middle Game)"] = UCIOption(100, 0, 200);
+  o["Mobility (Endgame)"] = UCIOption(100, 0, 200);
+  o["Pawn Structure (Middle Game)"] = UCIOption(100, 0, 200);
+  o["Pawn Structure (Endgame)"] = UCIOption(100, 0, 200);
+  o["Passed Pawns (Middle Game)"] = UCIOption(100, 0, 200);
+  o["Passed Pawns (Endgame)"] = UCIOption(100, 0, 200);
+  o["Space"] = UCIOption(100, 0, 200);
+  o["Aggressiveness"] = UCIOption(100, 0, 200);
+  o["Cowardice"] = UCIOption(100, 0, 200);
+  o["Minimum Split Depth"] = UCIOption(4, 4, 7);
+  o["Maximum Number of Threads per Split Point"] = UCIOption(5, 4, 8);
+  o["Threads"] = UCIOption(1, 1, MAX_THREADS);
+  o["Use Sleeping Threads"] = UCIOption(true);
+  o["Hash"] = UCIOption(32, 4, 8192);
+  o["Clear Hash"] = UCIOption(false, "button");
+  o["Ponder"] = UCIOption(true);
+  o["OwnBook"] = UCIOption(true);
+  o["MultiPV"] = UCIOption(1, 1, 500);
+  o["Skill level"] = UCIOption(20, 0, 20);
+  o["Emergency Move Horizon"] = UCIOption(40, 0, 50);
+  o["Emergency Base Time"] = UCIOption(200, 0, 30000);
+  o["Emergency Move Time"] = UCIOption(70, 0, 5000);
+  o["Minimum Thinking Time"] = UCIOption(20, 0, 5000);
+  o["UCI_Chess960"] = UCIOption(false);
+  o["UCI_AnalyseMode"] = UCIOption(false);
 
   // Set some SMP parameters accordingly to the detected CPU count
-  Option& thr = o["Threads"];
-  Option& msd = o["Minimum Split Depth"];
+  UCIOption& thr = o["Threads"];
+  UCIOption& msd = o["Minimum Split Depth"];
 
   thr.defaultValue = thr.currentValue = stringify(cpu_count());
 
@@ -120,7 +120,7 @@ string OptionsMap::print_all() const {
       for (OptionsMap::const_iterator it = begin(); it != end(); ++it)
           if (it->second.idx == i)
           {
-              const Option& o = it->second;
+              const UCIOption& o = it->second;
               s << "\noption name " << it->first << " type " << o.type;
 
               if (o.type != "button")
@@ -137,13 +137,13 @@ string OptionsMap::print_all() const {
 
 /// Option class c'tors
 
-Option::Option(const char* def) : type("string"), minValue(0), maxValue(0), idx(Options.size())
+UCIOption::UCIOption(const char* def) : type("string"), minValue(0), maxValue(0), idx(Options.size())
 { defaultValue = currentValue = def; }
 
-Option::Option(bool def, string t) : type(t), minValue(0), maxValue(0), idx(Options.size())
+UCIOption::UCIOption(bool def, string t) : type(t), minValue(0), maxValue(0), idx(Options.size())
 { defaultValue = currentValue = (def ? "true" : "false"); }
 
-Option::Option(int def, int minv, int maxv) : type("spin"), minValue(minv), maxValue(maxv), idx(Options.size())
+UCIOption::UCIOption(int def, int minv, int maxv) : type("spin"), minValue(minv), maxValue(maxv), idx(Options.size())
 { defaultValue = currentValue = stringify(def); }
 
 
@@ -151,7 +151,7 @@ Option::Option(int def, int minv, int maxv) : type("spin"), minValue(minv), maxV
 /// the GUI to check for option's limits, but we could receive the new value
 /// directly from the user by teminal window. So let's check the bounds anyway.
 
-void Option::set_value(const string& v) {
+void UCIOption::set_value(const string& v) {
 
   assert(!type.empty());
 

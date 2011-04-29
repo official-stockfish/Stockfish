@@ -25,12 +25,12 @@
 #include <map>
 #include <string>
 
-class Option {
+class UCIOption {
 public:
-  Option() {} // To be used in a std::map
-  Option(const char* defaultValue);
-  Option(bool defaultValue, std::string type = "check");
-  Option(int defaultValue, int minValue, int maxValue);
+  UCIOption() {} // To be used in a std::map
+  UCIOption(const char* defaultValue);
+  UCIOption(bool defaultValue, std::string type = "check");
+  UCIOption(int defaultValue, int minValue, int maxValue);
 
   void set_value(const std::string& v);
   template<typename T> T value() const;
@@ -51,7 +51,7 @@ struct CaseInsensitiveLess {
 
 
 /// Our options container is actually a map with a customized c'tor
-class OptionsMap : public std::map<std::string, Option, CaseInsensitiveLess> {
+class OptionsMap : public std::map<std::string, UCIOption, CaseInsensitiveLess> {
 public:
   OptionsMap();
   std::string print_all() const;
@@ -62,21 +62,21 @@ extern OptionsMap Options;
 
 /// Option::value() definition and specializations
 template<typename T>
-T Option::value() const {
+T UCIOption::value() const {
 
   assert(type == "spin");
   return T(atoi(currentValue.c_str()));
 }
 
 template<>
-inline std::string Option::value<std::string>() const {
+inline std::string UCIOption::value<std::string>() const {
 
   assert(type == "string");
   return currentValue;
 }
 
 template<>
-inline bool Option::value<bool>() const {
+inline bool UCIOption::value<bool>() const {
 
   assert(type == "check" || type == "button");
   return currentValue == "true";
