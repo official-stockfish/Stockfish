@@ -623,7 +623,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
 bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
 {
-  assert(is_check());
+  assert(in_check());
 
   Color us = side_to_move();
   Square from = move_from(m);
@@ -750,18 +750,18 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
       return false;
 
   // The move is pseudo-legal, check if it is also legal
-  return is_check() ? pl_move_is_evasion(m, pinned) : pl_move_is_legal(m, pinned);
+  return in_check() ? pl_move_is_evasion(m, pinned) : pl_move_is_legal(m, pinned);
 }
 
 
-/// Position::move_is_check() tests whether a pseudo-legal move is a check
+/// Position::move_gives_check() tests whether a pseudo-legal move is a check
 
-bool Position::move_is_check(Move m) const {
+bool Position::move_gives_check(Move m) const {
 
-  return move_is_check(m, CheckInfo(*this));
+  return move_gives_check(m, CheckInfo(*this));
 }
 
-bool Position::move_is_check(Move m, const CheckInfo& ci) const {
+bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   assert(is_ok());
   assert(move_is_ok(m));
@@ -883,7 +883,7 @@ void Position::do_setup_move(Move m) {
 void Position::do_move(Move m, StateInfo& newSt) {
 
   CheckInfo ci(*this);
-  do_move(m, newSt, ci, move_is_check(m, ci));
+  do_move(m, newSt, ci, move_gives_check(m, ci));
 }
 
 void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveIsCheck) {
@@ -1430,7 +1430,7 @@ void Position::undo_castle_move(Move m) {
 void Position::do_null_move(StateInfo& backupSt) {
 
   assert(is_ok());
-  assert(!is_check());
+  assert(!in_check());
 
   // Back up the information necessary to undo the null move to the supplied
   // StateInfo object.
@@ -1467,7 +1467,7 @@ void Position::do_null_move(StateInfo& backupSt) {
 void Position::undo_null_move() {
 
   assert(is_ok());
-  assert(!is_check());
+  assert(!in_check());
 
   // Restore information from the our backup StateInfo object
   StateInfo* backupSt = st->previous;
@@ -1798,7 +1798,7 @@ bool Position::is_draw() const {
 bool Position::is_mate() const {
 
   MoveStack moves[MAX_MOVES];
-  return is_check() && generate<MV_LEGAL>(*this, moves) == moves;
+  return in_check() && generate<MV_LEGAL>(*this, moves) == moves;
 }
 
 

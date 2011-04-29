@@ -168,7 +168,7 @@ public:
 
   // Checking pieces and under check information
   Bitboard checkers() const;
-  bool is_check() const;
+  bool in_check() const;
 
   // Piece lists
   Square piece_list(Color c, PieceType pt, int index) const;
@@ -186,8 +186,8 @@ public:
   bool pl_move_is_evasion(Move m, Bitboard pinned) const;
   bool move_is_legal(const Move m) const;
   bool move_is_legal(const Move m, Bitboard pinned) const;
-  bool move_is_check(Move m) const;
-  bool move_is_check(Move m, const CheckInfo& ci) const;
+  bool move_gives_check(Move m) const;
+  bool move_gives_check(Move m, const CheckInfo& ci) const;
   bool move_is_capture(Move m) const;
   bool move_is_capture_or_promotion(Move m) const;
   bool move_is_passed_pawn_push(Move m) const;
@@ -454,7 +454,7 @@ inline Bitboard Position::checkers() const {
   return st->checkersBB;
 }
 
-inline bool Position::is_check() const {
+inline bool Position::in_check() const {
   return st->checkersBB != EmptyBoardBB;
 }
 

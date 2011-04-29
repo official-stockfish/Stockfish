@@ -68,5 +68,4 @@ private:
 template<int n> inline uint64_t Book::get_int() { return 256 * get_int<n-1>() + bookFile.get(); }
 template<> inline uint64_t Book::get_int<1>() { return bookFile.get(); }
 
-
 #endif // !defined(BOOK_H_INCLUDED)

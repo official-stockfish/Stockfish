@@ -65,7 +65,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
   pinned = p.pinned_pieces(pos.side_to_move());
 
-  if (p.is_check())
+  if (p.in_check())
   {
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
       phasePtr = EvasionTable;
@@ -99,7 +99,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
 
   pinned = p.pinned_pieces(pos.side_to_move());
 
-  if (p.is_check())
+  if (p.in_check())
       phasePtr = EvasionTable;
   else if (d >= DEPTH_QS_CHECKS)
       phasePtr = QsearchWithChecksTable;
@@ -157,7 +157,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_EVASIONS:
-      assert(pos.is_check());
+      assert(pos.in_check());
       lastMove = generate<MV_EVASION>(pos, moves);
       score_evasions();
       return;

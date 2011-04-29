@@ -151,7 +151,7 @@ template<MoveType Type>
 MoveStack* generate(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
-  assert(!pos.is_check());
+  assert(!pos.in_check());
 
   Color us = pos.side_to_move();
   Bitboard target;
@@ -202,7 +202,7 @@ template<>
 MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
-  assert(!pos.is_check());
+  assert(!pos.in_check());
 
   Bitboard b, dc;
   Square from;
@@ -243,7 +243,7 @@ template<>
 MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
-  assert(pos.is_check());
+  assert(pos.in_check());
 
   Bitboard b, target;
   Square from, checksq;
@@ -311,7 +311,7 @@ MoveStack* generate<MV_PSEUDO_LEGAL>(const Position& pos, MoveStack* mlist) {
 
   assert(pos.is_ok());
 
-  return pos.is_check() ? generate<MV_EVASION>(pos, mlist)
+  return pos.in_check() ? generate<MV_EVASION>(pos, mlist)
                         : generate<MV_NON_EVASION>(pos, mlist);
 }
 

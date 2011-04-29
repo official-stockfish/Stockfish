@@ -292,7 +292,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   assert(pos.is_ok());
   assert(pos.thread() >= 0 && pos.thread() < MAX_THREADS);
-  assert(!pos.is_check());
+  assert(!pos.in_check());
 
   // Initialize value by reading the incrementally updated scores included
   // in the position object (material + piece square tables).
