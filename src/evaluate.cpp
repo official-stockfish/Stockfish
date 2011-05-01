@@ -896,38 +896,39 @@ namespace {
   }
 
 
-  // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides
+  // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides, this is quite
+  // conservative and returns a winning score only when we are very sure that the pawn is winning.
 
   template<bool HasPopCnt>
   Score evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei) {
 
     const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
 
-    Bitboard b1, b2, queeningPath, candidates, supBB, sacBB;
-    Square s1, s2, queeningSquare, supSq, sacSq;
+    Bitboard b, b2, blockers, supporters, queeningPath, candidates;
+    Square s, blockSq, queeningSquare;
     Color c, winnerSide, loserSide;
     bool pathDefended, opposed;
-    int pliesToGo, movesToGo, oppMovesToGo;
+    int pliesToGo, movesToGo, oppMovesToGo, sacptg, blockersCount, minKingDist, kingptg, d;
     int pliesToQueen[] = { 256, 256 };
 
-    // Step 1. Hunt for unstoppable pawns. If we find at least one, record how many plies
-    // are required for promotion
+    // Step 1. Hunt for unstoppable passed pawns. If we find at least one,
+    // record how many plies are required for promotion.
     for (c = WHITE; c <= BLACK; c++)
     {
         // Skip if other side has non-pawn pieces
         if (pos.non_pawn_material(opposite_color(c)))
             continue;
 
-        b1 = ei.pi->passed_pawns(c);
+        b = ei.pi->passed_pawns(c);
 
-        while (b1)
+        while (b)
         {
-            s1 = pop_1st_bit(&b1);
-            queeningSquare = relative_square(c, make_square(square_file(s1), RANK_8));
-            queeningPath = squares_in_front_of(c, s1);
+            s = pop_1st_bit(&b);
+            queeningSquare = relative_square(c, make_square(square_file(s), RANK_8));
+            queeningPath = squares_in_front_of(c, s);
 
-            // Compute plies from queening and check direct advancement
-            movesToGo = rank_distance(s1, queeningSquare) - int(relative_rank(c, s1) == RANK_2);
+            // Compute plies to queening and check direct advancement
+            movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(c, s) == RANK_2);
             oppMovesToGo = square_distance(pos.king_square(opposite_color(c)), queeningSquare) - int(c != pos.side_to_move());
             pathDefended = ((ei.attackedBy[c][0] & queeningPath) == queeningPath);
 
@@ -946,9 +947,7 @@ namespace {
                 continue;
 
             pliesToGo = 2 * movesToGo - int(c == pos.side_to_move());
-
-            if (pliesToGo < pliesToQueen[c])
-                pliesToQueen[c] = pliesToGo;
+            pliesToQueen[c] = Min(pliesToQueen[c], pliesToGo);
         }
     }
 
@@ -961,91 +960,89 @@ namespace {
     loserSide = opposite_color(winnerSide);
 
     // Step 3. Can the losing side possibly create a new passed pawn and thus prevent the loss?
-    // We collect the potential candidates in potentialBB.
-    b1 = candidates = pos.pieces(PAWN, loserSide);
+    b = candidates = pos.pieces(PAWN, loserSide);
 
-    while (b1)
+    while (b)
     {
-        s1 = pop_1st_bit(&b1);
+        s = pop_1st_bit(&b);
 
         // Compute plies from queening
-        queeningSquare = relative_square(loserSide, make_square(square_file(s1), RANK_8));
-        movesToGo = rank_distance(s1, queeningSquare) - int(relative_rank(loserSide, s1) == RANK_2);
+        queeningSquare = relative_square(loserSide, make_square(square_file(s), RANK_8));
+        movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 
         // Check if (without even considering any obstacles) we're too far away or doubled
         if (   pliesToQueen[winnerSide] + 3 <= pliesToGo
-            || (squares_in_front_of(loserSide, s1) & pos.pieces(PAWN, loserSide)))
-            clear_bit(&candidates, s1);
+            || (squares_in_front_of(loserSide, s) & pos.pieces(PAWN, loserSide)))
+            clear_bit(&candidates, s);
     }
 
     // If any candidate is already a passed pawn it _may_ promote in time. We give up.
     if (candidates & ei.pi->passed_pawns(loserSide))
         return SCORE_ZERO;
 
-    // Step 4. Check new passed pawn creation through king capturing and sacrifices
-    b1 = candidates;
+    // Step 4. Check new passed pawn creation through king capturing and pawn sacrifices
+    b = candidates;
 
-    while (b1)
+    while (b)
     {
-        s1 = pop_1st_bit(&b1);
+        s = pop_1st_bit(&b);
+        sacptg = blockersCount = 0;
+        minKingDist = kingptg = 256;
 
         // Compute plies from queening
-        queeningSquare = relative_square(loserSide, make_square(square_file(s1), RANK_8));
-        movesToGo = rank_distance(s1, queeningSquare) - int(relative_rank(loserSide, s1) == RANK_2);
+        queeningSquare = relative_square(loserSide, make_square(square_file(s), RANK_8));
+        movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 
-        // Generate list of obstacles
-        opposed = squares_in_front_of(loserSide, s1) & pos.pieces(PAWN, winnerSide);
-        b2 = passed_pawn_mask(loserSide, s1) & pos.pieces(PAWN, winnerSide);
+        // Generate list of blocking pawns and supporters
+        supporters = neighboring_files_bb(s) & candidates;
+        opposed = squares_in_front_of(loserSide, s) & pos.pieces(PAWN, winnerSide);
+        blockers = passed_pawn_mask(loserSide, s) & pos.pieces(PAWN, winnerSide);
 
-        assert(b2);
+        assert(blockers);
 
-        // How many plies does it take to remove all the obstacles?
-        int sacptg = 0;
-        int realObsCount = 0;
-        int minKingDist = 256;
-        int kingptg = 256;
-
-        while (b2)
+        // How many plies does it take to remove all the blocking pawns?
+        while (blockers)
         {
-            s2 = pop_1st_bit(&b2);
+            blockSq = pop_1st_bit(&blockers);
             movesToGo = 256;
 
             // Check pawns that can give support to overcome obstacle, for instance
             // black pawns: a4, b4 white: b2 then pawn in b4 is giving support.
             if (!opposed)
             {
-                supBB = in_front_bb(winnerSide, s2 + pawn_push(winnerSide)) & neighboring_files_bb(s1) & candidates;
+                b2 = supporters & in_front_bb(winnerSide, blockSq + pawn_push(winnerSide));
 
-                while (supBB) // This while-loop could be replaced with supSq = LSB/MSB(supBB) (depending on color)
+                while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
                 {
-                    supSq = pop_1st_bit(&supBB);
-                    movesToGo = Min(movesToGo, square_distance(s2, supSq) - 2);
+                    d = square_distance(blockSq, pop_1st_bit(&b2)) - 2;
+                    movesToGo = Min(movesToGo, d);
                 }
             }
 
-            // Check pawns that can be sacrificed
-            sacBB = passed_pawn_mask(winnerSide, s2) & neighboring_files_bb(s2) & candidates & ~(1ULL << s1);
+            // Check pawns that can be sacrificed against the blocking pawn
+            b2 = attack_span_mask(winnerSide, blockSq) & candidates & ~(1ULL << s);
 
-            while (sacBB) // This while-loop could be replaced with sacSq = LSB/MSB(sacBB) (depending on color)
+            while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
             {
-                sacSq = pop_1st_bit(&sacBB);
-                movesToGo = Min(movesToGo, square_distance(s2, sacSq) - 2);
+                d = square_distance(blockSq, pop_1st_bit(&b2)) - 2;
+                movesToGo = Min(movesToGo, d);
             }
 
-            // Good, obstacle can be destroyed with an immediate pawn sacrifice,
+            // If obstacle can be destroyed with an immediate pawn exchange / sacrifice,
             // it's not a real obstacle and we have nothing to add to pliesToGo.
             if (movesToGo <= 0)
                 continue;
 
-            // Plies needed to sacrifice the pawn
+            // Plies needed to sacrifice against all the blocking pawns
             sacptg += movesToGo * 2;
-            realObsCount++;
+            blockersCount++;
 
-            // Plies needed for the king to capture opposing pawn
-            minKingDist = Min(minKingDist, square_distance(pos.king_square(loserSide), s2));
-            kingptg = (minKingDist + realObsCount) * 2;
+            // Plies needed for the king to capture all the blocking pawns
+            d = square_distance(pos.king_square(loserSide), blockSq);
+            minKingDist = Min(minKingDist, d);
+            kingptg = (minKingDist + blockersCount) * 2;
         }
 
         // Check if pawn sacrifice plan _may_ save the day
