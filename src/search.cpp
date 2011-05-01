@@ -394,7 +394,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
   // Read UCI options
   UCIMultiPV = Options["MultiPV"].value<int>();
-  SkillLevel = Options["Skill level"].value<int>();
+  SkillLevel = Options["Skill Level"].value<int>();
 
   read_evaluation_uci_options(pos.side_to_move());
   Threads.read_uci_options();

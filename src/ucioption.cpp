@@ -90,7 +90,7 @@ OptionsMap::OptionsMap() {
   o["Ponder"] = UCIOption(true);
   o["OwnBook"] = UCIOption(true);
   o["MultiPV"] = UCIOption(1, 1, 500);
-  o["Skill level"] = UCIOption(20, 0, 20);
+  o["Skill Level"] = UCIOption(20, 0, 20);
   o["Emergency Move Horizon"] = UCIOption(40, 0, 50);
   o["Emergency Base Time"] = UCIOption(200, 0, 30000);
   o["Emergency Move Time"] = UCIOption(70, 0, 5000);
