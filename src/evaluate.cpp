@@ -1014,7 +1014,7 @@ namespace {
 
             // Check pawns that can give support to overcome obstacle, for instance
             // black pawns: a4, b4 white: b2 then pawn in b4 is giving support.
-            if (!opposed && square_file(s1) != square_file(s2))
+            if (!opposed)
             {
                 supBB = in_front_bb(winnerSide, s2 + pawn_push(winnerSide)) & neighboring_files_bb(s1) & candidates;
 
