@@ -61,7 +61,14 @@ namespace {
     S(34,68), S(83,166), S(0, 0), S( 0, 0)
   };
 
+  const Score PawnStructureWeight = S(233, 201);
+
   #undef S
+
+  inline Score apply_weight(Score v, Score w) {
+    return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
+                      (int(eg_value(v)) * eg_value(w)) / 0x100);
+  }
 }
 
 
@@ -95,9 +102,12 @@ PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
   pi->pawnAttacks[WHITE] = ((wPawns << 9) & ~FileABB) | ((wPawns << 7) & ~FileHBB);
   pi->pawnAttacks[BLACK] = ((bPawns >> 7) & ~FileABB) | ((bPawns >> 9) & ~FileHBB);
 
-  // Evaluate pawns for both colors
+  // Evaluate pawns for both colors and weight the result
   pi->value =  evaluate_pawns<WHITE>(pos, wPawns, bPawns, pi)
              - evaluate_pawns<BLACK>(pos, bPawns, wPawns, pi);
+
+  pi->value = apply_weight(pi->value, PawnStructureWeight);
+
   return pi;
 }
 

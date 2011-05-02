@@ -74,8 +74,6 @@ OptionsMap::OptionsMap() {
   o["Best Book Move"] = UCIOption(false);
   o["Mobility (Middle Game)"] = UCIOption(100, 0, 200);
   o["Mobility (Endgame)"] = UCIOption(100, 0, 200);
-  o["Pawn Structure (Middle Game)"] = UCIOption(100, 0, 200);
-  o["Pawn Structure (Endgame)"] = UCIOption(100, 0, 200);
   o["Passed Pawns (Middle Game)"] = UCIOption(100, 0, 200);
   o["Passed Pawns (Endgame)"] = UCIOption(100, 0, 200);
   o["Space"] = UCIOption(100, 0, 200);

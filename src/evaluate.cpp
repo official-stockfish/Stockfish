@@ -75,7 +75,7 @@ namespace {
   const int GrainSize = 8;
 
   // Evaluation weights, initialized from UCI options
-  enum { Mobility, PawnStructure, PassedPawns, Space, KingDangerUs, KingDangerThem };
+  enum { Mobility, PassedPawns, Space, KingDangerUs, KingDangerThem };
   Score Weights[6];
 
   typedef Value V;
@@ -88,7 +88,7 @@ namespace {
   //
   // Values modified by Joona Kiiski
   const Score WeightsInternal[] = {
-      S(248, 271), S(233, 201), S(252, 259), S(46, 0), S(247, 0), S(259, 0)
+      S(248, 271), S(252, 259), S(46, 0), S(247, 0), S(259, 0)
   };
 
   // MobilityBonus[PieceType][attacked] contains mobility bonuses for middle and
@@ -301,7 +301,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   // Probe the pawn hash table
   ei.pi = Threads[pos.thread()].pawnTable.get_pawn_info(pos);
-  score += apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]);
+  score += ei.pi->pawns_value();
 
   // Initialize attack and king safety bitboards
   init_eval_info<WHITE, HasPopCnt>(pos, ei);
@@ -371,7 +371,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   {
       trace_add(PST, pos.value());
       trace_add(IMBALANCE, ei.mi->material_value());
-      trace_add(PAWN, apply_weight(ei.pi->pawns_value(), Weights[PawnStructure]));
+      trace_add(PAWN, ei.pi->pawns_value());
       trace_add(MOBILITY, apply_weight(mobilityWhite, Weights[Mobility]), apply_weight(mobilityBlack, Weights[Mobility]));
       trace_add(THREAT, evaluate_threats<WHITE>(pos, ei), evaluate_threats<BLACK>(pos, ei));
       trace_add(PASSED, evaluate_passed_pawns<WHITE>(pos, ei), evaluate_passed_pawns<BLACK>(pos, ei));
@@ -405,7 +405,6 @@ void read_evaluation_uci_options(Color us) {
   const int kingDangerThem = (us == WHITE ? KingDangerThem : KingDangerUs);
 
   Weights[Mobility]       = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightsInternal[Mobility]);
-  Weights[PawnStructure]  = weight_option("Pawn Structure (Middle Game)", "Pawn Structure (Endgame)", WeightsInternal[PawnStructure]);
   Weights[PassedPawns]    = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightsInternal[PassedPawns]);
   Weights[Space]          = weight_option("Space", "Space", WeightsInternal[Space]);
   Weights[kingDangerUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingDangerUs]);
@@ -1076,8 +1075,8 @@ namespace {
   // apply_weight() applies an evaluation weight to a value trying to prevent overflow
 
   inline Score apply_weight(Score v, Score w) {
-      return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
-                        (int(eg_value(v)) * eg_value(w)) / 0x100);
+    return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
+                      (int(eg_value(v)) * eg_value(w)) / 0x100);
   }
 
 
