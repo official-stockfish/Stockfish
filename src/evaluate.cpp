@@ -924,7 +924,7 @@ namespace {
             // Opponent king cannot block because path is defended and position
             // is not in check. So only friendly pieces can be blockers.
             assert(!pos.in_check());
-            assert(queeningPath & pos.occupied_squares() == queeningPath & pos.pieces_of_color(c));
+            assert((queeningPath & pos.occupied_squares()) == (queeningPath & pos.pieces_of_color(c)));
 
             // Add moves needed to free the path from friendly pieces and retest condition
             movesToGo += count_1s<Max15>(queeningPath & pos.pieces_of_color(c));
