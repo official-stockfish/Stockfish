@@ -8,7 +8,7 @@ Chess Partner, or Fritz) in order to be used comfortably.  Read the
 documentation for your GUI of choice for information about how to use
 Stockfish with your GUI.
 
-This version of Stockfish supports up to 16 CPUs, but has not been
+This version of Stockfish supports up to 32 CPUs, but has not been
 tested thoroughly with more than 4.  The program tries to detect the
 number of CPUs on your computer and set the number of search threads
 accordingly, but please be aware that the detection is not always
@@ -60,9 +60,9 @@ Stockfish has POPCNT instruction runtime detection and support. This can
 give an extra speed on Core i7 or similar systems. To enable this feature
 compile with 'make icc-profile-popcnt'
 
-On 64 bit Unix-like systems the 'bsfq' assembly instruction will be used
-for bit counting. Detection is automatic at compile time, but in case you
-experience compile problems you can comment out #define USE_BSFQ line in types.h
+On 64 bit systems the 'bsfq' assembly instruction will be used for bit
+counting. Detection is automatic at compile time, but in case you experience
+compile problems you can comment out #define USE_BSFQ line in types.h
 
 In general is recommended to run 'make help' to see a list of make targets
 with corresponding descriptions.
