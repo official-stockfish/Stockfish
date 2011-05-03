@@ -54,7 +54,7 @@ using namespace std;
 /// current date (in the format YYMMDD) is used as a version number.
 
 static const string AppName = "Stockfish";
-static const string EngineVersion = "";
+static const string EngineVersion = "2.1";
 static const string AppTag  = "";
 
 
