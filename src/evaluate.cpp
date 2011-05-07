@@ -142,9 +142,9 @@ namespace {
     { S(0, 0), S(15, 39), S(15, 39), S(15, 39), S(15, 39), S( 0,  0) }  // QUEEN
   };
 
-  // ThreatedByPawnPenalty[PieceType] contains a penalty according to which
+  // ThreatenedByPawnPenalty[PieceType] contains a penalty according to which
   // piece type is attacked by an enemy pawn.
-  const Score ThreatedByPawnPenalty[] = {
+  const Score ThreatenedByPawnPenalty[] = {
     S(0, 0), S(0, 0), S(56, 70), S(56, 70), S(76, 99), S(86, 118)
   };
 
@@ -524,7 +524,7 @@ namespace {
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (bit_is_set(ei.attackedBy[Them][PAWN], s))
-            score -= ThreatedByPawnPenalty[Piece];
+            score -= ThreatenedByPawnPenalty[Piece];
 
         // Bishop and knight outposts squares
         if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Us))
