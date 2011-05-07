@@ -502,6 +502,18 @@ int Book::find_entry(uint64_t key) {
 }
 
 
+/// Book::get_number() reads sizeof(T) chars from the file's binary byte
+/// stream and converts them in a number of type T.
+template<typename T>
+void Book::get_number(T& n) {
+
+  n = 0;
+
+  for (size_t i = 0; i < sizeof(T); i++)
+      n = (n << 8) + (T)bookFile.get();
+}
+
+
 /// Book::read_entry() takes an integer index, and returns the BookEntry
 /// at the given index in the book file.
 
@@ -514,7 +526,10 @@ BookEntry Book::read_entry(int idx) {
 
   bookFile.seekg(idx * sizeof(BookEntry), ios_base::beg);
 
-  *this >> e.key >> e.move >> e.count >> e.learn;
+  get_number(e.key);
+  get_number(e.move);
+  get_number(e.count);
+  get_number(e.learn);
 
   if (!bookFile.good())
   {

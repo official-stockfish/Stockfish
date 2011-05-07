@@ -48,12 +48,7 @@ public:
   const std::string name() const { return bookName; }
 
 private:
-  // read n chars from the file stream and converts them in an
-  // integer number. Integers are stored with highest byte first.
-  template<int n> uint64_t get_int();
-
-  template<typename T>
-  Book& operator>>(T& n) { n = (T)get_int<sizeof(T)>(); return *this; }
+  template<typename T> void get_number(T& n);
 
   BookEntry read_entry(int idx);
   int find_entry(uint64_t key);
@@ -63,9 +58,5 @@ private:
   int bookSize;
   RKISS RKiss;
 };
-
-// Yes, we indulge a bit here ;-)
-template<int n> inline uint64_t Book::get_int() { return 256 * get_int<n-1>() + bookFile.get(); }
-template<> inline uint64_t Book::get_int<1>() { return bookFile.get(); }
 
 #endif // !defined(BOOK_H_INCLUDED)
