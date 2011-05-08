@@ -82,7 +82,7 @@ OptionsMap::OptionsMap() {
   o["Minimum Split Depth"] = UCIOption(4, 4, 7);
   o["Maximum Number of Threads per Split Point"] = UCIOption(5, 4, 8);
   o["Threads"] = UCIOption(1, 1, MAX_THREADS);
-  o["Use Sleeping Threads"] = UCIOption(false);
+  o["Use Sleeping Threads"] = UCIOption(true);
   o["Hash"] = UCIOption(32, 4, 8192);
   o["Clear Hash"] = UCIOption(false, "button");
   o["Ponder"] = UCIOption(true);
