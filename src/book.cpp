@@ -35,7 +35,7 @@ using namespace std;
 namespace {
 
   // Random numbers from PolyGlot, used to compute book hash keys
-  const uint64_t Random64[781] = {
+  const Key PolyGlotRandoms[781] = {
     0x9D39247E33776D41ULL, 0x2AF7398005AAA5C7ULL, 0x44DB015024623547ULL,
     0x9C15F73E62A76AE2ULL, 0x75834465489C0C89ULL, 0x3290AC3A203001BFULL,
     0x0FBBAD1F61042279ULL, 0xE83A908FF2FB60CAULL, 0x0D7E765D58755C10ULL,
@@ -299,18 +299,19 @@ namespace {
     0xF8D626AAAF278509ULL
   };
 
-  // Indices to the Random64[] array
-  const int PieceIdx     = 0;
-  const int CastleIdx    = 768;
-  const int EnPassantIdx = 772;
-  const int TurnIdx      = 780;
+  // Offsets to the PolyGlotRandoms[] array of zobrist keys
+  const Key* ZobPiece     = PolyGlotRandoms +   0;
+  const Key* ZobCastle    = PolyGlotRandoms + 768;
+  const Key* ZobEnPassant = PolyGlotRandoms + 772;
+  const Key* ZobTurn      = PolyGlotRandoms + 780;
+
+  // Piece offset is calculated as 64 * (PolyPiece ^ 1) where
+  // PolyPiece is: BP = 0, WP = 1, BN = 2, WN = 3 ... BK = 10, WK = 11
+  const int PieceOfs[] = { 0, 64, 192, 320, 448, 576, 704, 0,
+                           0,  0, 128, 256, 384, 512, 640 };
 
   // book_key() builds up a PolyGlot hash key out of a position
   uint64_t book_key(const Position& pos) {
-
-    // Piece offset is calculated as (64 * PolyPieceType + square), where
-    // PolyPieceType is: BP = 0, WP = 1, BN = 2, WN = 3 .... BK = 10, WK = 11
-    static const int PieceToPoly[] = { 0, 1, 3, 5, 7, 9, 11, 0, 0, 0, 2, 4, 6, 8, 10 };
 
     uint64_t result = 0;
     Bitboard b = pos.occupied_squares();
@@ -318,36 +319,34 @@ namespace {
     while (b)
     {
         Square s = pop_1st_bit(&b);
-        int p = PieceToPoly[int(pos.piece_on(s))];
-        result ^= Random64[PieceIdx + 64 * p + int(s)];
+        result ^= ZobPiece[PieceOfs[pos.piece_on(s)] + s];
     }
 
     if (pos.can_castle_kingside(WHITE))
-        result ^= Random64[CastleIdx + 0];
+        result ^= ZobCastle[0];
 
     if (pos.can_castle_queenside(WHITE))
-        result ^= Random64[CastleIdx + 1];
+        result ^= ZobCastle[1];
 
     if (pos.can_castle_kingside(BLACK))
-        result ^= Random64[CastleIdx + 2];
+        result ^= ZobCastle[2];
 
     if (pos.can_castle_queenside(BLACK))
-        result ^= Random64[CastleIdx + 3];
+        result ^= ZobCastle[3];
 
     if (pos.ep_square() != SQ_NONE)
-        result ^= Random64[EnPassantIdx + square_file(pos.ep_square())];
+        result ^= ZobEnPassant[square_file(pos.ep_square())];
 
     if (pos.side_to_move() == WHITE)
-        result ^= Random64[TurnIdx];
+        result ^= ZobTurn[0];
 
     return result;
   }
-
 }
 
 
 /// Book c'tor. Make random number generation less deterministic, for book moves
-Book::Book() {
+Book::Book() : bookSize(0) {
 
   for (int i = abs(get_system_time() % 10000); i > 0; i--)
       RKiss.rand<unsigned>();
@@ -371,6 +370,7 @@ void Book::close() {
       bookFile.close();
 
   bookName = "";
+  bookSize = 0;
 }
 
 
@@ -408,7 +408,7 @@ void Book::open(const string& fileName) {
 
 Move Book::get_move(const Position& pos, bool findBestMove) {
 
-  if (!bookFile.is_open() || bookSize == 0)
+  if (!bookSize || !bookFile.is_open())
       return MOVE_NONE;
 
   BookEntry entry;
@@ -417,7 +417,7 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
   uint64_t key = book_key(pos);
 
   // Choose a book move among the possible moves for the given position
-  for (int idx = find_entry(key); idx < bookSize; idx++)
+  for (int idx = first_entry(key); idx < bookSize; idx++)
   {
       entry = read_entry(idx);
 
@@ -429,8 +429,8 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
       if (!findBestMove)
       {
           // Choose book move according to its score. If a move has a very
-          // high score it has more probability to be choosen then a one with
-          // lower score. Note that first entry is always chosen.
+          // high score it has higher probability to be choosen than a move
+          // with lower score. Note that first entry is always chosen.
           scoresSum += score;
           if (RKiss.rand<unsigned>() % scoresSum < score)
               bookMove = entry.move;
@@ -441,6 +441,9 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
           bookMove = entry.move;
       }
   }
+
+  if (!bookMove)
+      return MOVE_NONE;
 
   // A PolyGlot book move is encoded as follows:
   //
@@ -469,16 +472,16 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
 }
 
 
-/// Book::find_entry() takes a book key as input, and does a binary search
-/// through the book file for the given key. The index to the first book
-/// entry with the same key as the input is returned. When the key is not
+/// Book::first_entry() takes a book key as input, and does a binary search
+/// through the book file for the given key. The index to the first (leftmost)
+/// book entry with the same key as the input is returned. When the key is not
 /// found in the book file, bookSize is returned.
 
-int Book::find_entry(uint64_t key) {
+int Book::first_entry(uint64_t key) {
 
   int left, right, mid;
 
-  // Binary search (finds the leftmost entry)
+  // Binary search (finds the leftmost entry with given key)
   left = 0;
   right = bookSize - 1;
 

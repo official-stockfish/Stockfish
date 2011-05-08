@@ -51,7 +51,7 @@ private:
   template<typename T> Book& operator>>(T& n);
 
   BookEntry read_entry(int idx);
-  int find_entry(uint64_t key);
+  int first_entry(uint64_t key);
 
   std::ifstream bookFile;
   std::string bookName;
