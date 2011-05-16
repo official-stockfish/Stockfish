@@ -871,8 +871,8 @@ namespace {
         search<PvNode>(pos, ss, alpha, beta, d);
         ss->skipNullMove = false;
 
-        ttMove = ss->bestMove;
         tte = TT.probe(posKey);
+        ttMove = tte ? tte->move() : MOVE_NONE;
     }
 
 split_point_start: // At split points actual search starts from here
@@ -885,8 +885,7 @@ split_point_start: // At split points actual search starts from here
     singularExtensionNode =   !Root
                            && !SpNode
                            && depth >= SingularExtensionDepth[PvNode]
-                           && tte
-                           && tte->move()
+                           && ttMove != MOVE_NONE
                            && !excludedMove // Do not allow recursive singular extension search
                            && (tte->type() & VALUE_TYPE_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
@@ -949,7 +948,7 @@ split_point_start: // At split points actual search starts from here
       // on all the other moves but the ttMove, if result is lower than ttValue minus
       // a margin then we extend ttMove.
       if (   singularExtensionNode
-          && move == tte->move()
+          && move == ttMove
           && ext < ONE_PLY)
       {
           Value ttValue = value_from_tt(tte->value(), ss->ply);
