@@ -570,10 +570,6 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(move_is_ok(m));
   assert(pinned == pinned_pieces(side_to_move()));
 
-  // Castling moves are checked for legality during move generation.
-  if (move_is_castle(m))
-      return true;
-
   // En passant captures are a tricky special case. Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
   // after the move is made
