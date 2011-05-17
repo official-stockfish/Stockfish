@@ -20,6 +20,8 @@
 #if !defined(POSITION_H_INCLUDED)
 #define POSITION_H_INCLUDED
 
+#include <cassert>
+
 #include "bitboard.h"
 #include "move.h"
 #include "types.h"
@@ -525,13 +527,13 @@ inline bool Position::is_chess960() const {
 
 inline bool Position::move_is_capture(Move m) const {
 
-  // Move must not be MOVE_NONE !
+  assert (m != MOVE_NONE && m != MOVE_NULL);
   return (m & (3 << 15)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
 }
 
 inline bool Position::move_is_capture_or_promotion(Move m) const {
 
-  // Move must not be MOVE_NONE !
+  assert (m != MOVE_NONE && m != MOVE_NULL);
   return (m & (0x1F << 12)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
 }
 
