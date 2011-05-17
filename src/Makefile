@@ -315,9 +315,6 @@ endif
 ### Section 4. Public targets
 ### ==========================================================================
 
-default:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) build
-
 help:
 	@echo ""
 	@echo "To compile stockfish, type: "
@@ -430,6 +427,9 @@ clean:
 
 testrun:
 	@$(PGOBENCH)
+
+default:
+	help
 
 ### ==========================================================================
 ### Section 5. Private targets
