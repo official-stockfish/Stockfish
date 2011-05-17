@@ -213,7 +213,6 @@ public:
   void undo_null_move();
 
   // Static exchange evaluation
-  int see(Square from, Square to) const;
   int see(Move m) const;
   int see_sign(Move m) const;
 

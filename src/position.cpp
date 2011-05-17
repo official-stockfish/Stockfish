@@ -1490,12 +1490,6 @@ void Position::undo_null_move() {
 /// move, and one which takes a 'from' and a 'to' square. The function does
 /// not yet understand promotions captures.
 
-int Position::see(Move m) const {
-
-  assert(move_is_ok(m));
-  return see(move_from(m), move_to(m));
-}
-
 int Position::see_sign(Move m) const {
 
   assert(move_is_ok(m));
@@ -1509,19 +1503,21 @@ int Position::see_sign(Move m) const {
   if (midgame_value_of_piece_on(to) >= midgame_value_of_piece_on(from))
       return 1;
 
-  return see(from, to);
+  return see(m);
 }
 
-int Position::see(Square from, Square to) const {
+int Position::see(Move m) const {
 
+  Square from, to;
   Bitboard occupied, attackers, stmAttackers, b;
   int swapList[32], slIndex = 1;
   PieceType capturedType, pt;
   Color stm;
 
-  assert(square_is_ok(from));
-  assert(square_is_ok(to));
+  assert(move_is_ok(m));
 
+  from = move_from(m);
+  to = move_to(m);
   capturedType = type_of_piece_on(to);
 
   // King cannot be recaptured
