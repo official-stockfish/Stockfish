@@ -1519,11 +1519,6 @@ int Position::see(Move m) const {
   from = move_from(m);
   to = move_to(m);
   capturedType = type_of_piece_on(to);
-
-  // King cannot be recaptured
-  if (capturedType == KING)
-      return seeValues[capturedType];
-
   occupied = occupied_squares();
 
   // Handle en passant moves
