@@ -110,7 +110,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
       // Skip TT move if is not a capture or a promotion, this avoids
       // qsearch tree explosion due to a possible perpetual check or
       // similar rare cases when TT table is full.
-      if (ttm != MOVE_NONE && !pos.move_is_capture_or_promotion(ttm))
+      if (ttm != MOVE_NONE && !pos.move_is_capture(ttm) && !move_is_promotion(ttm))
           searchTT = ttMoves[0].move = MOVE_NONE;
   }
 
