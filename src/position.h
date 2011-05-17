@@ -527,13 +527,13 @@ inline bool Position::is_chess960() const {
 inline bool Position::move_is_capture(Move m) const {
 
   assert (m != MOVE_NONE && m != MOVE_NULL);
-  return (m & (3 << 15)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
+  return !square_is_empty(move_to(m)) || move_is_ep(m);
 }
 
 inline bool Position::move_is_capture_or_promotion(Move m) const {
 
   assert (m != MOVE_NONE && m != MOVE_NULL);
-  return (m & (0x1F << 12)) ? !move_is_castle(m) : !square_is_empty(move_to(m));
+  return move_is_capture(m) || move_is_promotion(m);
 }
 
 inline PieceType Position::captured_piece_type() const {
