@@ -603,9 +603,10 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 
   // If the moving piece is a king, check whether the destination
-  // square is attacked by the opponent.
+  // square is attacked by the opponent. Castling moves are checked
+  // for legality during move generation.
   if (type_of_piece_on(from) == KING)
-      return !(attackers_to(move_to(m)) & pieces_of_color(opposite_color(us)));
+      return move_is_castle(m) || !(attackers_to(move_to(m)) & pieces_of_color(opposite_color(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.

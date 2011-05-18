@@ -526,7 +526,7 @@ inline bool Position::is_chess960() const {
 inline bool Position::move_is_capture(Move m) const {
 
   assert (m != MOVE_NONE && m != MOVE_NULL);
-  return !square_is_empty(move_to(m)) || move_is_ep(m);
+  return !move_is_special(m) ? !square_is_empty(move_to(m)) : move_is_ep(m);
 }
 
 inline PieceType Position::captured_piece_type() const {
