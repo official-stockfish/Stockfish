@@ -1513,6 +1513,12 @@ int Position::see(Move m) const {
 
   assert(move_is_ok(m));
 
+  // As castle moves are implemented as capturing the rook, they have
+  // SEE == RookValueMidgame most of the times (unless the rook is under
+  // attack).
+  if (move_is_castle(m))
+      return 0;
+
   from = move_from(m);
   to = move_to(m);
   capturedType = type_of_piece_on(to);
