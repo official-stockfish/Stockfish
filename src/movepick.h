@@ -43,6 +43,7 @@ public:
   MovePicker(const Position&, Move, Depth, const History&, SearchStack*, Value);
   MovePicker(const Position&, Move, Depth, const History&);
   Move get_next_move();
+  bool isBadCapture() const;
 
 private:
   void score_captures();

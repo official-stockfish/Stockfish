@@ -46,6 +46,7 @@ namespace {
   const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP };
 }
 
+bool MovePicker::isBadCapture() const { return phase == PH_BAD_CAPTURES; }
 
 /// Constructor for the MovePicker class. Apart from the position for which
 /// it is asked to pick legal moves, MovePicker also wants some information
