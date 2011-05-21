@@ -42,8 +42,8 @@ class MovePicker {
 public:
   MovePicker(const Position&, Move, Depth, const History&, SearchStack*, Value);
   MovePicker(const Position&, Move, Depth, const History&);
+  MovePicker(const Position&, Move, const History&, int parentCapture);
   Move get_next_move();
-  bool isBadCapture() const;
 
 private:
   void score_captures();
@@ -55,7 +55,7 @@ private:
   const History& H;
   Move ttMove;
   MoveStack killers[2];
-  int badCaptureThreshold, phase;
+  int captureThreshold, phase;
   const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastGoodNonCapture, *badCaptures;
   MoveStack moves[MAX_MOVES];

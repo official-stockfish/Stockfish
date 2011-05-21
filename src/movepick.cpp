@@ -29,10 +29,11 @@ namespace {
 
   enum MovegenPhase {
     PH_TT_MOVE,       // Transposition table move
-    PH_GOOD_CAPTURES, // Queen promotions and captures with SEE values >= 0
+    PH_GOOD_CAPTURES, // Queen promotions and captures with SEE values >= captureThreshold (captureThreshold <= 0)
+    PH_GOOD_PROBCUT,  // Queen promotions and captures with SEE values > captureThreshold (captureThreshold >= 0)
     PH_KILLERS,       // Killer moves from the current ply
     PH_NONCAPTURES,   // Non-captures and underpromotions
-    PH_BAD_CAPTURES,  // Queen promotions and captures with SEE values < 0
+    PH_BAD_CAPTURES,  // Queen promotions and captures with SEE values < captureThreshold (captureThreshold <= 0)
     PH_EVASIONS,      // Check evasions
     PH_QCAPTURES,     // Captures in quiescence search
     PH_QCHECKS,       // Non-capture checks in quiescence search
@@ -44,11 +45,10 @@ namespace {
   const uint8_t EvasionTable[] = { PH_TT_MOVE, PH_EVASIONS, PH_STOP };
   const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
   const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_STOP };
+  const uint8_t ProbCutTable[] = { PH_TT_MOVE, PH_GOOD_PROBCUT, PH_STOP };
 }
 
-bool MovePicker::isBadCapture() const { return phase == PH_BAD_CAPTURES; }
-
-/// Constructor for the MovePicker class. As arguments we pass information
+/// Constructors for the MovePicker class. As arguments we pass information
 /// to help it to return the presumably good moves first, to decide which
 /// moves to return (in the quiescence search, for instance, we only want to
 /// search captures, promotions and some checks) and about how important good
@@ -56,7 +56,7 @@ bool MovePicker::isBadCapture() const { return phase == PH_BAD_CAPTURES; }
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
                        SearchStack* ss, Value beta) : pos(p), H(h) {
-  badCaptureThreshold = 0;
+  captureThreshold = 0;
   badCaptures = moves + MAX_MOVES;
 
   assert(d > DEPTH_ZERO);
@@ -74,7 +74,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       // Consider sligtly negative captures as good if at low
       // depth and far from beta.
       if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * ONE_PLY)
-          badCaptureThreshold = -PawnValueMidgame;
+          captureThreshold = -PawnValueMidgame;
 
       phasePtr = MainSearchTable;
   }
@@ -109,6 +109,24 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
   go_next_phase();
 }
 
+MovePicker::MovePicker(const Position& p, Move ttm, const History& h, int parentCapture)
+                       : pos(p), H(h) {
+
+  assert (!pos.in_check());
+
+  // In ProbCut we consider only captures better than parent's move
+  captureThreshold = parentCapture;
+  phasePtr = ProbCutTable;
+
+  if (   ttm != MOVE_NONE
+      && (!pos.move_is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
+      ttm = MOVE_NONE;
+
+  ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
+  phasePtr += int(ttMove == MOVE_NONE) - 1;
+  go_next_phase();
+}
+
 
 /// MovePicker::go_next_phase() generates, scores and sorts the next bunch
 /// of moves when there are no more moves to try for the current phase.
@@ -124,6 +142,7 @@ void MovePicker::go_next_phase() {
       return;
 
   case PH_GOOD_CAPTURES:
+  case PH_GOOD_PROBCUT:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
@@ -270,9 +289,11 @@ Move MovePicker::get_next_move() {
           move = pick_best(curMove++, lastMove).move;
           if (move != ttMove)
           {
+              assert(captureThreshold <= 0); // Otherwise we must use see instead of see_sign
+
               // Check for a non negative SEE now
               int seeValue = pos.see_sign(move);
-              if (seeValue >= badCaptureThreshold)
+              if (seeValue >= captureThreshold)
                   return move;
 
               // Losing capture, move it to the tail of the array, note
@@ -280,6 +301,13 @@ Move MovePicker::get_next_move() {
               (--badCaptures)->move = move;
               badCaptures->score = seeValue;
           }
+          break;
+
+     case PH_GOOD_PROBCUT:
+          move = pick_best(curMove++, lastMove).move;
+          if (   move != ttMove
+              && pos.see(move) > captureThreshold)
+              return move;
           break;
 
       case PH_KILLERS:
