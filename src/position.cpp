@@ -712,16 +712,20 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
       case DELTA_SE:
       // Capture. The destination square must be occupied by an enemy
       // piece (en passant captures was handled earlier).
-          if (color_of_piece_on(to) != them)
-              return false;
-          break;
+      if (color_of_piece_on(to) != them)
+          return false;
+
+      // From and to files must be one file apart, avoids a7h5
+      if (abs(square_file(from) - square_file(to)) != 1)
+          return false;
+      break;
 
       case DELTA_N:
       case DELTA_S:
       // Pawn push. The destination square must be empty.
-          if (!square_is_empty(to))
-              return false;
-          break;
+      if (!square_is_empty(to))
+          return false;
+      break;
 
       case DELTA_NN:
       // Double white pawn push. The destination square must be on the fourth
@@ -731,17 +735,17 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
           || !square_is_empty(to)
           || !square_is_empty(from + DELTA_N))
           return false;
-          break;
+      break;
 
       case DELTA_SS:
       // Double black pawn push. The destination square must be on the fifth
       // rank, and both the destination square and the square between the
       // source and destination squares must be empty.
-          if (   square_rank(to) != RANK_5
-              || !square_is_empty(to)
-              || !square_is_empty(from + DELTA_S))
-              return false;
-          break;
+      if (   square_rank(to) != RANK_5
+          || !square_is_empty(to)
+          || !square_is_empty(from + DELTA_S))
+          return false;
+      break;
 
       default:
           return false;
