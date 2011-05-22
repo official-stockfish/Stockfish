@@ -295,7 +295,7 @@ inline Value operator- (Value v, int i) { return Value(int(v) - i); }
 // Extracting the _signed_ lower and upper 16 bits it not so trivial
 // because according to the standard a simple cast to short is
 // implementation defined and so is a right shift of a signed integer.
-inline Value mg_value(Score s) { return Value(((int(s) + 32768) & ~0xffff) / 0x10000); }
+inline Value mg_value(Score s) { return Value(((s + 32768) & ~0xffff) / 0x10000); }
 
 // Unfortunatly on Intel 64 bit we have a small speed regression, so use a faster code in
 // this case, although not 100% standard compliant it seems to work for Intel and MSVC.
@@ -345,19 +345,19 @@ inline Value value_mated_in(int ply) {
 }
 
 inline Piece make_piece(Color c, PieceType pt) {
-  return Piece((int(c) << 3) | int(pt));
+  return Piece((c << 3) | pt);
 }
 
 inline PieceType type_of_piece(Piece p)  {
-  return PieceType(int(p) & 7);
+  return PieceType(p & 7);
 }
 
 inline Color color_of_piece(Piece p) {
-  return Color(int(p) >> 3);
+  return Color(p >> 3);
 }
 
 inline Color opposite_color(Color c) {
-  return Color(int(c) ^ 1);
+  return Color(c ^ 1);
 }
 
 inline bool color_is_ok(Color c) {
@@ -378,31 +378,31 @@ inline char piece_type_to_char(PieceType pt) {
 }
 
 inline Square make_square(File f, Rank r) {
-  return Square((int(r) << 3) | int(f));
+  return Square((r << 3) | f);
 }
 
 inline File square_file(Square s) {
-  return File(int(s) & 7);
+  return File(s & 7);
 }
 
 inline Rank square_rank(Square s) {
-  return Rank(int(s) >> 3);
+  return Rank(s >> 3);
 }
 
 inline Square flip_square(Square s) {
-  return Square(int(s) ^ 56);
+  return Square(s ^ 56);
 }
 
 inline Square flop_square(Square s) {
-  return Square(int(s) ^ 7);
+  return Square(s ^ 7);
 }
 
 inline Square relative_square(Color c, Square s) {
-  return Square(int(s) ^ (int(c) * 56));
+  return Square(s ^ (c * 56));
 }
 
 inline Rank relative_rank(Color c, Rank r) {
-  return Rank(int(r) ^ (int(c) * 7));
+  return Rank(r ^ (c * 7));
 }
 
 inline Rank relative_rank(Color c, Square s) {
@@ -414,7 +414,7 @@ inline SquareColor square_color(Square s) {
 }
 
 inline bool opposite_color_squares(Square s1, Square s2) {
-  int s = int(s1) ^ int(s2);
+  int s = s1 ^ s2;
   return ((s >> 3) ^ s) & 1;
 }
 
