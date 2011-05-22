@@ -676,9 +676,13 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
   if (move_is_special(m))
       return move_is_legal(m);
 
+  // Is not a promotion, so promotion piece must be empty
+  if (move_promotion_piece(m) - 2 != PIECE_TYPE_NONE)
+      return false;
+
   // If the from square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
-  if (color_of_piece(pc) != us)
+  if (pc == PIECE_NONE || color_of_piece(pc) != us)
       return false;
 
   // The destination square cannot be occupied by a friendly piece

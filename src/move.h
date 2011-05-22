@@ -130,7 +130,7 @@ inline T pick_best(T* curMove, T* lastMove)
 
 
 inline Square move_from(Move m) {
-  return Square((int(m) >> 6) & 0x3F);
+  return Square((m >> 6) & 0x3F);
 }
 
 inline Square move_to(Move m) {
@@ -162,23 +162,23 @@ inline bool move_is_long_castle(Move m) {
 }
 
 inline PieceType move_promotion_piece(Move m) {
-  return move_is_promotion(m) ? PieceType(((int(m) >> 12) & 3) + 2) : PIECE_TYPE_NONE;
+  return PieceType(((m >> 12) & 3) + 2);
 }
 
 inline Move make_move(Square from, Square to) {
-  return Move(int(to) | (int(from) << 6));
+  return Move(to | (from << 6));
 }
 
 inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
-  return Move(int(to) | (int(from) << 6) | ((int(promotion) - 2) << 12) | (1 << 14));
+  return Move(to | (from << 6) | ((promotion - 2) << 12) | (1 << 14));
 }
 
 inline Move make_ep_move(Square from, Square to) {
-  return Move(int(to) | (int(from) << 6) | (2 << 14));
+  return Move(to | (from << 6) | (2 << 14));
 }
 
 inline Move make_castle_move(Square from, Square to) {
-  return Move(int(to) | (int(from) << 6) | (3 << 14));
+  return Move(to | (from << 6) | (3 << 14));
 }
 
 inline bool move_is_ok(Move m) {
