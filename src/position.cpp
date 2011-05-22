@@ -490,6 +490,16 @@ Bitboard Position::attackers_to(Square s) const {
         | (attacks_from<KING>(s)        & pieces(KING));
 }
 
+Bitboard Position::attackers_to(Square s, Bitboard occ) const {
+
+  return  (attacks_from<PAWN>(s, BLACK) & pieces(PAWN, WHITE))
+        | (attacks_from<PAWN>(s, WHITE) & pieces(PAWN, BLACK))
+        | (attacks_from<KNIGHT>(s)      & pieces(KNIGHT))
+        | (rook_attacks_bb(s, occ)      & pieces(ROOK, QUEEN))
+        | (bishop_attacks_bb(s, occ)    & pieces(BISHOP, QUEEN))
+        | (attacks_from<KING>(s)        & pieces(KING));
+}
+
 /// Position::attacks_from() computes a bitboard of all attacks
 /// of a given piece put in a given square.
 
@@ -570,6 +580,12 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(move_is_ok(m));
   assert(pinned == pinned_pieces(side_to_move()));
 
+  Color us = side_to_move();
+  Square from = move_from(m);
+
+  assert(color_of_piece_on(from) == us);
+  assert(piece_on(king_square(us)) == make_piece(us, KING));
+
   // En passant captures are a tricky special case. Because they are
   // rather uncommon, we do it simply by testing whether the king is attacked
   // after the move is made
@@ -596,12 +612,6 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
             && !(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, them));
   }
 
-  Color us = side_to_move();
-  Square from = move_from(m);
-
-  assert(color_of_piece_on(from) == us);
-  assert(piece_on(king_square(us)) == make_piece(us, KING));
-
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
@@ -615,31 +625,6 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
         ||  squares_aligned(from, move_to(m), king_square(us));
 }
 
-
-/// Position::pl_move_is_evasion() tests whether a pseudo-legal move is a legal evasion
-
-bool Position::pl_move_is_evasion(Move m, Bitboard pinned) const
-{
-  assert(in_check());
-
-  Color us = side_to_move();
-  Square from = move_from(m);
-  Square to = move_to(m);
-
-  // King moves and en-passant captures are verified in pl_move_is_legal()
-  if (type_of_piece_on(from) == KING || move_is_ep(m))
-      return pl_move_is_legal(m, pinned);
-
-  Bitboard target = checkers();
-  Square checksq = pop_1st_bit(&target);
-
-  if (target) // double check ?
-      return false;
-
-  // Our move must be a blocking evasion or a capture of the checking piece
-  target = squares_between(checksq, king_square(us)) | checkers();
-  return bit_is_set(target, to) && pl_move_is_legal(m, pinned);
-}
 
 /// Position::move_is_legal() takes a position and a (not necessarily pseudo-legal)
 /// move and tests whether the move is legal. This version is not very fast and
@@ -754,8 +739,34 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
   else if (!bit_is_set(attacks_from(pc, from), to))
       return false;
 
+  if (in_check())
+  {
+      // In case of king moves under check we have to remove king so to catch
+      // as invalid moves like b1a1 when opposite queen is on c1.
+      if (type_of_piece_on(from) == KING)
+      {
+          Bitboard b = occupied_squares();
+          clear_bit(&b, from);
+          if (attackers_to(move_to(m), b) & pieces_of_color(opposite_color(us)))
+              return false;
+      }
+      else
+      {
+          Bitboard target = checkers();
+          Square checksq = pop_1st_bit(&target);
+
+          if (target) // double check ? In this case a king move is required
+              return false;
+
+          // Our move must be a blocking evasion or a capture of the checking piece
+          target = squares_between(checksq, king_square(us)) | checkers();
+          if (!bit_is_set(target, move_to(m)))
+              return false;
+      }
+  }
+
   // The move is pseudo-legal, check if it is also legal
-  return in_check() ? pl_move_is_evasion(m, pinned) : pl_move_is_legal(m, pinned);
+  return pl_move_is_legal(m, pinned);
 }
 
 
@@ -1548,12 +1559,7 @@ int Position::see(Move m) const {
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
   clear_bit(&occupied, from);
-  attackers =  (rook_attacks_bb(to, occupied)  & pieces(ROOK, QUEEN))
-             | (bishop_attacks_bb(to, occupied)& pieces(BISHOP, QUEEN))
-             | (attacks_from<KNIGHT>(to)       & pieces(KNIGHT))
-             | (attacks_from<KING>(to)         & pieces(KING))
-             | (attacks_from<PAWN>(to, WHITE)  & pieces(PAWN, BLACK))
-             | (attacks_from<PAWN>(to, BLACK)  & pieces(PAWN, WHITE));
+  attackers = attackers_to(to, occupied);
 
   // If the opponent has no attackers we are finished
   stm = opposite_color(color_of_piece_on(from));

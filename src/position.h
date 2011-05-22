@@ -178,6 +178,7 @@ public:
 
   // Information about attacks to or from a given square
   Bitboard attackers_to(Square s) const;
+  Bitboard attackers_to(Square s, Bitboard occ) const;
   Bitboard attacks_from(Piece p, Square s) const;
   static Bitboard attacks_from(Piece p, Square s, Bitboard occ);
   template<PieceType> Bitboard attacks_from(Square s) const;
@@ -185,7 +186,6 @@ public:
 
   // Properties of moves
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
-  bool pl_move_is_evasion(Move m, Bitboard pinned) const;
   bool move_is_legal(const Move m) const;
   bool move_is_legal(const Move m, Bitboard pinned) const;
   bool move_gives_check(Move m) const;
