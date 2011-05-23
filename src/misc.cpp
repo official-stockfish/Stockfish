@@ -103,14 +103,14 @@ static uint64_t dbg_mean_cnt1;
 void dbg_print_hit_rate() {
 
   if (dbg_hit_cnt0)
-      cout << "Total " << dbg_hit_cnt0 << " Hit " << dbg_hit_cnt1
+      cerr << "Total " << dbg_hit_cnt0 << " Hit " << dbg_hit_cnt1
            << " hit rate (%) " << 100 * dbg_hit_cnt1 / dbg_hit_cnt0 << endl;
 }
 
 void dbg_print_mean() {
 
   if (dbg_mean_cnt0)
-      cout << "Total " << dbg_mean_cnt0 << " Mean "
+      cerr << "Total " << dbg_mean_cnt0 << " Mean "
            << (float)dbg_mean_cnt1 / dbg_mean_cnt0 << endl;
 }
 
