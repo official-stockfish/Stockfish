@@ -591,9 +591,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // after the move is made
   if (move_is_ep(m))
   {
-      Color us = side_to_move();
       Color them = opposite_color(us);
-      Square from = move_from(m);
       Square to = move_to(m);
       Square capsq = make_square(square_file(to), square_rank(from));
       Square ksq = king_square(us);
