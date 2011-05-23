@@ -64,8 +64,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
   assert(d > DEPTH_ZERO);
 
-  pinned = p.pinned_pieces(pos.side_to_move());
-
   if (p.in_check())
   {
       ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
@@ -97,8 +95,6 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
   ttMoves[1].move = MOVE_NONE;
 
   assert(d <= DEPTH_ZERO);
-
-  pinned = p.pinned_pieces(pos.side_to_move());
 
   if (p.in_check())
       phasePtr = EvasionTable;
@@ -275,16 +271,14 @@ Move MovePicker::get_next_move() {
       case PH_TT_MOVES:
           move = (curMove++)->move;
           if (   move != MOVE_NONE
-              && pos.move_is_pl(move)
-              && pos.pl_move_is_legal(move, pinned))
+              && pos.move_is_pl(move))
               return move;
           break;
 
       case PH_GOOD_CAPTURES:
           move = pick_best(curMove++, lastMove).move;
           if (   move != ttMoves[0].move
-              && move != ttMoves[1].move
-              && pos.pl_move_is_legal(move, pinned))
+              && move != ttMoves[1].move)
           {
               // Check for a non negative SEE now
               int seeValue = pos.see_sign(move);
@@ -302,7 +296,6 @@ Move MovePicker::get_next_move() {
           move = (curMove++)->move;
           if (   move != MOVE_NONE
               && pos.move_is_pl(move)
-              && pos.pl_move_is_legal(move, pinned)
               && move != ttMoves[0].move
               && move != ttMoves[1].move
               && !pos.move_is_capture(move))
@@ -318,8 +311,7 @@ Move MovePicker::get_next_move() {
           if (   move != ttMoves[0].move
               && move != ttMoves[1].move
               && move != killers[0].move
-              && move != killers[1].move
-              && pos.pl_move_is_legal(move, pinned))
+              && move != killers[1].move)
               return move;
           break;
 
@@ -330,15 +322,13 @@ Move MovePicker::get_next_move() {
       case PH_EVASIONS:
       case PH_QCAPTURES:
           move = pick_best(curMove++, lastMove).move;
-          if (   move != ttMoves[0].move
-              && pos.pl_move_is_legal(move, pinned))
+          if (move != ttMoves[0].move)
               return move;
           break;
 
       case PH_QCHECKS:
           move = (curMove++)->move;
-          if (   move != ttMoves[0].move
-              && pos.pl_move_is_legal(move, pinned))
+          if (   move != ttMoves[0].move)
               return move;
           break;
 

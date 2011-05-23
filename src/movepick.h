@@ -53,7 +53,6 @@ private:
 
   const Position& pos;
   const History& H;
-  Bitboard pinned;
   MoveStack ttMoves[2], killers[2];
   int badCaptureThreshold, phase;
   const uint8_t* phasePtr;

@@ -880,6 +880,7 @@ split_point_start: // At split points actual search starts from here
     // Initialize a MovePicker object for the current position
     MovePickerExt<SpNode, Root> mp(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
     CheckInfo ci(pos);
+    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
     ss->bestMove = MOVE_NONE;
     futilityBase = ss->eval + ss->evalMargin;
     singularExtensionNode =   !Root
@@ -908,7 +909,7 @@ split_point_start: // At split points actual search starts from here
           moveCount = ++sp->moveCount;
           lock_release(&(sp->lock));
       }
-      else if (move == excludedMove)
+      else if (move == excludedMove || !pos.pl_move_is_legal(move, pinned))
           continue;
       else
           moveCount++;
@@ -1325,12 +1326,16 @@ split_point_start: // At split points actual search starts from here
     // be generated.
     MovePicker mp(pos, ttMove, depth, H);
     CheckInfo ci(pos);
+    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while (   alpha < beta
            && (move = mp.get_next_move()) != MOVE_NONE)
     {
       assert(move_is_ok(move));
+
+      if (!pos.pl_move_is_legal(move, pinned))
+          continue;
 
       givesCheck = pos.move_gives_check(move, ci);
 
