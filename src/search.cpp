@@ -909,7 +909,7 @@ split_point_start: // At split points actual search starts from here
           moveCount = ++sp->moveCount;
           lock_release(&(sp->lock));
       }
-      else if (move == excludedMove || !pos.pl_move_is_legal(move, pinned))
+      else if (move == excludedMove)
           continue;
       else
           moveCount++;
@@ -950,6 +950,7 @@ split_point_start: // At split points actual search starts from here
       // a margin then we extend ttMove.
       if (   singularExtensionNode
           && move == ttMove
+          && pos.pl_move_is_legal(move, pinned)
           && ext < ONE_PLY)
       {
           Value ttValue = value_from_tt(tte->value(), ss->ply);
@@ -969,7 +970,6 @@ split_point_start: // At split points actual search starts from here
       }
 
       // Update current move (this must be done after singular extension search)
-      ss->currentMove = move;
       newDepth = depth - ONE_PLY + ext;
 
       // Step 12. Futility pruning (is omitted in PV nodes)
@@ -1023,6 +1023,12 @@ split_point_start: // At split points actual search starts from here
               continue;
           }
       }
+
+      // Check for legality only before to do the move
+      if (!pos.pl_move_is_legal(move, pinned))
+          continue;
+
+      ss->currentMove = move;
 
       // Step 13. Make the move
       pos.do_move(move, st, ci, givesCheck);
@@ -1334,9 +1340,6 @@ split_point_start: // At split points actual search starts from here
     {
       assert(move_is_ok(move));
 
-      if (!pos.pl_move_is_legal(move, pinned))
-          continue;
-
       givesCheck = pos.move_gives_check(move, ci);
 
       // Futility pruning
@@ -1395,6 +1398,10 @@ split_point_start: // At split points actual search starts from here
 
           continue;
       }
+
+      // Check for legality only before to do the move
+      if (!pos.pl_move_is_legal(move, pinned))
+          continue;
 
       // Update current move
       ss->currentMove = move;
