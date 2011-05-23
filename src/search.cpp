@@ -1979,13 +1979,16 @@ split_point_start: // At split points actual search starts from here
     TTEntry* tte;
     int ply = 1;
 
-    assert(pv[0] != MOVE_NONE && pos.move_is_legal(pv[0]));
+    assert(pv[0] != MOVE_NONE && pos.move_is_pl(pv[0]));
 
     pos.do_move(pv[0], *st++);
 
+    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+
     while (   (tte = TT.probe(pos.get_key())) != NULL
            && tte->move() != MOVE_NONE
-           && pos.move_is_legal(tte->move())
+           && pos.move_is_pl(tte->move())
+           && pos.pl_move_is_legal(tte->move(), pinned)
            && ply < PLY_MAX
            && (!pos.is_draw() || ply < 2))
     {
@@ -2009,7 +2012,7 @@ split_point_start: // At split points actual search starts from here
     Value v, m = VALUE_NONE;
     int ply = 0;
 
-    assert(pv[0] != MOVE_NONE && pos.move_is_legal(pv[0]));
+    assert(pv[0] != MOVE_NONE && pos.move_is_pl(pv[0]));
 
     do {
         k = pos.get_key();

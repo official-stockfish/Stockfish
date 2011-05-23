@@ -628,14 +628,14 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 /// move and tests whether the move is legal. This version is not very fast and
 /// should be used only in non time-critical paths.
 
-bool Position::move_is_legal(const Move m) const {
+bool Position::move_is_pl_full(const Move m) const {
 
   MoveStack mlist[MAX_MOVES];
   MoveStack *cur, *last = generate<MV_PSEUDO_LEGAL>(*this, mlist);
 
    for (cur = mlist; cur != last; cur++)
       if (cur->move == m)
-          return pl_move_is_legal(m, pinned_pieces(sideToMove));
+          return true;
 
   return false;
 }
@@ -644,10 +644,9 @@ bool Position::move_is_legal(const Move m) const {
 /// Fast version of Position::move_is_legal() that takes a position a move and
 /// a bitboard of pinned pieces as input, and tests whether the move is legal.
 
-bool Position::move_is_legal(const Move m, Bitboard pinned) const {
+bool Position::move_is_pl(const Move m) const {
 
   assert(is_ok());
-  assert(pinned == pinned_pieces(sideToMove));
 
   Color us = sideToMove;
   Color them = opposite_color(sideToMove);
@@ -657,7 +656,7 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
 
   // Use a slower but simpler function for uncommon cases
   if (move_is_special(m))
-      return move_is_legal(m);
+      return move_is_pl_full(m);
 
   // Is not a promotion, so promotion piece must be empty
   if (move_promotion_piece(m) - 2 != PIECE_TYPE_NONE)
@@ -763,8 +762,7 @@ bool Position::move_is_legal(const Move m, Bitboard pinned) const {
       }
   }
 
-  // The move is pseudo-legal, check if it is also legal
-  return pl_move_is_legal(m, pinned);
+  return true;
 }
 
 

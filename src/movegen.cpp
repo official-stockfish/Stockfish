@@ -451,7 +451,7 @@ namespace {
     // Single and double pawn pushes
     if (Type != MV_CAPTURE)
     {
-        b1 = pawnPushes & emptySquares;
+        b1 = (Type != MV_EVASION ? pawnPushes : pawnPushes & emptySquares);
         b2 = move_pawns<TDELTA_N>(pawnPushes & TRank3BB) & emptySquares;
 
         if (Type == MV_CHECK)
