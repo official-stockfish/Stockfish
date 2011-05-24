@@ -48,8 +48,7 @@ namespace {
 
 bool MovePicker::isBadCapture() const { return phase == PH_BAD_CAPTURES; }
 
-/// Constructor for the MovePicker class. Apart from the position for which
-/// it is asked to pick legal moves, MovePicker also wants some information
+/// Constructor for the MovePicker class. As arguments we pass information
 /// to help it to return the presumably good moves first, to decide which
 /// moves to return (in the quiescence search, for instance, we only want to
 /// search captures, promotions and some checks) and about how important good
@@ -251,7 +250,7 @@ void MovePicker::score_evasions() {
 }
 
 /// MovePicker::get_next_move() is the most important method of the MovePicker
-/// class. It returns a new legal move every time it is called, until there
+/// class. It returns a new pseudo legal move every time it is called, until there
 /// are no more moves left. It picks the move with the biggest score from a list
 /// of generated moves taking care not to return the tt move if has already been
 /// searched previously. Note that this function is not thread safe so should be
@@ -286,7 +285,7 @@ Move MovePicker::get_next_move() {
                   return move;
 
               // Losing capture, move it to the tail of the array, note
-              // that move has now been already checked for legality.
+              // that move has now been already checked for pseudo legality.
               (--badCaptures)->move = move;
               badCaptures->score = seeValue;
           }
@@ -328,7 +327,7 @@ Move MovePicker::get_next_move() {
 
       case PH_QCHECKS:
           move = (curMove++)->move;
-          if (   move != ttMoves[0].move)
+          if (move != ttMoves[0].move)
               return move;
           break;
 

@@ -27,11 +27,11 @@
 
 struct SearchStack;
 
-/// MovePicker is a class which is used to pick one legal move at a time from
-/// the current position. It is initialized with a Position object and a few
+/// MovePicker is a class which is used to pick one pseudo legal move at a time
+/// from the current position. It is initialized with a Position object and a few
 /// moves we have reason to believe are good. The most important method is
-/// MovePicker::get_next_move(), which returns a new legal move each time it
-/// is called, until there are no legal moves left, when MOVE_NONE is returned.
+/// MovePicker::get_next_move(), which returns a new pseudo legal move each time
+/// it is called, until there are no moves left, when MOVE_NONE is returned.
 /// In order to improve the efficiency of the alpha beta algorithm, MovePicker
 /// attempts to return the moves which are most likely to get a cut-off first.
 

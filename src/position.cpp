@@ -624,16 +624,19 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 }
 
 
-/// Position::move_is_legal() takes a position and a (not necessarily pseudo-legal)
-/// move and tests whether the move is legal. This version is not very fast and
-/// should be used only in non time-critical paths.
+/// Position::move_is_pl_slow() takes a position and a move and tests whether
+/// the move is pseudo legal. This version is not very fast and should be used
+/// only in non time-critical paths.
 
-bool Position::move_is_pl_full(const Move m) const {
+bool Position::move_is_pl_slow(const Move m) const {
 
   MoveStack mlist[MAX_MOVES];
-  MoveStack *cur, *last = generate<MV_PSEUDO_LEGAL>(*this, mlist);
+  MoveStack *cur, *last;
 
-   for (cur = mlist; cur != last; cur++)
+  last = in_check() ? generate<MV_EVASION>(*this, mlist)
+                    : generate<MV_NON_EVASION>(*this, mlist);
+
+  for (cur = mlist; cur != last; cur++)
       if (cur->move == m)
           return true;
 
@@ -641,8 +644,8 @@ bool Position::move_is_pl_full(const Move m) const {
 }
 
 
-/// Fast version of Position::move_is_legal() that takes a position a move and
-/// a bitboard of pinned pieces as input, and tests whether the move is legal.
+/// Fast version of Position::move_is_pl() that takes a position a move and a
+/// bitboard of pinned pieces as input, and tests whether the move is pseudo legal.
 
 bool Position::move_is_pl(const Move m) const {
 
@@ -656,7 +659,7 @@ bool Position::move_is_pl(const Move m) const {
 
   // Use a slower but simpler function for uncommon cases
   if (move_is_special(m))
-      return move_is_pl_full(m);
+      return move_is_pl_slow(m);
 
   // Is not a promotion, so promotion piece must be empty
   if (move_promotion_piece(m) - 2 != PIECE_TYPE_NONE)

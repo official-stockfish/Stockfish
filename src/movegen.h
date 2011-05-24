@@ -30,8 +30,7 @@ enum MoveType {
   MV_NON_CAPTURE_CHECK,
   MV_EVASION,
   MV_NON_EVASION,
-  MV_LEGAL,
-  MV_PSEUDO_LEGAL
+  MV_LEGAL
 };
 
 template<MoveType>

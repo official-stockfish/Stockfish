@@ -186,7 +186,6 @@ public:
 
   // Properties of moves
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
-  bool move_is_pl_full(const Move m) const;
   bool move_is_pl(const Move m) const;
   bool move_gives_check(Move m) const;
   bool move_gives_check(Move m, const CheckInfo& ci) const;
@@ -260,6 +259,7 @@ private:
   void do_allow_oo(Color c);
   void do_allow_ooo(Color c);
   bool set_castling_rights(char token);
+  bool move_is_pl_slow(const Move m) const;
 
   // Helper functions for doing and undoing moves
   void do_capture_move(Key& key, PieceType capture, Color them, Square to, bool ep);
