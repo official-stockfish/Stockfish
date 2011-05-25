@@ -710,7 +710,7 @@ namespace {
     // Step 1. Initialize node and poll. Polling can abort search
     ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
-    (ss+2)->killers[0] = (ss+2)->killers[1] = (ss+2)->mateKiller = MOVE_NONE;
+    (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
     if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
     {
@@ -1148,9 +1148,6 @@ split_point_start: // At split points actual search starts from here
               }
               else if (SpNode)
                   sp->is_betaCutoff = true;
-
-              if (value == value_mate_in(ss->ply + 1))
-                  ss->mateKiller = move;
 
               ss->bestMove = move;
 

@@ -36,7 +36,6 @@ struct SplitPoint;
 struct SearchStack {
   int ply;
   Move currentMove;
-  Move mateKiller;
   Move excludedMove;
   Move bestMove;
   Move killers[2];

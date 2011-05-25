@@ -56,8 +56,6 @@ bool MovePicker::isBadCapture() const { return phase == PH_BAD_CAPTURES; }
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
                        SearchStack* ss, Value beta) : pos(p), H(h) {
-  int searchTT = ttm;
-  ttMoves[0].move = ttm;
   badCaptureThreshold = 0;
   badCaptures = moves + MAX_MOVES;
 
@@ -65,13 +63,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
   if (p.in_check())
   {
-      ttMoves[1].move = killers[0].move = killers[1].move = MOVE_NONE;
+      killers[0].move = killers[1].move = MOVE_NONE;
       phasePtr = EvasionTable;
   }
   else
   {
-      ttMoves[1].move = (ss->mateKiller == ttm) ? MOVE_NONE : ss->mateKiller;
-      searchTT |= ttMoves[1].move;
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
 
@@ -83,15 +79,13 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       phasePtr = MainSearchTable;
   }
 
-  phasePtr += int(!searchTT) - 1;
+  ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
+  phasePtr += int(ttMove == MOVE_NONE) - 1;
   go_next_phase();
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
                       : pos(p), H(h) {
-  int searchTT = ttm;
-  ttMoves[0].move = ttm;
-  ttMoves[1].move = MOVE_NONE;
 
   assert(d <= DEPTH_ZERO);
 
@@ -107,10 +101,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
       // qsearch tree explosion due to a possible perpetual check or
       // similar rare cases when TT table is full.
       if (ttm != MOVE_NONE && !pos.move_is_capture(ttm) && !move_is_promotion(ttm))
-          searchTT = ttMoves[0].move = MOVE_NONE;
+          ttm = MOVE_NONE;
   }
 
-  phasePtr += int(!searchTT) - 1;
+  ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
+  phasePtr += int(ttMove == MOVE_NONE) - 1;
   go_next_phase();
 }
 
@@ -125,8 +120,7 @@ void MovePicker::go_next_phase() {
   switch (phase) {
 
   case PH_TT_MOVES:
-      curMove = ttMoves;
-      lastMove = curMove + 2;
+      lastMove = curMove + 1;
       return;
 
   case PH_GOOD_CAPTURES:
@@ -268,16 +262,13 @@ Move MovePicker::get_next_move() {
       switch (phase) {
 
       case PH_TT_MOVES:
-          move = (curMove++)->move;
-          if (   move != MOVE_NONE
-              && pos.move_is_pl(move))
-              return move;
+          curMove++;
+          return ttMove;
           break;
 
       case PH_GOOD_CAPTURES:
           move = pick_best(curMove++, lastMove).move;
-          if (   move != ttMoves[0].move
-              && move != ttMoves[1].move)
+          if (move != ttMove)
           {
               // Check for a non negative SEE now
               int seeValue = pos.see_sign(move);
@@ -295,8 +286,7 @@ Move MovePicker::get_next_move() {
           move = (curMove++)->move;
           if (   move != MOVE_NONE
               && pos.move_is_pl(move)
-              && move != ttMoves[0].move
-              && move != ttMoves[1].move
+              && move != ttMove
               && !pos.move_is_capture(move))
               return move;
           break;
@@ -307,8 +297,7 @@ Move MovePicker::get_next_move() {
               insertion_sort<MoveStack>(lastGoodNonCapture, lastMove);
 
           move = (curMove++)->move;
-          if (   move != ttMoves[0].move
-              && move != ttMoves[1].move
+          if (   move != ttMove
               && move != killers[0].move
               && move != killers[1].move)
               return move;
@@ -321,13 +310,13 @@ Move MovePicker::get_next_move() {
       case PH_EVASIONS:
       case PH_QCAPTURES:
           move = pick_best(curMove++, lastMove).move;
-          if (move != ttMoves[0].move)
+          if (move != ttMove)
               return move;
           break;
 
       case PH_QCHECKS:
           move = (curMove++)->move;
-          if (move != ttMoves[0].move)
+          if (move != ttMove)
               return move;
           break;
 
