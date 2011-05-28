@@ -96,7 +96,7 @@ namespace {
   // MovePickerExt template class extends MovePicker and allows to choose at compile
   // time the proper moves source according to the type of node. In the default case
   // we simply create and use a standard MovePicker object.
-  template<bool SpNode, bool Root> struct MovePickerExt : public MovePicker {
+  template<NodeType> struct MovePickerExt : public MovePicker {
 
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
                   : MovePicker(p, ttm, d, h, ss, b) {}
@@ -105,19 +105,23 @@ namespace {
   };
 
   // In case of a SpNode we use split point's shared MovePicker object as moves source
-  template<> struct MovePickerExt<true, false> : public MovePicker {
+  template<> struct MovePickerExt<SplitPointNonPV> : public MovePickerExt<NonPV> {
 
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
+                  : MovePickerExt<NonPV>(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
 
     Move get_next_move() { return mp->get_next_move(); }
-
-    RootMoveList::iterator rm; // Dummy, needed to compile
     MovePicker* mp;
   };
 
+  template<> struct MovePickerExt<SplitPointPV> : public MovePickerExt<SplitPointNonPV> {
+
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePickerExt<SplitPointNonPV>(p, ttm, d, h, ss, b) {}
+  };
+
   // In case of a Root node we use RootMoveList as moves source
-  template<> struct MovePickerExt<false, true> : public MovePicker {
+  template<> struct MovePickerExt<Root> : public MovePicker {
 
     MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value);
     Move get_next_move();
@@ -876,7 +880,7 @@ namespace {
 split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
-    MovePickerExt<SpNode, RootNode> mp(pos, ttMove, depth, H, ss, (PvNode ? -VALUE_INFINITE : beta));
+    MovePickerExt<NT> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
     ss->bestMove = MOVE_NONE;
@@ -895,7 +899,7 @@ split_point_start: // At split points actual search starts from here
     }
 
     // Step 10. Loop through moves
-    // Loop through all legal moves until no moves remain or a beta cutoff occurs
+    // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
            && !Threads[threadID].cutoff_occurred())
@@ -2077,9 +2081,9 @@ split_point_start: // At split points actual search starts from here
   }
 
   // Specializations for MovePickerExt in case of Root node
-  MovePickerExt<false, true>::MovePickerExt(const Position& p, Move ttm, Depth d,
+  MovePickerExt<Root>::MovePickerExt(const Position& p, Move ttm, Depth d,
                                             const History& h, SearchStack* ss, Value b)
-                            : MovePicker(p, ttm, d, h, ss, b), firstCall(true) {
+                     : MovePicker(p, ttm, d, h, ss, b), firstCall(true) {
     Move move;
     Value score = VALUE_ZERO;
 
@@ -2099,7 +2103,7 @@ split_point_start: // At split points actual search starts from here
     rm = Rml.begin();
   }
 
-  Move MovePickerExt<false, true>::get_next_move() {
+  Move MovePickerExt<Root>::get_next_move() {
 
     if (!firstCall)
         ++rm;
