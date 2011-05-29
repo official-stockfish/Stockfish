@@ -28,7 +28,7 @@
 namespace {
 
   enum MovegenPhase {
-    PH_TT_MOVES,      // Transposition table move and mate killer
+    PH_TT_MOVE,       // Transposition table move
     PH_GOOD_CAPTURES, // Queen promotions and captures with SEE values >= 0
     PH_KILLERS,       // Killer moves from the current ply
     PH_NONCAPTURES,   // Non-captures and underpromotions
@@ -40,10 +40,10 @@ namespace {
   };
 
   CACHE_LINE_ALIGNMENT
-  const uint8_t MainSearchTable[] = { PH_TT_MOVES, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP };
-  const uint8_t EvasionTable[] = { PH_TT_MOVES, PH_EVASIONS, PH_STOP };
-  const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
-  const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVES, PH_QCAPTURES, PH_STOP };
+  const uint8_t MainSearchTable[] = { PH_TT_MOVE, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP };
+  const uint8_t EvasionTable[] = { PH_TT_MOVE, PH_EVASIONS, PH_STOP };
+  const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
+  const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_STOP };
 }
 
 bool MovePicker::isBadCapture() const { return phase == PH_BAD_CAPTURES; }
@@ -119,7 +119,7 @@ void MovePicker::go_next_phase() {
   phase = *(++phasePtr);
   switch (phase) {
 
-  case PH_TT_MOVES:
+  case PH_TT_MOVE:
       lastMove = curMove + 1;
       return;
 
@@ -261,7 +261,7 @@ Move MovePicker::get_next_move() {
 
       switch (phase) {
 
-      case PH_TT_MOVES:
+      case PH_TT_MOVE:
           curMove++;
           return ttMove;
           break;
