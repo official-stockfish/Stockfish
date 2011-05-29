@@ -115,12 +115,14 @@ const string move_to_san(Position& pos, Move m) {
 
           // Collect all legal moves of piece type 'pt' with destination 'to'
           MoveStack* last = generate<MV_LEGAL>(pos, mlist);
-          int f = 0, r = 0;
+          int f = 0, r = 0, cnt = 0;
 
           for (MoveStack* cur = mlist; cur != last; cur++)
               if (   move_to(cur->move) == to
                   && pos.type_of_piece_on(move_from(cur->move)) == pt)
               {
+                  cnt++;
+
                   if (square_file(move_from(cur->move)) == square_file(from))
                       f++;
 
@@ -128,15 +130,18 @@ const string move_to_san(Position& pos, Move m) {
                       r++;
               }
 
-          assert(f > 0 && r > 0);
+          assert(cnt > 0 && f > 0 && r > 0);
 
           // Disambiguation if we have more then one piece with destination 'to'
-          if (f == 1 && r > 1)
-              san += file_to_char(square_file(from));
-          else if (f > 1 && r == 1)
-              san += rank_to_char(square_rank(from));
-          else if (f > 1 && r > 1)
-              san += square_to_string(from);
+          if (cnt > 1)
+          {
+              if (f == 1)
+                  san += file_to_char(square_file(from));
+              else if (r == 1)
+                  san += rank_to_char(square_rank(from));
+              else
+                  san += square_to_string(from);
+          }
       }
 
       if (pos.move_is_capture(m))
