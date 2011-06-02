@@ -1134,7 +1134,7 @@ split_point_start: // At split points actual search starts from here
           bool doFullDepthSearch = true;
           alpha = SpNode ? sp->alpha : alpha;
 
-          if (    depth >= 3 * ONE_PLY
+          if (    depth > 3 * ONE_PLY
               && !captureOrPromotion
               && !dangerous
               && !move_is_castle(move)
