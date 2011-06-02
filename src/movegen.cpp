@@ -272,12 +272,17 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
       case BISHOP: sliderAttacks |= BishopPseudoAttacks[checksq]; break;
       case ROOK:   sliderAttacks |= RookPseudoAttacks[checksq];   break;
       case QUEEN:
-          // In case of a queen remove also squares attacked in the other direction to
-          // avoid possible illegal moves when queen and king are on adjacent squares.
-          if (RookPseudoAttacks[checksq] & (1ULL << ksq))
-              sliderAttacks |= RookPseudoAttacks[checksq] | pos.attacks_from<BISHOP>(checksq);
+          // If queen and king are far we can safely remove all the squares attacked
+          // in the other direction becuase are not reachable by the king anyway.
+          if (squares_between(ksq, checksq) || (RookPseudoAttacks[checksq] & (1ULL << ksq)))
+              sliderAttacks |= QueenPseudoAttacks[checksq];
+
+          // Otherwise, if king and queen are adjacent and on a diagonal line, we need to
+          // use real rook attacks to check if king is safe to move in the other direction.
+          // For example: king in B2, queen in A1 a knight in B1, and we can safely move to C1.
           else
               sliderAttacks |= BishopPseudoAttacks[checksq] | pos.attacks_from<ROOK>(checksq);
+
       default:
           break;
       }
