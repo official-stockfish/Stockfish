@@ -32,7 +32,8 @@ namespace {
     PH_GOOD_CAPTURES, // Queen promotions and captures with SEE values >= captureThreshold (captureThreshold <= 0)
     PH_GOOD_PROBCUT,  // Queen promotions and captures with SEE values > captureThreshold (captureThreshold >= 0)
     PH_KILLERS,       // Killer moves from the current ply
-    PH_NONCAPTURES,   // Non-captures and underpromotions
+    PH_NONCAPTURES_1, // Non-captures and underpromotions with positive score
+    PH_NONCAPTURES_2, // Non-captures and underpromotions with non-positive score
     PH_BAD_CAPTURES,  // Queen promotions and captures with SEE values < captureThreshold (captureThreshold <= 0)
     PH_EVASIONS,      // Check evasions
     PH_QCAPTURES,     // Captures in quiescence search
@@ -41,7 +42,7 @@ namespace {
   };
 
   CACHE_LINE_ALIGNMENT
-  const uint8_t MainSearchTable[] = { PH_TT_MOVE, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES, PH_BAD_CAPTURES, PH_STOP };
+  const uint8_t MainSearchTable[] = { PH_TT_MOVE, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES_1, PH_NONCAPTURES_2, PH_BAD_CAPTURES, PH_STOP };
   const uint8_t EvasionTable[] = { PH_TT_MOVE, PH_EVASIONS, PH_STOP };
   const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
   const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_STOP };
@@ -152,10 +153,16 @@ void MovePicker::go_next_phase() {
       lastMove = curMove + 2;
       return;
 
-  case PH_NONCAPTURES:
-      lastMove = generate<MV_NON_CAPTURE>(pos, moves);
+  case PH_NONCAPTURES_1:
+      lastNonCapture = lastMove = generate<MV_NON_CAPTURE>(pos, moves);
       score_noncaptures();
-      sort_moves(moves, lastMove, &lastGoodNonCapture);
+      sort_moves(moves, lastNonCapture, &lastMove);
+      return;
+
+  case PH_NONCAPTURES_2:
+      curMove = lastMove;
+      lastMove = lastNonCapture;
+      insertion_sort<MoveStack>(curMove, lastMove);
       return;
 
   case PH_BAD_CAPTURES:
@@ -319,11 +326,8 @@ Move MovePicker::get_next_move() {
               return move;
           break;
 
-      case PH_NONCAPTURES:
-          // Sort negative scored moves only when we get there
-          if (curMove == lastGoodNonCapture)
-              insertion_sort<MoveStack>(lastGoodNonCapture, lastMove);
-
+      case PH_NONCAPTURES_1:
+      case PH_NONCAPTURES_2:
           move = (curMove++)->move;
           if (   move != ttMove
               && move != killers[0].move
