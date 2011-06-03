@@ -685,7 +685,7 @@ namespace {
     Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
     bool isPvMove, inCheck, singularExtensionNode, givesCheck, captureOrPromotion, dangerous;
     int moveCount = 0, playedMoveCount = 0;
-    int threadID = pos.thread();
+    Thread& thread = Threads[pos.thread()];
     SplitPoint* sp = NULL;
 
     refinedValue = bestValue = value = -VALUE_INFINITE;
@@ -694,8 +694,8 @@ namespace {
     ss->ply = (ss-1)->ply + 1;
 
     // Used to send selDepth info to GUI
-    if (PvNode && Threads[threadID].maxPly < ss->ply)
-        Threads[threadID].maxPly = ss->ply;
+    if (PvNode && thread.maxPly < ss->ply)
+        thread.maxPly = ss->ply;
 
     if (SpNode)
     {
@@ -713,7 +713,7 @@ namespace {
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
-    if (threadID == 0 && ++NodesSincePoll > NodesBetweenPolls)
+    if (pos.thread() == 0 && ++NodesSincePoll > NodesBetweenPolls)
     {
         NodesSincePoll = 0;
         poll(pos);
@@ -721,7 +721,6 @@ namespace {
 
     // Step 2. Check for aborted search and immediate draw
     if ((   StopRequest
-         || Threads[threadID].cutoff_occurred()
          || pos.is_draw()
          || ss->ply > PLY_MAX) && !RootNode)
         return VALUE_DRAW;
@@ -744,10 +743,8 @@ namespace {
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
     // smooth experience in analysis mode.
-    if (   !RootNode
-        && tte
-        && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
-                   : ok_to_use_TT(tte, depth, beta, ss->ply)))
+    if (tte && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
+                       : ok_to_use_TT(tte, depth, beta, ss->ply)))
     {
         TT.refresh(tte);
         ss->bestMove = ttMove; // Can be MOVE_NONE
@@ -933,7 +930,7 @@ split_point_start: // At split points actual search starts from here
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE
-           && !Threads[threadID].cutoff_occurred())
+           && !thread.cutoff_occurred())
     {
       assert(move_is_ok(move));
 
@@ -1142,7 +1139,7 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      if (value > bestValue && !(SpNode && Threads[threadID].cutoff_occurred()))
+      if (value > bestValue && !(SpNode && thread.cutoff_occurred()))
       {
           bestValue = value;
 
@@ -1214,9 +1211,9 @@ split_point_start: // At split points actual search starts from here
           && !SpNode
           && depth >= Threads.min_split_depth()
           && bestValue < beta
-          && Threads.available_slave_exists(threadID)
+          && Threads.available_slave_exists(pos.thread())
           && !StopRequest
-          && !Threads[threadID].cutoff_occurred())
+          && !thread.cutoff_occurred())
           Threads.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
                                    threatMove, moveCount, &mp, PvNode);
     }
@@ -1231,7 +1228,7 @@ split_point_start: // At split points actual search starts from here
     // Step 21. Update tables
     // If the search is not aborted, update the transposition table,
     // history counters, and killer moves.
-    if (!SpNode && !StopRequest && !Threads[threadID].cutoff_occurred())
+    if (!SpNode && !StopRequest && !thread.cutoff_occurred())
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
         vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
@@ -1256,7 +1253,7 @@ split_point_start: // At split points actual search starts from here
     if (SpNode)
     {
         // Here we have the lock still grabbed
-        sp->is_slave[threadID] = false;
+        sp->is_slave[pos.thread()] = false;
         sp->nodes += pos.nodes_searched();
         lock_release(&(sp->lock));
     }
