@@ -243,9 +243,6 @@ namespace {
   template <NodeType NT>
   Value qsearch(Position& pos, SearchStack* ss, Value alpha, Value beta, Depth depth);
 
-  template <bool PvNode>
-  Depth extension(const Position& pos, Move m, bool captureOrPromotion, bool moveIsCheck, bool* dangerous);
-
   bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   Value value_to_tt(Value v, int ply);
@@ -283,6 +280,51 @@ namespace {
 
     os.iword(0) = int(f);
     return os;
+  }
+
+  // extension() decides whether a move should be searched with normal depth,
+  // or with extended depth. Certain classes of moves (checking moves, in
+  // particular) are searched with bigger depth than ordinary moves and in
+  // any case are marked as 'dangerous'. Note that also if a move is not
+  // extended, as example because the corresponding UCI option is set to zero,
+  // the move is marked as 'dangerous' so, at least, we avoid to prune it.
+  template <bool PvNode>
+  FORCE_INLINE Depth extension(const Position& pos, Move m, bool captureOrPromotion,
+                               bool moveIsCheck, bool* dangerous) {
+    assert(m != MOVE_NONE);
+
+    Depth result = DEPTH_ZERO;
+    *dangerous = moveIsCheck;
+
+    if (moveIsCheck && pos.see_sign(m) >= 0)
+        result += CheckExtension[PvNode];
+
+    if (pos.type_of_piece_on(move_from(m)) == PAWN)
+    {
+        Color c = pos.side_to_move();
+        if (relative_rank(c, move_to(m)) == RANK_7)
+        {
+            result += PawnPushTo7thExtension[PvNode];
+            *dangerous = true;
+        }
+        if (pos.pawn_is_passed(c, move_to(m)))
+        {
+            result += PassedPawnExtension[PvNode];
+            *dangerous = true;
+        }
+    }
+
+    if (   captureOrPromotion
+        && pos.type_of_piece_on(move_to(m)) != PAWN
+        && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
+            - pos.midgame_value_of_piece_on(move_to(m)) == VALUE_ZERO)
+        && !move_is_special(m))
+    {
+        result += PawnEndgameExtension[PvNode];
+        *dangerous = true;
+    }
+
+    return Min(result, ONE_PLY);
   }
 
 } // namespace
@@ -1602,53 +1644,6 @@ split_point_start: // At split points actual search starts from here
       return v + ply;
 
     return v;
-  }
-
-
-  // extension() decides whether a move should be searched with normal depth,
-  // or with extended depth. Certain classes of moves (checking moves, in
-  // particular) are searched with bigger depth than ordinary moves and in
-  // any case are marked as 'dangerous'. Note that also if a move is not
-  // extended, as example because the corresponding UCI option is set to zero,
-  // the move is marked as 'dangerous' so, at least, we avoid to prune it.
-  template <bool PvNode>
-  Depth extension(const Position& pos, Move m, bool captureOrPromotion,
-                  bool moveIsCheck, bool* dangerous) {
-
-    assert(m != MOVE_NONE);
-
-    Depth result = DEPTH_ZERO;
-    *dangerous = moveIsCheck;
-
-    if (moveIsCheck && pos.see_sign(m) >= 0)
-        result += CheckExtension[PvNode];
-
-    if (pos.type_of_piece_on(move_from(m)) == PAWN)
-    {
-        Color c = pos.side_to_move();
-        if (relative_rank(c, move_to(m)) == RANK_7)
-        {
-            result += PawnPushTo7thExtension[PvNode];
-            *dangerous = true;
-        }
-        if (pos.pawn_is_passed(c, move_to(m)))
-        {
-            result += PassedPawnExtension[PvNode];
-            *dangerous = true;
-        }
-    }
-
-    if (   captureOrPromotion
-        && pos.type_of_piece_on(move_to(m)) != PAWN
-        && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
-            - pos.midgame_value_of_piece_on(move_to(m)) == VALUE_ZERO)
-        && !move_is_special(m))
-    {
-        result += PawnEndgameExtension[PvNode];
-        *dangerous = true;
-    }
-
-    return Min(result, ONE_PLY);
   }
 
 
