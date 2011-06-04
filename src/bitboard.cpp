@@ -22,9 +22,40 @@
 #include "bitboard.h"
 #include "bitcount.h"
 
+// Global bitboards definitions with static storage duration are
+// automatically set to zero before enter main().
+Bitboard RAttacks[0x19000];
+Bitboard BAttacks[0x1480];
+
+Magics RMagics[64];
+Magics BMagics[64];
+
+Bitboard SetMaskBB[65];
+Bitboard ClearMaskBB[65];
+
+Bitboard SquaresByColorBB[2];
+Bitboard FileBB[8];
+Bitboard RankBB[8];
+Bitboard NeighboringFilesBB[8];
+Bitboard ThisAndNeighboringFilesBB[8];
+Bitboard InFrontBB[2][8];
+Bitboard StepAttacksBB[16][64];
+Bitboard BetweenBB[64][64];
+Bitboard SquaresInFrontMask[2][64];
+Bitboard PassedPawnMask[2][64];
+Bitboard AttackSpanMask[2][64];
+
+Bitboard BishopPseudoAttacks[64];
+Bitboard RookPseudoAttacks[64];
+Bitboard QueenPseudoAttacks[64];
+
+uint8_t BitCount8Bit[256];
+
+namespace {
+
 #if defined(IS_64BIT)
 
-static const uint64_t DeBruijnMagic = 0x218A392CD3D5DBFULL;
+const uint64_t DeBruijnMagic = 0x218A392CD3D5DBFULL;
 
 const uint64_t BMult[64] = {
   0x0440049104032280ULL, 0x1021023C82008040ULL, 0x0404040082000048ULL,
@@ -92,7 +123,7 @@ const int RShift[64] = {
 
 #else // if !defined(IS_64BIT)
 
-static const uint32_t DeBruijnMagic = 0x783A9B23;
+const uint32_t DeBruijnMagic = 0x783A9B23;
 
 const uint64_t BMult[64] = {
   0x54142844C6A22981ULL, 0x710358A6EA25C19EULL, 0x704F746D63A4A8DCULL,
@@ -160,44 +191,10 @@ const int RShift[64] = {
 
 #endif // defined(IS_64BIT)
 
-// Global bitboards definitions with static storage duration are
-// automatically set to zero before enter main().
-Bitboard RMask[64];
-int RAttackIndex[64];
-Bitboard RAttacks[0x19000];
-
-Bitboard BMask[64];
-int BAttackIndex[64];
-Bitboard BAttacks[0x1480];
-
-Bitboard SetMaskBB[65];
-Bitboard ClearMaskBB[65];
-
-Bitboard SquaresByColorBB[2];
-Bitboard FileBB[8];
-Bitboard RankBB[8];
-Bitboard NeighboringFilesBB[8];
-Bitboard ThisAndNeighboringFilesBB[8];
-Bitboard InFrontBB[2][8];
-Bitboard StepAttacksBB[16][64];
-Bitboard BetweenBB[64][64];
-Bitboard SquaresInFrontMask[2][64];
-Bitboard PassedPawnMask[2][64];
-Bitboard AttackSpanMask[2][64];
-
-Bitboard BishopPseudoAttacks[64];
-Bitboard RookPseudoAttacks[64];
-Bitboard QueenPseudoAttacks[64];
-
-uint8_t BitCount8Bit[256];
-
-
-namespace {
-
   CACHE_LINE_ALIGNMENT int BSFTable[64];
 
-  void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
-                            const int shift[], const Bitboard mult[], int deltas[][2]);
+  void init_sliding_attacks(Bitboard attacks[], Magics m[], const int shift[],
+                            const Bitboard mult[], int deltas[][2]);
 }
 
 
@@ -357,8 +354,8 @@ void init_bitboards() {
   int rookDeltas[4][2]   = { {0,1}, {0 ,-1}, {1, 0}, {-1, 0} };
   int bishopDeltas[4][2] = { {1,1}, {-1, 1}, {1,-1}, {-1,-1} };
 
-  init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
-  init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
+  init_sliding_attacks(RAttacks, RMagics, RShift, RMult, rookDeltas);
+  init_sliding_attacks(BAttacks, BMagics, BShift, BMult, bishopDeltas);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -428,20 +425,22 @@ namespace {
     return attacks;
   }
 
-  void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
-                            const int shift[], const Bitboard mult[], int deltas[][2]) {
+  void init_sliding_attacks(Bitboard attacks[], Magics m[], const int shift[],
+                            const Bitboard mult[], int deltas[][2]) {
     Bitboard b, v;
     int i, j, index;
 
     for (i = index = 0; i < 64; i++)
     {
-        attackIndex[i] = index;
-        mask[i] = sliding_attacks(i, 0, deltas, 1, 6, 1, 6);
-        j = 1 << ((CpuIs64Bit ? 64 : 32) - shift[i]);
+        m[i].index = index;
+        m[i].mult = mult[i];
+        m[i].shift = shift[i];
+        m[i].mask = sliding_attacks(i, 0, deltas, 1, 6, 1, 6);
+        j = 1 << ((CpuIs64Bit ? 64 : 32) - m[i].shift);
 
         for (int k = 0; k < j; k++)
         {
-            b = index_to_bitboard(k, mask[i]);
+            b = index_to_bitboard(k, m[i].mask);
             v = CpuIs64Bit ? b * mult[i] : unsigned(b * mult[i] ^ (b >> 32) * (mult[i] >> 32));
             attacks[index + (v >> shift[i])] = sliding_attacks(i, b, deltas, 0, 7, 0, 7);
         }

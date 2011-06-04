@@ -60,23 +60,24 @@ extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];
 
-extern const uint64_t RMult[64];
-extern const int RShift[64];
-extern Bitboard RMask[64];
-extern int RAttackIndex[64];
-extern Bitboard RAttacks[0x19000];
-
-extern const uint64_t BMult[64];
-extern const int BShift[64];
-extern Bitboard BMask[64];
-extern int BAttackIndex[64];
-extern Bitboard BAttacks[0x1480];
-
 extern Bitboard BishopPseudoAttacks[64];
 extern Bitboard RookPseudoAttacks[64];
 extern Bitboard QueenPseudoAttacks[64];
 
 extern uint8_t BitCount8Bit[256];
+
+struct Magics {
+  Bitboard mask;
+  uint64_t mult;
+  uint32_t index;
+  uint32_t shift;
+};
+
+extern Magics RMagics[64];
+extern Magics BMagics[64];
+
+extern Bitboard RAttacks[0x19000];
+extern Bitboard BAttacks[0x1480];
 
 
 /// Functions for testing whether a given bit is set in a bitboard, and for
@@ -173,28 +174,30 @@ inline Bitboard in_front_bb(Color c, Square s) {
 
 #if defined(IS_64BIT)
 
-inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = blockers & RMask[s];
-  return RAttacks[RAttackIndex[s] + ((b * RMult[s]) >> RShift[s])];
+inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
+  const Magics& m = RMagics[s];
+  return RAttacks[m.index + (((occ & m.mask) * m.mult) >> m.shift)];
 }
 
-inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = blockers & BMask[s];
-  return BAttacks[BAttackIndex[s] + ((b * BMult[s]) >> BShift[s])];
+inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
+  const Magics& m = BMagics[s];
+  return BAttacks[m.index + (((occ & m.mask) * m.mult) >> m.shift)];
 }
 
 #else // if !defined(IS_64BIT)
 
-inline Bitboard rook_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = blockers & RMask[s];
-  return RAttacks[RAttackIndex[s] +
-        (unsigned(int(b) * int(RMult[s]) ^ int(b >> 32) * int(RMult[s] >> 32)) >> RShift[s])];
+inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
+  const Magics& m = RMagics[s];
+  Bitboard b = occ & m.mask;
+  return RAttacks[m.index +
+        ((unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift)];
 }
 
-inline Bitboard bishop_attacks_bb(Square s, Bitboard blockers) {
-  Bitboard b = blockers & BMask[s];
-  return BAttacks[BAttackIndex[s] +
-        (unsigned(int(b) * int(BMult[s]) ^ int(b >> 32) * int(BMult[s] >> 32)) >> BShift[s])];
+inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
+  const Magics& m = BMagics[s];
+  Bitboard b = occ & m.mask;
+  return BAttacks[m.index +
+        ((unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift)];
 }
 
 #endif
