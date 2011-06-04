@@ -196,13 +196,6 @@ namespace {
 
   CACHE_LINE_ALIGNMENT int BSFTable[64];
 
-  void init_masks();
-  void init_step_attacks();
-  void init_pseudo_attacks();
-  void init_between_bitboards();
-  Bitboard index_to_bitboard(int index, Bitboard mask);
-  Bitboard sliding_attacks(int sq, Bitboard occupied, int deltas[][2],
-                           int fmin, int fmax, int rmin, int rmax);
   void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
                             const int shift[], const Bitboard mult[], int deltas[][2]);
 }
@@ -292,109 +285,126 @@ Square pop_1st_bit(Bitboard* bb) {
 
 void init_bitboards() {
 
-  int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
-  int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
+  SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
+  SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
 
-  init_masks();
-  init_step_attacks();
+  for (Square s = SQ_A1; s <= SQ_H8; s++)
+  {
+      SetMaskBB[s] = (1ULL << s);
+      ClearMaskBB[s] = ~SetMaskBB[s];
+  }
+
+  ClearMaskBB[SQ_NONE] = ~EmptyBoardBB;
+
+  FileBB[FILE_A] = FileABB;
+  RankBB[RANK_1] = Rank1BB;
+
+  for (int f = FILE_B; f <= FILE_H; f++)
+  {
+      FileBB[f] = FileBB[f - 1] << 1;
+      RankBB[f] = RankBB[f - 1] << 8;
+  }
+
+  for (int f = FILE_A; f <= FILE_H; f++)
+  {
+      NeighboringFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
+      ThisAndNeighboringFilesBB[f] = FileBB[f] | NeighboringFilesBB[f];
+  }
+
+  for (int rw = RANK_7, rb = RANK_2; rw >= RANK_1; rw--, rb++)
+  {
+      InFrontBB[WHITE][rw] = InFrontBB[WHITE][rw + 1] | RankBB[rw + 1];
+      InFrontBB[BLACK][rb] = InFrontBB[BLACK][rb - 1] | RankBB[rb - 1];
+  }
+
+  for (Color c = WHITE; c <= BLACK; c++)
+      for (Square s = SQ_A1; s <= SQ_H8; s++)
+      {
+          SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
+          PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
+          AttackSpanMask[c][s]     = in_front_bb(c, s) & neighboring_files_bb(s);
+      }
+
+  for (Bitboard b = 0; b < 256; b++)
+      BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
+
+  for (int i = 1; i < 64; i++)
+      if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
+      {
+          Bitboard b = 1ULL << i;
+          b ^= b - 1;
+          b ^= b >> 32;
+          BSFTable[uint32_t(b * DeBruijnMagic) >> 26] = i;
+      }
+      else
+          BSFTable[((1ULL << i) * DeBruijnMagic) >> 58] = i;
+
+  int steps[][9] = {
+    {0}, {7,9,0}, {17,15,10,6,-6,-10,-15,-17,0}, {0}, {0}, {0}, {9,7,-7,-9,8,1,-1,-8,0}
+  };
+
+  for (Color c = WHITE; c <= BLACK; c++)
+      for (Square s = SQ_A1; s <= SQ_H8; s++)
+          for (PieceType pt = PAWN; pt <= KING; pt++)
+              for (int k = 0; steps[pt][k]; k++)
+              {
+                  Square to = s + Square(c == WHITE ? steps[pt][k] : -steps[pt][k]);
+
+                  if (square_is_ok(to) && square_distance(s, to) < 3)
+                      set_bit(&StepAttacksBB[make_piece(c, pt)][s], to);
+              }
+
+  int rookDeltas[4][2]   = { {0,1}, {0 ,-1}, {1, 0}, {-1, 0} };
+  int bishopDeltas[4][2] = { {1,1}, {-1, 1}, {1,-1}, {-1,-1} };
+
   init_sliding_attacks(RAttacks, RAttackIndex, RMask, RShift, RMult, rookDeltas);
   init_sliding_attacks(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
-  init_pseudo_attacks();
-  init_between_bitboards();
+
+  for (Square s = SQ_A1; s <= SQ_H8; s++)
+  {
+      BishopPseudoAttacks[s] = bishop_attacks_bb(s, EmptyBoardBB);
+      RookPseudoAttacks[s]   = rook_attacks_bb(s, EmptyBoardBB);
+      QueenPseudoAttacks[s]  = queen_attacks_bb(s, EmptyBoardBB);
+  }
+
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+          if (bit_is_set(QueenPseudoAttacks[s1], s2))
+          {
+              int f = file_distance(s1, s2);
+              int r = rank_distance(s1, s2);
+
+              Square d = (s2 - s1) / Max(f, r);
+
+              for (Square s3 = s1 + d; s3 != s2; s3 += d)
+                  set_bit(&BetweenBB[s1][s2], s3);
+          }
 }
+
 
 namespace {
 
-  // All functions below are used to precompute various bitboards during
-  // program initialization.  Some of the functions may be difficult to
-  // understand, but they all seem to work correctly, and it should never
-  // be necessary to touch any of them.
+  Bitboard index_to_bitboard(int index, Bitboard mask) {
 
-  void init_masks() {
+    Bitboard result = 0;
+    int sq, cnt = 0;
 
-    SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
-    SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
-
-    FileBB[FILE_A] = FileABB;
-    RankBB[RANK_1] = Rank1BB;
-
-    for (int f = FILE_B; f <= FILE_H; f++)
+    while (mask)
     {
-        FileBB[f] = FileBB[f - 1] << 1;
-        RankBB[f] = RankBB[f - 1] << 8;
+        sq = pop_1st_bit(&mask);
+
+        if (index & (1 << cnt++))
+            result |= (1ULL << sq);
     }
-
-    for (int f = FILE_A; f <= FILE_H; f++)
-    {
-        NeighboringFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
-        ThisAndNeighboringFilesBB[f] = FileBB[f] | NeighboringFilesBB[f];
-    }
-
-    for (int rw = RANK_7, rb = RANK_2; rw >= RANK_1; rw--, rb++)
-    {
-        InFrontBB[WHITE][rw] = InFrontBB[WHITE][rw + 1] | RankBB[rw + 1];
-        InFrontBB[BLACK][rb] = InFrontBB[BLACK][rb - 1] | RankBB[rb - 1];
-    }
-
-    SetMaskBB[SQ_NONE] = EmptyBoardBB;
-    ClearMaskBB[SQ_NONE] = ~SetMaskBB[SQ_NONE];
-
-    for (Square s = SQ_A1; s <= SQ_H8; s++)
-    {
-        SetMaskBB[s] = (1ULL << s);
-        ClearMaskBB[s] = ~SetMaskBB[s];
-    }
-
-    for (Color c = WHITE; c <= BLACK; c++)
-        for (Square s = SQ_A1; s <= SQ_H8; s++)
-        {
-            SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
-            PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
-            AttackSpanMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
-        }
-
-    for (Bitboard b = 0; b < 256; b++)
-        BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
-
-    for (int i = 1; i < 64; i++)
-        if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
-        {
-            Bitboard b = 1ULL << i;
-            b ^= b - 1;
-            b ^= b >> 32;
-            BSFTable[uint32_t(b * DeBruijnMagic) >> 26] = i;
-        }
-        else
-            BSFTable[((1ULL << i) * DeBruijnMagic) >> 58] = i;
-  }
-
-  void init_step_attacks() {
-
-    const int step[][9] =  {
-      {0},
-      {7,9,0}, {17,15,10,6,-6,-10,-15,-17,0}, {0}, {0}, {0},
-      {9,7,-7,-9,8,1,-1,-8,0}, {0}, {0},
-      {-7,-9,0}, {17,15,10,6,-6,-10,-15,-17,0}, {0}, {0}, {0},
-      {9,7,-7,-9,8,1,-1,-8,0}
-    };
-
-    for (Square s = SQ_A1; s <= SQ_H8; s++)
-        for (Piece pc = WP; pc <= BK; pc++)
-            for (int k = 0; step[pc][k] != 0; k++)
-            {
-                Square to = s + Square(step[pc][k]);
-
-                if (square_is_ok(to) && square_distance(s, to) < 3)
-                    set_bit(&StepAttacksBB[pc][s], to);
-           }
+    return result;
   }
 
   Bitboard sliding_attacks(int sq, Bitboard occupied, int deltas[][2],
                            int fmin, int fmax, int rmin, int rmax) {
+    Bitboard attacks = 0;
     int dx, dy, f, r;
     int rk = sq / 8;
     int fl = sq % 8;
-    Bitboard attacks = EmptyBoardBB;
 
     for (int i = 0; i < 4; i++)
     {
@@ -418,21 +428,6 @@ namespace {
     return attacks;
   }
 
-  Bitboard index_to_bitboard(int index, Bitboard mask) {
-
-    Bitboard result = EmptyBoardBB;
-    int sq, cnt = 0;
-
-    while (mask)
-    {
-        sq = pop_1st_bit(&mask);
-
-        if (index & (1 << cnt++))
-            result |= (1ULL << sq);
-    }
-    return result;
-  }
-
   void init_sliding_attacks(Bitboard attacks[], int attackIndex[], Bitboard mask[],
                             const int shift[], const Bitboard mult[], int deltas[][2]) {
     Bitboard b, v;
@@ -453,34 +448,4 @@ namespace {
         index += j;
     }
   }
-
-  void init_pseudo_attacks() {
-
-    for (Square s = SQ_A1; s <= SQ_H8; s++)
-    {
-        BishopPseudoAttacks[s] = bishop_attacks_bb(s, EmptyBoardBB);
-        RookPseudoAttacks[s]   = rook_attacks_bb(s, EmptyBoardBB);
-        QueenPseudoAttacks[s]  = queen_attacks_bb(s, EmptyBoardBB);
-    }
-  }
-
-  void init_between_bitboards() {
-
-    Square s1, s2, s3, d;
-    int f, r;
-
-    for (s1 = SQ_A1; s1 <= SQ_H8; s1++)
-        for (s2 = SQ_A1; s2 <= SQ_H8; s2++)
-            if (bit_is_set(QueenPseudoAttacks[s1], s2))
-            {
-                f = file_distance(s1, s2);
-                r = rank_distance(s1, s2);
-
-                d = (s2 - s1) / Max(f, r);
-
-                for (s3 = s1 + d; s3 != s2; s3 += d)
-                    set_bit(&(BetweenBB[s1][s2]), s3);
-            }
-  }
-
 }
