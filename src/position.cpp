@@ -1778,7 +1778,7 @@ Value Position::compute_non_pawn_material(Color c) const {
 /// Position::is_draw() tests whether the position is drawn by material,
 /// repetition, or the 50 moves rule. It does not detect stalemates, this
 /// must be done by the search.
-
+template<bool SkipRepetition>
 bool Position::is_draw() const {
 
   // Draw by material?
@@ -1791,12 +1791,17 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by repetition?
-  for (int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull); i <= e; i += 2)
-      if (history[st->gamePly - i] == st->key)
-          return true;
+  if (!SkipRepetition)
+      for (int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull); i <= e; i += 2)
+          if (history[st->gamePly - i] == st->key)
+              return true;
 
   return false;
 }
+
+// Explicit template instantiations
+template bool Position::is_draw<false>() const;
+template bool Position::is_draw<true>() const;
 
 
 /// Position::is_mate() returns true or false depending on whether the

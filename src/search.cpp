@@ -763,7 +763,7 @@ namespace {
 
     // Step 2. Check for aborted search and immediate draw
     if ((   StopRequest
-         || pos.is_draw()
+         || pos.is_draw<false>()
          || ss->ply > PLY_MAX) && !RootNode)
         return VALUE_DRAW;
 
@@ -1333,7 +1333,7 @@ split_point_start: // At split points actual search starts from here
     ss->ply = (ss-1)->ply + 1;
 
     // Check for an instant draw or maximum ply reached
-    if (ss->ply > PLY_MAX || pos.is_draw())
+    if (pos.is_draw<true>() || ss->ply > PLY_MAX)
         return VALUE_DRAW;
 
     // Decide whether or not to include checks, this fixes also the type of
@@ -2019,7 +2019,7 @@ split_point_start: // At split points actual search starts from here
            && pos.move_is_pl(tte->move())
            && pos.pl_move_is_legal(tte->move(), pos.pinned_pieces(pos.side_to_move()))
            && ply < PLY_MAX
-           && (!pos.is_draw() || ply < 2))
+           && (!pos.is_draw<false>() || ply < 2))
     {
         pv[ply] = tte->move();
         pos.do_move(pv[ply++], *st++);

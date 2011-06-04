@@ -228,7 +228,7 @@ public:
 
   // Game termination checks
   bool is_mate() const;
-  bool is_draw() const;
+  template<bool SkipRepetition> bool is_draw() const;
 
   // Number of plies from starting position
   int startpos_ply_counter() const;
