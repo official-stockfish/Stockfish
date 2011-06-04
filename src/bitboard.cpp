@@ -24,6 +24,8 @@
 
 #if defined(IS_64BIT)
 
+static const uint64_t DeBruijnMagic = 0x218A392CD3D5DBFULL;
+
 const uint64_t BMult[64] = {
   0x0440049104032280ULL, 0x1021023C82008040ULL, 0x0404040082000048ULL,
   0x48C4440084048090ULL, 0x2801104026490000ULL, 0x4100880442040800ULL,
@@ -89,6 +91,8 @@ const int RShift[64] = {
 };
 
 #else // if !defined(IS_64BIT)
+
+static const uint32_t DeBruijnMagic = 0x783A9B23;
 
 const uint64_t BMult[64] = {
   0x54142844C6A22981ULL, 0x710358A6EA25C19EULL, 0x704F746D63A4A8DCULL,
@@ -190,6 +194,8 @@ uint8_t BitCount8Bit[256];
 
 namespace {
 
+  CACHE_LINE_ALIGNMENT int BSFTable[64];
+
   void init_masks();
   void init_step_attacks();
   void init_pseudo_attacks();
@@ -225,39 +231,22 @@ void print_bitboard(Bitboard b) {
 
 #if defined(IS_64BIT) && !defined(USE_BSFQ)
 
-static CACHE_LINE_ALIGNMENT
-const int BitTable[64] = {
-   0,  1,  2,  7,  3, 13,  8, 19,  4, 25, 14, 28,  9, 34, 20, 40,  5, 17, 26,
-  38, 15, 46, 29, 48, 10, 31, 35, 54, 21, 50, 41, 57, 63,  6, 12, 18, 24, 27,
-  33, 39, 16, 37, 45, 47, 30, 53, 49, 56, 62, 11, 23, 32, 36, 44, 52, 55, 61,
-  22, 43, 51, 60, 42, 59, 58
-};
-
 Square first_1(Bitboard b) {
-  return Square(BitTable[((b & -b) * 0x218a392cd3d5dbfULL) >> 58]);
+  return Square(BSFTable[((b & -b) * DeBruijnMagic) >> 58]);
 }
 
 Square pop_1st_bit(Bitboard* b) {
   Bitboard bb = *b;
   *b &= (*b - 1);
-  return Square(BitTable[((bb & -bb) * 0x218a392cd3d5dbfULL) >> 58]);
+  return Square(BSFTable[((bb & -bb) * DeBruijnMagic) >> 58]);
 }
 
 #elif !defined(USE_BSFQ)
 
-static CACHE_LINE_ALIGNMENT
-const int BitTable[64] = {
-  63, 30,  3, 32, 25, 41, 22, 33, 15, 50, 42, 13, 11, 53, 19, 34, 61, 29,  2,
-  51, 21, 43, 45, 10, 18, 47,  1, 54,  9, 57,  0, 35, 62, 31, 40,  4, 49,  5,
-  52, 26, 60,  6, 23, 44, 46, 27, 56, 16,  7, 39, 48, 24, 59, 14, 12, 55, 38,
-  28, 58, 20, 37, 17, 36, 8
-};
-
 Square first_1(Bitboard b) {
-
   b ^= (b - 1);
-  uint32_t fold = int(b) ^ int(b >> 32);
-  return Square(BitTable[(fold * 0x783a9b23) >> 26]);
+  uint32_t fold = unsigned(b) ^ unsigned(b >> 32);
+  return Square(BSFTable[(fold * DeBruijnMagic) >> 26]);
 }
 
 // Use type-punning
@@ -284,12 +273,12 @@ Square pop_1st_bit(Bitboard* bb) {
 
    if (u.dw.l)
    {
-       ret = Square(BitTable[((u.dw.l ^ (u.dw.l - 1)) * 0x783a9b23) >> 26]);
+       ret = Square(BSFTable[((u.dw.l ^ (u.dw.l - 1)) * DeBruijnMagic) >> 26]);
        u.dw.l &= (u.dw.l - 1);
        *bb = u.b;
        return ret;
    }
-   ret = Square(BitTable[((~(u.dw.h ^ (u.dw.h - 1))) * 0x783a9b23) >> 26]);
+   ret = Square(BSFTable[((~(u.dw.h ^ (u.dw.h - 1))) * DeBruijnMagic) >> 26]);
    u.dw.h &= (u.dw.h - 1);
    *bb = u.b;
    return ret;
@@ -366,6 +355,17 @@ namespace {
 
     for (Bitboard b = 0; b < 256; b++)
         BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
+
+    for (int i = 1; i < 64; i++)
+        if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
+        {
+            Bitboard b = 1ULL << i;
+            b ^= b - 1;
+            b ^= b >> 32;
+            BSFTable[uint32_t(b * DeBruijnMagic) >> 26] = i;
+        }
+        else
+            BSFTable[((1ULL << i) * DeBruijnMagic) >> 58] = i;
   }
 
   void init_step_attacks() {
