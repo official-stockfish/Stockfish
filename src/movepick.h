@@ -53,6 +53,7 @@ private:
 
   const Position& pos;
   const History& H;
+  Depth depth;
   Move ttMove;
   MoveStack killers[2];
   int captureThreshold, phase;

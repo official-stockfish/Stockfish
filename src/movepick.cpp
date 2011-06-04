@@ -56,7 +56,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
-                       SearchStack* ss, Value beta) : pos(p), H(h) {
+                       SearchStack* ss, Value beta) : pos(p), H(h), depth(d) {
   captureThreshold = 0;
   badCaptures = moves + MAX_MOVES;
 
@@ -162,7 +162,8 @@ void MovePicker::go_next_phase() {
   case PH_NONCAPTURES_2:
       curMove = lastMove;
       lastMove = lastNonCapture;
-      insertion_sort<MoveStack>(curMove, lastMove);
+      if (depth >= 3 * ONE_PLY)
+          insertion_sort<MoveStack>(curMove, lastMove);
       return;
 
   case PH_BAD_CAPTURES:
