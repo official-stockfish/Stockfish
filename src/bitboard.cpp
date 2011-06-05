@@ -24,9 +24,6 @@
 
 // Global bitboards definitions with static storage duration are
 // automatically set to zero before enter main().
-Bitboard RAttacks[0x19000];
-Bitboard BAttacks[0x1480];
-
 Magics RMagics[64];
 Magics BMagics[64];
 
@@ -52,6 +49,15 @@ Bitboard QueenPseudoAttacks[64];
 uint8_t BitCount8Bit[256];
 
 namespace {
+
+  CACHE_LINE_ALIGNMENT
+
+  int BSFTable[64];
+
+  Bitboard RAttacks[0x19000];
+  Bitboard BAttacks[0x1480];
+
+  void init_sliding_attacks(Bitboard attacks[], Magics m[], const Bitboard mult[], Square deltas[]);
 
 #if defined(IS_64BIT)
 
@@ -163,9 +169,6 @@ const uint64_t RMult[64] = {
 
 #endif // defined(IS_64BIT)
 
-  CACHE_LINE_ALIGNMENT int BSFTable[64];
-
-  void init_sliding_attacks(Bitboard attacks[], Magics m[], const Bitboard mult[], Square deltas[]);
 }
 
 
@@ -397,10 +400,10 @@ namespace {
     {
         excluded = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
 
-        m[s].offset = offset;
-        m[s].mult   = mult[s];
-        m[s].mask   = sliding_attacks(s, EmptyBoardBB, deltas, excluded);
-        m[s].shift  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT64>(m[s].mask);
+        m[s].attacks = &attacks[offset];
+        m[s].mult    = mult[s];
+        m[s].mask    = sliding_attacks(s, EmptyBoardBB, deltas, excluded);
+        m[s].shift   = (CpuIs64Bit ? 64 : 32) - count_1s<CNT64>(m[s].mask);
 
         maxKey = 1 << count_1s<CNT64>(m[s].mask);
 
@@ -411,7 +414,7 @@ namespace {
             index = CpuIs64Bit ? occupancy * mult[s]
                                : unsigned(occupancy * mult[s] ^ (occupancy >> 32) * (mult[s] >> 32));
 
-            attacks[offset + (index >> m[s].shift)] = sliding_attacks(s, occupancy, deltas, EmptyBoardBB);
+            m[s].attacks[index >> m[s].shift] = sliding_attacks(s, occupancy, deltas, EmptyBoardBB);
         }
         offset += maxKey;
     }

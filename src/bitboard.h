@@ -69,15 +69,12 @@ extern uint8_t BitCount8Bit[256];
 struct Magics {
   Bitboard mask;
   uint64_t mult;
-  uint32_t offset;
   uint32_t shift;
+  Bitboard* attacks;
 };
 
 extern Magics RMagics[64];
 extern Magics BMagics[64];
-
-extern Bitboard RAttacks[0x19000];
-extern Bitboard BAttacks[0x1480];
 
 
 /// Functions for testing whether a given bit is set in a bitboard, and for
@@ -176,12 +173,12 @@ inline Bitboard in_front_bb(Color c, Square s) {
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
   const Magics& m = RMagics[s];
-  return RAttacks[m.offset + (((occ & m.mask) * m.mult) >> m.shift)];
+  return m.attacks[((occ & m.mask) * m.mult) >> m.shift];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
   const Magics& m = BMagics[s];
-  return BAttacks[m.offset + (((occ & m.mask) * m.mult) >> m.shift)];
+  return m.attacks[((occ & m.mask) * m.mult) >> m.shift];
 }
 
 #else // if !defined(IS_64BIT)
@@ -189,15 +186,13 @@ inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
   const Magics& m = RMagics[s];
   Bitboard b = occ & m.mask;
-  return RAttacks[m.offset +
-        ((unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift)];
+  return m.attacks[(unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
   const Magics& m = BMagics[s];
   Bitboard b = occ & m.mask;
-  return BAttacks[m.offset +
-        ((unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift)];
+  return m.attacks[(unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift];
 }
 
 #endif
