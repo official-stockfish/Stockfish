@@ -107,20 +107,6 @@ const uint64_t RMult[64] = {
   0x410201CE5C030092ULL
 };
 
-const int BShift[64] = {
-  58, 59, 59, 59, 59, 59, 59, 58, 59, 59, 59, 59, 59, 59, 59, 59,
-  59, 59, 57, 57, 57, 57, 59, 59, 59, 59, 57, 55, 55, 57, 59, 59,
-  59, 59, 57, 55, 55, 57, 59, 59, 59, 59, 57, 57, 57, 57, 59, 59,
-  59, 59, 59, 59, 59, 59, 59, 59, 58, 59, 59, 59, 59, 59, 59, 58
-};
-
-const int RShift[64] = {
-  52, 53, 53, 53, 53, 53, 53, 52, 53, 54, 54, 54, 54, 54, 54, 53,
-  53, 54, 54, 54, 54, 54, 54, 53, 53, 54, 54, 54, 54, 54, 54, 53,
-  53, 54, 54, 54, 54, 54, 54, 53, 53, 54, 54, 54, 54, 54, 54, 53,
-  53, 54, 54, 54, 54, 54, 54, 53, 52, 53, 53, 53, 53, 53, 53, 52
-};
-
 #else // if !defined(IS_64BIT)
 
 const uint32_t DeBruijnMagic = 0x783A9B23;
@@ -175,26 +161,11 @@ const uint64_t RMult[64] = {
   0x5AC08A4735370479ULL,
 };
 
-const int BShift[64] = {
-  26, 27, 27, 27, 27, 27, 27, 26, 27, 27, 27, 27, 27, 27, 27, 27,
-  27, 27, 25, 25, 25, 25, 27, 27, 27, 27, 25, 23, 23, 25, 27, 27,
-  27, 27, 25, 23, 23, 25, 27, 27, 27, 27, 25, 25, 25, 25, 27, 27,
-  27, 27, 27, 27, 27, 27, 27, 27, 26, 27, 27, 27, 27, 27, 27, 26
-};
-
-const int RShift[64] = {
-  20, 21, 21, 21, 21, 21, 21, 20, 21, 22, 22, 22, 22, 22, 22, 21,
-  21, 22, 22, 22, 22, 22, 22, 21, 21, 22, 22, 22, 22, 22, 22, 21,
-  21, 22, 22, 22, 22, 22, 22, 21, 21, 22, 22, 22, 22, 22, 22, 21,
-  21, 22, 22, 22, 22, 22, 22, 21, 20, 21, 21, 21, 21, 21, 21, 20
-};
-
 #endif // defined(IS_64BIT)
 
   CACHE_LINE_ALIGNMENT int BSFTable[64];
 
-  void init_sliding_attacks(Bitboard attacks[], Magics m[], const int shift[],
-                            const Bitboard mult[], Square deltas[]);
+  void init_sliding_attacks(Bitboard attacks[], Magics m[], const Bitboard mult[], Square deltas[]);
 }
 
 
@@ -354,8 +325,8 @@ void init_bitboards() {
   Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
   Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_sliding_attacks(RAttacks, RMagics, RShift, RMult, RDeltas);
-  init_sliding_attacks(BAttacks, BMagics, BShift, BMult, BDeltas);
+  init_sliding_attacks(RAttacks, RMagics, RMult, RDeltas);
+  init_sliding_attacks(BAttacks, BMagics, BMult, BDeltas);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -394,7 +365,7 @@ namespace {
     return subMask;
   }
 
-  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square deltas[], bool skipLast) {
+  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square deltas[], Bitboard excluded) {
 
     Bitboard attacks = 0;
 
@@ -404,12 +375,11 @@ namespace {
 
         while (    square_is_ok(s)
                &&  square_distance(s, s - deltas[i]) == 1
-               && (!skipLast || !file_distance(s, sq) || (square_file(s) != FILE_A && square_file(s) != FILE_H))
-               && (!skipLast || !rank_distance(s, sq) || (square_rank(s) != RANK_1 && square_rank(s) != RANK_8)))
+               && !bit_is_set(excluded, s))
         {
-            attacks |= 1ULL << s;
+            set_bit(&attacks, s);
 
-            if (occupied & (1ULL << s))
+            if (bit_is_set(occupied, s))
                 break;
 
             s += deltas[i];
@@ -418,19 +388,21 @@ namespace {
     return attacks;
   }
 
-  void init_sliding_attacks(Bitboard attacks[], Magics m[], const int shift[],
-                            const Bitboard mult[], Square deltas[]) {
-    Bitboard occupancy, index;
+  void init_sliding_attacks(Bitboard attacks[], Magics m[], const Bitboard mult[], Square deltas[]) {
+
+    Bitboard occupancy, index, excluded;
     int maxKey, offset = 0;
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
     {
+        excluded = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
+
         m[s].offset = offset;
         m[s].mult   = mult[s];
-        m[s].shift  = shift[s];
-        m[s].mask   = sliding_attacks(s, EmptyBoardBB, deltas, true);
+        m[s].mask   = sliding_attacks(s, EmptyBoardBB, deltas, excluded);
+        m[s].shift  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT64>(m[s].mask);
 
-        maxKey = 1 << (CpuIs64Bit ? 64 - shift[s] : 32 - shift[s]);
+        maxKey = 1 << count_1s<CNT64>(m[s].mask);
 
         for (int key = 0; key < maxKey; key++)
         {
@@ -439,7 +411,7 @@ namespace {
             index = CpuIs64Bit ? occupancy * mult[s]
                                : unsigned(occupancy * mult[s] ^ (occupancy >> 32) * (mult[s] >> 32));
 
-            attacks[offset + (index >> shift[s])] = sliding_attacks(s, occupancy, deltas, false);
+            attacks[offset + (index >> m[s].shift)] = sliding_attacks(s, occupancy, deltas, EmptyBoardBB);
         }
         offset += maxKey;
     }

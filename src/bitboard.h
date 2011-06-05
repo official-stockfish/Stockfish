@@ -176,12 +176,12 @@ inline Bitboard in_front_bb(Color c, Square s) {
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
   const Magics& m = RMagics[s];
-  return RAttacks[m.index + (((occ & m.mask) * m.mult) >> m.shift)];
+  return RAttacks[m.offset + (((occ & m.mask) * m.mult) >> m.shift)];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
   const Magics& m = BMagics[s];
-  return BAttacks[m.index + (((occ & m.mask) * m.mult) >> m.shift)];
+  return BAttacks[m.offset + (((occ & m.mask) * m.mult) >> m.shift)];
 }
 
 #else // if !defined(IS_64BIT)
