@@ -60,21 +60,21 @@ extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];
 
+extern const uint64_t RMult[64];
+extern int RShift[64];
+extern Bitboard RMask[64];
+extern Bitboard* RAttacks[64];
+
+extern const uint64_t BMult[64];
+extern int BShift[64];
+extern Bitboard BMask[64];
+extern Bitboard* BAttacks[64];
+
 extern Bitboard BishopPseudoAttacks[64];
 extern Bitboard RookPseudoAttacks[64];
 extern Bitboard QueenPseudoAttacks[64];
 
 extern uint8_t BitCount8Bit[256];
-
-struct Magics {
-  Bitboard mask;
-  uint64_t mult;
-  uint32_t shift;
-  Bitboard* attacks;
-};
-
-extern Magics RMagics[64];
-extern Magics BMagics[64];
 
 
 /// Functions for testing whether a given bit is set in a bitboard, and for
@@ -172,27 +172,25 @@ inline Bitboard in_front_bb(Color c, Square s) {
 #if defined(IS_64BIT)
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
-  const Magics& m = RMagics[s];
-  return m.attacks[((occ & m.mask) * m.mult) >> m.shift];
+  return RAttacks[s][((occ & RMask[s]) * RMult[s]) >> RShift[s]];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
-  const Magics& m = BMagics[s];
-  return m.attacks[((occ & m.mask) * m.mult) >> m.shift];
+  return BAttacks[s][((occ & BMask[s]) * BMult[s]) >> BShift[s]];
 }
 
 #else // if !defined(IS_64BIT)
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
-  const Magics& m = RMagics[s];
-  Bitboard b = occ & m.mask;
-  return m.attacks[(unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift];
+  Bitboard b = occ & RMask[s];
+  return RAttacks[s]
+         [unsigned(int(b) * int(RMult[s]) ^ int(b >> 32) * int(RMult[s] >> 32)) >> RShift[s]];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
-  const Magics& m = BMagics[s];
-  Bitboard b = occ & m.mask;
-  return m.attacks[(unsigned(b) * unsigned(m.mult) ^ unsigned(b >> 32) * unsigned(m.mult >> 32)) >> m.shift];
+  Bitboard b = occ & BMask[s];
+  return BAttacks[s]
+         [unsigned(int(b) * int(BMult[s]) ^ int(b >> 32) * int(BMult[s] >> 32)) >> BShift[s]];
 }
 
 #endif
