@@ -60,12 +60,12 @@ extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];
 
-extern const uint64_t RMult[64];
+extern uint64_t RMult[64];
 extern int RShift[64];
 extern Bitboard RMask[64];
 extern Bitboard* RAttacks[64];
 
-extern const uint64_t BMult[64];
+extern uint64_t BMult[64];
 extern int BShift[64];
 extern Bitboard BMask[64];
 extern Bitboard* BAttacks[64];
