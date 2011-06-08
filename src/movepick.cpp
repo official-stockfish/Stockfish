@@ -110,13 +110,13 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
   go_next_phase();
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const History& h, int parentCapture)
+MovePicker::MovePicker(const Position& p, Move ttm, const History& h, int threshold)
                        : pos(p), H(h) {
 
   assert (!pos.in_check());
 
   // In ProbCut we consider only captures better than parent's move
-  captureThreshold = parentCapture;
+  captureThreshold = threshold;
   phasePtr = ProbCutTable;
 
   if (   ttm != MOVE_NONE
