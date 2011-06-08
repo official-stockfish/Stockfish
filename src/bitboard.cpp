@@ -65,8 +65,8 @@ namespace {
   Bitboard RAttacksTable[0x19000];
   Bitboard BAttacksTable[0x1480];
 
-  void do_magics(Bitboard magic[], Bitboard* attack[], Bitboard attTabl[],
-                 Bitboard mask[], int shift[], Square deltas[]);
+  void init_sliding_attacks(Bitboard magic[], Bitboard* attack[], Bitboard attTable[],
+                            Bitboard mask[], int shift[], Square delta[]);
 }
 
 
@@ -226,8 +226,8 @@ void init_bitboards() {
   Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
   Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  do_magics(BMult, BAttacks, BAttacksTable, BMask, BShift, BDeltas);
-  do_magics(RMult, RAttacks, RAttacksTable, RMask, RShift, RDeltas);
+  init_sliding_attacks(BMult, BAttacks, BAttacksTable, BMask, BShift, BDeltas);
+  init_sliding_attacks(RMult, RAttacks, RAttacksTable, RMask, RShift, RDeltas);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -293,10 +293,6 @@ namespace {
   Bitboard pick_magic(Bitboard mask, RKISS& rk, int booster) {
 
     Bitboard magic;
-    int lsb;
-
-    if (!Is64)
-        lsb = first_1(mask);
 
     // Advance PRNG state of a quantity known to be the optimal to
     // quickly retrieve all the magics.
@@ -308,41 +304,40 @@ namespace {
         magic = rk.rand<Bitboard>() & rk.rand<Bitboard>();
         magic &= Is64 ? rk.rand<Bitboard>() : (rk.rand<Bitboard>() | rk.rand<Bitboard>());
 
-        if (   BitCount8Bit[(mask * magic) >> 56] >= 6
-            && (Is64 || BitCount8Bit[(lsb * magic) >> 56]))
+        if (BitCount8Bit[(mask * magic) >> 56] >= 6)
             return magic;
     }
   }
 
-  void do_magics(Bitboard magic[], Bitboard* attack[], Bitboard attTabl[],
-                 Bitboard mask[], int shift[], Square deltas[]) {
+  void init_sliding_attacks(Bitboard magic[], Bitboard* attack[], Bitboard attTable[],
+                            Bitboard mask[], int shift[], Square delta[]) {
 
-    const int  MagicBoosters32[] = { 43, 53, 76, 17, 51, 65, 55, 23 };
-    const int  MagicBoosters64[] = { 26, 21, 21, 32, 31,  9,  5, 11 };
-
+    const int  MagicBoosters[][8] = { { 55, 11, 17,  2, 39,  3, 31, 44 },
+                                      { 26, 21, 21, 32, 31,  9,  5, 11 } };
     RKISS rk;
-    Bitboard occupancy[4096], proofs[4096], excluded;
+    Bitboard occupancy[4096], reference[4096], excluded;
     int key, maxKey, index, booster, offset = 0;
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
     {
         excluded = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
 
-        attack[s] = &attTabl[offset];
-        mask[s]   = sliding_attacks(s, EmptyBoardBB, deltas, excluded);
+        attack[s] = &attTable[offset];
+        mask[s]   = sliding_attacks(s, EmptyBoardBB, delta, excluded);
         shift[s]  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT64>(mask[s]);
 
         maxKey = 1 << count_1s<CNT32>(mask[s]);
-        booster = CpuIs64Bit ? MagicBoosters64[square_rank(s)] : MagicBoosters32[square_rank(s)];
+        offset += maxKey;
+        booster = MagicBoosters[CpuIs64Bit][square_rank(s)];
 
         // First compute occupancy and attacks for square 's'
         for (key = 0; key < maxKey; key++)
         {
             occupancy[key] = submask(mask[s], key);
-            proofs[key] = sliding_attacks(s, occupancy[key], deltas, EmptyBoardBB);
+            reference[key] = sliding_attacks(s, occupancy[key], delta, EmptyBoardBB);
         }
 
-        // Then find a possible magic and corresponding attacks
+        // Then find a possible magic and the corresponding attacks
         do {
             magic[s] = pick_magic<CpuIs64Bit>(mask[s], rk, booster);
             memset(attack[s], 0, maxKey * sizeof(Bitboard));
@@ -353,14 +348,12 @@ namespace {
                                    : unsigned(occupancy[key] * magic[s] ^ (occupancy[key] >> 32) * (magic[s] >> 32)) >> shift[s];
 
                 if (!attack[s][index])
-                    attack[s][index] = proofs[key];
+                    attack[s][index] = reference[key];
 
-                else if (attack[s][index] != proofs[key])
+                else if (attack[s][index] != reference[key])
                     break;
             }
         } while (key != maxKey);
-
-        offset += maxKey;
     }
   }
 }
