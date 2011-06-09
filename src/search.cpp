@@ -903,8 +903,9 @@ namespace {
     }
 
     // Step 9. ProbCut (is omitted in PV nodes)
-    // If we have a good capture that raises the score well above beta and a reduced
-    // search confirms the score then we can (almost) safely prune the previous move.
+    // If we have a very good capture (i.e. SEE > seeValues[captured_piece_type])
+    // and a reduced search returns a value much above beta, we can (almost) safely
+    // prune the previous move.
     if (   !PvNode
         &&  depth >= RazorDepth + ONE_PLY
         && !inCheck
@@ -917,7 +918,7 @@ namespace {
 
         assert(rdepth >= ONE_PLY);
 
-        MovePicker mp(pos, ttMove, H, Max(rbeta - refinedValue, VALUE_ZERO));
+        MovePicker mp(pos, ttMove, H, Position::see_value(pos.captured_piece_type()));
         pinned = pos.pinned_pieces(pos.side_to_move());
 
         while ((move = mp.get_next_move()) != MOVE_NONE)
