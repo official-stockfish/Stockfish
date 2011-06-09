@@ -255,13 +255,20 @@ namespace {
 
   Bitboard submask(Bitboard mask, int key) {
 
-    Bitboard subMask = 0;
-    int bitNum = -1;
+    Bitboard b, subMask = 0;
+    int bitProbe = 1;
 
     // Extract an unique submask out of a mask according to the given key
-    for (Square s = SQ_A1; s <= SQ_H8; s++)
-        if (bit_is_set(mask, s) && bit_is_set(key, Square(++bitNum)))
-            set_bit(&subMask, s);
+    while (mask)
+    {
+        b = mask & -mask;
+        mask ^= b;
+
+        if (key & bitProbe)
+            subMask |= b;
+
+        bitProbe <<= 1;
+    }
 
     return subMask;
   }
@@ -289,20 +296,21 @@ namespace {
     return attacks;
   }
 
-  template<bool Is64>
   Bitboard pick_magic(Bitboard mask, RKISS& rk, int booster) {
 
     Bitboard magic;
 
-    // Advance PRNG state of a quantity known to be the optimal to
-    // quickly retrieve all the magics.
-    for (int i = 0; i < booster; i++)
-        rk.rand<Bitboard>();
+    // Values s1 and s2 are used to rotate the candidate magic of
+    // a quantity known to be the optimal to quickly find the magics.
+    int s1 = booster & 63, s2 = (booster >> 6) & 63;
 
     while (true)
     {
-        magic = rk.rand<Bitboard>() & rk.rand<Bitboard>();
-        magic &= Is64 ? rk.rand<Bitboard>() : (rk.rand<Bitboard>() | rk.rand<Bitboard>());
+        magic = rk.rand<Bitboard>();
+        magic = (magic >> s1) | (magic << (64 - s1));
+        magic &= rk.rand<Bitboard>();
+        magic = (magic >> s2) | (magic << (64 - s2));
+        magic &= rk.rand<Bitboard>();
 
         if (BitCount8Bit[(mask * magic) >> 56] >= 6)
             return magic;
@@ -312,8 +320,8 @@ namespace {
   void init_sliding_attacks(Bitboard magic[], Bitboard* attack[], Bitboard attTable[],
                             Bitboard mask[], int shift[], Square delta[]) {
 
-    const int  MagicBoosters[][8] = { { 55, 11, 17,  2, 39,  3, 31, 44 },
-                                      { 26, 21, 21, 32, 31,  9,  5, 11 } };
+    const int  MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
+                                      { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
     RKISS rk;
     Bitboard occupancy[4096], reference[4096], excluded;
     int key, maxKey, index, booster, offset = 0;
@@ -339,7 +347,7 @@ namespace {
 
         // Then find a possible magic and the corresponding attacks
         do {
-            magic[s] = pick_magic<CpuIs64Bit>(mask[s], rk, booster);
+            magic[s] = pick_magic(mask[s], rk, booster);
             memset(attack[s], 0, maxKey * sizeof(Bitboard));
 
             for (key = 0; key < maxKey; key++)
