@@ -79,7 +79,7 @@ void print_bitboard(Bitboard b) {
   {
       std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
       for (File f = FILE_A; f <= FILE_H; f++)
-          std::cout << "| " << (bit_is_set(b, make_square(f, r)) ? 'X' : ' ') << ' ';
+          std::cout << "| " << (bit_is_set(b, make_square(f, r)) ? "X " : "  ");
 
       std::cout << "|\n";
   }
@@ -332,9 +332,9 @@ namespace {
 
         attack[s] = &attTable[offset];
         mask[s]   = sliding_attacks(s, EmptyBoardBB, delta, excluded);
-        shift[s]  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT64>(mask[s]);
+        shift[s]  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(mask[s]);
 
-        maxKey = 1 << count_1s<CNT32>(mask[s]);
+        maxKey = 1 << count_1s<CNT32_MAX15>(mask[s]);
         offset += maxKey;
         booster = MagicBoosters[CpuIs64Bit][square_rank(s)];
 

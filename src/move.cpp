@@ -91,8 +91,9 @@ const string move_to_san(Position& pos, Move m) {
   assert(pos.is_ok());
   assert(move_is_ok(m));
 
-  MoveStack mlist[MAX_MOVES];
-  Square from = move_from(m);
+  Bitboard attackers;
+  bool ambiguousMove, ambiguousFile, ambiguousRank;
+  Square sq, from = move_from(m);
   Square to = move_to(m);
   PieceType pt = pos.type_of_piece_on(from);
   string san;
@@ -113,31 +114,30 @@ const string move_to_san(Position& pos, Move m) {
       {
           san = piece_type_to_char(pt);
 
-          // Collect all legal moves of piece type 'pt' with destination 'to'
-          MoveStack* last = generate<MV_LEGAL>(pos, mlist);
-          int f = 0, r = 0, cnt = 0;
-
-          for (MoveStack* cur = mlist; cur != last; cur++)
-              if (   move_to(cur->move) == to
-                  && pos.type_of_piece_on(move_from(cur->move)) == pt)
-              {
-                  cnt++;
-
-                  if (square_file(move_from(cur->move)) == square_file(from))
-                      f++;
-
-                  if (square_rank(move_from(cur->move)) == square_rank(from))
-                      r++;
-              }
-
-          assert(cnt > 0 && f > 0 && r > 0);
-
           // Disambiguation if we have more then one piece with destination 'to'
-          if (cnt > 1)
+          // note that for pawns is not needed because starting file is explicit.
+          attackers = pos.attackers_to(to) & pos.pieces(pt, pos.side_to_move());
+          clear_bit(&attackers, from);
+          ambiguousMove = ambiguousFile = ambiguousRank = false;
+
+          while (attackers)
           {
-              if (f == 1)
+              sq = pop_1st_bit(&attackers);
+
+              if (square_file(sq) == square_file(from))
+                  ambiguousFile = true;
+
+              if (square_rank(sq) == square_rank(from))
+                  ambiguousRank = true;
+
+              ambiguousMove = true;
+          }
+
+          if (ambiguousMove)
+          {
+              if (!ambiguousFile)
                   san += file_to_char(square_file(from));
-              else if (r == 1)
+              else if (!ambiguousRank)
                   san += rank_to_char(square_rank(from));
               else
                   san += square_to_string(from);
