@@ -360,18 +360,6 @@ inline Color opposite_color(Color c) {
   return Color(c ^ 1);
 }
 
-inline bool color_is_ok(Color c) {
-  return c == WHITE || c == BLACK;
-}
-
-inline bool piece_type_is_ok(PieceType pt) {
-  return pt >= PAWN && pt <= KING;
-}
-
-inline bool piece_is_ok(Piece p) {
-  return piece_type_is_ok(type_of_piece(p)) && color_is_ok(color_of_piece(p));
-}
-
 inline char piece_type_to_char(PieceType pt) {
   static const char ch[] = " PNBRQK";
   return ch[pt];
@@ -379,6 +367,10 @@ inline char piece_type_to_char(PieceType pt) {
 
 inline Square make_square(File f, Rank r) {
   return Square((r << 3) | f);
+}
+
+inline bool square_is_ok(Square s) {
+  return s >= SQ_A1 && s <= SQ_H8;
 }
 
 inline File square_file(Square s) {
@@ -430,16 +422,8 @@ inline int square_distance(Square s1, Square s2) {
   return Max(file_distance(s1, s2), rank_distance(s1, s2));
 }
 
-inline File file_from_char(char c) {
-  return File(c - 'a') + FILE_A;
-}
-
 inline char file_to_char(File f) {
   return char(f - FILE_A + int('a'));
-}
-
-inline Rank rank_from_char(char c) {
-  return Rank(c - '1') + RANK_1;
 }
 
 inline char rank_to_char(Rank r) {
@@ -449,18 +433,6 @@ inline char rank_to_char(Rank r) {
 inline const std::string square_to_string(Square s) {
   char ch[] = { file_to_char(square_file(s)), rank_to_char(square_rank(s)), 0 };
   return std::string(ch);
-}
-
-inline bool file_is_ok(File f) {
-  return f >= FILE_A && f <= FILE_H;
-}
-
-inline bool rank_is_ok(Rank r) {
-  return r >= RANK_1 && r <= RANK_8;
-}
-
-inline bool square_is_ok(Square s) {
-  return s >= SQ_A1 && s <= SQ_H8;
 }
 
 inline Square pawn_push(Color c) {
