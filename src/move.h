@@ -161,7 +161,7 @@ inline bool move_is_long_castle(Move m) {
   return move_is_castle(m) && (move_to(m) < move_from(m));
 }
 
-inline PieceType move_promotion_piece(Move m) {
+inline PieceType promotion_piece_type(Move m) {
   return PieceType(((m >> 12) & 3) + 2);
 }
 

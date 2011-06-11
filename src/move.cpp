@@ -59,7 +59,7 @@ const string move_to_uci(Move m, bool chess960) {
       return from == SQ_E1 ? "e1c1" : "e8c8";
 
   if (move_is_promotion(m))
-      promotion = char(tolower(piece_type_to_char(move_promotion_piece(m))));
+      promotion = char(tolower(piece_type_to_char(promotion_piece_type(m))));
 
   return square_to_string(from) + square_to_string(to) + promotion;
 }
@@ -157,7 +157,7 @@ const string move_to_san(Position& pos, Move m) {
       if (move_is_promotion(m))
       {
           san += '=';
-          san += piece_type_to_char(move_promotion_piece(m));
+          san += piece_type_to_char(promotion_piece_type(m));
       }
   }
 

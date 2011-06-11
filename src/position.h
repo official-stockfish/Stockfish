@@ -257,8 +257,8 @@ private:
   void clear();
   void detach();
   void put_piece(Piece p, Square s);
-  void do_allow_oo(Color c);
-  void do_allow_ooo(Color c);
+  void set_castle_kingside(Color c);
+  void set_castle_queenside(Color c);
   bool set_castling_rights(char token);
   bool move_is_pl_slow(const Move m) const;
 
@@ -406,16 +406,24 @@ inline Square Position::king_square(Color c) const {
   return pieceList[c][KING][0];
 }
 
-inline bool Position::can_castle_kingside(Color side) const {
-  return st->castleRights & (1+int(side));
+inline bool Position::can_castle_kingside(Color c) const {
+  return st->castleRights & (WHITE_OO << c);
 }
 
-inline bool Position::can_castle_queenside(Color side) const {
-  return st->castleRights & (4+4*int(side));
+inline bool Position::can_castle_queenside(Color c) const {
+  return st->castleRights & (WHITE_OOO << c);
 }
 
-inline bool Position::can_castle(Color side) const {
-  return can_castle_kingside(side) || can_castle_queenside(side);
+inline bool Position::can_castle(Color c) const {
+  return st->castleRights & ((WHITE_OO | WHITE_OOO) << c);
+}
+
+inline void Position::set_castle_kingside(Color c) {
+  st->castleRights |= (WHITE_OO << c);
+}
+
+inline void Position::set_castle_queenside(Color c) {
+  st->castleRights |= (WHITE_OOO << c);
 }
 
 inline Square Position::initial_kr_square(Color c) const {
@@ -540,14 +548,6 @@ inline PieceType Position::captured_piece_type() const {
 
 inline int Position::thread() const {
   return threadID;
-}
-
-inline void Position::do_allow_oo(Color c) {
-  st->castleRights |= (1 + int(c));
-}
-
-inline void Position::do_allow_ooo(Color c) {
-  st->castleRights |= (4 + 4*int(c));
 }
 
 #endif // !defined(POSITION_H_INCLUDED)

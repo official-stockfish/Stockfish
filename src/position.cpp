@@ -270,7 +270,7 @@ bool Position::set_castling_rights(char token) {
         for (Square sq = sqH; sq >= sqA; sq--)
             if (piece_on(sq) == rook)
             {
-                do_allow_oo(c);
+                set_castle_kingside(c);
                 initialKRFile = square_file(sq);
                 break;
             }
@@ -280,7 +280,7 @@ bool Position::set_castling_rights(char token) {
         for (Square sq = sqA; sq <= sqH; sq++)
             if (piece_on(sq) == rook)
             {
-                do_allow_ooo(c);
+                set_castle_queenside(c);
                 initialQRFile = square_file(sq);
                 break;
             }
@@ -290,12 +290,12 @@ bool Position::set_castling_rights(char token) {
         File rookFile = File(token - 'A') + FILE_A;
         if (rookFile < initialKFile)
         {
-            do_allow_ooo(c);
+            set_castle_queenside(c);
             initialQRFile = rookFile;
         }
         else
         {
-            do_allow_oo(c);
+            set_castle_kingside(c);
             initialKRFile = rookFile;
         }
     }
@@ -637,7 +637,7 @@ bool Position::move_is_pl(const Move m) const {
       return move_is_pl_slow(m);
 
   // Is not a promotion, so promotion piece must be empty
-  if (move_promotion_piece(m) - 2 != PIECE_TYPE_NONE)
+  if (promotion_piece_type(m) - 2 != PIECE_TYPE_NONE)
       return false;
 
   // If the from square is not occupied by a piece belonging to the side to
@@ -788,7 +788,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   {
       clear_bit(&b, from);
 
-      switch (move_promotion_piece(m))
+      switch (promotion_piece_type(m))
       {
       case KNIGHT:
           return bit_is_set(attacks_from<KNIGHT>(to), ci.ksq);
@@ -949,13 +949,12 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       st->epSquare = SQ_NONE;
   }
 
-  // Update castle rights, try to shortcut a common case
-  int cm = castleRightsMask[from] & castleRightsMask[to];
-  if (cm != ALL_CASTLES && ((cm & st->castleRights) != st->castleRights))
+  // Update castle rights if needed
+  if (    st->castleRights != CASTLES_NONE
+      && (castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
   {
       key ^= zobCastle[st->castleRights];
-      st->castleRights &= castleRightsMask[from];
-      st->castleRights &= castleRightsMask[to];
+      st->castleRights &= castleRightsMask[from] & castleRightsMask[to];
       key ^= zobCastle[st->castleRights];
   }
 
@@ -998,7 +997,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
       if (pm) // promotion ?
       {
-          PieceType promotion = move_promotion_piece(m);
+          PieceType promotion = promotion_piece_type(m);
 
           assert(promotion >= KNIGHT && promotion <= QUEEN);
 
@@ -1278,7 +1277,7 @@ void Position::undo_move(Move m) {
 
   if (pm) // promotion ?
   {
-      PieceType promotion = move_promotion_piece(m);
+      PieceType promotion = promotion_piece_type(m);
       pt = PAWN;
 
       assert(promotion >= KNIGHT && promotion <= QUEEN);
@@ -1851,10 +1850,10 @@ void Position::flip() {
   sideToMove = opposite_color(pos.side_to_move());
 
   // Castling rights
-  if (pos.can_castle_kingside(WHITE))  do_allow_oo(BLACK);
-  if (pos.can_castle_queenside(WHITE)) do_allow_ooo(BLACK);
-  if (pos.can_castle_kingside(BLACK))  do_allow_oo(WHITE);
-  if (pos.can_castle_queenside(BLACK)) do_allow_ooo(WHITE);
+  if (pos.can_castle_kingside(WHITE))  set_castle_kingside(BLACK);
+  if (pos.can_castle_queenside(WHITE)) set_castle_queenside(BLACK);
+  if (pos.can_castle_kingside(BLACK))  set_castle_kingside(WHITE);
+  if (pos.can_castle_queenside(BLACK)) set_castle_queenside(WHITE);
 
   initialKFile  = pos.initialKFile;
   initialKRFile = pos.initialKRFile;
