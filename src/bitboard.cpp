@@ -212,8 +212,8 @@ void init_bitboards() {
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
 
   for (Color c = WHITE; c <= BLACK; c++)
-      for (Square s = SQ_A1; s <= SQ_H8; s++)
-          for (PieceType pt = PAWN; pt <= KING; pt++)
+      for (PieceType pt = PAWN; pt <= KING; pt++)
+          for (Square s = SQ_A1; s <= SQ_H8; s++)
               for (int k = 0; steps[pt][k]; k++)
               {
                   Square to = s + Square(c == WHITE ? steps[pt][k] : -steps[pt][k]);

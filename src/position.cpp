@@ -1793,16 +1793,17 @@ bool Position::is_mate() const {
 
 void Position::init_zobrist() {
 
-  int i,j, k;
   RKISS rk;
 
-  for (i = 0; i < 2; i++) for (j = 0; j < 8; j++) for (k = 0; k < 64; k++)
-      zobrist[i][j][k] = rk.rand<Key>();
+  for (Color c = WHITE; c <= BLACK; c++)
+      for (PieceType pt = PAWN; pt <= KING; pt++)
+          for (Square s = SQ_A1; s <= SQ_H8; s++)
+              zobrist[c][pt][s] = rk.rand<Key>();
 
-  for (i = 0; i < 64; i++)
-      zobEp[i] = rk.rand<Key>();
+  for (Square s = SQ_A1; s <= SQ_H8; s++)
+      zobEp[s] = rk.rand<Key>();
 
-  for (i = 0; i < 16; i++)
+  for (int i = 0; i < 16; i++)
       zobCastle[i] = rk.rand<Key>();
 
   zobSideToMove = rk.rand<Key>();
