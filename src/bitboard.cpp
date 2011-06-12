@@ -159,7 +159,7 @@ void init_bitboards() {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
-      SetMaskBB[s] = (1ULL << s);
+      SetMaskBB[s] = 1ULL << s;
       ClearMaskBB[s] = ~SetMaskBB[s];
   }
 
@@ -195,9 +195,9 @@ void init_bitboards() {
       }
 
   for (Bitboard b = 0; b < 256; b++)
-      BitCount8Bit[b] = (uint8_t)count_1s<CNT32>(b);
+      BitCount8Bit[b] = (uint8_t)count_1s<CNT32_MAX15>(b);
 
-  for (int i = 1; i < 64; i++)
+  for (int i = 0; i < 64; i++)
       if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
       {
           Bitboard b = 1ULL << i;
@@ -208,9 +208,8 @@ void init_bitboards() {
       else
           BSFTable[((1ULL << i) * 0x218A392CD3D5DBFULL) >> 58] = i;
 
-  int steps[][9] = {
-    {0}, {7,9,0}, {17,15,10,6,-6,-10,-15,-17,0}, {0}, {0}, {0}, {9,7,-7,-9,8,1,-1,-8,0}
-  };
+  int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
+                     {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
 
   for (Color c = WHITE; c <= BLACK; c++)
       for (Square s = SQ_A1; s <= SQ_H8; s++)
@@ -223,11 +222,11 @@ void init_bitboards() {
                       set_bit(&StepAttacksBB[make_piece(c, pt)][s], to);
               }
 
-  Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
+  Square RDelta[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
+  Square BDelta[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_sliding_attacks(BMult, BAttacks, BAttacksTable, BMask, BShift, BDeltas);
-  init_sliding_attacks(RMult, RAttacks, RAttacksTable, RMask, RShift, RDeltas);
+  init_sliding_attacks(BMult, BAttacks, BAttacksTable, BMask, BShift, BDelta);
+  init_sliding_attacks(RMult, RAttacks, RAttacksTable, RMask, RShift, RDelta);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -269,20 +268,19 @@ namespace {
 
         bitProbe <<= 1;
     }
-
     return subMask;
   }
 
-  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square deltas[], Bitboard excluded) {
+  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square delta[], Bitboard excluded) {
 
     Bitboard attacks = 0;
 
     for (int i = 0; i < 4; i++)
     {
-        Square s = sq + deltas[i];
+        Square s = sq + delta[i];
 
         while (    square_is_ok(s)
-               &&  square_distance(s, s - deltas[i]) == 1
+               &&  square_distance(s, s - delta[i]) == 1
                && !bit_is_set(excluded, s))
         {
             set_bit(&attacks, s);
@@ -290,7 +288,7 @@ namespace {
             if (bit_is_set(occupied, s))
                 break;
 
-            s += deltas[i];
+            s += delta[i];
         }
     }
     return attacks;
@@ -300,8 +298,8 @@ namespace {
 
     Bitboard magic;
 
-    // Values s1 and s2 are used to rotate the candidate magic of
-    // a quantity known to be the optimal to quickly find the magics.
+    // Values s1 and s2 are used to rotate the candidate magic of a
+    // quantity known to be the optimal to quickly find the magics.
     int s1 = booster & 63, s2 = (booster >> 6) & 63;
 
     while (true)
