@@ -1372,8 +1372,6 @@ split_point_start: // At split points actual search starts from here
         else
             ss->eval = bestValue = evaluate(pos, evalMargin);
 
-        update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
-
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
         {
