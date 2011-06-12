@@ -37,6 +37,7 @@ namespace {
     PH_BAD_CAPTURES,  // Queen promotions and captures with SEE values < captureThreshold (captureThreshold <= 0)
     PH_EVASIONS,      // Check evasions
     PH_QCAPTURES,     // Captures in quiescence search
+    PH_QRECAPTURES,   // Recaptures in quiescence search
     PH_QCHECKS,       // Non-capture checks in quiescence search
     PH_STOP
   };
@@ -46,6 +47,7 @@ namespace {
   const uint8_t EvasionTable[] = { PH_TT_MOVE, PH_EVASIONS, PH_STOP };
   const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
   const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_STOP };
+  const uint8_t QsearchRecapturesTable[] = { PH_TT_MOVE, PH_QRECAPTURES, PH_STOP };
   const uint8_t ProbCutTable[] = { PH_TT_MOVE, PH_GOOD_PROBCUT, PH_STOP };
 }
 
@@ -85,7 +87,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   go_next_phase();
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h, Square recaptureSq)
                       : pos(p), H(h) {
 
   assert(d <= DEPTH_ZERO);
@@ -94,7 +96,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
       phasePtr = EvasionTable;
   else if (d >= DEPTH_QS_CHECKS)
       phasePtr = QsearchWithChecksTable;
-  else
+  else if (d >= DEPTH_QS_RECAPTURES)
   {
       phasePtr = QsearchWithoutChecksTable;
 
@@ -103,6 +105,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h)
       // similar rare cases when TT table is full.
       if (ttm != MOVE_NONE && !pos.move_is_capture(ttm) && !move_is_promotion(ttm))
           ttm = MOVE_NONE;
+  }
+  else
+  {
+      phasePtr = QsearchRecapturesTable;
+      recaptureSquare = recaptureSq;
+      ttm = MOVE_NONE;
   }
 
   ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
@@ -182,6 +190,10 @@ void MovePicker::go_next_phase() {
   case PH_QCAPTURES:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
+      return;
+
+  case PH_QRECAPTURES:
+      lastMove = generate<MV_CAPTURE>(pos, moves);
       return;
 
   case PH_QCHECKS:
@@ -344,6 +356,12 @@ Move MovePicker::get_next_move() {
       case PH_QCAPTURES:
           move = pick_best(curMove++, lastMove).move;
           if (move != ttMove)
+              return move;
+          break;
+
+      case PH_QRECAPTURES:
+          move = (curMove++)->move;
+          if (move_to(move) == recaptureSquare)
               return move;
           break;
 
