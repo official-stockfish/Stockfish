@@ -51,8 +51,7 @@ int main(int argc, char* argv[]) {
 
   // Startup initializations
   init_bitboards();
-  Position::init_zobrist();
-  Position::init_piece_square_tables();
+  Position::init();
   init_kpk_bitbase();
   init_search();
   Threads.init();

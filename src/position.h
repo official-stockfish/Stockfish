@@ -247,9 +247,8 @@ public:
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
 
-  // Static member functions
-  static void init_zobrist();
-  static void init_piece_square_tables();
+  // Global initialization
+  static void init();
 
 private:
 

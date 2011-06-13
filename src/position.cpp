@@ -1788,10 +1788,14 @@ bool Position::is_mate() const {
 }
 
 
-/// Position::init_zobrist() is a static member function which initializes at
-/// startup the various arrays used to compute hash keys.
+/// Position::init() is a static member function which initializes at
+/// startup the various arrays used to compute hash keys and the piece
+/// square tables. The latter is a two-step operation: First, the white
+/// halves of the tables are copied from the MgPST[][] and EgPST[][] arrays.
+/// Second, the black halves of the tables are initialized by mirroring
+/// and changing the sign of the corresponding white scores.
 
-void Position::init_zobrist() {
+void Position::init() {
 
   RKISS rk;
 
@@ -1808,16 +1812,6 @@ void Position::init_zobrist() {
 
   zobSideToMove = rk.rand<Key>();
   zobExclusion  = rk.rand<Key>();
-}
-
-
-/// Position::init_piece_square_tables() initializes the piece square tables.
-/// This is a two-step operation: First, the white halves of the tables are
-/// copied from the MgPST[][] and EgPST[][] arrays. Second, the black halves
-/// of the tables are initialized by mirroring and changing the sign of the
-/// corresponding white scores.
-
-void Position::init_piece_square_tables() {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       for (Piece p = WP; p <= WK; p++)
