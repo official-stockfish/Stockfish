@@ -252,25 +252,6 @@ void init_bitboards() {
 
 namespace {
 
-  Bitboard submask(Bitboard mask, int key) {
-
-    Bitboard b, subMask = 0;
-    int bitProbe = 1;
-
-    // Extract an unique submask out of a mask according to the given key
-    while (mask)
-    {
-        b = mask & -mask;
-        mask ^= b;
-
-        if (key & bitProbe)
-            subMask |= b;
-
-        bitProbe <<= 1;
-    }
-    return subMask;
-  }
-
   Bitboard sliding_attacks(Square sq, Bitboard occupied, Square delta[], Bitboard excluded) {
 
     Bitboard attacks = 0;
@@ -321,7 +302,7 @@ namespace {
     const int  MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
                                       { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
     RKISS rk;
-    Bitboard occupancy[4096], reference[4096], excluded;
+    Bitboard occupancy[4096], reference[4096], excluded, b;
     int key, maxKey, index, booster, offset = 0;
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
@@ -332,16 +313,16 @@ namespace {
         mask[s]   = sliding_attacks(s, EmptyBoardBB, delta, excluded);
         shift[s]  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(mask[s]);
 
-        maxKey = 1 << count_1s<CNT32_MAX15>(mask[s]);
+        // Use Carry-Rippler trick to enumerate all subsets of mask[s]
+        b = maxKey = 0;
+        do {
+            occupancy[maxKey] = b;
+            reference[maxKey++] = sliding_attacks(s, b, delta, EmptyBoardBB);
+            b = (b - mask[s]) & mask[s];
+        } while (b);
+
         offset += maxKey;
         booster = MagicBoosters[CpuIs64Bit][square_rank(s)];
-
-        // First compute occupancy and attacks for square 's'
-        for (key = 0; key < maxKey; key++)
-        {
-            occupancy[key] = submask(mask[s], key);
-            reference[key] = sliding_attacks(s, occupancy[key], delta, EmptyBoardBB);
-        }
 
         // Then find a possible magic and the corresponding attacks
         do {
