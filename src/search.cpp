@@ -591,8 +591,6 @@ namespace {
             if (StopRequest)
                 break;
 
-            assert(value >= alpha);
-
             // In case of failing high/low increase aspiration window and research,
             // otherwise exit the fail high/low loop.
             if (value >= beta)
@@ -747,8 +745,6 @@ namespace {
         threatMove = sp->threatMove;
         goto split_point_start;
     }
-    else if (RootNode)
-        bestValue = alpha;
 
     // Step 1. Initialize node and poll. Polling can abort search
     ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
