@@ -72,13 +72,13 @@ OptionsMap::OptionsMap() {
   o["Search Log Filename"] = UCIOption("SearchLog.txt");
   o["Book File"] = UCIOption("book.bin");
   o["Best Book Move"] = UCIOption(false);
-  o["Mobility (Middle Game)"] = UCIOption(100, 0, 200);
-  o["Mobility (Endgame)"] = UCIOption(100, 0, 200);
+  o["Mobility (Middle Game)"] = UCIOption(115, 0, 200);
+  o["Mobility (Endgame)"] = UCIOption(85, 0, 200);
   o["Passed Pawns (Middle Game)"] = UCIOption(100, 0, 200);
   o["Passed Pawns (Endgame)"] = UCIOption(100, 0, 200);
   o["Space"] = UCIOption(100, 0, 200);
-  o["Aggressiveness"] = UCIOption(100, 0, 200);
-  o["Cowardice"] = UCIOption(100, 0, 200);
+  o["Aggressiveness"] = UCIOption(135, 0, 200);
+  o["Cowardice"] = UCIOption(85, 0, 200);
   o["Minimum Split Depth"] = UCIOption(4, 4, 7);
   o["Maximum Number of Threads per Split Point"] = UCIOption(5, 4, 8);
   o["Threads"] = UCIOption(1, 1, MAX_THREADS);
