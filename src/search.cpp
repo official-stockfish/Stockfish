@@ -88,46 +88,9 @@ namespace {
 
     void init(Position& pos, Move searchMoves[]);
     void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
-    void sort_multipv(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
+    void sort_first(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
 
     int bestMoveChanges;
-  };
-
-  // MovePickerExt template class extends MovePicker and allows to choose at compile
-  // time the proper moves source according to the type of node. In the default case
-  // we simply create and use a standard MovePicker object.
-  template<NodeType> struct MovePickerExt : public MovePicker {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePicker(p, ttm, d, h, ss, b) {}
-
-    RootMoveList::iterator rm; // Dummy, needed to compile
-  };
-
-  // In case of a SpNode we use split point's shared MovePicker object as moves source
-  template<> struct MovePickerExt<SplitPointNonPV> : public MovePickerExt<NonPV> {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePickerExt<NonPV>(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
-
-    Move get_next_move() { return mp->get_next_move(); }
-    MovePicker* mp;
-  };
-
-  template<> struct MovePickerExt<SplitPointPV> : public MovePickerExt<SplitPointNonPV> {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePickerExt<SplitPointNonPV>(p, ttm, d, h, ss, b) {}
-  };
-
-  // In case of a Root node we use RootMoveList as moves source
-  template<> struct MovePickerExt<Root> : public MovePicker {
-
-    MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value);
-    Move get_next_move();
-
-    RootMoveList::iterator rm;
-    bool firstCall;
   };
 
 
@@ -259,6 +222,43 @@ namespace {
   std::string speed_to_uci(int64_t nodes);
   void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
+
+  // MovePickerExt template class extends MovePicker and allows to choose at compile
+  // time the proper moves source according to the type of node. In the default case
+  // we simply create and use a standard MovePicker object.
+  template<NodeType> struct MovePickerExt : public MovePicker {
+
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePicker(p, ttm, d, h, ss, b) {}
+
+    RootMove& current() { assert(false); return Rml[0]; } // Dummy, needed to compile
+  };
+
+  // In case of a SpNode we use split point's shared MovePicker object as moves source
+  template<> struct MovePickerExt<SplitPointNonPV> : public MovePickerExt<NonPV> {
+
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePickerExt<NonPV>(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
+
+    Move get_next_move() { return mp->get_next_move(); }
+    MovePicker* mp;
+  };
+
+  template<> struct MovePickerExt<SplitPointPV> : public MovePickerExt<SplitPointNonPV> {
+
+    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
+                  : MovePickerExt<SplitPointNonPV>(p, ttm, d, h, ss, b) {}
+  };
+
+  // In case of a Root node we use RootMoveList as moves source
+  template<> struct MovePickerExt<Root> : public MovePicker {
+
+    MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value);
+    RootMove& current() { return Rml[cur]; }
+    Move get_next_move() { return ++cur < (int)Rml.size() ? Rml[cur].pv[0] : MOVE_NONE; }
+
+    int cur;
+  };
 
   // Overload operator<<() to make it easier to print moves in a coordinate
   // notation compatible with UCI protocol.
@@ -1214,15 +1214,15 @@ split_point_start: // At split points actual search starts from here
               break;
 
           // Remember searched nodes counts for this move
-          mp.rm->nodes += pos.nodes_searched() - nodes;
+          mp.current().nodes += pos.nodes_searched() - nodes;
 
           // PV move or new best move ?
           if (isPvMove || value > alpha)
           {
               // Update PV
               ss->bestMove = move;
-              mp.rm->pv_score = value;
-              mp.rm->extract_pv_from_tt(pos);
+              mp.current().pv_score = value;
+              mp.current().extract_pv_from_tt(pos);
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
@@ -1230,17 +1230,24 @@ split_point_start: // At split points actual search starts from here
               if (!isPvMove && MultiPV == 1)
                   Rml.bestMoveChanges++;
 
-              Rml.sort_multipv(moveCount);
+              // It is critical that sorting is done with a stable algorithm
+              // becuase all the values but the first are usually set to
+              // -VALUE_INFINITE and we want to keep the same order for all
+              // the moves but the new PV that goes to head.
+              Rml.sort_first(moveCount);
 
-              // Update alpha. In multi-pv we don't use aspiration window, so
-              // set alpha equal to minimum score among the PV lines.
+              // Update alpha. In multi-pv we don't use aspiration window, so set
+              // alpha equal to minimum score among the PV lines searched so far.
               if (MultiPV > 1)
-                  alpha = Rml[Min(moveCount, MultiPV) - 1].pv_score; // FIXME why moveCount?
+                  alpha = Rml[Min(moveCount, MultiPV) - 1].pv_score;
               else if (value > alpha)
                   alpha = value;
           }
           else
-              mp.rm->pv_score = -VALUE_INFINITE;
+              // All other moves but the PV are set to the lowest value, this
+              // is not a problem when sorting becuase sort is stable and move
+              // position in the list is preserved, just the PV is pushed up.
+              mp.current().pv_score = -VALUE_INFINITE;
 
       } // RootNode
 
@@ -2077,8 +2084,8 @@ split_point_start: // At split points actual search starts from here
 
   // Specializations for MovePickerExt in case of Root node
   MovePickerExt<Root>::MovePickerExt(const Position& p, Move ttm, Depth d,
-                                            const History& h, SearchStack* ss, Value b)
-                     : MovePicker(p, ttm, d, h, ss, b), firstCall(true) {
+                                     const History& h, SearchStack* ss, Value b)
+                     : MovePicker(p, ttm, d, h, ss, b), cur(-1) {
     Move move;
     Value score = VALUE_ZERO;
 
@@ -2087,7 +2094,7 @@ split_point_start: // At split points actual search starts from here
     // This is the second order score that is used to compare the moves when
     // the first orders pv_score of both moves are equal.
     while ((move = MovePicker::get_next_move()) != MOVE_NONE)
-        for (rm = Rml.begin(); rm != Rml.end(); ++rm)
+        for (RootMoveList::iterator rm = Rml.begin(); rm != Rml.end(); ++rm)
             if (rm->pv[0] == move)
             {
                 rm->non_pv_score = score--;
@@ -2095,17 +2102,6 @@ split_point_start: // At split points actual search starts from here
             }
 
     Rml.sort();
-    rm = Rml.begin();
-  }
-
-  Move MovePickerExt<Root>::get_next_move() {
-
-    if (!firstCall)
-        ++rm;
-    else
-        firstCall = false;
-
-    return rm != Rml.end() ? rm->pv[0] : MOVE_NONE;
   }
 
 } // namespace
