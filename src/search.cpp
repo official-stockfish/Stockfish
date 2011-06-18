@@ -764,10 +764,13 @@ namespace {
         return VALUE_DRAW;
 
     // Step 3. Mate distance pruning
-    alpha = Max(value_mated_in(ss->ply), alpha);
-    beta = Min(value_mate_in(ss->ply+1), beta);
-    if (alpha >= beta)
-        return alpha;
+    if (!RootNode)
+    {
+        alpha = Max(value_mated_in(ss->ply), alpha);
+        beta = Min(value_mate_in(ss->ply+1), beta);
+        if (alpha >= beta)
+            return alpha;
+    }
 
     // Step 4. Transposition table lookup
     // We don't want the score of a partial search to overwrite a previous full search
@@ -1009,7 +1012,7 @@ split_point_start: // At split points actual search starts from here
       }
 
       // At Root and at first iteration do a PV search on all the moves to score root moves
-      isPvMove = (PvNode && moveCount <= (RootNode ? depth <= ONE_PLY ? 1000 : MultiPV : 1));
+      isPvMove = (PvNode && moveCount <= (RootNode ? depth <= ONE_PLY ? MAX_MOVES : MultiPV : 1));
       givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.move_is_capture(move) || move_is_promotion(move);
 
@@ -1115,14 +1118,8 @@ split_point_start: // At split points actual search starts from here
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
       if (isPvMove)
-      {
-          // Aspiration window is disabled in multi-pv case
-          if (RootNode && MultiPV > 1)
-              alpha = -VALUE_INFINITE;
-
           value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                      : - search<PV>(pos, ss+1, -beta, -alpha, newDepth);
-      }
       else
       {
           // Step 15. Reduced depth search
