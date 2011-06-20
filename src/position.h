@@ -41,6 +41,7 @@ struct CheckInfo {
     explicit CheckInfo(const Position&);
 
     Bitboard dcCandidates;
+    Bitboard pinned;
     Bitboard checkSq[8];
     Square ksq;
 };
@@ -187,7 +188,6 @@ public:
   // Properties of moves
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool move_is_pl(const Move m) const;
-  bool move_gives_check(Move m) const;
   bool move_gives_check(Move m, const CheckInfo& ci) const;
   bool move_is_capture(Move m) const;
   bool move_is_passed_pawn_push(Move m) const;

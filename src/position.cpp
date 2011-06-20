@@ -90,13 +90,14 @@ CheckInfo::CheckInfo(const Position& pos) {
 
   ksq = pos.king_square(them);
   dcCandidates = pos.discovered_check_candidates(us);
+  pinned = pos.pinned_pieces(us);
 
-  checkSq[PAWN] = pos.attacks_from<PAWN>(ksq, them);
+  checkSq[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
   checkSq[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
   checkSq[BISHOP] = pos.attacks_from<BISHOP>(ksq);
-  checkSq[ROOK] = pos.attacks_from<ROOK>(ksq);
-  checkSq[QUEEN] = checkSq[BISHOP] | checkSq[ROOK];
-  checkSq[KING] = EmptyBoardBB;
+  checkSq[ROOK]   = pos.attacks_from<ROOK>(ksq);
+  checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
+  checkSq[KING]   = EmptyBoardBB;
 }
 
 
@@ -745,11 +746,6 @@ bool Position::move_is_pl(const Move m) const {
 
 
 /// Position::move_gives_check() tests whether a pseudo-legal move is a check
-
-bool Position::move_gives_check(Move m) const {
-
-  return move_gives_check(m, CheckInfo(*this));
-}
 
 bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 

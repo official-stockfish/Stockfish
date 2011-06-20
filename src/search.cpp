@@ -717,7 +717,6 @@ namespace {
     StateInfo st;
     const TTEntry *tte;
     Key posKey;
-    Bitboard pinned;
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
     ValueType vt;
@@ -918,12 +917,12 @@ namespace {
         assert(rdepth >= ONE_PLY);
 
         MovePicker mp(pos, ttMove, H, Position::see_value(pos.captured_piece_type()));
-        pinned = pos.pinned_pieces(pos.side_to_move());
+        CheckInfo ci(pos);
 
         while ((move = mp.get_next_move()) != MOVE_NONE)
-            if (pos.pl_move_is_legal(move, pinned))
+            if (pos.pl_move_is_legal(move, ci.pinned))
             {
-                pos.do_move(move, st);
+                pos.do_move(move, st, ci, pos.move_gives_check(move, ci));
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth);
                 pos.undo_move(move);
                 if (value >= rbeta)
@@ -951,7 +950,6 @@ split_point_start: // At split points actual search starts from here
     // Initialize a MovePicker object for the current position
     MovePickerExt<NT> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
-    pinned = pos.pinned_pieces(pos.side_to_move());
     ss->bestMove = MOVE_NONE;
     futilityBase = ss->eval + ss->evalMargin;
     singularExtensionNode =   !RootNode
@@ -979,7 +977,7 @@ split_point_start: // At split points actual search starts from here
           continue;
 
       // At PV and SpNode nodes we want the moves to be legal
-      if ((PvNode || SpNode) && !pos.pl_move_is_legal(move, pinned))
+      if ((PvNode || SpNode) && !pos.pl_move_is_legal(move, ci.pinned))
           continue;
 
       if (SpNode)
@@ -1026,7 +1024,7 @@ split_point_start: // At split points actual search starts from here
       // a margin then we extend ttMove.
       if (   singularExtensionNode
           && move == ttMove
-          && pos.pl_move_is_legal(move, pinned)
+          && pos.pl_move_is_legal(move, ci.pinned)
           && ext < ONE_PLY)
       {
           Value ttValue = value_from_tt(tte->value(), ss->ply);
@@ -1101,7 +1099,7 @@ split_point_start: // At split points actual search starts from here
       }
 
       // Check for legality only before to do the move
-      if (!pos.pl_move_is_legal(move, pinned))
+      if (!pos.pl_move_is_legal(move, ci.pinned))
       {
           moveCount--;
           continue;
@@ -1395,7 +1393,6 @@ split_point_start: // At split points actual search starts from here
     // be generated.
     MovePicker mp(pos, ttMove, depth, H, move_to((ss-1)->currentMove));
     CheckInfo ci(pos);
-    Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while (   alpha < beta
@@ -1464,7 +1461,7 @@ split_point_start: // At split points actual search starts from here
       }
 
       // Check for legality only before to do the move
-      if (!pos.pl_move_is_legal(move, pinned))
+      if (!pos.pl_move_is_legal(move, ci.pinned))
           continue;
 
       // Update current move
