@@ -43,7 +43,6 @@ struct CheckInfo {
     Bitboard dcCandidates;
     Bitboard pinned;
     Bitboard checkSq[8];
-    Square ksq;
 };
 
 /// Castle rights, encoded as bit fields

@@ -87,8 +87,8 @@ CheckInfo::CheckInfo(const Position& pos) {
 
   Color us = pos.side_to_move();
   Color them = opposite_color(us);
+  Square ksq = pos.king_square(them);
 
-  ksq = pos.king_square(them);
   dcCandidates = pos.discovered_check_candidates(us);
   pinned = pos.pinned_pieces(us);
 
@@ -753,7 +753,6 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   assert(move_is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates(side_to_move()));
   assert(color_of_piece_on(move_from(m)) == side_to_move());
-  assert(piece_on(ci.ksq) == make_piece(opposite_color(side_to_move()), KING));
 
   Square from = move_from(m);
   Square to = move_to(m);
@@ -768,7 +767,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   {
       // For pawn and king moves we need to verify also direction
       if (  (pt != PAWN && pt != KING)
-          || !squares_aligned(from, to, ci.ksq))
+          || !squares_aligned(from, to, king_square(opposite_color(side_to_move()))))
           return true;
   }
 
@@ -778,6 +777,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   Color us = side_to_move();
   Bitboard b = occupied_squares();
+  Square ksq = king_square(opposite_color(us));
 
   // Promotion with check ?
   if (move_is_promotion(m))
@@ -787,13 +787,13 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       switch (promotion_piece_type(m))
       {
       case KNIGHT:
-          return bit_is_set(attacks_from<KNIGHT>(to), ci.ksq);
+          return bit_is_set(attacks_from<KNIGHT>(to), ksq);
       case BISHOP:
-          return bit_is_set(bishop_attacks_bb(to, b), ci.ksq);
+          return bit_is_set(bishop_attacks_bb(to, b), ksq);
       case ROOK:
-          return bit_is_set(rook_attacks_bb(to, b), ci.ksq);
+          return bit_is_set(rook_attacks_bb(to, b), ksq);
       case QUEEN:
-          return bit_is_set(queen_attacks_bb(to, b), ci.ksq);
+          return bit_is_set(queen_attacks_bb(to, b), ksq);
       default:
           assert(false);
       }
@@ -809,8 +809,8 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       clear_bit(&b, from);
       clear_bit(&b, capsq);
       set_bit(&b, to);
-      return  (rook_attacks_bb(ci.ksq, b) & pieces(ROOK, QUEEN, us))
-            ||(bishop_attacks_bb(ci.ksq, b) & pieces(BISHOP, QUEEN, us));
+      return  (rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, us))
+            ||(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, us));
   }
 
   // Castling with check ?
@@ -832,7 +832,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       clear_bit(&b, rfrom);
       set_bit(&b, rto);
       set_bit(&b, kto);
-      return bit_is_set(rook_attacks_bb(rto, b), ci.ksq);
+      return bit_is_set(rook_attacks_bb(rto, b), ksq);
   }
 
   return false;
@@ -1062,10 +1062,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
           {
               if (pt != ROOK)
-                  st->checkersBB |= (attacks_from<ROOK>(ci.ksq) & pieces(ROOK, QUEEN, us));
+                  st->checkersBB |= (attacks_from<ROOK>(king_square(them)) & pieces(ROOK, QUEEN, us));
 
               if (pt != BISHOP)
-                  st->checkersBB |= (attacks_from<BISHOP>(ci.ksq) & pieces(BISHOP, QUEEN, us));
+                  st->checkersBB |= (attacks_from<BISHOP>(king_square(them)) & pieces(BISHOP, QUEEN, us));
           }
       }
   }
