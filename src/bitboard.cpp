@@ -252,7 +252,7 @@ void init_bitboards() {
 
 namespace {
 
-  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square delta[], Bitboard excluded) {
+  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square delta[]) {
 
     Bitboard attacks = 0;
 
@@ -260,9 +260,7 @@ namespace {
     {
         Square s = sq + delta[i];
 
-        while (    square_is_ok(s)
-               &&  square_distance(s, s - delta[i]) == 1
-               && !bit_is_set(excluded, s))
+        while (square_is_ok(s) && square_distance(s, s - delta[i]) == 1)
         {
             set_bit(&attacks, s);
 
@@ -302,22 +300,22 @@ namespace {
     const int  MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
                                       { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
     RKISS rk;
-    Bitboard occupancy[4096], reference[4096], excluded, b;
+    Bitboard occupancy[4096], reference[4096], edges, b;
     int key, maxKey, index, booster, offset = 0;
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
     {
-        excluded = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
+        edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
 
         attack[s] = &attTable[offset];
-        mask[s]   = sliding_attacks(s, EmptyBoardBB, delta, excluded);
+        mask[s]   = sliding_attacks(s, EmptyBoardBB, delta) & ~edges;
         shift[s]  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(mask[s]);
 
         // Use Carry-Rippler trick to enumerate all subsets of mask[s]
         b = maxKey = 0;
         do {
             occupancy[maxKey] = b;
-            reference[maxKey++] = sliding_attacks(s, b, delta, EmptyBoardBB);
+            reference[maxKey++] = sliding_attacks(s, b, delta);
             b = (b - mask[s]) & mask[s];
         } while (b);
 

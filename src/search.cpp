@@ -1649,7 +1649,6 @@ split_point_start: // At split points actual search starts from here
 
     assert(move_is_ok(m));
     assert(threat && move_is_ok(threat));
-    assert(!pos.move_gives_check(m));
     assert(!pos.move_is_capture(m) && !move_is_promotion(m));
     assert(!pos.move_is_passed_pawn_push(m));
 
