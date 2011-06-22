@@ -72,8 +72,7 @@ namespace {
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
-    std::string pv_info_to_uci(Position& pos, int depth, int selDepth,
-                               Value alpha, Value beta, int pvIdx);
+
     int64_t nodes;
     Value pv_score;
     Value non_pv_score;
@@ -218,8 +217,10 @@ namespace {
   void do_skill_level(Move* best, Move* ponder);
 
   int current_search_time(int set = 0);
-  std::string value_to_uci(Value v);
+  std::string score_to_uci(Value v, Value alpha, Value beta);
   std::string speed_to_uci(int64_t nodes);
+  std::string pv_to_uci(Move pv[], int pvNum);
+  std::string depth_to_uci(Depth depth);
   void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
 
@@ -404,6 +405,9 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   Limits = limits;
   TimeMgr.init(Limits, pos.startpos_ply_counter());
 
+  // Set output steram in normal or chess960 mode
+  cout << set960(pos.is_chess960());
+
   // Set best NodesBetweenPolls interval to avoid lagging under time pressure
   if (Limits.maxNodes)
       NodesBetweenPolls = Min(Limits.maxNodes, 30000);
@@ -480,8 +484,6 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   Move ponderMove = MOVE_NONE;
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
 
-  cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
-
   // Write final search statistics and close log file
   if (LogFile.is_open())
   {
@@ -531,7 +533,7 @@ namespace {
     SearchStack ss[PLY_MAX_PLUS_2];
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth, selDepth, aspirationDelta;
+    int depth, aspirationDelta;
     Value value, alpha, beta;
     Move bestMove, easyMove, skillBest, skillPonder;
 
@@ -548,11 +550,10 @@ namespace {
     Rml.init(pos, searchMoves);
 
     // Handle special case of searching on a mate/stalemate position
-    if (Rml.size() == 0)
+    if (!Rml.size())
     {
-        cout << "info depth 0 score "
-             << value_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW)
-             << endl;
+        cout << "info" << depth_to_uci(DEPTH_ZERO)
+             << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW, alpha, beta) << endl;
 
         return MOVE_NONE;
     }
@@ -561,7 +562,6 @@ namespace {
     while (!StopRequest && ++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth))
     {
         Rml.bestMoveChanges = 0;
-        cout << set960(pos.is_chess960()) << "info depth " << depth << endl;
 
         // Calculate dynamic aspiration window based on previous iterations
         if (MultiPV == 1 && depth >= 5 && abs(bestValues[depth - 1]) < VALUE_KNOWN_WIN)
@@ -590,6 +590,16 @@ namespace {
             // Value cannot be trusted. Break out immediately!
             if (StopRequest)
                 break;
+
+            // Send full PV info to GUI if we are going to leave the loop or
+            // if we have a fail high/low and we are deep in the search.
+            if ((value > alpha && value < beta) || current_search_time() > 2000)
+                for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
+                    cout << "info"
+                         << depth_to_uci(depth * ONE_PLY)
+                         << score_to_uci(Rml[i].pv_score, alpha, beta)
+                         << speed_to_uci(pos.nodes_searched())
+                         << pv_to_uci(Rml[i].pv, i + 1) << endl;
 
             // In case of failing high/low increase aspiration window and research,
             // otherwise exit the fail high/low loop.
@@ -620,16 +630,6 @@ namespace {
         // Do we need to pick now the best and the ponder moves ?
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             do_skill_level(&skillBest, &skillPonder);
-
-        // Retrieve max searched depth among threads
-        selDepth = 0;
-        for (int i = 0; i < Threads.size(); i++)
-            if (Threads[i].maxPly > selDepth)
-                selDepth = Threads[i].maxPly;
-
-        // Send PV line to GUI and to log file
-        for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
-            cout << Rml[i].pv_info_to_uci(pos, depth, selDepth, alpha, beta, i) << endl;
 
         if (LogFile.is_open())
             LogFile << pretty_pv(pos, depth, value, current_search_time(), Rml[0].pv) << endl;
@@ -1004,9 +1004,10 @@ split_point_start: // At split points actual search starts from here
               cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
           }
 
+          // For long searches send to GUI current move
           if (current_search_time() > 2000)
-              cout << "info currmove " << move
-                   << " currmovenumber " << moveCount << endl;
+              cout << "info" << depth_to_uci(depth)
+                   << " currmove " << move << " currmovenumber " << moveCount << endl;
       }
 
       // At Root and at first iteration do a PV search on all the moves to score root moves
@@ -1226,7 +1227,7 @@ split_point_start: // At split points actual search starts from here
                   Rml.bestMoveChanges++;
 
               // It is critical that sorting is done with a stable algorithm
-              // becuase all the values but the first are usually set to
+              // because all the values but the first are usually set to
               // -VALUE_INFINITE and we want to keep the same order for all
               // the moves but the new PV that goes to head.
               Rml.sort_first(moveCount);
@@ -1764,21 +1765,23 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // value_to_uci() converts a value to a string suitable for use with the UCI
+  // score_to_uci() converts a value to a string suitable for use with the UCI
   // protocol specifications:
   //
   // cp <x>     The score from the engine's point of view in centipawns.
   // mate <y>   Mate in y moves, not plies. If the engine is getting mated
   //            use negative values for y.
 
-  std::string value_to_uci(Value v) {
+  std::string score_to_uci(Value v, Value alpha, Value beta) {
 
     std::stringstream s;
 
     if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
-        s << "cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
+        s << " score cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
     else
-        s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+        s << " score mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+
+    s << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
     return s.str();
   }
@@ -1793,8 +1796,41 @@ split_point_start: // At split points actual search starts from here
     int t = current_search_time();
 
     s << " nodes " << nodes
-      << " nps "   << (t > 0 ? int(nodes * 1000 / t) : 0)
+      << " nps " << (t > 0 ? int(nodes * 1000 / t) : 0)
       << " time "  << t;
+
+    return s.str();
+  }
+
+  // pv_to_uci() returns a string with information on the current PV line
+  // formatted according to UCI specification.
+
+  std::string pv_to_uci(Move pv[], int pvNum) {
+
+    std::stringstream s;
+
+    s << " multipv " << pvNum << " pv ";
+
+    for ( ; *pv != MOVE_NONE; pv++)
+        s << *pv << " ";
+
+    return s.str();
+  }
+
+  // depth_to_uci() returns a string with information on the current depth and
+  // seldepth formatted according to UCI specification.
+
+  std::string depth_to_uci(Depth depth) {
+
+    std::stringstream s;
+
+    // Retrieve max searched depth among threads
+    int selDepth = 0;
+    for (int i = 0; i < Threads.size(); i++)
+        if (Threads[i].maxPly > selDepth)
+            selDepth = Threads[i].maxPly;
+
+     s << " depth " << depth / ONE_PLY << " seldepth " << selDepth;
 
     return s.str();
   }
@@ -2052,27 +2088,6 @@ split_point_start: // At split points actual search starts from here
     } while (pv[++ply] != MOVE_NONE);
 
     do pos.undo_move(pv[--ply]); while (ply);
-  }
-
-  // pv_info_to_uci() returns a string with information on the current PV line
-  // formatted according to UCI specification.
-
-  std::string RootMove::pv_info_to_uci(Position& pos, int depth, int selDepth, Value alpha,
-                                       Value beta, int pvIdx) {
-    std::stringstream s;
-
-    s << "info depth " << depth
-      << " seldepth " << selDepth
-      << " multipv " << pvIdx + 1
-      << " score " << value_to_uci(pv_score)
-      << (pv_score >= beta ? " lowerbound" : pv_score <= alpha ? " upperbound" : "")
-      << speed_to_uci(pos.nodes_searched())
-      << " pv ";
-
-    for (Move* m = pv; *m != MOVE_NONE; m++)
-        s << *m << " ";
-
-    return s.str();
   }
 
   // Specializations for MovePickerExt in case of Root node
