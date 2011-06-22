@@ -189,6 +189,7 @@ public:
   bool move_is_pl(const Move m) const;
   bool move_gives_check(Move m, const CheckInfo& ci) const;
   bool move_is_capture(Move m) const;
+  bool move_is_capture_or_promotion(Move m) const;
   bool move_is_passed_pawn_push(Move m) const;
   bool move_attacks_square(Move m, Square s) const;
 
@@ -534,10 +535,18 @@ inline bool Position::is_chess960() const {
   return chess960;
 }
 
+inline bool Position::move_is_capture_or_promotion(Move m) const {
+
+  assert(m != MOVE_NONE && m != MOVE_NULL);
+  return move_is_special(m) ? !move_is_castle(m) : !square_is_empty(move_to(m));
+}
+
 inline bool Position::move_is_capture(Move m) const {
 
-  assert (m != MOVE_NONE && m != MOVE_NULL);
-  return !move_is_special(m) ? !square_is_empty(move_to(m)) : move_is_ep(m);
+  assert(m != MOVE_NONE && m != MOVE_NULL);
+
+  // Note that castle is coded as "king captures the rook"
+  return (!square_is_empty(move_to(m)) && !move_is_castle(m)) || move_is_ep(m);
 }
 
 inline PieceType Position::captured_piece_type() const {
