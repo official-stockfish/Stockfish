@@ -230,7 +230,7 @@ Score PawnInfo::updateShelter(const Position& pos, Square ksq) {
       for (int i = 0; i < 3; i++)
       {
           r += Shift;
-          shelter += BitCount8Bit[(pawns >> r) & 0xFF] * (64 >> i);
+          shelter += BitCount8Bit[(pawns >> r) & 0xFF] << (6 - i);
       }
   }
   kingSquares[Us] = ksq;

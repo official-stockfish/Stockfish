@@ -776,7 +776,6 @@ namespace {
     // TT value, so we use a different position key in case of an excluded move.
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
-
     tte = TT.probe(posKey);
     ttMove = tte ? tte->move() : MOVE_NONE;
 
@@ -976,7 +975,7 @@ split_point_start: // At split points actual search starts from here
       if (move == excludedMove)
           continue;
 
-      // At PV and SpNode nodes we want the moves to be legal
+      // At PV and SpNode nodes we want all moves to be legal since the beginning
       if ((PvNode || SpNode) && !pos.pl_move_is_legal(move, ci.pinned))
           continue;
 
@@ -1004,14 +1003,14 @@ split_point_start: // At split points actual search starts from here
               cout << "info" << speed_to_uci(pos.nodes_searched()) << endl;
           }
 
-          // For long searches send to GUI current move
+          // For long searches send current move info to GUI
           if (current_search_time() > 2000)
               cout << "info" << depth_to_uci(depth)
                    << " currmove " << move << " currmovenumber " << moveCount << endl;
       }
 
       // At Root and at first iteration do a PV search on all the moves to score root moves
-      isPvMove = (PvNode && moveCount <= (RootNode ? depth <= ONE_PLY ? MAX_MOVES : MultiPV : 1));
+      isPvMove = (PvNode && moveCount <= (!RootNode ? 1 : depth <= ONE_PLY ? MAX_MOVES : MultiPV));
       givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
@@ -1107,12 +1106,11 @@ split_point_start: // At split points actual search starts from here
       }
 
       ss->currentMove = move;
+      if (!SpNode && !captureOrPromotion)
+          movesSearched[playedMoveCount++] = move;
 
       // Step 14. Make the move
       pos.do_move(move, st, ci, givesCheck);
-
-      if (!SpNode && !captureOrPromotion)
-          movesSearched[playedMoveCount++] = move;
 
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
@@ -1124,24 +1122,23 @@ split_point_start: // At split points actual search starts from here
           // Step 15. Reduced depth search
           // If the move fails high will be re-searched at full depth.
           bool doFullDepthSearch = true;
-          alpha = SpNode ? sp->alpha : alpha;
 
           if (    depth > 3 * ONE_PLY
               && !captureOrPromotion
               && !dangerous
               && !move_is_castle(move)
               &&  ss->killers[0] != move
-              &&  ss->killers[1] != move)
+              &&  ss->killers[1] != move
+              && (ss->reduction = reduction<PvNode>(depth, moveCount)) != DEPTH_ZERO)
           {
-              ss->reduction = reduction<PvNode>(depth, moveCount);
-              if (ss->reduction)
-              {
-                  Depth d = newDepth - ss->reduction;
-                  value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
-                                      : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
-                  doFullDepthSearch = (value > alpha);
-              }
-              ss->reduction = DEPTH_ZERO; // Restore original reduction
+              Depth d = newDepth - ss->reduction;
+              alpha = SpNode ? sp->alpha : alpha;
+
+              value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
+                                  : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
+
+              ss->reduction = DEPTH_ZERO;
+              doFullDepthSearch = (value > alpha);
           }
 
           // Step 16. Full depth search
@@ -1173,29 +1170,23 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      if (value > bestValue && !(SpNode && thread.cutoff_occurred()))
+      if (value > bestValue)
       {
           bestValue = value;
+          ss->bestMove = move;
 
-          if (SpNode)
-              sp->bestValue = value;
+          if (  !RootNode
+              && PvNode
+              && value > alpha
+              && value < beta) // We want always alpha < beta
+              alpha = value;
 
-          if (!RootNode && value > alpha)
+          if (SpNode && !thread.cutoff_occurred())
           {
-              if (PvNode && value < beta) // We want always alpha < beta
-              {
-                  alpha = value;
-
-                  if (SpNode)
-                      sp->alpha = value;
-              }
-              else if (SpNode)
-                  sp->is_betaCutoff = true;
-
-              ss->bestMove = move;
-
-              if (SpNode)
-                  sp->ss->bestMove = move;
+              sp->bestValue = value;
+              sp->ss->bestMove = move;
+              sp->alpha = alpha;
+              sp->is_betaCutoff = (value >= beta);
           }
       }
 
@@ -1216,7 +1207,6 @@ split_point_start: // At split points actual search starts from here
           if (isPvMove || value > alpha)
           {
               // Update PV
-              ss->bestMove = move;
               mp.current().pv_score = value;
               mp.current().extract_pv_from_tt(pos);
 
