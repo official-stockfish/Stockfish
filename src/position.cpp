@@ -2039,14 +2039,19 @@ bool Position::is_ok(int* failedStep) const {
           if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != make_piece(c, ROOK))
               return false;
       }
-      if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
-          return false;
-      if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
-          return false;
-      if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
-          return false;
-      if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
-          return false;
+      // If we cannot castle castleRightsMask[] could be not valid, for instance when
+      // king initial file is FILE_A as queen rook.
+      if (can_castle(WHITE) || can_castle(BLACK))
+      {
+          if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
+              return false;
+          if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
+              return false;
+          if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
+              return false;
+          if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
+              return false;
+      }
   }
 
   if (failedStep) *failedStep = 0;
