@@ -95,7 +95,7 @@ const string move_to_san(Position& pos, Move m) {
   bool ambiguousMove, ambiguousFile, ambiguousRank;
   Square sq, from = move_from(m);
   Square to = move_to(m);
-  PieceType pt = type_of_piece(pos.piece_on(from));
+  PieceType pt = piece_type(pos.piece_on(from));
   string san;
 
   if (m == MOVE_NONE)

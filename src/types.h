@@ -360,11 +360,11 @@ inline Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) | pt);
 }
 
-inline PieceType type_of_piece(Piece p)  {
+inline PieceType piece_type(Piece p)  {
   return PieceType(p & 7);
 }
 
-inline Color color_of_piece(Piece p) {
+inline Color piece_color(Piece p) {
   return Color(p >> 3);
 }
 
