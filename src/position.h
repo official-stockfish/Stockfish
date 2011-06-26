@@ -133,8 +133,6 @@ public:
   Color color_of_piece_on(Square s) const;
   bool square_is_empty(Square s) const;
   bool square_is_occupied(Square s) const;
-  Value midgame_value_of_piece_on(Square s) const;
-  Value endgame_value_of_piece_on(Square s) const;
 
   // Side to move
   Color side_to_move() const;
@@ -213,7 +211,6 @@ public:
   // Static exchange evaluation
   int see(Move m) const;
   int see_sign(Move m) const;
-  static int see_value(PieceType pt);
 
   // Accessing hash keys
   Key get_key() const;
@@ -312,9 +309,6 @@ private:
   static Key zobSideToMove;
   static Score PieceSquareTable[16][64];
   static Key zobExclusion;
-  static const Value seeValues[8];
-  static const Value PieceValueMidgame[17];
-  static const Value PieceValueEndgame[17];
 };
 
 inline int64_t Position::nodes_searched() const {
@@ -343,14 +337,6 @@ inline bool Position::square_is_empty(Square s) const {
 
 inline bool Position::square_is_occupied(Square s) const {
   return !square_is_empty(s);
-}
-
-inline Value Position::midgame_value_of_piece_on(Square s) const {
-  return PieceValueMidgame[piece_on(s)];
-}
-
-inline Value Position::endgame_value_of_piece_on(Square s) const {
-  return PieceValueEndgame[piece_on(s)];
 }
 
 inline Color Position::side_to_move() const {
@@ -472,10 +458,6 @@ inline bool Position::pawn_is_passed(Color c, Square s) const {
 
 inline bool Position::square_is_weak(Square s, Color c) const {
   return !(pieces(PAWN, opposite_color(c)) & attack_span_mask(c, s));
-}
-
-inline int Position::see_value(PieceType pt) {
-  return seeValues[pt];
 }
 
 inline Key Position::get_key() const {

@@ -45,7 +45,7 @@ Key Position::zobExclusion;
 Score Position::PieceSquareTable[16][64];
 
 // Material values arrays, indexed by Piece
-const Value Position::PieceValueMidgame[17] = {
+const Value PieceValueMidgame[17] = {
   VALUE_ZERO,
   PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
   RookValueMidgame, QueenValueMidgame, VALUE_ZERO,
@@ -54,20 +54,13 @@ const Value Position::PieceValueMidgame[17] = {
   RookValueMidgame, QueenValueMidgame
 };
 
-const Value Position::PieceValueEndgame[17] = {
+const Value PieceValueEndgame[17] = {
   VALUE_ZERO,
   PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
   RookValueEndgame, QueenValueEndgame, VALUE_ZERO,
   VALUE_ZERO, VALUE_ZERO,
   PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
   RookValueEndgame, QueenValueEndgame
-};
-
-// Material values array used by SEE, indexed by PieceType
-const Value Position::seeValues[] = {
-    VALUE_ZERO,
-    PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-    RookValueMidgame, QueenValueMidgame, QueenValueMidgame*10
 };
 
 
@@ -1485,7 +1478,7 @@ int Position::see_sign(Move m) const {
   // Early return if SEE cannot be negative because captured piece value
   // is not less then capturing one. Note that king moves always return
   // here because king midgame value is set to 0.
-  if (midgame_value_of_piece_on(to) >= midgame_value_of_piece_on(from))
+  if (piece_value_midgame(piece_on(to)) >= piece_value_midgame(piece_on(from)))
       return 1;
 
   return see(m);
@@ -1534,7 +1527,7 @@ int Position::see(Move m) const {
   stm = opposite_color(color_of_piece_on(from));
   stmAttackers = attackers & pieces_of_color(stm);
   if (!stmAttackers)
-      return seeValues[capturedType];
+      return PieceValueMidgame[capturedType];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1542,7 +1535,7 @@ int Position::see(Move m) const {
   // destination square, where the sides alternately capture, and always
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
-  swapList[0] = seeValues[capturedType];
+  swapList[0] = PieceValueMidgame[capturedType];
   capturedType = type_of_piece_on(from);
 
   do {
@@ -1563,7 +1556,7 @@ int Position::see(Move m) const {
 
       // Add the new entry to the swap list
       assert(slIndex < 32);
-      swapList[slIndex] = -swapList[slIndex - 1] + seeValues[capturedType];
+      swapList[slIndex] = -swapList[slIndex - 1] + PieceValueMidgame[capturedType];
       slIndex++;
 
       // Remember the value of the capturing piece, and change the side to

@@ -42,7 +42,7 @@ class MovePicker {
 public:
   MovePicker(const Position&, Move, Depth, const History&, SearchStack*, Value);
   MovePicker(const Position&, Move, Depth, const History&, Square recaptureSq);
-  MovePicker(const Position&, Move, const History&, int parentCapture);
+  MovePicker(const Position&, Move, const History&, PieceType parentCapture);
   Move get_next_move();
 
 private:

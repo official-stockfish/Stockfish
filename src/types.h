@@ -337,6 +337,17 @@ const Value RookValueEndgame   = Value(0x4FE);
 const Value QueenValueMidgame  = Value(0x9D9);
 const Value QueenValueEndgame  = Value(0x9FE);
 
+extern const Value PieceValueMidgame[17];
+extern const Value PieceValueEndgame[17];
+
+inline Value piece_value_midgame(Piece p) {
+  return PieceValueMidgame[p];
+}
+
+inline Value piece_value_endgame(Piece p) {
+  return PieceValueEndgame[p];
+}
+
 inline Value value_mate_in(int ply) {
   return VALUE_MATE - ply;
 }
