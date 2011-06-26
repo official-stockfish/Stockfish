@@ -265,7 +265,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
       checkersCnt++;
       checksq = pop_1st_bit(&b);
 
-      assert(pos.color_of_piece_on(checksq) == opposite_color(us));
+      assert(color_of_piece(pos.piece_on(checksq)) == opposite_color(us));
 
       switch (type_of_piece(pos.piece_on(checksq)))
       {

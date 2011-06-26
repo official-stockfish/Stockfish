@@ -129,7 +129,6 @@ public:
 
   // The piece on a given square
   Piece piece_on(Square s) const;
-  Color color_of_piece_on(Square s) const;
   bool square_is_empty(Square s) const;
   bool square_is_occupied(Square s) const;
 
@@ -320,10 +319,6 @@ inline void Position::set_nodes_searched(int64_t n) {
 
 inline Piece Position::piece_on(Square s) const {
   return board[s];
-}
-
-inline Color Position::color_of_piece_on(Square s) const {
-  return color_of_piece(piece_on(s));
 }
 
 inline bool Position::square_is_empty(Square s) const {

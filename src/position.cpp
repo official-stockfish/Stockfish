@@ -366,7 +366,7 @@ void Position::print(Move move) const {
   if (move)
   {
       Position p(*this, thread());
-      string dd = (color_of_piece_on(move_from(move)) == BLACK ? ".." : "");
+      string dd = (color_of_piece(piece_on(move_from(move))) == BLACK ? ".." : "");
       cout << "\nMove is: " << dd << move_to_san(p, move);
   }
 
@@ -381,7 +381,7 @@ void Position::print(Move move) const {
           if (piece == PIECE_NONE && square_color(sq) == DARK)
               piece = PIECE_NONE_DARK_SQ;
 
-          char c = (color_of_piece_on(sq) == BLACK ? '=' : ' ');
+          char c = (color_of_piece(piece_on(sq)) == BLACK ? '=' : ' ');
           cout << c << PieceToChar[piece] << c << '|';
       }
   }
@@ -520,7 +520,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   do_move_bb(&occ, make_move_bb(f, t));
   xray = ( (rook_attacks_bb(s, occ)   & pieces(ROOK, QUEEN))
           |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN)))
-         & pieces_of_color(color_of_piece_on(f));
+         & pieces_of_color(color_of_piece(piece_on(f)));
 
   // If we have attacks we need to verify that are caused by our move
   // and are not already existent ones.
@@ -552,7 +552,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   Color us = side_to_move();
   Square from = move_from(m);
 
-  assert(color_of_piece_on(from) == us);
+  assert(color_of_piece(piece_on(from)) == us);
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 
   // En passant captures are a tricky special case. Because they are
@@ -640,7 +640,7 @@ bool Position::move_is_pl(const Move m) const {
       return false;
 
   // The destination square cannot be occupied by a friendly piece
-  if (color_of_piece_on(to) == us)
+  if (color_of_piece(piece_on(to)) == us)
       return false;
 
   // Handle the special case of a pawn move
@@ -666,7 +666,7 @@ bool Position::move_is_pl(const Move m) const {
       case DELTA_SE:
       // Capture. The destination square must be occupied by an enemy
       // piece (en passant captures was handled earlier).
-      if (color_of_piece_on(to) != them)
+      if (color_of_piece(piece_on(to)) != them)
           return false;
 
       // From and to files must be one file apart, avoids a7h5
@@ -745,7 +745,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   assert(is_ok());
   assert(move_is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates(side_to_move()));
-  assert(color_of_piece_on(move_from(m)) == side_to_move());
+  assert(color_of_piece(piece_on(move_from(m))) == side_to_move());
 
   Square from = move_from(m);
   Square to = move_to(m);
@@ -920,8 +920,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   PieceType pt = type_of_piece(piece);
   PieceType capture = ep ? PAWN : type_of_piece(piece_on(to));
 
-  assert(color_of_piece_on(from) == us);
-  assert(color_of_piece_on(to) == them || square_is_empty(to));
+  assert(color_of_piece(piece_on(from)) == us);
+  assert(color_of_piece(piece_on(to)) == them || square_is_empty(to));
   assert(!(ep || pm) || piece == make_piece(us, PAWN));
   assert(!pm || relative_rank(us, to) == RANK_8);
 
@@ -1258,7 +1258,7 @@ void Position::undo_move(Move m) {
   PieceType pt = type_of_piece(piece_on(to));
 
   assert(square_is_empty(from));
-  assert(color_of_piece_on(to) == us);
+  assert(color_of_piece(piece_on(to)) == us);
   assert(!pm || relative_rank(us, to) == RANK_8);
   assert(!ep || to == st->previous->epSquare);
   assert(!ep || relative_rank(us, to) == RANK_6);
@@ -1524,7 +1524,7 @@ int Position::see(Move m) const {
   attackers = attackers_to(to, occupied);
 
   // If the opponent has no attackers we are finished
-  stm = opposite_color(color_of_piece_on(from));
+  stm = opposite_color(color_of_piece(piece_on(from)));
   stmAttackers = attackers & pieces_of_color(stm);
   if (!stmAttackers)
       return PieceValueMidgame[capturedType];
@@ -1645,7 +1645,7 @@ Key Position::compute_key() const {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (square_is_occupied(s))
-          result ^= zobrist[color_of_piece_on(s)][type_of_piece(piece_on(s))][s];
+          result ^= zobrist[color_of_piece(piece_on(s))][type_of_piece(piece_on(s))][s];
 
   if (ep_square() != SQ_NONE)
       result ^= zobEp[ep_square()];
@@ -1924,7 +1924,7 @@ bool Position::is_ok(int* failedStep) const {
       int kingCount[2] = {0, 0};
       for (Square s = SQ_A1; s <= SQ_H8; s++)
           if (type_of_piece(piece_on(s)) == KING)
-              kingCount[color_of_piece_on(s)]++;
+              kingCount[color_of_piece(piece_on(s))]++;
 
       if (kingCount[0] != 1 || kingCount[1] != 1)
           return false;
