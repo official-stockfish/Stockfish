@@ -217,7 +217,7 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   while (b)
   {
      from = pop_1st_bit(&b);
-     switch (pos.type_of_piece_on(from))
+     switch (type_of_piece(pos.piece_on(from)))
      {
       case PAWN:   /* Will be generated togheter with pawns direct checks */     break;
       case KNIGHT: mlist = generate_discovered_checks<KNIGHT>(pos, mlist, from); break;
@@ -267,7 +267,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
 
       assert(pos.color_of_piece_on(checksq) == opposite_color(us));
 
-      switch (pos.type_of_piece_on(checksq))
+      switch (type_of_piece(pos.piece_on(checksq)))
       {
       case BISHOP: sliderAttacks |= BishopPseudoAttacks[checksq]; break;
       case ROOK:   sliderAttacks |= RookPseudoAttacks[checksq];   break;

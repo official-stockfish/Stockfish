@@ -129,7 +129,6 @@ public:
 
   // The piece on a given square
   Piece piece_on(Square s) const;
-  PieceType type_of_piece_on(Square s) const;
   Color color_of_piece_on(Square s) const;
   bool square_is_empty(Square s) const;
   bool square_is_occupied(Square s) const;
@@ -325,10 +324,6 @@ inline Piece Position::piece_on(Square s) const {
 
 inline Color Position::color_of_piece_on(Square s) const {
   return color_of_piece(piece_on(s));
-}
-
-inline PieceType Position::type_of_piece_on(Square s) const {
-  return type_of_piece(piece_on(s));
 }
 
 inline bool Position::square_is_empty(Square s) const {

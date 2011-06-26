@@ -582,7 +582,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
-  if (type_of_piece_on(from) == KING)
+  if (type_of_piece(piece_on(from)) == KING)
       return move_is_castle(m) || !(attackers_to(move_to(m)) & pieces_of_color(opposite_color(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
@@ -712,7 +712,7 @@ bool Position::move_is_pl(const Move m) const {
   {
       // In case of king moves under check we have to remove king so to catch
       // as invalid moves like b1a1 when opposite queen is on c1.
-      if (type_of_piece_on(from) == KING)
+      if (type_of_piece(piece_on(from)) == KING)
       {
           Bitboard b = occupied_squares();
           clear_bit(&b, from);
@@ -749,7 +749,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   Square from = move_from(m);
   Square to = move_to(m);
-  PieceType pt = type_of_piece_on(from);
+  PieceType pt = type_of_piece(piece_on(from));
 
   // Direct check ?
   if (bit_is_set(ci.checkSq[pt], to))
@@ -918,7 +918,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   Piece piece = piece_on(from);
   PieceType pt = type_of_piece(piece);
-  PieceType capture = ep ? PAWN : type_of_piece_on(to);
+  PieceType capture = ep ? PAWN : type_of_piece(piece_on(to));
 
   assert(color_of_piece_on(from) == us);
   assert(color_of_piece_on(to) == them || square_is_empty(to));
@@ -1255,7 +1255,7 @@ void Position::undo_move(Move m) {
   bool ep = move_is_ep(m);
   bool pm = move_is_promotion(m);
 
-  PieceType pt = type_of_piece_on(to);
+  PieceType pt = type_of_piece(piece_on(to));
 
   assert(square_is_empty(from));
   assert(color_of_piece_on(to) == us);
@@ -1502,16 +1502,16 @@ int Position::see(Move m) const {
 
   from = move_from(m);
   to = move_to(m);
-  capturedType = type_of_piece_on(to);
+  capturedType = type_of_piece(piece_on(to));
   occupied = occupied_squares();
 
   // Handle en passant moves
-  if (st->epSquare == to && type_of_piece_on(from) == PAWN)
+  if (st->epSquare == to && type_of_piece(piece_on(from)) == PAWN)
   {
       Square capQq = (side_to_move() == WHITE ? to - DELTA_N : to - DELTA_S);
 
       assert(capturedType == PIECE_TYPE_NONE);
-      assert(type_of_piece_on(capQq) == PAWN);
+      assert(type_of_piece(piece_on(capQq)) == PAWN);
 
       // Remove the captured pawn
       clear_bit(&occupied, capQq);
@@ -1536,7 +1536,7 @@ int Position::see(Move m) const {
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
   swapList[0] = PieceValueMidgame[capturedType];
-  capturedType = type_of_piece_on(from);
+  capturedType = type_of_piece(piece_on(from));
 
   do {
       // Locate the least valuable attacker for the side to move. The loop
@@ -1645,7 +1645,7 @@ Key Position::compute_key() const {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (square_is_occupied(s))
-          result ^= zobrist[color_of_piece_on(s)][type_of_piece_on(s)][s];
+          result ^= zobrist[color_of_piece_on(s)][type_of_piece(piece_on(s))][s];
 
   if (ep_square() != SQ_NONE)
       result ^= zobEp[ep_square()];
@@ -1923,7 +1923,7 @@ bool Position::is_ok(int* failedStep) const {
   {
       int kingCount[2] = {0, 0};
       for (Square s = SQ_A1; s <= SQ_H8; s++)
-          if (type_of_piece_on(s) == KING)
+          if (type_of_piece(piece_on(s)) == KING)
               kingCount[color_of_piece_on(s)]++;
 
       if (kingCount[0] != 1 || kingCount[1] != 1)
