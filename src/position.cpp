@@ -48,8 +48,8 @@ Score Position::PieceSquareTable[16][64];
 const Value PieceValueMidgame[17] = {
   VALUE_ZERO,
   PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
-  RookValueMidgame, QueenValueMidgame, VALUE_ZERO,
-  VALUE_ZERO, VALUE_ZERO,
+  RookValueMidgame, QueenValueMidgame,
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
   PawnValueMidgame, KnightValueMidgame, BishopValueMidgame,
   RookValueMidgame, QueenValueMidgame
 };
@@ -57,8 +57,8 @@ const Value PieceValueMidgame[17] = {
 const Value PieceValueEndgame[17] = {
   VALUE_ZERO,
   PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
-  RookValueEndgame, QueenValueEndgame, VALUE_ZERO,
-  VALUE_ZERO, VALUE_ZERO,
+  RookValueEndgame, QueenValueEndgame,
+  VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
   PawnValueEndgame, KnightValueEndgame, BishopValueEndgame,
   RookValueEndgame, QueenValueEndgame
 };
@@ -121,7 +121,7 @@ void Position::detach() {
 
   startState = *st;
   st = &startState;
-  st->previous = NULL; // as a safe guard
+  st->previous = NULL; // As a safe guard
 }
 
 
@@ -159,64 +159,56 @@ void Position::from_fen(const string& fen, bool isChess960) {
 */
 
   char token;
-  int hmc, fmn;
   size_t p;
+  string ep;
   Square sq = SQ_A8;
   std::istringstream ss(fen);
 
   clear();
-  ss >> std::noskipws;
+  ss >> std::skipws >> token >> std::noskipws;
 
-  // 1. Piece placement field
-  while ((ss >> token) && !isspace(token))
+  // 1. Piece placement
+  while (!isspace(token))
   {
-      if ((p = PieceToChar.find(token)) != string::npos)
+      if (token == '/')
+          sq -= Square(16); // Jump back of 2 rows
+
+      else if (isdigit(token))
+          sq += Square(token - '0'); // Skip the given number of files
+
+      else if ((p = PieceToChar.find(token)) != string::npos)
       {
           put_piece(Piece(p), sq);
           sq++;
       }
-      else if (isdigit(token))
-          sq += Square(token - '0'); // Skip the given number of files
-      else if (token == '/')
-          sq -= SQ_A3; // Jump back of 2 rows
-      else
-          goto incorrect_fen;
+
+      ss >> token;
   }
 
   // 2. Active color
-  if (!(ss >> token) || (token != 'w' && token != 'b'))
-      goto incorrect_fen;
-
+  ss >> std::skipws >> token;
   sideToMove = (token == 'w' ? WHITE : BLACK);
 
-  if (!(ss >> token) || !isspace(token))
-      goto incorrect_fen;
-
   // 3. Castling availability
-  while ((ss >> token) && !isspace(token))
-      if (!set_castling_rights(token))
-          goto incorrect_fen;
-
-  // 4. En passant square
-  char col, row;
-  if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
-      && ((ss >> row) && (row == '3' || row == '6')))
+  ss >> token >> std::noskipws;
+  while (token != '-' && !isspace(token))
   {
-      st->epSquare = make_square(File(col - 'a') + FILE_A, Rank(row - '1') + RANK_1);
+      set_castling_rights(token);
+      ss >> token;
+  }
 
-      // Ignore if no capture is possible
-      Color them = opposite_color(sideToMove);
-      if (!(attacks_from<PAWN>(st->epSquare, them) & pieces(PAWN, sideToMove)))
+  // 4. En passant square. Ignore if no pawn capture is possible
+  ss >> std::skipws >> ep;
+  if (ep.size() == 2)
+  {
+      st->epSquare = make_square(File(ep[0] - 'a'), Rank(ep[1] - '1'));
+
+      if (!(attackers_to(st->epSquare) & pieces(PAWN, sideToMove)))
           st->epSquare = SQ_NONE;
   }
 
-  // 5. Halfmove clock
-  if (ss >> std::skipws >> hmc)
-      st->rule50 = hmc;
-
-  // 6. Fullmove number
-  if (ss >> fmn)
-      startPosPlyCounter = (fmn - 1) * 2 + int(sideToMove == BLACK);
+  // 5-6. Halfmove clock and fullmove number
+  ss >> st->rule50 >> fullMoves;
 
   // Various initialisations
   castleRightsMask[make_square(initialKFile,  RANK_1)] ^= WHITE_OO | WHITE_OOO;
@@ -235,10 +227,6 @@ void Position::from_fen(const string& fen, bool isChess960) {
   st->value = compute_value();
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
-  return;
-
-incorrect_fen:
-  cout << "Error in FEN string: " << fen << endl;
 }
 
 
@@ -249,39 +237,39 @@ incorrect_fen:
 /// associated with the castling right, the traditional castling tag will be replaced
 /// by the file letter of the involved rook as for the Shredder-FEN.
 
-bool Position::set_castling_rights(char token) {
+void Position::set_castling_rights(char token) {
 
-    Color c = token >= 'a' ? BLACK : WHITE;
-    Square sqA = (c == WHITE ? SQ_A1 : SQ_A8);
-    Square sqH = (c == WHITE ? SQ_H1 : SQ_H8);
-    Piece rook = (c == WHITE ? WR : BR);
+    Color c = islower(token) ? BLACK : WHITE;
+
+    Square sqA = relative_square(c, SQ_A1);
+    Square sqH = relative_square(c, SQ_H1);
 
     initialKFile = square_file(king_square(c));
-    token = char(toupper(token));
 
-    if (token == 'K')
+    if (toupper(token) == 'K')
     {
         for (Square sq = sqH; sq >= sqA; sq--)
-            if (piece_on(sq) == rook)
+            if (piece_on(sq) == make_piece(c, ROOK))
             {
                 set_castle_kingside(c);
                 initialKRFile = square_file(sq);
                 break;
             }
     }
-    else if (token == 'Q')
+    else if (toupper(token) == 'Q')
     {
         for (Square sq = sqA; sq <= sqH; sq++)
-            if (piece_on(sq) == rook)
+            if (piece_on(sq) == make_piece(c, ROOK))
             {
                 set_castle_queenside(c);
                 initialQRFile = square_file(sq);
                 break;
             }
     }
-    else if (token >= 'A' && token <= 'H')
+    else if (toupper(token) >= 'A' && toupper(token) <= 'H')
     {
-        File rookFile = File(token - 'A') + FILE_A;
+        File rookFile = File(toupper(token) - 'A');
+
         if (rookFile < initialKFile)
         {
             set_castle_queenside(c);
@@ -293,10 +281,6 @@ bool Position::set_castling_rights(char token) {
             initialKRFile = rookFile;
         }
     }
-    else
-        return token == '-';
-
-  return true;
 }
 
 
@@ -593,8 +577,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 }
 
 
-/// Position::move_is_pl_slow() takes a position and a move and tests whether
-/// the move is pseudo legal. This version is not very fast and should be used
+/// Position::move_is_pl_slow() takes a move and tests whether the move
+/// is pseudo legal. This version is not very fast and should be used
 /// only in non time-critical paths.
 
 bool Position::move_is_pl_slow(const Move m) const {
@@ -613,8 +597,8 @@ bool Position::move_is_pl_slow(const Move m) const {
 }
 
 
-/// Fast version of Position::move_is_pl() that takes a position a move and a
-/// bitboard of pinned pieces as input, and tests whether the move is pseudo legal.
+/// Fast version of Position::move_is_pl() that takes a move and a bitboard
+/// of pinned pieces as input, and tests whether the move is pseudo legal.
 
 bool Position::move_is_pl(const Move m) const {
 
@@ -839,15 +823,16 @@ void Position::do_setup_move(Move m) {
 
   StateInfo newSt;
 
+  // Update the number of full moves after black's move
+  if (sideToMove == BLACK)
+      fullMoves++;
+
   do_move(m, newSt);
 
   // Reset "game ply" in case we made a non-reversible move.
   // "game ply" is used for repetition detection.
   if (st->rule50 == 0)
       st->gamePly = 0;
-
-  // Update the number of plies played from the starting position
-  startPosPlyCounter++;
 
   // Our StateInfo newSt is about going out of scope so copy
   // its content before it disappears.
@@ -1591,7 +1576,7 @@ void Position::clear() {
   st = &startState;
   memset(st, 0, sizeof(StateInfo));
   st->epSquare = SQ_NONE;
-  startPosPlyCounter = 0;
+  fullMoves = 1;
   nodes = 0;
 
   memset(byColorBB,  0, sizeof(Bitboard) * 2);
@@ -2039,19 +2024,14 @@ bool Position::is_ok(int* failedStep) const {
           if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != make_piece(c, ROOK))
               return false;
       }
-      // If we cannot castle castleRightsMask[] could be not valid, for instance when
-      // king initial file is FILE_A as queen rook.
-      if (can_castle(WHITE) || can_castle(BLACK))
-      {
-          if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
-              return false;
-          if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
-              return false;
-          if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
-              return false;
-          if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
-              return false;
-      }
+      if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
+          return false;
+      if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
+          return false;
+      if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
+          return false;
+      if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
+          return false;
   }
 
   if (failedStep) *failedStep = 0;

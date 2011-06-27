@@ -25,7 +25,7 @@ struct SearchLimits;
 class TimeManager {
 public:
 
-  void init(const SearchLimits& limits, int currentPly);
+  void init(const SearchLimits& limits, int fullMoveNumber);
   void pv_instability(int curChanges, int prevChanges);
   int available_time() const { return optimumSearchTime + unstablePVExtraTime; }
   int maximum_time() const { return maximumSearchTime; }

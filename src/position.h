@@ -226,7 +226,7 @@ public:
   template<bool SkipRepetition> bool is_draw() const;
 
   // Number of plies from starting position
-  int startpos_ply_counter() const;
+  int full_moves() const;
 
   // Other properties of the position
   bool opposite_colored_bishops() const;
@@ -253,7 +253,7 @@ private:
   void put_piece(Piece p, Square s);
   void set_castle_kingside(Color c);
   void set_castle_queenside(Color c);
-  bool set_castling_rights(char token);
+  void set_castling_rights(char token);
   bool move_is_pl_slow(const Move m) const;
 
   // Helper functions for doing and undoing moves
@@ -295,7 +295,7 @@ private:
   StateInfo startState;
   File initialKFile, initialKRFile, initialQRFile;
   bool chess960;
-  int startPosPlyCounter;
+  int fullMoves;
   int threadID;
   int64_t nodes;
   StateInfo* st;
@@ -489,8 +489,8 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
         && pawn_is_passed(c, move_to(m));
 }
 
-inline int Position::startpos_ply_counter() const {
-  return startPosPlyCounter;
+inline int Position::full_moves() const {
+  return fullMoves;
 }
 
 inline bool Position::opposite_colored_bishops() const {
