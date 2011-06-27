@@ -322,16 +322,16 @@ namespace {
         result ^= ZobPiece[PieceOfs[pos.piece_on(s)] + s];
     }
 
-    if (pos.can_castle_kingside(WHITE))
+    if (pos.can_castle(WHITE_OO))
         result ^= ZobCastle[0];
 
-    if (pos.can_castle_queenside(WHITE))
+    if (pos.can_castle(WHITE_OOO))
         result ^= ZobCastle[1];
 
-    if (pos.can_castle_kingside(BLACK))
+    if (pos.can_castle(BLACK_OO))
         result ^= ZobCastle[2];
 
-    if (pos.can_castle_queenside(BLACK))
+    if (pos.can_castle(BLACK_OOO))
         result ^= ZobCastle[3];
 
     if (pos.ep_square() != SQ_NONE)

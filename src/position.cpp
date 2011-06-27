@@ -211,13 +211,6 @@ void Position::from_fen(const string& fen, bool isChess960) {
   ss >> st->rule50 >> fullMoves;
 
   // Various initialisations
-  castleRightsMask[make_square(initialKFile,  RANK_1)] ^= WHITE_OO | WHITE_OOO;
-  castleRightsMask[make_square(initialKFile,  RANK_8)] ^= BLACK_OO | BLACK_OOO;
-  castleRightsMask[make_square(initialKRFile, RANK_1)] ^= WHITE_OO;
-  castleRightsMask[make_square(initialKRFile, RANK_8)] ^= BLACK_OO;
-  castleRightsMask[make_square(initialQRFile, RANK_1)] ^= WHITE_OOO;
-  castleRightsMask[make_square(initialQRFile, RANK_8)] ^= BLACK_OOO;
-
   chess960 = isChess960;
   find_checkers();
 
@@ -227,6 +220,18 @@ void Position::from_fen(const string& fen, bool isChess960) {
   st->value = compute_value();
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
+}
+
+
+/// Position::set_castle() is an helper function used to set
+/// correct castling related flags.
+
+void Position::set_castle(int f, Square ksq, Square rsq) {
+
+  st->castleRights |= f;
+  castleRightsMask[ksq] ^= f;
+  castleRightsMask[rsq] ^= f;
+  castleRookSquare[f] = rsq;
 }
 
 
@@ -244,42 +249,26 @@ void Position::set_castling_rights(char token) {
     Square sqA = relative_square(c, SQ_A1);
     Square sqH = relative_square(c, SQ_H1);
 
-    initialKFile = square_file(king_square(c));
+    Square rsq, ksq = king_square(c);
 
     if (toupper(token) == 'K')
     {
-        for (Square sq = sqH; sq >= sqA; sq--)
-            if (piece_on(sq) == make_piece(c, ROOK))
-            {
-                set_castle_kingside(c);
-                initialKRFile = square_file(sq);
-                break;
-            }
+        for (rsq = sqH; piece_on(rsq) != make_piece(c, ROOK); rsq--) {}
+        set_castle(WHITE_OO << c, ksq, rsq);
     }
     else if (toupper(token) == 'Q')
     {
-        for (Square sq = sqA; sq <= sqH; sq++)
-            if (piece_on(sq) == make_piece(c, ROOK))
-            {
-                set_castle_queenside(c);
-                initialQRFile = square_file(sq);
-                break;
-            }
+        for (rsq = sqA; piece_on(rsq) != make_piece(c, ROOK); rsq++) {}
+        set_castle(WHITE_OOO << c, ksq, rsq);
     }
     else if (toupper(token) >= 'A' && toupper(token) <= 'H')
     {
-        File rookFile = File(toupper(token) - 'A');
+        Square rsq = make_square(File(toupper(token) - 'A'), RANK_1);
 
-        if (rookFile < initialKFile)
-        {
-            set_castle_queenside(c);
-            initialQRFile = rookFile;
-        }
+        if (square_file(rsq) < square_file(ksq))
+            set_castle(WHITE_OOO << c, ksq, rsq);
         else
-        {
-            set_castle_kingside(c);
-            initialKRFile = rookFile;
-        }
+            set_castle(WHITE_OO << c, ksq, rsq);
     }
 }
 
@@ -321,17 +310,17 @@ const string Position::to_fen() const {
 
   if (st->castleRights != CASTLES_NONE)
   {
-      if (can_castle_kingside(WHITE))
-          fen += chess960 ? char(toupper(file_to_char(initialKRFile))) : 'K';
+      if (can_castle(WHITE_OO))
+          fen += chess960 ? char(toupper(file_to_char(square_file(castle_rook_square(WHITE_OO))))) : 'K';
 
-      if (can_castle_queenside(WHITE))
-          fen += chess960 ? char(toupper(file_to_char(initialQRFile))) : 'Q';
+      if (can_castle(WHITE_OOO))
+          fen += chess960 ? char(toupper(file_to_char(square_file(castle_rook_square(WHITE_OOO))))) : 'Q';
 
-      if (can_castle_kingside(BLACK))
-          fen += chess960 ? file_to_char(initialKRFile) : 'k';
+      if (can_castle(BLACK_OO))
+          fen += chess960 ? file_to_char(square_file(castle_rook_square(BLACK_OO))) : 'k';
 
-      if (can_castle_queenside(BLACK))
-          fen += chess960 ? file_to_char(initialQRFile) : 'q';
+      if (can_castle(BLACK_OOO))
+          fen += chess960 ? file_to_char(square_file(castle_rook_square(BLACK_OOO))) : 'q';
   } else
       fen += '-';
 
@@ -1595,9 +1584,6 @@ void Position::clear() {
       castleRightsMask[sq] = ALL_CASTLES;
 
   sideToMove = WHITE;
-  initialKFile = FILE_E;
-  initialKRFile = FILE_H;
-  initialQRFile = FILE_A;
 }
 
 
@@ -1819,21 +1805,14 @@ void Position::flip() {
   sideToMove = opposite_color(pos.side_to_move());
 
   // Castling rights
-  if (pos.can_castle_kingside(WHITE))  set_castle_kingside(BLACK);
-  if (pos.can_castle_queenside(WHITE)) set_castle_queenside(BLACK);
-  if (pos.can_castle_kingside(BLACK))  set_castle_kingside(WHITE);
-  if (pos.can_castle_queenside(BLACK)) set_castle_queenside(WHITE);
-
-  initialKFile  = pos.initialKFile;
-  initialKRFile = pos.initialKRFile;
-  initialQRFile = pos.initialQRFile;
-
-  castleRightsMask[make_square(initialKFile,  RANK_1)] ^= (WHITE_OO | WHITE_OOO);
-  castleRightsMask[make_square(initialKFile,  RANK_8)] ^= (BLACK_OO | BLACK_OOO);
-  castleRightsMask[make_square(initialKRFile, RANK_1)] ^=  WHITE_OO;
-  castleRightsMask[make_square(initialKRFile, RANK_8)] ^=  BLACK_OO;
-  castleRightsMask[make_square(initialQRFile, RANK_1)] ^=  WHITE_OOO;
-  castleRightsMask[make_square(initialQRFile, RANK_8)] ^=  BLACK_OOO;
+  if (pos.can_castle(WHITE_OO))
+      set_castle(BLACK_OO,  king_square(BLACK), flip_square(pos.castle_rook_square(WHITE_OO)));
+  if (pos.can_castle(WHITE_OOO))
+      set_castle(BLACK_OOO, king_square(BLACK), flip_square(pos.castle_rook_square(WHITE_OOO)));
+  if (pos.can_castle(BLACK_OO))
+      set_castle(WHITE_OO,  king_square(WHITE), flip_square(pos.castle_rook_square(BLACK_OO)));
+  if (pos.can_castle(BLACK_OOO))
+      set_castle(WHITE_OOO, king_square(WHITE), flip_square(pos.castle_rook_square(BLACK_OOO)));
 
   // En passant square
   if (pos.st->epSquare != SQ_NONE)
@@ -1892,14 +1871,6 @@ bool Position::is_ok(int* failedStep) const {
 
   if (failedStep) (*failedStep)++;
   if (piece_on(king_square(BLACK)) != BK)
-      return false;
-
-  // Castle files OK?
-  if (failedStep) (*failedStep)++;
-  if (!square_is_ok(make_square(initialKRFile, RANK_1)))
-      return false;
-
-  if (!square_is_ok(make_square(initialQRFile, RANK_1)))
       return false;
 
   // Do both sides have exactly one king?
@@ -2015,24 +1986,17 @@ bool Position::is_ok(int* failedStep) const {
 
   if (failedStep) (*failedStep)++;
   if (debugCastleSquares)
-  {
-      for (Color c = WHITE; c <= BLACK; c++)
+      for (CastleRight f = WHITE_OO; f <= BLACK_OOO; f = CastleRight(f << 1))
       {
-          if (can_castle_kingside(c) && piece_on(initial_kr_square(c)) != make_piece(c, ROOK))
-              return false;
+          if (!can_castle(f))
+              continue;
 
-          if (can_castle_queenside(c) && piece_on(initial_qr_square(c)) != make_piece(c, ROOK))
+          Piece rook = (f & (WHITE_OO | WHITE_OOO) ? WR : BR);
+
+          if (   castleRightsMask[castleRookSquare[f]] != (ALL_CASTLES ^ f)
+              || piece_on(castleRookSquare[f]) != rook)
               return false;
       }
-      if (castleRightsMask[initial_kr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OO))
-          return false;
-      if (castleRightsMask[initial_qr_square(WHITE)] != (ALL_CASTLES ^ WHITE_OOO))
-          return false;
-      if (castleRightsMask[initial_kr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OO))
-          return false;
-      if (castleRightsMask[initial_qr_square(BLACK)] != (ALL_CASTLES ^ BLACK_OOO))
-          return false;
-  }
 
   if (failedStep) *failedStep = 0;
   return true;

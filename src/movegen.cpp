@@ -178,12 +178,12 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
   mlist = generate_piece_moves<KING>(pos, mlist, us, target);
 
-  if (Type != MV_CAPTURE)
+  if (Type != MV_CAPTURE && pos.can_castle(us))
   {
-      if (pos.can_castle_kingside(us))
+      if (pos.can_castle(us == WHITE ? WHITE_OO : BLACK_OO))
           mlist = generate_castle_moves<KING_SIDE>(pos, mlist, us);
 
-      if (pos.can_castle_queenside(us))
+      if (pos.can_castle(us == WHITE ? WHITE_OOO : BLACK_OOO))
           mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist, us);
   }
 
@@ -503,10 +503,11 @@ namespace {
 
     Color them = opposite_color(us);
     Square ksq = pos.king_square(us);
+    CastleRight f = CastleRight((Side == KING_SIDE ? WHITE_OO : WHITE_OOO) << us);
 
     assert(pos.piece_on(ksq) == make_piece(us, KING));
 
-    Square rsq = (Side == KING_SIDE ? pos.initial_kr_square(us) : pos.initial_qr_square(us));
+    Square rsq = pos.castle_rook_square(f);
     Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
     Square s2 = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
     Square s;
