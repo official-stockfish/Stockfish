@@ -527,7 +527,8 @@ namespace {
             score -= ThreatenedByPawnPenalty[Piece];
 
         // Bishop and knight outposts squares
-        if ((Piece == BISHOP || Piece == KNIGHT) && pos.square_is_weak(s, Us))
+        if (    (Piece == BISHOP || Piece == KNIGHT)
+            && !(pos.pieces(PAWN, Them) & attack_span_mask(Us, s)))
             score += evaluate_outposts<Piece, Us>(pos, ei, s);
 
         // Queen or rook on 7th rank

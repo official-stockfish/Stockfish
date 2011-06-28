@@ -245,7 +245,7 @@ void Position::set_castling_rights(char token) {
     Square sqH = relative_square(c, SQ_H1);
     Square rsq, ksq = king_square(c);
 
-    token = toupper(token);
+    token = char(toupper(token));
 
     if (token == 'K')
         for (rsq = sqH; piece_on(rsq) != make_piece(c, ROOK); rsq--) {}
