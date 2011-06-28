@@ -282,7 +282,7 @@ const string Position::to_fen() const {
       {
           sq = make_square(file, rank);
 
-          if (square_is_occupied(sq))
+          if (!square_is_empty(sq))
           {
               if (emptyCnt != '0')
               {
@@ -475,7 +475,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   Bitboard occ, xray;
   Square f = move_from(m), t = move_to(m);
 
-  assert(square_is_occupied(f));
+  assert(!square_is_empty(f));
 
   if (bit_is_set(attacks_from(piece_on(f), t), s))
       return true;
@@ -1606,7 +1606,7 @@ Key Position::compute_key() const {
   Key result = zobCastle[st->castleRights];
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
-      if (square_is_occupied(s))
+      if (!square_is_empty(s))
           result ^= zobrist[piece_color(piece_on(s))][piece_type(piece_on(s))][s];
 
   if (ep_square() != SQ_NONE)

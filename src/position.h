@@ -130,7 +130,6 @@ public:
   // The piece on a given square
   Piece piece_on(Square s) const;
   bool square_is_empty(Square s) const;
-  bool square_is_occupied(Square s) const;
 
   // Side to move
   Color side_to_move() const;
@@ -320,10 +319,6 @@ inline Piece Position::piece_on(Square s) const {
 
 inline bool Position::square_is_empty(Square s) const {
   return piece_on(s) == PIECE_NONE;
-}
-
-inline bool Position::square_is_occupied(Square s) const {
-  return !square_is_empty(s);
 }
 
 inline Color Position::side_to_move() const {

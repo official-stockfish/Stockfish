@@ -517,12 +517,12 @@ namespace {
 
     // It is a bit complicated to correctly handle Chess960
     for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
-        if (  (s != ksq && s != rsq && pos.square_is_occupied(s))
+        if (  (s != ksq && s != rsq && !pos.square_is_empty(s))
             ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
             illegal = true;
 
     for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)
-        if (s != ksq && s != rsq && pos.square_is_occupied(s))
+        if (s != ksq && s != rsq && !pos.square_is_empty(s))
             illegal = true;
 
     if (   Side == QUEEN_SIDE
