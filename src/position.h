@@ -268,7 +268,7 @@ private:
   Key compute_material_key() const;
 
   // Computing incremental evaluation scores and material counts
-  static Score pst(Color c, PieceType pt, Square s);
+  static Score pst(Piece p, Square s);
   Score compute_value() const;
   Value compute_non_pawn_material(Color c) const;
 
@@ -447,8 +447,8 @@ inline Key Position::get_material_key() const {
   return st->materialKey;
 }
 
-inline Score Position::pst(Color c, PieceType pt, Square s) {
-  return PieceSquareTable[make_piece(c, pt)][s];
+inline Score Position::pst(Piece p, Square s) {
+  return PieceSquareTable[p][s];
 }
 
 inline Score Position::pst_delta(Piece piece, Square from, Square to) {

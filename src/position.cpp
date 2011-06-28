@@ -164,10 +164,10 @@ void Position::from_fen(const string& fen, bool isChess960) {
   std::istringstream ss(fen);
 
   clear();
-  ss >> token >> std::noskipws;
+  ss >> std::noskipws;
 
   // 1. Piece placement
-  while (!isspace(token))
+  while ((ss >> token) && !isspace(token))
   {
       if (token == '/')
           sq -= Square(16); // Jump back of 2 rows
@@ -180,8 +180,6 @@ void Position::from_fen(const string& fen, bool isChess960) {
           put_piece(Piece(p), sq);
           sq++;
       }
-
-      ss >> token;
   }
 
   // 2. Active color
@@ -245,8 +243,8 @@ void Position::set_castling_rights(char token) {
 
     Square sqA = relative_square(c, SQ_A1);
     Square sqH = relative_square(c, SQ_H1);
-
     Square rsq, ksq = king_square(c);
+
     token = toupper(token);
 
     if (token == 'K')
@@ -985,8 +983,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->pawnKey ^= zobrist[us][PAWN][to];
 
           // Partially revert and update incremental scores
-          st->value -= pst(us, PAWN, to);
-          st->value += pst(us, promotion, to);
+          st->value -= pst(make_piece(us, PAWN), to);
+          st->value += pst(make_piece(us, promotion), to);
 
           // Update material
           st->npMaterial[us] += PieceValueMidgame[promotion];
@@ -1077,7 +1075,7 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
     key ^= zobrist[them][capture][capsq];
 
     // Update incremental scores
-    st->value -= pst(them, capture, capsq);
+    st->value -= pst(make_piece(them, capture), capsq);
 
     // Update piece count
     pieceCount[them][capture]--;
@@ -1559,25 +1557,24 @@ void Position::clear() {
   st = &startState;
   memset(st, 0, sizeof(StateInfo));
   st->epSquare = SQ_NONE;
-  fullMoves = 1;
-  nodes = 0;
 
   memset(byColorBB,  0, sizeof(Bitboard) * 2);
   memset(byTypeBB,   0, sizeof(Bitboard) * 8);
   memset(pieceCount, 0, sizeof(int) * 2 * 8);
   memset(index,      0, sizeof(int) * 64);
 
-  for (int i = 0; i < 64; i++)
-      board[i] = PIECE_NONE;
-
   for (int i = 0; i < 8; i++)
       for (int j = 0; j < 16; j++)
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
 
   for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
+  {
+      board[sq] = PIECE_NONE;
       castleRightsMask[sq] = ALL_CASTLES;
-
+  }
   sideToMove = WHITE;
+  fullMoves = 1;
+  nodes = 0;
 }
 
 
@@ -1593,9 +1590,9 @@ void Position::put_piece(Piece p, Square s) {
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
 
-  set_bit(&(byTypeBB[pt]), s);
-  set_bit(&(byColorBB[c]), s);
-  set_bit(&(byTypeBB[0]), s); // HACK: byTypeBB[0] contains all occupied squares.
+  set_bit(&byTypeBB[pt], s);
+  set_bit(&byColorBB[c], s);
+  set_bit(&byTypeBB[0], s); // HACK: byTypeBB[0] contains all occupied squares.
 }
 
 
@@ -1676,7 +1673,7 @@ Score Position::compute_value() const {
       {
           b = pieces(pt, c);
           while (b)
-              result += pst(c, pt, pop_1st_bit(&b));
+              result += pst(make_piece(c, pt), pop_1st_bit(&b));
       }
 
   result += (side_to_move() == WHITE ? TempoValue / 2 : -TempoValue / 2);
