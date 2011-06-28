@@ -252,7 +252,6 @@ private:
   void do_capture_move(Key& key, PieceType capture, Color them, Square to, bool ep);
   void do_castle_move(Move m);
   void undo_castle_move(Move m);
-  void find_checkers();
 
   template<bool FindPinned>
   Bitboard hidden_checkers(Color c) const;
