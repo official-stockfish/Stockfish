@@ -1524,7 +1524,7 @@ split_point_start: // At split points actual search starts from here
     newAtt = pos.attacks_from(pc,   to, occ);
 
     // Rule 1. Checks which give opponent's king at most one escape square are dangerous
-    b = kingAtt & ~pos.pieces_of_color(them) & ~newAtt & ~(1ULL << to);
+    b = kingAtt & ~pos.pieces(them) & ~newAtt & ~(1ULL << to);
 
     if (!(b && (b & (b - 1))))
         return true;
@@ -1535,7 +1535,7 @@ split_point_start: // At split points actual search starts from here
         return true;
 
     // Rule 3. Creating new double threats with checks
-    b = pos.pieces_of_color(them) & newAtt & ~oldAtt & ~(1ULL << ksq);
+    b = pos.pieces(them) & newAtt & ~oldAtt & ~(1ULL << ksq);
 
     while (b)
     {

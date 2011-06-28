@@ -137,7 +137,7 @@ public:
   // Bitboard representation of the position
   Bitboard empty_squares() const;
   Bitboard occupied_squares() const;
-  Bitboard pieces_of_color(Color c) const;
+  Bitboard pieces(Color c) const;
   Bitboard pieces(PieceType pt) const;
   Bitboard pieces(PieceType pt, Color c) const;
   Bitboard pieces(PieceType pt1, PieceType pt2) const;
@@ -333,7 +333,7 @@ inline Bitboard Position::empty_squares() const {
   return ~occupied_squares();
 }
 
-inline Bitboard Position::pieces_of_color(Color c) const {
+inline Bitboard Position::pieces(Color c) const {
   return byColorBB[c];
 }
 

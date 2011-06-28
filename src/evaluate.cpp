@@ -619,7 +619,7 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Enemy pieces not defended by a pawn and under our attack
-    Bitboard weakEnemies =  pos.pieces_of_color(Them)
+    Bitboard weakEnemies =  pos.pieces(Them)
                           & ~ei.attackedBy[Them][PAWN]
                           & ei.attackedBy[Us][0];
     if (!weakEnemies)
@@ -651,7 +651,7 @@ namespace {
     Score score = mobility = SCORE_ZERO;
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
-    const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces_of_color(Us));
+    const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces(Us));
 
     score += evaluate_pieces<KNIGHT, Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
     score += evaluate_pieces<BISHOP, Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
@@ -705,7 +705,7 @@ namespace {
 
         // Analyse enemy's safe queen contact checks. First find undefended
         // squares around the king attacked by enemy queen...
-        b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces_of_color(Them);
+        b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces(Them);
         if (b)
         {
             // ...then remove squares not supported by another enemy piece
@@ -719,7 +719,7 @@ namespace {
 
         // Analyse enemy's safe rook contact checks. First find undefended
         // squares around the king attacked by enemy rooks...
-        b = undefended & ei.attackedBy[Them][ROOK] & ~pos.pieces_of_color(Them);
+        b = undefended & ei.attackedBy[Them][ROOK] & ~pos.pieces(Them);
 
         // Consider only squares where the enemy rook gives check
         b &= RookPseudoAttacks[ksq];
@@ -736,7 +736,7 @@ namespace {
         }
 
         // Analyse enemy's safe distance checks for sliders and knights
-        safe = ~(pos.pieces_of_color(Them) | ei.attackedBy[Us][0]);
+        safe = ~(pos.pieces(Them) | ei.attackedBy[Us][0]);
 
         b1 = pos.attacks_from<ROOK>(ksq) & safe;
         b2 = pos.attacks_from<BISHOP>(ksq) & safe;
@@ -832,7 +832,7 @@ namespace {
                     && (squares_in_front_of(Them, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<ROOK>(s)))
                     unsafeSquares = squaresToQueen;
                 else
-                    unsafeSquares = squaresToQueen & (ei.attackedBy[Them][0] | pos.pieces_of_color(Them));
+                    unsafeSquares = squaresToQueen & (ei.attackedBy[Them][0] | pos.pieces(Them));
 
                 // If there aren't enemy attacks or pieces along the path to queen give
                 // huge bonus. Even bigger if we protect the pawn's path.
@@ -847,7 +847,7 @@ namespace {
 
                 // At last, add a small bonus when there are no *friendly* pieces
                 // in the pawn's path.
-                if (!(squaresToQueen & pos.pieces_of_color(Us)))
+                if (!(squaresToQueen & pos.pieces(Us)))
                     ebonus += Value(rr);
             }
         } // rr != 0
@@ -924,10 +924,10 @@ namespace {
             // Opponent king cannot block because path is defended and position
             // is not in check. So only friendly pieces can be blockers.
             assert(!pos.in_check());
-            assert((queeningPath & pos.occupied_squares()) == (queeningPath & pos.pieces_of_color(c)));
+            assert((queeningPath & pos.occupied_squares()) == (queeningPath & pos.pieces(c)));
 
             // Add moves needed to free the path from friendly pieces and retest condition
-            movesToGo += count_1s<Max15>(queeningPath & pos.pieces_of_color(c));
+            movesToGo += count_1s<Max15>(queeningPath & pos.pieces(c));
 
             if (movesToGo >= oppMovesToGo && !pathDefended)
                 continue;

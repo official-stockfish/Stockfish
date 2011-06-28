@@ -157,7 +157,7 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   Bitboard target;
 
   if (Type == MV_CAPTURE || Type == MV_NON_EVASION)
-      target = pos.pieces_of_color(opposite_color(us));
+      target = pos.pieces(opposite_color(us));
   else if (Type == MV_NON_CAPTURE)
       target = pos.empty_squares();
   else
@@ -289,7 +289,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   } while (b);
 
   // Generate evasions for king, capture and non capture moves
-  b = pos.attacks_from<KING>(ksq) & ~pos.pieces_of_color(us) & ~sliderAttacks;
+  b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
   from = ksq;
   SERIALIZE_MOVES(b);
 
@@ -411,7 +411,7 @@ namespace {
     Bitboard b1, b2, dc1, dc2, pawnPushes, emptySquares;
     Bitboard pawns = pos.pieces(PAWN, Us);
     Bitboard pawnsOn7 = pawns & TRank7BB;
-    Bitboard enemyPieces = (Type == MV_CAPTURE ? target : pos.pieces_of_color(Them));
+    Bitboard enemyPieces = (Type == MV_CAPTURE ? target : pos.pieces(Them));
 
     // Pre-calculate pawn pushes before changing emptySquares definition
     if (Type != MV_CAPTURE)
@@ -518,7 +518,7 @@ namespace {
     // It is a bit complicated to correctly handle Chess960
     for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
         if (  (s != ksq && s != rsq && !pos.square_is_empty(s))
-            ||(pos.attackers_to(s) & pos.pieces_of_color(them)))
+            ||(pos.attackers_to(s) & pos.pieces(them)))
             illegal = true;
 
     for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)
