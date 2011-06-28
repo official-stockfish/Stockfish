@@ -127,10 +127,10 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   Rank r;
   bool passed, isolated, doubled, opposed, chain, backward, candidate;
   Score value = SCORE_ZERO;
-  const Square* ptr = pos.piece_list_begin(Us, PAWN);
+  const Square* pl = pos.piece_list(Us, PAWN);
 
   // Loop through all pawns of the current color and score each pawn
-  while ((s = *ptr++) != SQ_NONE)
+  while ((s = *pl++) != SQ_NONE)
   {
       assert(pos.piece_on(s) == make_piece(Us, PAWN));
 

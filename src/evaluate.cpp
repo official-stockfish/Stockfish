@@ -486,11 +486,11 @@ namespace {
     const BitCountType Full  = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64 : CNT32;
     const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Square* ptr = pos.piece_list_begin(Us, Piece);
+    const Square* pl = pos.piece_list(Us, Piece);
 
     ei.attackedBy[Us][Piece] = EmptyBoardBB;
 
-    while ((s = *ptr++) != SQ_NONE)
+    while ((s = *pl++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
         if (Piece == KNIGHT || Piece == QUEEN)

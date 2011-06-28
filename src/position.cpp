@@ -1965,10 +1965,10 @@ bool Position::is_ok(int* failedStep) const {
           for (PieceType pt = PAWN; pt <= KING; pt++)
               for (int i = 0; i < pieceCount[c][pt]; i++)
               {
-                  if (piece_on(piece_list(c, pt, i)) != make_piece(c, pt))
+                  if (piece_on(piece_list(c, pt)[i]) != make_piece(c, pt))
                       return false;
 
-                  if (index[piece_list(c, pt, i)] != i)
+                  if (index[piece_list(c, pt)[i]] != i)
                       return false;
               }
 

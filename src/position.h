@@ -166,8 +166,7 @@ public:
   bool in_check() const;
 
   // Piece lists
-  Square piece_list(Color c, PieceType pt, int index) const;
-  const Square* piece_list_begin(Color c, PieceType pt) const;
+  const Square* piece_list(Color c, PieceType pt) const;
 
   // Information about attacks to or from a given square
   Bitboard attackers_to(Square s) const;
@@ -357,11 +356,7 @@ inline int Position::piece_count(Color c, PieceType pt) const {
   return pieceCount[c][pt];
 }
 
-inline Square Position::piece_list(Color c, PieceType pt, int idx) const {
-  return pieceList[c][pt][idx];
-}
-
-inline const Square* Position::piece_list_begin(Color c, PieceType pt) const {
+inline const Square* Position::piece_list(Color c, PieceType pt) const {
   return pieceList[c][pt];
 }
 
@@ -472,7 +467,7 @@ inline int Position::full_moves() const {
 inline bool Position::opposite_colored_bishops() const {
 
   return   piece_count(WHITE, BISHOP) == 1 && piece_count(BLACK, BISHOP) == 1
-        && opposite_color_squares(piece_list(WHITE, BISHOP, 0), piece_list(BLACK, BISHOP, 0));
+        && opposite_color_squares(piece_list(WHITE, BISHOP)[0], piece_list(BLACK, BISHOP)[0]);
 }
 
 inline bool Position::has_pawn_on_7th(Color c) const {

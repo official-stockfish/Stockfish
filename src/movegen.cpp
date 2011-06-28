@@ -64,9 +64,9 @@ namespace {
 
     Bitboard checkSqs, b;
     Square from;
-    const Square* ptr = pos.piece_list_begin(us, Pt);
+    const Square* pl = pos.piece_list(us, Pt);
 
-    if ((from = *ptr++) == SQ_NONE)
+    if ((from = *pl++) == SQ_NONE)
         return mlist;
 
     checkSqs = pos.attacks_from<Pt>(ksq) & pos.empty_squares();
@@ -84,7 +84,7 @@ namespace {
         b = pos.attacks_from<Pt>(from) & checkSqs;
         SERIALIZE_MOVES(b);
 
-    } while ((from = *ptr++) != SQ_NONE);
+    } while ((from = *pl++) != SQ_NONE);
 
     return mlist;
   }
@@ -111,15 +111,15 @@ namespace {
 
     Bitboard b;
     Square from;
-    const Square* ptr = pos.piece_list_begin(us, Pt);
+    const Square* pl = pos.piece_list(us, Pt);
 
-    if (*ptr != SQ_NONE)
+    if (*pl != SQ_NONE)
     {
         do {
-            from = *ptr;
+            from = *pl;
             b = pos.attacks_from<Pt>(from) & target;
             SERIALIZE_MOVES(b);
-        } while (*++ptr != SQ_NONE);
+        } while (*++pl != SQ_NONE);
     }
     return mlist;
   }
