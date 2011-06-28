@@ -158,14 +158,13 @@ void Position::from_fen(const string& fen, bool isChess960) {
    6) Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
 */
 
-  char token;
+  char col, row, token;
   size_t p;
-  string ep;
   Square sq = SQ_A8;
   std::istringstream ss(fen);
 
   clear();
-  ss >> std::skipws >> token >> std::noskipws;
+  ss >> token >> std::noskipws;
 
   // 1. Piece placement
   while (!isspace(token))
@@ -186,29 +185,27 @@ void Position::from_fen(const string& fen, bool isChess960) {
   }
 
   // 2. Active color
-  ss >> std::skipws >> token;
+  ss >> token;
   sideToMove = (token == 'w' ? WHITE : BLACK);
+  ss >> token;
 
   // 3. Castling availability
-  ss >> token >> std::noskipws;
-  while (token != '-' && !isspace(token))
-  {
+  while ((ss >> token) && !isspace(token))
       set_castling_rights(token);
-      ss >> token;
-  }
 
   // 4. En passant square. Ignore if no pawn capture is possible
-  ss >> std::skipws >> ep;
-  if (ep.size() == 2)
+  if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
+      && ((ss >> row) && (row == '3' || row == '6')))
   {
-      st->epSquare = make_square(File(ep[0] - 'a'), Rank(ep[1] - '1'));
+      st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
+      Color them = opposite_color(sideToMove);
 
-      if (!(attackers_to(st->epSquare) & pieces(PAWN, sideToMove)))
+      if (!(attacks_from<PAWN>(st->epSquare, them) & pieces(PAWN, sideToMove)))
           st->epSquare = SQ_NONE;
   }
 
   // 5-6. Halfmove clock and fullmove number
-  ss >> st->rule50 >> fullMoves;
+  ss >> std::skipws >> st->rule50 >> fullMoves;
 
   // Various initialisations
   chess960 = isChess960;
@@ -250,26 +247,23 @@ void Position::set_castling_rights(char token) {
     Square sqH = relative_square(c, SQ_H1);
 
     Square rsq, ksq = king_square(c);
+    token = toupper(token);
 
-    if (toupper(token) == 'K')
-    {
+    if (token == 'K')
         for (rsq = sqH; piece_on(rsq) != make_piece(c, ROOK); rsq--) {}
-        set_castle(WHITE_OO << c, ksq, rsq);
-    }
-    else if (toupper(token) == 'Q')
-    {
-        for (rsq = sqA; piece_on(rsq) != make_piece(c, ROOK); rsq++) {}
-        set_castle(WHITE_OOO << c, ksq, rsq);
-    }
-    else if (toupper(token) >= 'A' && toupper(token) <= 'H')
-    {
-        Square rsq = make_square(File(toupper(token) - 'A'), RANK_1);
 
-        if (square_file(rsq) < square_file(ksq))
-            set_castle(WHITE_OOO << c, ksq, rsq);
-        else
-            set_castle(WHITE_OO << c, ksq, rsq);
-    }
+    else if (token == 'Q')
+        for (rsq = sqA; piece_on(rsq) != make_piece(c, ROOK); rsq++) {}
+
+    else if (token >= 'A' && token <= 'H')
+        rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+
+    else return;
+
+    if (square_file(rsq) < square_file(ksq))
+        set_castle(WHITE_OOO << c, ksq, rsq);
+    else
+        set_castle(WHITE_OO << c, ksq, rsq);
 }
 
 
@@ -1657,16 +1651,13 @@ Key Position::compute_pawn_key() const {
 
 Key Position::compute_material_key() const {
 
-  int count;
   Key result = 0;
 
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= QUEEN; pt++)
-      {
-          count = piece_count(c, pt);
-          for (int i = 0; i < count; i++)
+          for (int i = 0, cnt = piece_count(c, pt); i < cnt; i++)
               result ^= zobrist[c][pt][i];
-      }
+
   return result;
 }
 
