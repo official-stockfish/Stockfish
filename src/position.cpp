@@ -42,7 +42,7 @@ Key Position::zobCastle[16];
 Key Position::zobSideToMove;
 Key Position::zobExclusion;
 
-Score Position::PieceSquareTable[16][64];
+Score Position::pieceSquareTable[16][64];
 
 // Material values arrays, indexed by Piece
 const Value PieceValueMidgame[17] = {
@@ -1750,11 +1750,11 @@ void Position::init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       for (Piece p = WP; p <= WK; p++)
-          PieceSquareTable[p][s] = make_score(MgPST[p][s], EgPST[p][s]);
+          pieceSquareTable[p][s] = make_score(MgPST[p][s], EgPST[p][s]);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       for (Piece p = BP; p <= BK; p++)
-          PieceSquareTable[p][s] = -PieceSquareTable[p-8][flip_square(s)];
+          pieceSquareTable[p][s] = -pieceSquareTable[p-8][flip_square(s)];
 }
 
 

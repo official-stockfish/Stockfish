@@ -31,10 +31,9 @@
 /// move counter for every non-reversible move).
 const int MaxGameLength = 220;
 
-class Position;
 
-/// struct checkInfo is initialized at c'tor time and keeps
-/// info used to detect if a move gives check.
+/// The checkInfo struct is initialized at c'tor time and keeps info used
+/// to detect if a move gives check.
 
 struct CheckInfo {
 
@@ -45,28 +44,12 @@ struct CheckInfo {
     Bitboard checkSq[8];
 };
 
-/// Castle rights, encoded as bit fields
-
-enum CastleRight {
-  CASTLES_NONE = 0,
-  WHITE_OO     = 1,
-  BLACK_OO     = 2,
-  WHITE_OOO    = 4,
-  BLACK_OOO    = 8,
-  ALL_CASTLES  = 15
-};
-
-/// Game phase
-enum Phase {
-  PHASE_ENDGAME = 0,
-  PHASE_MIDGAME = 128
-};
-
 
 /// The StateInfo struct stores information we need to restore a Position
 /// object to its previous state when we retract a move. Whenever a move
 /// is made on the board (by calling Position::do_move), an StateInfo object
 /// must be passed as a parameter.
+class Position;
 
 struct StateInfo {
   Key pawnKey, materialKey;
@@ -110,12 +93,6 @@ class Position {
   Position(const Position& pos);
 
 public:
-  enum GamePhase {
-      MidGame,
-      EndGame
-  };
-
-  // Constructors
   Position(const Position& pos, int threadID);
   Position(const std::string& fen, bool isChess960, int threadID);
 
@@ -123,9 +100,6 @@ public:
   void from_fen(const std::string& fen, bool isChess960);
   const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;
-
-  // Copying
-  void flip();
 
   // The piece on a given square
   Piece piece_on(Square s) const;
@@ -234,6 +208,7 @@ public:
 
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
+  void flip();
 
   // Global initialization
   static void init();
@@ -267,23 +242,24 @@ private:
   Value compute_non_pawn_material(Color c) const;
 
   // Board
-  Piece board[64];
+  Piece board[64];             // [square]
 
   // Bitboards
-  Bitboard byTypeBB[8], byColorBB[2];
+  Bitboard byTypeBB[8];        // [pieceType]
+  Bitboard byColorBB[2];       // [color]
 
   // Piece counts
-  int pieceCount[2][8]; // [color][pieceType]
+  int pieceCount[2][8];        // [color][pieceType]
 
   // Piece lists
-  Square pieceList[2][8][16]; // [color][pieceType][index]
-  int index[64]; // [square]
+  Square pieceList[2][8][16];  // [color][pieceType][index]
+  int index[64];               // [square]
 
   // Other info
   Color sideToMove;
   Key history[MaxGameLength];
-  int castleRightsMask[64];
-  Square castleRookSquare[16]; // [CastleRights]
+  int castleRightsMask[64];    // [square]
+  Square castleRookSquare[16]; // [castleRight]
   StateInfo startState;
   bool chess960;
   int fullMoves;
@@ -292,11 +268,11 @@ private:
   StateInfo* st;
 
   // Static variables
-  static Key zobrist[2][8][64];
-  static Key zobEp[64];
-  static Key zobCastle[16];
+  static Score pieceSquareTable[16][64]; // [piece][square]
+  static Key zobrist[2][8][64];          // [color][pieceType][square]
+  static Key zobEp[64];                  // [square]
+  static Key zobCastle[16];              // [castleRight]
   static Key zobSideToMove;
-  static Score PieceSquareTable[16][64];
   static Key zobExclusion;
 };
 
@@ -430,11 +406,11 @@ inline Key Position::get_material_key() const {
 }
 
 inline Score Position::pst(Piece p, Square s) const {
-  return PieceSquareTable[p][s];
+  return pieceSquareTable[p][s];
 }
 
 inline Score Position::pst_delta(Piece piece, Square from, Square to) const {
-  return PieceSquareTable[piece][to] - PieceSquareTable[piece][from];
+  return pieceSquareTable[piece][to] - pieceSquareTable[piece][from];
 }
 
 inline Score Position::value() const {

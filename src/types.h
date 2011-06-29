@@ -252,6 +252,15 @@ enum ScaleFactor {
   SCALE_FACTOR_NONE   = 255
 };
 
+enum CastleRight {
+  CASTLES_NONE = 0,
+  WHITE_OO     = 1,
+  BLACK_OO     = 2,
+  WHITE_OOO    = 4,
+  BLACK_OOO    = 8,
+  ALL_CASTLES  = 15
+};
+
 
 /// Score enum keeps a midgame and an endgame value in a single
 /// integer (enum), first LSB 16 bits are used to store endgame
