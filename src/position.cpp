@@ -905,9 +905,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Move the piece
   Bitboard move_bb = make_move_bb(from, to);
-  do_move_bb(&(byColorBB[us]), move_bb);
-  do_move_bb(&(byTypeBB[pt]), move_bb);
-  do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
+  do_move_bb(&byColorBB[us], move_bb);
+  do_move_bb(&byTypeBB[pt], move_bb);
+  do_move_bb(&byTypeBB[0], move_bb); // HACK: byTypeBB[0] == occupied squares
 
   board[to] = board[from];
   board[from] = PIECE_NONE;
@@ -944,8 +944,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           assert(promotion >= KNIGHT && promotion <= QUEEN);
 
           // Insert promoted piece instead of pawn
-          clear_bit(&(byTypeBB[PAWN]), to);
-          set_bit(&(byTypeBB[promotion]), to);
+          clear_bit(&byTypeBB[PAWN], to);
+          set_bit(&byTypeBB[promotion], to);
           board[to] = make_piece(us, promotion);
 
           // Update piece counts
@@ -1054,9 +1054,9 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
         st->npMaterial[them] -= PieceValueMidgame[capture];
 
     // Remove captured piece
-    clear_bit(&(byColorBB[them]), capsq);
-    clear_bit(&(byTypeBB[capture]), capsq);
-    clear_bit(&(byTypeBB[0]), capsq);
+    clear_bit(&byColorBB[them], capsq);
+    clear_bit(&byTypeBB[capture], capsq);
+    clear_bit(&byTypeBB[0], capsq);
 
     // Update hash key
     key ^= zobrist[them][capture][capsq];
@@ -1100,12 +1100,9 @@ void Position::do_castle_move(Move m) {
   Color us = side_to_move();
   Color them = opposite_color(us);
 
-  // Reset capture field
-  st->capturedType = PIECE_TYPE_NONE;
-
   // Find source squares for king and rook
   Square kfrom = move_from(m);
-  Square rfrom = move_to(m);  // HACK: See comment at beginning of function
+  Square rfrom = move_to(m);
   Square kto, rto;
 
   assert(piece_on(kfrom) == make_piece(us, KING));
@@ -1116,28 +1113,30 @@ void Position::do_castle_move(Move m) {
   {
       kto = relative_square(us, SQ_G1);
       rto = relative_square(us, SQ_F1);
-  } else { // O-O-O
+  }
+  else // O-O-O
+  {
       kto = relative_square(us, SQ_C1);
       rto = relative_square(us, SQ_D1);
   }
 
-  // Remove pieces from source squares:
-  clear_bit(&(byColorBB[us]), kfrom);
-  clear_bit(&(byTypeBB[KING]), kfrom);
-  clear_bit(&(byTypeBB[0]), kfrom); // HACK: byTypeBB[0] == occupied squares
-  clear_bit(&(byColorBB[us]), rfrom);
-  clear_bit(&(byTypeBB[ROOK]), rfrom);
-  clear_bit(&(byTypeBB[0]), rfrom); // HACK: byTypeBB[0] == occupied squares
+  // Remove pieces from source squares
+  clear_bit(&byColorBB[us], kfrom);
+  clear_bit(&byTypeBB[KING], kfrom);
+  clear_bit(&byTypeBB[0], kfrom);
+  clear_bit(&byColorBB[us], rfrom);
+  clear_bit(&byTypeBB[ROOK], rfrom);
+  clear_bit(&byTypeBB[0], rfrom);
 
-  // Put pieces on destination squares:
-  set_bit(&(byColorBB[us]), kto);
-  set_bit(&(byTypeBB[KING]), kto);
-  set_bit(&(byTypeBB[0]), kto); // HACK: byTypeBB[0] == occupied squares
-  set_bit(&(byColorBB[us]), rto);
-  set_bit(&(byTypeBB[ROOK]), rto);
-  set_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
+  // Put pieces on destination squares
+  set_bit(&byColorBB[us], kto);
+  set_bit(&byTypeBB[KING], kto);
+  set_bit(&byTypeBB[0], kto);
+  set_bit(&byColorBB[us], rto);
+  set_bit(&byTypeBB[ROOK], rto);
+  set_bit(&byTypeBB[0], rto);
 
-  // Update board array
+  // Update board
   Piece king = make_piece(us, KING);
   Piece rook = make_piece(us, ROOK);
   board[kfrom] = board[rfrom] = PIECE_NONE;
@@ -1147,9 +1146,12 @@ void Position::do_castle_move(Move m) {
   // Update piece lists
   pieceList[us][KING][index[kfrom]] = kto;
   pieceList[us][ROOK][index[rfrom]] = rto;
-  int tmp = index[rfrom]; // In Chess960 could be rto == kfrom
+  int tmp = index[rfrom]; // In Chess960 could be kto == rfrom
   index[kto] = index[kfrom];
   index[rto] = tmp;
+
+  // Reset capture field
+  st->capturedType = PIECE_TYPE_NONE;
 
   // Update incremental scores
   st->value += pst_delta(king, kfrom, kto);
@@ -1226,8 +1228,8 @@ void Position::undo_move(Move m) {
       assert(piece_on(to) == make_piece(us, promotion));
 
       // Replace promoted piece with a pawn
-      clear_bit(&(byTypeBB[promotion]), to);
-      set_bit(&(byTypeBB[PAWN]), to);
+      clear_bit(&byTypeBB[promotion], to);
+      set_bit(&byTypeBB[PAWN], to);
 
       // Update piece counts
       pieceCount[us][promotion]--;
@@ -1244,9 +1246,9 @@ void Position::undo_move(Move m) {
 
   // Put the piece back at the source square
   Bitboard move_bb = make_move_bb(to, from);
-  do_move_bb(&(byColorBB[us]), move_bb);
-  do_move_bb(&(byTypeBB[pt]), move_bb);
-  do_move_bb(&(byTypeBB[0]), move_bb); // HACK: byTypeBB[0] == occupied squares
+  do_move_bb(&byColorBB[us], move_bb);
+  do_move_bb(&byTypeBB[pt], move_bb);
+  do_move_bb(&byTypeBB[0], move_bb); // HACK: byTypeBB[0] == occupied squares
 
   board[from] = make_piece(us, pt);
   board[to] = PIECE_NONE;
@@ -1266,9 +1268,9 @@ void Position::undo_move(Move m) {
       assert(!ep || square_is_empty(capsq));
 
       // Restore the captured piece
-      set_bit(&(byColorBB[them]), capsq);
-      set_bit(&(byTypeBB[st->capturedType]), capsq);
-      set_bit(&(byTypeBB[0]), capsq);
+      set_bit(&byColorBB[them], capsq);
+      set_bit(&byTypeBB[st->capturedType], capsq);
+      set_bit(&byTypeBB[0], capsq);
 
       board[capsq] = make_piece(them, st->capturedType);
 
@@ -1298,13 +1300,13 @@ void Position::undo_castle_move(Move m) {
   assert(move_is_castle(m));
 
   // When we have arrived here, some work has already been done by
-  // Position::undo_move.  In particular, the side to move has been switched,
+  // Position::undo_move. In particular, the side to move has been switched,
   // so the code below is correct.
   Color us = side_to_move();
 
   // Find source squares for king and rook
   Square kfrom = move_from(m);
-  Square rfrom = move_to(m);  // HACK: See comment at beginning of function
+  Square rfrom = move_to(m);
   Square kto, rto;
 
   // Find destination squares for king and rook
@@ -1312,7 +1314,9 @@ void Position::undo_castle_move(Move m) {
   {
       kto = relative_square(us, SQ_G1);
       rto = relative_square(us, SQ_F1);
-  } else { // O-O-O
+  }
+  else // O-O-O
+  {
       kto = relative_square(us, SQ_C1);
       rto = relative_square(us, SQ_D1);
   }
@@ -1320,26 +1324,28 @@ void Position::undo_castle_move(Move m) {
   assert(piece_on(kto) == make_piece(us, KING));
   assert(piece_on(rto) == make_piece(us, ROOK));
 
-  // Remove pieces from destination squares:
-  clear_bit(&(byColorBB[us]), kto);
-  clear_bit(&(byTypeBB[KING]), kto);
-  clear_bit(&(byTypeBB[0]), kto); // HACK: byTypeBB[0] == occupied squares
-  clear_bit(&(byColorBB[us]), rto);
-  clear_bit(&(byTypeBB[ROOK]), rto);
-  clear_bit(&(byTypeBB[0]), rto); // HACK: byTypeBB[0] == occupied squares
+  // Remove pieces from destination squares
+  clear_bit(&byColorBB[us], kto);
+  clear_bit(&byTypeBB[KING], kto);
+  clear_bit(&byTypeBB[0], kto);
+  clear_bit(&byColorBB[us], rto);
+  clear_bit(&byTypeBB[ROOK], rto);
+  clear_bit(&byTypeBB[0], rto);
 
-  // Put pieces on source squares:
-  set_bit(&(byColorBB[us]), kfrom);
-  set_bit(&(byTypeBB[KING]), kfrom);
-  set_bit(&(byTypeBB[0]), kfrom); // HACK: byTypeBB[0] == occupied squares
-  set_bit(&(byColorBB[us]), rfrom);
-  set_bit(&(byTypeBB[ROOK]), rfrom);
-  set_bit(&(byTypeBB[0]), rfrom); // HACK: byTypeBB[0] == occupied squares
+  // Put pieces on source squares
+  set_bit(&byColorBB[us], kfrom);
+  set_bit(&byTypeBB[KING], kfrom);
+  set_bit(&byTypeBB[0], kfrom);
+  set_bit(&byColorBB[us], rfrom);
+  set_bit(&byTypeBB[ROOK], rfrom);
+  set_bit(&byTypeBB[0], rfrom);
 
   // Update board
-  board[rto] = board[kto] = PIECE_NONE;
-  board[rfrom] = make_piece(us, ROOK);
-  board[kfrom] = make_piece(us, KING);
+  Piece king = make_piece(us, KING);
+  Piece rook = make_piece(us, ROOK);
+  board[kto] = board[rto] = PIECE_NONE;
+  board[kfrom] = king;
+  board[rfrom] = rook;
 
   // Update piece lists
   pieceList[us][KING][index[kto]] = kfrom;
