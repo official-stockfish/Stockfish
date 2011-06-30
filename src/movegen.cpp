@@ -501,38 +501,45 @@ namespace {
   template<CastlingSide Side>
   MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, Color us) {
 
-    Color them = opposite_color(us);
-    Square ksq = pos.king_square(us);
     CastleRight f = CastleRight((Side == KING_SIDE ? WHITE_OO : WHITE_OOO) << us);
+    Color them = opposite_color(us);
 
-    assert(pos.piece_on(ksq) == make_piece(us, KING));
+    // After castling, the rook and king's final positions are exactly the same
+    // in Chess960 as they would be in standard chess.
+    Square kfrom = pos.king_square(us);
+    Square rfrom = pos.castle_rook_square(f);
+    Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
+    Square rto = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
 
-    Square rsq = pos.castle_rook_square(f);
-    Square s1 = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
-    Square s2 = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
-    Square s;
-    bool illegal = false;
+    assert(!pos.in_check());
+    assert(pos.piece_on(kfrom) == make_piece(us, KING));
+    assert(pos.piece_on(rfrom) == make_piece(us, ROOK));
 
-    assert(pos.piece_on(rsq) == make_piece(us, ROOK));
-
-    // It is a bit complicated to correctly handle Chess960
-    for (s = Min(ksq, s1); s <= Max(ksq, s1); s++)
-        if (  (s != ksq && s != rsq && !pos.square_is_empty(s))
+    // Unimpeded rule: All the squares between the king's initial and final squares
+    // (including the final square), and all the squares between the rook's initial
+    // and final squares (including the final square), must be vacant except for
+    // the king and castling rook.
+    for (Square s = Min(kfrom, kto); s <= Max(kfrom, kto); s++)
+        if (  (s != kfrom && s != rfrom && !pos.square_is_empty(s))
             ||(pos.attackers_to(s) & pos.pieces(them)))
-            illegal = true;
+            return mlist;
 
-    for (s = Min(rsq, s2); s <= Max(rsq, s2); s++)
-        if (s != ksq && s != rsq && !pos.square_is_empty(s))
-            illegal = true;
+    for (Square s = Min(rfrom, rto); s <= Max(rfrom, rto); s++)
+        if (s != kfrom && s != rfrom && !pos.square_is_empty(s))
+            return mlist;
 
-    if (   Side == QUEEN_SIDE
-        && square_file(rsq) == FILE_B
-        && (   pos.piece_on(relative_square(us, SQ_A1)) == make_piece(them, ROOK)
-            || pos.piece_on(relative_square(us, SQ_A1)) == make_piece(them, QUEEN)))
-        illegal = true;
+    // Because we generate only legal castling moves we need to verify that
+    // when moving the castling rook we do not discover some hidden checker.
+    // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
+    if (pos.is_chess960())
+    {
+        Bitboard occ = pos.occupied_squares();
+        clear_bit(&occ, rfrom);
+        if (pos.attackers_to(kto, occ) & pos.pieces(them))
+            return mlist;
+    }
 
-    if (!illegal)
-        (*mlist++).move = make_castle_move(ksq, rsq);
+    (*mlist++).move = make_castle_move(kfrom, rfrom);
 
     return mlist;
   }
