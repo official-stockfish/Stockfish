@@ -142,12 +142,5 @@ void benchmark(int argc, char* argv[]) {
   cerr << "\n==============================="
        << "\nTotal time (ms) : " << time
        << "\nNodes searched  : " << totalNodes
-       << "\nNodes/second    : " << (int)(totalNodes / (time / 1000.0)) << endl << endl;
-
-  // MS Visual C++ debug window always unconditionally closes when program
-  // exits, this is bad because we want to read results before.
-  #if (defined(WINDOWS) || defined(WIN32) || defined(WIN64))
-  cerr << "Press any key to exit" << endl;
-  cin >> time;
-  #endif
+       << "\nNodes/second    : " << (int)(totalNodes / (time / 1000.0)) << endl;
 }
