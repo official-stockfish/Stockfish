@@ -363,27 +363,24 @@ void init_search() {
 
 int64_t perft(Position& pos, Depth depth) {
 
-  MoveStack mlist[MAX_MOVES];
   StateInfo st;
-  Move m;
   int64_t sum = 0;
 
   // Generate all legal moves
-  MoveStack* last = generate<MV_LEGAL>(pos, mlist);
+  MoveList<MV_LEGAL> ml(pos);
 
   // If we are at the last ply we don't need to do and undo
   // the moves, just to count them.
   if (depth <= ONE_PLY)
-      return int(last - mlist);
+      return ml.size();
 
   // Loop through all legal moves
   CheckInfo ci(pos);
-  for (MoveStack* cur = mlist; cur != last; cur++)
+  for ( ; !ml.end(); ++ml)
   {
-      m = cur->move;
-      pos.do_move(m, st, ci, pos.move_gives_check(m, ci));
+      pos.do_move(ml.move(), st, ci, pos.move_gives_check(ml.move(), ci));
       sum += perft(pos, depth - ONE_PLY);
-      pos.undo_move(m);
+      pos.undo_move(ml.move());
   }
   return sum;
 }
@@ -1992,25 +1989,22 @@ split_point_start: // At split points actual search starts from here
 
   void RootMoveList::init(Position& pos, Move searchMoves[]) {
 
-    MoveStack mlist[MAX_MOVES];
     Move* sm;
-
-    clear();
     bestMoveChanges = 0;
+    clear();
 
     // Generate all legal moves and add them to RootMoveList
-    MoveStack* last = generate<MV_LEGAL>(pos, mlist);
-    for (MoveStack* cur = mlist; cur != last; cur++)
+    for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
     {
-        // If we have a searchMoves[] list then verify cur->move
+        // If we have a searchMoves[] list then verify the move
         // is in the list before to add it.
-        for (sm = searchMoves; *sm && *sm != cur->move; sm++) {}
+        for (sm = searchMoves; *sm && *sm != ml.move(); sm++) {}
 
-        if (searchMoves[0] && *sm != cur->move)
+        if (sm != searchMoves && *sm != ml.move())
             continue;
 
         RootMove rm;
-        rm.pv[0] = cur->move;
+        rm.pv[0] = ml.move();
         rm.pv[1] = MOVE_NONE;
         rm.pv_score = -VALUE_INFINITE;
         push_back(rm);

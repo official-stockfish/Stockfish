@@ -36,4 +36,18 @@ enum MoveType {
 template<MoveType>
 MoveStack* generate(const Position& pos, MoveStack* mlist);
 
+template<MoveType T>
+struct MoveList {
+
+  explicit MoveList(const Position& pos) : cur(mlist), last(generate<T>(pos, mlist)) {}
+  void operator++() { cur++; }
+  bool end() const { return cur == last; }
+  Move move() const { return cur->move; }
+  int size() const { return last - mlist; }
+
+private:
+  MoveStack mlist[MAX_MOVES];
+  MoveStack *cur, *last;
+};
+
 #endif // !defined(MOVEGEN_H_INCLUDED)

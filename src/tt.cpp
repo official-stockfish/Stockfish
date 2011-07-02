@@ -17,7 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
 #include <cstring>
 #include <iostream>
 
@@ -60,7 +59,7 @@ void TranspositionTable::set_size(size_t mbSize) {
   if (!entries)
   {
       std::cerr << "Failed to allocate " << mbSize
-                << " MB for transposition table." << std::endl;
+                << "MB for transposition table." << std::endl;
       exit(EXIT_FAILURE);
   }
   clear();

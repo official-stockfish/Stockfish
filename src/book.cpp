@@ -455,18 +455,16 @@ Move Book::get_move(const Position& pos, bool findBestMove) {
   // book move is a promotion we have to convert to our representation, in
   // all other cases we can directly compare with a Move after having
   // masked out special Move's flags that are not supported by PolyGlot.
-  int p = (bookMove >> 12) & 7;
+  int promotion = (bookMove >> 12) & 7;
 
-  if (p)
+  if (promotion)
       bookMove = int(make_promotion_move(move_from(Move(bookMove)),
-                 move_to(Move(bookMove)), PieceType(p + 1)));
-
-  // Verify the book move (if any) is legal
-  MoveStack mlist[MAX_MOVES];
-  MoveStack* last = generate<MV_LEGAL>(pos, mlist);
-  for (MoveStack* cur = mlist; cur != last; cur++)
-      if ((int(cur->move) & ~(3 << 14)) == bookMove) // Mask out special flags
-          return cur->move;
+                                         move_to(Move(bookMove)),
+                                         PieceType(promotion + 1)));
+  // Verify the book move is legal
+  for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
+      if ((ml.move() & ~(3 << 14)) == bookMove) // Mask out special flags
+          return ml.move();
 
   return MOVE_NONE;
 }
