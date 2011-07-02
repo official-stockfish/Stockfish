@@ -34,6 +34,7 @@ struct SplitPoint;
 /// current ply.
 
 struct SearchStack {
+  SplitPoint* sp;
   int ply;
   Move currentMove;
   Move excludedMove;
@@ -42,8 +43,7 @@ struct SearchStack {
   Depth reduction;
   Value eval;
   Value evalMargin;
-  bool skipNullMove;
-  SplitPoint* sp;
+  int skipNullMove;
 };
 
 
@@ -59,10 +59,9 @@ struct SearchLimits {
               : time(t), increment(i), movesToGo(mtg), maxTime(mt), maxDepth(md),
                 maxNodes(mn), infinite(inf), ponder(pon) {}
 
-  bool useTimeManagement() const { return !(maxTime | maxDepth | maxNodes | int(infinite)); }
+  bool useTimeManagement() const { return !(maxTime | maxDepth | maxNodes | infinite); }
 
-  int time, increment, movesToGo, maxTime, maxDepth, maxNodes;
-  bool infinite, ponder;
+  int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
 };
 
 extern void init_search();

@@ -53,10 +53,10 @@ private:
   BookEntry read_entry(int idx);
   int first_entry(uint64_t key);
 
+  RKISS RKiss;
   std::ifstream bookFile;
   std::string bookName;
   int bookSize;
-  RKISS RKiss;
 };
 
 #endif // !defined(BOOK_H_INCLUDED)
