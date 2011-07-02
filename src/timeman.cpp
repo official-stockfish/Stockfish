@@ -83,7 +83,7 @@ void TimeManager::pv_instability(int curChanges, int prevChanges) {
 }
 
 
-void TimeManager::init(const SearchLimits& limits, int fullMoveNumber)
+void TimeManager::init(const SearchLimits& limits, int currentPly)
 {
   /* We support four different kind of time controls:
 
@@ -124,8 +124,8 @@ void TimeManager::init(const SearchLimits& limits, int fullMoveNumber)
 
       hypMyTime = Max(hypMyTime, 0);
 
-      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, fullMoveNumber);
-      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, fullMoveNumber);
+      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
+      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
 
       optimumSearchTime = Min(optimumSearchTime, t1);
       maximumSearchTime = Min(maximumSearchTime, t2);
@@ -142,12 +142,11 @@ void TimeManager::init(const SearchLimits& limits, int fullMoveNumber)
 namespace {
 
   template<TimeType T>
-  int remaining(int myTime, int movesToGo, int fullMoveNumber)
+  int remaining(int myTime, int movesToGo, int currentPly)
   {
     const float TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
     const float TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
-    int currentPly = 2 * fullMoveNumber;
     int thisMoveImportance = move_importance(currentPly);
     int otherMovesImportance = 0;
 

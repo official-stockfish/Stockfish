@@ -193,7 +193,7 @@ public:
   template<bool SkipRepetition> bool is_draw() const;
 
   // Number of plies from starting position
-  int full_moves() const;
+  int startpos_ply_counter() const;
 
   // Other properties of the position
   bool opposite_colored_bishops() const;
@@ -428,8 +428,8 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
         && pawn_is_passed(c, move_to(m));
 }
 
-inline int Position::full_moves() const {
-  return fullMoves;
+inline int Position::startpos_ply_counter() const {
+  return Max(2 * (fullMoves - 1), 0) + int(sideToMove == BLACK);
 }
 
 inline bool Position::opposite_colored_bishops() const {
