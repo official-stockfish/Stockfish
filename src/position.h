@@ -221,7 +221,7 @@ private:
   void put_piece(Piece p, Square s);
   void set_castle(int f, Square ksq, Square rsq);
   void set_castling_rights(char token);
-  bool move_is_pl_slow(const Move m) const;
+  bool move_is_legal(const Move m) const;
 
   // Helper functions for doing and undoing moves
   void do_capture_move(Key& key, PieceType capture, Color them, Square to, bool ep);
@@ -449,15 +449,14 @@ inline bool Position::is_chess960() const {
 
 inline bool Position::move_is_capture_or_promotion(Move m) const {
 
-  assert(m != MOVE_NONE && m != MOVE_NULL);
+  assert(move_is_ok(m));
   return move_is_special(m) ? !move_is_castle(m) : !square_is_empty(move_to(m));
 }
 
 inline bool Position::move_is_capture(Move m) const {
 
-  assert(m != MOVE_NONE && m != MOVE_NULL);
-
   // Note that castle is coded as "king captures the rook"
+  assert(move_is_ok(m));
   return (!square_is_empty(move_to(m)) && !move_is_castle(m)) || move_is_ep(m);
 }
 

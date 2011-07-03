@@ -36,6 +36,8 @@ enum MoveType {
 template<MoveType>
 MoveStack* generate(const Position& pos, MoveStack* mlist);
 
+/// The MoveList struct is a simple wrapper around generate(), sometimes comes
+/// handy to use this class instead of the low level generate() function.
 template<MoveType T>
 struct MoveList {
 

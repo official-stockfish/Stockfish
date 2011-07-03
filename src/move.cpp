@@ -77,10 +77,16 @@ Move move_from_uci(const Position& pos, const string& str) {
 
 
 /// move_to_san() takes a position and a move as input, where it is assumed
-/// that the move is a legal move from the position. The return value is
+/// that the move is a legal move for the position. The return value is
 /// a string containing the move in short algebraic notation.
 
 const string move_to_san(Position& pos, Move m) {
+
+  if (m == MOVE_NONE)
+      return "(none)";
+
+  if (m == MOVE_NULL)
+      return "(null)";
 
   assert(pos.is_ok());
   assert(move_is_ok(m));
@@ -91,12 +97,6 @@ const string move_to_san(Position& pos, Move m) {
   Square to = move_to(m);
   PieceType pt = piece_type(pos.piece_on(from));
   string san;
-
-  if (m == MOVE_NONE)
-      return "(none)";
-
-  if (m == MOVE_NULL)
-      return "(null)";
 
   if (move_is_castle(m))
       san = (move_to(m) < move_from(m) ? "O-O-O" : "O-O");
