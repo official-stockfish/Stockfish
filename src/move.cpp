@@ -38,7 +38,7 @@ namespace {
 /// move_to_uci() converts a move to a string in coordinate notation
 /// (g1f3, a7a8q, etc.). The only special case is castling moves, where we
 /// print in the e1g1 notation in normal chess mode, and in e1h1 notation in
-/// Chess960 mode.
+/// Chess960 mode. Instead internally Move is coded as "king captures rook".
 
 const string move_to_uci(Move m, bool chess960) {
 
@@ -52,11 +52,8 @@ const string move_to_uci(Move m, bool chess960) {
   if (m == MOVE_NULL)
       return "0000";
 
-  if (move_is_short_castle(m) && !chess960)
-      return from == SQ_E1 ? "e1g1" : "e8g8";
-
-  if (move_is_long_castle(m) && !chess960)
-      return from == SQ_E1 ? "e1c1" : "e8c8";
+  if (move_is_castle(m) && !chess960)
+      to = from + (square_file(to) == FILE_H ? Square(2) : -Square(2));
 
   if (move_is_promotion(m))
       promotion = char(tolower(piece_type_to_char(promotion_piece_type(m))));
@@ -101,10 +98,8 @@ const string move_to_san(Position& pos, Move m) {
   if (m == MOVE_NULL)
       return "(null)";
 
-  if (move_is_long_castle(m))
-      san = "O-O-O";
-  else if (move_is_short_castle(m))
-      san = "O-O";
+  if (move_is_castle(m))
+      san = (move_to(m) < move_from(m) ? "O-O-O" : "O-O");
   else
   {
       if (pt != PAWN)

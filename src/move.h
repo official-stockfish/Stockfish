@@ -153,14 +153,6 @@ inline int move_is_castle(Move m) {
   return (m & (3 << 14)) == (3 << 14);
 }
 
-inline bool move_is_short_castle(Move m) {
-  return move_is_castle(m) && (move_to(m) > move_from(m));
-}
-
-inline bool move_is_long_castle(Move m) {
-  return move_is_castle(m) && (move_to(m) < move_from(m));
-}
-
 inline PieceType promotion_piece_type(Move m) {
   return PieceType(((m >> 12) & 3) + 2);
 }
@@ -170,7 +162,7 @@ inline Move make_move(Square from, Square to) {
 }
 
 inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
-  return Move(to | (from << 6) | ((promotion - 2) << 12) | (1 << 14));
+  return Move(to | (from << 6) | (1 << 14) | ((promotion - 2) << 12)) ;
 }
 
 inline Move make_ep_move(Square from, Square to) {

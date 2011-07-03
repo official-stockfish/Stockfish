@@ -43,7 +43,7 @@ struct MoveList {
   void operator++() { cur++; }
   bool end() const { return cur == last; }
   Move move() const { return cur->move; }
-  int size() const { return last - mlist; }
+  int size() const { return int(last - mlist); }
 
 private:
   MoveStack mlist[MAX_MOVES];
