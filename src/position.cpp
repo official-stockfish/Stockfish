@@ -129,7 +129,7 @@ void Position::detach() {
 /// string. This function is not very robust - make sure that input FENs are
 /// correct (this is assumed to be the responsibility of the GUI).
 
-void Position::from_fen(const string& fen, bool isChess960) {
+void Position::from_fen(const string& fenStr, bool isChess960) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -161,13 +161,13 @@ void Position::from_fen(const string& fen, bool isChess960) {
   char col, row, token;
   size_t p;
   Square sq = SQ_A8;
-  std::istringstream ss(fen);
+  std::istringstream fen(fenStr);
 
   clear();
-  ss >> std::noskipws;
+  fen >> std::noskipws;
 
   // 1. Piece placement
-  while ((ss >> token) && !isspace(token))
+  while ((fen >> token) && !isspace(token))
   {
       if (token == '/')
           sq -= Square(16); // Jump back of 2 rows
@@ -183,17 +183,17 @@ void Position::from_fen(const string& fen, bool isChess960) {
   }
 
   // 2. Active color
-  ss >> token;
+  fen >> token;
   sideToMove = (token == 'w' ? WHITE : BLACK);
-  ss >> token;
+  fen >> token;
 
   // 3. Castling availability
-  while ((ss >> token) && !isspace(token))
+  while ((fen >> token) && !isspace(token))
       set_castling_rights(token);
 
   // 4. En passant square. Ignore if no pawn capture is possible
-  if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
-      && ((ss >> row) && (row == '3' || row == '6')))
+  if (   ((fen >> col) && (col >= 'a' && col <= 'h'))
+      && ((fen >> row) && (row == '3' || row == '6')))
   {
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
       Color them = opposite_color(sideToMove);
@@ -203,7 +203,7 @@ void Position::from_fen(const string& fen, bool isChess960) {
   }
 
   // 5-6. Halfmove clock and fullmove number
-  ss >> std::skipws >> st->rule50 >> fullMoves;
+  fen >> std::skipws >> st->rule50 >> fullMoves;
 
   // Various initialisations
   chess960 = isChess960;
@@ -270,13 +270,13 @@ void Position::set_castling_rights(char token) {
 
 const string Position::to_fen() const {
 
-  string fen;
+  std::ostringstream fen;
   Square sq;
-  char emptyCnt;
+  int emptyCnt;
 
-  for (Rank rank = RANK_8; rank >= RANK_1; rank--, fen += '/')
+  for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
-      emptyCnt = '0';
+      emptyCnt = 0;
 
       for (File file = FILE_A; file <= FILE_H; file++)
       {
@@ -284,40 +284,46 @@ const string Position::to_fen() const {
 
           if (!square_is_empty(sq))
           {
-              if (emptyCnt != '0')
+              if (emptyCnt)
               {
-                  fen += emptyCnt;
-                  emptyCnt = '0';
+                  fen << emptyCnt;
+                  emptyCnt = 0;
               }
-              fen += PieceToChar[piece_on(sq)];
-          } else
+              fen << PieceToChar[piece_on(sq)];
+          }
+          else
               emptyCnt++;
       }
 
-      if (emptyCnt != '0')
-          fen += emptyCnt;
+      if (emptyCnt)
+          fen << emptyCnt;
+
+      if (rank > RANK_1)
+          fen << '/';
   }
 
-  fen += (sideToMove == WHITE ? " w " : " b ");
+  fen << (sideToMove == WHITE ? " w " : " b ");
 
   if (st->castleRights != CASTLES_NONE)
   {
       if (can_castle(WHITE_OO))
-          fen += chess960 ? char(toupper(file_to_char(square_file(castle_rook_square(WHITE_OO))))) : 'K';
+          fen << (chess960 ? char(toupper(file_to_char(square_file(castle_rook_square(WHITE_OO))))) : 'K');
 
       if (can_castle(WHITE_OOO))
-          fen += chess960 ? char(toupper(file_to_char(square_file(castle_rook_square(WHITE_OOO))))) : 'Q';
+          fen << (chess960 ? char(toupper(file_to_char(square_file(castle_rook_square(WHITE_OOO))))) : 'Q');
 
       if (can_castle(BLACK_OO))
-          fen += chess960 ? file_to_char(square_file(castle_rook_square(BLACK_OO))) : 'k';
+          fen << (chess960 ? file_to_char(square_file(castle_rook_square(BLACK_OO))) : 'k');
 
       if (can_castle(BLACK_OOO))
-          fen += chess960 ? file_to_char(square_file(castle_rook_square(BLACK_OOO))) : 'q';
+          fen << (chess960 ? file_to_char(square_file(castle_rook_square(BLACK_OOO))) : 'q');
   } else
-      fen += '-';
+      fen << '-';
 
-  fen += (ep_square() == SQ_NONE ? " -" : " " + square_to_string(ep_square()));
-  return fen;
+  fen << (ep_square() == SQ_NONE ? " -" : " " + square_to_string(ep_square()))
+      << " " << st->rule50 << " " << fullMoves;
+
+  return fen.str();
 }
 
 
@@ -331,7 +337,7 @@ void Position::print(Move move) const {
   if (move)
   {
       Position p(*this, thread());
-      string dd = (piece_color(piece_on(move_from(move))) == BLACK ? ".." : "");
+      string dd = (sideToMove == BLACK ? ".." : "");
       cout << "\nMove is: " << dd << move_to_san(p, move);
   }
 
