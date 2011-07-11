@@ -733,7 +733,14 @@ namespace {
     if (PvNode && thread.maxPly < ss->ply)
         thread.maxPly = ss->ply;
 
-    if (SpNode)
+    // Step 1. Initialize node and poll. Polling can abort search
+    if (!SpNode)
+    {
+        ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
+        (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
+        (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
+    }
+    else
     {
         sp = ss->sp;
         tte = NULL;
@@ -741,11 +748,6 @@ namespace {
         threatMove = sp->threatMove;
         goto split_point_start;
     }
-
-    // Step 1. Initialize node and poll. Polling can abort search
-    ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
-    (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
-    (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
     if (pos.thread() == 0 && ++NodesSincePoll > NodesBetweenPolls)
     {
