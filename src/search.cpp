@@ -1322,10 +1322,6 @@ undo:
     ss->bestMove = ss->currentMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
 
-    // Check for an instant draw or maximum ply reached
-    if (pos.is_draw<true>() || ss->ply > PLY_MAX)
-        return VALUE_DRAW;
-
     // Decide whether or not to include checks, this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
@@ -1460,7 +1456,12 @@ undo:
 
       // Make and search the move
       pos.do_move(move, st, ci, givesCheck);
-      value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth-ONE_PLY);
+
+      if (pos.is_draw<true>() || ss->ply+1 > PLY_MAX)
+          value = VALUE_DRAW;
+      else
+          value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth-ONE_PLY);
+
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
