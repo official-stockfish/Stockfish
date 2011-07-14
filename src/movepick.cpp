@@ -18,6 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
 
 #include "movegen.h"
@@ -49,6 +50,19 @@ namespace {
   const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_STOP };
   const uint8_t QsearchRecapturesTable[] = { PH_TT_MOVE, PH_QRECAPTURES, PH_STOP };
   const uint8_t ProbCutTable[] = { PH_TT_MOVE, PH_GOOD_PROBCUT, PH_STOP };
+
+  // Unary predicate used by std::partition to split positive scores from ramining
+  // ones so to sort separately the two sets, and with the second sort delayed.
+  inline bool has_positive_score(const MoveStack& move) { return move.score > 0; }
+
+  // Picks and pushes to the front the best move in range [firstMove, lastMove),
+  // it is faster then sorting all the moves in advance when moves are few, as
+  // normally are the possible captures.
+  inline MoveStack* pick_best(MoveStack* firstMove, MoveStack* lastMove)
+  {
+      std::swap(*firstMove, *std::max_element(firstMove, lastMove));
+      return firstMove;
+  }
 }
 
 /// Constructors for the MovePicker class. As arguments we pass information
@@ -164,14 +178,15 @@ void MovePicker::go_next_phase() {
   case PH_NONCAPTURES_1:
       lastNonCapture = lastMove = generate<MV_NON_CAPTURE>(pos, moves);
       score_noncaptures();
-      sort_moves(moves, lastNonCapture, &lastMove);
+      lastMove = std::partition(curMove, lastMove, has_positive_score);
+      sort<MoveStack>(curMove, lastMove);
       return;
 
   case PH_NONCAPTURES_2:
       curMove = lastMove;
       lastMove = lastNonCapture;
       if (depth >= 3 * ONE_PLY)
-          insertion_sort<MoveStack>(curMove, lastMove);
+          sort<MoveStack>(curMove, lastMove);
       return;
 
   case PH_BAD_CAPTURES:
@@ -306,7 +321,7 @@ Move MovePicker::get_next_move() {
           break;
 
       case PH_GOOD_CAPTURES:
-          move = pick_best(curMove++, lastMove).move;
+          move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
           {
               assert(captureThreshold <= 0); // Otherwise we must use see instead of see_sign
@@ -324,7 +339,7 @@ Move MovePicker::get_next_move() {
           break;
 
      case PH_GOOD_PROBCUT:
-          move = pick_best(curMove++, lastMove).move;
+          move = pick_best(curMove++, lastMove)->move;
           if (   move != ttMove
               && pos.see(move) > captureThreshold)
               return move;
@@ -349,12 +364,12 @@ Move MovePicker::get_next_move() {
           break;
 
       case PH_BAD_CAPTURES:
-          move = pick_best(curMove++, lastMove).move;
+          move = pick_best(curMove++, lastMove)->move;
           return move;
 
       case PH_EVASIONS:
       case PH_QCAPTURES:
-          move = pick_best(curMove++, lastMove).move;
+          move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
               return move;
           break;

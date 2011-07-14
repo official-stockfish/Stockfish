@@ -55,7 +55,7 @@ inline bool operator<(const MoveStack& f, const MoveStack& s) { return f.score <
 
 // An helper insertion sort implementation, works with pointers and iterators
 template<typename T, typename K>
-inline void insertion_sort(K firstMove, K lastMove)
+inline void sort(K firstMove, K lastMove)
 {
     T value;
     K cur, p, d;
@@ -73,61 +73,6 @@ inline void insertion_sort(K firstMove, K lastMove)
             }
         }
 }
-
-// Our dedicated sort in range [firstMove, lastMove), first splits
-// positive scores from ramining then order seaprately the two sets.
-template<typename T>
-inline void sort_moves(T* firstMove, T* lastMove, T** lastPositive)
-{
-    T tmp;
-    T *p, *d;
-
-    d = lastMove;
-    p = firstMove - 1;
-
-    d->score = -1; // right guard
-
-    // Split positives vs non-positives
-    do {
-        while ((++p)->score > 0) {}
-
-        if (p != d)
-        {
-            while (--d != p && d->score <= 0) {}
-
-            tmp = *p;
-            *p = *d;
-            *d = tmp;
-        }
-
-    } while (p != d);
-
-    // Sort just positive scored moves, remaining only when we get there
-    insertion_sort<T, T*>(firstMove, p);
-    *lastPositive = p;
-}
-
-// Picks up the best move in range [curMove, lastMove), one per cycle.
-// It is faster then sorting all the moves in advance when moves are few,
-// as normally are the possible captures. Note that is not a stable alghoritm.
-template<typename T>
-inline T pick_best(T* curMove, T* lastMove)
-{
-    T bestMove, tmp;
-
-    bestMove = *curMove;
-    while (++curMove != lastMove)
-    {
-        if (bestMove < *curMove)
-        {
-            tmp = *curMove;
-            *curMove = bestMove;
-            bestMove = tmp;
-        }
-    }
-    return bestMove;
-}
-
 
 inline Square move_from(Move m) {
   return Square((m >> 6) & 0x3F);

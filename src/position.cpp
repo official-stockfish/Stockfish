@@ -513,14 +513,14 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(piece_color(piece_on(from)) == us);
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 
-  // En passant captures are a tricky special case. Because they are
-  // rather uncommon, we do it simply by testing whether the king is attacked
-  // after the move is made
+  // En passant captures are a tricky special case. Because they are rather
+  // uncommon, we do it simply by testing whether the king is attacked after
+  // the move is made.
   if (move_is_ep(m))
   {
       Color them = opposite_color(us);
       Square to = move_to(m);
-      Square capsq = make_square(square_file(to), square_rank(from));
+      Square capsq = to + Square(us == WHITE ? -8 : 8);
       Square ksq = king_square(us);
       Bitboard b = occupied_squares();
 

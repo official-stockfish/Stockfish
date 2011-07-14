@@ -79,16 +79,9 @@ namespace {
     Move pv[PLY_MAX_PLUS_2];
   };
 
-  // RootMoveList struct is just a vector of RootMove objects,
-  // with an handful of methods above the standard ones.
+  // RootMoveList struct is mainly a std::vector of RootMove objects
   struct RootMoveList : public std::vector<RootMove> {
-
-    typedef std::vector<RootMove> Base;
-
     void init(Position& pos, Move searchMoves[]);
-    void sort() { insertion_sort<RootMove, Base::iterator>(begin(), end()); }
-    void sort_first(int n) { insertion_sort<RootMove, Base::iterator>(begin(), begin() + n); }
-
     int bestMoveChanges;
   };
 
@@ -1219,7 +1212,7 @@ split_point_start: // At split points actual search starts from here
               // because all the values but the first are usually set to
               // -VALUE_INFINITE and we want to keep the same order for all
               // the moves but the new PV that goes to head.
-              Rml.sort_first(moveCount);
+              sort<RootMove>(Rml.begin(), Rml.begin() + moveCount);
 
               // Update alpha. In multi-pv we don't use aspiration window, so set
               // alpha equal to minimum score among the PV lines searched so far.
@@ -1555,7 +1548,7 @@ split_point_start: // At split points actual search starts from here
   bool connected_moves(const Position& pos, Move m1, Move m2) {
 
     Square f1, t1, f2, t2;
-    Piece p;
+    Piece p1, p2;
 
     assert(m1 && move_is_ok(m1));
     assert(m2 && move_is_ok(m2));
@@ -1573,17 +1566,18 @@ split_point_start: // At split points actual search starts from here
         return true;
 
     // Case 3: Moving through the vacated square
-    if (   piece_is_slider(pos.piece_on(f2))
+    p2 = pos.piece_on(f2);
+    if (   piece_is_slider(p2)
         && bit_is_set(squares_between(f2, t2), f1))
       return true;
 
     // Case 4: The destination square for m2 is defended by the moving piece in m1
-    p = pos.piece_on(t1);
-    if (bit_is_set(pos.attacks_from(p, t1), t2))
+    p1 = pos.piece_on(t1);
+    if (bit_is_set(pos.attacks_from(p1, t1), t2))
         return true;
 
     // Case 5: Discovered check, checking piece is the piece moved in m1
-    if (    piece_is_slider(p)
+    if (    piece_is_slider(p1)
         &&  bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), f2)
         && !bit_is_set(squares_between(t1, pos.king_square(pos.side_to_move())), t2))
     {
@@ -2093,7 +2087,7 @@ split_point_start: // At split points actual search starts from here
                 break;
             }
 
-    Rml.sort();
+    sort<RootMove>(Rml.begin(), Rml.end());
   }
 
 } // namespace

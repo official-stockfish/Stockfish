@@ -245,7 +245,7 @@ inline Bitboard attack_span_mask(Color c, Square s) {
 
 inline bool squares_aligned(Square s1, Square s2, Square s3) {
   return  (BetweenBB[s1][s2] | BetweenBB[s1][s3] | BetweenBB[s2][s3])
-        & ((1ULL << s1) | (1ULL << s2) | (1ULL << s3));
+        & (    SetMaskBB[s1] |     SetMaskBB[s2] |     SetMaskBB[s3]);
 }
 
 
