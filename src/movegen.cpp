@@ -406,8 +406,8 @@ namespace {
     const Bitboard TRank7BB  = (Us == WHITE ? Rank7BB  : Rank2BB);
     const Bitboard TRank3BB  = (Us == WHITE ? Rank3BB  : Rank6BB);
     const Square   UP        = (Us == WHITE ? DELTA_N  : DELTA_S);
-    const Square   RIGHT_UP  = (Us == WHITE ? DELTA_NE : DELTA_SE);
-    const Square   LEFT_UP   = (Us == WHITE ? DELTA_NW : DELTA_SW);
+    const Square   RIGHT_UP  = (Us == WHITE ? DELTA_NE : DELTA_SW);
+    const Square   LEFT_UP   = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
     Square to;
     Bitboard b1, b2, dc1, dc2, pawnPushes, emptySquares;
