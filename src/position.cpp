@@ -520,7 +520,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   {
       Color them = opposite_color(us);
       Square to = move_to(m);
-      Square capsq = to + Square(us == WHITE ? -8 : 8);
+      Square capsq = to + pawn_push(them);
       Square ksq = king_square(us);
       Bitboard b = occupied_squares();
 
@@ -930,7 +930,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       // Set en passant square, only if moved pawn can be captured
       if ((to ^ from) == 16)
       {
-          if (attacks_from<PAWN>(from + (us == WHITE ? DELTA_N : DELTA_S), us) & pieces(PAWN, them))
+          if (attacks_from<PAWN>(from + pawn_push(us), us) & pieces(PAWN, them))
           {
               st->epSquare = Square((int(from) + int(to)) / 2);
               key ^= zobEp[st->epSquare];
@@ -1039,7 +1039,7 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
     {
         if (ep) // en passant ?
         {
-            capsq = (them == BLACK)? (to - DELTA_N) : (to - DELTA_S);
+            capsq = to + pawn_push(them);
 
             assert(to == st->epSquare);
             assert(relative_rank(opposite_color(them), to) == RANK_6);
@@ -1262,7 +1262,7 @@ void Position::undo_move(Move m) {
       Square capsq = to;
 
       if (ep)
-          capsq = (us == WHITE)? (to - DELTA_N) : (to - DELTA_S);
+          capsq = to - pawn_push(us);
 
       assert(st->capturedType != KING);
       assert(!ep || square_is_empty(capsq));
@@ -1467,7 +1467,7 @@ int Position::see(Move m) const {
   // Handle en passant moves
   if (st->epSquare == to && piece_type(piece_on(from)) == PAWN)
   {
-      Square capQq = (side_to_move() == WHITE ? to - DELTA_N : to - DELTA_S);
+      Square capQq = to - pawn_push(side_to_move());
 
       assert(capturedType == PIECE_TYPE_NONE);
       assert(piece_type(piece_on(capQq)) == PAWN);
