@@ -361,36 +361,28 @@ void Position::print(Move move) const {
 
 
 /// Position:hidden_checkers<>() returns a bitboard of all pinned (against the
-/// king) pieces for the given color and for the given pinner type. Or, when
-/// template parameter FindPinned is false, the pieces of the given color
-/// candidate for a discovery check against the enemy king.
-/// Bitboard checkersBB must be already updated when looking for pinners.
+/// king) pieces for the given color. Or, when template parameter FindPinned is
+/// false, the function return the pieces of the given color candidate for a
+/// discovery check against the enemy king.
 
 template<bool FindPinned>
 Bitboard Position::hidden_checkers(Color c) const {
 
-  Bitboard result = EmptyBoardBB;
+  // Pinned pieces protect our king, dicovery checks attack the enemy king
+  Bitboard b, result = EmptyBoardBB;
   Bitboard pinners = pieces(FindPinned ? opposite_color(c) : c);
-
-  // Pinned pieces protect our king, dicovery checks attack
-  // the enemy king.
   Square ksq = king_square(FindPinned ? c : opposite_color(c));
 
-  // Pinners are sliders, not checkers, that give check when candidate pinned is removed
-  pinners &= (pieces(ROOK, QUEEN) & RookPseudoAttacks[ksq]) | (pieces(BISHOP, QUEEN) & BishopPseudoAttacks[ksq]);
-
-  if (FindPinned && pinners)
-      pinners &= ~st->checkersBB;
+  // Pinners are sliders, that give check when candidate pinned is removed
+  pinners &=  (pieces(ROOK, QUEEN) & RookPseudoAttacks[ksq])
+            | (pieces(BISHOP, QUEEN) & BishopPseudoAttacks[ksq]);
 
   while (pinners)
   {
-      Square s = pop_1st_bit(&pinners);
-      Bitboard b = squares_between(s, ksq) & occupied_squares();
+      b = squares_between(ksq, pop_1st_bit(&pinners)) & occupied_squares();
 
-      assert(b);
-
-      if (  !(b & (b - 1)) // Only one bit set?
-          && (b & pieces(c))) // Is an our piece?
+      // Only one bit set and is an our piece?
+      if (b && !(b & (b - 1)) && (b & pieces(c)))
           result |= b;
   }
   return result;

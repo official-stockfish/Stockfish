@@ -51,12 +51,12 @@ namespace {
   const uint8_t QsearchRecapturesTable[] = { PH_TT_MOVE, PH_QRECAPTURES, PH_STOP };
   const uint8_t ProbCutTable[] = { PH_TT_MOVE, PH_GOOD_PROBCUT, PH_STOP };
 
-  // Unary predicate used by std::partition to split positive scores from ramining
+  // Unary predicate used by std::partition to split positive scores from remaining
   // ones so to sort separately the two sets, and with the second sort delayed.
   inline bool has_positive_score(const MoveStack& move) { return move.score > 0; }
 
   // Picks and pushes to the front the best move in range [firstMove, lastMove),
-  // it is faster then sorting all the moves in advance when moves are few, as
+  // it is faster than sorting all the moves in advance when moves are few, as
   // normally are the possible captures.
   inline MoveStack* pick_best(MoveStack* firstMove, MoveStack* lastMove)
   {
