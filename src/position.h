@@ -89,8 +89,9 @@ struct StateInfo {
 
 class Position {
 
-  Position(); // No default or copy c'tor allowed
-  Position(const Position& pos);
+  // No default or copy c'tor allowed, default c'tor will not be generated
+  // anyhow because of user-defined c'tors.
+  Position(const Position&);
 
 public:
   Position(const Position& pos, int threadID);
