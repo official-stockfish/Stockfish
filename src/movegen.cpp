@@ -362,7 +362,6 @@ namespace {
   inline MoveStack* generate_promotions(const Position& pos, MoveStack* mlist, Bitboard pawnsOn7, Bitboard target) {
 
     const Bitboard TFileABB = (Delta == DELTA_NE || Delta == DELTA_SE ? FileABB : FileHBB);
-    const Color Them = (Delta > 0 ? BLACK : WHITE);
 
     Bitboard b;
     Square to;
@@ -390,7 +389,7 @@ namespace {
         // This is the only possible under promotion that can give a check
         // not already included in the queen-promotion.
         if (   Type == MV_CHECK
-            && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(Them)))
+            && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(Delta > 0 ? BLACK : WHITE)))
             (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
         else (void)pos; // Silence a warning under MSVC
     }
