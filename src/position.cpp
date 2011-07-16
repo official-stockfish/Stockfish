@@ -30,7 +30,6 @@
 #include "rkiss.h"
 #include "thread.h"
 #include "tt.h"
-#include "ucioption.h"
 
 using std::string;
 using std::cout;

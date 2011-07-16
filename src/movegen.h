@@ -21,7 +21,6 @@
 #define MOVEGEN_H_INCLUDED
 
 #include "move.h"
-#include "position.h"
 
 enum MoveType {
   MV_CAPTURE,

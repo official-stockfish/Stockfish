@@ -25,7 +25,7 @@
 
 #include "move.h"
 #include "movegen.h"
-#include "search.h"
+#include "position.h"
 
 using std::string;
 

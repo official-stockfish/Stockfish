@@ -21,6 +21,7 @@
 
 #include "bitcount.h"
 #include "movegen.h"
+#include "position.h"
 
 // Simple macro to wrap a very common while loop, no facny, no flexibility,
 // hardcoded list name 'mlist' and from square 'from'.
