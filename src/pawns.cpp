@@ -79,8 +79,6 @@ namespace {
 
 PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
 
-  assert(pos.is_ok());
-
   Key key = pos.get_pawn_key();
   PawnInfo* pi = probe(key);
 

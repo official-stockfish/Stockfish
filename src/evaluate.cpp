@@ -275,7 +275,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
   Value margins[2];
   Score score, mobilityWhite, mobilityBlack;
 
-  assert(pos.is_ok());
   assert(pos.thread() >= 0 && pos.thread() < MAX_THREADS);
   assert(!pos.in_check());
 

@@ -88,7 +88,6 @@ const string move_to_san(Position& pos, Move m) {
   if (m == MOVE_NULL)
       return "(null)";
 
-  assert(pos.is_ok());
   assert(move_is_ok(m));
 
   Bitboard attackers;

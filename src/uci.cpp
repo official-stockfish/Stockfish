@@ -216,8 +216,6 @@ namespace {
     limits.time = time[pos.side_to_move()];
     limits.increment = inc[pos.side_to_move()];
 
-    assert(pos.is_ok());
-
     return think(pos, limits, searchMoves);
   }
 
