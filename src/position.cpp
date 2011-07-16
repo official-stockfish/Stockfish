@@ -78,12 +78,11 @@ namespace {
 
 CheckInfo::CheckInfo(const Position& pos) {
 
-  Color us = pos.side_to_move();
-  Color them = opposite_color(us);
+  Color them = opposite_color(pos.side_to_move());
   Square ksq = pos.king_square(them);
 
-  dcCandidates = pos.discovered_check_candidates(us);
-  pinned = pos.pinned_pieces(us);
+  pinned = pos.pinned_pieces();
+  dcCandidates = pos.discovered_check_candidates();
 
   checkSq[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
   checkSq[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
@@ -366,12 +365,12 @@ void Position::print(Move move) const {
 /// discovery check against the enemy king.
 
 template<bool FindPinned>
-Bitboard Position::hidden_checkers(Color c) const {
+Bitboard Position::hidden_checkers() const {
 
   // Pinned pieces protect our king, dicovery checks attack the enemy king
   Bitboard b, result = EmptyBoardBB;
-  Bitboard pinners = pieces(FindPinned ? opposite_color(c) : c);
-  Square ksq = king_square(FindPinned ? c : opposite_color(c));
+  Bitboard pinners = pieces(FindPinned ? opposite_color(sideToMove) : sideToMove);
+  Square ksq = king_square(FindPinned ? sideToMove : opposite_color(sideToMove));
 
   // Pinners are sliders, that give check when candidate pinned is removed
   pinners &=  (pieces(ROOK, QUEEN) & RookPseudoAttacks[ksq])
@@ -382,7 +381,7 @@ Bitboard Position::hidden_checkers(Color c) const {
       b = squares_between(ksq, pop_1st_bit(&pinners)) & occupied_squares();
 
       // Only one bit set and is an our piece?
-      if (b && !(b & (b - 1)) && (b & pieces(c)))
+      if (b && !(b & (b - 1)) && (b & pieces(sideToMove)))
           result |= b;
   }
   return result;
@@ -390,23 +389,21 @@ Bitboard Position::hidden_checkers(Color c) const {
 
 
 /// Position:pinned_pieces() returns a bitboard of all pinned (against the
-/// king) pieces for the given color. Note that checkersBB bitboard must
-/// be already updated.
+/// king) pieces for the side to move.
 
-Bitboard Position::pinned_pieces(Color c) const {
+Bitboard Position::pinned_pieces() const {
 
-  return hidden_checkers<true>(c);
+  return hidden_checkers<true>();
 }
 
 
 /// Position:discovered_check_candidates() returns a bitboard containing all
-/// pieces for the given side which are candidates for giving a discovered
-/// check. Contrary to pinned_pieces() here there is no need of checkersBB
-/// to be already updated.
+/// pieces for the side to move which are candidates for giving a discovered
+/// check.
 
-Bitboard Position::discovered_check_candidates(Color c) const {
+Bitboard Position::discovered_check_candidates() const {
 
-  return hidden_checkers<false>(c);
+  return hidden_checkers<false>();
 }
 
 /// Position::attackers_to() computes a bitboard containing all pieces which
@@ -497,7 +494,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(pinned == pinned_pieces(side_to_move()));
+  assert(pinned == pinned_pieces());
 
   Color us = side_to_move();
   Square from = move_from(m);
@@ -688,7 +685,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   assert(is_ok());
   assert(move_is_ok(m));
-  assert(ci.dcCandidates == discovered_check_candidates(side_to_move()));
+  assert(ci.dcCandidates == discovered_check_candidates());
   assert(piece_color(piece_on(move_from(m))) == side_to_move());
 
   Square from = move_from(m);

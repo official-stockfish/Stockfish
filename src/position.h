@@ -133,8 +133,8 @@ public:
   Square castle_rook_square(CastleRight f) const;
 
   // Bitboards for pinned pieces and discovered check candidates
-  Bitboard discovered_check_candidates(Color c) const;
-  Bitboard pinned_pieces(Color c) const;
+  Bitboard discovered_check_candidates() const;
+  Bitboard pinned_pieces() const;
 
   // Checking pieces and under check information
   Bitboard checkers() const;
@@ -230,7 +230,7 @@ private:
   void undo_castle_move(Move m);
 
   template<bool FindPinned>
-  Bitboard hidden_checkers(Color c) const;
+  Bitboard hidden_checkers() const;
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;

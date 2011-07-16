@@ -213,7 +213,7 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   assert(pos.piece_on(ksq) == make_piece(opposite_color(us), KING));
 
   // Discovered non-capture checks
-  b = dc = pos.discovered_check_candidates(us);
+  b = dc = pos.discovered_check_candidates();
 
   while (b)
   {
@@ -318,7 +318,7 @@ MoveStack* generate<MV_LEGAL>(const Position& pos, MoveStack* mlist) {
   assert(pos.is_ok());
 
   MoveStack *last, *cur = mlist;
-  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
+  Bitboard pinned = pos.pinned_pieces();
 
   last = pos.in_check() ? generate<MV_EVASION>(pos, mlist)
                         : generate<MV_NON_EVASION>(pos, mlist);
