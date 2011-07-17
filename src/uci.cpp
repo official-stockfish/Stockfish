@@ -59,7 +59,7 @@ bool execute_uci_command(const string& cmd) {
   UCIParser up(cmd);
   string token;
 
-  up >> token; // operator>>() skips any whitespace
+  up >> skipws >> token;
 
   if (token == "quit")
       return false;
@@ -123,7 +123,7 @@ namespace {
     Move m;
     string token, fen;
 
-    up >> token; // operator>>() skips any whitespace
+    up >> token;
 
     if (token == "startpos")
     {
@@ -151,24 +151,20 @@ namespace {
 
   void set_option(UCIParser& up) {
 
-    string token, name;
-    string value = "true"; // UCI buttons don't have a "value" field
+    string token, name, value;
 
     up >> token; // Consume "name" token
-    up >> name;  // Read option name
 
-    // Handle names with included spaces
+    // Read option name (can contain spaces)
     while (up >> token && token != "value")
-        name += " " + token;
+        name += string(" ", !name.empty()) + token;
 
-    up >> value; // Read option value
-
-    // Handle values with included spaces
+    // Read option value (can contain spaces)
     while (up >> token)
-        value += " " + token;
+        value += string(" ", !value.empty()) + token;
 
     if (Options.find(name) != Options.end())
-        Options[name].set_value(value);
+        Options[name].set_value(value.empty() ? "true" : value); // UCI buttons don't have "value"
     else
         cout << "No such option: " << name << endl;
   }
