@@ -777,6 +777,8 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
 void Position::do_setup_move(Move m) {
 
+  assert(move_is_ok(m));
+
   StateInfo newSt;
 
   // Update the number of full moves after black's move

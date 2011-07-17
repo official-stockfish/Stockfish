@@ -120,6 +120,7 @@ namespace {
 
   void set_position(Position& pos, UCIParser& up) {
 
+    Move m;
     string token, fen;
 
     up >> token; // operator>>() skips any whitespace
@@ -139,8 +140,8 @@ namespace {
     else return;
 
     // Parse move list (if any)
-    while (up >> token)
-        pos.do_setup_move(move_from_uci(pos, token));
+    while (up >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
+        pos.do_setup_move(m);
   }
 
 
