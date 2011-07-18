@@ -21,6 +21,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -35,6 +36,10 @@ namespace {
 
   // FEN string for the initial position
   const string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+  // Keep track of position keys along the setup moves (from start position to the
+  // position just before to start searching). This is needed by draw detection.
+  std::vector<StateInfo> SetupState;
 
   // UCIParser is a class for parsing UCI input. The class
   // is actually a string stream built on a given input string.
@@ -140,8 +145,13 @@ namespace {
     else return;
 
     // Parse move list (if any)
+    SetupState.clear();
+
     while (up >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
-        pos.do_setup_move(m);
+    {
+        SetupState.push_back(StateInfo());
+        pos.do_setup_move(m, SetupState.back());
+    }
   }
 
 

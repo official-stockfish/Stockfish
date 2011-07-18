@@ -26,11 +26,6 @@
 #include "move.h"
 #include "types.h"
 
-/// Maximum number of plies per game (220 should be enough, because the
-/// maximum search depth is 100, and during position setup we reset the
-/// move counter for every non-reversible move).
-const int MaxGameLength = 220;
-
 
 /// The checkInfo struct is initialized at c'tor time and keeps info used
 /// to detect if a move gives check.
@@ -168,7 +163,7 @@ public:
   bool pawn_is_passed(Color c, Square s) const;
 
   // Doing and undoing moves
-  void do_setup_move(Move m);
+  void do_setup_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);
@@ -219,7 +214,6 @@ private:
 
   // Initialization helper functions (used while setting up a position)
   void clear();
-  void detach();
   void put_piece(Piece p, Square s);
   void set_castle(int f, Square ksq, Square rsq);
   void set_castling_rights(char token);
@@ -258,7 +252,6 @@ private:
   int index[64];               // [square]
 
   // Other info
-  Key history[MaxGameLength];
   int castleRightsMask[64];    // [square]
   Square castleRookSquare[16]; // [castleRight]
   StateInfo startState;

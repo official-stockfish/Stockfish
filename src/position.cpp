@@ -99,7 +99,6 @@ CheckInfo::CheckInfo(const Position& pos) {
 Position::Position(const Position& pos, int th) {
 
   memcpy(this, &pos, sizeof(Position));
-  detach(); // Always detach() in copy c'tor to avoid surprises
   threadID = th;
   nodes = 0;
 
@@ -110,18 +109,6 @@ Position::Position(const string& fen, bool isChess960, int th) {
 
   from_fen(fen, isChess960);
   threadID = th;
-}
-
-
-/// Position::detach() copies the content of the current state and castling
-/// masks inside the position itself. This is needed when the st pointee could
-/// become stale, as example because the caller is about to going out of scope.
-
-void Position::detach() {
-
-  startState = *st;
-  st = &startState;
-  st->previous = NULL; // As a safe guard
 }
 
 
@@ -775,26 +762,15 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 /// Position::do_setup_move() makes a permanent move on the board. It should
 /// be used when setting up a position on board. You can't undo the move.
 
-void Position::do_setup_move(Move m) {
+void Position::do_setup_move(Move m, StateInfo& newSt) {
 
   assert(move_is_ok(m));
-
-  StateInfo newSt;
 
   // Update the number of full moves after black's move
   if (sideToMove == BLACK)
       fullMoves++;
 
   do_move(m, newSt);
-
-  // Reset "game ply" in case we made a non-reversible move.
-  // "game ply" is used for repetition detection.
-  if (st->rule50 == 0)
-      st->gamePly = 0;
-
-  // Our StateInfo newSt is about going out of scope so copy
-  // its content before it disappears.
-  detach();
 
   assert(is_ok());
 }
@@ -834,16 +810,13 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   newSt.previous = st;
   st = &newSt;
 
-  // Save the current key to the history[] array, in order to be able to
-  // detect repetition draws.
-  history[st->gamePly++] = key;
-
   // Update side to move
   key ^= zobSideToMove;
 
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
   st->rule50++;
+  st->gamePly++;
   st->pliesFromNull++;
 
   if (move_is_castle(m))
@@ -1369,10 +1342,6 @@ void Position::do_null_move(StateInfo& backupSt) {
   backupSt.pliesFromNull = st->pliesFromNull;
   st->previous = &backupSt;
 
-  // Save the current key to the history[] array, in order to be able to
-  // detect repetition draws.
-  history[st->gamePly++] = st->key;
-
   // Update the necessary information
   if (st->epSquare != SQ_NONE)
       st->key ^= zobEp[st->epSquare];
@@ -1383,6 +1352,7 @@ void Position::do_null_move(StateInfo& backupSt) {
   sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;
   st->rule50++;
+  st->gamePly++;
   st->pliesFromNull = 0;
   st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
 
@@ -1699,9 +1669,24 @@ bool Position::is_draw() const {
 
   // Draw by repetition?
   if (!SkipRepetition)
-      for (int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull); i <= e; i += 2)
-          if (history[st->gamePly - i] == st->key)
-              return true;
+  {
+      int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull);
+
+      if (i <= e)
+      {
+          StateInfo* stp = st->previous->previous;
+
+          do {
+              stp = stp->previous->previous;
+
+              if (stp->key == st->key)
+                  return true;
+
+              i +=2;
+
+          } while (i <= e);
+      }
+  }
 
   return false;
 }
