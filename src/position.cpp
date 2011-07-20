@@ -190,7 +190,11 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   }
 
   // 5-6. Halfmove clock and fullmove number
-  fen >> std::skipws >> st->rule50 >> fullMoves;
+  fen >> std::skipws >> st->rule50 >> st->gamePly;
+
+  // Convert from fullmove starting from 1 to ply starting from 0,
+  // handle also common incorrect FEN with fullmove = 0.
+  st->gamePly = Max(2 * (st->gamePly - 1), 0) + int(sideToMove == BLACK);
 
   // Various initialisations
   chess960 = isChess960;
@@ -310,7 +314,7 @@ const string Position::to_fen() const {
       fen << '-';
 
   fen << (ep_square() == SQ_NONE ? " -" : " " + square_to_string(ep_square()))
-      << " " << st->rule50 << " " << fullMoves;
+      << " " << st->rule50 << " " << 1 + (st->gamePly - int(sideToMove == BLACK)) / 2;
 
   return fen.str();
 }
@@ -756,23 +760,6 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   }
 
   return false;
-}
-
-
-/// Position::do_setup_move() makes a permanent move on the board. It should
-/// be used when setting up a position on board. You can't undo the move.
-
-void Position::do_setup_move(Move m, StateInfo& newSt) {
-
-  assert(move_is_ok(m));
-
-  // Update the number of full moves after black's move
-  if (sideToMove == BLACK)
-      fullMoves++;
-
-  do_move(m, newSt);
-
-  assert(is_ok());
 }
 
 
@@ -1528,7 +1515,6 @@ void Position::clear() {
       castleRightsMask[sq] = ALL_CASTLES;
   }
   sideToMove = WHITE;
-  fullMoves = 1;
   nodes = 0;
 }
 
@@ -1670,7 +1656,7 @@ bool Position::is_draw() const {
   // Draw by repetition?
   if (!SkipRepetition)
   {
-      int i = 4, e = Min(Min(st->gamePly, st->rule50), st->pliesFromNull);
+      int i = 4, e = Min(st->rule50, st->pliesFromNull);
 
       if (i <= e)
       {

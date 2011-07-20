@@ -163,7 +163,6 @@ public:
   bool pawn_is_passed(Color c, Square s) const;
 
   // Doing and undoing moves
-  void do_setup_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);
@@ -190,7 +189,7 @@ public:
   template<bool SkipRepetition> bool is_draw() const;
 
   // Number of plies from starting position
-  int startpos_ply_counter() const;
+  int game_ply() const;
 
   // Other properties of the position
   bool opposite_colored_bishops() const;
@@ -257,7 +256,6 @@ private:
   StateInfo startState;
   int64_t nodes;
   Color sideToMove;
-  int fullMoves;
   int threadID;
   StateInfo* st;
   int chess960;
@@ -423,8 +421,8 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
         && pawn_is_passed(c, move_to(m));
 }
 
-inline int Position::startpos_ply_counter() const {
-  return Max(2 * (fullMoves - 1), 0) + int(sideToMove == BLACK);
+inline int Position::game_ply() const {
+  return st->gamePly;
 }
 
 inline bool Position::opposite_colored_bishops() const {

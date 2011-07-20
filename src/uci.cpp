@@ -144,13 +144,13 @@ namespace {
     }
     else return;
 
-    // Parse move list (if any)
     SetupState.clear();
 
+    // Parse move list (if any)
     while (up >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
     {
         SetupState.push_back(StateInfo());
-        pos.do_setup_move(m, SetupState.back());
+        pos.do_move(m, SetupState.back());
     }
   }
 
