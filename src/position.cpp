@@ -190,11 +190,11 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   }
 
   // 5-6. Halfmove clock and fullmove number
-  fen >> std::skipws >> st->rule50 >> st->gamePly;
+  fen >> std::skipws >> st->rule50 >> startPosPly;
 
   // Convert from fullmove starting from 1 to ply starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  st->gamePly = Max(2 * (st->gamePly - 1), 0) + int(sideToMove == BLACK);
+  startPosPly = Max(2 * (startPosPly - 1), 0) + int(sideToMove == BLACK);
 
   // Various initialisations
   chess960 = isChess960;
@@ -314,7 +314,7 @@ const string Position::to_fen() const {
       fen << '-';
 
   fen << (ep_square() == SQ_NONE ? " -" : " " + square_to_string(ep_square()))
-      << " " << st->rule50 << " " << 1 + (st->gamePly - int(sideToMove == BLACK)) / 2;
+      << " " << st->rule50 << " " << 1 + (startPosPly - int(sideToMove == BLACK)) / 2;
 
   return fen.str();
 }
@@ -786,10 +786,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // pointer to point to the new, ready to be updated, state.
   struct ReducedStateInfo {
     Key pawnKey, materialKey;
-    int castleRights, rule50, gamePly, pliesFromNull;
-    Square epSquare;
-    Score value;
     Value npMaterial[2];
+    int castleRights, rule50, pliesFromNull;
+    Score value;
+    Square epSquare;
   };
 
   memcpy(&newSt, st, sizeof(ReducedStateInfo));
@@ -803,7 +803,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
   st->rule50++;
-  st->gamePly++;
   st->pliesFromNull++;
 
   if (move_is_castle(m))
@@ -1339,7 +1338,6 @@ void Position::do_null_move(StateInfo& backupSt) {
   sideToMove = opposite_color(sideToMove);
   st->epSquare = SQ_NONE;
   st->rule50++;
-  st->gamePly++;
   st->pliesFromNull = 0;
   st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
 
@@ -1364,7 +1362,6 @@ void Position::undo_null_move() {
   // Update the necessary information
   sideToMove = opposite_color(sideToMove);
   st->rule50--;
-  st->gamePly--;
 
   assert(is_ok());
 }

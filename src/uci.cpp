@@ -39,7 +39,7 @@ namespace {
 
   // Keep track of position keys along the setup moves (from start position to the
   // position just before to start searching). This is needed by draw detection.
-  std::vector<StateInfo> SetupState;
+  std::vector<StateInfo> SetupState(200, StateInfo());
 
   // UCIParser is a class for parsing UCI input. The class
   // is actually a string stream built on a given input string.
