@@ -726,7 +726,7 @@ namespace {
     if (PvNode && thread.maxPly < ss->ply)
         thread.maxPly = ss->ply;
 
-    // Step 1. Initialize node.
+    // Step 1. Initialize node and poll. Polling can abort search
     if (!SpNode)
     {
         ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
@@ -741,6 +741,18 @@ namespace {
         threatMove = sp->threatMove;
         goto split_point_start;
     }
+
+    if (pos.thread() == 0 && ++NodesSincePoll > NodesBetweenPolls)
+    {
+        NodesSincePoll = 0;
+        poll(pos);
+    }
+
+    // Step 2. Check for aborted search and immediate draw
+    if ((   StopRequest
+         || pos.is_draw<false>()
+         || ss->ply > PLY_MAX) && !RootNode)
+        return VALUE_DRAW;
 
     // Step 3. Mate distance pruning
     if (!RootNode)
@@ -902,12 +914,7 @@ namespace {
             if (pos.pl_move_is_legal(move, ci.pinned))
             {
                 pos.do_move(move, st, ci, pos.move_gives_check(move, ci));
-
-                if (pos.is_draw<false>() || ss->ply + 1 > PLY_MAX)
-                    value = VALUE_DRAW;
-                else
-                    value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth);
-
+                value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth);
                 pos.undo_move(move);
                 if (value >= rbeta)
                     return value;
@@ -1097,22 +1104,6 @@ split_point_start: // At split points actual search starts from here
       // Step 14. Make the move
       pos.do_move(move, st, ci, givesCheck);
 
-      // Step XX. Poll. Check if search should be aborted.
-      if (pos.thread() == 0 && ++NodesSincePoll > NodesBetweenPolls)
-      {
-          NodesSincePoll = 0;
-          poll(pos);
-      }
-
-      // Step XX. Check for aborted search and immediate draw
-      if (   StopRequest
-          || pos.is_draw<false>()
-          || ss->ply + 1 > PLY_MAX)
-      {
-          value = VALUE_DRAW;
-          goto undo;
-      }
-
       // Step extra. pv search (only in PV nodes)
       // The first move in list is the expected PV
       if (isPvMove)
@@ -1159,7 +1150,6 @@ split_point_start: // At split points actual search starts from here
       }
 
       // Step 17. Undo move
-undo:
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -1322,6 +1312,10 @@ undo:
     ss->bestMove = ss->currentMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
 
+    // Check for an instant draw or maximum ply reached
+    if (pos.is_draw<true>() || ss->ply > PLY_MAX)
+        return VALUE_DRAW;
+
     // Decide whether or not to include checks, this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
@@ -1456,12 +1450,7 @@ undo:
 
       // Make and search the move
       pos.do_move(move, st, ci, givesCheck);
-
-      if (pos.is_draw<true>() || ss->ply+1 > PLY_MAX)
-          value = VALUE_DRAW;
-      else
-          value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth-ONE_PLY);
-
+      value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth-ONE_PLY);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
