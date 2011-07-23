@@ -633,12 +633,6 @@ namespace {
         // Check for some early stop condition
         if (!StopRequest && Limits.useTimeManagement())
         {
-            // Stop search early when the last two iterations returned a mate score
-            if (   depth >= 5
-                && abs(bestValues[depth])     >= VALUE_MATE_IN_PLY_MAX
-                && abs(bestValues[depth - 1]) >= VALUE_MATE_IN_PLY_MAX)
-                StopRequest = true;
-
             // Stop search early if one move seems to be much better than the
             // others or if there is only a single legal move. Also in the latter
             // case we search up to some depth anyway to get a proper score.
