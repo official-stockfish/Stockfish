@@ -38,8 +38,9 @@ namespace {
   const string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
   // Keep track of position keys along the setup moves (from start position to the
-  // position just before to start searching). This is needed by draw detection.
-  std::vector<StateInfo> SetupState(200, StateInfo());
+  // position just before to start searching). This is needed by draw detection
+  // where, due to 50 moves rule, we need to ckeck at most 100 plies back.
+  StateInfo StateRingBuf[102], *SetupState = StateRingBuf;
 
   // UCIParser is a class for parsing UCI input. The class
   // is actually a string stream built on a given input string.
@@ -144,13 +145,14 @@ namespace {
     }
     else return;
 
-    SetupState.clear();
-
     // Parse move list (if any)
     while (up >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
     {
-        SetupState.push_back(StateInfo());
-        pos.do_move(m, SetupState.back());
+        pos.do_move(m, *SetupState);
+
+        // Increment pointer to StateRingBuf circular buffer
+        if (++SetupState - StateRingBuf >= 102)
+            SetupState = StateRingBuf;
     }
   }
 
