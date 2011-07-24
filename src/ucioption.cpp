@@ -50,9 +50,8 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 }
 
 
-// stringify() converts a numeric value of type T to a std::string
-template<typename T>
-static string stringify(const T& v) {
+// An helper to convert an integer value to a std::string
+static string int_to_string(int v) {
 
   std::ostringstream ss;
   ss << v;
@@ -100,10 +99,10 @@ OptionsMap::OptionsMap() {
   UCIOption& thr = o["Threads"];
   UCIOption& msd = o["Minimum Split Depth"];
 
-  thr.defaultValue = thr.currentValue = stringify(cpu_count());
+  thr.defaultValue = thr.currentValue = int_to_string(cpu_count());
 
   if (cpu_count() >= 8)
-      msd.defaultValue = msd.currentValue = stringify(7);
+      msd.defaultValue = msd.currentValue = int_to_string(7);
 }
 
 
@@ -142,7 +141,7 @@ UCIOption::UCIOption(bool def, string t) : type(t), minValue(0), maxValue(0), id
 { defaultValue = currentValue = (def ? "true" : "false"); }
 
 UCIOption::UCIOption(int def, int minv, int maxv) : type("spin"), minValue(minv), maxValue(maxv), idx(Options.size())
-{ defaultValue = currentValue = stringify(def); }
+{ defaultValue = currentValue = int_to_string(def); }
 
 
 /// set_value() updates currentValue of the Option object. Normally it's up to

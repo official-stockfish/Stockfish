@@ -49,13 +49,12 @@ static const string Defaults[] = {
 
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
-/// of positions for a given limit each.  There are five parameters; the
+/// of positions for a given limit each. There are five parameters; the
 /// transposition table size, the number of search threads that should
-/// be used, the limit value spent for each position (optional, default
-/// is ply 12), an optional file name where to look for positions in fen
-/// format (default are the BenchmarkPositions defined above) and the type
-/// of the limit value: depth (default), time in secs or number of nodes.
-/// The analysis is written to a file named bench.txt.
+/// be used, the limit value spent for each position (optional, default is
+/// depth 12), an optional file name where to look for positions in fen
+/// format (defaults are the positions defined above) and the type of the
+/// limit value: depth (default), time in secs or number of nodes.
 
 void benchmark(int argc, char* argv[]) {
 
@@ -63,10 +62,6 @@ void benchmark(int argc, char* argv[]) {
   SearchLimits limits;
   int64_t totalNodes;
   int time;
-
-  // Load default positions
-  for (int i = 0; !Defaults[i].empty(); i++)
-      fenList.push_back(Defaults[i]);
 
   // Assign default values to missing arguments
   string ttSize  = argc > 2 ? argv[2] : "128";
@@ -87,28 +82,27 @@ void benchmark(int argc, char* argv[]) {
   else
       limits.maxDepth = atoi(valStr.c_str());
 
-  // Do we need to load positions from a given FEN file ?
+  // Do we need to load positions from a given FEN file?
   if (fenFile != "default")
   {
       string fen;
       ifstream f(fenFile.c_str());
 
-      if (f.is_open())
+      if (!f.is_open())
       {
-          fenList.clear();
-
-          while (getline(f, fen))
-              if (!fen.empty())
-                  fenList.push_back(fen);
-
-          f.close();
-      }
-      else
-      {
-          cerr << "Unable to open FEN file " << fenFile << endl;
+          cerr << "Unable to open file " << fenFile << endl;
           exit(EXIT_FAILURE);
       }
+
+      while (getline(f, fen))
+          if (!fen.empty())
+              fenList.push_back(fen);
+
+      f.close();
   }
+  else // Load default positions
+      for (int i = 0; !Defaults[i].empty(); i++)
+          fenList.push_back(Defaults[i]);
 
   // Ok, let's start the benchmark !
   totalNodes = 0;
@@ -124,9 +118,11 @@ void benchmark(int argc, char* argv[]) {
       if (valType == "perft")
       {
           int64_t cnt = perft(pos, limits.maxDepth * ONE_PLY);
-          totalNodes += cnt;
 
-          cerr << "\nPerft " << limits.maxDepth << " nodes counted: " << cnt << endl;
+          cerr << "\nPerft " << limits.maxDepth
+               << " nodes counted: " << cnt << endl;
+
+          totalNodes += cnt;
       }
       else
       {
