@@ -35,7 +35,7 @@ using namespace std;
 namespace {
 
   // FEN string for the initial position
-  const string StartPositionFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  const char* StarFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
   // Keep track of position keys along the setup moves (from start position to the
   // position just before to start searching). This is needed by draw detection
@@ -49,66 +49,68 @@ namespace {
 }
 
 
-/// execute_uci_command() takes a string as input, parses this text string as
-/// an UCI command, and calls the appropriate functions. In addition to the
-/// UCI commands, the function also supports a few debug commands.
+/// Wait for a command from the user, parse this text string as an UCI command,
+/// and calls the appropriate functions. Also intercepts EOF from stdin to
+/// ensure that we exit gracefully if the GUI dies unexpectedly. In addition to
+/// the UCI commands, the function also supports a few debug commands.
 
-bool execute_uci_command(const string& cmd) {
+void uci_loop() {
 
-  static Position pos(StartPositionFEN, false, 0); // The root position
+  Position pos(StarFEN, false, 0); // The root position
+  string cmd, token;
 
-  istringstream is(cmd);
-  string token;
-
-  is >> skipws >> token;
-
-  if (token == "quit")
-      return false;
-
-  if (token == "go")
-      return go(pos, is);
-
-  if (token == "ucinewgame")
-      pos.from_fen(StartPositionFEN, false);
-
-  else if (token == "isready")
-      cout << "readyok" << endl;
-
-  else if (token == "position")
-      set_position(pos, is);
-
-  else if (token == "setoption")
-      set_option(is);
-
-  else if (token == "perft")
-      perft(pos, is);
-
-  else if (token == "d")
-      pos.print();
-
-  else if (token == "flip")
-      pos.flip();
-
-  else if (token == "eval")
+  while (getline(cin, cmd))
   {
-      read_evaluation_uci_options(pos.side_to_move());
-      cout << trace_evaluate(pos) << endl;
+      istringstream is(cmd);
+
+      is >> skipws >> token;
+
+      if (token == "quit")
+          break;
+
+      if (token == "go" && !go(pos, is))
+          break;
+
+      if (token == "ucinewgame")
+          pos.from_fen(StarFEN, false);
+
+      else if (token == "isready")
+          cout << "readyok" << endl;
+
+      else if (token == "position")
+          set_position(pos, is);
+
+      else if (token == "setoption")
+          set_option(is);
+
+      else if (token == "perft")
+          perft(pos, is);
+
+      else if (token == "d")
+          pos.print();
+
+      else if (token == "flip")
+          pos.flip();
+
+      else if (token == "eval")
+      {
+          read_evaluation_uci_options(pos.side_to_move());
+          cout << trace_evaluate(pos) << endl;
+      }
+
+      else if (token == "key")
+          cout << "key: " << hex     << pos.get_key()
+               << "\nmaterial key: " << pos.get_material_key()
+               << "\npawn key: "     << pos.get_pawn_key() << endl;
+
+      else if (token == "uci")
+          cout << "id name "     << engine_name()
+               << "\nid author " << engine_authors()
+               << "\n"           << Options.print_all()
+               << "\nuciok"      << endl;
+      else
+          cout << "Unknown command: " << cmd << endl;
   }
-
-  else if (token == "key")
-      cout << "key: " << hex     << pos.get_key()
-           << "\nmaterial key: " << pos.get_material_key()
-           << "\npawn key: "     << pos.get_pawn_key() << endl;
-
-  else if (token == "uci")
-      cout << "id name "     << engine_name()
-           << "\nid author " << engine_authors()
-           << "\n"           << Options.print_all()
-           << "\nuciok"      << endl;
-  else
-      cout << "Unknown command: " << cmd << endl;
-
-  return true;
 }
 
 
@@ -128,7 +130,7 @@ namespace {
 
     if (token == "startpos")
     {
-        fen = StartPositionFEN;
+        fen = StarFEN;
         is >> token; // Consume "moves" token if any
     }
     else if (token == "fen")

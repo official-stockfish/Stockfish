@@ -37,7 +37,7 @@
 
 using namespace std;
 
-extern bool execute_uci_command(const string& cmd);
+extern void uci_loop();
 extern void benchmark(int argc, char* argv[]);
 extern void kpk_bitbase_init();
 
@@ -68,11 +68,8 @@ int main(int argc, char* argv[]) {
       if (CpuHasPOPCNT)
           cout << "Good! CPU has hardware POPCNT." << endl;
 
-      // Wait for a command from the user, and passes this command to
-      // execute_uci_command() and also intercepts EOF from stdin to
-      // ensure that we exit gracefully if the GUI dies unexpectedly.
-      string cmd;
-      while (getline(cin, cmd) && execute_uci_command(cmd)) {}
+      // Enter the UCI loop waiting for input
+      uci_loop();
   }
   else if (string(argv[1]) == "bench" && argc < 8)
       benchmark(argc, argv);
