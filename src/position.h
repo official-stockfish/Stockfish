@@ -423,7 +423,7 @@ inline bool Position::move_is_passed_pawn_push(Move m) const {
 }
 
 inline int Position::startpos_ply_counter() const {
-  return startPosPly;
+  return startPosPly + st->pliesFromNull; // HACK
 }
 
 inline bool Position::opposite_colored_bishops() const {

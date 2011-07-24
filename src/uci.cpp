@@ -39,7 +39,7 @@ namespace {
 
   // Keep track of position keys along the setup moves (from start position to the
   // position just before to start searching). This is needed by draw detection
-  // where, due to 50 moves rule, we need to ckeck at most 100 plies back.
+  // where, due to 50 moves rule, we need to check at most 100 plies back.
   StateInfo StateRingBuf[102], *SetupState = StateRingBuf;
 
   // UCIParser is a class for parsing UCI input. The class
