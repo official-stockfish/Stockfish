@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -40,6 +41,7 @@
 
 using std::cout;
 using std::endl;
+using std::string;
 
 namespace {
 
@@ -210,10 +212,11 @@ namespace {
   void do_skill_level(Move* best, Move* ponder);
 
   int current_search_time(int set = 0);
-  std::string score_to_uci(Value v, Value alpha, Value beta);
-  std::string speed_to_uci(int64_t nodes);
-  std::string pv_to_uci(Move pv[], int pvNum, bool chess960);
-  std::string depth_to_uci(Depth depth);
+  string score_to_uci(Value v, Value alpha, Value beta);
+  string speed_to_uci(int64_t nodes);
+  string pv_to_uci(Move pv[], int pvNum, bool chess960);
+  string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[]);
+  string depth_to_uci(Depth depth);
   void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
 
@@ -411,8 +414,8 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   // Look for a book move
   if (Options["OwnBook"].value<bool>())
   {
-      if (Options["Book File"].value<std::string>() != book.name())
-          book.open(Options["Book File"].value<std::string>());
+      if (Options["Book File"].value<string>() != book.name())
+          book.open(Options["Book File"].value<string>());
 
       Move bookMove = book.get_move(pos, Options["Best Book Move"].value<bool>());
       if (bookMove != MOVE_NONE)
@@ -457,7 +460,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   // Write to log file and keep it open to be accessed during the search
   if (Options["Use Search Log"].value<bool>())
   {
-      std::string name = Options["Search Log Filename"].value<std::string>();
+      string name = Options["Search Log Filename"].value<string>();
       LogFile.open(name.c_str(), std::ios::out | std::ios::app);
 
       if (LogFile.is_open())
@@ -1745,7 +1748,7 @@ split_point_start: // At split points actual search starts from here
   // mate <y>   Mate in y moves, not plies. If the engine is getting mated
   //            use negative values for y.
 
-  std::string score_to_uci(Value v, Value alpha, Value beta) {
+  string score_to_uci(Value v, Value alpha, Value beta) {
 
     std::stringstream s;
 
@@ -1763,7 +1766,7 @@ split_point_start: // At split points actual search starts from here
   // speed_to_uci() returns a string with time stats of current search suitable
   // to be sent to UCI gui.
 
-  std::string speed_to_uci(int64_t nodes) {
+  string speed_to_uci(int64_t nodes) {
 
     std::stringstream s;
     int t = current_search_time();
@@ -1778,7 +1781,7 @@ split_point_start: // At split points actual search starts from here
   // pv_to_uci() returns a string with information on the current PV line
   // formatted according to UCI specification.
 
-  std::string pv_to_uci(Move pv[], int pvNum, bool chess960) {
+  string pv_to_uci(Move pv[], int pvNum, bool chess960) {
 
     std::stringstream s;
 
@@ -1793,7 +1796,7 @@ split_point_start: // At split points actual search starts from here
   // depth_to_uci() returns a string with information on the current depth and
   // seldepth formatted according to UCI specification.
 
-  std::string depth_to_uci(Depth depth) {
+  string depth_to_uci(Depth depth) {
 
     std::stringstream s;
 
@@ -1808,6 +1811,89 @@ split_point_start: // At split points actual search starts from here
     return s.str();
   }
 
+  string time_to_string(int millisecs) {
+
+    const int MSecMinute = 1000 * 60;
+    const int MSecHour   = 1000 * 60 * 60;
+
+    int hours = millisecs / MSecHour;
+    int minutes =  (millisecs % MSecHour) / MSecMinute;
+    int seconds = ((millisecs % MSecHour) % MSecMinute) / 1000;
+
+    std::stringstream s;
+
+    if (hours)
+        s << hours << ':';
+
+    s << std::setfill('0') << std::setw(2) << minutes << ':' << std::setw(2) << seconds;
+    return s.str();
+  }
+
+  string score_to_string(Value v) {
+
+    std::stringstream s;
+
+    if (v >= VALUE_MATE_IN_PLY_MAX)
+        s << "#" << (VALUE_MATE - v + 1) / 2;
+    else if (v <= VALUE_MATED_IN_PLY_MAX)
+        s << "-#" << (VALUE_MATE + v) / 2;
+    else
+        s << std::setprecision(2) << std::fixed << std::showpos << float(v) / PawnValueMidgame;
+
+    return s.str();
+  }
+
+  // pretty_pv() creates a human-readable string from a position and a PV.
+  // It is used to write search information to the log file (which is created
+  // when the UCI parameter "Use Search Log" is "true").
+
+  string pretty_pv(Position& pos, int depth, Value value, int time, Move pv[]) {
+
+    const int64_t K = 1000;
+    const int64_t M = 1000000;
+    const int startColumn = 28;
+    const size_t maxLength = 80 - startColumn;
+
+    StateInfo state[PLY_MAX_PLUS_2], *st = state;
+    Move* m = pv;
+    string san;
+    std::stringstream s;
+    size_t length = 0;
+
+    // First print depth, score, time and searched nodes...
+    s << set960(pos.is_chess960())
+      << std::setw(2) << depth
+      << std::setw(8) << score_to_string(value)
+      << std::setw(8) << time_to_string(time);
+
+    if (pos.nodes_searched() < M)
+        s << std::setw(8) << pos.nodes_searched() / 1 << "  ";
+    else if (pos.nodes_searched() < K * M)
+        s << std::setw(7) << pos.nodes_searched() / K << "K  ";
+    else
+        s << std::setw(7) << pos.nodes_searched() / M << "M  ";
+
+    // ...then print the full PV line in short algebraic notation
+    while (*m != MOVE_NONE)
+    {
+        san = move_to_san(pos, *m);
+        length += san.length() + 1;
+
+        if (length > maxLength)
+        {
+            length = san.length() + 1;
+            s << "\n" + string(startColumn, ' ');
+        }
+        s << san << ' ';
+
+        pos.do_move(*m++, *st++);
+    }
+
+    // Restore original position before to leave
+    while (m != pv) pos.undo_move(*--m);
+
+    return s.str();
+  }
 
   // poll() performs two different functions: It polls for user input, and it
   // looks at the time consumed so far and decides if it's time to abort the
@@ -1822,7 +1908,7 @@ split_point_start: // At split points actual search starts from here
     if (input_available())
     {
         // We are line oriented, don't read single chars
-        std::string command;
+        string command;
 
         if (!std::getline(std::cin, command) || command == "quit")
         {
@@ -1897,7 +1983,7 @@ split_point_start: // At split points actual search starts from here
 
   void wait_for_stop_or_ponderhit() {
 
-    std::string command;
+    string command;
 
     // Wait for a command from stdin
     while (   std::getline(std::cin, command)
