@@ -770,9 +770,10 @@ namespace {
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
-    // smooth experience in analysis mode.
-    if (tte && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
-                       : ok_to_use_TT(tte, depth, beta, ss->ply)))
+    // smooth experience in analysis mode. We don't probe at Root nodes otherwise
+    // we should also update RootMoveList to avoid bogus output.
+    if (!RootNode && tte && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
+                                    : ok_to_use_TT(tte, depth, beta, ss->ply)))
     {
         TT.refresh(tte);
         ss->bestMove = ttMove; // Can be MOVE_NONE
