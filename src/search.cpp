@@ -84,6 +84,7 @@ namespace {
   // RootMoveList struct is mainly a std::vector of RootMove objects
   struct RootMoveList : public std::vector<RootMove> {
     void init(Position& pos, Move searchMoves[]);
+    RootMove* find(const Move &m);
     int bestMoveChanges;
   };
 
@@ -227,8 +228,6 @@ namespace {
 
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
                   : MovePicker(p, ttm, d, h, ss, b) {}
-
-    RootMove& current() { assert(false); return Rml[0]; } // Dummy, needed to compile
   };
 
   // In case of a SpNode we use split point's shared MovePicker object as moves source
@@ -245,16 +244,6 @@ namespace {
 
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
                   : MovePickerExt<SplitPointNonPV>(p, ttm, d, h, ss, b) {}
-  };
-
-  // In case of a Root node we use RootMoveList as moves source
-  template<> struct MovePickerExt<Root> : public MovePicker {
-
-    MovePickerExt(const Position&, Move, Depth, const History&, SearchStack*, Value);
-    RootMove& current() { return Rml[cur]; }
-    Move get_next_move() { return ++cur < (int)Rml.size() ? Rml[cur].pv[0] : MOVE_NONE; }
-
-    int cur;
   };
 
   // Overload operator<<() to make it easier to print moves in a coordinate
@@ -574,6 +563,12 @@ namespace {
         do {
             // Search starting from ss+1 to allow calling update_gains()
             value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
+
+            // It is critical that sorting is done with a stable algorithm
+            // because all the values but the first are usually set to
+            // -VALUE_INFINITE and we want to keep the same order for all
+            // the moves but the new PV that goes to head.
+            sort<RootMove>(Rml.begin(), Rml.end());
 
             // Write PV back to transposition table in case the relevant entries
             // have been overwritten during the search.
@@ -937,7 +932,7 @@ namespace {
 split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
-    MovePickerExt<NT> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
+    MovePickerExt<NT> mp(pos, RootNode ? Rml[0].pv[0] : ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     futilityBase = ss->eval + ss->evalMargin;
@@ -1191,14 +1186,14 @@ split_point_start: // At split points actual search starts from here
               break;
 
           // Remember searched nodes counts for this move
-          mp.current().nodes += pos.nodes_searched() - nodes;
+          Rml.find(move)->nodes += pos.nodes_searched() - nodes;
 
           // PV move or new best move ?
           if (isPvMove || value > alpha)
           {
               // Update PV
-              mp.current().pv_score = value;
-              mp.current().extract_pv_from_tt(pos);
+              Rml.find(move)->pv_score = value;
+              Rml.find(move)->extract_pv_from_tt(pos);
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
@@ -1206,24 +1201,15 @@ split_point_start: // At split points actual search starts from here
               if (!isPvMove && MultiPV == 1)
                   Rml.bestMoveChanges++;
 
-              // It is critical that sorting is done with a stable algorithm
-              // because all the values but the first are usually set to
-              // -VALUE_INFINITE and we want to keep the same order for all
-              // the moves but the new PV that goes to head.
-              sort<RootMove>(Rml.begin(), Rml.begin() + moveCount);
-
-              // Update alpha. In multi-pv we don't use aspiration window, so set
-              // alpha equal to minimum score among the PV lines searched so far.
-              if (MultiPV > 1)
-                  alpha = Rml[Min(moveCount, MultiPV) - 1].pv_score;
-              else if (value > alpha)
+              // Update alpha.
+              if (value > alpha)
                   alpha = value;
           }
           else
               // All other moves but the PV are set to the lowest value, this
               // is not a problem when sorting becuase sort is stable and move
               // position in the list is preserved, just the PV is pushed up.
-              mp.current().pv_score = -VALUE_INFINITE;
+              Rml.find(move)->pv_score = -VALUE_INFINITE;
 
       } // RootNode
 
@@ -2086,6 +2072,17 @@ split_point_start: // At split points actual search starts from here
     }
   }
 
+  RootMove* RootMoveList::find(const Move &m) {
+
+      for (int i = 0; i < int(size()); i++)
+      {
+          if ((*this)[i].pv[0] == m)
+              return &(*this)[i];
+      }
+
+      return NULL;
+  }
+
   // extract_pv_from_tt() builds a PV by adding moves from the transposition table.
   // We consider also failing high nodes and not only VALUE_TYPE_EXACT nodes. This
   // allow to always have a ponder move even when we fail high at root and also a
@@ -2146,29 +2143,6 @@ split_point_start: // At split points actual search starts from here
 
     do pos.undo_move(pv[--ply]); while (ply);
   }
-
-  // Specializations for MovePickerExt in case of Root node
-  MovePickerExt<Root>::MovePickerExt(const Position& p, Move ttm, Depth d,
-                                     const History& h, SearchStack* ss, Value b)
-                     : MovePicker(p, ttm, d, h, ss, b), cur(-1) {
-    Move move;
-    Value score = VALUE_ZERO;
-
-    // Score root moves using standard ordering used in main search, the moves
-    // are scored according to the order in which they are returned by MovePicker.
-    // This is the second order score that is used to compare the moves when
-    // the first orders pv_score of both moves are equal.
-    while ((move = MovePicker::get_next_move()) != MOVE_NONE)
-        for (RootMoveList::iterator rm = Rml.begin(); rm != Rml.end(); ++rm)
-            if (rm->pv[0] == move)
-            {
-                rm->non_pv_score = score--;
-                break;
-            }
-
-    sort<RootMove>(Rml.begin(), Rml.end());
-  }
-
 } // namespace
 
 
