@@ -52,10 +52,9 @@ namespace {
   enum NodeType { Root, PV, NonPV, SplitPointPV, SplitPointNonPV };
 
   // RootMove struct is used for moves at the root of the tree. For each root
-  // move, we store two scores, a node count, and a PV (really a refutation
+  // move, we store a pv_score, a node count, and a PV (really a refutation
   // in the case of moves which fail low). Value pv_score is normally set at
-  // -VALUE_INFINITE for all non-pv moves, while non_pv_score is computed
-  // according to the order in which moves are returned by MovePicker.
+  // -VALUE_INFINITE for all non-pv moves.
   struct RootMove {
 
     RootMove();
@@ -64,20 +63,14 @@ namespace {
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
-    // than a move m2 if it has an higher pv_score, or if it has
-    // equal pv_score but m1 has the higher non_pv_score. In this way
-    // we are guaranteed that PV moves are always sorted as first.
-    bool operator<(const RootMove& m) const {
-      return pv_score != m.pv_score ? pv_score < m.pv_score
-                                    : non_pv_score < m.non_pv_score;
-    }
+    // than a move m2 if it has an higher pv_score
+    bool operator<(const RootMove& m) const { return pv_score < m.pv_score; }
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
 
     int64_t nodes;
     Value pv_score;
-    Value non_pv_score;
     Move pv[PLY_MAX_PLUS_2];
   };
 
@@ -2030,7 +2023,7 @@ split_point_start: // At split points actual search starts from here
   RootMove::RootMove() {
 
     nodes = 0;
-    pv_score = non_pv_score = -VALUE_INFINITE;
+    pv_score = -VALUE_INFINITE;
     pv[0] = MOVE_NONE;
   }
 
@@ -2044,7 +2037,6 @@ split_point_start: // At split points actual search starts from here
 
     nodes = rm.nodes;
     pv_score = rm.pv_score;
-    non_pv_score = rm.non_pv_score;
     return *this;
   }
 
