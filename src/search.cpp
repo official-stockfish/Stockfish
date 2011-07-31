@@ -953,6 +953,10 @@ split_point_start: // At split points actual search starts from here
       if (move == excludedMove)
           continue;
 
+      // At root obey the "searchmoves" option and skip moves not listed in Root Move List
+      if (RootNode && !Rml.find(move))
+          continue;
+
       // At PV and SpNode nodes we want all moves to be legal since the beginning
       if ((PvNode || SpNode) && !pos.pl_move_is_legal(move, ci.pinned))
           continue;
