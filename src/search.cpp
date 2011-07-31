@@ -77,7 +77,7 @@ namespace {
   // RootMoveList struct is mainly a std::vector of RootMove objects
   struct RootMoveList : public std::vector<RootMove> {
     void init(Position& pos, Move searchMoves[]);
-    RootMove* find(const Move &m);
+    RootMove* find(const Move &m, const int startIndex = 0);
     int bestMoveChanges;
   };
 
@@ -160,7 +160,7 @@ namespace {
   RootMoveList Rml;
 
   // MultiPV mode
-  int MultiPV, UCIMultiPV;
+  int MultiPV, UCIMultiPV, MultiPVIteration;
 
   // Time management variables
   bool StopOnPonderhit, FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
@@ -518,7 +518,7 @@ namespace {
     H.clear();
     *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
     depth = aspirationDelta = 0;
-    alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
+    value = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
 
     // Moves to search are verified and copied
@@ -538,69 +538,105 @@ namespace {
     {
         Rml.bestMoveChanges = 0;
 
-        // Calculate dynamic aspiration window based on previous iterations
-        if (MultiPV == 1 && depth >= 5 && abs(bestValues[depth - 1]) < VALUE_KNOWN_WIN)
+        // Remember best moves and values from previous iteration
+        std::vector<Move> prevMoves;
+        std::vector<Value> prevValues;
+
+        for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
         {
-            int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
-            int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
-
-            aspirationDelta = Min(Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
-            aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
-
-            alpha = Max(bestValues[depth - 1] - aspirationDelta, -VALUE_INFINITE);
-            beta  = Min(bestValues[depth - 1] + aspirationDelta,  VALUE_INFINITE);
+            prevMoves.push_back(Rml[i].pv[0]);
+            prevValues.push_back(Rml[i].pv_score);
         }
 
-        // Start with a small aspiration window and, in case of fail high/low,
-        // research with bigger window until not failing high/low anymore.
-        do {
-            // Search starting from ss+1 to allow calling update_gains()
-            value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
-
-            // It is critical that sorting is done with a stable algorithm
-            // because all the values but the first are usually set to
-            // -VALUE_INFINITE and we want to keep the same order for all
-            // the moves but the new PV that goes to head.
-            sort<RootMove>(Rml.begin(), Rml.end());
-
-            // Write PV back to transposition table in case the relevant entries
-            // have been overwritten during the search.
-            for (int i = 0; i < Min(MultiPV, (int)Rml.size()); i++)
-                Rml[i].insert_pv_in_tt(pos);
-
-            // Value cannot be trusted. Break out immediately!
-            if (StopRequest)
-                break;
-
-            // Send full PV info to GUI if we are going to leave the loop or
-            // if we have a fail high/low and we are deep in the search.
-            if ((value > alpha && value < beta) || current_search_time() > 2000)
-                for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
-                    cout << "info"
-                         << depth_to_uci(depth * ONE_PLY)
-                         << score_to_uci(Rml[i].pv_score, alpha, beta)
-                         << speed_to_uci(pos.nodes_searched())
-                         << pv_to_uci(Rml[i].pv, i + 1, pos.is_chess960()) << endl;
-
-            // In case of failing high/low increase aspiration window and research,
-            // otherwise exit the fail high/low loop.
-            if (value >= beta)
+        // MultiPV iteration loop
+        for (MultiPVIteration = 0; MultiPVIteration < Min(MultiPV, (int)Rml.size()); MultiPVIteration++)
+        {
+            // Calculate dynamic aspiration window based on previous iterations
+            if (depth >= 5 && abs(prevValues[MultiPVIteration]) < VALUE_KNOWN_WIN)
             {
-                beta = Min(beta + aspirationDelta, VALUE_INFINITE);
-                aspirationDelta += aspirationDelta / 2;
-            }
-            else if (value <= alpha)
-            {
-                AspirationFailLow = true;
-                StopOnPonderhit = false;
+                int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
+                int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
 
-                alpha = Max(alpha - aspirationDelta, -VALUE_INFINITE);
-                aspirationDelta += aspirationDelta / 2;
+                aspirationDelta = Min(Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
+                aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
+
+                alpha = Max(prevValues[MultiPVIteration] - aspirationDelta, -VALUE_INFINITE);
+                beta  = Min(prevValues[MultiPVIteration] + aspirationDelta,  VALUE_INFINITE);
             }
             else
-                break;
+            {
+                alpha = -VALUE_INFINITE;
+                beta  =  VALUE_INFINITE;
+            }
 
-        } while (abs(value) < VALUE_KNOWN_WIN);
+            // Start with a small aspiration window and, in case of fail high/low,
+            // research with bigger window until not failing high/low anymore.
+            do {
+                // Search starting from ss+1 to allow calling update_gains()
+                value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
+
+                // It is critical that sorting is done with a stable algorithm
+                // because all the values but the first are usually set to
+                // -VALUE_INFINITE and we want to keep the same order for all
+                // the moves but the new PV that goes to head.
+                if (value > alpha && value < beta)
+                    sort<RootMove>(Rml.begin(), Rml.end());
+                else
+                    // In MultiPV mode, sort only the tail of the list
+                    // until all fail-highs and fail-lows have been resolved
+                    sort<RootMove>(Rml.begin() + MultiPVIteration, Rml.end());
+
+                // Write PV back to transposition table in case the relevant entries
+                // have been overwritten during the search.
+                for (int i = 0; i <= MultiPVIteration; i++)
+                    Rml[i].insert_pv_in_tt(pos);
+
+                // Value cannot be trusted. Break out immediately!
+                if (StopRequest)
+                    break;
+
+                // Send full PV info to GUI if we are going to leave the loop or
+                // if we have a fail high/low and we are deep in the search.
+                if ((value > alpha && value < beta) || current_search_time() > 2000)
+                    for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
+                    {
+                        bool updated = (i <= MultiPVIteration);
+                        bool match = (i == MultiPVIteration);
+
+                        if (!updated && depth == 1)
+                              continue;
+
+                        cout << "info"
+                             << depth_to_uci((updated ? depth : depth - 1)  * ONE_PLY)
+                             << score_to_uci(updated ? Rml[i].pv_score : prevValues[i],
+                                             match ? alpha : -VALUE_INFINITE,
+                                             match ? beta  :  VALUE_INFINITE)
+                             << speed_to_uci(pos.nodes_searched())
+                             << pv_to_uci(updated ? Rml[i].pv : Rml.find(prevMoves[i])->pv,
+                                          i + 1, pos.is_chess960())
+                             << endl;
+                    }
+
+                // In case of failing high/low increase aspiration window and research,
+                // otherwise exit the fail high/low loop.
+                if (value >= beta)
+                {
+                    beta = Min(beta + aspirationDelta, VALUE_INFINITE);
+                    aspirationDelta += aspirationDelta / 2;
+                }
+                else if (value <= alpha)
+                {
+                    AspirationFailLow = true;
+                    StopOnPonderhit = false;
+
+                    alpha = Max(alpha - aspirationDelta, -VALUE_INFINITE);
+                    aspirationDelta += aspirationDelta / 2;
+                }
+                else
+                    break;
+
+            } while (abs(value) < VALUE_KNOWN_WIN);
+        }
 
         // Collect info about search result
         bestMove = Rml[0].pv[0];
@@ -925,7 +961,7 @@ namespace {
 split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
-    MovePickerExt<NT> mp(pos, RootNode ? Rml[0].pv[0] : ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
+    MovePickerExt<NT> mp(pos, RootNode ? Rml[MultiPVIteration].pv[0] : ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     futilityBase = ss->eval + ss->evalMargin;
@@ -953,8 +989,10 @@ split_point_start: // At split points actual search starts from here
       if (move == excludedMove)
           continue;
 
-      // At root obey the "searchmoves" option and skip moves not listed in Root Move List
-      if (RootNode && !Rml.find(move))
+      // At root obey the "searchmoves" option and skip moves not listed in Root Move List.
+      // Also in MultiPV mode we skip moves which already have got an exact score
+      // in previous MultiPV Iteration.
+      if (RootNode && !Rml.find(move, MultiPVIteration))
           continue;
 
       // At PV and SpNode nodes we want all moves to be legal since the beginning
@@ -988,11 +1026,11 @@ split_point_start: // At split points actual search starts from here
           // For long searches send current move info to GUI
           if (current_search_time() > 2000)
               cout << "info" << depth_to_uci(depth)
-                   << " currmove " << move << " currmovenumber " << moveCount << endl;
+                   << " currmove " << move << " currmovenumber " << moveCount + MultiPVIteration << endl;
       }
 
       // At Root and at first iteration do a PV search on all the moves to score root moves
-      isPvMove = (PvNode && moveCount <= (!RootNode ? 1 : depth <= ONE_PLY ? MAX_MOVES : MultiPV));
+      isPvMove = (PvNode && moveCount <= ((RootNode && depth <= ONE_PLY) ? MAX_MOVES : 1));
       givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
@@ -2068,9 +2106,9 @@ split_point_start: // At split points actual search starts from here
     }
   }
 
-  RootMove* RootMoveList::find(const Move &m) {
+  RootMove* RootMoveList::find(const Move &m, const int startIndex) {
 
-      for (int i = 0; i < int(size()); i++)
+      for (int i = startIndex; i < int(size()); i++)
       {
           if ((*this)[i].pv[0] == m)
               return &(*this)[i];
