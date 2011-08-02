@@ -593,8 +593,7 @@ namespace {
                 // Send full PV info to GUI if we are going to leave the loop or
                 // if we have a fail high/low and we are deep in the search.
                 if ((value > alpha && value < beta) || current_search_time() > 2000)
-                    for (int i = 0; i < Min(UCIMultiPV, MultiPVIteration); i++)
-                    {
+                    for (int i = 0; i < Min(UCIMultiPV, MultiPVIteration + 1); i++)
                         cout << "info"
                              << depth_to_uci(depth * ONE_PLY)
                              << (i == MultiPVIteration ? score_to_uci(Rml[i].score, alpha, beta) :
@@ -602,7 +601,6 @@ namespace {
                              << speed_to_uci(pos.nodes_searched())
                              << pv_to_uci(&Rml[i].pv[0], i + 1, pos.is_chess960())
                              << endl;
-                    }
 
                 // In case of failing high/low increase aspiration window and research,
                 // otherwise exit the fail high/low loop.
