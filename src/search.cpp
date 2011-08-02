@@ -52,21 +52,22 @@ namespace {
   enum NodeType { Root, PV, NonPV, SplitPointPV, SplitPointNonPV };
 
   // RootMove struct is used for moves at the root of the tree. For each root
-  // move, we store a pv_score, a node count, and a PV (really a refutation
-  // in the case of moves which fail low). Value pv_score is normally set at
+  // move, we store a score, a node count, and a PV (really a refutation
+  // in the case of moves which fail low). Score is normally set at
   // -VALUE_INFINITE for all non-pv moves.
   struct RootMove {
 
     // RootMove::operator<() is the comparison function used when
     // sorting the moves. A move m1 is considered to be better
-    // than a move m2 if it has an higher pv_score
-    bool operator<(const RootMove& m) const { return pv_score < m.pv_score; }
+    // than a move m2 if it has an higher score
+    bool operator<(const RootMove& m) const { return score < m.score; }
 
     void extract_pv_from_tt(Position& pos);
     void insert_pv_in_tt(Position& pos);
 
     int64_t nodes;
-    Value pv_score;
+    Value score;
+    Value prevScore;
     std::vector<Move> pv;
   };
 
@@ -534,8 +535,10 @@ namespace {
     // Iterative deepening loop until requested to stop or target depth reached
     while (!StopRequest && ++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth))
     {
-        // Remember best moves and values from previous iteration
-        RootMoveList prevRml = Rml;
+        // Save last iteration's scores, this needs to be done now, because in
+        // the following MultiPV loop Rml moves could be reordered.
+        for (size_t i = 0; i < Rml.size(); i++)
+            Rml[i].prevScore = Rml[i].score;
 
         Rml.bestMoveChanges = 0;
 
@@ -543,7 +546,7 @@ namespace {
         for (MultiPVIteration = 0; MultiPVIteration < Min(MultiPV, (int)Rml.size()); MultiPVIteration++)
         {
             // Calculate dynamic aspiration window based on previous iterations
-            if (depth >= 5 && abs(prevRml[MultiPVIteration].pv_score) < VALUE_KNOWN_WIN)
+            if (depth >= 5 && abs(Rml[MultiPVIteration].prevScore) < VALUE_KNOWN_WIN)
             {
                 int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
                 int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
@@ -551,8 +554,8 @@ namespace {
                 aspirationDelta = Min(Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
                 aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-                alpha = Max(prevRml[MultiPVIteration].pv_score - aspirationDelta, -VALUE_INFINITE);
-                beta  = Min(prevRml[MultiPVIteration].pv_score + aspirationDelta,  VALUE_INFINITE);
+                alpha = Max(Rml[MultiPVIteration].prevScore - aspirationDelta, -VALUE_INFINITE);
+                beta  = Min(Rml[MultiPVIteration].prevScore + aspirationDelta,  VALUE_INFINITE);
             }
             else
             {
@@ -590,21 +593,14 @@ namespace {
                 // Send full PV info to GUI if we are going to leave the loop or
                 // if we have a fail high/low and we are deep in the search.
                 if ((value > alpha && value < beta) || current_search_time() > 2000)
-                    for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
+                    for (int i = 0; i < Min(UCIMultiPV, MultiPVIteration); i++)
                     {
-                        bool updated = (i <= MultiPVIteration);
-
-                        if (depth == 1 && !updated)
-                              continue;
-
-                        const RootMoveList& rml = (updated ? Rml : prevRml);
-
                         cout << "info"
-                             << depth_to_uci((updated ? depth : depth - 1)  * ONE_PLY)
-                             << (i == MultiPVIteration ? score_to_uci(rml[i].pv_score, alpha, beta)
-                                                       : score_to_uci(rml[i].pv_score))
+                             << depth_to_uci(depth * ONE_PLY)
+                             << (i == MultiPVIteration ? score_to_uci(Rml[i].score, alpha, beta) :
+                                                         score_to_uci(Rml[i].score))
                              << speed_to_uci(pos.nodes_searched())
-                             << pv_to_uci(&rml[i].pv[0], i + 1, pos.is_chess960())
+                             << pv_to_uci(&Rml[i].pv[0], i + 1, pos.is_chess960())
                              << endl;
                     }
 
@@ -643,7 +639,7 @@ namespace {
             LogFile << pretty_pv(pos, depth, value, current_search_time(), &Rml[0].pv[0]) << endl;
 
         // Init easyMove after first iteration or drop if differs from the best move
-        if (depth == 1 && (Rml.size() == 1 || Rml[0].pv_score > Rml[1].pv_score + EasyMoveMargin))
+        if (depth == 1 && (Rml.size() == 1 || Rml[0].score > Rml[1].score + EasyMoveMargin))
             easyMove = bestMove;
         else if (bestMove != easyMove)
             easyMove = MOVE_NONE;
@@ -1219,7 +1215,7 @@ split_point_start: // At split points actual search starts from here
           if (isPvMove || value > alpha)
           {
               // Update PV
-              rm->pv_score = value;
+              rm->score = value;
               rm->extract_pv_from_tt(pos);
 
               // We record how often the best move has been changed in each
@@ -1236,7 +1232,7 @@ split_point_start: // At split points actual search starts from here
               // All other moves but the PV are set to the lowest value, this
               // is not a problem when sorting becuase sort is stable and move
               // position in the list is preserved, just the PV is pushed up.
-              rm->pv_score = -VALUE_INFINITE;
+              rm->score = -VALUE_INFINITE;
 
       } // RootNode
 
@@ -2016,12 +2012,12 @@ split_point_start: // At split points actual search starts from here
 
     static RKISS rk;
 
-    // Rml list is already sorted by pv_score in descending order
+    // Rml list is already sorted by score in descending order
     int s;
     int max_s = -VALUE_INFINITE;
     int size = Min(MultiPV, (int)Rml.size());
-    int max = Rml[0].pv_score;
-    int var = Min(max - Rml[size - 1].pv_score, PawnValueMidgame);
+    int max = Rml[0].score;
+    int var = Min(max - Rml[size - 1].score, PawnValueMidgame);
     int wk = 120 - 2 * SkillLevel;
 
     // PRNG sequence should be non deterministic
@@ -2033,10 +2029,10 @@ split_point_start: // At split points actual search starts from here
     // then we choose the move with the resulting highest score.
     for (int i = 0; i < size; i++)
     {
-        s = Rml[i].pv_score;
+        s = Rml[i].score;
 
         // Don't allow crazy blunders even at very low skills
-        if (i > 0 && Rml[i-1].pv_score > s + EasyMoveMargin)
+        if (i > 0 && Rml[i-1].score > s + EasyMoveMargin)
             break;
 
         // This is our magical formula
@@ -2073,7 +2069,7 @@ split_point_start: // At split points actual search starts from here
         RootMove rm;
         rm.pv.push_back(ml.move());
         rm.pv.push_back(MOVE_NONE);
-        rm.pv_score = -VALUE_INFINITE;
+        rm.score = rm.prevScore = -VALUE_INFINITE;
         rm.nodes = 0;
         push_back(rm);
     }
