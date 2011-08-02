@@ -570,12 +570,13 @@ namespace {
                 // because all the values but the first are usually set to
                 // -VALUE_INFINITE and we want to keep the same order for all
                 // the moves but the new PV that goes to head.
+                sort<RootMove>(Rml.begin() + MultiPVIteration, Rml.end());
+
+                // In case we have found an exact score reorder the PV moves
+                // before leaving the fail high/low loop, otherwise leave the
+                // last PV move in its position so to be searched again.
                 if (value > alpha && value < beta)
-                    sort<RootMove>(Rml.begin(), Rml.end());
-                else
-                    // In MultiPV mode, sort only the tail of the list
-                    // until all fail-highs and fail-lows have been resolved
-                    sort<RootMove>(Rml.begin() + MultiPVIteration, Rml.end());
+                    sort<RootMove>(Rml.begin(), Rml.begin() + MultiPVIteration);
 
                 // Write PV back to transposition table in case the relevant entries
                 // have been overwritten during the search.
