@@ -775,7 +775,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
     tte = TT.probe(posKey);
-    ttMove = tte ? tte->move() : MOVE_NONE;
+    ttMove = RootNode ? Rml[MultiPVIteration].pv[0] : tte ? tte->move() : MOVE_NONE;
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
@@ -946,7 +946,7 @@ namespace {
 split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
-    MovePickerExt<NT> mp(pos, RootNode ? Rml[MultiPVIteration].pv[0] : ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
+    MovePickerExt<NT> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     futilityBase = ss->eval + ss->evalMargin;
@@ -976,7 +976,7 @@ split_point_start: // At split points actual search starts from here
 
       // At root obey the "searchmoves" option and skip moves not listed in Root Move List.
       // Also in MultiPV mode we skip moves which already have got an exact score
-      // in previous MultiPV Iteration.
+      // in previous MultiPV Iteration. Finally any illegal move is skipped here.
       if (RootNode && !Rml.find(move, MultiPVIteration))
           continue;
 
@@ -1011,11 +1011,12 @@ split_point_start: // At split points actual search starts from here
           // For long searches send current move info to GUI
           if (current_search_time() > 2000)
               cout << "info" << depth_to_uci(depth)
-                   << " currmove " << move << " currmovenumber " << moveCount + MultiPVIteration << endl;
+                   << " currmove " << move
+                   << " currmovenumber " << moveCount + MultiPVIteration << endl;
       }
 
       // At Root and at first iteration do a PV search on all the moves to score root moves
-      isPvMove = (PvNode && moveCount <= ((RootNode && depth <= ONE_PLY) ? MAX_MOVES : 1));
+      isPvMove = (PvNode && moveCount <= (RootNode && depth <= ONE_PLY ? MAX_MOVES : 1));
       givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
@@ -1222,7 +1223,7 @@ split_point_start: // At split points actual search starts from here
               if (!isPvMove && MultiPV == 1)
                   Rml.bestMoveChanges++;
 
-              // Update alpha.
+              // Update alpha
               if (value > alpha)
                   alpha = value;
           }
