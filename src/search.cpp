@@ -197,7 +197,7 @@ namespace {
   bool connected_moves(const Position& pos, Move m1, Move m2);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
-  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply);
+  bool can_return_tt(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
@@ -784,7 +784,7 @@ namespace {
     // smooth experience in analysis mode. We don't probe at Root nodes otherwise
     // we should also update RootMoveList to avoid bogus output.
     if (!RootNode && tte && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
-                                    : ok_to_use_TT(tte, depth, beta, ss->ply)))
+                                    : can_return_tt(tte, depth, beta, ss->ply)))
     {
         TT.refresh(tte);
         ss->bestMove = ttMove; // Can be MOVE_NONE
@@ -1334,7 +1334,7 @@ split_point_start: // At split points actual search starts from here
     tte = TT.probe(pos.get_key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
-    if (!PvNode && tte && ok_to_use_TT(tte, ttDepth, beta, ss->ply))
+    if (!PvNode && tte && can_return_tt(tte, ttDepth, beta, ss->ply))
     {
         ss->bestMove = ttMove; // Can be MOVE_NONE
         return value_from_tt(tte->value(), ss->ply);
@@ -1669,10 +1669,10 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // ok_to_use_TT() returns true if a transposition table score
-  // can be used at a given point in search.
+  // can_return_tt() returns true if a transposition table score
+  // can be used to cut-off at a given point in search.
 
-  bool ok_to_use_TT(const TTEntry* tte, Depth depth, Value beta, int ply) {
+  bool can_return_tt(const TTEntry* tte, Depth depth, Value beta, int ply) {
 
     Value v = value_from_tt(tte->value(), ply);
 
