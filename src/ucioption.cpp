@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cctype>
 #include <iostream>
 #include <sstream>
@@ -33,20 +34,10 @@ OptionsMap Options; // Global object
 
 
 // Our case insensitive less() function as required by UCI protocol
+static bool ci_less(char c1, char c2) { return tolower(c1) < tolower(c2); }
+
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
-
-  int c1, c2;
-  size_t i = 0;
-
-  while (i < s1.size() && i < s2.size())
-  {
-      c1 = tolower(s1[i]);
-      c2 = tolower(s2[i++]);
-
-      if (c1 != c2)
-          return c1 < c2;
-  }
-  return s1.size() < s2.size();
+  return std::lexicographical_compare(s1.begin(), s1.end(), s2.begin(), s2.end(), ci_less);
 }
 
 

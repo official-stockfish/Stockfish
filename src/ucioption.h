@@ -36,7 +36,7 @@ public:
   template<typename T> T value() const;
 
 private:
-  friend class OptionsMap;
+  friend struct OptionsMap;
 
   std::string defaultValue, currentValue, type;
   int minValue, maxValue;
@@ -44,15 +44,14 @@ private:
 };
 
 
-/// Custom comparator because UCI options should not be case sensitive
+/// Custom comparator because UCI options should be case insensitive
 struct CaseInsensitiveLess {
   bool operator() (const std::string&, const std::string&) const;
 };
 
 
 /// Our options container is actually a map with a customized c'tor
-class OptionsMap : public std::map<std::string, UCIOption, CaseInsensitiveLess> {
-public:
+struct OptionsMap : std::map<std::string, UCIOption, CaseInsensitiveLess> {
   OptionsMap();
   std::string print_all() const;
 };
