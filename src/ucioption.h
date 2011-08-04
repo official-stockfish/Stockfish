@@ -51,7 +51,7 @@ struct CaseInsensitiveLess {
 
 
 /// Our options container is actually a map with a customized c'tor
-struct OptionsMap : std::map<std::string, UCIOption, CaseInsensitiveLess> {
+struct OptionsMap : public std::map<std::string, UCIOption, CaseInsensitiveLess> {
   OptionsMap();
   std::string print_all() const;
 };
