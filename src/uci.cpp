@@ -58,20 +58,21 @@ void uci_loop() {
 
   Position pos(StarFEN, false, 0); // The root position
   string cmd, token;
+  bool quit = false;
 
-  while (getline(cin, cmd))
+  while (!quit && getline(cin, cmd))
   {
       istringstream is(cmd);
 
       is >> skipws >> token;
 
       if (token == "quit")
-          break;
+          quit = true;
 
-      if (token == "go" && !go(pos, is))
-          break;
+      else if (token == "go")
+          quit = !go(pos, is);
 
-      if (token == "ucinewgame")
+      else if (token == "ucinewgame")
           pos.from_fen(StarFEN, false);
 
       else if (token == "isready")
