@@ -216,26 +216,20 @@ namespace {
   // MovePickerExt template class extends MovePicker and allows to choose at compile
   // time the proper moves source according to the type of node. In the default case
   // we simply create and use a standard MovePicker object.
-  template<NodeType> struct MovePickerExt : public MovePicker {
+  template<bool SpNode> struct MovePickerExt : public MovePicker {
 
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
                   : MovePicker(p, ttm, d, h, ss, b) {}
   };
 
   // In case of a SpNode we use split point's shared MovePicker object as moves source
-  template<> struct MovePickerExt<SplitPointNonPV> : public MovePicker {
+  template<> struct MovePickerExt<true> : public MovePicker {
 
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
                   : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
 
     Move get_next_move() { return mp->get_next_move(); }
     MovePicker* mp;
-  };
-
-  template<> struct MovePickerExt<SplitPointPV> : public MovePickerExt<SplitPointNonPV> {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, SearchStack* ss, Value b)
-                  : MovePickerExt<SplitPointNonPV>(p, ttm, d, h, ss, b) {}
   };
 
   // Overload operator<<() to make it easier to print moves in a coordinate
@@ -946,7 +940,7 @@ namespace {
 split_point_start: // At split points actual search starts from here
 
     // Initialize a MovePicker object for the current position
-    MovePickerExt<NT> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
+    MovePickerExt<SpNode> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     ss->bestMove = MOVE_NONE;
     futilityBase = ss->eval + ss->evalMargin;
