@@ -1171,16 +1171,12 @@ split_point_start: // At split points actual search starts from here
       }
 
 
-      if (RootNode)
+      // Finished searching the move. If StopRequest is true, the search
+      // was aborted because the user interrupted the search or because we
+      // ran out of time. In this case, the return value of the search cannot
+      // be trusted, and we don't update the best move and/or PV.
+      if (RootNode && !StopRequest)
       {
-          // Finished searching the move. If StopRequest is true, the search
-          // was aborted because the user interrupted the search or because we
-          // ran out of time. In this case, the return value of the search cannot
-          // be trusted, and we break out of the loop without updating the best
-          // move and/or PV.
-          if (StopRequest)
-              break;
-
           // Remember searched nodes counts for this move
           RootMove* rm = Rml.find(move);
           rm->nodes += pos.nodes_searched() - nodes;
