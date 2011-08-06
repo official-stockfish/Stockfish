@@ -560,7 +560,8 @@ namespace {
             // Start with a small aspiration window and, in case of fail high/low,
             // research with bigger window until not failing high/low anymore.
             do {
-                // Search starting from ss+1 to allow calling update_gains()
+                // Search starting from ss+1 to allow referencing (ss-1). This is
+                // needed by update_gains() and ss copy when splitting at Root.
                 value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
 
                 // It is critical that sorting is done with a stable algorithm
@@ -1169,7 +1170,6 @@ split_point_start: // At split points actual search starts from here
           bestValue = sp->bestValue;
           alpha = sp->alpha;
       }
-
 
       // Finished searching the move. If StopRequest is true, the search
       // was aborted because the user interrupted the search or because we
@@ -2211,6 +2211,8 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
               search<SplitPointPV>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
           else if (tsp->nodeType == NonPV)
               search<SplitPointNonPV>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
+          else
+              assert(false);
 
           assert(threads[threadID].state == Thread::SEARCHING);
 
