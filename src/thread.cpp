@@ -132,7 +132,7 @@ void ThreadsManager::init() {
   // Allocate pawn and material hash tables for main thread
   init_hash_tables();
 
-  lock_init(&mpLock);
+  lock_init(&threadsLock);
 
   // Initialize thread and split point locks
   for (int i = 0; i < MAX_THREADS; i++)
@@ -193,7 +193,7 @@ void ThreadsManager::exit() {
           lock_destroy(&(threads[i].splitPoints[j].lock));
   }
 
-  lock_destroy(&mpLock);
+  lock_destroy(&threadsLock);
 }
 
 
@@ -253,19 +253,12 @@ void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const V
   int i, master = pos.thread();
   Thread& masterThread = threads[master];
 
-  lock_grab(&mpLock);
-
-  // If no other thread is available to help us, or if we have too many
-  // active split points, don't split.
-  if (   !available_slave_exists(master)
-      || masterThread.activeSplitPoints >= MAX_ACTIVE_SPLIT_POINTS)
-  {
-      lock_release(&mpLock);
+  // If we already have too many active split points, don't split
+  if (masterThread.activeSplitPoints >= MAX_ACTIVE_SPLIT_POINTS)
       return;
-  }
 
   // Pick the next available split point object from the split point stack
-  SplitPoint& splitPoint = masterThread.splitPoints[masterThread.activeSplitPoints++];
+  SplitPoint& splitPoint = masterThread.splitPoints[masterThread.activeSplitPoints];
 
   // Initialize the split point object
   splitPoint.parent = masterThread.splitPoint;
@@ -285,27 +278,33 @@ void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const V
   for (i = 0; i < activeThreads; i++)
       splitPoint.is_slave[i] = false;
 
-  masterThread.splitPoint = &splitPoint;
-
   // If we are here it means we are not available
-  assert(masterThread.state != Thread::AVAILABLE);
+  assert(masterThread.state == Thread::SEARCHING);
 
-  int workersCnt = 1; // At least the master is included
+  int booked = 0;
 
-  // Allocate available threads setting state to THREAD_BOOKED
-  for (i = 0; !Fake && i < activeThreads && workersCnt < maxThreadsPerSplitPoint; i++)
+  // Try to allocate available threads setting state to Thread::BOOKED, this
+  // must be done under lock protection to avoid concurrent allocation of
+  // the same slave by another master.
+  lock_grab(&threadsLock);
+
+  for (i = 0; !Fake && i < activeThreads && booked < maxThreadsPerSplitPoint; i++)
       if (i != master && threads[i].is_available_to(master))
       {
           threads[i].state = Thread::BOOKED;
           threads[i].splitPoint = &splitPoint;
           splitPoint.is_slave[i] = true;
-          workersCnt++;
+          booked++;
       }
 
-  assert(Fake || workersCnt > 1);
+  lock_release(&threadsLock);
 
-  // We can release the lock because slave threads are already booked and master is not available
-  lock_release(&mpLock);
+  // We failed to allocate even one slave, return
+  if (!Fake && !booked)
+      return;
+
+  masterThread.activeSplitPoints++;
+  masterThread.splitPoint = &splitPoint;
 
   // Tell the threads that they have work to do. This will make them leave
   // their idle loop.
@@ -314,7 +313,8 @@ void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const V
       {
           assert(i == master || threads[i].state == Thread::BOOKED);
 
-          threads[i].state = Thread::WORKISWAITING; // This makes the slave to exit from idle_loop()
+          // This makes the slave to exit from idle_loop()
+          threads[i].state = Thread::WORKISWAITING;
 
           if (useSleepingThreads && i != master)
               threads[i].wake_up();
@@ -328,16 +328,20 @@ void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const V
   idle_loop(master, &splitPoint);
 
   // We have returned from the idle loop, which means that all threads are
-  // finished. Update alpha and bestValue, and return.
-  lock_grab(&mpLock);
+  // finished. Update alpha and bestValue, and return. Note that changing
+  // state and decreasing activeSplitPoints is done under lock protection
+  // to avoid a race with Thread::is_available_to().
+  lock_grab(&threadsLock);
+
+  masterThread.state = Thread::SEARCHING;
+  masterThread.activeSplitPoints--;
+  masterThread.splitPoint = splitPoint.parent;
+
+  lock_release(&threadsLock);
 
   *alpha = splitPoint.alpha;
   *bestValue = splitPoint.bestValue;
-  masterThread.activeSplitPoints--;
-  masterThread.splitPoint = splitPoint.parent;
   pos.set_nodes_searched(pos.nodes_searched() + splitPoint.nodes);
-
-  lock_release(&mpLock);
 }
 
 // Explicit template instantiations

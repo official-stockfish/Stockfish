@@ -2241,8 +2241,6 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
           // In helpful master concept a master can help only a sub-tree, and
           // because here is all finished is not possible master is booked.
           assert(threads[threadID].state == Thread::AVAILABLE);
-
-          threads[threadID].state = Thread::SEARCHING;
           return;
       }
   }

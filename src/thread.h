@@ -119,7 +119,7 @@ public:
              Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
 private:
   Thread threads[MAX_THREADS];
-  Lock mpLock;
+  Lock threadsLock;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
   int activeThreads;
