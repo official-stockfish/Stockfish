@@ -38,7 +38,7 @@ struct SplitPoint {
   const Position* pos;
   Depth depth;
   Value beta;
-  int pvNode;
+  int nodeType;
   int ply;
   int master;
   Move threatMove;
@@ -116,7 +116,7 @@ public:
 
   template <bool Fake>
   void split(Position& pos, SearchStack* ss, Value* alpha, const Value beta, Value* bestValue,
-             Depth depth, Move threatMove, int moveCount, MovePicker* mp, bool pvNode);
+             Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
 private:
   Thread threads[MAX_THREADS];
   Lock mpLock;

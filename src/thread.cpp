@@ -240,7 +240,7 @@ bool ThreadsManager::available_slave_exists(int master) const {
 template <bool Fake>
 void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const Value beta,
                            Value* bestValue, Depth depth, Move threatMove,
-                           int moveCount, MovePicker* mp, bool pvNode) {
+                           int moveCount, MovePicker* mp, int nodeType) {
   assert(pos.is_ok());
   assert(*bestValue >= -VALUE_INFINITE);
   assert(*bestValue <= *alpha);
@@ -275,7 +275,7 @@ void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const V
   splitPoint.threatMove = threatMove;
   splitPoint.alpha = *alpha;
   splitPoint.beta = beta;
-  splitPoint.pvNode = pvNode;
+  splitPoint.nodeType = nodeType;
   splitPoint.bestValue = *bestValue;
   splitPoint.mp = mp;
   splitPoint.moveCount = moveCount;
@@ -341,5 +341,5 @@ void ThreadsManager::split(Position& pos, SearchStack* ss, Value* alpha, const V
 }
 
 // Explicit template instantiations
-template void ThreadsManager::split<false>(Position&, SearchStack*, Value*, const Value, Value*, Depth, Move, int, MovePicker*, bool);
-template void ThreadsManager::split<true>(Position&, SearchStack*, Value*, const Value, Value*, Depth, Move, int, MovePicker*, bool);
+template void ThreadsManager::split<false>(Position&, SearchStack*, Value*, const Value, Value*, Depth, Move, int, MovePicker*, int);
+template void ThreadsManager::split<true>(Position&, SearchStack*, Value*, const Value, Value*, Depth, Move, int, MovePicker*, int);

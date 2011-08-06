@@ -1226,15 +1226,14 @@ split_point_start: // At split points actual search starts from here
       }
 
       // Step 19. Check for split
-      if (   !RootNode
-          && !SpNode
+      if (   !SpNode
           && depth >= Threads.min_split_depth()
           && bestValue < beta
           && Threads.available_slave_exists(pos.thread())
           && !StopRequest
           && !thread.cutoff_occurred())
           Threads.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
-                                   threatMove, moveCount, &mp, PvNode);
+                                   threatMove, moveCount, &mp, NT);
     }
 
     // Step 20. Check for mate and stalemate
@@ -2210,9 +2209,11 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
           memcpy(ss, tsp->ss - 1, 4 * sizeof(SearchStack));
           (ss+1)->sp = tsp;
 
-          if (tsp->pvNode)
+          if (tsp->nodeType == Root)
+              search<SplitPointRoot>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
+          else if (tsp->nodeType == PV)
               search<SplitPointPV>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
-          else
+          else if (tsp->nodeType == NonPV)
               search<SplitPointNonPV>(pos, ss+1, tsp->alpha, tsp->beta, tsp->depth);
 
           assert(threads[threadID].state == Thread::SEARCHING);
