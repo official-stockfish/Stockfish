@@ -712,7 +712,7 @@ namespace {
     Depth ext, newDepth;
     ValueType vt;
     Value bestValue, value, oldAlpha;
-    Value refinedValue, nullValue, futilityBase, futilityValueScaled; // Non-PV specific
+    Value refinedValue, nullValue, futilityBase, futilityValue;
     bool isPvMove, inCheck, singularExtensionNode, givesCheck, captureOrPromotion, dangerous;
     int moveCount = 0, playedMoveCount = 0;
     Thread& thread = Threads[pos.thread()];
@@ -1070,19 +1070,19 @@ split_point_start: // At split points actual search starts from here
           // We illogically ignore reduction condition depth >= 3*ONE_PLY for predicted depth,
           // but fixing this made program slightly weaker.
           Depth predictedDepth = newDepth - reduction<PvNode>(depth, moveCount);
-          futilityValueScaled =  futilityBase + futility_margin(predictedDepth, moveCount)
-                               + H.gain(pos.piece_on(move_from(move)), move_to(move));
+          futilityValue =  futilityBase + futility_margin(predictedDepth, moveCount)
+                         + H.gain(pos.piece_on(move_from(move)), move_to(move));
 
-          if (futilityValueScaled < beta)
+          if (futilityValue < beta)
           {
               if (SpNode)
               {
                   lock_grab(&(sp->lock));
-                  if (futilityValueScaled > sp->bestValue)
-                      sp->bestValue = bestValue = futilityValueScaled;
+                  if (futilityValue > sp->bestValue)
+                      sp->bestValue = bestValue = futilityValue;
               }
-              else if (futilityValueScaled > bestValue)
-                  bestValue = futilityValueScaled;
+              else if (futilityValue > bestValue)
+                  bestValue = futilityValue;
 
               continue;
           }
@@ -1298,6 +1298,7 @@ split_point_start: // At split points actual search starts from here
     bool inCheck, enoughMaterial, givesCheck, evasionPrunable;
     const TTEntry* tte;
     Depth ttDepth;
+    ValueType vt;
     Value oldAlpha = alpha;
 
     ss->bestMove = ss->currentMove = MOVE_NONE;
@@ -1368,7 +1369,7 @@ split_point_start: // At split points actual search starts from here
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
-    while (   alpha < beta
+    while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE)
     {
       assert(move_is_ok(move));
@@ -1388,10 +1389,11 @@ split_point_start: // At split points actual search starts from here
                          + piece_value_endgame(pos.piece_on(move_to(move)))
                          + (move_is_ep(move) ? PawnValueEndgame : VALUE_ZERO);
 
-          if (futilityValue < alpha)
+          if (futilityValue < beta)
           {
               if (futilityValue > bestValue)
                   bestValue = futilityValue;
+
               continue;
           }
 
@@ -1450,11 +1452,12 @@ split_point_start: // At split points actual search starts from here
       if (value > bestValue)
       {
           bestValue = value;
-          if (value > alpha)
-          {
+          ss->bestMove = move;
+
+          if (   PvNode
+              && value > alpha
+              && value < beta) // We want always alpha < beta
               alpha = value;
-              ss->bestMove = move;
-          }
        }
     }
 
@@ -1464,8 +1467,11 @@ split_point_start: // At split points actual search starts from here
         return value_mated_in(ss->ply);
 
     // Update transposition table
-    ValueType vt = (bestValue <= oldAlpha ? VALUE_TYPE_UPPER : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT);
-    TT.store(pos.get_key(), value_to_tt(bestValue, ss->ply), vt, ttDepth, ss->bestMove, ss->eval, evalMargin);
+    move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
+    vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
+         : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
+
+    TT.store(pos.get_key(), value_to_tt(bestValue, ss->ply), vt, ttDepth, move, ss->eval, evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
