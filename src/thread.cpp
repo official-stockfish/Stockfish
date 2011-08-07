@@ -283,18 +283,23 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
 
   int workersCnt = 1; // At least the master is included
 
-  // Try to allocate available threads setting state to Thread::BOOKED, this
-  // must be done under lock protection to avoid concurrent allocation of
-  // the same slave by another master.
+  // Try to allocate available threads and ask them to start searching setting
+  // the state to Thread::WORKISWAITING, this must be done under lock protection
+  // to avoid concurrent allocation of the same slave by another master.
   lock_grab(&threadsLock);
 
   for (i = 0; !Fake && i < activeThreads && workersCnt < maxThreadsPerSplitPoint; i++)
       if (i != master && threads[i].is_available_to(master))
       {
-          threads[i].state = Thread::BOOKED;
-          threads[i].splitPoint = &splitPoint;
-          splitPoint.is_slave[i] = true;
           workersCnt++;
+          splitPoint.is_slave[i] = true;
+          threads[i].splitPoint = &splitPoint;
+
+          // This makes the slave to exit from idle_loop()
+          threads[i].state = Thread::WORKISWAITING;
+
+          if (useSleepingThreads)
+              threads[i].wake_up();
       }
 
   lock_release(&threadsLock);
@@ -303,27 +308,14 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
   if (!Fake && workersCnt == 1)
       return bestValue;
 
-  masterThread.activeSplitPoints++;
   masterThread.splitPoint = &splitPoint;
-
-  // Tell the threads that they have some work to do. This will make them leave
-  // their idle loop.
-  for (i = 0; i < activeThreads; i++)
-      if (i == master || splitPoint.is_slave[i])
-      {
-          assert(i == master || threads[i].state == Thread::BOOKED);
-
-          // This makes the slave to exit from idle_loop()
-          threads[i].state = Thread::WORKISWAITING;
-
-          if (useSleepingThreads && i != master)
-              threads[i].wake_up();
-      }
+  masterThread.activeSplitPoints++;
+  masterThread.state = Thread::WORKISWAITING;
 
   // Everything is set up. The master thread enters the idle loop, from
   // which it will instantly launch a search, because its state is
-  // THREAD_WORKISWAITING.  We send the split point as a second parameter to the
-  // idle loop, which means that the main thread will return from the idle
+  // Thread::WORKISWAITING. We send the split point as a second parameter to
+  // the idle loop, which means that the main thread will return from the idle
   // loop when all threads have finished their work at this split point.
   idle_loop(master, &splitPoint);
 

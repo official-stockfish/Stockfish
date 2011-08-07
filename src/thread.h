@@ -70,8 +70,7 @@ struct Thread {
     INITIALIZING,  // Thread is initializing itself
     SEARCHING,     // Thread is performing work
     AVAILABLE,     // Thread is waiting for work
-    BOOKED,        // Other thread (master) has booked us as a slave
-    WORKISWAITING, // Master has ordered us to start
+    WORKISWAITING, // Master has ordered us to start searching
     TERMINATED     // We are quitting and thread is terminated
   };
 
