@@ -1228,8 +1228,8 @@ split_point_start: // At split points actual search starts from here
           && Threads.available_slave_exists(pos.thread())
           && !StopRequest
           && !thread.cutoff_occurred())
-          Threads.split<FakeSplit>(pos, ss, &alpha, beta, &bestValue, depth,
-                                   threatMove, moveCount, &mp, NT);
+          bestValue = Threads.split<FakeSplit>(pos, ss, alpha, beta, bestValue, depth,
+                                               threatMove, moveCount, &mp, NT);
     }
 
     // Step 20. Check for mate and stalemate

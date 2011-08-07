@@ -115,8 +115,8 @@ public:
   void idle_loop(int threadID, SplitPoint* sp);
 
   template <bool Fake>
-  void split(Position& pos, SearchStack* ss, Value* alpha, const Value beta, Value* bestValue,
-             Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
+  Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
+              Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
 private:
   Thread threads[MAX_THREADS];
   Lock threadsLock;
