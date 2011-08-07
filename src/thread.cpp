@@ -281,26 +281,26 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
   // If we are here it means we are not available
   assert(masterThread.state == Thread::SEARCHING);
 
-  int booked = 0;
+  int workersCnt = 1; // At least the master is included
 
   // Try to allocate available threads setting state to Thread::BOOKED, this
   // must be done under lock protection to avoid concurrent allocation of
   // the same slave by another master.
   lock_grab(&threadsLock);
 
-  for (i = 0; !Fake && i < activeThreads && booked < maxThreadsPerSplitPoint; i++)
+  for (i = 0; !Fake && i < activeThreads && workersCnt < maxThreadsPerSplitPoint; i++)
       if (i != master && threads[i].is_available_to(master))
       {
           threads[i].state = Thread::BOOKED;
           threads[i].splitPoint = &splitPoint;
           splitPoint.is_slave[i] = true;
-          booked++;
+          workersCnt++;
       }
 
   lock_release(&threadsLock);
 
   // We failed to allocate even one slave, return
-  if (!Fake && !booked)
+  if (!Fake && workersCnt == 1)
       return bestValue;
 
   masterThread.activeSplitPoints++;
