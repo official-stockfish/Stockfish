@@ -27,7 +27,7 @@ ThreadsManager Threads; // Global object definition
 namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
- // is launched. It simply calls idle_loop() with the supplied threadID.
+ // is launched. It simply calls idle_loop() of the supplied threadID.
  // There are two versions of this function; one for POSIX threads and
  // one for Windows threads.
 
@@ -126,7 +126,20 @@ void ThreadsManager::set_size(int cnt) {
   activeThreads = cnt;
 
   for (int i = 0; i < MAX_THREADS; i++)
-      threads[i].do_sleep = !(i < activeThreads);
+      if (i < activeThreads)
+      {
+          // Dynamically allocate pawn and material hash tables according to the
+          // number of active threads. This avoids preallocating memory for all
+          // possible threads if only few are used as, for instance, on mobile
+          // devices where memory is scarce and allocating for MAX_THREADS could
+          // even result in a crash.
+          threads[i].pawnTable.init();
+          threads[i].materialTable.init();
+
+          threads[i].do_sleep = false;
+      }
+      else
+          threads[i].do_sleep = true;
 }
 
 
@@ -139,9 +152,6 @@ void ThreadsManager::init() {
   set_size(1);
   threads[0].state = Thread::SEARCHING;
   threads[0].threadID = 0;
-
-  // Allocate pawn and material hash tables for main thread
-  init_hash_tables();
 
   // Initialize threads lock, used when allocating slaves during splitting
   lock_init(&threadsLock);
@@ -208,22 +218,6 @@ void ThreadsManager::exit() {
   }
 
   lock_destroy(&threadsLock);
-}
-
-
-// init_hash_tables() dynamically allocates pawn and material hash tables
-// according to the number of active threads. This avoids preallocating
-// memory for all possible threads if only few are used as, for instance,
-// on mobile devices where memory is scarce and allocating for MAX_THREADS
-// threads could even result in a crash.
-
-void ThreadsManager::init_hash_tables() {
-
-  for (int i = 0; i < activeThreads; i++)
-  {
-      threads[i].pawnTable.init();
-      threads[i].materialTable.init();
-  }
 }
 
 

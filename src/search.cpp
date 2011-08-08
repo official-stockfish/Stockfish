@@ -409,9 +409,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   read_evaluation_uci_options(pos.side_to_move());
   Threads.read_uci_options();
 
-  // Allocate pawn and material hash tables if number of active threads
-  // increased and set a new TT size if changed.
-  Threads.init_hash_tables();
+  // Set a new TT size if changed
   TT.set_size(Options["Hash"].value<int>());
 
   if (Options["Clear Hash"].value<bool>())

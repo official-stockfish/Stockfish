@@ -111,7 +111,6 @@ public:
   Thread& operator[](int threadID) { return threads[threadID]; }
   void init();
   void exit();
-  void init_hash_tables();
 
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
