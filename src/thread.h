@@ -67,10 +67,9 @@ struct Thread {
 
   enum ThreadState
   {
-    SEARCHING,     // Thread is performing work
     AVAILABLE,     // Thread is waiting for work
     WORKISWAITING, // Master has ordered us to start searching
-    TERMINATED     // We are quitting and thread is terminated
+    SEARCHING      // Thread is performing work
   };
 
   void wake_up();
@@ -90,6 +89,12 @@ struct Thread {
   volatile int activeSplitPoints;
   volatile bool do_sleep;
   volatile bool do_terminate;
+
+#if defined(_MSC_VER)
+  HANDLE handle;
+#else
+  pthread_t handle;
+#endif
 };
 
 

@@ -2168,7 +2168,6 @@ void Thread::idle_loop(SplitPoint* sp) {
           if (do_terminate)
           {
               assert(!sp);
-              state = Thread::TERMINATED;
               lock_release(&sleepLock);
               return;
           }

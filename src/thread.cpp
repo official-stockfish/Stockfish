@@ -163,12 +163,12 @@ void ThreadsManager::init() {
       threads[i].threadID = i;
 
 #if defined(_MSC_VER)
-      bool ok = (CreateThread(NULL, 0, start_routine, (LPVOID)&threads[i].threadID , 0, NULL) != NULL);
+      threads[i].handle = CreateThread(NULL, 0, start_routine, (LPVOID)&threads[i].threadID, 0, NULL);
+      bool ok = (threads[i].handle != NULL);
 #else
-      pthread_t pthreadID;
-      bool ok = (pthread_create(&pthreadID, NULL, start_routine, (void*)&threads[i].threadID) == 0);
-      pthread_detach(pthreadID);
+      bool ok = (pthread_create(&threads[i].handle, NULL, start_routine, (void*)&threads[i].threadID) == 0);
 #endif
+
       if (!ok)
       {
           std::cout << "Failed to create thread number " << i << std::endl;
@@ -189,7 +189,14 @@ void ThreadsManager::exit() {
       {
           threads[i].do_terminate = true;
           threads[i].wake_up();
-          while (threads[i].state != Thread::TERMINATED) {}
+
+#if defined(_MSC_VER)
+          WaitForSingleObject(threads[i].handle, 0);
+          CloseHandle(threads[i].handle);
+#else
+          pthread_join(threads[i].handle, NULL);
+          pthread_detach(threads[i].handle);
+#endif
       }
 
       // Now we can safely destroy locks and wait conditions
