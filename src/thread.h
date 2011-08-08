@@ -67,7 +67,6 @@ struct Thread {
 
   enum ThreadState
   {
-    INITIALIZING,  // Thread is initializing itself
     SEARCHING,     // Thread is performing work
     AVAILABLE,     // Thread is waiting for work
     WORKISWAITING, // Master has ordered us to start searching

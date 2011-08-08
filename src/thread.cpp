@@ -135,7 +135,7 @@ void ThreadsManager::set_size(int cnt) {
 
 void ThreadsManager::init() {
 
-  // Threads will sent to sleep as soon as created, only main thread is kept alive
+  // Threads will go to sleep as soon as created, only main thread is kept alive
   set_size(1);
   threads[0].state = Thread::SEARCHING;
   threads[0].threadID = 0;
@@ -159,7 +159,7 @@ void ThreadsManager::init() {
   // Create and startup all the threads but the main that is already running
   for (int i = 1; i < MAX_THREADS; i++)
   {
-      threads[i].state = Thread::INITIALIZING;
+      threads[i].state = Thread::AVAILABLE;
       threads[i].threadID = i;
 
 #if defined(_MSC_VER)
@@ -174,9 +174,6 @@ void ThreadsManager::init() {
           std::cout << "Failed to create thread number " << i << std::endl;
           ::exit(EXIT_FAILURE);
       }
-
-      // Wait until the thread has finished launching and is gone to sleep
-      while (threads[i].state == Thread::INITIALIZING) {}
   }
 }
 
