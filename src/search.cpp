@@ -2130,50 +2130,56 @@ split_point_start: // At split points actual search starts from here
 } // namespace
 
 
-// ThreadsManager::idle_loop() is where the threads are parked when they have no work
-// to do. The parameter 'sp', if non-NULL, is a pointer to an active SplitPoint
-// object for which the current thread is the master.
+// Little helper used by idle_loop() to check that all the slaves of a
+// master thread have finished searching.
 
-void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
+static bool all_slaves_finished(SplitPoint* sp) {
 
-  assert(threadID >= 0 && threadID < MAX_THREADS);
+  assert(sp);
 
-  int i;
-  bool allFinished;
+  for (int i = 0; i < Threads.size(); i++)
+      if (sp->is_slave[i])
+          return false;
+
+  return true;
+}
+
+
+// Thread::idle_loop() is where the thread is parked when it has no work to do.
+// The parameter 'sp', if non-NULL, is a pointer to an active SplitPoint object
+// for which the thread is the master.
+
+void Thread::idle_loop(SplitPoint* sp) {
 
   while (true)
   {
-      // Slave threads can exit as soon as allThreadsShouldExit flag raises,
-      // master should exit as last one.
-      if (allThreadsShouldExit)
-      {
-          assert(!sp);
-          threads[threadID].state = Thread::TERMINATED;
-          return;
-      }
-
       // If we are not searching, wait for a condition to be signaled
       // instead of wasting CPU time polling for work.
-      while (   threadID >= activeThreads
-             || threads[threadID].state == Thread::INITIALIZING
-             || (useSleepingThreads && threads[threadID].state == Thread::AVAILABLE))
+      while (   do_sleep
+             || do_terminate
+             || (Threads.use_sleeping_threads() && state == Thread::AVAILABLE))
       {
-          assert(!sp || useSleepingThreads);
-          assert(threadID != 0 || useSleepingThreads);
+          assert(!sp || Threads.use_sleeping_threads());
+          assert(threadID != 0 || Threads.use_sleeping_threads());
 
-          if (threads[threadID].state == Thread::INITIALIZING)
-              threads[threadID].state = Thread::AVAILABLE;
+          // Slave thread should exit as soon as do_terminate flag raises
+          if (do_terminate)
+          {
+              assert(!sp);
+              state = Thread::TERMINATED;
+              return;
+          }
+
+          if (state == Thread::INITIALIZING)
+              state = Thread::AVAILABLE;
 
           // Grab the lock to avoid races with Thread::wake_up()
-          lock_grab(&threads[threadID].sleepLock);
+          lock_grab(&sleepLock);
 
           // If we are master and all slaves have finished don't go to sleep
-          for (i = 0; sp && i < activeThreads && !sp->is_slave[i]; i++) {}
-          allFinished = (i == activeThreads);
-
-          if (allFinished || allThreadsShouldExit)
+          if (sp && all_slaves_finished(sp))
           {
-              lock_release(&threads[threadID].sleepLock);
+              lock_release(&sleepLock);
               break;
           }
 
@@ -2181,22 +2187,22 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
           // particular we need to avoid a deadlock in case a master thread has,
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
-          if (threadID >= activeThreads || threads[threadID].state == Thread::AVAILABLE)
-              cond_wait(&threads[threadID].sleepCond, &threads[threadID].sleepLock);
+          if (do_sleep || state == Thread::AVAILABLE)
+              cond_wait(&sleepCond, &sleepLock);
 
-          lock_release(&threads[threadID].sleepLock);
+          lock_release(&sleepLock);
       }
 
       // If this thread has been assigned work, launch a search
-      if (threads[threadID].state == Thread::WORKISWAITING)
+      if (state == Thread::WORKISWAITING)
       {
-          assert(!allThreadsShouldExit);
+          assert(!do_terminate);
 
-          threads[threadID].state = Thread::SEARCHING;
+          state = Thread::SEARCHING;
 
           // Copy split point position and search stack and call search()
           SearchStack ss[PLY_MAX_PLUS_2];
-          SplitPoint* tsp = threads[threadID].splitPoint;
+          SplitPoint* tsp = splitPoint;
           Position pos(*tsp->pos, threadID);
 
           memcpy(ss, tsp->ss - 1, 4 * sizeof(SearchStack));
@@ -2211,24 +2217,21 @@ void ThreadsManager::idle_loop(int threadID, SplitPoint* sp) {
           else
               assert(false);
 
-          assert(threads[threadID].state == Thread::SEARCHING);
+          assert(state == Thread::SEARCHING);
 
-          threads[threadID].state = Thread::AVAILABLE;
+          state = Thread::AVAILABLE;
 
           // Wake up master thread so to allow it to return from the idle loop in
           // case we are the last slave of the split point.
-          if (   useSleepingThreads
+          if (   Threads.use_sleeping_threads()
               && threadID != tsp->master
-              && threads[tsp->master].state == Thread::AVAILABLE)
-              threads[tsp->master].wake_up();
+              && Threads[tsp->master].state == Thread::AVAILABLE)
+              Threads[tsp->master].wake_up();
       }
 
       // If this thread is the master of a split point and all slaves have
       // finished their work at this split point, return from the idle loop.
-      for (i = 0; sp && i < activeThreads && !sp->is_slave[i]; i++) {}
-      allFinished = (i == activeThreads);
-
-      if (allFinished)
+      if (sp && all_slaves_finished(sp))
       {
           // Because sp->is_slave[] is reset under lock protection,
           // be sure sp->lock has been released before to return.

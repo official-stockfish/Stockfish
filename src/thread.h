@@ -77,16 +77,20 @@ struct Thread {
   void wake_up();
   bool cutoff_occurred() const;
   bool is_available_to(int master) const;
+  void idle_loop(SplitPoint* sp);
 
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
   MaterialInfoTable materialTable;
   PawnInfoTable pawnTable;
+  int threadID;
   int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
   volatile ThreadState state;
   SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;
+  volatile bool do_sleep;
+  volatile bool do_terminate;
 };
 
 
@@ -105,13 +109,13 @@ public:
   void exit();
   void init_hash_tables();
 
+  bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
   int size() const { return activeThreads; }
-  void set_size(int cnt) { activeThreads = cnt; }
 
+  void set_size(int cnt);
   void read_uci_options();
   bool available_slave_exists(int master) const;
-  void idle_loop(int threadID, SplitPoint* sp);
 
   template <bool Fake>
   Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
@@ -123,7 +127,6 @@ private:
   int maxThreadsPerSplitPoint;
   int activeThreads;
   bool useSleepingThreads;
-  volatile bool allThreadsShouldExit;
 };
 
 extern ThreadsManager Threads;

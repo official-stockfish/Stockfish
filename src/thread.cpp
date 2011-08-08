@@ -35,7 +35,7 @@ namespace { extern "C" {
 
   DWORD WINAPI start_routine(LPVOID threadID) {
 
-    Threads.idle_loop(*(int*)threadID, NULL);
+    Threads[*(int*)threadID].idle_loop(NULL);
     return 0;
   }
 
@@ -43,7 +43,7 @@ namespace { extern "C" {
 
   void* start_routine(void* threadID) {
 
-    Threads.idle_loop(*(int*)threadID, NULL);
+    Threads[*(int*)threadID].idle_loop(NULL);
     return NULL;
   }
 
@@ -111,7 +111,22 @@ void ThreadsManager::read_uci_options() {
   maxThreadsPerSplitPoint = Options["Maximum Number of Threads per Split Point"].value<int>();
   minimumSplitDepth       = Options["Minimum Split Depth"].value<int>() * ONE_PLY;
   useSleepingThreads      = Options["Use Sleeping Threads"].value<bool>();
-  activeThreads           = Options["Threads"].value<int>();
+
+  set_size(Options["Threads"].value<int>());
+}
+
+
+// set_size() changes the number of active threads and raises do_sleep flag for
+// all the unused threads that will go immediately to sleep.
+
+void ThreadsManager::set_size(int cnt) {
+
+  assert(cnt > 0 && cnt <= MAX_THREADS);
+
+  activeThreads = cnt;
+
+  for (int i = 0; i < MAX_THREADS; i++)
+      threads[i].do_sleep = !(i < activeThreads);
 }
 
 
@@ -120,14 +135,10 @@ void ThreadsManager::read_uci_options() {
 
 void ThreadsManager::init() {
 
-  int threadID[MAX_THREADS];
-
-  // This flag is needed to properly end the threads when program exits
-  allThreadsShouldExit = false;
-
   // Threads will sent to sleep as soon as created, only main thread is kept alive
-  activeThreads = 1;
+  set_size(1);
   threads[0].state = Thread::SEARCHING;
+  threads[0].threadID = 0;
 
   // Allocate pawn and material hash tables for main thread
   init_hash_tables();
@@ -149,13 +160,13 @@ void ThreadsManager::init() {
   for (int i = 1; i < MAX_THREADS; i++)
   {
       threads[i].state = Thread::INITIALIZING;
-      threadID[i] = i;
+      threads[i].threadID = i;
 
 #if defined(_MSC_VER)
-      bool ok = (CreateThread(NULL, 0, start_routine, (LPVOID)&threadID[i], 0, NULL) != NULL);
+      bool ok = (CreateThread(NULL, 0, start_routine, (LPVOID)&threads[i].threadID , 0, NULL) != NULL);
 #else
       pthread_t pthreadID;
-      bool ok = (pthread_create(&pthreadID, NULL, start_routine, (void*)&threadID[i]) == 0);
+      bool ok = (pthread_create(&pthreadID, NULL, start_routine, (void*)&threads[i].threadID) == 0);
       pthread_detach(pthreadID);
 #endif
       if (!ok)
@@ -174,14 +185,12 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
-  // Force the woken up threads to exit idle_loop() and hence terminate
-  allThreadsShouldExit = true;
-
   for (int i = 0; i < MAX_THREADS; i++)
   {
-      // Wake up all the threads and wait for termination
+      // Wake up all the slave threads and wait for termination
       if (i != 0)
       {
+          threads[i].do_terminate = true;
           threads[i].wake_up();
           while (threads[i].state != Thread::TERMINATED) {}
       }
@@ -318,7 +327,7 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
   // Thread::WORKISWAITING. We send the split point as a second parameter to
   // the idle loop, which means that the main thread will return from the idle
   // loop when all threads have finished their work at this split point.
-  idle_loop(master, sp);
+  masterThread.idle_loop(sp);
 
   // In helpful master concept a master can help only a sub-tree, and
   // because here is all finished is not possible master is booked.
