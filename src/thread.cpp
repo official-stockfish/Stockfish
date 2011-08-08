@@ -132,9 +132,10 @@ void ThreadsManager::init() {
   // Allocate pawn and material hash tables for main thread
   init_hash_tables();
 
+  // Initialize threads lock, used when allocating slaves during splitting
   lock_init(&threadsLock);
 
-  // Initialize thread and split point locks
+  // Initialize sleep and split point locks
   for (int i = 0; i < MAX_THREADS; i++)
   {
       lock_init(&threads[i].sleepLock);
@@ -169,7 +170,7 @@ void ThreadsManager::init() {
 }
 
 
-// exit() is called to cleanly exit the threads when the program finishes
+// exit() is called to cleanly terminate the threads when the program finishes
 
 void ThreadsManager::exit() {
 
@@ -178,14 +179,14 @@ void ThreadsManager::exit() {
 
   for (int i = 0; i < MAX_THREADS; i++)
   {
-      // Wake up all the threads and waits for termination
+      // Wake up all the threads and wait for termination
       if (i != 0)
       {
           threads[i].wake_up();
           while (threads[i].state != Thread::TERMINATED) {}
       }
 
-      // Now we can safely destroy the locks and wait conditions
+      // Now we can safely destroy locks and wait conditions
       lock_destroy(&threads[i].sleepLock);
       cond_destroy(&threads[i].sleepCond);
 
@@ -258,25 +259,25 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
       return bestValue;
 
   // Pick the next available split point object from the split point stack
-  SplitPoint& splitPoint = masterThread.splitPoints[masterThread.activeSplitPoints];
+  SplitPoint* sp = masterThread.splitPoints + masterThread.activeSplitPoints;
 
   // Initialize the split point object
-  splitPoint.parent = masterThread.splitPoint;
-  splitPoint.master = master;
-  splitPoint.is_betaCutoff = false;
-  splitPoint.depth = depth;
-  splitPoint.threatMove = threatMove;
-  splitPoint.alpha = alpha;
-  splitPoint.beta = beta;
-  splitPoint.nodeType = nodeType;
-  splitPoint.bestValue = bestValue;
-  splitPoint.mp = mp;
-  splitPoint.moveCount = moveCount;
-  splitPoint.pos = &pos;
-  splitPoint.nodes = 0;
-  splitPoint.ss = ss;
+  sp->parent = masterThread.splitPoint;
+  sp->master = master;
+  sp->is_betaCutoff = false;
+  sp->depth = depth;
+  sp->threatMove = threatMove;
+  sp->alpha = alpha;
+  sp->beta = beta;
+  sp->nodeType = nodeType;
+  sp->bestValue = bestValue;
+  sp->mp = mp;
+  sp->moveCount = moveCount;
+  sp->pos = &pos;
+  sp->nodes = 0;
+  sp->ss = ss;
   for (i = 0; i < activeThreads; i++)
-      splitPoint.is_slave[i] = false;
+      sp->is_slave[i] = false;
 
   // If we are here it means we are not available
   assert(masterThread.state == Thread::SEARCHING);
@@ -292,8 +293,8 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
       if (i != master && threads[i].is_available_to(master))
       {
           workersCnt++;
-          splitPoint.is_slave[i] = true;
-          threads[i].splitPoint = &splitPoint;
+          sp->is_slave[i] = true;
+          threads[i].splitPoint = sp;
 
           // This makes the slave to exit from idle_loop()
           threads[i].state = Thread::WORKISWAITING;
@@ -308,7 +309,7 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
   if (!Fake && workersCnt == 1)
       return bestValue;
 
-  masterThread.splitPoint = &splitPoint;
+  masterThread.splitPoint = sp;
   masterThread.activeSplitPoints++;
   masterThread.state = Thread::WORKISWAITING;
 
@@ -317,7 +318,11 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
   // Thread::WORKISWAITING. We send the split point as a second parameter to
   // the idle loop, which means that the main thread will return from the idle
   // loop when all threads have finished their work at this split point.
-  idle_loop(master, &splitPoint);
+  idle_loop(master, sp);
+
+  // In helpful master concept a master can help only a sub-tree, and
+  // because here is all finished is not possible master is booked.
+  assert(masterThread.state == Thread::AVAILABLE);
 
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that changing state and decreasing activeSplitPoints is done
@@ -326,12 +331,13 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
 
   masterThread.state = Thread::SEARCHING;
   masterThread.activeSplitPoints--;
-  masterThread.splitPoint = splitPoint.parent;
 
   lock_release(&threadsLock);
 
-  pos.set_nodes_searched(pos.nodes_searched() + splitPoint.nodes);
-  return splitPoint.bestValue;
+  masterThread.splitPoint = sp->parent;
+  pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
+
+  return sp->bestValue;
 }
 
 // Explicit template instantiations
