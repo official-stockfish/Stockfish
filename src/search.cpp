@@ -2129,12 +2129,10 @@ split_point_start: // At split points actual search starts from here
 } // namespace
 
 
-// Little helper used by idle_loop() to check that all the slaves of a
-// master thread have finished searching.
+// Little helper used by idle_loop() to check that all the slave threads of a
+// split point have finished searching.
 
 static bool all_slaves_finished(SplitPoint* sp) {
-
-  assert(sp);
 
   for (int i = 0; i < Threads.size(); i++)
       if (sp->is_slave[i])

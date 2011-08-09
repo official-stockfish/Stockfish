@@ -27,7 +27,7 @@ ThreadsManager Threads; // Global object definition
 namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
- // is launched. It simply calls idle_loop() of the supplied threadID.
+ // is launched. It simply calls idle_loop() of the supplied thread.
  // There are two versions of this function; one for POSIX threads and
  // one for Windows threads.
 
@@ -63,9 +63,8 @@ void Thread::wake_up() {
 }
 
 
-// cutoff_occurred() checks whether a beta cutoff has occurred in
-// the thread's currently active split point, or in some ancestor of
-// the current split point.
+// cutoff_occurred() checks whether a beta cutoff has occurred in the current
+// active split point, or in some ancestor of the split point.
 
 bool Thread::cutoff_occurred() const {
 
@@ -148,11 +147,6 @@ void ThreadsManager::set_size(int cnt) {
 
 void ThreadsManager::init() {
 
-  // Threads will go to sleep as soon as created, only main thread is kept alive
-  set_size(1);
-  threads[0].state = Thread::SEARCHING;
-  threads[0].threadID = 0;
-
   // Initialize threads lock, used when allocating slaves during splitting
   lock_init(&threadsLock);
 
@@ -166,7 +160,13 @@ void ThreadsManager::init() {
           lock_init(&(threads[i].splitPoints[j].lock));
   }
 
-  // Create and startup all the threads but the main that is already running
+  // Initialize main thread's associated data
+  threads[0].state = Thread::SEARCHING;
+  threads[0].threadID = 0;
+  set_size(1); // This makes all the threads but the main to go to sleep
+
+  // Create and launch all the threads but the main that is already running,
+  // threads will go immediately to sleep.
   for (int i = 1; i < MAX_THREADS; i++)
   {
       threads[i].state = Thread::AVAILABLE;
@@ -205,7 +205,6 @@ void ThreadsManager::exit() {
           CloseHandle(threads[i].handle);
 #else
           pthread_join(threads[i].handle, NULL);
-          pthread_detach(threads[i].handle);
 #endif
       }
 
