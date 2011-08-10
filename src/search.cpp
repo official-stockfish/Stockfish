@@ -2154,7 +2154,7 @@ void Thread::idle_loop(SplitPoint* sp) {
       // instead of wasting CPU time polling for work.
       while (   do_sleep
              || do_terminate
-             || (Threads.use_sleeping_threads() && state == Thread::AVAILABLE))
+             || (Threads.use_sleeping_threads() && !is_searching))
       {
           assert((!sp && threadID) || Threads.use_sleeping_threads());
 
@@ -2180,14 +2180,14 @@ void Thread::idle_loop(SplitPoint* sp) {
           // particular we need to avoid a deadlock in case a master thread has,
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
-          if (do_sleep || state == Thread::AVAILABLE)
+          if (do_sleep || !is_searching)
               cond_wait(&sleepCond, &sleepLock);
 
           lock_release(&sleepLock);
       }
 
       // If this thread has been assigned work, launch a search
-      if (state == Thread::SEARCHING)
+      if (is_searching)
       {
           assert(!do_terminate);
 
@@ -2208,15 +2208,15 @@ void Thread::idle_loop(SplitPoint* sp) {
           else
               assert(false);
 
-          assert(state == Thread::SEARCHING);
+          assert(is_searching);
 
-          state = Thread::AVAILABLE;
+          is_searching = false;
 
           // Wake up master thread so to allow it to return from the idle loop in
           // case we are the last slave of the split point.
           if (   Threads.use_sleeping_threads()
               && threadID != tsp->master
-              && Threads[tsp->master].state == Thread::AVAILABLE)
+              && !Threads[tsp->master].is_searching)
               Threads[tsp->master].wake_up();
       }
 
