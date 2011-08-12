@@ -87,7 +87,7 @@ namespace {
     do fen += char(tolower(keyCode[i])); while (++i < keyCode.length());
 
     // Add file padding and remaining empty ranks
-    fen += string(1, '0' + int(8 - keyCode.length())) + "/8/8/8/8/8/8/8 w - -";
+    fen += string(1, '0' + int(8 - keyCode.length())) + "/8/8/8/8/8/8/8 w - - 0 10";
 
     // Build a Position out of the fen string and get its material key
     return Position(fen, false, 0).get_material_key();
