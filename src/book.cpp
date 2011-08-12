@@ -511,7 +511,7 @@ Book& Book::operator>>(T& n) {
   n = 0;
 
   for (size_t i = 0; i < sizeof(T); i++)
-      n = (n << 8) + (T)bookFile.get();
+      n = T((n << 8) + bookFile.get());
 
   return *this;
 }
