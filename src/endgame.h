@@ -89,12 +89,11 @@ private:
 /// and scaling base objects. Then we use polymorphism to invoke the actual
 /// endgame function calling its apply() method that is virtual.
 
-class Endgames {
+struct Endgames {
 
-  typedef std::map<Key, EndgameBase<Value>* > EFMap;
-  typedef std::map<Key, EndgameBase<ScaleFactor>* > SFMap;
+  template<typename T>
+  struct EMap { typedef std::map<Key, EndgameBase<T>*> type; };
 
-public:
   Endgames();
   ~Endgames();
   template<typename T> EndgameBase<T>* get(Key key) const;
@@ -103,10 +102,10 @@ private:
   template<typename T, EndgameType E> void add(const std::string& keyCode);
 
   // Here we store two maps, for evaluate and scaling functions...
-  std::pair<EFMap, SFMap> maps;
+  std::pair<EMap<Value>::type, EMap<ScaleFactor>::type> maps;
 
   // ...and here is the accessing template function
-  template<typename T> const std::map<Key, T*>& map() const;
+  template<typename T> const typename EMap<T>::type& map() const;
 };
 
 #endif // !defined(ENDGAME_H_INCLUDED)

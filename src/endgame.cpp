@@ -93,16 +93,16 @@ namespace {
     return Position(fen, false, 0).get_material_key();
   }
 
-  typedef EndgameBase<Value> EF;
-  typedef EndgameBase<ScaleFactor> SF;
+  typedef Endgames::EMap<Value>::type EFMap;
+  typedef Endgames::EMap<ScaleFactor>::type SFMap;
 
 } // namespace
 
 
 /// Endgames member definitions
 
-template<> const Endgames::EFMap& Endgames::map<EF>() const { return maps.first; }
-template<> const Endgames::SFMap& Endgames::map<SF>() const { return maps.second; }
+template<> const EFMap& Endgames::map<Value>() const { return maps.first; }
+template<> const SFMap& Endgames::map<ScaleFactor>() const { return maps.second; }
 
 Endgames::Endgames() {
 
@@ -125,10 +125,10 @@ Endgames::Endgames() {
 
 Endgames::~Endgames() {
 
-  for (EFMap::const_iterator it = map<EF>().begin(); it != map<EF>().end(); ++it)
+  for (EFMap::const_iterator it = map<Value>().begin(); it != map<Value>().end(); ++it)
       delete it->second;
 
-  for (SFMap::const_iterator it = map<SF>().begin(); it != map<SF>().end(); ++it)
+  for (SFMap::const_iterator it = map<ScaleFactor>().begin(); it != map<ScaleFactor>().end(); ++it)
       delete it->second;
 }
 
@@ -137,23 +137,22 @@ void Endgames::add(const string& keyCode) {
 
   typedef Endgame<T, E> EG;
   typedef typename EG::Base B;
-  typedef std::map<Key, B*> M;
+  typedef typename EMap<T>::type M;
 
-  const_cast<M&>(map<B>()).insert(std::pair<Key, B*>(mat_key(keyCode), new EG(WHITE)));
-  const_cast<M&>(map<B>()).insert(std::pair<Key, B*>(mat_key(swap_colors(keyCode)), new EG(BLACK)));
+  const_cast<M&>(map<T>()).insert(std::pair<Key, B*>(mat_key(keyCode), new EG(WHITE)));
+  const_cast<M&>(map<T>()).insert(std::pair<Key, B*>(mat_key(swap_colors(keyCode)), new EG(BLACK)));
 }
 
 template<typename T>
 EndgameBase<T>* Endgames::get(Key key) const {
 
-  typedef EndgameBase<T> E;
-  typename std::map<Key, E*>::const_iterator it = map<E>().find(key);
-  return it != map<E>().end() ? it->second : NULL;
+  typename EMap<T>::type::const_iterator it = map<T>().find(key);
+  return it != map<T>().end() ? it->second : NULL;
 }
 
 // Explicit template instantiations
-template EF* Endgames::get<Value>(Key key) const;
-template SF* Endgames::get<ScaleFactor>(Key key) const;
+template EndgameBase<Value>* Endgames::get<Value>(Key key) const;
+template EndgameBase<ScaleFactor>* Endgames::get<ScaleFactor>(Key key) const;
 
 
 /// Mate with KX vs K. This function is used to evaluate positions with
