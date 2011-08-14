@@ -101,57 +101,59 @@ namespace {
 
 /// Endgames member definitions
 
-template<> const Endgames::EFMap& Endgames::get<EF>() const { return maps.first; }
-template<> const Endgames::SFMap& Endgames::get<SF>() const { return maps.second; }
+template<> const Endgames::EFMap& Endgames::map<EF>() const { return maps.first; }
+template<> const Endgames::SFMap& Endgames::map<SF>() const { return maps.second; }
 
 Endgames::Endgames() {
 
-  add<Endgame<Value, KNNK>  >("KNNK");
-  add<Endgame<Value, KPK>   >("KPK");
-  add<Endgame<Value, KBNK>  >("KBNK");
-  add<Endgame<Value, KRKP>  >("KRKP");
-  add<Endgame<Value, KRKB>  >("KRKB");
-  add<Endgame<Value, KRKN>  >("KRKN");
-  add<Endgame<Value, KQKR>  >("KQKR");
-  add<Endgame<Value, KBBKN> >("KBBKN");
+  add<Value, KPK>("KPK");
+  add<Value, KNNK>("KNNK");
+  add<Value, KBNK>("KBNK");
+  add<Value, KRKP>("KRKP");
+  add<Value, KRKB>("KRKB");
+  add<Value, KRKN>("KRKN");
+  add<Value, KQKR>("KQKR");
+  add<Value, KBBKN>("KBBKN");
 
-  add<Endgame<ScaleFactor, KNPK>    >("KNPK");
-  add<Endgame<ScaleFactor, KRPKR>   >("KRPKR");
-  add<Endgame<ScaleFactor, KBPKB>   >("KBPKB");
-  add<Endgame<ScaleFactor, KBPPKB>  >("KBPPKB");
-  add<Endgame<ScaleFactor, KBPKN>   >("KBPKN");
-  add<Endgame<ScaleFactor, KRPPKRP> >("KRPPKRP");
+  add<ScaleFactor, KNPK>("KNPK");
+  add<ScaleFactor, KRPKR>("KRPKR");
+  add<ScaleFactor, KBPKB>("KBPKB");
+  add<ScaleFactor, KBPKN>("KBPKN");
+  add<ScaleFactor, KBPPKB>("KBPPKB");
+  add<ScaleFactor, KRPPKRP>("KRPPKRP");
 }
 
 Endgames::~Endgames() {
 
-  for (EFMap::const_iterator it = get<EF>().begin(); it != get<EF>().end(); ++it)
+  for (EFMap::const_iterator it = map<EF>().begin(); it != map<EF>().end(); ++it)
       delete it->second;
 
-  for (SFMap::const_iterator it = get<SF>().begin(); it != get<SF>().end(); ++it)
+  for (SFMap::const_iterator it = map<SF>().begin(); it != map<SF>().end(); ++it)
       delete it->second;
 }
 
-template<class T>
+template<typename T, EndgameType E>
 void Endgames::add(const string& keyCode) {
 
-  typedef typename T::Base F;
-  typedef std::map<Key, F*> M;
+  typedef Endgame<T, E> EG;
+  typedef typename EG::Base B;
+  typedef std::map<Key, B*> M;
 
-  const_cast<M&>(get<F>()).insert(std::pair<Key, F*>(mat_key(keyCode), new T(WHITE)));
-  const_cast<M&>(get<F>()).insert(std::pair<Key, F*>(mat_key(swap_colors(keyCode)), new T(BLACK)));
+  const_cast<M&>(map<B>()).insert(std::pair<Key, B*>(mat_key(keyCode), new EG(WHITE)));
+  const_cast<M&>(map<B>()).insert(std::pair<Key, B*>(mat_key(swap_colors(keyCode)), new EG(BLACK)));
 }
 
-template<class T>
-T* Endgames::get(Key key) const {
+template<typename T>
+EndgameBase<T>* Endgames::get(Key key) const {
 
-  typename std::map<Key, T*>::const_iterator it = get<T>().find(key);
-  return it != get<T>().end() ? it->second : NULL;
+  typedef EndgameBase<T> E;
+  typename std::map<Key, E*>::const_iterator it = map<E>().find(key);
+  return it != map<E>().end() ? it->second : NULL;
 }
 
 // Explicit template instantiations
-template EF* Endgames::get<EF>(Key key) const;
-template SF* Endgames::get<SF>(Key key) const;
+template EF* Endgames::get<Value>(Key key) const;
+template SF* Endgames::get<ScaleFactor>(Key key) const;
 
 
 /// Mate with KX vs K. This function is used to evaluate positions with

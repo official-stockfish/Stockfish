@@ -117,7 +117,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
   // configuration one, then a generic one if previous search failed.
-  if ((mi->evaluationFunction = funcs->get<EndgameBase<Value> >(key)) != NULL)
+  if ((mi->evaluationFunction = funcs->get<Value>(key)) != NULL)
       return mi;
 
   if (is_KXK<WHITE>(pos))
@@ -154,7 +154,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   // scaling functions and we need to decide which one to use.
   EndgameBase<ScaleFactor>* sf;
 
-  if ((sf = funcs->get<EndgameBase<ScaleFactor> >(key)) != NULL)
+  if ((sf = funcs->get<ScaleFactor>(key)) != NULL)
   {
       mi->scalingFunction[sf->color()] = sf;
       return mi;

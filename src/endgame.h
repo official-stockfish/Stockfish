@@ -97,16 +97,16 @@ class Endgames {
 public:
   Endgames();
   ~Endgames();
-  template<class T> T* get(Key key) const;
+  template<typename T> EndgameBase<T>* get(Key key) const;
 
 private:
-  template<class T> void add(const std::string& keyCode);
+  template<typename T, EndgameType E> void add(const std::string& keyCode);
 
   // Here we store two maps, for evaluate and scaling functions...
   std::pair<EFMap, SFMap> maps;
 
   // ...and here is the accessing template function
-  template<typename T> const std::map<Key, T*>& get() const;
+  template<typename T> const std::map<Key, T*>& map() const;
 };
 
 #endif // !defined(ENDGAME_H_INCLUDED)
