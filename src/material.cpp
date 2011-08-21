@@ -49,13 +49,13 @@ namespace {
 
   // Endgame evaluation and scaling functions accessed direcly and not through
   // the function maps because correspond to more then one material hash key.
-  Endgame<Value, KmmKm> EvaluateKmmKm[] = { Endgame<Value, KmmKm>(WHITE), Endgame<Value, KmmKm>(BLACK) };
-  Endgame<Value, KXK>   EvaluateKXK[]   = { Endgame<Value, KXK>(WHITE),   Endgame<Value, KXK>(BLACK) };
+  Endgame<KmmKm> EvaluateKmmKm[] = { Endgame<KmmKm>(WHITE), Endgame<KmmKm>(BLACK) };
+  Endgame<KXK>   EvaluateKXK[]   = { Endgame<KXK>(WHITE),   Endgame<KXK>(BLACK) };
 
-  Endgame<ScaleFactor, KBPsK>  ScaleKBPsK[]  = { Endgame<ScaleFactor, KBPsK>(WHITE),  Endgame<ScaleFactor, KBPsK>(BLACK) };
-  Endgame<ScaleFactor, KQKRPs> ScaleKQKRPs[] = { Endgame<ScaleFactor, KQKRPs>(WHITE), Endgame<ScaleFactor, KQKRPs>(BLACK) };
-  Endgame<ScaleFactor, KPsK>   ScaleKPsK[]   = { Endgame<ScaleFactor, KPsK>(WHITE),   Endgame<ScaleFactor, KPsK>(BLACK) };
-  Endgame<ScaleFactor, KPKP>   ScaleKPKP[]   = { Endgame<ScaleFactor, KPKP>(WHITE),   Endgame<ScaleFactor, KPKP>(BLACK) };
+  Endgame<KBPsK>  ScaleKBPsK[]  = { Endgame<KBPsK>(WHITE),  Endgame<KBPsK>(BLACK) };
+  Endgame<KQKRPs> ScaleKQKRPs[] = { Endgame<KQKRPs>(WHITE), Endgame<KQKRPs>(BLACK) };
+  Endgame<KPsK>   ScaleKPsK[]   = { Endgame<KPsK>(WHITE),   Endgame<KPsK>(BLACK) };
+  Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {

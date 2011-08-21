@@ -46,6 +46,7 @@ enum EndgameType {
 
 
   // Scaling functions
+  SCALE_FUNS,
 
   KBPsK,   // KB+pawns vs K
   KQKRPs,  // KQ vs KR+pawns
@@ -60,12 +61,17 @@ enum EndgameType {
 };
 
 
+/// Some magic to detect family type of endgame from its enum value
+
+template<bool> struct bool_to_type { typedef Value type; };
+template<> struct bool_to_type<true> { typedef ScaleFactor type; };
+template<EndgameType E> struct eg_family : public bool_to_type<(E > SCALE_FUNS)> {};
+
+
 /// Base and derived templates for endgame evaluation and scaling functions
 
 template<typename T>
 struct EndgameBase {
-
-  typedef EndgameBase<T> Base;
 
   virtual ~EndgameBase() {}
   virtual Color color() const = 0;
@@ -73,7 +79,7 @@ struct EndgameBase {
 };
 
 
-template<typename T, EndgameType>
+template<EndgameType E, typename T = typename eg_family<E>::type>
 struct Endgame : public EndgameBase<T> {
 
   explicit Endgame(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
@@ -99,7 +105,7 @@ struct Endgames {
   template<typename T> EndgameBase<T>* get(Key key) const;
 
 private:
-  template<typename T, EndgameType E> void add(const std::string& keyCode);
+  template<EndgameType E> void add(const std::string& keyCode);
 
   // Here we store two maps, for evaluate and scaling functions...
   std::pair<EMap<Value>::type, EMap<ScaleFactor>::type> maps;
