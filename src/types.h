@@ -348,6 +348,7 @@ const Value QueenValueEndgame  = Value(0x9FE);
 
 extern const Value PieceValueMidgame[17];
 extern const Value PieceValueEndgame[17];
+extern int SquareDistance[64][64];
 
 inline Value piece_value_midgame(Piece p) {
   return PieceValueMidgame[p];
@@ -440,7 +441,7 @@ inline int rank_distance(Square s1, Square s2) {
 }
 
 inline int square_distance(Square s1, Square s2) {
-  return Max(file_distance(s1, s2), rank_distance(s1, s2));
+  return SquareDistance[s1][s2];
 }
 
 inline char file_to_char(File f) {

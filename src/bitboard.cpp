@@ -56,6 +56,7 @@ Bitboard RookPseudoAttacks[64];
 Bitboard QueenPseudoAttacks[64];
 
 uint8_t BitCount8Bit[256];
+int SquareDistance[64][64];
 
 namespace {
 
@@ -154,6 +155,13 @@ Square pop_1st_bit(Bitboard* bb) {
 
 void init_bitboards() {
 
+  for (Bitboard b = 0; b < 256; b++)
+      BitCount8Bit[b] = (uint8_t)count_1s<CNT32_MAX15>(b);
+
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+          SquareDistance[s1][s2] = Max(file_distance(s1, s2), rank_distance(s1, s2));
+
   SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
   SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
 
@@ -193,9 +201,6 @@ void init_bitboards() {
           PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
           AttackSpanMask[c][s]     = in_front_bb(c, s) & neighboring_files_bb(s);
       }
-
-  for (Bitboard b = 0; b < 256; b++)
-      BitCount8Bit[b] = (uint8_t)count_1s<CNT32_MAX15>(b);
 
   for (int i = 0; i < 64; i++)
       if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
