@@ -98,20 +98,28 @@ private:
 struct Endgames {
 
   template<typename T>
-  struct EMap { typedef std::map<Key, EndgameBase<T>*> type; };
+  struct Map { typedef std::map<Key, EndgameBase<T>*> type; };
+
+  typedef Map<Value>::type M1;
+  typedef Map<ScaleFactor>::type M2;
 
   Endgames();
   ~Endgames();
-  template<typename T> EndgameBase<T>* get(Key key) const;
+
+  template<typename T>
+  EndgameBase<T>* get(Key key) const {
+
+    typedef typename Map<T>::type M;
+    typename M::const_iterator it = map<M>().find(key);
+    return it != map<M>().end() ? it->second : NULL;
+  }
 
 private:
   template<EndgameType E> void add(const std::string& keyCode);
+  template<typename M> const M& map() const;
 
-  // Here we store two maps, for evaluate and scaling functions...
-  std::pair<EMap<Value>::type, EMap<ScaleFactor>::type> maps;
-
-  // ...and here is the accessing template function
-  template<typename T> const typename EMap<T>::type& map() const;
+  M1 m1;
+  M2 m2;
 };
 
 #endif // !defined(ENDGAME_H_INCLUDED)

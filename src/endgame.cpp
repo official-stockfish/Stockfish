@@ -93,16 +93,13 @@ namespace {
     return Position(fen, false, 0).get_material_key();
   }
 
-  typedef Endgames::EMap<Value>::type EFMap;
-  typedef Endgames::EMap<ScaleFactor>::type SFMap;
-
 } // namespace
 
 
 /// Endgames member definitions
 
-template<> const EFMap& Endgames::map<Value>() const { return maps.first; }
-template<> const SFMap& Endgames::map<ScaleFactor>() const { return maps.second; }
+template<> const Endgames::M1& Endgames::map<Endgames::M1>() const { return m1; }
+template<> const Endgames::M2& Endgames::map<Endgames::M2>() const { return m2; }
 
 Endgames::Endgames() {
 
@@ -125,10 +122,10 @@ Endgames::Endgames() {
 
 Endgames::~Endgames() {
 
-  for (EFMap::const_iterator it = map<Value>().begin(); it != map<Value>().end(); ++it)
+  for (M1::const_iterator it = m1.begin(); it != m1.end(); ++it)
       delete it->second;
 
-  for (SFMap::const_iterator it = map<ScaleFactor>().begin(); it != map<ScaleFactor>().end(); ++it)
+  for (M2::const_iterator it = m2.begin(); it != m2.end(); ++it)
       delete it->second;
 }
 
@@ -136,22 +133,11 @@ template<EndgameType E>
 void Endgames::add(const string& keyCode) {
 
   typedef typename eg_family<E>::type T;
-  typedef typename EMap<T>::type M;
+  typedef typename Map<T>::type M;
 
-  const_cast<M&>(map<T>()).insert(std::make_pair(mat_key(keyCode), new Endgame<E>(WHITE)));
-  const_cast<M&>(map<T>()).insert(std::make_pair(mat_key(swap_colors(keyCode)), new Endgame<E>(BLACK)));
+  const_cast<M&>(map<M>()).insert(std::make_pair(mat_key(keyCode), new Endgame<E>(WHITE)));
+  const_cast<M&>(map<M>()).insert(std::make_pair(mat_key(swap_colors(keyCode)), new Endgame<E>(BLACK)));
 }
-
-template<typename T>
-EndgameBase<T>* Endgames::get(Key key) const {
-
-  typename EMap<T>::type::const_iterator it = map<T>().find(key);
-  return it != map<T>().end() ? it->second : NULL;
-}
-
-// Explicit template instantiations
-template EndgameBase<Value>* Endgames::get<Value>(Key key) const;
-template EndgameBase<ScaleFactor>* Endgames::get<ScaleFactor>(Key key) const;
 
 
 /// Mate with KX vs K. This function is used to evaluate positions with
