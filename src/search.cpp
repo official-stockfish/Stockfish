@@ -2158,16 +2158,15 @@ void Thread::idle_loop(SplitPoint* sp) {
       {
           assert((!sp && threadID) || Threads.use_sleeping_threads());
 
-          // Grab the lock to avoid races with Thread::wake_up()
-          lock_grab(&sleepLock);
-
           // Slave thread should exit as soon as do_terminate flag raises
           if (do_terminate)
           {
               assert(!sp);
-              lock_release(&sleepLock);
               return;
           }
+
+          // Grab the lock to avoid races with Thread::wake_up()
+          lock_grab(&sleepLock);
 
           // If we are master and all slaves have finished don't go to sleep
           if (sp && all_slaves_finished(sp))
