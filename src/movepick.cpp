@@ -255,7 +255,7 @@ void MovePicker::score_captures() {
                   - piece_type(pos.piece_on(move_from(m)));
 
       if (move_is_promotion(m))
-          cur->score += QueenValueMidgame;
+          cur->score += piece_value_midgame(Piece(promotion_piece_type(m)));
   }
 }
 
@@ -331,8 +331,7 @@ Move MovePicker::get_next_move() {
               if (seeValue >= captureThreshold)
                   return move;
 
-              // Losing capture, move it to the tail of the array, note
-              // that move has now been already checked for pseudo legality.
+              // Losing capture, move it to the tail of the array
               (--badCaptures)->move = move;
               badCaptures->score = seeValue;
           }
