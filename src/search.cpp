@@ -780,8 +780,18 @@ namespace {
                                     : can_return_tt(tte, depth, beta, ss->ply)))
     {
         TT.refresh(tte);
-        ss->bestMove = ttMove; // Can be MOVE_NONE
-        return value_from_tt(tte->value(), ss->ply);
+        ss->bestMove = move = ttMove; // Can be MOVE_NONE
+        value = value_from_tt(tte->value(), ss->ply);
+
+        if (   value >= beta
+            && move
+            && !pos.move_is_capture_or_promotion(move)
+            && move != ss->killers[0])
+        {
+            ss->killers[1] = ss->killers[0];
+            ss->killers[0] = move;
+        }
+        return value;
     }
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
