@@ -1549,8 +1549,8 @@ split_point_start: // At split points actual search starts from here
     Piece p1, p2;
     Square ksq;
 
-    assert(m1 && move_is_ok(m1));
-    assert(m2 && move_is_ok(m2));
+    assert(move_is_ok(m1));
+    assert(move_is_ok(m2));
 
     // Case 1: The moving piece is the same in both moves
     f2 = move_from(m2);
@@ -1626,7 +1626,7 @@ split_point_start: // At split points actual search starts from here
   bool connected_threat(const Position& pos, Move m, Move threat) {
 
     assert(move_is_ok(m));
-    assert(threat && move_is_ok(threat));
+    assert(move_is_ok(threat));
     assert(!pos.move_is_capture_or_promotion(m));
     assert(!pos.move_is_passed_pawn_push(m));
 
