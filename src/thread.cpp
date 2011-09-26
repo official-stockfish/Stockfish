@@ -192,14 +192,19 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
+  // Wake up all the slave threads at once. This is faster than "wake and wait"
+  // for each thread and avoids a rare crash once every 10K games under Linux.
+  for (int i = 1; i < MAX_THREADS; i++)
+  {
+      threads[i].do_terminate = true;
+      threads[i].wake_up();
+  }
+
   for (int i = 0; i < MAX_THREADS; i++)
   {
-      // Wake up all the slave threads and wait for termination
       if (i != 0)
       {
-          threads[i].do_terminate = true;
-          threads[i].wake_up();
-
+          // Wait for slave termination
 #if defined(_MSC_VER)
           WaitForSingleObject(threads[i].handle, 0);
           CloseHandle(threads[i].handle);
