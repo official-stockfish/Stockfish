@@ -44,20 +44,20 @@ namespace {
     // all squares attacked by the given color.
     Bitboard attackedBy[2][8];
 
-    // kingZone[color] is the zone around the enemy king which is considered
+    // kingRing[color] is the zone around the king which is considered
     // by the king safety evaluation. This consists of the squares directly
     // adjacent to the king, and the three (or two, for a king on an edge file)
     // squares two ranks in front of the king. For instance, if black's king
-    // is on g8, kingZone[WHITE] is a bitboard containing the squares f8, h8,
+    // is on g8, kingRing[BLACK] is a bitboard containing the squares f8, h8,
     // f7, g7, h7, f6, g6 and h6.
-    Bitboard kingZone[2];
+    Bitboard kingRing[2];
 
     // kingAttackersCount[color] is the number of pieces of the given color
-    // which attack a square in the kingZone of the enemy king.
+    // which attack a square in the kingRing of the enemy king.
     int kingAttackersCount[2];
 
     // kingAttackersWeight[color] is the sum of the "weight" of the pieces of the
-    // given color which attack a square in the kingZone of the enemy king. The
+    // given color which attack a square in the kingRing of the enemy king. The
     // weights of the individual piece types are given by the variables
     // QueenAttackWeight, RookAttackWeight, BishopAttackWeight and
     // KnightAttackWeight in evaluate.cpp
@@ -436,12 +436,12 @@ namespace {
     if (   pos.piece_count(Us, QUEEN)
         && pos.non_pawn_material(Us) >= QueenValueMidgame + RookValueMidgame)
     {
-        ei.kingZone[Us] = (b | (Us == WHITE ? b >> 8 : b << 8));
+        ei.kingRing[Them] = (b | (Us == WHITE ? b >> 8 : b << 8));
         b &= ei.attackedBy[Us][PAWN];
         ei.kingAttackersCount[Us] = b ? count_1s<Max15>(b) / 2 : 0;
         ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = 0;
     } else
-        ei.kingZone[Us] = ei.kingAttackersCount[Us] = 0;
+        ei.kingRing[Them] = ei.kingAttackersCount[Us] = 0;
   }
 
 
@@ -505,7 +505,7 @@ namespace {
         ei.attackedBy[Us][Piece] |= b;
 
         // King attacks
-        if (b & ei.kingZone[Us])
+        if (b & ei.kingRing[Them])
         {
             ei.kingAttackersCount[Us]++;
             ei.kingAttackersWeight[Us] += KingAttackWeights[Piece];
