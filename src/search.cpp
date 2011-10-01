@@ -534,10 +534,8 @@ namespace {
 
         Rml.bestMoveChanges = 0;
 
-        // MultiPV iteration loop. At depth 1 perform at least 2 iterations to
-        // get a score of the second best move for easy move detection.
-        int e = Min(Max(MultiPV, 2 * int(depth == 1)), (int)Rml.size());
-        for (MultiPVIteration = 0; MultiPVIteration < e; MultiPVIteration++)
+        // MultiPV iteration loop
+        for (MultiPVIteration = 0; MultiPVIteration < Min(MultiPV, (int)Rml.size()); MultiPVIteration++)
         {
             // Calculate dynamic aspiration window based on previous iterations
             if (depth >= 5 && abs(Rml[MultiPVIteration].prevScore) < VALUE_KNOWN_WIN)
@@ -1012,7 +1010,8 @@ split_point_start: // At split points actual search starts from here
                    << " currmovenumber " << moveCount + MultiPVIteration << endl;
       }
 
-      isPvMove = (PvNode && moveCount == 1);
+      // At Root and at first iteration do a PV search on all the moves to score root moves
+      isPvMove = (PvNode && moveCount <= (RootNode && depth <= ONE_PLY ? MAX_MOVES : 1));
       givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.move_is_capture_or_promotion(move);
 
