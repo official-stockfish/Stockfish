@@ -363,7 +363,7 @@ int64_t perft(Position& pos, Depth depth) {
 
 bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
-  static Book book;
+  static Book book; // Define static to initialize the PRNG only once
 
   // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = false;
