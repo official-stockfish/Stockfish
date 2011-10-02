@@ -325,7 +325,7 @@ namespace {
         } while (b);
 
         offset += maxKey;
-        booster = MagicBoosters[CpuIs64Bit][square_rank(s)];
+        booster = MagicBoosters[CpuIs64Bit][rank_of(s)];
 
         // Then find a possible magic and the corresponding attacks
         do {

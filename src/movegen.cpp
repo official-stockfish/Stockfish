@@ -52,7 +52,7 @@ namespace {
     Bitboard b = pos.attacks_from<Pt>(from) & pos.empty_squares();
 
     if (Pt == KING)
-        b &= ~QueenPseudoAttacks[pos.king_square(opposite_color(pos.side_to_move()))];
+        b &= ~QueenPseudoAttacks[pos.king_square(flip(pos.side_to_move()))];
 
     SERIALIZE_MOVES(b);
     return mlist;
@@ -158,7 +158,7 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   Bitboard target;
 
   if (Type == MV_CAPTURE || Type == MV_NON_EVASION)
-      target = pos.pieces(opposite_color(us));
+      target = pos.pieces(flip(us));
   else if (Type == MV_NON_CAPTURE)
       target = pos.empty_squares();
   else
@@ -207,9 +207,9 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   Bitboard b, dc;
   Square from;
   Color us = pos.side_to_move();
-  Square ksq = pos.king_square(opposite_color(us));
+  Square ksq = pos.king_square(flip(us));
 
-  assert(pos.piece_on(ksq) == make_piece(opposite_color(us), KING));
+  assert(pos.piece_on(ksq) == make_piece(flip(us), KING));
 
   // Discovered non-capture checks
   b = dc = pos.discovered_check_candidates();
@@ -217,7 +217,7 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   while (b)
   {
      from = pop_1st_bit(&b);
-     switch (piece_type(pos.piece_on(from)))
+     switch (type_of(pos.piece_on(from)))
      {
       case PAWN:   /* Will be generated togheter with pawns direct checks */     break;
       case KNIGHT: mlist = generate_discovered_checks<KNIGHT>(pos, mlist, from); break;
@@ -264,9 +264,9 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
       checkersCnt++;
       checksq = pop_1st_bit(&b);
 
-      assert(piece_color(pos.piece_on(checksq)) == opposite_color(us));
+      assert(color_of(pos.piece_on(checksq)) == flip(us));
 
-      switch (piece_type(pos.piece_on(checksq)))
+      switch (type_of(pos.piece_on(checksq)))
       {
       case BISHOP: sliderAttacks |= BishopPseudoAttacks[checksq]; break;
       case ROOK:   sliderAttacks |= RookPseudoAttacks[checksq];   break;
@@ -473,8 +473,8 @@ namespace {
     // En passant captures
     if ((Type == MV_CAPTURE || Type == MV_EVASION) && pos.ep_square() != SQ_NONE)
     {
-        assert(Us != WHITE || square_rank(pos.ep_square()) == RANK_6);
-        assert(Us != BLACK || square_rank(pos.ep_square()) == RANK_3);
+        assert(Us != WHITE || rank_of(pos.ep_square()) == RANK_6);
+        assert(Us != BLACK || rank_of(pos.ep_square()) == RANK_3);
 
         // An en passant capture can be an evasion only if the checking piece
         // is the double pushed pawn and so is in the target. Otherwise this
@@ -499,7 +499,7 @@ namespace {
   MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, Color us) {
 
     CastleRight f = CastleRight((Side == KING_SIDE ? WHITE_OO : WHITE_OOO) << us);
-    Color them = opposite_color(us);
+    Color them = flip(us);
 
     // After castling, the rook and king's final positions are exactly the same
     // in Chess960 as they would be in standard chess.

@@ -91,7 +91,7 @@ void uci_loop() {
           pos.print();
 
       else if (token == "flip")
-          pos.flip();
+          pos.flip_me();
 
       else if (token == "eval")
       {

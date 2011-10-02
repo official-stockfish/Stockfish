@@ -82,7 +82,7 @@ struct EndgameBase {
 template<EndgameType E, typename T = typename eg_family<E>::type>
 struct Endgame : public EndgameBase<T> {
 
-  explicit Endgame(Color c) : strongerSide(c), weakerSide(opposite_color(c)) {}
+  explicit Endgame(Color c) : strongerSide(c), weakerSide(flip(c)) {}
   Color color() const { return strongerSide; }
   T apply(const Position&) const;
 

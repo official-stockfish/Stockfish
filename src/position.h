@@ -204,7 +204,7 @@ public:
 
   // Position consistency check, for debugging
   bool is_ok(int* failedStep = NULL) const;
-  void flip();
+  void flip_me();
 
   // Global initialization
   static void init();
@@ -380,7 +380,7 @@ inline bool Position::in_check() const {
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
-  return !(pieces(PAWN, opposite_color(c)) & passed_pawn_mask(c, s));
+  return !(pieces(PAWN, flip(c)) & passed_pawn_mask(c, s));
 }
 
 inline Key Position::get_key() const {

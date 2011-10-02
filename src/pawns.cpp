@@ -132,8 +132,8 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   {
       assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
-      f = square_file(s);
-      r = square_rank(s);
+      f = file_of(s);
+      r = rank_of(s);
 
       // This file cannot be half open
       pi->halfOpenFiles[Us] &= ~(1 << f);

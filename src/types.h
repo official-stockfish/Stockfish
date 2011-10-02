@@ -370,15 +370,15 @@ inline Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) | pt);
 }
 
-inline PieceType piece_type(Piece p)  {
+inline PieceType type_of(Piece p)  {
   return PieceType(p & 7);
 }
 
-inline Color piece_color(Piece p) {
+inline Color color_of(Piece p) {
   return Color(p >> 3);
 }
 
-inline Color opposite_color(Color c) {
+inline Color flip(Color c) {
   return Color(c ^ 1);
 }
 
@@ -395,19 +395,19 @@ inline bool square_is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
 
-inline File square_file(Square s) {
+inline File file_of(Square s) {
   return File(s & 7);
 }
 
-inline Rank square_rank(Square s) {
+inline Rank rank_of(Square s) {
   return Rank(s >> 3);
 }
 
-inline Square flip_square(Square s) {
+inline Square flip(Square s) {
   return Square(s ^ 56);
 }
 
-inline Square flop_square(Square s) {
+inline Square mirror(Square s) {
   return Square(s ^ 7);
 }
 
@@ -420,11 +420,11 @@ inline Rank relative_rank(Color c, Rank r) {
 }
 
 inline Rank relative_rank(Color c, Square s) {
-  return relative_rank(c, square_rank(s));
+  return relative_rank(c, rank_of(s));
 }
 
 inline SquareColor square_color(Square s) {
-  return SquareColor(int(square_rank(s) + s) & 1);
+  return SquareColor(int(rank_of(s) + s) & 1);
 }
 
 inline bool opposite_color_squares(Square s1, Square s2) {
@@ -433,11 +433,11 @@ inline bool opposite_color_squares(Square s1, Square s2) {
 }
 
 inline int file_distance(Square s1, Square s2) {
-  return abs(square_file(s1) - square_file(s2));
+  return abs(file_of(s1) - file_of(s2));
 }
 
 inline int rank_distance(Square s1, Square s2) {
-  return abs(square_rank(s1) - square_rank(s2));
+  return abs(rank_of(s1) - rank_of(s2));
 }
 
 inline int square_distance(Square s1, Square s2) {
@@ -453,7 +453,7 @@ inline char rank_to_char(Rank r) {
 }
 
 inline const std::string square_to_string(Square s) {
-  char ch[] = { file_to_char(square_file(s)), rank_to_char(square_rank(s)), 0 };
+  char ch[] = { file_to_char(file_of(s)), rank_to_char(rank_of(s)), 0 };
   return std::string(ch);
 }
 

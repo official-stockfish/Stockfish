@@ -113,7 +113,7 @@ inline Bitboard rank_bb(Rank r) {
 }
 
 inline Bitboard rank_bb(Square s) {
-  return RankBB[square_rank(s)];
+  return RankBB[rank_of(s)];
 }
 
 inline Bitboard file_bb(File f) {
@@ -121,7 +121,7 @@ inline Bitboard file_bb(File f) {
 }
 
 inline Bitboard file_bb(Square s) {
-  return FileBB[square_file(s)];
+  return FileBB[file_of(s)];
 }
 
 
@@ -133,7 +133,7 @@ inline Bitboard neighboring_files_bb(File f) {
 }
 
 inline Bitboard neighboring_files_bb(Square s) {
-  return NeighboringFilesBB[square_file(s)];
+  return NeighboringFilesBB[file_of(s)];
 }
 
 
@@ -145,7 +145,7 @@ inline Bitboard this_and_neighboring_files_bb(File f) {
 }
 
 inline Bitboard this_and_neighboring_files_bb(Square s) {
-  return ThisAndNeighboringFilesBB[square_file(s)];
+  return ThisAndNeighboringFilesBB[file_of(s)];
 }
 
 
@@ -160,7 +160,7 @@ inline Bitboard in_front_bb(Color c, Rank r) {
 }
 
 inline Bitboard in_front_bb(Color c, Square s) {
-  return InFrontBB[c][square_rank(s)];
+  return InFrontBB[c][rank_of(s)];
 }
 
 

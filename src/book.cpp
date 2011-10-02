@@ -335,7 +335,7 @@ namespace {
         result ^= ZobCastle[3];
 
     if (pos.ep_square() != SQ_NONE)
-        result ^= ZobEnPassant[square_file(pos.ep_square())];
+        result ^= ZobEnPassant[file_of(pos.ep_square())];
 
     if (pos.side_to_move() == WHITE)
         result ^= ZobTurn[0];

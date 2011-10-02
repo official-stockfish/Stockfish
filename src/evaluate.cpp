@@ -546,7 +546,7 @@ namespace {
             // problem, especially when that pawn is also blocked.
             if (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1))
             {
-                Square d = pawn_push(Us) + (square_file(s) == FILE_A ? DELTA_E : DELTA_W);
+                Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                 {
                     if (!pos.square_is_empty(s + d + pawn_push(Us)))
@@ -563,7 +563,7 @@ namespace {
         if (Piece == ROOK)
         {
             // Open and half-open files
-            f = square_file(s);
+            f = file_of(s);
             if (ei.pi->file_is_half_open(Us, f))
             {
                 if (ei.pi->file_is_half_open(Them, f))
@@ -579,21 +579,21 @@ namespace {
 
             ksq = pos.king_square(Us);
 
-            if (    square_file(ksq) >= FILE_E
-                &&  square_file(s) > square_file(ksq)
-                && (relative_rank(Us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+            if (    file_of(ksq) >= FILE_E
+                &&  file_of(s) > file_of(ksq)
+                && (relative_rank(Us, ksq) == RANK_1 || rank_of(ksq) == rank_of(s)))
             {
                 // Is there a half-open file between the king and the edge of the board?
-                if (!ei.pi->has_open_file_to_right(Us, square_file(ksq)))
+                if (!ei.pi->has_open_file_to_right(Us, file_of(ksq)))
                     score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
                                                            : (TrappedRookPenalty - mob * 16), 0);
             }
-            else if (    square_file(ksq) <= FILE_D
-                     &&  square_file(s) < square_file(ksq)
-                     && (relative_rank(Us, ksq) == RANK_1 || square_rank(ksq) == square_rank(s)))
+            else if (    file_of(ksq) <= FILE_D
+                     &&  file_of(s) < file_of(ksq)
+                     && (relative_rank(Us, ksq) == RANK_1 || rank_of(ksq) == rank_of(s)))
             {
                 // Is there a half-open file between the king and the edge of the board?
-                if (!ei.pi->has_open_file_to_left(Us, square_file(ksq)))
+                if (!ei.pi->has_open_file_to_left(Us, file_of(ksq)))
                     score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
                                                            : (TrappedRookPenalty - mob * 16), 0);
             }
@@ -816,7 +816,7 @@ namespace {
             ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 3 * rr);
 
             // If blockSq is not the queening square then consider also a second push
-            if (square_rank(blockSq) != (Us == WHITE ? RANK_8 : RANK_1))
+            if (rank_of(blockSq) != (Us == WHITE ? RANK_8 : RANK_1))
                 ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr);
 
             // If the pawn is free to advance, increase bonus
@@ -866,7 +866,7 @@ namespace {
         // we try the following: Increase the value for rook pawns if the
         // other side has no pieces apart from a knight, and decrease the
         // value if the other side has a rook or queen.
-        if (square_file(s) == FILE_A || square_file(s) == FILE_H)
+        if (file_of(s) == FILE_A || file_of(s) == FILE_H)
         {
             if (pos.non_pawn_material(Them) <= KnightValueMidgame)
                 ebonus += ebonus / 4;
@@ -902,7 +902,7 @@ namespace {
     for (c = WHITE; c <= BLACK; c++)
     {
         // Skip if other side has non-pawn pieces
-        if (pos.non_pawn_material(opposite_color(c)))
+        if (pos.non_pawn_material(flip(c)))
             continue;
 
         b = ei.pi->passed_pawns(c);
@@ -910,12 +910,12 @@ namespace {
         while (b)
         {
             s = pop_1st_bit(&b);
-            queeningSquare = relative_square(c, make_square(square_file(s), RANK_8));
+            queeningSquare = relative_square(c, make_square(file_of(s), RANK_8));
             queeningPath = squares_in_front_of(c, s);
 
             // Compute plies to queening and check direct advancement
             movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(c, s) == RANK_2);
-            oppMovesToGo = square_distance(pos.king_square(opposite_color(c)), queeningSquare) - int(c != pos.side_to_move());
+            oppMovesToGo = square_distance(pos.king_square(flip(c)), queeningSquare) - int(c != pos.side_to_move());
             pathDefended = ((ei.attackedBy[c][0] & queeningPath) == queeningPath);
 
             if (movesToGo >= oppMovesToGo && !pathDefended)
@@ -943,7 +943,7 @@ namespace {
         return SCORE_ZERO;
 
     winnerSide = (pliesToQueen[WHITE] < pliesToQueen[BLACK] ? WHITE : BLACK);
-    loserSide = opposite_color(winnerSide);
+    loserSide = flip(winnerSide);
 
     // Step 3. Can the losing side possibly create a new passed pawn and thus prevent the loss?
     b = candidates = pos.pieces(PAWN, loserSide);
@@ -953,7 +953,7 @@ namespace {
         s = pop_1st_bit(&b);
 
         // Compute plies from queening
-        queeningSquare = relative_square(loserSide, make_square(square_file(s), RANK_8));
+        queeningSquare = relative_square(loserSide, make_square(file_of(s), RANK_8));
         movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 
@@ -977,7 +977,7 @@ namespace {
         minKingDist = kingptg = 256;
 
         // Compute plies from queening
-        queeningSquare = relative_square(loserSide, make_square(square_file(s), RANK_8));
+        queeningSquare = relative_square(loserSide, make_square(file_of(s), RANK_8));
         movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 

@@ -104,9 +104,9 @@ namespace {
 
   int compute_index(Square wksq, Square bksq, Square wpsq, Color stm) {
 
-    assert(square_file(wpsq) <= FILE_D);
+    assert(file_of(wpsq) <= FILE_D);
 
-    int p = square_file(wpsq) + 4 * (square_rank(wpsq) - 1);
+    int p = file_of(wpsq) + 4 * (rank_of(wpsq) - 1);
     int r = stm + 2 * bksq + 128 * wksq + 8192 * p;
 
     assert(r >= 0 && r < IndexMax);
@@ -140,7 +140,7 @@ namespace {
 
     // The position is an immediate win if it is white to move and the
     // white pawn can be promoted without getting captured.
-    if (   square_rank(pawnSquare) == RANK_7
+    if (   rank_of(pawnSquare) == RANK_7
         && sideToMove == WHITE
         && whiteKingSquare != pawnSquare + DELTA_N
         && (   square_distance(blackKingSquare, pawnSquare + DELTA_N) > 1
@@ -161,19 +161,19 @@ namespace {
 
     // Case 3: Black king in front of white pawn
     if (   blackKingSquare == pawnSquare + DELTA_N
-        && square_rank(pawnSquare) < RANK_7)
+        && rank_of(pawnSquare) < RANK_7)
         return RESULT_DRAW;
 
     //  Case 4: White king in front of pawn and black has opposition
     if (   whiteKingSquare == pawnSquare + DELTA_N
         && blackKingSquare == pawnSquare + DELTA_N + DELTA_N + DELTA_N
-        && square_rank(pawnSquare) < RANK_5
+        && rank_of(pawnSquare) < RANK_5
         && sideToMove == WHITE)
         return RESULT_DRAW;
 
     // Case 5: Stalemate with rook pawn
     if (   blackKingSquare == SQ_A8
-        && square_file(pawnSquare) == FILE_A)
+        && file_of(pawnSquare) == FILE_A)
         return RESULT_DRAW;
 
     return RESULT_UNKNOWN;
@@ -213,7 +213,7 @@ namespace {
     }
 
     // Pawn moves
-    if (square_rank(pawnSquare) < RANK_7)
+    if (rank_of(pawnSquare) < RANK_7)
     {
         s = pawnSquare + DELTA_N;
         r = db[compute_index(whiteKingSquare, blackKingSquare, s, BLACK)];
@@ -225,7 +225,7 @@ namespace {
             unknownFound = true;
 
         // Double pawn push
-        if (square_rank(s) == RANK_3 && r != RESULT_INVALID)
+        if (rank_of(s) == RANK_3 && r != RESULT_INVALID)
         {
             s += DELTA_N;
             r = db[compute_index(whiteKingSquare, blackKingSquare, s, BLACK)];
