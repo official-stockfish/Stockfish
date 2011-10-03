@@ -289,7 +289,7 @@ namespace {
         && type_of(pos.piece_on(move_to(m))) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - piece_value_midgame(pos.piece_on(move_to(m))) == VALUE_ZERO)
-        && !move_is_special(m))
+        && !is_special(m))
     {
         result += PawnEndgameExtension[PvNode];
         *dangerous = true;
@@ -783,7 +783,7 @@ namespace {
 
         if (   value >= beta
             && move
-            && !pos.move_is_capture_or_promotion(move)
+            && !pos.is_capture_or_promotion(move)
             && move != ss->killers[0])
         {
             ss->killers[1] = ss->killers[0];
@@ -972,7 +972,7 @@ split_point_start: // At split points actual search starts from here
            && (move = mp.get_next_move()) != MOVE_NONE
            && !thread.cutoff_occurred())
     {
-      assert(move_is_ok(move));
+      assert(is_ok(move));
 
       if (move == excludedMove)
           continue;
@@ -1013,7 +1013,7 @@ split_point_start: // At split points actual search starts from here
       // At Root and at first iteration do a PV search on all the moves to score root moves
       isPvMove = (PvNode && moveCount <= (RootNode && depth <= ONE_PLY ? MAX_MOVES : 1));
       givesCheck = pos.move_gives_check(move, ci);
-      captureOrPromotion = pos.move_is_capture_or_promotion(move);
+      captureOrPromotion = pos.is_capture_or_promotion(move);
 
       // Step 12. Decide the new search depth
       ext = extension<PvNode>(pos, move, captureOrPromotion, givesCheck, &dangerous);
@@ -1053,7 +1053,7 @@ split_point_start: // At split points actual search starts from here
           && !inCheck
           && !dangerous
           &&  move != ttMove
-          && !move_is_castle(move))
+          && !is_castle(move))
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
@@ -1127,7 +1127,7 @@ split_point_start: // At split points actual search starts from here
           if (    depth > 3 * ONE_PLY
               && !captureOrPromotion
               && !dangerous
-              && !move_is_castle(move)
+              && !is_castle(move)
               &&  ss->killers[0] != move
               &&  ss->killers[1] != move
               && (ss->reduction = reduction<PvNode>(depth, moveCount)) != DEPTH_ZERO)
@@ -1252,7 +1252,7 @@ split_point_start: // At split points actual search starts from here
 
         // Update killers and history only for non capture moves that fails high
         if (    bestValue >= beta
-            && !pos.move_is_capture_or_promotion(move))
+            && !pos.is_capture_or_promotion(move))
         {
             if (move != ss->killers[0])
             {
@@ -1372,7 +1372,7 @@ split_point_start: // At split points actual search starts from here
     while (   bestValue < beta
            && (move = mp.get_next_move()) != MOVE_NONE)
     {
-      assert(move_is_ok(move));
+      assert(is_ok(move));
 
       givesCheck = pos.move_gives_check(move, ci);
 
@@ -1382,12 +1382,12 @@ split_point_start: // At split points actual search starts from here
           && !givesCheck
           &&  move != ttMove
           &&  enoughMaterial
-          && !move_is_promotion(move)
-          && !pos.move_is_passed_pawn_push(move))
+          && !is_promotion(move)
+          && !pos.is_passed_pawn_push(move))
       {
           futilityValue =  futilityBase
                          + piece_value_endgame(pos.piece_on(move_to(move)))
-                         + (move_is_ep(move) ? PawnValueEndgame : VALUE_ZERO);
+                         + (is_enpassant(move) ? PawnValueEndgame : VALUE_ZERO);
 
           if (futilityValue < beta)
           {
@@ -1408,14 +1408,14 @@ split_point_start: // At split points actual search starts from here
       evasionPrunable =   !PvNode
                        && inCheck
                        && bestValue > VALUE_MATED_IN_PLY_MAX
-                       && !pos.move_is_capture(move)
+                       && !pos.is_capture(move)
                        && !pos.can_castle(pos.side_to_move());
 
       // Don't search moves with negative SEE values
       if (   !PvNode
           && (!inCheck || evasionPrunable)
           &&  move != ttMove
-          && !move_is_promotion(move)
+          && !is_promotion(move)
           &&  pos.see_sign(move) < 0)
           continue;
 
@@ -1424,7 +1424,7 @@ split_point_start: // At split points actual search starts from here
           && !inCheck
           &&  givesCheck
           &&  move != ttMove
-          && !pos.move_is_capture_or_promotion(move)
+          && !pos.is_capture_or_promotion(move)
           &&  ss->eval + PawnValueMidgame / 4 < beta
           && !check_is_dangerous(pos, move, futilityBase, beta, &bestValue))
       {
@@ -1548,8 +1548,8 @@ split_point_start: // At split points actual search starts from here
     Piece p1, p2;
     Square ksq;
 
-    assert(move_is_ok(m1));
-    assert(move_is_ok(m2));
+    assert(is_ok(m1));
+    assert(is_ok(m2));
 
     // Case 1: The moving piece is the same in both moves
     f2 = move_from(m2);
@@ -1624,10 +1624,10 @@ split_point_start: // At split points actual search starts from here
 
   bool connected_threat(const Position& pos, Move m, Move threat) {
 
-    assert(move_is_ok(m));
-    assert(move_is_ok(threat));
-    assert(!pos.move_is_capture_or_promotion(m));
-    assert(!pos.move_is_passed_pawn_push(m));
+    assert(is_ok(m));
+    assert(is_ok(threat));
+    assert(!pos.is_capture_or_promotion(m));
+    assert(!pos.is_passed_pawn_push(m));
 
     Square mfrom, mto, tfrom, tto;
 
@@ -1642,7 +1642,7 @@ split_point_start: // At split points actual search starts from here
 
     // Case 2: If the threatened piece has value less than or equal to the
     // value of the threatening piece, don't prune moves which defend it.
-    if (   pos.move_is_capture(threat)
+    if (   pos.is_capture(threat)
         && (   piece_value_midgame(pos.piece_on(tfrom)) >= piece_value_midgame(pos.piece_on(tto))
             || type_of(pos.piece_on(tfrom)) == KING)
         && pos.move_attacks_square(m, tto))
@@ -1722,7 +1722,7 @@ split_point_start: // At split points actual search starts from here
         && before != VALUE_NONE
         && after != VALUE_NONE
         && pos.captured_piece_type() == PIECE_TYPE_NONE
-        && !move_is_special(m))
+        && !is_special(m))
         H.update_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
@@ -2083,7 +2083,7 @@ split_point_start: // At split points actual search starts from here
     int ply = 1;
     Move m = pv[0];
 
-    assert(m != MOVE_NONE && pos.move_is_pl(m));
+    assert(m != MOVE_NONE && pos.is_pseudo_legal(m));
 
     pv.clear();
     pv.push_back(m);
@@ -2091,7 +2091,7 @@ split_point_start: // At split points actual search starts from here
 
     while (   (tte = TT.probe(pos.get_key())) != NULL
            && tte->move() != MOVE_NONE
-           && pos.move_is_pl(tte->move())
+           && pos.is_pseudo_legal(tte->move())
            && pos.pl_move_is_legal(tte->move(), pos.pinned_pieces())
            && ply < PLY_MAX
            && (!pos.is_draw<false>() || ply < 2))
@@ -2117,7 +2117,7 @@ split_point_start: // At split points actual search starts from here
     Value v, m = VALUE_NONE;
     int ply = 0;
 
-    assert(pv[0] != MOVE_NONE && pos.move_is_pl(pv[0]));
+    assert(pv[0] != MOVE_NONE && pos.is_pseudo_legal(pv[0]));
 
     do {
         k = pos.get_key();

@@ -82,19 +82,19 @@ inline Square move_to(Move m) {
   return Square(m & 0x3F);
 }
 
-inline bool move_is_special(Move m) {
+inline bool is_special(Move m) {
   return m & (3 << 14);
 }
 
-inline bool move_is_promotion(Move m) {
+inline bool is_promotion(Move m) {
   return (m & (3 << 14)) == (1 << 14);
 }
 
-inline int move_is_ep(Move m) {
+inline int is_enpassant(Move m) {
   return (m & (3 << 14)) == (2 << 14);
 }
 
-inline int move_is_castle(Move m) {
+inline int is_castle(Move m) {
   return (m & (3 << 14)) == (3 << 14);
 }
 
@@ -110,7 +110,7 @@ inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
   return Move(to | (from << 6) | (1 << 14) | ((promotion - 2) << 12)) ;
 }
 
-inline Move make_ep_move(Square from, Square to) {
+inline Move make_enpassant_move(Square from, Square to) {
   return Move(to | (from << 6) | (2 << 14));
 }
 
@@ -118,7 +118,7 @@ inline Move make_castle_move(Square from, Square to) {
   return Move(to | (from << 6) | (3 << 14));
 }
 
-inline bool move_is_ok(Move m) {
+inline bool is_ok(Move m) {
   return move_from(m) != move_to(m); // Catches also MOVE_NONE
 }
 

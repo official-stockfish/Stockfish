@@ -96,7 +96,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       phasePtr = MainSearchTable;
   }
 
-  ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
+  ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
   phasePtr += int(ttMove == MOVE_NONE) - 1;
   go_next_phase();
 }
@@ -117,7 +117,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h, S
       // Skip TT move if is not a capture or a promotion, this avoids
       // qsearch tree explosion due to a possible perpetual check or
       // similar rare cases when TT table is full.
-      if (ttm != MOVE_NONE && !pos.move_is_capture_or_promotion(ttm))
+      if (ttm != MOVE_NONE && !pos.is_capture_or_promotion(ttm))
           ttm = MOVE_NONE;
   }
   else
@@ -127,7 +127,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h, S
       ttm = MOVE_NONE;
   }
 
-  ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
+  ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
   phasePtr += int(ttMove == MOVE_NONE) - 1;
   go_next_phase();
 }
@@ -142,10 +142,10 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType 
   phasePtr = ProbCutTable;
 
   if (   ttm != MOVE_NONE
-      && (!pos.move_is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
+      && (!pos.is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
       ttm = MOVE_NONE;
 
-  ttMove = (ttm && pos.move_is_pl(ttm) ? ttm : MOVE_NONE);
+  ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
   phasePtr += int(ttMove == MOVE_NONE) - 1;
   go_next_phase();
 }
@@ -254,7 +254,7 @@ void MovePicker::score_captures() {
       cur->score =  piece_value_midgame(pos.piece_on(move_to(m)))
                   - type_of(pos.piece_on(move_from(m)));
 
-      if (move_is_promotion(m))
+      if (is_promotion(m))
           cur->score += piece_value_midgame(Piece(promotion_piece_type(m)));
   }
 }
@@ -289,7 +289,7 @@ void MovePicker::score_evasions() {
       m = cur->move;
       if ((seeScore = pos.see_sign(m)) < 0)
           cur->score = seeScore - History::MaxValue; // Be sure we are at the bottom
-      else if (pos.move_is_capture(m))
+      else if (pos.is_capture(m))
           cur->score =  piece_value_midgame(pos.piece_on(move_to(m)))
                       - type_of(pos.piece_on(move_from(m))) + History::MaxValue;
       else
@@ -347,9 +347,9 @@ Move MovePicker::get_next_move() {
       case PH_KILLERS:
           move = (curMove++)->move;
           if (   move != MOVE_NONE
-              && pos.move_is_pl(move)
+              && pos.is_pseudo_legal(move)
               && move != ttMove
-              && !pos.move_is_capture(move))
+              && !pos.is_capture(move))
               return move;
           break;
 

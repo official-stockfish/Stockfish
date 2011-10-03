@@ -489,7 +489,7 @@ namespace {
         while (b1)
         {
             to = pop_1st_bit(&b1);
-            (*mlist++).move = make_ep_move(to, pos.ep_square());
+            (*mlist++).move = make_enpassant_move(to, pos.ep_square());
         }
     }
     return mlist;

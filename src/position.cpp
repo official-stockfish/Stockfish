@@ -458,7 +458,7 @@ Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
 
 bool Position::move_attacks_square(Move m, Square s) const {
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
   assert(square_is_ok(s));
 
   Bitboard occ, xray;
@@ -486,7 +486,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
 bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
   assert(pinned == pinned_pieces());
 
   Color us = side_to_move();
@@ -498,7 +498,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
   // the move is made.
-  if (move_is_ep(m))
+  if (is_enpassant(m))
   {
       Color them = flip(us);
       Square to = move_to(m);
@@ -523,7 +523,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
   if (type_of(piece_on(from)) == KING)
-      return move_is_castle(m) || !(attackers_to(move_to(m)) & pieces(flip(us)));
+      return is_castle(m) || !(attackers_to(move_to(m)) & pieces(flip(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -533,7 +533,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 }
 
 
-/// Position::move_is_legal() takes a move and tests whether the move
+/// Position::move_is_legal() takes a random move and tests whether the move
 /// is legal. This version is not very fast and should be used only
 /// in non time-critical paths.
 
@@ -547,10 +547,11 @@ bool Position::move_is_legal(const Move m) const {
 }
 
 
-/// Fast version of Position::move_is_pl() that takes a move and a bitboard
-/// of pinned pieces as input, and tests whether the move is pseudo legal.
+/// Position::is_pseudo_legal() takes a random move and tests whether the move
+/// is pseudo legal. It is used to validate moves from TT that can be corrupted
+/// due to SMP concurrent access or hash position key aliasing.
 
-bool Position::move_is_pl(const Move m) const {
+bool Position::is_pseudo_legal(const Move m) const {
 
   Color us = sideToMove;
   Color them = flip(sideToMove);
@@ -559,7 +560,7 @@ bool Position::move_is_pl(const Move m) const {
   Piece pc = piece_on(from);
 
   // Use a slower but simpler function for uncommon cases
-  if (move_is_special(m))
+  if (is_special(m))
       return move_is_legal(m);
 
   // Is not a promotion, so promotion piece must be empty
@@ -670,11 +671,11 @@ bool Position::move_is_pl(const Move m) const {
 }
 
 
-/// Position::move_gives_check() tests whether a pseudo-legal move is a check
+/// Position::move_gives_check() tests whether a pseudo-legal move gives a check
 
 bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates());
   assert(color_of(piece_on(move_from(m))) == side_to_move());
 
@@ -696,7 +697,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   }
 
   // Can we skip the ugly special cases ?
-  if (!move_is_special(m))
+  if (!is_special(m))
       return false;
 
   Color us = side_to_move();
@@ -704,7 +705,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   Square ksq = king_square(flip(us));
 
   // Promotion with check ?
-  if (move_is_promotion(m))
+  if (is_promotion(m))
   {
       clear_bit(&b, from);
 
@@ -727,7 +728,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   // of direct checks and ordinary discovered check, the only case we
   // need to handle is the unusual case of a discovered check through
   // the captured pawn.
-  if (move_is_ep(m))
+  if (is_enpassant(m))
   {
       Square capsq = make_square(file_of(to), rank_of(from));
       clear_bit(&b, from);
@@ -738,7 +739,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   }
 
   // Castling with check ?
-  if (move_is_castle(m))
+  if (is_castle(m))
   {
       Square kfrom, kto, rfrom, rto;
       kfrom = from;
@@ -775,7 +776,7 @@ void Position::do_move(Move m, StateInfo& newSt) {
 
 void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveIsCheck) {
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
   assert(&newSt != st);
 
   nodes++;
@@ -805,7 +806,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->rule50++;
   st->pliesFromNull++;
 
-  if (move_is_castle(m))
+  if (is_castle(m))
   {
       st->key = key;
       do_castle_move(m);
@@ -816,8 +817,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   Color them = flip(us);
   Square from = move_from(m);
   Square to = move_to(m);
-  bool ep = move_is_ep(m);
-  bool pm = move_is_promotion(m);
+  bool ep = is_enpassant(m);
+  bool pm = is_promotion(m);
 
   Piece piece = piece_on(from);
   PieceType pt = type_of(piece);
@@ -1044,8 +1045,8 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
 
 void Position::do_castle_move(Move m) {
 
-  assert(move_is_ok(m));
-  assert(move_is_castle(m));
+  assert(is_ok(m));
+  assert(is_castle(m));
 
   Color us = side_to_move();
   Color them = flip(us);
@@ -1142,11 +1143,11 @@ void Position::do_castle_move(Move m) {
 
 void Position::undo_move(Move m) {
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
 
   sideToMove = flip(sideToMove);
 
-  if (move_is_castle(m))
+  if (is_castle(m))
   {
       undo_castle_move(m);
       return;
@@ -1156,8 +1157,8 @@ void Position::undo_move(Move m) {
   Color them = flip(us);
   Square from = move_from(m);
   Square to = move_to(m);
-  bool ep = move_is_ep(m);
-  bool pm = move_is_promotion(m);
+  bool ep = is_enpassant(m);
+  bool pm = is_promotion(m);
 
   PieceType pt = type_of(piece_on(to));
 
@@ -1245,8 +1246,8 @@ void Position::undo_move(Move m) {
 
 void Position::undo_castle_move(Move m) {
 
-  assert(move_is_ok(m));
-  assert(move_is_castle(m));
+  assert(is_ok(m));
+  assert(is_castle(m));
 
   // When we have arrived here, some work has already been done by
   // Position::undo_move. In particular, the side to move has been switched,
@@ -1375,7 +1376,7 @@ void Position::undo_null_move() {
 
 int Position::see_sign(Move m) const {
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
 
   Square from = move_from(m);
   Square to = move_to(m);
@@ -1397,12 +1398,12 @@ int Position::see(Move m) const {
   PieceType capturedType, pt;
   Color stm;
 
-  assert(move_is_ok(m));
+  assert(is_ok(m));
 
   // As castle moves are implemented as capturing the rook, they have
   // SEE == RookValueMidgame most of the times (unless the rook is under
   // attack).
-  if (move_is_castle(m))
+  if (is_castle(m))
       return 0;
 
   from = move_from(m);

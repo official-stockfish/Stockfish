@@ -148,13 +148,13 @@ public:
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
 
   // Properties of moves
-  bool pl_move_is_legal(Move m, Bitboard pinned) const;
-  bool move_is_pl(const Move m) const;
   bool move_gives_check(Move m, const CheckInfo& ci) const;
-  bool move_is_capture(Move m) const;
-  bool move_is_capture_or_promotion(Move m) const;
-  bool move_is_passed_pawn_push(Move m) const;
   bool move_attacks_square(Move m, Square s) const;
+  bool pl_move_is_legal(Move m, Bitboard pinned) const;
+  bool is_pseudo_legal(const Move m) const;
+  bool is_capture(Move m) const;
+  bool is_capture_or_promotion(Move m) const;
+  bool is_passed_pawn_push(Move m) const;
 
   // Piece captured with previous moves
   PieceType captured_piece_type() const;
@@ -415,7 +415,7 @@ inline Value Position::non_pawn_material(Color c) const {
   return st->npMaterial[c];
 }
 
-inline bool Position::move_is_passed_pawn_push(Move m) const {
+inline bool Position::is_passed_pawn_push(Move m) const {
 
   return   board[move_from(m)] == make_piece(sideToMove, PAWN)
         && pawn_is_passed(sideToMove, move_to(m));
@@ -440,17 +440,17 @@ inline bool Position::is_chess960() const {
   return chess960;
 }
 
-inline bool Position::move_is_capture_or_promotion(Move m) const {
+inline bool Position::is_capture_or_promotion(Move m) const {
 
-  assert(move_is_ok(m));
-  return move_is_special(m) ? !move_is_castle(m) : !square_is_empty(move_to(m));
+  assert(is_ok(m));
+  return is_special(m) ? !is_castle(m) : !square_is_empty(move_to(m));
 }
 
-inline bool Position::move_is_capture(Move m) const {
+inline bool Position::is_capture(Move m) const {
 
   // Note that castle is coded as "king captures the rook"
-  assert(move_is_ok(m));
-  return (!square_is_empty(move_to(m)) && !move_is_castle(m)) || move_is_ep(m);
+  assert(is_ok(m));
+  return (!square_is_empty(move_to(m)) && !is_castle(m)) || is_enpassant(m);
 }
 
 inline PieceType Position::captured_piece_type() const {
