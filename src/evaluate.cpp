@@ -462,7 +462,7 @@ namespace {
     if (bonus && bit_is_set(ei.attackedBy[Us][PAWN], s))
     {
         if (    pos.pieces(KNIGHT, Them) == EmptyBoardBB
-            && (SquaresByColorBB[square_color(s)] & pos.pieces(BISHOP, Them)) == EmptyBoardBB)
+            && (SquaresByColorBB[color_of(s)] & pos.pieces(BISHOP, Them)) == EmptyBoardBB)
             bonus += bonus + bonus / 2;
         else
             bonus += bonus / 2;

@@ -382,11 +382,6 @@ inline Color flip(Color c) {
   return Color(c ^ 1);
 }
 
-inline char piece_type_to_char(PieceType pt) {
-  static const char ch[] = " PNBRQK";
-  return ch[pt];
-}
-
 inline Square make_square(File f, Rank r) {
   return Square((r << 3) | f);
 }
@@ -423,11 +418,11 @@ inline Rank relative_rank(Color c, Square s) {
   return relative_rank(c, rank_of(s));
 }
 
-inline SquareColor square_color(Square s) {
+inline SquareColor color_of(Square s) {
   return SquareColor(int(rank_of(s) + s) & 1);
 }
 
-inline bool opposite_color_squares(Square s1, Square s2) {
+inline bool opposite_colors(Square s1, Square s2) {
   int s = s1 ^ s2;
   return ((s >> 3) ^ s) & 1;
 }
@@ -444,6 +439,10 @@ inline int square_distance(Square s1, Square s2) {
   return SquareDistance[s1][s2];
 }
 
+inline char piece_type_to_char(PieceType pt) {
+  return " PNBRQK"[pt];
+}
+
 inline char file_to_char(File f) {
   return char(f - FILE_A + int('a'));
 }
@@ -454,7 +453,7 @@ inline char rank_to_char(Rank r) {
 
 inline const std::string square_to_string(Square s) {
   char ch[] = { file_to_char(file_of(s)), rank_to_char(rank_of(s)), 0 };
-  return std::string(ch);
+  return ch;
 }
 
 inline Square pawn_push(Color c) {

@@ -187,7 +187,7 @@ Value Endgame<KBNK>::apply(const Position& pos) const {
   // kbnk_mate_table() tries to drive toward corners A1 or H8,
   // if we have a bishop that cannot reach the above squares we
   // mirror the kings so to drive enemy toward corners A8 or H1.
-  if (opposite_color_squares(bishopSquare, SQ_A1))
+  if (opposite_colors(bishopSquare, SQ_A1))
   {
       winnerKSq = mirror(winnerKSq);
       loserKSq = mirror(loserKSq);
@@ -433,7 +433,7 @@ ScaleFactor Endgame<KBPsK>::apply(const Position& pos) const {
       Square queeningSq = relative_square(strongerSide, make_square(pawnFile, RANK_8));
       Square kingSq = pos.king_square(weakerSide);
 
-      if (   opposite_color_squares(queeningSq, bishopSq)
+      if (   opposite_colors(queeningSq, bishopSq)
           && abs(file_of(kingSq) - pawnFile) <= 1)
       {
           // The bishop has the wrong color, and the defending king is on the
@@ -710,12 +710,12 @@ ScaleFactor Endgame<KBPKB>::apply(const Position& pos) const {
   // Case 1: Defending king blocks the pawn, and cannot be driven away
   if (   file_of(weakerKingSq) == file_of(pawnSq)
       && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
-      && (   opposite_color_squares(weakerKingSq, strongerBishopSq)
+      && (   opposite_colors(weakerKingSq, strongerBishopSq)
           || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
       return SCALE_FACTOR_ZERO;
 
   // Case 2: Opposite colored bishops
-  if (opposite_color_squares(strongerBishopSq, weakerBishopSq))
+  if (opposite_colors(strongerBishopSq, weakerBishopSq))
   {
       // We assume that the position is drawn in the following three situations:
       //
@@ -760,7 +760,7 @@ ScaleFactor Endgame<KBPPKB>::apply(const Position& pos) const {
   Square wbsq = pos.piece_list(strongerSide, BISHOP)[0];
   Square bbsq = pos.piece_list(weakerSide, BISHOP)[0];
 
-  if (!opposite_color_squares(wbsq, bbsq))
+  if (!opposite_colors(wbsq, bbsq))
       return SCALE_FACTOR_NONE;
 
   Square ksq = pos.king_square(weakerSide);
@@ -788,7 +788,7 @@ ScaleFactor Endgame<KBPPKB>::apply(const Position& pos) const {
     // some square in the frontmost pawn's path.
     if (   file_of(ksq) == file_of(blockSq1)
         && relative_rank(strongerSide, ksq) >= relative_rank(strongerSide, blockSq1)
-        && opposite_color_squares(ksq, wbsq))
+        && opposite_colors(ksq, wbsq))
         return SCALE_FACTOR_ZERO;
     else
         return SCALE_FACTOR_NONE;
@@ -798,14 +798,14 @@ ScaleFactor Endgame<KBPPKB>::apply(const Position& pos) const {
     // in front of the frontmost pawn's path, and the square diagonally behind
     // this square on the file of the other pawn.
     if (   ksq == blockSq1
-        && opposite_color_squares(ksq, wbsq)
+        && opposite_colors(ksq, wbsq)
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
             || abs(r1 - r2) >= 2))
         return SCALE_FACTOR_ZERO;
 
     else if (   ksq == blockSq2
-             && opposite_color_squares(ksq, wbsq)
+             && opposite_colors(ksq, wbsq)
              && (   bbsq == blockSq1
                  || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(BISHOP, weakerSide))))
         return SCALE_FACTOR_ZERO;
@@ -839,7 +839,7 @@ ScaleFactor Endgame<KBPKN>::apply(const Position& pos) const {
 
   if (   file_of(weakerKingSq) == file_of(pawnSq)
       && relative_rank(strongerSide, pawnSq) < relative_rank(strongerSide, weakerKingSq)
-      && (   opposite_color_squares(weakerKingSq, strongerBishopSq)
+      && (   opposite_colors(weakerKingSq, strongerBishopSq)
           || relative_rank(strongerSide, weakerKingSq) <= RANK_6))
       return SCALE_FACTOR_ZERO;
 

@@ -342,7 +342,7 @@ void Position::print(Move move) const {
           Square sq = make_square(file, rank);
           Piece piece = piece_on(sq);
 
-          if (piece == PIECE_NONE && square_color(sq) == DARK)
+          if (piece == PIECE_NONE && color_of(sq) == DARK)
               piece = PIECE_NONE_DARK_SQ;
 
           char c = (color_of(piece_on(sq)) == BLACK ? '=' : ' ');
