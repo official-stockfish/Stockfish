@@ -391,7 +391,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
       if (Options["Book File"].value<string>() != book.name())
           book.open(Options["Book File"].value<string>());
 
-      Move bookMove = book.get_move(pos, Options["Best Book Move"].value<bool>());
+      Move bookMove = book.probe(pos, Options["Best Book Move"].value<bool>());
       if (bookMove != MOVE_NONE)
       {
           if (Limits.ponder)

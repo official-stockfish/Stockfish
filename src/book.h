@@ -44,7 +44,7 @@ public:
   ~Book();
   void open(const std::string& fileName);
   void close();
-  Move get_move(const Position& pos, bool findBestMove);
+  Move probe(const Position& pos, bool findBestMove);
   const std::string name() const { return bookName; }
 
 private:
