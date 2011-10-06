@@ -52,6 +52,7 @@ OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
 # bsfq = no/yes       --- -DUSE_BSFQ  --- Use bsfq x86_64 asm-instruction
 #                                     --- (Works only with GCC and ICC 64-bit)
 # popcnt = no/yes     --- -DUSE_POPCNT --- Use popcnt x86_64 asm-instruction
+# lto = no/yes        --- -flto       --- gcc Link Time Optimization
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -123,6 +124,7 @@ ifeq ($(ARCH),x86-64-modern)
 	prefetch = yes
 	bsfq = yes
 	popcnt = yes
+	lto = yes
 endif
 
 ifeq ($(ARCH),x86-32)
@@ -309,6 +311,14 @@ endif
 ### 3.10 popcnt
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -DUSE_POPCNT
+endif
+
+### 3.11 lto.
+### Note that this is a mix of compile and link time options
+### because the lto link phase needs access to the optimization flags
+ifeq ($(lto),yes)
+	CXXFLAGS += -flto
+	LDFLAGS += $(CXXFLAGS) -static
 endif
 
 ### ==========================================================================
