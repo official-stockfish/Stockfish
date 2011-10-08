@@ -159,7 +159,7 @@ namespace {
   RootMoveList Rml;
 
   // MultiPV mode
-  int MultiPV, UCIMultiPV, MultiPVIteration;
+  int MultiPV, UCIMultiPV, MultiPVIdx;
 
   // Time management variables
   bool StopOnPonderhit, FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
@@ -527,18 +527,17 @@ namespace {
     // Iterative deepening loop until requested to stop or target depth reached
     while (!StopRequest && ++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth))
     {
-        // Save last iteration's scores, this needs to be done now, because in
-        // the following MultiPV loop Rml moves could be reordered.
+        // Save now last iteration's scores, before Rml moves are reordered
         for (size_t i = 0; i < Rml.size(); i++)
             Rml[i].prevScore = Rml[i].score;
 
         Rml.bestMoveChanges = 0;
 
-        // MultiPV iteration loop
-        for (MultiPVIteration = 0; MultiPVIteration < Min(MultiPV, (int)Rml.size()); MultiPVIteration++)
+        // MultiPV loop. We perform a full root search for each PV line
+        for (MultiPVIdx = 0; MultiPVIdx < Min(MultiPV, (int)Rml.size()); MultiPVIdx++)
         {
             // Calculate dynamic aspiration window based on previous iterations
-            if (depth >= 5 && abs(Rml[MultiPVIteration].prevScore) < VALUE_KNOWN_WIN)
+            if (depth >= 5 && abs(Rml[MultiPVIdx].prevScore) < VALUE_KNOWN_WIN)
             {
                 int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
                 int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
@@ -546,8 +545,8 @@ namespace {
                 aspirationDelta = Min(Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
                 aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-                alpha = Max(Rml[MultiPVIteration].prevScore - aspirationDelta, -VALUE_INFINITE);
-                beta  = Min(Rml[MultiPVIteration].prevScore + aspirationDelta,  VALUE_INFINITE);
+                alpha = Max(Rml[MultiPVIdx].prevScore - aspirationDelta, -VALUE_INFINITE);
+                beta  = Min(Rml[MultiPVIdx].prevScore + aspirationDelta,  VALUE_INFINITE);
             }
             else
             {
@@ -558,39 +557,44 @@ namespace {
             // Start with a small aspiration window and, in case of fail high/low,
             // research with bigger window until not failing high/low anymore.
             do {
-                // Search starting from ss+1 to allow referencing (ss-1). This is
+                // Search starts from ss+1 to allow referencing (ss-1). This is
                 // needed by update_gains() and ss copy when splitting at Root.
                 value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
 
-                // It is critical that sorting is done with a stable algorithm
-                // because all the values but the first are usually set to
-                // -VALUE_INFINITE and we want to keep the same order for all
-                // the moves but the new PV that goes to head.
-                sort<RootMove>(Rml.begin() + MultiPVIteration, Rml.end());
+                // Bring to front the best move. It is critical that sorting is
+                // done with a stable algorithm because all the values but the first
+                // and eventually the new best one are set to -VALUE_INFINITE and
+                // we want to keep the same order for all the moves but the new
+                // PV that goes to the front. Note that in case of MultiPV search
+                // the already searched PV lines are preserved.
+                sort<RootMove>(Rml.begin() + MultiPVIdx, Rml.end());
 
-                // In case we have found an exact score reorder the PV moves
-                // before leaving the fail high/low loop, otherwise leave the
-                // last PV move in its position so to be searched again.
-                if (value > alpha && value < beta)
-                    sort<RootMove>(Rml.begin(), Rml.begin() + MultiPVIteration);
+                // In case we have found an exact score and we are going to leave
+                // the fail high/low loop then reorder the PV moves, otherwise
+                // leave the last PV move in its position so to be searched again.
+                // Of course this is needed only in MultiPV search.
+                if (MultiPVIdx && value > alpha && value < beta)
+                    sort<RootMove>(Rml.begin(), Rml.begin() + MultiPVIdx);
 
                 // Write PV back to transposition table in case the relevant entries
                 // have been overwritten during the search.
-                for (int i = 0; i <= MultiPVIteration; i++)
+                for (int i = 0; i <= MultiPVIdx; i++)
                     Rml[i].insert_pv_in_tt(pos);
 
-                // Value cannot be trusted. Break out immediately!
+                // If search has been stopped exit the aspiration window loop,
+                // note that sorting and writing PV back to TT is safe becuase
+                // Rml is still valid, although refers to the previous iteration.
                 if (StopRequest)
                     break;
 
                 // Send full PV info to GUI if we are going to leave the loop or
-                // if we have a fail high/low and we are deep in the search. Note
-                // that UCI protol requires to send all the PV lines also if are
-                // still to be searched and so refer to the previous search's score.
-                if ((value > alpha && value < beta) || current_search_time() > 5000)
+                // if we have a fail high/low and we are deep in the search. UCI
+                // protocol requires to send all the PV lines also if are still
+                // to be searched and so refer to the previous search's score.
+                if ((value > alpha && value < beta) || current_search_time() > 2000)
                     for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
                     {
-                        bool updated = (i <= MultiPVIteration);
+                        bool updated = (i <= MultiPVIdx);
 
                         if (depth == 1 && !updated)
                             continue;
@@ -600,14 +604,14 @@ namespace {
 
                         cout << "info"
                              << depth_to_uci(d)
-                             << (i == MultiPVIteration ? score_to_uci(s, alpha, beta) : score_to_uci(s))
+                             << (i == MultiPVIdx ? score_to_uci(s, alpha, beta) : score_to_uci(s))
                              << speed_to_uci(pos.nodes_searched())
                              << pv_to_uci(&Rml[i].pv[0], i + 1, pos.is_chess960())
                              << endl;
                     }
 
-                // In case of failing high/low increase aspiration window and research,
-                // otherwise exit the fail high/low loop.
+                // In case of failing high/low increase aspiration window and
+                // research, otherwise exit the fail high/low loop.
                 if (value >= beta)
                 {
                     beta = Min(beta + aspirationDelta, VALUE_INFINITE);
@@ -633,14 +637,14 @@ namespace {
         bestValues[depth] = value;
         bestMoveChanges[depth] = Rml.bestMoveChanges;
 
-        // Do we need to pick now the best and the ponder moves ?
+        // Skills: Do we need to pick now the best and the ponder moves ?
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             do_skill_level(&skillBest, &skillPonder);
 
         if (LogFile.is_open())
             LogFile << pretty_pv(pos, depth, value, current_search_time(), &Rml[0].pv[0]) << endl;
 
-        // Init easyMove after first iteration or drop if differs from the best move
+        // Init easyMove at first iteration or drop it if differs from the best move
         if (depth == 1 && (Rml.size() == 1 || Rml[0].score > Rml[1].score + EasyMoveMargin))
             easyMove = bestMove;
         else if (bestMove != easyMove)
@@ -649,9 +653,9 @@ namespace {
         // Check for some early stop condition
         if (!StopRequest && Limits.useTimeManagement())
         {
-            // Stop search early if one move seems to be much better than the
-            // others or if there is only a single legal move. Also in the latter
-            // case we search up to some depth anyway to get a proper score.
+            // Easy move: Stop search early if one move seems to be much better
+            // than the others or if there is only a single legal move. Also in
+            // the latter case search to some depth anyway to get a proper score.
             if (   depth >= 7
                 && easyMove == bestMove
                 && (   Rml.size() == 1
@@ -779,7 +783,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
     tte = TT.probe(posKey);
-    ttMove = RootNode ? Rml[MultiPVIteration].pv[0] : tte ? tte->move() : MOVE_NONE;
+    ttMove = RootNode ? Rml[MultiPVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
@@ -988,10 +992,10 @@ split_point_start: // At split points actual search starts from here
       if (move == excludedMove)
           continue;
 
-      // At root obey the "searchmoves" option and skip moves not listed in Root Move List.
-      // Also in MultiPV mode we skip moves which already have got an exact score
-      // in previous MultiPV Iteration. Finally any illegal move is skipped here.
-      if (RootNode && !Rml.find(move, MultiPVIteration))
+      // At root obey the "searchmoves" option and skip moves not listed in Root
+      // Move List, as a consequence any illegal move is also skipped. In MultiPV
+      // mode we also skip PV moves which have been already searched.
+      if (RootNode && !Rml.find(move, MultiPVIdx))
           continue;
 
       // At PV and SpNode nodes we want all moves to be legal since the beginning
@@ -1018,7 +1022,7 @@ split_point_start: // At split points actual search starts from here
           if (pos.thread() == 0 && current_search_time() > 2000)
               cout << "info" << depth_to_uci(depth)
                    << " currmove " << move
-                   << " currmovenumber " << moveCount + MultiPVIteration << endl;
+                   << " currmovenumber " << moveCount + MultiPVIdx << endl;
       }
 
       // At Root and at first iteration do a PV search on all the moves to score root moves
