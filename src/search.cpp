@@ -150,7 +150,7 @@ namespace {
 
   // Easy move margin. An easy move candidate must be at least this much
   // better than the second best move.
-  const Value EasyMoveMargin = Value(0x200);
+  const Value EasyMoveMargin = Value(0x150);
 
 
   /// Namespace variables
@@ -497,13 +497,14 @@ namespace {
     int bestMoveChanges[PLY_MAX_PLUS_2];
     int depth, aspirationDelta;
     Value bestValue, alpha, beta;
-    Move bestMove, easyMove, skillBest, skillPonder;
+    Move bestMove, skillBest, skillPonder;
+    bool bestMoveNeverChanged = true;
 
     // Initialize stuff before a new search
     memset(ss, 0, 4 * sizeof(SearchStack));
     TT.new_search();
     H.clear();
-    *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
+    *ponderMove = bestMove = skillBest = skillPonder = MOVE_NONE;
     depth = aspirationDelta = 0;
     bestValue = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
@@ -643,25 +644,16 @@ namespace {
             log << pretty_pv(pos, depth, bestValue, elapsed_search_time(), &Rml[0].pv[0]) << endl;
         }
 
-        // Init easyMove at first iteration or drop it if differs from the best move
-        if (depth == 1 && (Rml.size() == 1 || Rml[0].score > Rml[1].score + EasyMoveMargin))
-            easyMove = bestMove;
-        else if (bestMove != easyMove)
-            easyMove = MOVE_NONE;
+        // Filter out startup noise when monitoring best move stability
+        if (depth > 2 && bestMoveChanges[depth])
+            bestMoveNeverChanged = false;
 
         // Check for some early stop condition
         if (!StopRequest && Limits.useTimeManagement())
         {
-            // Easy move: Stop search early if one move seems to be much better
-            // than the others or if there is only a single legal move. Also in
-            // the latter case search to some depth anyway to get a proper score.
-            if (   depth >= 7
-                && easyMove == bestMove
-                && (   Rml.size() == 1
-                    ||(   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
-                       && elapsed_search_time() > TimeMgr.available_time() / 16)
-                    ||(   Rml[0].nodes > (pos.nodes_searched() * 98) / 100
-                       && elapsed_search_time() > TimeMgr.available_time() / 32)))
+            // Stop search early if there is only a single legal move. Search to
+            // some depth anyway to get a proper score.
+            if (Rml.size() == 1 && depth >= 7)
                 StopRequest = true;
 
             // Take in account some extra time if the best move has changed
@@ -672,6 +664,23 @@ namespace {
             // have enough time to search the first move at the next iteration anyway.
             if (elapsed_search_time() > (TimeMgr.available_time() * 62) / 100)
                 StopRequest = true;
+
+            // Stop search early if one move seems to be much better than others
+            if (   depth >= 10
+                && !StopRequest
+                && (   bestMoveNeverChanged
+                    || elapsed_search_time() > (TimeMgr.available_time() * 40) / 100))
+            {
+                Value rBeta = bestValue - EasyMoveMargin;
+                (ss+1)->excludedMove = bestMove;
+                (ss+1)->skipNullMove = true;
+                Value v = search<NonPV>(pos, ss+1, rBeta - 1, rBeta, (depth * ONE_PLY) / 2);
+                (ss+1)->skipNullMove = false;
+                (ss+1)->excludedMove = MOVE_NONE;
+
+                if (v < rBeta)
+                    StopRequest = true;
+            }
 
             // If we are allowed to ponder do not stop the search now but keep pondering
             if (StopRequest && Limits.ponder)
@@ -1027,8 +1036,7 @@ split_point_start: // At split points actual search starts from here
                    << " currmovenumber " << moveCount + MultiPVIdx << endl;
       }
 
-      // At Root and at first iteration do a PV search on all the moves to score root moves
-      isPvMove = (PvNode && moveCount <= (RootNode && depth <= ONE_PLY ? MAX_MOVES : 1));
+      isPvMove = (PvNode && moveCount <= 1);
       givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.is_capture_or_promotion(move);
 
