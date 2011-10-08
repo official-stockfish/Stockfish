@@ -42,17 +42,16 @@ OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
 # flag                --- Comp switch --- Description
 # ----------------------------------------------------------------------------
 #
-# debug = no/yes      --- -DNDEBUG    --- Enable/Disable debug mode
+# debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
 # optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
-# arch = (name)       --- (-arch)     --- Target architecture
-# os = (name)         ---             --- Target operating system
-# bits = 64/32        --- -DIS_64BIT  --- 64-/32-bit operating system
-# bigendian = no/yes  --- -DBIGENDIAN --- big/little-endian byte order
-# prefetch = no/yes   --- -DUSE_PREFETCH  --- Use prefetch x86 asm-instruction
-# bsfq = no/yes       --- -DUSE_BSFQ  --- Use bsfq x86_64 asm-instruction
-#                                     --- (Works only with GCC and ICC 64-bit)
-# popcnt = no/yes     --- -DUSE_POPCNT --- Use popcnt x86_64 asm-instruction
-# lto = no/yes        --- -flto       --- gcc Link Time Optimization
+# arch = (name)       --- (-arch)          --- Target architecture
+# os = (name)         ---                  --- Target operating system
+# bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
+# bigendian = yes/no  --- -DBIGENDIAN      --- big/little-endian byte order
+# prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch x86 asm-instruction
+# bsfq = yes/no       --- -DUSE_BSFQ       --- Use bsfq x86_64 asm-instruction (only
+#                                              with GCC and ICC 64-bit)
+# popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt x86_64 asm-instruction
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -124,7 +123,6 @@ ifeq ($(ARCH),x86-64-modern)
 	prefetch = yes
 	bsfq = yes
 	popcnt = yes
-	lto = yes
 endif
 
 ifeq ($(ARCH),x86-32)
@@ -311,14 +309,14 @@ endif
 ### 3.10 popcnt
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -DUSE_POPCNT
-endif
 
-### 3.11 lto.
-### Note that this is a mix of compile and link time options
-### because the lto link phase needs access to the optimization flags
-ifeq ($(lto),yes)
-	CXXFLAGS += -flto
-	LDFLAGS += $(CXXFLAGS) -static
+    ### For gcc we add also msse3 support and Link Time Optimization, note that
+    ### this is a mix of compile and link time options because the lto link phase
+    ### needs access to the optimization flags.
+    ifeq ($(comp),gcc)
+        CXXFLAGS += -msse3 -flto
+        LDFLAGS += $(CXXFLAGS) -static
+    endif
 endif
 
 ### ==========================================================================
@@ -335,7 +333,7 @@ help:
 	@echo ""
 	@echo "build                > Build unoptimized version"
 	@echo "profile-build        > Build PGO-optimized version"
-	@echo "popcnt-profile-build > Build PGO-optimized version with optional popcnt-support"
+	@echo "double-profile-build > Build PGO-optimized version with and without popcnt support"
 	@echo "strip                > Strip executable"
 	@echo "install              > Install executable"
 	@echo "clean                > Clean up"
@@ -344,7 +342,7 @@ help:
 	@echo "Supported archs:"
 	@echo ""
 	@echo "x86-64               > x86 64-bit"
-	@echo "x86-64-modern        > x86 64-bit with runtime support for popcnt-instruction"
+	@echo "x86-64-modern        > x86 64-bit with runtime support for popcnt instruction"
 	@echo "x86-32               > x86 32-bit excluding very old hardware without SSE-support"
 	@echo "x86-32-old           > x86 32-bit including also very old hardware"
 	@echo "osx-ppc-64           > PPC-Mac OS X 64 bit"
@@ -396,7 +394,7 @@ profile-build:
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
 
-popcnt-profile-build:
+double-profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 	@echo ""
 	@echo "Step 0/6. Preparing for profile build."
