@@ -315,7 +315,7 @@ ifeq ($(popcnt),yes)
     ### needs access to the optimization flags.
     ifeq ($(comp),gcc)
         CXXFLAGS += -msse3 -flto
-        LDFLAGS += $(CXXFLAGS) -static
+        LDFLAGS += $(CXXFLAGS)
     endif
 endif
 
