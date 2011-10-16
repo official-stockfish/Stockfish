@@ -203,7 +203,7 @@ public:
   void set_nodes_searched(int64_t n);
 
   // Position consistency check, for debugging
-  bool is_ok(int* failedStep = NULL) const;
+  bool pos_is_ok(int* failedStep = NULL) const;
   void flip_me();
 
   // Global initialization

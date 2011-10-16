@@ -253,7 +253,7 @@ template <bool Fake>
 Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value beta,
                             Value bestValue, Depth depth, Move threatMove,
                             int moveCount, MovePicker* mp, int nodeType) {
-  assert(pos.is_ok());
+  assert(pos.pos_is_ok());
   assert(bestValue >= -VALUE_INFINITE);
   assert(bestValue <= alpha);
   assert(alpha < beta);
