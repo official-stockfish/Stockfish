@@ -20,6 +20,7 @@
 #if !defined(MISC_H_INCLUDED)
 #define MISC_H_INCLUDED
 
+#include <fstream>
 #include <string>
 #include "types.h"
 
@@ -37,5 +38,10 @@ extern void dbg_after();
 extern void dbg_mean_of(int v);
 extern void dbg_print_hit_rate();
 extern void dbg_print_mean();
+
+struct Log : public std::ofstream {
+  Log(const std::string& f = "log.txt") : std::ofstream(f.c_str(), std::ios::out | std::ios::app) {}
+ ~Log() { if (is_open()) close(); }
+};
 
 #endif // !defined(MISC_H_INCLUDED)
