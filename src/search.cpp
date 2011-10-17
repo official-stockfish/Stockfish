@@ -20,7 +20,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -165,9 +164,6 @@ namespace {
   bool StopOnPonderhit, FirstRootMove, StopRequest, QuitRequest, AspirationFailLow;
   TimeManager TimeMgr;
   SearchLimits Limits;
-
-  // Log file
-  std::ofstream LogFile;
 
   // Skill level adjustment
   int SkillLevel;
@@ -433,17 +429,14 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   // Write to log file and keep it open to be accessed during the search
   if (Options["Use Search Log"].value<bool>())
   {
-      string name = Options["Search Log Filename"].value<string>();
-      LogFile.open(name.c_str(), std::ios::out | std::ios::app);
-
-      if (LogFile.is_open())
-          LogFile << "\nSearching: "  << pos.to_fen()
-                  << "\ninfinite: "   << Limits.infinite
-                  << " ponder: "      << Limits.ponder
-                  << " time: "        << Limits.time
-                  << " increment: "   << Limits.increment
-                  << " moves to go: " << Limits.movesToGo
-                  << endl;
+      Log log(Options["Search Log Filename"].value<string>());
+      log << "\nSearching: "  << pos.to_fen()
+          << "\ninfinite: "   << Limits.infinite
+          << " ponder: "      << Limits.ponder
+          << " time: "        << Limits.time
+          << " increment: "   << Limits.increment
+          << " moves to go: " << Limits.movesToGo
+          << endl;
   }
 
   // We're ready to start thinking. Call the iterative deepening loop function
@@ -451,19 +444,19 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
 
   // Write final search statistics and close log file
-  if (LogFile.is_open())
+  if (Options["Use Search Log"].value<bool>())
   {
       int t = current_search_time();
 
-      LogFile << "Nodes: "          << pos.nodes_searched()
-              << "\nNodes/second: " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
-              << "\nBest move: "    << move_to_san(pos, bestMove);
+      Log log(Options["Search Log Filename"].value<string>());
+      log << "Nodes: "          << pos.nodes_searched()
+          << "\nNodes/second: " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
+          << "\nBest move: "    << move_to_san(pos, bestMove);
 
       StateInfo st;
       pos.do_move(bestMove, st);
-      LogFile << "\nPonder move: " << move_to_san(pos, ponderMove) << endl;
+      log << "\nPonder move: " << move_to_san(pos, ponderMove) << endl;
       pos.undo_move(bestMove); // Return from think() with unchanged position
-      LogFile.close();
   }
 
   // This makes all the threads to go to sleep
@@ -641,8 +634,11 @@ namespace {
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             do_skill_level(&skillBest, &skillPonder);
 
-        if (LogFile.is_open())
-            LogFile << pretty_pv(pos, depth, value, current_search_time(), &Rml[0].pv[0]) << endl;
+        if (Options["Use Search Log"].value<bool>())
+        {
+            Log log(Options["Search Log Filename"].value<string>());
+            log << pretty_pv(pos, depth, value, current_search_time(), &Rml[0].pv[0]) << endl;
+        }
 
         // Init easyMove at first iteration or drop it if differs from the best move
         if (depth == 1 && (Rml.size() == 1 || Rml[0].score > Rml[1].score + EasyMoveMargin))
