@@ -1244,9 +1244,11 @@ split_point_start: // At split points actual search starts from here
     }
 
     // Step 20. Check for mate and stalemate
-    // All legal moves have been searched and if there are
-    // no legal moves, it must be mate or stalemate.
-    // If one move was excluded return fail low score.
+    // All legal moves have been searched and if there are no legal moves, it
+    // must be mate or stalemate. Note that we can have a false positive in
+    // case of StopRequest or thread.cutoff_occurred() are set, but this is
+    // harmless because return value is discarded anyhow in the parent nodes.
+    // If we are in a singular extension search then return a fail low score.
     if (!SpNode && !moveCount)
         return excludedMove ? oldAlpha : inCheck ? value_mated_in(ss->ply) : VALUE_DRAW;
 
