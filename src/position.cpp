@@ -1715,11 +1715,15 @@ void Position::init() {
   zobExclusion  = rk.rand<Key>();
 
   for (Piece p = WP; p <= WK; p++)
+  {
+      Score ps = make_score(piece_value_midgame(p), piece_value_endgame(p));
+
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
-          pieceSquareTable[p][s] = make_score(MgPST[p][s], EgPST[p][s]);
+          pieceSquareTable[p][s] = ps + PSQT[p][s];
           pieceSquareTable[p+8][flip(s)] = -pieceSquareTable[p][s];
       }
+  }
 }
 
 
