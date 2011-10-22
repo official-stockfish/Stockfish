@@ -618,6 +618,9 @@ bool Position::is_pseudo_legal(const Move m) const {
   else if (!bit_is_set(attacks_from(pc, from), to))
       return false;
 
+  // Evasions generator already takes care to avoid some kind of illegal moves
+  // and pl_move_is_legal() relies on this. So we have to take care that the
+  // same kind of moves are filtered out here.
   if (in_check())
   {
       // In case of king moves under check we have to remove king so to catch
@@ -685,20 +688,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   if (is_promotion(m))
   {
       clear_bit(&b, from);
-
-      switch (promotion_piece_type(m))
-      {
-      case KNIGHT:
-          return bit_is_set(attacks_from<KNIGHT>(to), ksq);
-      case BISHOP:
-          return bit_is_set(bishop_attacks_bb(to, b), ksq);
-      case ROOK:
-          return bit_is_set(rook_attacks_bb(to, b), ksq);
-      case QUEEN:
-          return bit_is_set(queen_attacks_bb(to, b), ksq);
-      default:
-          assert(false);
-      }
+      return bit_is_set(attacks_from(Piece(promotion_piece_type(m)), to, b), ksq);
   }
 
   // En passant capture with check ? We have already handled the case
