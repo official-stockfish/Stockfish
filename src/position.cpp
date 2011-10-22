@@ -400,18 +400,8 @@ Bitboard Position::discovered_check_candidates() const {
   return hidden_checkers<false>();
 }
 
-/// Position::attackers_to() computes a bitboard containing all pieces which
-/// attacks a given square.
-
-Bitboard Position::attackers_to(Square s) const {
-
-  return  (attacks_from<PAWN>(s, BLACK) & pieces(PAWN, WHITE))
-        | (attacks_from<PAWN>(s, WHITE) & pieces(PAWN, BLACK))
-        | (attacks_from<KNIGHT>(s)      & pieces(KNIGHT))
-        | (attacks_from<ROOK>(s)        & pieces(ROOK, QUEEN))
-        | (attacks_from<BISHOP>(s)      & pieces(BISHOP, QUEEN))
-        | (attacks_from<KING>(s)        & pieces(KING));
-}
+/// Position::attackers_to() computes a bitboard of all pieces which attacks a
+/// given square. Slider attacks use occ bitboard as occupancy.
 
 Bitboard Position::attackers_to(Square s, Bitboard occ) const {
 
@@ -423,21 +413,8 @@ Bitboard Position::attackers_to(Square s, Bitboard occ) const {
         | (attacks_from<KING>(s)        & pieces(KING));
 }
 
-/// Position::attacks_from() computes a bitboard of all attacks
-/// of a given piece put in a given square.
-
-Bitboard Position::attacks_from(Piece p, Square s) const {
-
-  assert(square_is_ok(s));
-
-  switch (p)
-  {
-  case WB: case BB: return attacks_from<BISHOP>(s);
-  case WR: case BR: return attacks_from<ROOK>(s);
-  case WQ: case BQ: return attacks_from<QUEEN>(s);
-  default: return StepAttacksBB[p][s];
-  }
-}
+/// Position::attacks_from() computes a bitboard of all attacks of a given piece
+/// put in a given square. Slider attacks use occ bitboard as occupancy.
 
 Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
 
@@ -1689,12 +1666,11 @@ bool Position::is_mate() const {
 }
 
 
-/// Position::init() is a static member function which initializes at
-/// startup the various arrays used to compute hash keys and the piece
-/// square tables. The latter is a two-step operation: First, the white
-/// halves of the tables are copied from the MgPST[][] and EgPST[][] arrays.
-/// Second, the black halves of the tables are initialized by flipping
-/// and changing the sign of the corresponding white scores.
+/// Position::init() is a static member function which initializes at startup
+/// the various arrays used to compute hash keys and the piece square tables.
+/// The latter is a two-step operation: First, the white halves of the tables
+/// are copied from PSQT[] tables. Second, the black halves of the tables are
+/// initialized by flipping and changing the sign of the white scores.
 
 void Position::init() {
 

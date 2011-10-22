@@ -371,6 +371,14 @@ inline Bitboard Position::attacks_from<QUEEN>(Square s) const {
   return attacks_from<ROOK>(s) | attacks_from<BISHOP>(s);
 }
 
+inline Bitboard Position::attacks_from(Piece p, Square s) const {
+  return attacks_from(p, s, occupied_squares());
+}
+
+inline Bitboard Position::attackers_to(Square s) const {
+  return attackers_to(s, occupied_squares());
+}
+
 inline Bitboard Position::checkers() const {
   return st->checkersBB;
 }
