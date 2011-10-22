@@ -138,7 +138,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType 
   assert (!pos.in_check());
 
   // In ProbCut we consider only captures better than parent's move
-  captureThreshold = piece_value_midgame(Piece(parentCapture));
+  captureThreshold = PieceValueMidgame[Piece(parentCapture)];
   phasePtr = ProbCutTable;
 
   if (   ttm != MOVE_NONE
@@ -251,11 +251,11 @@ void MovePicker::score_captures() {
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
-      cur->score =  piece_value_midgame(pos.piece_on(move_to(m)))
+      cur->score =  PieceValueMidgame[pos.piece_on(move_to(m))]
                   - type_of(pos.piece_on(move_from(m)));
 
       if (is_promotion(m))
-          cur->score += piece_value_midgame(Piece(promotion_piece_type(m)));
+          cur->score += PieceValueMidgame[Piece(promotion_piece_type(m))];
   }
 }
 
@@ -290,7 +290,7 @@ void MovePicker::score_evasions() {
       if ((seeScore = pos.see_sign(m)) < 0)
           cur->score = seeScore - History::MaxValue; // Be sure we are at the bottom
       else if (pos.is_capture(m))
-          cur->score =  piece_value_midgame(pos.piece_on(move_to(m)))
+          cur->score =  PieceValueMidgame[pos.piece_on(move_to(m))]
                       - type_of(pos.piece_on(move_from(m))) + History::MaxValue;
       else
           cur->score = H.value(pos.piece_on(move_from(m)), move_to(m));
