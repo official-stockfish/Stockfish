@@ -166,8 +166,7 @@ public:
   void do_move(Move m, StateInfo& st);
   void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
   void undo_move(Move m);
-  void do_null_move(StateInfo& st);
-  void undo_null_move();
+  template<bool Do> void do_null_move(StateInfo& st);
 
   // Static exchange evaluation
   int see(Move m) const;

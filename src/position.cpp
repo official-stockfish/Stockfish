@@ -1204,61 +1204,48 @@ void Position::undo_move(Move m) {
 }
 
 
-/// Position::do_null_move makes() a "null move": It switches the side to move
-/// and updates the hash key without executing any move on the board.
-
+/// Position::do_null_move() is used to do/undo a "null move": It flips the side
+/// to move and updates the hash key without executing any move on the board.
+template<bool Do>
 void Position::do_null_move(StateInfo& backupSt) {
 
   assert(!in_check());
 
   // Back up the information necessary to undo the null move to the supplied
-  // StateInfo object.
-  // Note that differently from normal case here backupSt is actually used as
-  // a backup storage not as a new state to be used.
-  backupSt.key      = st->key;
-  backupSt.epSquare = st->epSquare;
-  backupSt.value    = st->value;
-  backupSt.previous = st->previous;
-  backupSt.pliesFromNull = st->pliesFromNull;
-  st->previous = &backupSt;
+  // StateInfo object. Note that differently from normal case here backupSt
+  // is actually used as a backup storage not as the new state. This reduces
+  // the number of fields to be copied.
+  StateInfo* src = Do ? st : &backupSt;
+  StateInfo* dst = Do ? &backupSt : st;
 
-  // Update the necessary information
-  if (st->epSquare != SQ_NONE)
-      st->key ^= zobEp[st->epSquare];
-
-  st->key ^= zobSideToMove;
-  prefetch((char*)TT.first_entry(st->key));
+  dst->key      = src->key;
+  dst->epSquare = src->epSquare;
+  dst->value    = src->value;
+  dst->rule50   = src->rule50;
+  dst->pliesFromNull = src->pliesFromNull;
 
   sideToMove = flip(sideToMove);
-  st->epSquare = SQ_NONE;
-  st->rule50++;
-  st->pliesFromNull = 0;
-  st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
+
+  if (Do)
+  {
+      if (st->epSquare != SQ_NONE)
+          st->key ^= zobEp[st->epSquare];
+
+      st->key ^= zobSideToMove;
+      prefetch((char*)TT.first_entry(st->key));
+
+      st->epSquare = SQ_NONE;
+      st->rule50++;
+      st->pliesFromNull = 0;
+      st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
+  }
 
   assert(pos_is_ok());
 }
 
-
-/// Position::undo_null_move() unmakes a "null move".
-
-void Position::undo_null_move() {
-
-  assert(!in_check());
-
-  // Restore information from the our backup StateInfo object
-  StateInfo* backupSt = st->previous;
-  st->key      = backupSt->key;
-  st->epSquare = backupSt->epSquare;
-  st->value    = backupSt->value;
-  st->previous = backupSt->previous;
-  st->pliesFromNull = backupSt->pliesFromNull;
-
-  // Update the necessary information
-  sideToMove = flip(sideToMove);
-  st->rule50--;
-
-  assert(pos_is_ok());
-}
+// Explicit template instantiations
+template void Position::do_null_move<false>(StateInfo& backupSt);
+template void Position::do_null_move<true>(StateInfo& backupSt);
 
 
 /// Position::see() is a static exchange evaluator: It tries to estimate the

@@ -870,12 +870,12 @@ namespace {
         if (refinedValue - PawnValueMidgame > beta)
             R++;
 
-        pos.do_null_move(st);
+        pos.do_null_move<true>(st);
         (ss+1)->skipNullMove = true;
         nullValue = depth-R*ONE_PLY < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                               : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R*ONE_PLY);
         (ss+1)->skipNullMove = false;
-        pos.undo_null_move();
+        pos.do_null_move<false>(st);
 
         if (nullValue >= beta)
         {
