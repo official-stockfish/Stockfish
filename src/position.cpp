@@ -174,18 +174,41 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   sideToMove = (token == 'w' ? WHITE : BLACK);
   fen >> token;
 
-  // 3. Castling availability
+  // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,
+  // Shredder-FEN that uses the letters of the columns on which the rooks began
+  // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
+  // if an inner rook is associated with the castling right, the castling tag is
+  // replaced by the file letter of the involved rook, as for the Shredder-FEN.
   while ((fen >> token) && !isspace(token))
-      set_castling_rights(token);
+  {
+      Square rsq;
+      Color c = islower(token) ? BLACK : WHITE;
+      Piece rook = make_piece(c, ROOK);
+
+      token = char(toupper(token));
+
+      if (token == 'K')
+          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; rsq--) {}
+
+      else if (token == 'Q')
+          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; rsq++) {}
+
+      else if (token >= 'A' && token <= 'H')
+          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+
+      else
+          continue;
+
+      set_castle_right(king_square(c), rsq);
+  }
 
   // 4. En passant square. Ignore if no pawn capture is possible
   if (   ((fen >> col) && (col >= 'a' && col <= 'h'))
       && ((fen >> row) && (row == '3' || row == '6')))
   {
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
-      Color them = flip(sideToMove);
 
-      if (!(attacks_from<PAWN>(st->epSquare, them) & pieces(PAWN, sideToMove)))
+      if (!(attackers_to(st->epSquare) & pieces(PAWN, sideToMove)))
           st->epSquare = SQ_NONE;
   }
 
@@ -196,65 +219,30 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   // handle also common incorrect FEN with fullmove = 0.
   startPosPly = Max(2 * (startPosPly - 1), 0) + int(sideToMove == BLACK);
 
-  // Various initialisations
-  chess960 = isChess960;
-  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(flip(sideToMove));
-
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
   st->materialKey = compute_material_key();
   st->value = compute_value();
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
+  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(flip(sideToMove));
+  chess960 = isChess960;
 
   assert(pos_is_ok());
 }
 
 
-/// Position::set_castle() is an helper function used to set
-/// correct castling related flags.
+/// Position::set_castle_right() is an helper function used to set castling
+/// rights given the corresponding king and rook starting squares.
 
-void Position::set_castle(int f, Square ksq, Square rsq) {
+void Position::set_castle_right(Square ksq, Square rsq) {
+
+  int f = (rsq < ksq ? WHITE_OOO : WHITE_OO) << color_of(piece_on(ksq));
 
   st->castleRights |= f;
   castleRightsMask[ksq] ^= f;
   castleRightsMask[rsq] ^= f;
   castleRookSquare[f] = rsq;
-}
-
-
-/// Position::set_castling_rights() sets castling parameters castling avaiability.
-/// This function is compatible with 3 standards: Normal FEN standard, Shredder-FEN
-/// that uses the letters of the columns on which the rooks began the game instead
-/// of KQkq and also X-FEN standard that, in case of Chess960, if an inner Rook is
-/// associated with the castling right, the traditional castling tag will be replaced
-/// by the file letter of the involved rook as for the Shredder-FEN.
-
-void Position::set_castling_rights(char token) {
-
-    Color c = islower(token) ? BLACK : WHITE;
-
-    Square sqA = relative_square(c, SQ_A1);
-    Square sqH = relative_square(c, SQ_H1);
-    Square rsq, ksq = king_square(c);
-
-    token = char(toupper(token));
-
-    if (token == 'K')
-        for (rsq = sqH; piece_on(rsq) != make_piece(c, ROOK); rsq--) {}
-
-    else if (token == 'Q')
-        for (rsq = sqA; piece_on(rsq) != make_piece(c, ROOK); rsq++) {}
-
-    else if (token >= 'A' && token <= 'H')
-        rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
-
-    else return;
-
-    if (file_of(rsq) < file_of(ksq))
-        set_castle(WHITE_OOO << c, ksq, rsq);
-    else
-        set_castle(WHITE_OO << c, ksq, rsq);
 }
 
 
@@ -1714,13 +1702,13 @@ void Position::flip_me() {
 
   // Castling rights
   if (pos.can_castle(WHITE_OO))
-      set_castle(BLACK_OO,  king_square(BLACK), flip(pos.castle_rook_square(WHITE_OO)));
+      set_castle_right(king_square(BLACK), flip(pos.castle_rook_square(WHITE_OO)));
   if (pos.can_castle(WHITE_OOO))
-      set_castle(BLACK_OOO, king_square(BLACK), flip(pos.castle_rook_square(WHITE_OOO)));
+      set_castle_right(king_square(BLACK), flip(pos.castle_rook_square(WHITE_OOO)));
   if (pos.can_castle(BLACK_OO))
-      set_castle(WHITE_OO,  king_square(WHITE), flip(pos.castle_rook_square(BLACK_OO)));
+      set_castle_right(king_square(WHITE), flip(pos.castle_rook_square(BLACK_OO)));
   if (pos.can_castle(BLACK_OOO))
-      set_castle(WHITE_OOO, king_square(WHITE), flip(pos.castle_rook_square(BLACK_OOO)));
+      set_castle_right(king_square(WHITE), flip(pos.castle_rook_square(BLACK_OOO)));
 
   // En passant square
   if (pos.st->epSquare != SQ_NONE)
