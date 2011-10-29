@@ -764,7 +764,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   if (is_castle(m))
   {
       st->key = key;
-      do_castle_move(m);
+      do_castle_move<true>(m);
       return;
   }
 
@@ -993,38 +993,42 @@ void Position::do_capture_move(Key& key, PieceType capture, Color them, Square t
 }
 
 
-/// Position::do_castle_move() is a private method used to make a castling
-/// move. It is called from the main Position::do_move function. Note that
-/// castling moves are encoded as "king captures friendly rook" moves, for
-/// instance white short castling in a non-Chess960 game is encoded as e1h1.
-
+/// Position::do_castle_move() is a private method used to do/undo a castling
+/// move. Note that castling moves are encoded as "king captures friendly rook"
+/// moves, for instance white short castling in a non-Chess960 game is encoded
+/// as e1h1.
+template<bool Do>
 void Position::do_castle_move(Move m) {
 
   assert(is_ok(m));
   assert(is_castle(m));
 
+  Square kto, kfrom, rfrom, rto, kAfter, rAfter;
+
   Color us = side_to_move();
-  Color them = flip(us);
+  Square kBefore = move_from(m);
+  Square rBefore = move_to(m);
 
-  // Find source squares for king and rook
-  Square kfrom = move_from(m);
-  Square rfrom = move_to(m);
-  Square kto, rto;
-
-  assert(piece_on(kfrom) == make_piece(us, KING));
-  assert(piece_on(rfrom) == make_piece(us, ROOK));
-
-  // Find destination squares for king and rook
-  if (rfrom > kfrom) // O-O
+  // Find after-castle squares for king and rook
+  if (rBefore > kBefore) // O-O
   {
-      kto = relative_square(us, SQ_G1);
-      rto = relative_square(us, SQ_F1);
+      kAfter = relative_square(us, SQ_G1);
+      rAfter = relative_square(us, SQ_F1);
   }
   else // O-O-O
   {
-      kto = relative_square(us, SQ_C1);
-      rto = relative_square(us, SQ_D1);
+      kAfter = relative_square(us, SQ_C1);
+      rAfter = relative_square(us, SQ_D1);
   }
+
+  kfrom = Do ? kBefore : kAfter;
+  rfrom = Do ? rBefore : rAfter;
+
+  kto = Do ? kAfter : kBefore;
+  rto = Do ? rAfter : rBefore;
+
+  assert(piece_on(kfrom) == make_piece(us, KING));
+  assert(piece_on(rfrom) == make_piece(us, ROOK));
 
   // Remove pieces from source squares
   clear_bit(&byColorBB[us], kfrom);
@@ -1056,38 +1060,44 @@ void Position::do_castle_move(Move m) {
   index[kto] = index[kfrom];
   index[rto] = tmp;
 
-  // Reset capture field
-  st->capturedType = PIECE_TYPE_NONE;
-
-  // Update incremental scores
-  st->value += pst_delta(king, kfrom, kto);
-  st->value += pst_delta(rook, rfrom, rto);
-
-  // Update hash key
-  st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
-  st->key ^= zobrist[us][ROOK][rfrom] ^ zobrist[us][ROOK][rto];
-
-  // Clear en passant square
-  if (st->epSquare != SQ_NONE)
+  if (Do)
   {
-      st->key ^= zobEp[st->epSquare];
-      st->epSquare = SQ_NONE;
+      // Reset capture field
+      st->capturedType = PIECE_TYPE_NONE;
+
+      // Update incremental scores
+      st->value += pst_delta(king, kfrom, kto);
+      st->value += pst_delta(rook, rfrom, rto);
+
+      // Update hash key
+      st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
+      st->key ^= zobrist[us][ROOK][rfrom] ^ zobrist[us][ROOK][rto];
+
+      // Clear en passant square
+      if (st->epSquare != SQ_NONE)
+      {
+          st->key ^= zobEp[st->epSquare];
+          st->epSquare = SQ_NONE;
+      }
+
+      // Update castling rights
+      st->key ^= zobCastle[st->castleRights];
+      st->castleRights &= castleRightsMask[kfrom];
+      st->key ^= zobCastle[st->castleRights];
+
+      // Reset rule 50 counter
+      st->rule50 = 0;
+
+      // Update checkers BB
+      st->checkersBB = attackers_to(king_square(flip(us))) & pieces(us);
+
+      // Finish
+      sideToMove = flip(sideToMove);
+      st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
   }
-
-  // Update castling rights
-  st->key ^= zobCastle[st->castleRights];
-  st->castleRights &= castleRightsMask[kfrom];
-  st->key ^= zobCastle[st->castleRights];
-
-  // Reset rule 50 counter
-  st->rule50 = 0;
-
-  // Update checkers BB
-  st->checkersBB = attackers_to(king_square(them)) & pieces(us);
-
-  // Finish
-  sideToMove = flip(sideToMove);
-  st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
+  else
+      // Undo: point our state pointer back to the previous state
+      st = st->previous;
 
   assert(pos_is_ok());
 }
@@ -1104,7 +1114,7 @@ void Position::undo_move(Move m) {
 
   if (is_castle(m))
   {
-      undo_castle_move(m);
+      do_castle_move<false>(m);
       return;
   }
 
@@ -1186,78 +1196,6 @@ void Position::undo_move(Move m) {
       index[capsq] = pieceCount[them][st->capturedType] - 1;
       pieceList[them][st->capturedType][index[capsq]] = capsq;
   }
-
-  // Finally point our state pointer back to the previous state
-  st = st->previous;
-
-  assert(pos_is_ok());
-}
-
-
-/// Position::undo_castle_move() is a private method used to unmake a castling
-/// move. It is called from the main Position::undo_move function. Note that
-/// castling moves are encoded as "king captures friendly rook" moves, for
-/// instance white short castling in a non-Chess960 game is encoded as e1h1.
-
-void Position::undo_castle_move(Move m) {
-
-  assert(is_ok(m));
-  assert(is_castle(m));
-
-  // When we have arrived here, some work has already been done by
-  // Position::undo_move. In particular, the side to move has been switched,
-  // so the code below is correct.
-  Color us = side_to_move();
-
-  // Find source squares for king and rook
-  Square kfrom = move_from(m);
-  Square rfrom = move_to(m);
-  Square kto, rto;
-
-  // Find destination squares for king and rook
-  if (rfrom > kfrom) // O-O
-  {
-      kto = relative_square(us, SQ_G1);
-      rto = relative_square(us, SQ_F1);
-  }
-  else // O-O-O
-  {
-      kto = relative_square(us, SQ_C1);
-      rto = relative_square(us, SQ_D1);
-  }
-
-  assert(piece_on(kto) == make_piece(us, KING));
-  assert(piece_on(rto) == make_piece(us, ROOK));
-
-  // Remove pieces from destination squares
-  clear_bit(&byColorBB[us], kto);
-  clear_bit(&byTypeBB[KING], kto);
-  clear_bit(&byTypeBB[0], kto);
-  clear_bit(&byColorBB[us], rto);
-  clear_bit(&byTypeBB[ROOK], rto);
-  clear_bit(&byTypeBB[0], rto);
-
-  // Put pieces on source squares
-  set_bit(&byColorBB[us], kfrom);
-  set_bit(&byTypeBB[KING], kfrom);
-  set_bit(&byTypeBB[0], kfrom);
-  set_bit(&byColorBB[us], rfrom);
-  set_bit(&byTypeBB[ROOK], rfrom);
-  set_bit(&byTypeBB[0], rfrom);
-
-  // Update board
-  Piece king = make_piece(us, KING);
-  Piece rook = make_piece(us, ROOK);
-  board[kto] = board[rto] = PIECE_NONE;
-  board[kfrom] = king;
-  board[rfrom] = rook;
-
-  // Update piece lists
-  pieceList[us][KING][index[kto]] = kfrom;
-  pieceList[us][ROOK][index[rto]] = rfrom;
-  int tmp = index[rto];  // In Chess960 could be rto == kfrom
-  index[kfrom] = index[kto];
-  index[rfrom] = tmp;
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
