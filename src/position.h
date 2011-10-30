@@ -216,11 +216,9 @@ private:
   void set_castle_right(Square ksq, Square rsq);
   bool move_is_legal(const Move m) const;
 
-  // Helper functions for doing and undoing moves
+  // Helper template functions
   template<bool Do> void do_castle_move(Move m);
-
-  template<bool FindPinned>
-  Bitboard hidden_checkers() const;
+  template<bool FindPinned> Bitboard hidden_checkers() const;
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;
@@ -382,6 +380,14 @@ inline Bitboard Position::checkers() const {
 
 inline bool Position::in_check() const {
   return st->checkersBB != 0;
+}
+
+inline Bitboard Position::discovered_check_candidates() const {
+  return hidden_checkers<false>();
+}
+
+inline Bitboard Position::pinned_pieces() const {
+  return hidden_checkers<true>();
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {

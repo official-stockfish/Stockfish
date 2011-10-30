@@ -349,7 +349,6 @@ void Position::print(Move move) const {
 /// king) pieces for the given color. Or, when template parameter FindPinned is
 /// false, the function return the pieces of the given color candidate for a
 /// discovery check against the enemy king.
-
 template<bool FindPinned>
 Bitboard Position::hidden_checkers() const {
 
@@ -373,24 +372,10 @@ Bitboard Position::hidden_checkers() const {
   return result;
 }
 
+// Explicit template instantiations
+template Bitboard Position::hidden_checkers<true>() const;
+template Bitboard Position::hidden_checkers<false>() const;
 
-/// Position:pinned_pieces() returns a bitboard of all pinned (against the
-/// king) pieces for the side to move.
-
-Bitboard Position::pinned_pieces() const {
-
-  return hidden_checkers<true>();
-}
-
-
-/// Position:discovered_check_candidates() returns a bitboard containing all
-/// pieces for the side to move which are candidates for giving a discovered
-/// check.
-
-Bitboard Position::discovered_check_candidates() const {
-
-  return hidden_checkers<false>();
-}
 
 /// Position::attackers_to() computes a bitboard of all pieces which attacks a
 /// given square. Slider attacks use occ bitboard as occupancy.
@@ -404,6 +389,7 @@ Bitboard Position::attackers_to(Square s, Bitboard occ) const {
         | (bishop_attacks_bb(s, occ)    & pieces(BISHOP, QUEEN))
         | (attacks_from<KING>(s)        & pieces(KING));
 }
+
 
 /// Position::attacks_from() computes a bitboard of all attacks of a given piece
 /// put in a given square. Slider attacks use occ bitboard as occupancy.
@@ -503,8 +489,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
 
 /// Position::move_is_legal() takes a random move and tests whether the move
-/// is legal. This version is not very fast and should be used only
-/// in non time-critical paths.
+/// is legal. This version is not very fast and should be used only in non
+/// time-critical paths.
 
 bool Position::move_is_legal(const Move m) const {
 

@@ -84,11 +84,11 @@ inline Bitboard bit_is_set(Bitboard b, Square s) {
   return b & SetMaskBB[s];
 }
 
-inline void set_bit(Bitboard *b, Square s) {
+inline void set_bit(Bitboard* b, Square s) {
   *b |= SetMaskBB[s];
 }
 
-inline void clear_bit(Bitboard *b, Square s) {
+inline void clear_bit(Bitboard* b, Square s) {
   *b &= ClearMaskBB[s];
 }
 
@@ -100,7 +100,7 @@ inline Bitboard make_move_bb(Square from, Square to) {
   return SetMaskBB[from] | SetMaskBB[to];
 }
 
-inline void do_move_bb(Bitboard *b, Bitboard move_bb) {
+inline void do_move_bb(Bitboard* b, Bitboard move_bb) {
   *b ^= move_bb;
 }
 
