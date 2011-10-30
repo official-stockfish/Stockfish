@@ -377,7 +377,7 @@ template Bitboard Position::hidden_checkers<true>() const;
 template Bitboard Position::hidden_checkers<false>() const;
 
 
-/// Position::attackers_to() computes a bitboard of all pieces which attacks a
+/// Position::attackers_to() computes a bitboard of all pieces which attack a
 /// given square. Slider attacks use occ bitboard as occupancy.
 
 Bitboard Position::attackers_to(Square s, Bitboard occ) const {
@@ -417,22 +417,25 @@ bool Position::move_attacks_square(Move m, Square s) const {
   assert(square_is_ok(s));
 
   Bitboard occ, xray;
-  Square f = move_from(m), t = move_to(m);
+  Square from = move_from(m);
+  Square to = move_to(m);
+  Piece piece = piece_on(from);
 
-  assert(!square_is_empty(f));
+  assert(!square_is_empty(from));
 
-  if (bit_is_set(attacks_from(piece_on(f), t), s))
+  // Update occupancy as if the piece is moving
+  occ = occupied_squares();
+  do_move_bb(&occ, make_move_bb(from, to));
+
+  // The piece moved in 'to' attacks the square 's' ?
+  if (bit_is_set(attacks_from(piece, to, occ), s))
       return true;
 
-  // Move the piece and scan for X-ray attacks behind it
-  occ = occupied_squares();
-  do_move_bb(&occ, make_move_bb(f, t));
-  xray = ( (rook_attacks_bb(s, occ)   & pieces(ROOK, QUEEN))
-          |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN)))
-         & pieces(color_of(piece_on(f)));
+  // Scan for possible X-ray attackers behind the moved piece
+  xray = (rook_attacks_bb(s, occ)   & pieces(ROOK, QUEEN, color_of(piece)))
+        |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN, color_of(piece)));
 
-  // If we have attacks we need to verify that are caused by our move
-  // and are not already existent ones.
+  // Verify attackers are triggered by our move and not already existing
   return xray && (xray ^ (xray & attacks_from<QUEEN>(s)));
 }
 
