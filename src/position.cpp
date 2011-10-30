@@ -120,29 +120,35 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
-   A FEN string contains six fields. The separator between fields is a space. The fields are:
+   A FEN string contains six fields separated by a space. The fields are:
 
-   1) Piece placement (from white's perspective). Each rank is described, starting with rank 8 and ending
-      with rank 1; within each rank, the contents of each square are described from file A through file H.
-      Following the Standard Algebraic Notation (SAN), each piece is identified by a single letter taken
-      from the standard English names. White pieces are designated using upper-case letters ("PNBRQK")
-      while Black take lowercase ("pnbrqk"). Blank squares are noted using digits 1 through 8 (the number
-      of blank squares), and "/" separate ranks.
+   1) Piece placement (from white's perspective). Each rank is described, starting
+      with rank 8 and ending with rank 1; within each rank, the contents of each
+      square are described from file A through file H. Following the Standard
+      Algebraic Notation (SAN), each piece is identified by a single letter taken
+      from the standard English names. White pieces are designated using upper-case
+      letters ("PNBRQK") while Black take lowercase ("pnbrqk"). Blank squares are
+      noted using digits 1 through 8 (the number of blank squares), and "/"
+      separates ranks.
 
    2) Active color. "w" means white moves next, "b" means black.
 
-   3) Castling availability. If neither side can castle, this is "-". Otherwise, this has one or more
-      letters: "K" (White can castle kingside), "Q" (White can castle queenside), "k" (Black can castle
-      kingside), and/or "q" (Black can castle queenside).
+   3) Castling availability. If neither side can castle, this is "-". Otherwise,
+      this has one or more letters: "K" (White can castle kingside), "Q" (White
+      can castle queenside), "k" (Black can castle kingside), and/or "q" (Black
+      can castle queenside).
 
-   4) En passant target square in algebraic notation. If there's no en passant target square, this is "-".
-      If a pawn has just made a 2-square move, this is the position "behind" the pawn. This is recorded
-      regardless of whether there is a pawn in position to make an en passant capture.
+   4) En passant target square (in algebraic notation). If there's no en passant
+      target square, this is "-". If a pawn has just made a 2-square move, this
+      is the position "behind" the pawn. This is recorded regardless of whether
+      there is a pawn in position to make an en passant capture.
 
-   5) Halfmove clock: This is the number of halfmoves since the last pawn advance or capture. This is used
-      to determine if a draw can be claimed under the fifty-move rule.
+   5) Halfmove clock. This is the number of halfmoves since the last pawn advance
+      or capture. This is used to determine if a draw can be claimed under the
+      fifty-move rule.
 
-   6) Fullmove number: The number of the full move. It starts at 1, and is incremented after Black's move.
+   6) Fullmove number. The number of the full move. It starts at 1, and is
+      incremented after Black's move.
 */
 
   char col, row, token;
@@ -263,20 +269,20 @@ const string Position::to_fen() const {
       {
           sq = make_square(file, rank);
 
-          if (!square_is_empty(sq))
+          if (square_is_empty(sq))
+              emptyCnt++;
+          else
           {
-              if (emptyCnt)
+              if (emptyCnt > 0)
               {
                   fen << emptyCnt;
                   emptyCnt = 0;
               }
               fen << PieceToChar[piece_on(sq)];
           }
-          else
-              emptyCnt++;
       }
 
-      if (emptyCnt)
+      if (emptyCnt > 0)
           fen << emptyCnt;
 
       if (rank > RANK_1)
@@ -285,24 +291,23 @@ const string Position::to_fen() const {
 
   fen << (sideToMove == WHITE ? " w " : " b ");
 
-  if (st->castleRights != CASTLES_NONE)
-  {
-      if (can_castle(WHITE_OO))
-          fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE_OO))))) : 'K');
+  if (can_castle(WHITE_OO))
+      fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE_OO))))) : 'K');
 
-      if (can_castle(WHITE_OOO))
-          fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE_OOO))))) : 'Q');
+  if (can_castle(WHITE_OOO))
+      fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE_OOO))))) : 'Q');
 
-      if (can_castle(BLACK_OO))
-          fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK_OO))) : 'k');
+  if (can_castle(BLACK_OO))
+      fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK_OO))) : 'k');
 
-      if (can_castle(BLACK_OOO))
-          fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK_OOO))) : 'q');
-  } else
+  if (can_castle(BLACK_OOO))
+      fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK_OOO))) : 'q');
+
+  if (st->castleRights == CASTLES_NONE)
       fen << '-';
 
-  fen << (ep_square() == SQ_NONE ? " -" : " " + square_to_string(ep_square()))
-      << " " << st->rule50 << " " << 1 + (startPosPly - int(sideToMove == BLACK)) / 2;
+  fen << (ep_square() == SQ_NONE ? " - " : " " + square_to_string(ep_square()) + " ")
+      << st->rule50 << " " << 1 + (startPosPly - int(sideToMove == BLACK)) / 2;
 
   return fen.str();
 }
@@ -318,8 +323,7 @@ void Position::print(Move move) const {
   if (move)
   {
       Position p(*this, thread());
-      string dd = (sideToMove == BLACK ? ".." : "");
-      cout << "\nMove is: " << dd << move_to_san(p, move);
+      cout << "\nMove is: " << (sideToMove == BLACK ? ".." : "") << move_to_san(p, move);
   }
 
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
@@ -329,11 +333,11 @@ void Position::print(Move move) const {
       {
           Square sq = make_square(file, rank);
           Piece piece = piece_on(sq);
+          char c = (color_of(piece) == BLACK ? '=' : ' ');
 
           if (piece == PIECE_NONE && color_of(sq) == DARK)
               piece = PIECE_NONE_DARK_SQ;
 
-          char c = (color_of(piece_on(sq)) == BLACK ? '=' : ' ');
           cout << c << PieceToChar[piece] << c << '|';
       }
   }
@@ -350,7 +354,7 @@ template<bool FindPinned>
 Bitboard Position::hidden_checkers() const {
 
   // Pinned pieces protect our king, dicovery checks attack the enemy king
-  Bitboard b, result = EmptyBoardBB;
+  Bitboard b, result = 0;
   Bitboard pinners = pieces(FindPinned ? flip(sideToMove) : sideToMove);
   Square ksq = king_square(FindPinned ? sideToMove : flip(sideToMove));
 
