@@ -781,11 +781,66 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   assert(color_of(piece_on(from)) == us);
   assert(color_of(piece_on(to)) == them || square_is_empty(to));
-  assert(!(ep || pm) || piece == make_piece(us, PAWN));
-  assert(!pm || relative_rank(us, to) == RANK_8);
+  assert(capture != KING);
 
   if (capture)
-      do_capture_move(key, capture, them, to, ep);
+  {
+      Square capsq = to;
+
+      // If the captured piece was a pawn, update pawn hash key, otherwise
+      // update non-pawn material.
+      if (capture == PAWN)
+      {
+          if (ep) // En passant?
+          {
+              capsq += pawn_push(them);
+
+              assert(pt == PAWN);
+              assert(to == st->epSquare);
+              assert(relative_rank(us, to) == RANK_6);
+              assert(piece_on(to) == PIECE_NONE);
+              assert(piece_on(capsq) == make_piece(them, PAWN));
+
+              board[capsq] = PIECE_NONE;
+          }
+
+          st->pawnKey ^= zobrist[them][PAWN][capsq];
+      }
+      else
+          st->npMaterial[them] -= PieceValueMidgame[capture];
+
+      // Remove captured piece
+      clear_bit(&byColorBB[them], capsq);
+      clear_bit(&byTypeBB[capture], capsq);
+      clear_bit(&byTypeBB[0], capsq);
+
+      // Update hash key
+      key ^= zobrist[them][capture][capsq];
+
+      // Update incremental scores
+      st->value -= pst(make_piece(them, capture), capsq);
+
+      // Update piece count
+      pieceCount[them][capture]--;
+
+      // Update material hash key
+      st->materialKey ^= zobrist[them][capture][pieceCount[them][capture]];
+
+      // Update piece list, move the last piece at index[capsq] position
+      //
+      // WARNING: This is a not perfectly revresible operation. When we
+      // will reinsert the captured piece in undo_move() we will put it
+      // at the end of the list and not in its original place, it means
+      // index[] and pieceList[] are not guaranteed to be invariant to a
+      // do_move() + undo_move() sequence.
+      Square lastPieceSquare = pieceList[them][capture][pieceCount[them][capture]];
+      index[lastPieceSquare] = index[capsq];
+      pieceList[them][capture][index[lastPieceSquare]] = lastPieceSquare;
+      pieceList[them][capture][pieceCount[them][capture]] = SQ_NONE;
+
+      // Reset rule 50 counter
+      st->rule50 = 0;
+  }
 
   // Update hash key
   key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
@@ -927,69 +982,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
 
   assert(pos_is_ok());
-}
-
-
-/// Position::do_capture_move() is a private method used to update captured
-/// piece info. It is called from the main Position::do_move function.
-
-void Position::do_capture_move(Key& key, PieceType capture, Color them, Square to, bool ep) {
-
-    assert(capture != KING);
-
-    Square capsq = to;
-
-    // If the captured piece was a pawn, update pawn hash key,
-    // otherwise update non-pawn material.
-    if (capture == PAWN)
-    {
-        if (ep) // en passant ?
-        {
-            capsq = to + pawn_push(them);
-
-            assert(to == st->epSquare);
-            assert(relative_rank(flip(them), to) == RANK_6);
-            assert(piece_on(to) == PIECE_NONE);
-            assert(piece_on(capsq) == make_piece(them, PAWN));
-
-            board[capsq] = PIECE_NONE;
-        }
-        st->pawnKey ^= zobrist[them][PAWN][capsq];
-    }
-    else
-        st->npMaterial[them] -= PieceValueMidgame[capture];
-
-    // Remove captured piece
-    clear_bit(&byColorBB[them], capsq);
-    clear_bit(&byTypeBB[capture], capsq);
-    clear_bit(&byTypeBB[0], capsq);
-
-    // Update hash key
-    key ^= zobrist[them][capture][capsq];
-
-    // Update incremental scores
-    st->value -= pst(make_piece(them, capture), capsq);
-
-    // Update piece count
-    pieceCount[them][capture]--;
-
-    // Update material hash key
-    st->materialKey ^= zobrist[them][capture][pieceCount[them][capture]];
-
-    // Update piece list, move the last piece at index[capsq] position
-    //
-    // WARNING: This is a not perfectly revresible operation. When we
-    // will reinsert the captured piece in undo_move() we will put it
-    // at the end of the list and not in its original place, it means
-    // index[] and pieceList[] are not guaranteed to be invariant to a
-    // do_move() + undo_move() sequence.
-    Square lastPieceSquare = pieceList[them][capture][pieceCount[them][capture]];
-    index[lastPieceSquare] = index[capsq];
-    pieceList[them][capture][index[lastPieceSquare]] = lastPieceSquare;
-    pieceList[them][capture][pieceCount[them][capture]] = SQ_NONE;
-
-    // Reset rule 50 counter
-    st->rule50 = 0;
 }
 
 
