@@ -812,7 +812,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       // Remove captured piece
       clear_bit(&byColorBB[them], capsq);
       clear_bit(&byTypeBB[capture], capsq);
-      clear_bit(&byTypeBB[0], capsq);
+      clear_bit(&occupied, capsq);
 
       // Update hash key
       key ^= zobrist[them][capture][capsq];
@@ -868,7 +868,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   Bitboard move_bb = make_move_bb(from, to);
   do_move_bb(&byColorBB[us], move_bb);
   do_move_bb(&byTypeBB[pt], move_bb);
-  do_move_bb(&byTypeBB[0], move_bb); // HACK: byTypeBB[0] == occupied squares
+  do_move_bb(&occupied, move_bb);
 
   board[to] = board[from];
   board[from] = PIECE_NONE;
@@ -1025,18 +1025,18 @@ void Position::do_castle_move(Move m) {
   // Remove pieces from source squares
   clear_bit(&byColorBB[us], kfrom);
   clear_bit(&byTypeBB[KING], kfrom);
-  clear_bit(&byTypeBB[0], kfrom);
+  clear_bit(&occupied, kfrom);
   clear_bit(&byColorBB[us], rfrom);
   clear_bit(&byTypeBB[ROOK], rfrom);
-  clear_bit(&byTypeBB[0], rfrom);
+  clear_bit(&occupied, rfrom);
 
   // Put pieces on destination squares
   set_bit(&byColorBB[us], kto);
   set_bit(&byTypeBB[KING], kto);
-  set_bit(&byTypeBB[0], kto);
+  set_bit(&occupied, kto);
   set_bit(&byColorBB[us], rto);
   set_bit(&byTypeBB[ROOK], rto);
-  set_bit(&byTypeBB[0], rto);
+  set_bit(&occupied, rto);
 
   // Update board
   Piece king = make_piece(us, KING);
@@ -1155,7 +1155,7 @@ void Position::undo_move(Move m) {
   Bitboard move_bb = make_move_bb(to, from);
   do_move_bb(&byColorBB[us], move_bb);
   do_move_bb(&byTypeBB[pt], move_bb);
-  do_move_bb(&byTypeBB[0], move_bb); // HACK: byTypeBB[0] == occupied squares
+  do_move_bb(&occupied, move_bb);
 
   board[from] = make_piece(us, pt);
   board[to] = PIECE_NONE;
@@ -1177,7 +1177,7 @@ void Position::undo_move(Move m) {
       // Restore the captured piece
       set_bit(&byColorBB[them], capsq);
       set_bit(&byTypeBB[st->capturedType], capsq);
-      set_bit(&byTypeBB[0], capsq);
+      set_bit(&occupied, capsq);
 
       board[capsq] = make_piece(them, st->capturedType);
 
@@ -1265,7 +1265,7 @@ int Position::see_sign(Move m) const {
 int Position::see(Move m) const {
 
   Square from, to;
-  Bitboard occupied, attackers, stmAttackers, b;
+  Bitboard occ, attackers, stmAttackers, b;
   int swapList[32], slIndex = 1;
   PieceType capturedType, pt;
   Color stm;
@@ -1281,7 +1281,7 @@ int Position::see(Move m) const {
   from = move_from(m);
   to = move_to(m);
   capturedType = type_of(piece_on(to));
-  occupied = occupied_squares();
+  occ = occupied_squares();
 
   // Handle en passant moves
   if (st->epSquare == to && type_of(piece_on(from)) == PAWN)
@@ -1292,14 +1292,14 @@ int Position::see(Move m) const {
       assert(type_of(piece_on(capQq)) == PAWN);
 
       // Remove the captured pawn
-      clear_bit(&occupied, capQq);
+      clear_bit(&occ, capQq);
       capturedType = PAWN;
   }
 
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
-  clear_bit(&occupied, from);
-  attackers = attackers_to(to, occupied);
+  clear_bit(&occ, from);
+  attackers = attackers_to(to, occ);
 
   // If the opponent has no attackers we are finished
   stm = flip(color_of(piece_on(from)));
@@ -1326,11 +1326,11 @@ int Position::see(Move m) const {
       // Remove the attacker we just found from the 'occupied' bitboard,
       // and scan for new X-ray attacks behind the attacker.
       b = stmAttackers & pieces(pt);
-      occupied ^= (b & (~b + 1));
-      attackers |=  (rook_attacks_bb(to, occupied)   & pieces(ROOK, QUEEN))
-                  | (bishop_attacks_bb(to, occupied) & pieces(BISHOP, QUEEN));
+      occ ^= (b & (~b + 1));
+      attackers |=  (rook_attacks_bb(to, occ)   & pieces(ROOK, QUEEN))
+                  | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN));
 
-      attackers &= occupied; // Cut out pieces we've already done
+      attackers &= occ; // Cut out pieces we've already done
 
       // Add the new entry to the swap list
       assert(slIndex < 32);
@@ -1386,6 +1386,7 @@ void Position::clear() {
   }
   sideToMove = WHITE;
   nodes = 0;
+  occupied = 0;
 }
 
 
@@ -1403,7 +1404,7 @@ void Position::put_piece(Piece p, Square s) {
 
   set_bit(&byTypeBB[pt], s);
   set_bit(&byColorBB[c], s);
-  set_bit(&byTypeBB[0], s); // HACK: byTypeBB[0] contains all occupied squares.
+  set_bit(&occupied, s);
 }
 
 

@@ -238,6 +238,7 @@ private:
   // Bitboards
   Bitboard byTypeBB[8];        // [pieceType]
   Bitboard byColorBB[2];       // [color]
+  Bitboard occupied;
 
   // Piece counts
   int pieceCount[2][8];        // [color][pieceType]
@@ -287,11 +288,11 @@ inline Color Position::side_to_move() const {
 }
 
 inline Bitboard Position::occupied_squares() const {
-  return byTypeBB[0];
+  return occupied;
 }
 
 inline Bitboard Position::empty_squares() const {
-  return ~byTypeBB[0];
+  return ~occupied;
 }
 
 inline Bitboard Position::pieces(Color c) const {
