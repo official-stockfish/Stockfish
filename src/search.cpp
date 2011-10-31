@@ -197,7 +197,6 @@ namespace {
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
-  void update_gains(const Position& pos, Move move, Value before, Value after);
   void do_skill_level(Move* best, Move* ponder);
 
   int current_search_time(int set = 0);
@@ -504,7 +503,7 @@ namespace {
     *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
     depth = aspirationDelta = 0;
     value = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
-    ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
+    ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
     // Moves to search are verified and copied
     Rml.init(pos, searchMoves);
@@ -552,7 +551,7 @@ namespace {
             // research with bigger window until not failing high/low anymore.
             do {
                 // Search starts from ss+1 to allow referencing (ss-1). This is
-                // needed by update_gains() and ss copy when splitting at Root.
+                // needed by update gains and ss copy when splitting at Root.
                 value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
 
                 // Bring to front the best move. It is critical that sorting is
@@ -821,8 +820,17 @@ namespace {
         TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
     }
 
-    // Save gain for the parent non-capture move
-    update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
+    // Update gain for the parent non-capture move given the static position
+    // evaluation before and after the move.
+    if (   (move = (ss-1)->currentMove) != MOVE_NULL
+        && (ss-1)->eval != VALUE_NONE
+        && ss->eval != VALUE_NONE
+        && pos.captured_piece_type() == PIECE_TYPE_NONE
+        && !is_special(move))
+    {
+        Square to = move_to(move);
+        H.update_gain(pos.piece_on(to), to, -(ss-1)->eval - ss->eval);
+    }
 
     // Step 6. Razoring (is omitted in PV nodes)
     if (   !PvNode
@@ -1724,20 +1732,6 @@ split_point_start: // At split points actual search starts from here
 
         H.update(pos.piece_on(move_from(m)), move_to(m), -bonus);
     }
-  }
-
-
-  // update_gains() updates the gains table of a non-capture move given
-  // the static position evaluation before and after the move.
-
-  void update_gains(const Position& pos, Move m, Value before, Value after) {
-
-    if (   m != MOVE_NULL
-        && before != VALUE_NONE
-        && after != VALUE_NONE
-        && pos.captured_piece_type() == PIECE_TYPE_NONE
-        && !is_special(m))
-        H.update_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
 
