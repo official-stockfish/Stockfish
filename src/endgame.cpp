@@ -18,6 +18,7 @@
 */
 
 #include <cassert>
+#include <algorithm>
 
 #include "bitcount.h"
 #include "endgame.h"
@@ -632,7 +633,7 @@ ScaleFactor Endgame<KRPPKRP>::apply(const Position& pos) const {
       || pos.pawn_is_passed(strongerSide, wpsq2))
       return SCALE_FACTOR_NONE;
 
-  Rank r = Max(relative_rank(strongerSide, wpsq1), relative_rank(strongerSide, wpsq2));
+  Rank r = std::max(relative_rank(strongerSide, wpsq1), relative_rank(strongerSide, wpsq2));
 
   if (   file_distance(bksq, wpsq1) <= 1
       && file_distance(bksq, wpsq2) <= 1

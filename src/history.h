@@ -20,8 +20,9 @@
 #if !defined(HISTORY_H_INCLUDED)
 #define HISTORY_H_INCLUDED
 
-#include <cstring>
 #include "types.h"
+#include <cstring>
+#include <algorithm>
 
 /// The History class stores statistics about how often different moves
 /// have been successful or unsuccessful during the current search. These
@@ -64,7 +65,7 @@ inline Value History::gain(Piece p, Square to) const {
 }
 
 inline void History::update_gain(Piece p, Square to, Value g) {
-  maxGains[p][to] = Max(g, maxGains[p][to] - 1);
+  maxGains[p][to] = std::max(g, maxGains[p][to] - 1);
 }
 
 #endif // !defined(HISTORY_H_INCLUDED)

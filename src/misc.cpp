@@ -29,6 +29,7 @@
 #else
 
 #define _CRT_SECURE_NO_DEPRECATE
+#define NOMINMAX // disable macros min() and max()
 #include <windows.h>
 #include <sys/timeb.h>
 
@@ -43,6 +44,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #include "bitcount.h"
 #include "misc.h"
@@ -155,16 +157,16 @@ int cpu_count() {
 #if defined(_MSC_VER)
   SYSTEM_INFO s;
   GetSystemInfo(&s);
-  return Min(s.dwNumberOfProcessors, MAX_THREADS);
+  return std::min(int(s.dwNumberOfProcessors), MAX_THREADS);
 #else
 
 #  if defined(_SC_NPROCESSORS_ONLN)
-  return Min(sysconf(_SC_NPROCESSORS_ONLN), MAX_THREADS);
+  return std::min(sysconf(_SC_NPROCESSORS_ONLN), MAX_THREADS);
 #  elif defined(__hpux)
   struct pst_dynamic psd;
   if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1)
       return 1;
-  return Min(psd.psd_proc_cnt, MAX_THREADS);
+  return std::min(psd.psd_proc_cnt, MAX_THREADS);
 #  else
   return 1;
 #  endif
@@ -232,7 +234,7 @@ int input_available() {
   GetNumberOfConsoleInputEvents(inh, &nchars);
 
   // Read data from console without removing it from the buffer
-  if (nchars <= 0 || !PeekConsoleInput(inh, rec, Min(nchars, 256), &recCnt))
+  if (nchars <= 0 || !PeekConsoleInput(inh, rec, std::min(int(nchars), 256), &recCnt))
       return 0;
 
   // Search for at least one keyboard event

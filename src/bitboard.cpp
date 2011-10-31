@@ -19,6 +19,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 
 #include "bitboard.h"
 #include "bitcount.h"
@@ -160,7 +161,7 @@ void init_bitboards() {
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
-          SquareDistance[s1][s2] = Max(file_distance(s1, s2), rank_distance(s1, s2));
+          SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
 
   SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
   SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
@@ -247,7 +248,7 @@ void init_bitboards() {
               int f = file_distance(s1, s2);
               int r = rank_distance(s1, s2);
 
-              Square d = (s2 - s1) / Max(f, r);
+              Square d = (s2 - s1) / std::max(f, r);
 
               for (Square s3 = s1 + d; s3 != s2; s3 += d)
                   set_bit(&BetweenBB[s1][s2], s3);

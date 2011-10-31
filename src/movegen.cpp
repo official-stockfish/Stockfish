@@ -18,6 +18,7 @@
 */
 
 #include <cassert>
+#include <algorithm>
 
 #include "bitcount.h"
 #include "movegen.h"
@@ -516,12 +517,12 @@ namespace {
     // (including the final square), and all the squares between the rook's initial
     // and final squares (including the final square), must be vacant except for
     // the king and castling rook.
-    for (Square s = Min(kfrom, kto); s <= Max(kfrom, kto); s++)
+    for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); s++)
         if (  (s != kfrom && s != rfrom && !pos.square_is_empty(s))
             ||(pos.attackers_to(s) & pos.pieces(them)))
             return mlist;
 
-    for (Square s = Min(rfrom, rto); s <= Max(rfrom, rto); s++)
+    for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); s++)
         if (s != kfrom && s != rfrom && !pos.square_is_empty(s))
             return mlist;
 

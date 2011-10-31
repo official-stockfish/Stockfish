@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #include "bitcount.h"
 #include "movegen.h"
@@ -223,7 +224,7 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
 
   // Convert from fullmove starting from 1 to ply starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  startPosPly = Max(2 * (startPosPly - 1), 0) + int(sideToMove == BLACK);
+  startPosPly = std::max(2 * (startPosPly - 1), 0) + int(sideToMove == BLACK);
 
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
@@ -1330,7 +1331,7 @@ int Position::see(Move m) const {
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
   while (--slIndex)
-      swapList[slIndex-1] = Min(-swapList[slIndex], swapList[slIndex-1]);
+      swapList[slIndex-1] = std::min(-swapList[slIndex], swapList[slIndex-1]);
 
   return swapList[0];
 }
@@ -1502,7 +1503,7 @@ bool Position::is_draw() const {
   // Draw by repetition?
   if (!SkipRepetition)
   {
-      int i = 4, e = Min(st->rule50, st->pliesFromNull);
+      int i = 4, e = std::min(st->rule50, st->pliesFromNull);
 
       if (i <= e)
       {
