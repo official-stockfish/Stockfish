@@ -60,14 +60,14 @@ extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];
 
-extern uint64_t RMult[64];
-extern int RShift[64];
-extern Bitboard RMask[64];
+extern uint64_t RMagics[64];
+extern int RShifts[64];
+extern Bitboard RMasks[64];
 extern Bitboard* RAttacks[64];
 
-extern uint64_t BMult[64];
-extern int BShift[64];
-extern Bitboard BMask[64];
+extern uint64_t BMagics[64];
+extern int BShifts[64];
+extern Bitboard BMasks[64];
 extern Bitboard* BAttacks[64];
 
 extern Bitboard BishopPseudoAttacks[64];
@@ -172,25 +172,25 @@ inline Bitboard in_front_bb(Color c, Square s) {
 #if defined(IS_64BIT)
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
-  return RAttacks[s][((occ & RMask[s]) * RMult[s]) >> RShift[s]];
+  return RAttacks[s][((occ & RMasks[s]) * RMagics[s]) >> RShifts[s]];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
-  return BAttacks[s][((occ & BMask[s]) * BMult[s]) >> BShift[s]];
+  return BAttacks[s][((occ & BMasks[s]) * BMagics[s]) >> BShifts[s]];
 }
 
 #else // if !defined(IS_64BIT)
 
 inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
-  Bitboard b = occ & RMask[s];
+  Bitboard b = occ & RMasks[s];
   return RAttacks[s]
-         [unsigned(int(b) * int(RMult[s]) ^ int(b >> 32) * int(RMult[s] >> 32)) >> RShift[s]];
+         [unsigned(int(b) * int(RMagics[s]) ^ int(b >> 32) * int(RMagics[s] >> 32)) >> RShifts[s]];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
-  Bitboard b = occ & BMask[s];
+  Bitboard b = occ & BMasks[s];
   return BAttacks[s]
-         [unsigned(int(b) * int(BMult[s]) ^ int(b >> 32) * int(BMult[s] >> 32)) >> BShift[s]];
+         [unsigned(int(b) * int(BMagics[s]) ^ int(b >> 32) * int(BMagics[s] >> 32)) >> BShifts[s]];
 }
 
 #endif

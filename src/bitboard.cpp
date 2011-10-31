@@ -27,15 +27,15 @@
 
 // Global bitboards definitions with static storage duration are
 // automatically set to zero before enter main().
-Bitboard RMask[64];
-Bitboard RMult[64];
+Bitboard RMasks[64];
+Bitboard RMagics[64];
 Bitboard* RAttacks[64];
-int RShift[64];
+int RShifts[64];
 
-Bitboard BMask[64];
-Bitboard BMult[64];
+Bitboard BMasks[64];
+Bitboard BMagics[64];
 Bitboard* BAttacks[64];
-int BShift[64];
+int BShifts[64];
 
 Bitboard SetMaskBB[65];
 Bitboard ClearMaskBB[65];
@@ -64,11 +64,11 @@ namespace {
   CACHE_LINE_ALIGNMENT
 
   int BSFTable[64];
-  Bitboard RAttacksTable[0x19000];
-  Bitboard BAttacksTable[0x1480];
+  Bitboard RookTable[0x19000];  // Storage space for rook attacks
+  Bitboard BishopTable[0x1480]; // Storage space for bishop attacks
 
-  void init_sliding_attacks(Bitboard magic[], Bitboard* attack[], Bitboard attTable[],
-                            Bitboard mask[], int shift[], Square delta[]);
+  void init_magic_bitboards(Bitboard* attacks[], Bitboard magics[],
+                            Bitboard masks[], int shifts[], Square deltas[]);
 }
 
 
@@ -228,11 +228,14 @@ void init_bitboards() {
                       set_bit(&StepAttacksBB[make_piece(c, pt)][s], to);
               }
 
-  Square RDelta[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BDelta[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
+  Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
+  Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_sliding_attacks(BMult, BAttacks, BAttacksTable, BMask, BShift, BDelta);
-  init_sliding_attacks(RMult, RAttacks, RAttacksTable, RMask, RShift, RDelta);
+  RAttacks[0] = RookTable;
+  BAttacks[0] = BishopTable;
+
+  init_magic_bitboards(RAttacks, RMagics, RMasks, RShifts, RDeltas);
+  init_magic_bitboards(BAttacks, BMagics, BMasks, BShifts, BDeltas);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -258,28 +261,28 @@ void init_bitboards() {
 
 namespace {
 
-  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square delta[]) {
+  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square deltas[]) {
 
     Bitboard attacks = 0;
 
     for (int i = 0; i < 4; i++)
     {
-        Square s = sq + delta[i];
+        Square s = sq + deltas[i];
 
-        while (square_is_ok(s) && square_distance(s, s - delta[i]) == 1)
+        while (square_is_ok(s) && square_distance(s, s - deltas[i]) == 1)
         {
             set_bit(&attacks, s);
 
             if (bit_is_set(occupied, s))
                 break;
 
-            s += delta[i];
+            s += deltas[i];
         }
     }
     return attacks;
   }
 
-  Bitboard pick_magic(Bitboard mask, RKISS& rk, int booster) {
+  Bitboard pick_random(Bitboard mask, RKISS& rk, int booster) {
 
     Bitboard magic;
 
@@ -300,48 +303,69 @@ namespace {
     }
   }
 
-  void init_sliding_attacks(Bitboard magic[], Bitboard* attack[], Bitboard attTable[],
-                            Bitboard mask[], int shift[], Square delta[]) {
+
+  // init_magic_bitboards() computes all rook and bishop magics at startup.
+  // Magic bitboards are used to look up attacks of sliding pieces. As reference
+  // see chessprogramming.wikispaces.com/Magic+Bitboards. In particular, here we
+  // use the so called "fancy" approach.
+
+  void init_magic_bitboards(Bitboard* attacks[], Bitboard magics[],
+                            Bitboard masks[], int shifts[], Square deltas[]) {
 
     const int  MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
                                       { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
     RKISS rk;
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int key, maxKey, index, booster, offset = 0;
+    int key, maxKey, index, booster;
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
     {
+        // Board edges are not considered in the relevant occupancies
         edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
 
-        attack[s] = &attTable[offset];
-        mask[s]   = sliding_attacks(s, EmptyBoardBB, delta) & ~edges;
-        shift[s]  = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(mask[s]);
+        // Given a square 's', the mask is the bitboard of sliding attacks from
+        // 's' computed on an empty board. The index must be big enough to contain
+        // all the attacks for each possible subset of the mask and so is 2 power
+        // the number of 1s of the mask. Hence we deduce the size of the shift to
+        // apply to the 64 or 32 bits word to get the index.
+        masks[s]  = sliding_attacks(s, EmptyBoardBB, deltas) & ~edges;
+        shifts[s] = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(masks[s]);
 
-        // Use Carry-Rippler trick to enumerate all subsets of mask[s]
+        // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
+        // store the corresponding sliding attacks in reference[].
         b = maxKey = 0;
         do {
             occupancy[maxKey] = b;
-            reference[maxKey++] = sliding_attacks(s, b, delta);
-            b = (b - mask[s]) & mask[s];
+            reference[maxKey++] = sliding_attacks(s, b, deltas);
+            b = (b - masks[s]) & masks[s];
         } while (b);
 
-        offset += maxKey;
+        // Set the offset for the table of the next square. We have individual
+        // table sizes for each square with "Fancy Magic Bitboards".
+        if (s < SQ_H8)
+            attacks[s + 1] = attacks[s] + maxKey;
+
         booster = MagicBoosters[CpuIs64Bit][rank_of(s)];
 
-        // Then find a possible magic and the corresponding attacks
+        // Find a magic for square 's' picking up an (almost) random number
+        // until we find the one that passes the verification test.
         do {
-            magic[s] = pick_magic(mask[s], rk, booster);
-            memset(attack[s], 0, maxKey * sizeof(Bitboard));
+            magics[s] = pick_random(masks[s], rk, booster);
+            memset(attacks[s], 0, maxKey * sizeof(Bitboard));
 
+            // A good magic must map every possible occupancy to an index that
+            // looks up the correct sliding attack in the attacks[s] database.
+            // Note that we build up the database for square 's' as a side
+            // effect of verifying the magic.
             for (key = 0; key < maxKey; key++)
             {
-                index = CpuIs64Bit ? unsigned((occupancy[key] * magic[s]) >> shift[s])
-                                   : unsigned(occupancy[key] * magic[s] ^ (occupancy[key] >> 32) * (magic[s] >> 32)) >> shift[s];
+                index = CpuIs64Bit ? unsigned((occupancy[key] * magics[s]) >> shifts[s])
+                                   : unsigned(occupancy[key] * magics[s] ^ (occupancy[key] >> 32) * (magics[s] >> 32)) >> shifts[s];
 
-                if (!attack[s][index])
-                    attack[s][index] = reference[key];
+                if (!attacks[s][index])
+                    attacks[s][index] = reference[key];
 
-                else if (attack[s][index] != reference[key])
+                else if (attacks[s][index] != reference[key])
                     break;
             }
         } while (key != maxKey);
