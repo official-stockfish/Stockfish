@@ -161,12 +161,12 @@ int cpu_count() {
 #else
 
 #  if defined(_SC_NPROCESSORS_ONLN)
-  return std::min(sysconf(_SC_NPROCESSORS_ONLN), MAX_THREADS);
+  return std::min((int)sysconf(_SC_NPROCESSORS_ONLN), MAX_THREADS);
 #  elif defined(__hpux)
   struct pst_dynamic psd;
   if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1)
       return 1;
-  return std::min(psd.psd_proc_cnt, MAX_THREADS);
+  return std::min((int)psd.psd_proc_cnt, MAX_THREADS);
 #  else
   return 1;
 #  endif
