@@ -18,6 +18,7 @@
 */
 
 #include <cmath>
+#include <algorithm>
 
 #include "misc.h"
 #include "search.h"
@@ -64,7 +65,7 @@ namespace {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 2, 2, 2, 2,
     2, 1, 1, 1, 1, 1, 1, 1 };
 
-  int move_importance(int ply) { return MoveImportance[Min(ply, 511)]; }
+  int move_importance(int ply) { return MoveImportance[std::min(ply, 511)]; }
 
 
   /// Function Prototypes
@@ -114,28 +115,28 @@ void TimeManager::init(const SearchLimits& limits, int currentPly)
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
-  for (hypMTG = 1; hypMTG <= (limits.movesToGo ? Min(limits.movesToGo, MoveHorizon) : MoveHorizon); hypMTG++)
+  for (hypMTG = 1; hypMTG <= (limits.movesToGo ? std::min(limits.movesToGo, MoveHorizon) : MoveHorizon); hypMTG++)
   {
       // Calculate thinking time for hypothetic "moves to go"-value
       hypMyTime =  limits.time
                  + limits.increment * (hypMTG - 1)
                  - emergencyBaseTime
-                 - emergencyMoveTime * Min(hypMTG, emergencyMoveHorizon);
+                 - emergencyMoveTime * std::min(hypMTG, emergencyMoveHorizon);
 
-      hypMyTime = Max(hypMyTime, 0);
+      hypMyTime = std::max(hypMyTime, 0);
 
       t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
       t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
 
-      optimumSearchTime = Min(optimumSearchTime, t1);
-      maximumSearchTime = Min(maximumSearchTime, t2);
+      optimumSearchTime = std::min(optimumSearchTime, t1);
+      maximumSearchTime = std::min(maximumSearchTime, t2);
   }
 
   if (Options["Ponder"].value<bool>())
       optimumSearchTime += optimumSearchTime / 4;
 
   // Make sure that maxSearchTime is not over absoluteMaxSearchTime
-  optimumSearchTime = Min(optimumSearchTime, maximumSearchTime);
+  optimumSearchTime = std::min(optimumSearchTime, maximumSearchTime);
 }
 
 
@@ -156,6 +157,6 @@ namespace {
     float ratio1 = (TMaxRatio * thisMoveImportance) / float(TMaxRatio * thisMoveImportance + otherMovesImportance);
     float ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / float(thisMoveImportance + otherMovesImportance);
 
-    return int(floor(myTime * Min(ratio1, ratio2)));
+    return int(floor(myTime * std::min(ratio1, ratio2)));
   }
 }

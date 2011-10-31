@@ -21,6 +21,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 #include "bitcount.h"
 #include "evaluate.h"
@@ -698,7 +699,7 @@ namespace {
         // the number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king, the square of the
         // king, and the quality of the pawn shelter.
-        attackUnits =  Min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
+        attackUnits =  std::min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + count_1s<Max15>(undefended))
                      + InitKingDanger[relative_square(Us, ksq)]
                      - mg_value(ei.pi->king_shelter<Us>(pos, ksq)) / 32;
@@ -762,7 +763,7 @@ namespace {
             attackUnits += KnightCheckBonus * count_1s<Max15>(b);
 
         // To index KingDangerTable[] attackUnits must be in [0, 99] range
-        attackUnits = Min(99, Max(0, attackUnits));
+        attackUnits = std::min(99, std::max(0, attackUnits));
 
         // Finally, extract the king danger score from the KingDangerTable[]
         // array and subtract the score from evaluation. Set also margins[]
@@ -933,7 +934,7 @@ namespace {
                 continue;
 
             pliesToGo = 2 * movesToGo - int(c == pos.side_to_move());
-            pliesToQueen[c] = Min(pliesToQueen[c], pliesToGo);
+            pliesToQueen[c] = std::min(pliesToQueen[c], pliesToGo);
         }
     }
 
@@ -1003,7 +1004,7 @@ namespace {
                 while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
                 {
                     d = square_distance(blockSq, pop_1st_bit(&b2)) - 2;
-                    movesToGo = Min(movesToGo, d);
+                    movesToGo = std::min(movesToGo, d);
                 }
             }
 
@@ -1013,7 +1014,7 @@ namespace {
             while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
             {
                 d = square_distance(blockSq, pop_1st_bit(&b2)) - 2;
-                movesToGo = Min(movesToGo, d);
+                movesToGo = std::min(movesToGo, d);
             }
 
             // If obstacle can be destroyed with an immediate pawn exchange / sacrifice,
@@ -1027,7 +1028,7 @@ namespace {
 
             // Plies needed for the king to capture all the blocking pawns
             d = square_distance(pos.king_square(loserSide), blockSq);
-            minKingDist = Min(minKingDist, d);
+            minKingDist = std::min(minKingDist, d);
             kingptg = (minKingDist + blockersCount) * 2;
         }
 
@@ -1126,9 +1127,9 @@ namespace {
         t[i] = Value(int(0.4 * i * i));
 
         if (i > 0)
-            t[i] = Min(t[i], t[i - 1] + MaxSlope);
+            t[i] = std::min(t[i], t[i - 1] + MaxSlope);
 
-        t[i] = Min(t[i], Peak);
+        t[i] = std::min(t[i], Peak);
     }
 
     // Then apply the weights and get the final KingDangerTable[] array

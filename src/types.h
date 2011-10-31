@@ -46,9 +46,6 @@ typedef unsigned __int64 uint64_t;
 
 #endif
 
-#define Min(x, y) (((x) < (y)) ? (x) : (y))
-#define Max(x, y) (((x) < (y)) ? (y) : (x))
-
 ////
 //// Configuration
 ////

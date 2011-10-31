@@ -24,6 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 #include "book.h"
 #include "evaluate.h"
@@ -128,7 +129,7 @@ namespace {
 
   inline Value futility_margin(Depth d, int mn) {
 
-    return d < 7 * ONE_PLY ? FutilityMargins[Max(d, 1)][Min(mn, 63)]
+    return d < 7 * ONE_PLY ? FutilityMargins[std::max(int(d), 1)][std::min(mn, 63)]
                            : 2 * VALUE_INFINITE;
   }
 
@@ -144,7 +145,7 @@ namespace {
 
   template <bool PvNode> inline Depth reduction(Depth d, int mn) {
 
-    return (Depth) Reductions[PvNode][Min(d / ONE_PLY, 63)][Min(mn, 63)];
+    return (Depth) Reductions[PvNode][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
   // Easy move margin. An easy move candidate must be at least this much
@@ -196,6 +197,7 @@ namespace {
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
+  void update_gains(const Position& pos, Move move, Value before, Value after);
   void do_skill_level(Move* best, Move* ponder);
 
   int current_search_time(int set = 0);
@@ -290,7 +292,7 @@ namespace {
         *dangerous = true;
     }
 
-    return Min(result, ONE_PLY);
+    return std::min(result, ONE_PLY);
   }
 
 } // namespace
@@ -372,7 +374,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
   // Set best NodesBetweenPolls interval to avoid lagging under time pressure
   if (Limits.maxNodes)
-      NodesBetweenPolls = Min(Limits.maxNodes, 30000);
+      NodesBetweenPolls = std::min(Limits.maxNodes, 30000);
   else if (Limits.time && Limits.time < 1000)
       NodesBetweenPolls = 1000;
   else if (Limits.time && Limits.time < 5000)
@@ -416,7 +418,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
   SkillLevelEnabled = (SkillLevel < 20);
-  MultiPV = (SkillLevelEnabled ? Max(UCIMultiPV, 4) : UCIMultiPV);
+  MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, 4) : UCIMultiPV);
 
   // Wake up needed threads and reset maxPly counter
   for (int i = 0; i < Threads.size(); i++)
@@ -502,7 +504,7 @@ namespace {
     *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
     depth = aspirationDelta = 0;
     value = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
-    ss->currentMove = MOVE_NULL; // Hack to skip update gains
+    ss->currentMove = MOVE_NULL; // Hack to skip update_gains()
 
     // Moves to search are verified and copied
     Rml.init(pos, searchMoves);
@@ -526,7 +528,7 @@ namespace {
         Rml.bestMoveChanges = 0;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (MultiPVIdx = 0; MultiPVIdx < Min(MultiPV, (int)Rml.size()); MultiPVIdx++)
+        for (MultiPVIdx = 0; MultiPVIdx < std::min(MultiPV, (int)Rml.size()); MultiPVIdx++)
         {
             // Calculate dynamic aspiration window based on previous iterations
             if (depth >= 5 && abs(Rml[MultiPVIdx].prevScore) < VALUE_KNOWN_WIN)
@@ -534,11 +536,11 @@ namespace {
                 int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
                 int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
 
-                aspirationDelta = Min(Max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
+                aspirationDelta = std::min(std::max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
                 aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
 
-                alpha = Max(Rml[MultiPVIdx].prevScore - aspirationDelta, -VALUE_INFINITE);
-                beta  = Min(Rml[MultiPVIdx].prevScore + aspirationDelta,  VALUE_INFINITE);
+                alpha = std::max(Rml[MultiPVIdx].prevScore - aspirationDelta, -VALUE_INFINITE);
+                beta  = std::min(Rml[MultiPVIdx].prevScore + aspirationDelta,  VALUE_INFINITE);
             }
             else
             {
@@ -550,7 +552,7 @@ namespace {
             // research with bigger window until not failing high/low anymore.
             do {
                 // Search starts from ss+1 to allow referencing (ss-1). This is
-                // needed by update gains and ss copy when splitting at Root.
+                // needed by update_gains() and ss copy when splitting at Root.
                 value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
 
                 // Bring to front the best move. It is critical that sorting is
@@ -584,7 +586,7 @@ namespace {
                 // protocol requires to send all the PV lines also if are still
                 // to be searched and so refer to the previous search's score.
                 if ((value > alpha && value < beta) || current_search_time() > 2000)
-                    for (int i = 0; i < Min(UCIMultiPV, (int)Rml.size()); i++)
+                    for (int i = 0; i < std::min(UCIMultiPV, (int)Rml.size()); i++)
                     {
                         bool updated = (i <= MultiPVIdx);
 
@@ -606,7 +608,7 @@ namespace {
                 // research, otherwise exit the fail high/low loop.
                 if (value >= beta)
                 {
-                    beta = Min(beta + aspirationDelta, VALUE_INFINITE);
+                    beta = std::min(beta + aspirationDelta, VALUE_INFINITE);
                     aspirationDelta += aspirationDelta / 2;
                 }
                 else if (value <= alpha)
@@ -614,7 +616,7 @@ namespace {
                     AspirationFailLow = true;
                     StopOnPonderhit = false;
 
-                    alpha = Max(alpha - aspirationDelta, -VALUE_INFINITE);
+                    alpha = std::max(alpha - aspirationDelta, -VALUE_INFINITE);
                     aspirationDelta += aspirationDelta / 2;
                 }
                 else
@@ -766,8 +768,8 @@ namespace {
     // Step 3. Mate distance pruning
     if (!RootNode)
     {
-        alpha = Max(value_mated_in(ss->ply), alpha);
-        beta = Min(value_mate_in(ss->ply+1), beta);
+        alpha = std::max(value_mated_in(ss->ply), alpha);
+        beta = std::min(value_mate_in(ss->ply+1), beta);
         if (alpha >= beta)
             return alpha;
     }
@@ -819,17 +821,8 @@ namespace {
         TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
     }
 
-    // Update gain for the parent non-capture move given the static position
-    // evaluation before and after the move.
-    if (   (move = (ss-1)->currentMove) != MOVE_NULL
-        && (ss-1)->eval != VALUE_NONE
-        && ss->eval != VALUE_NONE
-        && pos.captured_piece_type() == PIECE_TYPE_NONE
-        && !is_special(move))
-    {
-        Square to = move_to(move);
-        H.update_gain(pos.piece_on(to), to, -(ss-1)->eval - ss->eval);
-    }
+    // Save gain for the parent non-capture move
+    update_gains(pos, (ss-1)->currentMove, (ss-1)->eval, ss->eval);
 
     // Step 6. Razoring (is omitted in PV nodes)
     if (   !PvNode
@@ -1688,8 +1681,8 @@ split_point_start: // At split points actual search starts from here
     Value v = value_from_tt(tte->value(), ply);
 
     return   (   tte->depth() >= depth
-              || v >= Max(VALUE_MATE_IN_PLY_MAX, beta)
-              || v < Min(VALUE_MATED_IN_PLY_MAX, beta))
+              || v >= std::max(VALUE_MATE_IN_PLY_MAX, beta)
+              || v < std::min(VALUE_MATED_IN_PLY_MAX, beta))
 
           && (   ((tte->type() & VALUE_TYPE_LOWER) && v >= beta)
               || ((tte->type() & VALUE_TYPE_UPPER) && v < beta));
@@ -1731,6 +1724,20 @@ split_point_start: // At split points actual search starts from here
 
         H.update(pos.piece_on(move_from(m)), move_to(m), -bonus);
     }
+  }
+
+
+  // update_gains() updates the gains table of a non-capture move given
+  // the static position evaluation before and after the move.
+
+  void update_gains(const Position& pos, Move m, Value before, Value after) {
+
+    if (   m != MOVE_NULL
+        && before != VALUE_NONE
+        && after != VALUE_NONE
+        && pos.captured_piece_type() == PIECE_TYPE_NONE
+        && !is_special(m))
+        H.update_gain(pos.piece_on(move_to(m)), move_to(m), -(before + after));
   }
 
 
@@ -2009,9 +2016,9 @@ split_point_start: // At split points actual search starts from here
     // Rml list is already sorted by score in descending order
     int s;
     int max_s = -VALUE_INFINITE;
-    int size = Min(MultiPV, (int)Rml.size());
+    int size = std::min(MultiPV, (int)Rml.size());
     int max = Rml[0].score;
-    int var = Min(max - Rml[size - 1].score, PawnValueMidgame);
+    int var = std::min(max - Rml[size - 1].score, int(PawnValueMidgame));
     int wk = 120 - 2 * SkillLevel;
 
     // PRNG sequence should be non deterministic

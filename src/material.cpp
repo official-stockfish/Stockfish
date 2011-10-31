@@ -19,6 +19,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <algorithm>
 
 #include "material.h"
 
@@ -203,13 +204,13 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
   if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMidgame)
   {
       mi->factor[WHITE] = uint8_t
-      (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[Min(pos.piece_count(WHITE, BISHOP), 2)]);
+      (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(WHITE, BISHOP), 2)]);
   }
 
   if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMidgame)
   {
       mi->factor[BLACK] = uint8_t
-      (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[Min(pos.piece_count(BLACK, BISHOP), 2)]);
+      (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(BLACK, BISHOP), 2)]);
   }
 
   // Compute the space weight
