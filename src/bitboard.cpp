@@ -67,8 +67,8 @@ namespace {
   Bitboard RookTable[0x19000];  // Storage space for rook attacks
   Bitboard BishopTable[0x1480]; // Storage space for bishop attacks
 
-  void init_magic_bitboards(Bitboard* attacks[], Bitboard magics[],
-                            Bitboard masks[], int shifts[], Square deltas[]);
+  void init_magic_bitboards(PieceType pt, Bitboard* attacks[], Bitboard magics[],
+                            Bitboard masks[], int shifts[]);
 }
 
 
@@ -228,14 +228,8 @@ void init_bitboards() {
                       set_bit(&StepAttacksBB[make_piece(c, pt)][s], to);
               }
 
-  Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
-
-  RAttacks[0] = RookTable;
-  BAttacks[0] = BishopTable;
-
-  init_magic_bitboards(RAttacks, RMagics, RMasks, RShifts, RDeltas);
-  init_magic_bitboards(BAttacks, BMagics, BMasks, BShifts, BDeltas);
+  init_magic_bitboards(ROOK, RAttacks, RMagics, RMasks, RShifts);
+  init_magic_bitboards(BISHOP, BAttacks, BMagics, BMasks, BShifts);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -248,35 +242,35 @@ void init_bitboards() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
           if (bit_is_set(QueenPseudoAttacks[s1], s2))
           {
-              int f = file_distance(s1, s2);
-              int r = rank_distance(s1, s2);
+              Square delta = (s2 - s1) / square_distance(s1, s2);
 
-              Square d = (s2 - s1) / std::max(f, r);
-
-              for (Square s3 = s1 + d; s3 != s2; s3 += d)
-                  set_bit(&BetweenBB[s1][s2], s3);
+              for (Square s = s1 + delta; s != s2; s += delta)
+                  set_bit(&BetweenBB[s1][s2], s);
           }
 }
 
 
 namespace {
 
-  Bitboard sliding_attacks(Square sq, Bitboard occupied, Square deltas[]) {
+  Bitboard sliding_attacks(PieceType pt, Square sq, Bitboard occupied) {
 
+    Square deltas[][4] = { { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  },
+                           { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW } };
     Bitboard attacks = 0;
+    Square* delta = (pt == ROOK ? deltas[0] : deltas[1]);
 
     for (int i = 0; i < 4; i++)
     {
-        Square s = sq + deltas[i];
+        Square s = sq + delta[i];
 
-        while (square_is_ok(s) && square_distance(s, s - deltas[i]) == 1)
+        while (square_is_ok(s) && square_distance(s, s - delta[i]) == 1)
         {
             set_bit(&attacks, s);
 
             if (bit_is_set(occupied, s))
                 break;
 
-            s += deltas[i];
+            s += delta[i];
         }
     }
     return attacks;
@@ -309,14 +303,17 @@ namespace {
   // see chessprogramming.wikispaces.com/Magic+Bitboards. In particular, here we
   // use the so called "fancy" approach.
 
-  void init_magic_bitboards(Bitboard* attacks[], Bitboard magics[],
-                            Bitboard masks[], int shifts[], Square deltas[]) {
+  void init_magic_bitboards(PieceType pt, Bitboard* attacks[], Bitboard magics[],
+                            Bitboard masks[], int shifts[]) {
 
-    const int  MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
-                                      { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
+    int MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
+                               { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
     RKISS rk;
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int key, maxKey, index, booster;
+    int i, size, index, booster;
+
+    // attacks[s] is a pointer to the beginning of the attacks table for square 's'
+    attacks[SQ_A1] = (pt == ROOK ? RookTable : BishopTable);
 
     for (Square s = SQ_A1; s <= SQ_H8; s++)
     {
@@ -328,22 +325,22 @@ namespace {
         // all the attacks for each possible subset of the mask and so is 2 power
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
-        masks[s]  = sliding_attacks(s, EmptyBoardBB, deltas) & ~edges;
+        masks[s]  = sliding_attacks(pt, s, EmptyBoardBB) & ~edges;
         shifts[s] = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(masks[s]);
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
-        // store the corresponding sliding attacks in reference[].
-        b = maxKey = 0;
+        // store the corresponding sliding attacks bitboard in reference[].
+        b = size = 0;
         do {
-            occupancy[maxKey] = b;
-            reference[maxKey++] = sliding_attacks(s, b, deltas);
+            occupancy[size] = b;
+            reference[size++] = sliding_attacks(pt, s, b);
             b = (b - masks[s]) & masks[s];
         } while (b);
 
         // Set the offset for the table of the next square. We have individual
         // table sizes for each square with "Fancy Magic Bitboards".
         if (s < SQ_H8)
-            attacks[s + 1] = attacks[s] + maxKey;
+            attacks[s + 1] = attacks[s] + size;
 
         booster = MagicBoosters[CpuIs64Bit][rank_of(s)];
 
@@ -351,24 +348,24 @@ namespace {
         // until we find the one that passes the verification test.
         do {
             magics[s] = pick_random(masks[s], rk, booster);
-            memset(attacks[s], 0, maxKey * sizeof(Bitboard));
+            memset(attacks[s], 0, size * sizeof(Bitboard));
 
             // A good magic must map every possible occupancy to an index that
             // looks up the correct sliding attack in the attacks[s] database.
             // Note that we build up the database for square 's' as a side
             // effect of verifying the magic.
-            for (key = 0; key < maxKey; key++)
+            for (i = 0; i < size; i++)
             {
-                index = CpuIs64Bit ? unsigned((occupancy[key] * magics[s]) >> shifts[s])
-                                   : unsigned(occupancy[key] * magics[s] ^ (occupancy[key] >> 32) * (magics[s] >> 32)) >> shifts[s];
+                index = (pt == ROOK ? rook_index(s, occupancy[i])
+                                    : bishop_index(s, occupancy[i]));
 
                 if (!attacks[s][index])
-                    attacks[s][index] = reference[key];
+                    attacks[s][index] = reference[i];
 
-                else if (attacks[s][index] != reference[key])
+                else if (attacks[s][index] != reference[i])
                     break;
             }
-        } while (key != maxKey);
+        } while (i != size);
     }
   }
 }

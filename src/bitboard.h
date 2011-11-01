@@ -171,29 +171,34 @@ inline Bitboard in_front_bb(Color c, Square s) {
 
 #if defined(IS_64BIT)
 
-inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
-  return RAttacks[s][((occ & RMasks[s]) * RMagics[s]) >> RShifts[s]];
+FORCE_INLINE unsigned rook_index(Square s, Bitboard occ) {
+  return unsigned(((occ & RMasks[s]) * RMagics[s]) >> RShifts[s]);
 }
 
-inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
-  return BAttacks[s][((occ & BMasks[s]) * BMagics[s]) >> BShifts[s]];
+FORCE_INLINE unsigned bishop_index(Square s, Bitboard occ) {
+  return unsigned(((occ & BMasks[s]) * BMagics[s]) >> BShifts[s]);
 }
 
 #else // if !defined(IS_64BIT)
 
-inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
+FORCE_INLINE unsigned rook_index(Square s, Bitboard occ) {
   Bitboard b = occ & RMasks[s];
-  return RAttacks[s]
-         [unsigned(int(b) * int(RMagics[s]) ^ int(b >> 32) * int(RMagics[s] >> 32)) >> RShifts[s]];
+  return unsigned(int(b) * int(RMagics[s]) ^ int(b >> 32) * int(RMagics[s] >> 32)) >> RShifts[s];
+}
+
+FORCE_INLINE unsigned bishop_index(Square s, Bitboard occ) {
+  Bitboard b = occ & BMasks[s];
+  return unsigned(int(b) * int(BMagics[s]) ^ int(b >> 32) * int(BMagics[s] >> 32)) >> BShifts[s];
+}
+#endif
+
+inline Bitboard rook_attacks_bb(Square s, Bitboard occ) {
+  return RAttacks[s][rook_index(s, occ)];
 }
 
 inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
-  Bitboard b = occ & BMasks[s];
-  return BAttacks[s]
-         [unsigned(int(b) * int(BMagics[s]) ^ int(b >> 32) * int(BMagics[s] >> 32)) >> BShifts[s]];
+  return BAttacks[s][bishop_index(s, occ)];
 }
-
-#endif
 
 inline Bitboard queen_attacks_bb(Square s, Bitboard blockers) {
   return rook_attacks_bb(s, blockers) | bishop_attacks_bb(s, blockers);
