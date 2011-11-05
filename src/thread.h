@@ -69,6 +69,7 @@ struct Thread {
   bool cutoff_occurred() const;
   bool is_available_to(int master) const;
   void idle_loop(SplitPoint* sp);
+  void listener_loop();
 
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
   MaterialInfoTable materialTable;
@@ -113,16 +114,25 @@ public:
   void read_uci_options();
   bool available_slave_exists(int master) const;
 
+  void getline(std::string& cmd);
+  void do_uci_async_cmd(const std::string& cmd);
+  void start_listener();
+  void stop_listener();
+
   template <bool Fake>
   Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
               Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
 private:
-  Thread threads[MAX_THREADS];
+  friend struct Thread;
+
+  Thread threads[MAX_THREADS + 1];
   Lock threadsLock;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
   int activeThreads;
   bool useSleepingThreads;
+  WaitCondition sleepCond;
+  std::string inputLine;
 };
 
 extern ThreadsManager Threads;

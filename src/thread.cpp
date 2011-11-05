@@ -27,27 +27,22 @@ ThreadsManager Threads; // Global object definition
 namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
- // is launched. It simply calls idle_loop() of the supplied thread.
- // There are two versions of this function; one for POSIX threads and
- // one for Windows threads.
+ // is launched. It simply calls idle_loop() of the supplied thread. The
+ // last thread is dedicated to I/O and so runs in listener_loop().
 
 #if defined(_MSC_VER)
-
   DWORD WINAPI start_routine(LPVOID thread) {
+#else
+  void* start_routine(void* thread) {
+#endif
 
-    ((Thread*)thread)->idle_loop(NULL);
+    if (((Thread*)thread)->threadID == MAX_THREADS)
+        ((Thread*)thread)->listener_loop();
+    else
+        ((Thread*)thread)->idle_loop(NULL);
+
     return 0;
   }
-
-#else
-
-  void* start_routine(void* thread) {
-
-    ((Thread*)thread)->idle_loop(NULL);
-    return NULL;
-  }
-
-#endif
 
 } }
 
@@ -147,11 +142,14 @@ void ThreadsManager::set_size(int cnt) {
 
 void ThreadsManager::init() {
 
+  // Initialize sleep condition used to block waiting for GUI input
+  cond_init(&sleepCond);
+
   // Initialize threads lock, used when allocating slaves during splitting
   lock_init(&threadsLock);
 
   // Initialize sleep and split point locks
-  for (int i = 0; i < MAX_THREADS; i++)
+  for (int i = 0; i <= MAX_THREADS; i++)
   {
       lock_init(&threads[i].sleepLock);
       cond_init(&threads[i].sleepCond);
@@ -167,7 +165,7 @@ void ThreadsManager::init() {
 
   // Create and launch all the threads but the main that is already running,
   // threads will go immediately to sleep.
-  for (int i = 1; i < MAX_THREADS; i++)
+  for (int i = 1; i <= MAX_THREADS; i++)
   {
       threads[i].is_searching = false;
       threads[i].threadID = i;
@@ -192,18 +190,13 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
-  // Wake up all the slave threads at once. This is faster than "wake and wait"
-  // for each thread and avoids a rare crash once every 10K games under Linux.
-  for (int i = 1; i < MAX_THREADS; i++)
-  {
-      threads[i].do_terminate = true;
-      threads[i].wake_up();
-  }
-
-  for (int i = 0; i < MAX_THREADS; i++)
+  for (int i = 0; i <= MAX_THREADS; i++)
   {
       if (i != 0)
       {
+          threads[i].do_terminate = true;
+          threads[i].wake_up();
+
           // Wait for slave termination
 #if defined(_MSC_VER)
           WaitForSingleObject(threads[i].handle, 0);
@@ -222,6 +215,7 @@ void ThreadsManager::exit() {
   }
 
   lock_destroy(&threadsLock);
+  cond_destroy(&sleepCond);
 }
 
 
@@ -353,3 +347,113 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
 // Explicit template instantiations
 template Value ThreadsManager::split<false>(Position&, SearchStack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
 template Value ThreadsManager::split<true>(Position&, SearchStack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
+
+
+// Thread::listner_loop() is where the last thread, used for IO, waits for input.
+// Input is read in sync with main thread (that blocks) when is_searching is set
+// to false, otherwise IO thread reads any input asynchronously and processes
+// the input line calling do_uci_async_cmd().
+
+void Thread::listener_loop() {
+
+  std::string cmd;
+
+  while (true)
+  {
+      lock_grab(&sleepLock);
+
+      Threads.inputLine = cmd;
+      do_sleep = !is_searching;
+
+      // Here the thread is parked in sync mode after a line has been read
+      while (do_sleep && !do_terminate) // Catches spurious wake ups
+      {
+          cond_signal(&Threads.sleepCond);   // Wake up main thread
+          cond_wait(&sleepCond, &sleepLock); // Sleep here
+      }
+
+      lock_release(&sleepLock);
+
+      if (do_terminate)
+          return;
+
+      if (!std::getline(std::cin, cmd)) // Block waiting for input
+          cmd = "quit";
+
+      lock_grab(&sleepLock);
+
+      // If we are in async mode then process the command now
+      if (is_searching)
+      {
+          // Command "quit" is the last one received by the GUI, so park the
+          // thread waiting for exiting.
+          if (cmd == "quit")
+              is_searching = false;
+
+          Threads.do_uci_async_cmd(cmd);
+          cmd = ""; // Input has been consumed
+      }
+
+      lock_release(&sleepLock);
+  }
+}
+
+
+// ThreadsManager::getline() is used by main thread to block and wait for input,
+// the behaviour mimics std::getline().
+
+void ThreadsManager::getline(std::string& cmd) {
+
+  Thread& listener = threads[MAX_THREADS];
+
+  lock_grab(&listener.sleepLock);
+
+  listener.is_searching = false; // Set sync mode
+
+  // If there is already some input to grab then skip without to wake up the
+  // listener. This can happen if after we send the "bestmove", the GUI sends
+  // a command that the listener buffers in inputLine before going to sleep.
+  if (inputLine.empty())
+  {
+      listener.do_sleep = false;
+      cond_signal(&listener.sleepCond); // Wake up listener thread
+
+      while (!listener.do_sleep)
+          cond_wait(&sleepCond, &listener.sleepLock); // Wait for input
+  }
+
+  cmd = inputLine;
+  inputLine = ""; // Input has been consumed
+
+  lock_release(&listener.sleepLock);
+}
+
+
+// ThreadsManager::start_listener() is called at the beginning of the search to
+// swith from sync behaviour (default) to async and so be able to read from UCI
+// while other threads are searching. This avoids main thread polling for input.
+
+void ThreadsManager::start_listener() {
+
+  Thread& listener = threads[MAX_THREADS];
+
+  lock_grab(&listener.sleepLock);
+  listener.is_searching = true;
+  listener.do_sleep = false;
+  cond_signal(&listener.sleepCond); // Wake up listener thread
+  lock_release(&listener.sleepLock);
+}
+
+
+// ThreadsManager::stop_listener() is called before to send "bestmove" to GUI to
+// return to in-sync behaviour. This is needed because while in async mode any
+// command is discarded without being processed (except for a very few ones).
+
+void ThreadsManager::stop_listener() {
+
+  Thread& listener = threads[MAX_THREADS];
+
+  lock_grab(&listener.sleepLock);
+  listener.is_searching = false;
+  lock_release(&listener.sleepLock);
+}

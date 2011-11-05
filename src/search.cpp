@@ -439,6 +439,10 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
           << endl;
   }
 
+  // Start async mode to catch UCI commands sent to us while searching,
+  // like "quit", "stop", etc.
+  Threads.start_listener();
+
   // We're ready to start thinking. Call the iterative deepening loop function
   Move ponderMove = MOVE_NONE;
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
@@ -461,6 +465,9 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
   // This makes all the threads to go to sleep
   Threads.set_size(1);
+
+  // From now on any UCI command will be read in-sync with Threads.getline()
+  Threads.stop_listener();
 
   // If we are pondering or in infinite search, we shouldn't print the
   // best move before we are told to do so.
@@ -1912,38 +1919,6 @@ split_point_start: // At split points actual search starts from here
     static int lastInfoTime;
     int t = current_search_time();
 
-    //  Poll for input
-    if (input_available())
-    {
-        // We are line oriented, don't read single chars
-        string command;
-
-        if (!std::getline(std::cin, command) || command == "quit")
-        {
-            // Quit the program as soon as possible
-            Limits.ponder = false;
-            QuitRequest = StopRequest = true;
-            return;
-        }
-        else if (command == "stop")
-        {
-            // Stop calculating as soon as possible, but still send the "bestmove"
-            // and possibly the "ponder" token when finishing the search.
-            Limits.ponder = false;
-            StopRequest = true;
-        }
-        else if (command == "ponderhit")
-        {
-            // The opponent has played the expected move. GUI sends "ponderhit" if
-            // we were told to ponder on the same move the opponent has played. We
-            // should continue searching but switching from pondering to normal search.
-            Limits.ponder = false;
-
-            if (StopOnPonderhit)
-                StopRequest = true;
-        }
-    }
-
     // Print search information
     if (t < 1000)
         lastInfoTime = 0;
@@ -1988,14 +1963,14 @@ split_point_start: // At split points actual search starts from here
 
   void wait_for_stop_or_ponderhit() {
 
-    string command;
+    string cmd;
 
     // Wait for a command from stdin
-    while (   std::getline(std::cin, command)
-           && command != "ponderhit" && command != "stop" && command != "quit") {};
+    while (cmd != "ponderhit" && cmd != "stop" && cmd != "quit")
+        Threads.getline(cmd);
 
-    if (command != "ponderhit" && command != "stop")
-        QuitRequest = true; // Must be "quit" or getline() returned false
+    if (cmd == "quit")
+        QuitRequest = true;
   }
 
 
@@ -2246,5 +2221,36 @@ void Thread::idle_loop(SplitPoint* sp) {
           lock_release(&(sp->lock));
           return;
       }
+  }
+}
+
+
+// ThreadsManager::do_uci_async_cmd() processes the commands from GUI received
+// by listener thread while the other threads are searching.
+
+void ThreadsManager::do_uci_async_cmd(const std::string& cmd) {
+
+  if (cmd == "quit")
+  {
+      // Quit the program as soon as possible
+      Limits.ponder = false;
+      QuitRequest = StopRequest = true;
+  }
+  else if (cmd == "stop")
+  {
+      // Stop calculating as soon as possible, but still send the "bestmove"
+      // and possibly the "ponder" token when finishing the search.
+      Limits.ponder = false;
+      StopRequest = true;
+  }
+  else if (cmd == "ponderhit")
+  {
+      // The opponent has played the expected move. GUI sends "ponderhit" if
+      // we were told to ponder on the same move the opponent has played. We
+      // should continue searching but switching from pondering to normal search.
+      Limits.ponder = false;
+
+      if (StopOnPonderhit)
+          StopRequest = true;
   }
 }
