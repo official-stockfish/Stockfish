@@ -35,6 +35,7 @@ typedef pthread_cond_t WaitCondition;
 #  define cond_init(x) pthread_cond_init(x, NULL)
 #  define cond_signal(x) pthread_cond_signal(x)
 #  define cond_wait(x,y) pthread_cond_wait(x,y)
+#  define cond_timedwait(x,y,z) pthread_cond_timedwait(x,y,z)
 
 #else
 
@@ -57,7 +58,8 @@ typedef CONDITION_VARIABLE WaitCondition;
 #  define cond_destroy(x) (x)
 #  define cond_init(x) InitializeConditionVariable(x)
 #  define cond_signal(x) WakeConditionVariable(x)
-#  define cond_wait(x,y) SleepConditionVariableSRW(x, y, INFINITE,0)
+#  define cond_wait(x,y) SleepConditionVariableSRW(x,y,INFINITE,0)
+#  define cond_timedwait(x,y,z) SleepConditionVariableSRW(x,y,z,0)
 
 // Fallback solution to build for Windows XP and older versions, note that
 // cond_wait() is racy between lock_release() and WaitForSingleObject().
@@ -74,6 +76,8 @@ typedef HANDLE WaitCondition;
 #  define cond_destroy(x) CloseHandle(*x)
 #  define cond_signal(x) SetEvent(*x)
 #  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(*x, INFINITE); lock_grab(y); }
+#  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(*x,z); lock_grab(y); }
+
 #endif
 
 #endif

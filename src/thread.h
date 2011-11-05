@@ -70,6 +70,7 @@ struct Thread {
   bool is_available_to(int master) const;
   void idle_loop(SplitPoint* sp);
   void listener_loop();
+  void timer_loop();
 
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
   MaterialInfoTable materialTable;
@@ -115,9 +116,9 @@ public:
   bool available_slave_exists(int master) const;
 
   void getline(std::string& cmd);
-  void do_uci_async_cmd(const std::string& cmd);
   void start_listener();
   void stop_listener();
+  void set_timer(int msec);
 
   template <bool Fake>
   Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
@@ -125,7 +126,7 @@ public:
 private:
   friend struct Thread;
 
-  Thread threads[MAX_THREADS + 1];
+  Thread threads[MAX_THREADS + 2]; // Last 2 are the listener and the timer
   Lock threadsLock;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;

@@ -175,6 +175,39 @@ int cpu_count() {
 }
 
 
+/// timed_wait() waits for msec milliseconds. It is mainly an helper to wrap
+/// conversion from milliseconds to struct timespec, as used by pthreads.
+
+#if defined(_MSC_VER)
+
+void timed_wait(WaitCondition* sleepCond, Lock* sleepLock, int msec) {
+  cond_timedwait(sleepCond, sleepLock, msec);
+}
+
+#else
+
+void timed_wait(WaitCondition* sleepCond, Lock* sleepLock, int msec) {
+
+  struct timeval t;
+  struct timespec abstime;
+
+  gettimeofday(&t, NULL);
+
+  abstime.tv_sec = t.tv_sec + (msec / 1000);
+  abstime.tv_nsec = (t.tv_usec + (msec % 1000) * 1000) * 1000;
+
+  if (abstime.tv_nsec > 1000000000LL)
+  {
+      abstime.tv_sec += 1;
+      abstime.tv_nsec -= 1000000000LL;
+  }
+
+  cond_timedwait(sleepCond, sleepLock, &abstime);
+}
+
+#endif
+
+
 /// prefetch() preloads the given address in L1/L2 cache. This is a non
 /// blocking function and do not stalls the CPU waiting for data to be
 /// loaded from memory, that can be quite slow.

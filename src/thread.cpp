@@ -19,6 +19,7 @@
 
 #include <iostream>
 
+#include "search.h"
 #include "thread.h"
 #include "ucioption.h"
 
@@ -28,7 +29,8 @@ namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
  // is launched. It simply calls idle_loop() of the supplied thread. The
- // last thread is dedicated to I/O and so runs in listener_loop().
+ // last two threads are dedicated to read input from GUI and to mimic a
+ // timer, so they run in listener_loop() and timer_loop() respectively.
 
 #if defined(_MSC_VER)
   DWORD WINAPI start_routine(LPVOID thread) {
@@ -38,6 +40,9 @@ namespace { extern "C" {
 
     if (((Thread*)thread)->threadID == MAX_THREADS)
         ((Thread*)thread)->listener_loop();
+
+    else if (((Thread*)thread)->threadID == MAX_THREADS + 1)
+        ((Thread*)thread)->timer_loop();
     else
         ((Thread*)thread)->idle_loop(NULL);
 
@@ -149,7 +154,7 @@ void ThreadsManager::init() {
   lock_init(&threadsLock);
 
   // Initialize sleep and split point locks
-  for (int i = 0; i <= MAX_THREADS; i++)
+  for (int i = 0; i < MAX_THREADS + 2; i++)
   {
       lock_init(&threads[i].sleepLock);
       cond_init(&threads[i].sleepCond);
@@ -165,7 +170,7 @@ void ThreadsManager::init() {
 
   // Create and launch all the threads but the main that is already running,
   // threads will go immediately to sleep.
-  for (int i = 1; i <= MAX_THREADS; i++)
+  for (int i = 1; i < MAX_THREADS + 2; i++)
   {
       threads[i].is_searching = false;
       threads[i].threadID = i;
@@ -190,7 +195,7 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
-  for (int i = 0; i <= MAX_THREADS; i++)
+  for (int i = 0; i < MAX_THREADS + 2; i++)
   {
       if (i != 0)
       {
@@ -349,10 +354,39 @@ template Value ThreadsManager::split<false>(Position&, SearchStack*, Value, Valu
 template Value ThreadsManager::split<true>(Position&, SearchStack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
 
 
-// Thread::listner_loop() is where the last thread, used for IO, waits for input.
-// Input is read in sync with main thread (that blocks) when is_searching is set
-// to false, otherwise IO thread reads any input asynchronously and processes
-// the input line calling do_uci_async_cmd().
+// Thread::timer_loop() is where the timer thread waits maxPly milliseconds
+// and then calls do_timer_event().
+
+void Thread::timer_loop() {
+
+  while (!do_terminate)
+  {
+      lock_grab(&sleepLock);
+      timed_wait(&sleepCond, &sleepLock, maxPly ? maxPly : INT_MAX);
+      lock_release(&sleepLock);
+      do_timer_event();
+  }
+}
+
+
+// ThreadsManager::set_timer() is used to set the timer to trigger after msec
+// milliseconds. If msec is 0 then timer is stopped.
+
+void ThreadsManager::set_timer(int msec) {
+
+  Thread& timer = threads[MAX_THREADS + 1];
+
+  lock_grab(&timer.sleepLock);
+  timer.maxPly = msec;
+  cond_signal(&timer.sleepCond); // Wake up and restart the timer
+  lock_release(&timer.sleepLock);
+}
+
+
+// Thread::listener_loop() is where the listener thread, used for I/O, waits for
+// input. When is_searching is false then input is read in sync with main thread
+// (that blocks), otherwise the listener thread reads any input asynchronously
+// and processes the input line calling do_uci_async_cmd().
 
 void Thread::listener_loop() {
 
@@ -390,7 +424,7 @@ void Thread::listener_loop() {
           if (cmd == "quit")
               is_searching = false;
 
-          Threads.do_uci_async_cmd(cmd);
+          do_uci_async_cmd(cmd);
           cmd = ""; // Input has been consumed
       }
 

@@ -170,11 +170,6 @@ namespace {
   int SkillLevel;
   bool SkillLevelEnabled;
 
-  // Node counters, used only by thread[0] but try to keep in different cache
-  // lines (64 bytes each) from the heavy multi-thread read accessed variables.
-  int NodesSincePoll;
-  int NodesBetweenPolls = 30000;
-
   // History table
   History H;
 
@@ -199,13 +194,12 @@ namespace {
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   void do_skill_level(Move* best, Move* ponder);
 
-  int current_search_time(int set = 0);
+  int elapsed_search_time(int set = 0);
   string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
   string speed_to_uci(int64_t nodes);
   string pv_to_uci(const Move pv[], int pvNum, bool chess960);
   string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[]);
   string depth_to_uci(Depth depth);
-  void poll(const Position& pos);
   void wait_for_stop_or_ponderhit();
 
   // MovePickerExt template class extends MovePicker and allows to choose at compile
@@ -363,23 +357,12 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
   // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = false;
-  NodesSincePoll = 0;
-  current_search_time(get_system_time());
+  elapsed_search_time(get_system_time());
   Limits = limits;
   TimeMgr.init(Limits, pos.startpos_ply_counter());
 
   // Set output steram in normal or chess960 mode
   cout << set960(pos.is_chess960());
-
-  // Set best NodesBetweenPolls interval to avoid lagging under time pressure
-  if (Limits.maxNodes)
-      NodesBetweenPolls = std::min(Limits.maxNodes, 30000);
-  else if (Limits.time && Limits.time < 1000)
-      NodesBetweenPolls = 1000;
-  else if (Limits.time && Limits.time < 5000)
-      NodesBetweenPolls = 5000;
-  else
-      NodesBetweenPolls = 30000;
 
   // Look for a book move
   if (Options["OwnBook"].value<bool>())
@@ -397,6 +380,12 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
           return !QuitRequest;
       }
   }
+
+  // Set best timer interval to avoid lagging under time pressure
+  if (TimeMgr.available_time())
+      Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 8, 20)));
+  else
+      Threads.set_timer(100);
 
   // Read UCI options
   UCIMultiPV = Options["MultiPV"].value<int>();
@@ -447,14 +436,16 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   Move ponderMove = MOVE_NONE;
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
 
+  Threads.set_timer(0);
+
   // Write final search statistics and close log file
   if (Options["Use Search Log"].value<bool>())
   {
-      int t = current_search_time();
+      int e = elapsed_search_time();
 
       Log log(Options["Search Log Filename"].value<string>());
       log << "Nodes: "          << pos.nodes_searched()
-          << "\nNodes/second: " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
+          << "\nNodes/second: " << (e > 0 ? pos.nodes_searched() * 1000 / e : 0)
           << "\nBest move: "    << move_to_san(pos, bestMove);
 
       StateInfo st;
@@ -591,7 +582,7 @@ namespace {
                 // if we have a fail high/low and we are deep in the search. UCI
                 // protocol requires to send all the PV lines also if are still
                 // to be searched and so refer to the previous search's score.
-                if ((value > alpha && value < beta) || current_search_time() > 2000)
+                if ((value > alpha && value < beta) || elapsed_search_time() > 2000)
                     for (int i = 0; i < std::min(UCIMultiPV, (int)Rml.size()); i++)
                     {
                         bool updated = (i <= MultiPVIdx);
@@ -644,7 +635,7 @@ namespace {
         if (Options["Use Search Log"].value<bool>())
         {
             Log log(Options["Search Log Filename"].value<string>());
-            log << pretty_pv(pos, depth, value, current_search_time(), &Rml[0].pv[0]) << endl;
+            log << pretty_pv(pos, depth, value, elapsed_search_time(), &Rml[0].pv[0]) << endl;
         }
 
         // Init easyMove at first iteration or drop it if differs from the best move
@@ -663,9 +654,9 @@ namespace {
                 && easyMove == bestMove
                 && (   Rml.size() == 1
                     ||(   Rml[0].nodes > (pos.nodes_searched() * 85) / 100
-                       && current_search_time() > TimeMgr.available_time() / 16)
+                       && elapsed_search_time() > TimeMgr.available_time() / 16)
                     ||(   Rml[0].nodes > (pos.nodes_searched() * 98) / 100
-                       && current_search_time() > TimeMgr.available_time() / 32)))
+                       && elapsed_search_time() > TimeMgr.available_time() / 32)))
                 StopRequest = true;
 
             // Take in account some extra time if the best move has changed
@@ -674,7 +665,7 @@ namespace {
 
             // Stop search if most of available time is already consumed. We probably don't
             // have enough time to search the first move at the next iteration anyway.
-            if (current_search_time() > (TimeMgr.available_time() * 62) / 100)
+            if (elapsed_search_time() > (TimeMgr.available_time() * 62) / 100)
                 StopRequest = true;
 
             // If we are allowed to ponder do not stop the search now but keep pondering
@@ -743,7 +734,7 @@ namespace {
     if (PvNode && thread.maxPly < ss->ply)
         thread.maxPly = ss->ply;
 
-    // Step 1. Initialize node and poll. Polling can abort search
+    // Step 1. Initialize node
     if (!SpNode)
     {
         ss->currentMove = ss->bestMove = threatMove = (ss+1)->excludedMove = MOVE_NONE;
@@ -757,12 +748,6 @@ namespace {
         ttMove = excludedMove = MOVE_NONE;
         threatMove = sp->threatMove;
         goto split_point_start;
-    }
-
-    if (pos.thread() == 0 && ++NodesSincePoll > NodesBetweenPolls)
-    {
-        NodesSincePoll = 0;
-        poll(pos);
     }
 
     // Step 2. Check for aborted search and immediate draw
@@ -1031,7 +1016,7 @@ split_point_start: // At split points actual search starts from here
           nodes = pos.nodes_searched();
 
           // For long searches send current move info to GUI
-          if (pos.thread() == 0 && current_search_time() > 2000)
+          if (pos.thread() == 0 && elapsed_search_time() > 2000)
               cout << "info" << depth_to_uci(depth)
                    << " currmove " << move
                    << " currmovenumber " << moveCount + MultiPVIdx << endl;
@@ -1745,7 +1730,7 @@ split_point_start: // At split points actual search starts from here
   // current_search_time() returns the number of milliseconds which have passed
   // since the beginning of the current search.
 
-  int current_search_time(int set) {
+  int elapsed_search_time(int set) {
 
     static int searchStartTime;
 
@@ -1784,7 +1769,7 @@ split_point_start: // At split points actual search starts from here
   string speed_to_uci(int64_t nodes) {
 
     std::stringstream s;
-    int t = current_search_time();
+    int t = elapsed_search_time();
 
     s << " nodes " << nodes
       << " nps " << (t > 0 ? int(nodes * 1000 / t) : 0)
@@ -1908,49 +1893,6 @@ split_point_start: // At split points actual search starts from here
     while (m != pv) pos.undo_move(*--m);
 
     return s.str();
-  }
-
-  // poll() performs two different functions: It polls for user input, and it
-  // looks at the time consumed so far and decides if it's time to abort the
-  // search.
-
-  void poll(const Position& pos) {
-
-    static int lastInfoTime;
-    int t = current_search_time();
-
-    // Print search information
-    if (t < 1000)
-        lastInfoTime = 0;
-
-    else if (lastInfoTime > t)
-        // HACK: Must be a new search where we searched less than
-        // NodesBetweenPolls nodes during the first second of search.
-        lastInfoTime = 0;
-
-    else if (t - lastInfoTime >= 1000)
-    {
-        lastInfoTime = t;
-
-        dbg_print_mean();
-        dbg_print_hit_rate();
-    }
-
-    // Should we stop the search?
-    if (Limits.ponder)
-        return;
-
-    bool stillAtFirstMove =    FirstRootMove
-                           && !AspirationFailLow
-                           &&  t > TimeMgr.available_time();
-
-    bool noMoreTime =   t > TimeMgr.maximum_time()
-                     || stillAtFirstMove;
-
-    if (   (Limits.useTimeManagement() && noMoreTime)
-        || (Limits.maxTime && t >= Limits.maxTime)
-        || (Limits.maxNodes && pos.nodes_searched() >= Limits.maxNodes)) // FIXME
-        StopRequest = true;
   }
 
 
@@ -2225,10 +2167,10 @@ void Thread::idle_loop(SplitPoint* sp) {
 }
 
 
-// ThreadsManager::do_uci_async_cmd() processes the commands from GUI received
-// by listener thread while the other threads are searching.
+// do_uci_async_cmd() is called by listener thread when in async mode and 'cmd'
+// input line is received from the GUI.
 
-void ThreadsManager::do_uci_async_cmd(const std::string& cmd) {
+void do_uci_async_cmd(const std::string& cmd) {
 
   if (cmd == "quit")
   {
@@ -2253,4 +2195,38 @@ void ThreadsManager::do_uci_async_cmd(const std::string& cmd) {
       if (StopOnPonderhit)
           StopRequest = true;
   }
+}
+
+
+// do_timer_event() is called by the timer thread when the timer triggers
+
+void do_timer_event() {
+
+  static int lastInfoTime;
+  int e = elapsed_search_time();
+
+  // Print debug information every second
+  if (get_system_time() - lastInfoTime >= 1000)
+  {
+      lastInfoTime = get_system_time();
+
+      dbg_print_mean();
+      dbg_print_hit_rate();
+  }
+
+  // Should we stop the search?
+  if (Limits.ponder)
+      return;
+
+  bool stillAtFirstMove =    FirstRootMove
+                         && !AspirationFailLow
+                         &&  e > TimeMgr.available_time();
+
+  bool noMoreTime =   e > TimeMgr.maximum_time()
+                   || stillAtFirstMove;
+
+  if (   (Limits.useTimeManagement() && noMoreTime)
+      || (Limits.maxTime && e >= Limits.maxTime)
+         /* missing nodes limit */ ) // FIXME
+      StopRequest = true;
 }

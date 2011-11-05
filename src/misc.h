@@ -22,12 +22,15 @@
 
 #include <fstream>
 #include <string>
+
+#include "lock.h"
 #include "types.h"
 
 extern const std::string engine_name();
 extern const std::string engine_authors();
 extern int get_system_time();
 extern int cpu_count();
+extern void timed_wait(WaitCondition*, Lock*, int);
 extern void prefetch(char* addr);
 
 extern void dbg_hit_on(bool b);
