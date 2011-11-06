@@ -114,6 +114,7 @@ public:
   void set_size(int cnt);
   void read_uci_options();
   bool available_slave_exists(int master) const;
+  bool split_point_finished(SplitPoint* sp) const;
 
   void getline(std::string& cmd);
   void start_listener();

@@ -239,6 +239,19 @@ bool ThreadsManager::available_slave_exists(int master) const {
 }
 
 
+// split_point_finished() checks if all the slave threads of a given split
+// point have finished searching.
+
+bool ThreadsManager::split_point_finished(SplitPoint* sp) const {
+
+  for (int i = 0; i < activeThreads; i++)
+      if (sp->is_slave[i])
+          return false;
+
+  return true;
+}
+
+
 // split() does the actual work of distributing the work at a node between
 // several available threads. If it does not succeed in splitting the
 // node (because no idle threads are available, or because we have no unused
