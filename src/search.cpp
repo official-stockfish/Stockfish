@@ -353,7 +353,7 @@ int64_t perft(Position& pos, Depth depth) {
 
 bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
 
-  static Book book; // Define static to initialize the PRNG only once
+  static Book book; // Defined static to initialize the PRNG only once
 
   // Initialize global search-related variables
   StopOnPonderhit = StopRequest = QuitRequest = AspirationFailLow = false;
@@ -361,7 +361,7 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   Limits = limits;
   TimeMgr.init(Limits, pos.startpos_ply_counter());
 
-  // Set output steram in normal or chess960 mode
+  // Set output stream in normal or chess960 mode
   cout << set960(pos.is_chess960());
 
   // Look for a book move
@@ -381,7 +381,8 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
       }
   }
 
-  // Set best timer interval to avoid lagging under time pressure
+  // Set best timer interval to avoid lagging under time pressure. Timer is
+  // used to check for remaining available thinking time.
   if (TimeMgr.available_time())
       Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 8, 20)));
   else
@@ -415,7 +416,11 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
       Threads[i].maxPly = 0;
   }
 
-  // Write to log file and keep it open to be accessed during the search
+  // Start async mode to catch UCI commands sent to us while searching,
+  // like "quit", "stop", etc.
+  Threads.start_listener();
+
+  // Write current search header to log file
   if (Options["Use Search Log"].value<bool>())
   {
       Log log(Options["Search Log Filename"].value<string>());
@@ -428,17 +433,11 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
           << endl;
   }
 
-  // Start async mode to catch UCI commands sent to us while searching,
-  // like "quit", "stop", etc.
-  Threads.start_listener();
-
   // We're ready to start thinking. Call the iterative deepening loop function
   Move ponderMove = MOVE_NONE;
   Move bestMove = id_loop(pos, searchMoves, &ponderMove);
 
-  Threads.set_timer(0);
-
-  // Write final search statistics and close log file
+  // Write current search final statistics to log file
   if (Options["Use Search Log"].value<bool>())
   {
       int e = elapsed_search_time();
@@ -460,9 +459,12 @@ bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]) {
   // From now on any UCI command will be read in-sync with Threads.getline()
   Threads.stop_listener();
 
+  // Stop timer, no need to check for available time any more
+  Threads.set_timer(0);
+
   // If we are pondering or in infinite search, we shouldn't print the
   // best move before we are told to do so.
-  if (!StopRequest && (Limits.ponder || Limits.infinite))
+  if (Limits.ponder || Limits.infinite)
       wait_for_stop_or_ponderhit();
 
   // Could be MOVE_NONE when searching on a stalemate position
@@ -1900,19 +1902,19 @@ split_point_start: // At split points actual search starts from here
   // while the program is pondering. The point is to work around a wrinkle in
   // the UCI protocol: When pondering, the engine is not allowed to give a
   // "bestmove" before the GUI sends it a "stop" or "ponderhit" command.
-  // We simply wait here until one of these commands is sent, and return,
-  // after which the bestmove and pondermove will be printed.
+  // We simply wait here until one of these commands (that raise StopRequest) is
+  // sent, and return, after which the bestmove and pondermove will be printed.
 
   void wait_for_stop_or_ponderhit() {
 
     string cmd;
+    StopOnPonderhit = true;
 
-    // Wait for a command from stdin
-    while (cmd != "ponderhit" && cmd != "stop" && cmd != "quit")
+    while (!StopRequest)
+    {
         Threads.getline(cmd);
-
-    if (cmd == "quit")
-        QuitRequest = true;
+        do_uci_async_cmd(cmd);
+    }
   }
 
 
@@ -2173,18 +2175,11 @@ void Thread::idle_loop(SplitPoint* sp) {
 void do_uci_async_cmd(const std::string& cmd) {
 
   if (cmd == "quit")
-  {
-      // Quit the program as soon as possible
-      Limits.ponder = false;
       QuitRequest = StopRequest = true;
-  }
+
   else if (cmd == "stop")
-  {
-      // Stop calculating as soon as possible, but still send the "bestmove"
-      // and possibly the "ponder" token when finishing the search.
-      Limits.ponder = false;
       StopRequest = true;
-  }
+
   else if (cmd == "ponderhit")
   {
       // The opponent has played the expected move. GUI sends "ponderhit" if
