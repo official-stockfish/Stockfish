@@ -385,7 +385,7 @@ profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	@$(PGOBENCH) > /dev/null
+	@sleep 10 | $(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building final executable ..."
 	@touch *.cpp
@@ -405,14 +405,14 @@ double-profile-build:
 	$(MAKE) ARCH=x86-64 COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/6. Running benchmark for pgo-build (popcnt disabled)..."
-	@$(PGOBENCH) > /dev/null
+	@sleep 10 | $(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/6. Building executable for benchmark (popcnt enabled)..."
 	@touch *.cpp *.h
 	$(MAKE) ARCH=x86-64-modern COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 4/6. Running benchmark for pgo-build (popcnt enabled)..."
-	@$(PGOBENCH) > /dev/null
+	@sleep 10 | $(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 5/6. Building final executable ..."
 	@touch *.cpp *.h
