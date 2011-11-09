@@ -492,6 +492,7 @@ gcc-profile-make:
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-use' \
+	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-clean:
