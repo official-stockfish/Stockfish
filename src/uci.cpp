@@ -72,6 +72,9 @@ void uci_loop() {
       if (token == "quit")
           quit = true;
 
+      else if (token == "stop")
+      { /* avoid to reply "Unknown command: stop" */ }
+
       else if (token == "go")
           quit = !go(pos, is);
 
