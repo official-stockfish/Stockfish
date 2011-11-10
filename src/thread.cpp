@@ -433,8 +433,10 @@ void Thread::listener_loop() {
       if (is_searching)
       {
           // Command "quit" is the last one received by the GUI, so park the
-          // thread waiting for exiting.
-          if (cmd == "quit")
+          // thread waiting for exiting. Also, after a "stop", for instance on a
+          // ponder miss, GUI can immediately send the new position to search,
+          // so return to in-sync mode to avoid discarding good data.
+          if (cmd == "quit" || cmd == "stop")
               is_searching = false;
 
           do_uci_async_cmd(cmd);
