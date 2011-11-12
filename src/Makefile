@@ -308,15 +308,19 @@ endif
 
 ### 3.10 popcnt
 ifeq ($(popcnt),yes)
-	CXXFLAGS += -DUSE_POPCNT
+	CXXFLAGS += -msse3 -DUSE_POPCNT
+endif
 
-    ### For gcc we add also msse3 support and Link Time Optimization, note that
-    ### this is a mix of compile and link time options because the lto link phase
-    ### needs access to the optimization flags.
-    ifeq ($(comp),gcc)
-        CXXFLAGS += -msse3 -flto
-        LDFLAGS += $(CXXFLAGS)
-    endif
+### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw.
+### This is a mix of compile and link time options because the lto link phase
+### needs access to the optimization flags.
+ifeq ($(comp),gcc)
+	GCC_MAJOR := `gcc -dumpversion | cut -f1 -d.`
+	GCC_MINOR := `gcc -dumpversion | cut -f2 -d.`
+	ifeq (1,$(shell expr \( $(GCC_MAJOR) \> 4 \) \| \( $(GCC_MAJOR) \= 4 \& $(GCC_MINOR) \>= 5 \)))
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
+	endif
 endif
 
 ### ==========================================================================
