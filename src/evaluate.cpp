@@ -813,8 +813,8 @@ namespace {
             Square blockSq = s + pawn_push(Us);
 
             // Adjust bonus based on kings proximity
-            ebonus += Value(square_distance(pos.king_square(Them), blockSq) * 6 * rr);
-            ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 3 * rr);
+            ebonus += Value(square_distance(pos.king_square(Them), blockSq) * 5 * rr);
+            ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 2 * rr);
 
             // If blockSq is not the queening square then consider also a second push
             if (rank_of(blockSq) != (Us == WHITE ? RANK_8 : RANK_1))
@@ -845,11 +845,6 @@ namespace {
                     // If yes, big bonus (but smaller than when there are no enemy attacks),
                     // if no, somewhat smaller bonus.
                     ebonus += Value(rr * ((unsafeSquares & defendedSquares) == unsafeSquares ? 13 : 8));
-
-                // At last, add a small bonus when there are no *friendly* pieces
-                // in the pawn's path.
-                if (!(squaresToQueen & pos.pieces(Us)))
-                    ebonus += Value(rr);
             }
         } // rr != 0
 
@@ -858,6 +853,7 @@ namespace {
         supportingPawns = pos.pieces(PAWN, Us) & neighboring_files_bb(s);
         if (supportingPawns & rank_bb(s))
             ebonus += Value(r * 20);
+
         else if (supportingPawns & rank_bb(s - pawn_push(Us)))
             ebonus += Value(r * 12);
 
