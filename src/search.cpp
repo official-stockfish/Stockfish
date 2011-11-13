@@ -496,7 +496,7 @@ namespace {
     Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
     int depth, aspirationDelta;
-    Value value, alpha, beta;
+    Value bestValue, alpha, beta;
     Move bestMove, easyMove, skillBest, skillPonder;
 
     // Initialize stuff before a new search
@@ -505,7 +505,7 @@ namespace {
     H.clear();
     *ponderMove = bestMove = easyMove = skillBest = skillPonder = MOVE_NONE;
     depth = aspirationDelta = 0;
-    value = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
+    bestValue = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
     // Moves to search are verified and copied
@@ -555,7 +555,7 @@ namespace {
             do {
                 // Search starts from ss+1 to allow referencing (ss-1). This is
                 // needed by update gains and ss copy when splitting at Root.
-                value = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
+                bestValue = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
 
                 // Bring to front the best move. It is critical that sorting is
                 // done with a stable algorithm because all the values but the first
@@ -569,7 +569,7 @@ namespace {
                 // the fail high/low loop then reorder the PV moves, otherwise
                 // leave the last PV move in its position so to be searched again.
                 // Of course this is needed only in MultiPV search.
-                if (MultiPVIdx && value > alpha && value < beta)
+                if (MultiPVIdx && bestValue > alpha && bestValue < beta)
                     sort<RootMove>(Rml.begin(), Rml.begin() + MultiPVIdx);
 
                 // Write PV back to transposition table in case the relevant entries
@@ -587,7 +587,7 @@ namespace {
                 // if we have a fail high/low and we are deep in the search. UCI
                 // protocol requires to send all the PV lines also if are still
                 // to be searched and so refer to the previous search's score.
-                if ((value > alpha && value < beta) || elapsed_search_time() > 2000)
+                if ((bestValue > alpha && bestValue < beta) || elapsed_search_time() > 2000)
                     for (int i = 0; i < std::min(UCIMultiPV, (int)Rml.size()); i++)
                     {
                         bool updated = (i <= MultiPVIdx);
@@ -608,12 +608,12 @@ namespace {
 
                 // In case of failing high/low increase aspiration window and
                 // research, otherwise exit the fail high/low loop.
-                if (value >= beta)
+                if (bestValue >= beta)
                 {
                     beta = std::min(beta + aspirationDelta, VALUE_INFINITE);
                     aspirationDelta += aspirationDelta / 2;
                 }
-                else if (value <= alpha)
+                else if (bestValue <= alpha)
                 {
                     AspirationFailLow = true;
                     StopOnPonderhit = false;
@@ -624,13 +624,13 @@ namespace {
                 else
                     break;
 
-            } while (abs(value) < VALUE_KNOWN_WIN);
+            } while (abs(bestValue) < VALUE_KNOWN_WIN);
         }
 
         // Collect info about search result
         bestMove = Rml[0].pv[0];
         *ponderMove = Rml[0].pv[1];
-        bestValues[depth] = value;
+        bestValues[depth] = bestValue;
         bestMoveChanges[depth] = Rml.bestMoveChanges;
 
         // Skills: Do we need to pick now the best and the ponder moves ?
@@ -640,7 +640,7 @@ namespace {
         if (Options["Use Search Log"].value<bool>())
         {
             Log log(Options["Search Log Filename"].value<string>());
-            log << pretty_pv(pos, depth, value, elapsed_search_time(), &Rml[0].pv[0]) << endl;
+            log << pretty_pv(pos, depth, bestValue, elapsed_search_time(), &Rml[0].pv[0]) << endl;
         }
 
         // Init easyMove at first iteration or drop it if differs from the best move
