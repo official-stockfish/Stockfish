@@ -89,7 +89,7 @@ namespace {
   //
   // Values modified by Joona Kiiski
   const Score WeightsInternal[] = {
-      S(252, 344), S(252, 259), S(46, 0), S(247, 0), S(259, 0)
+      S(252, 344), S(216, 266), S(46, 0), S(247, 0), S(259, 0)
   };
 
   // MobilityBonus[PieceType][attacked] contains mobility bonuses for middle and
