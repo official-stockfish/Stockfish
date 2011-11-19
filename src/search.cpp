@@ -651,11 +651,6 @@ namespace {
         // Check for some early stop condition
         if (!StopRequest && Limits.useTimeManagement())
         {
-            // Stop search early if there is only a single legal move. Search to
-            // some depth anyway to get a proper score.
-            if (Rml.size() == 1 && depth >= 7)
-                StopRequest = true;
-
             // Take in account some extra time if the best move has changed
             if (depth > 4 && depth < 50)
                 TimeMgr.pv_instability(bestMoveChanges[depth], bestMoveChanges[depth - 1]);
