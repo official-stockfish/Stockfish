@@ -730,7 +730,8 @@ namespace {
     ValueType vt;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValue;
-    bool isPvMove, inCheck, singularExtensionNode, givesCheck, captureOrPromotion, dangerous;
+    bool isPvMove, inCheck, singularExtensionNode, givesCheck;
+    bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount = 0, playedMoveCount = 0;
     Thread& thread = Threads[pos.thread()];
     SplitPoint* sp = NULL;
@@ -1056,11 +1057,11 @@ split_point_start: // At split points actual search starts from here
               Value rBeta = ttValue - int(depth);
               ss->excludedMove = move;
               ss->skipNullMove = true;
-              Value v = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2);
+              value = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2);
               ss->skipNullMove = false;
               ss->excludedMove = MOVE_NONE;
               ss->bestMove = MOVE_NONE;
-              if (v < rBeta)
+              if (value < rBeta)
                   ext = ONE_PLY;
           }
       }
@@ -1134,50 +1135,43 @@ split_point_start: // At split points actual search starts from here
       // Step 14. Make the move
       pos.do_move(move, st, ci, givesCheck);
 
-      // Step extra. pv search (only in PV nodes)
-      // The first move in list is the expected PV
-      if (isPvMove)
+      // Step 15. Reduced depth search (LMR). If the move fails high will be
+      // re-searched at full depth.
+      if (   depth > 3 * ONE_PLY
+          && !isPvMove
+          && !captureOrPromotion
+          && !dangerous
+          && !is_castle(move)
+          &&  ss->killers[0] != move
+          &&  ss->killers[1] != move)
+      {
+          ss->reduction = reduction<PvNode>(depth, moveCount);
+          Depth d = newDepth - ss->reduction;
+          alpha = SpNode ? sp->alpha : alpha;
+
+          value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
+                              : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
+
+          doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
+          ss->reduction = DEPTH_ZERO;
+      }
+      else
+          doFullDepthSearch = !isPvMove;
+
+      // Step 16. Full depth search, when LMR is skipped or fails high
+      if (doFullDepthSearch)
+      {
+          alpha = SpNode ? sp->alpha : alpha;
+          value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
+                                     : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth);
+      }
+
+      // Only for PV nodes do a full PV search on the first move or after a fail
+      // high, in the latter case search only if value < beta, otherwise let the
+      // parent node to fail low with value <= alpha and to try another move.
+      if (PvNode && (isPvMove || (value > alpha && (RootNode || value < beta))))
           value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                      : - search<PV>(pos, ss+1, -beta, -alpha, newDepth);
-      else
-      {
-          // Step 15. Reduced depth search
-          // If the move fails high will be re-searched at full depth.
-          bool doFullDepthSearch = true;
-
-          if (    depth > 3 * ONE_PLY
-              && !captureOrPromotion
-              && !dangerous
-              && !is_castle(move)
-              &&  ss->killers[0] != move
-              &&  ss->killers[1] != move
-              && (ss->reduction = reduction<PvNode>(depth, moveCount)) != DEPTH_ZERO)
-          {
-              Depth d = newDepth - ss->reduction;
-              alpha = SpNode ? sp->alpha : alpha;
-
-              value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
-                                  : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
-
-              ss->reduction = DEPTH_ZERO;
-              doFullDepthSearch = (value > alpha);
-          }
-
-          // Step 16. Full depth search
-          if (doFullDepthSearch)
-          {
-              alpha = SpNode ? sp->alpha : alpha;
-              value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
-                                         : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth);
-
-              // Step extra. pv search (only in PV nodes)
-              // Search only for possible new PV nodes, if instead value >= beta then
-              // parent node fails low with value <= alpha and tries another move.
-              if (PvNode && value > alpha && (RootNode || value < beta))
-                  value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
-                                             : - search<PV>(pos, ss+1, -beta, -alpha, newDepth);
-          }
-      }
 
       // Step 17. Undo move
       pos.undo_move(move);
