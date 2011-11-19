@@ -2201,8 +2201,8 @@ void do_timer_event() {
   static int lastInfoTime;
   int e = elapsed_search_time();
 
-  // Print debug information every second
-  if (get_system_time() - lastInfoTime >= 1000)
+  // Print debug information every one second
+  if (!lastInfoTime || get_system_time() - lastInfoTime >= 1000)
   {
       lastInfoTime = get_system_time();
 
