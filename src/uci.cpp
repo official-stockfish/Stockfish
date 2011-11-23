@@ -45,7 +45,7 @@ namespace {
 
   void set_option(istringstream& up);
   void set_position(Position& pos, istringstream& up);
-  bool go(Position& pos, istringstream& up);
+  void go(Position& pos, istringstream& up);
   void perft(Position& pos, istringstream& up);
 }
 
@@ -61,22 +61,22 @@ void uci_loop() {
   string cmd, token;
   bool quit = false;
 
-  while (!quit)
+  while (!quit && getline(cin, cmd))
   {
-      Threads.getline(cmd);
-
       istringstream is(cmd);
 
       is >> skipws >> token;
 
-      if (token == "quit")
-          quit = true;
+      quit = (token == "quit");
 
-      else if (token == "stop")
-      { /* avoid to reply "Unknown command: stop" */ }
+      if (token == "quit" || token == "stop" || token == "ponderhit")
+      {
+          uci_async_command(token);
+          Threads[0].wake_up(); // In case is waiting for stop or ponderhit
+      }
 
       else if (token == "go")
-          quit = !go(pos, is);
+          go(pos, is);
 
       else if (token == "ucinewgame")
           pos.from_fen(StarFEN, false);
@@ -190,19 +190,21 @@ namespace {
   // string, and then calls think(). Returns false if a quit command
   // is received while thinking, true otherwise.
 
-  bool go(Position& pos, istringstream& is) {
+  void go(Position& pos, istringstream& is) {
 
     string token;
-    SearchLimits limits;
-    std::vector<Move> searchMoves;
     int time[] = { 0, 0 }, inc[] = { 0, 0 };
+
+    memset(&Limits, 0, sizeof(SearchLimits));
+    SearchMoves.clear();
+    RootPosition = &pos;
 
     while (is >> token)
     {
         if (token == "infinite")
-            limits.infinite = true;
+            Limits.infinite = true;
         else if (token == "ponder")
-            limits.ponder = true;
+            Limits.ponder = true;
         else if (token == "wtime")
             is >> time[WHITE];
         else if (token == "btime")
@@ -212,23 +214,23 @@ namespace {
         else if (token == "binc")
             is >> inc[BLACK];
         else if (token == "movestogo")
-            is >> limits.movesToGo;
+            is >> Limits.movesToGo;
         else if (token == "depth")
-            is >> limits.maxDepth;
+            is >> Limits.maxDepth;
         else if (token == "nodes")
-            is >> limits.maxNodes;
+            is >> Limits.maxNodes;
         else if (token == "movetime")
-            is >> limits.maxTime;
+            is >> Limits.maxTime;
         else if (token == "searchmoves")
             while (is >> token)
-                searchMoves.push_back(move_from_uci(pos, token));
+                SearchMoves.push_back(move_from_uci(pos, token));
     }
 
-    searchMoves.push_back(MOVE_NONE);
-    limits.time = time[pos.side_to_move()];
-    limits.increment = inc[pos.side_to_move()];
+    SearchMoves.push_back(MOVE_NONE);
+    Limits.time = time[pos.side_to_move()];
+    Limits.increment = inc[pos.side_to_move()];
 
-    return think(pos, limits, &searchMoves[0]);
+    Threads.start_thinking();
   }
 
 

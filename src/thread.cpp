@@ -38,10 +38,10 @@ namespace { extern "C" {
   void* start_routine(void* thread) {
 #endif
 
-    if (((Thread*)thread)->threadID == MAX_THREADS)
-        ((Thread*)thread)->listener_loop();
+    if (((Thread*)thread)->threadID == 0)
+        ((Thread*)thread)->main_loop();
 
-    else if (((Thread*)thread)->threadID == MAX_THREADS + 1)
+    else if (((Thread*)thread)->threadID == MAX_THREADS)
         ((Thread*)thread)->timer_loop();
     else
         ((Thread*)thread)->idle_loop(NULL);
@@ -124,7 +124,7 @@ void ThreadsManager::set_size(int cnt) {
 
   activeThreads = cnt;
 
-  for (int i = 0; i < MAX_THREADS; i++)
+  for (int i = 1; i < MAX_THREADS; i++) // Ignore main thread
       if (i < activeThreads)
       {
           // Dynamically allocate pawn and material hash tables according to the
@@ -147,14 +147,14 @@ void ThreadsManager::set_size(int cnt) {
 
 void ThreadsManager::init() {
 
-  // Initialize sleep condition used to block waiting for GUI input
+  // Initialize sleep condition used to block waiting for end of searching
   cond_init(&sleepCond);
 
   // Initialize threads lock, used when allocating slaves during splitting
   lock_init(&threadsLock);
 
   // Initialize sleep and split point locks
-  for (int i = 0; i < MAX_THREADS + 2; i++)
+  for (int i = 0; i <= MAX_THREADS; i++)
   {
       lock_init(&threads[i].sleepLock);
       cond_init(&threads[i].sleepCond);
@@ -164,15 +164,14 @@ void ThreadsManager::init() {
   }
 
   // Initialize main thread's associated data
-  threads[0].is_searching = true;
-  threads[0].threadID = 0;
-  set_size(1); // This makes all the threads but the main to go to sleep
+  threads[0].pawnTable.init();
+  threads[0].materialTable.init();
 
-  // Create and launch all the threads but the main that is already running,
-  // threads will go immediately to sleep.
-  for (int i = 1; i < MAX_THREADS + 2; i++)
+  // Create and launch all the threads, threads will go immediately to sleep
+  for (int i = 0; i <= MAX_THREADS; i++)
   {
       threads[i].is_searching = false;
+      threads[i].do_sleep = true;
       threads[i].threadID = i;
 
 #if defined(_MSC_VER)
@@ -195,21 +194,18 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
-  for (int i = 0; i < MAX_THREADS + 2; i++)
+  for (int i = 0; i <= MAX_THREADS; i++)
   {
-      if (i != 0)
-      {
-          threads[i].do_terminate = true;
-          threads[i].wake_up();
+      threads[i].do_terminate = true;
+      threads[i].wake_up();
 
-          // Wait for slave termination
+      // Wait for slave termination
 #if defined(_MSC_VER)
-          WaitForSingleObject(threads[i].handle, 0);
-          CloseHandle(threads[i].handle);
+      WaitForSingleObject(threads[i].handle, 0);
+      CloseHandle(threads[i].handle);
 #else
-          pthread_join(threads[i].handle, NULL);
+      pthread_join(threads[i].handle, NULL);
 #endif
-      }
 
       // Now we can safely destroy locks and wait conditions
       lock_destroy(&threads[i].sleepLock);
@@ -387,7 +383,7 @@ void Thread::timer_loop() {
 
 void ThreadsManager::set_timer(int msec) {
 
-  Thread& timer = threads[MAX_THREADS + 1];
+  Thread& timer = threads[MAX_THREADS];
 
   lock_grab(&timer.sleepLock);
   timer.maxPly = msec;
@@ -396,113 +392,57 @@ void ThreadsManager::set_timer(int msec) {
 }
 
 
-// Thread::listener_loop() is where the listener thread, used for I/O, waits for
-// input. When is_searching is false then input is read in sync with main thread
-// (that blocks), otherwise the listener thread reads any input asynchronously
-// and processes the input line calling do_uci_async_cmd().
+// Thread::main_loop() is where the main thread is parked waiting to be started
+// when there is a new search. Main thread will launch all the slave threads.
 
-void Thread::listener_loop() {
-
-  std::string cmd;
+void Thread::main_loop() {
 
   while (true)
   {
       lock_grab(&sleepLock);
 
-      Threads.inputLine = cmd;
-      do_sleep = !is_searching;
+      do_sleep = true; // Always return to sleep after a search
 
-      // Here the thread is parked in sync mode after a line has been read
-      while (do_sleep && !do_terminate) // Catches spurious wake ups
+      is_searching = false;
+
+      while (do_sleep && !do_terminate)
       {
-          cond_signal(&Threads.sleepCond);   // Wake up main thread
-          cond_wait(&sleepCond, &sleepLock); // Sleep here
+          cond_signal(&Threads.sleepCond); // Wake up UI thread if needed
+          cond_wait(&sleepCond, &sleepLock);
       }
+
+      is_searching = true;
 
       lock_release(&sleepLock);
 
       if (do_terminate)
           return;
 
-      if (!std::getline(std::cin, cmd)) // Block waiting for input
-          cmd = "quit";
-
-      lock_grab(&sleepLock);
-
-      // If we are in async mode then process the command now
-      if (is_searching)
-      {
-          // Command "quit" is the last one received by the GUI, so park the
-          // thread waiting for exiting. Also, after a "stop", for instance on a
-          // ponder miss, GUI can immediately send the new position to search,
-          // so return to in-sync mode to avoid discarding good data.
-          if (cmd == "quit" || cmd == "stop")
-              is_searching = false;
-
-          do_uci_async_cmd(cmd);
-          cmd = ""; // Input has been consumed
-      }
-
-      lock_release(&sleepLock);
+      think(); // Search entry point
   }
 }
 
 
-// ThreadsManager::getline() is used by main thread to block and wait for input,
-// the behaviour mimics std::getline().
+// ThreadsManager::start_thinking() is used by UI thread to wake up the main
+// thread parked in main_loop() and starting a new search. If asyncMode is true
+// then function returns immediately, otherwise caller is blocked waiting for
+// the search to finish.
 
-void ThreadsManager::getline(std::string& cmd) {
+void ThreadsManager::start_thinking(bool asyncMode) {
 
-  Thread& listener = threads[MAX_THREADS];
+  Thread& main = threads[0];
 
-  lock_grab(&listener.sleepLock);
+  lock_grab(&main.sleepLock);
 
-  listener.is_searching = false; // Set sync mode
+  // Wait main thread has finished before to launch a new search
+  while (!main.do_sleep)
+      cond_wait(&sleepCond, &main.sleepLock);
 
-  // If there is already some input to grab then skip without to wake up the
-  // listener. This can happen if after we send the "bestmove", the GUI sends
-  // a command that the listener buffers in inputLine before going to sleep.
-  if (inputLine.empty())
-  {
-      listener.do_sleep = false;
-      cond_signal(&listener.sleepCond); // Wake up listener thread
+  main.do_sleep = false;
+  cond_signal(&main.sleepCond); // Wake up main thread
 
-      while (!listener.do_sleep)
-          cond_wait(&sleepCond, &listener.sleepLock); // Wait for input
-  }
+  if (!asyncMode)
+      cond_wait(&sleepCond, &main.sleepLock);
 
-  cmd = inputLine;
-  inputLine = ""; // Input has been consumed
-
-  lock_release(&listener.sleepLock);
-}
-
-
-// ThreadsManager::start_listener() is called at the beginning of the search to
-// swith from sync behaviour (default) to async and so be able to read from UCI
-// while other threads are searching. This avoids main thread polling for input.
-
-void ThreadsManager::start_listener() {
-
-  Thread& listener = threads[MAX_THREADS];
-
-  lock_grab(&listener.sleepLock);
-  listener.is_searching = true;
-  listener.do_sleep = false;
-  cond_signal(&listener.sleepCond); // Wake up listener thread
-  lock_release(&listener.sleepLock);
-}
-
-
-// ThreadsManager::stop_listener() is called before to send "bestmove" to GUI to
-// return to in-sync behaviour. This is needed because while in async mode any
-// command is discarded without being processed (except for a very few ones).
-
-void ThreadsManager::stop_listener() {
-
-  Thread& listener = threads[MAX_THREADS];
-
-  lock_grab(&listener.sleepLock);
-  listener.is_searching = false;
-  lock_release(&listener.sleepLock);
+  lock_release(&main.sleepLock);
 }

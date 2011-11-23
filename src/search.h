@@ -20,10 +20,10 @@
 #if !defined(SEARCH_H_INCLUDED)
 #define SEARCH_H_INCLUDED
 
-#include <cstring>
-
 #include "move.h"
 #include "types.h"
+
+#include <vector>
 
 class Position;
 struct SplitPoint;
@@ -53,21 +53,19 @@ struct SearchStack {
 
 struct SearchLimits {
 
-  SearchLimits() { memset(this, 0, sizeof(SearchLimits)); }
-
-  SearchLimits(int t, int i, int mtg, int mt, int md, int mn, bool inf, bool pon)
-              : time(t), increment(i), movesToGo(mtg), maxTime(mt), maxDepth(md),
-                maxNodes(mn), infinite(inf), ponder(pon) {}
-
   bool useTimeManagement() const { return !(maxTime | maxDepth | maxNodes | infinite); }
 
   int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
 };
 
+extern SearchLimits Limits;
+extern std::vector<Move> SearchMoves;
+extern Position* RootPosition;
+
 extern void init_search();
 extern int64_t perft(Position& pos, Depth depth);
-extern bool think(Position& pos, const SearchLimits& limits, Move searchMoves[]);
-extern void do_uci_async_cmd(const std::string& cmd);
+extern void think();
+extern void uci_async_command(const std::string& cmd);
 extern void do_timer_event();
 
 #endif // !defined(SEARCH_H_INCLUDED)
