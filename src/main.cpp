@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
   init_bitboards();
   Position::init();
   kpk_bitbase_init();
-  init_search();
+  Search::init();
   Threads.init();
 
 #ifdef USE_CALLGRIND

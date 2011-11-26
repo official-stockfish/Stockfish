@@ -46,26 +46,34 @@ struct SearchStack {
   int skipNullMove;
 };
 
+namespace Search {
 
 /// The SearchLimits struct stores information sent by GUI about available time
 /// to search the current move, maximum depth/time, if we are in analysis mode
 /// or if we have to ponder while is our opponent's side to move.
 
-struct SearchLimits {
+struct LimitsType {
 
   bool useTimeManagement() const { return !(maxTime | maxDepth | maxNodes | infinite); }
 
   int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
 };
 
-extern SearchLimits Limits;
-extern std::vector<Move> SearchMoves;
+struct SignalsType {
+  bool stopOnPonderhit, firstRootMove, stop, failedLowAtRoot;
+};
+
+extern volatile SignalsType Signals;
+extern LimitsType Limits;
+extern std::vector<Move> RootMoves;
 extern Position* RootPosition;
 
-extern void init_search();
+extern void init();
 extern int64_t perft(Position& pos, Depth depth);
 extern void think();
-extern void uci_async_command(const std::string& cmd);
+
+}
+
 extern void do_timer_event();
 
 #endif // !defined(SEARCH_H_INCLUDED)

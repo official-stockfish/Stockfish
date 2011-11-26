@@ -418,7 +418,7 @@ void Thread::main_loop() {
       if (do_terminate)
           return;
 
-      think(); // Search entry point
+      Search::think();
   }
 }
 
@@ -443,6 +443,28 @@ void ThreadsManager::start_thinking(bool asyncMode) {
 
   if (!asyncMode)
       cond_wait(&sleepCond, &main.sleepLock);
+
+  lock_release(&main.sleepLock);
+}
+
+
+// ThreadsManager::wait_for_stop_or_ponderhit() is called when the maximum depth
+// is reached while the program is pondering. The point is to work around a wrinkle
+// in the UCI protocol: When pondering, the engine is not allowed to give a
+// "bestmove" before the GUI sends it a "stop" or "ponderhit" command.
+// We simply wait here until one of these commands (that raise StopRequest) is
+// sent, and return, after which the bestmove and pondermove will be printed.
+
+void ThreadsManager::wait_for_stop_or_ponderhit() {
+
+  Search::Signals.stopOnPonderhit = true;
+
+  Thread& main = threads[0];
+
+  lock_grab(&main.sleepLock);
+
+  while (!Search::Signals.stop)
+      cond_wait(&main.sleepCond, &main.sleepLock);
 
   lock_release(&main.sleepLock);
 }

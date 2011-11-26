@@ -84,7 +84,7 @@ void TimeManager::pv_instability(int curChanges, int prevChanges) {
 }
 
 
-void TimeManager::init(const SearchLimits& limits, int currentPly)
+void TimeManager::init(const Search::LimitsType& limits, int currentPly)
 {
   /* We support four different kind of time controls:
 

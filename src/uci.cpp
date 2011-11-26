@@ -67,12 +67,25 @@ void uci_loop() {
 
       is >> skipws >> token;
 
-      quit = (token == "quit");
-
-      if (token == "quit" || token == "stop" || token == "ponderhit")
+      if (cmd == "quit" || cmd == "stop")
       {
-          uci_async_command(token);
+          quit = (token == "quit");
+          Search::Signals.stop = true;
           Threads[0].wake_up(); // In case is waiting for stop or ponderhit
+      }
+
+      else if (cmd == "ponderhit")
+      {
+          // The opponent has played the expected move. GUI sends "ponderhit" if
+          // we were told to ponder on the same move the opponent has played. We
+          // should continue searching but switching from pondering to normal search.
+          Search::Limits.ponder = false; // FIXME racing
+
+          if (Search::Signals.stopOnPonderhit)
+          {
+              Search::Signals.stop = true;
+              Threads[0].wake_up(); // In case is waiting for stop or ponderhit
+          }
       }
 
       else if (token == "go")
@@ -195,16 +208,16 @@ namespace {
     string token;
     int time[] = { 0, 0 }, inc[] = { 0, 0 };
 
-    memset(&Limits, 0, sizeof(SearchLimits));
-    SearchMoves.clear();
-    RootPosition = &pos;
+    memset(&Search::Limits, 0, sizeof(Search::Limits));
+    Search::RootMoves.clear();
+    Search::RootPosition = &pos;
 
     while (is >> token)
     {
         if (token == "infinite")
-            Limits.infinite = true;
+            Search::Limits.infinite = true;
         else if (token == "ponder")
-            Limits.ponder = true;
+            Search::Limits.ponder = true;
         else if (token == "wtime")
             is >> time[WHITE];
         else if (token == "btime")
@@ -214,21 +227,21 @@ namespace {
         else if (token == "binc")
             is >> inc[BLACK];
         else if (token == "movestogo")
-            is >> Limits.movesToGo;
+            is >> Search::Limits.movesToGo;
         else if (token == "depth")
-            is >> Limits.maxDepth;
+            is >> Search::Limits.maxDepth;
         else if (token == "nodes")
-            is >> Limits.maxNodes;
+            is >> Search::Limits.maxNodes;
         else if (token == "movetime")
-            is >> Limits.maxTime;
+            is >> Search::Limits.maxTime;
         else if (token == "searchmoves")
             while (is >> token)
-                SearchMoves.push_back(move_from_uci(pos, token));
+                Search::RootMoves.push_back(move_from_uci(pos, token));
     }
 
-    SearchMoves.push_back(MOVE_NONE);
-    Limits.time = time[pos.side_to_move()];
-    Limits.increment = inc[pos.side_to_move()];
+    Search::RootMoves.push_back(MOVE_NONE);
+    Search::Limits.time = time[pos.side_to_move()];
+    Search::Limits.increment = inc[pos.side_to_move()];
 
     Threads.start_thinking();
   }
@@ -248,7 +261,7 @@ namespace {
 
     time = get_system_time();
 
-    n = perft(pos, depth * ONE_PLY);
+    n = Search::perft(pos, depth * ONE_PLY);
 
     time = get_system_time() - time;
 
