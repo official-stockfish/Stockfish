@@ -367,9 +367,6 @@ void Search::think() {
   // Save "search start" time and reset elapsed time to zero
   elapsed_search_time(get_system_time());
 
-  // Reset global search signals
-  memset((void*)&Signals, 0, sizeof(Signals));
-
   // Set output stream mode: normal or chess960. Castling notation is different
   cout << set960(pos.is_chess960());
 
@@ -651,6 +648,8 @@ namespace {
         // Do we have time for the next iteration? Can we stop searching now?
         if (!Signals.stop && !Signals.stopOnPonderhit && Limits.useTimeManagement())
         {
+            bool stop = false; // Local variable instead of the volatile Signals.stop
+
             // Take in account some extra time if the best move has changed
             if (depth > 4 && depth < 50)
                 TimeMgr.pv_instability(bestMoveChanges[depth], bestMoveChanges[depth - 1]);
@@ -658,11 +657,11 @@ namespace {
             // Stop search if most of available time is already consumed. We probably don't
             // have enough time to search the first move at the next iteration anyway.
             if (elapsed_search_time() > (TimeMgr.available_time() * 62) / 100)
-                Signals.stop = true;
+                stop = true;
 
             // Stop search early if one move seems to be much better than others
             if (   depth >= 10
-                && !Signals.stop
+                && !stop
                 && (   bestMoveNeverChanged
                     || elapsed_search_time() > (TimeMgr.available_time() * 40) / 100))
             {
@@ -674,14 +673,17 @@ namespace {
                 (ss+1)->excludedMove = MOVE_NONE;
 
                 if (v < rBeta)
-                    Signals.stop = true;
+                    stop = true;
             }
 
-            // If we are allowed to ponder do not stop the search now but keep pondering
-            if (Signals.stop && Limits.ponder) // FIXME Limits.ponder is racy
+            if (stop)
             {
-                Signals.stop = false;
-                Signals.stopOnPonderhit = true;
+                // If we are allowed to ponder do not stop the search now but
+                // keep pondering until GUI sends "ponderhit" or "stop".
+                if (Limits.ponder) // FIXME racing
+                    Signals.stopOnPonderhit = true;
+                else
+                    Signals.stop = true;
             }
         }
     }

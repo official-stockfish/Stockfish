@@ -82,10 +82,9 @@ void uci_loop() {
           Search::Limits.ponder = false; // FIXME racing
 
           if (Search::Signals.stopOnPonderhit)
-          {
               Search::Signals.stop = true;
-              Threads[0].wake_up(); // In case is waiting for stop or ponderhit
-          }
+
+          Threads[0].wake_up(); // In case is waiting for stop or ponderhit
       }
 
       else if (token == "go")

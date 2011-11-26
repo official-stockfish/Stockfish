@@ -438,6 +438,9 @@ void ThreadsManager::start_thinking(bool asyncMode) {
   while (!main.do_sleep)
       cond_wait(&sleepCond, &main.sleepLock);
 
+  // Reset signals before to start the search
+  memset((void*)&Search::Signals, 0, sizeof(Search::Signals));
+
   main.do_sleep = false;
   cond_signal(&main.sleepCond); // Wake up main thread
 
