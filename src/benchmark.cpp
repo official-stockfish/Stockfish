@@ -59,7 +59,9 @@ static const string Defaults[] = {
 
 void benchmark(int argc, char* argv[]) {
 
+  std::vector<Move> searchMoves(1, MOVE_NONE);
   vector<string> fenList;
+  Search::LimitsType limits;
   int64_t totalNodes;
   int time;
 
@@ -76,11 +78,11 @@ void benchmark(int argc, char* argv[]) {
 
   // Search should be limited by nodes, time or depth ?
   if (valType == "nodes")
-      Search::Limits.maxNodes = atoi(valStr.c_str());
+      limits.maxNodes = atoi(valStr.c_str());
   else if (valType == "time")
-      Search::Limits.maxTime = 1000 * atoi(valStr.c_str()); // maxTime is in ms
+      limits.maxTime = 1000 * atoi(valStr.c_str()); // maxTime is in ms
   else
-      Search::Limits.maxDepth = atoi(valStr.c_str());
+      limits.maxDepth = atoi(valStr.c_str());
 
   // Do we need to load positions from a given FEN file?
   if (fenFile != "default")
@@ -105,30 +107,28 @@ void benchmark(int argc, char* argv[]) {
           fenList.push_back(Defaults[i]);
 
   // Ok, let's start the benchmark !
-  Search::RootMoves.push_back(MOVE_NONE);
   totalNodes = 0;
   time = get_system_time();
 
   for (size_t i = 0; i < fenList.size(); i++)
   {
       Position pos(fenList[i], false, 0);
-      Search::RootPosition = &pos;
 
       cerr << "\nBench position: " << i + 1 << '/' << fenList.size() << endl;
 
       if (valType == "perft")
       {
-          int64_t cnt = Search::perft(pos, Search::Limits.maxDepth * ONE_PLY);
+          int64_t cnt = Search::perft(pos, limits.maxDepth * ONE_PLY);
 
-          cerr << "\nPerft " << Search::Limits.maxDepth
+          cerr << "\nPerft " << limits.maxDepth
                << " nodes counted: " << cnt << endl;
 
           totalNodes += cnt;
       }
       else
       {
-          Threads.start_thinking(false);
-          totalNodes += pos.nodes_searched();
+          Threads.start_thinking(pos, limits, searchMoves, false);
+          totalNodes += Search::RootPosition.nodes_searched();
       }
   }
 

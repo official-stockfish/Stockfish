@@ -84,16 +84,17 @@ struct StateInfo {
 
 class Position {
 
-  // No defaul, copy c'tor or assignment allowed, default c'tor will not be
-  // generated anyhow because of user-defined c'tors.
+  // No copy c'tor or assignment operator allowed
   Position(const Position&);
   Position& operator=(const Position&);
 
 public:
-  Position(const Position& pos, int threadID);
-  Position(const std::string& fen, bool isChess960, int threadID);
+  Position() {}
+  Position(const Position& pos, int th) { copy(pos, th); }
+  Position(const std::string& fen, bool isChess960, int th);
 
   // Text input/output
+  void copy(const Position& pos, int th);
   void from_fen(const std::string& fen, bool isChess960);
   const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;

@@ -50,7 +50,7 @@ namespace Search {
   volatile SignalsType Signals;
   LimitsType Limits;
   std::vector<Move> RootMoves;
-  Position* RootPosition;
+  Position RootPosition;
 }
 
 namespace {
@@ -362,7 +362,7 @@ void Search::think() {
 
   static Book book; // Defined static to initialize the PRNG only once
 
-  Position& pos = *RootPosition;
+  Position& pos = RootPosition;
 
   // Save "search start" time and reset elapsed time to zero
   elapsed_search_time(get_system_time());

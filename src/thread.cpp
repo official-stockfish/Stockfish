@@ -423,36 +423,25 @@ void Thread::main_loop() {
 }
 
 
-// ThreadsManager::wait_end_of_search() blocks UI thread until main thread has
-// returned to sleep in main_loop(). It is needed becuase xboard sends immediately
-// new position to search after a "stop" due to ponder miss.
-
-void ThreadsManager::wait_end_of_search() {
-
-  Thread& main = threads[0];
-
-  lock_grab(&main.sleepLock);
-
-  while (!main.do_sleep)
-      cond_wait(&sleepCond, &main.sleepLock);
-
-  lock_release(&main.sleepLock);
-}
-
-
 // ThreadsManager::start_thinking() is used by UI thread to wake up the main
 // thread parked in main_loop() and starting a new search. If asyncMode is true
 // then function returns immediately, otherwise caller is blocked waiting for
 // the search to finish.
 
-void ThreadsManager::start_thinking(bool asyncMode) {
-
+void ThreadsManager::start_thinking(const Position& pos, const Search::LimitsType& limits,
+                                    const std::vector<Move>& searchMoves, bool asyncMode) {
   Thread& main = threads[0];
 
-  // Wait main thread has finished before to launch a new search
-  wait_end_of_search();
-
   lock_grab(&main.sleepLock);
+
+  // Wait main thread has finished before to launch a new search
+  while (!main.do_sleep)
+      cond_wait(&sleepCond, &main.sleepLock);
+
+  // Copy input arguments to Search global variables
+  Search::RootPosition.copy(pos, 0);
+  Search::Limits = limits;
+  Search::RootMoves = searchMoves;
 
   // Reset signals before to start the search
   memset((void*)&Search::Signals, 0, sizeof(Search::Signals));

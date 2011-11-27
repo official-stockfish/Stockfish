@@ -97,7 +97,7 @@ CheckInfo::CheckInfo(const Position& pos) {
 /// or the FEN string, we want the new born Position object do not depend
 /// on any external data so we detach state pointer from the source one.
 
-Position::Position(const Position& pos, int th) {
+void Position::copy(const Position& pos, int th) {
 
   memcpy(this, &pos, sizeof(Position));
   threadID = th;

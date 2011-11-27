@@ -116,11 +116,10 @@ public:
   void read_uci_options();
   bool available_slave_exists(int master) const;
   bool split_point_finished(SplitPoint* sp) const;
-
-  void start_thinking(bool asyncMode = true);
   void set_timer(int msec);
   void wait_for_stop_or_ponderhit();
-  void wait_end_of_search();
+  void start_thinking(const Position& pos, const Search::LimitsType& limits,
+                      const std::vector<Move>& searchMoves, bool asyncMode);
 
   template <bool Fake>
   Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
