@@ -72,6 +72,7 @@ void uci_loop() {
           quit = (token == "quit");
           Search::Signals.stop = true;
           Threads[0].wake_up(); // In case is waiting for stop or ponderhit
+          Threads.wait_end_of_search(); // Block here until search finishes
       }
 
       else if (cmd == "ponderhit")

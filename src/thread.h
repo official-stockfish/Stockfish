@@ -120,6 +120,7 @@ public:
   void start_thinking(bool asyncMode = true);
   void set_timer(int msec);
   void wait_for_stop_or_ponderhit();
+  void wait_end_of_search();
 
   template <bool Fake>
   Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
