@@ -59,10 +59,10 @@ struct SplitPoint {
 };
 
 
-/// Thread struct is used to keep together all the thread related stuff like locks,
-/// state and especially split points. We also use per-thread pawn and material hash
-/// tables so that once we get a pointer to an entry its life time is unlimited and
-/// we don't have to care about someone changing the entry under our feet.
+/// Thread struct keeps together all the thread related stuff like locks, state
+/// and especially split points. We also use per-thread pawn and material hash
+/// tables so that once we get a pointer to an entry its life time is unlimited
+/// and we don't have to care about someone changing the entry under our feet.
 
 struct Thread {
 
@@ -94,9 +94,9 @@ struct Thread {
 };
 
 
-/// ThreadsManager class is used to handle all the threads related stuff like init,
-/// starting, parking and, the most important, launching a slave thread at a split
-/// point. All the access to shared thread data is done through this class.
+/// ThreadsManager class handles all the threads related stuff like init, starting,
+/// parking and, the most important, launching a slave thread at a split point.
+/// All the access to shared thread data is done through this class.
 
 class ThreadsManager {
   /* As long as the single ThreadsManager object is defined as a global we don't
@@ -127,7 +127,7 @@ public:
 private:
   friend struct Thread;
 
-  Thread threads[MAX_THREADS + 2]; // Last 2 are the listener and the timer
+  Thread threads[MAX_THREADS + 1]; // Last one is used as a timer
   Lock threadsLock;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
