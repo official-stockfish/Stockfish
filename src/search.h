@@ -20,10 +20,11 @@
 #if !defined(SEARCH_H_INCLUDED)
 #define SEARCH_H_INCLUDED
 
+#include <cstring>
+#include <vector>
+
 #include "move.h"
 #include "types.h"
-
-#include <vector>
 
 class Position;
 struct SplitPoint;
