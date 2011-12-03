@@ -17,9 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// To profile with callgrind uncomment following line
-//#define USE_CALLGRIND
-
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -30,10 +27,6 @@
 #include "thread.h"
 #include "search.h"
 #include "ucioption.h"
-
-#ifdef USE_CALLGRIND
-#include <valgrind/callgrind.h>
-#endif
 
 using namespace std;
 
@@ -56,23 +49,18 @@ int main(int argc, char* argv[]) {
   Search::init();
   Threads.init();
 
-#ifdef USE_CALLGRIND
-  CALLGRIND_START_INSTRUMENTATION;
-#endif
-
   if (argc < 2)
   {
-      // Print copyright notice
       cout << engine_name() << " by " << engine_authors() << endl;
 
       if (CpuHasPOPCNT)
           cout << "Good! CPU has hardware POPCNT." << endl;
 
-      // Enter the UCI loop waiting for input
-      uci_loop();
+      uci_loop(); // Enter the UCI loop and wait for user input
   }
   else if (string(argv[1]) == "bench" && argc < 8)
       benchmark(argc, argv);
+
   else
       cout << "Usage: stockfish bench [hash size = 128] [threads = 1] "
            << "[limit = 12] [fen positions file = default] "
