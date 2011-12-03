@@ -376,7 +376,7 @@ Value Endgame<KBBKN>::apply(const Position& pos) const {
   assert(pos.non_pawn_material(strongerSide) == 2*BishopValueMidgame);
   assert(pos.piece_count(weakerSide, KNIGHT) == 1);
   assert(pos.non_pawn_material(weakerSide) == KnightValueMidgame);
-  assert(pos.pieces(PAWN) == EmptyBoardBB);
+  assert(!pos.pieces(PAWN));
 
   Value result = BishopValueEndgame;
   Square wksq = pos.king_square(strongerSide);
@@ -428,7 +428,7 @@ ScaleFactor Endgame<KBPsK>::apply(const Position& pos) const {
 
   // All pawns are on a single rook file ?
   if (   (pawnFile == FILE_A || pawnFile == FILE_H)
-      && (pawns & ~file_bb(pawnFile)) == EmptyBoardBB)
+      && !(pawns & ~file_bb(pawnFile)))
   {
       Square bishopSq = pos.piece_list(strongerSide, BISHOP)[0];
       Square queeningSq = relative_square(strongerSide, make_square(pawnFile, RANK_8));
@@ -443,12 +443,12 @@ ScaleFactor Endgame<KBPsK>::apply(const Position& pos) const {
           Rank rank;
           if (strongerSide == WHITE)
           {
-              for (rank = RANK_7; (rank_bb(rank) & pawns) == EmptyBoardBB; rank--) {}
+              for (rank = RANK_7; !(rank_bb(rank) & pawns); rank--) {}
               assert(rank >= RANK_2 && rank <= RANK_7);
           }
           else
           {
-              for (rank = RANK_2; (rank_bb(rank) & pawns) == EmptyBoardBB; rank++) {}
+              for (rank = RANK_2; !(rank_bb(rank) & pawns); rank++) {}
               rank = Rank(rank ^ 7);  // HACK to get the relative rank
               assert(rank >= RANK_2 && rank <= RANK_7);
           }
@@ -667,21 +667,21 @@ ScaleFactor Endgame<KPsK>::apply(const Position& pos) const {
   Bitboard pawns = pos.pieces(PAWN, strongerSide);
 
   // Are all pawns on the 'a' file?
-  if ((pawns & ~FileABB) == EmptyBoardBB)
+  if (!(pawns & ~FileABB))
   {
       // Does the defending king block the pawns?
       if (   square_distance(ksq, relative_square(strongerSide, SQ_A8)) <= 1
           || (   file_of(ksq) == FILE_A
-              && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB))
+              && !in_front_bb(strongerSide, ksq) & pawns))
           return SCALE_FACTOR_ZERO;
   }
   // Are all pawns on the 'h' file?
-  else if ((pawns & ~FileHBB) == EmptyBoardBB)
+  else if (!(pawns & ~FileHBB))
   {
     // Does the defending king block the pawns?
     if (   square_distance(ksq, relative_square(strongerSide, SQ_H8)) <= 1
         || (   file_of(ksq) == FILE_H
-            && (in_front_bb(strongerSide, ksq) & pawns) == EmptyBoardBB))
+            && !in_front_bb(strongerSide, ksq) & pawns))
         return SCALE_FACTOR_ZERO;
   }
   return SCALE_FACTOR_NONE;

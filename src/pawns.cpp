@@ -182,7 +182,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // pawn on neighboring files is higher or equal than the number of
       // enemy pawns in the forward direction on the neighboring files.
       candidate =   !(opposed | passed | backward | isolated)
-                 && (b = attack_span_mask(Them, s + pawn_push(Us)) & ourPawns) != EmptyBoardBB
+                 && (b = attack_span_mask(Them, s + pawn_push(Us)) & ourPawns) != 0
                  &&  count_1s<Max15>(b) >= count_1s<Max15>(attack_span_mask(Us, s) & theirPawns);
 
       // Passed pawns will be properly scored in evaluation because we need

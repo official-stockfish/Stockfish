@@ -462,8 +462,8 @@ namespace {
     // no minor piece which can exchange the outpost piece.
     if (bonus && bit_is_set(ei.attackedBy[Us][PAWN], s))
     {
-        if (    pos.pieces(KNIGHT, Them) == EmptyBoardBB
-            && (SquaresByColorBB[color_of(s)] & pos.pieces(BISHOP, Them)) == EmptyBoardBB)
+        if (   !pos.pieces(KNIGHT, Them)
+            && !(SquaresByColorBB[color_of(s)] & pos.pieces(BISHOP, Them)))
             bonus += bonus + bonus / 2;
         else
             bonus += bonus / 2;
@@ -488,7 +488,7 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* pl = pos.piece_list(Us, Piece);
 
-    ei.attackedBy[Us][Piece] = EmptyBoardBB;
+    ei.attackedBy[Us][Piece] = 0;
 
     while ((s = *pl++) != SQ_NONE)
     {

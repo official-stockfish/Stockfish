@@ -166,7 +166,7 @@ void bitboards_init() {
       ClearMaskBB[s] = ~SetMaskBB[s];
   }
 
-  ClearMaskBB[SQ_NONE] = ~EmptyBoardBB;
+  ClearMaskBB[SQ_NONE] = ~0ULL;
 
   FileBB[FILE_A] = FileABB;
   RankBB[RANK_1] = Rank1BB;
@@ -231,9 +231,9 @@ void bitboards_init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
-      BishopPseudoAttacks[s] = bishop_attacks_bb(s, EmptyBoardBB);
-      RookPseudoAttacks[s]   = rook_attacks_bb(s, EmptyBoardBB);
-      QueenPseudoAttacks[s]  = queen_attacks_bb(s, EmptyBoardBB);
+      BishopPseudoAttacks[s] = bishop_attacks_bb(s, 0);
+      RookPseudoAttacks[s]   = rook_attacks_bb(s, 0);
+      QueenPseudoAttacks[s]  = queen_attacks_bb(s, 0);
   }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
@@ -324,7 +324,7 @@ namespace {
         // all the attacks for each possible subset of the mask and so is 2 power
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
-        masks[s]  = sliding_attacks(pt, s, EmptyBoardBB) & ~edges;
+        masks[s]  = sliding_attacks(pt, s, 0) & ~edges;
         shifts[s] = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(masks[s]);
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and

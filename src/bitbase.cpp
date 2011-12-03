@@ -151,7 +151,7 @@ namespace {
     //
     // Case 1: Stalemate
     if (   sideToMove == BLACK
-        && (bk_attacks() & ~(wk_attacks() | pawn_attacks())) == EmptyBoardBB)
+        && !(bk_attacks() & ~(wk_attacks() | pawn_attacks())))
         return RESULT_DRAW;
 
     // Case 2: King can capture pawn

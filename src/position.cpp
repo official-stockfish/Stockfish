@@ -89,7 +89,7 @@ CheckInfo::CheckInfo(const Position& pos) {
   checkSq[BISHOP] = pos.attacks_from<BISHOP>(ksq);
   checkSq[ROOK]   = pos.attacks_from<ROOK>(ksq);
   checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
-  checkSq[KING]   = EmptyBoardBB;
+  checkSq[KING]   = 0;
 }
 
 
@@ -931,7 +931,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->key = key;
 
   // Update checkers bitboard, piece must be already moved
-  st->checkersBB = EmptyBoardBB;
+  st->checkersBB = 0;
 
   if (moveIsCheck)
   {
@@ -1697,7 +1697,7 @@ bool Position::pos_is_ok(int* failedStep) const {
   if (debugBitboards)
   {
       // The intersection of the white and black pieces must be empty
-      if ((pieces(WHITE) & pieces(BLACK)) != EmptyBoardBB)
+      if (!(pieces(WHITE) & pieces(BLACK)))
           return false;
 
       // The union of the white and black pieces must be equal to all

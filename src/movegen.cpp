@@ -251,7 +251,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(us);
   Bitboard checkers = pos.checkers();
-  Bitboard sliderAttacks = EmptyBoardBB;
+  Bitboard sliderAttacks = 0;
 
   assert(pos.piece_on(ksq) == make_piece(us, KING));
   assert(checkers);
@@ -485,7 +485,7 @@ namespace {
 
         b1 = pawns & pos.attacks_from<PAWN>(pos.ep_square(), Them);
 
-        assert(b1 != EmptyBoardBB);
+        assert(b1);
 
         while (b1)
         {
