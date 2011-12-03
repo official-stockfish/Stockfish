@@ -17,16 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
-#include <algorithm>
 
 #include "bitboard.h"
 #include "bitcount.h"
 #include "rkiss.h"
 
-// Global bitboards definitions with static storage duration are
-// automatically set to zero before enter main().
 Bitboard RMasks[64];
 Bitboard RMagics[64];
 Bitboard* RAttacks[64];
@@ -151,17 +149,13 @@ Square pop_1st_bit(Bitboard* bb) {
 #endif // !defined(USE_BSFQ)
 
 
-/// init_bitboards() initializes various bitboard arrays. It is called during
+/// bitboards_init() initializes various bitboard arrays. It is called during
 /// program initialization.
 
-void init_bitboards() {
+void bitboards_init() {
 
   for (Bitboard b = 0; b < 256; b++)
       BitCount8Bit[b] = (uint8_t)count_1s<CNT32_MAX15>(b);
-
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
-          SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
 
   SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
   SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
@@ -199,9 +193,13 @@ void init_bitboards() {
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
           SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
-          PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_neighboring_files_bb(s);
-          AttackSpanMask[c][s]     = in_front_bb(c, s) & neighboring_files_bb(s);
+          PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_neighboring_files_bb(file_of(s));
+          AttackSpanMask[c][s]     = in_front_bb(c, s) & neighboring_files_bb(file_of(s));
       }
+
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+          SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
 
   for (int i = 0; i < 64; i++)
       if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
@@ -275,6 +273,7 @@ namespace {
     }
     return attacks;
   }
+
 
   Bitboard pick_random(Bitboard mask, RKISS& rk, int booster) {
 

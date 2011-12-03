@@ -35,7 +35,7 @@ extern void kpk_bitbase_init();
 
 int main(int argc, char* argv[]) {
 
-  init_bitboards();
+  bitboards_init();
   Position::init();
   kpk_bitbase_init();
   Search::init();

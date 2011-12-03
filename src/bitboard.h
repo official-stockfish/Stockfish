@@ -125,27 +125,19 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// neighboring_files_bb takes a file or a square as input and returns a
-/// bitboard representing all squares on the neighboring files.
+/// neighboring_files_bb takes a file as input and returns a bitboard representing
+/// all squares on the neighboring files.
 
 inline Bitboard neighboring_files_bb(File f) {
   return NeighboringFilesBB[f];
 }
 
-inline Bitboard neighboring_files_bb(Square s) {
-  return NeighboringFilesBB[file_of(s)];
-}
 
-
-/// this_and_neighboring_files_bb takes a file or a square as input and returns
-/// a bitboard representing all squares on the given and neighboring files.
+/// this_and_neighboring_files_bb takes a file as input and returns a bitboard
+/// representing all squares on the given and neighboring files.
 
 inline Bitboard this_and_neighboring_files_bb(File f) {
   return ThisAndNeighboringFilesBB[f];
-}
-
-inline Bitboard this_and_neighboring_files_bb(Square s) {
-  return ThisAndNeighboringFilesBB[file_of(s)];
 }
 
 
@@ -291,6 +283,6 @@ extern Square pop_1st_bit(Bitboard* b);
 
 
 extern void print_bitboard(Bitboard b);
-extern void init_bitboards();
+extern void bitboards_init();
 
 #endif // !defined(BITBOARD_H_INCLUDED)

@@ -223,7 +223,7 @@ Score PawnInfo::updateShelter(const Position& pos, Square ksq) {
 
   if (relative_rank(Us, ksq) <= RANK_4)
   {
-      pawns = pos.pieces(PAWN, Us) & this_and_neighboring_files_bb(ksq);
+      pawns = pos.pieces(PAWN, Us) & this_and_neighboring_files_bb(file_of(ksq));
       r = ksq & (7 << 3);
       for (int i = 0; i < 3; i++)
       {
