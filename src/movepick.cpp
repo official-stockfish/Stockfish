@@ -72,7 +72,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
-                       SearchStack* ss, Value beta) : pos(p), H(h), depth(d) {
+                       Search::Stack* ss, Value beta) : pos(p), H(h), depth(d) {
   captureThreshold = 0;
   badCaptures = moves + MAX_MOVES;
 

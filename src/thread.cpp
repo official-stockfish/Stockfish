@@ -23,6 +23,8 @@
 #include "thread.h"
 #include "ucioption.h"
 
+using namespace Search;
+
 ThreadsManager Threads; // Global object
 
 namespace { extern "C" {
@@ -257,7 +259,7 @@ bool ThreadsManager::split_point_finished(SplitPoint* sp) const {
 // search(). When all threads have returned from search() then split() returns.
 
 template <bool Fake>
-Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value beta,
+Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
                             Value bestValue, Depth depth, Move threatMove,
                             int moveCount, MovePicker* mp, int nodeType) {
   assert(pos.pos_is_ok());
@@ -359,12 +361,13 @@ Value ThreadsManager::split(Position& pos, SearchStack* ss, Value alpha, Value b
 }
 
 // Explicit template instantiations
-template Value ThreadsManager::split<false>(Position&, SearchStack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
-template Value ThreadsManager::split<true>(Position&, SearchStack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
+template Value ThreadsManager::split<false>(Position&, Stack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
+template Value ThreadsManager::split<true>(Position&, Stack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
 
 
 // Thread::timer_loop() is where the timer thread waits maxPly milliseconds and
 // then calls do_timer_event(). If maxPly is 0 thread sleeps until is woken up.
+extern void do_timer_event();
 
 void Thread::timer_loop() {
 
@@ -417,7 +420,7 @@ void Thread::main_loop() {
       if (do_terminate)
           return;
 
-      Search::think(); // This is the search entry point
+      think(); // This is the search entry point
   }
 }
 
@@ -427,7 +430,7 @@ void Thread::main_loop() {
 // then function returns immediately, otherwise caller is blocked waiting for
 // the search to finish.
 
-void ThreadsManager::start_thinking(const Position& pos, const Search::LimitsType& limits,
+void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limits,
                                     const std::vector<Move>& searchMoves, bool asyncMode) {
   Thread& main = threads[0];
 
@@ -438,12 +441,12 @@ void ThreadsManager::start_thinking(const Position& pos, const Search::LimitsTyp
       cond_wait(&sleepCond, &main.sleepLock);
 
   // Copy input arguments to initialize the search
-  Search::RootPosition.copy(pos, 0);
-  Search::Limits = limits;
-  Search::RootMoves = searchMoves;
+  RootPosition.copy(pos, 0);
+  Limits = limits;
+  RootMoves = searchMoves;
 
   // Reset signals before to start the new search
-  memset((void*)&Search::Signals, 0, sizeof(Search::Signals));
+  memset((void*)&Signals, 0, sizeof(Signals));
 
   main.do_sleep = false;
   cond_signal(&main.sleepCond); // Wake up main thread and start searching
@@ -464,13 +467,13 @@ void ThreadsManager::start_thinking(const Position& pos, const Search::LimitsTyp
 
 void ThreadsManager::wait_for_stop_or_ponderhit() {
 
-  Search::Signals.stopOnPonderhit = true;
+  Signals.stopOnPonderhit = true;
 
   Thread& main = threads[0];
 
   lock_grab(&main.sleepLock);
 
-  while (!Search::Signals.stop)
+  while (!Signals.stop)
       cond_wait(&main.sleepCond, &main.sleepLock);
 
   lock_release(&main.sleepLock);

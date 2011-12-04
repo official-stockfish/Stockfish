@@ -22,9 +22,8 @@
 
 #include "history.h"
 #include "position.h"
+#include "search.h"
 #include "types.h"
-
-struct SearchStack;
 
 /// MovePicker is a class which is used to pick one pseudo legal move at a time
 /// from the current position. It is initialized with a Position object and a few
@@ -39,7 +38,7 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
 
 public:
-  MovePicker(const Position&, Move, Depth, const History&, SearchStack*, Value);
+  MovePicker(const Position&, Move, Depth, const History&, Search::Stack*, Value);
   MovePicker(const Position&, Move, Depth, const History&, Square recaptureSq);
   MovePicker(const Position&, Move, const History&, PieceType parentCapture);
   Move get_next_move();

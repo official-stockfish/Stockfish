@@ -46,7 +46,7 @@ struct SplitPoint {
 
   // Const pointers to shared data
   MovePicker* mp;
-  SearchStack* ss;
+  Search::Stack* ss;
 
   // Shared data
   Lock lock;
@@ -122,7 +122,7 @@ public:
                       const std::vector<Move>& searchMoves, bool asyncMode);
 
   template <bool Fake>
-  Value split(Position& pos, SearchStack* ss, Value alpha, Value beta, Value bestValue,
+  Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue,
               Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
 private:
   friend struct Thread;

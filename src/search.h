@@ -28,12 +28,13 @@
 class Position;
 struct SplitPoint;
 
-/// The SearchStack struct keeps track of the information we need to remember
-/// from nodes shallower and deeper in the tree during the search.  Each
-/// search thread has its own array of SearchStack objects, indexed by the
-/// current ply.
+namespace Search {
 
-struct SearchStack {
+/// The Stack struct keeps track of the information we need to remember from
+/// nodes shallower and deeper in the tree during the search. Each search thread
+/// has its own array of Stack objects, indexed by the current ply.
+
+struct Stack {
   SplitPoint* sp;
   int ply;
   Move currentMove;
@@ -46,9 +47,8 @@ struct SearchStack {
   int skipNullMove;
 };
 
-namespace Search {
 
-/// The SearchLimits struct stores information sent by GUI about available time
+/// The LimitsType struct stores information sent by GUI about available time
 /// to search the current move, maximum depth/time, if we are in analysis mode
 /// or if we have to ponder while is our opponent's side to move.
 
@@ -59,6 +59,10 @@ struct LimitsType {
 
   int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
 };
+
+
+/// The SignalsType struct stores volatile flags updated during the search
+/// typically in an async fashion, for instance to stop the search by the GUI.
 
 struct SignalsType {
   bool stopOnPonderhit, firstRootMove, stop, failedLowAtRoot;
@@ -74,7 +78,5 @@ extern int64_t perft(Position& pos, Depth depth);
 extern void think();
 
 } // namespace
-
-extern void do_timer_event();
 
 #endif // !defined(SEARCH_H_INCLUDED)
