@@ -23,7 +23,6 @@
 #include <cstring>
 #include <vector>
 
-#include "move.h"
 #include "types.h"
 
 class Position;
@@ -74,7 +73,7 @@ extern void init();
 extern int64_t perft(Position& pos, Depth depth);
 extern void think();
 
-}
+} // namespace
 
 extern void do_timer_event();
 

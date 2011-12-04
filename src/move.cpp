@@ -21,7 +21,6 @@
 #include <cstring>
 #include <string>
 
-#include "move.h"
 #include "movegen.h"
 #include "position.h"
 

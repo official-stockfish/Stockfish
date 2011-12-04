@@ -20,11 +20,11 @@
 #if !defined(TIMEMAN_H_INCLUDED)
 #define TIMEMAN_H_INCLUDED
 
-struct SearchLimits;
+/// The TimeManager class computes the optimal time to think depending on the
+/// maximum available time, the move game number and other parameters.
 
 class TimeManager {
 public:
-
   void init(const Search::LimitsType& limits, int currentPly);
   void pv_instability(int curChanges, int prevChanges);
   int available_time() const { return optimumSearchTime + unstablePVExtraTime; }

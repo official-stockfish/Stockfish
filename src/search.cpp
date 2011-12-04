@@ -30,7 +30,6 @@
 #include "evaluate.h"
 #include "history.h"
 #include "misc.h"
-#include "move.h"
 #include "movegen.h"
 #include "movepick.h"
 #include "search.h"
@@ -353,10 +352,9 @@ int64_t Search::perft(Position& pos, Depth depth) {
 }
 
 
-/// think() is the external interface to Stockfish's search, and is called when
-/// the program receives the UCI 'go' command. It initializes various global
-/// variables, and calls id_loop(). It returns false when a "quit" command is
-/// received during the search.
+/// think() is the external interface to Stockfish's search, and is called by the
+/// main thread when the program receives the UCI 'go' command. It searches from
+/// RootPosition and at the end prints the "bestmove" to output.
 
 void Search::think() {
 

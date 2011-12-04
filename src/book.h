@@ -23,14 +23,13 @@
 #include <fstream>
 #include <string>
 
-#include "move.h"
 #include "position.h"
 #include "rkiss.h"
 
 
-// A Polyglot book is a series of "entries" of 16 bytes. All integers are
-// stored highest byte first (regardless of size). The entries are ordered
-// according to key. Lowest key first.
+/// A Polyglot book is a series of "entries" of 16 bytes. All integers are
+/// stored highest byte first (regardless of size). The entries are ordered
+/// according to key. Lowest key first.
 struct BookEntry {
   uint64_t key;
   uint16_t move;

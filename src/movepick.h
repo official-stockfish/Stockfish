@@ -21,7 +21,6 @@
 #define MOVEPICK_H_INCLUDED
 
 #include "history.h"
-#include "move.h"
 #include "position.h"
 #include "types.h"
 

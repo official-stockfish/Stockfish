@@ -41,6 +41,11 @@ extern void dbg_mean_of(int v);
 extern void dbg_print_hit_rate();
 extern void dbg_print_mean();
 
+class Position;
+extern Move move_from_uci(const Position& pos, const std::string& str);
+extern const std::string move_to_uci(Move m, bool chess960);
+extern const std::string move_to_san(Position& pos, Move m);
+
 struct Log : public std::ofstream {
   Log(const std::string& f = "log.txt") : std::ofstream(f.c_str(), std::ios::out | std::ios::app) {}
  ~Log() { if (is_open()) close(); }

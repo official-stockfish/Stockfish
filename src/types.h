@@ -155,6 +155,7 @@ const bool CpuIs64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
+const int MAX_MOVES = 256;
 const int PLY_MAX = 100;
 const int PLY_MAX_PLUS_2 = PLY_MAX + 2;
 
@@ -175,6 +176,31 @@ const Bitboard Rank5BB = Rank1BB << (8 * 4);
 const Bitboard Rank6BB = Rank1BB << (8 * 5);
 const Bitboard Rank7BB = Rank1BB << (8 * 6);
 const Bitboard Rank8BB = Rank1BB << (8 * 7);
+
+/// A move needs 16 bits to be stored
+///
+/// bit  0- 5: destination square (from 0 to 63)
+/// bit  6-11: origin square (from 0 to 63)
+/// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
+/// bit 14-15: special move flag: promotion (1), en passant (2), castle (3)
+///
+/// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in because in
+/// any normal move destination square is always different from origin square
+/// while MOVE_NONE and MOVE_NULL have the same origin and destination square.
+
+enum Move {
+  MOVE_NONE = 0,
+  MOVE_NULL = 65
+};
+
+struct MoveStack {
+  Move move;
+  int score;
+};
+
+inline bool operator<(const MoveStack& f, const MoveStack& s) {
+  return f.score < s.score;
+}
 
 enum ValueType {
   VALUE_TYPE_NONE  = 0,
@@ -465,6 +491,75 @@ inline const std::string square_to_string(Square s) {
 
 inline Square pawn_push(Color c) {
   return c == WHITE ? DELTA_N : DELTA_S;
+}
+
+// An helper insertion sort implementation, works with pointers and iterators
+template<typename T, typename K>
+inline void sort(K firstMove, K lastMove)
+{
+  T value;
+  K cur, p, d;
+
+  if (firstMove != lastMove)
+      for (cur = firstMove + 1; cur != lastMove; cur++)
+      {
+          p = d = cur;
+          value = *p--;
+          if (*p < value)
+          {
+              do *d = *p;
+              while (--d != firstMove && *--p < value);
+              *d = value;
+          }
+      }
+}
+
+inline Square move_from(Move m) {
+  return Square((m >> 6) & 0x3F);
+}
+
+inline Square move_to(Move m) {
+  return Square(m & 0x3F);
+}
+
+inline bool is_special(Move m) {
+  return m & (3 << 14);
+}
+
+inline bool is_promotion(Move m) {
+  return (m & (3 << 14)) == (1 << 14);
+}
+
+inline int is_enpassant(Move m) {
+  return (m & (3 << 14)) == (2 << 14);
+}
+
+inline int is_castle(Move m) {
+  return (m & (3 << 14)) == (3 << 14);
+}
+
+inline PieceType promotion_piece_type(Move m) {
+  return PieceType(((m >> 12) & 3) + 2);
+}
+
+inline Move make_move(Square from, Square to) {
+  return Move(to | (from << 6));
+}
+
+inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
+  return Move(to | (from << 6) | (1 << 14) | ((promotion - 2) << 12)) ;
+}
+
+inline Move make_enpassant_move(Square from, Square to) {
+  return Move(to | (from << 6) | (2 << 14));
+}
+
+inline Move make_castle_move(Square from, Square to) {
+  return Move(to | (from << 6) | (3 << 14));
+}
+
+inline bool is_ok(Move m) {
+  return move_from(m) != move_to(m); // Catches also MOVE_NULL and MOVE_NONE
 }
 
 #endif // !defined(TYPES_H_INCLUDED)

@@ -28,7 +28,7 @@
 
 using namespace std;
 
-static const string Defaults[] = {
+static const char* Defaults[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
@@ -59,7 +59,7 @@ static const string Defaults[] = {
 
 void benchmark(int argc, char* argv[]) {
 
-  std::vector<Move> searchMoves(1, MOVE_NONE);
+  vector<Move> searchMoves(1, MOVE_NONE);
   vector<string> fenList;
   Search::LimitsType limits;
   int64_t totalNodes;
@@ -85,7 +85,10 @@ void benchmark(int argc, char* argv[]) {
       limits.maxDepth = atoi(valStr.c_str());
 
   // Do we need to load positions from a given FEN file?
-  if (fenFile != "default")
+  if (fenFile == "default")
+      for (int i = 0; *Defaults[i]; i++)
+          fenList.push_back(Defaults[i]);
+  else
   {
       string fen;
       ifstream f(fenFile.c_str());
@@ -102,9 +105,6 @@ void benchmark(int argc, char* argv[]) {
 
       f.close();
   }
-  else // Load default positions
-      for (int i = 0; !Defaults[i].empty(); i++)
-          fenList.push_back(Defaults[i]);
 
   // Ok, let's start the benchmark !
   totalNodes = 0;

@@ -20,7 +20,7 @@
 #if !defined(MOVEGEN_H_INCLUDED)
 #define MOVEGEN_H_INCLUDED
 
-#include "move.h"
+#include "types.h"
 
 enum MoveType {
   MV_CAPTURE,
@@ -31,6 +31,8 @@ enum MoveType {
   MV_NON_EVASION,
   MV_LEGAL
 };
+
+class Position;
 
 template<MoveType>
 MoveStack* generate(const Position& pos, MoveStack* mlist);

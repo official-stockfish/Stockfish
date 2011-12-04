@@ -28,6 +28,7 @@
 #include <iostream>
 
 #include "book.h"
+#include "misc.h"
 #include "movegen.h"
 
 using namespace std;

@@ -24,7 +24,6 @@
 
 #include "evaluate.h"
 #include "misc.h"
-#include "move.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"

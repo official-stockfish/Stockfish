@@ -17,7 +17,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(_MSC_VER)
+#if defined(_MSC_VER)
+
+#define _CRT_SECURE_NO_DEPRECATE
+#define NOMINMAX // disable macros min() and max()
+#include <windows.h>
+#include <sys/timeb.h>
+
+#else
 
 #  include <sys/time.h>
 #  include <sys/types.h>
@@ -25,13 +32,6 @@
 #  if defined(__hpux)
 #     include <sys/pstat.h>
 #  endif
-
-#else
-
-#define _CRT_SECURE_NO_DEPRECATE
-#define NOMINMAX // disable macros min() and max()
-#include <windows.h>
-#include <sys/timeb.h>
 
 #endif
 
@@ -178,18 +178,13 @@ int cpu_count() {
 /// timed_wait() waits for msec milliseconds. It is mainly an helper to wrap
 /// conversion from milliseconds to struct timespec, as used by pthreads.
 
+void timed_wait(WaitCondition* sleepCond, Lock* sleepLock, int msec) {
+
 #if defined(_MSC_VER)
-
-void timed_wait(WaitCondition* sleepCond, Lock* sleepLock, int msec) {
-  cond_timedwait(sleepCond, sleepLock, msec);
-}
-
+  int tm = msec;
 #else
-
-void timed_wait(WaitCondition* sleepCond, Lock* sleepLock, int msec) {
-
   struct timeval t;
-  struct timespec abstime;
+  struct timespec abstime, *tm = &abstime;
 
   gettimeofday(&t, NULL);
 
@@ -201,11 +196,10 @@ void timed_wait(WaitCondition* sleepCond, Lock* sleepLock, int msec) {
       abstime.tv_sec += 1;
       abstime.tv_nsec -= 1000000000LL;
   }
-
-  cond_timedwait(sleepCond, sleepLock, &abstime);
-}
-
 #endif
+
+  cond_timedwait(sleepCond, sleepLock, tm);
+}
 
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non
