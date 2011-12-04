@@ -106,6 +106,10 @@ const string move_to_san(Position& pos, Move m) {
           {
               sq = pop_1st_bit(&attackers);
 
+              // Pinned pieces are not included in the possible sub-set
+              if (!pos.pl_move_is_legal(make_move(sq, to), pos.pinned_pieces()))
+                  continue;
+
               if (file_of(sq) == file_of(from))
                   ambiguousFile = true;
 
