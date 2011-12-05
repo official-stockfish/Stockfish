@@ -75,7 +75,7 @@ struct EndgameBase {
 
   virtual ~EndgameBase() {}
   virtual Color color() const = 0;
-  virtual T apply(const Position&) const = 0;
+  virtual T operator()(const Position&) const = 0;
 };
 
 
@@ -84,7 +84,7 @@ struct Endgame : public EndgameBase<T> {
 
   explicit Endgame(Color c) : strongerSide(c), weakerSide(flip(c)) {}
   Color color() const { return strongerSide; }
-  T apply(const Position&) const;
+  T operator()(const Position&) const;
 
 private:
   Color strongerSide, weakerSide;

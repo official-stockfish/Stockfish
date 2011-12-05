@@ -97,12 +97,12 @@ inline ScaleFactor MaterialInfo::scale_factor(const Position& pos, Color c) cons
   if (!scalingFunction[c])
       return ScaleFactor(factor[c]);
 
-  ScaleFactor sf = scalingFunction[c]->apply(pos);
+  ScaleFactor sf = (*scalingFunction[c])(pos);
   return sf == SCALE_FACTOR_NONE ? ScaleFactor(factor[c]) : sf;
 }
 
 inline Value MaterialInfo::evaluate(const Position& pos) const {
-  return evaluationFunction->apply(pos);
+  return (*evaluationFunction)(pos);
 }
 
 inline Score MaterialInfo::material_value() const {

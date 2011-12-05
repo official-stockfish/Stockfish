@@ -146,7 +146,7 @@ void Endgames::add(const string& keyCode) {
 /// attacking side a bonus for driving the defending king towards the edge
 /// of the board, and for keeping the distance between the two kings small.
 template<>
-Value Endgame<KXK>::apply(const Position& pos) const {
+Value Endgame<KXK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
@@ -172,7 +172,7 @@ Value Endgame<KXK>::apply(const Position& pos) const {
 /// Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
 /// defending king towards a corner square of the right color.
 template<>
-Value Endgame<KBNK>::apply(const Position& pos) const {
+Value Endgame<KBNK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
@@ -204,7 +204,7 @@ Value Endgame<KBNK>::apply(const Position& pos) const {
 
 /// KP vs K. This endgame is evaluated with the help of a bitbase.
 template<>
-Value Endgame<KPK>::apply(const Position& pos) const {
+Value Endgame<KPK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == VALUE_ZERO);
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
@@ -252,7 +252,7 @@ Value Endgame<KPK>::apply(const Position& pos) const {
 /// far advanced with support of the king, while the attacking king is far
 /// away.
 template<>
-Value Endgame<KRKP>::apply(const Position& pos) const {
+Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -309,7 +309,7 @@ Value Endgame<KRKP>::apply(const Position& pos) const {
 /// KR vs KB. This is very simple, and always returns drawish scores.  The
 /// score is slightly bigger when the defending king is close to the edge.
 template<>
-Value Endgame<KRKB>::apply(const Position& pos) const {
+Value Endgame<KRKB>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -325,7 +325,7 @@ Value Endgame<KRKB>::apply(const Position& pos) const {
 /// KR vs KN.  The attacking side has slightly better winning chances than
 /// in KR vs KB, particularly if the king and the knight are far apart.
 template<>
-Value Endgame<KRKN>::apply(const Position& pos) const {
+Value Endgame<KRKN>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -351,7 +351,7 @@ Value Endgame<KRKN>::apply(const Position& pos) const {
 /// for the defending side in the search, this is usually sufficient to be
 /// able to win KQ vs KR.
 template<>
-Value Endgame<KQKR>::apply(const Position& pos) const {
+Value Endgame<KQKR>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 0);
@@ -370,7 +370,7 @@ Value Endgame<KQKR>::apply(const Position& pos) const {
 }
 
 template<>
-Value Endgame<KBBKN>::apply(const Position& pos) const {
+Value Endgame<KBBKN>::operator()(const Position& pos) const {
 
   assert(pos.piece_count(strongerSide, BISHOP) == 2);
   assert(pos.non_pawn_material(strongerSide) == 2*BishopValueMidgame);
@@ -399,12 +399,12 @@ Value Endgame<KBBKN>::apply(const Position& pos) const {
 /// K and two minors vs K and one or two minors or K and two knights against
 /// king alone are always draw.
 template<>
-Value Endgame<KmmKm>::apply(const Position&) const {
+Value Endgame<KmmKm>::operator()(const Position&) const {
   return VALUE_DRAW;
 }
 
 template<>
-Value Endgame<KNNK>::apply(const Position&) const {
+Value Endgame<KNNK>::operator()(const Position&) const {
   return VALUE_DRAW;
 }
 
@@ -414,7 +414,7 @@ Value Endgame<KNNK>::apply(const Position&) const {
 /// returned. If not, the return value is SCALE_FACTOR_NONE, i.e. no scaling
 /// will be used.
 template<>
-ScaleFactor Endgame<KBPsK>::apply(const Position& pos) const {
+ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -468,7 +468,7 @@ ScaleFactor Endgame<KBPsK>::apply(const Position& pos) const {
 /// It tests for fortress draws with a rook on the third rank defended by
 /// a pawn.
 template<>
-ScaleFactor Endgame<KQKRPs>::apply(const Position& pos) const {
+ScaleFactor Endgame<KQKRPs>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == QueenValueMidgame);
   assert(pos.piece_count(strongerSide, QUEEN) == 1);
@@ -499,7 +499,7 @@ ScaleFactor Endgame<KQKRPs>::apply(const Position& pos) const {
 /// It would also be nice to rewrite the actual code for this function,
 /// which is mostly copied from Glaurung 1.x, and not very pretty.
 template<>
-ScaleFactor Endgame<KRPKR>::apply(const Position& pos) const {
+ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 1);
@@ -617,7 +617,7 @@ ScaleFactor Endgame<KRPKR>::apply(const Position& pos) const {
 /// single pattern: If the stronger side has no pawns and the defending king
 /// is actively placed, the position is drawish.
 template<>
-ScaleFactor Endgame<KRPPKRP>::apply(const Position& pos) const {
+ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == RookValueMidgame);
   assert(pos.piece_count(strongerSide, PAWN) == 2);
@@ -656,7 +656,7 @@ ScaleFactor Endgame<KRPPKRP>::apply(const Position& pos) const {
 /// against king. There is just a single rule here: If all pawns are on
 /// the same rook file and are blocked by the defending king, it's a draw.
 template<>
-ScaleFactor Endgame<KPsK>::apply(const Position& pos) const {
+ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == VALUE_ZERO);
   assert(pos.piece_count(strongerSide, PAWN) >= 2);
@@ -694,7 +694,7 @@ ScaleFactor Endgame<KPsK>::apply(const Position& pos) const {
 /// it's a draw. If the two bishops have opposite color, it's almost always
 /// a draw.
 template<>
-ScaleFactor Endgame<KBPKB>::apply(const Position& pos) const {
+ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -749,7 +749,7 @@ ScaleFactor Endgame<KBPKB>::apply(const Position& pos) const {
 /// KBPPKBScalingFunction scales KBPP vs KB endgames. It detects a few basic
 /// draws with opposite-colored bishops.
 template<>
-ScaleFactor Endgame<KBPPKB>::apply(const Position& pos) const {
+ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -825,7 +825,7 @@ ScaleFactor Endgame<KBPPKB>::apply(const Position& pos) const {
 /// square of the king is not of the same color as the stronger side's bishop,
 /// it's a draw.
 template<>
-ScaleFactor Endgame<KBPKN>::apply(const Position& pos) const {
+ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == BishopValueMidgame);
   assert(pos.piece_count(strongerSide, BISHOP) == 1);
@@ -852,7 +852,7 @@ ScaleFactor Endgame<KBPKN>::apply(const Position& pos) const {
 /// If the pawn is a rook pawn on the 7th rank and the defending king prevents
 /// the pawn from advancing, the position is drawn.
 template<>
-ScaleFactor Endgame<KNPK>::apply(const Position& pos) const {
+ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == KnightValueMidgame);
   assert(pos.piece_count(strongerSide, KNIGHT) == 1);
@@ -882,7 +882,7 @@ ScaleFactor Endgame<KNPK>::apply(const Position& pos) const {
 /// advanced and not on a rook file; in this case it is often possible to win
 /// (e.g. 8/4k3/3p4/3P4/6K1/8/8/8 w - - 0 1).
 template<>
-ScaleFactor Endgame<KPKP>::apply(const Position& pos) const {
+ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(strongerSide) == VALUE_ZERO);
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
