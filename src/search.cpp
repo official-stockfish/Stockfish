@@ -425,9 +425,8 @@ namespace {
   Move id_loop(Position& pos, Move* ponderMove) {
 
     Stack ss[PLY_MAX_PLUS_2];
-    Value bestValues[PLY_MAX_PLUS_2];
     int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth, aspirationDelta;
+    int depth, delta;
     Value bestValue, alpha, beta;
     Move bestMove, skillBest, skillPonder;
     bool bestMoveNeverChanged = true;
@@ -437,7 +436,7 @@ namespace {
     H.clear();
     RootMoves.clear();
     *ponderMove = bestMove = skillBest = skillPonder = MOVE_NONE;
-    depth = aspirationDelta = 0;
+    depth = delta = 0;
     bestValue = alpha = -VALUE_INFINITE, beta = VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
@@ -467,17 +466,17 @@ namespace {
         // MultiPV loop. We perform a full root search for each PV line
         for (MultiPVIdx = 0; MultiPVIdx < std::min(MultiPV, RootMoves.size()); MultiPVIdx++)
         {
-            // Calculate dynamic aspiration window based on previous iterations
-            if (depth >= 5 && abs(RootMoves[MultiPVIdx].prevScore) < VALUE_KNOWN_WIN)
+            // Calculate dynamic aspiration window based on previous iteration
+            if (depth >= 5 && abs(RootMoves[MultiPVIdx].score) < VALUE_KNOWN_WIN)
             {
-                int prevDelta1 = bestValues[depth - 1] - bestValues[depth - 2];
-                int prevDelta2 = bestValues[depth - 2] - bestValues[depth - 3];
+                delta = abs(RootMoves[MultiPVIdx].score - RootMoves[MultiPVIdx].prevScore);
+                delta = std::min(std::max(delta, 16), 24);
+                delta = (delta + 7) / 8 * 8; // Round to match grainSize
 
-                aspirationDelta = std::min(std::max(abs(prevDelta1) + abs(prevDelta2) / 2, 16), 24);
-                aspirationDelta = (aspirationDelta + 7) / 8 * 8; // Round to match grainSize
+                alpha = RootMoves[MultiPVIdx].score - delta;
+                beta  = RootMoves[MultiPVIdx].score + delta;
 
-                alpha = std::max(RootMoves[MultiPVIdx].prevScore - aspirationDelta, -VALUE_INFINITE);
-                beta  = std::min(RootMoves[MultiPVIdx].prevScore + aspirationDelta,  VALUE_INFINITE);
+                assert(alpha > -VALUE_INFINITE && beta < VALUE_INFINITE);
             }
             else
             {
@@ -545,16 +544,16 @@ namespace {
                 // research, otherwise exit the fail high/low loop.
                 if (bestValue >= beta)
                 {
-                    beta = std::min(beta + aspirationDelta, VALUE_INFINITE);
-                    aspirationDelta += aspirationDelta / 2;
+                    beta = std::min(beta + delta, VALUE_INFINITE);
+                    delta += delta / 2;
                 }
                 else if (bestValue <= alpha)
                 {
                     Signals.failedLowAtRoot = true;
                     Signals.stopOnPonderhit = false;
 
-                    alpha = std::max(alpha - aspirationDelta, -VALUE_INFINITE);
-                    aspirationDelta += aspirationDelta / 2;
+                    alpha = std::max(alpha - delta, -VALUE_INFINITE);
+                    delta += delta / 2;
                 }
                 else
                     break;
@@ -564,7 +563,6 @@ namespace {
 
         bestMove = RootMoves[0].pv[0];
         *ponderMove = RootMoves[0].pv[1];
-        bestValues[depth] = bestValue;
         bestMoveChanges[depth] = BestMoveChanges;
 
         // Skills: Do we need to pick now the best and the ponder moves ?
