@@ -151,7 +151,7 @@ namespace {
   RootMoveList Rml;
 
   // MultiPV mode
-  int MultiPV, UCIMultiPV, MultiPVIdx;
+  size_t MultiPV, UCIMultiPV, MultiPVIdx;
 
   // Time management variables
   TimeManager TimeMgr;
@@ -360,13 +360,13 @@ void Search::think() {
       TT.clear();
   }
 
-  UCIMultiPV = Options["MultiPV"].value<int>();
-  SkillLevel = Options["Skill Level"].value<int>();
+  UCIMultiPV = Options["MultiPV"].value<size_t>();
+  SkillLevel = Options["Skill Level"].value<size_t>();
 
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
   SkillLevelEnabled = (SkillLevel < 20);
-  MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, 4) : UCIMultiPV);
+  MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, 4U) : UCIMultiPV);
 
   // Write current search header to log file
   if (Options["Use Search Log"].value<bool>())
@@ -488,7 +488,7 @@ namespace {
         Rml.bestMoveChanges = 0;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (MultiPVIdx = 0; MultiPVIdx < std::min(MultiPV, (int)Rml.size()); MultiPVIdx++)
+        for (MultiPVIdx = 0; MultiPVIdx < std::min(MultiPV, Rml.size()); MultiPVIdx++)
         {
             // Calculate dynamic aspiration window based on previous iterations
             if (depth >= 5 && abs(Rml[MultiPVIdx].prevScore) < VALUE_KNOWN_WIN)
@@ -532,7 +532,7 @@ namespace {
 
                 // Write PV back to transposition table in case the relevant entries
                 // have been overwritten during the search.
-                for (int i = 0; i <= MultiPVIdx; i++)
+                for (size_t i = 0; i <= MultiPVIdx; i++)
                     Rml[i].insert_pv_in_tt(pos);
 
                 // If search has been stopped exit the aspiration window loop,
@@ -546,7 +546,7 @@ namespace {
                 // protocol requires to send all the PV lines also if are still
                 // to be searched and so refer to the previous search's score.
                 if ((bestValue > alpha && bestValue < beta) || elapsed_time() > 2000)
-                    for (int i = 0; i < std::min(UCIMultiPV, (int)Rml.size()); i++)
+                    for (size_t i = 0; i < std::min(UCIMultiPV, Rml.size()); i++)
                     {
                         bool updated = (i <= MultiPVIdx);
 
@@ -1880,8 +1880,8 @@ split_point_start: // At split points actual search starts from here
 
     // Rml list is already sorted by score in descending order
     int s;
+    size_t size = std::min(MultiPV, Rml.size());
     int max_s = -VALUE_INFINITE;
-    int size = std::min(MultiPV, (int)Rml.size());
     int max = Rml[0].score;
     int var = std::min(max - Rml[size - 1].score, int(PawnValueMidgame));
     int wk = 120 - 2 * SkillLevel;
@@ -1893,7 +1893,7 @@ split_point_start: // At split points actual search starts from here
     // Choose best move. For each move's score we add two terms both dependent
     // on wk, one deterministic and bigger for weaker moves, and one random,
     // then we choose the move with the resulting highest score.
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
     {
         s = Rml[i].score;
 
