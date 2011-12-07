@@ -95,8 +95,6 @@ namespace {
   const bool Slidings[18] = { 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1 };
   inline bool piece_is_slider(Piece p) { return Slidings[p]; }
 
-  // Step 6. Razoring
-
   // Maximum depth for razoring
   const Depth RazorDepth = 4 * ONE_PLY;
 
@@ -106,8 +104,6 @@ namespace {
   // Maximum depth for use of dynamic threat detection when null move fails low
   const Depth ThreatDepth = 5 * ONE_PLY;
 
-  // Step 9. Internal iterative deepening
-
   // Minimum depth for use of internal iterative deepening
   const Depth IIDDepth[] = { 8 * ONE_PLY, 5 * ONE_PLY };
 
@@ -115,18 +111,8 @@ namespace {
   // when the static evaluation is bigger then beta - IIDMargin.
   const Value IIDMargin = Value(0x100);
 
-  // Step 11. Decide the new search depth
-
-  // Extensions. Array index 0 is used for non-PV nodes, index 1 for PV nodes
-  const Depth CheckExtension[]         = { ONE_PLY / 2, ONE_PLY / 1 };
-  const Depth PawnEndgameExtension[]   = { ONE_PLY / 1, ONE_PLY / 1 };
-  const Depth PawnPushTo7thExtension[] = { ONE_PLY / 2, ONE_PLY / 2 };
-  const Depth PassedPawnExtension[]    = {  DEPTH_ZERO, ONE_PLY / 2 };
-
   // Minimum depth for use of singular extension
   const Depth SingularExtensionDepth[] = { 8 * ONE_PLY, 6 * ONE_PLY };
-
-  // Step 12. Futility pruning
 
   // Futility margin for quiescence search
   const Value FutilityMarginQS = Value(0x80);
@@ -145,8 +131,6 @@ namespace {
 
     return d < 16 * ONE_PLY ? FutilityMoveCounts[d] : MAX_MOVES;
   }
-
-  // Step 14. Reduced search
 
   // Reduction lookup tables (initialized at startup) and their access function
   int8_t Reductions[2][64][64]; // [pv][depth][moveNumber]
@@ -248,49 +232,28 @@ namespace {
     return os;
   }
 
-  // extension() decides whether a move should be searched with normal depth,
-  // or with extended depth. Certain classes of moves (checking moves, in
-  // particular) are searched with bigger depth than ordinary moves and in
-  // any case are marked as 'dangerous'. Note that also if a move is not
-  // extended, as example because the corresponding UCI option is set to zero,
-  // the move is marked as 'dangerous' so, at least, we avoid to prune it.
-  template <bool PvNode>
-  FORCE_INLINE Depth extension(const Position& pos, Move m, bool captureOrPromotion,
-                               bool moveIsCheck, bool* dangerous) {
-    assert(m != MOVE_NONE);
+  // is_dangerous() checks whether a move belongs to some classes of known
+  // 'dangerous' moves so that we avoid to prune it.
+  FORCE_INLINE bool is_dangerous(const Position& pos, Move m, bool captureOrPromotion) {
 
-    Depth result = DEPTH_ZERO;
-    *dangerous = moveIsCheck;
-
-    if (moveIsCheck && pos.see_sign(m) >= 0)
-        result += CheckExtension[PvNode];
-
+    // Test for a pawn pushed to 7th or a passed pawn move
     if (type_of(pos.piece_on(move_from(m))) == PAWN)
     {
         Color c = pos.side_to_move();
-        if (relative_rank(c, move_to(m)) == RANK_7)
-        {
-            result += PawnPushTo7thExtension[PvNode];
-            *dangerous = true;
-        }
-        if (pos.pawn_is_passed(c, move_to(m)))
-        {
-            result += PassedPawnExtension[PvNode];
-            *dangerous = true;
-        }
+        if (   relative_rank(c, move_to(m)) == RANK_7
+            || pos.pawn_is_passed(c, move_to(m)))
+            return true;
     }
 
+    // Test for a capture that triggers a pawn endgame
     if (   captureOrPromotion
         && type_of(pos.piece_on(move_to(m))) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
             - PieceValueMidgame[pos.piece_on(move_to(m))] == VALUE_ZERO)
         && !is_special(m))
-    {
-        result += PawnEndgameExtension[PvNode];
-        *dangerous = true;
-    }
+        return true;
 
-    return std::min(result, ONE_PLY);
+    return false;
   }
 
 } // namespace
@@ -1032,11 +995,17 @@ split_point_start: // At split points actual search starts from here
       }
 
       isPvMove = (PvNode && moveCount <= 1);
-      givesCheck = pos.move_gives_check(move, ci);
       captureOrPromotion = pos.is_capture_or_promotion(move);
+      givesCheck = pos.move_gives_check(move, ci);
+      dangerous = givesCheck || is_dangerous(pos, move, captureOrPromotion);
+      ext = DEPTH_ZERO;
 
-      // Step 12. Decide the new search depth
-      ext = extension<PvNode>(pos, move, captureOrPromotion, givesCheck, &dangerous);
+      // Step 12. Extend checks and, in PV nodes, also dangerous moves
+      if (PvNode && dangerous)
+          ext = ONE_PLY;
+
+      else if (givesCheck && pos.see_sign(move) >= 0)
+          ext = PvNode ? ONE_PLY : ONE_PLY / 2;
 
       // Singular extension search. If all moves but one fail low on a search of
       // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
@@ -1044,9 +1013,9 @@ split_point_start: // At split points actual search starts from here
       // on all the other moves but the ttMove, if result is lower than ttValue minus
       // a margin then we extend ttMove.
       if (   singularExtensionNode
+          && !ext
           && move == ttMove
-          && pos.pl_move_is_legal(move, ci.pinned)
-          && ext < ONE_PLY)
+          && pos.pl_move_is_legal(move, ci.pinned))
       {
           Value ttValue = value_from_tt(tte->value(), ss->ply);
 
