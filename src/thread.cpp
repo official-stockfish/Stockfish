@@ -263,7 +263,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
                             Value bestValue, Depth depth, Move threatMove,
                             int moveCount, MovePicker* mp, int nodeType) {
   assert(pos.pos_is_ok());
-  assert(bestValue >= -VALUE_INFINITE);
+  assert(bestValue > -VALUE_INFINITE);
   assert(bestValue <= alpha);
   assert(alpha < beta);
   assert(beta <= VALUE_INFINITE);

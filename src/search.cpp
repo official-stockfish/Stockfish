@@ -948,6 +948,9 @@ split_point_start: // At split points actual search starts from here
     {
         lock_grab(&(sp->lock));
         bestValue = sp->bestValue;
+        moveCount = sp->moveCount;
+
+        assert(bestValue > -VALUE_INFINITE && moveCount > 0);
     }
 
     // Step 11. Loop through moves
@@ -1065,13 +1068,7 @@ split_point_start: // At split points actual search starts from here
           if (futilityValue < beta)
           {
               if (SpNode)
-              {
                   lock_grab(&(sp->lock));
-                  if (futilityValue > sp->bestValue)
-                      sp->bestValue = bestValue = futilityValue;
-              }
-              else if (futilityValue > bestValue)
-                  bestValue = futilityValue;
 
               continue;
           }
@@ -1220,8 +1217,16 @@ split_point_start: // At split points actual search starts from here
     // case of StopRequest or thread.cutoff_occurred() are set, but this is
     // harmless because return value is discarded anyhow in the parent nodes.
     // If we are in a singular extension search then return a fail low score.
-    if (!SpNode && !moveCount)
+    if (!moveCount)
         return excludedMove ? oldAlpha : inCheck ? value_mated_in(ss->ply) : VALUE_DRAW;
+
+    // We have pruned all the moves, so return a fail-low score
+    if (bestValue == -VALUE_INFINITE)
+    {
+        assert(!playedMoveCount);
+
+        bestValue = alpha;
+    }
 
     // Step 21. Update tables
     // If the search is not aborted, update the transposition table,
