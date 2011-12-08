@@ -366,7 +366,7 @@ void Search::think() {
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
   SkillLevelEnabled = (SkillLevel < 20);
-  MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, 4U) : UCIMultiPV);
+  MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, (size_t)4) : UCIMultiPV);
 
   // Write current search header to log file
   if (Options["Use Search Log"].value<bool>())
