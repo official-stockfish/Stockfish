@@ -1141,7 +1141,9 @@ split_point_start: // At split points actual search starts from here
         TT.store(posKey, value_to_tt(bestValue, ss->ply), vt, depth, move, ss->eval, ss->evalMargin);
 
         // Update killers and history for non capture cut-off moves
-        if (bestValue >= beta && !pos.is_capture_or_promotion(move))
+        if (    bestValue >= beta
+            && !pos.is_capture_or_promotion(move)
+            && !inCheck)
         {
             if (move != ss->killers[0])
             {
