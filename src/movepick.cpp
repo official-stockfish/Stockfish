@@ -88,10 +88,13 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
 
-      // Consider sligtly negative captures as good if at low
-      // depth and far from beta.
+      // Consider sligtly negative captures as good if at low depth and far from beta
       if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * ONE_PLY)
           captureThreshold = -PawnValueMidgame;
+
+      // Consider negative captures as good if still enough to reach beta
+      else if (ss && ss->eval > beta)
+          captureThreshold = beta - ss->eval;
 
       phasePtr = MainSearchTable;
   }
