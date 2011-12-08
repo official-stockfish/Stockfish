@@ -1045,12 +1045,12 @@ split_point_start: // At split points actual search starts from here
           && !inCheck
           && !dangerous
           &&  move != ttMove
-          && !is_castle(move))
+          && !is_castle(move)
+          && (bestValue > VALUE_MATED_IN_PLY_MAX || bestValue == -VALUE_INFINITE))
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
-              && (!threatMove || !connected_threat(pos, move, threatMove))
-              && bestValue > VALUE_MATED_IN_PLY_MAX) // FIXME bestValue is racy
+              && (!threatMove || !connected_threat(pos, move, threatMove)))
           {
               if (SpNode)
                   lock_grab(&(sp->lock));
@@ -1075,7 +1075,6 @@ split_point_start: // At split points actual search starts from here
 
           // Prune moves with negative SEE at low depths
           if (   predictedDepth < 2 * ONE_PLY
-              && bestValue > VALUE_MATED_IN_PLY_MAX
               && pos.see_sign(move) < 0)
           {
               if (SpNode)
