@@ -143,7 +143,7 @@ MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
       if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
           && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)
       {
-          mi->evaluationFunction = &EvaluateKmmKm[WHITE];
+          mi->evaluationFunction = &EvaluateKmmKm[pos.side_to_move()];
           return mi;
       }
   }
