@@ -100,6 +100,7 @@ CheckInfo::CheckInfo(const Position& pos) {
 void Position::copy(const Position& pos, int th) {
 
   memcpy(this, &pos, sizeof(Position));
+  st = &startState;
   threadID = th;
   nodes = 0;
 
