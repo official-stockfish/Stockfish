@@ -233,7 +233,6 @@ namespace {
                 searchMoves.push_back(move_from_uci(pos, token));
     }
 
-    searchMoves.push_back(MOVE_NONE);
     limits.time = time[pos.side_to_move()];
     limits.increment = inc[pos.side_to_move()];
 

@@ -70,7 +70,7 @@ struct SignalsType {
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
-extern std::vector<Move> RootMoves;
+extern std::vector<Move> SearchMoves;
 extern Position RootPosition;
 
 extern void init();

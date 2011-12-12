@@ -443,7 +443,7 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
   // Copy input arguments to initialize the search
   RootPosition.copy(pos, 0);
   Limits = limits;
-  RootMoves = searchMoves;
+  SearchMoves = searchMoves;
 
   // Reset signals before to start the new search
   memset((void*)&Signals, 0, sizeof(Signals));
