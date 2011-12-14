@@ -145,7 +145,7 @@ namespace {
   /// Namespace variables
 
   std::vector<RootMove> RootMoves;
-  size_t MultiPV, UCIMultiPV, MultiPVIdx;
+  size_t MultiPV, UCIMultiPV, PVIdx;
   TimeManager TimeMgr;
   int BestMoveChanges;
   int SkillLevel;
@@ -155,7 +155,7 @@ namespace {
 
   /// Local functions
 
-  Move id_loop(Position& pos, Move* ponderMove);
+  void id_loop(Position& pos);
 
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
@@ -171,7 +171,7 @@ namespace {
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
   void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
-  void do_skill_level(Move* best, Move* ponder);
+  Move do_skill_level();
   int elapsed_time(bool reset = false);
   string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
   void pv_info_to_log(Position& pos, int depth, Value score, int time, Move pv[]);
@@ -245,7 +245,7 @@ namespace {
 } // namespace
 
 
-/// init_search() is called during startup to initialize various lookup tables
+/// Search::init() is called during startup to initialize various lookup tables
 
 void Search::init() {
 
@@ -272,8 +272,8 @@ void Search::init() {
 }
 
 
-/// perft() is our utility to verify move generation. All the leaf nodes up to
-/// the given depth are generated and counted and the sum returned.
+/// Search::perft() is our utility to verify move generation. All the leaf nodes
+/// up to the given depth are generated and counted and the sum returned.
 
 int64_t Search::perft(Position& pos, Depth depth) {
 
@@ -297,9 +297,9 @@ int64_t Search::perft(Position& pos, Depth depth) {
 }
 
 
-/// think() is the external interface to Stockfish's search, and is called by the
-/// main thread when the program receives the UCI 'go' command. It searches from
-/// RootPosition and at the end prints the "bestmove" to output.
+/// Search::think() is the external interface to Stockfish's search, and is
+/// called by the main thread when the program receives the UCI 'go' command. It
+/// searches from RootPosition and at the end prints the "bestmove" to output.
 
 void Search::think() {
 
@@ -308,6 +308,16 @@ void Search::think() {
   Position& pos = RootPosition;
   elapsed_time(true);
   TimeMgr.init(Limits, pos.startpos_ply_counter());
+  TT.new_search();
+  H.clear();
+  RootMoves.clear();
+
+  // Populate RootMoves with all the legal moves (default) or, if a SearchMoves
+  // is given, with the subset of legal moves to search.
+  for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
+      if (   SearchMoves.empty()
+          || std::count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
+          RootMoves.push_back(RootMove(ml.move()));
 
   // Set output stream mode: normal or chess960. Castling notation is different
   cout << set960(pos.is_chess960());
@@ -359,7 +369,6 @@ void Search::think() {
           << endl;
   }
 
-  // Wake up needed threads and reset maxPly counter
   for (int i = 0; i < Threads.size(); i++)
   {
       Threads[i].maxPly = 0;
@@ -373,9 +382,8 @@ void Search::think() {
   else
       Threads.set_timer(100);
 
-  // We're ready to start thinking. Call the iterative deepening loop function
-  Move ponderMove = MOVE_NONE;
-  Move bestMove = id_loop(pos, &ponderMove);
+  // We're ready to start searching. Call the iterative deepening loop function
+  id_loop(pos);
 
   // Stop timer and send all the slaves to sleep, if not already sleeping
   Threads.set_timer(0);
@@ -388,12 +396,12 @@ void Search::think() {
       Log log(Options["Search Log Filename"].value<string>());
       log << "Nodes: "          << pos.nodes_searched()
           << "\nNodes/second: " << (e > 0 ? pos.nodes_searched() * 1000 / e : 0)
-          << "\nBest move: "    << move_to_san(pos, bestMove);
+          << "\nBest move: "    << move_to_san(pos, RootMoves[0].pv[0]);
 
       StateInfo st;
-      pos.do_move(bestMove, st);
-      log << "\nPonder move: " << move_to_san(pos, ponderMove) << endl;
-      pos.undo_move(bestMove); // Return from think() with unchanged position
+      pos.do_move(RootMoves[0].pv[0], st);
+      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << endl;
+      pos.undo_move(RootMoves[0].pv[0]);
   }
 
   // When we reach max depth we arrive here even without a StopRequest, but if
@@ -403,12 +411,12 @@ void Search::think() {
       Threads.wait_for_stop_or_ponderhit();
 
   // Could be MOVE_NONE when searching on a stalemate position
-  cout << "bestmove " << bestMove;
+  cout << "bestmove " << RootMoves[0].pv[0];
 
   // UCI protol is not clear on allowing sending an empty ponder move, instead
   // it is clear that ponder move is optional. So skip it if empty.
-  if (ponderMove != MOVE_NONE)
-      cout << " ponder " << ponderMove;
+  if (RootMoves[0].pv[1] != MOVE_NONE)
+      cout << " ponder " << RootMoves[0].pv[1];
 
   cout << endl;
 }
@@ -420,56 +428,49 @@ namespace {
   // with increasing depth until the allocated thinking time has been consumed,
   // user stops the search, or the maximum search depth is reached.
 
-  Move id_loop(Position& pos, Move* ponderMove) {
+  void id_loop(Position& pos) {
 
     Stack ss[PLY_MAX_PLUS_2];
-    int bestMoveChanges[PLY_MAX_PLUS_2];
-    int depth;
+    int depth, prevBestMoveChanges;
     Value bestValue, alpha, beta, delta;
-    Move bestMove, skillBest, skillPonder;
     bool bestMoveNeverChanged = true;
+    Move skillBest = MOVE_NONE;
 
     memset(ss, 0, 4 * sizeof(Stack));
-    TT.new_search();
-    H.clear();
-    RootMoves.clear();
-    *ponderMove = bestMove = skillBest = skillPonder = MOVE_NONE;
-    depth = 0;
-    bestValue = alpha = -VALUE_INFINITE, beta = delta = VALUE_INFINITE;
+    depth = BestMoveChanges = 0;
+    bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
-    for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
-        if (   SearchMoves.empty()
-            || std::count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
-            RootMoves.push_back(RootMove(ml.move()));
-
-    // Handle special case of searching on a mate/stalemate position
+    // Handle the special case of a mate/stalemate position
     if (RootMoves.empty())
     {
         cout << "info depth 0"
-             << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW, alpha, beta) << endl;
+             << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
 
-        return MOVE_NONE;
+        RootMoves.push_back(MOVE_NONE);
+        return;
     }
 
     // Iterative deepening loop until requested to stop or target depth reached
     while (!Signals.stop && ++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth))
     {
-        // Save now last iteration's scores, before Rml moves are reordered
+        // Save last iteration's scores before first PV line is searched and all
+        // the move scores but the (new) PV are set to -VALUE_INFINITE.
         for (size_t i = 0; i < RootMoves.size(); i++)
             RootMoves[i].prevScore = RootMoves[i].score;
 
+        prevBestMoveChanges = BestMoveChanges;
         BestMoveChanges = 0;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (MultiPVIdx = 0; MultiPVIdx < std::min(MultiPV, RootMoves.size()); MultiPVIdx++)
+        for (PVIdx = 0; PVIdx < std::min(MultiPV, RootMoves.size()); PVIdx++)
         {
-            // Aspiration window
-            if (depth >= 5 && abs(RootMoves[MultiPVIdx].prevScore) < VALUE_KNOWN_WIN)
+            // Set aspiration window default width
+            if (depth >= 5 && abs(RootMoves[PVIdx].prevScore) < VALUE_KNOWN_WIN)
             {
                 delta = Value(16);
-                alpha = RootMoves[MultiPVIdx].prevScore - delta;
-                beta  = RootMoves[MultiPVIdx].prevScore + delta;
+                alpha = RootMoves[PVIdx].prevScore - delta;
+                beta  = RootMoves[PVIdx].prevScore + delta;
             }
             else
             {
@@ -490,23 +491,23 @@ namespace {
                 // we want to keep the same order for all the moves but the new
                 // PV that goes to the front. Note that in case of MultiPV search
                 // the already searched PV lines are preserved.
-                sort<RootMove>(RootMoves.begin() + MultiPVIdx, RootMoves.end());
+                sort<RootMove>(RootMoves.begin() + PVIdx, RootMoves.end());
 
                 // In case we have found an exact score and we are going to leave
                 // the fail high/low loop then reorder the PV moves, otherwise
                 // leave the last PV move in its position so to be searched again.
                 // Of course this is needed only in MultiPV search.
-                if (MultiPVIdx && bestValue > alpha && bestValue < beta)
-                    sort<RootMove>(RootMoves.begin(), RootMoves.begin() + MultiPVIdx);
+                if (PVIdx && bestValue > alpha && bestValue < beta)
+                    sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx);
 
-                // Write PV back to transposition table in case the relevant entries
-                // have been overwritten during the search.
-                for (size_t i = 0; i <= MultiPVIdx; i++)
+                // Write PV back to transposition table in case the relevant
+                // entries have been overwritten during the search.
+                for (size_t i = 0; i <= PVIdx; i++)
                     RootMoves[i].insert_pv_in_tt(pos);
 
-                // If search has been stopped exit the aspiration window loop,
-                // note that sorting and writing PV back to TT is safe becuase
-                // Rml is still valid, although refers to the previous iteration.
+                // If search has been stopped exit the aspiration window loop.
+                // Sorting and writing PV back to TT is safe becuase RootMoves
+                // is still valid, although refers to  previous iteration.
                 if (Signals.stop)
                     break;
 
@@ -538,32 +539,29 @@ namespace {
             } while (abs(bestValue) < VALUE_KNOWN_WIN);
         }
 
-        bestMove = RootMoves[0].pv[0];
-        *ponderMove = RootMoves[0].pv[1];
-        bestMoveChanges[depth] = BestMoveChanges;
-
-        // Skills: Do we need to pick now the best and the ponder moves ?
+        // Skills: Do we need to pick now the best move ?
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
-            do_skill_level(&skillBest, &skillPonder);
+            skillBest = do_skill_level();
 
         if (Options["Use Search Log"].value<bool>())
              pv_info_to_log(pos, depth, bestValue, elapsed_time(), &RootMoves[0].pv[0]);
 
         // Filter out startup noise when monitoring best move stability
-        if (depth > 2 && bestMoveChanges[depth])
+        if (depth > 2 && BestMoveChanges)
             bestMoveNeverChanged = false;
 
         // Do we have time for the next iteration? Can we stop searching now?
         if (!Signals.stop && !Signals.stopOnPonderhit && Limits.useTimeManagement())
         {
-            bool stop = false; // Local variable instead of the volatile Signals.stop
+            bool stop = false; // Local variable, not the volatile Signals.stop
 
             // Take in account some extra time if the best move has changed
             if (depth > 4 && depth < 50)
-                TimeMgr.pv_instability(bestMoveChanges[depth], bestMoveChanges[depth - 1]);
+                TimeMgr.pv_instability(BestMoveChanges, prevBestMoveChanges);
 
-            // Stop search if most of available time is already consumed. We probably don't
-            // have enough time to search the first move at the next iteration anyway.
+            // Stop search if most of available time is already consumed. We
+            // probably don't have enough time to search the first move at the
+            // next iteration anyway.
             if (elapsed_time() > (TimeMgr.available_time() * 62) / 100)
                 stop = true;
 
@@ -574,7 +572,7 @@ namespace {
                     || elapsed_time() > (TimeMgr.available_time() * 40) / 100))
             {
                 Value rBeta = bestValue - EasyMoveMargin;
-                (ss+1)->excludedMove = bestMove;
+                (ss+1)->excludedMove = RootMoves[0].pv[0];
                 (ss+1)->skipNullMove = true;
                 Value v = search<NonPV>(pos, ss+1, rBeta - 1, rBeta, (depth * ONE_PLY) / 2);
                 (ss+1)->skipNullMove = false;
@@ -596,17 +594,14 @@ namespace {
         }
     }
 
-    // When using skills overwrite best and ponder moves with the sub-optimal ones
+    // When using skills swap best PV line with the sub-optimal one
     if (SkillLevelEnabled)
     {
         if (skillBest == MOVE_NONE) // Still unassigned ?
-            do_skill_level(&skillBest, &skillPonder);
+            skillBest = do_skill_level();
 
-        bestMove = skillBest;
-        *ponderMove = skillPonder;
+        std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), skillBest));
     }
-
-    return bestMove;
   }
 
 
@@ -691,7 +686,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
     tte = TT.probe(posKey);
-    ttMove = RootNode ? RootMoves[MultiPVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
+    ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
@@ -914,7 +909,7 @@ split_point_start: // At split points actual search starts from here
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List, as a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched.
-      if (RootNode && !std::count(RootMoves.begin() + MultiPVIdx, RootMoves.end(), move))
+      if (RootNode && !std::count(RootMoves.begin() + PVIdx, RootMoves.end(), move))
           continue;
 
       // At PV and SpNode nodes we want all moves to be legal since the beginning
@@ -939,7 +934,7 @@ split_point_start: // At split points actual search starts from here
           if (pos.thread() == 0 && elapsed_time() > 2000)
               cout << "info depth " << depth / ONE_PLY
                    << " currmove " << move
-                   << " currmovenumber " << moveCount + MultiPVIdx << endl;
+                   << " currmovenumber " << moveCount + PVIdx << endl;
       }
 
       isPvMove = (PvNode && moveCount <= 1);
@@ -1693,7 +1688,7 @@ split_point_start: // At split points actual search starts from here
 
     for (size_t i = 0; i < std::min(UCIMultiPV, RootMoves.size()); i++)
     {
-        bool updated = (i <= MultiPVIdx);
+        bool updated = (i <= PVIdx);
 
         if (depth == 1 && !updated)
             continue;
@@ -1704,7 +1699,7 @@ split_point_start: // At split points actual search starts from here
         cout << "info"
              << " depth " << d
              << " seldepth " << selDepth
-             << (i == MultiPVIdx ? score_to_uci(s, alpha, beta) : score_to_uci(s))
+             << (i == PVIdx ? score_to_uci(s, alpha, beta) : score_to_uci(s))
              << " nodes " << pos.nodes_searched()
              << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
              << " time " << t
@@ -1811,7 +1806,7 @@ split_point_start: // At split points actual search starts from here
   // When playing with strength handicap choose best move among the MultiPV set
   // using a statistical rule dependent on SkillLevel. Idea by Heinz van Saanen.
 
-  void do_skill_level(Move* best, Move* ponder) {
+  Move do_skill_level() {
 
     assert(MultiPV > 1);
 
@@ -1826,6 +1821,7 @@ split_point_start: // At split points actual search starts from here
     int variance = std::min(RootMoves[0].score - RootMoves[size - 1].score, PawnValueMidgame);
     int weakness = 120 - 2 * SkillLevel;
     int max_s = -VALUE_INFINITE;
+    Move best = MOVE_NONE;
 
     // Choose best move. For each move score we add two terms both dependent on
     // weakness, one deterministic and bigger for weaker moves, and one random,
@@ -1845,10 +1841,10 @@ split_point_start: // At split points actual search starts from here
         if (s > max_s)
         {
             max_s = s;
-            *best = RootMoves[i].pv[0];
-            *ponder = RootMoves[i].pv[1];
+            best = RootMoves[i].pv[0];
         }
     }
+    return best;
   }
 
 
