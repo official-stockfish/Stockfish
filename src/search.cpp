@@ -155,14 +155,13 @@ namespace {
 
   /// Local functions
 
-  void id_loop(Position& pos);
-
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
   template <NodeType NT>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
+  void id_loop(Position& pos);
   bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   Value value_to_tt(Value v, int ply);
@@ -170,7 +169,6 @@ namespace {
   bool can_return_tt(const TTEntry* tte, Depth depth, Value beta, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value defaultEval, int ply);
-  void update_history(const Position& pos, Move move, Depth depth, Move movesSearched[], int moveCount);
   Move do_skill_level();
   int elapsed_time(bool reset = false);
   string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
@@ -1167,7 +1165,7 @@ split_point_start: // At split points actual search starts from here
     }
 
     // Step 21. Update tables
-    // Update transposition table entry, history and killers
+    // Update transposition table entry, killers and history
     if (!SpNode && !Signals.stop && !thread.cutoff_occurred())
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
@@ -1176,16 +1174,25 @@ split_point_start: // At split points actual search starts from here
 
         TT.store(posKey, value_to_tt(bestValue, ss->ply), vt, depth, move, ss->eval, ss->evalMargin);
 
-        // Update killers and history only for non capture moves that fails high
-        if (    bestValue >= beta
-            && !pos.is_capture_or_promotion(move))
+        // Update killers and history for non capture cut-off moves
+        if (bestValue >= beta && !pos.is_capture_or_promotion(move))
         {
             if (move != ss->killers[0])
             {
                 ss->killers[1] = ss->killers[0];
                 ss->killers[0] = move;
             }
-            update_history(pos, move, depth, movesSearched, playedMoveCount);
+
+            // Increase history value of the cut-off move
+            Value bonus = Value(int(depth) * int(depth));
+            H.add(pos.piece_on(move_from(move)), move_to(move), bonus);
+
+            // Decrease history of all the other played non-capture moves
+            for (int i = 0; i < playedMoveCount - 1; i++)
+            {
+                Move m = movesSearched[i];
+                H.add(pos.piece_on(move_from(m)), move_to(m), -bonus);
+            }
         }
     }
 
@@ -1617,27 +1624,6 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // update_history() registers a good move that produced a beta-cutoff in
-  // history and marks as failures all the other moves of that ply.
-
-  void update_history(const Position& pos, Move move, Depth depth,
-                      Move movesSearched[], int moveCount) {
-    Move m;
-    Value bonus = Value(int(depth) * int(depth));
-
-    H.update(pos.piece_on(move_from(move)), move_to(move), bonus);
-
-    for (int i = 0; i < moveCount - 1; i++)
-    {
-        m = movesSearched[i];
-
-        assert(m != move);
-
-        H.update(pos.piece_on(move_from(m)), move_to(m), -bonus);
-    }
-  }
-
-
   // current_search_time() returns the number of milliseconds which have passed
   // since the beginning of the current search.
 
@@ -1817,7 +1803,7 @@ split_point_start: // At split points actual search starts from here
     for (int i = abs(get_system_time() % 50); i > 0; i--)
         rk.rand<unsigned>();
 
-    // Rml list is already sorted by score in descending order
+    // RootMoves are already sorted by score in descending order
     size_t size = std::min(MultiPV, RootMoves.size());
     int variance = std::min(RootMoves[0].score - RootMoves[size - 1].score, PawnValueMidgame);
     int weakness = 120 - 2 * SkillLevel;
