@@ -20,9 +20,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <vector>
 
@@ -46,8 +46,6 @@ namespace Search {
   Position RootPosition;
 }
 
-using std::cout;
-using std::endl;
 using std::string;
 using namespace Search;
 
@@ -149,7 +147,7 @@ namespace {
   TimeManager TimeMgr;
   int BestMoveChanges;
   int SkillLevel;
-  bool SkillLevelEnabled;
+  bool SkillLevelEnabled, Chess960;
   History H;
 
 
@@ -193,28 +191,6 @@ namespace {
     Move get_next_move() { return mp->get_next_move(); }
     MovePicker* mp;
   };
-
-  // Overload operator<<() to make it easier to print moves in a coordinate
-  // notation compatible with UCI protocol.
-  std::ostream& operator<<(std::ostream& os, Move m) {
-
-    bool chess960 = (os.iword(0) != 0); // See set960()
-    return os << move_to_uci(m, chess960);
-  }
-
-  // When formatting a move for std::cout we must know if we are in Chess960 or
-  // not. To keep using the handy operator<<() on the move the trick is to embed
-  // this flag in the stream itself. Function-like named enum set960 is used as
-  // a custom manipulator and the stream internal general-purpose array, accessed
-  // through ios_base::iword(), is used to pass the flag to the move's operator<<
-  // that will read it to properly format castling moves.
-  enum set960 {};
-
-  std::ostream& operator<<(std::ostream& os, const set960& f) {
-
-    os.iword(0) = f;
-    return os;
-  }
 
   // is_dangerous() checks whether a move belongs to some classes of known
   // 'dangerous' moves so that we avoid to prune it.
@@ -304,6 +280,7 @@ void Search::think() {
   static Book book; // Defined static to initialize the PRNG only once
 
   Position& pos = RootPosition;
+  Chess960 = pos.is_chess960();
   elapsed_time(true);
   TimeMgr.init(Limits, pos.startpos_ply_counter());
   TT.new_search();
@@ -316,9 +293,6 @@ void Search::think() {
       if (   SearchMoves.empty()
           || std::count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
-
-  // Set output stream mode: normal or chess960. Castling notation is different
-  cout << set960(pos.is_chess960());
 
   if (Options["OwnBook"].value<bool>())
   {
@@ -363,7 +337,7 @@ void Search::think() {
           << " time: "        << Limits.time
           << " increment: "   << Limits.increment
           << " moves to go: " << Limits.movesToGo
-          << endl;
+          << std::endl;
   }
 
   for (int i = 0; i < Threads.size(); i++)
@@ -397,7 +371,7 @@ void Search::think() {
 
       StateInfo st;
       pos.do_move(RootMoves[0].pv[0], st);
-      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << endl;
+      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << std::endl;
       pos.undo_move(RootMoves[0].pv[0]);
   }
 
@@ -409,15 +383,10 @@ finish:
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
       Threads.wait_for_stop_or_ponderhit();
 
-  // Could be MOVE_NONE when searching on a stalemate position
-  cout << "bestmove " << RootMoves[0].pv[0];
-
-  // UCI protol is not clear on allowing sending an empty ponder move, instead
-  // it is clear that ponder move is optional. So skip it if empty.
-  if (RootMoves[0].pv[1] != MOVE_NONE)
-      cout << " ponder " << RootMoves[0].pv[1];
-
-  cout << endl;
+  // Best move could be MOVE_NONE when searching on a stalemate position
+  printf("bestmove %s ponder %s\n",
+         move_to_uci(RootMoves[0].pv[0], Chess960).c_str(),
+         move_to_uci(RootMoves[0].pv[1], Chess960).c_str());
 }
 
 
@@ -443,8 +412,8 @@ namespace {
     // Handle the special case of a mate/stalemate position
     if (RootMoves.empty())
     {
-        cout << "info depth 0"
-             << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
+        printf("info depth 0%s\n",
+               score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW).c_str());
 
         RootMoves.push_back(MOVE_NONE);
         return;
@@ -925,15 +894,12 @@ split_point_start: // At split points actual search starts from here
 
       if (RootNode)
       {
-          // This is used by time management
           Signals.firstRootMove = (moveCount == 1);
-
           nodes = pos.nodes_searched();
 
           if (pos.thread() == 0 && elapsed_time() > 2000)
-              cout << "info depth " << depth / ONE_PLY
-                   << " currmove " << move
-                   << " currmovenumber " << moveCount + PVIdx << endl;
+              printf("info depth %i currmove %s currmovenumber %i\n", depth / ONE_PLY,
+                     move_to_uci(move, Chess960).c_str(), moveCount + PVIdx);
       }
 
       isPvMove = (PvNode && moveCount <= 1);
@@ -1668,6 +1634,7 @@ split_point_start: // At split points actual search starts from here
 
     int t = elapsed_time();
     int selDepth = 0;
+    std::stringstream s;
 
     for (int i = 0; i < Threads.size(); i++)
         if (Threads[i].maxPly > selDepth)
@@ -1681,21 +1648,20 @@ split_point_start: // At split points actual search starts from here
             continue;
 
         int d = (updated ? depth : depth - 1);
-        Value s = (updated ? RootMoves[i].score : RootMoves[i].prevScore);
+        Value v = (updated ? RootMoves[i].score : RootMoves[i].prevScore);
 
-        cout << "info"
-             << " depth " << d
-             << " seldepth " << selDepth
-             << (i == PVIdx ? score_to_uci(s, alpha, beta) : score_to_uci(s))
-             << " nodes " << pos.nodes_searched()
-             << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
-             << " time " << t
-             << " multipv " << i + 1 << " pv";
+        s << "info depth " << d
+          << " seldepth " << selDepth
+          << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
+          << " nodes " << pos.nodes_searched()
+          << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
+          << " time " << t
+          << " multipv " << i + 1 << " pv";
 
         for (int j = 0; RootMoves[i].pv[j] != MOVE_NONE; j++)
-            cout <<  " " << RootMoves[i].pv[j];
+            s <<  " " << move_to_uci(RootMoves[i].pv[j], Chess960);
 
-        cout << endl;
+        printf("%s\n", s.str().c_str()); // Much faster than std::cout
     }
   }
 
@@ -1749,8 +1715,7 @@ split_point_start: // At split points actual search starts from here
     size_t length;
     std::stringstream s;
 
-    s << set960(pos.is_chess960())
-      << std::setw(2) << depth
+    s << std::setw(2) << depth
       << std::setw(8) << score_to_string(value)
       << std::setw(8) << time_to_string(time);
 
@@ -1786,7 +1751,7 @@ split_point_start: // At split points actual search starts from here
         pos.undo_move(*--m);
 
     Log l(Options["Search Log Filename"].value<string>());
-    l << s.str() << endl;
+    l << s.str() << std::endl;
   }
 
 
