@@ -18,8 +18,6 @@
 */
 
 #include <algorithm>
-#include <cctype>
-#include <iostream>
 #include <sstream>
 
 #include "misc.h"
@@ -27,8 +25,6 @@
 #include "ucioption.h"
 
 using std::string;
-using std::cout;
-using std::endl;
 
 OptionsMap Options; // Global object
 
