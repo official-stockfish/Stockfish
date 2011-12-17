@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstdio>
 #include <iostream>
 #include <string>
 
@@ -34,6 +35,9 @@ extern void benchmark(int argc, char* argv[]);
 extern void kpk_bitbase_init();
 
 int main(int argc, char* argv[]) {
+
+  // Disable output buffering: printf() does not work correctly otherwise
+  setvbuf(stdout, NULL, _IONBF, 0);
 
   bitboards_init();
   Position::init();
