@@ -291,7 +291,7 @@ void Search::think() {
   // is given, with the subset of legal moves to search.
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
       if (   SearchMoves.empty()
-          || std::count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
+          || count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
   if (Options["OwnBook"].value<bool>())
@@ -302,9 +302,9 @@ void Search::think() {
       Move bookMove = book.probe(pos, Options["Best Book Move"].value<bool>());
 
       if (   bookMove != MOVE_NONE
-          && std::count(RootMoves.begin(), RootMoves.end(), bookMove))
+          && count(RootMoves.begin(), RootMoves.end(), bookMove))
       {
-          std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), bookMove));
+          std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bookMove));
           goto finish;
       }
   }
@@ -568,7 +568,7 @@ namespace {
         if (skillBest == MOVE_NONE) // Still unassigned ?
             skillBest = do_skill_level();
 
-        std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), skillBest));
+        std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), skillBest));
     }
   }
 
@@ -877,7 +877,7 @@ split_point_start: // At split points actual search starts from here
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List, as a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched.
-      if (RootNode && !std::count(RootMoves.begin() + PVIdx, RootMoves.end(), move))
+      if (RootNode && !count(RootMoves.begin() + PVIdx, RootMoves.end(), move))
           continue;
 
       // At PV and SpNode nodes we want all moves to be legal since the beginning
@@ -1060,7 +1060,7 @@ split_point_start: // At split points actual search starts from here
       // be trusted, and we don't update the best move and/or PV.
       if (RootNode && !Signals.stop)
       {
-          RootMove& rm = *std::find(RootMoves.begin(), RootMoves.end(), move);
+          RootMove& rm = *find(RootMoves.begin(), RootMoves.end(), move);
           rm.nodes += pos.nodes_searched() - nodes;
 
           // PV move or new best move ?
