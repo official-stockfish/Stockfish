@@ -323,10 +323,10 @@ inline T operator/ (const T d, int i) { return T(int(d) / i); } \
 inline T operator- (const T d) { return T(-int(d)); } \
 inline T operator++ (T& d, int) {d = T(int(d) + 1); return d; } \
 inline T operator-- (T& d, int) { d = T(int(d) - 1); return d; } \
-inline void operator+= (T& d1, const T d2) { d1 = d1 + d2; } \
-inline void operator-= (T& d1, const T d2) { d1 = d1 - d2; } \
-inline void operator*= (T& d, int i) { d = T(int(d) * i); } \
-inline void operator/= (T& d, int i) { d = T(int(d) / i); }
+inline T& operator+= (T& d1, const T d2) { d1 = d1 + d2; return d1; } \
+inline T& operator-= (T& d1, const T d2) { d1 = d1 - d2; return d1; } \
+inline T& operator*= (T& d, int i) { d = T(int(d) * i); return d; } \
+inline T& operator/= (T& d, int i) { d = T(int(d) / i); return d; }
 
 ENABLE_OPERATORS_ON(Value)
 ENABLE_OPERATORS_ON(PieceType)
