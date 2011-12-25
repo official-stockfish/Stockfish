@@ -20,9 +20,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <vector>
 
@@ -47,6 +47,8 @@ namespace Search {
 }
 
 using std::string;
+using std::cout;
+using std::endl;
 using namespace Search;
 
 namespace {
@@ -337,7 +339,7 @@ void Search::think() {
           << " time: "        << Limits.time
           << " increment: "   << Limits.increment
           << " moves to go: " << Limits.movesToGo
-          << std::endl;
+          << endl;
   }
 
   for (int i = 0; i < Threads.size(); i++)
@@ -371,7 +373,7 @@ void Search::think() {
 
       StateInfo st;
       pos.do_move(RootMoves[0].pv[0], st);
-      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << std::endl;
+      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << endl;
       pos.undo_move(RootMoves[0].pv[0]);
   }
 
@@ -384,9 +386,8 @@ finish:
       Threads.wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
-  printf("bestmove %s ponder %s\n",
-         move_to_uci(RootMoves[0].pv[0], Chess960).c_str(),
-         move_to_uci(RootMoves[0].pv[1], Chess960).c_str());
+  cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
+       << " ponder "  << move_to_uci(RootMoves[0].pv[1], Chess960) << endl;
 }
 
 
@@ -412,8 +413,8 @@ namespace {
     // Handle the special case of a mate/stalemate position
     if (RootMoves.empty())
     {
-        printf("info depth 0%s\n",
-               score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW).c_str());
+        cout << "info depth 0"
+             << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
 
         RootMoves.push_back(MOVE_NONE);
         return;
@@ -475,7 +476,7 @@ namespace {
 
                 // If search has been stopped exit the aspiration window loop.
                 // Sorting and writing PV back to TT is safe becuase RootMoves
-                // is still valid, although refers to  previous iteration.
+                // is still valid, although refers to previous iteration.
                 if (Signals.stop)
                     break;
 
@@ -898,8 +899,9 @@ split_point_start: // At split points actual search starts from here
           nodes = pos.nodes_searched();
 
           if (pos.thread() == 0 && elapsed_time() > 2000)
-              printf("info depth %i currmove %s currmovenumber %i\n", depth / ONE_PLY,
-                     move_to_uci(move, Chess960).c_str(), moveCount + PVIdx);
+              cout << "info depth " << depth / ONE_PLY
+                   << " currmove " << move_to_uci(move, Chess960)
+                   << " currmovenumber " << moveCount + PVIdx << endl;
       }
 
       isPvMove = (PvNode && moveCount <= 1);
@@ -1489,8 +1491,8 @@ split_point_start: // At split points actual search starts from here
 
 
   // value_to_tt() adjusts a mate score from "plies to mate from the root" to
-  // "plies to mate from the current ply".  Non-mate scores are unchanged.
-  // The function is called before storing a value to the transposition table.
+  // "plies to mate from the current ply". Non-mate scores are unchanged. The
+  // function is called before storing a value to the transposition table.
 
   Value value_to_tt(Value v, int ply) {
 
@@ -1636,7 +1638,6 @@ split_point_start: // At split points actual search starts from here
 
     int t = elapsed_time();
     int selDepth = 0;
-    std::stringstream s;
 
     for (int i = 0; i < Threads.size(); i++)
         if (Threads[i].maxPly > selDepth)
@@ -1651,19 +1652,19 @@ split_point_start: // At split points actual search starts from here
 
         int d = (updated ? depth : depth - 1);
         Value v = (updated ? RootMoves[i].score : RootMoves[i].prevScore);
-
-        s << "info depth " << d
-          << " seldepth " << selDepth
-          << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
-          << " nodes " << pos.nodes_searched()
-          << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
-          << " time " << t
-          << " multipv " << i + 1 << " pv";
+        std::stringstream s;
 
         for (int j = 0; RootMoves[i].pv[j] != MOVE_NONE; j++)
             s <<  " " << move_to_uci(RootMoves[i].pv[j], Chess960);
 
-        printf("%s\n", s.str().c_str()); // Much faster than std::cout
+        cout << "info depth " << d
+             << " seldepth " << selDepth
+             << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
+             << " nodes " << pos.nodes_searched()
+             << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
+             << " time " << t
+             << " multipv " << i + 1
+             << " pv" << s.str() << endl;
     }
   }
 
@@ -1753,7 +1754,7 @@ split_point_start: // At split points actual search starts from here
         pos.undo_move(*--m);
 
     Log l(Options["Search Log Filename"].value<string>());
-    l << s.str() << std::endl;
+    l << s.str() << endl;
   }
 
 
