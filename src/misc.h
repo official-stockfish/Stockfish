@@ -28,7 +28,7 @@
 
 extern const std::string engine_name();
 extern const std::string engine_authors();
-extern int get_system_time();
+extern int system_time();
 extern int cpu_count();
 extern void timed_wait(WaitCondition*, Lock*, int);
 extern void prefetch(char* addr);

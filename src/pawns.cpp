@@ -72,14 +72,14 @@ namespace {
 }
 
 
-/// PawnInfoTable::get_pawn_info() takes a position object as input, computes
+/// PawnInfoTable::pawn_info() takes a position object as input, computes
 /// a PawnInfo object, and returns a pointer to it. The result is also stored
 /// in an hash table, so we don't have to recompute everything when the same
 /// pawn structure occurs again.
 
-PawnInfo* PawnInfoTable::get_pawn_info(const Position& pos) const {
+PawnInfo* PawnInfoTable::pawn_info(const Position& pos) const {
 
-  Key key = pos.get_pawn_key();
+  Key key = pos.pawn_key();
   PawnInfo* pi = probe(key);
 
   // If pi->key matches the position's pawn hash key, it means that we

@@ -134,9 +134,9 @@ void dbg_before() { dbg_hit_on(false); }
 void dbg_after()  { dbg_hit_on(true); dbg_hit_cnt0--; }
 
 
-/// get_system_time() returns the current system time, measured in milliseconds
+/// system_time() returns the current system time, measured in milliseconds
 
-int get_system_time() {
+int system_time() {
 
 #if defined(_MSC_VER)
   struct _timeb t;

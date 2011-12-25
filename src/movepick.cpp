@@ -232,7 +232,7 @@ void MovePicker::go_next_phase() {
 /// MovePicker::score_captures(), MovePicker::score_noncaptures() and
 /// MovePicker::score_evasions() assign a numerical move ordering score
 /// to each move in a move list.  The moves with highest scores will be
-/// picked first by get_next_move().
+/// picked first by next_move().
 
 void MovePicker::score_captures() {
   // Winning and equal captures in the main search are ordered by MVV/LVA.
@@ -300,14 +300,14 @@ void MovePicker::score_evasions() {
   }
 }
 
-/// MovePicker::get_next_move() is the most important method of the MovePicker
-/// class. It returns a new pseudo legal move every time it is called, until there
+/// MovePicker::next_move() is the most important method of the MovePicker class.
+/// It returns a new pseudo legal move every time it is called, until there
 /// are no more moves left. It picks the move with the biggest score from a list
 /// of generated moves taking care not to return the tt move if has already been
 /// searched previously. Note that this function is not thread safe so should be
 /// lock protected by caller when accessed through a shared MovePicker object.
 
-Move MovePicker::get_next_move() {
+Move MovePicker::next_move() {
 
   Move move;
 

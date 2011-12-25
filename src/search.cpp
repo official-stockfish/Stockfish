@@ -190,7 +190,7 @@ namespace {
     MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, Stack* ss, Value b)
                   : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
 
-    Move get_next_move() { return mp->get_next_move(); }
+    Move next_move() { return mp->next_move(); }
     MovePicker* mp;
   };
 
@@ -653,7 +653,7 @@ namespace {
     // We don't want the score of a partial search to overwrite a previous full search
     // TT value, so we use a different position key in case of an excluded move.
     excludedMove = ss->excludedMove;
-    posKey = excludedMove ? pos.get_exclusion_key() : pos.get_key();
+    posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey);
     ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
 
@@ -816,7 +816,7 @@ namespace {
         MovePicker mp(pos, ttMove, H, pos.captured_piece_type());
         CheckInfo ci(pos);
 
-        while ((move = mp.get_next_move()) != MOVE_NONE)
+        while ((move = mp.next_move()) != MOVE_NONE)
             if (pos.pl_move_is_legal(move, ci.pinned))
             {
                 pos.do_move(move, st, ci, pos.move_gives_check(move, ci));
@@ -867,7 +867,7 @@ split_point_start: // At split points actual search starts from here
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
-           && (move = mp.get_next_move()) != MOVE_NONE
+           && (move = mp.next_move()) != MOVE_NONE
            && !thread.cutoff_occurred())
     {
       assert(is_ok(move));
@@ -1220,7 +1220,7 @@ split_point_start: // At split points actual search starts from here
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
-    tte = TT.probe(pos.get_key());
+    tte = TT.probe(pos.key());
     ttMove = (tte ? tte->move() : MOVE_NONE);
 
     if (!PvNode && tte && can_return_tt(tte, ttDepth, beta, ss->ply))
@@ -1252,7 +1252,7 @@ split_point_start: // At split points actual search starts from here
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.get_key(), value_to_tt(bestValue, ss->ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
+                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
 
             return bestValue;
         }
@@ -1273,7 +1273,7 @@ split_point_start: // At split points actual search starts from here
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
-           && (move = mp.get_next_move()) != MOVE_NONE)
+           && (move = mp.next_move()) != MOVE_NONE)
     {
       assert(is_ok(move));
 
@@ -1373,7 +1373,7 @@ split_point_start: // At split points actual search starts from here
     vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
          : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
 
-    TT.store(pos.get_key(), value_to_tt(bestValue, ss->ply), vt, ttDepth, move, ss->eval, evalMargin);
+    TT.store(pos.key(), value_to_tt(bestValue, ss->ply), vt, ttDepth, move, ss->eval, evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1602,9 +1602,9 @@ split_point_start: // At split points actual search starts from here
     static int searchStartTime;
 
     if (reset)
-        searchStartTime = get_system_time();
+        searchStartTime = system_time();
 
-    return get_system_time() - searchStartTime;
+    return system_time() - searchStartTime;
   }
 
 
@@ -1768,7 +1768,7 @@ split_point_start: // At split points actual search starts from here
     static RKISS rk;
 
     // PRNG sequence should be not deterministic
-    for (int i = abs(get_system_time() % 50); i > 0; i--)
+    for (int i = abs(system_time() % 50); i > 0; i--)
         rk.rand<unsigned>();
 
     // RootMoves are already sorted by score in descending order
@@ -1821,7 +1821,7 @@ split_point_start: // At split points actual search starts from here
     pv.push_back(m);
     pos.do_move(m, *st++);
 
-    while (   (tte = TT.probe(pos.get_key())) != NULL
+    while (   (tte = TT.probe(pos.key())) != NULL
            && tte->move() != MOVE_NONE
            && pos.is_pseudo_legal(tte->move())
            && pos.pl_move_is_legal(tte->move(), pos.pinned_pieces())
@@ -1853,7 +1853,7 @@ split_point_start: // At split points actual search starts from here
     assert(pv[ply] != MOVE_NONE && pos.is_pseudo_legal(pv[ply]));
 
     do {
-        k = pos.get_key();
+        k = pos.key();
         tte = TT.probe(k);
 
         // Don't overwrite existing correct entries
@@ -1971,9 +1971,9 @@ void do_timer_event() {
   static int lastInfoTime;
   int e = elapsed_time();
 
-  if (get_system_time() - lastInfoTime >= 1000 || !lastInfoTime)
+  if (system_time() - lastInfoTime >= 1000 || !lastInfoTime)
   {
-      lastInfoTime = get_system_time();
+      lastInfoTime = system_time();
 
       dbg_print_mean();
       dbg_print_hit_rate();

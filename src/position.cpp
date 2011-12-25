@@ -731,7 +731,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   assert(&newSt != st);
 
   nodes++;
-  Key key = st->key;
+  Key k = st->key;
 
   // Copy some fields of old state to our new StateInfo object except the ones
   // which are recalculated from scratch anyway, then switch our state pointer
@@ -750,7 +750,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st = &newSt;
 
   // Update side to move
-  key ^= zobSideToMove;
+  k ^= zobSideToMove;
 
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
   // case of non-reversible moves is taken care of later.
@@ -759,7 +759,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   if (is_castle(m))
   {
-      st->key = key;
+      st->key = k;
       do_castle_move<true>(m);
       return;
   }
@@ -820,7 +820,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       pieceList[them][capture][pieceCount[them][capture]] = SQ_NONE;
 
       // Update hash keys
-      key ^= zobrist[them][capture][capsq];
+      k ^= zobrist[them][capture][capsq];
       st->materialKey ^= zobrist[them][capture][pieceCount[them][capture]];
 
       // Update incremental scores
@@ -831,12 +831,12 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   }
 
   // Update hash key
-  key ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
+  k ^= zobrist[us][pt][from] ^ zobrist[us][pt][to];
 
   // Reset en passant square
   if (st->epSquare != SQ_NONE)
   {
-      key ^= zobEp[st->epSquare];
+      k ^= zobEp[st->epSquare];
       st->epSquare = SQ_NONE;
   }
 
@@ -844,13 +844,13 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   if (    st->castleRights != CASTLES_NONE
       && (castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
   {
-      key ^= zobCastle[st->castleRights];
+      k ^= zobCastle[st->castleRights];
       st->castleRights &= castleRightsMask[from] & castleRightsMask[to];
-      key ^= zobCastle[st->castleRights];
+      k ^= zobCastle[st->castleRights];
   }
 
   // Prefetch TT access as soon as we know key is updated
-  prefetch((char*)TT.first_entry(key));
+  prefetch((char*)TT.first_entry(k));
 
   // Move the piece
   Bitboard move_bb = make_move_bb(from, to);
@@ -874,7 +874,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           && (attacks_from<PAWN>(from + pawn_push(us), us) & pieces(PAWN, them)))
       {
           st->epSquare = Square((from + to) / 2);
-          key ^= zobEp[st->epSquare];
+          k ^= zobEp[st->epSquare];
       }
 
       if (is_promotion(m))
@@ -899,7 +899,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           pieceList[us][promotion][index[to]] = to;
 
           // Update hash keys
-          key ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
+          k ^= zobrist[us][PAWN][to] ^ zobrist[us][promotion][to];
           st->pawnKey ^= zobrist[us][PAWN][to];
           st->materialKey ^=  zobrist[us][promotion][pieceCount[us][promotion]++]
                             ^ zobrist[us][PAWN][pieceCount[us][PAWN]];
@@ -930,7 +930,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->capturedType = capture;
 
   // Update the key with the final value
-  st->key = key;
+  st->key = k;
 
   // Update checkers bitboard, piece must be already moved
   st->checkersBB = 0;

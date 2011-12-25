@@ -68,13 +68,13 @@ private:
 
 
 /// The MaterialInfoTable class represents a pawn hash table. The most important
-/// method is get_material_info, which returns a pointer to a MaterialInfo object.
+/// method is material_info(), which returns a pointer to a MaterialInfo object.
 
 class MaterialInfoTable : public SimpleHash<MaterialInfo, MaterialTableSize> {
 public:
   ~MaterialInfoTable();
   void init();
-  MaterialInfo* get_material_info(const Position& pos) const;
+  MaterialInfo* material_info(const Position& pos) const;
   static Phase game_phase(const Position& pos);
 
 private:

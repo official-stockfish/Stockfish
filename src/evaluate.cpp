@@ -288,7 +288,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   margins[WHITE] = margins[BLACK] = VALUE_ZERO;
 
   // Probe the material hash table
-  ei.mi = Threads[pos.thread()].materialTable.get_material_info(pos);
+  ei.mi = Threads[pos.thread()].materialTable.material_info(pos);
   score += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
@@ -300,7 +300,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
   // Probe the pawn hash table
-  ei.pi = Threads[pos.thread()].pawnTable.get_pawn_info(pos);
+  ei.pi = Threads[pos.thread()].pawnTable.pawn_info(pos);
   score += ei.pi->pawns_value();
 
   // Initialize attack and king safety bitboards

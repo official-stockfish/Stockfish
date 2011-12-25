@@ -349,7 +349,7 @@ namespace {
 /// Book c'tor. Make random number generation less deterministic, for book moves
 Book::Book() : bookSize(0) {
 
-  for (int i = abs(get_system_time() % 10000); i > 0; i--)
+  for (int i = abs(system_time() % 10000); i > 0; i--)
       RKiss.rand<unsigned>();
 }
 

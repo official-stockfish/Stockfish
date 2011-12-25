@@ -29,9 +29,9 @@ const int PawnTableSize = 16384;
 /// PawnInfo is a class which contains various information about a pawn
 /// structure. Currently, it only includes a middle game and an end game
 /// pawn structure evaluation, and a bitboard of passed pawns. We may want
-/// to add further information in the future. A lookup to the pawn hash table
-/// (performed by calling the get_pawn_info method in a PawnInfoTable object)
-/// returns a pointer to a PawnInfo object.
+/// to add further information in the future. A lookup to the pawn hash
+/// table (performed by calling the pawn_info method in a PawnInfoTable
+/// object) returns a pointer to a PawnInfo object.
 
 class PawnInfo {
 
@@ -63,11 +63,11 @@ private:
 
 
 /// The PawnInfoTable class represents a pawn hash table. The most important
-/// method is get_pawn_info, which returns a pointer to a PawnInfo object.
+/// method is pawn_info, which returns a pointer to a PawnInfo object.
 
 class PawnInfoTable : public SimpleHash<PawnInfo, PawnTableSize> {
 public:
-  PawnInfo* get_pawn_info(const Position& pos) const;
+  PawnInfo* pawn_info(const Position& pos) const;
 
 private:
   template<Color Us>

@@ -90,15 +90,15 @@ void MaterialInfoTable::init() { Base::init(); if (!funcs) funcs = new Endgames(
 MaterialInfoTable::~MaterialInfoTable() { delete funcs; }
 
 
-/// MaterialInfoTable::get_material_info() takes a position object as input,
+/// MaterialInfoTable::material_info() takes a position object as input,
 /// computes or looks up a MaterialInfo object, and returns a pointer to it.
 /// If the material configuration is not already present in the table, it
 /// is stored there, so we don't have to recompute everything when the
 /// same material configuration occurs again.
 
-MaterialInfo* MaterialInfoTable::get_material_info(const Position& pos) const {
+MaterialInfo* MaterialInfoTable::material_info(const Position& pos) const {
 
-  Key key = pos.get_material_key();
+  Key key = pos.material_key();
   MaterialInfo* mi = probe(key);
 
   // If mi->key matches the position's material hash key, it means that we
