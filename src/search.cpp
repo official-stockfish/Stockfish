@@ -318,7 +318,7 @@ void Search::think() {
   TT.set_size(Options["Hash"].value<int>());
   if (Options["Clear Hash"].value<bool>())
   {
-      Options["Clear Hash"].set_value("false");
+      Options["Clear Hash"] = false;
       TT.clear();
   }
 

@@ -25,41 +25,30 @@
 #include <map>
 #include <string>
 
+struct OptionsMap;
+
+/// UCIOption class implements an option as defined by UCI protocol
 class UCIOption {
 public:
-  UCIOption() {} // To be used in a std::map
-  UCIOption(const char* defaultValue);
-  UCIOption(bool defaultValue, std::string type = "check");
-  UCIOption(int defaultValue, int minValue, int maxValue);
+  UCIOption() {} // Required by std::map::operator[]
+  UCIOption(const char* v);
+  UCIOption(bool v, std::string type = "check");
+  UCIOption(int v, int min, int max);
 
-  void set_value(const std::string& v);
   template<typename T> T value() const;
+  void operator=(const std::string& v);
+  void operator=(bool v) { *this = std::string(v ? "true" : "false"); }
 
 private:
-  friend struct OptionsMap;
+  friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
 
   std::string defaultValue, currentValue, type;
-  int minValue, maxValue;
+  int min, max;
   size_t idx;
 };
 
 
-/// Custom comparator because UCI options should be case insensitive
-struct CaseInsensitiveLess {
-  bool operator() (const std::string&, const std::string&) const;
-};
-
-
-/// Our options container is actually a map with a customized c'tor
-struct OptionsMap : public std::map<std::string, UCIOption, CaseInsensitiveLess> {
-  OptionsMap();
-  std::string print_all() const;
-};
-
-extern OptionsMap Options;
-
-
-/// Option::value() definition and specializations
+/// UCIOption::value() definition and specializations
 template<typename T>
 T UCIOption::value() const {
 
@@ -80,5 +69,20 @@ inline bool UCIOption::value<bool>() const {
   assert(type == "check" || type == "button");
   return currentValue == "true";
 }
+
+
+/// Custom comparator because UCI options should be case insensitive
+struct CaseInsensitiveLess {
+  bool operator() (const std::string&, const std::string&) const;
+};
+
+
+/// Our options container is actually a map with a customized c'tor
+struct OptionsMap : public std::map<std::string, UCIOption, CaseInsensitiveLess> {
+  OptionsMap();
+};
+
+extern std::ostream& operator<<(std::ostream&, const OptionsMap&);
+extern OptionsMap Options;
 
 #endif // !defined(UCIOPTION_H_INCLUDED)

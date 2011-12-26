@@ -124,7 +124,7 @@ void uci_loop() {
       else if (token == "uci")
           cout << "id name "     << engine_name()
                << "\nid author " << engine_authors()
-               << "\n"           << Options.print_all()
+               << "\n"           << Options
                << "\nuciok"      << endl;
       else
           cout << "Unknown command: " << cmd << endl;
@@ -188,8 +188,8 @@ namespace {
     while (is >> token)
         value += string(" ", !value.empty()) + token;
 
-    if (Options.find(name) != Options.end())
-        Options[name].set_value(value.empty() ? "true" : value); // UCI buttons don't have "value"
+    if (Options.count(name))
+        Options[name] = (value.empty() ? "true" : value); // UCI buttons don't have "value"
     else
         cout << "No such option: " << name << endl;
   }

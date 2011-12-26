@@ -29,7 +29,7 @@ using std::string;
 OptionsMap Options; // Global object
 
 
-// Our case insensitive less() function as required by UCI protocol
+/// Our case insensitive less() function as required by UCI protocol
 static bool ci_less(char c1, char c2) { return tolower(c1) < tolower(c2); }
 
 bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const {
@@ -37,120 +37,91 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 }
 
 
-// An helper to convert an integer value to a std::string
-static string int_to_string(int v) {
-
-  std::ostringstream ss;
-  ss << v;
-  return ss.str();
-}
-
-
 /// OptionsMap c'tor initializes the UCI options to their hard coded default
 /// values and initializes the default value of "Threads" and "Minimum Split Depth"
-/// parameters according to the number of CPU cores.
+/// parameters according to the number of CPU cores detected.
 
 OptionsMap::OptionsMap() {
 
+  int cpus = std::min(cpu_count(), MAX_THREADS);
+  int msd = cpus < 8 ? 4 : 7;
   OptionsMap& o = *this;
 
-  o["Use Search Log"] = UCIOption(false);
-  o["Search Log Filename"] = UCIOption("SearchLog.txt");
-  o["Book File"] = UCIOption("book.bin");
-  o["Best Book Move"] = UCIOption(false);
-  o["Mobility (Middle Game)"] = UCIOption(100, 0, 200);
-  o["Mobility (Endgame)"] = UCIOption(100, 0, 200);
-  o["Passed Pawns (Middle Game)"] = UCIOption(100, 0, 200);
-  o["Passed Pawns (Endgame)"] = UCIOption(100, 0, 200);
-  o["Space"] = UCIOption(100, 0, 200);
-  o["Aggressiveness"] = UCIOption(100, 0, 200);
-  o["Cowardice"] = UCIOption(100, 0, 200);
-  o["Minimum Split Depth"] = UCIOption(4, 4, 7);
-  o["Maximum Number of Threads per Split Point"] = UCIOption(5, 4, 8);
-  o["Threads"] = UCIOption(1, 1, MAX_THREADS);
-  o["Use Sleeping Threads"] = UCIOption(true);
-  o["Hash"] = UCIOption(32, 4, 8192);
-  o["Clear Hash"] = UCIOption(false, "button");
-  o["Ponder"] = UCIOption(true);
-  o["OwnBook"] = UCIOption(true);
-  o["MultiPV"] = UCIOption(1, 1, 500);
-  o["Skill Level"] = UCIOption(20, 0, 20);
-  o["Emergency Move Horizon"] = UCIOption(40, 0, 50);
-  o["Emergency Base Time"] = UCIOption(200, 0, 30000);
-  o["Emergency Move Time"] = UCIOption(70, 0, 5000);
-  o["Minimum Thinking Time"] = UCIOption(20, 0, 5000);
-  o["UCI_Chess960"] = UCIOption(false);
-  o["UCI_AnalyseMode"] = UCIOption(false);
-
-  // Set some SMP parameters accordingly to the detected CPU count
-  UCIOption& thr = o["Threads"];
-  UCIOption& msd = o["Minimum Split Depth"];
-
-  thr.defaultValue = thr.currentValue = int_to_string(cpu_count());
-
-  if (cpu_count() >= 8)
-      msd.defaultValue = msd.currentValue = int_to_string(7);
+  o["Use Search Log"]              = UCIOption(false);
+  o["Search Log Filename"]         = UCIOption("SearchLog.txt");
+  o["Book File"]                   = UCIOption("book.bin");
+  o["Best Book Move"]              = UCIOption(false);
+  o["Mobility (Middle Game)"]      = UCIOption(100, 0, 200);
+  o["Mobility (Endgame)"]          = UCIOption(100, 0, 200);
+  o["Passed Pawns (Middle Game)"]  = UCIOption(100, 0, 200);
+  o["Passed Pawns (Endgame)"]      = UCIOption(100, 0, 200);
+  o["Space"]                       = UCIOption(100, 0, 200);
+  o["Aggressiveness"]              = UCIOption(100, 0, 200);
+  o["Cowardice"]                   = UCIOption(100, 0, 200);
+  o["Min Split Depth"]             = UCIOption(msd, 4, 7);
+  o["Max Threads per Split Point"] = UCIOption(5, 4, 8);
+  o["Threads"]                     = UCIOption(cpus, 1, MAX_THREADS);
+  o["Use Sleeping Threads"]        = UCIOption(true);
+  o["Hash"]                        = UCIOption(32, 4, 8192);
+  o["Clear Hash"]                  = UCIOption(false, "button");
+  o["Ponder"]                      = UCIOption(true);
+  o["OwnBook"]                     = UCIOption(true);
+  o["MultiPV"]                     = UCIOption(1, 1, 500);
+  o["Skill Level"]                 = UCIOption(20, 0, 20);
+  o["Emergency Move Horizon"]      = UCIOption(40, 0, 50);
+  o["Emergency Base Time"]         = UCIOption(200, 0, 30000);
+  o["Emergency Move Time"]         = UCIOption(70, 0, 5000);
+  o["Minimum Thinking Time"]       = UCIOption(20, 0, 5000);
+  o["UCI_Chess960"]                = UCIOption(false);
+  o["UCI_AnalyseMode"]             = UCIOption(false);
 }
 
 
-/// OptionsMap::print_all() returns a string with all the UCI options in chronological
-/// insertion order (the idx field) and in the format defined by the UCI protocol.
+/// operator<<() is used to output all the UCI options in chronological insertion
+/// order (the idx field) and in the format defined by the UCI protocol.
+std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
-string OptionsMap::print_all() const {
-
-  std::stringstream s;
-
-  for (size_t i = 0; i <= size(); i++)
-      for (OptionsMap::const_iterator it = begin(); it != end(); ++it)
+  for (size_t i = 0; i <= om.size(); i++)
+      for (OptionsMap::const_iterator it = om.begin(); it != om.end(); ++it)
           if (it->second.idx == i)
           {
               const UCIOption& o = it->second;
-              s << "\noption name " << it->first << " type " << o.type;
+              os << "\noption name " << it->first << " type " << o.type;
 
               if (o.type != "button")
-                  s << " default " << o.defaultValue;
+                  os << " default " << o.defaultValue;
 
               if (o.type == "spin")
-                  s << " min " << o.minValue << " max " << o.maxValue;
+                  os << " min " << o.min << " max " << o.max;
 
               break;
           }
-  return s.str();
+  return os;
 }
 
 
-/// Option class c'tors
+/// UCIOption class c'tors
 
-UCIOption::UCIOption(const char* def) : type("string"), minValue(0), maxValue(0), idx(Options.size())
-{ defaultValue = currentValue = def; }
+UCIOption::UCIOption(const char* v) : type("string"), min(0), max(0), idx(Options.size())
+{ defaultValue = currentValue = v; }
 
-UCIOption::UCIOption(bool def, string t) : type(t), minValue(0), maxValue(0), idx(Options.size())
-{ defaultValue = currentValue = (def ? "true" : "false"); }
+UCIOption::UCIOption(bool v, string t) : type(t), min(0), max(0), idx(Options.size())
+{ defaultValue = currentValue = (v ? "true" : "false"); }
 
-UCIOption::UCIOption(int def, int minv, int maxv) : type("spin"), minValue(minv), maxValue(maxv), idx(Options.size())
-{ defaultValue = currentValue = int_to_string(def); }
+UCIOption::UCIOption(int v, int minv, int maxv) : type("spin"), min(minv), max(maxv), idx(Options.size())
+{ std::ostringstream ss; ss << v; defaultValue = currentValue = ss.str(); }
 
 
-/// set_value() updates currentValue of the Option object. Normally it's up to
-/// the GUI to check for option's limits, but we could receive the new value
-/// directly from the user by teminal window. So let's check the bounds anyway.
+/// UCIOption::operator=() updates currentValue. Normally it's up to the GUI to
+/// check for option's limits, but we could receive the new value directly from
+/// the user by teminal window, so let's check the bounds anyway.
 
-void UCIOption::set_value(const string& v) {
+void UCIOption::operator=(const string& v) {
 
   assert(!type.empty());
 
-  if (v.empty())
-      return;
-
-  if ((type == "check" || type == "button") != (v == "true" || v == "false"))
-      return;
-
-  if (type == "spin")
-  {
-      int val = atoi(v.c_str());
-      if (val < minValue || val > maxValue)
-          return;
-  }
-
-  currentValue = v;
+  if (   !v.empty()
+      && (type == "check" || type == "button") == (v == "true" || v == "false")
+      && (type != "spin" || (atoi(v.c_str()) >= min && atoi(v.c_str()) <= max)))
+      currentValue = v;
 }

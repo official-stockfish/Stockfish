@@ -71,9 +71,9 @@ void benchmark(int argc, char* argv[]) {
   string fenFile = argc > 5 ? argv[5] : "default";
   string valType = argc > 6 ? argv[6] : "depth";
 
-  Options["Hash"].set_value(ttSize);
-  Options["Threads"].set_value(threads);
-  Options["OwnBook"].set_value("false");
+  Options["Hash"] = ttSize;
+  Options["Threads"] = threads;
+  Options["OwnBook"] = false;
 
   // Search should be limited by nodes, time or depth ?
   if (valType == "nodes")
