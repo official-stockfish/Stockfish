@@ -640,11 +640,16 @@ namespace {
          || ss->ply > PLY_MAX) && !RootNode)
         return VALUE_DRAW;
 
-    // Step 3. Mate distance pruning
+    // Step 3. Mate distance pruning. Even if we mate at the next move our score
+    // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
+    // a shorter mate was found upward in the tree then there is no need to search
+    // further, we will never beat current alpha. Same logic but with reversed signs
+    // applies also in the opposite condition of being mated instead of giving mate,
+    // in this case return a fail-high score.
     if (!RootNode)
     {
-        alpha = std::max(value_mated_in(ss->ply), alpha);
-        beta = std::min(value_mate_in(ss->ply+1), beta);
+        alpha = std::max(mated_in(ss->ply), alpha);
+        beta = std::min(mate_in(ss->ply+1), beta);
         if (alpha >= beta)
             return alpha;
     }
@@ -1122,7 +1127,7 @@ split_point_start: // At split points actual search starts from here
     // harmless because return value is discarded anyhow in the parent nodes.
     // If we are in a singular extension search then return a fail low score.
     if (!moveCount)
-        return excludedMove ? oldAlpha : inCheck ? value_mated_in(ss->ply) : VALUE_DRAW;
+        return excludedMove ? oldAlpha : inCheck ? mated_in(ss->ply) : VALUE_DRAW;
 
     // If we have pruned all the moves without searching return a fail-low score
     if (bestValue == -VALUE_INFINITE)
@@ -1365,7 +1370,7 @@ split_point_start: // At split points actual search starts from here
     // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
     if (inCheck && bestValue == -VALUE_INFINITE)
-        return value_mated_in(ss->ply);
+        return mated_in(ss->ply);
 
     // Update transposition table
     move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;

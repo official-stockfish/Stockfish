@@ -391,11 +391,11 @@ extern const Value PieceValueMidgame[17];
 extern const Value PieceValueEndgame[17];
 extern int SquareDistance[64][64];
 
-inline Value value_mate_in(int ply) {
+inline Value mate_in(int ply) {
   return VALUE_MATE - ply;
 }
 
-inline Value value_mated_in(int ply) {
+inline Value mated_in(int ply) {
   return -VALUE_MATE + ply;
 }
 
