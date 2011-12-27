@@ -278,7 +278,7 @@ inline Piece Position::piece_on(Square s) const {
 }
 
 inline bool Position::square_is_empty(Square s) const {
-  return board[s] == PIECE_NONE;
+  return board[s] == NO_PIECE;
 }
 
 inline Color Position::side_to_move() const {

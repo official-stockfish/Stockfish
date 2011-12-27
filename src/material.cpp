@@ -254,7 +254,7 @@ int MaterialInfoTable::imbalance(const int pieceCount[][8]) {
               + RedundantQueenPenalty * pieceCount[Us][QUEEN];
 
   // Second-degree polynomial material imbalance by Tord Romstad
-  for (pt1 = PIECE_TYPE_NONE; pt1 <= QUEEN; pt1++)
+  for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
   {
       pc = pieceCount[Us][pt1];
       if (!pc)
@@ -262,7 +262,7 @@ int MaterialInfoTable::imbalance(const int pieceCount[][8]) {
 
       v = LinearCoefficients[pt1];
 
-      for (pt2 = PIECE_TYPE_NONE; pt2 <= pt1; pt2++)
+      for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
           v +=  QuadraticCoefficientsSameColor[pt1][pt2] * pieceCount[Us][pt2]
               + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
 

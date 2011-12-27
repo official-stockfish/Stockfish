@@ -39,9 +39,9 @@ namespace {
     void from_index(int index);
     Result classify_white(const Result db[]);
     Result classify_black(const Result db[]);
-    Bitboard wk_attacks()   const { return StepAttacksBB[WK][whiteKingSquare]; }
-    Bitboard bk_attacks()   const { return StepAttacksBB[BK][blackKingSquare]; }
-    Bitboard pawn_attacks() const { return StepAttacksBB[WP][pawnSquare]; }
+    Bitboard wk_attacks()   const { return StepAttacksBB[W_KING][whiteKingSquare]; }
+    Bitboard bk_attacks()   const { return StepAttacksBB[B_KING][blackKingSquare]; }
+    Bitboard pawn_attacks() const { return StepAttacksBB[W_PAWN][pawnSquare]; }
 
     Square whiteKingSquare, blackKingSquare, pawnSquare;
     Color sideToMove;

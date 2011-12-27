@@ -70,7 +70,7 @@ namespace {
   const Score TempoValue = make_score(48, 22);
 
   // To convert a Piece to and from a FEN char
-  const string PieceToChar(".PNBRQK  pnbrqk  ");
+  const string PieceToChar(" PNBRQK  pnbrqk  .");
 }
 
 
@@ -338,8 +338,8 @@ void Position::print(Move move) const {
           Piece piece = piece_on(sq);
           char c = (color_of(piece) == BLACK ? '=' : ' ');
 
-          if (piece == PIECE_NONE && color_of(sq) == DARK)
-              piece = PIECE_NONE_DARK_SQ;
+          if (piece == NO_PIECE && color_of(sq) == DARK)
+              piece++; // Index the dot
 
           cout << c << PieceToChar[piece] << c << '|';
       }
@@ -401,12 +401,12 @@ Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
 
   assert(square_is_ok(s));
 
-  switch (p)
+  switch (type_of(p))
   {
-  case WB: case BB: return bishop_attacks_bb(s, occ);
-  case WR: case BR: return rook_attacks_bb(s, occ);
-  case WQ: case BQ: return bishop_attacks_bb(s, occ) | rook_attacks_bb(s, occ);
-  default: return StepAttacksBB[p][s];
+  case BISHOP: return bishop_attacks_bb(s, occ);
+  case ROOK  : return rook_attacks_bb(s, occ);
+  case QUEEN : return bishop_attacks_bb(s, occ) | rook_attacks_bb(s, occ);
+  default    : return StepAttacksBB[p][s];
   }
 }
 
@@ -470,7 +470,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       assert(to == ep_square());
       assert(piece_on(from) == make_piece(us, PAWN));
       assert(piece_on(capsq) == make_piece(them, PAWN));
-      assert(piece_on(to) == PIECE_NONE);
+      assert(piece_on(to) == NO_PIECE);
 
       clear_bit(&b, from);
       clear_bit(&b, capsq);
@@ -525,12 +525,12 @@ bool Position::is_pseudo_legal(const Move m) const {
       return move_is_legal(m);
 
   // Is not a promotion, so promotion piece must be empty
-  if (promotion_piece_type(m) - 2 != PIECE_TYPE_NONE)
+  if (promotion_piece_type(m) - 2 != NO_PIECE_TYPE)
       return false;
 
   // If the from square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
-  if (pc == PIECE_NONE || color_of(pc) != us)
+  if (pc == NO_PIECE || color_of(pc) != us)
       return false;
 
   // The destination square cannot be occupied by a friendly piece
@@ -791,10 +791,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
               assert(pt == PAWN);
               assert(to == st->epSquare);
               assert(relative_rank(us, to) == RANK_6);
-              assert(piece_on(to) == PIECE_NONE);
+              assert(piece_on(to) == NO_PIECE);
               assert(piece_on(capsq) == make_piece(them, PAWN));
 
-              board[capsq] = PIECE_NONE;
+              board[capsq] = NO_PIECE;
           }
 
           st->pawnKey ^= zobrist[them][PAWN][capsq];
@@ -859,7 +859,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   do_move_bb(&occupied, move_bb);
 
   board[to] = board[from];
-  board[from] = PIECE_NONE;
+  board[from] = NO_PIECE;
 
   // Update piece lists, index[from] is not updated and becomes stale. This
   // works as long as index[] is accessed just by known occupied squares.
@@ -1024,7 +1024,7 @@ void Position::undo_move(Move m) {
   do_move_bb(&occupied, move_bb);
 
   board[from] = board[to];
-  board[to] = PIECE_NONE;
+  board[to] = NO_PIECE;
 
   // Update piece lists, index[to] is not updated and becomes stale. This
   // works as long as index[] is accessed just by known occupied squares.
@@ -1042,7 +1042,7 @@ void Position::undo_move(Move m) {
           assert(pt == PAWN);
           assert(to == st->previous->epSquare);
           assert(relative_rank(us, to) == RANK_6);
-          assert(piece_on(capsq) == PIECE_NONE);
+          assert(piece_on(capsq) == NO_PIECE);
       }
 
       // Restore the captured piece
@@ -1120,7 +1120,7 @@ void Position::do_castle_move(Move m) {
   // Update board
   Piece king = make_piece(us, KING);
   Piece rook = make_piece(us, ROOK);
-  board[kfrom] = board[rfrom] = PIECE_NONE;
+  board[kfrom] = board[rfrom] = NO_PIECE;
   board[kto] = king;
   board[rto] = rook;
 
@@ -1134,7 +1134,7 @@ void Position::do_castle_move(Move m) {
   if (Do)
   {
       // Reset capture field
-      st->capturedType = PIECE_TYPE_NONE;
+      st->capturedType = NO_PIECE_TYPE;
 
       // Update incremental scores
       st->value += pst_delta(king, kfrom, kto);
@@ -1266,7 +1266,7 @@ int Position::see(Move m) const {
   {
       Square capQq = to - pawn_push(side_to_move());
 
-      assert(capturedType == PIECE_TYPE_NONE);
+      assert(capturedType == NO_PIECE_TYPE);
       assert(type_of(piece_on(capQq)) == PAWN);
 
       // Remove the captured pawn
@@ -1359,7 +1359,7 @@ void Position::clear() {
 
   for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
   {
-      board[sq] = PIECE_NONE;
+      board[sq] = NO_PIECE;
       castleRightsMask[sq] = ALL_CASTLES;
   }
   sideToMove = WHITE;
@@ -1564,7 +1564,7 @@ void Position::init() {
   zobSideToMove = rk.rand<Key>();
   zobExclusion  = rk.rand<Key>();
 
-  for (Piece p = WP; p <= WK; p++)
+  for (Piece p = W_PAWN; p <= W_KING; p++)
   {
       Score ps = make_score(PieceValueMidgame[p], PieceValueEndgame[p]);
 
@@ -1658,11 +1658,11 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   // Are the king squares in the position correct?
   if (failedStep) (*failedStep)++;
-  if (piece_on(king_square(WHITE)) != WK)
+  if (piece_on(king_square(WHITE)) != W_KING)
       return false;
 
   if (failedStep) (*failedStep)++;
-  if (piece_on(king_square(BLACK)) != BK)
+  if (piece_on(king_square(BLACK)) != B_KING)
       return false;
 
   // Do both sides have exactly one king?
@@ -1783,7 +1783,7 @@ bool Position::pos_is_ok(int* failedStep) const {
           if (!can_castle(f))
               continue;
 
-          Piece rook = (f & (WHITE_OO | WHITE_OOO) ? WR : BR);
+          Piece rook = (f & (WHITE_OO | WHITE_OOO) ? W_ROOK : B_ROOK);
 
           if (   castleRightsMask[castleRookSquare[f]] != (ALL_CASTLES ^ f)
               || piece_on(castleRookSquare[f]) != rook)

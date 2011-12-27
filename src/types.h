@@ -225,17 +225,18 @@ enum Value {
 };
 
 enum PieceType {
-  PIECE_TYPE_NONE = 0,
+  NO_PIECE_TYPE = 0,
   PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6
 };
 
 enum Piece {
-  PIECE_NONE_DARK_SQ = 0, WP = 1, WN = 2, WB = 3, WR = 4, WQ = 5, WK = 6,
-  BP = 9, BN = 10, BB = 11, BR = 12, BQ = 13, BK = 14, PIECE_NONE = 16
+  NO_PIECE = 16, // color_of(NO_PIECE) == NO_COLOR
+  W_PAWN = 1, W_KNIGHT =  2, W_BISHOP =  3, W_ROOK =  4, W_QUEEN =  5, W_KING =  6,
+  B_PAWN = 9, B_KNIGHT = 10, B_BISHOP = 11, B_ROOK = 12, B_QUEEN = 13, B_KING = 14
 };
 
 enum Color {
-  WHITE, BLACK, COLOR_NONE
+  WHITE, BLACK, NO_COLOR
 };
 
 enum Depth {

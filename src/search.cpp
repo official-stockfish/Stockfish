@@ -706,7 +706,7 @@ namespace {
     if (   (move = (ss-1)->currentMove) != MOVE_NULL
         && (ss-1)->eval != VALUE_NONE
         && ss->eval != VALUE_NONE
-        && pos.captured_piece_type() == PIECE_TYPE_NONE
+        && pos.captured_piece_type() == NO_PIECE_TYPE
         && !is_special(move))
     {
         Square to = move_to(move);
