@@ -588,9 +588,9 @@ namespace {
     const bool SpNode   = (NT == SplitPointPV || NT == SplitPointNonPV || NT == SplitPointRoot);
     const bool RootNode = (NT == Root || NT == SplitPointRoot);
 
-    assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
-    assert(beta > alpha && beta <= VALUE_INFINITE);
-    assert(PvNode || alpha == beta - 1);
+    assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
+    assert(PvNode == (alpha != beta - 1));
+    assert(depth > DEPTH_ZERO);
     assert(pos.thread() >= 0 && pos.thread() < Threads.size());
 
     Move movesSearched[MAX_MOVES];
@@ -1190,10 +1190,9 @@ split_point_start: // At split points actual search starts from here
     const bool PvNode = (NT == PV);
 
     assert(NT == PV || NT == NonPV);
-    assert(alpha >= -VALUE_INFINITE && alpha <= VALUE_INFINITE);
-    assert(beta >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
-    assert(PvNode || alpha == beta - 1);
-    assert(depth <= 0);
+    assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
+    assert(PvNode == (alpha != beta - 1));
+    assert(depth <= DEPTH_ZERO);
     assert(pos.thread() >= 0 && pos.thread() < Threads.size());
 
     StateInfo st;
