@@ -112,11 +112,11 @@ bool Thread::is_available_to(int master) const {
 
 void ThreadsManager::read_uci_options() {
 
-  maxThreadsPerSplitPoint = Options["Max Threads per Split Point"].value<int>();
-  minimumSplitDepth       = Options["Min Split Depth"].value<int>() * ONE_PLY;
-  useSleepingThreads      = Options["Use Sleeping Threads"].value<bool>();
+  maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
+  minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
+  useSleepingThreads      = Options["Use Sleeping Threads"];
 
-  set_size(Options["Threads"].value<int>());
+  set_size(Options["Threads"]);
 }
 
 

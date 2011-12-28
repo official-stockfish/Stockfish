@@ -296,12 +296,12 @@ void Search::think() {
           || count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
-  if (Options["OwnBook"].value<bool>())
+  if (Options["OwnBook"])
   {
-      if (Options["Book File"].value<string>() != book.name())
-          book.open(Options["Book File"].value<string>());
+      if (book.name() != (string)Options["Book File"])
+          book.open(Options["Book File"]);
 
-      Move bookMove = book.probe(pos, Options["Best Book Move"].value<bool>());
+      Move bookMove = book.probe(pos, Options["Best Book Move"]);
 
       if (   bookMove != MOVE_NONE
           && count(RootMoves.begin(), RootMoves.end(), bookMove))
@@ -315,24 +315,24 @@ void Search::think() {
   read_evaluation_uci_options(pos.side_to_move());
   Threads.read_uci_options();
 
-  TT.set_size(Options["Hash"].value<int>());
-  if (Options["Clear Hash"].value<bool>())
+  TT.set_size(Options["Hash"]);
+  if (Options["Clear Hash"])
   {
       Options["Clear Hash"] = false;
       TT.clear();
   }
 
-  UCIMultiPV = Options["MultiPV"].value<size_t>();
-  SkillLevel = Options["Skill Level"].value<int>();
+  UCIMultiPV = Options["MultiPV"];
+  SkillLevel = Options["Skill Level"];
 
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
   SkillLevelEnabled = (SkillLevel < 20);
   MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, (size_t)4) : UCIMultiPV);
 
-  if (Options["Use Search Log"].value<bool>())
+  if (Options["Use Search Log"])
   {
-      Log log(Options["Search Log Filename"].value<string>());
+      Log log(Options["Search Log Filename"]);
       log << "\nSearching: "  << pos.to_fen()
           << "\ninfinite: "   << Limits.infinite
           << " ponder: "      << Limits.ponder
@@ -362,11 +362,11 @@ void Search::think() {
   Threads.set_timer(0);
   Threads.set_size(1);
 
-  if (Options["Use Search Log"].value<bool>())
+  if (Options["Use Search Log"])
   {
       int e = elapsed_time();
 
-      Log log(Options["Search Log Filename"].value<string>());
+      Log log(Options["Search Log Filename"]);
       log << "Nodes: "          << pos.nodes_searched()
           << "\nNodes/second: " << (e > 0 ? pos.nodes_searched() * 1000 / e : 0)
           << "\nBest move: "    << move_to_san(pos, RootMoves[0].pv[0]);
@@ -512,7 +512,7 @@ namespace {
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             skillBest = do_skill_level();
 
-        if (Options["Use Search Log"].value<bool>())
+        if (Options["Use Search Log"])
              pv_info_to_log(pos, depth, bestValue, elapsed_time(), &RootMoves[0].pv[0]);
 
         // Filter out startup noise when monitoring best move stability
@@ -1758,7 +1758,7 @@ split_point_start: // At split points actual search starts from here
     while (m != pv)
         pos.undo_move(*--m);
 
-    Log l(Options["Search Log Filename"].value<string>());
+    Log l(Options["Search Log Filename"]);
     l << s.str() << endl;
   }
 

@@ -35,9 +35,18 @@ public:
   UCIOption(bool v, std::string type = "check");
   UCIOption(int v, int min, int max);
 
-  template<typename T> T value() const;
   void operator=(const std::string& v);
   void operator=(bool v) { *this = std::string(v ? "true" : "false"); }
+
+  operator int() const {
+    assert(type == "check" || type == "button" || type == "spin");
+    return (type == "spin" ? atoi(currentValue.c_str()) : currentValue == "true");
+  }
+
+  operator std::string() const {
+    assert(type == "string");
+    return currentValue;
+  }
 
 private:
   friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
@@ -46,29 +55,6 @@ private:
   int min, max;
   size_t idx;
 };
-
-
-/// UCIOption::value() definition and specializations
-template<typename T>
-T UCIOption::value() const {
-
-  assert(type == "spin");
-  return T(atoi(currentValue.c_str()));
-}
-
-template<>
-inline std::string UCIOption::value<std::string>() const {
-
-  assert(type == "string");
-  return currentValue;
-}
-
-template<>
-inline bool UCIOption::value<bool>() const {
-
-  assert(type == "check" || type == "button");
-  return currentValue == "true";
-}
 
 
 /// Custom comparator because UCI options should be case insensitive

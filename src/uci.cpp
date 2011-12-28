@@ -157,7 +157,7 @@ namespace {
     else
         return;
 
-    pos.from_fen(fen, Options["UCI_Chess960"].value<bool>());
+    pos.from_fen(fen, Options["UCI_Chess960"]);
 
     // Parse move list (if any)
     while (is >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
@@ -188,10 +188,14 @@ namespace {
     while (is >> token)
         value += string(" ", !value.empty()) + token;
 
-    if (Options.count(name))
-        Options[name] = (value.empty() ? "true" : value); // UCI buttons don't have "value"
-    else
+    if (!Options.count(name))
         cout << "No such option: " << name << endl;
+
+    else if (value.empty()) // UCI buttons don't have a value
+        Options[name] = true;
+
+    else
+        Options[name] = value;
   }
 
 

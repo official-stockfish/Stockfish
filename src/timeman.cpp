@@ -104,10 +104,10 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly)
   int hypMTG, hypMyTime, t1, t2;
 
   // Read uci parameters
-  int emergencyMoveHorizon = Options["Emergency Move Horizon"].value<int>();
-  int emergencyBaseTime    = Options["Emergency Base Time"].value<int>();
-  int emergencyMoveTime    = Options["Emergency Move Time"].value<int>();
-  int minThinkingTime      = Options["Minimum Thinking Time"].value<int>();
+  int emergencyMoveHorizon = Options["Emergency Move Horizon"];
+  int emergencyBaseTime    = Options["Emergency Base Time"];
+  int emergencyMoveTime    = Options["Emergency Move Time"];
+  int minThinkingTime      = Options["Minimum Thinking Time"];
 
   // Initialize to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
@@ -132,7 +132,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly)
       maximumSearchTime = std::min(maximumSearchTime, t2);
   }
 
-  if (Options["Ponder"].value<bool>())
+  if (Options["Ponder"])
       optimumSearchTime += optimumSearchTime / 4;
 
   // Make sure that maxSearchTime is not over absoluteMaxSearchTime
