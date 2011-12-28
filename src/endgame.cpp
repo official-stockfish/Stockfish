@@ -17,8 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 
 #include "bitcount.h"
 #include "endgame.h"
@@ -90,6 +90,9 @@ namespace {
     return Position(fen, false, 0).material_key();
   }
 
+  template<typename M>
+  void delete_endgame(const typename M::value_type& p) { delete p.second; }
+
 } // namespace
 
 
@@ -119,11 +122,8 @@ Endgames::Endgames() {
 
 Endgames::~Endgames() {
 
-  for (M1::const_iterator it = m1.begin(); it != m1.end(); ++it)
-      delete it->second;
-
-  for (M2::const_iterator it = m2.begin(); it != m2.end(); ++it)
-      delete it->second;
+  for_each(m1.begin(), m1.end(), delete_endgame<M1>);
+  for_each(m2.begin(), m2.end(), delete_endgame<M2>);
 }
 
 template<EndgameType E>

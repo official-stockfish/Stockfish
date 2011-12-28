@@ -93,9 +93,9 @@ private:
 
 /// Endgames class stores in two std::map the pointers to endgame evaluation
 /// and scaling base objects. Then we use polymorphism to invoke the actual
-/// endgame function calling its apply() method that is virtual.
+/// endgame function calling its operator() method that is virtual.
 
-struct Endgames {
+class Endgames {
 
   template<typename T>
   struct Map { typedef std::map<Key, EndgameBase<T>*> type; };
@@ -103,6 +103,7 @@ struct Endgames {
   typedef Map<Value>::type M1;
   typedef Map<ScaleFactor>::type M2;
 
+public:
   Endgames();
   ~Endgames();
 
