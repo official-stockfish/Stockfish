@@ -283,10 +283,6 @@ enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8
 };
 
-enum SquareColor {
-  DARK, LIGHT
-};
-
 enum ScaleFactor {
   SCALE_FACTOR_DRAW   = 0,
   SCALE_FACTOR_NORMAL = 64,
@@ -450,10 +446,6 @@ inline Rank relative_rank(Color c, Rank r) {
 
 inline Rank relative_rank(Color c, Square s) {
   return relative_rank(c, rank_of(s));
-}
-
-inline SquareColor color_of(Square s) {
-  return SquareColor(int(rank_of(s) + s) & 1);
 }
 
 inline bool opposite_colors(Square s1, Square s2) {

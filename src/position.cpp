@@ -338,7 +338,7 @@ void Position::print(Move move) const {
           Piece piece = piece_on(sq);
           char c = (color_of(piece) == BLACK ? '=' : ' ');
 
-          if (piece == NO_PIECE && color_of(sq) == DARK)
+          if (piece == NO_PIECE && !opposite_colors(sq, SQ_A1))
               piece++; // Index the dot
 
           cout << c << PieceToChar[piece] << c << '|';

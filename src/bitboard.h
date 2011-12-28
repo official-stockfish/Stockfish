@@ -23,7 +23,6 @@
 
 #include "types.h"
 
-extern Bitboard SquaresByColorBB[2];
 extern Bitboard FileBB[8];
 extern Bitboard NeighboringFilesBB[8];
 extern Bitboard ThisAndNeighboringFilesBB[8];
@@ -223,6 +222,15 @@ inline Bitboard attack_span_mask(Color c, Square s) {
 inline bool squares_aligned(Square s1, Square s2, Square s3) {
   return  (BetweenBB[s1][s2] | BetweenBB[s1][s3] | BetweenBB[s2][s3])
         & (    SetMaskBB[s1] |     SetMaskBB[s2] |     SetMaskBB[s3]);
+}
+
+
+/// same_color_squares() returns a bitboard representing all squares with
+/// the same color of the given square.
+
+inline Bitboard same_color_squares(Square s) {
+  return bit_is_set(0xAA55AA55AA55AA55ULL, s) ?  0xAA55AA55AA55AA55ULL
+                                              : ~0xAA55AA55AA55AA55ULL;
 }
 
 

@@ -38,7 +38,6 @@ int BShifts[64];
 Bitboard SetMaskBB[65];
 Bitboard ClearMaskBB[65];
 
-Bitboard SquaresByColorBB[2];
 Bitboard FileBB[8];
 Bitboard RankBB[8];
 Bitboard NeighboringFilesBB[8];
@@ -156,9 +155,6 @@ void bitboards_init() {
 
   for (Bitboard b = 0; b < 256; b++)
       BitCount8Bit[b] = (uint8_t)count_1s<CNT32_MAX15>(b);
-
-  SquaresByColorBB[DARK]  =  0xAA55AA55AA55AA55ULL;
-  SquaresByColorBB[LIGHT] = ~SquaresByColorBB[DARK];
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
