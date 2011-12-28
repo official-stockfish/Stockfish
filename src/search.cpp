@@ -410,10 +410,10 @@ namespace {
     bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
-    // Handle the special case of a mate/stalemate position
+    // Handle the special case of a mated/stalemate position
     if (RootMoves.empty())
     {
-        cout << "info depth 0"
+        cout << "info depth 0 score "
              << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
 
         RootMoves.push_back(MOVE_NONE);
@@ -1624,10 +1624,10 @@ split_point_start: // At split points actual search starts from here
 
     std::stringstream s;
 
-    if (abs(v) < VALUE_MATE - PLY_MAX * ONE_PLY)
-        s << " score cp " << int(v) * 100 / int(PawnValueMidgame); // Scale to centipawns
+    if (abs(v) < VALUE_MATE_IN_PLY_MAX)
+        s << "cp " << v * 100 / int(PawnValueMidgame);
     else
-        s << " score mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+        s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
     s << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
@@ -1664,7 +1664,7 @@ split_point_start: // At split points actual search starts from here
 
         cout << "info depth " << d
              << " seldepth " << selDepth
-             << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
+             << " score " << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
              << " nodes " << pos.nodes_searched()
              << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
              << " time " << t
