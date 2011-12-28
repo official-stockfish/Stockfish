@@ -1370,7 +1370,7 @@ split_point_start: // At split points actual search starts from here
     // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
     if (inCheck && bestValue == -VALUE_INFINITE)
-        return mated_in(ss->ply);
+        return mated_in(ss->ply); // Plies to mate from the root
 
     // Update transposition table
     move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
@@ -1495,8 +1495,8 @@ split_point_start: // At split points actual search starts from here
 
 
   // value_to_tt() adjusts a mate score from "plies to mate from the root" to
-  // "plies to mate from the current ply". Non-mate scores are unchanged. The
-  // function is called before storing a value to the transposition table.
+  // "plies to mate from the current position". Non-mate scores are unchanged.
+  // The function is called before storing a value to the transposition table.
 
   Value value_to_tt(Value v, int ply) {
 
@@ -1510,8 +1510,9 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // value_from_tt() is the inverse of value_to_tt(): It adjusts a mate score from
-  // the transposition table to a mate score corrected for the current ply.
+  // value_from_tt() is the inverse of value_to_tt(): It adjusts a mate score
+  // from the transposition table (where refers to the plies to mate/be mated
+  // from current position) to "plies to mate/be mated from the root".
 
   Value value_from_tt(Value v, int ply) {
 
