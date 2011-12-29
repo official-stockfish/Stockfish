@@ -61,14 +61,14 @@ OptionsMap::OptionsMap() {
   o["Min Split Depth"]             = UCIOption(msd, 4, 7);
   o["Max Threads per Split Point"] = UCIOption(5, 4, 8);
   o["Threads"]                     = UCIOption(cpus, 1, MAX_THREADS);
-  o["Use Sleeping Threads"]        = UCIOption(true);
+  o["Use Sleeping Threads"]        = UCIOption(false);
   o["Hash"]                        = UCIOption(32, 4, 8192);
   o["Clear Hash"]                  = UCIOption(false, "button");
   o["Ponder"]                      = UCIOption(true);
   o["OwnBook"]                     = UCIOption(true);
   o["MultiPV"]                     = UCIOption(1, 1, 500);
   o["Skill Level"]                 = UCIOption(20, 0, 20);
-  o["Emergency Move Horizon"]      = UCIOption(30, 0, 50);
+  o["Emergency Move Horizon"]      = UCIOption(40, 0, 50);
   o["Emergency Base Time"]         = UCIOption(200, 0, 30000);
   o["Emergency Move Time"]         = UCIOption(70, 0, 5000);
   o["Minimum Thinking Time"]       = UCIOption(20, 0, 5000);
