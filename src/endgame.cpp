@@ -60,33 +60,23 @@ namespace {
   // the two kings in basic endgames.
   const int DistanceBonus[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
 
-  // Build corresponding key code for the opposite color: "KBPKN" -> "KNKBP"
-  const string swap_colors(const string& keyCode) {
+  // Get the material key of a Position out of the given endgame key code
+  // like "KBPKN". The trick here is to first forge an ad-hoc fen string
+  // and then let a Position object to do the work for us. Note that the
+  // fen string could correspond to an illegal position.
+  Key key(const string& code, Color c) {
 
-    size_t idx = keyCode.find('K', 1);
-    return keyCode.substr(idx) + keyCode.substr(0, idx);
-  }
+    assert(code.length() > 0 && code.length() < 8);
+    assert(code[0] == 'K');
 
-  // Get the material key of a position out of the given endgame key code
-  // like "KBPKN". The trick here is to first build up a FEN string and then
-  // let a Position object to do the work for us. Note that the FEN string
-  // could correspond to an illegal position.
-  Key mat_key(const string& keyCode) {
+    string sides[] = { code.substr(code.find('K', 1)),      // Weaker
+                       code.substr(0, code.find('K', 1)) }; // Stronger
 
-    assert(keyCode.length() > 0 && keyCode.length() < 8);
-    assert(keyCode[0] == 'K');
+    transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-    string fen;
-    size_t i = 0;
+    string fen =  sides[0] + char('0' + int(8 - code.length()))
+                + sides[1] + "/8/8/8/8/8/8/8 w - - 0 10";
 
-    // First add white and then black pieces
-    do fen += keyCode[i];                while (keyCode[++i] != 'K');
-    do fen += char(tolower(keyCode[i])); while (++i < keyCode.length());
-
-    // Add file padding and remaining empty ranks
-    fen += string(1, '0' + int(8 - keyCode.length())) + "/8/8/8/8/8/8/8 w - - 0 10";
-
-    // Build a Position out of the fen string and get its material key
     return Position(fen, false, 0).material_key();
   }
 
@@ -96,10 +86,7 @@ namespace {
 } // namespace
 
 
-/// Endgames member definitions
-
-template<> const Endgames::M1& Endgames::map<Endgames::M1>() const { return m1; }
-template<> const Endgames::M2& Endgames::map<Endgames::M2>() const { return m2; }
+/// Endgames members definitions
 
 Endgames::Endgames() {
 
@@ -127,13 +114,12 @@ Endgames::~Endgames() {
 }
 
 template<EndgameType E>
-void Endgames::add(const string& keyCode) {
+void Endgames::add(const string& code) {
 
   typedef typename eg_family<E>::type T;
-  typedef typename Map<T>::type M;
 
-  const_cast<M&>(map<M>()).insert(std::make_pair(mat_key(keyCode), new Endgame<E>(WHITE)));
-  const_cast<M&>(map<M>()).insert(std::make_pair(mat_key(swap_colors(keyCode)), new Endgame<E>(BLACK)));
+  map((T*)0)[key(code, WHITE)] = new Endgame<E>(WHITE);
+  map((T*)0)[key(code, BLACK)] = new Endgame<E>(BLACK);
 }
 
 

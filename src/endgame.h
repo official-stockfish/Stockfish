@@ -20,8 +20,8 @@
 #if !defined(ENDGAME_H_INCLUDED)
 #define ENDGAME_H_INCLUDED
 
-#include <string>
 #include <map>
+#include <string>
 
 #include "position.h"
 #include "types.h"
@@ -97,30 +97,24 @@ private:
 
 class Endgames {
 
-  template<typename T>
-  struct Map { typedef std::map<Key, EndgameBase<T>*> type; };
+  typedef std::map<Key, EndgameBase<Value>*> M1;
+  typedef std::map<Key, EndgameBase<ScaleFactor>*> M2;
 
-  typedef Map<Value>::type M1;
-  typedef Map<ScaleFactor>::type M2;
+  M1 m1;
+  M2 m2;
+
+  M1& map(Value*) { return m1; }
+  M2& map(ScaleFactor*) { return m2; }
+
+  template<EndgameType E> void add(const std::string& code);
 
 public:
   Endgames();
   ~Endgames();
 
-  template<typename T>
-  EndgameBase<T>* get(Key key) const {
-
-    typedef typename Map<T>::type M;
-    typename M::const_iterator it = map<M>().find(key);
-    return it != map<M>().end() ? it->second : NULL;
+  template<typename T> EndgameBase<T>* get(Key key) {
+    return map((T*)0).count(key) ? map((T*)0)[key] : NULL;
   }
-
-private:
-  template<EndgameType E> void add(const std::string& keyCode);
-  template<typename M> const M& map() const;
-
-  M1 m1;
-  M2 m2;
 };
 
 #endif // !defined(ENDGAME_H_INCLUDED)
