@@ -197,7 +197,7 @@ void ThreadsManager::exit() {
 
   for (int i = 0; i <= MAX_THREADS; i++)
   {
-      threads[i].do_terminate = true;
+      threads[i].do_terminate = true; // Search must be already finished
       threads[i].wake_up();
 
       // Wait for thread termination
@@ -452,6 +452,27 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
   cond_signal(&main.sleepCond); // Wake up main thread and start searching
 
   if (!asyncMode)
+      cond_wait(&sleepCond, &main.sleepLock);
+
+  lock_release(&main.sleepLock);
+}
+
+
+// ThreadsManager::stop_thinking() is used by UI thread to raise a stop request
+// and to wait for the main thread finishing the search. Needed to wait exiting
+// and terminate the threads after a 'quit' command.
+
+void ThreadsManager::stop_thinking() {
+
+  Thread& main = threads[0];
+
+  Search::Signals.stop = true;
+
+  lock_grab(&main.sleepLock);
+
+  cond_signal(&main.sleepCond); // In case is waiting for stop or ponderhit
+
+  while (!main.do_sleep)
       cond_wait(&sleepCond, &main.sleepLock);
 
   lock_release(&main.sleepLock);

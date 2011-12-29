@@ -118,6 +118,7 @@ public:
   bool split_point_finished(SplitPoint* sp) const;
   void set_timer(int msec);
   void wait_for_stop_or_ponderhit();
+  void stop_thinking();
   void start_thinking(const Position& pos, const Search::LimitsType& limits,
                       const std::vector<Move>& searchMoves, bool asyncMode);
 
