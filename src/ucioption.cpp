@@ -81,9 +81,9 @@ OptionsMap::OptionsMap() {
 /// order (the idx field) and in the format defined by the UCI protocol.
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
-  for (size_t i = 0; i <= om.size(); i++)
+  for (size_t idx = 0; idx < om.size(); idx++)
       for (OptionsMap::const_iterator it = om.begin(); it != om.end(); ++it)
-          if (it->second.idx == i)
+          if (it->second.idx == idx)
           {
               const UCIOption& o = it->second;
               os << "\noption name " << it->first << " type " << o.type;
