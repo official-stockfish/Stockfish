@@ -56,15 +56,8 @@ Power PC, hardware POPCNT instruction and other platforms.
 
 In general is recommended to run 'make help' to see a list of make targets
 with corresponding descriptions. When not using Makefile to compile, for
-instance with Microsoft MSVC, you need to manualy set/unset in the compiler
-command line the following flags:
-
--DNDEBUG       --- Disable debug mode
--DBIGENDIAN    --- big-endian byte order
--DUSE_POPCNT   --- Use popcnt SSE 4.2 asm-instruction
--DIS_64BIT     --- 64bit operating system (auto detected)
--DUSE_PREFETCH --- Use prefetch x86 asm-instruction (auto detected)
--DUSE_BSFQ     --- Use bsfq x86_64 asm-instruction (auto detected)
+instance with Microsoft MSVC, you need to manually set/unset in the compiler
+command line some swicthes, see file types.h for a quick reference.
 
 
 5. Terms of use

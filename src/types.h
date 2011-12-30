@@ -20,15 +20,35 @@
 #if !defined(TYPES_H_INCLUDED)
 #define TYPES_H_INCLUDED
 
+/// For Linux and OSX configuration is done automatically using Makefile. To get
+/// started type 'make help'.
+///
+/// For Windows, part of the configuration is detected automatically, but some
+/// switches need to be set manually:
+///
+/// -DNDEBUG      | Disable debugging mode. Use always.
+///
+/// -DNO_PREFETCH | Disable use of prefetch asm-instruction. A must if you want
+///               | the executable to run on some very old machines.
+///
+/// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
+///               | only in 64-bit mode. For compiling requires hardware with
+///               | popcnt support.
+///
+/// -DOLD_LOCKS   | Under Windows are used the fast Slim Reader/Writer (SRW)
+///               | Locks and Condition Variables: these are not supported by
+///               | Windows XP and older, to compile for those platforms you
+///               | should enable OLD_LOCKS.
+
 #include <climits>
 #include <cstdlib>
 
 #if defined(_MSC_VER)
 
 // Disable some silly and noisy warning from MSVC compiler
-#pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
 #pragma warning(disable: 4127) // Conditional expression is constant
 #pragma warning(disable: 4146) // Unary minus operator applied to unsigned type
+#pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
 
 // MSVC does not support <inttypes.h>
 typedef   signed __int8    int8_t;
@@ -41,115 +61,50 @@ typedef   signed __int64  int64_t;
 typedef unsigned __int64 uint64_t;
 
 #else
-
-#include <inttypes.h>
-
+#  include <inttypes.h>
 #endif
 
-////
-//// Configuration
-////
-
-//// For Linux and OSX configuration is done automatically using Makefile.
-//// To get started type "make help".
-////
-//// For windows part of the configuration is detected automatically, but
-//// some switches need to be set manually:
-////
-//// -DNDEBUG       | Disable debugging mode. Use always.
-////
-//// -DNO_PREFETCH  | Disable use of prefetch asm-instruction. A must if you want the
-////                | executable to run on some very old machines.
-////
-//// -DUSE_POPCNT   | Add runtime support for use of popcnt asm-instruction.
-////                | Works only in 64-bit mode. For compiling requires hardware
-////                | with popcnt support. Around 4% speed-up.
-////
-//// -DOLD_LOCKS    | By default under Windows are used the fast Slim Reader/Writer (SRW)
-////                | Locks and Condition Variables: these are not supported by Windows XP
-////                | and older, to compile for those platforms you should enable OLD_LOCKS.
-
-// Automatic detection for 64-bit under Windows
 #if defined(_WIN64)
-#define IS_64BIT
+#  define IS_64BIT
+#  define USE_BSFQ
 #endif
 
-// Automatic detection for use of bsfq asm-instruction under Windows
-#if defined(_WIN64)
-#define USE_BSFQ
-#endif
-
-// Intel header for _mm_popcnt_u64() intrinsic
 #if defined(USE_POPCNT) && defined(_MSC_VER) && defined(__INTEL_COMPILER)
-#include <nmmintrin.h>
+#  include <nmmintrin.h> // Intel header for _mm_popcnt_u64() intrinsic
 #endif
 
-// Cache line alignment specification
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#define CACHE_LINE_ALIGNMENT __declspec(align(64))
+#  define CACHE_LINE_ALIGNMENT __declspec(align(64))
 #else
-#define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(64)))
+#  define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(64)))
 #endif
 
-// Define a __cpuid() function for gcc compilers, for Intel and MSVC
-// is already available as an intrinsic.
 #if defined(_MSC_VER)
-#include <intrin.h>
-#elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
-inline void __cpuid(int CPUInfo[4], int InfoType)
-{
-  int* eax = CPUInfo + 0;
-  int* ebx = CPUInfo + 1;
-  int* ecx = CPUInfo + 2;
-  int* edx = CPUInfo + 3;
-
-  *eax = InfoType;
-  *ecx = 0;
-  __asm__("cpuid" : "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
-                  : "0" (*eax), "2" (*ecx));
-}
-#else
-inline void __cpuid(int CPUInfo[4], int)
-{
-   CPUInfo[0] = CPUInfo[1] = CPUInfo[2] = CPUInfo[3] = 0;
-}
-#endif
-
-// Define FORCE_INLINE macro to force inlining overriding compiler choice
-#if defined(_MSC_VER)
-#define FORCE_INLINE  __forceinline
+#  define FORCE_INLINE  __forceinline
 #elif defined(__GNUC__)
-#define FORCE_INLINE  inline __attribute__((always_inline))
+#  define FORCE_INLINE  inline __attribute__((always_inline))
 #else
-#define FORCE_INLINE  inline
+#  define FORCE_INLINE  inline
 #endif
 
-
-/// HasPopCnt is a global constant initialized at compile time that is set to
-/// true if CPU on which application runs supports popcnt hardware instruction.
 #if defined(USE_POPCNT)
 const bool HasPopCnt = true;
 #else
 const bool HasPopCnt = false;
 #endif
 
-
-/// Is64Bit is a global constant initialized at compile time that is set to
-/// true if CPU on which application runs is a 64 bits.
 #if defined(IS_64BIT)
 const bool Is64Bit = true;
 #else
 const bool Is64Bit = false;
 #endif
 
-#include <string>
-
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES = 256;
-const int PLY_MAX = 100;
-const int PLY_MAX_PLUS_2 = PLY_MAX + 2;
+const int MAX_MOVES      = 256;
+const int MAX_PLY        = 100;
+const int MAX_PLY_PLUS_2 = MAX_PLY + 2;
 
 const Bitboard FileABB = 0x0101010101010101ULL;
 const Bitboard FileBBB = FileABB << 1;
@@ -168,6 +123,7 @@ const Bitboard Rank5BB = Rank1BB << (8 * 4);
 const Bitboard Rank6BB = Rank1BB << (8 * 5);
 const Bitboard Rank7BB = Rank1BB << (8 * 6);
 const Bitboard Rank8BB = Rank1BB << (8 * 7);
+
 
 /// A move needs 16 bits to be stored
 ///
@@ -194,6 +150,22 @@ inline bool operator<(const MoveStack& f, const MoveStack& s) {
   return f.score < s.score;
 }
 
+enum CastleRight {
+  CASTLES_NONE = 0,
+  WHITE_OO     = 1,
+  BLACK_OO     = 2,
+  WHITE_OOO    = 4,
+  BLACK_OOO    = 8,
+  ALL_CASTLES  = 15
+};
+
+enum ScaleFactor {
+  SCALE_FACTOR_DRAW   = 0,
+  SCALE_FACTOR_NORMAL = 64,
+  SCALE_FACTOR_MAX    = 128,
+  SCALE_FACTOR_NONE   = 255
+};
+
 enum ValueType {
   VALUE_TYPE_NONE  = 0,
   VALUE_TYPE_UPPER = 1,
@@ -209,8 +181,8 @@ enum Value {
   VALUE_INFINITE  = 30001,
   VALUE_NONE      = 30002,
 
-  VALUE_MATE_IN_PLY_MAX  =  VALUE_MATE - PLY_MAX,
-  VALUE_MATED_IN_PLY_MAX = -VALUE_MATE + PLY_MAX,
+  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY,
+  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + MAX_PLY,
 
   VALUE_ENSURE_INTEGER_SIZE_P = INT_MAX,
   VALUE_ENSURE_INTEGER_SIZE_N = INT_MIN
@@ -275,47 +247,54 @@ enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8
 };
 
-enum ScaleFactor {
-  SCALE_FACTOR_DRAW   = 0,
-  SCALE_FACTOR_NORMAL = 64,
-  SCALE_FACTOR_MAX    = 128,
-  SCALE_FACTOR_NONE   = 255
-};
 
-enum CastleRight {
-  CASTLES_NONE = 0,
-  WHITE_OO     = 1,
-  BLACK_OO     = 2,
-  WHITE_OOO    = 4,
-  BLACK_OOO    = 8,
-  ALL_CASTLES  = 15
-};
-
-
-/// Score enum keeps a midgame and an endgame value in a single
-/// integer (enum), first LSB 16 bits are used to store endgame
-/// value, while upper bits are used for midgame value. Compiler
-/// is free to choose the enum type as long as can keep its data,
-/// so ensure Score to be an integer type.
+/// Score enum keeps a midgame and an endgame value in a single integer (enum),
+/// first LSB 16 bits are used to store endgame value, while upper bits are used
+/// for midgame value. Compiler is free to choose the enum type as long as can
+/// keep its data, so ensure Score to be an integer type.
 enum Score {
-    SCORE_ZERO = 0,
-    SCORE_ENSURE_INTEGER_SIZE_P = INT_MAX,
-    SCORE_ENSURE_INTEGER_SIZE_N = INT_MIN
+  SCORE_ZERO = 0,
+  SCORE_ENSURE_INTEGER_SIZE_P = INT_MAX,
+  SCORE_ENSURE_INTEGER_SIZE_N = INT_MIN
 };
 
-#define ENABLE_OPERATORS_ON(T) \
-inline T operator+ (const T d1, const T d2) { return T(int(d1) + int(d2)); } \
-inline T operator- (const T d1, const T d2) { return T(int(d1) - int(d2)); } \
-inline T operator* (int i, const T d) {  return T(i * int(d)); } \
-inline T operator* (const T d, int i) {  return T(int(d) * i); } \
-inline T operator/ (const T d, int i) { return T(int(d) / i); } \
-inline T operator- (const T d) { return T(-int(d)); } \
-inline T operator++ (T& d, int) {d = T(int(d) + 1); return d; } \
-inline T operator-- (T& d, int) { d = T(int(d) - 1); return d; } \
-inline T& operator+= (T& d1, const T d2) { d1 = d1 + d2; return d1; } \
-inline T& operator-= (T& d1, const T d2) { d1 = d1 - d2; return d1; } \
-inline T& operator*= (T& d, int i) { d = T(int(d) * i); return d; } \
-inline T& operator/= (T& d, int i) { d = T(int(d) / i); return d; }
+inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
+
+/// Extracting the signed lower and upper 16 bits it not so trivial because
+/// according to the standard a simple cast to short is implementation defined
+/// and so is a right shift of a signed integer.
+inline Value mg_value(Score s) { return Value(((s + 32768) & ~0xffff) / 0x10000); }
+
+/// On Intel 64 bit we have a small speed regression with the standard conforming
+/// version, so use a faster code in this case that, although not 100% standard
+/// compliant it seems to work for Intel and MSVC.
+#if defined(IS_64BIT) && (!defined(__GNUC__) || defined(__INTEL_COMPILER))
+
+inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
+
+#else
+
+inline Value eg_value(Score s) {
+  return Value((int)(unsigned(s) & 0x7fffu) - (int)(unsigned(s) & 0x8000u));
+}
+
+#endif
+
+#define ENABLE_SAFE_OPERATORS_ON(T)                                         \
+inline T operator+(const T d1, const T d2) { return T(int(d1) + int(d2)); } \
+inline T operator-(const T d1, const T d2) { return T(int(d1) - int(d2)); } \
+inline T operator*(int i, const T d) { return T(i * int(d)); }              \
+inline T operator*(const T d, int i) { return T(int(d) * i); }              \
+inline T operator-(const T d) { return T(-int(d)); }                        \
+inline T& operator+=(T& d1, const T d2) { d1 = d1 + d2; return d1; }        \
+inline T& operator-=(T& d1, const T d2) { d1 = d1 - d2; return d1; }        \
+inline T& operator*=(T& d, int i) { d = T(int(d) * i); return d; }
+
+#define ENABLE_OPERATORS_ON(T) ENABLE_SAFE_OPERATORS_ON(T)                  \
+inline T operator++(T& d, int) { d = T(int(d) + 1); return d; }             \
+inline T operator--(T& d, int) { d = T(int(d) - 1); return d; }             \
+inline T operator/(const T d, int i) { return T(int(d) / i); }              \
+inline T& operator/=(T& d, int i) { d = T(int(d) / i); return d; }
 
 ENABLE_OPERATORS_ON(Value)
 ENABLE_OPERATORS_ON(PieceType)
@@ -326,44 +305,23 @@ ENABLE_OPERATORS_ON(Square)
 ENABLE_OPERATORS_ON(File)
 ENABLE_OPERATORS_ON(Rank)
 
-#undef ENABLE_OPERATORS_ON
+/// Added operators for adding integers to a Value
+inline Value operator+(Value v, int i) { return Value(int(v) + i); }
+inline Value operator-(Value v, int i) { return Value(int(v) - i); }
 
-// Extra operators for adding integers to a Value
-inline Value operator+ (Value v, int i) { return Value(int(v) + i); }
-inline Value operator- (Value v, int i) { return Value(int(v) - i); }
+ENABLE_SAFE_OPERATORS_ON(Score)
 
-// Extracting the _signed_ lower and upper 16 bits it not so trivial
-// because according to the standard a simple cast to short is
-// implementation defined and so is a right shift of a signed integer.
-inline Value mg_value(Score s) { return Value(((s + 32768) & ~0xffff) / 0x10000); }
-
-// Unfortunatly on Intel 64 bit we have a small speed regression, so use a faster code in
-// this case, although not 100% standard compliant it seems to work for Intel and MSVC.
-#if defined(IS_64BIT) && (!defined(__GNUC__) || defined(__INTEL_COMPILER))
-inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
-#else
-inline Value eg_value(Score s) { return Value((int)(unsigned(s) & 0x7fffu) - (int)(unsigned(s) & 0x8000u)); }
-#endif
-
-inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
-
-// Division must be handled separately for each term
-inline Score operator/(Score s, int i) { return make_score(mg_value(s) / i, eg_value(s) / i); }
-
-// Only declared but not defined. We don't want to multiply two scores due to
-// a very high risk of overflow. So user should explicitly convert to integer.
+/// Only declared but not defined. We don't want to multiply two scores due to
+/// a very high risk of overflow. So user should explicitly convert to integer.
 inline Score operator*(Score s1, Score s2);
 
-// Remaining Score operators are standard
-inline Score operator+ (const Score d1, const Score d2) { return Score(int(d1) + int(d2)); }
-inline Score operator- (const Score d1, const Score d2) { return Score(int(d1) - int(d2)); }
-inline Score operator* (int i, const Score d) {  return Score(i * int(d)); }
-inline Score operator* (const Score d, int i) {  return Score(int(d) * i); }
-inline Score operator- (const Score d) { return Score(-int(d)); }
-inline void operator+= (Score& d1, const Score d2) { d1 = d1 + d2; }
-inline void operator-= (Score& d1, const Score d2) { d1 = d1 - d2; }
-inline void operator*= (Score& d, int i) { d = Score(int(d) * i); }
-inline void operator/= (Score& d, int i) { d = Score(int(d) / i); }
+/// Division of a Score must be handled separately for each term
+inline Score operator/(Score s, int i) {
+  return make_score(mg_value(s) / i, eg_value(s) / i);
+}
+
+#undef ENABLE_OPERATORS_ON
+#undef ENABLE_SAFE_OPERATORS_ON
 
 const Value PawnValueMidgame   = Value(0x0C6);
 const Value PawnValueEndgame   = Value(0x102);
@@ -469,34 +427,8 @@ inline char rank_to_char(Rank r) {
   return char(r - RANK_1 + int('1'));
 }
 
-inline const std::string square_to_string(Square s) {
-  char ch[] = { file_to_char(file_of(s)), rank_to_char(rank_of(s)), 0 };
-  return ch;
-}
-
 inline Square pawn_push(Color c) {
   return c == WHITE ? DELTA_N : DELTA_S;
-}
-
-// An helper insertion sort implementation, works with pointers and iterators
-template<typename T, typename K>
-inline void sort(K firstMove, K lastMove)
-{
-  T value;
-  K cur, p, d;
-
-  if (firstMove != lastMove)
-      for (cur = firstMove + 1; cur != lastMove; cur++)
-      {
-          p = d = cur;
-          value = *p--;
-          if (*p < value)
-          {
-              do *d = *p;
-              while (--d != firstMove && *--p < value);
-              *d = value;
-          }
-      }
 }
 
 inline Square move_from(Move m) {
@@ -545,6 +477,35 @@ inline Move make_castle_move(Square from, Square to) {
 
 inline bool is_ok(Move m) {
   return move_from(m) != move_to(m); // Catches also MOVE_NULL and MOVE_NONE
+}
+
+#include <string>
+
+inline const std::string square_to_string(Square s) {
+  char ch[] = { file_to_char(file_of(s)), rank_to_char(rank_of(s)), 0 };
+  return ch;
+}
+
+/// Our insertion sort implementation, works with pointers and iterators and is
+/// guaranteed to be stable, as is needed.
+template<typename T, typename K>
+void sort(K firstMove, K lastMove)
+{
+  T value;
+  K cur, p, d;
+
+  if (firstMove != lastMove)
+      for (cur = firstMove + 1; cur != lastMove; cur++)
+      {
+          p = d = cur;
+          value = *p--;
+          if (*p < value)
+          {
+              do *d = *p;
+              while (--d != firstMove && *--p < value);
+              *d = value;
+          }
+      }
 }
 
 #endif // !defined(TYPES_H_INCLUDED)

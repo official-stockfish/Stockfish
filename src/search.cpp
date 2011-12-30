@@ -397,7 +397,7 @@ namespace {
 
   void id_loop(Position& pos) {
 
-    Stack ss[PLY_MAX_PLUS_2];
+    Stack ss[MAX_PLY_PLUS_2];
     int depth, prevBestMoveChanges;
     Value bestValue, alpha, beta, delta;
     bool bestMoveNeverChanged = true;
@@ -419,7 +419,7 @@ namespace {
     }
 
     // Iterative deepening loop until requested to stop or target depth reached
-    while (!Signals.stop && ++depth <= PLY_MAX && (!Limits.maxDepth || depth <= Limits.maxDepth))
+    while (!Signals.stop && ++depth <= MAX_PLY && (!Limits.maxDepth || depth <= Limits.maxDepth))
     {
         // Save last iteration's scores before first PV line is searched and all
         // the move scores but the (new) PV are set to -VALUE_INFINITE.
@@ -634,7 +634,7 @@ namespace {
     // Step 2. Check for aborted search and immediate draw
     if ((   Signals.stop
          || pos.is_draw<false>()
-         || ss->ply > PLY_MAX) && !RootNode)
+         || ss->ply > MAX_PLY) && !RootNode)
         return VALUE_DRAW;
 
     // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -716,7 +716,7 @@ namespace {
         && !inCheck
         &&  refinedValue + razor_margin(depth) < beta
         &&  ttMove == MOVE_NONE
-        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
+        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
         && !pos.has_pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
@@ -735,7 +735,7 @@ namespace {
         &&  depth < RazorDepth
         && !inCheck
         &&  refinedValue - futility_margin(depth, 0) >= beta
-        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
+        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
         &&  pos.non_pawn_material(pos.side_to_move()))
         return refinedValue - futility_margin(depth, 0);
 
@@ -745,7 +745,7 @@ namespace {
         &&  depth > ONE_PLY
         && !inCheck
         &&  refinedValue >= beta
-        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX
+        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
@@ -767,7 +767,7 @@ namespace {
         if (nullValue >= beta)
         {
             // Do not return unproven mate scores
-            if (nullValue >= VALUE_MATE_IN_PLY_MAX)
+            if (nullValue >= VALUE_MATE_IN_MAX_PLY)
                 nullValue = beta;
 
             if (depth < 6 * ONE_PLY)
@@ -808,7 +808,7 @@ namespace {
         && !inCheck
         && !ss->skipNullMove
         &&  excludedMove == MOVE_NONE
-        &&  abs(beta) < VALUE_MATE_IN_PLY_MAX)
+        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = beta + 200;
         Depth rdepth = depth - ONE_PLY - 3 * ONE_PLY;
@@ -954,7 +954,7 @@ split_point_start: // At split points actual search starts from here
           && !dangerous
           &&  move != ttMove
           && !is_castle(move)
-          && (bestValue > VALUE_MATED_IN_PLY_MAX || bestValue == -VALUE_INFINITE))
+          && (bestValue > VALUE_MATED_IN_MAX_PLY || bestValue == -VALUE_INFINITE))
       {
           // Move count based pruning
           if (   moveCount >= futility_move_count(depth)
@@ -1208,7 +1208,7 @@ split_point_start: // At split points actual search starts from here
     ss->ply = (ss-1)->ply + 1;
 
     // Check for an instant draw or maximum ply reached
-    if (pos.is_draw<true>() || ss->ply > PLY_MAX)
+    if (pos.is_draw<true>() || ss->ply > MAX_PLY)
         return VALUE_DRAW;
 
     // Decide whether or not to include checks, this fixes also the type of
@@ -1309,7 +1309,7 @@ split_point_start: // At split points actual search starts from here
       // Detect non-capture evasions that are candidate to be pruned
       evasionPrunable =   !PvNode
                        && inCheck
-                       && bestValue > VALUE_MATED_IN_PLY_MAX
+                       && bestValue > VALUE_MATED_IN_MAX_PLY
                        && !pos.is_capture(move)
                        && !pos.can_castle(pos.side_to_move());
 
@@ -1495,10 +1495,10 @@ split_point_start: // At split points actual search starts from here
 
   Value value_to_tt(Value v, int ply) {
 
-    if (v >= VALUE_MATE_IN_PLY_MAX)
+    if (v >= VALUE_MATE_IN_MAX_PLY)
       return v + ply;
 
-    if (v <= VALUE_MATED_IN_PLY_MAX)
+    if (v <= VALUE_MATED_IN_MAX_PLY)
       return v - ply;
 
     return v;
@@ -1511,10 +1511,10 @@ split_point_start: // At split points actual search starts from here
 
   Value value_from_tt(Value v, int ply) {
 
-    if (v >= VALUE_MATE_IN_PLY_MAX)
+    if (v >= VALUE_MATE_IN_MAX_PLY)
       return v - ply;
 
-    if (v <= VALUE_MATED_IN_PLY_MAX)
+    if (v <= VALUE_MATED_IN_MAX_PLY)
       return v + ply;
 
     return v;
@@ -1569,8 +1569,8 @@ split_point_start: // At split points actual search starts from here
     Value v = value_from_tt(tte->value(), ply);
 
     return   (   tte->depth() >= depth
-              || v >= std::max(VALUE_MATE_IN_PLY_MAX, beta)
-              || v < std::min(VALUE_MATED_IN_PLY_MAX, beta))
+              || v >= std::max(VALUE_MATE_IN_MAX_PLY, beta)
+              || v < std::min(VALUE_MATED_IN_MAX_PLY, beta))
 
           && (   ((tte->type() & VALUE_TYPE_LOWER) && v >= beta)
               || ((tte->type() & VALUE_TYPE_UPPER) && v < beta));
@@ -1619,7 +1619,7 @@ split_point_start: // At split points actual search starts from here
 
     std::stringstream s;
 
-    if (abs(v) < VALUE_MATE_IN_PLY_MAX)
+    if (abs(v) < VALUE_MATE_IN_MAX_PLY)
         s << "cp " << v * 100 / int(PawnValueMidgame);
     else
         s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
@@ -1696,9 +1696,9 @@ split_point_start: // At split points actual search starts from here
 
     std::stringstream s;
 
-    if (v >= VALUE_MATE_IN_PLY_MAX)
+    if (v >= VALUE_MATE_IN_MAX_PLY)
         s << "#" << (VALUE_MATE - v + 1) / 2;
-    else if (v <= VALUE_MATED_IN_PLY_MAX)
+    else if (v <= VALUE_MATED_IN_MAX_PLY)
         s << "-#" << (VALUE_MATE + v) / 2;
     else
         s << std::setprecision(2) << std::fixed << std::showpos
@@ -1712,7 +1712,7 @@ split_point_start: // At split points actual search starts from here
     const int64_t K = 1000;
     const int64_t M = 1000000;
 
-    StateInfo state[PLY_MAX_PLUS_2], *st = state;
+    StateInfo state[MAX_PLY_PLUS_2], *st = state;
     Move* m = pv;
     string san, padding;
     size_t length;
@@ -1810,7 +1810,7 @@ split_point_start: // At split points actual search starts from here
 
   void RootMove::extract_pv_from_tt(Position& pos) {
 
-    StateInfo state[PLY_MAX_PLUS_2], *st = state;
+    StateInfo state[MAX_PLY_PLUS_2], *st = state;
     TTEntry* tte;
     int ply = 1;
     Move m = pv[0];
@@ -1825,7 +1825,7 @@ split_point_start: // At split points actual search starts from here
            && tte->move() != MOVE_NONE
            && pos.is_pseudo_legal(tte->move())
            && pos.pl_move_is_legal(tte->move(), pos.pinned_pieces())
-           && ply < PLY_MAX
+           && ply < MAX_PLY
            && (!pos.is_draw<false>() || ply < 2))
     {
         pv.push_back(tte->move());
@@ -1844,7 +1844,7 @@ split_point_start: // At split points actual search starts from here
 
   void RootMove::insert_pv_in_tt(Position& pos) {
 
-    StateInfo state[PLY_MAX_PLUS_2], *st = state;
+    StateInfo state[MAX_PLY_PLUS_2], *st = state;
     TTEntry* tte;
     Key k;
     Value v, m = VALUE_NONE;
@@ -1920,7 +1920,7 @@ void Thread::idle_loop(SplitPoint* sp) {
           assert(!do_terminate);
 
           // Copy split point position and search stack and call search()
-          Stack ss[PLY_MAX_PLUS_2];
+          Stack ss[MAX_PLY_PLUS_2];
           SplitPoint* tsp = splitPoint;
           Position pos(*tsp->pos, threadID);
 

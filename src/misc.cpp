@@ -191,11 +191,11 @@ void prefetch(char*) {}
 
 void prefetch(char* addr) {
 
-#if defined(__INTEL_COMPILER) || defined(__ICL)
+#  if defined(__INTEL_COMPILER) || defined(__ICL)
    // This hack prevents prefetches to be optimized away by
    // Intel compiler. Both MSVC and gcc seems not affected.
    __asm__ ("");
-#endif
+#  endif
 
   _mm_prefetch(addr, _MM_HINT_T2);
   _mm_prefetch(addr+64, _MM_HINT_T2); // 64 bytes ahead
