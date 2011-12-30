@@ -26,8 +26,7 @@
 #include "lock.h"
 #include "types.h"
 
-extern const std::string engine_name();
-extern const std::string engine_authors();
+extern const std::string engine_info(bool to_uci = false);
 extern int system_time();
 extern int cpu_count();
 extern void timed_wait(WaitCondition*, Lock*, int);

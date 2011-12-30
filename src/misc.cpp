@@ -52,47 +52,44 @@
 
 using namespace std;
 
-/// Version number. If EngineVersion is left empty, then AppTag plus
-/// current date (in the format YYMMDD) is used as a version number.
 
-static const string AppName = "Stockfish";
-static const string EngineVersion = "";
-static const string AppTag  = "";
+/// Version number. If Version is left empty, then Tag plus current
+/// date (in the format YYMMDD) is used as a version number.
+
+static const string Version = "";
+static const string Tag  = "";
 
 
-/// engine_name() returns the full name of the current Stockfish version.
+/// engine_info() returns the full name of the current Stockfish version.
 /// This will be either "Stockfish YYMMDD" (where YYMMDD is the date when
 /// the program was compiled) or "Stockfish <version number>", depending
-/// on whether the constant EngineVersion is empty.
+/// on whether Version is empty.
 
-const string engine_name() {
+const string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   const string cpu64(Is64Bit ? " 64bit" : "");
   const string popcnt(HasPopCnt ? " SSE4.2" : "");
 
-  if (!EngineVersion.empty())
-      return AppName + " " + EngineVersion + cpu64 + popcnt;
-
-  stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
   string month, day, year;
+  stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  date >> month >> day >> year;
+  if (Version.empty())
+  {
+      date >> month >> day >> year;
 
-  s << AppName + " " + AppTag + " "
-    << setfill('0') << year.substr(2)
-    << setw(2) << (1 + months.find(month) / 4)
-    << setw(2) << day << cpu64 << popcnt;
+      s << "Stockfish " << Tag
+        << setfill('0') << " " << year.substr(2)
+        << setw(2) << (1 + months.find(month) / 4)
+        << setw(2) << day << cpu64 << popcnt;
+  }
+  else
+      s << "Stockfish " << Version << cpu64 << popcnt;
+
+  s << (to_uci ? "\nid author ": " by ")
+    << "Tord Romstad, Marco Costalba and Joona Kiiski";
 
   return s.str();
-}
-
-
-/// Our brave developers! Required by UCI
-
-const string engine_authors() {
-
-  return "Tord Romstad, Marco Costalba and Joona Kiiski";
 }
 
 

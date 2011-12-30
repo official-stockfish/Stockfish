@@ -117,8 +117,7 @@ void uci_loop() {
                << "\npawn key: "     << pos.pawn_key() << endl;
 
       else if (token == "uci")
-          cout << "id name "     << engine_name()
-               << "\nid author " << engine_authors()
+          cout << "id name "     << engine_info(true)
                << "\n"           << Options
                << "\nuciok"      << endl;
       else

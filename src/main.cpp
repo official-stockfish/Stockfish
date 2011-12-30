@@ -40,19 +40,18 @@ int main(int argc, char* argv[]) {
   Search::init();
   Threads.init();
 
-  if (argc < 2)
-  {
-      cout << engine_name() << " by " << engine_authors() << endl;
+  cout << engine_info() << endl;
+
+  if (argc == 1)
       uci_loop();
-  }
+
   else if (string(argv[1]) == "bench")
       benchmark(argc, argv);
 
   else
-      cout << "Usage: stockfish bench [hash size = 128] [threads = 1] "
+      cerr << "\nUsage: stockfish bench [hash size = 128] [threads = 1] "
            << "[limit = 12] [fen positions file = default] "
            << "[limited by depth, time, nodes or perft = depth]" << endl;
 
   Threads.exit();
-  return 0;
 }
