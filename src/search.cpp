@@ -1974,9 +1974,7 @@ void do_timer_event() {
   if (system_time() - lastInfoTime >= 1000 || !lastInfoTime)
   {
       lastInfoTime = system_time();
-
-      dbg_print_mean();
-      dbg_print_hit_rate();
+      dbg_print();
   }
 
   if (Limits.ponder)

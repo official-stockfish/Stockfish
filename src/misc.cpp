@@ -39,19 +39,18 @@
 #  include <xmmintrin.h>
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <algorithm>
 
 #include "bitcount.h"
 #include "misc.h"
 #include "thread.h"
 
 using namespace std;
-
 
 /// Version number. If Version is left empty, then Tag plus current
 /// date (in the format YYMMDD) is used as a version number.
@@ -93,43 +92,24 @@ const string engine_info(bool to_uci) {
 }
 
 
-/// Debug stuff. Helper functions used mainly for debugging purposes
+/// Debug functions used mainly to collect run-time statistics
 
-static uint64_t dbg_hit_cnt0;
-static uint64_t dbg_hit_cnt1;
-static uint64_t dbg_mean_cnt0;
-static uint64_t dbg_mean_cnt1;
+static uint64_t hits[2], means[2];
 
-void dbg_print_hit_rate() {
-
-  if (dbg_hit_cnt0)
-      cerr << "Total " << dbg_hit_cnt0 << " Hit " << dbg_hit_cnt1
-           << " hit rate (%) " << 100 * dbg_hit_cnt1 / dbg_hit_cnt0 << endl;
-}
-
-void dbg_print_mean() {
-
-  if (dbg_mean_cnt0)
-      cerr << "Total " << dbg_mean_cnt0 << " Mean "
-           << (float)dbg_mean_cnt1 / dbg_mean_cnt0 << endl;
-}
-
-void dbg_mean_of(int v) {
-
-  dbg_mean_cnt0++;
-  dbg_mean_cnt1 += v;
-}
-
-void dbg_hit_on(bool b) {
-
-  dbg_hit_cnt0++;
-  if (b)
-      dbg_hit_cnt1++;
-}
-
+void dbg_hit_on(bool b) { hits[0]++; if (b) hits[1]++; }
 void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }
-void dbg_before() { dbg_hit_on(false); }
-void dbg_after()  { dbg_hit_on(true); dbg_hit_cnt0--; }
+void dbg_mean_of(int v) { means[0]++; means[1] += v; }
+
+void dbg_print() {
+
+  if (hits[0])
+      cerr << "Total " << hits[0] << " Hits " << hits[1]
+           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+
+  if (means[0])
+      cerr << "Total " << means[0] << " Mean "
+           << (float)means[1] / means[0] << endl;
+}
 
 
 /// system_time() returns the current system time, measured in milliseconds

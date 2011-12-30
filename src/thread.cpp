@@ -176,10 +176,10 @@ void ThreadsManager::init() {
       threads[i].threadID = i;
 
 #if defined(_MSC_VER)
-      threads[i].handle = CreateThread(NULL, 0, start_routine, (LPVOID)&threads[i], 0, NULL);
+      threads[i].handle = CreateThread(NULL, 0, start_routine, &threads[i], 0, NULL);
       bool ok = (threads[i].handle != NULL);
 #else
-      bool ok = !pthread_create(&threads[i].handle, NULL, start_routine, (void*)&threads[i]);
+      bool ok = !pthread_create(&threads[i].handle, NULL, start_routine, &threads[i]);
 #endif
 
       if (!ok)
