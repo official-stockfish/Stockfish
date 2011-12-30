@@ -65,6 +65,7 @@ typedef unsigned __int64 uint64_t;
 #endif
 
 #if defined(_WIN64)
+#  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
 #  define USE_BSFQ
 #endif
