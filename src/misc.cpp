@@ -68,20 +68,21 @@ static const string AppTag  = "";
 const string engine_name() {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-  const string cpu64(CpuIs64Bit ? " 64bit" : "");
+  const string cpu64(Is64Bit ? " 64bit" : "");
+  const string popcnt(HasPopCnt ? " SSE4.2" : "");
 
   if (!EngineVersion.empty())
-      return AppName + " " + EngineVersion + cpu64;
+      return AppName + " " + EngineVersion + cpu64 + popcnt;
 
   stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
   string month, day, year;
 
   date >> month >> day >> year;
 
-  s << setfill('0') << AppName + " " + AppTag + " "
-    << year.substr(2, 2) << setw(2)
-    << (1 + months.find(month) / 4) << setw(2)
-    << day << cpu64;
+  s << AppName + " " + AppTag + " "
+    << setfill('0') << year.substr(2)
+    << setw(2) << (1 + months.find(month) / 4)
+    << setw(2) << day << cpu64 << popcnt;
 
   return s.str();
 }

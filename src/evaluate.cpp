@@ -225,28 +225,27 @@ namespace {
   };
 
   // Function prototypes
-  template<bool HasPopCnt, bool Trace>
+  template<bool Trace>
   Value do_evaluate(const Position& pos, Value& margin);
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us>
   void init_eval_info(const Position& pos, EvalInfo& ei);
 
-  template<Color Us, bool HasPopCnt, bool Trace>
+  template<Color Us, bool Trace>
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility);
 
-  template<Color Us, bool HasPopCnt, bool Trace>
+  template<Color Us, bool Trace>
   Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
 
   template<Color Us>
   Score evaluate_threats(const Position& pos, EvalInfo& ei);
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us>
   int evaluate_space(const Position& pos, EvalInfo& ei);
 
   template<Color Us>
   Score evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
 
-  template<bool HasPopCnt>
   Score evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei);
 
   inline Score apply_weight(Score v, Score weight);
@@ -261,15 +260,11 @@ namespace {
 /// evaluate() is the main evaluation function. It always computes two
 /// values, an endgame score and a middle game score, and interpolates
 /// between them based on the remaining material.
-Value evaluate(const Position& pos, Value& margin) {
-
-  return CpuHasPOPCNT ? do_evaluate<true, false>(pos, margin)
-                      : do_evaluate<false, false>(pos, margin);
-}
+Value evaluate(const Position& pos, Value& margin) { return do_evaluate<false>(pos, margin); }
 
 namespace {
 
-template<bool HasPopCnt, bool Trace>
+template<bool Trace>
 Value do_evaluate(const Position& pos, Value& margin) {
 
   EvalInfo ei;
@@ -304,19 +299,19 @@ Value do_evaluate(const Position& pos, Value& margin) {
   score += ei.pi->pawns_value();
 
   // Initialize attack and king safety bitboards
-  init_eval_info<WHITE, HasPopCnt>(pos, ei);
-  init_eval_info<BLACK, HasPopCnt>(pos, ei);
+  init_eval_info<WHITE>(pos, ei);
+  init_eval_info<BLACK>(pos, ei);
 
   // Evaluate pieces and mobility
-  score +=  evaluate_pieces_of_color<WHITE, HasPopCnt, Trace>(pos, ei, mobilityWhite)
-          - evaluate_pieces_of_color<BLACK, HasPopCnt, Trace>(pos, ei, mobilityBlack);
+  score +=  evaluate_pieces_of_color<WHITE, Trace>(pos, ei, mobilityWhite)
+          - evaluate_pieces_of_color<BLACK, Trace>(pos, ei, mobilityBlack);
 
   score += apply_weight(mobilityWhite - mobilityBlack, Weights[Mobility]);
 
   // Evaluate kings after all other pieces because we need complete attack
   // information when computing the king safety evaluation.
-  score +=  evaluate_king<WHITE, HasPopCnt, Trace>(pos, ei, margins)
-          - evaluate_king<BLACK, HasPopCnt, Trace>(pos, ei, margins);
+  score +=  evaluate_king<WHITE, Trace>(pos, ei, margins)
+          - evaluate_king<BLACK, Trace>(pos, ei, margins);
 
   // Evaluate tactical threats, we need full attack information including king
   score +=  evaluate_threats<WHITE>(pos, ei)
@@ -328,12 +323,12 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   // If one side has only a king, check whether exists any unstoppable passed pawn
   if (!pos.non_pawn_material(WHITE) || !pos.non_pawn_material(BLACK))
-      score += evaluate_unstoppable_pawns<HasPopCnt>(pos, ei);
+      score += evaluate_unstoppable_pawns(pos, ei);
 
   // Evaluate space for both sides, only in middle-game.
   if (ei.mi->space_weight())
   {
-      int s = evaluate_space<WHITE, HasPopCnt>(pos, ei) - evaluate_space<BLACK, HasPopCnt>(pos, ei);
+      int s = evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei);
       score += apply_weight(make_score(s * ei.mi->space_weight(), 0), Weights[Space]);
   }
 
@@ -375,9 +370,9 @@ Value do_evaluate(const Position& pos, Value& margin) {
       trace_add(MOBILITY, apply_weight(mobilityWhite, Weights[Mobility]), apply_weight(mobilityBlack, Weights[Mobility]));
       trace_add(THREAT, evaluate_threats<WHITE>(pos, ei), evaluate_threats<BLACK>(pos, ei));
       trace_add(PASSED, evaluate_passed_pawns<WHITE>(pos, ei), evaluate_passed_pawns<BLACK>(pos, ei));
-      trace_add(UNSTOPPABLE, evaluate_unstoppable_pawns<false>(pos, ei));
-      Score w = make_score(ei.mi->space_weight() * evaluate_space<WHITE, false>(pos, ei), 0);
-      Score b = make_score(ei.mi->space_weight() * evaluate_space<BLACK, false>(pos, ei), 0);
+      trace_add(UNSTOPPABLE, evaluate_unstoppable_pawns(pos, ei));
+      Score w = make_score(ei.mi->space_weight() * evaluate_space<WHITE>(pos, ei), 0);
+      Score b = make_score(ei.mi->space_weight() * evaluate_space<BLACK>(pos, ei), 0);
       trace_add(SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
       trace_add(TOTAL, score);
       TraceStream << "\nUncertainty margin: White: " << to_cp(margins[WHITE])
@@ -424,10 +419,10 @@ namespace {
   // init_eval_info() initializes king bitboards for given color adding
   // pawn attacks. To be done at the beginning of the evaluation.
 
-  template<Color Us, bool HasPopCnt>
+  template<Color Us>
   void init_eval_info(const Position& pos, EvalInfo& ei) {
 
-    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
+    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : Is64Bit ? CNT64_MAX15 : CNT32_MAX15;
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
@@ -474,7 +469,7 @@ namespace {
 
   // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
 
-  template<PieceType Piece, Color Us, bool HasPopCnt, bool Trace>
+  template<PieceType Piece, Color Us, bool Trace>
   Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score& mobility, Bitboard mobilityArea) {
 
     Bitboard b;
@@ -483,8 +478,8 @@ namespace {
     File f;
     Score score = SCORE_ZERO;
 
-    const BitCountType Full  = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64 : CNT32;
-    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
+    const BitCountType Full  = HasPopCnt ? CNT_POPCNT : Is64Bit ? CNT64 : CNT32;
+    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : Is64Bit ? CNT64_MAX15 : CNT32_MAX15;
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     const Square* pl = pos.piece_list(Us, Piece);
 
@@ -644,7 +639,7 @@ namespace {
   // evaluate_pieces_of_color<>() assigns bonuses and penalties to all the
   // pieces of a given color.
 
-  template<Color Us, bool HasPopCnt, bool Trace>
+  template<Color Us, bool Trace>
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
@@ -654,10 +649,10 @@ namespace {
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
     const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces(Us));
 
-    score += evaluate_pieces<KNIGHT, Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
-    score += evaluate_pieces<BISHOP, Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
-    score += evaluate_pieces<ROOK,   Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
-    score += evaluate_pieces<QUEEN,  Us, HasPopCnt, Trace>(pos, ei, mobility, mobilityArea);
+    score += evaluate_pieces<KNIGHT, Us, Trace>(pos, ei, mobility, mobilityArea);
+    score += evaluate_pieces<BISHOP, Us, Trace>(pos, ei, mobility, mobilityArea);
+    score += evaluate_pieces<ROOK,   Us, Trace>(pos, ei, mobility, mobilityArea);
+    score += evaluate_pieces<QUEEN,  Us, Trace>(pos, ei, mobility, mobilityArea);
 
     // Sum up all attacked squares
     ei.attackedBy[Us][0] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
@@ -669,10 +664,10 @@ namespace {
 
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
-  template<Color Us, bool HasPopCnt, bool Trace>
+  template<Color Us, bool Trace>
   Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
 
-    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
+    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : Is64Bit ? CNT64_MAX15 : CNT32_MAX15;
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     Bitboard undefended, b, b1, b2, safe;
@@ -882,10 +877,9 @@ namespace {
   // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides, this is quite
   // conservative and returns a winning score only when we are very sure that the pawn is winning.
 
-  template<bool HasPopCnt>
   Score evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei) {
 
-    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
+    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : Is64Bit ? CNT64_MAX15 : CNT32_MAX15;
 
     Bitboard b, b2, blockers, supporters, queeningPath, candidates;
     Square s, blockSq, queeningSquare;
@@ -1049,10 +1043,10 @@ namespace {
   // squares one, two or three squares behind a friendly pawn are counted
   // twice. Finally, the space bonus is scaled by a weight taken from the
   // material hash table. The aim is to improve play on game opening.
-  template<Color Us, bool HasPopCnt>
+  template<Color Us>
   int evaluate_space(const Position& pos, EvalInfo& ei) {
 
-    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : CpuIs64Bit ? CNT64_MAX15 : CNT32_MAX15;
+    const BitCountType Max15 = HasPopCnt ? CNT_POPCNT : Is64Bit ? CNT64_MAX15 : CNT32_MAX15;
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     // Find the safe squares for our pieces inside the area defined by
@@ -1187,7 +1181,7 @@ std::string trace_evaluate(const Position& pos) {
     TraceStream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
     memset(TracedScores, 0, 2 * 16 * sizeof(Score));
 
-    do_evaluate<false, true>(pos, margin);
+    do_evaluate<true>(pos, margin);
 
     totals = TraceStream.str();
     TraceStream.str("");

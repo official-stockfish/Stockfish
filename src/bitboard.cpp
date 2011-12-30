@@ -198,7 +198,7 @@ void bitboards_init() {
           SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
 
   for (int i = 0; i < 64; i++)
-      if (!CpuIs64Bit) // Matt Taylor's folding trick for 32 bit systems
+      if (!Is64Bit) // Matt Taylor's folding trick for 32 bit systems
       {
           Bitboard b = 1ULL << i;
           b ^= b - 1;
@@ -321,7 +321,7 @@ namespace {
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
         masks[s]  = sliding_attacks(pt, s, 0) & ~edges;
-        shifts[s] = (CpuIs64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(masks[s]);
+        shifts[s] = (Is64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(masks[s]);
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attacks bitboard in reference[].
@@ -337,7 +337,7 @@ namespace {
         if (s < SQ_H8)
             attacks[s + 1] = attacks[s] + size;
 
-        booster = MagicBoosters[CpuIs64Bit][rank_of(s)];
+        booster = MagicBoosters[Is64Bit][rank_of(s)];
 
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.

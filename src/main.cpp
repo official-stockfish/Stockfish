@@ -21,11 +21,10 @@
 #include <string>
 
 #include "bitboard.h"
-#include "evaluate.h"
+#include "misc.h"
 #include "position.h"
-#include "thread.h"
 #include "search.h"
-#include "ucioption.h"
+#include "thread.h"
 
 using namespace std;
 
@@ -44,11 +43,7 @@ int main(int argc, char* argv[]) {
   if (argc < 2)
   {
       cout << engine_name() << " by " << engine_authors() << endl;
-
-      if (CpuHasPOPCNT)
-          cout << "Good! CPU has hardware POPCNT." << endl;
-
-      uci_loop(); // Enter the UCI loop and wait for user input
+      uci_loop();
   }
   else if (string(argv[1]) == "bench")
       benchmark(argc, argv);
