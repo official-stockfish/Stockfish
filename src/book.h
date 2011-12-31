@@ -37,25 +37,22 @@ struct BookEntry {
   uint32_t learn;
 };
 
-class Book {
+
+class Book : private std::ifstream {
 public:
   Book();
   ~Book();
-  void open(const std::string& fileName);
-  void close();
-  Move probe(const Position& pos, bool findBestMove);
-  const std::string name() const { return bookName; }
+  Move probe(const Position& pos, const std::string& fName, bool pickBest);
 
 private:
   template<typename T> Book& operator>>(T& n);
 
-  BookEntry read_entry(int idx);
-  int first_entry(uint64_t key);
+  bool open(const char* fName);
+  void binary_search(uint64_t key);
 
   RKISS RKiss;
-  std::ifstream bookFile;
-  std::string bookName;
-  int bookSize;
+  std::string fileName;
+  size_t size;
 };
 
 #endif // !defined(BOOK_H_INCLUDED)

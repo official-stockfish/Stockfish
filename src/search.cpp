@@ -296,10 +296,7 @@ void Search::think() {
 
   if (Options["OwnBook"])
   {
-      if (book.name() != (string)Options["Book File"])
-          book.open(Options["Book File"]);
-
-      Move bookMove = book.probe(pos, Options["Best Book Move"]);
+      Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
 
       if (   bookMove != MOVE_NONE
           && count(RootMoves.begin(), RootMoves.end(), bookMove))

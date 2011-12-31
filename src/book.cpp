@@ -17,13 +17,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 /*
   The code in this file is based on the opening book code in PolyGlot
   by Fabien Letouzey. PolyGlot is available under the GNU General
   Public License, and can be downloaded from http://wbec-ridderkerk.nl
 */
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 
@@ -306,130 +306,123 @@ namespace {
   const Key* ZobEnPassant = PolyGlotRandoms + 772;
   const Key* ZobTurn      = PolyGlotRandoms + 780;
 
-  // Piece offset is calculated as 64 * (PolyPiece ^ 1) where
-  // PolyPiece is: BP = 0, WP = 1, BN = 2, WN = 3 ... BK = 10, WK = 11
-  const int PieceOfs[] = { 0, 64, 192, 320, 448, 576, 704, 0,
-                           0,  0, 128, 256, 384, 512, 640 };
+  // PieceOffset is calculated as 64 * (PolyPiece ^ 1) where PolyPiece
+  // is: BP = 0, WP = 1, BN = 2, WN = 3 ... BK = 10, WK = 11
+  const int PieceOffset[] = { 0, 64, 192, 320, 448, 576, 704, 0,
+                              0,  0, 128, 256, 384, 512, 640 };
 
-  // book_key() builds up a PolyGlot hash key out of a position
+  // book_key() returns the PolyGlot hash key of the given position
   uint64_t book_key(const Position& pos) {
 
-    uint64_t result = 0;
+    uint64_t key = 0;
     Bitboard b = pos.occupied_squares();
 
     while (b)
     {
         Square s = pop_1st_bit(&b);
-        result ^= ZobPiece[PieceOfs[pos.piece_on(s)] + s];
+        key ^= ZobPiece[PieceOffset[pos.piece_on(s)] + s];
     }
 
-    if (pos.can_castle(WHITE_OO))
-        result ^= ZobCastle[0];
+    b =  (pos.can_castle(WHITE_OO) << 0) | (pos.can_castle(WHITE_OOO) << 1)
+       | (pos.can_castle(BLACK_OO) << 2) | (pos.can_castle(BLACK_OOO) << 3);
 
-    if (pos.can_castle(WHITE_OOO))
-        result ^= ZobCastle[1];
-
-    if (pos.can_castle(BLACK_OO))
-        result ^= ZobCastle[2];
-
-    if (pos.can_castle(BLACK_OOO))
-        result ^= ZobCastle[3];
+    while (b)
+        key ^= ZobCastle[pop_1st_bit(&b)];
 
     if (pos.ep_square() != SQ_NONE)
-        result ^= ZobEnPassant[file_of(pos.ep_square())];
+        key ^= ZobEnPassant[file_of(pos.ep_square())];
 
     if (pos.side_to_move() == WHITE)
-        result ^= ZobTurn[0];
+        key ^= ZobTurn[0];
 
-    return result;
+    return key;
   }
-}
 
+} // namespace
 
-/// Book c'tor. Make random number generation less deterministic, for book moves
-Book::Book() : bookSize(0) {
+Book::Book() : size(0) {
 
   for (int i = abs(system_time() % 10000); i > 0; i--)
-      RKiss.rand<unsigned>();
+      RKiss.rand<unsigned>(); // Make random number generation less deterministic
+}
+
+Book::~Book() { if (is_open()) close(); }
+
+
+/// Book::operator>>() reads sizeof(T) chars from the file's binary byte stream
+/// and converts them in a number of type T. A Polyglot book stores numbers in
+/// big-endian format.
+
+template<typename T> Book& Book::operator>>(T& n) {
+
+  n = 0;
+  for (size_t i = 0; i < sizeof(T); i++)
+      n = T((n << 8) + ifstream::get());
+
+  return *this;
+}
+
+template<> Book& Book::operator>>(BookEntry& e) {
+  return *this >> e.key >> e.move >> e.count >> e.learn;
 }
 
 
-/// Book destructor. Be sure file is closed before we leave.
+/// Book::open() tries to open a book file with the given name after closing
+/// any exsisting one.
 
-Book::~Book() {
+bool Book::open(const char* fName) {
 
-  close();
-}
+  fileName = "";
 
+  if (is_open()) // Cannot close an already closed file
+      close();
 
-/// Book::close() closes the file only if it is open, otherwise the call fails
-/// and the failbit internal state flag is set.
+  ifstream::open(fName, ifstream::in | ifstream::binary | ios::ate);
 
-void Book::close() {
+  if (!is_open())
+      return false; // Silently fail if the file is not found
 
-  if (bookFile.is_open())
-      bookFile.close();
+  // Get the book size in number of entries, we are already at the end of file
+  size = tellg() / sizeof(BookEntry);
 
-  bookName = "";
-  bookSize = 0;
-}
-
-
-/// Book::open() opens a book file with a given name
-
-void Book::open(const string& fileName) {
-
-  // Close old file before opening the new
-  close();
-
-  bookFile.open(fileName.c_str(), ifstream::in | ifstream::binary |ios::ate);
-
-  // Silently return when asked to open a non-exsistent file
-  if (!bookFile.is_open())
-      return;
-
-  // Get the book size in number of entries, we are already at the file end
-  bookSize = long(bookFile.tellg()) / sizeof(BookEntry);
-
-  if (!bookFile.good())
+  if (!good())
   {
-      cerr << "Failed to open book file " << fileName << endl;
+      cerr << "Failed to open book file " << fName << endl;
       exit(EXIT_FAILURE);
   }
 
-  // Set only if successful
-  bookName = fileName;
+  fileName = fName; // Set only if successful
+  return true;
 }
 
 
-/// Book::probe() gets a book move for a given position. Returns MOVE_NONE
-/// if no book move is found. If findBest is true then returns always the
-/// highest rated move otherwise chooses randomly based on the move score.
+/// Book::probe() tries to find a book move for the given position. If no move
+/// is found returns MOVE_NONE. If pickBest is true returns always the highest
+/// rated move, otherwise randomly chooses one, based on the move score.
 
-Move Book::probe(const Position& pos, bool findBest) {
+Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
 
-  if (!bookSize || !bookFile.is_open())
+  BookEntry e;
+  uint16_t best = 0;
+  unsigned sum = 0, bookMove = 0;
+  uint64_t key = book_key(pos);
+
+  if (fileName != fName && !open(fName.c_str()))
       return MOVE_NONE;
 
-  BookEntry entry;
-  unsigned scoresSum = 0, bestScore = 0, bookMove = 0;
-  uint64_t key = book_key(pos);
-  int idx = first_entry(key) - 1;
+  binary_search(key);
 
-  // Choose a book move among the possible moves for the given position
-  while (++idx < bookSize && (entry = read_entry(idx), entry.key == key))
+  while (*this >> e, e.key == key && good())
   {
-      scoresSum += entry.count;
+      best = max(best, e.count);
+      sum += e.count;
 
       // Choose book move according to its score. If a move has a very
       // high score it has higher probability to be choosen than a move
       // with lower score. Note that first entry is always chosen.
-      if (   RKiss.rand<unsigned>() % scoresSum < entry.count
-          || (findBest && entry.count > bestScore))
-          bookMove = entry.move;
-
-      if (entry.count > bestScore)
-          bestScore = entry.count;
+      if (   (RKiss.rand<unsigned>() % sum < e.count)
+          || (pickBest && e.count == best))
+          bookMove = e.move;
   }
 
   if (!bookMove)
@@ -439,49 +432,52 @@ Move Book::probe(const Position& pos, bool findBest) {
   //
   // bit  0- 5: destination square (from 0 to 63)
   // bit  6-11: origin square (from 0 to 63)
-  // bit 12-13-14: promotion piece (from KNIGHT == 1 to QUEEN == 4)
+  // bit 12-14: promotion piece (from KNIGHT == 1 to QUEEN == 4)
   //
-  // Castling moves follow "king captures rook" representation. So in case
-  // book move is a promotion we have to convert to our representation, in
-  // all other cases we can directly compare with a Move after having
-  // masked out special Move's flags that are not supported by PolyGlot.
+  // Castling moves follow "king captures rook" representation. So in case book
+  // move is a promotion we have to convert to our representation, in all the
+  // other cases we can directly compare with a Move after having masked out
+  // the special Move's flags (bit 14-15) that are not supported by PolyGlot.
   int promotion = (bookMove >> 12) & 7;
 
   if (promotion)
       bookMove = make_promotion_move(move_from(Move(bookMove)),
                                      move_to(Move(bookMove)),
                                      PieceType(promotion + 1));
-  // Verify the book move is legal
+
+  // Convert bookMove to our internal Move format (and verify it is legal)
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
-      if (unsigned(ml.move() & ~(3 << 14)) == bookMove) // Mask out special flags
+      if (bookMove == unsigned(ml.move() & ~(3 << 14)))
           return ml.move();
 
   return MOVE_NONE;
 }
 
 
-/// Book::first_entry() takes a book key as input, and does a binary search
-/// through the book file for the given key. The index to the first (leftmost)
-/// book entry with the same key as the input is returned. When the key is not
-/// found in the book file, bookSize is returned.
+/// Book::binary_search() takes a book key as input, and does a binary search
+/// through the book file for the given key. File stream current position is set
+/// to the leftmost book entry with the same key as the input.
 
-int Book::first_entry(uint64_t key) {
+void Book::binary_search(uint64_t key) {
 
-  int left, right, mid;
+  size_t left, right, mid;
+  BookEntry e;
 
-  // Binary search (finds the leftmost entry with given key)
   left = 0;
-  right = bookSize - 1;
+  right = size - 1;
 
   assert(left <= right);
 
-  while (left < right)
+  while (left < right && good())
   {
       mid = (left + right) / 2;
 
       assert(mid >= left && mid < right);
 
-      if (key <= read_entry(mid).key)
+      seekg(mid * sizeof(BookEntry), ios_base::beg);
+      *this >> e;
+
+      if (key <= e.key)
           right = mid;
       else
           left = mid + 1;
@@ -489,42 +485,5 @@ int Book::first_entry(uint64_t key) {
 
   assert(left == right);
 
-  return read_entry(left).key == key ? left : bookSize;
-}
-
-
-/// Book::operator>>() reads sizeof(T) chars from the file's binary byte
-/// stream and converts them in a number of type T.
-template<typename T>
-Book& Book::operator>>(T& n) {
-
-  n = 0;
-
-  for (size_t i = 0; i < sizeof(T); i++)
-      n = T((n << 8) + bookFile.get());
-
-  return *this;
-}
-
-
-/// Book::read_entry() takes an integer index, and returns the BookEntry
-/// at the given index in the book file.
-
-BookEntry Book::read_entry(int idx) {
-
-  assert(idx >= 0 && idx < bookSize);
-  assert(bookFile.is_open());
-
-  BookEntry e;
-
-  bookFile.seekg(idx * sizeof(BookEntry), ios_base::beg);
-
-  *this >> e.key >> e.move >> e.count >> e.learn;
-
-  if (!bookFile.good())
-  {
-      cerr << "Failed to read book entry at index " << idx << endl;
-      exit(EXIT_FAILURE);
-  }
-  return e;
+  seekg(left * sizeof(BookEntry), ios_base::beg);
 }
