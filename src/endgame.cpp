@@ -369,7 +369,7 @@ Value Endgame<KBBKN>::operator()(const Position& pos) const {
   result += Value(square_distance(bksq, nsq) * 32);
 
   // Bonus for restricting the knight's mobility
-  result += Value((8 - count_1s<CNT32_MAX15>(pos.attacks_from<KNIGHT>(nsq))) * 8);
+  result += Value((8 - popcount<Max15>(pos.attacks_from<KNIGHT>(nsq))) * 8);
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }

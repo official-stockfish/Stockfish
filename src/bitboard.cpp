@@ -154,7 +154,7 @@ Square pop_1st_bit(Bitboard* bb) {
 void bitboards_init() {
 
   for (Bitboard b = 0; b < 256; b++)
-      BitCount8Bit[b] = (uint8_t)count_1s<CNT32_MAX15>(b);
+      BitCount8Bit[b] = (uint8_t)popcount<Max15>(b);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
@@ -321,7 +321,7 @@ namespace {
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
         masks[s]  = sliding_attacks(pt, s, 0) & ~edges;
-        shifts[s] = (Is64Bit ? 64 : 32) - count_1s<CNT32_MAX15>(masks[s]);
+        shifts[s] = (Is64Bit ? 64 : 32) - popcount<Max15>(masks[s]);
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attacks bitboard in reference[].

@@ -116,7 +116,6 @@ template<Color Us>
 Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
                                     Bitboard theirPawns, PawnInfo* pi) {
 
-  const BitCountType Max15 = Is64Bit ? CNT64_MAX15 : CNT32_MAX15;
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
   Bitboard b;
@@ -183,7 +182,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // enemy pawns in the forward direction on the neighboring files.
       candidate =   !(opposed | passed | backward | isolated)
                  && (b = attack_span_mask(Them, s + pawn_push(Us)) & ourPawns) != 0
-                 &&  count_1s<Max15>(b) >= count_1s<Max15>(attack_span_mask(Us, s) & theirPawns);
+                 &&  popcount<Max15>(b) >= popcount<Max15>(attack_span_mask(Us, s) & theirPawns);
 
       // Passed pawns will be properly scored in evaluation because we need
       // full attack info to evaluate passed pawns. Only the frontmost passed

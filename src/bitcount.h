@@ -21,25 +21,29 @@
 #if !defined(BITCOUNT_H_INCLUDED)
 #define BITCOUNT_H_INCLUDED
 
+#include <cassert>
 #include "types.h"
 
 enum BitCountType {
-    CNT64,
-    CNT64_MAX15,
-    CNT32,
-    CNT32_MAX15,
-    CNT_POPCNT
+  CNT_64,
+  CNT_64_MAX15,
+  CNT_32,
+  CNT_32_MAX15,
+  CNT_HW_POPCNT
 };
 
-/// count_1s() counts the number of nonzero bits in a bitboard.
-/// We have different optimized versions according if platform
-/// is 32 or 64 bits, and to the maximum number of nonzero bits.
-/// We also support hardware popcnt instruction. See Readme.txt
-/// on how to pgo compile with popcnt support.
-template<BitCountType> inline int count_1s(Bitboard);
+/// Determine at compile time the best popcount<> specialization according if
+/// platform is 32 or 64 bits, to the maximum number of nonzero bits to count or
+/// use hardware popcnt instruction when available.
+const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64 : CNT_32;
+const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : CNT_32_MAX15;
+
+
+/// popcount() counts the number of nonzero bits in a bitboard
+template<BitCountType> inline int popcount(Bitboard);
 
 template<>
-inline int count_1s<CNT64>(Bitboard b) {
+inline int popcount<CNT_64>(Bitboard b) {
   b -= ((b>>1) & 0x5555555555555555ULL);
   b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
   b = ((b>>4) + b) & 0x0F0F0F0F0F0F0F0FULL;
@@ -48,7 +52,7 @@ inline int count_1s<CNT64>(Bitboard b) {
 }
 
 template<>
-inline int count_1s<CNT64_MAX15>(Bitboard b) {
+inline int popcount<CNT_64_MAX15>(Bitboard b) {
   b -= (b>>1) & 0x5555555555555555ULL;
   b = ((b>>2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
   b *= 0x1111111111111111ULL;
@@ -56,7 +60,7 @@ inline int count_1s<CNT64_MAX15>(Bitboard b) {
 }
 
 template<>
-inline int count_1s<CNT32>(Bitboard b) {
+inline int popcount<CNT_32>(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
@@ -69,7 +73,7 @@ inline int count_1s<CNT32>(Bitboard b) {
 }
 
 template<>
-inline int count_1s<CNT32_MAX15>(Bitboard b) {
+inline int popcount<CNT_32_MAX15>(Bitboard b) {
   unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -= (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -= (w >> 1) & 0x55555555;
@@ -81,17 +85,27 @@ inline int count_1s<CNT32_MAX15>(Bitboard b) {
 }
 
 template<>
-inline int count_1s<CNT_POPCNT>(Bitboard b) {
+inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
+
 #if !defined(USE_POPCNT)
+
+  assert(false);
   return int(b != 0); // Avoid 'b not used' warning
+
 #elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
+
   return _mm_popcnt_u64(b);
+
 #elif defined(_MSC_VER)
+
   return (int)__popcnt64(b);
-#elif defined(__GNUC__)
+
+#else
+
   unsigned long ret;
   __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
   return ret;
+
 #endif
 }
 
