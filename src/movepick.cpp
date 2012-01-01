@@ -254,8 +254,8 @@ void MovePicker::score_captures() {
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
-      cur->score =  PieceValueMidgame[pos.piece_on(move_to(m))]
-                  - type_of(pos.piece_on(move_from(m)));
+      cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
+                  - type_of(pos.piece_on(from_sq(m)));
 
       if (is_promotion(m))
           cur->score += PieceValueMidgame[Piece(promotion_piece_type(m))];
@@ -270,8 +270,8 @@ void MovePicker::score_noncaptures() {
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
-      from = move_from(m);
-      cur->score = H.value(pos.piece_on(from), move_to(m));
+      from = from_sq(m);
+      cur->score = H.value(pos.piece_on(from), to_sq(m));
   }
 }
 
@@ -293,10 +293,10 @@ void MovePicker::score_evasions() {
       if ((seeScore = pos.see_sign(m)) < 0)
           cur->score = seeScore - History::MaxValue; // Be sure we are at the bottom
       else if (pos.is_capture(m))
-          cur->score =  PieceValueMidgame[pos.piece_on(move_to(m))]
-                      - type_of(pos.piece_on(move_from(m))) + History::MaxValue;
+          cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
+                      - type_of(pos.piece_on(from_sq(m))) + History::MaxValue;
       else
-          cur->score = H.value(pos.piece_on(move_from(m)), move_to(m));
+          cur->score = H.value(pos.piece_on(from_sq(m)), to_sq(m));
   }
 }
 
@@ -378,7 +378,7 @@ Move MovePicker::next_move() {
 
       case PH_QRECAPTURES:
           move = (curMove++)->move;
-          if (move_to(move) == recaptureSquare)
+          if (to_sq(move) == recaptureSquare)
               return move;
           break;
 

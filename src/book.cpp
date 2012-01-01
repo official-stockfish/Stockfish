@@ -404,7 +404,8 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
 
   BookEntry e;
   uint16_t best = 0;
-  unsigned sum = 0, bookMove = 0;
+  unsigned sum = 0;
+  Move move = MOVE_NONE;
   uint64_t key = book_key(pos);
 
   if (fileName != fName && !open(fName.c_str()))
@@ -422,10 +423,10 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
       // with lower score. Note that first entry is always chosen.
       if (   (RKiss.rand<unsigned>() % sum < e.count)
           || (pickBest && e.count == best))
-          bookMove = e.move;
+          move = Move(e.move);
   }
 
-  if (!bookMove)
+  if (!move)
       return MOVE_NONE;
 
   // A PolyGlot book move is encoded as follows:
@@ -438,16 +439,13 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
   // move is a promotion we have to convert to our representation, in all the
   // other cases we can directly compare with a Move after having masked out
   // the special Move's flags (bit 14-15) that are not supported by PolyGlot.
-  int promotion = (bookMove >> 12) & 7;
+  int pt = (move >> 12) & 7;
+  if (pt)
+      move = make_promotion(from_sq(move), to_sq(move), PieceType(pt + 1));
 
-  if (promotion)
-      bookMove = make_promotion_move(move_from(Move(bookMove)),
-                                     move_to(Move(bookMove)),
-                                     PieceType(promotion + 1));
-
-  // Convert bookMove to our internal Move format (and verify it is legal)
+  // Add 'special move' flags and verify it is legal
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
-      if (bookMove == unsigned(ml.move() & ~(3 << 14)))
+      if (move == (ml.move() & 0x3FFF))
           return ml.move();
 
   return MOVE_NONE;

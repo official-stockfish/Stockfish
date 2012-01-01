@@ -428,8 +428,8 @@ inline Value Position::non_pawn_material(Color c) const {
 
 inline bool Position::is_passed_pawn_push(Move m) const {
 
-  return   board[move_from(m)] == make_piece(sideToMove, PAWN)
-        && pawn_is_passed(sideToMove, move_to(m));
+  return   board[from_sq(m)] == make_piece(sideToMove, PAWN)
+        && pawn_is_passed(sideToMove, to_sq(m));
 }
 
 inline int Position::startpos_ply_counter() const {
@@ -454,14 +454,14 @@ inline bool Position::is_chess960() const {
 inline bool Position::is_capture_or_promotion(Move m) const {
 
   assert(is_ok(m));
-  return is_special(m) ? !is_castle(m) : !square_is_empty(move_to(m));
+  return is_special(m) ? !is_castle(m) : !square_is_empty(to_sq(m));
 }
 
 inline bool Position::is_capture(Move m) const {
 
   // Note that castle is coded as "king captures the rook"
   assert(is_ok(m));
-  return (!square_is_empty(move_to(m)) && !is_castle(m)) || is_enpassant(m);
+  return (!square_is_empty(to_sq(m)) && !is_castle(m)) || is_enpassant(m);
 }
 
 inline PieceType Position::captured_piece_type() const {

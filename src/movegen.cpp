@@ -372,20 +372,20 @@ namespace {
         to = pop_1st_bit(&b);
 
         if (Type == MV_CAPTURE || Type == MV_EVASION)
-            (*mlist++).move = make_promotion_move(to - Delta, to, QUEEN);
+            (*mlist++).move = make_promotion(to - Delta, to, QUEEN);
 
         if (Type == MV_NON_CAPTURE || Type == MV_EVASION)
         {
-            (*mlist++).move = make_promotion_move(to - Delta, to, ROOK);
-            (*mlist++).move = make_promotion_move(to - Delta, to, BISHOP);
-            (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
+            (*mlist++).move = make_promotion(to - Delta, to, ROOK);
+            (*mlist++).move = make_promotion(to - Delta, to, BISHOP);
+            (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
         }
 
         // This is the only possible under promotion that can give a check
         // not already included in the queen-promotion.
         if (   Type == MV_CHECK
             && bit_is_set(pos.attacks_from<KNIGHT>(to), pos.king_square(Delta > 0 ? BLACK : WHITE)))
-            (*mlist++).move = make_promotion_move(to - Delta, to, KNIGHT);
+            (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
         else (void)pos; // Silence a warning under MSVC
     }
     return mlist;
@@ -488,7 +488,7 @@ namespace {
         while (b1)
         {
             to = pop_1st_bit(&b1);
-            (*mlist++).move = make_enpassant_move(to, pos.ep_square());
+            (*mlist++).move = make_enpassant(to, pos.ep_square());
         }
     }
     return mlist;
@@ -535,7 +535,7 @@ namespace {
             return mlist;
     }
 
-    (*mlist++).move = make_castle_move(kfrom, rfrom);
+    (*mlist++).move = make_castle(kfrom, rfrom);
 
     return mlist;
   }

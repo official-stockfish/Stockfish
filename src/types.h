@@ -432,11 +432,11 @@ inline Square pawn_push(Color c) {
   return c == WHITE ? DELTA_N : DELTA_S;
 }
 
-inline Square move_from(Move m) {
+inline Square from_sq(Move m) {
   return Square((m >> 6) & 0x3F);
 }
 
-inline Square move_to(Move m) {
+inline Square to_sq(Move m) {
   return Square(m & 0x3F);
 }
 
@@ -464,20 +464,20 @@ inline Move make_move(Square from, Square to) {
   return Move(to | (from << 6));
 }
 
-inline Move make_promotion_move(Square from, Square to, PieceType promotion) {
-  return Move(to | (from << 6) | (1 << 14) | ((promotion - 2) << 12)) ;
+inline Move make_promotion(Square from, Square to, PieceType pt) {
+  return Move(to | (from << 6) | (1 << 14) | ((pt - 2) << 12)) ;
 }
 
-inline Move make_enpassant_move(Square from, Square to) {
+inline Move make_enpassant(Square from, Square to) {
   return Move(to | (from << 6) | (2 << 14));
 }
 
-inline Move make_castle_move(Square from, Square to) {
+inline Move make_castle(Square from, Square to) {
   return Move(to | (from << 6) | (3 << 14));
 }
 
 inline bool is_ok(Move m) {
-  return move_from(m) != move_to(m); // Catches also MOVE_NULL and MOVE_NONE
+  return from_sq(m) != to_sq(m); // Catches also MOVE_NULL and MOVE_NONE
 }
 
 #include <string>

@@ -420,8 +420,8 @@ bool Position::move_attacks_square(Move m, Square s) const {
   assert(square_is_ok(s));
 
   Bitboard occ, xray;
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
   Piece piece = piece_on(from);
 
   assert(!square_is_empty(from));
@@ -451,7 +451,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   assert(pinned == pinned_pieces());
 
   Color us = side_to_move();
-  Square from = move_from(m);
+  Square from = from_sq(m);
 
   assert(color_of(piece_on(from)) == us);
   assert(piece_on(king_square(us)) == make_piece(us, KING));
@@ -462,7 +462,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   if (is_enpassant(m))
   {
       Color them = flip(us);
-      Square to = move_to(m);
+      Square to = to_sq(m);
       Square capsq = to + pawn_push(them);
       Square ksq = king_square(us);
       Bitboard b = occupied_squares();
@@ -484,13 +484,13 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
   if (type_of(piece_on(from)) == KING)
-      return is_castle(m) || !(attackers_to(move_to(m)) & pieces(flip(us)));
+      return is_castle(m) || !(attackers_to(to_sq(m)) & pieces(flip(us)));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return   !pinned
         || !bit_is_set(pinned, from)
-        ||  squares_aligned(from, move_to(m), king_square(us));
+        ||  squares_aligned(from, to_sq(m), king_square(us));
 }
 
 
@@ -516,8 +516,8 @@ bool Position::is_pseudo_legal(const Move m) const {
 
   Color us = sideToMove;
   Color them = flip(sideToMove);
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
   Piece pc = piece_on(from);
 
   // Use a slower but simpler function for uncommon cases
@@ -613,7 +613,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       {
           Bitboard b = occupied_squares();
           clear_bit(&b, from);
-          if (attackers_to(move_to(m), b) & pieces(flip(us)))
+          if (attackers_to(to_sq(m), b) & pieces(flip(us)))
               return false;
       }
       else
@@ -626,7 +626,7 @@ bool Position::is_pseudo_legal(const Move m) const {
 
           // Our move must be a blocking evasion or a capture of the checking piece
           target = squares_between(checksq, king_square(us)) | checkers();
-          if (!bit_is_set(target, move_to(m)))
+          if (!bit_is_set(target, to_sq(m)))
               return false;
       }
   }
@@ -641,10 +641,10 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   assert(is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates());
-  assert(color_of(piece_on(move_from(m))) == side_to_move());
+  assert(color_of(piece_on(from_sq(m))) == side_to_move());
 
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
   PieceType pt = type_of(piece_on(from));
 
   // Direct check ?
@@ -766,8 +766,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   Color us = side_to_move();
   Color them = flip(us);
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
   Piece piece = piece_on(from);
   PieceType pt = type_of(piece);
   PieceType capture = is_enpassant(m) ? PAWN : type_of(piece_on(to));
@@ -982,8 +982,8 @@ void Position::undo_move(Move m) {
 
   Color us = side_to_move();
   Color them = flip(us);
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
   Piece piece = piece_on(to);
   PieceType pt = type_of(piece);
   PieceType capture = st->capturedType;
@@ -1077,8 +1077,8 @@ void Position::do_castle_move(Move m) {
   Square kto, kfrom, rfrom, rto, kAfter, rAfter;
 
   Color us = side_to_move();
-  Square kBefore = move_from(m);
-  Square rBefore = move_to(m);
+  Square kBefore = from_sq(m);
+  Square rBefore = to_sq(m);
 
   // Find after-castle squares for king and rook
   if (rBefore > kBefore) // O-O
@@ -1228,8 +1228,8 @@ int Position::see_sign(Move m) const {
 
   assert(is_ok(m));
 
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
 
   // Early return if SEE cannot be negative because captured piece value
   // is not less then capturing one. Note that king moves always return
@@ -1256,8 +1256,8 @@ int Position::see(Move m) const {
   if (is_castle(m))
       return 0;
 
-  from = move_from(m);
-  to = move_to(m);
+  from = from_sq(m);
+  to = to_sq(m);
   capturedType = type_of(piece_on(to));
   occ = occupied_squares();
 

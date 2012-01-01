@@ -197,19 +197,19 @@ namespace {
   FORCE_INLINE bool is_dangerous(const Position& pos, Move m, bool captureOrPromotion) {
 
     // Test for a pawn pushed to 7th or a passed pawn move
-    if (type_of(pos.piece_on(move_from(m))) == PAWN)
+    if (type_of(pos.piece_on(from_sq(m))) == PAWN)
     {
         Color c = pos.side_to_move();
-        if (   relative_rank(c, move_to(m)) == RANK_7
-            || pos.pawn_is_passed(c, move_to(m)))
+        if (   relative_rank(c, to_sq(m)) == RANK_7
+            || pos.pawn_is_passed(c, to_sq(m)))
             return true;
     }
 
     // Test for a capture that triggers a pawn endgame
     if (   captureOrPromotion
-        && type_of(pos.piece_on(move_to(m))) != PAWN
+        && type_of(pos.piece_on(to_sq(m))) != PAWN
         && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
-            - PieceValueMidgame[pos.piece_on(move_to(m))] == VALUE_ZERO)
+            - PieceValueMidgame[pos.piece_on(to_sq(m))] == VALUE_ZERO)
         && !is_special(m))
         return true;
 
@@ -290,19 +290,17 @@ void Search::think() {
   // Populate RootMoves with all the legal moves (default) or, if a SearchMoves
   // is given, with the subset of legal moves to search.
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
-      if (   SearchMoves.empty()
-          || count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
+      if (SearchMoves.empty() || count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
   if (Options["OwnBook"])
   {
       Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
 
-      if (   bookMove != MOVE_NONE
-          && count(RootMoves.begin(), RootMoves.end(), bookMove))
+      if (bookMove && count(RootMoves.begin(), RootMoves.end(), bookMove))
       {
           std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bookMove));
-          goto finish;
+          goto finalize;
       }
   }
 
@@ -372,7 +370,7 @@ void Search::think() {
       pos.undo_move(RootMoves[0].pv[0]);
   }
 
-finish:
+finalize:
 
   // When we reach max depth we arrive here even without a StopRequest, but if
   // we are pondering or in infinite search, we shouldn't print the best move
@@ -703,7 +701,7 @@ namespace {
         && pos.captured_piece_type() == NO_PIECE_TYPE
         && !is_special(move))
     {
-        Square to = move_to(move);
+        Square to = to_sq(move);
         H.update_gain(pos.piece_on(to), to, -(ss-1)->eval - ss->eval);
     }
 
@@ -968,7 +966,7 @@ split_point_start: // At split points actual search starts from here
           // but fixing this made program slightly weaker.
           Depth predictedDepth = newDepth - reduction<PvNode>(depth, moveCount);
           futilityValue =  futilityBase + futility_margin(predictedDepth, moveCount)
-                         + H.gain(pos.piece_on(move_from(move)), move_to(move));
+                         + H.gain(pos.piece_on(from_sq(move)), to_sq(move));
 
           if (futilityValue < beta)
           {
@@ -1152,13 +1150,13 @@ split_point_start: // At split points actual search starts from here
 
             // Increase history value of the cut-off move
             Value bonus = Value(int(depth) * int(depth));
-            H.add(pos.piece_on(move_from(move)), move_to(move), bonus);
+            H.add(pos.piece_on(from_sq(move)), to_sq(move), bonus);
 
             // Decrease history of all the other played non-capture moves
             for (int i = 0; i < playedMoveCount - 1; i++)
             {
                 Move m = movesSearched[i];
-                H.add(pos.piece_on(move_from(m)), move_to(m), -bonus);
+                H.add(pos.piece_on(from_sq(m)), to_sq(m), -bonus);
             }
         }
     }
@@ -1264,7 +1262,7 @@ split_point_start: // At split points actual search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, H, move_to((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, H, to_sq((ss-1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1285,7 +1283,7 @@ split_point_start: // At split points actual search starts from here
           && !pos.is_passed_pawn_push(move))
       {
           futilityValue =  futilityBase
-                         + PieceValueEndgame[pos.piece_on(move_to(move))]
+                         + PieceValueEndgame[pos.piece_on(to_sq(move))]
                          + (is_enpassant(move) ? PawnValueEndgame : VALUE_ZERO);
 
           if (futilityValue < beta)
@@ -1389,8 +1387,8 @@ split_point_start: // At split points actual search starts from here
     Color them;
     Value futilityValue, bv = *bestValue;
 
-    from = move_from(move);
-    to = move_to(move);
+    from = from_sq(move);
+    to = to_sq(move);
     them = flip(pos.side_to_move());
     ksq = pos.king_square(them);
     kingAtt = pos.attacks_from<KING>(ksq);
@@ -1450,14 +1448,14 @@ split_point_start: // At split points actual search starts from here
     assert(is_ok(m2));
 
     // Case 1: The moving piece is the same in both moves
-    f2 = move_from(m2);
-    t1 = move_to(m1);
+    f2 = from_sq(m2);
+    t1 = to_sq(m1);
     if (f2 == t1)
         return true;
 
     // Case 2: The destination square for m2 was vacated by m1
-    t2 = move_to(m2);
-    f1 = move_from(m1);
+    t2 = to_sq(m2);
+    f1 = from_sq(m1);
     if (t2 == f1)
         return true;
 
@@ -1530,10 +1528,10 @@ split_point_start: // At split points actual search starts from here
 
     Square mfrom, mto, tfrom, tto;
 
-    mfrom = move_from(m);
-    mto = move_to(m);
-    tfrom = move_from(threat);
-    tto = move_to(threat);
+    mfrom = from_sq(m);
+    mto = to_sq(m);
+    tfrom = from_sq(threat);
+    tto = to_sq(threat);
 
     // Case 1: Don't prune moves which move the threatened piece
     if (mfrom == tto)

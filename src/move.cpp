@@ -33,8 +33,8 @@ using std::string;
 
 const string move_to_uci(Move m, bool chess960) {
 
-  Square from = move_from(m);
-  Square to = move_to(m);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
   string promotion;
 
   if (m == MOVE_NONE)
@@ -83,13 +83,13 @@ const string move_to_san(Position& pos, Move m) {
 
   Bitboard attackers;
   bool ambiguousMove, ambiguousFile, ambiguousRank;
-  Square sq, from = move_from(m);
-  Square to = move_to(m);
+  Square sq, from = from_sq(m);
+  Square to = to_sq(m);
   PieceType pt = type_of(pos.piece_on(from));
   string san;
 
   if (is_castle(m))
-      san = (move_to(m) < move_from(m) ? "O-O-O" : "O-O");
+      san = (to_sq(m) < from_sq(m) ? "O-O-O" : "O-O");
   else
   {
       if (pt != PAWN)
