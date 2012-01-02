@@ -367,7 +367,7 @@ template Value ThreadsManager::split<true>(Position&, Stack*, Value, Value, Valu
 
 // Thread::timer_loop() is where the timer thread waits maxPly milliseconds and
 // then calls do_timer_event(). If maxPly is 0 thread sleeps until is woken up.
-extern void do_timer_event();
+extern void check_time();
 
 void Thread::timer_loop() {
 
@@ -376,7 +376,7 @@ void Thread::timer_loop() {
       lock_grab(&sleepLock);
       timed_wait(&sleepCond, &sleepLock, maxPly ? maxPly : INT_MAX);
       lock_release(&sleepLock);
-      do_timer_event();
+      check_time();
   }
 }
 

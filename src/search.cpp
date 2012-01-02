@@ -139,6 +139,9 @@ namespace {
   // better than the second best move.
   const Value EasyMoveMargin = Value(0x150);
 
+  // This is the minimum interval in msec between two check_time() calls
+  const int TimerResolution = 5;
+
 
   /// Namespace variables
 
@@ -343,8 +346,8 @@ void Search::think() {
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
-  if (TimeMgr.available_time())
-      Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 8, 20)));
+  if (Limits.use_time_management())
+      Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 16, TimerResolution)));
   else
       Threads.set_timer(100);
 
@@ -513,7 +516,7 @@ namespace {
             bestMoveNeverChanged = false;
 
         // Do we have time for the next iteration? Can we stop searching now?
-        if (!Signals.stop && !Signals.stopOnPonderhit && Limits.useTimeManagement())
+        if (!Signals.stop && !Signals.stopOnPonderhit && Limits.use_time_management())
         {
             bool stop = false; // Local variable, not the volatile Signals.stop
 
@@ -865,7 +868,8 @@ split_point_start: // At split points actual search starts from here
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.next_move()) != MOVE_NONE
-           && !thread.cutoff_occurred())
+           && !thread.cutoff_occurred()
+           && !Signals.stop)
     {
       assert(is_ok(move));
 
@@ -1957,11 +1961,11 @@ void Thread::idle_loop(SplitPoint* sp) {
 }
 
 
-/// do_timer_event() is called by the timer thread when the timer triggers. It
-/// is used to print debug info and, more important, to detect when we are out of
+/// check_time() is called by the timer thread when the timer triggers. It is
+/// used to print debug info and, more important, to detect when we are out of
 /// available time and so stop the search.
 
-void do_timer_event() {
+void check_time() {
 
   static int lastInfoTime;
   int e = elapsed_time();
@@ -1979,10 +1983,10 @@ void do_timer_event() {
                          && !Signals.failedLowAtRoot
                          &&  e > TimeMgr.available_time();
 
-  bool noMoreTime =   e > TimeMgr.maximum_time()
+  bool noMoreTime =   e > TimeMgr.maximum_time() - TimerResolution
                    || stillAtFirstMove;
 
-  if (   (Limits.useTimeManagement() && noMoreTime)
+  if (   (Limits.use_time_management() && noMoreTime)
       || (Limits.maxTime && e >= Limits.maxTime)
          /* missing nodes limit */ ) // FIXME
       Signals.stop = true;

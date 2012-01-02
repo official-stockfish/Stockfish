@@ -55,7 +55,7 @@ struct Stack {
 struct LimitsType {
 
   LimitsType() {  memset(this, 0, sizeof(LimitsType)); }
-  bool useTimeManagement() const { return !(maxTime | maxDepth | maxNodes | infinite); }
+  bool use_time_management() const { return !(maxTime | maxDepth | maxNodes | infinite); }
 
   int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
 };
