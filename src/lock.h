@@ -75,8 +75,8 @@ typedef HANDLE WaitCondition;
 #  define cond_init(x) { *x = CreateEvent(0, FALSE, FALSE, 0); }
 #  define cond_destroy(x) CloseHandle(*x)
 #  define cond_signal(x) SetEvent(*x)
-#  define cond_wait(x,y) { ResetEvent(*x); lock_release(y); WaitForSingleObject(*x, INFINITE); lock_grab(y); }
-#  define cond_timedwait(x,y,z) { ResetEvent(*x); lock_release(y); WaitForSingleObject(*x,z); lock_grab(y); }
+#  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(*x, INFINITE); lock_grab(y); }
+#  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(*x,z); lock_grab(y); }
 
 #endif
 

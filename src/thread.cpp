@@ -202,7 +202,7 @@ void ThreadsManager::exit() {
 
       // Wait for thread termination
 #if defined(_MSC_VER)
-      WaitForSingleObject(threads[i].handle, 0);
+      WaitForSingleObject(threads[i].handle, INFINITE);
       CloseHandle(threads[i].handle);
 #else
       pthread_join(threads[i].handle, NULL);
@@ -452,7 +452,8 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
   cond_signal(&main.sleepCond); // Wake up main thread and start searching
 
   if (!asyncMode)
-      cond_wait(&sleepCond, &main.sleepLock);
+      while (!main.do_sleep)
+          cond_wait(&sleepCond, &main.sleepLock);
 
   lock_release(&main.sleepLock);
 }
