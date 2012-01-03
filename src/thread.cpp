@@ -172,7 +172,7 @@ void ThreadsManager::init() {
   for (int i = 0; i <= MAX_THREADS; i++)
   {
       threads[i].is_searching = false;
-      threads[i].do_sleep = true;
+      threads[i].do_sleep = (i != 0); // Avoid a race with start_thinking()
       threads[i].threadID = i;
 
 #if defined(_MSC_VER)
