@@ -458,30 +458,30 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
 
 void Book::binary_search(uint64_t key) {
 
-  size_t left, right, mid;
+  size_t low, high, mid;
   BookEntry e;
 
-  left = 0;
-  right = size - 1;
+  low = 0;
+  high = size - 1;
 
-  assert(left <= right);
+  assert(low <= high);
 
-  while (left < right && good())
+  while (low < high && good())
   {
-      mid = (left + right) / 2;
+      mid = (low + high) / 2;
 
-      assert(mid >= left && mid < right);
+      assert(mid >= low && mid < high);
 
       seekg(mid * sizeof(BookEntry), ios_base::beg);
       *this >> e;
 
       if (key <= e.key)
-          right = mid;
+          high = mid;
       else
-          left = mid + 1;
+          low = mid + 1;
   }
 
-  assert(left == right);
+  assert(low == high);
 
-  seekg(left * sizeof(BookEntry), ios_base::beg);
+  seekg(low * sizeof(BookEntry), ios_base::beg);
 }
