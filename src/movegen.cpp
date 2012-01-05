@@ -253,21 +253,6 @@ namespace {
 
 
   template<PieceType Pt>
-  inline MoveStack* generate_discovered_checks(const Position& pos, MoveStack* mlist, Square from) {
-
-    assert(Pt != QUEEN && Pt != PAWN);
-
-    Bitboard b = pos.attacks_from<Pt>(from) & pos.empty_squares();
-
-    if (Pt == KING)
-        b &= ~QueenPseudoAttacks[pos.king_square(flip(pos.side_to_move()))];
-
-    SERIALIZE_MOVES(b);
-    return mlist;
-  }
-
-
-  template<PieceType Pt>
   inline MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist, Color us,
                                            Bitboard dc, Square ksq) {
     assert(Pt != KING && Pt != PAWN);
@@ -408,6 +393,7 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
 
   Bitboard b, dc;
   Square from;
+  PieceType pt;
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(flip(us));
 
@@ -419,15 +405,17 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   while (b)
   {
      from = pop_1st_bit(&b);
-     switch (type_of(pos.piece_on(from)))
-     {
-      case PAWN:   /* Will be generated togheter with pawns direct checks */     break;
-      case KNIGHT: mlist = generate_discovered_checks<KNIGHT>(pos, mlist, from); break;
-      case BISHOP: mlist = generate_discovered_checks<BISHOP>(pos, mlist, from); break;
-      case ROOK:   mlist = generate_discovered_checks<ROOK>(pos, mlist, from);   break;
-      case KING:   mlist = generate_discovered_checks<KING>(pos, mlist, from);   break;
-      default: assert(false); break;
-     }
+     pt = type_of(pos.piece_on(from));
+
+     if (pt == PAWN)
+         continue; // Will be generated togheter with direct checks
+
+     b = pos.attacks_from(Piece(pt), from) & pos.empty_squares();
+
+     if (pt == KING)
+         b &= ~QueenPseudoAttacks[ksq];
+
+     SERIALIZE_MOVES(b);
   }
 
   // Direct non-capture checks
