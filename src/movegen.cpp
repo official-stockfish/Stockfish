@@ -17,19 +17,18 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 
 #include "bitcount.h"
 #include "movegen.h"
 #include "position.h"
-#include "misc.h"
 
-// Simple macro to wrap a very common while loop, no facny, no flexibility,
-// hardcoded list name 'mlist' and from square 'from'.
+/// Simple macro to wrap a very common while loop, no facny, no flexibility,
+/// hardcoded names 'mlist' and 'from'.
 #define SERIALIZE_MOVES(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit(&b))
 
-// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
+/// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
 #define SERIALIZE_MOVES_D(b, d) while (b) { to = pop_1st_bit(&b); (*mlist++).move = make_move(to + (d), to); }
 
 namespace {
@@ -139,7 +138,7 @@ namespace {
 
         // Knight-promotion is the only one that can give a check (direct or
         // discovered) not already included in the queen-promotion.
-        if (   Type == MV_CHECK
+        if (   Type == MV_NON_CAPTURE_CHECK
             && bit_is_set(StepAttacksBB[W_KNIGHT][to], ksq))
                 (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
         else
@@ -179,13 +178,13 @@ namespace {
         b1 = move_pawns<UP>(pawnsNotOn7)   & emptySquares;
         b2 = move_pawns<UP>(b1 & TRank3BB) & emptySquares;
 
-        if (Type == MV_EVASION)
+        if (Type == MV_EVASION) // Consider only blocking squares
         {
-            b1 &= target; // Consider only blocking squares
+            b1 &= target;
             b2 &= target;
         }
 
-        if (Type == MV_CHECK)
+        if (Type == MV_NON_CAPTURE_CHECK)
         {
             // Consider only direct checks
             b1 &= pos.attacks_from<PAWN>(ksq, Them);
@@ -195,7 +194,7 @@ namespace {
             // if the pawn is not on the same file as the enemy king, because we
             // don't generate captures. Note that a possible discovery check
             // promotion has been already generated among captures.
-            if (pawnsNotOn7 & target) // For CHECK type target is dc bitboard
+            if (pawnsNotOn7 & target) // Target is dc bitboard
             {
                 dc1 = move_pawns<UP>(pawnsNotOn7 & target) & emptySquares & ~file_bb(ksq);
                 dc2 = move_pawns<UP>(dc1 & TRank3BB) & emptySquares;
@@ -288,8 +287,8 @@ namespace {
   template<>
   FORCE_INLINE MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
 
-    return (us == WHITE ? generate_pawn_moves<WHITE, MV_CHECK>(p, m, dc, ksq)
-                        : generate_pawn_moves<BLACK, MV_CHECK>(p, m, dc, ksq));
+    return (us == WHITE ? generate_pawn_moves<WHITE, MV_NON_CAPTURE_CHECK>(p, m, dc, ksq)
+                        : generate_pawn_moves<BLACK, MV_NON_CAPTURE_CHECK>(p, m, dc, ksq));
   }
 
 
@@ -498,7 +497,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
 }
 
 
-/// generate<MV_LEGAL> computes a complete list of legal moves in the current position
+/// generate<MV_LEGAL> generates all legal moves in the current position
 
 template<>
 MoveStack* generate<MV_LEGAL>(const Position& pos, MoveStack* mlist) {
