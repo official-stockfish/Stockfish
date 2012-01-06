@@ -203,7 +203,7 @@ void bitboards_init() {
           Bitboard b = 1ULL << i;
           b ^= b - 1;
           b ^= b >> 32;
-          BSFTable[uint32_t(b * 0x783A9B23) >> 26] = i;
+          BSFTable[(uint32_t)(b * 0x783A9B23) >> 26] = i;
       }
       else
           BSFTable[((1ULL << i) * 0x218A392CD3D5DBFULL) >> 58] = i;

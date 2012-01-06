@@ -203,13 +203,13 @@ MaterialInfo* MaterialInfoTable::material_info(const Position& pos) const {
   // No pawns makes it difficult to win, even with a material advantage
   if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMidgame)
   {
-      mi->factor[WHITE] = uint8_t
+      mi->factor[WHITE] = (uint8_t)
       (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(WHITE, BISHOP), 2)]);
   }
 
   if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMidgame)
   {
-      mi->factor[BLACK] = uint8_t
+      mi->factor[BLACK] = (uint8_t)
       (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(BLACK, BISHOP), 2)]);
   }
 
@@ -231,7 +231,7 @@ MaterialInfo* MaterialInfoTable::material_info(const Position& pos) const {
   { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
     pos.piece_count(BLACK, BISHOP)    , pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
 
-  mi->value = int16_t((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  mi->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
   return mi;
 }
 
