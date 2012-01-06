@@ -1983,7 +1983,7 @@ void check_time() {
                          && !Signals.failedLowAtRoot
                          &&  e > TimeMgr.available_time();
 
-  bool noMoreTime =   e > TimeMgr.maximum_time() - TimerResolution
+  bool noMoreTime =   e > TimeMgr.maximum_time() - 2 * TimerResolution
                    || stillAtFirstMove;
 
   if (   (Limits.use_time_management() && noMoreTime)
