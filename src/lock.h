@@ -45,26 +45,9 @@ typedef pthread_cond_t WaitCondition;
 #undef WIN32_LEAN_AND_MEAN
 #undef NOMINMAX
 
-// Default fast and race free locks and condition variables
-#if !defined(OLD_LOCKS)
-
-typedef SRWLOCK Lock;
-typedef CONDITION_VARIABLE WaitCondition;
-
-#  define lock_init(x) InitializeSRWLock(x)
-#  define lock_grab(x) AcquireSRWLockExclusive(x)
-#  define lock_release(x) ReleaseSRWLockExclusive(x)
-#  define lock_destroy(x) (x)
-#  define cond_destroy(x) (x)
-#  define cond_init(x) InitializeConditionVariable(x)
-#  define cond_signal(x) WakeConditionVariable(x)
-#  define cond_wait(x,y) SleepConditionVariableSRW(x,y,INFINITE,0)
-#  define cond_timedwait(x,y,z) SleepConditionVariableSRW(x,y,z,0)
-
-// Fallback solution to build for Windows XP and older versions, note that
-// cond_wait() is racy between lock_release() and WaitForSingleObject().
-#else
-
+// We use critical sections on Windows to support Windows XP and older versions,
+// unfortunatly cond_wait() is racy between lock_release() and WaitForSingleObject()
+// but apart from this they have the same speed performance of SRW locks.
 typedef CRITICAL_SECTION Lock;
 typedef HANDLE WaitCondition;
 
@@ -77,8 +60,6 @@ typedef HANDLE WaitCondition;
 #  define cond_signal(x) SetEvent(*x)
 #  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(*x, INFINITE); lock_grab(y); }
 #  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(*x,z); lock_grab(y); }
-
-#endif
 
 #endif
 

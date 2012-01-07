@@ -34,11 +34,6 @@
 /// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
 ///               | only in 64-bit mode. For compiling requires hardware with
 ///               | popcnt support.
-///
-/// -DOLD_LOCKS   | Under Windows are used the fast Slim Reader/Writer (SRW)
-///               | Locks and Condition Variables: these are not supported by
-///               | Windows XP and older, to compile for those platforms you
-///               | should enable OLD_LOCKS.
 
 #include <climits>
 #include <cstdlib>
