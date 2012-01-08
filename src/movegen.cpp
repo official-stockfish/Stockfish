@@ -247,8 +247,8 @@ namespace {
 
 
   template<PieceType Pt>
-  inline MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist, Color us,
-                                           Bitboard dc, Square ksq) {
+  inline MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist,
+                                           Color us, const CheckInfo& ci) {
     assert(Pt != KING && Pt != PAWN);
 
     Bitboard checkSqs, b;
@@ -258,7 +258,7 @@ namespace {
     if ((from = *pl++) == SQ_NONE)
         return mlist;
 
-    checkSqs = pos.attacks_from<Pt>(ksq) & pos.empty_squares();
+    checkSqs = ci.checkSq[Pt] & pos.empty_squares();
 
     do
     {
@@ -267,7 +267,7 @@ namespace {
             || (Pt == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
             continue;
 
-        if (dc && bit_is_set(dc, from))
+        if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
             continue;
 
         b = pos.attacks_from<Pt>(from) & checkSqs;
@@ -280,10 +280,11 @@ namespace {
 
 
   template<>
-  FORCE_INLINE MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m, Color us, Bitboard dc, Square ksq) {
+  FORCE_INLINE MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m,
+                                                       Color us, const CheckInfo& ci) {
 
-    return us == WHITE ? generate_pawn_moves<WHITE, MV_NON_CAPTURE_CHECK>(p, m, dc, ksq)
-                       : generate_pawn_moves<BLACK, MV_NON_CAPTURE_CHECK>(p, m, dc, ksq);
+    return us == WHITE ? generate_pawn_moves<WHITE, MV_NON_CAPTURE_CHECK>(p, m, ci.dcCandidates, ci.ksq)
+                       : generate_pawn_moves<BLACK, MV_NON_CAPTURE_CHECK>(p, m, ci.dcCandidates, ci.ksq);
   }
 
 
@@ -383,37 +384,31 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
 
   assert(!pos.in_check());
 
-  Bitboard b, dc;
-  Square from;
-  PieceType pt;
   Color us = pos.side_to_move();
-  Square ksq = pos.king_square(flip(us));
+  CheckInfo ci(pos);
+  Bitboard dc = ci.dcCandidates;
 
-  assert(pos.piece_on(ksq) == make_piece(flip(us), KING));
-
-  b = dc = pos.discovered_check_candidates();
-
-  while (b)
+  while (dc)
   {
-     from = pop_1st_bit(&b);
-     pt = type_of(pos.piece_on(from));
+     Square from = pop_1st_bit(&dc);
+     PieceType pt = type_of(pos.piece_on(from));
 
      if (pt == PAWN)
          continue; // Will be generated togheter with direct checks
 
-     b = pos.attacks_from(Piece(pt), from) & pos.empty_squares();
+     Bitboard b = pos.attacks_from(Piece(pt), from) & pos.empty_squares();
 
      if (pt == KING)
-         b &= ~QueenPseudoAttacks[ksq];
+         b &= ~QueenPseudoAttacks[ci.ksq];
 
      SERIALIZE(b);
   }
 
-  mlist = generate_direct_checks<PAWN>(pos, mlist, us, dc, ksq);
-  mlist = generate_direct_checks<KNIGHT>(pos, mlist, us, dc, ksq);
-  mlist = generate_direct_checks<BISHOP>(pos, mlist, us, dc, ksq);
-  mlist = generate_direct_checks<ROOK>(pos, mlist, us, dc, ksq);
-  mlist = generate_direct_checks<QUEEN>(pos, mlist, us, dc, ksq);
+  mlist = generate_direct_checks<PAWN>(pos, mlist, us, ci);
+  mlist = generate_direct_checks<KNIGHT>(pos, mlist, us, ci);
+  mlist = generate_direct_checks<BISHOP>(pos, mlist, us, ci);
+  mlist = generate_direct_checks<ROOK>(pos, mlist, us, ci);
+  mlist = generate_direct_checks<QUEEN>(pos, mlist, us, ci);
 
   if (pos.can_castle(us))
   {

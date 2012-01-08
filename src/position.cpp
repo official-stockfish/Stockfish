@@ -79,7 +79,7 @@ namespace {
 CheckInfo::CheckInfo(const Position& pos) {
 
   Color them = flip(pos.side_to_move());
-  Square ksq = pos.king_square(them);
+  ksq = pos.king_square(them);
 
   pinned = pos.pinned_pieces();
   dcCandidates = pos.discovered_check_candidates();

@@ -37,6 +37,7 @@ struct CheckInfo {
   Bitboard dcCandidates;
   Bitboard pinned;
   Bitboard checkSq[8];
+  Square ksq;
 };
 
 
