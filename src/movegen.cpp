@@ -34,7 +34,7 @@ namespace {
 
   enum CastlingSide { KING_SIDE, QUEEN_SIDE };
 
-  template<CastlingSide Side>
+  template<CastlingSide Side, bool OnlyChecks>
   MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, Color us) {
 
     const CastleRight CR[] = { Side ? WHITE_OOO : WHITE_OO,
@@ -80,6 +80,9 @@ namespace {
     }
 
     (*mlist++).move = make_castle(kfrom, rfrom);
+
+    if (OnlyChecks && !pos.move_gives_check((mlist - 1)->move, CheckInfo(pos)))
+        mlist--;
 
     return mlist;
   }
@@ -360,8 +363,8 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
 
   if (Type != MV_CAPTURE && pos.can_castle(us))
   {
-      mlist = generate_castle_moves<KING_SIDE>(pos, mlist, us);
-      mlist = generate_castle_moves<QUEEN_SIDE>(pos, mlist, us);
+      mlist = generate_castle_moves<KING_SIDE, false>(pos, mlist, us);
+      mlist = generate_castle_moves<QUEEN_SIDE, false>(pos, mlist, us);
   }
 
   return mlist;
@@ -410,7 +413,15 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
   mlist = generate_direct_checks<KNIGHT>(pos, mlist, us, dc, ksq);
   mlist = generate_direct_checks<BISHOP>(pos, mlist, us, dc, ksq);
   mlist = generate_direct_checks<ROOK>(pos, mlist, us, dc, ksq);
-  return  generate_direct_checks<QUEEN>(pos, mlist, us, dc, ksq);
+  mlist = generate_direct_checks<QUEEN>(pos, mlist, us, dc, ksq);
+
+  if (pos.can_castle(us))
+  {
+      mlist = generate_castle_moves<KING_SIDE, true>(pos, mlist, us);
+      mlist = generate_castle_moves<QUEEN_SIDE, true>(pos, mlist, us);
+  }
+
+  return mlist;
 }
 
 
