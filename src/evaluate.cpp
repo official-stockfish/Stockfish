@@ -155,8 +155,8 @@ namespace {
   const Score QueenOn7thBonus = make_score(27, 54);
 
   // Rooks on open files (modified by Joona Kiiski)
-  const Score RookOpenFileBonus = make_score(43, 43);
-  const Score RookHalfOpenFileBonus = make_score(19, 19);
+  const Score RookOpenFileBonus = make_score(43, 21);
+  const Score RookHalfOpenFileBonus = make_score(19, 10);
 
   // Penalty for rooks trapped inside a friendly king which has lost the
   // right to castle.
