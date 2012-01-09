@@ -714,7 +714,7 @@ namespace {
         b = undefended & ei.attackedBy[Them][ROOK] & ~pos.pieces(Them);
 
         // Consider only squares where the enemy rook gives check
-        b &= RookPseudoAttacks[ksq];
+        b &= PseudoAttacks[ROOK][ksq];
 
         if (b)
         {

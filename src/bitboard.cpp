@@ -49,9 +49,7 @@ Bitboard SquaresInFrontMask[2][64];
 Bitboard PassedPawnMask[2][64];
 Bitboard AttackSpanMask[2][64];
 
-Bitboard BishopPseudoAttacks[64];
-Bitboard RookPseudoAttacks[64];
-Bitboard QueenPseudoAttacks[64];
+Bitboard PseudoAttacks[6][64];
 
 uint8_t BitCount8Bit[256];
 int SquareDistance[64][64];
@@ -227,14 +225,14 @@ void bitboards_init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
-      BishopPseudoAttacks[s] = bishop_attacks_bb(s, 0);
-      RookPseudoAttacks[s]   = rook_attacks_bb(s, 0);
-      QueenPseudoAttacks[s]  = queen_attacks_bb(s, 0);
+      PseudoAttacks[BISHOP][s] = bishop_attacks_bb(s, 0);
+      PseudoAttacks[ROOK][s]   = rook_attacks_bb(s, 0);
+      PseudoAttacks[QUEEN][s]  = queen_attacks_bb(s, 0);
   }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
-          if (bit_is_set(QueenPseudoAttacks[s1], s2))
+          if (bit_is_set(PseudoAttacks[QUEEN][s1], s2))
           {
               Square delta = (s2 - s1) / square_distance(s1, s2);
 

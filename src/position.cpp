@@ -361,8 +361,8 @@ Bitboard Position::hidden_checkers() const {
   Square ksq = king_square(FindPinned ? sideToMove : flip(sideToMove));
 
   // Pinners are sliders, that give check when candidate pinned is removed
-  pinners &=  (pieces(ROOK, QUEEN) & RookPseudoAttacks[ksq])
-            | (pieces(BISHOP, QUEEN) & BishopPseudoAttacks[ksq]);
+  pinners &=  (pieces(ROOK, QUEEN) & PseudoAttacks[ROOK][ksq])
+            | (pieces(BISHOP, QUEEN) & PseudoAttacks[BISHOP][ksq]);
 
   while (pinners)
   {

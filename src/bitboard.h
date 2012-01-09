@@ -49,9 +49,7 @@ extern int BShifts[64];
 extern Bitboard BMasks[64];
 extern Bitboard* BAttacks[64];
 
-extern Bitboard BishopPseudoAttacks[64];
-extern Bitboard RookPseudoAttacks[64];
-extern Bitboard QueenPseudoAttacks[64];
+extern Bitboard PseudoAttacks[6][64];
 
 extern uint8_t BitCount8Bit[256];
 

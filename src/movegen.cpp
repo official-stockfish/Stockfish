@@ -262,9 +262,8 @@ namespace {
 
     do
     {
-        if (   (Pt == QUEEN  && !(QueenPseudoAttacks[from]  & checkSqs))
-            || (Pt == ROOK   && !(RookPseudoAttacks[from]   & checkSqs))
-            || (Pt == BISHOP && !(BishopPseudoAttacks[from] & checkSqs)))
+        if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+            && !(PseudoAttacks[Pt][from] & checkSqs))
             continue;
 
         if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
@@ -399,7 +398,7 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
      Bitboard b = pos.attacks_from(Piece(pt), from) & pos.empty_squares();
 
      if (pt == KING)
-         b &= ~QueenPseudoAttacks[ci.ksq];
+         b &= ~PseudoAttacks[QUEEN][ci.ksq];
 
      SERIALIZE(b);
   }
@@ -432,14 +431,13 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   int checkersCnt = 0;
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(us);
-  Bitboard checkers = pos.checkers();
   Bitboard sliderAttacks = 0;
+  Bitboard checkers = pos.checkers();
 
-  assert(pos.piece_on(ksq) == make_piece(us, KING));
   assert(checkers);
 
   // Find squares attacked by slider checkers, we will remove them from the king
-  // evasions set so to skip known illegal moves and avoid to do legality check later.
+  // evasions so to skip known illegal moves avoiding useless legality check later.
   b = checkers;
   do
   {
@@ -450,19 +448,20 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
 
       switch (type_of(pos.piece_on(checksq)))
       {
-      case BISHOP: sliderAttacks |= BishopPseudoAttacks[checksq]; break;
-      case ROOK:   sliderAttacks |= RookPseudoAttacks[checksq];   break;
+      case BISHOP: sliderAttacks |= PseudoAttacks[BISHOP][checksq]; break;
+      case ROOK:   sliderAttacks |= PseudoAttacks[ROOK][checksq];   break;
       case QUEEN:
-          // If queen and king are far we can safely remove all the squares attacked
-          // in the other direction becuase are not reachable by the king anyway.
-          if (squares_between(ksq, checksq) || (RookPseudoAttacks[checksq] & (1ULL << ksq)))
-              sliderAttacks |= QueenPseudoAttacks[checksq];
+          // If queen and king are far or not on a diagonal line we can safely
+          // remove all the squares attacked in the other direction becuase are
+          // not reachable by the king anyway.
+          if (squares_between(ksq, checksq) || !bit_is_set(PseudoAttacks[BISHOP][checksq], ksq))
+              sliderAttacks |= PseudoAttacks[QUEEN][checksq];
 
-          // Otherwise, if king and queen are adjacent and on a diagonal line, we need to
-          // use real rook attacks to check if king is safe to move in the other direction.
-          // For example: king in B2, queen in A1 a knight in B1, and we can safely move to C1.
+          // Otherwise we need to use real rook attacks to check if king is safe
+          // to move in the other direction. For example: king in B2, queen in A1
+          // a knight in B1, and we can safely move to C1.
           else
-              sliderAttacks |= BishopPseudoAttacks[checksq] | pos.attacks_from<ROOK>(checksq);
+              sliderAttacks |= PseudoAttacks[BISHOP][checksq] | pos.attacks_from<ROOK>(checksq);
 
       default:
           break;
@@ -478,7 +477,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   if (checkersCnt > 1)
       return mlist;
 
-  // Target for blocking evasions or captures of the checking piece
+  // Blocking evasions or captures of the checking piece
   target = squares_between(checksq, ksq) | checkers;
 
   mlist = generate_piece_moves<PAWN, MV_EVASION>(pos, mlist, us, target);
