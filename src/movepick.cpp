@@ -255,7 +255,7 @@ void MovePicker::score_captures() {
   {
       m = cur->move;
       cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
-                  - type_of(pos.piece_on(from_sq(m)));
+                  - type_of(pos.piece_moved(m));
 
       if (is_promotion(m))
           cur->score += PieceValueMidgame[Piece(promotion_piece_type(m))];
@@ -294,9 +294,9 @@ void MovePicker::score_evasions() {
           cur->score = seeScore - History::MaxValue; // Be sure we are at the bottom
       else if (pos.is_capture(m))
           cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
-                      - type_of(pos.piece_on(from_sq(m))) + History::MaxValue;
+                      - type_of(pos.piece_moved(m)) + History::MaxValue;
       else
-          cur->score = H.value(pos.piece_on(from_sq(m)), to_sq(m));
+          cur->score = H.value(pos.piece_moved(m), to_sq(m));
   }
 }
 

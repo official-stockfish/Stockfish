@@ -641,7 +641,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   assert(is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates());
-  assert(color_of(piece_on(from_sq(m))) == side_to_move());
+  assert(color_of(piece_moved(m)) == side_to_move());
 
   Square from = from_sq(m);
   Square to = to_sq(m);

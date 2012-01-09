@@ -101,6 +101,7 @@ public:
 
   // The piece on a given square
   Piece piece_on(Square s) const;
+  Piece piece_moved(Move m) const;
   bool square_is_empty(Square s) const;
 
   // Side to move
@@ -276,6 +277,10 @@ inline void Position::set_nodes_searched(int64_t n) {
 
 inline Piece Position::piece_on(Square s) const {
   return board[s];
+}
+
+inline Piece Position::piece_moved(Move m) const {
+  return board[from_sq(m)];
 }
 
 inline bool Position::square_is_empty(Square s) const {
