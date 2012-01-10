@@ -185,14 +185,9 @@ public:
   Value non_pawn_material(Color c) const;
   Score pst_delta(Piece piece, Square from, Square to) const;
 
-  // Game termination checks
-  bool is_mate() const;
-  template<bool SkipRepetition> bool is_draw() const;
-
-  // Plies from start position to the beginning of search
-  int startpos_ply_counter() const;
-
   // Other properties of the position
+  template<bool SkipRepetition> bool is_draw() const;
+  int startpos_ply_counter() const;
   bool opposite_colored_bishops() const;
   bool has_pawn_on_7th(Color c) const;
   bool is_chess960() const;

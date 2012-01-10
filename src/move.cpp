@@ -147,13 +147,13 @@ const string move_to_san(Position& pos, Move m) {
       }
   }
 
-  // The move gives check? We don't use pos.move_gives_check() here
-  // because we need to test for a mate after the move is done.
-  StateInfo st;
-  pos.do_move(m, st);
-  if (pos.in_check())
-      san += pos.is_mate() ? "#" : "+";
-  pos.undo_move(m);
+  if (pos.move_gives_check(m, CheckInfo(pos)))
+  {
+      StateInfo st;
+      pos.do_move(m, st);
+      san += MoveList<MV_LEGAL>(pos).size() ? "+" : "#";
+      pos.undo_move(m);
+  }
 
   return san;
 }
