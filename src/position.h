@@ -210,7 +210,7 @@ private:
   // Initialization helper functions (used while setting up a position)
   void clear();
   void put_piece(Piece p, Square s);
-  void set_castle_right(Square ksq, Square rsq);
+  void set_castle_right(Color c, Square rsq);
   bool move_is_legal(const Move m) const;
 
   // Helper template functions

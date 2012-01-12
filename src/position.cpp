@@ -165,11 +165,11 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   // 1. Piece placement
   while ((fen >> token) && !isspace(token))
   {
-      if (token == '/')
-          sq -= Square(16); // Jump back of 2 rows
+      if (isdigit(token))
+          sq += Square(token - '0'); // Advance the given number of files
 
-      else if (isdigit(token))
-          sq += Square(token - '0'); // Skip the given number of files
+      else if (token == '/')
+          sq = make_square(FILE_A, rank_of(sq) - Rank(2));
 
       else if ((p = PieceToChar.find(token)) != string::npos)
       {
@@ -192,15 +192,14 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   {
       Square rsq;
       Color c = islower(token) ? BLACK : WHITE;
-      Piece rook = make_piece(c, ROOK);
 
       token = char(toupper(token));
 
       if (token == 'K')
-          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; rsq--) {}
+          for (rsq = relative_square(c, SQ_H1); type_of(piece_on(rsq)) != ROOK; rsq--) {}
 
       else if (token == 'Q')
-          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; rsq++) {}
+          for (rsq = relative_square(c, SQ_A1); type_of(piece_on(rsq)) != ROOK; rsq++) {}
 
       else if (token >= 'A' && token <= 'H')
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
@@ -208,7 +207,7 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
       else
           continue;
 
-      set_castle_right(king_square(c), rsq);
+      set_castle_right(c, rsq);
   }
 
   // 4. En passant square. Ignore if no pawn capture is possible
@@ -242,14 +241,14 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
 
 
 /// Position::set_castle_right() is an helper function used to set castling
-/// rights given the corresponding king and rook starting squares.
+/// rights given the corresponding color and the rook starting square.
 
-void Position::set_castle_right(Square ksq, Square rsq) {
+void Position::set_castle_right(Color c, Square rsq) {
 
-  int f = (rsq < ksq ? WHITE_OOO : WHITE_OO) << color_of(piece_on(ksq));
+  int f = (rsq < king_square(c) ? WHITE_OOO : WHITE_OO) << c;
 
   st->castleRights |= f;
-  castleRightsMask[ksq] ^= f;
+  castleRightsMask[king_square(c)] ^= f;
   castleRightsMask[rsq] ^= f;
   castleRookSquare[f] = rsq;
 }
@@ -1589,13 +1588,13 @@ void Position::flip_me() {
 
   // Castling rights
   if (pos.can_castle(WHITE_OO))
-      set_castle_right(king_square(BLACK), flip(pos.castle_rook_square(WHITE_OO)));
+      set_castle_right(BLACK, flip(pos.castle_rook_square(WHITE_OO)));
   if (pos.can_castle(WHITE_OOO))
-      set_castle_right(king_square(BLACK), flip(pos.castle_rook_square(WHITE_OOO)));
+      set_castle_right(BLACK, flip(pos.castle_rook_square(WHITE_OOO)));
   if (pos.can_castle(BLACK_OO))
-      set_castle_right(king_square(WHITE), flip(pos.castle_rook_square(BLACK_OO)));
+      set_castle_right(WHITE, flip(pos.castle_rook_square(BLACK_OO)));
   if (pos.can_castle(BLACK_OOO))
-      set_castle_right(king_square(WHITE), flip(pos.castle_rook_square(BLACK_OOO)));
+      set_castle_right(WHITE, flip(pos.castle_rook_square(BLACK_OOO)));
 
   // En passant square
   if (pos.st->epSquare != SQ_NONE)
