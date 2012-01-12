@@ -49,7 +49,7 @@ namespace {
     Square rfrom = pos.castle_rook_square(CR[us]);
     Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
     Square rto = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
-    Bitboard enemies = pos.pieces(flip(us));
+    Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.in_check());
     assert(pos.piece_on(kfrom) == make_piece(us, KING));
@@ -346,13 +346,13 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   Bitboard target;
 
   if (Type == MV_CAPTURE)
-      target = pos.pieces(flip(us));
+      target = pos.pieces(~us);
 
   else if (Type == MV_NON_CAPTURE)
       target = pos.empty_squares();
 
   else if (Type == MV_NON_EVASION)
-      target = pos.pieces(flip(us)) | pos.empty_squares();
+      target = pos.pieces(~us) | pos.empty_squares();
 
   mlist = generate_piece_moves<PAWN, Type>(pos, mlist, us, target);
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
@@ -444,7 +444,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
       checkersCnt++;
       checksq = pop_1st_bit(&b);
 
-      assert(color_of(pos.piece_on(checksq)) == flip(us));
+      assert(color_of(pos.piece_on(checksq)) == ~us);
 
       switch (type_of(pos.piece_on(checksq)))
       {

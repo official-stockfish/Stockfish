@@ -205,10 +205,10 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   }
   else
   {
-      wksq = flip(pos.king_square(BLACK));
-      bksq = flip(pos.king_square(WHITE));
-      wpsq = flip(pos.piece_list(BLACK, PAWN)[0]);
-      stm = flip(pos.side_to_move());
+      wksq = ~pos.king_square(BLACK);
+      bksq = ~pos.king_square(WHITE);
+      wpsq = ~pos.piece_list(BLACK, PAWN)[0];
+      stm  = ~pos.side_to_move();
   }
 
   if (file_of(wpsq) >= FILE_E)
@@ -251,10 +251,10 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   if (strongerSide == BLACK)
   {
-      wksq = flip(wksq);
-      wrsq = flip(wrsq);
-      bksq = flip(bksq);
-      bpsq = flip(bpsq);
+      wksq = ~wksq;
+      wrsq = ~wrsq;
+      bksq = ~bksq;
+      bpsq = ~bpsq;
   }
 
   Square queeningSq = make_square(file_of(bpsq), RANK_1);
@@ -491,11 +491,11 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   // pawn is on the left half of the board.
   if (strongerSide == BLACK)
   {
-      wksq = flip(wksq);
-      wrsq = flip(wrsq);
-      wpsq = flip(wpsq);
-      bksq = flip(bksq);
-      brsq = flip(brsq);
+      wksq = ~wksq;
+      wrsq = ~wrsq;
+      wpsq = ~wpsq;
+      bksq = ~bksq;
+      brsq = ~brsq;
   }
   if (file_of(wpsq) > FILE_D)
   {
@@ -867,10 +867,10 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   if (strongerSide == BLACK)
   {
-      wksq = flip(wksq);
-      bksq = flip(bksq);
-      wpsq = flip(wpsq);
-      stm = flip(stm);
+      wksq = ~wksq;
+      bksq = ~bksq;
+      wpsq = ~wpsq;
+      stm  = ~stm;
   }
 
   if (file_of(wpsq) >= FILE_E)

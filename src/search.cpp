@@ -1393,7 +1393,7 @@ split_point_start: // At split points actual search starts from here
 
     from = from_sq(move);
     to = to_sq(move);
-    them = flip(pos.side_to_move());
+    them = ~pos.side_to_move();
     ksq = pos.king_square(them);
     kingAtt = pos.attacks_from<KING>(ksq);
     pc = pos.piece_on(from);

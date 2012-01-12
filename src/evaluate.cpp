@@ -887,7 +887,7 @@ namespace {
     for (c = WHITE; c <= BLACK; c++)
     {
         // Skip if other side has non-pawn pieces
-        if (pos.non_pawn_material(flip(c)))
+        if (pos.non_pawn_material(~c))
             continue;
 
         b = ei.pi->passed_pawns(c);
@@ -900,7 +900,7 @@ namespace {
 
             // Compute plies to queening and check direct advancement
             movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(c, s) == RANK_2);
-            oppMovesToGo = square_distance(pos.king_square(flip(c)), queeningSquare) - int(c != pos.side_to_move());
+            oppMovesToGo = square_distance(pos.king_square(~c), queeningSquare) - int(c != pos.side_to_move());
             pathDefended = ((ei.attackedBy[c][0] & queeningPath) == queeningPath);
 
             if (movesToGo >= oppMovesToGo && !pathDefended)
@@ -928,7 +928,7 @@ namespace {
         return SCORE_ZERO;
 
     winnerSide = (pliesToQueen[WHITE] < pliesToQueen[BLACK] ? WHITE : BLACK);
-    loserSide = flip(winnerSide);
+    loserSide = ~winnerSide;
 
     // Step 3. Can the losing side possibly create a new passed pawn and thus prevent the loss?
     b = candidates = pos.pieces(PAWN, loserSide);
