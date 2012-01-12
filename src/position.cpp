@@ -1265,7 +1265,7 @@ int Position::see(Move m) const {
   {
       Square capQq = to - pawn_push(sideToMove);
 
-      assert(capturedType == NO_PIECE_TYPE);
+      assert(!capturedType);
       assert(type_of(piece_on(capQq)) == PAWN);
 
       // Remove the captured pawn

@@ -531,15 +531,15 @@ namespace {
                 stop = true;
 
             // Stop search early if one move seems to be much better than others
-            if (   depth >= 10
+            if (    depth >= 12
                 && !stop
-                && (   bestMoveNeverChanged
+                && (   (bestMoveNeverChanged &&  pos.captured_piece_type())
                     || elapsed_time() > (TimeMgr.available_time() * 40) / 100))
             {
                 Value rBeta = bestValue - EasyMoveMargin;
                 (ss+1)->excludedMove = RootMoves[0].pv[0];
                 (ss+1)->skipNullMove = true;
-                Value v = search<NonPV>(pos, ss+1, rBeta - 1, rBeta, (depth * ONE_PLY) / 2);
+                Value v = search<NonPV>(pos, ss+1, rBeta - 1, rBeta, (depth - 3) * ONE_PLY);
                 (ss+1)->skipNullMove = false;
                 (ss+1)->excludedMove = MOVE_NONE;
 
@@ -701,7 +701,7 @@ namespace {
     if (   (move = (ss-1)->currentMove) != MOVE_NULL
         && (ss-1)->eval != VALUE_NONE
         && ss->eval != VALUE_NONE
-        && pos.captured_piece_type() == NO_PIECE_TYPE
+        && !pos.captured_piece_type()
         && !is_special(move))
     {
         Square to = to_sq(move);
