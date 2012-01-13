@@ -446,7 +446,8 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
   SearchMoves = searchMoves;
 
   // Reset signals before to start the new search
-  memset((void*)&Signals, 0, sizeof(Signals));
+  Signals.stopOnPonderhit = Signals.firstRootMove = false;
+  Signals.stop = Signals.failedLowAtRoot = false;
 
   main.do_sleep = false;
   cond_signal(&main.sleepCond); // Wake up main thread and start searching
