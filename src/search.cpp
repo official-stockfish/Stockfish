@@ -589,6 +589,10 @@ namespace {
     }
 
     // Step 2. Check for aborted search and immediate draw
+    // Enforce node limit here. FIXME: This only works with 1 search thread.
+    if (Limits.maxNodes && pos.nodes_searched() >= Limits.maxNodes)
+        Signals.stop = true;
+
     if ((   Signals.stop
          || pos.is_draw<false>()
          || ss->ply > MAX_PLY) && !RootNode)
@@ -1014,7 +1018,7 @@ split_point_start: // At split points actual search starts from here
           alpha = sp->alpha;
       }
 
-      // Finished searching the move. If StopRequest is true, the search
+      // Finished searching the move. If Signals.stop is true, the search
       // was aborted because the user interrupted the search or because we
       // ran out of time. In this case, the return value of the search cannot
       // be trusted, and we don't update the best move and/or PV.
@@ -1075,7 +1079,7 @@ split_point_start: // At split points actual search starts from here
     // Step 20. Check for mate and stalemate
     // All legal moves have been searched and if there are no legal moves, it
     // must be mate or stalemate. Note that we can have a false positive in
-    // case of StopRequest or thread.cutoff_occurred() are set, but this is
+    // case of Signals.stop or thread.cutoff_occurred() are set, but this is
     // harmless because return value is discarded anyhow in the parent nodes.
     // If we are in a singular extension search then return a fail low score.
     if (!moveCount)
@@ -1945,7 +1949,6 @@ void check_time() {
                    || stillAtFirstMove;
 
   if (   (Limits.use_time_management() && noMoreTime)
-      || (Limits.maxTime && e >= Limits.maxTime)
-         /* missing nodes limit */ ) // FIXME
+      || (Limits.maxTime && e >= Limits.maxTime))
       Signals.stop = true;
 }
