@@ -227,7 +227,7 @@ void bitboards_init() {
   {
       PseudoAttacks[BISHOP][s] = bishop_attacks_bb(s, 0);
       PseudoAttacks[ROOK][s]   = rook_attacks_bb(s, 0);
-      PseudoAttacks[QUEEN][s]  = queen_attacks_bb(s, 0);
+      PseudoAttacks[QUEEN][s]  = PseudoAttacks[BISHOP][s] | PseudoAttacks[ROOK][s];
   }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)

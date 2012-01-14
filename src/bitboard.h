@@ -169,10 +169,6 @@ inline Bitboard bishop_attacks_bb(Square s, Bitboard occ) {
   return BAttacks[s][bishop_index(s, occ)];
 }
 
-inline Bitboard queen_attacks_bb(Square s, Bitboard blockers) {
-  return rook_attacks_bb(s, blockers) | bishop_attacks_bb(s, blockers);
-}
-
 
 /// squares_between returns a bitboard representing all squares between
 /// two squares.  For instance, squares_between(SQ_C4, SQ_F7) returns a
