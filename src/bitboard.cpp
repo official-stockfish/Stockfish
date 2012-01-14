@@ -40,8 +40,8 @@ Bitboard ClearMaskBB[65];
 
 Bitboard FileBB[8];
 Bitboard RankBB[8];
-Bitboard NeighboringFilesBB[8];
-Bitboard ThisAndNeighboringFilesBB[8];
+Bitboard AdjacentFilesBB[8];
+Bitboard ThisAndAdjacentFilesBB[8];
 Bitboard InFrontBB[2][8];
 Bitboard StepAttacksBB[16][64];
 Bitboard BetweenBB[64][64];
@@ -173,8 +173,8 @@ void bitboards_init() {
 
   for (int f = FILE_A; f <= FILE_H; f++)
   {
-      NeighboringFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
-      ThisAndNeighboringFilesBB[f] = FileBB[f] | NeighboringFilesBB[f];
+      AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
+      ThisAndAdjacentFilesBB[f] = FileBB[f] | AdjacentFilesBB[f];
   }
 
   for (int rw = RANK_7, rb = RANK_2; rw >= RANK_1; rw--, rb++)
@@ -187,8 +187,8 @@ void bitboards_init() {
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
           SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
-          PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_neighboring_files_bb(file_of(s));
-          AttackSpanMask[c][s]     = in_front_bb(c, s) & neighboring_files_bb(file_of(s));
+          PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_adjacent_files_bb(file_of(s));
+          AttackSpanMask[c][s]     = in_front_bb(c, s) & adjacent_files_bb(file_of(s));
       }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)

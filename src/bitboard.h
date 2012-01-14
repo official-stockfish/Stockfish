@@ -24,8 +24,8 @@
 #include "types.h"
 
 extern Bitboard FileBB[8];
-extern Bitboard NeighboringFilesBB[8];
-extern Bitboard ThisAndNeighboringFilesBB[8];
+extern Bitboard AdjacentFilesBB[8];
+extern Bitboard ThisAndAdjacentFilesBB[8];
 extern Bitboard RankBB[8];
 extern Bitboard InFrontBB[2][8];
 
@@ -102,19 +102,19 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// neighboring_files_bb takes a file as input and returns a bitboard representing
-/// all squares on the neighboring files.
+/// adjacent_files_bb takes a file as input and returns a bitboard representing
+/// all squares on the adjacent files.
 
-inline Bitboard neighboring_files_bb(File f) {
-  return NeighboringFilesBB[f];
+inline Bitboard adjacent_files_bb(File f) {
+  return AdjacentFilesBB[f];
 }
 
 
-/// this_and_neighboring_files_bb takes a file as input and returns a bitboard
-/// representing all squares on the given and neighboring files.
+/// this_and_adjacent_files_bb takes a file as input and returns a bitboard
+/// representing all squares on the given and adjacent files.
 
-inline Bitboard this_and_neighboring_files_bb(File f) {
-  return ThisAndNeighboringFilesBB[f];
+inline Bitboard this_and_adjacent_files_bb(File f) {
+  return ThisAndAdjacentFilesBB[f];
 }
 
 
@@ -197,7 +197,7 @@ inline Bitboard squares_in_front_of(Color c, Square s) {
 /// passed_pawn_mask takes a color and a square as input, and returns a
 /// bitboard mask which can be used to test if a pawn of the given color on
 /// the given square is a passed pawn. Definition of the table is:
-/// PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_neighboring_files_bb(s)
+/// PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_adjacent_files_bb(s)
 
 inline Bitboard passed_pawn_mask(Color c, Square s) {
   return PassedPawnMask[c][s];
@@ -207,7 +207,7 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 /// attack_span_mask takes a color and a square as input, and returns a bitboard
 /// representing all squares that can be attacked by a pawn of the given color
 /// when it moves along its file starting from the given square. Definition is:
-/// AttackSpanMask[c][s] = in_front_bb(c, s) & neighboring_files_bb(s);
+/// AttackSpanMask[c][s] = in_front_bb(c, s) & adjacent_files_bb(s);
 
 inline Bitboard attack_span_mask(Color c, Square s) {
   return AttackSpanMask[c][s];

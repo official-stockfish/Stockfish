@@ -841,7 +841,7 @@ namespace {
 
         // Increase the bonus if the passed pawn is supported by a friendly pawn
         // on the same rank and a bit smaller if it's on the previous rank.
-        supportingPawns = pos.pieces(PAWN, Us) & neighboring_files_bb(file_of(s));
+        supportingPawns = pos.pieces(PAWN, Us) & adjacent_files_bb(file_of(s));
         if (supportingPawns & rank_bb(s))
             ebonus += Value(r * 20);
 
@@ -967,7 +967,7 @@ namespace {
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 
         // Generate list of blocking pawns and supporters
-        supporters = neighboring_files_bb(file_of(s)) & candidates;
+        supporters = adjacent_files_bb(file_of(s)) & candidates;
         opposed = squares_in_front_of(loserSide, s) & pos.pieces(PAWN, winnerSide);
         blockers = passed_pawn_mask(loserSide, s) & pos.pieces(PAWN, winnerSide);
 

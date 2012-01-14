@@ -145,22 +145,22 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       passed   = !(theirPawns & passed_pawn_mask(Us, s));
       doubled  =   ourPawns   & squares_in_front_of(Us, s);
       opposed  =   theirPawns & squares_in_front_of(Us, s);
-      isolated = !(ourPawns   & neighboring_files_bb(f));
-      chain    =   ourPawns   & neighboring_files_bb(f) & b;
+      isolated = !(ourPawns   & adjacent_files_bb(f));
+      chain    =   ourPawns   & adjacent_files_bb(f) & b;
 
       // Test for backward pawn
       backward = false;
 
       // If the pawn is passed, isolated, or member of a pawn chain it cannot
-      // be backward. If there are friendly pawns behind on neighboring files
+      // be backward. If there are friendly pawns behind on adjacent files
       // or if can capture an enemy pawn it cannot be backward either.
       if (   !(passed | isolated | chain)
           && !(ourPawns & attack_span_mask(Them, s))
           && !(pos.attacks_from<PAWN>(s, Us) & theirPawns))
       {
           // We now know that there are no friendly pawns beside or behind this
-          // pawn on neighboring files. We now check whether the pawn is
-          // backward by looking in the forward direction on the neighboring
+          // pawn on adjacent files. We now check whether the pawn is
+          // backward by looking in the forward direction on the adjacent
           // files, and seeing whether we meet a friendly or an enemy pawn first.
           b = pos.attacks_from<PAWN>(s, Us);
 
@@ -178,8 +178,8 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 
       // A not passed pawn is a candidate to become passed if it is free to
       // advance and if the number of friendly pawns beside or behind this
-      // pawn on neighboring files is higher or equal than the number of
-      // enemy pawns in the forward direction on the neighboring files.
+      // pawn on adjacent files is higher or equal than the number of
+      // enemy pawns in the forward direction on the adjacent files.
       candidate =   !(opposed | passed | backward | isolated)
                  && (b = attack_span_mask(Them, s + pawn_push(Us)) & ourPawns) != 0
                  &&  popcount<Max15>(b) >= popcount<Max15>(attack_span_mask(Us, s) & theirPawns);
@@ -222,7 +222,7 @@ Score PawnInfo::updateShelter(const Position& pos, Square ksq) {
 
   if (relative_rank(Us, ksq) <= RANK_4)
   {
-      pawns = pos.pieces(PAWN, Us) & this_and_neighboring_files_bb(file_of(ksq));
+      pawns = pos.pieces(PAWN, Us) & this_and_adjacent_files_bb(file_of(ksq));
       r = ksq & (7 << 3);
       for (int i = 0; i < 3; i++)
       {

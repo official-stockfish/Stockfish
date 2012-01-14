@@ -416,7 +416,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           && abs(file_of(kingSq) - pawnFile) <= 1)
       {
           // The bishop has the wrong color, and the defending king is on the
-          // file of the pawn(s) or the neighboring file. Find the rank of the
+          // file of the pawn(s) or the adjacent file. Find the rank of the
           // frontmost pawn.
           Rank rank;
           if (strongerSide == WHITE)
@@ -768,7 +768,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
         return SCALE_FACTOR_NONE;
 
   case 1:
-    // Pawns on neighboring files. Draw if defender firmly controls the square
+    // Pawns on adjacent files. Draw if defender firmly controls the square
     // in front of the frontmost pawn's path, and the square diagonally behind
     // this square on the file of the other pawn.
     if (   ksq == blockSq1
