@@ -141,12 +141,13 @@ namespace {
         else
             (void)ksq; // Silence a warning under MSVC
     }
+
     return mlist;
   }
 
 
   template<Color Us, MoveType Type>
-  MoveStack* generate_pawn_moves(const Position& pos, MoveStack* mlist, Bitboard target, Square ksq) {
+  MoveStack* generate_pawn_moves(const Position& pos, MoveStack* mlist, Bitboard target, Square ksq = SQ_NONE) {
 
     // Calculate our parametrized parameters at compile time, named according to
     // the point of view of white side.
@@ -251,14 +252,13 @@ namespace {
                                            Color us, const CheckInfo& ci) {
     assert(Pt != KING && Pt != PAWN);
 
-    Bitboard checkSqs, b;
     Square from;
     const Square* pl = pos.piece_list(us, Pt);
 
     if ((from = *pl++) == SQ_NONE)
         return mlist;
 
-    checkSqs = ci.checkSq[Pt] & pos.empty_squares();
+    Bitboard checkSqs = ci.checkSq[Pt] & pos.empty_squares();
 
     do
     {
@@ -269,30 +269,12 @@ namespace {
         if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
             continue;
 
-        b = pos.attacks_from<Pt>(from) & checkSqs;
+        Bitboard b = pos.attacks_from<Pt>(from) & checkSqs;
         SERIALIZE(b);
 
     } while ((from = *pl++) != SQ_NONE);
 
     return mlist;
-  }
-
-
-  template<>
-  FORCE_INLINE MoveStack* generate_direct_checks<PAWN>(const Position& p, MoveStack* m,
-                                                       Color us, const CheckInfo& ci) {
-
-    return us == WHITE ? generate_pawn_moves<WHITE, MV_NON_CAPTURE_CHECK>(p, m, ci.dcCandidates, ci.ksq)
-                       : generate_pawn_moves<BLACK, MV_NON_CAPTURE_CHECK>(p, m, ci.dcCandidates, ci.ksq);
-  }
-
-
-  template<PieceType Pt, MoveType Type>
-  FORCE_INLINE MoveStack* generate_piece_moves(const Position& p, MoveStack* m, Color us, Bitboard t) {
-
-    assert(Pt == PAWN);
-    return us == WHITE ? generate_pawn_moves<WHITE, Type>(p, m, t, SQ_NONE)
-                       : generate_pawn_moves<BLACK, Type>(p, m, t, SQ_NONE);
   }
 
 
@@ -311,6 +293,7 @@ namespace {
             SERIALIZE(b);
         } while (*++pl != SQ_NONE);
     }
+
     return mlist;
   }
 
@@ -354,7 +337,9 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   else if (Type == MV_NON_EVASION)
       target = pos.pieces(~us) | pos.empty_squares();
 
-  mlist = generate_piece_moves<PAWN, Type>(pos, mlist, us, target);
+  mlist = (us == WHITE ? generate_pawn_moves<WHITE, Type>(pos, mlist, target)
+                       : generate_pawn_moves<BLACK, Type>(pos, mlist, target));
+
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
@@ -403,7 +388,9 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
      SERIALIZE(b);
   }
 
-  mlist = generate_direct_checks<PAWN>(pos, mlist, us, ci);
+  mlist = (us == WHITE ? generate_pawn_moves<WHITE, MV_NON_CAPTURE_CHECK>(pos, mlist, ci.dcCandidates, ci.ksq)
+                       : generate_pawn_moves<BLACK, MV_NON_CAPTURE_CHECK>(pos, mlist, ci.dcCandidates, ci.ksq));
+
   mlist = generate_direct_checks<KNIGHT>(pos, mlist, us, ci);
   mlist = generate_direct_checks<BISHOP>(pos, mlist, us, ci);
   mlist = generate_direct_checks<ROOK>(pos, mlist, us, ci);
@@ -480,7 +467,9 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   // Blocking evasions or captures of the checking piece
   target = squares_between(checksq, ksq) | checkers;
 
-  mlist = generate_piece_moves<PAWN, MV_EVASION>(pos, mlist, us, target);
+  mlist = (us == WHITE ? generate_pawn_moves<WHITE, MV_EVASION>(pos, mlist, target)
+                       : generate_pawn_moves<BLACK, MV_EVASION>(pos, mlist, target));
+
   mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
   mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
   mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);

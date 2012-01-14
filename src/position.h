@@ -342,29 +342,17 @@ inline Square Position::castle_rook_square(CastleRight f) const {
   return castleRookSquare[f];
 }
 
+template<PieceType Pt>
+inline Bitboard Position::attacks_from(Square s) const {
+  return  Pt == BISHOP ? bishop_attacks_bb(s, occupied_squares())
+        : Pt == ROOK   ? rook_attacks_bb(s, occupied_squares())
+        : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
+                       : StepAttacksBB[Pt][s];
+}
+
 template<>
 inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
   return StepAttacksBB[make_piece(c, PAWN)][s];
-}
-
-template<PieceType Piece> // Knight and King and white pawns
-inline Bitboard Position::attacks_from(Square s) const {
-  return StepAttacksBB[Piece][s];
-}
-
-template<>
-inline Bitboard Position::attacks_from<BISHOP>(Square s) const {
-  return bishop_attacks_bb(s, occupied_squares());
-}
-
-template<>
-inline Bitboard Position::attacks_from<ROOK>(Square s) const {
-  return rook_attacks_bb(s, occupied_squares());
-}
-
-template<>
-inline Bitboard Position::attacks_from<QUEEN>(Square s) const {
-  return attacks_from<ROOK>(s) | attacks_from<BISHOP>(s);
 }
 
 inline Bitboard Position::attacks_from(Piece p, Square s) const {
