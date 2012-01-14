@@ -42,7 +42,7 @@ namespace Search {
 
   volatile SignalsType Signals;
   LimitsType Limits;
-  std::vector<Move> SearchMoves;
+  std::set<Move> SearchMoves;
   Position RootPosition;
 }
 
@@ -282,6 +282,7 @@ void Search::think() {
 
   static Book book; // Defined static to initialize the PRNG only once
 
+  Move bm;
   Position& pos = RootPosition;
   Chess960 = pos.is_chess960();
   elapsed_time(true);
@@ -293,18 +294,24 @@ void Search::think() {
   // Populate RootMoves with all the legal moves (default) or, if a SearchMoves
   // is given, with the subset of legal moves to search.
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
-      if (SearchMoves.empty() || count(SearchMoves.begin(), SearchMoves.end(), ml.move()))
+      if (SearchMoves.empty() || SearchMoves.count(ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
-  if (Options["OwnBook"])
+  if (RootMoves.empty())
   {
-      Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
+      cout << "info depth 0 score "
+           << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
 
-      if (bookMove && count(RootMoves.begin(), RootMoves.end(), bookMove))
-      {
-          std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bookMove));
-          goto finalize;
-      }
+      RootMoves.push_back(MOVE_NONE);
+      goto finalize;
+  }
+
+  if (   Options["OwnBook"]
+      && (bm = book.probe(pos, Options["Book File"], Options["Best Book Move"])) != MOVE_NONE
+      && count(RootMoves.begin(), RootMoves.end(), bm))
+  {
+      std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bm));
+      goto finalize;
   }
 
   // Read UCI options: GUI could change UCI parameters during the game
@@ -375,9 +382,9 @@ void Search::think() {
 
 finalize:
 
-  // When we reach max depth we arrive here even without a StopRequest, but if
-  // we are pondering or in infinite search, we shouldn't print the best move
-  // before we are told to do so.
+  // When we reach max depth we arrive here even without Signals.stop is raised,
+  // but if we are pondering or in infinite search, we shouldn't print the best
+  // move before we are told to do so.
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
       Threads.wait_for_stop_or_ponderhit();
 
@@ -405,16 +412,6 @@ namespace {
     depth = BestMoveChanges = 0;
     bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
-
-    // Handle the special case of a mated/stalemate position
-    if (RootMoves.empty())
-    {
-        cout << "info depth 0 score "
-             << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
-
-        RootMoves.push_back(MOVE_NONE);
-        return;
-    }
 
     // Iterative deepening loop until requested to stop or target depth reached
     while (!Signals.stop && ++depth <= MAX_PLY && (!Limits.maxDepth || depth <= Limits.maxDepth))

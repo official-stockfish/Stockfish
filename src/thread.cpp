@@ -431,7 +431,7 @@ void Thread::main_loop() {
 // the search to finish.
 
 void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limits,
-                                    const std::vector<Move>& searchMoves, bool asyncMode) {
+                                    const std::set<Move>& searchMoves, bool asyncMode) {
   Thread& main = threads[0];
 
   lock_grab(&main.sleepLock);

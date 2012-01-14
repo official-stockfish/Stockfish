@@ -201,7 +201,7 @@ namespace {
 
     string token;
     Search::LimitsType limits;
-    std::vector<Move> searchMoves;
+    std::set<Move> searchMoves;
     int time[] = { 0, 0 }, inc[] = { 0, 0 };
 
     while (is >> token)
@@ -228,7 +228,7 @@ namespace {
             is >> limits.maxTime;
         else if (token == "searchmoves")
             while (is >> token)
-                searchMoves.push_back(move_from_uci(pos, token));
+                searchMoves.insert(move_from_uci(pos, token));
     }
 
     limits.time = time[pos.side_to_move()];

@@ -21,6 +21,7 @@
 #define THREAD_H_INCLUDED
 
 #include <cstring>
+#include <set>
 
 #include "lock.h"
 #include "material.h"
@@ -120,7 +121,7 @@ public:
   void wait_for_stop_or_ponderhit();
   void stop_thinking();
   void start_thinking(const Position& pos, const Search::LimitsType& limits,
-                      const std::vector<Move>& searchMoves, bool asyncMode);
+                      const std::set<Move>& searchMoves, bool asyncMode);
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue,

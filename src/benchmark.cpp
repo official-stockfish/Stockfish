@@ -19,6 +19,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include "misc.h"
@@ -121,7 +122,7 @@ void benchmark(int argc, char* argv[]) {
       }
       else
       {
-          Threads.start_thinking(pos, limits, vector<Move>(), false);
+          Threads.start_thinking(pos, limits, set<Move>(), false);
           nodes += RootPosition.nodes_searched();
       }
   }

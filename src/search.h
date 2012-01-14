@@ -21,7 +21,7 @@
 #define SEARCH_H_INCLUDED
 
 #include <cstring>
-#include <vector>
+#include <set>
 
 #include "types.h"
 
@@ -70,7 +70,7 @@ struct SignalsType {
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
-extern std::vector<Move> SearchMoves;
+extern std::set<Move> SearchMoves;
 extern Position RootPosition;
 
 extern void init();
