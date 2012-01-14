@@ -121,7 +121,7 @@ public:
   void wait_for_stop_or_ponderhit();
   void stop_thinking();
   void start_thinking(const Position& pos, const Search::LimitsType& limits,
-                      const std::set<Move>& searchMoves, bool asyncMode);
+                      const std::set<Move>& = std::set<Move>(), bool async = false);
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue,

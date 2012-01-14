@@ -19,6 +19,7 @@
 
 #include <iostream>
 
+#include "movegen.h"
 #include "search.h"
 #include "thread.h"
 #include "ucioption.h"
@@ -420,7 +421,7 @@ void Thread::main_loop() {
       if (do_terminate)
           return;
 
-      think(); // This is the search entry point
+      Search::think();
   }
 }
 
@@ -431,7 +432,7 @@ void Thread::main_loop() {
 // the search to finish.
 
 void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limits,
-                                    const std::set<Move>& searchMoves, bool asyncMode) {
+                                    const std::set<Move>& searchMoves, bool async) {
   Thread& main = threads[0];
 
   lock_grab(&main.sleepLock);
@@ -443,7 +444,13 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
   // Copy input arguments to initialize the search
   RootPosition.copy(pos, 0);
   Limits = limits;
-  SearchMoves = searchMoves;
+  RootMoves.clear();
+
+  // Populate RootMoves with all the legal moves (default) or, if a searchMoves
+  // set is given, with the subset of legal moves to search.
+  for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
+      if (searchMoves.empty() || searchMoves.count(ml.move()))
+          RootMoves.push_back(RootMove(ml.move()));
 
   // Reset signals before to start the new search
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
@@ -452,7 +459,7 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
   main.do_sleep = false;
   cond_signal(&main.sleepCond); // Wake up main thread and start searching
 
-  if (!asyncMode)
+  if (!async)
       while (!main.do_sleep)
           cond_wait(&sleepCond, &main.sleepLock);
 

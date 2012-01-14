@@ -21,7 +21,7 @@
 #define SEARCH_H_INCLUDED
 
 #include <cstring>
-#include <set>
+#include <vector>
 
 #include "types.h"
 
@@ -48,13 +48,36 @@ struct Stack {
 };
 
 
+/// RootMove struct is used for moves at the root of the tree. For each root
+/// move we store a score, a node count, and a PV (really a refutation in the
+/// case of moves which fail low). Score is normally set at -VALUE_INFINITE for
+/// all non-pv moves.
+struct RootMove {
+
+  RootMove(){} // Needed by sort()
+  RootMove(Move m) : score(-VALUE_INFINITE), prevScore(-VALUE_INFINITE) {
+    pv.push_back(m); pv.push_back(MOVE_NONE);
+  }
+
+  bool operator<(const RootMove& m) const { return score < m.score; }
+  bool operator==(const Move& m) const { return pv[0] == m; }
+
+  void extract_pv_from_tt(Position& pos);
+  void insert_pv_in_tt(Position& pos);
+
+  Value score;
+  Value prevScore;
+  std::vector<Move> pv;
+};
+
+
 /// The LimitsType struct stores information sent by GUI about available time
 /// to search the current move, maximum depth/time, if we are in analysis mode
 /// or if we have to ponder while is our opponent's side to move.
 
 struct LimitsType {
 
-  LimitsType() {  memset(this, 0, sizeof(LimitsType)); }
+  LimitsType() { memset(this, 0, sizeof(LimitsType)); }
   bool use_time_management() const { return !(maxTime | maxDepth | maxNodes | infinite); }
 
   int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
@@ -70,13 +93,13 @@ struct SignalsType {
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
-extern std::set<Move> SearchMoves;
+extern std::vector<RootMove> RootMoves;
 extern Position RootPosition;
 
 extern void init();
 extern int64_t perft(Position& pos, Depth depth);
 extern void think();
 
-} // namespace
+} // namespace Search
 
 #endif // !defined(SEARCH_H_INCLUDED)
