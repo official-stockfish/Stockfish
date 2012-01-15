@@ -315,8 +315,8 @@ endif
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(comp),gcc)
-	GCC_MAJOR := `gcc -dumpversion | cut -f1 -d.`
-	GCC_MINOR := `gcc -dumpversion | cut -f2 -d.`
+	GCC_MAJOR := `$(CXX) -dumpversion | cut -f1 -d.`
+	GCC_MINOR := `$(CXX) -dumpversion | cut -f2 -d.`
 	ifeq (1,$(shell expr \( $(GCC_MAJOR) \> 4 \) \| \( $(GCC_MAJOR) \= 4 \& $(GCC_MINOR) \>= 5 \)))
 		CXXFLAGS += -flto
 		LDFLAGS += $(CXXFLAGS)
