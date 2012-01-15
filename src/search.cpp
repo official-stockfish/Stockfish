@@ -966,7 +966,7 @@ split_point_start: // At split points actual search starts from here
 
       // Step 15. Reduced depth search (LMR). If the move fails high will be
       // re-searched at full depth.
-      if (   depth > 3 * ONE_PLY
+      if (   depth > 4 * ONE_PLY
           && !isPvMove
           && !captureOrPromotion
           && !dangerous
@@ -975,11 +975,10 @@ split_point_start: // At split points actual search starts from here
           &&  ss->killers[1] != move)
       {
           ss->reduction = reduction<PvNode>(depth, moveCount);
-          Depth d = newDepth - ss->reduction;
+          Depth d = std::max(newDepth - ss->reduction, ONE_PLY);
           alpha = SpNode ? sp->alpha : alpha;
 
-          value = d < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
-                              : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
+          value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
 
           doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
           ss->reduction = DEPTH_ZERO;
