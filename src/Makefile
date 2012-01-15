@@ -337,7 +337,6 @@ help:
 	@echo ""
 	@echo "build                > Build unoptimized version"
 	@echo "profile-build        > Build PGO-optimized version"
-	@echo "double-profile-build > Build PGO-optimized version with and without popcnt support"
 	@echo "strip                > Strip executable"
 	@echo "install              > Install executable"
 	@echo "clean                > Clean up"
@@ -347,7 +346,7 @@ help:
 	@echo ""
 	@echo "x86-64               > x86 64-bit"
 	@echo "x86-64-modern        > x86 64-bit with runtime support for popcnt instruction"
-	@echo "x86-32               > x86 32-bit excluding very old hardware without SSE-support"
+	@echo "x86-32               > x86 32-bit excluding old hardware without SSE-support"
 	@echo "x86-32-old           > x86 32-bit including also very old hardware"
 	@echo "osx-ppc-64           > PPC-Mac OS X 64 bit"
 	@echo "osx-ppc-32           > PPC-Mac OS X 32 bit"
@@ -397,34 +396,6 @@ profile-build:
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
-
-double-profile-build:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
-	@echo ""
-	@echo "Step 0/6. Preparing for profile build."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_prepare)
-	@echo ""
-	@echo "Step 1/6. Building executable for benchmark (popcnt disabled)..."
-	@touch *.cpp *.h
-	$(MAKE) ARCH=x86-64 COMP=$(COMP) $(profile_make)
-	@echo ""
-	@echo "Step 2/6. Running benchmark for pgo-build (popcnt disabled)..."
-	@$(PGOBENCH) > /dev/null
-	@echo ""
-	@echo "Step 3/6. Building executable for benchmark (popcnt enabled)..."
-	@touch *.cpp *.h
-	$(MAKE) ARCH=x86-64-modern COMP=$(COMP) $(profile_make)
-	@echo ""
-	@echo "Step 4/6. Running benchmark for pgo-build (popcnt enabled)..."
-	@$(PGOBENCH) > /dev/null
-	@echo ""
-	@echo "Step 5/6. Building final executable ..."
-	@touch *.cpp *.h
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
-	@echo ""
-	@echo "Step 6/6. Deleting profile data ..."
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
-	@echo ""
 
 strip:
 	strip $(EXE)
