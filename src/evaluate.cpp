@@ -18,7 +18,6 @@
 */
 
 #include <cassert>
-#include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <algorithm>

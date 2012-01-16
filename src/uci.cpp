@@ -20,7 +20,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include "evaluate.h"
 #include "misc.h"

@@ -22,7 +22,6 @@
 
 #include "bitcount.h"
 #include "endgame.h"
-#include "pawns.h"
 
 using std::string;
 

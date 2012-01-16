@@ -21,7 +21,6 @@
 #include <string>
 
 #include "bitboard.h"
-#include "misc.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"

@@ -20,7 +20,6 @@
 #if !defined(THREAD_H_INCLUDED)
 #define THREAD_H_INCLUDED
 
-#include <cstring>
 #include <set>
 
 #include "lock.h"

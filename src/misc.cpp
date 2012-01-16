@@ -40,13 +40,10 @@
 #endif
 
 #include <algorithm>
-#include <cassert>
-#include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
-#include "bitcount.h"
 #include "misc.h"
 #include "thread.h"
 

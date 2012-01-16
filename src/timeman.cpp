@@ -20,7 +20,6 @@
 #include <cmath>
 #include <algorithm>
 
-#include "misc.h"
 #include "search.h"
 #include "timeman.h"
 #include "ucioption.h"
