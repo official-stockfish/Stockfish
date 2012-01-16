@@ -249,7 +249,6 @@ void Search::think() {
 
   static Book book; // Defined static to initialize the PRNG only once
 
-  Move bm;
   Position& pos = RootPosition;
   Chess960 = pos.is_chess960();
   elapsed_time(true);
@@ -266,12 +265,15 @@ void Search::think() {
       goto finalize;
   }
 
-  if (   Options["OwnBook"]
-      && (bm = book.probe(pos, Options["Book File"], Options["Best Book Move"])) != MOVE_NONE
-      && count(RootMoves.begin(), RootMoves.end(), bm))
+  if (Options["OwnBook"])
   {
-      std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bm));
-      goto finalize;
+      Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
+
+      if (bookMove && count(RootMoves.begin(), RootMoves.end(), bookMove))
+      {
+          std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bookMove));
+          goto finalize;
+      }
   }
 
   // Read UCI options: GUI could change UCI parameters during the game
