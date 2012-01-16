@@ -91,19 +91,19 @@ namespace {
   template<Square Delta>
   inline Bitboard move_pawns(Bitboard p) {
 
-    return Delta == DELTA_N  ? p << 8 : Delta == DELTA_S  ? p >> 8 :
-           Delta == DELTA_NE ? p << 9 : Delta == DELTA_SE ? p >> 7 :
-           Delta == DELTA_NW ? p << 7 : Delta == DELTA_SW ? p >> 9 : p;
+    return  Delta == DELTA_N  ?  p << 8
+          : Delta == DELTA_S  ?  p >> 8
+          : Delta == DELTA_NE ? (p & ~FileHBB) << 9
+          : Delta == DELTA_SE ? (p & ~FileHBB) >> 7
+          : Delta == DELTA_NW ? (p & ~FileABB) << 7
+          : Delta == DELTA_SW ? (p & ~FileABB) >> 9 : p;
   }
 
 
   template<Square Delta>
   inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard target) {
 
-    const Bitboard TFileABB = (   Delta == DELTA_NE
-                               || Delta == DELTA_SE ? FileABB : FileHBB);
-
-    Bitboard b = move_pawns<Delta>(pawns) & target & ~TFileABB;
+    Bitboard b = move_pawns<Delta>(pawns) & target;
     SERIALIZE_PAWNS(b, -Delta);
     return mlist;
   }
@@ -112,13 +112,7 @@ namespace {
   template<MoveType Type, Square Delta>
   inline MoveStack* generate_promotions(MoveStack* mlist, Bitboard pawnsOn7, Bitboard target, Square ksq) {
 
-    const Bitboard TFileABB = (   Delta == DELTA_NE
-                               || Delta == DELTA_SE ? FileABB : FileHBB);
-
     Bitboard b = move_pawns<Delta>(pawnsOn7) & target;
-
-    if (Delta != DELTA_N && Delta != DELTA_S)
-        b &= ~TFileABB;
 
     while (b)
     {
