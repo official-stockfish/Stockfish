@@ -100,15 +100,6 @@ namespace {
   }
 
 
-  template<Square Delta>
-  inline MoveStack* generate_pawn_captures(MoveStack* mlist, Bitboard pawns, Bitboard target) {
-
-    Bitboard b = move_pawns<Delta>(pawns) & target;
-    SERIALIZE_PAWNS(b, -Delta);
-    return mlist;
-  }
-
-
   template<MoveType Type, Square Delta>
   inline MoveStack* generate_promotions(MoveStack* mlist, Bitboard pawnsOn7, Bitboard target, Square ksq) {
 
@@ -146,6 +137,7 @@ namespace {
     // Calculate our parametrized parameters at compile time, named according to
     // the point of view of white side.
     const Color    Them     = (Us == WHITE ? BLACK    : WHITE);
+    const Bitboard TRank8BB = (Us == WHITE ? Rank8BB  : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB  : Rank6BB);
     const Square   UP       = (Us == WHITE ? DELTA_N  : DELTA_S);
@@ -176,7 +168,6 @@ namespace {
 
         if (Type == MV_NON_CAPTURE_CHECK)
         {
-            // Consider only direct checks
             b1 &= pos.attacks_from<PAWN>(ksq, Them);
             b2 &= pos.attacks_from<PAWN>(ksq, Them);
 
@@ -199,7 +190,7 @@ namespace {
     }
 
     // Promotions and underpromotions
-    if (pawnsOn7)
+    if (pawnsOn7 && (Type != MV_EVASION || (target & TRank8BB)))
     {
         if (Type == MV_CAPTURE)
             emptySquares = pos.empty_squares();
@@ -215,12 +206,15 @@ namespace {
     // Standard and en-passant captures
     if (Type == MV_CAPTURE || Type == MV_EVASION || Type == MV_NON_EVASION)
     {
-        mlist = generate_pawn_captures<RIGHT>(mlist, pawnsNotOn7, enemies);
-        mlist = generate_pawn_captures<LEFT >(mlist, pawnsNotOn7, enemies);
+        b1 = move_pawns<RIGHT>(pawnsNotOn7) & enemies;
+        b2 = move_pawns<LEFT >(pawnsNotOn7) & enemies;
+
+        SERIALIZE_PAWNS(b1, -RIGHT);
+        SERIALIZE_PAWNS(b2, -LEFT);
 
         if (pos.ep_square() != SQ_NONE)
         {
-            assert(rank_of(pos.ep_square()) == (Us == WHITE ? RANK_6 : RANK_3));
+            assert(rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
 
             // An en passant capture can be an evasion only if the checking piece
             // is the double pushed pawn and so is in the target. Otherwise this
