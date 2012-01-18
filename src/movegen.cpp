@@ -29,7 +29,7 @@
 
 /// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
 #define SERIALIZE_PAWNS(b, d) while (b) { Square to = pop_1st_bit(&b); \
-                                         (*mlist++).move = make_move(to + (d), to); }
+                                         (*mlist++).move = make_move(to - (d), to); }
 namespace {
 
   enum CastlingSide { KING_SIDE, QUEEN_SIDE };
@@ -185,8 +185,8 @@ namespace {
             }
         }
 
-        SERIALIZE_PAWNS(b1, -UP);
-        SERIALIZE_PAWNS(b2, -UP -UP);
+        SERIALIZE_PAWNS(b1, UP);
+        SERIALIZE_PAWNS(b2, UP + UP);
     }
 
     // Promotions and underpromotions
@@ -209,8 +209,8 @@ namespace {
         b1 = move_pawns<RIGHT>(pawnsNotOn7) & enemies;
         b2 = move_pawns<LEFT >(pawnsNotOn7) & enemies;
 
-        SERIALIZE_PAWNS(b1, -RIGHT);
-        SERIALIZE_PAWNS(b2, -LEFT);
+        SERIALIZE_PAWNS(b1, RIGHT);
+        SERIALIZE_PAWNS(b2, LEFT);
 
         if (pos.ep_square() != SQ_NONE)
         {
