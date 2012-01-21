@@ -27,13 +27,13 @@
 namespace {
 
   enum Sequencer {
-    MAIN_SEARCH,         TT_MOVE_S1, GOOD_CAPTURES_S1, KILLERS_S1, NONCAPTURES_1_S1,
-                         NONCAPTURES_2_S1, BAD_CAPTURES_S1, STOP_S1,
+    MAIN_SEARCH,         TT_MOVE_S1, CAPTURES_S1, KILLERS_S1, QUIETS_1_S1,
+                         QUIETS_2_S1, BAD_CAPTURES_S1, STOP_S1,
     EVASIONS,            TT_MOVE_S2, EVASIONS_S2, STOP_S2,
-    CAPTURES_AND_CHECKS, TT_MOVE_S3, CAPTURES_S3, CHECKS_S3, STOP_S3,
+    CAPTURES_AND_CHECKS, TT_MOVE_S3, CAPTURES_S3, QUIET_CHECKS_S3, STOP_S3,
     CAPTURES,            TT_MOVE_S4, CAPTURES_S4, STOP_S4,
     PROBCUT,             TT_MOVE_S5, CAPTURES_S5, STOP_S5,
-    RECAPTURES,          RECAPTURES_S6, STOP_S6
+    RECAPTURES,          CAPTURES_S6, STOP_S6
   };
 
   // Unary predicate used by std::partition to split positive scores from remaining
@@ -121,13 +121,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   phase += (ttMove == MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType parentCapture)
-                       : pos(p), H(h), curMove(0), lastMove(0) {
+MovePicker::MovePicker(const Position& p, Move ttm, const History& h,
+                       PieceType parentCapture) : pos(p), H(h) {
 
   assert (!pos.in_check());
 
   // In ProbCut we consider only captures better than parent's move
   captureThreshold = PieceValueMidgame[Piece(parentCapture)];
+  curMove = lastMove = 0;
   phase = PROBCUT;
 
   if (   ttm != MOVE_NONE
@@ -221,9 +222,8 @@ void MovePicker::next_phase() {
       lastMove = curMove + 1;
       return;
 
-  case GOOD_CAPTURES_S1:
-  case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5:
-  case RECAPTURES_S6:
+  case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4:
+  case CAPTURES_S5: case CAPTURES_S6:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
@@ -233,16 +233,16 @@ void MovePicker::next_phase() {
       lastMove = curMove + 2;
       return;
 
-  case NONCAPTURES_1_S1:
-      lastNonCapture = lastMove = generate<MV_NON_CAPTURE>(pos, moves);
+  case QUIETS_1_S1:
+      lastQuiet = lastMove = generate<MV_QUIET>(pos, moves);
       score_noncaptures();
       lastMove = std::partition(curMove, lastMove, has_positive_score);
       sort<MoveStack>(curMove, lastMove);
       return;
 
-  case NONCAPTURES_2_S1:
+  case QUIETS_2_S1:
       curMove = lastMove;
-      lastMove = lastNonCapture;
+      lastMove = lastQuiet;
       if (depth >= 3 * ONE_PLY)
           sort<MoveStack>(curMove, lastMove);
       return;
@@ -260,8 +260,8 @@ void MovePicker::next_phase() {
       score_evasions();
       return;
 
-  case CHECKS_S3:
-      lastMove = generate<MV_NON_CAPTURE_CHECK>(pos, moves);
+  case QUIET_CHECKS_S3:
+      lastMove = generate<MV_QUIET_CHECK>(pos, moves);
       return;
 
   case STOP_S1: case STOP_S2: case STOP_S3: case STOP_S4: case STOP_S5: case STOP_S6:
@@ -297,7 +297,7 @@ Move MovePicker::next_move() {
           return ttMove;
           break;
 
-      case GOOD_CAPTURES_S1:
+      case CAPTURES_S1:
           move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
           {
@@ -322,8 +322,8 @@ Move MovePicker::next_move() {
               return move;
           break;
 
-      case NONCAPTURES_1_S1:
-      case NONCAPTURES_2_S1:
+      case QUIETS_1_S1:
+      case QUIETS_2_S1:
           move = (curMove++)->move;
           if (   move != ttMove
               && move != killers[0].move
@@ -336,8 +336,7 @@ Move MovePicker::next_move() {
           return move;
 
       case EVASIONS_S2:
-      case CAPTURES_S3:
-      case CAPTURES_S4:
+      case CAPTURES_S3: case CAPTURES_S4:
           move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
               return move;
@@ -350,13 +349,13 @@ Move MovePicker::next_move() {
                return move;
            break;
 
-      case RECAPTURES_S6:
+      case CAPTURES_S6:
           move = (curMove++)->move;
           if (to_sq(move) == recaptureSquare)
               return move;
           break;
 
-      case CHECKS_S3:
+      case QUIET_CHECKS_S3:
           move = (curMove++)->move;
           if (move != ttMove)
               return move;
