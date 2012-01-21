@@ -25,13 +25,13 @@
 #include "search.h"
 #include "types.h"
 
-/// MovePicker is a class which is used to pick one pseudo legal move at a time
-/// from the current position. It is initialized with a Position object and a few
-/// moves we have reason to believe are good. The most important method is
-/// MovePicker::next_move(), which returns a new pseudo legal move each time
-/// it is called, until there are no moves left, when MOVE_NONE is returned.
-/// In order to improve the efficiency of the alpha beta algorithm, MovePicker
-/// attempts to return the moves which are most likely to get a cut-off first.
+
+/// MovePicker class is used to pick one pseudo legal move at a time from the
+/// current position. The most important method is next_move(), which returns a
+/// new pseudo legal move each time it is called, until there are no moves left,
+/// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
+/// beta algorithm, MovePicker attempts to return the moves which are most likely
+/// to get a cut-off first.
 
 class MovePicker {
 
@@ -39,15 +39,15 @@ class MovePicker {
 
 public:
   MovePicker(const Position&, Move, Depth, const History&, Search::Stack*, Value);
-  MovePicker(const Position&, Move, Depth, const History&, Square recaptureSq);
-  MovePicker(const Position&, Move, const History&, PieceType parentCapture);
+  MovePicker(const Position&, Move, Depth, const History&, Square);
+  MovePicker(const Position&, Move, const History&, PieceType);
   Move next_move();
 
 private:
   void score_captures();
   void score_noncaptures();
   void score_evasions();
-  void go_next_phase();
+  void next_phase();
 
   const Position& pos;
   const History& H;
