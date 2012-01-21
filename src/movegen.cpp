@@ -35,7 +35,7 @@ namespace {
   enum CastlingSide { KING_SIDE, QUEEN_SIDE };
 
   template<CastlingSide Side, bool OnlyChecks>
-  MoveStack* generate_castle_moves(const Position& pos, MoveStack* mlist, Color us) {
+  MoveStack* generate_castle(const Position& pos, MoveStack* mlist, Color us) {
 
     const CastleRight CR[] = { Side ? WHITE_OOO : WHITE_OO,
                                Side ? BLACK_OOO : BLACK_OO };
@@ -96,7 +96,7 @@ namespace {
           : Delta == DELTA_NE ? (p & ~FileHBB) << 9
           : Delta == DELTA_SE ? (p & ~FileHBB) >> 7
           : Delta == DELTA_NW ? (p & ~FileABB) << 7
-          : Delta == DELTA_SW ? (p & ~FileABB) >> 9 : p;
+          : Delta == DELTA_SW ? (p & ~FileABB) >> 9 : 0;
   }
 
 
@@ -119,8 +119,8 @@ namespace {
             (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
         }
 
-        // Knight-promotion is the only one that can give a check (direct or
-        // discovered) not already included in the queen-promotion.
+        // Knight-promotion is the only one that can give a direct check not
+        // already included in the queen-promotion.
         if (Type == MV_NON_CAPTURE_CHECK && bit_is_set(StepAttacksBB[W_KNIGHT][to], ksq))
             (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
         else
@@ -134,7 +134,7 @@ namespace {
   template<Color Us, MoveType Type>
   MoveStack* generate_pawn_moves(const Position& pos, MoveStack* mlist, Bitboard target, Square ksq = SQ_NONE) {
 
-    // Calculate our parametrized parameters at compile time, named according to
+    // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
     const Color    Them     = (Us == WHITE ? BLACK    : WHITE);
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB  : Rank1BB);
@@ -240,43 +240,24 @@ namespace {
                                            Color us, const CheckInfo& ci) {
     assert(Pt != KING && Pt != PAWN);
 
-    Square from;
-    const Square* pl = pos.piece_list(us, Pt);
-
-    if ((from = *pl++) == SQ_NONE)
-        return mlist;
-
-    Bitboard checkSqs = ci.checkSq[Pt] & pos.empty_squares();
-
-    do
-    {
-        if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
-            && !(PseudoAttacks[Pt][from] & checkSqs))
-            continue;
-
-        if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
-            continue;
-
-        Bitboard b = pos.attacks_from<Pt>(from) & checkSqs;
-        SERIALIZE(b);
-
-    } while ((from = *pl++) != SQ_NONE);
-
-    return mlist;
-  }
-
-
-  template<PieceType Pt>
-  FORCE_INLINE MoveStack* generate_piece_moves(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
-
-    Bitboard b;
+    Bitboard b, target;
     Square from;
     const Square* pl = pos.piece_list(us, Pt);
 
     if (*pl != SQ_NONE)
     {
+        target = ci.checkSq[Pt] & pos.empty_squares(); // Non capture checks only
+
         do {
             from = *pl;
+
+            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+                && !(PseudoAttacks[Pt][from] & target))
+                continue;
+
+            if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
+                continue;
+
             b = pos.attacks_from<Pt>(from) & target;
             SERIALIZE(b);
         } while (*++pl != SQ_NONE);
@@ -286,9 +267,29 @@ namespace {
   }
 
 
-  template<>
-  FORCE_INLINE MoveStack* generate_piece_moves<KING>(const Position& pos, MoveStack* mlist, Color us, Bitboard target) {
+  template<PieceType Pt>
+  FORCE_INLINE MoveStack* generate_moves(const Position& pos, MoveStack* mlist,
+                                         Color us, Bitboard target) {
+    assert(Pt != KING && Pt != PAWN);
 
+    Bitboard b;
+    Square from;
+    const Square* pl = pos.piece_list(us, Pt);
+
+    if (*pl != SQ_NONE)
+        do {
+            from = *pl;
+            b = pos.attacks_from<Pt>(from) & target;
+            SERIALIZE(b);
+        } while (*++pl != SQ_NONE);
+
+    return mlist;
+  }
+
+
+  template<>
+  FORCE_INLINE MoveStack* generate_moves<KING>(const Position& pos, MoveStack* mlist,
+                                               Color us, Bitboard target) {
     Square from = pos.king_square(us);
     Bitboard b = pos.attacks_from<KING>(from) & target;
     SERIALIZE(b);
@@ -328,16 +329,16 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   mlist = (us == WHITE ? generate_pawn_moves<WHITE, Type>(pos, mlist, target)
                        : generate_pawn_moves<BLACK, Type>(pos, mlist, target));
 
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_piece_moves<QUEEN>(pos, mlist, us, target);
-  mlist = generate_piece_moves<KING>(pos, mlist, us, target);
+  mlist = generate_moves<KNIGHT>(pos, mlist, us, target);
+  mlist = generate_moves<BISHOP>(pos, mlist, us, target);
+  mlist = generate_moves<ROOK>(pos, mlist, us, target);
+  mlist = generate_moves<QUEEN>(pos, mlist, us, target);
+  mlist = generate_moves<KING>(pos, mlist, us, target);
 
   if (Type != MV_CAPTURE && pos.can_castle(us))
   {
-      mlist = generate_castle_moves<KING_SIDE, false>(pos, mlist, us);
-      mlist = generate_castle_moves<QUEEN_SIDE, false>(pos, mlist, us);
+      mlist = generate_castle<KING_SIDE, false>(pos, mlist, us);
+      mlist = generate_castle<QUEEN_SIDE, false>(pos, mlist, us);
   }
 
   return mlist;
@@ -386,8 +387,8 @@ MoveStack* generate<MV_NON_CAPTURE_CHECK>(const Position& pos, MoveStack* mlist)
 
   if (pos.can_castle(us))
   {
-      mlist = generate_castle_moves<KING_SIDE, true>(pos, mlist, us);
-      mlist = generate_castle_moves<QUEEN_SIDE, true>(pos, mlist, us);
+      mlist = generate_castle<KING_SIDE, true>(pos, mlist, us);
+      mlist = generate_castle<QUEEN_SIDE, true>(pos, mlist, us);
   }
 
   return mlist;
@@ -458,10 +459,10 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
   mlist = (us == WHITE ? generate_pawn_moves<WHITE, MV_EVASION>(pos, mlist, target)
                        : generate_pawn_moves<BLACK, MV_EVASION>(pos, mlist, target));
 
-  mlist = generate_piece_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_piece_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_piece_moves<ROOK>(pos, mlist, us, target);
-  return  generate_piece_moves<QUEEN>(pos, mlist, us, target);
+  mlist = generate_moves<KNIGHT>(pos, mlist, us, target);
+  mlist = generate_moves<BISHOP>(pos, mlist, us, target);
+  mlist = generate_moves<ROOK>(pos, mlist, us, target);
+  return  generate_moves<QUEEN>(pos, mlist, us, target);
 }
 
 
