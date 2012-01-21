@@ -64,7 +64,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
   captureThreshold = 0;
   curMove = lastMove = moves;
-  badCaptures = moves + MAX_MOVES;
+  lastBadCapture = moves + MAX_MOVES - 1;
 
   if (p.in_check())
       phase = EVASION;
@@ -242,10 +242,9 @@ void MovePicker::generate_next() {
       return;
 
   case BAD_CAPTURES_S1:
-      // Bad captures SEE value is already calculated so just pick them in order
-      // to get SEE move ordering.
-      curMove = badCaptures;
-      lastMove = moves + MAX_MOVES;
+      // Just pick them in reverse order to get MVV/LVA ordering
+      curMove = moves + MAX_MOVES - 1;
+      lastMove = lastBadCapture;
       return;
 
   case EVASIONS_S2:
@@ -297,13 +296,11 @@ Move MovePicker::next_move() {
           {
               assert(captureThreshold <= 0); // Otherwise we cannot use see_sign()
 
-              int seeScore = pos.see_sign(move);
-              if (seeScore >= captureThreshold)
+              if (pos.see_sign(move) >= captureThreshold)
                   return move;
 
               // Losing capture, move it to the tail of the array
-              (--badCaptures)->move = move;
-              badCaptures->score = seeScore;
+              (lastBadCapture--)->move = move;
           }
           break;
 
@@ -325,8 +322,7 @@ Move MovePicker::next_move() {
           break;
 
       case BAD_CAPTURES_S1:
-          move = pick_best(curMove++, lastMove)->move;
-          return move;
+          return (curMove--)->move;
 
       case EVASIONS_S2: case CAPTURES_S3: case CAPTURES_S4:
           move = pick_best(curMove++, lastMove)->move;
