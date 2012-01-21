@@ -775,6 +775,7 @@ namespace {
         Depth rdepth = depth - ONE_PLY - 3 * ONE_PLY;
 
         assert(rdepth >= ONE_PLY);
+        assert((ss-1)->currentMove != MOVE_NONE);
 
         MovePicker mp(pos, ttMove, H, pos.captured_piece_type());
         CheckInfo ci(pos);
@@ -782,6 +783,7 @@ namespace {
         while ((move = mp.next_move()) != MOVE_NONE)
             if (pos.pl_move_is_legal(move, ci.pinned))
             {
+                ss->currentMove = move;
                 pos.do_move(move, st, ci, pos.move_gives_check(move, ci));
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, rdepth);
                 pos.undo_move(move);
