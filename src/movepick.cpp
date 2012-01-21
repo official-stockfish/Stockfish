@@ -28,28 +28,15 @@
 
 namespace {
 
-  enum MovegenPhase {
-    PH_TT_MOVE,       // Transposition table move
-    PH_GOOD_CAPTURES, // Queen promotions and captures with SEE values >= captureThreshold (captureThreshold <= 0)
-    PH_GOOD_PROBCUT,  // Queen promotions and captures with SEE values > captureThreshold (captureThreshold >= 0)
-    PH_KILLERS,       // Killer moves from the current ply
-    PH_NONCAPTURES_1, // Non-captures and underpromotions with positive score
-    PH_NONCAPTURES_2, // Non-captures and underpromotions with non-positive score
-    PH_BAD_CAPTURES,  // Queen promotions and captures with SEE values < captureThreshold (captureThreshold <= 0)
-    PH_EVASIONS,      // Check evasions
-    PH_QCAPTURES,     // Captures in quiescence search
-    PH_QRECAPTURES,   // Recaptures in quiescence search
-    PH_QCHECKS,       // Non-capture checks in quiescence search
-    PH_STOP
+  enum Sequencer {
+    MAIN_SEARCH,         TT_MOVE_S1, GOOD_CAPTURES_S1, KILLERS_S1, NONCAPTURES_1_S1,
+                         NONCAPTURES_2_S1, BAD_CAPTURES_S1, STOP_S1,
+    EVASIONS,            TT_MOVE_S2, EVASIONS_S2, STOP_S2,
+    CAPTURES_AND_CHECKS, TT_MOVE_S3, QCAPTURES_S3, QCHECKS_S3, STOP_S3,
+    CAPTURES,            TT_MOVE_S4, QCAPTURES_S4, STOP_S4,
+    RECAPTURES,          TT_MOVE_S5, RECAPTURES_S5, STOP_S5,
+    PROBCUT,             TT_MOVE_S6, GOOD_CAPTURES_S6, STOP_S6
   };
-
-  CACHE_LINE_ALIGNMENT
-  const uint8_t MainSearchTable[] = { PH_TT_MOVE, PH_GOOD_CAPTURES, PH_KILLERS, PH_NONCAPTURES_1, PH_NONCAPTURES_2, PH_BAD_CAPTURES, PH_STOP };
-  const uint8_t EvasionTable[] = { PH_TT_MOVE, PH_EVASIONS, PH_STOP };
-  const uint8_t QsearchWithChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_QCHECKS, PH_STOP };
-  const uint8_t QsearchWithoutChecksTable[] = { PH_TT_MOVE, PH_QCAPTURES, PH_STOP };
-  const uint8_t QsearchRecapturesTable[] = { PH_TT_MOVE, PH_QRECAPTURES, PH_STOP };
-  const uint8_t ProbCutTable[] = { PH_TT_MOVE, PH_GOOD_PROBCUT, PH_STOP };
 
   // Unary predicate used by std::partition to split positive scores from remaining
   // ones so to sort separately the two sets, and with the second sort delayed.
@@ -81,7 +68,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   if (p.in_check())
   {
       killers[0].move = killers[1].move = MOVE_NONE;
-      phasePtr = EvasionTable;
+      phase = EVASIONS;
   }
   else
   {
@@ -96,11 +83,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       else if (ss && ss->eval > beta)
           captureThreshold = beta - ss->eval;
 
-      phasePtr = MainSearchTable;
+      phase = MAIN_SEARCH;
   }
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
-  phasePtr += int(ttMove == MOVE_NONE) - 1;
+  phase += int(ttMove == MOVE_NONE);
   go_next_phase();
 }
 
@@ -110,12 +97,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h, S
   assert(d <= DEPTH_ZERO);
 
   if (p.in_check())
-      phasePtr = EvasionTable;
+      phase = EVASIONS;
+
   else if (d >= DEPTH_QS_CHECKS)
-      phasePtr = QsearchWithChecksTable;
+      phase = CAPTURES_AND_CHECKS;
+
   else if (d >= DEPTH_QS_RECAPTURES)
   {
-      phasePtr = QsearchWithoutChecksTable;
+      phase = CAPTURES;
 
       // Skip TT move if is not a capture or a promotion, this avoids
       // qsearch tree explosion due to a possible perpetual check or
@@ -125,13 +114,13 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h, S
   }
   else
   {
-      phasePtr = QsearchRecapturesTable;
+      phase = RECAPTURES;
       recaptureSquare = recaptureSq;
       ttm = MOVE_NONE;
   }
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
-  phasePtr += int(ttMove == MOVE_NONE) - 1;
+  phase += int(ttMove == MOVE_NONE);
   go_next_phase();
 }
 
@@ -142,14 +131,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType 
 
   // In ProbCut we consider only captures better than parent's move
   captureThreshold = PieceValueMidgame[Piece(parentCapture)];
-  phasePtr = ProbCutTable;
+  phase = PROBCUT;
 
   if (   ttm != MOVE_NONE
       && (!pos.is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
       ttm = MOVE_NONE;
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
-  phasePtr += int(ttMove == MOVE_NONE) - 1;
+  phase += int(ttMove == MOVE_NONE);
   go_next_phase();
 }
 
@@ -160,71 +149,73 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType 
 void MovePicker::go_next_phase() {
 
   curMove = moves;
-  phase = *(++phasePtr);
-  switch (phase) {
 
-  case PH_TT_MOVE:
+  switch (++phase) {
+
+  case TT_MOVE_S1: case TT_MOVE_S2: case TT_MOVE_S3:
+  case TT_MOVE_S4: case TT_MOVE_S5: case TT_MOVE_S6:
       lastMove = curMove + 1;
       return;
 
-  case PH_GOOD_CAPTURES:
-  case PH_GOOD_PROBCUT:
+  case GOOD_CAPTURES_S1:
+  case GOOD_CAPTURES_S6:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
 
-  case PH_KILLERS:
+  case KILLERS_S1:
       curMove = killers;
       lastMove = curMove + 2;
       return;
 
-  case PH_NONCAPTURES_1:
+  case NONCAPTURES_1_S1:
       lastNonCapture = lastMove = generate<MV_NON_CAPTURE>(pos, moves);
       score_noncaptures();
       lastMove = std::partition(curMove, lastMove, has_positive_score);
       sort<MoveStack>(curMove, lastMove);
       return;
 
-  case PH_NONCAPTURES_2:
+  case NONCAPTURES_2_S1:
       curMove = lastMove;
       lastMove = lastNonCapture;
       if (depth >= 3 * ONE_PLY)
           sort<MoveStack>(curMove, lastMove);
       return;
 
-  case PH_BAD_CAPTURES:
+  case BAD_CAPTURES_S1:
       // Bad captures SEE value is already calculated so just pick
       // them in order to get SEE move ordering.
       curMove = badCaptures;
       lastMove = moves + MAX_MOVES;
       return;
 
-  case PH_EVASIONS:
+  case EVASIONS_S2:
       assert(pos.in_check());
       lastMove = generate<MV_EVASION>(pos, moves);
       score_evasions();
       return;
 
-  case PH_QCAPTURES:
+  case QCAPTURES_S3:
+  case QCAPTURES_S4:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
 
-  case PH_QRECAPTURES:
+  case RECAPTURES_S5:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       return;
 
-  case PH_QCHECKS:
+  case QCHECKS_S3:
       lastMove = generate<MV_NON_CAPTURE_CHECK>(pos, moves);
       return;
 
-  case PH_STOP:
+  case STOP_S1: case STOP_S2: case STOP_S3:
+  case STOP_S4: case STOP_S5: case STOP_S6:
       lastMove = curMove + 1; // Avoid another go_next_phase() call
       return;
 
   default:
       assert(false);
-      return;
   }
 }
 
@@ -318,12 +309,13 @@ Move MovePicker::next_move() {
 
       switch (phase) {
 
-      case PH_TT_MOVE:
+      case TT_MOVE_S1: case TT_MOVE_S2: case TT_MOVE_S3:
+      case TT_MOVE_S4: case TT_MOVE_S5: case TT_MOVE_S6:
           curMove++;
           return ttMove;
           break;
 
-      case PH_GOOD_CAPTURES:
+      case GOOD_CAPTURES_S1:
           move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
           {
@@ -340,14 +332,14 @@ Move MovePicker::next_move() {
           }
           break;
 
-     case PH_GOOD_PROBCUT:
+     case GOOD_CAPTURES_S6:
           move = pick_best(curMove++, lastMove)->move;
           if (   move != ttMove
               && pos.see(move) > captureThreshold)
               return move;
           break;
 
-      case PH_KILLERS:
+      case KILLERS_S1:
           move = (curMove++)->move;
           if (   move != MOVE_NONE
               && pos.is_pseudo_legal(move)
@@ -356,8 +348,8 @@ Move MovePicker::next_move() {
               return move;
           break;
 
-      case PH_NONCAPTURES_1:
-      case PH_NONCAPTURES_2:
+      case NONCAPTURES_1_S1:
+      case NONCAPTURES_2_S1:
           move = (curMove++)->move;
           if (   move != ttMove
               && move != killers[0].move
@@ -365,35 +357,36 @@ Move MovePicker::next_move() {
               return move;
           break;
 
-      case PH_BAD_CAPTURES:
+      case BAD_CAPTURES_S1:
           move = pick_best(curMove++, lastMove)->move;
           return move;
 
-      case PH_EVASIONS:
-      case PH_QCAPTURES:
+      case EVASIONS_S2:
+      case QCAPTURES_S3:
+      case QCAPTURES_S4:
           move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
               return move;
           break;
 
-      case PH_QRECAPTURES:
+      case RECAPTURES_S5:
           move = (curMove++)->move;
           if (to_sq(move) == recaptureSquare)
               return move;
           break;
 
-      case PH_QCHECKS:
+      case QCHECKS_S3:
           move = (curMove++)->move;
           if (move != ttMove)
               return move;
           break;
 
-      case PH_STOP:
+      case STOP_S1: case STOP_S2: case STOP_S3:
+      case STOP_S4: case STOP_S5: case STOP_S6:
           return MOVE_NONE;
 
       default:
           assert(false);
-          break;
       }
   }
 }

@@ -56,7 +56,6 @@ private:
   MoveStack killers[2];
   Square recaptureSquare;
   int captureThreshold, phase;
-  const uint8_t* phasePtr;
   MoveStack *curMove, *lastMove, *lastNonCapture, *badCaptures;
   MoveStack moves[MAX_MOVES];
 };
