@@ -544,7 +544,7 @@ namespace {
     const bool RootNode = (NT == Root || NT == SplitPointRoot);
 
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
-    assert(PvNode == (alpha != beta - 1));
+    assert((alpha == beta - 1) || PvNode);
     assert(depth > DEPTH_ZERO);
     assert(pos.thread() >= 0 && pos.thread() < Threads.size());
 
@@ -1154,7 +1154,7 @@ split_point_start: // At split points actual search starts from here
 
     assert(NT == PV || NT == NonPV);
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
-    assert(PvNode == (alpha != beta - 1));
+    assert((alpha == beta - 1) || PvNode);
     assert(depth <= DEPTH_ZERO);
     assert(pos.thread() >= 0 && pos.thread() < Threads.size());
 
