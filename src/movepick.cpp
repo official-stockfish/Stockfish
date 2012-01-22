@@ -97,10 +97,10 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   if (p.in_check())
       phase = EVASIONS;
 
-  else if (d >= DEPTH_QS_CHECKS)
+  else if (d > DEPTH_QS_NO_CHECKS)
       phase = CAPTURES_AND_CHECKS;
 
-  else if (d >= DEPTH_QS_RECAPTURES)
+  else if (d > DEPTH_QS_RECAPTURES)
   {
       phase = CAPTURES;
 
@@ -122,17 +122,16 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, const History& h,
-                       PieceType parentCapture) : pos(p), H(h) {
+                       PieceType pt) : pos(p), H(h), curMove(0), lastMove(0) {
 
-  assert (!pos.in_check());
+  assert(!pos.in_check());
 
-  // In ProbCut we consider only captures better than parent's move
-  captureThreshold = PieceValueMidgame[Piece(parentCapture)];
-  curMove = lastMove = 0;
   phase = PROBCUT;
 
-  if (   ttm != MOVE_NONE
-      && (!pos.is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
+  // In ProbCut we generate only captures better than parent's captured piece
+  captureThreshold = PieceValueMidgame[pt];
+
+  if (ttm && (!pos.is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
       ttm = MOVE_NONE;
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
@@ -168,7 +167,7 @@ void MovePicker::score_captures() {
                   - type_of(pos.piece_moved(m));
 
       if (is_promotion(m))
-          cur->score += PieceValueMidgame[Piece(promotion_piece_type(m))];
+          cur->score += PieceValueMidgame[promotion_piece_type(m)];
   }
 }
 
@@ -222,8 +221,7 @@ void MovePicker::next_phase() {
       lastMove = curMove + 1;
       return;
 
-  case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4:
-  case CAPTURES_S5: case CAPTURES_S6:
+  case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
       lastMove = generate<MV_CAPTURE>(pos, moves);
       score_captures();
       return;
@@ -255,7 +253,6 @@ void MovePicker::next_phase() {
       return;
 
   case EVASIONS_S2:
-      assert(pos.in_check());
       lastMove = generate<MV_EVASION>(pos, moves);
       score_evasions();
       return;
@@ -295,7 +292,6 @@ Move MovePicker::next_move() {
       case TT_MOVE_S1: case TT_MOVE_S2: case TT_MOVE_S3: case TT_MOVE_S4: case TT_MOVE_S5:
           curMove++;
           return ttMove;
-          break;
 
       case CAPTURES_S1:
           move = pick_best(curMove++, lastMove)->move;
@@ -336,7 +332,8 @@ Move MovePicker::next_move() {
           return move;
 
       case EVASIONS_S2:
-      case CAPTURES_S3: case CAPTURES_S4:
+      case CAPTURES_S3:
+      case CAPTURES_S4:
           move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
               return move;
@@ -344,8 +341,7 @@ Move MovePicker::next_move() {
 
       case CAPTURES_S5:
            move = pick_best(curMove++, lastMove)->move;
-           if (   move != ttMove
-               && pos.see(move) > captureThreshold)
+           if (move != ttMove && pos.see(move) > captureThreshold)
                return move;
            break;
 
