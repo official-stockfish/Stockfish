@@ -47,7 +47,7 @@ private:
   void score_captures();
   void score_noncaptures();
   void score_evasions();
-  void next_phase();
+  void generate_next();
 
   const Position& pos;
   const History& H;

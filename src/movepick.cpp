@@ -27,13 +27,13 @@
 namespace {
 
   enum Sequencer {
-    MAIN_SEARCH,         TT_MOVE_S1, CAPTURES_S1, KILLERS_S1, QUIETS_1_S1,
-                         QUIETS_2_S1, BAD_CAPTURES_S1, STOP_S1,
-    EVASIONS,            TT_MOVE_S2, EVASIONS_S2, STOP_S2,
-    CAPTURES_AND_CHECKS, TT_MOVE_S3, CAPTURES_S3, QUIET_CHECKS_S3, STOP_S3,
-    CAPTURES,            TT_MOVE_S4, CAPTURES_S4, STOP_S4,
-    PROBCUT,             TT_MOVE_S5, CAPTURES_S5, STOP_S5,
-    RECAPTURES,          CAPTURES_S6, STOP_S6
+    MAIN_SEARCH, CAPTURES_S1, KILLERS_S1, QUIETS_1_S1, QUIETS_2_S1, BAD_CAPTURES_S1,
+    EVASION,     EVASIONS_S2,
+    QSEARCH_0,   CAPTURES_S3, QUIET_CHECKS_S3,
+    QSEARCH_1,   CAPTURES_S4,
+    PROBCUT,     CAPTURES_S5,
+    RECAPTURE,   CAPTURES_S6,
+    STOP
   };
 
   // Unary predicate used by std::partition to split positive scores from remaining
@@ -63,14 +63,16 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   assert(d > DEPTH_ZERO);
 
   captureThreshold = 0;
-  curMove = lastMove = 0;
+  curMove = lastMove = moves;
   badCaptures = moves + MAX_MOVES;
 
   if (p.in_check())
-      phase = EVASIONS;
+      phase = EVASION;
 
   else
   {
+      phase = MAIN_SEARCH;
+
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
 
@@ -81,28 +83,26 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       // Consider negative captures as good if still enough to reach beta
       else if (ss && ss->eval > beta)
           captureThreshold = beta - ss->eval;
-
-      phase = MAIN_SEARCH;
   }
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
-  phase += (ttMove == MOVE_NONE);
+  lastMove += (ttMove != MOVE_NONE);
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
-                       Square sq) : pos(p), H(h), curMove(0), lastMove(0) {
+                       Square sq) : pos(p), H(h), curMove(moves), lastMove(moves) {
 
   assert(d <= DEPTH_ZERO);
 
   if (p.in_check())
-      phase = EVASIONS;
+      phase = EVASION;
 
   else if (d > DEPTH_QS_NO_CHECKS)
-      phase = CAPTURES_AND_CHECKS;
+      phase = QSEARCH_0;
 
   else if (d > DEPTH_QS_RECAPTURES)
   {
-      phase = CAPTURES;
+      phase = QSEARCH_1;
 
       // Skip TT move if is not a capture or a promotion, this avoids qsearch
       // tree explosion due to a possible perpetual check or similar rare cases
@@ -112,17 +112,17 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   }
   else
   {
-      phase = RECAPTURES - 1;
+      phase = RECAPTURE;
       recaptureSquare = sq;
       ttm = MOVE_NONE;
   }
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
-  phase += (ttMove == MOVE_NONE);
+  lastMove += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const History& h,
-                       PieceType pt) : pos(p), H(h), curMove(0), lastMove(0) {
+MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType pt)
+                       : pos(p), H(h), curMove(moves), lastMove(moves) {
 
   assert(!pos.in_check());
 
@@ -130,12 +130,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h,
 
   // In ProbCut we generate only captures better than parent's captured piece
   captureThreshold = PieceValueMidgame[pt];
-
-  if (ttm && (!pos.is_capture(ttm) ||  pos.see(ttm) <= captureThreshold))
-      ttm = MOVE_NONE;
-
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
-  phase += (ttMove == MOVE_NONE);
+
+  if (ttMove && (!pos.is_capture(ttMove) ||  pos.see(ttMove) <= captureThreshold))
+      ttMove = MOVE_NONE;
+
+  lastMove += (ttMove != MOVE_NONE);
 }
 
 
@@ -208,18 +208,14 @@ void MovePicker::score_evasions() {
 }
 
 
-/// MovePicker::next_phase() generates, scores and sorts the next bunch of moves,
+/// MovePicker::generate_next() generates, scores and sorts the next bunch of moves,
 /// when there are no more moves to try for the current phase.
 
-void MovePicker::next_phase() {
+void MovePicker::generate_next() {
 
   curMove = moves;
 
   switch (++phase) {
-
-  case TT_MOVE_S1: case TT_MOVE_S2: case TT_MOVE_S3: case TT_MOVE_S4: case TT_MOVE_S5:
-      lastMove = curMove + 1;
-      return;
 
   case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
       lastMove = generate<MV_CAPTURE>(pos, moves);
@@ -261,7 +257,9 @@ void MovePicker::next_phase() {
       lastMove = generate<MV_QUIET_CHECK>(pos, moves);
       return;
 
-  case STOP_S1: case STOP_S2: case STOP_S3: case STOP_S4: case STOP_S5: case STOP_S6:
+  case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT: case RECAPTURE:
+      phase = STOP;
+  case STOP:
       lastMove = curMove + 1; // Avoid another next_phase() call
       return;
 
@@ -285,11 +283,11 @@ Move MovePicker::next_move() {
   while (true)
   {
       while (curMove == lastMove)
-          next_phase();
+          generate_next();
 
       switch (phase) {
 
-      case TT_MOVE_S1: case TT_MOVE_S2: case TT_MOVE_S3: case TT_MOVE_S4: case TT_MOVE_S5:
+      case MAIN_SEARCH: case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT:
           curMove++;
           return ttMove;
 
@@ -318,8 +316,7 @@ Move MovePicker::next_move() {
               return move;
           break;
 
-      case QUIETS_1_S1:
-      case QUIETS_2_S1:
+      case QUIETS_1_S1: case QUIETS_2_S1:
           move = (curMove++)->move;
           if (   move != ttMove
               && move != killers[0].move
@@ -331,9 +328,7 @@ Move MovePicker::next_move() {
           move = pick_best(curMove++, lastMove)->move;
           return move;
 
-      case EVASIONS_S2:
-      case CAPTURES_S3:
-      case CAPTURES_S4:
+      case EVASIONS_S2: case CAPTURES_S3: case CAPTURES_S4:
           move = pick_best(curMove++, lastMove)->move;
           if (move != ttMove)
               return move;
@@ -357,7 +352,7 @@ Move MovePicker::next_move() {
               return move;
           break;
 
-      case STOP_S1: case STOP_S2: case STOP_S3: case STOP_S4: case STOP_S5: case STOP_S6:
+      case STOP:
           return MOVE_NONE;
 
       default:
