@@ -485,23 +485,18 @@ inline const std::string square_to_string(Square s) {
 /// Our insertion sort implementation, works with pointers and iterators and is
 /// guaranteed to be stable, as is needed.
 template<typename T, typename K>
-void sort(K firstMove, K lastMove)
+void sort(K first, K last)
 {
-  T value;
-  K cur, p, d;
+  T tmp;
+  K p, q;
 
-  if (firstMove != lastMove)
-      for (cur = firstMove + 1; cur != lastMove; cur++)
-      {
-          p = d = cur;
-          value = *p--;
-          if (*p < value)
-          {
-              do *d = *p;
-              while (--d != firstMove && *--p < value);
-              *d = value;
-          }
-      }
+  for (p = first + 1; p < last; p++)
+  {
+      tmp = *p;
+      for (q = p; q != first && *(q-1) < tmp; --q)
+          *q = *(q-1);
+      *q = tmp;
+  }
 }
 
 #endif // !defined(TYPES_H_INCLUDED)
