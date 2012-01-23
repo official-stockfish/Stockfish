@@ -319,7 +319,7 @@ ifeq ($(comp),gcc)
 	GCC_MINOR := `$(CXX) -dumpversion | cut -f2 -d.`
 	ifeq (1,$(shell expr \( $(GCC_MAJOR) \> 4 \) \| \( $(GCC_MAJOR) \= 4 \& $(GCC_MINOR) \>= 5 \)))
 		CXXFLAGS += -flto
-		LDFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
 	endif
 endif
 
