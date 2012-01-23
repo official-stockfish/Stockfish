@@ -822,7 +822,7 @@ split_point_start: // At split points actual search starts from here
                            && tte->depth() >= depth - 3 * ONE_PLY;
     if (SpNode)
     {
-        lock_grab(&(sp->lock));
+        lock_grab(sp->lock);
         bestValue = sp->bestValue;
         moveCount = sp->moveCount;
 
@@ -854,7 +854,7 @@ split_point_start: // At split points actual search starts from here
       if (SpNode)
       {
           moveCount = ++sp->moveCount;
-          lock_release(&(sp->lock));
+          lock_release(sp->lock);
       }
       else
           moveCount++;
@@ -925,7 +925,7 @@ split_point_start: // At split points actual search starts from here
               && (!threatMove || !connected_threat(pos, move, threatMove)))
           {
               if (SpNode)
-                  lock_grab(&(sp->lock));
+                  lock_grab(sp->lock);
 
               continue;
           }
@@ -940,7 +940,7 @@ split_point_start: // At split points actual search starts from here
           if (futilityValue < beta)
           {
               if (SpNode)
-                  lock_grab(&(sp->lock));
+                  lock_grab(sp->lock);
 
               continue;
           }
@@ -950,7 +950,7 @@ split_point_start: // At split points actual search starts from here
               && pos.see_sign(move) < 0)
           {
               if (SpNode)
-                  lock_grab(&(sp->lock));
+                  lock_grab(sp->lock);
 
               continue;
           }
@@ -1015,7 +1015,7 @@ split_point_start: // At split points actual search starts from here
       // Step 18. Check for new best move
       if (SpNode)
       {
-          lock_grab(&(sp->lock));
+          lock_grab(sp->lock);
           bestValue = sp->bestValue;
           alpha = sp->alpha;
       }
@@ -1134,7 +1134,7 @@ split_point_start: // At split points actual search starts from here
         // Here we have the lock still grabbed
         sp->is_slave[pos.thread()] = false;
         sp->nodes += pos.nodes_searched();
-        lock_release(&(sp->lock));
+        lock_release(sp->lock);
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
@@ -1858,12 +1858,12 @@ void Thread::idle_loop(SplitPoint* sp) {
           }
 
           // Grab the lock to avoid races with Thread::wake_up()
-          lock_grab(&sleepLock);
+          lock_grab(sleepLock);
 
           // If we are master and all slaves have finished don't go to sleep
           if (sp && Threads.split_point_finished(sp))
           {
-              lock_release(&sleepLock);
+              lock_release(sleepLock);
               break;
           }
 
@@ -1872,9 +1872,9 @@ void Thread::idle_loop(SplitPoint* sp) {
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
           if (do_sleep || !is_searching)
-              cond_wait(&sleepCond, &sleepLock);
+              cond_wait(sleepCond, sleepLock);
 
-          lock_release(&sleepLock);
+          lock_release(sleepLock);
       }
 
       // If this thread has been assigned work, launch a search
@@ -1917,8 +1917,8 @@ void Thread::idle_loop(SplitPoint* sp) {
       {
           // Because sp->is_slave[] is reset under lock protection,
           // be sure sp->lock has been released before to return.
-          lock_grab(&(sp->lock));
-          lock_release(&(sp->lock));
+          lock_grab(sp->lock);
+          lock_release(sp->lock);
           return;
       }
   }

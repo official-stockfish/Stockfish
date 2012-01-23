@@ -80,17 +80,12 @@ struct Thread {
   int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
+  ThreadHandle handle;
   SplitPoint* volatile splitPoint;
   volatile int activeSplitPoints;
   volatile bool is_searching;
   volatile bool do_sleep;
   volatile bool do_terminate;
-
-#if defined(_MSC_VER)
-  HANDLE handle;
-#else
-  pthread_t handle;
-#endif
 };
 
 

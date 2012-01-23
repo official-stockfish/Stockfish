@@ -26,16 +26,19 @@
 
 typedef pthread_mutex_t Lock;
 typedef pthread_cond_t WaitCondition;
+typedef pthread_t ThreadHandle;
 
-#  define lock_init(x) pthread_mutex_init(x, NULL)
-#  define lock_grab(x) pthread_mutex_lock(x)
-#  define lock_release(x) pthread_mutex_unlock(x)
-#  define lock_destroy(x) pthread_mutex_destroy(x)
-#  define cond_destroy(x) pthread_cond_destroy(x)
-#  define cond_init(x) pthread_cond_init(x, NULL)
-#  define cond_signal(x) pthread_cond_signal(x)
-#  define cond_wait(x,y) pthread_cond_wait(x,y)
-#  define cond_timedwait(x,y,z) pthread_cond_timedwait(x,y,z)
+#  define lock_init(x) pthread_mutex_init(&(x), NULL)
+#  define lock_grab(x) pthread_mutex_lock(&(x))
+#  define lock_release(x) pthread_mutex_unlock(&(x))
+#  define lock_destroy(x) pthread_mutex_destroy(&(x))
+#  define cond_destroy(x) pthread_cond_destroy(&(x))
+#  define cond_init(x) pthread_cond_init(&(x), NULL)
+#  define cond_signal(x) pthread_cond_signal(&(x))
+#  define cond_wait(x,y) pthread_cond_wait(&(x),&(y))
+#  define cond_timedwait(x,y,z) pthread_cond_timedwait(&(x),&(y),z)
+#  define thread_create(x,f,id) !pthread_create(&(x),NULL,f,&(id))
+#  define thread_join(x) pthread_join(x, NULL)
 
 #else
 
@@ -50,16 +53,19 @@ typedef pthread_cond_t WaitCondition;
 // but apart from this they have the same speed performance of SRW locks.
 typedef CRITICAL_SECTION Lock;
 typedef HANDLE WaitCondition;
+typedef HANDLE ThreadHandle;
 
-#  define lock_init(x) InitializeCriticalSection(x)
-#  define lock_grab(x) EnterCriticalSection(x)
-#  define lock_release(x) LeaveCriticalSection(x)
-#  define lock_destroy(x) DeleteCriticalSection(x)
-#  define cond_init(x) { *x = CreateEvent(0, FALSE, FALSE, 0); }
-#  define cond_destroy(x) CloseHandle(*x)
-#  define cond_signal(x) SetEvent(*x)
-#  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(*x, INFINITE); lock_grab(y); }
-#  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(*x,z); lock_grab(y); }
+#  define lock_init(x) InitializeCriticalSection(&(x))
+#  define lock_grab(x) EnterCriticalSection(&(x))
+#  define lock_release(x) LeaveCriticalSection(&(x))
+#  define lock_destroy(x) DeleteCriticalSection(&(x))
+#  define cond_init(x) { x = CreateEvent(0, FALSE, FALSE, 0); }
+#  define cond_destroy(x) CloseHandle(x)
+#  define cond_signal(x) SetEvent(x)
+#  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(x, INFINITE); lock_grab(y); }
+#  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(x,z); lock_grab(y); }
+#  define thread_create(x,f,id) (x = CreateThread(NULL,0,f,&(id),0,NULL), x != NULL)
+#  define thread_join(x) { WaitForSingleObject(x, INFINITE); CloseHandle(x); }
 
 #endif
 
