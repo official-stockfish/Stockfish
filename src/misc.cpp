@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if defined(_MSC_VER)
+#if defined(_WIN32) || defined(_WIN64)
 
 #define _CRT_SECURE_NO_DEPRECATE
 #define NOMINMAX // disable macros min() and max()
@@ -113,7 +113,7 @@ void dbg_print() {
 
 int system_time() {
 
-#if defined(_MSC_VER)
+#if defined(_WIN32) || defined(_WIN64)
   struct _timeb t;
   _ftime(&t);
   return int(t.time * 1000 + t.millitm);
@@ -129,7 +129,7 @@ int system_time() {
 
 int cpu_count() {
 
-#if defined(_MSC_VER)
+#if defined(_WIN32) || defined(_WIN64)
   SYSTEM_INFO s;
   GetSystemInfo(&s);
   return std::min(int(s.dwNumberOfProcessors), MAX_THREADS);
@@ -155,7 +155,7 @@ int cpu_count() {
 
 void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
 
-#if defined(_MSC_VER)
+#if defined(_WIN32) || defined(_WIN64)
   int tm = msec;
 #else
   struct timeval t;

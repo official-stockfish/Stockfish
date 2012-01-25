@@ -20,7 +20,7 @@
 #if !defined(LOCK_H_INCLUDED)
 #define LOCK_H_INCLUDED
 
-#if !defined(_MSC_VER)
+#if !defined(_WIN32) && !defined(_WIN64)
 
 #  include <pthread.h>
 
@@ -42,7 +42,10 @@ typedef pthread_t ThreadHandle;
 
 #else
 
-#define NOMINMAX // disable macros min() and max()
+#if !defined(NOMINMAX)
+#  define NOMINMAX // disable macros min() and max()
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN

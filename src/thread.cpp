@@ -36,7 +36,7 @@ namespace { extern "C" {
  // and last thread are special. First one is the main search thread while the
  // last one mimics a timer, they run in main_loop() and timer_loop().
 
-#if defined(_MSC_VER)
+#if defined(_WIN32) || defined(_WIN64)
   DWORD WINAPI start_routine(LPVOID thread) {
 #else
   void* start_routine(void* thread) {
@@ -177,9 +177,7 @@ void ThreadsManager::init() {
       threads[i].do_sleep = (i != 0); // Avoid a race with start_thinking()
       threads[i].threadID = i;
 
-      bool ok = thread_create(threads[i].handle, start_routine, threads[i]);
-
-      if (!ok)
+      if (!thread_create(threads[i].handle, start_routine, threads[i]))
       {
           std::cerr << "Failed to create thread number " << i << std::endl;
           ::exit(EXIT_FAILURE);

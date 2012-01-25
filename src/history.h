@@ -20,9 +20,10 @@
 #if !defined(HISTORY_H_INCLUDED)
 #define HISTORY_H_INCLUDED
 
-#include "types.h"
-#include <cstring>
 #include <algorithm>
+#include <cstring>
+
+#include "types.h"
 
 /// The History class stores statistics about how often different moves
 /// have been successful or unsuccessful during the current search. These
