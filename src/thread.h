@@ -50,12 +50,12 @@ struct SplitPoint {
 
   // Shared data
   Lock lock;
+  volatile uint64_t slavesMask;
   volatile int64_t nodes;
   volatile Value alpha;
   volatile Value bestValue;
   volatile int moveCount;
   volatile bool is_betaCutoff;
-  volatile bool is_slave[MAX_THREADS];
 };
 
 
@@ -69,7 +69,7 @@ struct Thread {
   void wake_up();
   bool cutoff_occurred() const;
   bool is_available_to(int master) const;
-  void idle_loop(SplitPoint* sp);
+  void idle_loop(SplitPoint* sp_master);
   void main_loop();
   void timer_loop();
 
@@ -85,7 +85,7 @@ struct Thread {
   volatile int activeSplitPoints;
   volatile bool is_searching;
   volatile bool do_sleep;
-  volatile bool do_terminate;
+  volatile bool do_exit;
 };
 
 
@@ -110,7 +110,6 @@ public:
   void set_size(int cnt);
   void read_uci_options();
   bool available_slave_exists(int master) const;
-  bool split_point_finished(SplitPoint* sp) const;
   void set_timer(int msec);
   void wait_for_stop_or_ponderhit();
   void stop_thinking();

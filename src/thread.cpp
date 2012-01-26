@@ -97,12 +97,11 @@ bool Thread::is_available_to(int master) const {
 
   // Make a local copy to be sure doesn't become zero under our feet while
   // testing next condition and so leading to an out of bound access.
-  int localActiveSplitPoints = activeSplitPoints;
+  int sp_count = activeSplitPoints;
 
   // No active split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  if (   !localActiveSplitPoints
-      || splitPoints[localActiveSplitPoints - 1].is_slave[master])
+  if (!sp_count || (splitPoints[sp_count - 1].slavesMask & (1ULL << master)))
       return true;
 
   return false;
@@ -190,9 +189,11 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
+  assert(threads[0].is_searching == false);
+
   for (int i = 0; i <= MAX_THREADS; i++)
   {
-      threads[i].do_terminate = true; // Search must be already finished
+      threads[i].do_exit = true; // Search must be already finished
       threads[i].wake_up();
 
       thread_join(threads[i].handle); // Wait for thread termination
@@ -222,19 +223,6 @@ bool ThreadsManager::available_slave_exists(int master) const {
           return true;
 
   return false;
-}
-
-
-// split_point_finished() checks if all the slave threads of a given split
-// point have finished searching.
-
-bool ThreadsManager::split_point_finished(SplitPoint* sp) const {
-
-  for (int i = 0; i < activeThreads; i++)
-      if (sp->is_slave[i])
-          return false;
-
-  return true;
 }
 
 
@@ -274,6 +262,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->parent = masterThread.splitPoint;
   sp->master = master;
   sp->is_betaCutoff = false;
+  sp->slavesMask = (1ULL << master);
   sp->depth = depth;
   sp->threatMove = threatMove;
   sp->alpha = alpha;
@@ -286,9 +275,6 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->nodes = 0;
   sp->ss = ss;
 
-  for (i = 0; i < activeThreads; i++)
-      sp->is_slave[i] = false;
-
   // If we are here it means we are not available
   assert(masterThread.is_searching);
 
@@ -298,21 +284,25 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // is_searching flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
   lock_grab(threadsLock);
+  lock_grab(sp->lock); // To protect sp->slaves_mask
 
-  for (i = 0; !Fake && i < activeThreads && workersCnt < maxThreadsPerSplitPoint; i++)
+  for (i = 0; !Fake && i < activeThreads; i++)
       if (threads[i].is_available_to(master))
       {
-          workersCnt++;
-          sp->is_slave[i] = true;
+          sp->slavesMask |= (1ULL << i);
           threads[i].splitPoint = sp;
 
-          // This makes the slave to exit from idle_loop()
+          // Allocate the slave and make it exit from idle_loop()
           threads[i].is_searching = true;
 
           if (useSleepingThreads)
               threads[i].wake_up();
+
+          if (++workersCnt >= maxThreadsPerSplitPoint)
+              break;
       }
 
+  lock_release(sp->lock);
   lock_release(threadsLock);
 
   // We failed to allocate even one slave, return
@@ -337,14 +327,16 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // finished. Note that changing state and decreasing activeSplitPoints is done
   // under lock protection to avoid a race with Thread::is_available_to().
   lock_grab(threadsLock);
+  lock_grab(sp->lock); // To protect sp->nodes
+
 
   masterThread.is_searching = true;
   masterThread.activeSplitPoints--;
-
-  lock_release(threadsLock);
-
   masterThread.splitPoint = sp->parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
+
+  lock_release(sp->lock);
+  lock_release(threadsLock);
 
   return sp->bestValue;
 }
@@ -360,7 +352,7 @@ extern void check_time();
 
 void Thread::timer_loop() {
 
-  while (!do_terminate)
+  while (!do_exit)
   {
       lock_grab(sleepLock);
       timed_wait(sleepCond, sleepLock, maxPly ? maxPly : INT_MAX);
@@ -396,7 +388,7 @@ void Thread::main_loop() {
       do_sleep = true; // Always return to sleep after a search
       is_searching = false;
 
-      while (do_sleep && !do_terminate)
+      while (do_sleep && !do_exit)
       {
           cond_signal(Threads.sleepCond); // Wake up UI thread if needed
           cond_wait(sleepCond, sleepLock);
@@ -406,7 +398,7 @@ void Thread::main_loop() {
 
       lock_release(sleepLock);
 
-      if (do_terminate)
+      if (do_exit)
           return;
 
       Search::think();
