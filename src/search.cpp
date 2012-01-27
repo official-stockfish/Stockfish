@@ -554,7 +554,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, threatMove;
     Depth ext, newDepth;
-    ValueType vt;
+    Bound bt;
     Value bestValue, value, oldAlpha;
     Value refinedValue, nullValue, futilityBase, futilityValue;
     bool isPvMove, inCheck, singularExtensionNode, givesCheck;
@@ -630,7 +630,7 @@ namespace {
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
     // smooth experience in analysis mode. We don't probe at Root nodes otherwise
     // we should also update RootMoveList to avoid bogus output.
-    if (!RootNode && tte && (PvNode ? tte->depth() >= depth && tte->type() == VALUE_TYPE_EXACT
+    if (!RootNode && tte && (PvNode ? tte->depth() >= depth && tte->type() == BOUND_EXACT
                                     : can_return_tt(tte, depth, beta, ss->ply)))
     {
         TT.refresh(tte);
@@ -662,7 +662,7 @@ namespace {
     else
     {
         refinedValue = ss->eval = evaluate(pos, ss->evalMargin);
-        TT.store(posKey, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
+        TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
     }
 
     // Update gain for the parent non-capture move given the static position
@@ -824,7 +824,7 @@ split_point_start: // At split points actual search starts from here
                            && depth >= SingularExtensionDepth[PvNode]
                            && ttMove != MOVE_NONE
                            && !excludedMove // Recursive singular search is not allowed
-                           && (tte->type() & VALUE_TYPE_LOWER)
+                           && (tte->type() & BOUND_LOWER)
                            && tte->depth() >= depth - 3 * ONE_PLY;
 
     // Step 11. Loop through moves
@@ -1098,10 +1098,10 @@ split_point_start: // At split points actual search starts from here
     if (!SpNode && !Signals.stop && !thread.cutoff_occurred())
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
-        vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
-             : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
+        bt   = bestValue <= oldAlpha ? BOUND_UPPER
+             : bestValue >= beta ? BOUND_LOWER : BOUND_EXACT;
 
-        TT.store(posKey, value_to_tt(bestValue, ss->ply), vt, depth, move, ss->eval, ss->evalMargin);
+        TT.store(posKey, value_to_tt(bestValue, ss->ply), bt, depth, move, ss->eval, ss->evalMargin);
 
         // Update killers and history for non capture cut-off moves
         if (    bestValue >= beta
@@ -1154,7 +1154,7 @@ split_point_start: // At split points actual search starts from here
     bool inCheck, enoughMaterial, givesCheck, evasionPrunable;
     const TTEntry* tte;
     Depth ttDepth;
-    ValueType vt;
+    Bound bt;
     Value oldAlpha = alpha;
 
     ss->bestMove = ss->currentMove = MOVE_NONE;
@@ -1204,7 +1204,7 @@ split_point_start: // At split points actual search starts from here
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), VALUE_TYPE_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
+                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, evalMargin);
 
             return bestValue;
         }
@@ -1322,10 +1322,10 @@ split_point_start: // At split points actual search starts from here
 
     // Update transposition table
     move = bestValue <= oldAlpha ? MOVE_NONE : ss->bestMove;
-    vt   = bestValue <= oldAlpha ? VALUE_TYPE_UPPER
-         : bestValue >= beta ? VALUE_TYPE_LOWER : VALUE_TYPE_EXACT;
+    bt   = bestValue <= oldAlpha ? BOUND_UPPER
+         : bestValue >= beta ? BOUND_LOWER : BOUND_EXACT;
 
-    TT.store(pos.key(), value_to_tt(bestValue, ss->ply), vt, ttDepth, move, ss->eval, evalMargin);
+    TT.store(pos.key(), value_to_tt(bestValue, ss->ply), bt, ttDepth, move, ss->eval, evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1525,8 +1525,8 @@ split_point_start: // At split points actual search starts from here
               || v >= std::max(VALUE_MATE_IN_MAX_PLY, beta)
               || v < std::min(VALUE_MATED_IN_MAX_PLY, beta))
 
-          && (   ((tte->type() & VALUE_TYPE_LOWER) && v >= beta)
-              || ((tte->type() & VALUE_TYPE_UPPER) && v < beta));
+          && (   ((tte->type() & BOUND_LOWER) && v >= beta)
+              || ((tte->type() & BOUND_UPPER) && v < beta));
   }
 
 
@@ -1539,8 +1539,8 @@ split_point_start: // At split points actual search starts from here
 
       Value v = value_from_tt(tte->value(), ply);
 
-      if (   ((tte->type() & VALUE_TYPE_LOWER) && v >= defaultEval)
-          || ((tte->type() & VALUE_TYPE_UPPER) && v < defaultEval))
+      if (   ((tte->type() & BOUND_LOWER) && v >= defaultEval)
+          || ((tte->type() & BOUND_UPPER) && v < defaultEval))
           return v;
 
       return defaultEval;
@@ -1759,9 +1759,9 @@ split_point_start: // At split points actual search starts from here
 
 
 /// RootMove::extract_pv_from_tt() builds a PV by adding moves from the TT table.
-/// We consider also failing high nodes and not only VALUE_TYPE_EXACT nodes so
-/// to allow to always have a ponder move even when we fail high at root, and
-/// a long PV to print that is important for position analysis.
+/// We consider also failing high nodes and not only BOUND_EXACT nodes so to
+/// allow to always have a ponder move even when we fail high at root, and a
+/// long PV to print that is important for position analysis.
 
 void RootMove::extract_pv_from_tt(Position& pos) {
 
@@ -1815,7 +1815,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
       if (!tte || tte->move() != pv[ply])
       {
           v = (pos.in_check() ? VALUE_NONE : evaluate(pos, m));
-          TT.store(k, VALUE_NONE, VALUE_TYPE_NONE, DEPTH_NONE, pv[ply], v, m);
+          TT.store(k, VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], v, m);
       }
       pos.do_move(pv[ply], *st++);
 

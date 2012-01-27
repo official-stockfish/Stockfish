@@ -47,11 +47,11 @@
 class TTEntry {
 
 public:
-  void save(uint32_t k, Value v, ValueType t, Depth d, Move m, int g, Value statV, Value statM) {
+  void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value statV, Value statM) {
 
     key32        = (uint32_t)k;
     move16       = (uint16_t)m;
-    valueType    = (uint8_t)t;
+    bound        = (uint8_t)b;
     generation8  = (uint8_t)g;
     value16      = (int16_t)v;
     depth16      = (int16_t)d;
@@ -64,7 +64,7 @@ public:
   Depth depth() const               { return (Depth)depth16; }
   Move move() const                 { return (Move)move16; }
   Value value() const               { return (Value)value16; }
-  ValueType type() const            { return (ValueType)valueType; }
+  Bound type() const                { return (Bound)bound; }
   int generation() const            { return (int)generation8; }
   Value static_value() const        { return (Value)staticValue; }
   Value static_value_margin() const { return (Value)staticMargin; }
@@ -72,7 +72,7 @@ public:
 private:
   uint32_t key32;
   uint16_t move16;
-  uint8_t valueType, generation8;
+  uint8_t bound, generation8;
   int16_t value16, depth16, staticValue, staticMargin;
 };
 
@@ -103,7 +103,7 @@ public:
   ~TranspositionTable();
   void set_size(size_t mbSize);
   void clear();
-  void store(const Key posKey, Value v, ValueType type, Depth d, Move m, Value statV, Value kingD);
+  void store(const Key posKey, Value v, Bound type, Depth d, Move m, Value statV, Value kingD);
   TTEntry* probe(const Key posKey) const;
   void new_search();
   TTEntry* first_entry(const Key posKey) const;

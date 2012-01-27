@@ -84,7 +84,7 @@ void TranspositionTable::clear() {
 /// more valuable than a TTEntry t2 if t1 is from the current search and t2 is from
 /// a previous search, or if the depth of t1 is bigger than the depth of t2.
 
-void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, Move m, Value statV, Value kingD) {
+void TranspositionTable::store(const Key posKey, Value v, Bound t, Depth d, Move m, Value statV, Value kingD) {
 
   int c1, c2, c3;
   TTEntry *tte, *replace;
@@ -106,7 +106,7 @@ void TranspositionTable::store(const Key posKey, Value v, ValueType t, Depth d, 
 
       // Implement replace strategy
       c1 = (replace->generation() == generation ?  2 : 0);
-      c2 = (tte->generation() == generation || tte->type() == VALUE_TYPE_EXACT ? -2 : 0);
+      c2 = (tte->generation() == generation || tte->type() == BOUND_EXACT ? -2 : 0);
       c3 = (tte->depth() < replace->depth() ?  1 : 0);
 
       if (c1 + c2 + c3 > 0)

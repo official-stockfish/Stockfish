@@ -162,11 +162,11 @@ enum ScaleFactor {
   SCALE_FACTOR_NONE   = 255
 };
 
-enum ValueType {
-  VALUE_TYPE_NONE  = 0,
-  VALUE_TYPE_UPPER = 1,
-  VALUE_TYPE_LOWER = 2,
-  VALUE_TYPE_EXACT = VALUE_TYPE_UPPER | VALUE_TYPE_LOWER
+enum Bound {
+  BOUND_NONE  = 0,
+  BOUND_UPPER = 1,
+  BOUND_LOWER = 2,
+  BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
 enum Value {
