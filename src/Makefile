@@ -243,7 +243,12 @@ ifeq ($(os),osx)
 endif
 
 ### 3.3 General linker settings
-LDFLAGS = -lpthread $(EXTRALDFLAGS)
+LDFLAGS = $(EXTRALDFLAGS)
+
+### On mingw use Windows threads, otherwise POSIX
+ifneq ($(comp),mingw)
+	LDFLAGS += -lpthread
+endif
 
 ifeq ($(os),osx)
 	LDFLAGS += -arch $(arch)
