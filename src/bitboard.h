@@ -47,31 +47,19 @@ extern Bitboard AttackSpanMask[2][64];
 extern Bitboard PseudoAttacks[6][64];
 
 
-/// Functions for testing whether a given bit is set in a bitboard, and for
-/// setting and clearing bits.
+/// Overloads of bitwise operators between a Bitboard and a Square for testing
+/// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
-inline Bitboard bit_is_set(Bitboard b, Square s) {
+inline Bitboard operator&(Bitboard b, Square s) {
   return b & SquareBB[s];
 }
 
-inline void set_bit(Bitboard* b, Square s) {
-  *b |= SquareBB[s];
+inline Bitboard& operator|=(Bitboard& b, Square s) {
+  return b |= SquareBB[s], b;
 }
 
-inline void xor_bit(Bitboard* b, Square s) {
-  *b ^= SquareBB[s];
-}
-
-
-/// Functions used to update a bitboard after a move. This is faster
-/// then calling a sequence of clear_bit() + set_bit()
-
-inline Bitboard make_move_bb(Square from, Square to) {
-  return SquareBB[from] | SquareBB[to];
-}
-
-inline void do_move_bb(Bitboard* b, Bitboard move_bb) {
-  *b ^= move_bb;
+inline Bitboard& operator^=(Bitboard& b, Square s) {
+  return b ^= SquareBB[s], b;
 }
 
 
@@ -217,8 +205,8 @@ inline bool squares_aligned(Square s1, Square s2, Square s3) {
 /// the same color of the given square.
 
 inline Bitboard same_color_squares(Square s) {
-  return bit_is_set(0xAA55AA55AA55AA55ULL, s) ?  0xAA55AA55AA55AA55ULL
-                                              : ~0xAA55AA55AA55AA55ULL;
+  return Bitboard(0xAA55AA55AA55AA55ULL) & s ?  0xAA55AA55AA55AA55ULL
+                                             : ~0xAA55AA55AA55AA55ULL;
 }
 
 

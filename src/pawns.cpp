@@ -188,7 +188,7 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // full attack info to evaluate passed pawns. Only the frontmost passed
       // pawn on each file is considered a true passed pawn.
       if (passed && !doubled)
-          set_bit(&(pi->passedPawns[Us]), s);
+          pi->passedPawns[Us] |= s;
 
       // Score this pawn
       if (isolated)

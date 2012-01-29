@@ -77,7 +77,7 @@ void print_bitboard(Bitboard b) {
   {
       std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
       for (File f = FILE_A; f <= FILE_H; f++)
-          std::cout << "| " << (bit_is_set(b, make_square(f, r)) ? "X " : "  ");
+          std::cout << "| " << ((b & make_square(f, r)) ? "X " : "  ");
 
       std::cout << "|\n";
   }
@@ -213,7 +213,7 @@ void bitboards_init() {
                   Square to = s + Square(c == WHITE ? steps[pt][k] : -steps[pt][k]);
 
                   if (square_is_ok(to) && square_distance(s, to) < 3)
-                      set_bit(&StepAttacksBB[make_piece(c, pt)][s], to);
+                      StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
   Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
@@ -231,12 +231,12 @@ void bitboards_init() {
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
-          if (bit_is_set(PseudoAttacks[QUEEN][s1], s2))
+          if (PseudoAttacks[QUEEN][s1] & s2)
           {
               Square delta = (s2 - s1) / square_distance(s1, s2);
 
               for (Square s = s1 + delta; s != s2; s += delta)
-                  set_bit(&BetweenBB[s1][s2], s);
+                  BetweenBB[s1][s2] |= s;
           }
 }
 
@@ -252,9 +252,9 @@ namespace {
              square_is_ok(s) && square_distance(s, s - deltas[i]) == 1;
              s += deltas[i])
         {
-            set_bit(&attack, s);
+            attack |= s;
 
-            if (bit_is_set(occupied, s))
+            if (occupied & s)
                 break;
         }
 

@@ -74,7 +74,7 @@ namespace {
     if (pos.is_chess960())
     {
         Bitboard occ = pos.occupied_squares();
-        xor_bit(&occ, rfrom);
+        occ ^= rfrom;
         if (pos.attackers_to(kto, occ) & enemies)
             return mlist;
     }
@@ -121,7 +121,7 @@ namespace {
 
         // Knight-promotion is the only one that can give a direct check not
         // already included in the queen-promotion.
-        if (Type == MV_QUIET_CHECK && bit_is_set(StepAttacksBB[W_KNIGHT][to], ksq))
+        if (Type == MV_QUIET_CHECK && (StepAttacksBB[W_KNIGHT][to] & ksq))
             (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
         else
             (void)ksq; // Silence a warning under MSVC
@@ -219,7 +219,7 @@ namespace {
             // An en passant capture can be an evasion only if the checking piece
             // is the double pushed pawn and so is in the target. Otherwise this
             // is a discovery check and we are forced to do otherwise.
-            if (Type == MV_EVASION && !bit_is_set(target, pos.ep_square() - UP))
+            if (Type == MV_EVASION && !(target & (pos.ep_square() - UP)))
                 return mlist;
 
             b1 = pawnsNotOn7 & pos.attacks_from<PAWN>(pos.ep_square(), Them);
@@ -255,7 +255,7 @@ namespace {
                 && !(PseudoAttacks[Pt][from] & target))
                 continue;
 
-            if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
+            if (ci.dcCandidates && (ci.dcCandidates & from))
                 continue;
 
             b = pos.attacks_from<Pt>(from) & target;
@@ -430,7 +430,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
           // If queen and king are far or not on a diagonal line we can safely
           // remove all the squares attacked in the other direction becuase are
           // not reachable by the king anyway.
-          if (squares_between(ksq, checksq) || !bit_is_set(PseudoAttacks[BISHOP][checksq], ksq))
+          if (squares_between(ksq, checksq) || !(PseudoAttacks[BISHOP][checksq] & ksq))
               sliderAttacks |= PseudoAttacks[QUEEN][checksq];
 
           // Otherwise we need to use real rook attacks to check if king is safe

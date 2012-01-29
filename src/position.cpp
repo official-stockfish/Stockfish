@@ -426,10 +426,11 @@ bool Position::move_attacks_square(Move m, Square s) const {
 
   // Update occupancy as if the piece is moving
   occ = occupied_squares();
-  do_move_bb(&occ, make_move_bb(from, to));
+  occ ^= from;
+  occ ^= to;
 
   // The piece moved in 'to' attacks the square 's' ?
-  if (bit_is_set(attacks_from(piece, to, occ), s))
+  if (attacks_from(piece, to, occ) & s)
       return true;
 
   // Scan for possible X-ray attackers behind the moved piece
@@ -470,9 +471,9 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       assert(piece_on(capsq) == make_piece(them, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-      xor_bit(&b, from);
-      xor_bit(&b, capsq);
-      set_bit(&b, to);
+      b ^= from;
+      b ^= capsq;
+      b |= to;
 
       return   !(rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, them))
             && !(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, them));
@@ -487,7 +488,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return   !pinned
-        || !bit_is_set(pinned, from)
+        || !(pinned & from)
         ||  squares_aligned(from, to_sq(m), king_square(us));
 }
 
@@ -597,7 +598,7 @@ bool Position::is_pseudo_legal(const Move m) const {
           return false;
       }
   }
-  else if (!bit_is_set(attacks_from(pc, from), to))
+  else if (!(attacks_from(pc, from) & to))
       return false;
 
   // Evasions generator already takes care to avoid some kind of illegal moves
@@ -610,7 +611,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       if (type_of(piece_on(from)) == KING)
       {
           Bitboard b = occupied_squares();
-          xor_bit(&b, from);
+          b ^= from;
           if (attackers_to(to_sq(m), b) & pieces(~us))
               return false;
       }
@@ -624,7 +625,7 @@ bool Position::is_pseudo_legal(const Move m) const {
 
           // Our move must be a blocking evasion or a capture of the checking piece
           target = squares_between(checksq, king_square(us)) | checkers();
-          if (!bit_is_set(target, to_sq(m)))
+          if (!(target & to_sq(m)))
               return false;
       }
   }
@@ -646,11 +647,11 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   PieceType pt = type_of(piece_on(from));
 
   // Direct check ?
-  if (bit_is_set(ci.checkSq[pt], to))
+  if (ci.checkSq[pt] & to)
       return true;
 
   // Discovery check ?
-  if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
+  if (ci.dcCandidates && (ci.dcCandidates & from))
   {
       // For pawn and king moves we need to verify also direction
       if (  (pt != PAWN && pt != KING)
@@ -669,8 +670,8 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   // Promotion with check ?
   if (is_promotion(m))
   {
-      xor_bit(&b, from);
-      return bit_is_set(attacks_from(Piece(promotion_piece_type(m)), to, b), ksq);
+      b ^= from;
+      return attacks_from(Piece(promotion_piece_type(m)), to, b) & ksq;
   }
 
   // En passant capture with check ? We have already handled the case
@@ -680,9 +681,9 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   if (is_enpassant(m))
   {
       Square capsq = make_square(file_of(to), rank_of(from));
-      xor_bit(&b, from);
-      xor_bit(&b, capsq);
-      set_bit(&b, to);
+      b ^= from;
+      b ^= capsq;
+      b |= to;
       return  (rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, us))
             ||(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, us));
   }
@@ -702,11 +703,11 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
           kto = relative_square(us, SQ_C1);
           rto = relative_square(us, SQ_D1);
       }
-      xor_bit(&b, kfrom);
-      xor_bit(&b, rfrom);
-      set_bit(&b, rto);
-      set_bit(&b, kto);
-      return bit_is_set(rook_attacks_bb(rto, b), ksq);
+      b ^= kfrom;
+      b ^= rfrom;
+      b |= rto;
+      b |= kto;
+      return rook_attacks_bb(rto, b) & ksq;
   }
 
   return false;
@@ -801,9 +802,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->npMaterial[them] -= PieceValueMidgame[capture];
 
       // Remove the captured piece
-      xor_bit(&byColorBB[them], capsq);
-      xor_bit(&byTypeBB[capture], capsq);
-      xor_bit(&occupied, capsq);
+      byColorBB[them] ^= capsq;
+      byTypeBB[capture] ^= capsq;
+      occupied ^= capsq;
 
       // Update piece list, move the last piece at index[capsq] position and
       // shrink the list.
@@ -851,10 +852,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   prefetch((char*)TT.first_entry(k));
 
   // Move the piece
-  Bitboard move_bb = make_move_bb(from, to);
-  do_move_bb(&byColorBB[us], move_bb);
-  do_move_bb(&byTypeBB[pt], move_bb);
-  do_move_bb(&occupied, move_bb);
+  Bitboard from_to_bb = SquareBB[from] | SquareBB[to];
+  byColorBB[us] ^= from_to_bb;
+  byTypeBB[pt] ^= from_to_bb;
+  occupied ^= from_to_bb;
 
   board[to] = board[from];
   board[from] = NO_PIECE;
@@ -883,8 +884,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           assert(promotion >= KNIGHT && promotion <= QUEEN);
 
           // Replace the pawn with the promoted piece
-          xor_bit(&byTypeBB[PAWN], to);
-          set_bit(&byTypeBB[promotion], to);
+          byTypeBB[PAWN] ^= to;
+          byTypeBB[promotion] |= to;
           board[to] = make_piece(us, promotion);
 
           // Update piece lists, move the last pawn at index[to] position
@@ -940,11 +941,11 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       else
       {
           // Direct checks
-          if (bit_is_set(ci.checkSq[pt], to))
-              st->checkersBB = SquareBB[to];
+          if (ci.checkSq[pt] & to)
+              st->checkersBB |= to;
 
           // Discovery checks
-          if (ci.dcCandidates && bit_is_set(ci.dcCandidates, from))
+          if (ci.dcCandidates && (ci.dcCandidates & from))
           {
               if (pt != ROOK)
                   st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(ROOK, QUEEN, us);
@@ -999,8 +1000,8 @@ void Position::undo_move(Move m) {
       assert(promotion >= KNIGHT && promotion <= QUEEN);
 
       // Replace the promoted piece with the pawn
-      xor_bit(&byTypeBB[promotion], to);
-      set_bit(&byTypeBB[PAWN], to);
+      byTypeBB[promotion] ^= to;
+      byTypeBB[PAWN] |= to;
       board[to] = make_piece(us, PAWN);
 
       // Update piece lists, move the last promoted piece at index[to] position
@@ -1016,10 +1017,10 @@ void Position::undo_move(Move m) {
   }
 
   // Put the piece back at the source square
-  Bitboard move_bb = make_move_bb(to, from);
-  do_move_bb(&byColorBB[us], move_bb);
-  do_move_bb(&byTypeBB[pt], move_bb);
-  do_move_bb(&occupied, move_bb);
+  Bitboard from_to_bb = SquareBB[from] | SquareBB[to];
+  byColorBB[us] ^= from_to_bb;
+  byTypeBB[pt] ^= from_to_bb;
+  occupied ^= from_to_bb;
 
   board[from] = board[to];
   board[to] = NO_PIECE;
@@ -1044,9 +1045,9 @@ void Position::undo_move(Move m) {
       }
 
       // Restore the captured piece
-      set_bit(&byColorBB[them], capsq);
-      set_bit(&byTypeBB[capture], capsq);
-      set_bit(&occupied, capsq);
+      byColorBB[them] |= capsq;
+      byTypeBB[capture] |= capsq;
+      occupied |= capsq;
 
       board[capsq] = make_piece(them, capture);
 
@@ -1100,20 +1101,20 @@ void Position::do_castle_move(Move m) {
   assert(piece_on(rfrom) == make_piece(us, ROOK));
 
   // Remove pieces from source squares
-  xor_bit(&byColorBB[us], kfrom);
-  xor_bit(&byTypeBB[KING], kfrom);
-  xor_bit(&occupied, kfrom);
-  xor_bit(&byColorBB[us], rfrom);
-  xor_bit(&byTypeBB[ROOK], rfrom);
-  xor_bit(&occupied, rfrom);
+  byColorBB[us] ^= kfrom;
+  byTypeBB[KING] ^= kfrom;
+  occupied ^= kfrom;
+  byColorBB[us] ^= rfrom;
+  byTypeBB[ROOK] ^= rfrom;
+  occupied ^= rfrom;
 
   // Put pieces on destination squares
-  set_bit(&byColorBB[us], kto);
-  set_bit(&byTypeBB[KING], kto);
-  set_bit(&occupied, kto);
-  set_bit(&byColorBB[us], rto);
-  set_bit(&byTypeBB[ROOK], rto);
-  set_bit(&occupied, rto);
+  byColorBB[us] |= kto;
+  byTypeBB[KING] |= kto;
+  occupied |= kto;
+  byColorBB[us] |= rto;
+  byTypeBB[ROOK] |= rto;
+  occupied |= rto;
 
   // Update board
   Piece king = make_piece(us, KING);
@@ -1268,13 +1269,13 @@ int Position::see(Move m) const {
       assert(type_of(piece_on(capQq)) == PAWN);
 
       // Remove the captured pawn
-      xor_bit(&occ, capQq);
+      occ ^= capQq;
       capturedType = PAWN;
   }
 
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
-  xor_bit(&occ, from);
+  occ ^= from;
   attackers = attackers_to(to, occ);
 
   // If the opponent has no attackers we are finished
@@ -1378,9 +1379,9 @@ void Position::put_piece(Piece p, Square s) {
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
 
-  set_bit(&byTypeBB[pt], s);
-  set_bit(&byColorBB[c], s);
-  set_bit(&occupied, s);
+  byTypeBB[pt] |= s;
+  byColorBB[c] |= s;
+  occupied |= s;
 }
 
 

@@ -134,8 +134,8 @@ namespace {
         return RESULT_INVALID;
 
     // Check if a king can be captured
-    if (    bit_is_set(wk_attacks(), blackKingSquare)
-        || (bit_is_set(pawn_attacks(), blackKingSquare) && sideToMove == WHITE))
+    if (   (wk_attacks() & blackKingSquare)
+        || ((pawn_attacks() & blackKingSquare) && sideToMove == WHITE))
         return RESULT_INVALID;
 
     // The position is an immediate win if it is white to move and the
@@ -144,7 +144,7 @@ namespace {
         && sideToMove == WHITE
         && whiteKingSquare != pawnSquare + DELTA_N
         && (   square_distance(blackKingSquare, pawnSquare + DELTA_N) > 1
-            || bit_is_set(wk_attacks(), pawnSquare + DELTA_N)))
+            || (wk_attacks() & (pawnSquare + DELTA_N))))
         return RESULT_WIN;
 
     // Check for known draw positions
@@ -156,7 +156,7 @@ namespace {
 
     // Case 2: King can capture pawn
     if (   sideToMove == BLACK
-        && bit_is_set(bk_attacks(), pawnSquare) && !bit_is_set(wk_attacks(), pawnSquare))
+        && (bk_attacks() & pawnSquare) && !(wk_attacks() & pawnSquare))
         return RESULT_DRAW;
 
     // Case 3: Black king in front of white pawn

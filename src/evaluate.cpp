@@ -453,7 +453,7 @@ namespace {
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece.
-    if (bonus && bit_is_set(ei.attackedBy[Us][PAWN], s))
+    if (bonus && (ei.attackedBy[Us][PAWN] & s))
     {
         if (   !pos.pieces(KNIGHT, Them)
             && !(same_color_squares(s) & pos.pieces(BISHOP, Them)))
@@ -514,7 +514,7 @@ namespace {
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
-        if (bit_is_set(ei.attackedBy[Them][PAWN], s))
+        if (ei.attackedBy[Them][PAWN] & s)
             score -= ThreatenedByPawnPenalty[Piece];
 
         // Bishop and knight outposts squares
@@ -944,7 +944,7 @@ namespace {
         // Check if (without even considering any obstacles) we're too far away or doubled
         if (   pliesToQueen[winnerSide] + 3 <= pliesToGo
             || (squares_in_front_of(loserSide, s) & pos.pieces(PAWN, loserSide)))
-            xor_bit(&candidates, s);
+            candidates ^= s;
     }
 
     // If any candidate is already a passed pawn it _may_ promote in time. We give up.
