@@ -467,7 +467,7 @@ namespace {
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             skillBest = do_skill_level();
 
-        if (Options["Use Search Log"])
+        if (!Signals.stop && Options["Use Search Log"])
              pv_info_to_log(pos, depth, bestValue, elapsed_time(), &RootMoves[0].pv[0]);
 
         // Filter out startup noise when monitoring best move stability
