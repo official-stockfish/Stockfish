@@ -1282,12 +1282,7 @@ split_point_start: // At split points actual search starts from here
           && !pos.is_capture_or_promotion(move)
           &&  ss->eval + PawnValueMidgame / 4 < beta
           && !check_is_dangerous(pos, move, futilityBase, beta, &bestValue))
-      {
-          if (ss->eval + PawnValueMidgame / 4 > bestValue)
-              bestValue = ss->eval + PawnValueMidgame / 4;
-
           continue;
-      }
 
       // Check for legality only before to do the move
       if (!pos.pl_move_is_legal(move, ci.pinned))
