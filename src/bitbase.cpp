@@ -25,43 +25,47 @@
 namespace {
 
   enum Result {
-    RESULT_UNKNOWN,
-    RESULT_INVALID,
-    RESULT_WIN,
-    RESULT_DRAW
+    INVALID = 0,
+    UNKNOWN = 1,
+    DRAW    = 2,
+    WIN     = 4
   };
 
+  inline Result& operator|=(Result& r, Result v) { return r = Result(r | v); }
+
   struct KPKPosition {
-    Result classify_knowns(int index);
-    Result classify(int index, Result db[]);
+
+    Result classify_leaf(int idx);
+    Result classify(int idx, Result db[]);
 
   private:
-    void from_index(int index);
-    Result classify_white(const Result db[]);
-    Result classify_black(const Result db[]);
-    Bitboard wk_attacks()   const { return StepAttacksBB[W_KING][whiteKingSquare]; }
-    Bitboard bk_attacks()   const { return StepAttacksBB[B_KING][blackKingSquare]; }
-    Bitboard pawn_attacks() const { return StepAttacksBB[W_PAWN][pawnSquare]; }
+    template<Color Us> Result classify(const Result db[]) const;
 
-    Square whiteKingSquare, blackKingSquare, pawnSquare;
-    Color sideToMove;
+    template<Color Us> Bitboard k_attacks() const {
+      return Us == WHITE ? StepAttacksBB[W_KING][wksq] : StepAttacksBB[B_KING][bksq];
+    }
+
+    Bitboard p_attacks() const { return StepAttacksBB[W_PAWN][psq]; }
+    void decode_index(int idx);
+
+    Square wksq, bksq, psq;
+    Color stm;
   };
 
   // The possible pawns squares are 24, the first 4 files and ranks from 2 to 7
-  const int IndexMax = 2 * 24 * 64 * 64; // color * wp_sq * wk_sq * bk_sq = 196608
+  const int IndexMax = 2 * 24 * 64 * 64; // stm * wp_sq * wk_sq * bk_sq = 196608
 
   // Each uint32_t stores results of 32 positions, one per bit
   uint32_t KPKBitbase[IndexMax / 32];
 
-  int compute_index(Square wksq, Square bksq, Square wpsq, Color stm);
+  int index(Square wksq, Square bksq, Square psq, Color stm);
 }
 
 
 uint32_t probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm) {
 
-  int index = compute_index(wksq, bksq, wpsq, stm);
-
-  return KPKBitbase[index / 32] & (1 << (index & 31));
+  int idx = index(wksq, bksq, wpsq, stm);
+  return KPKBitbase[idx / 32] & (1 << (idx & 31));
 }
 
 
@@ -69,24 +73,23 @@ void kpk_bitbase_init() {
 
   Result db[IndexMax];
   KPKPosition pos;
-  int index, bit, repeat = 1;
+  int idx, bit, repeat = 1;
 
-  // Initialize table
-  for (index = 0; index < IndexMax; index++)
-      db[index] = pos.classify_knowns(index);
+  // Initialize table with known win / draw positions
+  for (idx = 0; idx < IndexMax; idx++)
+      db[idx] = pos.classify_leaf(idx);
 
   // Iterate until all positions are classified (30 cycles needed)
   while (repeat)
-      for (repeat = index = 0; index < IndexMax; index++)
-          if (   db[index] == RESULT_UNKNOWN
-              && pos.classify(index, db) != RESULT_UNKNOWN)
+      for (repeat = idx = 0; idx < IndexMax; idx++)
+          if (db[idx] == UNKNOWN && (db[idx] = pos.classify(idx, db)) != UNKNOWN)
               repeat = 1;
 
   // Map 32 position results into one KPKBitbase[] entry
-  for (index = 0; index < IndexMax / 32; index++)
+  for (idx = 0; idx < IndexMax / 32; idx++)
       for (bit = 0; bit < 32; bit++)
-          if (db[32 * index + bit] == RESULT_WIN)
-              KPKBitbase[index] |= (1 << bit);
+          if (db[32 * idx + bit] == WIN)
+              KPKBitbase[idx] |= 1 << bit;
 }
 
 
@@ -102,170 +105,119 @@ namespace {
   // bit 13-14: white pawn file (from FILE_A to FILE_D)
   // bit 15-17: white pawn rank - 1 (from RANK_2 - 1 to RANK_7 - 1)
 
-  int compute_index(Square wksq, Square bksq, Square wpsq, Color stm) {
+  int index(Square w, Square b, Square p, Color c) {
 
-    assert(file_of(wpsq) <= FILE_D);
+    assert(file_of(p) <= FILE_D);
 
-    int p = file_of(wpsq) + 4 * (rank_of(wpsq) - 1);
-    int r = stm + 2 * bksq + 128 * wksq + 8192 * p;
-
-    assert(r >= 0 && r < IndexMax);
-
-    return r;
+    return c + (b << 1) + (w << 7) + (file_of(p) << 13) + ((rank_of(p) - 1) << 15);
   }
 
-  void KPKPosition::from_index(int index) {
+  void KPKPosition::decode_index(int idx) {
 
-    int s = index >> 13;
-    sideToMove = Color(index & 1);
-    blackKingSquare = Square((index >> 1) & 63);
-    whiteKingSquare = Square((index >> 7) & 63);
-    pawnSquare = make_square(File(s & 3), Rank((s >> 2) + 1));
+    stm  = Color(idx & 1);
+    bksq = Square((idx >> 1) & 63);
+    wksq = Square((idx >> 7) & 63);
+    psq  = make_square(File((idx >> 13) & 3), Rank((idx >> 15) + 1));
   }
 
-  Result KPKPosition::classify_knowns(int index) {
+  Result KPKPosition::classify_leaf(int idx) {
 
-    from_index(index);
+    decode_index(idx);
 
-    // Check if two pieces are on the same square
-    if (   whiteKingSquare == pawnSquare
-        || whiteKingSquare == blackKingSquare
-        || blackKingSquare == pawnSquare)
-        return RESULT_INVALID;
+    // Check if two pieces are on the same square or if a king can be captured
+    if (   wksq == psq || wksq == bksq || bksq == psq
+        || (k_attacks<WHITE>() & bksq)
+        || (stm == WHITE && (p_attacks() & bksq)))
+        return INVALID;
 
-    // Check if a king can be captured
-    if (   (wk_attacks() & blackKingSquare)
-        || ((pawn_attacks() & blackKingSquare) && sideToMove == WHITE))
-        return RESULT_INVALID;
-
-    // The position is an immediate win if it is white to move and the
-    // white pawn can be promoted without getting captured.
-    if (   rank_of(pawnSquare) == RANK_7
-        && sideToMove == WHITE
-        && whiteKingSquare != pawnSquare + DELTA_N
-        && (   square_distance(blackKingSquare, pawnSquare + DELTA_N) > 1
-            || (wk_attacks() & (pawnSquare + DELTA_N))))
-        return RESULT_WIN;
+    // The position is an immediate win if it is white to move and the white
+    // pawn can be promoted without getting captured.
+    if (   rank_of(psq) == RANK_7
+        && stm == WHITE
+        && wksq != psq + DELTA_N
+        && (   square_distance(bksq, psq + DELTA_N) > 1
+            ||(k_attacks<WHITE>() & (psq + DELTA_N))))
+        return WIN;
 
     // Check for known draw positions
     //
     // Case 1: Stalemate
-    if (   sideToMove == BLACK
-        && !(bk_attacks() & ~(wk_attacks() | pawn_attacks())))
-        return RESULT_DRAW;
+    if (   stm == BLACK
+        && !(k_attacks<BLACK>() & ~(k_attacks<WHITE>() | p_attacks())))
+        return DRAW;
 
-    // Case 2: King can capture pawn
-    if (   sideToMove == BLACK
-        && (bk_attacks() & pawnSquare) && !(wk_attacks() & pawnSquare))
-        return RESULT_DRAW;
+    // Case 2: King can capture undefended pawn
+    if (   stm == BLACK
+        && (k_attacks<BLACK>() & psq & ~k_attacks<WHITE>()))
+        return DRAW;
 
     // Case 3: Black king in front of white pawn
-    if (   blackKingSquare == pawnSquare + DELTA_N
-        && rank_of(pawnSquare) < RANK_7)
-        return RESULT_DRAW;
+    if (   bksq == psq + DELTA_N
+        && rank_of(psq) < RANK_7)
+        return DRAW;
 
     //  Case 4: White king in front of pawn and black has opposition
-    if (   whiteKingSquare == pawnSquare + DELTA_N
-        && blackKingSquare == pawnSquare + DELTA_N + DELTA_N + DELTA_N
-        && rank_of(pawnSquare) < RANK_5
-        && sideToMove == WHITE)
-        return RESULT_DRAW;
+    if (   stm == WHITE
+        && wksq == psq + DELTA_N
+        && bksq == wksq + DELTA_N + DELTA_N
+        && rank_of(psq) < RANK_5)
+        return DRAW;
 
     // Case 5: Stalemate with rook pawn
-    if (   blackKingSquare == SQ_A8
-        && file_of(pawnSquare) == FILE_A)
-        return RESULT_DRAW;
+    if (   bksq == SQ_A8
+        && file_of(psq) == FILE_A)
+        return DRAW;
 
-    return RESULT_UNKNOWN;
+    return UNKNOWN;
   }
 
-  Result KPKPosition::classify(int index, Result db[]) {
+  template<Color Us>
+  Result KPKPosition::classify(const Result db[]) const {
 
-    from_index(index);
-    db[index] = (sideToMove == WHITE ? classify_white(db) : classify_black(db));
-    return db[index];
-  }
-
-  Result KPKPosition::classify_white(const Result db[]) {
-
-    // If one move leads to a position classified as RESULT_WIN, the result
-    // of the current position is RESULT_WIN. If all moves lead to positions
-    // classified as RESULT_DRAW, the current position is classified RESULT_DRAW
-    // otherwise the current position is classified as RESULT_UNKNOWN.
-
-    bool unknownFound = false;
-    Bitboard b;
-    Square s;
-    Result r;
-
-    // King moves
-    b = wk_attacks();
-    while (b)
-    {
-        s = pop_1st_bit(&b);
-        r = db[compute_index(s, blackKingSquare, pawnSquare, BLACK)];
-
-        if (r == RESULT_WIN)
-            return RESULT_WIN;
-
-        if (r == RESULT_UNKNOWN)
-            unknownFound = true;
-    }
-
-    // Pawn moves
-    if (rank_of(pawnSquare) < RANK_7)
-    {
-        s = pawnSquare + DELTA_N;
-        r = db[compute_index(whiteKingSquare, blackKingSquare, s, BLACK)];
-
-        if (r == RESULT_WIN)
-            return RESULT_WIN;
-
-        if (r == RESULT_UNKNOWN)
-            unknownFound = true;
-
-        // Double pawn push
-        if (rank_of(s) == RANK_3 && r != RESULT_INVALID)
-        {
-            s += DELTA_N;
-            r = db[compute_index(whiteKingSquare, blackKingSquare, s, BLACK)];
-
-            if (r == RESULT_WIN)
-                return RESULT_WIN;
-
-            if (r == RESULT_UNKNOWN)
-                unknownFound = true;
-        }
-    }
-    return unknownFound ? RESULT_UNKNOWN : RESULT_DRAW;
-  }
-
-  Result KPKPosition::classify_black(const Result db[]) {
-
-    // If one move leads to a position classified as RESULT_DRAW, the result
-    // of the current position is RESULT_DRAW. If all moves lead to positions
-    // classified as RESULT_WIN, the position is classified as RESULT_WIN.
+    // White to Move: If one move leads to a position classified as RESULT_WIN,
+    // the result of the current position is RESULT_WIN. If all moves lead to
+    // positions classified as RESULT_DRAW, the current position is classified
+    // RESULT_DRAW otherwise the current position is classified as RESULT_UNKNOWN.
+    //
+    // Black to Move: If one move leads to a position classified as RESULT_DRAW,
+    // the result of the current position is RESULT_DRAW. If all moves lead to
+    // positions classified as RESULT_WIN, the position is classified RESULT_WIN.
     // Otherwise, the current position is classified as RESULT_UNKNOWN.
 
-    bool unknownFound = false;
-    Bitboard b;
-    Square s;
-    Result r;
+    Result r = INVALID;
+    Bitboard b = k_attacks<Us>();
 
-    // King moves
-    b = bk_attacks();
     while (b)
     {
-        s = pop_1st_bit(&b);
-        r = db[compute_index(whiteKingSquare, s, pawnSquare, WHITE)];
+        r |= Us == WHITE ? db[index(pop_1st_bit(&b), bksq, psq, BLACK)]
+                         : db[index(wksq, pop_1st_bit(&b), psq, WHITE)];
 
-        if (r == RESULT_DRAW)
-            return RESULT_DRAW;
+        if (Us == WHITE && (r & WIN))
+            return WIN;
 
-        if (r == RESULT_UNKNOWN)
-            unknownFound = true;
+        if (Us == BLACK && (r & DRAW))
+            return DRAW;
     }
-    return unknownFound ? RESULT_UNKNOWN : RESULT_WIN;
+
+    if (Us == WHITE && rank_of(psq) < RANK_7)
+    {
+        Square s = psq + DELTA_N;
+        r |= db[index(wksq, bksq, s, BLACK)]; // Single push
+
+        if (rank_of(s) == RANK_3 && s != wksq && s != bksq)
+            r |= db[index(wksq, bksq, s + DELTA_N, BLACK)]; // Double push
+
+        if (r & WIN)
+            return WIN;
+    }
+
+    return r & UNKNOWN ? UNKNOWN : Us == WHITE ? DRAW : WIN;
+  }
+
+  Result KPKPosition::classify(int idx, Result db[]) {
+
+    decode_index(idx);
+    return stm == WHITE ? classify<WHITE>(db) : classify<BLACK>(db);
   }
 
 }
