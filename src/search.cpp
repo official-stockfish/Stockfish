@@ -1434,7 +1434,7 @@ split_point_start: // At split points actual search starts from here
         &&  bit_is_set(squares_between(t1, ksq), f2))
     {
         Bitboard occ = pos.occupied_squares();
-        clear_bit(&occ, f2);
+        xor_bit(&occ, f2);
         if (bit_is_set(pos.attacks_from(p1, t1, occ), ksq))
             return true;
     }

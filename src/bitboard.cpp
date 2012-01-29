@@ -25,6 +25,8 @@
 #include "bitcount.h"
 #include "rkiss.h"
 
+CACHE_LINE_ALIGNMENT
+
 Bitboard RMasks[64];
 Bitboard RMagics[64];
 Bitboard* RAttacks[64];
@@ -35,9 +37,7 @@ Bitboard BMagics[64];
 Bitboard* BAttacks[64];
 int BShifts[64];
 
-Bitboard SetMaskBB[65];
-Bitboard ClearMaskBB[65];
-
+Bitboard SquareBB[64];
 Bitboard FileBB[8];
 Bitboard RankBB[8];
 Bitboard AdjacentFilesBB[8];
@@ -48,7 +48,6 @@ Bitboard BetweenBB[64][64];
 Bitboard SquaresInFrontMask[2][64];
 Bitboard PassedPawnMask[2][64];
 Bitboard AttackSpanMask[2][64];
-
 Bitboard PseudoAttacks[6][64];
 
 uint8_t BitCount8Bit[256];
@@ -157,12 +156,7 @@ void bitboards_init() {
       BitCount8Bit[b] = (uint8_t)popcount<Max15>(b);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
-  {
-      SetMaskBB[s] = 1ULL << s;
-      ClearMaskBB[s] = ~SetMaskBB[s];
-  }
-
-  ClearMaskBB[SQ_NONE] = ~0ULL;
+      SquareBB[s] = 1ULL << s;
 
   FileBB[FILE_A] = FileABB;
   RankBB[RANK_1] = Rank1BB;

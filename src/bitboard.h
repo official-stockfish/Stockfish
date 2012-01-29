@@ -23,50 +23,43 @@
 
 #include "types.h"
 
+extern Bitboard RMasks[64];
+extern Bitboard RMagics[64];
+extern Bitboard* RAttacks[64];
+extern int RShifts[64];
+
+extern Bitboard BMasks[64];
+extern Bitboard BMagics[64];
+extern Bitboard* BAttacks[64];
+extern int BShifts[64];
+
+extern Bitboard SquareBB[64];
 extern Bitboard FileBB[8];
+extern Bitboard RankBB[8];
 extern Bitboard AdjacentFilesBB[8];
 extern Bitboard ThisAndAdjacentFilesBB[8];
-extern Bitboard RankBB[8];
 extern Bitboard InFrontBB[2][8];
-
-extern Bitboard SetMaskBB[65];
-extern Bitboard ClearMaskBB[65];
-
 extern Bitboard StepAttacksBB[16][64];
 extern Bitboard BetweenBB[64][64];
-
 extern Bitboard SquaresInFrontMask[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];
-
-extern uint64_t RMagics[64];
-extern int RShifts[64];
-extern Bitboard RMasks[64];
-extern Bitboard* RAttacks[64];
-
-extern uint64_t BMagics[64];
-extern int BShifts[64];
-extern Bitboard BMasks[64];
-extern Bitboard* BAttacks[64];
-
 extern Bitboard PseudoAttacks[6][64];
-
-extern uint8_t BitCount8Bit[256];
 
 
 /// Functions for testing whether a given bit is set in a bitboard, and for
 /// setting and clearing bits.
 
 inline Bitboard bit_is_set(Bitboard b, Square s) {
-  return b & SetMaskBB[s];
+  return b & SquareBB[s];
 }
 
 inline void set_bit(Bitboard* b, Square s) {
-  *b |= SetMaskBB[s];
+  *b |= SquareBB[s];
 }
 
-inline void clear_bit(Bitboard* b, Square s) {
-  *b &= ClearMaskBB[s];
+inline void xor_bit(Bitboard* b, Square s) {
+  *b ^= SquareBB[s];
 }
 
 
@@ -74,7 +67,7 @@ inline void clear_bit(Bitboard* b, Square s) {
 /// then calling a sequence of clear_bit() + set_bit()
 
 inline Bitboard make_move_bb(Square from, Square to) {
-  return SetMaskBB[from] | SetMaskBB[to];
+  return SquareBB[from] | SquareBB[to];
 }
 
 inline void do_move_bb(Bitboard* b, Bitboard move_bb) {
@@ -216,7 +209,7 @@ inline Bitboard attack_span_mask(Color c, Square s) {
 
 inline bool squares_aligned(Square s1, Square s2, Square s3) {
   return  (BetweenBB[s1][s2] | BetweenBB[s1][s3] | BetweenBB[s2][s3])
-        & (    SetMaskBB[s1] |     SetMaskBB[s2] |     SetMaskBB[s3]);
+        & (     SquareBB[s1] |      SquareBB[s2] |      SquareBB[s3]);
 }
 
 

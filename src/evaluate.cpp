@@ -944,7 +944,7 @@ namespace {
         // Check if (without even considering any obstacles) we're too far away or doubled
         if (   pliesToQueen[winnerSide] + 3 <= pliesToGo
             || (squares_in_front_of(loserSide, s) & pos.pieces(PAWN, loserSide)))
-            clear_bit(&candidates, s);
+            xor_bit(&candidates, s);
     }
 
     // If any candidate is already a passed pawn it _may_ promote in time. We give up.

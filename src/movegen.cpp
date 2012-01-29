@@ -74,7 +74,7 @@ namespace {
     if (pos.is_chess960())
     {
         Bitboard occ = pos.occupied_squares();
-        clear_bit(&occ, rfrom);
+        xor_bit(&occ, rfrom);
         if (pos.attackers_to(kto, occ) & enemies)
             return mlist;
     }
