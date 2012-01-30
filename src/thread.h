@@ -123,12 +123,12 @@ private:
   friend struct Thread;
 
   Thread threads[MAX_THREADS + 1]; // Last one is used as a timer
-  Lock threadsLock;
+  Lock splitLock;
+  WaitCondition sleepCond;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
   int activeThreads;
   bool useSleepingThreads;
-  WaitCondition sleepCond;
 };
 
 extern ThreadsManager Threads;

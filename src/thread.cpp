@@ -101,10 +101,7 @@ bool Thread::is_available_to(int master) const {
 
   // No active split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  if (!sp_count || (splitPoints[sp_count - 1].slavesMask & (1ULL << master)))
-      return true;
-
-  return false;
+  return !sp_count || (splitPoints[sp_count - 1].slavesMask & (1ULL << master));
 }
 
 
@@ -151,11 +148,9 @@ void ThreadsManager::set_size(int cnt) {
 
 void ThreadsManager::init() {
 
-  // Initialize sleep condition and lock used by thread manager
   cond_init(sleepCond);
-  lock_init(threadsLock);
+  lock_init(splitLock);
 
-  // Initialize thread's sleep conditions and split point locks
   for (int i = 0; i <= MAX_THREADS; i++)
   {
       lock_init(threads[i].sleepLock);
@@ -198,7 +193,6 @@ void ThreadsManager::exit() {
 
       thread_join(threads[i].handle); // Wait for thread termination
 
-      // Now we can safely destroy associated locks and wait conditions
       lock_destroy(threads[i].sleepLock);
       cond_destroy(threads[i].sleepCond);
 
@@ -206,7 +200,7 @@ void ThreadsManager::exit() {
           lock_destroy(threads[i].splitPoints[j].lock);
   }
 
-  lock_destroy(threadsLock);
+  lock_destroy(splitLock);
   cond_destroy(sleepCond);
 }
 
@@ -248,21 +242,19 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(pos.thread() >= 0 && pos.thread() < activeThreads);
   assert(activeThreads > 1);
 
-  int i, master = pos.thread();
+  int master = pos.thread();
   Thread& masterThread = threads[master];
 
-  // If we already have too many active split points, don't split
   if (masterThread.activeSplitPoints >= MAX_ACTIVE_SPLIT_POINTS)
       return bestValue;
 
   // Pick the next available split point from the split point stack
   SplitPoint* sp = &masterThread.splitPoints[masterThread.activeSplitPoints];
 
-  // Initialize the split point
   sp->parent = masterThread.splitPoint;
   sp->master = master;
   sp->is_betaCutoff = false;
-  sp->slavesMask = (1ULL << master);
+  sp->slavesMask = 1ULL << master;
   sp->depth = depth;
   sp->threatMove = threatMove;
   sp->alpha = alpha;
@@ -275,60 +267,49 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->nodes = 0;
   sp->ss = ss;
 
-  // If we are here it means we are not available
   assert(masterThread.is_searching);
 
-  int workersCnt = 1; // At least the master is included
+  int slavesCnt = 0;
 
   // Try to allocate available threads and ask them to start searching setting
   // is_searching flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
-  lock_grab(threadsLock);
+  lock_grab(splitLock);
   lock_grab(sp->lock); // To protect sp->slaves_mask
 
-  for (i = 0; !Fake && i < activeThreads; i++)
+  for (int i = 0; i < activeThreads && !Fake; i++)
       if (threads[i].is_available_to(master))
       {
-          sp->slavesMask |= (1ULL << i);
+          sp->slavesMask |= 1ULL << i;
           threads[i].splitPoint = sp;
-
-          // Allocate the slave and make it exit from idle_loop()
-          threads[i].is_searching = true;
+          threads[i].is_searching = true; // Slave leaves idle_loop()
 
           if (useSleepingThreads)
               threads[i].wake_up();
 
-          if (++workersCnt >= maxThreadsPerSplitPoint)
+          if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Master is always included
               break;
       }
 
-  lock_release(sp->lock);
-  lock_release(threadsLock);
-
-  // We failed to allocate even one slave, return
-  if (!Fake && workersCnt == 1)
-      return bestValue;
-
   masterThread.splitPoint = sp;
   masterThread.activeSplitPoints++;
+
+  lock_release(sp->lock);
+  lock_release(splitLock);
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its is_searching flag is set.
   // We pass the split point as a parameter to the idle loop, which means that
   // the thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  masterThread.idle_loop(sp);
-
-  // In helpful master concept a master can help only a sub-tree of its split
-  // point, and because here is all finished is not possible master is booked.
-  assert(!masterThread.is_searching);
+  if (slavesCnt || Fake)
+      masterThread.idle_loop(sp);
 
   // We have returned from the idle loop, which means that all threads are
-  // finished. Note that changing state and decreasing activeSplitPoints is done
-  // under lock protection to avoid a race with Thread::is_available_to().
-  lock_grab(threadsLock);
+  // finished. Note that setting is_searching and decreasing activeSplitPoints is
+  // done under lock protection to avoid a race with Thread::is_available_to().
+  lock_grab(splitLock);
   lock_grab(sp->lock); // To protect sp->nodes
-
 
   masterThread.is_searching = true;
   masterThread.activeSplitPoints--;
@@ -336,7 +317,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
 
   lock_release(sp->lock);
-  lock_release(threadsLock);
+  lock_release(splitLock);
 
   return sp->bestValue;
 }
