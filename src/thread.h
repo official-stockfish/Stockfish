@@ -54,7 +54,7 @@ struct SplitPoint {
   volatile Value alpha;
   volatile Value bestValue;
   volatile int moveCount;
-  volatile bool is_betaCutoff;
+  volatile bool cutoff;
 };
 
 
@@ -71,6 +71,7 @@ struct Thread {
   void idle_loop(SplitPoint* sp_master);
   void main_loop();
   void timer_loop();
+  void wait_for_stop_or_ponderhit();
 
   SplitPoint splitPoints[MAX_ACTIVE_SPLIT_POINTS];
   MaterialInfoTable materialTable;
@@ -110,7 +111,6 @@ public:
   void read_uci_options();
   bool available_slave_exists(int master) const;
   void set_timer(int msec);
-  void wait_for_stop_or_ponderhit();
   void stop_thinking();
   void start_thinking(const Position& pos, const Search::LimitsType& limits,
                       const std::set<Move>& = std::set<Move>(), bool async = false);

@@ -348,7 +348,7 @@ finalize:
   // but if we are pondering or in infinite search, we shouldn't print the best
   // move before we are told to do so.
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
-      Threads.wait_for_stop_or_ponderhit();
+      Threads[pos.thread()].wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
   cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
@@ -1061,7 +1061,9 @@ split_point_start: // At split points actual search starts from here
               sp->bestValue = value;
               sp->ss->bestMove = move;
               sp->alpha = alpha;
-              sp->is_betaCutoff = (value >= beta);
+
+              if (value >= beta)
+                  sp->cutoff = true;
           }
       }
 

@@ -59,13 +59,79 @@ namespace { extern "C" {
 } }
 
 
-// wake_up() wakes up the thread, normally at the beginning of the search or,
-// if "sleeping threads" is used, when there is some work to do.
+// Thread::timer_loop() is where the timer thread waits maxPly milliseconds and
+// then calls do_timer_event(). If maxPly is 0 thread sleeps until is woken up.
+extern void check_time();
+
+void Thread::timer_loop() {
+
+  while (!do_exit)
+  {
+      lock_grab(sleepLock);
+      timed_wait(sleepCond, sleepLock, maxPly ? maxPly : INT_MAX);
+      lock_release(sleepLock);
+      check_time();
+  }
+}
+
+
+// Thread::main_loop() is where the main thread is parked waiting to be started
+// when there is a new search. Main thread will launch all the slave threads.
+
+void Thread::main_loop() {
+
+  while (true)
+  {
+      lock_grab(sleepLock);
+
+      do_sleep = true; // Always return to sleep after a search
+      is_searching = false;
+
+      while (do_sleep && !do_exit)
+      {
+          cond_signal(Threads.sleepCond); // Wake up UI thread if needed
+          cond_wait(sleepCond, sleepLock);
+      }
+
+      lock_release(sleepLock);
+
+      if (do_exit)
+          return;
+
+      is_searching = true;
+
+      Search::think();
+  }
+}
+
+
+// Thread::wake_up() wakes up the thread, normally at the beginning of the search
+// or, if "sleeping threads" is used, when there is some work to do.
 
 void Thread::wake_up() {
 
   lock_grab(sleepLock);
   cond_signal(sleepCond);
+  lock_release(sleepLock);
+}
+
+
+// Thread::wait_for_stop_or_ponderhit() is called when the maximum depth is
+// reached while the program is pondering. The point is to work around a wrinkle
+// in the UCI protocol: When pondering, the engine is not allowed to give a
+// "bestmove" before the GUI sends it a "stop" or "ponderhit" command. We simply
+// wait here until one of these commands (that raise StopRequest) is sent and
+// then return, after which the bestmove and pondermove will be printed.
+
+void Thread::wait_for_stop_or_ponderhit() {
+
+  Signals.stopOnPonderhit = true;
+
+  lock_grab(sleepLock);
+
+  while (!Signals.stop)
+      cond_wait(sleepCond, sleepLock);
+
   lock_release(sleepLock);
 }
 
@@ -76,7 +142,7 @@ void Thread::wake_up() {
 bool Thread::cutoff_occurred() const {
 
   for (SplitPoint* sp = splitPoint; sp; sp = sp->parent)
-      if (sp->is_betaCutoff)
+      if (sp->cutoff)
           return true;
 
   return false;
@@ -184,10 +250,10 @@ void ThreadsManager::init() {
 
 void ThreadsManager::exit() {
 
-  assert(threads[0].is_searching == false);
-
   for (int i = 0; i <= MAX_THREADS; i++)
   {
+      assert(threads[i].do_sleep);
+
       threads[i].do_exit = true; // Search must be already finished
       threads[i].wake_up();
 
@@ -253,7 +319,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
 
   sp->parent = masterThread.splitPoint;
   sp->master = master;
-  sp->is_betaCutoff = false;
+  sp->cutoff = false;
   sp->slavesMask = 1ULL << master;
   sp->depth = depth;
   sp->threatMove = threatMove;
@@ -327,22 +393,6 @@ template Value ThreadsManager::split<false>(Position&, Stack*, Value, Value, Val
 template Value ThreadsManager::split<true>(Position&, Stack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
 
 
-// Thread::timer_loop() is where the timer thread waits maxPly milliseconds and
-// then calls do_timer_event(). If maxPly is 0 thread sleeps until is woken up.
-extern void check_time();
-
-void Thread::timer_loop() {
-
-  while (!do_exit)
-  {
-      lock_grab(sleepLock);
-      timed_wait(sleepCond, sleepLock, maxPly ? maxPly : INT_MAX);
-      lock_release(sleepLock);
-      check_time();
-  }
-}
-
-
 // ThreadsManager::set_timer() is used to set the timer to trigger after msec
 // milliseconds. If msec is 0 then timer is stopped.
 
@@ -354,36 +404,6 @@ void ThreadsManager::set_timer(int msec) {
   timer.maxPly = msec;
   cond_signal(timer.sleepCond); // Wake up and restart the timer
   lock_release(timer.sleepLock);
-}
-
-
-// Thread::main_loop() is where the main thread is parked waiting to be started
-// when there is a new search. Main thread will launch all the slave threads.
-
-void Thread::main_loop() {
-
-  while (true)
-  {
-      lock_grab(sleepLock);
-
-      do_sleep = true; // Always return to sleep after a search
-      is_searching = false;
-
-      while (do_sleep && !do_exit)
-      {
-          cond_signal(Threads.sleepCond); // Wake up UI thread if needed
-          cond_wait(sleepCond, sleepLock);
-      }
-
-      is_searching = true;
-
-      lock_release(sleepLock);
-
-      if (do_exit)
-          return;
-
-      Search::think();
-  }
 }
 
 
@@ -444,28 +464,6 @@ void ThreadsManager::stop_thinking() {
 
   while (!main.do_sleep)
       cond_wait(sleepCond, main.sleepLock);
-
-  lock_release(main.sleepLock);
-}
-
-
-// ThreadsManager::wait_for_stop_or_ponderhit() is called when the maximum depth
-// is reached while the program is pondering. The point is to work around a wrinkle
-// in the UCI protocol: When pondering, the engine is not allowed to give a
-// "bestmove" before the GUI sends it a "stop" or "ponderhit" command. We simply
-// wait here until one of these commands (that raise StopRequest) is sent and
-// then return, after which the bestmove and pondermove will be printed.
-
-void ThreadsManager::wait_for_stop_or_ponderhit() {
-
-  Signals.stopOnPonderhit = true;
-
-  Thread& main = threads[0];
-
-  lock_grab(main.sleepLock);
-
-  while (!Signals.stop)
-      cond_wait(main.sleepCond, main.sleepLock);
 
   lock_release(main.sleepLock);
 }
