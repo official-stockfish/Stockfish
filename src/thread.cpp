@@ -274,8 +274,8 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // Try to allocate available threads and ask them to start searching setting
   // is_searching flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
+  lock_grab(sp->lock);
   lock_grab(splitLock);
-  lock_grab(sp->lock); // To protect sp->slaves_mask
 
   for (int i = 0; i < activeThreads && !Fake; i++)
       if (threads[i].is_available_to(master))
@@ -294,8 +294,8 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   masterThread.splitPoint = sp;
   masterThread.activeSplitPoints++;
 
-  lock_release(sp->lock);
   lock_release(splitLock);
+  lock_release(sp->lock);
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its is_searching flag is set.
@@ -308,16 +308,16 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that setting is_searching and decreasing activeSplitPoints is
   // done under lock protection to avoid a race with Thread::is_available_to().
-  lock_grab(splitLock);
   lock_grab(sp->lock); // To protect sp->nodes
+  lock_grab(splitLock);
 
   masterThread.is_searching = true;
   masterThread.activeSplitPoints--;
   masterThread.splitPoint = sp->parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
 
-  lock_release(sp->lock);
   lock_release(splitLock);
+  lock_release(sp->lock);
 
   return sp->bestValue;
 }

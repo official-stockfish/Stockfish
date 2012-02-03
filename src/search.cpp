@@ -1873,6 +1873,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
 
           Stack ss[MAX_PLY_PLUS_2];
           Position pos(*sp->pos, threadID);
+          int master = sp->master;
 
           memcpy(ss, sp->ss - 1, 4 * sizeof(Stack));
           (ss+1)->sp = sp;
@@ -1894,17 +1895,17 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           sp->slavesMask &= ~(1ULL << threadID);
           sp->nodes += pos.nodes_searched();
 
-          // Wake up master thread so to allow it to return from the idle loop in
-          // case we are the last slave of the split point.
-          if (   Threads.use_sleeping_threads()
-              && threadID != sp->master
-              && !Threads[sp->master].is_searching)
-              Threads[sp->master].wake_up();
-
           // After releasing the lock we cannot access anymore any SplitPoint
           // related data in a reliably way becuase it could have been released
           // under our feet by the sp master.
           lock_release(sp->lock);
+
+          // Wake up master thread so to allow it to return from the idle loop in
+          // case we are the last slave of the split point.
+          if (   Threads.use_sleeping_threads()
+              && threadID != master
+              && !Threads[master].is_searching)
+              Threads[master].wake_up();
       }
   }
   // In helpful master concept a master can help only a sub-tree of its split

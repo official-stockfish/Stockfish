@@ -40,7 +40,6 @@ struct SplitPoint {
   Depth depth;
   Value beta;
   int nodeType;
-  int ply;
   int master;
   Move threatMove;
 
