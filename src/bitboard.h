@@ -23,6 +23,8 @@
 
 #include "types.h"
 
+CACHE_LINE_ALIGNMENT
+
 extern Bitboard RMasks[64];
 extern Bitboard RMagics[64];
 extern Bitboard* RAttacks[64];
