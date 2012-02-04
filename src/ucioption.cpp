@@ -72,6 +72,7 @@ OptionsMap::OptionsMap() {
   o["Emergency Base Time"]         = UCIOption(200, 0, 30000);
   o["Emergency Move Time"]         = UCIOption(70, 0, 5000);
   o["Minimum Thinking Time"]       = UCIOption(20, 0, 5000);
+  o["Slow Mover"]                  = UCIOption(100, 10, 1000);
   o["UCI_Chess960"]                = UCIOption(false);
   o["UCI_AnalyseMode"]             = UCIOption(false);
 }

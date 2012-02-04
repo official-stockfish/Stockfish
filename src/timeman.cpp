@@ -72,7 +72,7 @@ namespace {
   enum TimeType { OptimumTime, MaxTime };
 
   template<TimeType>
-  int remaining(int myTime, int movesToGo, int fullMoveNumber);
+  int remaining(int myTime, int movesToGo, int fullMoveNumber, int slowMover);
 }
 
 
@@ -107,6 +107,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly)
   int emergencyBaseTime    = Options["Emergency Base Time"];
   int emergencyMoveTime    = Options["Emergency Move Time"];
   int minThinkingTime      = Options["Minimum Thinking Time"];
+  int slowMover            = Options["Slow Mover"];
 
   // Initialize to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
@@ -124,8 +125,8 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly)
 
       hypMyTime = std::max(hypMyTime, 0);
 
-      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly);
-      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly);
+      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly, slowMover);
+      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly, slowMover);
 
       optimumSearchTime = std::min(optimumSearchTime, t1);
       maximumSearchTime = std::min(maximumSearchTime, t2);
@@ -142,12 +143,12 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly)
 namespace {
 
   template<TimeType T>
-  int remaining(int myTime, int movesToGo, int currentPly)
+  int remaining(int myTime, int movesToGo, int currentPly, int slowMover)
   {
     const float TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
     const float TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
-    int thisMoveImportance = move_importance(currentPly);
+    int thisMoveImportance = move_importance(currentPly) * slowMover / 100;
     int otherMovesImportance = 0;
 
     for (int i = 1; i < movesToGo; i++)
