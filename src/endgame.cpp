@@ -82,6 +82,21 @@ namespace {
   template<typename M>
   void delete_endgame(const typename M::value_type& p) { delete p.second; }
 
+  // Fast stalemate detection with lone king
+  bool is_kxk_stalemate(const Position &pos, const Color c) {
+    if ( pos.side_to_move() == c &&
+        !pos.in_check()) {
+      const Square from = pos.king_square(c);
+      Bitboard b = pos.attacks_from<KING>(from);
+      while (b) {
+        // Assume there are no pinned pieces, as it is a lone king
+        if (pos.pl_move_is_legal(make_move(from, pop_1st_bit(&b)), 0))
+          return false;
+      }
+      return true;
+    }
+    return false;
+  }
 } // namespace
 
 
@@ -132,6 +147,10 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
 
+  if (is_kxk_stalemate(pos, weakerSide)) {
+    return VALUE_DRAW;
+  }
+  
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
 
@@ -142,9 +161,9 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   if (   pos.piece_count(strongerSide, QUEEN)
       || pos.piece_count(strongerSide, ROOK)
-      || pos.piece_count(strongerSide, BISHOP) > 1)
-      // TODO: check for two equal-colored bishops!
-      result += VALUE_KNOWN_WIN;
+      || pos.both_color_bishops(strongerSide)) {
+    result += VALUE_KNOWN_WIN;
+  }
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
