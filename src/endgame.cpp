@@ -22,6 +22,7 @@
 
 #include "bitcount.h"
 #include "endgame.h"
+#include "movegen.h"
 
 using std::string;
 
@@ -82,21 +83,6 @@ namespace {
   template<typename M>
   void delete_endgame(const typename M::value_type& p) { delete p.second; }
 
-  // Fast stalemate detection with lone king
-  bool is_kxk_stalemate(const Position &pos, const Color c) {
-    if ( pos.side_to_move() == c &&
-        !pos.in_check()) {
-      const Square from = pos.king_square(c);
-      Bitboard b = pos.attacks_from<KING>(from);
-      while (b) {
-        // Assume there are no pinned pieces, as it is a lone king
-        if (pos.pl_move_is_legal(make_move(from, pop_1st_bit(&b)), 0))
-          return false;
-      }
-      return true;
-    }
-    return false;
-  }
 } // namespace
 
 
@@ -147,7 +133,10 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
 
-  if (is_kxk_stalemate(pos, weakerSide)) {
+	// Stalemate detection with lone king
+  if (    pos.side_to_move() == weakerSide
+      && !pos.in_check()
+      && !MoveList<MV_LEGAL>(pos).size()) {
     return VALUE_DRAW;
   }
   
