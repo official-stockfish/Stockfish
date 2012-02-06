@@ -22,6 +22,7 @@
 
 #include "bitcount.h"
 #include "endgame.h"
+#include "movegen.h"
 
 using std::string;
 
@@ -132,6 +133,13 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
 
+	// Stalemate detection with lone king
+  if (    pos.side_to_move() == weakerSide
+      && !pos.in_check()
+      && !MoveList<MV_LEGAL>(pos).size()) {
+    return VALUE_DRAW;
+  }
+  
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
 
@@ -142,9 +150,9 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   if (   pos.piece_count(strongerSide, QUEEN)
       || pos.piece_count(strongerSide, ROOK)
-      || pos.piece_count(strongerSide, BISHOP) > 1)
-      // TODO: check for two equal-colored bishops!
-      result += VALUE_KNOWN_WIN;
+      || pos.both_color_bishops(strongerSide)) {
+    result += VALUE_KNOWN_WIN;
+  }
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
