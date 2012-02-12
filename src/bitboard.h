@@ -28,12 +28,12 @@ CACHE_LINE_ALIGNMENT
 extern Bitboard RMasks[64];
 extern Bitboard RMagics[64];
 extern Bitboard* RAttacks[64];
-extern int RShifts[64];
+extern unsigned RShifts[64];
 
 extern Bitboard BMasks[64];
 extern Bitboard BMagics[64];
 extern Bitboard* BAttacks[64];
-extern int BShifts[64];
+extern unsigned BShifts[64];
 
 extern Bitboard SquareBB[64];
 extern Bitboard FileBB[8];
@@ -134,13 +134,15 @@ FORCE_INLINE unsigned b_index(Square s, Bitboard occ) {
 #else // if !defined(IS_64BIT)
 
 FORCE_INLINE unsigned r_index(Square s, Bitboard occ) {
-  Bitboard b = occ & RMasks[s];
-  return unsigned(int(b) * int(RMagics[s]) ^ int(b >> 32) * int(RMagics[s] >> 32)) >> RShifts[s];
+  unsigned lo = unsigned(occ) & unsigned(RMasks[s]);
+  unsigned hi = unsigned(occ >> 32) & unsigned(RMasks[s] >> 32);
+  return (lo * unsigned(RMagics[s]) ^ hi * unsigned(RMagics[s] >> 32)) >> RShifts[s];
 }
 
 FORCE_INLINE unsigned b_index(Square s, Bitboard occ) {
-  Bitboard b = occ & BMasks[s];
-  return unsigned(int(b) * int(BMagics[s]) ^ int(b >> 32) * int(BMagics[s] >> 32)) >> BShifts[s];
+  unsigned lo = unsigned(occ) & unsigned(BMasks[s]);
+  unsigned hi = unsigned(occ >> 32) & unsigned(BMasks[s] >> 32);
+  return (lo * unsigned(BMagics[s]) ^ hi * unsigned(BMagics[s] >> 32)) >> BShifts[s];
 }
 
 #endif

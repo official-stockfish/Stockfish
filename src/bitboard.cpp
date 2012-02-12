@@ -30,12 +30,12 @@ CACHE_LINE_ALIGNMENT
 Bitboard RMasks[64];
 Bitboard RMagics[64];
 Bitboard* RAttacks[64];
-int RShifts[64];
+unsigned RShifts[64];
 
 Bitboard BMasks[64];
 Bitboard BMagics[64];
 Bitboard* BAttacks[64];
-int BShifts[64];
+unsigned BShifts[64];
 
 Bitboard SquareBB[64];
 Bitboard FileBB[8];
@@ -64,7 +64,7 @@ namespace {
   typedef unsigned (Fn)(Square, Bitboard);
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
-                   Bitboard masks[], int shifts[], Square deltas[], Fn get_index);
+                   Bitboard masks[], unsigned shifts[], Square deltas[], Fn get_index);
 }
 
 
@@ -290,7 +290,7 @@ namespace {
   // use the so called "fancy" approach.
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
-                   Bitboard masks[], int shifts[], Square deltas[], Fn get_index) {
+                   Bitboard masks[], unsigned shifts[], Square deltas[], Fn get_index) {
 
     int MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
                                { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
