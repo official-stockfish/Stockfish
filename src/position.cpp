@@ -752,7 +752,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   k ^= zobSideToMove;
 
   // Increment the 50 moves rule draw counter. Resetting it to zero in the
-  // case of non-reversible moves is taken care of later.
+  // case of a capture or a pawn move is taken care of later.
   st->rule50++;
   st->pliesFromNull++;
 
@@ -1154,9 +1154,6 @@ void Position::do_castle_move(Move m) {
       st->key ^= zobCastle[st->castleRights];
       st->castleRights &= castleRightsMask[kfrom];
       st->key ^= zobCastle[st->castleRights];
-
-      // Reset rule 50 counter
-      st->rule50 = 0;
 
       // Update checkers BB
       st->checkersBB = attackers_to(king_square(~us)) & pieces(us);
