@@ -307,11 +307,7 @@ void Search::think() {
           << endl;
   }
 
-  for (int i = 0; i < Threads.size(); i++)
-  {
-      Threads[i].maxPly = 0;
-      Threads[i].wake_up();
-  }
+  Threads.set_size(Options["Threads"]);
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.

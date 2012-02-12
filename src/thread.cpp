@@ -171,16 +171,14 @@ bool Thread::is_available_to(int master) const {
 }
 
 
-// read_uci_options() updates number of active threads and other parameters
-// according to the UCI options values. It is called before to start a new search.
+// read_uci_options() updates internal threads parameters from the corresponding
+// UCI options. It is called before to start a new search.
 
 void ThreadsManager::read_uci_options() {
 
   maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
   minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
   useSleepingThreads      = Options["Use Sleeping Threads"];
-
-  set_size(Options["Threads"]);
 }
 
 
@@ -189,11 +187,11 @@ void ThreadsManager::read_uci_options() {
 
 void ThreadsManager::set_size(int cnt) {
 
-  assert(cnt > 0 && cnt <= MAX_THREADS);
+  assert(cnt > 0 && cnt < MAX_THREADS);
 
   activeThreads = cnt;
 
-  for (int i = 1; i < MAX_THREADS; i++) // Ignore main thread
+  for (int i = 0; i < MAX_THREADS; i++)
       if (i < activeThreads)
       {
           // Dynamically allocate pawn and material hash tables according to the
@@ -201,8 +199,12 @@ void ThreadsManager::set_size(int cnt) {
           // possible threads if only few are used.
           threads[i].pawnTable.init();
           threads[i].materialTable.init();
+          threads[i].maxPly = 0;
 
           threads[i].do_sleep = false;
+
+          if (!useSleepingThreads)
+              threads[i].wake_up();
       }
       else
           threads[i].do_sleep = true;
