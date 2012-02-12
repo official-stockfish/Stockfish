@@ -386,8 +386,8 @@ Bitboard Position::attackers_to(Square s, Bitboard occ) const {
   return  (attacks_from<PAWN>(s, BLACK) & pieces(PAWN, WHITE))
         | (attacks_from<PAWN>(s, WHITE) & pieces(PAWN, BLACK))
         | (attacks_from<KNIGHT>(s)      & pieces(KNIGHT))
-        | (rook_attacks_bb(s, occ)      & pieces(ROOK, QUEEN))
-        | (bishop_attacks_bb(s, occ)    & pieces(BISHOP, QUEEN))
+        | (attacks_bb<ROOK>(s, occ)     & pieces(ROOK, QUEEN))
+        | (attacks_bb<BISHOP>(s, occ)   & pieces(BISHOP, QUEEN))
         | (attacks_from<KING>(s)        & pieces(KING));
 }
 
@@ -401,9 +401,9 @@ Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
 
   switch (type_of(p))
   {
-  case BISHOP: return bishop_attacks_bb(s, occ);
-  case ROOK  : return rook_attacks_bb(s, occ);
-  case QUEEN : return bishop_attacks_bb(s, occ) | rook_attacks_bb(s, occ);
+  case BISHOP: return attacks_bb<BISHOP>(s, occ);
+  case ROOK  : return attacks_bb<ROOK>(s, occ);
+  case QUEEN : return attacks_bb<BISHOP>(s, occ) | attacks_bb<ROOK>(s, occ);
   default    : return StepAttacksBB[p][s];
   }
 }
@@ -434,8 +434,8 @@ bool Position::move_attacks_square(Move m, Square s) const {
       return true;
 
   // Scan for possible X-ray attackers behind the moved piece
-  xray = (rook_attacks_bb(s, occ)   & pieces(ROOK, QUEEN, color_of(piece)))
-        |(bishop_attacks_bb(s, occ) & pieces(BISHOP, QUEEN, color_of(piece)));
+  xray = (attacks_bb<ROOK>(s, occ)   & pieces(ROOK, QUEEN, color_of(piece)))
+        |(attacks_bb<BISHOP>(s, occ) & pieces(BISHOP, QUEEN, color_of(piece)));
 
   // Verify attackers are triggered by our move and not already existing
   return xray && (xray ^ (xray & attacks_from<QUEEN>(s)));
@@ -475,8 +475,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       b ^= capsq;
       b |= to;
 
-      return   !(rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, them))
-            && !(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, them));
+      return   !(attacks_bb<ROOK>(ksq, b) & pieces(ROOK, QUEEN, them))
+            && !(attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, them));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -684,8 +684,8 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       b ^= from;
       b ^= capsq;
       b |= to;
-      return  (rook_attacks_bb(ksq, b) & pieces(ROOK, QUEEN, us))
-            ||(bishop_attacks_bb(ksq, b) & pieces(BISHOP, QUEEN, us));
+      return  (attacks_bb<ROOK>(ksq, b) & pieces(ROOK, QUEEN, us))
+            ||(attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, us));
   }
 
   // Castling with check ?
@@ -707,7 +707,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       b ^= rfrom;
       b |= rto;
       b |= kto;
-      return rook_attacks_bb(rto, b) & ksq;
+      return attacks_bb<ROOK>(rto, b) & ksq;
   }
 
   return false;
@@ -1301,8 +1301,8 @@ int Position::see(Move m) const {
       // and scan for new X-ray attacks behind the attacker.
       b = stmAttackers & pieces(pt);
       occ ^= (b & (~b + 1));
-      attackers |=  (rook_attacks_bb(to, occ)   & pieces(ROOK, QUEEN))
-                  | (bishop_attacks_bb(to, occ) & pieces(BISHOP, QUEEN));
+      attackers |=  (attacks_bb<ROOK>(to, occ)   & pieces(ROOK, QUEEN))
+                  | (attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN));
 
       attackers &= occ; // Cut out pieces we've already done
 

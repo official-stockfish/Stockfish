@@ -64,7 +64,7 @@ namespace {
   typedef unsigned (Fn)(Square, Bitboard);
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
-                   Bitboard masks[], unsigned shifts[], Square deltas[], Fn get_index);
+                   Bitboard masks[], unsigned shifts[], Square deltas[], Fn index);
 }
 
 
@@ -219,13 +219,13 @@ void bitboards_init() {
   Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
   Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, r_index);
-  init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, b_index);
+  init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, magic_index<ROOK>);
+  init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, magic_index<BISHOP>);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
-      PseudoAttacks[BISHOP][s] = bishop_attacks_bb(s, 0);
-      PseudoAttacks[ROOK][s]   = rook_attacks_bb(s, 0);
+      PseudoAttacks[BISHOP][s] = attacks_bb<BISHOP>(s, 0);
+      PseudoAttacks[ROOK][s]   = attacks_bb<ROOK>(s, 0);
       PseudoAttacks[QUEEN][s]  = PseudoAttacks[BISHOP][s] | PseudoAttacks[ROOK][s];
   }
 
@@ -290,7 +290,7 @@ namespace {
   // use the so called "fancy" approach.
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
-                   Bitboard masks[], unsigned shifts[], Square deltas[], Fn get_index) {
+                   Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
     int MagicBoosters[][8] = { { 3191, 2184, 1310, 3618, 2091, 1308, 2452, 3996 },
                                { 1059, 3608,  605, 3234, 3326,   38, 2029, 3043 } };
@@ -342,7 +342,7 @@ namespace {
             // effect of verifying the magic.
             for (i = 0; i < size; i++)
             {
-                Bitboard& attack = attacks[s][get_index(s, occupancy[i])];
+                Bitboard& attack = attacks[s][index(s, occupancy[i])];
 
                 if (attack && attack != reference[i])
                     break;

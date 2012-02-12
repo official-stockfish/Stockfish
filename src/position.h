@@ -345,10 +345,9 @@ inline Square Position::castle_rook_square(CastleRight f) const {
 
 template<PieceType Pt>
 inline Bitboard Position::attacks_from(Square s) const {
-  return  Pt == BISHOP ? bishop_attacks_bb(s, occupied_squares())
-        : Pt == ROOK   ? rook_attacks_bb(s, occupied_squares())
+  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, occupied_squares())
         : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
-                       : StepAttacksBB[Pt][s];
+        : StepAttacksBB[Pt][s];
 }
 
 template<>

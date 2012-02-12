@@ -487,9 +487,9 @@ namespace {
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
-            b = bishop_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
+            b = attacks_bb<BISHOP>(s, pos.occupied_squares() & ~pos.pieces(QUEEN, Us));
         else if (Piece == ROOK)
-            b = rook_attacks_bb(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
+            b = attacks_bb<ROOK>(s, pos.occupied_squares() & ~pos.pieces(ROOK, QUEEN, Us));
         else
             assert(false);
 
