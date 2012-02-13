@@ -112,7 +112,7 @@ Square first_1(Bitboard b) {
 // Use type-punning
 union b_union {
 
-    Bitboard b;
+    Bitboard dummy;
     struct {
 #if defined (BIGENDIAN)
         uint32_t h;
@@ -121,27 +121,21 @@ union b_union {
         uint32_t l;
         uint32_t h;
 #endif
-    } dw;
+    } b;
 };
 
-Square pop_1st_bit(Bitboard* bb) {
+Square pop_1st_bit(Bitboard* b) {
 
-   b_union u;
-   Square ret;
+   const b_union u = *((b_union*)b);
 
-   u.b = *bb;
-
-   if (u.dw.l)
+   if (u.b.l)
    {
-       ret = Square(BSFTable[((u.dw.l ^ (u.dw.l - 1)) * 0x783A9B23) >> 26]);
-       u.dw.l &= (u.dw.l - 1);
-       *bb = u.b;
-       return ret;
+       ((b_union*)b)->b.l = u.b.l & (u.b.l - 1);
+       return Square(BSFTable[((u.b.l ^ (u.b.l - 1)) * 0x783A9B23) >> 26]);
    }
-   ret = Square(BSFTable[((~(u.dw.h ^ (u.dw.h - 1))) * 0x783A9B23) >> 26]);
-   u.dw.h &= (u.dw.h - 1);
-   *bb = u.b;
-   return ret;
+
+   ((b_union*)b)->b.h = u.b.h & (u.b.h - 1);
+   return Square(BSFTable[((~(u.b.h ^ (u.b.h - 1))) * 0x783A9B23) >> 26]);
 }
 
 #endif // !defined(USE_BSFQ)
