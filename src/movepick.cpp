@@ -174,13 +174,11 @@ void MovePicker::score_captures() {
 void MovePicker::score_noncaptures() {
 
   Move m;
-  Square from;
 
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
-      from = from_sq(m);
-      cur->score = H.value(pos.piece_on(from), to_sq(m));
+      cur->score = H.value(pos.piece_moved(m), to_sq(m));
   }
 }
 

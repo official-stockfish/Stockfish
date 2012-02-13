@@ -1343,7 +1343,7 @@ split_point_start: // At split points actual search starts from here
     them = ~pos.side_to_move();
     ksq = pos.king_square(them);
     kingAtt = pos.attacks_from<KING>(ksq);
-    pc = pos.piece_on(from);
+    pc = pos.piece_moved(move);
 
     occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL << ksq);
     oldAtt = pos.attacks_from(pc, from, occ);

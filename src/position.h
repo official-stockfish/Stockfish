@@ -191,10 +191,7 @@ public:
   bool both_color_bishops(Color c) const;
   bool has_pawn_on_7th(Color c) const;
   bool is_chess960() const;
-
-  // Current thread ID searching on the position
   int thread() const;
-
   int64_t nodes_searched() const;
   void set_nodes_searched(int64_t n);
 

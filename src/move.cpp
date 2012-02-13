@@ -84,7 +84,7 @@ const string move_to_san(Position& pos, Move m) {
   bool ambiguousMove, ambiguousFile, ambiguousRank;
   Square sq, from = from_sq(m);
   Square to = to_sq(m);
-  PieceType pt = type_of(pos.piece_on(from));
+  PieceType pt = type_of(pos.piece_moved(m));
   string san;
 
   if (is_castle(m))

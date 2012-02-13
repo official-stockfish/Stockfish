@@ -420,7 +420,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   Bitboard occ, xray;
   Square from = from_sq(m);
   Square to = to_sq(m);
-  Piece piece = piece_on(from);
+  Piece piece = piece_moved(m);
 
   assert(!square_is_empty(from));
 
@@ -452,7 +452,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   Color us = sideToMove;
   Square from = from_sq(m);
 
-  assert(color_of(piece_on(from)) == us);
+  assert(color_of(piece_moved(m)) == us);
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 
   // En passant captures are a tricky special case. Because they are rather
@@ -467,7 +467,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       Bitboard b = occupied_squares();
 
       assert(to == ep_square());
-      assert(piece_on(from) == make_piece(us, PAWN));
+      assert(piece_moved(m) == make_piece(us, PAWN));
       assert(piece_on(capsq) == make_piece(them, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
@@ -517,7 +517,7 @@ bool Position::is_pseudo_legal(const Move m) const {
   Color them = ~sideToMove;
   Square from = from_sq(m);
   Square to = to_sq(m);
-  Piece pc = piece_on(from);
+  Piece pc = piece_moved(m);
 
   // Use a slower but simpler function for uncommon cases
   if (is_special(m))
@@ -608,11 +608,11 @@ bool Position::is_pseudo_legal(const Move m) const {
   {
       // In case of king moves under check we have to remove king so to catch
       // as invalid moves like b1a1 when opposite queen is on c1.
-      if (type_of(piece_on(from)) == KING)
+      if (type_of(pc) == KING)
       {
           Bitboard b = occupied_squares();
           b ^= from;
-          if (attackers_to(to_sq(m), b) & pieces(~us))
+          if (attackers_to(to, b) & pieces(~us))
               return false;
       }
       else
@@ -625,7 +625,7 @@ bool Position::is_pseudo_legal(const Move m) const {
 
           // Our move must be a blocking evasion or a capture of the checking piece
           target = squares_between(checksq, king_square(us)) | checkers();
-          if (!(target & to_sq(m)))
+          if (!(target & to))
               return false;
       }
   }
@@ -1224,13 +1224,10 @@ int Position::see_sign(Move m) const {
 
   assert(is_ok(m));
 
-  Square from = from_sq(m);
-  Square to = to_sq(m);
-
   // Early return if SEE cannot be negative because captured piece value
   // is not less then capturing one. Note that king moves always return
   // here because king midgame value is set to 0.
-  if (PieceValueMidgame[piece_on(to)] >= PieceValueMidgame[piece_on(from)])
+  if (PieceValueMidgame[piece_on(to_sq(m))] >= PieceValueMidgame[piece_moved(m)])
       return 1;
 
   return see(m);
