@@ -1767,14 +1767,14 @@ void RootMove::extract_pv_from_tt(Position& pos) {
   pos.do_move(m, *st++);
 
   while (   (tte = TT.probe(pos.key())) != NULL
-         && tte->move() != MOVE_NONE
-         && pos.is_pseudo_legal(tte->move())
-         && pos.pl_move_is_legal(tte->move(), pos.pinned_pieces())
+         && (m = tte->move()) != MOVE_NONE // Local copy, TT entry could change
+         && pos.is_pseudo_legal(m)
+         && pos.pl_move_is_legal(m, pos.pinned_pieces())
          && ply < MAX_PLY
          && (!pos.is_draw<false>() || ply < 2))
   {
-      pv.push_back(tte->move());
-      pos.do_move(tte->move(), *st++);
+      pv.push_back(m);
+      pos.do_move(m, *st++);
       ply++;
   }
   pv.push_back(MOVE_NONE);
