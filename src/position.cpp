@@ -843,9 +843,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   if (    st->castleRights != CASTLES_NONE
       && (castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
   {
-      k ^= zobCastle[st->castleRights];
-      st->castleRights &= castleRightsMask[from] & castleRightsMask[to];
-      k ^= zobCastle[st->castleRights];
+      int cr = castleRightsMask[from] & castleRightsMask[to];
+      k ^= zobCastle[st->castleRights & (cr ^ ALL_CASTLES)];
+      st->castleRights &= cr;
   }
 
   // Prefetch TT access as soon as we know key is updated
@@ -1151,9 +1151,9 @@ void Position::do_castle_move(Move m) {
       }
 
       // Update castling rights
-      st->key ^= zobCastle[st->castleRights];
-      st->castleRights &= castleRightsMask[kfrom];
-      st->key ^= zobCastle[st->castleRights];
+      int cr = castleRightsMask[kfrom];
+      st->key ^= zobCastle[st->castleRights & (cr ^ ALL_CASTLES)];
+      st->castleRights &= cr;
 
       // Update checkers BB
       st->checkersBB = attackers_to(king_square(~us)) & pieces(us);
@@ -1545,8 +1545,15 @@ void Position::init() {
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       zobEp[s] = rk.rand<Key>();
 
-  for (int i = 0; i < 16; i++)
-      zobCastle[i] = rk.rand<Key>();
+  for (int cr = CASTLES_NONE; cr <= ALL_CASTLES; cr++)
+  {
+      Bitboard b = cr;
+      while (b)
+      {
+          Key k = zobCastle[1 << pop_1st_bit(&b)];
+          zobCastle[cr] ^= k ? k : rk.rand<Key>();
+      }
+  }
 
   zobSideToMove = rk.rand<Key>();
   zobExclusion  = rk.rand<Key>();
