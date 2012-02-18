@@ -99,7 +99,7 @@ typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
 const int MAX_MOVES      = 256;
-const int MAX_PLY        = 100;
+const int MAX_PLY        = 256;
 const int MAX_PLY_PLUS_2 = MAX_PLY + 2;
 
 const Bitboard FileABB = 0x0101010101010101ULL;
