@@ -141,7 +141,7 @@ void Thread::wait_for_stop_or_ponderhit() {
 
 bool Thread::cutoff_occurred() const {
 
-  for (SplitPoint* sp = splitPoint; sp; sp = sp->parent)
+  for (SplitPoint* sp = curSplitPoint; sp; sp = sp->parent)
       if (sp->cutoff)
           return true;
 
@@ -163,11 +163,11 @@ bool Thread::is_available_to(int master) const {
 
   // Make a local copy to be sure doesn't become zero under our feet while
   // testing next condition and so leading to an out of bound access.
-  int sp_count = activeSplitPoints;
+  int spCnt = splitPointsCnt;
 
   // No active split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !sp_count || (splitPoints[sp_count - 1].slavesMask & (1ULL << master));
+  return !spCnt || (splitPoints[spCnt - 1].slavesMask & (1ULL << master));
 }
 
 
@@ -224,7 +224,7 @@ void ThreadsManager::init() {
       lock_init(threads[i].sleepLock);
       cond_init(threads[i].sleepCond);
 
-      for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
+      for (int j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
           lock_init(threads[i].splitPoints[j].lock);
   }
 
@@ -264,7 +264,7 @@ void ThreadsManager::exit() {
       lock_destroy(threads[i].sleepLock);
       cond_destroy(threads[i].sleepCond);
 
-      for (int j = 0; j < MAX_ACTIVE_SPLIT_POINTS; j++)
+      for (int j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
           lock_destroy(threads[i].splitPoints[j].lock);
   }
 
@@ -313,13 +313,13 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   int master = pos.thread();
   Thread& masterThread = threads[master];
 
-  if (masterThread.activeSplitPoints >= MAX_ACTIVE_SPLIT_POINTS)
+  if (masterThread.splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
 
   // Pick the next available split point from the split point stack
-  SplitPoint* sp = &masterThread.splitPoints[masterThread.activeSplitPoints];
+  SplitPoint* sp = &masterThread.splitPoints[masterThread.splitPointsCnt];
 
-  sp->parent = masterThread.splitPoint;
+  sp->parent = masterThread.curSplitPoint;
   sp->master = master;
   sp->cutoff = false;
   sp->slavesMask = 1ULL << master;
@@ -349,7 +349,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
       if (threads[i].is_available_to(master))
       {
           sp->slavesMask |= 1ULL << i;
-          threads[i].splitPoint = sp;
+          threads[i].curSplitPoint = sp;
           threads[i].is_searching = true; // Slave leaves idle_loop()
 
           if (useSleepingThreads)
@@ -359,8 +359,8 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
               break;
       }
 
-  masterThread.splitPoint = sp;
-  masterThread.activeSplitPoints++;
+  masterThread.curSplitPoint = sp;
+  masterThread.splitPointsCnt++;
 
   lock_release(splitLock);
   lock_release(sp->lock);
@@ -380,8 +380,8 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   lock_grab(splitLock);
 
   masterThread.is_searching = true;
-  masterThread.activeSplitPoints--;
-  masterThread.splitPoint = sp->parent;
+  masterThread.splitPointsCnt--;
+  masterThread.curSplitPoint = sp->parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
 
   lock_release(splitLock);

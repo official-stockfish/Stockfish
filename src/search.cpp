@@ -1865,7 +1865,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           lock_grab(Threads.splitLock);
 
           assert(is_searching);
-          SplitPoint* sp = splitPoint;
+          SplitPoint* sp = curSplitPoint;
 
           lock_release(Threads.splitLock);
 
