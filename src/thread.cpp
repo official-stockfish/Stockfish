@@ -317,7 +317,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
       return bestValue;
 
   // Pick the next available split point from the split point stack
-  SplitPoint* sp = &masterThread.splitPoints[masterThread.splitPointsCnt];
+  SplitPoint* sp = &masterThread.splitPoints[masterThread.splitPointsCnt++];
 
   sp->parent = masterThread.curSplitPoint;
   sp->master = master;
@@ -337,6 +337,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
 
   assert(masterThread.is_searching);
 
+  masterThread.curSplitPoint = sp;
   int slavesCnt = 0;
 
   // Try to allocate available threads and ask them to start searching setting
@@ -359,9 +360,6 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
               break;
       }
 
-  masterThread.curSplitPoint = sp;
-  masterThread.splitPointsCnt++;
-
   lock_release(splitLock);
   lock_release(sp->lock);
 
@@ -371,10 +369,16 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // the thread will return from the idle loop when all slaves have finished
   // their work at this split point.
   if (slavesCnt || Fake)
+  {
       masterThread.idle_loop(sp);
 
+      // In helpful master concept a master can help only a sub-tree of its split
+      // point, and because here is all finished is not possible master is booked.
+      assert(!masterThread.is_searching);
+  }
+
   // We have returned from the idle loop, which means that all threads are
-  // finished. Note that setting is_searching and decreasing activeSplitPoints is
+  // finished. Note that setting is_searching and decreasing splitPointsCnt is
   // done under lock protection to avoid a race with Thread::is_available_to().
   lock_grab(sp->lock); // To protect sp->nodes
   lock_grab(splitLock);
