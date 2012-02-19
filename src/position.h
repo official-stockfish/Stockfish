@@ -108,7 +108,6 @@ public:
   Color side_to_move() const;
 
   // Bitboard representation of the position
-  Bitboard empty_squares() const;
   Bitboard occupied_squares() const;
   Bitboard pieces(Color c) const;
   Bitboard pieces(PieceType pt) const;
@@ -291,10 +290,6 @@ inline Bitboard Position::occupied_squares() const {
   return occupied;
 }
 
-inline Bitboard Position::empty_squares() const {
-  return ~occupied;
-}
-
 inline Bitboard Position::pieces(Color c) const {
   return byColorBB[c];
 }
@@ -356,11 +351,11 @@ inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
 }
 
 inline Bitboard Position::attacks_from(Piece p, Square s) const {
-  return attacks_from(p, s, occupied_squares());
+  return attacks_from(p, s, occupied);
 }
 
 inline Bitboard Position::attackers_to(Square s) const {
-  return attackers_to(s, occupied_squares());
+  return attackers_to(s, occupied);
 }
 
 inline Bitboard Position::checkers() const {
