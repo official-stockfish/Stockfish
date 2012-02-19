@@ -257,7 +257,7 @@ private:
   // Static variables
   static Score pieceSquareTable[16][64]; // [piece][square]
   static Key zobrist[2][8][64];          // [color][pieceType][square]/[piece count]
-  static Key zobEp[64];                  // [square]
+  static Key zobEp[8];                   // [file]
   static Key zobCastle[16];              // [castleRight]
   static Key zobSideToMove;
   static Key zobExclusion;
