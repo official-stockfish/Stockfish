@@ -1677,7 +1677,7 @@ bool Position::pos_is_ok(int* failedStep) const {
   if (debugBitboards)
   {
       // The intersection of the white and black pieces must be empty
-      if (!(pieces(WHITE) & pieces(BLACK)))
+      if (pieces(WHITE) & pieces(BLACK))
           return false;
 
       // The union of the white and black pieces must be equal to all
