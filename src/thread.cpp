@@ -299,8 +299,8 @@ bool ThreadsManager::available_slave_exists(int master) const {
 
 template <bool Fake>
 Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
-                            Value bestValue, Depth depth, Move threatMove,
-                            int moveCount, MovePicker* mp, int nodeType) {
+                            Value bestValue, Move* bestMove, Depth depth,
+                            Move threatMove, int moveCount, MovePicker *mp, int nodeType) {
   assert(pos.pos_is_ok());
   assert(bestValue > -VALUE_INFINITE);
   assert(bestValue <= alpha);
@@ -324,6 +324,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->cutoff = false;
   sp->slavesMask = 1ULL << master;
   sp->depth = depth;
+  sp->bestMove = *bestMove;
   sp->threatMove = threatMove;
   sp->alpha = alpha;
   sp->beta = beta;
@@ -387,6 +388,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   masterThread.splitPointsCnt--;
   masterThread.curSplitPoint = sp->parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
+  *bestMove = sp->bestMove;
 
   lock_release(splitLock);
   lock_release(sp->lock);
@@ -395,8 +397,8 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
 }
 
 // Explicit template instantiations
-template Value ThreadsManager::split<false>(Position&, Stack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
-template Value ThreadsManager::split<true>(Position&, Stack*, Value, Value, Value, Depth, Move, int, MovePicker*, int);
+template Value ThreadsManager::split<false>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker*, int);
+template Value ThreadsManager::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker*, int);
 
 
 // ThreadsManager::set_timer() is used to set the timer to trigger after msec

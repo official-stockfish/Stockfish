@@ -39,7 +39,6 @@ struct Stack {
   int ply;
   Move currentMove;
   Move excludedMove;
-  Move bestMove;
   Move killers[2];
   Depth reduction;
   Value eval;
