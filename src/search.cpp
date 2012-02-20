@@ -130,7 +130,7 @@ namespace {
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
   void id_loop(Position& pos);
-  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bValue);
+  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
@@ -1279,7 +1279,7 @@ split_point_start: // At split points actual search starts from here
           &&  move != ttMove
           && !pos.is_capture_or_promotion(move)
           &&  ss->eval + PawnValueMidgame / 4 < beta
-          && !check_is_dangerous(pos, move, futilityBase, beta, &bestValue))
+          && !check_is_dangerous(pos, move, futilityBase, beta))
           continue;
 
       // Check for legality only before to do the move
@@ -1330,13 +1330,12 @@ split_point_start: // At split points actual search starts from here
   // bestValue is updated only when returning false because in that case move
   // will be pruned.
 
-  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta, Value *bestValue)
+  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta)
   {
     Bitboard b, occ, oldAtt, newAtt, kingAtt;
-    Square from, to, ksq, victimSq;
+    Square from, to, ksq;
     Piece pc;
     Color them;
-    Value futilityValue, bv = *bestValue;
 
     from = from_sq(move);
     to = to_sq(move);
@@ -1361,23 +1360,13 @@ split_point_start: // At split points actual search starts from here
 
     // Rule 3. Creating new double threats with checks
     b = pos.pieces(them) & newAtt & ~oldAtt & ~(1ULL << ksq);
-
     while (b)
     {
-        victimSq = pop_1st_bit(&b);
-        futilityValue = futilityBase + PieceValueEndgame[pos.piece_on(victimSq)];
-
         // Note that here we generate illegal "double move"!
-        if (   futilityValue >= beta
-            && pos.see_sign(make_move(from, victimSq)) >= 0)
+        if (futilityBase + PieceValueEndgame[pos.piece_on(pop_1st_bit(&b))] >= beta)
             return true;
-
-        if (futilityValue > bv)
-            bv = futilityValue;
     }
 
-    // Update bestValue only if check is not dangerous (because we will prune the move)
-    *bestValue = bv;
     return false;
   }
 
