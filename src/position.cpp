@@ -247,8 +247,8 @@ void Position::set_castle_right(Color c, Square rsq) {
   int f = (rsq < king_square(c) ? WHITE_OOO : WHITE_OO) << c;
 
   st->castleRights |= f;
-  castleRightsMask[king_square(c)] ^= f;
-  castleRightsMask[rsq] ^= f;
+  castleRightsMask[king_square(c)] |= f;
+  castleRightsMask[rsq] |= f;
   castleRookSquare[f] = rsq;
 }
 
@@ -840,12 +840,11 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   }
 
   // Update castle rights if needed
-  if (    st->castleRights != CASTLES_NONE
-      && (castleRightsMask[from] & castleRightsMask[to]) != ALL_CASTLES)
+  if (st->castleRights && (castleRightsMask[from] | castleRightsMask[to]))
   {
-      int cr = castleRightsMask[from] & castleRightsMask[to];
-      k ^= zobCastle[st->castleRights & (cr ^ ALL_CASTLES)];
-      st->castleRights &= cr;
+      int cr = castleRightsMask[from] | castleRightsMask[to];
+      k ^= zobCastle[st->castleRights & cr];
+      st->castleRights &= ~cr;
   }
 
   // Prefetch TT access as soon as we know key is updated
@@ -1151,9 +1150,8 @@ void Position::do_castle_move(Move m) {
       }
 
       // Update castling rights
-      int cr = castleRightsMask[kfrom];
-      st->key ^= zobCastle[st->castleRights & (cr ^ ALL_CASTLES)];
-      st->castleRights &= cr;
+      st->key ^= zobCastle[st->castleRights & castleRightsMask[kfrom]];
+      st->castleRights &= ~castleRightsMask[kfrom];
 
       // Update checkers BB
       st->checkersBB = attackers_to(king_square(~us)) & pieces(us);
@@ -1337,27 +1335,16 @@ int Position::see(Move m) const {
 
 void Position::clear() {
 
+  memset(this, 0, sizeof(Position));
+  startState.epSquare = SQ_NONE;
   st = &startState;
-  memset(st, 0, sizeof(StateInfo));
-  st->epSquare = SQ_NONE;
-
-  memset(byColorBB,  0, sizeof(Bitboard) * 2);
-  memset(byTypeBB,   0, sizeof(Bitboard) * 8);
-  memset(pieceCount, 0, sizeof(int) * 2 * 8);
-  memset(index,      0, sizeof(int) * 64);
 
   for (int i = 0; i < 8; i++)
       for (int j = 0; j < 16; j++)
           pieceList[0][i][j] = pieceList[1][i][j] = SQ_NONE;
 
   for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
-  {
       board[sq] = NO_PIECE;
-      castleRightsMask[sq] = ALL_CASTLES;
-  }
-  sideToMove = WHITE;
-  nodes = 0;
-  occupied = 0;
 }
 
 
@@ -1776,8 +1763,8 @@ bool Position::pos_is_ok(int* failedStep) const {
 
           Piece rook = (f & (WHITE_OO | WHITE_OOO) ? W_ROOK : B_ROOK);
 
-          if (   castleRightsMask[castleRookSquare[f]] != (ALL_CASTLES ^ f)
-              || piece_on(castleRookSquare[f]) != rook)
+          if (   piece_on(castleRookSquare[f]) != rook
+              || castleRightsMask[castleRookSquare[f]] != f)
               return false;
       }
 
