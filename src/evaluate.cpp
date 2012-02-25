@@ -534,7 +534,7 @@ namespace {
             assert(b);
 
             if (single_bit(b) && (b & pos.pieces(Them)))
-                score += ThreatBonus[Piece][type_of(pos.piece_on(first_1(b)))] / 2;
+                score += ThreatBonus[Piece][type_of(pos.piece_on(first_1(b)))];
         }
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
