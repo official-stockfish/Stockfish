@@ -493,10 +493,8 @@ namespace {
         else
             assert(false);
 
-        // Update attack info
         ei.attackedBy[Us][Piece] |= b;
 
-        // King attacks
         if (b & ei.kingRing[Them])
         {
             ei.kingAttackersCount[Us]++;
@@ -506,11 +504,22 @@ namespace {
                 ei.kingAdjacentZoneAttacksCount[Us] += popcount<Max15>(bb);
         }
 
-        // Mobility
         mob = (Piece != QUEEN ? popcount<Max15>(b & mobilityArea)
                               : popcount<Full >(b & mobilityArea));
 
         mobility += MobilityBonus[Piece][mob];
+
+        // Add a bonus if a slider is pinning an enemy piece
+        if (   (Piece == BISHOP || Piece == ROOK || Piece == QUEEN)
+            && (PseudoAttacks[Piece][pos.king_square(Them)] & s))
+        {
+            b = BetweenBB[s][pos.king_square(Them)] & pos.occupied_squares();
+
+            assert(b);
+
+            if (!(b & (b - 1)) && (b & pos.pieces(Them)))
+                score += ThreatBonus[Piece][type_of(pos.piece_on(first_1(b)))] / 2;
+        }
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
