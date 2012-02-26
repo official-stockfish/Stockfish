@@ -57,11 +57,19 @@ inline Bitboard operator&(Bitboard b, Square s) {
 }
 
 inline Bitboard& operator|=(Bitboard& b, Square s) {
-  return b |= SquareBB[s], b;
+  return b |= SquareBB[s];
 }
 
 inline Bitboard& operator^=(Bitboard& b, Square s) {
-  return b ^= SquareBB[s], b;
+  return b ^= SquareBB[s];
+}
+
+inline Bitboard operator|(Bitboard b, Square s) {
+  return b | SquareBB[s];
+}
+
+inline Bitboard operator^(Bitboard b, Square s) {
+  return b ^ SquareBB[s];
 }
 
 

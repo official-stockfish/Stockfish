@@ -71,13 +71,9 @@ namespace {
     // Because we generate only legal castling moves we need to verify that
     // when moving the castling rook we do not discover some hidden checker.
     // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (pos.is_chess960())
-    {
-        Bitboard occ = pos.occupied_squares();
-        occ ^= rfrom;
-        if (pos.attackers_to(kto, occ) & enemies)
+    if (    pos.is_chess960()
+        && (pos.attackers_to(kto, pos.occupied_squares() ^ rfrom) & enemies))
             return mlist;
-    }
 
     (*mlist++).move = make_castle(kfrom, rfrom);
 

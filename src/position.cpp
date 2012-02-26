@@ -425,9 +425,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   assert(!square_is_empty(from));
 
   // Update occupancy as if the piece is moving
-  occ = occupied_squares();
-  occ ^= from;
-  occ ^= to;
+  occ = occupied_squares() ^ from ^ to;
 
   // The piece moved in 'to' attacks the square 's' ?
   if (attacks_from(piece, to, occ) & s)
@@ -464,16 +462,12 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       Square to = to_sq(m);
       Square capsq = to + pawn_push(them);
       Square ksq = king_square(us);
-      Bitboard b = occupied_squares();
+      Bitboard b = (occupied_squares() ^ from ^ capsq) | to;
 
       assert(to == ep_square());
       assert(piece_moved(m) == make_piece(us, PAWN));
       assert(piece_on(capsq) == make_piece(them, PAWN));
       assert(piece_on(to) == NO_PIECE);
-
-      b ^= from;
-      b ^= capsq;
-      b |= to;
 
       return   !(attacks_bb<ROOK>(ksq, b) & pieces(ROOK, QUEEN, them))
             && !(attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, them));
@@ -606,28 +600,22 @@ bool Position::is_pseudo_legal(const Move m) const {
   // same kind of moves are filtered out here.
   if (in_check())
   {
-      // In case of king moves under check we have to remove king so to catch
-      // as invalid moves like b1a1 when opposite queen is on c1.
-      if (type_of(pc) == KING)
+      if (type_of(pc) != KING)
       {
-          Bitboard b = occupied_squares();
-          b ^= from;
-          if (attackers_to(to, b) & pieces(~us))
-              return false;
-      }
-      else
-      {
-          Bitboard target = checkers();
-          Square checksq = pop_1st_bit(&target);
+          Bitboard b = checkers();
+          Square checksq = pop_1st_bit(&b);
 
-          if (target) // double check ? In this case a king move is required
+          if (b) // double check ? In this case a king move is required
               return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          target = squares_between(checksq, king_square(us)) | checkers();
-          if (!(target & to))
+          if (!((squares_between(checksq, king_square(us)) | checkers()) & to))
               return false;
       }
+      // In case of king moves under check we have to remove king so to catch
+      // as invalid moves like b1a1 when opposite queen is on c1.
+      else if (attackers_to(to, occupied_squares() ^ from) & pieces(~us))
+          return false;
   }
 
   return true;
@@ -664,15 +652,11 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       return false;
 
   Color us = sideToMove;
-  Bitboard b = occupied_squares();
   Square ksq = king_square(~us);
 
   // Promotion with check ?
   if (is_promotion(m))
-  {
-      b ^= from;
-      return attacks_from(Piece(promotion_piece_type(m)), to, b) & ksq;
-  }
+      return attacks_from(Piece(promotion_piece_type(m)), to, occupied_squares() ^ from) & ksq;
 
   // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
@@ -681,32 +665,21 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   if (is_enpassant(m))
   {
       Square capsq = make_square(file_of(to), rank_of(from));
-      b ^= from;
-      b ^= capsq;
-      b |= to;
-      return  (attacks_bb<ROOK>(ksq, b) & pieces(ROOK, QUEEN, us))
-            ||(attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, us));
+      Bitboard b = (occupied_squares() ^ from ^ capsq) | to;
+
+      return  (attacks_bb<  ROOK>(ksq, b) & pieces(  ROOK, QUEEN, us))
+            | (attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, us));
   }
 
   // Castling with check ?
   if (is_castle(m))
   {
-      Square kfrom, kto, rfrom, rto;
-      kfrom = from;
-      rfrom = to;
+      Square kfrom = from;
+      Square rfrom = to; // 'King captures the rook' notation
+      Square kto = relative_square(us, rfrom > kfrom ? SQ_G1 : SQ_C1);
+      Square rto = relative_square(us, rfrom > kfrom ? SQ_F1 : SQ_D1);
+      Bitboard b = (occupied_squares() ^ kfrom ^ rfrom) | rto | kto;
 
-      if (rfrom > kfrom)
-      {
-          kto = relative_square(us, SQ_G1);
-          rto = relative_square(us, SQ_F1);
-      } else {
-          kto = relative_square(us, SQ_C1);
-          rto = relative_square(us, SQ_D1);
-      }
-      b ^= kfrom;
-      b ^= rfrom;
-      b |= rto;
-      b |= kto;
       return attacks_bb<ROOK>(rto, b) & ksq;
   }
 
@@ -868,7 +841,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   if (pt == PAWN)
   {
       // Set en-passant square, only if moved pawn can be captured
-      if (   (to ^ from) == 16
+      if (   (int(to) ^ int(from)) == 16
           && (attacks_from<PAWN>(from + pawn_push(us), us) & pieces(PAWN, them)))
       {
           st->epSquare = Square((from + to) / 2);
