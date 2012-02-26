@@ -167,7 +167,7 @@ void MovePicker::score_captures() {
                   - type_of(pos.piece_moved(m));
 
       if (is_promotion(m))
-          cur->score += PieceValueMidgame[promotion_piece_type(m)];
+          cur->score += PieceValueMidgame[promotion_type(m)];
   }
 }
 

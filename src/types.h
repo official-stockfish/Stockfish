@@ -452,7 +452,7 @@ inline int is_castle(Move m) {
   return (m & (3 << 14)) == (3 << 14);
 }
 
-inline PieceType promotion_piece_type(Move m) {
+inline PieceType promotion_type(Move m) {
   return PieceType(((m >> 12) & 3) + 2);
 }
 

@@ -518,7 +518,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       return move_is_legal(m);
 
   // Is not a promotion, so promotion piece must be empty
-  if (promotion_piece_type(m) - 2 != NO_PIECE_TYPE)
+  if (promotion_type(m) - 2 != NO_PIECE_TYPE)
       return false;
 
   // If the from square is not occupied by a piece belonging to the side to
@@ -656,7 +656,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   // Promotion with check ?
   if (is_promotion(m))
-      return attacks_from(Piece(promotion_piece_type(m)), to, occupied_squares() ^ from) & ksq;
+      return attacks_from(Piece(promotion_type(m)), to, occupied_squares() ^ from) & ksq;
 
   // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
@@ -850,7 +850,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
       if (is_promotion(m))
       {
-          PieceType promotion = promotion_piece_type(m);
+          PieceType promotion = promotion_type(m);
 
           assert(relative_rank(us, to) == RANK_8);
           assert(promotion >= KNIGHT && promotion <= QUEEN);
@@ -965,7 +965,7 @@ void Position::undo_move(Move m) {
 
   if (is_promotion(m))
   {
-      PieceType promotion = promotion_piece_type(m);
+      PieceType promotion = promotion_type(m);
 
       assert(promotion == pt);
       assert(relative_rank(us, to) == RANK_8);
