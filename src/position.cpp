@@ -242,14 +242,27 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
 /// Position::set_castle_right() is an helper function used to set castling
 /// rights given the corresponding color and the rook starting square.
 
-void Position::set_castle_right(Color c, Square rsq) {
+void Position::set_castle_right(Color c, Square rfrom) {
 
-  int f = (rsq < king_square(c) ? WHITE_OOO : WHITE_OO) << c;
+  Square kfrom = king_square(c);
+  bool kingSide = kfrom < rfrom;
+  int cr = (kingSide ? WHITE_OO : WHITE_OOO) << c;
 
-  st->castleRights |= f;
-  castleRightsMask[king_square(c)] |= f;
-  castleRightsMask[rsq] |= f;
-  castleRookSquare[f] = rsq;
+  st->castleRights |= cr;
+  castleRightsMask[kfrom] |= cr;
+  castleRightsMask[rfrom] |= cr;
+  castleRookSquare[cr] = rfrom;
+
+  Square kto = relative_square(c, kingSide ? SQ_G1 : SQ_C1);
+  Square rto = relative_square(c, kingSide ? SQ_F1 : SQ_D1);
+
+  for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); s++)
+      if (s != kfrom && s != rfrom)
+          castlePath[cr] |= s;
+
+  for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); s++)
+      if (s != kfrom && s != rfrom)
+          castlePath[cr] |= s;
 }
 
 

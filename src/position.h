@@ -127,6 +127,7 @@ public:
   // Castling rights
   bool can_castle(CastleRight f) const;
   bool can_castle(Color c) const;
+  bool castle_impeded(CastleRight f) const;
   Square castle_rook_square(CastleRight f) const;
 
   // Bitboards for pinned pieces and discovered check candidates
@@ -207,7 +208,7 @@ private:
   // Initialization helper functions (used while setting up a position)
   void clear();
   void put_piece(Piece p, Square s);
-  void set_castle_right(Color c, Square rsq);
+  void set_castle_right(Color c, Square rfrom);
   bool move_is_legal(const Move m) const;
 
   // Helper template functions
@@ -242,6 +243,7 @@ private:
   // Other info
   int castleRightsMask[64];    // [square]
   Square castleRookSquare[16]; // [castleRight]
+  Bitboard castlePath[16];     // [castleRight]
   StateInfo startState;
   int64_t nodes;
   int startPosPly;
@@ -329,6 +331,10 @@ inline bool Position::can_castle(CastleRight f) const {
 
 inline bool Position::can_castle(Color c) const {
   return st->castleRights & ((WHITE_OO | WHITE_OOO) << c);
+}
+
+inline bool Position::castle_impeded(CastleRight f) const {
+  return occupied & castlePath[f];
 }
 
 inline Square Position::castle_rook_square(CastleRight f) const {

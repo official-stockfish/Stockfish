@@ -40,7 +40,7 @@ namespace {
     const CastleRight CR[] = { Side ? WHITE_OOO : WHITE_OO,
                                Side ? BLACK_OOO : BLACK_OO };
 
-    if (!pos.can_castle(CR[us]))
+    if (pos.castle_impeded(CR[us]) || !pos.can_castle(CR[us]))
         return mlist;
 
     // After castling, the rook and king final positions are the same in Chess960
@@ -48,24 +48,15 @@ namespace {
     Square kfrom = pos.king_square(us);
     Square rfrom = pos.castle_rook_square(CR[us]);
     Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
-    Square rto = relative_square(us, Side == KING_SIDE ? SQ_F1 : SQ_D1);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.in_check());
     assert(pos.piece_on(kfrom) == make_piece(us, KING));
     assert(pos.piece_on(rfrom) == make_piece(us, ROOK));
 
-    // Unimpeded rule: All the squares between the king's initial and final squares
-    // (including the final square), and all the squares between the rook's initial
-    // and final squares (including the final square), must be vacant except for
-    // the king and castling rook.
-    for (Square s = std::min(rfrom, rto), e = std::max(rfrom, rto); s <= e; s++)
-        if (s != kfrom && s != rfrom && !pos.square_is_empty(s))
-            return mlist;
-
     for (Square s = std::min(kfrom, kto), e = std::max(kfrom, kto); s <= e; s++)
-        if (  (s != kfrom && s != rfrom && !pos.square_is_empty(s))
-            ||(pos.attackers_to(s) & enemies))
+        if (    s != kfrom // We are not in check
+            && (pos.attackers_to(s) & enemies))
             return mlist;
 
     // Because we generate only legal castling moves we need to verify that
