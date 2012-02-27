@@ -1520,7 +1520,7 @@ void Position::init() {
       Bitboard b = cr;
       while (b)
       {
-          Key k = zobCastle[1 << pop_1st_bit(&b)];
+          Key k = zobCastle[1ULL << pop_1st_bit(&b)];
           zobCastle[cr] ^= k ? k : rk.rand<Key>();
       }
   }
