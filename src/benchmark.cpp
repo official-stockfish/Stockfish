@@ -61,7 +61,6 @@ void benchmark(int argc, char* argv[]) {
 
   vector<string> fens;
   Search::LimitsType limits;
-  int time;
   int64_t nodes = 0;
 
   // Assign default values to missing arguments
@@ -104,7 +103,7 @@ void benchmark(int argc, char* argv[]) {
   else
       fens.assign(Defaults, Defaults + 16);
 
-  time = system_time();
+  Time time = Time::current_time();
 
   for (size_t i = 0; i < fens.size(); i++)
   {
@@ -125,10 +124,10 @@ void benchmark(int argc, char* argv[]) {
       }
   }
 
-  time = system_time() - time;
+  int e = time.elapsed();
 
   cerr << "\n==========================="
-       << "\nTotal time (ms) : " << time
+       << "\nTotal time (ms) : " << e
        << "\nNodes searched  : " << nodes
-       << "\nNodes/second    : " << int(nodes / (time / 1000.0)) << endl;
+       << "\nNodes/second    : " << int(nodes / (e / 1000.0)) << endl;
 }

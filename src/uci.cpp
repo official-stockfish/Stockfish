@@ -243,19 +243,19 @@ namespace {
 
   void perft(Position& pos, istringstream& is) {
 
-    int depth, time;
+    int depth;
 
     if (!(is >> depth))
         return;
 
-    time = system_time();
+    Time time = Time::current_time();
 
     int64_t n = Search::perft(pos, depth * ONE_PLY);
 
-    time = system_time() - time;
+    int e = time.elapsed();
 
     std::cout << "\nNodes " << n
-              << "\nTime (ms) " << time
-              << "\nNodes/second " << int(n / (time / 1000.0)) << std::endl;
+              << "\nTime (ms) " << e
+              << "\nNodes/second " << int(n / (e / 1000.0)) << std::endl;
   }
 }

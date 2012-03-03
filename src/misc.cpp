@@ -19,15 +19,11 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 
-#define _CRT_SECURE_NO_DEPRECATE
 #define NOMINMAX // disable macros min() and max()
 #include <windows.h>
-#include <sys/timeb.h>
 
 #else
 
-#  include <sys/time.h>
-#  include <sys/types.h>
 #  include <unistd.h>
 #  if defined(__hpux)
 #     include <sys/pstat.h>
@@ -77,12 +73,12 @@ const string engine_info(bool to_uci) {
       s << "Stockfish " << Tag
         << setfill('0') << " " << year.substr(2)
         << setw(2) << (1 + months.find(month) / 4)
-        << setw(2) << day << cpu64 << popcnt;
+        << setw(2) << day;
   }
   else
-      s << "Stockfish " << Version << cpu64 << popcnt;
+      s << "Stockfish " << Version;
 
-  s << (to_uci ? "\nid author ": " by ")
+  s << cpu64 << popcnt << (to_uci ? "\nid author ": " by ")
     << "Tord Romstad, Marco Costalba and Joona Kiiski";
 
   return s.str();
@@ -106,22 +102,6 @@ void dbg_print() {
   if (means[0])
       cerr << "Total " << means[0] << " Mean "
            << (float)means[1] / means[0] << endl;
-}
-
-
-/// system_time() returns the current system time, measured in milliseconds
-
-int system_time() {
-
-#if defined(_WIN32) || defined(_WIN64)
-  struct _timeb t;
-  _ftime(&t);
-  return int(t.time * 1000 + t.millitm);
-#else
-  struct timeval t;
-  gettimeofday(&t, NULL);
-  return t.tv_sec * 1000 + t.tv_usec / 1000;
-#endif
 }
 
 
