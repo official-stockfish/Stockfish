@@ -62,16 +62,16 @@ typedef unsigned __int64 uint64_t;
 
 #if defined(_WIN32) || defined(_WIN64)
 #  include <sys/timeb.h>
-typedef _timeb my_time_t;
+typedef _timeb sys_time_t;
 
-inline void system_time(my_time_t* t) { _ftime(t); }
-inline uint64_t time_to_msec(const my_time_t& t) { return t.time * 1000 + t.millitm; }
+inline void system_time(sys_time_t* t) { _ftime(t); }
+inline uint64_t time_to_msec(const sys_time_t& t) { return t.time * 1000 + t.millitm; }
 #else
 #  include <sys/time.h>
-typedef timeval my_time_t;
+typedef timeval sys_time_t;
 
-inline void system_time(my_time_t* t) { gettimeofday(t, NULL); }
-inline uint64_t time_to_msec(const my_time_t& t) { return t.tv_sec * 1000 + t.tv_usec / 1000; }
+inline void system_time(sys_time_t* t) { gettimeofday(t, NULL); }
+inline uint64_t time_to_msec(const sys_time_t& t) { return t.tv_sec * 1000 + t.tv_usec / 1000; }
 #endif
 
 #if defined(_WIN64)

@@ -57,7 +57,7 @@ public:
   static Time current_time() { Time t; t.restart(); return t; }
 
 private:
-  my_time_t t;
+  sys_time_t t;
 };
 
 #endif // !defined(MISC_H_INCLUDED)

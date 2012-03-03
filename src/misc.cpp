@@ -138,19 +138,11 @@ void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
 #if defined(_WIN32) || defined(_WIN64)
   int tm = msec;
 #else
-  struct timeval t;
-  struct timespec abstime, *tm = &abstime;
+  timespec ts, *tm = &ts;
+  uint64_t ms = Time::current_time().msec() + msec;
 
-  gettimeofday(&t, NULL);
-
-  abstime.tv_sec = t.tv_sec + (msec / 1000);
-  abstime.tv_nsec = (t.tv_usec + (msec % 1000) * 1000) * 1000;
-
-  if (abstime.tv_nsec > 1000000000LL)
-  {
-      abstime.tv_sec += 1;
-      abstime.tv_nsec -= 1000000000LL;
-  }
+  ts.tv_sec = ms / 1000;
+  ts.tv_nsec = (ms % 1000) * 1000000LL;
 #endif
 
   cond_timedwait(sleepCond, sleepLock, tm);
