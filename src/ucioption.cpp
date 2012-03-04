@@ -22,11 +22,18 @@
 
 #include "misc.h"
 #include "thread.h"
+#include "tt.h"
 #include "ucioption.h"
 
 using std::string;
 
 OptionsMap Options; // Global object
+
+
+/// 'On change' actions, triggered by an option's change event
+static void on_threads(UCIOption&) { Threads.read_uci_options(); }
+static void on_hash_size(UCIOption& o) { TT.set_size(o); }
+static void on_clear_hash(UCIOption& o) { TT.clear(); o = false; } // UCI button
 
 
 /// Our case insensitive less() function as required by UCI protocol
@@ -58,12 +65,12 @@ OptionsMap::OptionsMap() {
   o["Space"]                       = UCIOption(100, 0, 200);
   o["Aggressiveness"]              = UCIOption(100, 0, 200);
   o["Cowardice"]                   = UCIOption(100, 0, 200);
-  o["Min Split Depth"]             = UCIOption(msd, 4, 7);
-  o["Max Threads per Split Point"] = UCIOption(5, 4, 8);
+  o["Min Split Depth"]             = UCIOption(msd, 4, 7, on_threads);
+  o["Max Threads per Split Point"] = UCIOption(5, 4, 8, on_threads);
   o["Threads"]                     = UCIOption(cpus, 1, MAX_THREADS);
-  o["Use Sleeping Threads"]        = UCIOption(true);
-  o["Hash"]                        = UCIOption(32, 4, 8192);
-  o["Clear Hash"]                  = UCIOption(false, "button");
+  o["Use Sleeping Threads"]        = UCIOption(true, on_threads);
+  o["Hash"]                        = UCIOption(32, 4, 8192, on_hash_size);
+  o["Clear Hash"]                  = UCIOption(false, on_clear_hash);
   o["Ponder"]                      = UCIOption(true);
   o["OwnBook"]                     = UCIOption(true);
   o["MultiPV"]                     = UCIOption(1, 1, 500);
@@ -103,13 +110,13 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
 /// UCIOption class c'tors
 
-UCIOption::UCIOption(const char* v) : type("string"), min(0), max(0), idx(Options.size())
+UCIOption::UCIOption(const char* v, Fn* f) : type("string"), min(0), max(0), idx(Options.size()), on_change_action(f)
 { defaultValue = currentValue = v; }
 
-UCIOption::UCIOption(bool v, string t) : type(t), min(0), max(0), idx(Options.size())
+UCIOption::UCIOption(bool v, Fn* f) : type("check"), min(0), max(0), idx(Options.size()), on_change_action(f)
 { defaultValue = currentValue = (v ? "true" : "false"); }
 
-UCIOption::UCIOption(int v, int minv, int maxv) : type("spin"), min(minv), max(maxv), idx(Options.size())
+UCIOption::UCIOption(int v, int minv, int maxv, Fn* f) : type("spin"), min(minv), max(maxv), idx(Options.size()), on_change_action(f)
 { std::ostringstream ss; ss << v; defaultValue = currentValue = ss.str(); }
 
 
@@ -122,7 +129,12 @@ void UCIOption::operator=(const string& v) {
   assert(!type.empty());
 
   if (   !v.empty()
-      && (type == "check" || type == "button") == (v == "true" || v == "false")
+      && (type == "check") == (v == "true" || v == "false")
       && (type != "spin" || (atoi(v.c_str()) >= min && atoi(v.c_str()) <= max)))
+  {
       currentValue = v;
+
+      if (on_change_action)
+          (*on_change_action)(*this);
+  }
 }
