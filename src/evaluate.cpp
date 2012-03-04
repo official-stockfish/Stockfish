@@ -517,7 +517,7 @@ namespace {
 
             assert(b);
 
-            if (!(b & (b - 1)) && (b & pos.pieces(Them)))
+            if (single_bit(b) && (b & pos.pieces(Them)))
                 score += ThreatBonus[Piece][type_of(pos.piece_on(first_1(b)))] / 2;
         }
 

@@ -1351,7 +1351,7 @@ split_point_start: // At split points actual search starts from here
     // Rule 1. Checks which give opponent's king at most one escape square are dangerous
     b = kingAtt & ~pos.pieces(them) & ~newAtt & ~(1ULL << to);
 
-    if (!(b && (b & (b - 1))))
+    if (single_bit(b)) // Catches also !b
         return true;
 
     // Rule 2. Queen contact check is very dangerous

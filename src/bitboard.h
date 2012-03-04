@@ -207,6 +207,14 @@ inline Bitboard same_color_squares(Square s) {
 }
 
 
+/// single_bit() returns true if in the 'b' bitboard is set a single bit (or if
+/// b == 0).
+
+inline bool single_bit(Bitboard b) {
+  return !(b & (b - 1));
+}
+
+
 /// first_1() finds the least significant nonzero bit in a nonzero bitboard.
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.

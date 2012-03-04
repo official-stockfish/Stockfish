@@ -379,8 +379,7 @@ Bitboard Position::hidden_checkers() const {
   {
       b = squares_between(ksq, pop_1st_bit(&pinners)) & occupied_squares();
 
-      // Only one bit set and is an our piece?
-      if (b && !(b & (b - 1)) && (b & pieces(sideToMove)))
+      if (b && single_bit(b) && (b & pieces(sideToMove)))
           result |= b;
   }
   return result;
