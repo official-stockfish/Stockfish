@@ -57,7 +57,7 @@ private:
   std::string defaultValue, currentValue, type;
   int min, max;
   size_t idx;
-  Fn* on_change_action;
+  Fn* on_change;
 };
 
 

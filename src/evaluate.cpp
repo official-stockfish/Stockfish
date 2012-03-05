@@ -29,6 +29,8 @@
 #include "thread.h"
 #include "ucioption.h"
 
+Color EvalRootColor;
+
 namespace {
 
   // Struct EvalInfo contains various information computed and collected
@@ -250,7 +252,6 @@ namespace {
   inline Score apply_weight(Score v, Score weight);
   Value scale_by_game_phase(const Score& v, Phase ph, ScaleFactor sf);
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
-  void init_safety();
   double to_cp(Value v);
   void trace_add(int idx, Score term_w, Score term_b = SCORE_ZERO);
 }
@@ -389,27 +390,42 @@ Value do_evaluate(const Position& pos, Value& margin) {
 } // namespace
 
 
-/// read_weights() reads evaluation weights from the corresponding UCI parameters
+/// eval_init() reads evaluation weights from the corresponding UCI parameters
+/// and setup weights and tables.
+void eval_init() {
 
-void read_evaluation_uci_options(Color us) {
+  const Value MaxSlope = Value(30);
+  const Value Peak = Value(1280);
+  Value t[100];
 
   // King safety is asymmetrical. Our king danger level is weighted by
   // "Cowardice" UCI parameter, instead the opponent one by "Aggressiveness".
-  const int kingDangerUs   = (us == WHITE ? KingDangerUs   : KingDangerThem);
-  const int kingDangerThem = (us == WHITE ? KingDangerThem : KingDangerUs);
-
   Weights[Mobility]       = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightsInternal[Mobility]);
   Weights[PassedPawns]    = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightsInternal[PassedPawns]);
   Weights[Space]          = weight_option("Space", "Space", WeightsInternal[Space]);
-  Weights[kingDangerUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingDangerUs]);
-  Weights[kingDangerThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingDangerThem]);
+  Weights[KingDangerUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingDangerUs]);
+  Weights[KingDangerThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingDangerThem]);
 
   // If running in analysis mode, make sure we use symmetrical king safety. We do this
   // by replacing both Weights[kingDangerUs] and Weights[kingDangerThem] by their average.
   if (Options["UCI_AnalyseMode"])
-      Weights[kingDangerUs] = Weights[kingDangerThem] = (Weights[kingDangerUs] + Weights[kingDangerThem]) / 2;
+      Weights[KingDangerUs] = Weights[KingDangerThem] = (Weights[KingDangerUs] + Weights[KingDangerThem]) / 2;
 
-  init_safety();
+  // First setup the base table
+  for (int i = 0; i < 100; i++)
+  {
+      t[i] = Value(int(0.4 * i * i));
+
+      if (i > 0)
+          t[i] = std::min(t[i], t[i - 1] + MaxSlope);
+
+      t[i] = std::min(t[i], Peak);
+  }
+
+  // Then apply the weights and get the final KingDangerTable[] array
+  for (Color c = WHITE; c <= BLACK; c++)
+      for (int i = 0; i < 100; i++)
+          KingDangerTable[c == WHITE][i] = apply_weight(make_score(t[i], 0), Weights[KingDangerUs + c]);
 }
 
 
@@ -769,8 +785,8 @@ namespace {
         // value that will be used for pruning because this value can sometimes
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
-        score -= KingDangerTable[Us][attackUnits];
-        margins[Us] += mg_value(KingDangerTable[Us][attackUnits]);
+        score -= KingDangerTable[Us == EvalRootColor][attackUnits];
+        margins[Us] += mg_value(KingDangerTable[Us == EvalRootColor][attackUnits]);
     }
 
     if (Trace)
@@ -1100,33 +1116,6 @@ namespace {
     int eg = Options[egOpt] * 256 / 100;
 
     return apply_weight(make_score(mg, eg), internalWeight);
-  }
-
-
-  // init_safety() initizes the king safety evaluation, based on UCI
-  // parameters. It is called from read_weights().
-
-  void init_safety() {
-
-    const Value MaxSlope = Value(30);
-    const Value Peak = Value(1280);
-    Value t[100];
-
-    // First setup the base table
-    for (int i = 0; i < 100; i++)
-    {
-        t[i] = Value(int(0.4 * i * i));
-
-        if (i > 0)
-            t[i] = std::min(t[i], t[i - 1] + MaxSlope);
-
-        t[i] = std::min(t[i], Peak);
-    }
-
-    // Then apply the weights and get the final KingDangerTable[] array
-    for (Color c = WHITE; c <= BLACK; c++)
-        for (int i = 0; i < 100; i++)
-            KingDangerTable[c][i] = apply_weight(make_score(t[i], 0), Weights[KingDangerUs + c]);
   }
 
 

@@ -106,7 +106,7 @@ void uci_loop() {
 
       else if (token == "eval")
       {
-          read_evaluation_uci_options(pos.side_to_move());
+          EvalRootColor = pos.side_to_move();
           cout << trace_evaluate(pos) << endl;
       }
 

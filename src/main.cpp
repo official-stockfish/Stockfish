@@ -21,10 +21,11 @@
 #include <string>
 
 #include "bitboard.h"
-#include "ucioption.h"
+#include "evaluate.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
+#include "ucioption.h"
 
 using namespace std;
 
@@ -39,6 +40,7 @@ int main(int argc, char* argv[]) {
   kpk_bitbase_init();
   Search::init();
   Threads.init();
+  eval_init();
   TT.set_size(Options["Hash"]);
 
   cout << engine_info() << endl;

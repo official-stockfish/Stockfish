@@ -26,6 +26,8 @@ class Position;
 
 extern Value evaluate(const Position& pos, Value& margin);
 extern std::string trace_evaluate(const Position& pos);
-extern void read_evaluation_uci_options(Color sideToMove);
+extern void eval_init();
+
+extern Color EvalRootColor;
 
 #endif // !defined(EVALUATE_H_INCLUDED)
