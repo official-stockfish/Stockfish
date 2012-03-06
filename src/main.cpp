@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
   kpk_bitbase_init();
   Search::init();
   Threads.init();
-  eval_init();
+  Eval::init();
   TT.set_size(Options["Hash"]);
 
   cout << engine_info() << endl;

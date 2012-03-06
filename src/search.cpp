@@ -48,6 +48,7 @@ namespace Search {
 using std::string;
 using std::cout;
 using std::endl;
+using Eval::evaluate;
 using namespace Search;
 
 namespace {
@@ -251,7 +252,7 @@ void Search::think() {
 
   Position& pos = RootPosition;
   Chess960 = pos.is_chess960();
-  EvalRootColor = pos.side_to_move();
+  Eval::RootColor = pos.side_to_move();
   SearchTime.restart();
   TimeMgr.init(Limits, pos.startpos_ply_counter());
   TT.new_search();

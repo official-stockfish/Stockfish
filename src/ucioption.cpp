@@ -33,7 +33,7 @@ OptionsMap Options; // Global object
 namespace {
 
 /// 'On change' actions, triggered by an option's value change
-void on_eval(UCIOption&) { eval_init(); }
+void on_eval(UCIOption&) { Eval::init(); }
 void on_threads(UCIOption&) { Threads.read_uci_options(); }
 void on_hash_size(UCIOption& o) { TT.set_size(o); }
 void on_clear_hash(UCIOption& o) { TT.clear(); o = false; } // UCI button
