@@ -30,12 +30,12 @@ struct OptionsMap;
 /// UCIOption class implements an option as defined by UCI protocol
 class UCIOption {
 
-  typedef void (Fn)(UCIOption&);
+  typedef void (Fn)(const UCIOption&);
 
 public:
-  UCIOption() {} // Required by std::map::operator[]
-  UCIOption(const char* v, Fn* = NULL);
+  UCIOption(Fn* = NULL);
   UCIOption(bool v, Fn* = NULL);
+  UCIOption(const char* v, Fn* = NULL);
   UCIOption(int v, int min, int max, Fn* = NULL);
 
   void operator=(const std::string& v);
