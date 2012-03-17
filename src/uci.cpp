@@ -175,14 +175,10 @@ namespace {
     while (is >> token)
         value += string(" ", !value.empty()) + token;
 
-    if (!Options.count(name))
-        cout << "No such option: " << name << endl;
-
-    else if (value.empty()) // UCI buttons don't have a value
-        Options[name] = true;
-
-    else
+    if (Options.count(name))
         Options[name] = value;
+    else
+        cout << "No such option: " << name << endl;
   }
 
 

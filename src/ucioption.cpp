@@ -122,7 +122,7 @@ UCIOption::UCIOption(bool v, Fn* f) : type("check"), min(0), max(0), idx(Options
 { defaultValue = currentValue = (v ? "true" : "false"); }
 
 UCIOption::UCIOption(Fn* f) : type("button"), min(0), max(0), idx(Options.size()), on_change(f)
-{ defaultValue = currentValue = "false"; }
+{}
 
 UCIOption::UCIOption(int v, int minv, int maxv, Fn* f) : type("spin"), min(minv), max(maxv), idx(Options.size()), on_change(f)
 { std::ostringstream ss; ss << v; defaultValue = currentValue = ss.str(); }
@@ -136,16 +136,14 @@ void UCIOption::operator=(const string& v) {
 
   assert(!type.empty());
 
-  if (   !v.empty()
-      && (type == "check" || type == "button") == (v == "true" || v == "false")
-      && (type != "spin" || (atoi(v.c_str()) >= min && atoi(v.c_str()) <= max)))
+  if (   (type == "button" || !v.empty())
+      && (type != "check"  || (v == "true" || v == "false"))
+      && (type != "spin"   || (atoi(v.c_str()) >= min && atoi(v.c_str()) <= max)))
   {
-      currentValue = v;
+      if (type != "button")
+          currentValue = v;
 
       if (on_change)
           (*on_change)(*this);
-
-      if (type == "button")
-          currentValue = "false";
   }
 }

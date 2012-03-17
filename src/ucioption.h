@@ -39,10 +39,9 @@ public:
   UCIOption(int v, int min, int max, Fn* = NULL);
 
   void operator=(const std::string& v);
-  void operator=(bool v) { *this = std::string(v ? "true" : "false"); }
 
   operator int() const {
-    assert(type == "check" || type == "button" || type == "spin");
+    assert(type == "check" || type == "spin");
     return (type == "spin" ? atoi(currentValue.c_str()) : currentValue == "true");
   }
 
