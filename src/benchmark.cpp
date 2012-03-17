@@ -72,7 +72,6 @@ void benchmark(int argc, char* argv[]) {
 
   Options["Hash"]    = ttSize;
   Options["Threads"] = threads;
-  Options["OwnBook"] = false;
 
   if (valType == "time")
       limits.maxTime = 1000 * atoi(valStr.c_str()); // maxTime is in ms

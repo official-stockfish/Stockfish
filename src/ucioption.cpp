@@ -76,7 +76,7 @@ OptionsMap::OptionsMap() {
   o["Hash"]                        = UCIOption(32, 4, 8192, on_hash_size);
   o["Clear Hash"]                  = UCIOption(on_clear_hash);
   o["Ponder"]                      = UCIOption(true);
-  o["OwnBook"]                     = UCIOption(true);
+  o["OwnBook"]                     = UCIOption(false);
   o["MultiPV"]                     = UCIOption(1, 1, 500);
   o["Skill Level"]                 = UCIOption(20, 0, 20);
   o["Emergency Move Horizon"]      = UCIOption(40, 0, 50);
