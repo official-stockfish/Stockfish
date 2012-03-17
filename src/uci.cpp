@@ -83,9 +83,6 @@ void uci_loop() {
       else if (token == "go")
           go(pos, is);
 
-      else if (token == "ucinewgame")
-          pos.from_fen(StartFEN, false);
-
       else if (token == "isready")
           cout << "readyok" << endl;
 
