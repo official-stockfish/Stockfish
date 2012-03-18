@@ -108,7 +108,7 @@ public:
   Color side_to_move() const;
 
   // Bitboard representation of the position
-  Bitboard occupied_squares() const;
+  Bitboard pieces() const;
   Bitboard pieces(Color c) const;
   Bitboard pieces(PieceType pt) const;
   Bitboard pieces(PieceType pt, Color c) const;
@@ -285,7 +285,7 @@ inline Color Position::side_to_move() const {
   return sideToMove;
 }
 
-inline Bitboard Position::occupied_squares() const {
+inline Bitboard Position::pieces() const {
   return occupied;
 }
 
@@ -343,7 +343,7 @@ inline Square Position::castle_rook_square(CastleRight f) const {
 
 template<PieceType Pt>
 inline Bitboard Position::attacks_from(Square s) const {
-  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, occupied_squares())
+  return  Pt == BISHOP || Pt == ROOK ? attacks_bb<Pt>(s, pieces())
         : Pt == QUEEN  ? attacks_from<ROOK>(s) | attacks_from<BISHOP>(s)
         : StepAttacksBB[Pt][s];
 }

@@ -315,7 +315,7 @@ namespace {
   uint64_t book_key(const Position& pos) {
 
     uint64_t key = 0;
-    Bitboard b = pos.occupied_squares();
+    Bitboard b = pos.pieces();
 
     while (b)
     {

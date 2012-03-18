@@ -1335,7 +1335,7 @@ split_point_start: // At split points actual search starts from here
     kingAtt = pos.attacks_from<KING>(ksq);
     pc = pos.piece_moved(move);
 
-    occ = pos.occupied_squares() & ~(1ULL << from) & ~(1ULL << ksq);
+    occ = pos.pieces() ^ from ^ ksq;
     oldAtt = pos.attacks_from(pc, from, occ);
     newAtt = pos.attacks_from(pc,   to, occ);
 
@@ -1403,7 +1403,7 @@ split_point_start: // At split points actual search starts from here
     ksq = pos.king_square(pos.side_to_move());
     if (    piece_is_slider(p1)
         && (squares_between(t1, ksq) & f2)
-        && (pos.attacks_from(p1, t1, pos.occupied_squares() ^ f2) & ksq))
+        && (pos.attacks_from(p1, t1, pos.pieces() ^ f2) & ksq))
         return true;
 
     return false;

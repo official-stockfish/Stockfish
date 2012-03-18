@@ -377,7 +377,7 @@ Bitboard Position::hidden_checkers() const {
 
   while (pinners)
   {
-      b = squares_between(ksq, pop_1st_bit(&pinners)) & occupied_squares();
+      b = squares_between(ksq, pop_1st_bit(&pinners)) & pieces();
 
       if (b && single_bit(b) && (b & pieces(sideToMove)))
           result |= b;
@@ -437,7 +437,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   assert(!square_is_empty(from));
 
   // Update occupancy as if the piece is moving
-  occ = occupied_squares() ^ from ^ to;
+  occ = pieces() ^ from ^ to;
 
   // The piece moved in 'to' attacks the square 's' ?
   if (attacks_from(piece, to, occ) & s)
@@ -474,7 +474,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       Square to = to_sq(m);
       Square capsq = to + pawn_push(them);
       Square ksq = king_square(us);
-      Bitboard b = (occupied_squares() ^ from ^ capsq) | to;
+      Bitboard b = (pieces() ^ from ^ capsq) | to;
 
       assert(to == ep_square());
       assert(piece_moved(m) == make_piece(us, PAWN));
@@ -626,7 +626,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       }
       // In case of king moves under check we have to remove king so to catch
       // as invalid moves like b1a1 when opposite queen is on c1.
-      else if (attackers_to(to, occupied_squares() ^ from) & pieces(~us))
+      else if (attackers_to(to, pieces() ^ from) & pieces(~us))
           return false;
   }
 
@@ -668,7 +668,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   // Promotion with check ?
   if (is_promotion(m))
-      return attacks_from(Piece(promotion_type(m)), to, occupied_squares() ^ from) & ksq;
+      return attacks_from(Piece(promotion_type(m)), to, pieces() ^ from) & ksq;
 
   // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
@@ -677,7 +677,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   if (is_enpassant(m))
   {
       Square capsq = make_square(file_of(to), rank_of(from));
-      Bitboard b = (occupied_squares() ^ from ^ capsq) | to;
+      Bitboard b = (pieces() ^ from ^ capsq) | to;
 
       return  (attacks_bb<  ROOK>(ksq, b) & pieces(  ROOK, QUEEN, us))
             | (attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, us));
@@ -690,7 +690,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       Square rfrom = to; // 'King captures the rook' notation
       Square kto = relative_square(us, rfrom > kfrom ? SQ_G1 : SQ_C1);
       Square rto = relative_square(us, rfrom > kfrom ? SQ_F1 : SQ_D1);
-      Bitboard b = (occupied_squares() ^ kfrom ^ rfrom) | rto | kto;
+      Bitboard b = (pieces() ^ kfrom ^ rfrom) | rto | kto;
 
       return attacks_bb<ROOK>(rto, b) & ksq;
   }
@@ -1235,7 +1235,7 @@ int Position::see(Move m) const {
   from = from_sq(m);
   to = to_sq(m);
   capturedType = type_of(piece_on(to));
-  occ = occupied_squares();
+  occ = pieces();
 
   // Handle en passant moves
   if (is_enpassant(m))
@@ -1667,7 +1667,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
       // The union of the white and black pieces must be equal to all
       // occupied squares
-      if ((pieces(WHITE) | pieces(BLACK)) != occupied_squares())
+      if ((pieces(WHITE) | pieces(BLACK)) != pieces())
           return false;
 
       // Separate piece type bitboards must have empty intersections
