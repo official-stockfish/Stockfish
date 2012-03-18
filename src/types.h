@@ -200,7 +200,7 @@ enum Value {
 };
 
 enum PieceType {
-  NO_PIECE_TYPE = 0,
+  NO_PIECE_TYPE = 0, ALL_PIECES = 0,
   PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6
 };
 

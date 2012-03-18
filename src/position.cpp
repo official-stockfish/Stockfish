@@ -787,9 +787,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->npMaterial[them] -= PieceValueMidgame[capture];
 
       // Remove the captured piece
-      byColorBB[them] ^= capsq;
+      byTypeBB[ALL_PIECES] ^= capsq;
       byTypeBB[capture] ^= capsq;
-      occupied ^= capsq;
+      byColorBB[them] ^= capsq;
 
       // Update piece list, move the last piece at index[capsq] position and
       // shrink the list.
@@ -837,9 +837,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Move the piece
   Bitboard from_to_bb = SquareBB[from] | SquareBB[to];
-  byColorBB[us] ^= from_to_bb;
+  byTypeBB[ALL_PIECES] ^= from_to_bb;
   byTypeBB[pt] ^= from_to_bb;
-  occupied ^= from_to_bb;
+  byColorBB[us] ^= from_to_bb;
 
   board[to] = board[from];
   board[from] = NO_PIECE;
@@ -1002,9 +1002,9 @@ void Position::undo_move(Move m) {
 
   // Put the piece back at the source square
   Bitboard from_to_bb = SquareBB[from] | SquareBB[to];
-  byColorBB[us] ^= from_to_bb;
+  byTypeBB[ALL_PIECES] ^= from_to_bb;
   byTypeBB[pt] ^= from_to_bb;
-  occupied ^= from_to_bb;
+  byColorBB[us] ^= from_to_bb;
 
   board[from] = board[to];
   board[to] = NO_PIECE;
@@ -1029,9 +1029,9 @@ void Position::undo_move(Move m) {
       }
 
       // Restore the captured piece
-      byColorBB[them] |= capsq;
+      byTypeBB[ALL_PIECES] |= capsq;
       byTypeBB[capture] |= capsq;
-      occupied |= capsq;
+      byColorBB[them] |= capsq;
 
       board[capsq] = make_piece(them, capture);
 
@@ -1085,20 +1085,20 @@ void Position::do_castle_move(Move m) {
   assert(piece_on(rfrom) == make_piece(us, ROOK));
 
   // Remove pieces from source squares
-  byColorBB[us] ^= kfrom;
+  byTypeBB[ALL_PIECES] ^= kfrom;
   byTypeBB[KING] ^= kfrom;
-  occupied ^= kfrom;
-  byColorBB[us] ^= rfrom;
+  byColorBB[us] ^= kfrom;
+  byTypeBB[ALL_PIECES] ^= rfrom;
   byTypeBB[ROOK] ^= rfrom;
-  occupied ^= rfrom;
+  byColorBB[us] ^= rfrom;
 
   // Put pieces on destination squares
-  byColorBB[us] |= kto;
+  byTypeBB[ALL_PIECES] |= kto;
   byTypeBB[KING] |= kto;
-  occupied |= kto;
-  byColorBB[us] |= rto;
+  byColorBB[us] |= kto;
+  byTypeBB[ALL_PIECES] |= rto;
   byTypeBB[ROOK] |= rto;
-  occupied |= rto;
+  byColorBB[us] |= rto;
 
   // Update board
   Piece king = make_piece(us, KING);
@@ -1345,9 +1345,9 @@ void Position::put_piece(Piece p, Square s) {
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
 
+  byTypeBB[ALL_PIECES] |= s;
   byTypeBB[pt] |= s;
   byColorBB[c] |= s;
-  occupied |= s;
 }
 
 
