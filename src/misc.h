@@ -60,4 +60,6 @@ private:
   sys_time_t t;
 };
 
+extern void logger_set(bool b);
+
 #endif // !defined(MISC_H_INCLUDED)

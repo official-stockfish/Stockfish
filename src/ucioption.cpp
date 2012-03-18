@@ -33,6 +33,7 @@ OptionsMap Options; // Global object
 namespace {
 
 /// 'On change' actions, triggered by an option's value change
+void on_logger(const UCIOption& o) { logger_set(o); }
 void on_eval(const UCIOption&) { Eval::init(); }
 void on_threads(const UCIOption&) { Threads.read_uci_options(); }
 void on_hash_size(const UCIOption& o) { TT.set_size(o); }
@@ -58,6 +59,7 @@ OptionsMap::OptionsMap() {
   int msd = cpus < 8 ? 4 : 7;
   OptionsMap& o = *this;
 
+  o["Use Debug Log"]               = UCIOption(false, on_logger);
   o["Use Search Log"]              = UCIOption(false);
   o["Search Log Filename"]         = UCIOption("SearchLog.txt");
   o["Book File"]                   = UCIOption("book.bin");

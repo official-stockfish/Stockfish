@@ -39,6 +39,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <streambuf>
 
 #include "misc.h"
 #include "thread.h"
@@ -102,6 +103,69 @@ void dbg_print() {
   if (means[0])
       cerr << "Total " << means[0] << " Mean "
            << (float)means[1] / means[0] << endl;
+}
+
+
+/// Our fancy logging facility. The trick here is to replace cout.rdbuf() with
+/// this one that sends the output both to console and to a file, this allow us
+/// to toggle the logging of std::cout to a file while preserving output to
+/// stdout and without changing a single line of code! Idea and code from:
+/// http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
+
+class Logger: public streambuf {
+public:
+  typedef char_traits<char> traits_type;
+  typedef traits_type::int_type int_type;
+
+  Logger() : cout_buf(cout.rdbuf()) {}
+  ~Logger() { set(false); }
+
+  void set(bool b) {
+
+    if (b && !file.is_open())
+    {
+        file.open("out.txt", ifstream::out | ifstream::app);
+        cout.rdbuf(this);
+    }
+    else if (!b && file.is_open())
+    {
+        cout.rdbuf(cout_buf);
+        file.close();
+    }
+  }
+
+private:
+  int_type overflow(int_type c) {
+
+    if (traits_type::eq_int_type(c, traits_type::eof()))
+        return traits_type::not_eof(c);
+
+    c = cout_buf->sputc(traits_type::to_char_type(c));
+
+    if (!traits_type::eq_int_type(c, traits_type::eof()))
+        c = file.rdbuf()->sputc(traits_type::to_char_type(c));
+
+    return c;
+  }
+
+  int sync() {
+
+    int c = cout_buf->pubsync();
+
+    if (c != -1)
+        c = file.rdbuf()->pubsync();
+
+    return c;
+  }
+
+  ofstream file;
+  streambuf* cout_buf;
+};
+
+void logger_set(bool b) {
+
+  static Logger l;
+  l.set(b);
 }
 
 
