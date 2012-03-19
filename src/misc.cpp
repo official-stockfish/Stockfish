@@ -112,27 +112,15 @@ void dbg_print() {
 /// stdout and without changing a single line of code! Idea and code from:
 /// http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-class Logger: public streambuf {
+class Tee: public streambuf {
 public:
   typedef char_traits<char> traits_type;
   typedef traits_type::int_type int_type;
 
-  Logger() : cout_buf(cout.rdbuf()) {}
-  ~Logger() { set(false); }
+  Tee(ios& s, ofstream& f) : stream(s), file(f), stream_buf(s.rdbuf()) {}
+  ~Tee() { set(false); }
 
-  void set(bool b) {
-
-    if (b && !file.is_open())
-    {
-        file.open("out.txt", ifstream::out | ifstream::app);
-        cout.rdbuf(this);
-    }
-    else if (!b && file.is_open())
-    {
-        cout.rdbuf(cout_buf);
-        file.close();
-    }
-  }
+  void set(bool b) { stream.rdbuf(b ? this : stream_buf); }
 
 private:
   int_type overflow(int_type c) {
@@ -140,7 +128,7 @@ private:
     if (traits_type::eq_int_type(c, traits_type::eof()))
         return traits_type::not_eof(c);
 
-    c = cout_buf->sputc(traits_type::to_char_type(c));
+    c = stream_buf->sputc(traits_type::to_char_type(c));
 
     if (!traits_type::eq_int_type(c, traits_type::eof()))
         c = file.rdbuf()->sputc(traits_type::to_char_type(c));
@@ -150,7 +138,7 @@ private:
 
   int sync() {
 
-    int c = cout_buf->pubsync();
+    int c = stream_buf->pubsync();
 
     if (c != -1)
         c = file.rdbuf()->pubsync();
@@ -158,8 +146,47 @@ private:
     return c;
   }
 
+  int underflow() { return traits_type::not_eof(stream_buf->sgetc()); }
+
+  int uflow() {
+
+      int c = stream_buf->sbumpc();
+
+      if (!traits_type::eq_int_type(c, traits_type::eof()))
+          file.rdbuf()->sputc(traits_type::to_char_type(c));
+
+      return traits_type::not_eof(c);
+  }
+
+  ios& stream;
+  ofstream& file;
+  streambuf* stream_buf;
+};
+
+class Logger {
+public:
+   Logger() : in(cin, file), out(cout, file) {}
+  ~Logger() { set(false); }
+
+  void set(bool b) {
+
+    if (b && !file.is_open())
+    {
+        file.open("io_log.txt", ifstream::out | ifstream::app);
+        in.set(true);
+        out.set(true);
+    }
+    else if (!b && file.is_open())
+    {
+        out.set(false);
+        in.set(false);
+        file.close();
+    }
+  }
+
+private:
+  Tee in, out;
   ofstream file;
-  streambuf* cout_buf;
 };
 
 void logger_set(bool b) {
