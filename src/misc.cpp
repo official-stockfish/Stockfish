@@ -106,15 +106,41 @@ void dbg_print() {
 
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
-/// cout.rdbuf() with this one that tees cin and cout to a file stream. We can
-/// toggle the logging of std::cout and std:cin at runtime while preserving i/o
-/// functionality and without changing a single line of code!
+/// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
+/// can toggle the logging of std::cout and std:cin at runtime while preserving
+/// usual i/o functionality and without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-class Logger: public streambuf {
+class Logger {
 
-  Logger() : cinbuf(cin.rdbuf()), coutbuf(cout.rdbuf()) {}
+  Logger() : in(cin.rdbuf(), file), out(cout.rdbuf(), file) {}
   ~Logger() { start(false); }
+
+  struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
+
+    Tie(streambuf* b, ofstream& f) : buf(b), file(f) {}
+
+    int sync() { return file.rdbuf()->pubsync(), buf->pubsync(); }
+    int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
+    int underflow() { return buf->sgetc(); }
+    int uflow() { return log(buf->sbumpc(), ">> "); }
+
+    int log(int c, const char* prefix) {
+
+      static int last = '\n';
+
+      if (last == '\n')
+          file.rdbuf()->sputn(prefix, 3);
+
+      return last = file.rdbuf()->sputc((char)c);
+    }
+
+    streambuf* buf;
+    ofstream& file;
+  };
+
+  ofstream file;
+  Tie in, out;
 
 public:
   static void start(bool b) {
@@ -124,40 +150,20 @@ public:
     if (b && !l.file.is_open())
     {
         l.file.open("io_log.txt", ifstream::out | ifstream::app);
-        cin.rdbuf(&l);
-        cout.rdbuf(&l);
+        cin.rdbuf(&l.in);
+        cout.rdbuf(&l.out);
     }
     else if (!b && l.file.is_open())
     {
-        cout.rdbuf(l.coutbuf);
-        cin.rdbuf(l.cinbuf);
+        cout.rdbuf(l.out.buf);
+        cin.rdbuf(l.in.buf);
         l.file.close();
     }
   }
-
-private:
-  int sync() { return file.rdbuf()->pubsync(), coutbuf->pubsync(); }
-  int overflow(int c) { return log(coutbuf->sputc((char)c), "<< ") ; }
-  int underflow() { return cinbuf->sgetc(); }
-  int uflow() { return log(cinbuf->sbumpc(), ">> "); }
-
-  int log(int c, const char* prefix) {
-
-    static int last = '\n';
-
-    if (last == '\n')
-        file.rdbuf()->sputn(prefix, 3);
-
-    return last = file.rdbuf()->sputc((char)c);
-  }
-
-private:
-  ofstream file;
-  streambuf *cinbuf, *coutbuf;
 };
 
 
-/// Trampoline helper to avoid moving Logger to misc.h header
+/// Trampoline helper to avoid moving Logger to misc.h
 void start_logger(bool b) { Logger::start(b); }
 
 
