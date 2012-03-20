@@ -33,7 +33,7 @@ OptionsMap Options; // Global object
 namespace {
 
 /// 'On change' actions, triggered by an option's value change
-void on_logger(const UCIOption& opt) { logger_set(opt); }
+void on_logger(const UCIOption& opt) { start_logger(opt); }
 void on_eval(const UCIOption&) { Eval::init(); }
 void on_threads(const UCIOption&) { Threads.read_uci_options(); }
 void on_hash_size(const UCIOption& opt) { TT.set_size(opt); }

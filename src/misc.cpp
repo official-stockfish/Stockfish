@@ -39,7 +39,6 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <streambuf>
 
 #include "misc.h"
 #include "thread.h"
@@ -106,94 +105,60 @@ void dbg_print() {
 }
 
 
-/// Our fancy logging facility. The trick here is to replace cout.rdbuf() with
-/// this one that sends the output both to console and to a file, this allow us
-/// to toggle the logging of std::cout to a file while preserving output to
-/// stdout and without changing a single line of code! Idea and code from:
-/// http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
+/// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
+/// cout.rdbuf() with this one that tees cin and cout to a file stream. We can
+/// toggle the logging of std::cout and std:cin at runtime while preserving i/o
+/// functionality and without changing a single line of code!
+/// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
-class Tee: public streambuf {
+class Logger: public streambuf {
+
+  Logger() : cinbuf(cin.rdbuf()), coutbuf(cout.rdbuf()) {}
+  ~Logger() { start(false); }
+
 public:
-  typedef char_traits<char> traits_type;
-  typedef traits_type::int_type int_type;
+  static void start(bool b) {
 
-  Tee(ios& s, ofstream& f) : stream(s), file(f), stream_buf(s.rdbuf()) {}
-  ~Tee() { set(false); }
+    static Logger l;
 
-  void set(bool b) { stream.rdbuf(b ? this : stream_buf); }
-
-private:
-  int_type overflow(int_type c) {
-
-    if (traits_type::eq_int_type(c, traits_type::eof()))
-        return traits_type::not_eof(c);
-
-    c = stream_buf->sputc(traits_type::to_char_type(c));
-
-    if (!traits_type::eq_int_type(c, traits_type::eof()))
-        c = file.rdbuf()->sputc(traits_type::to_char_type(c));
-
-    return c;
-  }
-
-  int sync() {
-
-    int c = stream_buf->pubsync();
-
-    if (c != -1)
-        c = file.rdbuf()->pubsync();
-
-    return c;
-  }
-
-  int underflow() { return traits_type::not_eof(stream_buf->sgetc()); }
-
-  int uflow() {
-
-      int c = stream_buf->sbumpc();
-
-      if (!traits_type::eq_int_type(c, traits_type::eof()))
-          file.rdbuf()->sputc(traits_type::to_char_type(c));
-
-      return traits_type::not_eof(c);
-  }
-
-  ios& stream;
-  ofstream& file;
-  streambuf* stream_buf;
-};
-
-class Logger {
-public:
-   Logger() : in(cin, file), out(cout, file) {}
-  ~Logger() { set(false); }
-
-  void set(bool b) {
-
-    if (b && !file.is_open())
+    if (b && !l.file.is_open())
     {
-        file.open("io_log.txt", ifstream::out | ifstream::app);
-        in.set(true);
-        out.set(true);
+        l.file.open("io_log.txt", ifstream::out | ifstream::app);
+        cin.rdbuf(&l);
+        cout.rdbuf(&l);
     }
-    else if (!b && file.is_open())
+    else if (!b && l.file.is_open())
     {
-        out.set(false);
-        in.set(false);
-        file.close();
+        cout.rdbuf(l.coutbuf);
+        cin.rdbuf(l.cinbuf);
+        l.file.close();
     }
   }
 
 private:
-  Tee in, out;
+  int sync() { return file.rdbuf()->pubsync(), coutbuf->pubsync(); }
+  int overflow(int c) { return log(coutbuf->sputc((char)c), "<< ") ; }
+  int underflow() { return cinbuf->sgetc(); }
+  int uflow() { return log(cinbuf->sbumpc(), ">> "); }
+
+  int log(int c, const char* prefix) {
+
+    static int last = '\n';
+
+    if (last == '\n')
+        file.rdbuf()->sputn(prefix, 3);
+
+    return last = file.rdbuf()->sputc((char)c);
+  }
+
+private:
   ofstream file;
+  streambuf *cinbuf, *coutbuf;
 };
 
-void logger_set(bool b) {
 
-  static Logger l;
-  l.set(b);
-}
+/// Trampoline helper to avoid moving Logger to misc.h header
+void start_logger(bool b) { Logger::start(b); }
 
 
 /// cpu_count() tries to detect the number of CPU cores
