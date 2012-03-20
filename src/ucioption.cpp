@@ -33,10 +33,10 @@ OptionsMap Options; // Global object
 namespace {
 
 /// 'On change' actions, triggered by an option's value change
-void on_logger(const UCIOption& o) { logger_set(o); }
+void on_logger(const UCIOption& opt) { logger_set(opt); }
 void on_eval(const UCIOption&) { Eval::init(); }
 void on_threads(const UCIOption&) { Threads.read_uci_options(); }
-void on_hash_size(const UCIOption& o) { TT.set_size(o); }
+void on_hash_size(const UCIOption& opt) { TT.set_size(opt); }
 void on_clear_hash(const UCIOption&) { TT.clear(); }
 
 /// Our case insensitive less() function as required by UCI protocol
