@@ -679,12 +679,19 @@ Value do_evaluate(const Position& pos, Value& margin) {
     Bitboard b;
     Score score = SCORE_ZERO;
 
+    // Undefended minors get penalized even if not under attack
+    Bitboard undefended =  pos.pieces(Them)
+                         & (pos.pieces(BISHOP) | pos.pieces(KNIGHT))
+                         & ~ei.attackedBy[Them][0];
+    if (undefended)
+        score += make_score(25, 10) * popcount<Max15>(undefended);
+
     // Enemy pieces not defended by a pawn and under our attack
     Bitboard weakEnemies =  pos.pieces(Them)
                           & ~ei.attackedBy[Them][PAWN]
                           & ei.attackedBy[Us][0];
     if (!weakEnemies)
-        return SCORE_ZERO;
+        return score;
 
     // Add bonus according to type of attacked enemy piece and to the
     // type of attacking piece, from knights to queens. Kings are not
