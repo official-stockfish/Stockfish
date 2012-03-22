@@ -221,15 +221,6 @@ void ThreadsManager::init() {
   cond_init(sleepCond);
   lock_init(splitLock);
 
-  for (int i = 0; i <= MAX_THREADS; i++)
-  {
-      lock_init(threads[i].sleepLock);
-      cond_init(threads[i].sleepCond);
-
-      for (int j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
-          lock_init(threads[i].splitPoints[j].lock);
-  }
-
   // Allocate main thread tables to call evaluate() also when not searching
   threads[0].pawnTable.init();
   threads[0].materialTable.init();
@@ -240,6 +231,12 @@ void ThreadsManager::init() {
       threads[i].is_searching = false;
       threads[i].do_sleep = (i != 0); // Avoid a race with start_thinking()
       threads[i].threadID = i;
+
+      lock_init(threads[i].sleepLock);
+      cond_init(threads[i].sleepCond);
+
+      for (int j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
+          lock_init(threads[i].splitPoints[j].lock);
 
       if (!thread_create(threads[i].handle, start_routine, threads[i]))
       {
