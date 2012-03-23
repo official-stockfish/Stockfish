@@ -27,6 +27,7 @@
 typedef pthread_mutex_t Lock;
 typedef pthread_cond_t WaitCondition;
 typedef pthread_t ThreadHandle;
+typedef void*(*start_fn)(void*);
 
 #  define lock_init(x) pthread_mutex_init(&(x), NULL)
 #  define lock_grab(x) pthread_mutex_lock(&(x))
@@ -37,7 +38,7 @@ typedef pthread_t ThreadHandle;
 #  define cond_signal(x) pthread_cond_signal(&(x))
 #  define cond_wait(x,y) pthread_cond_wait(&(x),&(y))
 #  define cond_timedwait(x,y,z) pthread_cond_timedwait(&(x),&(y),z)
-#  define thread_create(x,f,id) !pthread_create(&(x),NULL,f,&(id))
+#  define thread_create(x,f,id) !pthread_create(&(x),NULL,(start_fn)f,&(id))
 #  define thread_join(x) pthread_join(x, NULL)
 
 #else
@@ -67,7 +68,7 @@ typedef HANDLE ThreadHandle;
 #  define cond_signal(x) SetEvent(x)
 #  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(x, INFINITE); lock_grab(y); }
 #  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(x,z); lock_grab(y); }
-#  define thread_create(x,f,id) (x = CreateThread(NULL,0,f,&(id),0,NULL), x != NULL)
+#  define thread_create(x,f,id) (x = CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)f,&(id),0,NULL), x != NULL)
 #  define thread_join(x) { WaitForSingleObject(x, INFINITE); CloseHandle(x); }
 
 #endif

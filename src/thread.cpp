@@ -36,13 +36,7 @@ namespace { extern "C" {
  // and last thread are special. First one is the main search thread while the
  // last one mimics a timer, they run in main_loop() and timer_loop().
 
-#if defined(_WIN32) || defined(_WIN64)
-  DWORD WINAPI start_routine(LPVOID thread) {
-#else
-  void* start_routine(void* thread) {
-#endif
-
-    Thread* th = (Thread*)thread;
+  long start_routine(Thread* th) {
 
     if (th->threadID == 0)
         th->main_loop();
@@ -299,7 +293,7 @@ bool ThreadsManager::available_slave_exists(int master) const {
 template <bool Fake>
 Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
                             Value bestValue, Move* bestMove, Depth depth,
-                            Move threatMove, int moveCount, MovePicker *mp, int nodeType) {
+                            Move threatMove, int moveCount, MovePicker* mp, int nodeType) {
   assert(pos.pos_is_ok());
   assert(bestValue > -VALUE_INFINITE);
   assert(bestValue <= alpha);
