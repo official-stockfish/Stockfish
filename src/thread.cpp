@@ -173,35 +173,35 @@ void ThreadsManager::read_uci_options() {
   maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
   minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
   useSleepingThreads      = Options["Use Sleeping Threads"];
-}
+  activeThreads           = Options["Threads"];
 
-
-// set_size() changes the number of active threads and raises do_sleep flag for
-// all the unused threads that will go immediately to sleep.
-
-void ThreadsManager::set_size(int cnt) {
-
-  assert(cnt > 0 && cnt < MAX_THREADS);
-
-  activeThreads = cnt;
-
+  // Dynamically allocate pawn and material hash tables according to the
+  // number of active threads. This avoids preallocating memory for all
+  // possible threads if only few are used.
   for (int i = 0; i < MAX_THREADS; i++)
       if (i < activeThreads)
       {
-          // Dynamically allocate pawn and material hash tables according to the
-          // number of active threads. This avoids preallocating memory for all
-          // possible threads if only few are used.
           threads[i].pawnTable.init();
           threads[i].materialTable.init();
           threads[i].maxPly = 0;
-
-          threads[i].do_sleep = false;
-
-          if (!useSleepingThreads)
-              threads[i].wake_up();
       }
-      else
-          threads[i].do_sleep = true;
+}
+
+
+void ThreadsManager::wake_up() {
+
+  for (int i = 0; i < activeThreads; i++)
+  {
+      threads[i].do_sleep = false;
+      threads[i].wake_up();
+  }
+}
+
+
+void ThreadsManager::sleep() {
+
+  for (int i = 0; i < activeThreads; i++)
+      threads[i].do_sleep = true;
 }
 
 

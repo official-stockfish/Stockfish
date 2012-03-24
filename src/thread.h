@@ -108,7 +108,8 @@ public:
   int min_split_depth() const { return minimumSplitDepth; }
   int size() const { return activeThreads; }
 
-  void set_size(int cnt);
+  void wake_up();
+  void sleep();
   void read_uci_options();
   bool available_slave_exists(int master) const;
   void set_timer(int msec);

@@ -73,7 +73,7 @@ OptionsMap::OptionsMap() {
   o["Cowardice"]                   = UCIOption(100, 0, 200, on_eval);
   o["Min Split Depth"]             = UCIOption(msd, 4, 7, on_threads);
   o["Max Threads per Split Point"] = UCIOption(5, 4, 8, on_threads);
-  o["Threads"]                     = UCIOption(cpus, 1, MAX_THREADS);
+  o["Threads"]                     = UCIOption(cpus, 1, MAX_THREADS, on_threads);
   o["Use Sleeping Threads"]        = UCIOption(true, on_threads);
   o["Hash"]                        = UCIOption(32, 4, 8192, on_hash_size);
   o["Clear Hash"]                  = UCIOption(on_clear_hash);

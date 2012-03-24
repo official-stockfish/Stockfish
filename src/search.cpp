@@ -298,7 +298,7 @@ void Search::think() {
           << endl;
   }
 
-  Threads.set_size(Options["Threads"]);
+  Threads.wake_up();
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
@@ -312,7 +312,7 @@ void Search::think() {
 
   // Stop timer and send all the slaves to sleep, if not already sleeping
   Threads.set_timer(0);
-  Threads.set_size(1);
+  Threads.sleep();
 
   if (Options["Use Search Log"])
   {
