@@ -564,6 +564,7 @@ namespace {
     {
         tte = NULL;
         ttMove = excludedMove = MOVE_NONE;
+        ttValue = VALUE_ZERO;
         sp = ss->sp;
         bestMove = sp->bestMove;
         threatMove = sp->threatMove;
