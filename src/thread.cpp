@@ -53,13 +53,16 @@ namespace { extern "C" {
 } }
 
 
+// Thread c'tor creates and launches the OS thread, that will go immediately to
+// sleep.
+
 Thread::Thread(int id) {
 
-  threadID = id;
-  do_sleep = (id != 0); // Avoid a race with start_thinking()
   is_searching = do_exit = false;
   maxPly = splitPointsCnt = 0;
   curSplitPoint = NULL;
+  threadID = id;
+  do_sleep = (id != 0); // Avoid a race with start_thinking()
 
   lock_init(sleepLock);
   cond_init(sleepCond);
@@ -74,6 +77,8 @@ Thread::Thread(int id) {
   }
 }
 
+
+// Thread d'tor will wait for thread termination before to return.
 
 Thread::~Thread() {
 
@@ -205,42 +210,49 @@ bool Thread::is_available_to(int master) const {
 
 
 // read_uci_options() updates internal threads parameters from the corresponding
-// UCI options. It is called before to start a new search.
+// UCI options and creates/destroys threads to match the requested number. Thread
+// objects are dynamically allocated to avoid creating in advance all possible
+// threads, with included pawns and material tables, if only few are used.
 
 void ThreadsManager::read_uci_options() {
 
   maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
   minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
   useSleepingThreads      = Options["Use Sleeping Threads"];
-  activeThreads           = Options["Threads"];
+  int requested           = Options["Threads"];
 
-  // Dynamically allocate Thread object according to the number of
-  // active threads. This avoids preallocating memory for all possible
-  // threads if only few are used.
-  for (int i = 0; i < MAX_THREADS; i++)
-      if (i < activeThreads && !threads[i])
-          threads[i] = new Thread(i);
-      else if (i >= activeThreads && threads[i])
-      {
-          delete threads[i];
-          threads[i] = NULL;
-      }
-}
+  while (size() < requested)
+      threads.push_back(new Thread(size()));
 
-
-void ThreadsManager::wake_up() {
-
-  for (int i = 0; i < activeThreads; i++)
+  while (size() > requested)
   {
-      threads[i]->do_sleep = false;
-      threads[i]->wake_up();
+      delete threads.back();
+      threads.pop_back();
   }
 }
 
 
+// wake_up() is called before a new search to start the threads that are waiting
+// on the sleep condition. If useSleepingThreads is set threads will be woken up
+// at split time.
+
+void ThreadsManager::wake_up() {
+
+  for (int i = 0; i < size(); i++)
+  {
+      threads[i]->do_sleep = false;
+
+      if (!useSleepingThreads)
+          threads[i]->wake_up();
+  }
+}
+
+
+// sleep() is called after the search to ask threads to wait on sleep condition
+
 void ThreadsManager::sleep() {
 
-  for (int i = 0; i < activeThreads; i++)
+  for (int i = 0; i < size(); i++)
       threads[i]->do_sleep = true;
 }
 
@@ -253,17 +265,16 @@ void ThreadsManager::init() {
     cond_init(sleepCond);
     lock_init(splitLock);
     timer = new Thread(MAX_THREADS);
-    read_uci_options(); // Creates at least main thread
+    read_uci_options(); // Creates at least the main thread
 }
 
 
-// exit() is called to cleanly terminate the threads when the program finishes
+// exit() is called to cleanly terminate the threads before the program finishes
 
 void ThreadsManager::exit() {
 
-  for (int i = 0; i < MAX_THREADS; i++)
-      if (threads[i])
-          delete threads[i];
+  for (int i = 0; i < size(); i++)
+      delete threads[i];
 
   delete timer;
   lock_destroy(splitLock);
@@ -276,9 +287,9 @@ void ThreadsManager::exit() {
 
 bool ThreadsManager::available_slave_exists(int master) const {
 
-  assert(master >= 0 && master < activeThreads);
+  assert(master >= 0 && master < size());
 
-  for (int i = 0; i < activeThreads; i++)
+  for (int i = 0; i < size(); i++)
       if (threads[i]->is_available_to(master))
           return true;
 
@@ -305,8 +316,6 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(alpha < beta);
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
-  assert(pos.thread() >= 0 && pos.thread() < activeThreads);
-  assert(activeThreads > 1);
 
   int master = pos.thread();
   Thread& masterThread = *threads[master];
@@ -345,7 +354,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   lock_grab(sp->lock);
   lock_grab(splitLock);
 
-  for (int i = 0; i < activeThreads && !Fake; i++)
+  for (int i = 0; i < size() && !Fake; ++i)
       if (threads[i]->is_available_to(master))
       {
           sp->slavesMask |= 1ULL << i;
@@ -418,7 +427,7 @@ void ThreadsManager::set_timer(int msec) {
 
 void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limits,
                                     const std::set<Move>& searchMoves, bool async) {
-  Thread& main = *threads[0];
+  Thread& main = *threads.front();
 
   lock_grab(main.sleepLock);
 
@@ -458,7 +467,7 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
 
 void ThreadsManager::stop_thinking() {
 
-  Thread& main = *threads[0];
+  Thread& main = *threads.front();
 
   Search::Signals.stop = true;
 

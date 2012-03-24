@@ -310,8 +310,7 @@ void Search::think() {
   // We're ready to start searching. Call the iterative deepening loop function
   id_loop(pos);
 
-  // Stop timer and send all the slaves to sleep, if not already sleeping
-  Threads.set_timer(0);
+  Threads.set_timer(0); // Stop timer
   Threads.sleep();
 
   if (Options["Use Search Log"])

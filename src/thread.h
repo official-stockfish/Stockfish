@@ -21,6 +21,7 @@
 #define THREAD_H_INCLUDED
 
 #include <set>
+#include <vector>
 
 #include "material.h"
 #include "movepick.h"
@@ -64,8 +65,12 @@ struct SplitPoint {
 /// tables so that once we get a pointer to an entry its life time is unlimited
 /// and we don't have to care about someone changing the entry under our feet.
 
-struct Thread {
+class Thread {
 
+  Thread(const Thread&);            // Only declared to disable the default ones
+  Thread& operator=(const Thread&); // that are not suitable in this case.
+
+public:
   Thread(int id);
   ~Thread();
 
@@ -103,13 +108,13 @@ class ThreadsManager {
      static storage duration are automatically set to zero before enter main()
   */
 public:
-  Thread& operator[](int threadID) { return *threads[threadID]; }
   void init();
   void exit();
 
+  Thread& operator[](int id) { return *threads[id]; }
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
-  int size() const { return activeThreads; }
+  int size() const { return (int)threads.size(); }
 
   void wake_up();
   void sleep();
@@ -124,15 +129,14 @@ public:
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
               Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
 private:
-  friend struct Thread;
+  friend class Thread;
 
+  std::vector<Thread*> threads;
   Thread* timer;
-  Thread* threads[MAX_THREADS];
   Lock splitLock;
   WaitCondition sleepCond;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
-  int activeThreads;
   bool useSleepingThreads;
 };
 
