@@ -146,10 +146,7 @@ struct SimpleHash {
 
   typedef SimpleHash<Entry, HashSize> Base;
 
-  void init() {
-
-    if (entries)
-        return;
+  SimpleHash() {
 
     entries = new (std::nothrow) Entry[HashSize];
     if (!entries)

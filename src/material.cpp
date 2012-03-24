@@ -84,12 +84,6 @@ namespace {
 } // namespace
 
 
-/// MaterialInfoTable c'tor and d'tor allocate and free the space for Endgames
-
-void MaterialInfoTable::init() { Base::init(); if (!funcs) funcs = new Endgames(); }
-MaterialInfoTable::~MaterialInfoTable() { delete funcs; }
-
-
 /// MaterialInfoTable::material_info() takes a position object as input,
 /// computes or looks up a MaterialInfo object, and returns a pointer to it.
 /// If the material configuration is not already present in the table, it
