@@ -23,7 +23,6 @@
 #include <fstream>
 #include <string>
 
-#include "lock.h"
 #include "types.h"
 
 extern const std::string engine_info(bool to_uci = false);

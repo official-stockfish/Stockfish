@@ -22,7 +22,6 @@
 
 #include <set>
 
-#include "lock.h"
 #include "material.h"
 #include "movepick.h"
 #include "pawns.h"
