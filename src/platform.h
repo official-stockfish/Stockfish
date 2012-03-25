@@ -54,7 +54,7 @@ inline uint64_t time_to_msec(const sys_time_t& t) { return t.tv_sec * 1000LL + t
 typedef pthread_mutex_t Lock;
 typedef pthread_cond_t WaitCondition;
 typedef pthread_t NativeHandle;
-typedef void*(*start_fn)(void*);
+typedef void*(*pt_start_fn)(void*);
 
 #  define lock_init(x) pthread_mutex_init(&(x), NULL)
 #  define lock_grab(x) pthread_mutex_lock(&(x))
@@ -65,7 +65,7 @@ typedef void*(*start_fn)(void*);
 #  define cond_signal(x) pthread_cond_signal(&(x))
 #  define cond_wait(x,y) pthread_cond_wait(&(x),&(y))
 #  define cond_timedwait(x,y,z) pthread_cond_timedwait(&(x),&(y),z)
-#  define thread_create(x,f,t) !pthread_create(&(x),NULL,(start_fn)f,t)
+#  define thread_create(x,f,t) !pthread_create(&(x),NULL,(pt_start_fn)f,t)
 #  define thread_join(x) pthread_join(x, NULL)
 
 #else // Windows and MinGW
