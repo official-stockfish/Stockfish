@@ -227,7 +227,7 @@ void ThreadsManager::read_uci_options() {
 
 void ThreadsManager::wake_up() {
 
-  for (int i = 0; i < size(); i++)
+  for (int i = 1; i < size(); i++) // Main thread is already running
   {
       threads[i]->do_sleep = false;
 
@@ -237,12 +237,13 @@ void ThreadsManager::wake_up() {
 }
 
 
-// sleep() is called after the search to ask threads to wait on sleep condition
+// sleep() is called after the search to ask all the threads but the main to go
+// waiting on a sleep condition.
 
 void ThreadsManager::sleep() {
 
-  for (int i = 0; i < size(); i++)
-      threads[i]->do_sleep = true;
+  for (int i = 1; i < size(); i++) // Main thread will go to sleep by itself
+      threads[i]->do_sleep = true; // to avoid a race with start_thinking()
 }
 
 
