@@ -35,7 +35,6 @@
 #  include <xmmintrin.h>
 #endif
 
-#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -174,16 +173,16 @@ int cpu_count() {
 #if defined(_WIN32) || defined(_WIN64)
   SYSTEM_INFO s;
   GetSystemInfo(&s);
-  return std::min(int(s.dwNumberOfProcessors), MAX_THREADS);
+  return s.dwNumberOfProcessors;
 #else
 
 #  if defined(_SC_NPROCESSORS_ONLN)
-  return std::min((int)sysconf(_SC_NPROCESSORS_ONLN), MAX_THREADS);
+  return sysconf(_SC_NPROCESSORS_ONLN);
 #  elif defined(__hpux)
   struct pst_dynamic psd;
   if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1)
       return 1;
-  return std::min((int)psd.psd_proc_cnt, MAX_THREADS);
+  return psd.psd_proc_cnt;
 #  else
   return 1;
 #  endif
