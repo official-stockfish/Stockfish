@@ -70,14 +70,17 @@ class Thread {
   Thread(const Thread&);            // Only declared to disable the default ones
   Thread& operator=(const Thread&); // that are not suitable in this case.
 
+  typedef void (Thread::* Fn) ();
+
 public:
-  Thread(int id);
+  Thread(Fn fn);
   ~Thread();
 
   void wake_up();
   bool cutoff_occurred() const;
   bool is_available_to(int master) const;
   void idle_loop(SplitPoint* sp_master);
+  void idle_loop() { idle_loop(NULL); } // Hack to allow storing in start_fn
   void main_loop();
   void timer_loop();
   void wait_for_stop_or_ponderhit();
@@ -89,7 +92,8 @@ public:
   int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
-  ThreadHandle handle;
+  NativeHandle handle;
+  Fn start_fn;
   SplitPoint* volatile curSplitPoint;
   volatile int splitPointsCnt;
   volatile bool is_searching;

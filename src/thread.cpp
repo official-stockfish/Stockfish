@@ -32,37 +32,24 @@ ThreadsManager Threads; // Global object
 namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
- // is launched. It simply calls idle_loop() of the supplied thread. The first
- // and last thread are special. First one is the main search thread while the
- // last one mimics a timer, they run in main_loop() and timer_loop().
+ // is launched. It is a wrapper to member function pointed by start_fn
 
-  long start_routine(Thread* th) {
-
-    if (th->threadID == 0)
-        th->main_loop();
-
-    else if (th->threadID == MAX_THREADS)
-        th->timer_loop();
-
-    else
-        th->idle_loop(NULL);
-
-    return 0;
-  }
+ long start_routine(Thread* th) { (th->*(th->start_fn))(); return 0; }
 
 } }
 
 
-// Thread c'tor creates and launches the OS thread, that will go immediately to
-// sleep.
+// Thread c'tor starts a newly-created thread of execution that will call
+// the idle loop function pointed by start_fn going immediately to sleep.
 
-Thread::Thread(int id) {
+Thread::Thread(Fn fn) {
 
   is_searching = do_exit = false;
   maxPly = splitPointsCnt = 0;
   curSplitPoint = NULL;
-  threadID = id;
-  do_sleep = (id != 0); // Avoid a race with start_thinking()
+  start_fn = fn;
+  threadID = Threads.size();
+  do_sleep = (threadID != 0); // Avoid a race with start_thinking()
 
   lock_init(sleepLock);
   cond_init(sleepCond);
@@ -72,7 +59,7 @@ Thread::Thread(int id) {
 
   if (!thread_create(handle, start_routine, this))
   {
-      std::cerr << "Failed to create thread number " << id << std::endl;
+      std::cerr << "Failed to create thread number " << threadID << std::endl;
       ::exit(EXIT_FAILURE);
   }
 }
@@ -221,8 +208,10 @@ void ThreadsManager::read_uci_options() {
   useSleepingThreads      = Options["Use Sleeping Threads"];
   int requested           = Options["Threads"];
 
+  assert(requested > 0);
+
   while (size() < requested)
-      threads.push_back(new Thread(size()));
+      threads.push_back(new Thread(&Thread::idle_loop));
 
   while (size() > requested)
   {
@@ -264,8 +253,9 @@ void ThreadsManager::init() {
 
     cond_init(sleepCond);
     lock_init(splitLock);
-    timer = new Thread(MAX_THREADS);
-    read_uci_options(); // Creates at least the main thread
+    timer = new Thread(&Thread::timer_loop);
+    threads.push_back(new Thread(&Thread::main_loop));
+    read_uci_options();
 }
 
 

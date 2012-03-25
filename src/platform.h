@@ -53,7 +53,7 @@ inline uint64_t time_to_msec(const sys_time_t& t) { return t.tv_sec * 1000LL + t
 #  include <pthread.h>
 typedef pthread_mutex_t Lock;
 typedef pthread_cond_t WaitCondition;
-typedef pthread_t ThreadHandle;
+typedef pthread_t NativeHandle;
 typedef void*(*start_fn)(void*);
 
 #  define lock_init(x) pthread_mutex_init(&(x), NULL)
@@ -90,7 +90,7 @@ inline uint64_t time_to_msec(const sys_time_t& t) { return t.time * 1000LL + t.m
 // but apart from this they have the same speed performance of SRW locks.
 typedef CRITICAL_SECTION Lock;
 typedef HANDLE WaitCondition;
-typedef HANDLE ThreadHandle;
+typedef HANDLE NativeHandle;
 
 #  define lock_init(x) InitializeCriticalSection(&(x))
 #  define lock_grab(x) EnterCriticalSection(&(x))
