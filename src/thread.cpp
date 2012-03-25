@@ -227,9 +227,10 @@ void ThreadsManager::read_uci_options() {
 
 void ThreadsManager::wake_up() {
 
-  for (int i = 1; i < size(); i++) // Main thread is already running
+  for (int i = 0; i < size(); i++)
   {
       threads[i]->do_sleep = false;
+      threads[i]->maxPly = 0;
 
       if (!useSleepingThreads)
           threads[i]->wake_up();
