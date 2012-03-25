@@ -35,11 +35,6 @@ extern void kpk_bitbase_init();
 
 int main(int argc, char* argv[]) {
 
-  // Don't sync with C library I/O buffers, faster but now using printf()
-  // or scanf() could yield to issues because buffers are independent.
-  cout.sync_with_stdio(false);
-  cin.sync_with_stdio(false);
-
   cout << engine_info() << endl;
 
   bitboards_init();
