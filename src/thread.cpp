@@ -424,13 +424,11 @@ void ThreadsManager::wait_for_search_finished() {
 }
 
 
-// ThreadsManager::start_searching() is used by UI thread to wake up the main
-// thread parked in main_loop() and starting a new search. If async is true
-// then function returns immediately, otherwise caller is blocked waiting for
-// the search to finish.
+// ThreadsManager::start_searching() wakes up the main thread sleeping in
+// main_loop() so to start a new search, then returns immediately.
 
 void ThreadsManager::start_searching(const Position& pos, const LimitsType& limits,
-                                     const std::set<Move>& searchMoves, bool async) {
+                                     const std::set<Move>& searchMoves) {
   wait_for_search_finished();
 
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
@@ -444,8 +442,5 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
       if (searchMoves.empty() || searchMoves.count(ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
-  threads[0]->wake_up(); // Start main thread
-
-  if (!async)
-      wait_for_search_finished();
+  threads[0]->wake_up();
 }

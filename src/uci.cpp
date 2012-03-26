@@ -228,7 +228,7 @@ namespace {
     limits.time = time[pos.side_to_move()];
     limits.increment = inc[pos.side_to_move()];
 
-    Threads.start_searching(pos, limits, searchMoves, true);
+    Threads.start_searching(pos, limits, searchMoves);
   }
 
 

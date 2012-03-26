@@ -126,7 +126,7 @@ public:
   void set_timer(int msec);
   void wait_for_search_finished();
   void start_searching(const Position& pos, const Search::LimitsType& limits,
-                       const std::set<Move>& = std::set<Move>(), bool async = false);
+                       const std::set<Move>& = std::set<Move>());
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
