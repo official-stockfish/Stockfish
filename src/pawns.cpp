@@ -65,6 +65,19 @@ namespace {
 
   #undef S
 
+  const File ShelterFile[8] = { FILE_B, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_G };
+
+  inline Value score_non_center_file(const Value v) {
+		return Value(v * 7 / 16);
+  }
+
+  typedef Value V;
+  // Arrays are indexed by rank.  Zeroth value is for when no pawn on that file.
+  const Value PawnShelter[8] =  { V(141), V(0), V( 38), V(102), V(128), V(141), V(141), V(141) };
+  const Value PawnStorm[8] =    { V( 26), V(0), V(128), V( 51), V( 26), V(  0), V(  0), V(  0) };
+  // We compute shelter as a penalty for the given color, but shelter is used as a bonus, so we invert it using this as the basis.
+  const Value PawnShelterBasis =  PawnShelter[0] + score_non_center_file(PawnShelter[0]) * 2;
+
   inline Score apply_weight(Score v, Score w) {
     return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
                       (int(eg_value(v)) * eg_value(w)) / 0x100);
@@ -209,27 +222,53 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
   return value;
 }
 
+template<Color Us>
+int computePawnShelter(const Position &pos, Square ksq) {
+  const Color Them          = (Us == WHITE ? BLACK : WHITE);
+  const File kingFile       = ShelterFile[file_of(ksq)];
+  const Bitboard ourPawns   = pos.pieces(PAWN, Us) & in_front_bb(Us, ksq);
+  const Bitboard theirPawns = pos.pieces(PAWN, Them) & (RankBB[rank_of(ksq)] | in_front_bb(Us, ksq));
+
+  int shelter = 0;
+
+  // Compute king shelter and storm values for the file the king is on, as well as the two adjacent files.
+  for (int fileOffset = -1; fileOffset <= 1; fileOffset++) {
+    // Shelter takes full penalty for center file, otherwise it's half penalty
+    Bitboard shelterFile  = ourPawns & FileBB[kingFile + fileOffset];
+    Rank shelterClosest = shelterFile ? relative_rank<Us>(shelterFile)
+                                      : RANK_1;
+
+    shelter += fileOffset == 0 ? PawnShelter[shelterClosest]
+                               : score_non_center_file(PawnShelter[shelterClosest]);
+
+    // Storm takes full penalty, unless there is an enemy pawn blocking us
+    Bitboard stormFile  = theirPawns & FileBB[kingFile + fileOffset];
+    Rank stormClosest   = stormFile ? relative_rank<Us>(stormFile)
+                                    : RANK_1;
+
+    shelter += shelterClosest + 1 == stormClosest ? PawnStorm[stormClosest] / 2
+                                                  : PawnStorm[stormClosest];
+  }
+  
+  return shelter;
+}
 
 /// PawnInfo::updateShelter() calculates and caches king shelter. It is called
 /// only when king square changes, about 20% of total king_shelter() calls.
 template<Color Us>
 Score PawnInfo::updateShelter(const Position& pos, Square ksq) {
-
-  const int Shift = (Us == WHITE ? 8 : -8);
-
-  Bitboard pawns;
-  int r, shelter = 0;
+  int shelter = 0;
 
   if (relative_rank(Us, ksq) <= RANK_4)
   {
-      pawns = pos.pieces(PAWN, Us) & this_and_adjacent_files_bb(file_of(ksq));
-      r = ksq & (7 << 3);
-      for (int i = 0; i < 3; i++)
-      {
-          r += Shift;
-          shelter += BitCount8Bit[(pawns >> r) & 0xFF] << (6 - i);
-      }
+    shelter = computePawnShelter<Us>(pos, ksq);
+    if (pos.can_castle(Us == WHITE ? WHITE_OO : BLACK_OO))
+      shelter = std::min(shelter, computePawnShelter<Us>(pos, relative_square(Us, SQ_G1)));
+    if (pos.can_castle(Us == WHITE ? WHITE_OOO : BLACK_OOO))
+      shelter = std::min(shelter, computePawnShelter<Us>(pos, relative_square(Us, SQ_C1)));
+    shelter = PawnShelterBasis - shelter;
   }
+
   kingSquares[Us] = ksq;
   kingShelters[Us] = make_score(shelter, 0);
   return kingShelters[Us];
