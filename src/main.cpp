@@ -55,6 +55,4 @@ int main(int argc, char* argv[]) {
       cerr << "\nUsage: stockfish bench [hash size = 128] [threads = 1] "
            << "[limit = 12] [fen positions file = default] "
            << "[limited by depth, time, nodes or perft = depth]" << endl;
-
-  Threads.exit();
 }

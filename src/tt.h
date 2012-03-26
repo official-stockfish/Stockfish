@@ -139,7 +139,7 @@ inline void TranspositionTable::refresh(const TTEntry* tte) const {
 
 /// A simple fixed size hash table used to store pawns and material
 /// configurations. It is basically just an array of Entry objects.
-/// Without cluster concept or overwrite policy.
+/// Without cluster concept, overwrite policy nor resizing.
 
 template<class Entry, int HashSize>
 struct SimpleHash {
@@ -153,7 +153,7 @@ struct SimpleHash {
     {
         std::cerr << "Failed to allocate " << HashSize * sizeof(Entry)
                   << " bytes for hash table." << std::endl;
-        exit(EXIT_FAILURE);
+        ::exit(EXIT_FAILURE);
     }
     memset(entries, 0, HashSize * sizeof(Entry));
   }

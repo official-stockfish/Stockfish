@@ -112,16 +112,16 @@ class ThreadsManager {
      static storage duration are automatically set to zero before enter main()
   */
 public:
-  void init();
-  void exit();
+  void init(); // No c'tor becuase Threads is static and we need stuff initialized
+  ~ThreadsManager();
 
   Thread& operator[](int id) { return *threads[id]; }
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
   int size() const { return (int)threads.size(); }
 
-  void wake_up();
-  void sleep();
+  void wake_up() const;
+  void sleep() const;
   void read_uci_options();
   bool available_slave_exists(int master) const;
   void set_timer(int msec);
