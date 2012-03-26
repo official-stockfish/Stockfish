@@ -47,7 +47,6 @@ struct SplitPoint {
   MovePicker* mp;
   SplitPoint* parent;
 
-
   // Shared data
   Lock lock;
   volatile uint64_t slavesMask;
@@ -125,9 +124,9 @@ public:
   void read_uci_options();
   bool available_slave_exists(int master) const;
   void set_timer(int msec);
-  void stop_thinking();
-  void start_thinking(const Position& pos, const Search::LimitsType& limits,
-                      const std::set<Move>& = std::set<Move>(), bool async = false);
+  void wait_for_search_finished();
+  void start_searching(const Position& pos, const Search::LimitsType& limits,
+                       const std::set<Move>& = std::set<Move>(), bool async = false);
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,

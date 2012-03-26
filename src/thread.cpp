@@ -50,7 +50,7 @@ Thread::Thread(Fn fn) {
   start_fn = fn;
   threadID = Threads.size();
 
-  do_sleep = (fn != &Thread::main_loop); // Avoid a race with start_thinking()
+  do_sleep = (fn != &Thread::main_loop); // Avoid a race with start_searching()
 
   lock_init(sleepLock);
   cond_init(sleepCond);
@@ -137,6 +137,7 @@ void Thread::main_loop() {
 void Thread::wake_up() {
 
   lock_grab(sleepLock);
+  do_sleep = false;
   cond_signal(sleepCond);
   lock_release(sleepLock);
 }
@@ -154,10 +155,7 @@ void Thread::wait_for_stop_or_ponderhit() {
   Signals.stopOnPonderhit = true;
 
   lock_grab(sleepLock);
-
-  while (!Signals.stop)
-      cond_wait(sleepCond, sleepLock);
-
+  while (!Signals.stop) cond_wait(sleepCond, sleepLock);
   lock_release(sleepLock);
 }
 
@@ -258,7 +256,6 @@ void ThreadsManager::wake_up() const {
 
   for (int i = 0; i < size(); i++)
   {
-      threads[i]->do_sleep = false;
       threads[i]->maxPly = 0;
 
       if (!useSleepingThreads)
@@ -273,7 +270,7 @@ void ThreadsManager::wake_up() const {
 void ThreadsManager::sleep() const {
 
   for (int i = 1; i < size(); i++) // Main thread will go to sleep by itself
-      threads[i]->do_sleep = true; // to avoid a race with start_thinking()
+      threads[i]->do_sleep = true; // to avoid a race with start_searching()
 }
 
 
@@ -415,19 +412,26 @@ void ThreadsManager::set_timer(int msec) {
 }
 
 
-// ThreadsManager::start_thinking() is used by UI thread to wake up the main
+// ThreadsManager::wait_for_search_finished() waits for main thread to go to
+// sleep, this means search is finished. Then returns.
+
+void ThreadsManager::wait_for_search_finished() {
+
+  Thread* main = threads[0];
+  lock_grab(main->sleepLock);
+  while (!main->do_sleep) cond_wait(sleepCond, main->sleepLock);
+  lock_release(main->sleepLock);
+}
+
+
+// ThreadsManager::start_searching() is used by UI thread to wake up the main
 // thread parked in main_loop() and starting a new search. If async is true
 // then function returns immediately, otherwise caller is blocked waiting for
 // the search to finish.
 
-void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limits,
-                                    const std::set<Move>& searchMoves, bool async) {
-  Thread& main = *threads.front();
-
-  lock_grab(main.sleepLock);
-
-  while (!main.do_sleep)
-      cond_wait(sleepCond, main.sleepLock); // Wait main thread has finished
+void ThreadsManager::start_searching(const Position& pos, const LimitsType& limits,
+                                     const std::set<Move>& searchMoves, bool async) {
+  wait_for_search_finished();
 
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
@@ -440,33 +444,8 @@ void ThreadsManager::start_thinking(const Position& pos, const LimitsType& limit
       if (searchMoves.empty() || searchMoves.count(ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
-  main.do_sleep = false;
-  cond_signal(main.sleepCond); // Wake up main thread and start searching
+  threads[0]->wake_up(); // Start main thread
 
   if (!async)
-      while (!main.do_sleep)
-          cond_wait(sleepCond, main.sleepLock);
-
-  lock_release(main.sleepLock);
-}
-
-
-// ThreadsManager::stop_thinking() is used by UI thread to raise a stop request
-// and to wait for the main thread finishing the search. We cannot return before
-// main has finished to avoid a crash in case of a 'quit' command.
-
-void ThreadsManager::stop_thinking() {
-
-  Thread& main = *threads.front();
-
-  Search::Signals.stop = true;
-
-  lock_grab(main.sleepLock);
-
-  cond_signal(main.sleepCond); // In case is waiting for stop or ponderhit
-
-  while (!main.do_sleep)
-      cond_wait(sleepCond, main.sleepLock);
-
-  lock_release(main.sleepLock);
+      wait_for_search_finished();
 }
