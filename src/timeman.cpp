@@ -83,7 +83,7 @@ void TimeManager::pv_instability(int curChanges, int prevChanges) {
 }
 
 
-void TimeManager::init(const Search::LimitsType& limits, int currentPly)
+void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color us)
 {
   /* We support four different kind of time controls:
 
@@ -111,15 +111,15 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly)
 
   // Initialize to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
-  optimumSearchTime = maximumSearchTime = limits.time;
+  optimumSearchTime = maximumSearchTime = limits.times[us];
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
-  for (hypMTG = 1; hypMTG <= (limits.movesToGo ? std::min(limits.movesToGo, MoveHorizon) : MoveHorizon); hypMTG++)
+  for (hypMTG = 1; hypMTG <= (limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon); hypMTG++)
   {
       // Calculate thinking time for hypothetic "moves to go"-value
-      hypMyTime =  limits.time
-                 + limits.increment * (hypMTG - 1)
+      hypMyTime =  limits.times[us]
+                 + limits.incs[us] * (hypMTG - 1)
                  - emergencyBaseTime
                  - emergencyMoveTime * std::min(hypMTG, emergencyMoveHorizon);
 

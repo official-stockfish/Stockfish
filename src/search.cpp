@@ -254,7 +254,7 @@ void Search::think() {
   Chess960 = pos.is_chess960();
   Eval::RootColor = pos.side_to_move();
   SearchTime.restart();
-  TimeMgr.init(Limits, pos.startpos_ply_counter());
+  TimeMgr.init(Limits, pos.startpos_ply_counter(), pos.side_to_move());
   TT.new_search();
   H.clear();
 
@@ -292,9 +292,9 @@ void Search::think() {
       log << "\nSearching: "  << pos.to_fen()
           << "\ninfinite: "   << Limits.infinite
           << " ponder: "      << Limits.ponder
-          << " time: "        << Limits.time
-          << " increment: "   << Limits.increment
-          << " moves to go: " << Limits.movesToGo
+          << " time: "        << Limits.times[pos.side_to_move()]
+          << " increment: "   << Limits.incs[pos.side_to_move()]
+          << " moves to go: " << Limits.movestogo
           << endl;
   }
 
@@ -362,7 +362,7 @@ namespace {
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
     // Iterative deepening loop until requested to stop or target depth reached
-    while (!Signals.stop && ++depth <= MAX_PLY && (!Limits.maxDepth || depth <= Limits.maxDepth))
+    while (!Signals.stop && ++depth <= MAX_PLY && (!Limits.depth || depth <= Limits.depth))
     {
         // Save last iteration's scores before first PV line is searched and all
         // the move scores but the (new) PV are set to -VALUE_INFINITE.
@@ -584,7 +584,7 @@ namespace {
 
     // Step 2. Check for aborted search and immediate draw
     // Enforce node limit here. FIXME: This only works with 1 search thread.
-    if (Limits.maxNodes && pos.nodes_searched() >= Limits.maxNodes)
+    if (Limits.nodes && pos.nodes_searched() >= Limits.nodes)
         Signals.stop = true;
 
     if ((   Signals.stop
@@ -1894,6 +1894,6 @@ void check_time() {
                    || stillAtFirstMove;
 
   if (   (Limits.use_time_management() && noMoreTime)
-      || (Limits.maxTime && e >= Limits.maxTime))
+      || (Limits.movetime && e >= Limits.movetime))
       Signals.stop = true;
 }

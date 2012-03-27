@@ -189,44 +189,40 @@ namespace {
 
   // go() is called when engine receives the "go" UCI command. The function sets
   // the thinking time and other parameters from the input string, and then starts
-  // the main searching thread.
+  // the search.
 
   void go(Position& pos, istringstream& is) {
 
-    string token;
     Search::LimitsType limits;
     std::set<Move> searchMoves;
-    int time[] = { 0, 0 }, inc[] = { 0, 0 };
+    string token;
 
     while (is >> token)
     {
-        if (token == "infinite")
+        if (token == "wtime")
+            is >> limits.times[WHITE];
+        else if (token == "btime")
+            is >> limits.times[BLACK];
+        else if (token == "winc")
+            is >> limits.incs[WHITE];
+        else if (token == "binc")
+            is >> limits.incs[BLACK];
+        else if (token == "movestogo")
+            is >> limits.movestogo;
+        else if (token == "depth")
+            is >> limits.depth;
+        else if (token == "nodes")
+            is >> limits.nodes;
+        else if (token == "movetime")
+            is >> limits.movetime;
+        else if (token == "infinite")
             limits.infinite = true;
         else if (token == "ponder")
             limits.ponder = true;
-        else if (token == "wtime")
-            is >> time[WHITE];
-        else if (token == "btime")
-            is >> time[BLACK];
-        else if (token == "winc")
-            is >> inc[WHITE];
-        else if (token == "binc")
-            is >> inc[BLACK];
-        else if (token == "movestogo")
-            is >> limits.movesToGo;
-        else if (token == "depth")
-            is >> limits.maxDepth;
-        else if (token == "nodes")
-            is >> limits.maxNodes;
-        else if (token == "movetime")
-            is >> limits.maxTime;
         else if (token == "searchmoves")
             while (is >> token)
                 searchMoves.insert(move_from_uci(pos, token));
     }
-
-    limits.time = time[pos.side_to_move()];
-    limits.increment = inc[pos.side_to_move()];
 
     Threads.start_searching(pos, limits, searchMoves);
   }

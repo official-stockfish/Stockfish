@@ -77,9 +77,9 @@ struct RootMove {
 struct LimitsType {
 
   LimitsType() { memset(this, 0, sizeof(LimitsType)); }
-  bool use_time_management() const { return !(maxTime | maxDepth | maxNodes | infinite); }
+  bool use_time_management() const { return !(movetime | depth | nodes | infinite); }
 
-  int time, increment, movesToGo, maxTime, maxDepth, maxNodes, infinite, ponder;
+  int times[2], incs[2], movestogo, depth, nodes, movetime, infinite, ponder;
 };
 
 

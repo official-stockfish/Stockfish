@@ -74,13 +74,13 @@ void benchmark(int argc, char* argv[]) {
   Options["Threads"] = threads;
 
   if (valType == "time")
-      limits.maxTime = 1000 * atoi(valStr.c_str()); // maxTime is in ms
+      limits.movetime = 1000 * atoi(valStr.c_str()); // movetime is in ms
 
   else if (valType == "nodes")
-      limits.maxNodes = atoi(valStr.c_str());
+      limits.nodes = atoi(valStr.c_str());
 
   else
-      limits.maxDepth = atoi(valStr.c_str());
+      limits.depth = atoi(valStr.c_str());
 
   if (fenFile != "default")
   {
@@ -112,8 +112,8 @@ void benchmark(int argc, char* argv[]) {
 
       if (valType == "perft")
       {
-          int64_t cnt = Search::perft(pos, limits.maxDepth * ONE_PLY);
-          cerr << "\nPerft " << limits.maxDepth  << " leaf nodes: " << cnt << endl;
+          int64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
+          cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
           nodes += cnt;
       }
       else
