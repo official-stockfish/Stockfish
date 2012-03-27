@@ -137,7 +137,6 @@ void Thread::main_loop() {
 void Thread::wake_up() {
 
   lock_grab(sleepLock);
-  do_sleep = false;
   cond_signal(sleepCond);
   lock_release(sleepLock);
 }
@@ -257,6 +256,7 @@ void ThreadsManager::wake_up() const {
   for (int i = 0; i < size(); i++)
   {
       threads[i]->maxPly = 0;
+      threads[i]->do_sleep = false;
 
       if (!useSleepingThreads)
           threads[i]->wake_up();
@@ -442,5 +442,6 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
       if (searchMoves.empty() || searchMoves.count(ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
+  threads[0]->do_sleep = false;
   threads[0]->wake_up();
 }
