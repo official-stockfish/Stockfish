@@ -214,6 +214,7 @@ inline bool single_bit(Bitboard b) {
   return !(b & (b - 1));
 }
 
+
 /// first_1() finds the least significant nonzero bit in a nonzero bitboard.
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.

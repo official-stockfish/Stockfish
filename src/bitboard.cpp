@@ -58,7 +58,6 @@ namespace {
   CACHE_LINE_ALIGNMENT
 
   int BSFTable[64];
-  int MS1BTable[256];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
 
@@ -139,25 +138,29 @@ Square pop_1st_bit(Bitboard* b) {
    return Square(BSFTable[((~(u.b.h ^ (u.b.h - 1))) * 0x783A9B23) >> 26]);
 }
 
-#endif // !defined(USE_BSFQ)
-
-#if !defined(USE_BSFQ)
-
 Square last_1(Bitboard b) {
+
   int result = 0;
-  if (b > 0xFFFFFFFF) {
-    b >>= 32;
-    result = 32;
+
+  if (b > 0xFFFFFFFF)
+  {
+      b >>= 32;
+      result = 32;
   }
-  if (b > 0xFFFF) {
-    b >>= 16;
-    result += 16;
+
+  if (b > 0xFFFF)
+  {
+      b >>= 16;
+      result += 16;
   }
-  if (b > 0xFF) {
-    b >>= 8;
-    result += 8;
+
+  if (b > 0xFF)
+  {
+      b >>= 8;
+      result += 8;
   }
-  return Square(result + MS1BTable[b]);
+
+  return Square(result + BitCount8Bit[b]);
 }
 
 #endif // !defined(USE_BSFQ)
@@ -216,11 +219,6 @@ void bitboards_init() {
       }
       else
           BSFTable[((1ULL << i) * 0x218A392CD3D5DBFULL) >> 58] = i;
-
-  MS1BTable[0] = 0;
-  for (int i = 0, k = 1; i < 8; i++)
-    for (int j = 0; j < (1 << i); j++)
-      MS1BTable[k++] = i;
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
