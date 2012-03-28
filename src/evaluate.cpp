@@ -751,8 +751,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
     int attackUnits;
     const Square ksq = pos.king_square(Us);
 
-    // King shelter
-    Score score = ei.pi->king_shelter<Us>(pos, ksq);
+    // King shelter and enemy pawns storm
+    Score score = ei.pi->king_safety<Us>(pos, ksq);
 
     // King safety. This is quite complicated, and is almost certainly far
     // from optimally tuned.
@@ -774,7 +774,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         attackUnits =  std::min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
                      + InitKingDanger[relative_square(Us, ksq)]
-                     - mg_value(ei.pi->king_shelter<Us>(pos, ksq)) / 32;
+                     - mg_value(ei.pi->king_safety<Us>(pos, ksq)) / 32;
 
         // Analyse enemy's safe queen contact checks. First find undefended
         // squares around the king attacked by enemy queen...

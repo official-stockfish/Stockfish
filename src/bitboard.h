@@ -263,16 +263,6 @@ extern Square pop_1st_bit(Bitboard* b);
 
 #endif
 
-// relative_rank() returns the relative rank of the closest bit set on the Bitboard.
-// Only to be used with bitboards that contain a single file.
-
-template<Color Us>
-inline Rank relative_rank(Bitboard b) {
-  Square s = Us == WHITE ?  first_1(b)
-                         : ~last_1(b);
-  return rank_of(s);
-}
-
 extern void print_bitboard(Bitboard b);
 extern void bitboards_init();
 
