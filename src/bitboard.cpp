@@ -58,6 +58,7 @@ namespace {
   CACHE_LINE_ALIGNMENT
 
   int BSFTable[64];
+  int MS1BTable[256];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
 
@@ -160,7 +161,7 @@ Square last_1(Bitboard b) {
       result += 8;
   }
 
-  return Square(result + BitCount8Bit[b]);
+  return Square(result + MS1BTable[b]);
 }
 
 #endif // !defined(USE_BSFQ)
@@ -169,6 +170,10 @@ Square last_1(Bitboard b) {
 /// program initialization.
 
 void bitboards_init() {
+
+  for (int k = 0, i = 0; i < 8; i++)
+      while (k < (2 << i))
+          MS1BTable[k++] = i;
 
   for (Bitboard b = 0; b < 256; b++)
       BitCount8Bit[b] = (uint8_t)popcount<Max15>(b);
