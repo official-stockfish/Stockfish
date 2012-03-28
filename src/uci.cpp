@@ -88,6 +88,9 @@ void uci_loop() {
       else if (token == "go")
           go(pos, is);
 
+      else if (token == "ucinewgame")
+      { /* Avoid returning "Unknown command" */ }
+
       else if (token == "isready")
           cout << "readyok" << endl;
 
