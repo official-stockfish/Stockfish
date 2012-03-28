@@ -214,7 +214,6 @@ inline bool single_bit(Bitboard b) {
   return !(b & (b - 1));
 }
 
-
 /// first_1() finds the least significant nonzero bit in a nonzero bitboard.
 /// pop_1st_bit() finds and clears the least significant nonzero bit in a
 /// nonzero bitboard.
@@ -224,15 +223,27 @@ inline bool single_bit(Bitboard b) {
 #if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 
 FORCE_INLINE Square first_1(Bitboard b) {
-   unsigned long index;
-   _BitScanForward64(&index, b);
-   return (Square) index;
+  unsigned long index;
+  _BitScanForward64(&index, b);
+  return (Square) index;
+}
+
+FORCE_INLINE Square last_1(Bitboard b) {
+  unsigned long index;
+  _BitScanReverse64(&index, b);
+  return (Square) index;
 }
 #else
 
 FORCE_INLINE Square first_1(Bitboard b) { // Assembly code by Heinz van Saanen
   Bitboard dummy;
   __asm__("bsfq %1, %0": "=r"(dummy): "rm"(b) );
+  return (Square) dummy;
+}
+
+FORCE_INLINE Square last_1(Bitboard b) {
+  Bitboard dummy;
+  __asm__("bsrq %1, %0": "=r"(dummy): "rm"(b) );
   return (Square) dummy;
 }
 #endif
@@ -246,10 +257,20 @@ FORCE_INLINE Square pop_1st_bit(Bitboard* b) {
 #else // if !defined(USE_BSFQ)
 
 extern Square first_1(Bitboard b);
+extern Square last_1(Bitboard b);
 extern Square pop_1st_bit(Bitboard* b);
 
 #endif
 
+// relative_rank() returns the relative rank of the closest bit set on the Bitboard.
+// Only to be used with bitboards that contain a single file.
+
+template<Color Us>
+inline Rank relative_rank(Bitboard b) {
+  Square s = Us == WHITE ?  first_1(b)
+                         : ~last_1(b);
+  return rank_of(s);
+}
 
 extern void print_bitboard(Bitboard b);
 extern void bitboards_init();
