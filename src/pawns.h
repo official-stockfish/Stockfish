@@ -53,7 +53,7 @@ private:
   Score update_safety(const Position& pos, Square ksq);
 
   template<Color Us>
-  int shelter_storm(const Position& pos, Square ksq);
+  Value shelter_storm(const Position& pos, Square ksq);
 
   Key key;
   Bitboard passedPawns[2];

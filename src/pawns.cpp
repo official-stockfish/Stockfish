@@ -26,6 +26,7 @@
 
 namespace {
 
+  #define V Value
   #define S(mg, eg) make_score(mg, eg)
 
   // Doubled pawn penalty by opposed flag and file
@@ -63,23 +64,22 @@ namespace {
 
   const Score PawnStructureWeight = S(233, 201);
 
-  #undef S
-
-  typedef Value V;
-
   // Weakness of our pawn shelter in front of the king indexed by [king pawn][rank]
   const Value ShelterWeakness[2][8] =
-  { { V(141), V(0), V(38), V(102), V(128), V(141), V(141), V(141) },
-    { V( 61), V(0), V(16), V( 44), V( 56), V( 61), V( 61), V( 61) } };
+  { { V(141), V(0), V(38), V(102), V(128), V(141), V(141) },
+    { V( 61), V(0), V(16), V( 44), V( 56), V( 61), V( 61) } };
 
   // Danger of enemy pawns moving toward our king indexed by [pawn blocked][rank]
   const Value StormDanger[2][8] =
-  { { V(26), V(0), V(128), V(51), V(26), V(0), V(0), V(0) },
-    { V(13), V(0), V( 64), V(25), V(13), V(0), V(0), V(0) } };
+  { { V(26), V(0), V(128), V(51), V(26) },
+    { V(13), V(0), V( 64), V(25), V(13) } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
-  // in front of the king and no enemy pawns on the horizont.
+  // in front of the king and no enemy pawn on the horizont.
   const Value MaxSafetyBonus = V(263);
+
+  #undef S
+  #undef V
 
   inline Score apply_weight(Score v, Score w) {
     return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
@@ -226,20 +226,21 @@ Score PawnInfoTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
 }
 
 
+/// PawnInfo::shelter_storm() calculates shelter and storm penalties for the file
+/// the king is on, as well as the two adjacent files.
+
 template<Color Us>
-int PawnInfo::shelter_storm(const Position& pos, Square ksq) {
+Value PawnInfo::shelter_storm(const Position& pos, Square ksq) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-  int safety = 0;
-  Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, ksq) | RankBB[rank_of(ksq)]);
-  Bitboard ourPawns = b & pos.pieces(Us) & ~RankBB[rank_of(ksq)];
+  Value safety = MaxSafetyBonus;
+  Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, ksq) | rank_bb(ksq));
+  Bitboard ourPawns = b & pos.pieces(Us) & ~rank_bb(ksq);
   Bitboard theirPawns = b & pos.pieces(Them);
   Rank rkUs, rkThem;
   File kf = file_of(ksq);
 
-  // Compute shelter and storm values for the file the king is on, as well as
-  // the two adjacent files. Computation is done from the white point of view.
   kf = (kf == FILE_A) ? kf++ : (kf == FILE_H) ? kf-- : kf;
 
   for (int f = kf - 1; f <= kf + 1; f++)
@@ -265,25 +266,21 @@ int PawnInfo::shelter_storm(const Position& pos, Square ksq) {
 template<Color Us>
 Score PawnInfo::update_safety(const Position& pos, Square ksq) {
 
-  int bonus = 0;
-
-  if (relative_rank(Us, ksq) <= RANK_4)
-  {
-      bonus = shelter_storm<Us>(pos, ksq);
-
-      // If we can castle use the bonus after the castle if is bigger
-      if (pos.can_castle(Us == WHITE ? WHITE_OO : BLACK_OO))
-          bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_G1)));
-
-      if (pos.can_castle(Us == WHITE ? WHITE_OOO : BLACK_OOO))
-          bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
-
-      bonus += MaxSafetyBonus; // Offset to be sure bonus is always positive
-  }
-
   kingSquares[Us] = ksq;
-  kingShelters[Us] = make_score(bonus, 0);
-  return kingShelters[Us];
+
+  if (relative_rank(Us, ksq) > RANK_4)
+      return kingShelters[Us] = SCORE_ZERO;
+
+  Value bonus = shelter_storm<Us>(pos, ksq);
+
+  // If we can castle use the bonus after the castle if is bigger
+  if (pos.can_castle(Us == WHITE ? WHITE_OO : BLACK_OO))
+      bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_G1)));
+
+  if (pos.can_castle(Us == WHITE ? WHITE_OOO : BLACK_OOO))
+      bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
+
+  return kingShelters[Us] = make_score(bonus, 0);
 }
 
 // Explicit template instantiation
