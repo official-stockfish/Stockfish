@@ -21,8 +21,8 @@
 #define MATERIAL_H_INCLUDED
 
 #include "endgame.h"
+#include "misc.h"
 #include "position.h"
-#include "tt.h"
 #include "types.h"
 
 const int MaterialTableSize = 8192;
@@ -46,7 +46,7 @@ enum Phase {
 
 class MaterialEntry {
 
-  friend class MaterialTable;
+  friend struct MaterialTable;
 
 public:
   Score material_value() const;
@@ -70,19 +70,14 @@ private:
 /// The MaterialTable class represents a material hash table. The most important
 /// method is probe(), which returns a pointer to a MaterialEntry object.
 
-class MaterialTable : public HashTable<MaterialEntry, MaterialTableSize> {
-public:
-  MaterialTable() : funcs(new Endgames()) {}
-  ~MaterialTable() { delete funcs; }
+struct MaterialTable {
 
-  MaterialEntry* probe(const Position& pos) const;
+  MaterialEntry* probe(const Position& pos);
   static Phase game_phase(const Position& pos);
+  template<Color Us> static int imbalance(const int pieceCount[][8]);
 
-private:
-  template<Color Us>
-  static int imbalance(const int pieceCount[][8]);
-
-  Endgames* funcs;
+  HashTable<MaterialEntry, MaterialTableSize> entries;
+  Endgames endgames;
 };
 
 

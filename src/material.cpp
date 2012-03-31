@@ -17,9 +17,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <algorithm>
 
 #include "material.h"
 
@@ -89,38 +89,38 @@ namespace {
 /// already present in the table, it is computed and stored there, so we don't
 /// have to recompute everything when the same material configuration occurs again.
 
-MaterialEntry* MaterialTable::probe(const Position& pos) const {
+MaterialEntry* MaterialTable::probe(const Position& pos) {
 
   Key key = pos.material_key();
-  MaterialEntry* mi = Base::probe(key);
+  MaterialEntry* e = entries[key];
 
-  // If mi->key matches the position's material hash key, it means that we
+  // If e->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
   // return the information we found the last time instead of recomputing it.
-  if (mi->key == key)
-      return mi;
+  if (e->key == key)
+      return e;
 
-  memset(mi, 0, sizeof(MaterialEntry));
-  mi->key = key;
-  mi->factor[WHITE] = mi->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-  mi->gamePhase = MaterialTable::game_phase(pos);
+  memset(e, 0, sizeof(MaterialEntry));
+  e->key = key;
+  e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
+  e->gamePhase = MaterialTable::game_phase(pos);
 
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
   // configuration one, then a generic one if previous search failed.
-  if ((mi->evaluationFunction = funcs->get<Value>(key)) != NULL)
-      return mi;
+  if ((e->evaluationFunction = endgames.probe<Value>(key)) != NULL)
+      return e;
 
   if (is_KXK<WHITE>(pos))
   {
-      mi->evaluationFunction = &EvaluateKXK[WHITE];
-      return mi;
+      e->evaluationFunction = &EvaluateKXK[WHITE];
+      return e;
   }
 
   if (is_KXK<BLACK>(pos))
   {
-      mi->evaluationFunction = &EvaluateKXK[BLACK];
-      return mi;
+      e->evaluationFunction = &EvaluateKXK[BLACK];
+      return e;
   }
 
   if (!pos.pieces(PAWN) && !pos.pieces(ROOK) && !pos.pieces(QUEEN))
@@ -133,8 +133,8 @@ MaterialEntry* MaterialTable::probe(const Position& pos) const {
       if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
           && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)
       {
-          mi->evaluationFunction = &EvaluateKmmKm[pos.side_to_move()];
-          return mi;
+          e->evaluationFunction = &EvaluateKmmKm[pos.side_to_move()];
+          return e;
       }
   }
 
@@ -145,26 +145,26 @@ MaterialEntry* MaterialTable::probe(const Position& pos) const {
   // scaling functions and we need to decide which one to use.
   EndgameBase<ScaleFactor>* sf;
 
-  if ((sf = funcs->get<ScaleFactor>(key)) != NULL)
+  if ((sf = endgames.probe<ScaleFactor>(key)) != NULL)
   {
-      mi->scalingFunction[sf->color()] = sf;
-      return mi;
+      e->scalingFunction[sf->color()] = sf;
+      return e;
   }
 
   // Generic scaling functions that refer to more then one material
   // distribution. Should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
   if (is_KBPsKs<WHITE>(pos))
-      mi->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
+      e->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
 
   if (is_KBPsKs<BLACK>(pos))
-      mi->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
+      e->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
 
   if (is_KQKRPs<WHITE>(pos))
-      mi->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
+      e->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
 
   else if (is_KQKRPs<BLACK>(pos))
-      mi->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
+      e->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
 
   Value npm_w = pos.non_pawn_material(WHITE);
   Value npm_b = pos.non_pawn_material(BLACK);
@@ -174,32 +174,32 @@ MaterialEntry* MaterialTable::probe(const Position& pos) const {
       if (pos.piece_count(BLACK, PAWN) == 0)
       {
           assert(pos.piece_count(WHITE, PAWN) >= 2);
-          mi->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
+          e->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
       }
       else if (pos.piece_count(WHITE, PAWN) == 0)
       {
           assert(pos.piece_count(BLACK, PAWN) >= 2);
-          mi->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
+          e->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
       }
       else if (pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1)
       {
           // This is a special case because we set scaling functions
           // for both colors instead of only one.
-          mi->scalingFunction[WHITE] = &ScaleKPKP[WHITE];
-          mi->scalingFunction[BLACK] = &ScaleKPKP[BLACK];
+          e->scalingFunction[WHITE] = &ScaleKPKP[WHITE];
+          e->scalingFunction[BLACK] = &ScaleKPKP[BLACK];
       }
   }
 
   // No pawns makes it difficult to win, even with a material advantage
   if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMidgame)
   {
-      mi->factor[WHITE] = (uint8_t)
+      e->factor[WHITE] = (uint8_t)
       (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(WHITE, BISHOP), 2)]);
   }
 
   if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMidgame)
   {
-      mi->factor[BLACK] = (uint8_t)
+      e->factor[BLACK] = (uint8_t)
       (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(BLACK, BISHOP), 2)]);
   }
 
@@ -209,7 +209,7 @@ MaterialEntry* MaterialTable::probe(const Position& pos) const {
       int minorPieceCount =  pos.piece_count(WHITE, KNIGHT) + pos.piece_count(WHITE, BISHOP)
                            + pos.piece_count(BLACK, KNIGHT) + pos.piece_count(BLACK, BISHOP);
 
-      mi->spaceWeight = minorPieceCount * minorPieceCount;
+      e->spaceWeight = minorPieceCount * minorPieceCount;
   }
 
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
@@ -221,8 +221,8 @@ MaterialEntry* MaterialTable::probe(const Position& pos) const {
   { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
     pos.piece_count(BLACK, BISHOP)    , pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
 
-  mi->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
-  return mi;
+  e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  return e;
 }
 
 

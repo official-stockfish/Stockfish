@@ -88,33 +88,33 @@ namespace {
 /// table, so we don't have to recompute everything when the same pawn structure
 /// occurs again.
 
-PawnEntry* PawnTable::probe(const Position& pos) const {
+PawnEntry* PawnTable::probe(const Position& pos) {
 
   Key key = pos.pawn_key();
-  PawnEntry* pi = Base::probe(key);
+  PawnEntry* e = entries[key];
 
-  // If pi->key matches the position's pawn hash key, it means that we
+  // If e->key matches the position's pawn hash key, it means that we
   // have analysed this pawn structure before, and we can simply return
   // the information we found the last time instead of recomputing it.
-  if (pi->key == key)
-      return pi;
+  if (e->key == key)
+      return e;
 
-  pi->key = key;
-  pi->passedPawns[WHITE] = pi->passedPawns[BLACK] = 0;
-  pi->kingSquares[WHITE] = pi->kingSquares[BLACK] = SQ_NONE;
-  pi->halfOpenFiles[WHITE] = pi->halfOpenFiles[BLACK] = 0xFF;
+  e->key = key;
+  e->passedPawns[WHITE] = e->passedPawns[BLACK] = 0;
+  e->kingSquares[WHITE] = e->kingSquares[BLACK] = SQ_NONE;
+  e->halfOpenFiles[WHITE] = e->halfOpenFiles[BLACK] = 0xFF;
 
   Bitboard wPawns = pos.pieces(PAWN, WHITE);
   Bitboard bPawns = pos.pieces(PAWN, BLACK);
-  pi->pawnAttacks[WHITE] = ((wPawns & ~FileHBB) << 9) | ((wPawns & ~FileABB) << 7);
-  pi->pawnAttacks[BLACK] = ((bPawns & ~FileHBB) >> 7) | ((bPawns & ~FileABB) >> 9);
+  e->pawnAttacks[WHITE] = ((wPawns & ~FileHBB) << 9) | ((wPawns & ~FileABB) << 7);
+  e->pawnAttacks[BLACK] = ((bPawns & ~FileHBB) >> 7) | ((bPawns & ~FileABB) >> 9);
 
-  pi->value =  evaluate_pawns<WHITE>(pos, wPawns, bPawns, pi)
-             - evaluate_pawns<BLACK>(pos, bPawns, wPawns, pi);
+  e->value =  evaluate_pawns<WHITE>(pos, wPawns, bPawns, e)
+            - evaluate_pawns<BLACK>(pos, bPawns, wPawns, e);
 
-  pi->value = apply_weight(pi->value, PawnStructureWeight);
+  e->value = apply_weight(e->value, PawnStructureWeight);
 
-  return pi;
+  return e;
 }
 
 
@@ -122,7 +122,7 @@ PawnEntry* PawnTable::probe(const Position& pos) const {
 
 template<Color Us>
 Score PawnTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
-                                    Bitboard theirPawns, PawnEntry* pi) {
+                                Bitboard theirPawns, PawnEntry* e) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -143,7 +143,7 @@ Score PawnTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       r = rank_of(s);
 
       // This file cannot be half open
-      pi->halfOpenFiles[Us] &= ~(1 << f);
+      e->halfOpenFiles[Us] &= ~(1 << f);
 
       // Our rank plus previous one. Used for chain detection
       b = rank_bb(r) | rank_bb(Us == WHITE ? r - Rank(1) : r + Rank(1));
@@ -196,7 +196,7 @@ Score PawnTable::evaluate_pawns(const Position& pos, Bitboard ourPawns,
       // full attack info to evaluate passed pawns. Only the frontmost passed
       // pawn on each file is considered a true passed pawn.
       if (passed && !doubled)
-          pi->passedPawns[Us] |= s;
+          e->passedPawns[Us] |= s;
 
       // Score this pawn
       if (isolated)

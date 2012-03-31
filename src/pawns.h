@@ -20,8 +20,8 @@
 #if !defined(PAWNS_H_INCLUDED)
 #define PAWNS_H_INCLUDED
 
+#include "misc.h"
 #include "position.h"
-#include "tt.h"
 #include "types.h"
 
 const int PawnTableSize = 16384;
@@ -35,7 +35,7 @@ const int PawnTableSize = 16384;
 
 class PawnEntry {
 
-  friend class PawnTable;
+  friend struct PawnTable;
 
 public:
   Score pawns_value() const;
@@ -68,14 +68,15 @@ private:
 /// The PawnTable class represents a pawn hash table. The most important
 /// method is probe, which returns a pointer to a PawnEntry object.
 
-class PawnTable : public HashTable<PawnEntry, PawnTableSize> {
-public:
-  PawnEntry* probe(const Position& pos) const;
+struct PawnTable {
 
-private:
+  PawnEntry* probe(const Position& pos);
+
   template<Color Us>
   static Score evaluate_pawns(const Position& pos, Bitboard ourPawns,
-                              Bitboard theirPawns, PawnEntry* pi);
+                              Bitboard theirPawns, PawnEntry* e);
+
+  HashTable<PawnEntry, PawnTableSize> entries;
 };
 
 

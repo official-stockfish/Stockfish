@@ -112,7 +112,7 @@ public:
   Endgames();
   ~Endgames();
 
-  template<typename T> EndgameBase<T>* get(Key key) {
+  template<typename T> EndgameBase<T>* probe(Key key) {
     return map((T*)0).count(key) ? map((T*)0)[key] : NULL;
   }
 };
