@@ -290,8 +290,8 @@ void Search::think() {
       log << "\nSearching: "  << pos.to_fen()
           << "\ninfinite: "   << Limits.infinite
           << " ponder: "      << Limits.ponder
-          << " time: "        << Limits.times[pos.side_to_move()]
-          << " increment: "   << Limits.incs[pos.side_to_move()]
+          << " time: "        << Limits.time[pos.side_to_move()]
+          << " increment: "   << Limits.inc[pos.side_to_move()]
           << " moves to go: " << Limits.movestogo
           << endl;
   }

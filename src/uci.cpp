@@ -204,13 +204,13 @@ namespace {
     while (is >> token)
     {
         if (token == "wtime")
-            is >> limits.times[WHITE];
+            is >> limits.time[WHITE];
         else if (token == "btime")
-            is >> limits.times[BLACK];
+            is >> limits.time[BLACK];
         else if (token == "winc")
-            is >> limits.incs[WHITE];
+            is >> limits.inc[WHITE];
         else if (token == "binc")
-            is >> limits.incs[BLACK];
+            is >> limits.inc[BLACK];
         else if (token == "movestogo")
             is >> limits.movestogo;
         else if (token == "depth")
