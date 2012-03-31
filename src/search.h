@@ -23,6 +23,7 @@
 #include <cstring>
 #include <vector>
 
+#include "misc.h"
 #include "types.h"
 
 class Position;
@@ -94,6 +95,7 @@ extern volatile SignalsType Signals;
 extern LimitsType Limits;
 extern std::vector<RootMove> RootMoves;
 extern Position RootPosition;
+extern Time SearchTime;
 
 extern void init();
 extern int64_t perft(Position& pos, Depth depth);

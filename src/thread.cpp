@@ -432,6 +432,8 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
                                      const std::set<Move>& searchMoves) {
   wait_for_search_finished();
 
+  SearchTime.restart(); // As early as possible
+
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
