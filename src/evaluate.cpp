@@ -36,8 +36,8 @@ namespace {
   struct EvalInfo {
 
     // Pointers to material and pawn hash table entries
-    MaterialInfo* mi;
-    PawnInfo* pi;
+    MaterialEntry* mi;
+    PawnEntry* pi;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type, attackedBy[color][0] contains
@@ -250,8 +250,7 @@ namespace {
 
   Score evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei);
 
-  inline Score apply_weight(Score v, Score weight);
-  Value scale_by_game_phase(const Score& v, Phase ph, ScaleFactor sf);
+  Value interpolate(const Score& v, Phase ph, ScaleFactor sf);
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
   double to_cp(Value v);
   void trace_add(int idx, Score term_w, Score term_b = SCORE_ZERO);
@@ -372,7 +371,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   margins[WHITE] = margins[BLACK] = VALUE_ZERO;
 
   // Probe the material hash table
-  ei.mi = Threads[pos.thread()].materialTable.material_info(pos);
+  ei.mi = Threads[pos.thread()].materialTable.probe(pos);
   score += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
@@ -384,7 +383,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
   // Probe the pawn hash table
-  ei.pi = Threads[pos.thread()].pawnTable.pawn_info(pos);
+  ei.pi = Threads[pos.thread()].pawnTable.probe(pos);
   score += ei.pi->pawns_value();
 
   // Initialize attack and king safety bitboards
@@ -446,9 +445,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
            sf = ScaleFactor(50);
   }
 
-  // Interpolate between the middle game and the endgame score
   margin = margins[pos.side_to_move()];
-  Value v = scale_by_game_phase(score, ei.mi->game_phase(), sf);
+  Value v = interpolate(score, ei.mi->game_phase(), sf);
 
   // In case of tracing add all single evaluation contributions for both white and black
   if (Trace)
@@ -1140,18 +1138,10 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
 
-  // apply_weight() applies an evaluation weight to a value trying to prevent overflow
-
-  inline Score apply_weight(Score v, Score w) {
-    return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
-                      (int(eg_value(v)) * eg_value(w)) / 0x100);
-  }
-
-
-  // scale_by_game_phase() interpolates between a middle game and an endgame score,
+  // interpolate() interpolates between a middle game and an endgame score,
   // based on game phase. It also scales the return value by a ScaleFactor array.
 
-  Value scale_by_game_phase(const Score& v, Phase ph, ScaleFactor sf) {
+  Value interpolate(const Score& v, Phase ph, ScaleFactor sf) {
 
     assert(mg_value(v) > -VALUE_INFINITE && mg_value(v) < VALUE_INFINITE);
     assert(eg_value(v) > -VALUE_INFINITE && eg_value(v) < VALUE_INFINITE);

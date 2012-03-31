@@ -85,8 +85,8 @@ public:
   void wait_for_stop_or_ponderhit();
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
-  MaterialInfoTable materialTable;
-  PawnInfoTable pawnTable;
+  MaterialTable materialTable;
+  PawnTable pawnTable;
   int threadID;
   int maxPly;
   Lock sleepLock;
@@ -111,7 +111,7 @@ class ThreadsManager {
      static storage duration are automatically set to zero before enter main()
   */
 public:
-  void init(); // No c'tor becuase Threads is static and we need stuff initialized
+  void init(); // No c'tor becuase Threads is static and we need engine initialized
   ~ThreadsManager();
 
   Thread& operator[](int id) { return *threads[id]; }

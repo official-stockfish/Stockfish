@@ -84,16 +84,15 @@ namespace {
 } // namespace
 
 
-/// MaterialInfoTable::material_info() takes a position object as input,
-/// computes or looks up a MaterialInfo object, and returns a pointer to it.
-/// If the material configuration is not already present in the table, it
-/// is stored there, so we don't have to recompute everything when the
-/// same material configuration occurs again.
+/// MaterialTable::probe() takes a position object as input, looks up a MaterialEntry
+/// object, and returns a pointer to it. If the material configuration is not
+/// already present in the table, it is computed and stored there, so we don't
+/// have to recompute everything when the same material configuration occurs again.
 
-MaterialInfo* MaterialInfoTable::material_info(const Position& pos) const {
+MaterialEntry* MaterialTable::probe(const Position& pos) const {
 
   Key key = pos.material_key();
-  MaterialInfo* mi = probe(key);
+  MaterialEntry* mi = Base::probe(key);
 
   // If mi->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
@@ -101,13 +100,10 @@ MaterialInfo* MaterialInfoTable::material_info(const Position& pos) const {
   if (mi->key == key)
       return mi;
 
-  // Initialize MaterialInfo entry
-  memset(mi, 0, sizeof(MaterialInfo));
+  memset(mi, 0, sizeof(MaterialEntry));
   mi->key = key;
   mi->factor[WHITE] = mi->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-
-  // Store game phase
-  mi->gamePhase = MaterialInfoTable::game_phase(pos);
+  mi->gamePhase = MaterialTable::game_phase(pos);
 
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
@@ -230,11 +226,11 @@ MaterialInfo* MaterialInfoTable::material_info(const Position& pos) const {
 }
 
 
-/// MaterialInfoTable::imbalance() calculates imbalance comparing piece count of each
+/// MaterialTable::imbalance() calculates imbalance comparing piece count of each
 /// piece type for both colors.
 
 template<Color Us>
-int MaterialInfoTable::imbalance(const int pieceCount[][8]) {
+int MaterialTable::imbalance(const int pieceCount[][8]) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -266,11 +262,11 @@ int MaterialInfoTable::imbalance(const int pieceCount[][8]) {
 }
 
 
-/// MaterialInfoTable::game_phase() calculates the phase given the current
+/// MaterialTable::game_phase() calculates the phase given the current
 /// position. Because the phase is strictly a function of the material, it
-/// is stored in MaterialInfo.
+/// is stored in MaterialEntry.
 
-Phase MaterialInfoTable::game_phase(const Position& pos) {
+Phase MaterialTable::game_phase(const Position& pos) {
 
   Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
 

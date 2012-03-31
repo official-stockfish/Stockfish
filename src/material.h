@@ -34,7 +34,7 @@ enum Phase {
 };
 
 
-/// MaterialInfo is a class which contains various information about a
+/// MaterialEntry is a class which contains various information about a
 /// material configuration. It contains a material balance evaluation,
 /// a function pointer to a special endgame evaluation function (which in
 /// most cases is NULL, meaning that the standard evaluation function will
@@ -44,9 +44,9 @@ enum Phase {
 /// For instance, in KRB vs KR endgames, the score is scaled down by a factor
 /// of 4, which will result in scores of absolute value less than one pawn.
 
-class MaterialInfo {
+class MaterialEntry {
 
-  friend class MaterialInfoTable;
+  friend class MaterialTable;
 
 public:
   Score material_value() const;
@@ -67,15 +67,15 @@ private:
 };
 
 
-/// The MaterialInfoTable class represents a pawn hash table. The most important
-/// method is material_info(), which returns a pointer to a MaterialInfo object.
+/// The MaterialTable class represents a material hash table. The most important
+/// method is probe(), which returns a pointer to a MaterialEntry object.
 
-class MaterialInfoTable : public SimpleHash<MaterialInfo, MaterialTableSize> {
+class MaterialTable : public HashTable<MaterialEntry, MaterialTableSize> {
 public:
-  MaterialInfoTable() : funcs(new Endgames()) {}
-  ~MaterialInfoTable() { delete funcs; }
+  MaterialTable() : funcs(new Endgames()) {}
+  ~MaterialTable() { delete funcs; }
 
-  MaterialInfo* material_info(const Position& pos) const;
+  MaterialEntry* probe(const Position& pos) const;
   static Phase game_phase(const Position& pos);
 
 private:
@@ -86,14 +86,14 @@ private:
 };
 
 
-/// MaterialInfo::scale_factor takes a position and a color as input, and
+/// MaterialEntry::scale_factor takes a position and a color as input, and
 /// returns a scale factor for the given color. We have to provide the
 /// position in addition to the color, because the scale factor need not
 /// to be a constant: It can also be a function which should be applied to
 /// the position. For instance, in KBP vs K endgames, a scaling function
 /// which checks for draws with rook pawns and wrong-colored bishops.
 
-inline ScaleFactor MaterialInfo::scale_factor(const Position& pos, Color c) const {
+inline ScaleFactor MaterialEntry::scale_factor(const Position& pos, Color c) const {
 
   if (!scalingFunction[c])
       return ScaleFactor(factor[c]);
@@ -102,23 +102,23 @@ inline ScaleFactor MaterialInfo::scale_factor(const Position& pos, Color c) cons
   return sf == SCALE_FACTOR_NONE ? ScaleFactor(factor[c]) : sf;
 }
 
-inline Value MaterialInfo::evaluate(const Position& pos) const {
+inline Value MaterialEntry::evaluate(const Position& pos) const {
   return (*evaluationFunction)(pos);
 }
 
-inline Score MaterialInfo::material_value() const {
+inline Score MaterialEntry::material_value() const {
   return make_score(value, value);
 }
 
-inline int MaterialInfo::space_weight() const {
+inline int MaterialEntry::space_weight() const {
   return spaceWeight;
 }
 
-inline Phase MaterialInfo::game_phase() const {
+inline Phase MaterialEntry::game_phase() const {
   return gamePhase;
 }
 
-inline bool MaterialInfo::specialized_eval_exists() const {
+inline bool MaterialEntry::specialized_eval_exists() const {
   return evaluationFunction != NULL;
 }
 

@@ -137,16 +137,16 @@ inline void TranspositionTable::refresh(const TTEntry* tte) const {
 }
 
 
-/// A simple fixed size hash table used to store pawns and material
-/// configurations. It is basically just an array of Entry objects.
-/// Without cluster concept, overwrite policy nor resizing.
+/// A simple hash table used to store pawns and material configurations. It is
+/// basically just an array of Entry objects. Without cluster concept, overwrite
+/// policy nor resizing.
 
 template<class Entry, int HashSize>
-struct SimpleHash {
+struct HashTable {
 
-  typedef SimpleHash<Entry, HashSize> Base;
+  typedef HashTable<Entry, HashSize> Base;
 
-  SimpleHash() {
+  HashTable() {
 
     entries = new (std::nothrow) Entry[HashSize];
     if (!entries)
@@ -158,12 +158,12 @@ struct SimpleHash {
     memset(entries, 0, HashSize * sizeof(Entry));
   }
 
-  virtual ~SimpleHash() { delete [] entries; }
+  virtual ~HashTable() { delete [] entries; }
 
   Entry* probe(Key key) const { return entries + ((uint32_t)key & (HashSize - 1)); }
   void prefetch(Key key) const { ::prefetch((char*)probe(key)); }
 
-protected:
+private:
   Entry* entries;
 };
 

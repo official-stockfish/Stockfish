@@ -26,16 +26,16 @@
 
 const int PawnTableSize = 16384;
 
-/// PawnInfo is a class which contains various information about a pawn
+/// PawnEntry is a class which contains various information about a pawn
 /// structure. Currently, it only includes a middle game and an end game
 /// pawn structure evaluation, and a bitboard of passed pawns. We may want
 /// to add further information in the future. A lookup to the pawn hash
-/// table (performed by calling the pawn_info method in a PawnInfoTable
-/// object) returns a pointer to a PawnInfo object.
+/// table (performed by calling the probe method in a PawnTable object)
+/// returns a pointer to a PawnEntry object.
 
-class PawnInfo {
+class PawnEntry {
 
-  friend class PawnInfoTable;
+  friend class PawnTable;
 
 public:
   Score pawns_value() const;
@@ -61,50 +61,51 @@ private:
   Square kingSquares[2];
   Score value;
   int halfOpenFiles[2];
-  Score kingShelters[2];
+  Score kingSafety[2];
 };
 
 
-/// The PawnInfoTable class represents a pawn hash table. The most important
-/// method is pawn_info, which returns a pointer to a PawnInfo object.
+/// The PawnTable class represents a pawn hash table. The most important
+/// method is probe, which returns a pointer to a PawnEntry object.
 
-class PawnInfoTable : public SimpleHash<PawnInfo, PawnTableSize> {
+class PawnTable : public HashTable<PawnEntry, PawnTableSize> {
 public:
-  PawnInfo* pawn_info(const Position& pos) const;
+  PawnEntry* probe(const Position& pos) const;
 
 private:
   template<Color Us>
-  static Score evaluate_pawns(const Position& pos, Bitboard ourPawns, Bitboard theirPawns, PawnInfo* pi);
+  static Score evaluate_pawns(const Position& pos, Bitboard ourPawns,
+                              Bitboard theirPawns, PawnEntry* pi);
 };
 
 
-inline Score PawnInfo::pawns_value() const {
+inline Score PawnEntry::pawns_value() const {
   return value;
 }
 
-inline Bitboard PawnInfo::pawn_attacks(Color c) const {
+inline Bitboard PawnEntry::pawn_attacks(Color c) const {
   return pawnAttacks[c];
 }
 
-inline Bitboard PawnInfo::passed_pawns(Color c) const {
+inline Bitboard PawnEntry::passed_pawns(Color c) const {
   return passedPawns[c];
 }
 
-inline int PawnInfo::file_is_half_open(Color c, File f) const {
+inline int PawnEntry::file_is_half_open(Color c, File f) const {
   return halfOpenFiles[c] & (1 << int(f));
 }
 
-inline int PawnInfo::has_open_file_to_left(Color c, File f) const {
+inline int PawnEntry::has_open_file_to_left(Color c, File f) const {
   return halfOpenFiles[c] & ((1 << int(f)) - 1);
 }
 
-inline int PawnInfo::has_open_file_to_right(Color c, File f) const {
+inline int PawnEntry::has_open_file_to_right(Color c, File f) const {
   return halfOpenFiles[c] & ~((1 << int(f+1)) - 1);
 }
 
 template<Color Us>
-inline Score PawnInfo::king_safety(const Position& pos, Square ksq) {
-  return kingSquares[Us] == ksq ? kingShelters[Us] : update_safety<Us>(pos, ksq);
+inline Score PawnEntry::king_safety(const Position& pos, Square ksq) {
+  return kingSquares[Us] == ksq ? kingSafety[Us] : update_safety<Us>(pos, ksq);
 }
 
 #endif // !defined(PAWNS_H_INCLUDED)
