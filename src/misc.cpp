@@ -17,30 +17,16 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if defined(_WIN32) || defined(_WIN64)
-
-#define NOMINMAX // disable macros min() and max()
-#include <windows.h>
-
-#else
-
-#  include <unistd.h>
-#  if defined(__hpux)
-#     include <sys/pstat.h>
-#  endif
-
-#endif
-
-#if !defined(NO_PREFETCH)
-#  include <xmmintrin.h>
-#endif
-
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
 #include "misc.h"
 #include "thread.h"
+
+#if defined(__hpux)
+#    include <sys/pstat.h>
+#endif
 
 using namespace std;
 
@@ -218,6 +204,8 @@ void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
 void prefetch(char*) {}
 
 #else
+
+#   include <xmmintrin.h>
 
 void prefetch(char* addr) {
 
