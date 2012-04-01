@@ -116,10 +116,8 @@ Endgames::~Endgames() {
 template<EndgameType E>
 void Endgames::add(const string& code) {
 
-  typedef typename eg_family<E>::type T;
-
-  map((T*)0)[key(code, WHITE)] = new Endgame<E>(WHITE);
-  map((T*)0)[key(code, BLACK)] = new Endgame<E>(BLACK);
+  map((Endgame<E>*)0)[key(code, WHITE)] = new Endgame<E>(WHITE);
+  map((Endgame<E>*)0)[key(code, BLACK)] = new Endgame<E>(BLACK);
 }
 
 
@@ -133,13 +131,13 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(pos.piece_count(weakerSide, PAWN) == VALUE_ZERO);
 
-	// Stalemate detection with lone king
+  // Stalemate detection with lone king
   if (    pos.side_to_move() == weakerSide
       && !pos.in_check()
       && !MoveList<MV_LEGAL>(pos).size()) {
     return VALUE_DRAW;
   }
-  
+
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
 
