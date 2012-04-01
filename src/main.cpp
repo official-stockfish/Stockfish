@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
 
-  bitboards_init();
+  Bitboards::init();
   Position::init();
   kpk_bitbase_init();
   Search::init();

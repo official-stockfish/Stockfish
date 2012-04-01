@@ -23,6 +23,13 @@
 
 #include "types.h"
 
+namespace Bitboards {
+
+extern void init();
+extern void print(Bitboard b);
+
+}
+
 CACHE_LINE_ALIGNMENT
 
 extern Bitboard RMasks[64];
@@ -262,8 +269,5 @@ extern Square last_1(Bitboard b);
 extern Square pop_1st_bit(Bitboard* b);
 
 #endif
-
-extern void print_bitboard(Bitboard b);
-extern void bitboards_init();
 
 #endif // !defined(BITBOARD_H_INCLUDED)
