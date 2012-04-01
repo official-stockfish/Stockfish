@@ -429,7 +429,7 @@ void ThreadsManager::wait_for_search_finished() {
 // main_loop() so to start a new search, then returns immediately.
 
 void ThreadsManager::start_searching(const Position& pos, const LimitsType& limits,
-                                     const std::set<Move>& searchMoves) {
+                                     const std::vector<Move>& searchMoves) {
   wait_for_search_finished();
 
   SearchTime.restart(); // As early as possible
@@ -442,7 +442,7 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
   RootMoves.clear();
 
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
-      if (searchMoves.empty() || searchMoves.count(ml.move()))
+      if (searchMoves.empty() || count(searchMoves.begin(), searchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
   threads[0]->do_sleep = false;

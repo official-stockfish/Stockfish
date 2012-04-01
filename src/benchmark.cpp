@@ -118,7 +118,7 @@ void benchmark(istringstream& is) {
       }
       else
       {
-          Threads.start_searching(pos, limits);
+          Threads.start_searching(pos, limits, vector<Move>());
           Threads.wait_for_search_finished();
           nodes += Search::RootPosition.nodes_searched();
       }

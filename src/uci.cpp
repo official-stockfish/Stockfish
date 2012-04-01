@@ -212,7 +212,7 @@ namespace {
   void go(Position& pos, istringstream& is) {
 
     Search::LimitsType limits;
-    std::set<Move> searchMoves;
+    vector<Move> searchMoves;
     string token;
 
     while (is >> token)
@@ -239,7 +239,7 @@ namespace {
             limits.ponder = true;
         else if (token == "searchmoves")
             while (is >> token)
-                searchMoves.insert(move_from_uci(pos, token));
+                searchMoves.push_back(move_from_uci(pos, token));
     }
 
     Threads.start_searching(pos, limits, searchMoves);
@@ -263,8 +263,8 @@ namespace {
 
     int e = time.elapsed();
 
-    std::cout << "\nNodes " << n
-              << "\nTime (ms) " << e
-              << "\nNodes/second " << int(n / (e / 1000.0)) << std::endl;
+    cout << "\nNodes " << n
+         << "\nTime (ms) " << e
+         << "\nNodes/second " << int(n / (e / 1000.0)) << endl;
   }
 }
