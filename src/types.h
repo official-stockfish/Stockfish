@@ -327,7 +327,7 @@ inline Color operator~(Color c) {
 }
 
 inline Square operator~(Square s) {
-  return Square(s ^ 56);
+  return Square(s ^ 56); // Vertical flip SQ_A1 -> SQ_A8
 }
 
 inline Value mate_in(int ply) {
@@ -354,7 +354,7 @@ inline Square make_square(File f, Rank r) {
   return Square((r << 3) | f);
 }
 
-inline bool square_is_ok(Square s) {
+inline bool is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
 
@@ -367,7 +367,7 @@ inline Rank rank_of(Square s) {
 }
 
 inline Square mirror(Square s) {
-  return Square(s ^ 7);
+  return Square(s ^ 7); // Horizontal flip SQ_A1 -> SQ_H1
 }
 
 inline Square relative_square(Color c, Square s) {
