@@ -19,6 +19,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 #include "misc.h"
@@ -57,30 +58,30 @@ static const char* Defaults[] = {
 /// format (defaults are the positions defined above) and the type of the
 /// limit value: depth (default), time in secs or number of nodes.
 
-void benchmark(int argc, char* argv[]) {
+void benchmark(istringstream& is) {
 
-  vector<string> fens;
+  string token;
   Search::LimitsType limits;
-  int64_t nodes = 0;
+  vector<string> fens(Defaults, Defaults + 16);
 
   // Assign default values to missing arguments
-  string ttSize  = argc > 2 ? argv[2] : "128";
-  string threads = argc > 3 ? argv[3] : "1";
-  string valStr  = argc > 4 ? argv[4] : "12";
-  string fenFile = argc > 5 ? argv[5] : "default";
-  string valType = argc > 6 ? argv[6] : "depth";
+  string ttSize    = (is >> token) ? token : "128";
+  string threads   = (is >> token) ? token : "1";
+  string limit     = (is >> token) ? token : "12";
+  string fenFile   = (is >> token) ? token : "default";
+  string limitType = (is >> token) ? token : "depth";
 
   Options["Hash"]    = ttSize;
   Options["Threads"] = threads;
 
-  if (valType == "time")
-      limits.movetime = 1000 * atoi(valStr.c_str()); // movetime is in ms
+  if (limitType == "time")
+      limits.movetime = 1000 * atoi(limit.c_str()); // movetime is in ms
 
-  else if (valType == "nodes")
-      limits.nodes = atoi(valStr.c_str());
+  else if (limitType == "nodes")
+      limits.nodes = atoi(limit.c_str());
 
   else
-      limits.depth = atoi(valStr.c_str());
+      limits.depth = atoi(limit.c_str());
 
   if (fenFile != "default")
   {
@@ -99,9 +100,8 @@ void benchmark(int argc, char* argv[]) {
 
       file.close();
   }
-  else
-      fens.assign(Defaults, Defaults + 16);
 
+  int64_t nodes = 0;
   Time time = Time::current_time();
 
   for (size_t i = 0; i < fens.size(); i++)
@@ -110,7 +110,7 @@ void benchmark(int argc, char* argv[]) {
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
-      if (valType == "perft")
+      if (limitType == "perft")
       {
           int64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
           cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;

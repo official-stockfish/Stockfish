@@ -30,6 +30,8 @@
 
 using namespace std;
 
+extern void benchmark(istringstream& is);
+
 namespace {
 
   // FEN string of the initial position, normal chess
@@ -52,14 +54,17 @@ namespace {
 /// that we exit gracefully if the GUI dies unexpectedly. In addition to the UCI
 /// commands, the function also supports a few debug commands.
 
-void uci_loop() {
+void uci_loop(const string& args) {
 
   Position pos(StartFEN, false, 0); // The root position
   string cmd, token;
 
   while (token != "quit")
   {
-      if (!getline(cin, cmd)) // Block here waiting for input
+      if (!args.empty())
+          cmd = args;
+
+      else if (!getline(cin, cmd)) // Block here waiting for input
           cmd = "quit";
 
       istringstream is(cmd);
@@ -113,6 +118,9 @@ void uci_loop() {
       else if (token == "eval")
           cout << Eval::trace(pos) << endl;
 
+      else if (token == "bench")
+          benchmark(is);
+
       else if (token == "key")
           cout << "key: " << hex     << pos.key()
                << "\nmaterial key: " << pos.material_key()
@@ -124,6 +132,12 @@ void uci_loop() {
                << "\nuciok"      << endl;
       else
           cout << "Unknown command: " << cmd << endl;
+
+      if (!args.empty()) // Command line arguments have one-shot behaviour
+      {
+          Threads.wait_for_search_finished();
+          break;
+      }
   }
 }
 
