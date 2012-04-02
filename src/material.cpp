@@ -108,7 +108,7 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
   // configuration one, then a generic one if previous search failed.
-  if ((e->evaluationFunction = endgames.probe<Value>(key)) != NULL)
+  if (endgames.probe(key, e->evaluationFunction))
       return e;
 
   if (is_KXK<WHITE>(pos))
@@ -145,7 +145,7 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
   // scaling functions and we need to decide which one to use.
   EndgameBase<ScaleFactor>* sf;
 
-  if ((sf = endgames.probe<ScaleFactor>(key)) != NULL)
+  if (endgames.probe(key, sf))
   {
       e->scalingFunction[sf->color()] = sf;
       return e;

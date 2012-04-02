@@ -51,17 +51,15 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
+  s << "Stockfish " << Version;
+
   if (Version.empty())
   {
       date >> month >> day >> year;
 
-      s << "Stockfish " << Tag
-        << setfill('0') << " " << year.substr(2)
-        << setw(2) << (1 + months.find(month) / 4)
-        << setw(2) << day;
+      s << Tag << setfill('0') << " " << year.substr(2)
+        << setw(2) << (1 + months.find(month) / 4) << setw(2) << day;
   }
-  else
-      s << "Stockfish " << Version;
 
   s << cpu64 << popcnt << (to_uci ? "\nid author ": " by ")
     << "Tord Romstad, Marco Costalba and Joona Kiiski";
