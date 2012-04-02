@@ -66,7 +66,7 @@ const Value PieceValueEndgame[17] = {
 namespace {
 
   // Bonus for having the side to move (modified by Joona Kiiski)
-  const Score TempoValue = make_score(48, 22);
+  const Score Tempo = make_score(48, 22);
 
   // To convert a Piece to and from a FEN char
   const string PieceToChar(" PNBRQK  pnbrqk  .");
@@ -229,7 +229,7 @@ void Position::from_fen(const string& fenStr, bool isChess960) {
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
   st->materialKey = compute_material_key();
-  st->value = compute_value();
+  st->psqScore = compute_psq_score();
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
   st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
@@ -283,7 +283,7 @@ const string Position::to_fen() const {
       {
           sq = make_square(file, rank);
 
-          if (square_is_empty(sq))
+          if (square_empty(sq))
               emptyCnt++;
           else
           {
@@ -336,7 +336,7 @@ void Position::print(Move move) const {
 
   if (move)
   {
-      Position p(*this, thread());
+      Position p(*this, this_thread());
       cout << "\nMove is: " << (sideToMove == BLACK ? ".." : "") << move_to_san(p, move);
   }
 
@@ -434,7 +434,7 @@ bool Position::move_attacks_square(Move m, Square s) const {
   Square to = to_sq(m);
   Piece piece = piece_moved(m);
 
-  assert(!square_is_empty(from));
+  assert(!square_empty(from));
 
   // Update occupancy as if the piece is moving
   occ = pieces() ^ from ^ to;
@@ -576,7 +576,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       case DELTA_N:
       case DELTA_S:
       // Pawn push. The destination square must be empty.
-      if (!square_is_empty(to))
+      if (!square_empty(to))
           return false;
       break;
 
@@ -585,8 +585,8 @@ bool Position::is_pseudo_legal(const Move m) const {
       // rank, and both the destination square and the square between the
       // source and destination squares must be empty.
       if (   rank_of(to) != RANK_4
-          || !square_is_empty(to)
-          || !square_is_empty(from + DELTA_N))
+          || !square_empty(to)
+          || !square_empty(from + DELTA_N))
           return false;
       break;
 
@@ -595,8 +595,8 @@ bool Position::is_pseudo_legal(const Move m) const {
       // rank, and both the destination square and the square between the
       // source and destination squares must be empty.
       if (   rank_of(to) != RANK_5
-          || !square_is_empty(to)
-          || !square_is_empty(from + DELTA_S))
+          || !square_empty(to)
+          || !square_empty(from + DELTA_S))
           return false;
       break;
 
@@ -724,7 +724,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
     Key pawnKey, materialKey;
     Value npMaterial[2];
     int castleRights, rule50, pliesFromNull;
-    Score value;
+    Score psq_score;
     Square epSquare;
   };
 
@@ -808,7 +808,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       st->materialKey ^= zobrist[them][capture][pieceCount[them][capture]];
 
       // Update incremental scores
-      st->value -= pst(make_piece(them, capture), capsq);
+      st->psqScore -= pieceSquareTable[make_piece(them, capture)][capsq];
 
       // Reset rule 50 counter
       st->rule50 = 0;
@@ -888,8 +888,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
                             ^ zobrist[us][PAWN][pieceCount[us][PAWN]];
 
           // Update incremental score
-          st->value +=  pst(make_piece(us, promotion), to)
-                      - pst(make_piece(us, PAWN), to);
+          st->psqScore +=  pieceSquareTable[make_piece(us, promotion)][to]
+                         - pieceSquareTable[make_piece(us, PAWN)][to];
 
           // Update material
           st->npMaterial[us] += PieceValueMidgame[promotion];
@@ -907,7 +907,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   prefetch((char*)Threads[threadID].materialTable.entries[st->materialKey]);
 
   // Update incremental scores
-  st->value += pst_delta(piece, from, to);
+  st->psqScore += psq_delta(piece, from, to);
 
   // Set capture piece
   st->capturedType = capture;
@@ -942,7 +942,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Finish
   sideToMove = ~sideToMove;
-  st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
+  st->psqScore += (sideToMove == WHITE ?  Tempo : -Tempo);
 
   assert(pos_is_ok());
 }
@@ -971,7 +971,7 @@ void Position::undo_move(Move m) {
   PieceType pt = type_of(piece);
   PieceType capture = st->capturedType;
 
-  assert(square_is_empty(from));
+  assert(square_empty(from));
   assert(color_of(piece) == us);
   assert(capture != KING);
 
@@ -1120,8 +1120,8 @@ void Position::do_castle_move(Move m) {
       st->capturedType = NO_PIECE_TYPE;
 
       // Update incremental scores
-      st->value += pst_delta(king, kfrom, kto);
-      st->value += pst_delta(rook, rfrom, rto);
+      st->psqScore += psq_delta(king, kfrom, kto);
+      st->psqScore += psq_delta(rook, rfrom, rto);
 
       // Update hash key
       st->key ^= zobrist[us][KING][kfrom] ^ zobrist[us][KING][kto];
@@ -1143,7 +1143,7 @@ void Position::do_castle_move(Move m) {
 
       // Finish
       sideToMove = ~sideToMove;
-      st->value += (sideToMove == WHITE ?  TempoValue : -TempoValue);
+      st->psqScore += (sideToMove == WHITE ?  Tempo : -Tempo);
   }
   else
       // Undo: point our state pointer back to the previous state
@@ -1169,7 +1169,7 @@ void Position::do_null_move(StateInfo& backupSt) {
 
   dst->key      = src->key;
   dst->epSquare = src->epSquare;
-  dst->value    = src->value;
+  dst->psqScore = src->psqScore;
   dst->rule50   = src->rule50;
   dst->pliesFromNull = src->pliesFromNull;
 
@@ -1186,7 +1186,7 @@ void Position::do_null_move(StateInfo& backupSt) {
       st->epSquare = SQ_NONE;
       st->rule50++;
       st->pliesFromNull = 0;
-      st->value += (sideToMove == WHITE) ?  TempoValue : -TempoValue;
+      st->psqScore += (sideToMove == WHITE ?  Tempo : -Tempo);
   }
 
   assert(pos_is_ok());
@@ -1361,7 +1361,7 @@ Key Position::compute_key() const {
   Key result = zobCastle[st->castleRights];
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
-      if (!square_is_empty(s))
+      if (!square_empty(s))
           result ^= zobrist[color_of(piece_on(s))][type_of(piece_on(s))][s];
 
   if (ep_square() != SQ_NONE)
@@ -1414,11 +1414,11 @@ Key Position::compute_material_key() const {
 }
 
 
-/// Position::compute_value() compute the incremental scores for the middle
+/// Position::compute_psq_score() computes the incremental scores for the middle
 /// game and the endgame. These functions are used to initialize the incremental
 /// scores when a new position is set up, and to verify that the scores are correctly
 /// updated by do_move and undo_move when the program is running in debug mode.
-Score Position::compute_value() const {
+Score Position::compute_psq_score() const {
 
   Bitboard b;
   Score result = SCORE_ZERO;
@@ -1428,10 +1428,10 @@ Score Position::compute_value() const {
       {
           b = pieces(pt, c);
           while (b)
-              result += pst(make_piece(c, pt), pop_1st_bit(&b));
+              result += pieceSquareTable[make_piece(c, pt)][pop_1st_bit(&b)];
       }
 
-  result += (sideToMove == WHITE ? TempoValue / 2 : -TempoValue / 2);
+  result += (sideToMove == WHITE ? Tempo / 2 : -Tempo / 2);
   return result;
 }
 
@@ -1540,20 +1540,20 @@ void Position::init() {
 }
 
 
-/// Position::flip_me() flips position with the white and black sides reversed. This
+/// Position::flip() flips position with the white and black sides reversed. This
 /// is only useful for debugging especially for finding evaluation symmetry bugs.
 
-void Position::flip_me() {
+void Position::flip() {
 
   // Make a copy of current position before to start changing
   const Position pos(*this, threadID);
 
   clear();
-  threadID = pos.thread();
+  threadID = pos.this_thread();
 
   // Board
   for (Square s = SQ_A1; s <= SQ_H8; s++)
-      if (!pos.square_is_empty(s))
+      if (!pos.square_empty(s))
           put_piece(Piece(pos.piece_on(s) ^ 8), ~s);
 
   // Side to move
@@ -1582,7 +1582,7 @@ void Position::flip_me() {
   st->materialKey = compute_material_key();
 
   // Incremental scores
-  st->value = compute_value();
+  st->psqScore = compute_psq_score();
 
   // Material
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
@@ -1704,7 +1704,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   // Incremental eval OK?
   if (failedStep) (*failedStep)++;
-  if (debugIncrementalEval && st->value != compute_value())
+  if (debugIncrementalEval && st->psqScore != compute_psq_score())
       return false;
 
   // Non-pawn material OK?

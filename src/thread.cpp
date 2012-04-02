@@ -309,7 +309,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
 
-  int master = pos.thread();
+  int master = pos.this_thread();
   Thread& masterThread = *threads[master];
 
   if (masterThread.splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)

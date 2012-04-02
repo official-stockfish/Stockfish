@@ -332,7 +332,7 @@ finalize:
   // but if we are pondering or in infinite search, we shouldn't print the best
   // move before we are told to do so.
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
-      Threads[pos.thread()].wait_for_stop_or_ponderhit();
+      Threads[pos.this_thread()].wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
   cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
@@ -530,7 +530,7 @@ namespace {
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert((alpha == beta - 1) || PvNode);
     assert(depth > DEPTH_ZERO);
-    assert(pos.thread() >= 0 && pos.thread() < Threads.size());
+    assert(pos.this_thread() >= 0 && pos.this_thread() < Threads.size());
 
     Move movesSearched[MAX_MOVES];
     StateInfo st;
@@ -544,7 +544,7 @@ namespace {
     bool isPvMove, inCheck, singularExtensionNode, givesCheck;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount = 0, playedMoveCount = 0;
-    Thread& thread = Threads[pos.thread()];
+    Thread& thread = Threads[pos.this_thread()];
     SplitPoint* sp = NULL;
 
     refinedValue = bestValue = value = -VALUE_INFINITE;
@@ -670,7 +670,7 @@ namespace {
         &&  refinedValue + razor_margin(depth) < beta
         &&  ttMove == MOVE_NONE
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
-        && !pos.has_pawn_on_7th(pos.side_to_move()))
+        && !pos.pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
         Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, DEPTH_ZERO);
@@ -847,7 +847,7 @@ split_point_start: // At split points actual search starts from here
       {
           Signals.firstRootMove = (moveCount == 1);
 
-          if (pos.thread() == 0 && SearchTime.elapsed() > 2000)
+          if (pos.this_thread() == 0 && SearchTime.elapsed() > 2000)
               cout << "info depth " << depth / ONE_PLY
                    << " currmove " << move_to_uci(move, Chess960)
                    << " currmovenumber " << moveCount + PVIdx << endl;
@@ -1054,7 +1054,7 @@ split_point_start: // At split points actual search starts from here
       if (   !SpNode
           && depth >= Threads.min_split_depth()
           && bestValue < beta
-          && Threads.available_slave_exists(pos.thread())
+          && Threads.available_slave_exists(pos.this_thread())
           && !Signals.stop
           && !thread.cutoff_occurred())
           bestValue = Threads.split<FakeSplit>(pos, ss, alpha, beta, bestValue, &bestMove,
@@ -1131,7 +1131,7 @@ split_point_start: // At split points actual search starts from here
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert((alpha == beta - 1) || PvNode);
     assert(depth <= DEPTH_ZERO);
-    assert(pos.thread() >= 0 && pos.thread() < Threads.size());
+    assert(pos.this_thread() >= 0 && pos.this_thread() < Threads.size());
 
     StateInfo st;
     Move ttMove, move, bestMove;

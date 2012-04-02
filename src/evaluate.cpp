@@ -364,14 +364,14 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   // Initialize score by reading the incrementally updated scores included
   // in the position object (material + piece square tables).
-  score = pos.value();
+  score = pos.psq_score();
 
   // margins[] store the uncertainty estimation of position's evaluation
   // that typically is used by the search for pruning decisions.
   margins[WHITE] = margins[BLACK] = VALUE_ZERO;
 
   // Probe the material hash table
-  ei.mi = Threads[pos.thread()].materialTable.probe(pos);
+  ei.mi = Threads[pos.this_thread()].materialTable.probe(pos);
   score += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
@@ -383,7 +383,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
   // Probe the pawn hash table
-  ei.pi = Threads[pos.thread()].pawnTable.probe(pos);
+  ei.pi = Threads[pos.this_thread()].pawnTable.probe(pos);
   score += ei.pi->pawns_value();
 
   // Initialize attack and king safety bitboards
@@ -427,7 +427,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // If we don't already have an unusual scale factor, check for opposite
   // colored bishop endgames, and use a lower scale for those.
   if (   ei.mi->game_phase() < PHASE_MIDGAME
-      && pos.opposite_colored_bishops()
+      && pos.opposite_bishops()
       && sf == SCALE_FACTOR_NORMAL)
   {
       // Only the two bishops ?
@@ -451,7 +451,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // In case of tracing add all single evaluation contributions for both white and black
   if (Trace)
   {
-      trace_add(PST, pos.value());
+      trace_add(PST, pos.psq_score());
       trace_add(IMBALANCE, ei.mi->material_value());
       trace_add(PAWN, ei.pi->pawns_value());
       trace_add(MOBILITY, apply_weight(mobilityWhite, Weights[Mobility]), apply_weight(mobilityBlack, Weights[Mobility]));
@@ -610,7 +610,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                 {
-                    if (!pos.square_is_empty(s + d + pawn_push(Us)))
+                    if (!pos.square_empty(s + d + pawn_push(Us)))
                         score -= 2*TrappedBishopA1H1Penalty;
                     else if (pos.piece_on(s + 2*d) == make_piece(Us, PAWN))
                         score -= TrappedBishopA1H1Penalty;
@@ -891,7 +891,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr);
 
             // If the pawn is free to advance, increase bonus
-            if (pos.square_is_empty(blockSq))
+            if (pos.square_empty(blockSq))
             {
                 squaresToQueen = squares_in_front_of(Us, s);
                 defendedSquares = squaresToQueen & ei.attackedBy[Us][0];
