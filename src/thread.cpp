@@ -48,7 +48,7 @@ Thread::Thread(Fn fn) {
   maxPly = splitPointsCnt = 0;
   curSplitPoint = NULL;
   start_fn = fn;
-  threadID = Threads.size();
+  idx = Threads.size();
 
   do_sleep = (fn != &Thread::main_loop); // Avoid a race with start_searching()
 
@@ -60,7 +60,7 @@ Thread::Thread(Fn fn) {
 
   if (!thread_create(handle, start_routine, this))
   {
-      std::cerr << "Failed to create thread number " << threadID << std::endl;
+      std::cerr << "Failed to create thread number " << idx << std::endl;
       ::exit(EXIT_FAILURE);
   }
 }
@@ -173,13 +173,13 @@ bool Thread::cutoff_occurred() const {
 
 
 // Thread::is_available_to() checks whether the thread is available to help the
-// thread with threadID "master" at a split point. An obvious requirement is that
-// thread must be idle. With more than two threads, this is not sufficient: If
-// the thread is the master of some active split point, it is only available as a
-// slave to the threads which are busy searching the split point at the top of
-// "slave"'s split point stack (the "helpful master concept" in YBWC terminology).
+// thread 'master' at a split point. An obvious requirement is that thread must
+// be idle. With more than two threads, this is not sufficient: If the thread is
+// the master of some active split point, it is only available as a slave to the
+// slaves which are busy searching the split point at the top of slaves split
+// point stack (the "helpful master concept" in YBWC terminology).
 
-bool Thread::is_available_to(int master) const {
+bool Thread::is_available_to(const Thread& master) const {
 
   if (is_searching)
       return false;
@@ -190,7 +190,7 @@ bool Thread::is_available_to(int master) const {
 
   // No active split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !spCnt || (splitPoints[spCnt - 1].slavesMask & (1ULL << master));
+  return !spCnt || (splitPoints[spCnt - 1].slavesMask & (1ULL << master.idx));
 }
 
 
@@ -275,11 +275,9 @@ void ThreadsManager::sleep() const {
 
 
 // available_slave_exists() tries to find an idle thread which is available as
-// a slave for the thread with threadID 'master'.
+// a slave for the thread 'master'.
 
-bool ThreadsManager::available_slave_exists(int master) const {
-
-  assert(master >= 0 && master < size());
+bool ThreadsManager::available_slave_exists(const Thread& master) const {
 
   for (int i = 0; i < size(); i++)
       if (threads[i]->is_available_to(master))
@@ -309,19 +307,18 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
 
-  int master = pos.this_thread();
-  Thread& masterThread = *threads[master];
+  Thread& master = pos.this_thread();
 
-  if (masterThread.splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
+  if (master.splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
 
   // Pick the next available split point from the split point stack
-  SplitPoint* sp = &masterThread.splitPoints[masterThread.splitPointsCnt++];
+  SplitPoint* sp = &master.splitPoints[master.splitPointsCnt++];
 
-  sp->parent = masterThread.curSplitPoint;
-  sp->master = master;
+  sp->parent = master.curSplitPoint;
+  sp->master = &master;
   sp->cutoff = false;
-  sp->slavesMask = 1ULL << master;
+  sp->slavesMask = 1ULL << master.idx;
   sp->depth = depth;
   sp->bestMove = *bestMove;
   sp->threatMove = threatMove;
@@ -335,9 +332,9 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->nodes = 0;
   sp->ss = ss;
 
-  assert(masterThread.is_searching);
+  assert(master.is_searching);
 
-  masterThread.curSplitPoint = sp;
+  master.curSplitPoint = sp;
   int slavesCnt = 0;
 
   // Try to allocate available threads and ask them to start searching setting
@@ -370,11 +367,11 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // their work at this split point.
   if (slavesCnt || Fake)
   {
-      masterThread.idle_loop(sp);
+      master.idle_loop(sp);
 
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.
-      assert(!masterThread.is_searching);
+      assert(!master.is_searching);
   }
 
   // We have returned from the idle loop, which means that all threads are
@@ -383,9 +380,9 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   lock_grab(sp->lock); // To protect sp->nodes
   lock_grab(splitLock);
 
-  masterThread.is_searching = true;
-  masterThread.splitPointsCnt--;
-  masterThread.curSplitPoint = sp->parent;
+  master.is_searching = true;
+  master.splitPointsCnt--;
+  master.curSplitPoint = sp->parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
   *bestMove = sp->bestMove;
 
@@ -417,11 +414,11 @@ void ThreadsManager::set_timer(int msec) {
 
 void ThreadsManager::wait_for_search_finished() {
 
-  Thread* main = threads[0];
-  lock_grab(main->sleepLock);
-  cond_signal(main->sleepCond); // In case is waiting for stop or ponderhit
-  while (!main->do_sleep) cond_wait(sleepCond, main->sleepLock);
-  lock_release(main->sleepLock);
+  Thread* t = main_thread();
+  lock_grab(t->sleepLock);
+  cond_signal(t->sleepCond); // In case is waiting for stop or ponderhit
+  while (!t->do_sleep) cond_wait(sleepCond, t->sleepLock);
+  lock_release(t->sleepLock);
 }
 
 
@@ -437,7 +434,7 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
-  RootPosition.copy(pos, 0);
+  RootPosition.copy(pos, main_thread());
   Limits = limits;
   RootMoves.clear();
 
@@ -445,6 +442,6 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
       if (searchMoves.empty() || count(searchMoves.begin(), searchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
-  threads[0]->do_sleep = false;
-  threads[0]->wake_up();
+  main_thread()->do_sleep = false;
+  main_thread()->wake_up();
 }

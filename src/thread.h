@@ -31,6 +31,8 @@
 const int MAX_THREADS = 32;
 const int MAX_SPLITPOINTS_PER_THREAD = 8;
 
+class Thread;
+
 struct SplitPoint {
 
   // Const data after split point has been setup
@@ -39,7 +41,7 @@ struct SplitPoint {
   Depth depth;
   Value beta;
   int nodeType;
-  int master;
+  Thread* master;
   Move threatMove;
 
   // Const pointers to shared data
@@ -76,7 +78,7 @@ public:
 
   void wake_up();
   bool cutoff_occurred() const;
-  bool is_available_to(int master) const;
+  bool is_available_to(const Thread& master) const;
   void idle_loop(SplitPoint* sp_master);
   void idle_loop() { idle_loop(NULL); } // Hack to allow storing in start_fn
   void main_loop();
@@ -86,7 +88,7 @@ public:
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   MaterialTable materialTable;
   PawnTable pawnTable;
-  int threadID;
+  int idx;
   int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
@@ -117,11 +119,12 @@ public:
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
   int size() const { return (int)threads.size(); }
+  Thread* main_thread() { return threads[0]; }
 
   void wake_up() const;
   void sleep() const;
   void read_uci_options();
-  bool available_slave_exists(int master) const;
+  bool available_slave_exists(const Thread& master) const;
   void set_timer(int msec);
   void wait_for_search_finished();
   void start_searching(const Position& pos, const Search::LimitsType& limits,
