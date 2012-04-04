@@ -123,6 +123,7 @@ Square pop_1st_bit(Bitboard* b) {
 
 Square last_1(Bitboard b) {
 
+  unsigned b32;
   int result = 0;
 
   if (b > 0xFFFFFFFF)
@@ -131,19 +132,21 @@ Square last_1(Bitboard b) {
       result = 32;
   }
 
-  if (b > 0xFFFF)
+  b32 = unsigned(b);
+
+  if (b32 > 0xFFFF)
   {
-      b >>= 16;
+      b32 >>= 16;
       result += 16;
   }
 
-  if (b > 0xFF)
+  if (b32 > 0xFF)
   {
-      b >>= 8;
+      b32 >>= 8;
       result += 8;
   }
 
-  return Square(result + MS1BTable[b]);
+  return Square(result + MS1BTable[b32]);
 }
 
 #endif // !defined(USE_BSFQ)
