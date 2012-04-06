@@ -47,7 +47,6 @@ OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
 # arch = (name)       --- (-arch)          --- Target architecture
 # os = (name)         ---                  --- Target operating system
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
-# bigendian = yes/no  --- -DBIGENDIAN      --- big/little-endian byte order
 # prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch x86 asm-instruction
 # bsfq = yes/no       --- -DUSE_BSFQ       --- Use bsfq x86_64 asm-instruction (only
 #                                              with GCC and ICC 64-bit)
@@ -68,7 +67,6 @@ ifeq ($(ARCH),general-64)
 	arch = any
 	os = any
 	bits = 64
-	bigendian = no
 	prefetch = no
 	bsfq = no
 	popcnt = no
@@ -78,27 +76,6 @@ ifeq ($(ARCH),general-32)
 	arch = any
 	os = any
 	bits = 32
-	bigendian = no
-	prefetch = no
-	bsfq = no
-	popcnt = no
-endif
-
-ifeq ($(ARCH),bigendian-64)
-	arch = any
-	os = any
-	bits = 64
-	bigendian = yes
-	prefetch = no
-	bsfq = no
-	popcnt = no
-endif
-
-ifeq ($(ARCH),bigendian-32)
-	arch = any
-	os = any
-	bits = 32
-	bigendian = yes
 	prefetch = no
 	bsfq = no
 	popcnt = no
@@ -109,7 +86,6 @@ ifeq ($(ARCH),x86-64)
 	arch = x86_64
 	os = any
 	bits = 64
-	bigendian = no
 	prefetch = yes
 	bsfq = yes
 	popcnt = no
@@ -119,7 +95,6 @@ ifeq ($(ARCH),x86-64-modern)
 	arch = x86_64
 	os = any
 	bits = 64
-	bigendian = no
 	prefetch = yes
 	bsfq = yes
 	popcnt = yes
@@ -129,7 +104,6 @@ ifeq ($(ARCH),x86-32)
 	arch = i386
 	os = any
 	bits = 32
-	bigendian = no
 	prefetch = yes
 	bsfq = no
 	popcnt = no
@@ -139,7 +113,6 @@ ifeq ($(ARCH),x86-32-old)
 	arch = i386
 	os = any
 	bits = 32
-	bigendian = no
 	prefetch = no
 	bsfq = no
 	popcnt = no
@@ -150,7 +123,6 @@ ifeq ($(ARCH),osx-ppc-64)
 	arch = ppc64
 	os = osx
 	bits = 64
-	bigendian = yes
 	prefetch = no
 	bsfq = no
 	popcnt = no
@@ -160,7 +132,6 @@ ifeq ($(ARCH),osx-ppc-32)
 	arch = ppc
 	os = osx
 	bits = 32
-	bigendian = yes
 	prefetch = no
 	bsfq = no
 	popcnt = no
@@ -170,7 +141,6 @@ ifeq ($(ARCH),osx-x86-64)
 	arch = x86_64
 	os = osx
 	bits = 64
-	bigendian = no
 	prefetch = yes
 	bsfq = yes
 	popcnt = no
@@ -180,7 +150,6 @@ ifeq ($(ARCH),osx-x86-32)
 	arch = i386
 	os = osx
 	bits = 32
-	bigendian = no
 	prefetch = yes
 	bsfq = no
 	popcnt = no
@@ -293,12 +262,7 @@ ifeq ($(bits),64)
 	CXXFLAGS += -DIS_64BIT
 endif
 
-### 3.7 Endianess
-ifeq ($(bigendian),yes)
-	CXXFLAGS += -DBIGENDIAN
-endif
-
-### 3.8 prefetch
+### 3.7 prefetch
 ifeq ($(prefetch),yes)
 	CXXFLAGS += -msse
 	DEPENDFLAGS += -msse
@@ -306,17 +270,17 @@ else
 	CXXFLAGS += -DNO_PREFETCH
 endif
 
-### 3.9 bsfq
+### 3.8 bsfq
 ifeq ($(bsfq),yes)
 	CXXFLAGS += -DUSE_BSFQ
 endif
 
-### 3.10 popcnt
+### 3.9 popcnt
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -msse3 -DUSE_POPCNT
 endif
 
-### 3.11 Link Time Optimization, it works since gcc 4.5 but not on mingw.
+### 3.10 Link Time Optimization, it works since gcc 4.5 but not on mingw.
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(comp),gcc)
@@ -359,8 +323,6 @@ help:
 	@echo "osx-x86-32           > x86-Mac OS X 32 bit"
 	@echo "general-64           > unspecified 64-bit"
 	@echo "general-32           > unspecified 32-bit"
-	@echo "bigendian-64         > unspecified 64-bit with bigendian byte order"
-	@echo "bigendian-32         > unspecified 32-bit with bigendian byte order"
 	@echo ""
 	@echo "Supported comps:"
 	@echo ""
@@ -433,7 +395,6 @@ config-sanity:
 	@echo "arch: '$(arch)'"
 	@echo "os: '$(os)'"
 	@echo "bits: '$(bits)'"
-	@echo "bigendian: '$(bigendian)'"
 	@echo "prefetch: '$(prefetch)'"
 	@echo "bsfq: '$(bsfq)'"
 	@echo "popcnt: '$(popcnt)'"
@@ -451,7 +412,6 @@ config-sanity:
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc"
 	@test "$(os)" = "any" || test "$(os)" = "osx"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
-	@test "$(bigendian)" = "yes" || test "$(bigendian)" = "no"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
@@ -507,7 +467,7 @@ icc-profile-clean:
 
 hpux:
 	$(MAKE) \
-	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -DBIGENDIAN -mt +O3 -DNDEBUG -DNO_PREFETCH' \
+	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -mt +O3 -DNDEBUG -DNO_PREFETCH' \
 	CXXFLAGS="" \
 	LDFLAGS="" \
 	all
