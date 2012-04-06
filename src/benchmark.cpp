@@ -107,7 +107,7 @@ void benchmark(istringstream& is) {
 
   for (size_t i = 0; i < fens.size(); i++)
   {
-      Position pos(fens[i], false);
+      Position pos(fens[i], false, NULL);
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 

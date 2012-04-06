@@ -28,21 +28,16 @@
 using namespace Search;
 
 ThreadsManager Threads; // Global object
-THREAD_LOCAL Thread* this_thread; // Thread local variable
 
 namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
  // is launched. It is a wrapper to member function pointed by start_fn.
 
- long start_routine(Thread* th) {
-
-   this_thread = th; // Save pointer into thread local storage
-   (th->*(th->start_fn))();
-   return 0;
- }
+ long start_routine(Thread* th) { (th->*(th->start_fn))(); return 0; }
 
 } }
+
 
 // Thread c'tor starts a newly-created thread of execution that will call
 // the idle loop function pointed by start_fn going immediately to sleep.
@@ -210,7 +205,6 @@ void ThreadsManager::init() {
   lock_init(splitLock);
   timer = new Thread(&Thread::timer_loop);
   threads.push_back(new Thread(&Thread::main_loop));
-  this_thread = main_thread(); // Use main thread's resources
   read_uci_options();
 }
 
@@ -313,7 +307,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
 
-  Thread* master = this_thread;
+  Thread* master = pos.this_thread();
 
   if (master->splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
@@ -440,7 +434,7 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
-  RootPosition = pos;
+  RootPosition.copy(pos, main_thread());
   Limits = limits;
   RootMoves.clear();
 

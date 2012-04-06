@@ -84,14 +84,19 @@ struct StateInfo {
 ///    * A counter for detecting 50 move rule draws.
 
 class Position {
-public:
-  Position() {}
-  Position(const Position& p) { *this = p; }
-  Position(const std::string& f, bool c960) { from_fen(f, c960); }
+
+  // No copy c'tor or assignment operator allowed
+  Position(const Position&);
   Position& operator=(const Position&);
 
+public:
+  Position() {}
+  Position(const Position& p, Thread* t) { copy(p, t); }
+  Position(const std::string& f, bool c960, Thread* t) { from_fen(f, c960, t); }
+
   // Text input/output
-  void from_fen(const std::string& fen, bool isChess960);
+  void copy(const Position& pos, Thread* th);
+  void from_fen(const std::string& fen, bool isChess960, Thread* th);
   const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;
 
@@ -171,6 +176,7 @@ public:
   Color side_to_move() const;
   int startpos_ply_counter() const;
   bool is_chess960() const;
+  Thread* this_thread() const;
   int64_t nodes_searched() const;
   void set_nodes_searched(int64_t n);
   template<bool SkipRepetition> bool is_draw() const;
@@ -218,6 +224,7 @@ private:
   int64_t nodes;
   int startPosPly;
   Color sideToMove;
+  Thread* thisThread;
   StateInfo* st;
   int chess960;
 
@@ -425,6 +432,10 @@ inline bool Position::is_capture(Move m) const {
 
 inline PieceType Position::captured_piece_type() const {
   return st->capturedType;
+}
+
+inline Thread* Position::this_thread() const {
+  return thisThread;
 }
 
 #endif // !defined(POSITION_H_INCLUDED)

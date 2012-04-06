@@ -119,7 +119,7 @@ public:
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
   int size() const { return (int)threads.size(); }
-  Thread* main_thread() const { return threads[0]; }
+  Thread* main_thread() { return threads[0]; }
 
   void wake_up() const;
   void sleep() const;
@@ -146,6 +146,5 @@ private:
 };
 
 extern ThreadsManager Threads;
-extern THREAD_LOCAL Thread* this_thread;
 
 #endif // !defined(THREAD_H_INCLUDED)
