@@ -34,10 +34,14 @@ namespace { extern "C" {
  // start_routine() is the C function which is called when a new thread
  // is launched. It is a wrapper to member function pointed by start_fn.
 
- long start_routine(Thread* th) { (th->*(th->start_fn))(); return 0; }
+ long start_routine(Thread* th) {
+
+   Threads.set_this_thread(th); // Save pointer into thread local storage
+   (th->*(th->start_fn))();
+   return 0;
+ }
 
 } }
-
 
 // Thread c'tor starts a newly-created thread of execution that will call
 // the idle loop function pointed by start_fn going immediately to sleep.
@@ -201,6 +205,7 @@ bool Thread::is_available_to(const Thread& master) const {
 
 void ThreadsManager::init() {
 
+  tls_init(tlsKey);
   cond_init(sleepCond);
   lock_init(splitLock);
   timer = new Thread(&Thread::timer_loop);
@@ -219,6 +224,7 @@ ThreadsManager::~ThreadsManager() {
   delete timer;
   lock_destroy(splitLock);
   cond_destroy(sleepCond);
+  tls_destroy(tlsKey);
 }
 
 
