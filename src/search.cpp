@@ -332,7 +332,7 @@ finalize:
   // but if we are pondering or in infinite search, we shouldn't print the best
   // move before we are told to do so.
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
-      pos.this_thread().wait_for_stop_or_ponderhit();
+      Threads.this_thread()->wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
   cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
@@ -543,7 +543,7 @@ namespace {
     bool isPvMove, inCheck, singularExtensionNode, givesCheck;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount = 0, playedMoveCount = 0;
-    Thread& thread = pos.this_thread();
+    Thread* thisThread = Threads.this_thread();
     SplitPoint* sp = NULL;
 
     refinedValue = bestValue = value = -VALUE_INFINITE;
@@ -552,8 +552,8 @@ namespace {
     ss->ply = (ss-1)->ply + 1;
 
     // Used to send selDepth info to GUI
-    if (PvNode && thread.maxPly < ss->ply)
-        thread.maxPly = ss->ply;
+    if (PvNode && thisThread->maxPly < ss->ply)
+        thisThread->maxPly = ss->ply;
 
     // Step 1. Initialize node
     if (SpNode)
@@ -816,7 +816,7 @@ split_point_start: // At split points actual search starts from here
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
            && (move = mp.next_move()) != MOVE_NONE
-           && !thread.cutoff_occurred()
+           && !thisThread->cutoff_occurred()
            && !Signals.stop)
     {
       assert(is_ok(move));
@@ -846,7 +846,7 @@ split_point_start: // At split points actual search starts from here
       {
           Signals.firstRootMove = (moveCount == 1);
 
-          if (&thread == Threads.main_thread() && SearchTime.elapsed() > 2000)
+          if (thisThread == Threads.main_thread() && SearchTime.elapsed() > 2000)
               cout << "info depth " << depth / ONE_PLY
                    << " currmove " << move_to_uci(move, Chess960)
                    << " currmovenumber " << moveCount + PVIdx << endl;
@@ -1038,7 +1038,7 @@ split_point_start: // At split points actual search starts from here
               && value < beta) // We want always alpha < beta
               alpha = value;
 
-          if (SpNode && !thread.cutoff_occurred())
+          if (SpNode && !thisThread->cutoff_occurred())
           {
               sp->bestValue = value;
               sp->bestMove = move;
@@ -1053,9 +1053,9 @@ split_point_start: // At split points actual search starts from here
       if (   !SpNode
           && depth >= Threads.min_split_depth()
           && bestValue < beta
-          && Threads.available_slave_exists(thread)
+          && Threads.available_slave_exists(thisThread)
           && !Signals.stop
-          && !thread.cutoff_occurred())
+          && !thisThread->cutoff_occurred())
           bestValue = Threads.split<FakeSplit>(pos, ss, alpha, beta, bestValue, &bestMove,
                                                depth, threatMove, moveCount, &mp, NT);
     }
@@ -1079,7 +1079,7 @@ split_point_start: // At split points actual search starts from here
 
     // Step 21. Update tables
     // Update transposition table entry, killers and history
-    if (!SpNode && !Signals.stop && !thread.cutoff_occurred())
+    if (!SpNode && !Signals.stop && !thisThread->cutoff_occurred())
     {
         move = bestValue <= oldAlpha ? MOVE_NONE : bestMove;
         bt   = bestValue <= oldAlpha ? BOUND_UPPER
@@ -1825,7 +1825,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           lock_release(Threads.splitLock);
 
           Stack ss[MAX_PLY_PLUS_2];
-          Position pos(*sp->pos, this);
+          Position pos(*sp->pos);
           Thread* master = sp->master;
 
           memcpy(ss, sp->ss - 1, 4 * sizeof(Stack));

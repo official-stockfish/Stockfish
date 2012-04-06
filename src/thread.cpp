@@ -183,7 +183,7 @@ bool Thread::cutoff_occurred() const {
 // slaves which are busy searching the split point at the top of slaves split
 // point stack (the "helpful master concept" in YBWC terminology).
 
-bool Thread::is_available_to(const Thread& master) const {
+bool Thread::is_available_to(Thread* master) const {
 
   if (is_searching)
       return false;
@@ -194,7 +194,7 @@ bool Thread::is_available_to(const Thread& master) const {
 
   // No active split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !spCnt || (splitPoints[spCnt - 1].slavesMask & (1ULL << master.idx));
+  return !spCnt || (splitPoints[spCnt - 1].slavesMask & (1ULL << master->idx));
 }
 
 
@@ -283,7 +283,7 @@ void ThreadsManager::sleep() const {
 // available_slave_exists() tries to find an idle thread which is available as
 // a slave for the thread 'master'.
 
-bool ThreadsManager::available_slave_exists(const Thread& master) const {
+bool ThreadsManager::available_slave_exists(Thread* master) const {
 
   for (int i = 0; i < size(); i++)
       if (threads[i]->is_available_to(master))
@@ -313,18 +313,18 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
 
-  Thread& master = pos.this_thread();
+  Thread* master = Threads.this_thread();
 
-  if (master.splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
+  if (master->splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
 
   // Pick the next available split point from the split point stack
-  SplitPoint* sp = &master.splitPoints[master.splitPointsCnt++];
+  SplitPoint* sp = &master->splitPoints[master->splitPointsCnt++];
 
-  sp->parent = master.curSplitPoint;
-  sp->master = &master;
+  sp->parent = master->curSplitPoint;
+  sp->master = master;
   sp->cutoff = false;
-  sp->slavesMask = 1ULL << master.idx;
+  sp->slavesMask = 1ULL << master->idx;
   sp->depth = depth;
   sp->bestMove = *bestMove;
   sp->threatMove = threatMove;
@@ -338,9 +338,9 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->nodes = 0;
   sp->ss = ss;
 
-  assert(master.is_searching);
+  assert(master->is_searching);
 
-  master.curSplitPoint = sp;
+  master->curSplitPoint = sp;
   int slavesCnt = 0;
 
   // Try to allocate available threads and ask them to start searching setting
@@ -373,11 +373,11 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // their work at this split point.
   if (slavesCnt || Fake)
   {
-      master.idle_loop(sp);
+      master->idle_loop(sp);
 
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.
-      assert(!master.is_searching);
+      assert(!master->is_searching);
   }
 
   // We have returned from the idle loop, which means that all threads are
@@ -386,9 +386,9 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   lock_grab(sp->lock); // To protect sp->nodes
   lock_grab(splitLock);
 
-  master.is_searching = true;
-  master.splitPointsCnt--;
-  master.curSplitPoint = sp->parent;
+  master->is_searching = true;
+  master->splitPointsCnt--;
+  master->curSplitPoint = sp->parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
   *bestMove = sp->bestMove;
 
@@ -440,7 +440,7 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
-  RootPosition.copy(pos, main_thread());
+  RootPosition = pos;
   Limits = limits;
   RootMoves.clear();
 

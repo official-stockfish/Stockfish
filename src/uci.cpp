@@ -56,7 +56,7 @@ namespace {
 
 void uci_loop(const string& args) {
 
-  Position pos(StartFEN, false, Threads.main_thread()); // The root position
+  Position pos(StartFEN, false); // The root position
   string cmd, token;
 
   while (token != "quit")
@@ -167,7 +167,7 @@ namespace {
     else
         return;
 
-    pos.from_fen(fen, Options["UCI_Chess960"], Threads.main_thread());
+    pos.from_fen(fen, Options["UCI_Chess960"]);
 
     // Parse move list (if any)
     while (is >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)

@@ -77,7 +77,7 @@ namespace {
     string fen =  sides[0] + char('0' + int(8 - code.length()))
                 + sides[1] + "/8/8/8/8/8/8/8 w - - 0 10";
 
-    return Position(fen, false, NULL).material_key();
+    return Position(fen, false).material_key();
   }
 
   template<typename M>
