@@ -1826,7 +1826,6 @@ void Thread::idle_loop(SplitPoint* sp_master) {
 
           Stack ss[MAX_PLY_PLUS_2];
           Position pos(*sp->pos);
-          Thread* master = sp->master;
 
           memcpy(ss, sp->ss - 1, 4 * sizeof(Stack));
           (ss+1)->sp = sp;
@@ -1848,17 +1847,18 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
 
-          // After releasing the lock we cannot access anymore any SplitPoint
-          // related data in a reliably way becuase it could have been released
-          // under our feet by the sp master.
-          lock_release(sp->lock);
-
           // Wake up master thread so to allow it to return from the idle loop in
           // case we are the last slave of the split point.
           if (   Threads.use_sleeping_threads()
-              && this != master
-              && !master->is_searching)
-              master->wake_up();
+              && this != sp->master
+              && !sp->master->is_searching)
+              sp->master->wake_up();
+
+          // After releasing the lock we cannot access anymore any SplitPoint
+          // related data in a safe way becuase it could have been released under
+          // our feet by the sp master. Also accessing other Thread objects is
+          // unsafe because if we are exiting there is a chance are already freed.
+          lock_release(sp->lock);
       }
   }
 }
