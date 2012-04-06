@@ -64,6 +64,12 @@
 #  define FORCE_INLINE  inline
 #endif
 
+#if defined(__GNUC__)
+#  define THREAD_LOCAL  __thread
+#else
+#  define THREAD_LOCAL  __declspec(thread)
+#endif
+
 #if defined(USE_POPCNT)
 const bool HasPopCnt = true;
 #else

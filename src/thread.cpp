@@ -28,6 +28,7 @@
 using namespace Search;
 
 ThreadsManager Threads; // Global object
+THREAD_LOCAL Thread* this_thread; // Thread local variable
 
 namespace { extern "C" {
 
@@ -36,7 +37,7 @@ namespace { extern "C" {
 
  long start_routine(Thread* th) {
 
-   Threads.set_this_thread(th); // Save pointer into thread local storage
+   this_thread = th; // Save pointer into thread local storage
    (th->*(th->start_fn))();
    return 0;
  }
@@ -205,12 +206,11 @@ bool Thread::is_available_to(Thread* master) const {
 
 void ThreadsManager::init() {
 
-  tls_init(tlsKey);
   cond_init(sleepCond);
   lock_init(splitLock);
   timer = new Thread(&Thread::timer_loop);
   threads.push_back(new Thread(&Thread::main_loop));
-  set_this_thread(main_thread()); // Use main thread's resources
+  this_thread = main_thread(); // Use main thread's resources
   read_uci_options();
 }
 
@@ -225,7 +225,6 @@ ThreadsManager::~ThreadsManager() {
   delete timer;
   lock_destroy(splitLock);
   cond_destroy(sleepCond);
-  tls_destroy(tlsKey);
 }
 
 
@@ -314,7 +313,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
 
-  Thread* master = this_thread();
+  Thread* master = this_thread;
 
   if (master->splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
