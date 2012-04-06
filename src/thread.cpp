@@ -434,7 +434,7 @@ void ThreadsManager::start_searching(const Position& pos, const LimitsType& limi
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
-  RootPosition.copy(pos, main_thread());
+  RootPosition = pos;
   Limits = limits;
   RootMoves.clear();
 

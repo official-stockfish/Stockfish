@@ -92,16 +92,15 @@ CheckInfo::CheckInfo(const Position& pos) {
 }
 
 
-/// Position::copy() creates a copy of 'pos'. We want the new born Position
+/// Position::operator=() creates a copy of 'pos'. We want the new born Position
 /// object do not depend on any external data so we detach state pointer from
 /// the source one.
 
-void Position::copy(const Position& pos, Thread* th) {
+void Position::operator=(const Position& pos) {
 
   memcpy(this, &pos, sizeof(Position));
   startState = *st;
   st = &startState;
-  thisThread = th;
   nodes = 0;
 
   assert(pos_is_ok());
@@ -331,7 +330,7 @@ void Position::print(Move move) const {
 
   if (move)
   {
-      Position p(*this, thisThread);
+      Position p(*this);
       cout << "\nMove is: " << (sideToMove == BLACK ? ".." : "") << move_to_san(p, move);
   }
 
@@ -1540,21 +1539,20 @@ void Position::init() {
 
 void Position::flip() {
 
-  // Make a copy of current position before to start changing
-  const Position pos(*this, thisThread);
+  const Position pos(*this);
 
   clear();
-  thisThread = pos.this_thread();
 
-  // Board
+  sideToMove = ~pos.side_to_move();
+  thisThread = pos.this_thread();
+  nodes = pos.nodes_searched();
+  chess960 = pos.is_chess960();
+  startPosPly = pos.startpos_ply_counter();
+
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (!pos.square_empty(s))
           put_piece(Piece(pos.piece_on(s) ^ 8), ~s);
 
-  // Side to move
-  sideToMove = ~pos.side_to_move();
-
-  // Castling rights
   if (pos.can_castle(WHITE_OO))
       set_castle_right(BLACK, ~pos.castle_rook_square(WHITE_OO));
   if (pos.can_castle(WHITE_OOO))
@@ -1564,22 +1562,14 @@ void Position::flip() {
   if (pos.can_castle(BLACK_OOO))
       set_castle_right(WHITE, ~pos.castle_rook_square(BLACK_OOO));
 
-  // En passant square
   if (pos.st->epSquare != SQ_NONE)
       st->epSquare = ~pos.st->epSquare;
 
-  // Checkers
-  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
-
-  // Hash keys
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
   st->materialKey = compute_material_key();
-
-  // Incremental scores
   st->psqScore = compute_psq_score();
-
-  // Material
+  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 

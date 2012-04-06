@@ -84,18 +84,14 @@ struct StateInfo {
 ///    * A counter for detecting 50 move rule draws.
 
 class Position {
-
-  // No copy c'tor or assignment operator allowed
-  Position(const Position&);
-  Position& operator=(const Position&);
-
 public:
   Position() {}
-  Position(const Position& p, Thread* t) { copy(p, t); }
+  Position(const Position& p) { *this = p; }
+  Position(const Position& p, Thread* t) { *this = p; thisThread = t; }
   Position(const std::string& f, bool c960, Thread* t) { from_fen(f, c960, t); }
+  void operator=(const Position&);
 
   // Text input/output
-  void copy(const Position& pos, Thread* th);
   void from_fen(const std::string& fen, bool isChess960, Thread* th);
   const std::string to_fen() const;
   void print(Move m = MOVE_NONE) const;
