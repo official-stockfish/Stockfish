@@ -210,6 +210,7 @@ void ThreadsManager::init() {
   lock_init(splitLock);
   timer = new Thread(&Thread::timer_loop);
   threads.push_back(new Thread(&Thread::main_loop));
+  set_this_thread(main_thread()); // Use main thread's resources
   read_uci_options();
 }
 
@@ -313,7 +314,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   assert(beta <= VALUE_INFINITE);
   assert(depth > DEPTH_ZERO);
 
-  Thread* master = Threads.this_thread();
+  Thread* master = this_thread();
 
   if (master->splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
