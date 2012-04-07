@@ -83,7 +83,12 @@ void benchmark(istringstream& is) {
   else
       limits.depth = atoi(limit.c_str());
 
-  if (fenFile != "default")
+  if (fenFile == "current")
+  {
+      fens.clear();
+      fens.push_back(Search::RootPosition.to_fen());
+  }
+  else if (fenFile != "default")
   {
       fens.clear();
       string fen;
