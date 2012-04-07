@@ -167,8 +167,8 @@ namespace {
   // happen in Chess960 games.
   const Score TrappedBishopA1H1Penalty = make_score(100, 100);
 
-  // Penalty for BNR that is not defended by anything
-  const Score UndefendedPiecePenalty = make_score(25, 10);
+  // Penalty for an undefended bishop or knight
+  const Score UndefendedMinorPenalty = make_score(25, 10);
 
   // The SpaceMask[Color] contains the area of the board which is considered
   // by the space evaluation. In the middle game, each side is given a bonus
@@ -676,18 +676,17 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b, undefended, undefendedMinors, weakEnemies;
+    Bitboard b, undefendedMinors, weakEnemies;
     Score score = SCORE_ZERO;
 
-    // Undefended pieces get penalized even if not under attack
-    undefended = pos.pieces(Them) & ~ei.attackedBy[Them][0];
-    undefendedMinors = undefended & (pos.pieces(BISHOP) | pos.pieces(KNIGHT));
+    // Undefended minors get penalized even if not under attack
+    undefendedMinors =  pos.pieces(Them)
+                      & (pos.pieces(BISHOP) | pos.pieces(KNIGHT))
+                      & ~ei.attackedBy[Them][0];
 
     if (undefendedMinors)
-        score += single_bit(undefendedMinors) ? UndefendedPiecePenalty
-                                              : UndefendedPiecePenalty * 2;
-    if (undefended & pos.pieces(ROOK))
-        score += UndefendedPiecePenalty;
+        score += single_bit(undefendedMinors) ? UndefendedMinorPenalty
+                                              : UndefendedMinorPenalty * 2;
 
     // Enemy pieces not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
