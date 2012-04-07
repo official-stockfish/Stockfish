@@ -22,7 +22,6 @@
 #include <string>
 
 #include "evaluate.h"
-#include "misc.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
@@ -30,7 +29,7 @@
 
 using namespace std;
 
-extern void benchmark(istringstream& is);
+extern void benchmark(const Position& pos, istream& is);
 
 namespace {
 
@@ -45,7 +44,6 @@ namespace {
   void set_option(istringstream& up);
   void set_position(Position& pos, istringstream& up);
   void go(Position& pos, istringstream& up);
-  void perft(Position& pos, istringstream& up);
 }
 
 
@@ -58,8 +56,6 @@ void uci_loop(const string& args) {
 
   Position pos(StartFEN, false, Threads.main_thread()); // The root position
   string cmd, token;
-
-  Search::RootPosition = pos;
 
   while (token != "quit")
   {
@@ -108,9 +104,6 @@ void uci_loop(const string& args) {
       else if (token == "setoption")
           set_option(is);
 
-      else if (token == "perft")
-          perft(pos, is);
-
       else if (token == "d")
           pos.print();
 
@@ -121,7 +114,7 @@ void uci_loop(const string& args) {
           cout << Eval::trace(pos) << endl;
 
       else if (token == "bench")
-          benchmark(is);
+          benchmark(pos, is);
 
       else if (token == "key")
           cout << "key: " << hex     << pos.key()
@@ -132,6 +125,17 @@ void uci_loop(const string& args) {
           cout << "id name "     << engine_info(true)
                << "\n"           << Options
                << "\nuciok"      << endl;
+
+      else if (token == "perft" && (is >> token)) // Read depth
+      {
+          stringstream ss;
+
+          ss << Options["Hash"]    << " "
+             << Options["Threads"] << " " << token << " current perft";
+
+          benchmark(pos, ss);
+      }
+
       else
           cout << "Unknown command: " << cmd << endl;
 
@@ -245,28 +249,5 @@ namespace {
     }
 
     Threads.start_searching(pos, limits, searchMoves);
-  }
-
-
-  // perft() is called when engine receives the "perft" command. The function
-  // calls perft() with the required search depth then prints counted leaf nodes
-  // and elapsed time.
-
-  void perft(Position& pos, istringstream& is) {
-
-    int depth;
-
-    if (!(is >> depth))
-        return;
-
-    Time time = Time::current_time();
-
-    int64_t n = Search::perft(pos, depth * ONE_PLY);
-
-    int e = time.elapsed();
-
-    cout << "\nNodes " << n
-         << "\nTime (ms) " << e
-         << "\nNodes/second " << int(n / (e / 1000.0)) << endl;
   }
 }
