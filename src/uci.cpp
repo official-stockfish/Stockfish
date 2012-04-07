@@ -87,7 +87,7 @@ void uci_loop(const string& args) {
           if (Search::Signals.stopOnPonderhit)
           {
               Search::Signals.stop = true;
-              Threads.wait_for_search_finished(); // Wake up if is sleeping
+              Threads.main_thread()->wake_up(); // Could be sleeping
           }
       }
 
