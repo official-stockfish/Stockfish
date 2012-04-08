@@ -531,7 +531,7 @@ namespace {
     assert((alpha == beta - 1) || PvNode);
     assert(depth > DEPTH_ZERO);
 
-    Move movesSearched[MAX_MOVES];
+    Move movesSearched[64];
     StateInfo st;
     const TTEntry *tte;
     Key posKey;
@@ -944,7 +944,7 @@ split_point_start: // At split points actual search starts from here
       }
 
       ss->currentMove = move;
-      if (!SpNode && !captureOrPromotion)
+      if (!SpNode && !captureOrPromotion && playedMoveCount < 64)
           movesSearched[playedMoveCount++] = move;
 
       // Step 14. Make the move
