@@ -35,16 +35,14 @@ namespace {
   template<CastlingSide Side, bool OnlyChecks>
   MoveStack* generate_castle(const Position& pos, MoveStack* mlist, Color us) {
 
-    CastleRight cr = CastleRight((Side == KING_SIDE ? WHITE_OO : WHITE_OOO) << us);
-
-    if (pos.castle_impeded(us, Side) || !pos.can_castle(cr))
+    if (pos.castle_impeded(us, Side) || !pos.can_castle(make_castle_right(us, Side)))
         return mlist;
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
     Square kfrom = pos.king_square(us);
-    Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
     Square rfrom = pos.castle_rook_square(us, Side);
+    Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.in_check());

@@ -267,10 +267,10 @@ Score PawnEntry::update_safety(const Position& pos, Square ksq) {
   Value bonus = shelter_storm<Us>(pos, ksq);
 
   // If we can castle use the bonus after the castle if is bigger
-  if (pos.can_castle(Us == WHITE ? WHITE_OO : BLACK_OO))
+  if (pos.can_castle(make_castle_right(Us, KING_SIDE)))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_G1)));
 
-  if (pos.can_castle(Us == WHITE ? WHITE_OOO : BLACK_OOO))
+  if (pos.can_castle(make_castle_right(Us, QUEEN_SIDE)))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
   return kingSafety[Us] = make_score(bonus, 0);

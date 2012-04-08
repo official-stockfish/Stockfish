@@ -347,6 +347,10 @@ inline Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) | pt);
 }
 
+inline CastleRight make_castle_right(Color c, CastlingSide s) {
+  return CastleRight((s == KING_SIDE ? WHITE_OO : WHITE_OOO) << c);
+}
+
 inline PieceType type_of(Piece p)  {
   return PieceType(p & 7);
 }

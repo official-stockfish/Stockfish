@@ -240,7 +240,7 @@ void Position::set_castle_right(Color c, Square rfrom) {
 
   Square kfrom = king_square(c);
   CastlingSide cs = kfrom < rfrom ? KING_SIDE : QUEEN_SIDE;
-  int cr = (cs == KING_SIDE ? WHITE_OO : WHITE_OOO) << c;
+  CastleRight cr = make_castle_right(c, cs);
 
   st->castleRights |= cr;
   castleRightsMask[kfrom] |= cr;
@@ -1727,15 +1727,13 @@ bool Position::pos_is_ok(int* failedStep) const {
   if (failedStep) (*failedStep)++;
   if (debugCastleSquares)
       for (Color c = WHITE; c <= BLACK; c++)
-          for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s+1))
+          for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
           {
-              CastleRight cr = CastleRight((s == KING_SIDE ? WHITE_OO : WHITE_OOO) << c);
-
-              if (!can_castle(cr))
+              if (!can_castle(make_castle_right(c, s)))
                   continue;
 
               if (   piece_on(castleRookSquare[c][s]) != make_piece(c, ROOK)
-                  || castleRightsMask[castleRookSquare[c][s]] != cr)
+                  || castleRightsMask[castleRookSquare[c][s]] != make_castle_right(c, s))
                   return false;
           }
 
