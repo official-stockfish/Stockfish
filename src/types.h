@@ -136,6 +136,11 @@ enum CastleRight {
   ALL_CASTLES  = 15
 };
 
+enum CastlingSide {
+  KING_SIDE,
+  QUEEN_SIDE
+};
+
 enum ScaleFactor {
   SCALE_FACTOR_DRAW   = 0,
   SCALE_FACTOR_NORMAL = 64,

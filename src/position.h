@@ -113,8 +113,8 @@ public:
   // Castling
   bool can_castle(CastleRight f) const;
   bool can_castle(Color c) const;
-  bool castle_impeded(CastleRight f) const;
-  Square castle_rook_square(CastleRight f) const;
+  bool castle_impeded(Color c, CastlingSide s) const;
+  Square castle_rook_square(Color c, CastlingSide s) const;
 
   // Checking
   bool in_check() const;
@@ -213,9 +213,9 @@ private:
   int index[64];               // [square]
 
   // Other info
-  int castleRightsMask[64];    // [square]
-  Square castleRookSquare[16]; // [castleRight]
-  Bitboard castlePath[16];     // [castleRight]
+  int castleRightsMask[64];      // [square]
+  Square castleRookSquare[2][2]; // [color][side]
+  Bitboard castlePath[2][2];     // [color][side]
   StateInfo startState;
   int64_t nodes;
   int startPosPly;
@@ -305,12 +305,12 @@ inline bool Position::can_castle(Color c) const {
   return st->castleRights & ((WHITE_OO | WHITE_OOO) << c);
 }
 
-inline bool Position::castle_impeded(CastleRight f) const {
-  return byTypeBB[ALL_PIECES] & castlePath[f];
+inline bool Position::castle_impeded(Color c, CastlingSide s) const {
+  return byTypeBB[ALL_PIECES] & castlePath[c][s];
 }
 
-inline Square Position::castle_rook_square(CastleRight f) const {
-  return castleRookSquare[f];
+inline Square Position::castle_rook_square(Color c, CastlingSide s) const {
+  return castleRookSquare[c][s];
 }
 
 template<PieceType Pt>

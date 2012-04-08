@@ -32,27 +32,22 @@
                                          (*mlist++).move = make_move(to - (d), to); }
 namespace {
 
-  enum CastlingSide { KING_SIDE, QUEEN_SIDE };
-
   template<CastlingSide Side, bool OnlyChecks>
   MoveStack* generate_castle(const Position& pos, MoveStack* mlist, Color us) {
 
-    const CastleRight CR[] = { Side ? WHITE_OOO : WHITE_OO,
-                               Side ? BLACK_OOO : BLACK_OO };
+    CastleRight cr = CastleRight((Side == KING_SIDE ? WHITE_OO : WHITE_OOO) << us);
 
-    if (pos.castle_impeded(CR[us]) || !pos.can_castle(CR[us]))
+    if (pos.castle_impeded(us, Side) || !pos.can_castle(cr))
         return mlist;
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
     Square kfrom = pos.king_square(us);
-    Square rfrom = pos.castle_rook_square(CR[us]);
     Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
+    Square rfrom = pos.castle_rook_square(us, Side);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.in_check());
-    assert(pos.piece_on(kfrom) == make_piece(us, KING));
-    assert(pos.piece_on(rfrom) == make_piece(us, ROOK));
 
     for (Square s = std::min(kfrom, kto), e = std::max(kfrom, kto); s <= e; s++)
         if (    s != kfrom // We are not in check

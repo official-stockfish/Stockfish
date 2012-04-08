@@ -239,24 +239,24 @@ void Position::from_fen(const string& fenStr, bool isChess960, Thread* th) {
 void Position::set_castle_right(Color c, Square rfrom) {
 
   Square kfrom = king_square(c);
-  bool kingSide = kfrom < rfrom;
-  int cr = (kingSide ? WHITE_OO : WHITE_OOO) << c;
+  CastlingSide cs = kfrom < rfrom ? KING_SIDE : QUEEN_SIDE;
+  int cr = (cs == KING_SIDE ? WHITE_OO : WHITE_OOO) << c;
 
   st->castleRights |= cr;
   castleRightsMask[kfrom] |= cr;
   castleRightsMask[rfrom] |= cr;
-  castleRookSquare[cr] = rfrom;
+  castleRookSquare[c][cs] = rfrom;
 
-  Square kto = relative_square(c, kingSide ? SQ_G1 : SQ_C1);
-  Square rto = relative_square(c, kingSide ? SQ_F1 : SQ_D1);
+  Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
+  Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
   for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); s++)
       if (s != kfrom && s != rfrom)
-          castlePath[cr] |= s;
+          castlePath[c][cs] |= s;
 
   for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); s++)
       if (s != kfrom && s != rfrom)
-          castlePath[cr] |= s;
+          castlePath[c][cs] |= s;
 }
 
 
@@ -300,16 +300,16 @@ const string Position::to_fen() const {
   fen << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE_OO))))) : 'K');
+      fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE, KING_SIDE))))) : 'K');
 
   if (can_castle(WHITE_OOO))
-      fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE_OOO))))) : 'Q');
+      fen << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE, QUEEN_SIDE))))) : 'Q');
 
   if (can_castle(BLACK_OO))
-      fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK_OO))) : 'k');
+      fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK, KING_SIDE))) : 'k');
 
   if (can_castle(BLACK_OOO))
-      fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK_OOO))) : 'q');
+      fen << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK, QUEEN_SIDE))) : 'q');
 
   if (st->castleRights == CASTLES_NONE)
       fen << '-';
@@ -1554,13 +1554,13 @@ void Position::flip() {
           put_piece(Piece(pos.piece_on(s) ^ 8), ~s);
 
   if (pos.can_castle(WHITE_OO))
-      set_castle_right(BLACK, ~pos.castle_rook_square(WHITE_OO));
+      set_castle_right(BLACK, ~pos.castle_rook_square(WHITE, KING_SIDE));
   if (pos.can_castle(WHITE_OOO))
-      set_castle_right(BLACK, ~pos.castle_rook_square(WHITE_OOO));
+      set_castle_right(BLACK, ~pos.castle_rook_square(WHITE, QUEEN_SIDE));
   if (pos.can_castle(BLACK_OO))
-      set_castle_right(WHITE, ~pos.castle_rook_square(BLACK_OO));
+      set_castle_right(WHITE, ~pos.castle_rook_square(BLACK, KING_SIDE));
   if (pos.can_castle(BLACK_OOO))
-      set_castle_right(WHITE, ~pos.castle_rook_square(BLACK_OOO));
+      set_castle_right(WHITE, ~pos.castle_rook_square(BLACK, QUEEN_SIDE));
 
   if (pos.st->epSquare != SQ_NONE)
       st->epSquare = ~pos.st->epSquare;
@@ -1726,17 +1726,18 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   if (failedStep) (*failedStep)++;
   if (debugCastleSquares)
-      for (CastleRight f = WHITE_OO; f <= BLACK_OOO; f = CastleRight(f << 1))
-      {
-          if (!can_castle(f))
-              continue;
+      for (Color c = WHITE; c <= BLACK; c++)
+          for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s+1))
+          {
+              CastleRight cr = CastleRight((s == KING_SIDE ? WHITE_OO : WHITE_OOO) << c);
 
-          Piece rook = (f & (WHITE_OO | WHITE_OOO) ? W_ROOK : B_ROOK);
+              if (!can_castle(cr))
+                  continue;
 
-          if (   piece_on(castleRookSquare[f]) != rook
-              || castleRightsMask[castleRookSquare[f]] != f)
-              return false;
-      }
+              if (   piece_on(castleRookSquare[c][s]) != make_piece(c, ROOK)
+                  || castleRightsMask[castleRookSquare[c][s]] != cr)
+                  return false;
+          }
 
   if (failedStep) *failedStep = 0;
   return true;
