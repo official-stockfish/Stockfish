@@ -1332,19 +1332,21 @@ void Position::put_piece(Piece p, Square s) {
 
 Key Position::compute_key() const {
 
-  Key result = zobCastle[st->castleRights];
+  Key k = zobCastle[st->castleRights];
 
-  for (Square s = SQ_A1; s <= SQ_H8; s++)
-      if (!square_empty(s))
-          result ^= zobrist[color_of(piece_on(s))][type_of(piece_on(s))][s];
+  for (Bitboard b = pieces(); b; )
+  {
+      Square s = pop_1st_bit(&b);
+      k ^= zobrist[color_of(piece_on(s))][type_of(piece_on(s))][s];
+  }
 
   if (ep_square() != SQ_NONE)
-      result ^= zobEp[file_of(ep_square())];
+      k ^= zobEp[file_of(ep_square())];
 
   if (sideToMove == BLACK)
-      result ^= zobSideToMove;
+      k ^= zobSideToMove;
 
-  return result;
+  return k;
 }
 
 
@@ -1356,16 +1358,15 @@ Key Position::compute_key() const {
 
 Key Position::compute_pawn_key() const {
 
-  Bitboard b;
-  Key result = 0;
+  Key k = 0;
 
-  for (Color c = WHITE; c <= BLACK; c++)
+  for (Bitboard b = pieces(PAWN); b; )
   {
-      b = pieces(PAWN, c);
-      while (b)
-          result ^= zobrist[c][PAWN][pop_1st_bit(&b)];
+      Square s = pop_1st_bit(&b);
+      k ^= zobrist[color_of(piece_on(s))][PAWN][s];
   }
-  return result;
+
+  return k;
 }
 
 
@@ -1377,14 +1378,14 @@ Key Position::compute_pawn_key() const {
 
 Key Position::compute_material_key() const {
 
-  Key result = 0;
+  Key k = 0;
 
   for (Color c = WHITE; c <= BLACK; c++)
       for (PieceType pt = PAWN; pt <= QUEEN; pt++)
-          for (int i = 0; i < piece_count(c, pt); i++)
-              result ^= zobrist[c][pt][i];
+          for (int cnt = 0; cnt < piece_count(c, pt); cnt++)
+              k ^= zobrist[c][pt][cnt];
 
-  return result;
+  return k;
 }
 
 
@@ -1394,16 +1395,15 @@ Key Position::compute_material_key() const {
 /// updated by do_move and undo_move when the program is running in debug mode.
 Score Position::compute_psq_score() const {
 
-  Score result = SCORE_ZERO;
-  Bitboard b = pieces();
+  Score score = SCORE_ZERO;
 
-  while (b)
+  for (Bitboard b = pieces(); b; )
   {
       Square s = pop_1st_bit(&b);
-      result += pieceSquareTable[piece_on(s)][s];
+      score += pieceSquareTable[piece_on(s)][s];
   }
 
-  return result;
+  return score;
 }
 
 
@@ -1414,12 +1414,12 @@ Score Position::compute_psq_score() const {
 
 Value Position::compute_non_pawn_material(Color c) const {
 
-  Value result = VALUE_ZERO;
+  Value value = VALUE_ZERO;
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
-      result += piece_count(c, pt) * PieceValueMidgame[pt];
+      value += piece_count(c, pt) * PieceValueMidgame[pt];
 
-  return result;
+  return value;
 }
 
 
@@ -1498,14 +1498,14 @@ void Position::init() {
   zobSideToMove = rk.rand<Key>();
   zobExclusion  = rk.rand<Key>();
 
-  for (Piece p = W_PAWN; p <= W_KING; p++)
+  for (PieceType pt = PAWN; pt <= KING; pt++)
   {
-      Score ps = make_score(PieceValueMidgame[p], PieceValueEndgame[p]);
+      Score v = make_score(PieceValueMidgame[pt], PieceValueEndgame[pt]);
 
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
-          pieceSquareTable[p][s] = ps + PSQT[p][s];
-          pieceSquareTable[p+8][~s] = -pieceSquareTable[p][s];
+          pieceSquareTable[make_piece(WHITE, pt)][ s] =  (v + PSQT[pt][s]);
+          pieceSquareTable[make_piece(BLACK, pt)][~s] = -(v + PSQT[pt][s]);
       }
   }
 }
@@ -1542,11 +1542,12 @@ void Position::flip() {
   if (pos.st->epSquare != SQ_NONE)
       st->epSquare = ~pos.st->epSquare;
 
+  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
   st->materialKey = compute_material_key();
   st->psqScore = compute_psq_score();
-  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
   st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
   st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
 
@@ -1559,42 +1560,39 @@ void Position::flip() {
 
 bool Position::pos_is_ok(int* failedStep) const {
 
+  int dummy, *step = failedStep ? failedStep : &dummy;
+
   // What features of the position should be verified?
-  const bool debugAll = false;
+  const bool all = false;
 
-  const bool debugBitboards       = debugAll || false;
-  const bool debugKingCount       = debugAll || false;
-  const bool debugKingCapture     = debugAll || false;
-  const bool debugCheckerCount    = debugAll || false;
-  const bool debugKey             = debugAll || false;
-  const bool debugMaterialKey     = debugAll || false;
-  const bool debugPawnKey         = debugAll || false;
-  const bool debugIncrementalEval = debugAll || false;
-  const bool debugNonPawnMaterial = debugAll || false;
-  const bool debugPieceCounts     = debugAll || false;
-  const bool debugPieceList       = debugAll || false;
-  const bool debugCastleSquares   = debugAll || false;
+  const bool debugBitboards       = all || false;
+  const bool debugKingCount       = all || false;
+  const bool debugKingCapture     = all || false;
+  const bool debugCheckerCount    = all || false;
+  const bool debugKey             = all || false;
+  const bool debugMaterialKey     = all || false;
+  const bool debugPawnKey         = all || false;
+  const bool debugIncrementalEval = all || false;
+  const bool debugNonPawnMaterial = all || false;
+  const bool debugPieceCounts     = all || false;
+  const bool debugPieceList       = all || false;
+  const bool debugCastleSquares   = all || false;
 
-  if (failedStep) *failedStep = 1;
+  *step = 1;
 
-  // Side to move OK?
   if (sideToMove != WHITE && sideToMove != BLACK)
       return false;
 
-  // Are the king squares in the position correct?
-  if (failedStep) (*failedStep)++;
-  if (piece_on(king_square(WHITE)) != W_KING)
+  if ((*step)++, piece_on(king_square(WHITE)) != W_KING)
       return false;
 
-  if (failedStep) (*failedStep)++;
-  if (piece_on(king_square(BLACK)) != B_KING)
+  if ((*step)++, piece_on(king_square(BLACK)) != B_KING)
       return false;
 
-  // Do both sides have exactly one king?
-  if (failedStep) (*failedStep)++;
-  if (debugKingCount)
+  if ((*step)++, debugKingCount)
   {
-      int kingCount[2] = {0, 0};
+      int kingCount[2] = {};
+
       for (Square s = SQ_A1; s <= SQ_H8; s++)
           if (type_of(piece_on(s)) == KING)
               kingCount[color_of(piece_on(s))]++;
@@ -1603,25 +1601,14 @@ bool Position::pos_is_ok(int* failedStep) const {
           return false;
   }
 
-  // Can the side to move capture the opponent's king?
-  if (failedStep) (*failedStep)++;
-  if (debugKingCapture)
-  {
-      Color us = sideToMove;
-      Color them = ~us;
-      Square ksq = king_square(them);
-      if (attackers_to(ksq) & pieces(us))
+  if ((*step)++, debugKingCapture)
+      if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
           return false;
-  }
 
-  // Is there more than 2 checkers?
-  if (failedStep) (*failedStep)++;
-  if (debugCheckerCount && popcount<Full>(st->checkersBB) > 2)
+  if ((*step)++, debugCheckerCount && popcount<Full>(st->checkersBB) > 2)
       return false;
 
-  // Bitboards OK?
-  if (failedStep) (*failedStep)++;
-  if (debugBitboards)
+  if ((*step)++, debugBitboards)
   {
       // The intersection of the white and black pieces must be empty
       if (pieces(WHITE) & pieces(BLACK))
@@ -1639,57 +1626,35 @@ bool Position::pos_is_ok(int* failedStep) const {
                   return false;
   }
 
-  // En passant square OK?
-  if (failedStep) (*failedStep)++;
-  if (ep_square() != SQ_NONE)
+  if ((*step)++, ep_square() != SQ_NONE && relative_rank(sideToMove, ep_square()) != RANK_6)
+      return false;
+
+  if ((*step)++, debugKey && st->key != compute_key())
+      return false;
+
+  if ((*step)++, debugPawnKey && st->pawnKey != compute_pawn_key())
+      return false;
+
+  if ((*step)++, debugMaterialKey && st->materialKey != compute_material_key())
+      return false;
+
+  if ((*step)++, debugIncrementalEval && st->psqScore != compute_psq_score())
+      return false;
+
+  if ((*step)++, debugNonPawnMaterial)
   {
-      // The en passant square must be on rank 6, from the point of view of the
-      // side to move.
-      if (relative_rank(sideToMove, ep_square()) != RANK_6)
+      if (   st->npMaterial[WHITE] != compute_non_pawn_material(WHITE)
+          || st->npMaterial[BLACK] != compute_non_pawn_material(BLACK))
           return false;
   }
 
-  // Hash key OK?
-  if (failedStep) (*failedStep)++;
-  if (debugKey && st->key != compute_key())
-      return false;
-
-  // Pawn hash key OK?
-  if (failedStep) (*failedStep)++;
-  if (debugPawnKey && st->pawnKey != compute_pawn_key())
-      return false;
-
-  // Material hash key OK?
-  if (failedStep) (*failedStep)++;
-  if (debugMaterialKey && st->materialKey != compute_material_key())
-      return false;
-
-  // Incremental eval OK?
-  if (failedStep) (*failedStep)++;
-  if (debugIncrementalEval && st->psqScore != compute_psq_score())
-      return false;
-
-  // Non-pawn material OK?
-  if (failedStep) (*failedStep)++;
-  if (debugNonPawnMaterial)
-  {
-      if (st->npMaterial[WHITE] != compute_non_pawn_material(WHITE))
-          return false;
-
-      if (st->npMaterial[BLACK] != compute_non_pawn_material(BLACK))
-          return false;
-  }
-
-  // Piece counts OK?
-  if (failedStep) (*failedStep)++;
-  if (debugPieceCounts)
+  if ((*step)++, debugPieceCounts)
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
               if (pieceCount[c][pt] != popcount<Full>(pieces(pt, c)))
                   return false;
 
-  if (failedStep) (*failedStep)++;
-  if (debugPieceList)
+  if ((*step)++, debugPieceList)
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
               for (int i = 0; i < pieceCount[c][pt]; i++)
@@ -1701,19 +1666,23 @@ bool Position::pos_is_ok(int* failedStep) const {
                       return false;
               }
 
-  if (failedStep) (*failedStep)++;
-  if (debugCastleSquares)
+  if ((*step)++, debugCastleSquares)
       for (Color c = WHITE; c <= BLACK; c++)
           for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
           {
-              if (!can_castle(make_castle_right(c, s)))
+              CastleRight cr = make_castle_right(c, s);
+
+              if (!can_castle(cr))
                   continue;
 
+              if ((castleRightsMask[king_square(c)] & cr) != cr)
+                  return false;
+
               if (   piece_on(castleRookSquare[c][s]) != make_piece(c, ROOK)
-                  || castleRightsMask[castleRookSquare[c][s]] != make_castle_right(c, s))
+                  || castleRightsMask[castleRookSquare[c][s]] != cr)
                   return false;
           }
 
-  if (failedStep) *failedStep = 0;
+  *step = 0;
   return true;
 }
