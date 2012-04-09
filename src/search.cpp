@@ -265,7 +265,7 @@ void Search::think() {
       goto finalize;
   }
 
-  if (Options["OwnBook"])
+  if (Options["OwnBook"] && !Limits.infinite)
   {
       Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
 
