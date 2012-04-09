@@ -830,7 +830,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   prefetch((char*)TT.first_entry(k));
 
   // Move the piece
-  Bitboard from_to_bb = SquareBB[from] | SquareBB[to];
+  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
   byTypeBB[ALL_PIECES] ^= from_to_bb;
   byTypeBB[pt] ^= from_to_bb;
   byColorBB[us] ^= from_to_bb;
@@ -995,7 +995,7 @@ void Position::undo_move(Move m) {
   }
 
   // Put the piece back at the source square
-  Bitboard from_to_bb = SquareBB[from] | SquareBB[to];
+  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
   byTypeBB[ALL_PIECES] ^= from_to_bb;
   byTypeBB[pt] ^= from_to_bb;
   byColorBB[us] ^= from_to_bb;
@@ -1078,21 +1078,13 @@ void Position::do_castle_move(Move m) {
   assert(piece_on(kfrom) == make_piece(us, KING));
   assert(piece_on(rfrom) == make_piece(us, ROOK));
 
-  // Remove pieces from source squares
-  byTypeBB[ALL_PIECES] ^= kfrom;
-  byTypeBB[KING] ^= kfrom;
-  byColorBB[us] ^= kfrom;
-  byTypeBB[ALL_PIECES] ^= rfrom;
-  byTypeBB[ROOK] ^= rfrom;
-  byColorBB[us] ^= rfrom;
-
-  // Put pieces on destination squares
-  byTypeBB[ALL_PIECES] |= kto;
-  byTypeBB[KING] |= kto;
-  byColorBB[us] |= kto;
-  byTypeBB[ALL_PIECES] |= rto;
-  byTypeBB[ROOK] |= rto;
-  byColorBB[us] |= rto;
+  // Move the pieces, with some care; in chess960 could be kto == rfrom
+  Bitboard k_from_to_bb = SquareBB[kfrom] ^ SquareBB[kto];
+  Bitboard r_from_to_bb = SquareBB[rfrom] ^ SquareBB[rto];
+  byTypeBB[KING] ^= k_from_to_bb;
+  byTypeBB[ROOK] ^= r_from_to_bb;
+  byTypeBB[ALL_PIECES] ^= k_from_to_bb ^ r_from_to_bb;
+  byColorBB[us] ^= k_from_to_bb ^ r_from_to_bb;
 
   // Update board
   Piece king = make_piece(us, KING);
