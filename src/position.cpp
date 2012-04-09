@@ -62,15 +62,8 @@ const Value PieceValueEndgame[17] = {
   RookValueEndgame, QueenValueEndgame
 };
 
-
-namespace {
-
-  // Bonus for having the side to move (modified by Joona Kiiski)
-  const Score Tempo = make_score(48, 22);
-
-  // To convert a Piece to and from a FEN char
-  const string PieceToChar(" PNBRQK  pnbrqk  .");
-}
+// To convert a Piece to and from a FEN char
+static const string PieceToChar(" PNBRQK  pnbrqk  .");
 
 
 /// CheckInfo c'tor
@@ -934,9 +927,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       }
   }
 
-  // Finish
   sideToMove = ~sideToMove;
-  st->psqScore += (sideToMove == WHITE ?  Tempo : -Tempo);
 
   assert(pos_is_ok());
 }
@@ -1127,9 +1118,7 @@ void Position::do_castle_move(Move m) {
       // Update checkers BB
       st->checkersBB = attackers_to(king_square(~us)) & pieces(us);
 
-      // Finish
       sideToMove = ~sideToMove;
-      st->psqScore += (sideToMove == WHITE ?  Tempo : -Tempo);
   }
   else
       // Undo: point our state pointer back to the previous state
@@ -1172,7 +1161,6 @@ void Position::do_null_move(StateInfo& backupSt) {
       st->epSquare = SQ_NONE;
       st->rule50++;
       st->pliesFromNull = 0;
-      st->psqScore += (sideToMove == WHITE ?  Tempo : -Tempo);
   }
 
   assert(pos_is_ok());
@@ -1406,18 +1394,15 @@ Key Position::compute_material_key() const {
 /// updated by do_move and undo_move when the program is running in debug mode.
 Score Position::compute_psq_score() const {
 
-  Bitboard b;
   Score result = SCORE_ZERO;
+  Bitboard b = pieces();
 
-  for (Color c = WHITE; c <= BLACK; c++)
-      for (PieceType pt = PAWN; pt <= KING; pt++)
-      {
-          b = pieces(pt, c);
-          while (b)
-              result += pieceSquareTable[make_piece(c, pt)][pop_1st_bit(&b)];
-      }
+  while (b)
+  {
+      Square s = pop_1st_bit(&b);
+      result += pieceSquareTable[piece_on(s)][s];
+  }
 
-  result += (sideToMove == WHITE ? Tempo / 2 : -Tempo / 2);
   return result;
 }
 

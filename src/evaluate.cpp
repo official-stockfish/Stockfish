@@ -150,6 +150,9 @@ namespace {
 
   #undef S
 
+  // Bonus for having the side to move (modified by Joona Kiiski)
+  const Score Tempo = make_score(24, 11);
+
   // Rooks and queens on the 7th rank (modified by Joona Kiiski)
   const Score RookOn7thBonus  = make_score(47, 98);
   const Score QueenOn7thBonus = make_score(27, 54);
@@ -362,13 +365,14 @@ Value do_evaluate(const Position& pos, Value& margin) {
   Value margins[2];
   Score score, mobilityWhite, mobilityBlack;
 
-  // Initialize score by reading the incrementally updated scores included
-  // in the position object (material + piece square tables).
-  score = pos.psq_score();
-
   // margins[] store the uncertainty estimation of position's evaluation
   // that typically is used by the search for pruning decisions.
   margins[WHITE] = margins[BLACK] = VALUE_ZERO;
+
+  // Initialize score by reading the incrementally updated scores included
+  // in the position object (material + piece square tables) and adding
+  // Tempo bonus. Score is computed from the point of view of white.
+  score = pos.psq_score() + (pos.side_to_move() == WHITE ? Tempo : -Tempo);
 
   // Probe the material hash table
   ei.mi = pos.this_thread()->materialTable.probe(pos);
