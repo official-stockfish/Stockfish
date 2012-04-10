@@ -1859,6 +1859,49 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           // our feet by the sp master. Also accessing other Thread objects is
           // unsafe because if we are exiting there is a chance are already freed.
           lock_release(sp->lock);
+
+          // Try to reparent to another split point. Only for slave threads
+          // that are not master of any active split point.
+          if (   !sp_master
+              && !is_searching
+              && !do_sleep
+              && !do_exit
+              && !splitPointsCnt
+              && Threads.size() > 2)
+          {
+              for (int i = 0; i < Threads.size(); i++)
+              {
+                  SplitPoint* oldest = &Threads[i].splitPoints[0];
+
+                  // Find the first oldest split point with still all slaves running
+                  if (   Threads[i].splitPointsCnt
+                      && oldest->slavesMask == oldest->allSlavesMask
+                      && !single_bit(oldest->allSlavesMask))
+                  {
+                      lock_grab(oldest->lock);
+                      lock_grab(Threads.splitLock); // Needed by is_searching
+
+                      // Retest all under lock protection, we are in the middle
+                      // of a race storm !
+                      if (   !is_searching
+                          && !do_sleep
+                          && !do_exit
+                          && Threads[i].splitPointsCnt
+                          && oldest->slavesMask == oldest->allSlavesMask
+                          && !single_bit(oldest->allSlavesMask))
+                      {
+                          oldest->slavesMask |= 1ULL << idx; // allSlavesMask is not updated
+                          curSplitPoint = oldest;
+                          is_searching = true;
+                      }
+
+                      lock_release(Threads.splitLock);
+                      lock_release(oldest->lock);
+
+                      break; // Exit anyhow, only one try (enough in 99% of cases)
+                  }
+              }
+          }
       }
   }
 }

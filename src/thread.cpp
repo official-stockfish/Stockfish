@@ -319,6 +319,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->master = master;
   sp->cutoff = false;
   sp->slavesMask = 1ULL << master->idx;
+  sp->allSlavesMask = 1ULL << master->idx;
   sp->depth = depth;
   sp->bestMove = *bestMove;
   sp->threatMove = threatMove;
@@ -347,6 +348,7 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
       if (threads[i]->is_available_to(master))
       {
           sp->slavesMask |= 1ULL << i;
+          sp->allSlavesMask |= 1ULL << i;
           threads[i]->curSplitPoint = sp;
           threads[i]->is_searching = true; // Slave leaves idle_loop()
 
@@ -354,7 +356,10 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
               threads[i]->wake_up();
 
           if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Master is always included
+          {
+              sp->allSlavesMask = 0; // Disable reparenting to this split point
               break;
+          }
       }
 
   lock_release(splitLock);
