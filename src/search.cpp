@@ -1862,32 +1862,29 @@ void Thread::idle_loop(SplitPoint* sp_master) {
 
           // Try to reparent to another split point. Only for slave threads
           // that are not master of any active split point.
-          if (   !sp_master
-              && !is_searching
-              && !do_sleep
-              && !do_exit
-              && !splitPointsCnt
-              && Threads.size() > 2)
-          {
+          if (!splitPointsCnt)
               for (int i = 0; i < Threads.size(); i++)
               {
-                  SplitPoint* oldest = &Threads[i].splitPoints[0];
+                  Thread* th = &Threads[i];
+                  SplitPoint* oldest = &th->splitPoints[0];
 
-                  // Find the first oldest split point with still all slaves running
-                  if (   Threads[i].splitPointsCnt
-                      && oldest->slavesMask == oldest->allSlavesMask
+                  // Find the first split point with still all slaves running
+                  // where we are available as a possible slave.
+                  if (   !is_searching
+                      &&  th->splitPointsCnt
+                      && !oldest->cutoff
+                      &&  oldest->slavesMask == oldest->allSlavesMask
                       && !single_bit(oldest->allSlavesMask))
                   {
                       lock_grab(oldest->lock);
-                      lock_grab(Threads.splitLock); // Needed by is_searching
+                      lock_grab(Threads.splitLock);
 
                       // Retest all under lock protection, we are in the middle
-                      // of a race storm !
+                      // of a race storm here !
                       if (   !is_searching
-                          && !do_sleep
-                          && !do_exit
-                          && Threads[i].splitPointsCnt
-                          && oldest->slavesMask == oldest->allSlavesMask
+                          &&  th->splitPointsCnt
+                          && !oldest->cutoff
+                          &&  oldest->slavesMask == oldest->allSlavesMask
                           && !single_bit(oldest->allSlavesMask))
                       {
                           oldest->slavesMask |= 1ULL << idx; // allSlavesMask is not updated
@@ -1901,7 +1898,6 @@ void Thread::idle_loop(SplitPoint* sp_master) {
                       break; // Exit anyhow, only one try (enough in 99% of cases)
                   }
               }
-          }
       }
   }
 }
