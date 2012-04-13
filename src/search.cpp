@@ -1860,44 +1860,43 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           // unsafe because if we are exiting there is a chance are already freed.
           lock_release(sp->lock);
 
-          // Try to reparent to another split point. Only for slave threads
-          // that are not master of any active split point.
-          if (!splitPointsCnt)
-              for (int i = 0; i < Threads.size(); i++)
+          // Try to reparent to another split point
+          for (int i = 0; i < Threads.size(); i++)
+          {
+              Thread* th = &Threads[i];
+              int spCnt = th->splitPointsCnt;
+              SplitPoint* latest = &th->splitPoints[spCnt ? spCnt - 1 : 0];
+
+              // Find the first split point with still all slaves running
+              // where we are available as a possible slave.
+              if (    this->is_available_to(th)
+                  &&  spCnt > 0
+                  && !latest->cutoff
+                  &&  latest->slavesMask == latest->allSlavesMask
+                  && !single_bit(latest->allSlavesMask))
               {
-                  Thread* th = &Threads[i];
-                  SplitPoint* oldest = &th->splitPoints[0];
+                  lock_grab(latest->lock);
+                  lock_grab(Threads.splitLock);
 
-                  // Find the first split point with still all slaves running
-                  // where we are available as a possible slave.
-                  if (   !is_searching
-                      &&  th->splitPointsCnt
-                      && !oldest->cutoff
-                      &&  oldest->slavesMask == oldest->allSlavesMask
-                      && !single_bit(oldest->allSlavesMask))
+                  // Retest all under lock protection, we are in the middle
+                  // of a race storm here !
+                  if (    this->is_available_to(th)
+                      &&  spCnt == th->splitPointsCnt
+                      && !latest->cutoff
+                      &&  latest->slavesMask == latest->allSlavesMask
+                      && !single_bit(latest->allSlavesMask))
                   {
-                      lock_grab(oldest->lock);
-                      lock_grab(Threads.splitLock);
-
-                      // Retest all under lock protection, we are in the middle
-                      // of a race storm here !
-                      if (   !is_searching
-                          &&  th->splitPointsCnt
-                          && !oldest->cutoff
-                          &&  oldest->slavesMask == oldest->allSlavesMask
-                          && !single_bit(oldest->allSlavesMask))
-                      {
-                          oldest->slavesMask |= 1ULL << idx; // allSlavesMask is not updated
-                          curSplitPoint = oldest;
-                          is_searching = true;
-                      }
-
-                      lock_release(Threads.splitLock);
-                      lock_release(oldest->lock);
-
-                      break; // Exit anyhow, only one try (enough in 99% of cases)
+                      latest->slavesMask |= 1ULL << idx; // allSlavesMask is not updated
+                      curSplitPoint = latest;
+                      is_searching = true;
                   }
+
+                  lock_release(Threads.splitLock);
+                  lock_release(latest->lock);
+
+                  break; // Exit anyhow, only one try (enough in 99% of cases)
               }
+          }
       }
   }
 }
