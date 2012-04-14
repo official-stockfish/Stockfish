@@ -410,7 +410,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
           // If queen and king are far or not on a diagonal line we can safely
           // remove all the squares attacked in the other direction becuase are
           // not reachable by the king anyway.
-          if (squares_between(ksq, checksq) || !(PseudoAttacks[BISHOP][checksq] & ksq))
+          if (between_bb(ksq, checksq) || !(PseudoAttacks[BISHOP][checksq] & ksq))
               sliderAttacks |= PseudoAttacks[QUEEN][checksq];
 
           // Otherwise we need to use real rook attacks to check if king is safe
@@ -434,7 +434,7 @@ MoveStack* generate<MV_EVASION>(const Position& pos, MoveStack* mlist) {
       return mlist;
 
   // Blocking evasions or captures of the checking piece
-  target = squares_between(checksq, ksq) | checkers;
+  target = between_bb(checksq, ksq) | checkers;
 
   mlist = (us == WHITE ? generate_pawn_moves<WHITE, MV_EVASION>(pos, mlist, target)
                        : generate_pawn_moves<BLACK, MV_EVASION>(pos, mlist, target));

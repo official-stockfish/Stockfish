@@ -1337,7 +1337,7 @@ split_point_start: // At split points actual search starts from here
     // Rule 1. Checks which give opponent's king at most one escape square are dangerous
     b = kingAtt & ~pos.pieces(them) & ~newAtt & ~(1ULL << to);
 
-    if (single_bit(b)) // Catches also !b
+    if (!more_than_one(b))
         return true;
 
     // Rule 2. Queen contact check is very dangerous
@@ -1386,7 +1386,7 @@ split_point_start: // At split points actual search starts from here
 
     // Case 3: Moving through the vacated square
     p2 = pos.piece_on(f2);
-    if (piece_is_slider(p2) && (squares_between(f2, t2) & f1))
+    if (piece_is_slider(p2) && (between_bb(f2, t2) & f1))
       return true;
 
     // Case 4: The destination square for m2 is defended by the moving piece in m1
@@ -1397,7 +1397,7 @@ split_point_start: // At split points actual search starts from here
     // Case 5: Discovered check, checking piece is the piece moved in m1
     ksq = pos.king_square(pos.side_to_move());
     if (    piece_is_slider(p1)
-        && (squares_between(t1, ksq) & f2)
+        && (between_bb(t1, ksq) & f2)
         && (pos.attacks_from(p1, t1, pos.pieces() ^ f2) & ksq))
         return true;
 
@@ -1469,7 +1469,7 @@ split_point_start: // At split points actual search starts from here
     // Case 3: If the moving piece in the threatened move is a slider, don't
     // prune safe moves which block its ray.
     if (    piece_is_slider(pos.piece_on(tfrom))
-        && (squares_between(tfrom, tto) & mto)
+        && (between_bb(tfrom, tto) & mto)
         &&  pos.see_sign(m) >= 0)
         return true;
 
@@ -1873,7 +1873,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
                   &&  spCnt > 0
                   && !latest->cutoff
                   &&  latest->slavesMask == latest->allSlavesMask
-                  && !single_bit(latest->allSlavesMask))
+                  &&  more_than_one(latest->allSlavesMask))
               {
                   lock_grab(latest->lock);
                   lock_grab(Threads.splitLock);
@@ -1884,7 +1884,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
                       &&  spCnt == th->splitPointsCnt
                       && !latest->cutoff
                       &&  latest->slavesMask == latest->allSlavesMask
-                      && !single_bit(latest->allSlavesMask))
+                      &&  more_than_one(latest->allSlavesMask))
                   {
                       latest->slavesMask |= 1ULL << idx; // allSlavesMask is not updated
                       curSplitPoint = latest;

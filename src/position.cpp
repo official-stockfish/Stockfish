@@ -364,9 +364,9 @@ Bitboard Position::hidden_checkers() const {
 
   while (pinners)
   {
-      b = squares_between(ksq, pop_1st_bit(&pinners)) & pieces();
+      b = between_bb(ksq, pop_1st_bit(&pinners)) & pieces();
 
-      if (b && single_bit(b) && (b & pieces(sideToMove)))
+      if (b && !more_than_one(b) && (b & pieces(sideToMove)))
           result |= b;
   }
   return result;
@@ -608,7 +608,7 @@ bool Position::is_pseudo_legal(const Move m) const {
               return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          if (!((squares_between(checksq, king_square(us)) | checkers()) & to))
+          if (!((between_bb(checksq, king_square(us)) | checkers()) & to))
               return false;
       }
       // In case of king moves under check we have to remove king so to catch

@@ -50,7 +50,7 @@ extern Bitboard ThisAndAdjacentFilesBB[8];
 extern Bitboard InFrontBB[2][8];
 extern Bitboard StepAttacksBB[16][64];
 extern Bitboard BetweenBB[64][64];
-extern Bitboard SquaresInFrontMask[2][64];
+extern Bitboard ForwardBB[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];
 extern Bitboard PseudoAttacks[6][64];
@@ -77,6 +77,13 @@ inline Bitboard operator|(Bitboard b, Square s) {
 
 inline Bitboard operator^(Bitboard b, Square s) {
   return b ^ SquareBB[s];
+}
+
+
+/// more_than_one() returns true if in 'b' there is more than one bit set
+
+inline bool more_than_one(Bitboard b) {
+  return b & (b - 1);
 }
 
 
@@ -131,48 +138,23 @@ inline Bitboard in_front_bb(Color c, Square s) {
 }
 
 
-/// Functions for computing sliding attack bitboards. Function attacks_bb() takes
-/// a square and a bitboard of occupied squares as input, and returns a bitboard
-/// representing all squares attacked by Pt (bishop or rook) on the given square.
-template<PieceType Pt>
-FORCE_INLINE unsigned magic_index(Square s, Bitboard occ) {
+/// between_bb returns a bitboard representing all squares between two squares.
+/// For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with the bits for
+/// square d5 and e6 set.  If s1 and s2 are not on the same line, file or diagonal,
+/// 0 is returned.
 
-  Bitboard* const Masks  = Pt == ROOK ? RMasks  : BMasks;
-  Bitboard* const Magics = Pt == ROOK ? RMagics : BMagics;
-  unsigned* const Shifts = Pt == ROOK ? RShifts : BShifts;
-
-  if (Is64Bit)
-      return unsigned(((occ & Masks[s]) * Magics[s]) >> Shifts[s]);
-
-  unsigned lo = unsigned(occ) & unsigned(Masks[s]);
-  unsigned hi = unsigned(occ >> 32) & unsigned(Masks[s] >> 32);
-  return (lo * unsigned(Magics[s]) ^ hi * unsigned(Magics[s] >> 32)) >> Shifts[s];
-}
-
-template<PieceType Pt>
-inline Bitboard attacks_bb(Square s, Bitboard occ) {
-  Bitboard** const Attacks = Pt == ROOK ? RAttacks : BAttacks;
-  return Attacks[s][magic_index<Pt>(s, occ)];
-}
-
-
-/// squares_between returns a bitboard representing all squares between
-/// two squares.  For instance, squares_between(SQ_C4, SQ_F7) returns a
-/// bitboard with the bits for square d5 and e6 set.  If s1 and s2 are not
-/// on the same line, file or diagonal, EmptyBoardBB is returned.
-
-inline Bitboard squares_between(Square s1, Square s2) {
+inline Bitboard between_bb(Square s1, Square s2) {
   return BetweenBB[s1][s2];
 }
 
 
-/// squares_in_front_of takes a color and a square as input, and returns a
-/// bitboard representing all squares along the line in front of the square,
-/// from the point of view of the given color. Definition of the table is:
-/// SquaresInFrontOf[c][s] = in_front_bb(c, s) & file_bb(s)
+/// forward_bb takes a color and a square as input, and returns a bitboard
+/// representing all squares along the line in front of the square, from the
+/// point of view of the given color. Definition of the table is:
+/// ForwardBB[c][s] = in_front_bb(c, s) & file_bb(s)
 
-inline Bitboard squares_in_front_of(Color c, Square s) {
-  return SquaresInFrontMask[c][s];
+inline Bitboard forward_bb(Color c, Square s) {
+  return ForwardBB[c][s];
 }
 
 
@@ -214,11 +196,28 @@ inline Bitboard same_color_squares(Square s) {
 }
 
 
-/// single_bit() returns true if in the 'b' bitboard is set a single bit (or if
-/// b == 0).
+/// Functions for computing sliding attack bitboards. Function attacks_bb() takes
+/// a square and a bitboard of occupied squares as input, and returns a bitboard
+/// representing all squares attacked by Pt (bishop or rook) on the given square.
+template<PieceType Pt>
+FORCE_INLINE unsigned magic_index(Square s, Bitboard occ) {
 
-inline bool single_bit(Bitboard b) {
-  return !(b & (b - 1));
+  Bitboard* const Masks  = Pt == ROOK ? RMasks  : BMasks;
+  Bitboard* const Magics = Pt == ROOK ? RMagics : BMagics;
+  unsigned* const Shifts = Pt == ROOK ? RShifts : BShifts;
+
+  if (Is64Bit)
+      return unsigned(((occ & Masks[s]) * Magics[s]) >> Shifts[s]);
+
+  unsigned lo = unsigned(occ) & unsigned(Masks[s]);
+  unsigned hi = unsigned(occ >> 32) & unsigned(Masks[s] >> 32);
+  return (lo * unsigned(Magics[s]) ^ hi * unsigned(Magics[s] >> 32)) >> Shifts[s];
+}
+
+template<PieceType Pt>
+inline Bitboard attacks_bb(Square s, Bitboard occ) {
+  Bitboard** const Attacks = Pt == ROOK ? RAttacks : BAttacks;
+  return Attacks[s][magic_index<Pt>(s, occ)];
 }
 
 

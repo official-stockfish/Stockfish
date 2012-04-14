@@ -710,7 +710,7 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
           return SCALE_FACTOR_DRAW;
       else
       {
-          Bitboard path = squares_in_front_of(strongerSide, pawnSq);
+          Bitboard path = forward_bb(strongerSide, pawnSq);
 
           if (path & pos.pieces(KING, weakerSide))
               return SCALE_FACTOR_DRAW;

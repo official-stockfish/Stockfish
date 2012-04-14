@@ -45,7 +45,7 @@ Bitboard ThisAndAdjacentFilesBB[8];
 Bitboard InFrontBB[2][8];
 Bitboard StepAttacksBB[16][64];
 Bitboard BetweenBB[64][64];
-Bitboard SquaresInFrontMask[2][64];
+Bitboard ForwardBB[2][64];
 Bitboard PassedPawnMask[2][64];
 Bitboard AttackSpanMask[2][64];
 Bitboard PseudoAttacks[6][64];
@@ -189,9 +189,9 @@ void Bitboards::init() {
   for (Color c = WHITE; c <= BLACK; c++)
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
-          SquaresInFrontMask[c][s] = in_front_bb(c, s) & file_bb(s);
-          PassedPawnMask[c][s]     = in_front_bb(c, s) & this_and_adjacent_files_bb(file_of(s));
-          AttackSpanMask[c][s]     = in_front_bb(c, s) & adjacent_files_bb(file_of(s));
+          ForwardBB[c][s]      = in_front_bb(c, s) & file_bb(s);
+          PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_adjacent_files_bb(file_of(s));
+          AttackSpanMask[c][s] = in_front_bb(c, s) & adjacent_files_bb(file_of(s));
       }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
