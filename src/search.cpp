@@ -1871,7 +1871,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
               // where we are available as a possible slave.
               if (    this->is_available_to(th)
                   &&  spCnt > 0
-                  && !latest->cutoff
+                  && !th->cutoff_occurred()
                   &&  latest->slavesMask == latest->allSlavesMask
                   &&  more_than_one(latest->allSlavesMask))
               {
@@ -1882,7 +1882,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
                   // of a race storm here !
                   if (    this->is_available_to(th)
                       &&  spCnt == th->splitPointsCnt
-                      && !latest->cutoff
+                      && !th->cutoff_occurred()
                       &&  latest->slavesMask == latest->allSlavesMask
                       &&  more_than_one(latest->allSlavesMask))
                   {
