@@ -51,13 +51,13 @@ struct SplitPoint {
   // Shared data
   Lock lock;
   volatile uint64_t slavesMask;
-  volatile uint64_t allSlavesMask;
   volatile int64_t nodes;
   volatile Value alpha;
   volatile Value bestValue;
   volatile Move bestMove;
   volatile int moveCount;
   volatile bool cutoff;
+  volatile bool allSlavesRunning;
 };
 
 

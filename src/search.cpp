@@ -1844,6 +1844,7 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           assert(is_searching);
 
           is_searching = false;
+          sp->allSlavesRunning = false;
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
 
@@ -1860,20 +1861,19 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           // unsafe because if we are exiting there is a chance are already freed.
           lock_release(sp->lock);
 
-          // Try to reparent to another split point
+          // Try to reparent to the first split point, with still all slaves
+          // running, where we are available as a possible slave.
           for (int i = 0; i < Threads.size(); i++)
           {
               Thread* th = &Threads[i];
               int spCnt = th->splitPointsCnt;
               SplitPoint* latest = &th->splitPoints[spCnt ? spCnt - 1 : 0];
 
-              // Find the first split point with still all slaves running
-              // where we are available as a possible slave.
               if (    this->is_available_to(th)
                   &&  spCnt > 0
                   && !th->cutoff_occurred()
-                  &&  latest->slavesMask == latest->allSlavesMask
-                  &&  more_than_one(latest->allSlavesMask))
+                  &&  latest->allSlavesRunning
+                  &&  more_than_one(latest->slavesMask))
               {
                   lock_grab(latest->lock);
                   lock_grab(Threads.splitLock);
@@ -1883,10 +1883,10 @@ void Thread::idle_loop(SplitPoint* sp_master) {
                   if (    this->is_available_to(th)
                       &&  spCnt == th->splitPointsCnt
                       && !th->cutoff_occurred()
-                      &&  latest->slavesMask == latest->allSlavesMask
-                      &&  more_than_one(latest->allSlavesMask))
+                      &&  latest->allSlavesRunning
+                      &&  more_than_one(latest->slavesMask))
                   {
-                      latest->slavesMask |= 1ULL << idx; // allSlavesMask is not updated
+                      latest->slavesMask |= 1ULL << idx;
                       curSplitPoint = latest;
                       is_searching = true;
                   }
