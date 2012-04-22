@@ -319,7 +319,6 @@ Value ThreadsManager::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp->master = master;
   sp->cutoff = false;
   sp->slavesMask = 1ULL << master->idx;
-  sp->allSlavesRunning = true;
   sp->depth = depth;
   sp->bestMove = *bestMove;
   sp->threatMove = threatMove;

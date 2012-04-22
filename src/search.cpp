@@ -1844,7 +1844,6 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           assert(is_searching);
 
           is_searching = false;
-          sp->allSlavesRunning = false;
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
 
@@ -1860,43 +1859,6 @@ void Thread::idle_loop(SplitPoint* sp_master) {
           // our feet by the sp master. Also accessing other Thread objects is
           // unsafe because if we are exiting there is a chance are already freed.
           lock_release(sp->lock);
-
-          // Try to reparent to the first split point, with still all slaves
-          // running, where we are available as a possible slave.
-          for (int i = 0; i < Threads.size(); i++)
-          {
-              Thread* th = &Threads[i];
-              int spCnt = th->splitPointsCnt;
-              SplitPoint* latest = &th->splitPoints[spCnt ? spCnt - 1 : 0];
-
-              if (    this->is_available_to(th)
-                  &&  spCnt > 0
-                  && !th->cutoff_occurred()
-                  &&  latest->allSlavesRunning
-                  &&  more_than_one(latest->slavesMask))
-              {
-                  lock_grab(latest->lock);
-                  lock_grab(Threads.splitLock);
-
-                  // Retest all under lock protection, we are in the middle
-                  // of a race storm here !
-                  if (    this->is_available_to(th)
-                      &&  spCnt == th->splitPointsCnt
-                      && !th->cutoff_occurred()
-                      &&  latest->allSlavesRunning
-                      &&  more_than_one(latest->slavesMask))
-                  {
-                      latest->slavesMask |= 1ULL << idx;
-                      curSplitPoint = latest;
-                      is_searching = true;
-                  }
-
-                  lock_release(Threads.splitLock);
-                  lock_release(latest->lock);
-
-                  break; // Exit anyhow, only one try (enough in 99% of cases)
-              }
-          }
       }
   }
 }
