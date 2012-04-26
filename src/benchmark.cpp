@@ -26,6 +26,7 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
+#include "tt.h"
 #include "ucioption.h"
 
 using namespace std;
@@ -73,6 +74,7 @@ void benchmark(const Position& current, istream& is) {
 
   Options["Hash"]    = ttSize;
   Options["Threads"] = threads;
+  TT.clear();
 
   if (limitType == "time")
       limits.movetime = 1000 * atoi(limit.c_str()); // movetime is in ms
