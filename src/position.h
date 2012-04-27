@@ -111,8 +111,8 @@ public:
   int piece_count(Color c, PieceType pt) const;
 
   // Castling
-  bool can_castle(CastleRight f) const;
-  bool can_castle(Color c) const;
+  int can_castle(CastleRight f) const;
+  int can_castle(Color c) const;
   bool castle_impeded(Color c, CastlingSide s) const;
   Square castle_rook_square(Color c, CastlingSide s) const;
 
@@ -297,11 +297,11 @@ inline Square Position::king_square(Color c) const {
   return pieceList[c][KING][0];
 }
 
-inline bool Position::can_castle(CastleRight f) const {
+inline int Position::can_castle(CastleRight f) const {
   return st->castleRights & f;
 }
 
-inline bool Position::can_castle(Color c) const {
+inline int Position::can_castle(Color c) const {
   return st->castleRights & ((WHITE_OO | WHITE_OOO) << c);
 }
 

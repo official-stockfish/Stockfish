@@ -260,6 +260,7 @@ template<Color Us>
 Score PawnEntry::update_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;
+  castleRights[Us] = pos.can_castle(Us);
 
   if (relative_rank(Us, ksq) > RANK_4)
       return kingSafety[Us] = SCORE_ZERO;

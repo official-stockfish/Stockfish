@@ -59,6 +59,7 @@ private:
   Bitboard passedPawns[2];
   Bitboard pawnAttacks[2];
   Square kingSquares[2];
+  int castleRights[2];
   Score value;
   int halfOpenFiles[2];
   Score kingSafety[2];
@@ -106,7 +107,8 @@ inline int PawnEntry::has_open_file_to_right(Color c, File f) const {
 
 template<Color Us>
 inline Score PawnEntry::king_safety(const Position& pos, Square ksq) {
-  return kingSquares[Us] == ksq ? kingSafety[Us] : update_safety<Us>(pos, ksq);
+  return kingSquares[Us] == ksq && castleRights[Us] == pos.can_castle(Us)
+       ? kingSafety[Us] : update_safety<Us>(pos, ksq);
 }
 
 #endif // !defined(PAWNS_H_INCLUDED)
