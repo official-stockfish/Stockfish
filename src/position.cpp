@@ -641,7 +641,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   if (ci.dcCandidates && (ci.dcCandidates & from))
   {
       // For pawn and king moves we need to verify also direction
-      if (  (pt != PAWN && pt != KING)
+      if (   (pt != PAWN && pt != KING)
           || !squares_aligned(from, to, king_square(~sideToMove)))
           return true;
   }

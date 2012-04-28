@@ -304,9 +304,9 @@ Move MovePicker::next_move() {
 
       case KILLERS_S1:
           move = (curMove++)->move;
-          if (   move != MOVE_NONE
-              && pos.is_pseudo_legal(move)
-              && move != ttMove
+          if (    move != MOVE_NONE
+              &&  pos.is_pseudo_legal(move)
+              &&  move != ttMove
               && !pos.is_capture(move))
               return move;
           break;
