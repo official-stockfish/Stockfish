@@ -614,7 +614,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
                 if (pos.piece_on(s + d) == make_piece(Us, PAWN))
                 {
-                    if (!pos.square_empty(s + d + pawn_push(Us)))
+                    if (!pos.is_empty(s + d + pawn_push(Us)))
                         score -= 2*TrappedBishopA1H1Penalty;
                     else if (pos.piece_on(s + 2*d) == make_piece(Us, PAWN))
                         score -= TrappedBishopA1H1Penalty;
@@ -894,7 +894,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr);
 
             // If the pawn is free to advance, increase bonus
-            if (pos.square_empty(blockSq))
+            if (pos.is_empty(blockSq))
             {
                 squaresToQueen = forward_bb(Us, s);
                 defendedSquares = squaresToQueen & ei.attackedBy[Us][0];
