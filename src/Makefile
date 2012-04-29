@@ -270,7 +270,7 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),clang)
-		CXXFLAGS += -O3
+		CXXFLAGS += -O4
 
 		ifeq ($(os),osx)
 			ifeq ($(arch),i386)
