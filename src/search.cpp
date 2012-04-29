@@ -863,7 +863,7 @@ split_point_start: // At split points actual search starts from here
           ext = ONE_PLY;
 
       else if (givesCheck && pos.see_sign(move) >= 0)
-          ext = PvNode ? ONE_PLY : ONE_PLY / 2;
+          ext = ONE_PLY / 2;
 
       // Singular extension search. If all moves but one fail low on a search of
       // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
