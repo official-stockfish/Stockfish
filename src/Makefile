@@ -192,6 +192,15 @@ ifeq ($(COMP),icc)
 	profile_clean = icc-profile-clean
 endif
 
+ifeq ($(COMP),clang)
+	comp=clang
+	CXX=clang++
+	profile_prepare = gcc-profile-prepare
+	profile_make = gcc-profile-make
+	profile_use = gcc-profile-use
+	profile_clean = gcc-profile-clean
+endif
+
 ### 3.2 General compiler settings
 CXXFLAGS = -g -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
@@ -205,6 +214,10 @@ endif
 
 ifeq ($(comp),icc)
 	CXXFLAGS += -wd383,981,1418,1419,10187,10188,11505,11503 -Wcheck -Wabi -Wdeprecated -strict-ansi
+endif
+
+ifeq ($(comp),clang)
+	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
 endif
 
 ifeq ($(os),osx)
@@ -253,6 +266,19 @@ ifeq ($(optimize),yes)
 			CXXFLAGS += -fast -mdynamic-no-pic
 		else
 			CXXFLAGS += -O3
+		endif
+	endif
+
+	ifeq ($(comp),clang)
+		CXXFLAGS += -O3
+
+		ifeq ($(os),osx)
+			ifeq ($(arch),i386)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
+			ifeq ($(arch),x86_64)
+				CXXFLAGS += -mdynamic-no-pic
+			endif
 		endif
 	endif
 endif
@@ -329,6 +355,7 @@ help:
 	@echo "gcc                  > Gnu compiler (default)"
 	@echo "icc                  > Intel compiler"
 	@echo "mingw                > Gnu compiler with MinGW under Windows"
+	@echo "clang                > LLVM Clang compiler"
 	@echo ""
 	@echo "Non-standard targets:"
 	@echo ""
@@ -415,7 +442,7 @@ config-sanity:
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
-	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw"
+	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)
 	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
