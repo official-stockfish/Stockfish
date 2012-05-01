@@ -1108,7 +1108,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     }
 
     // Winning pawn is unstoppable and will promote as first, return big score
-    Score score = make_score(0, (Value) 0x500 - 0x20 * pliesToQueen[winnerSide]);
+    Score score = make_score(0, (Value) 1280 - 32 * pliesToQueen[winnerSide]);
     return winnerSide == WHITE ? score : -score;
   }
 

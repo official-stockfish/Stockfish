@@ -311,16 +311,16 @@ inline Score apply_weight(Score v, Score w) {
 #undef ENABLE_OPERATORS_ON
 #undef ENABLE_SAFE_OPERATORS_ON
 
-const Value PawnValueMidgame   = Value(0x0C6);
-const Value PawnValueEndgame   = Value(0x102);
-const Value KnightValueMidgame = Value(0x331);
-const Value KnightValueEndgame = Value(0x34E);
-const Value BishopValueMidgame = Value(0x344);
-const Value BishopValueEndgame = Value(0x359);
-const Value RookValueMidgame   = Value(0x4F6);
-const Value RookValueEndgame   = Value(0x4FE);
-const Value QueenValueMidgame  = Value(0x9D9);
-const Value QueenValueEndgame  = Value(0x9FE);
+const Value PawnValueMidgame   = Value(198);
+const Value PawnValueEndgame   = Value(258);
+const Value KnightValueMidgame = Value(817);
+const Value KnightValueEndgame = Value(846);
+const Value BishopValueMidgame = Value(836);
+const Value BishopValueEndgame = Value(857);
+const Value RookValueMidgame   = Value(1270);
+const Value RookValueEndgame   = Value(1278);
+const Value QueenValueMidgame  = Value(2521);
+const Value QueenValueEndgame  = Value(2558);
 
 extern const Value PieceValueMidgame[17]; // Indexed by Piece or PieceType
 extern const Value PieceValueEndgame[17];
