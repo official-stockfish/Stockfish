@@ -97,7 +97,7 @@ const string move_to_san(Position& pos, Move m) {
 
           // Disambiguation if we have more then one piece with destination 'to'
           // note that for pawns is not needed because starting file is explicit.
-          attackers = pos.attackers_to(to) & pos.pieces(pt, pos.side_to_move());
+          attackers = pos.attackers_to(to) & pos.pieces(pos.side_to_move(), pt);
           attackers ^= from;
           ambiguousMove = ambiguousFile = ambiguousRank = false;
 

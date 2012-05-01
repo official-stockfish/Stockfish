@@ -519,8 +519,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
     // no minor piece which can exchange the outpost piece.
     if (bonus && (ei.attackedBy[Us][PAWN] & s))
     {
-        if (   !pos.pieces(KNIGHT, Them)
-            && !(same_color_squares(s) & pos.pieces(BISHOP, Them)))
+        if (   !pos.pieces(Them, KNIGHT)
+            && !(same_color_squares(s) & pos.pieces(Them, BISHOP)))
             bonus += bonus + bonus / 2;
         else
             bonus += bonus / 2;
@@ -551,9 +551,9 @@ Value do_evaluate(const Position& pos, Value& margin) {
         if (Piece == KNIGHT || Piece == QUEEN)
             b = pos.attacks_from<Piece>(s);
         else if (Piece == BISHOP)
-            b = attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN, Us));
+            b = attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN));
         else if (Piece == ROOK)
-            b = attacks_bb<ROOK>(s, pos.pieces() ^ pos.pieces(ROOK, QUEEN, Us));
+            b = attacks_bb<ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN));
         else
             assert(false);
 
@@ -592,7 +592,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         // Bishop and knight outposts squares
         if (    (Piece == BISHOP || Piece == KNIGHT)
-            && !(pos.pieces(PAWN, Them) & attack_span_mask(Us, s)))
+            && !(pos.pieces(Them, PAWN) & attack_span_mask(Us, s)))
             score += evaluate_outposts<Piece, Us>(pos, ei, s);
 
         // Queen or rook on 7th rank
@@ -902,8 +902,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen. Otherwise consider only
                 // the squares in the pawn's path attacked or occupied by the enemy.
-                if (   (forward_bb(Them, s) & pos.pieces(ROOK, QUEEN, Them))
-                    && (forward_bb(Them, s) & pos.pieces(ROOK, QUEEN, Them) & pos.attacks_from<ROOK>(s)))
+                if (   (forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN))
+                    && (forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN) & pos.attacks_from<ROOK>(s)))
                     unsafeSquares = squaresToQueen;
                 else
                     unsafeSquares = squaresToQueen & (ei.attackedBy[Them][0] | pos.pieces(Them));
@@ -923,7 +923,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         // Increase the bonus if the passed pawn is supported by a friendly pawn
         // on the same rank and a bit smaller if it's on the previous rank.
-        supportingPawns = pos.pieces(PAWN, Us) & adjacent_files_bb(file_of(s));
+        supportingPawns = pos.pieces(Us, PAWN) & adjacent_files_bb(file_of(s));
         if (supportingPawns & rank_bb(s))
             ebonus += Value(r * 20);
 
@@ -940,7 +940,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         {
             if (pos.non_pawn_material(Them) <= KnightValueMidgame)
                 ebonus += ebonus / 4;
-            else if (pos.pieces(ROOK, QUEEN, Them))
+            else if (pos.pieces(Them, ROOK, QUEEN))
                 ebonus -= ebonus / 4;
         }
         score += make_score(mbonus, ebonus);
@@ -1013,7 +1013,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     loserSide = ~winnerSide;
 
     // Step 3. Can the losing side possibly create a new passed pawn and thus prevent the loss?
-    b = candidates = pos.pieces(PAWN, loserSide);
+    b = candidates = pos.pieces(loserSide, PAWN);
 
     while (b)
     {
@@ -1026,7 +1026,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         // Check if (without even considering any obstacles) we're too far away or doubled
         if (   pliesToQueen[winnerSide] + 3 <= pliesToGo
-            || (forward_bb(loserSide, s) & pos.pieces(PAWN, loserSide)))
+            || (forward_bb(loserSide, s) & pos.pieces(loserSide, PAWN)))
             candidates ^= s;
     }
 
@@ -1050,8 +1050,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         // Generate list of blocking pawns and supporters
         supporters = adjacent_files_bb(file_of(s)) & candidates;
-        opposed = forward_bb(loserSide, s) & pos.pieces(PAWN, winnerSide);
-        blockers = passed_pawn_mask(loserSide, s) & pos.pieces(PAWN, winnerSide);
+        opposed = forward_bb(loserSide, s) & pos.pieces(winnerSide, PAWN);
+        blockers = passed_pawn_mask(loserSide, s) & pos.pieces(winnerSide, PAWN);
 
         assert(blockers);
 
@@ -1128,12 +1128,12 @@ Value do_evaluate(const Position& pos, Value& margin) {
     // SpaceMask[]. A square is unsafe if it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
     Bitboard safe =   SpaceMask[Us]
-                   & ~pos.pieces(PAWN, Us)
+                   & ~pos.pieces(Us, PAWN)
                    & ~ei.attackedBy[Them][PAWN]
                    & (ei.attackedBy[Us][0] | ~ei.attackedBy[Them][0]);
 
     // Find all squares which are at most three squares behind some friendly pawn
-    Bitboard behind = pos.pieces(PAWN, Us);
+    Bitboard behind = pos.pieces(Us, PAWN);
     behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
     behind |= (Us == WHITE ? behind >> 16 : behind << 16);
 

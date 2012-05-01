@@ -126,8 +126,8 @@ namespace {
 
     Bitboard b1, b2, dc1, dc2, emptySquares;
 
-    Bitboard pawnsOn7    = pos.pieces(PAWN, Us) &  TRank7BB;
-    Bitboard pawnsNotOn7 = pos.pieces(PAWN, Us) & ~TRank7BB;
+    Bitboard pawnsOn7    = pos.pieces(Us, PAWN) &  TRank7BB;
+    Bitboard pawnsNotOn7 = pos.pieces(Us, PAWN) & ~TRank7BB;
 
     Bitboard enemies = (Type == MV_EVASION ? pos.pieces(Them) & target:
                         Type == MV_CAPTURE ? target : pos.pieces(Them));

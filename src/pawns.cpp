@@ -104,8 +104,8 @@ PawnEntry* PawnTable::probe(const Position& pos) {
   e->kingSquares[WHITE] = e->kingSquares[BLACK] = SQ_NONE;
   e->halfOpenFiles[WHITE] = e->halfOpenFiles[BLACK] = 0xFF;
 
-  Bitboard wPawns = pos.pieces(PAWN, WHITE);
-  Bitboard bPawns = pos.pieces(PAWN, BLACK);
+  Bitboard wPawns = pos.pieces(WHITE, PAWN);
+  Bitboard bPawns = pos.pieces(BLACK, PAWN);
   e->pawnAttacks[WHITE] = ((wPawns & ~FileHBB) << 9) | ((wPawns & ~FileABB) << 7);
   e->pawnAttacks[BLACK] = ((bPawns & ~FileHBB) >> 7) | ((bPawns & ~FileABB) >> 9);
 

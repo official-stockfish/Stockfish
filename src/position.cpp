@@ -201,7 +201,7 @@ void Position::from_fen(const string& fenStr, bool isChess960, Thread* th) {
   {
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
-      if (!(attackers_to(st->epSquare) & pieces(PAWN, sideToMove)))
+      if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
           st->epSquare = SQ_NONE;
   }
 
@@ -382,8 +382,8 @@ template Bitboard Position::hidden_checkers<false>() const;
 
 Bitboard Position::attackers_to(Square s, Bitboard occ) const {
 
-  return  (attacks_from<PAWN>(s, BLACK) & pieces(PAWN, WHITE))
-        | (attacks_from<PAWN>(s, WHITE) & pieces(PAWN, BLACK))
+  return  (attacks_from<PAWN>(s, BLACK) & pieces(WHITE, PAWN))
+        | (attacks_from<PAWN>(s, WHITE) & pieces(BLACK, PAWN))
         | (attacks_from<KNIGHT>(s)      & pieces(KNIGHT))
         | (attacks_bb<ROOK>(s, occ)     & pieces(ROOK, QUEEN))
         | (attacks_bb<BISHOP>(s, occ)   & pieces(BISHOP, QUEEN))
@@ -431,8 +431,8 @@ bool Position::move_attacks_square(Move m, Square s) const {
       return true;
 
   // Scan for possible X-ray attackers behind the moved piece
-  xray = (attacks_bb<ROOK>(s, occ)   & pieces(ROOK, QUEEN, color_of(piece)))
-        |(attacks_bb<BISHOP>(s, occ) & pieces(BISHOP, QUEEN, color_of(piece)));
+  xray =  (attacks_bb<  ROOK>(s, occ) & pieces(color_of(piece), QUEEN, ROOK))
+        | (attacks_bb<BISHOP>(s, occ) & pieces(color_of(piece), QUEEN, BISHOP));
 
   // Verify attackers are triggered by our move and not already existing
   return xray && (xray ^ (xray & attacks_from<QUEEN>(s)));
@@ -468,8 +468,8 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
       assert(piece_on(capsq) == make_piece(them, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-      return   !(attacks_bb<ROOK>(ksq, b) & pieces(ROOK, QUEEN, them))
-            && !(attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, them));
+      return   !(attacks_bb<  ROOK>(ksq, b) & pieces(them, QUEEN, ROOK))
+            && !(attacks_bb<BISHOP>(ksq, b) & pieces(them, QUEEN, BISHOP));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -666,8 +666,8 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       Square capsq = make_square(file_of(to), rank_of(from));
       Bitboard b = (pieces() ^ from ^ capsq) | to;
 
-      return  (attacks_bb<  ROOK>(ksq, b) & pieces(  ROOK, QUEEN, us))
-            | (attacks_bb<BISHOP>(ksq, b) & pieces(BISHOP, QUEEN, us));
+      return  (attacks_bb<  ROOK>(ksq, b) & pieces(us, QUEEN, ROOK))
+            | (attacks_bb<BISHOP>(ksq, b) & pieces(us, QUEEN, BISHOP));
   }
 
   // Castling with check ?
@@ -841,7 +841,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   {
       // Set en-passant square, only if moved pawn can be captured
       if (   (int(to) ^ int(from)) == 16
-          && (attacks_from<PAWN>(from + pawn_push(us), us) & pieces(PAWN, them)))
+          && (attacks_from<PAWN>(from + pawn_push(us), us) & pieces(them, PAWN)))
       {
           st->epSquare = Square((from + to) / 2);
           k ^= zobEp[file_of(st->epSquare)];
@@ -919,10 +919,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           if (ci.dcCandidates && (ci.dcCandidates & from))
           {
               if (pt != ROOK)
-                  st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(ROOK, QUEEN, us);
+                  st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(us, QUEEN, ROOK);
 
               if (pt != BISHOP)
-                  st->checkersBB |= attacks_from<BISHOP>(king_square(them)) & pieces(BISHOP, QUEEN, us);
+                  st->checkersBB |= attacks_from<BISHOP>(king_square(them)) & pieces(us, QUEEN, BISHOP);
           }
       }
   }
@@ -1651,7 +1651,7 @@ bool Position::pos_is_ok(int* failedStep) const {
   if ((*step)++, debugPieceCounts)
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
-              if (pieceCount[c][pt] != popcount<Full>(pieces(pt, c)))
+              if (pieceCount[c][pt] != popcount<Full>(pieces(c, pt)))
                   return false;
 
   if ((*step)++, debugPieceList)

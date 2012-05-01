@@ -406,7 +406,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   // No assertions about the material of weakerSide, because we want draws to
   // be detected even when the weaker side has some pawns.
 
-  Bitboard pawns = pos.pieces(PAWN, strongerSide);
+  Bitboard pawns = pos.pieces(strongerSide, PAWN);
   File pawnFile = file_of(pos.piece_list(strongerSide, PAWN)[0]);
 
   // All pawns are on a single rook file ?
@@ -460,12 +460,12 @@ ScaleFactor Endgame<KQKRPs>::operator()(const Position& pos) const {
   Square kingSq = pos.king_square(weakerSide);
   if (   relative_rank(weakerSide, kingSq) <= RANK_2
       && relative_rank(weakerSide, pos.king_square(strongerSide)) >= RANK_4
-      && (pos.pieces(ROOK, weakerSide) & rank_bb(relative_rank(weakerSide, RANK_3)))
-      && (pos.pieces(PAWN, weakerSide) & rank_bb(relative_rank(weakerSide, RANK_2)))
-      && (pos.attacks_from<KING>(kingSq) & pos.pieces(PAWN, weakerSide)))
+      && (pos.pieces(weakerSide, ROOK) & rank_bb(relative_rank(weakerSide, RANK_3)))
+      && (pos.pieces(weakerSide, PAWN) & rank_bb(relative_rank(weakerSide, RANK_2)))
+      && (pos.attacks_from<KING>(kingSq) & pos.pieces(weakerSide, PAWN)))
   {
       Square rsq = pos.piece_list(weakerSide, ROOK)[0];
-      if (pos.attacks_from<PAWN>(rsq, strongerSide) & pos.pieces(PAWN, weakerSide))
+      if (pos.attacks_from<PAWN>(rsq, strongerSide) & pos.pieces(weakerSide, PAWN))
           return SCALE_FACTOR_DRAW;
   }
   return SCALE_FACTOR_NONE;
@@ -643,7 +643,7 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square ksq = pos.king_square(weakerSide);
-  Bitboard pawns = pos.pieces(PAWN, strongerSide);
+  Bitboard pawns = pos.pieces(strongerSide, PAWN);
 
   // Are all pawns on the 'a' file?
   if (!(pawns & ~FileABB))
@@ -712,7 +712,7 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
       {
           Bitboard path = forward_bb(strongerSide, pawnSq);
 
-          if (path & pos.pieces(KING, weakerSide))
+          if (path & pos.pieces(weakerSide, KING))
               return SCALE_FACTOR_DRAW;
 
           if (  (pos.attacks_from<BISHOP>(weakerBishopSq) & path)
@@ -779,14 +779,14 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
     if (   ksq == blockSq1
         && opposite_colors(ksq, wbsq)
         && (   bbsq == blockSq2
-            || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(BISHOP, weakerSide))
+            || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(weakerSide, BISHOP))
             || abs(r1 - r2) >= 2))
         return SCALE_FACTOR_DRAW;
 
     else if (   ksq == blockSq2
              && opposite_colors(ksq, wbsq)
              && (   bbsq == blockSq1
-                 || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(BISHOP, weakerSide))))
+                 || (pos.attacks_from<BISHOP>(blockSq1) & pos.pieces(weakerSide, BISHOP))))
         return SCALE_FACTOR_DRAW;
     else
         return SCALE_FACTOR_NONE;

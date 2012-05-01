@@ -127,8 +127,8 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
   {
       // Minor piece endgame with at least one minor piece per side and
       // no pawns. Note that the case KmmK is already handled by KXK.
-      assert((pos.pieces(KNIGHT, WHITE) | pos.pieces(BISHOP, WHITE)));
-      assert((pos.pieces(KNIGHT, BLACK) | pos.pieces(BISHOP, BLACK)));
+      assert((pos.pieces(WHITE, KNIGHT) | pos.pieces(WHITE, BISHOP)));
+      assert((pos.pieces(BLACK, KNIGHT) | pos.pieces(BLACK, BISHOP)));
 
       if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
           && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)
