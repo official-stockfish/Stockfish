@@ -216,8 +216,7 @@ FORCE_INLINE unsigned magic_index(Square s, Bitboard occ) {
 
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occ) {
-  Bitboard** const Attacks = Pt == ROOK ? RAttacks : BAttacks;
-  return Attacks[s][magic_index<Pt>(s, occ)];
+  return (Pt == ROOK ? RAttacks : BAttacks)[s][magic_index<Pt>(s, occ)];
 }
 
 

@@ -168,30 +168,27 @@ void Bitboards::init() {
   FileBB[FILE_A] = FileABB;
   RankBB[RANK_1] = Rank1BB;
 
-  for (int f = FILE_B; f <= FILE_H; f++)
+  for (int i = 1; i < 8; i++)
   {
-      FileBB[f] = FileBB[f - 1] << 1;
-      RankBB[f] = RankBB[f - 1] << 8;
+      FileBB[i] = FileBB[i - 1] << 1;
+      RankBB[i] = RankBB[i - 1] << 8;
   }
 
-  for (int f = FILE_A; f <= FILE_H; f++)
+  for (File f = FILE_A; f <= FILE_H; f++)
   {
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
       ThisAndAdjacentFilesBB[f] = FileBB[f] | AdjacentFilesBB[f];
   }
 
-  for (int rw = RANK_7, rb = RANK_2; rw >= RANK_1; rw--, rb++)
-  {
-      InFrontBB[WHITE][rw] = InFrontBB[WHITE][rw + 1] | RankBB[rw + 1];
-      InFrontBB[BLACK][rb] = InFrontBB[BLACK][rb - 1] | RankBB[rb - 1];
-  }
+  for (Rank r = RANK_1; r < RANK_8; r++)
+      InFrontBB[WHITE][r] = ~(InFrontBB[BLACK][r + 1] = InFrontBB[BLACK][r] | RankBB[r]);
 
   for (Color c = WHITE; c <= BLACK; c++)
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
-          ForwardBB[c][s]      = in_front_bb(c, s) & file_bb(s);
-          PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_adjacent_files_bb(file_of(s));
-          AttackSpanMask[c][s] = in_front_bb(c, s) & adjacent_files_bb(file_of(s));
+          ForwardBB[c][s]      = InFrontBB[c][rank_of(s)] & FileBB[file_of(s)];
+          PassedPawnMask[c][s] = InFrontBB[c][rank_of(s)] & ThisAndAdjacentFilesBB[file_of(s)];
+          AttackSpanMask[c][s] = InFrontBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
       }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
@@ -231,9 +228,8 @@ void Bitboards::init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
   {
-      PseudoAttacks[BISHOP][s] = attacks_bb<BISHOP>(s, 0);
-      PseudoAttacks[ROOK][s]   = attacks_bb<ROOK>(s, 0);
-      PseudoAttacks[QUEEN][s]  = PseudoAttacks[BISHOP][s] | PseudoAttacks[ROOK][s];
+      PseudoAttacks[QUEEN][s]  = PseudoAttacks[BISHOP][s] = attacks_bb<BISHOP>(s, 0);
+      PseudoAttacks[QUEEN][s] |= PseudoAttacks[  ROOK][s] = attacks_bb<  ROOK>(s, 0);
   }
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
