@@ -72,7 +72,7 @@ namespace {
     string sides[] = { code.substr(code.find('K', 1)),      // Weaker
                        code.substr(0, code.find('K', 1)) }; // Stronger
 
-    transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
+    std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
     string fen =  sides[0] + char('0' + int(8 - code.length()))
                 + sides[1] + "/8/8/8/8/8/8/8 w - - 0 10";

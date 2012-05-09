@@ -35,6 +35,7 @@
 ///               | only in 64-bit mode. For compiling requires hardware with
 ///               | popcnt support.
 
+#include <cctype>
 #include <climits>
 #include <cstdlib>
 
