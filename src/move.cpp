@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
 #include <string>
 
@@ -56,7 +57,10 @@ const string move_to_uci(Move m, bool chess960) {
 /// simple coordinate notation and returns an equivalent Move if any.
 /// Moves are guaranteed to be legal.
 
-Move move_from_uci(const Position& pos, const string& str) {
+Move move_from_uci(const Position& pos, string str) {
+
+  // Some GUIs, like Junior, could send promotion in uppercase
+  std::transform(str.begin(), str.end(), str.begin(), tolower);
 
   for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
       if (str == move_to_uci(ml.move(), pos.is_chess960()))

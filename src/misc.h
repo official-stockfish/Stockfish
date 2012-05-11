@@ -38,7 +38,7 @@ extern void dbg_mean_of(int v);
 extern void dbg_print();
 
 class Position;
-extern Move move_from_uci(const Position& pos, const std::string& str);
+extern Move move_from_uci(const Position& pos, std::string str);
 extern const std::string move_to_uci(Move m, bool chess960);
 extern const std::string move_to_san(Position& pos, Move m);
 
