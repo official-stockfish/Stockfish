@@ -156,7 +156,7 @@ namespace {
         && rank_of(psq) < RANK_7)
         return DRAW;
 
-    //  Case 4: White king in front of pawn and black has opposition
+    // Case 4: White king in front of pawn and black has opposition
     if (   stm == WHITE
         && wksq == psq + DELTA_N
         && bksq == wksq + DELTA_N + DELTA_N
@@ -166,6 +166,13 @@ namespace {
     // Case 5: Stalemate with rook pawn
     if (   bksq == SQ_A8
         && file_of(psq) == FILE_A)
+        return DRAW;
+
+    // Case 6: White king trapped on the rook file
+    if (   file_of(wksq) == FILE_A
+        && file_of(psq) == FILE_A
+        && rank_of(wksq) > rank_of(psq)
+        && bksq == wksq + 2)
         return DRAW;
 
     return UNKNOWN;
