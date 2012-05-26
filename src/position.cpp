@@ -700,14 +700,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Copy some fields of old state to our new StateInfo object except the ones
   // which are recalculated from scratch anyway, then switch our state pointer
   // to point to the new, ready to be updated, state.
-  struct ReducedStateInfo {
-    Key pawnKey, materialKey;
-    Value npMaterial[2];
-    int castleRights, rule50, pliesFromNull;
-    Score psq_score;
-    Square epSquare;
-  };
-
   memcpy(&newSt, st, sizeof(ReducedStateInfo));
 
   newSt.previous = st;

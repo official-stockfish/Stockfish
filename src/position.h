@@ -60,6 +60,14 @@ struct StateInfo {
   StateInfo* previous;
 };
 
+struct ReducedStateInfo {
+  Key pawnKey, materialKey;
+  Value npMaterial[2];
+  int castleRights, rule50, pliesFromNull;
+  Score psqScore;
+  Square epSquare;
+};
+
 
 /// The position data structure. A position consists of the following data:
 ///
