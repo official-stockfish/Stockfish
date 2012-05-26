@@ -323,8 +323,7 @@ namespace {
         key ^= ZobPiece[PieceOffset[pos.piece_on(s)] + s];
     }
 
-    b =  (pos.can_castle(WHITE_OO) << 0) | (pos.can_castle(WHITE_OOO) << 1)
-       | (pos.can_castle(BLACK_OO) << 2) | (pos.can_castle(BLACK_OOO) << 3);
+    b = pos.can_castle(ALL_CASTLES);
 
     while (b)
         key ^= ZobCastle[pop_1st_bit(&b)];
