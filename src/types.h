@@ -128,11 +128,11 @@ inline bool operator<(const MoveStack& f, const MoveStack& s) {
   return f.score < s.score;
 }
 
-enum CastleRight {
+enum CastleRight {  // Defined as in PolyGlot book hash key
   CASTLES_NONE = 0,
   WHITE_OO     = 1,
-  BLACK_OO     = 2,
-  WHITE_OOO    = 4,
+  WHITE_OOO    = 2,
+  BLACK_OO     = 4,
   BLACK_OOO    = 8,
   ALL_CASTLES  = 15
 };
@@ -348,7 +348,7 @@ inline Piece make_piece(Color c, PieceType pt) {
 }
 
 inline CastleRight make_castle_right(Color c, CastlingSide s) {
-  return CastleRight((s == KING_SIDE ? WHITE_OO : WHITE_OOO) << c);
+  return CastleRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
 inline PieceType type_of(Piece p)  {
