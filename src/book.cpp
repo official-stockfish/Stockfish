@@ -306,11 +306,6 @@ namespace {
   const Key* ZobEnPassant = PolyGlotRandoms + 772;
   const Key* ZobTurn      = PolyGlotRandoms + 780;
 
-  // PieceOffset is calculated as 64 * (PolyPiece ^ 1) where PolyPiece
-  // is: BP = 0, WP = 1, BN = 2, WN = 3 ... BK = 10, WK = 11
-  const int PieceOffset[] = { 0, 64, 192, 320, 448, 576, 704, 0,
-                              0,  0, 128, 256, 384, 512, 640 };
-
   // book_key() returns the PolyGlot hash key of the given position
   uint64_t book_key(const Position& pos) {
 
@@ -319,8 +314,12 @@ namespace {
 
     while (b)
     {
+        // Piece offset is at 64 * polyPiece where polyPiece is defined as:
+        // BP = 0, WP = 1, BN = 2, WN = 3, ... BK = 10, WK = 11
         Square s = pop_1st_bit(&b);
-        key ^= ZobPiece[PieceOffset[pos.piece_on(s)] + s];
+        Piece p = pos.piece_on(s);
+        int polyPiece = 2 * (type_of(p) - 1) + (color_of(p) == WHITE);
+        key ^= ZobPiece[64 * polyPiece + s];
     }
 
     b = pos.can_castle(ALL_CASTLES);
