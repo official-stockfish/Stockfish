@@ -378,7 +378,10 @@ bool Book::open(const char* fName) {
   ifstream::open(fName, ifstream::in | ifstream::binary | ios::ate);
 
   if (!is_open())
+  {
+      clear();
       return false; // Silently fail if the file is not found
+  }
 
   // Get the book size in number of entries, we are already at the end of file
   size = (size_t)tellg() / sizeof(BookEntry);
