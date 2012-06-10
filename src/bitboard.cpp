@@ -50,7 +50,6 @@ Bitboard PassedPawnMask[2][64];
 Bitboard AttackSpanMask[2][64];
 Bitboard PseudoAttacks[6][64];
 
-uint8_t BitCount8Bit[256];
 int SquareDistance[64][64];
 
 namespace {
@@ -61,6 +60,7 @@ namespace {
   int MS1BTable[256];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
+  uint8_t BitCount8Bit[256];
 
   typedef unsigned (Fn)(Square, Bitboard);
 
@@ -142,7 +142,7 @@ void Bitboards::print(Bitboard b) {
       std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
 
       for (File file = FILE_A; file <= FILE_H; file++)
-          std::cout << "| " << ((b & make_square(file, rank)) ? "X " : "  ");
+          std::cout << "| " << (b & make_square(file, rank) ? "X " : "  ");
 
       std::cout << "|\n";
   }
@@ -265,25 +265,17 @@ namespace {
   }
 
 
-  Bitboard pick_random(Bitboard mask, RKISS& rk, int booster) {
-
-    Bitboard magic;
+  Bitboard pick_random(RKISS& rk, int booster) {
 
     // Values s1 and s2 are used to rotate the candidate magic of a
     // quantity known to be the optimal to quickly find the magics.
     int s1 = booster & 63, s2 = (booster >> 6) & 63;
 
-    while (true)
-    {
-        magic = rk.rand<Bitboard>();
-        magic = (magic >> s1) | (magic << (64 - s1));
-        magic &= rk.rand<Bitboard>();
-        magic = (magic >> s2) | (magic << (64 - s2));
-        magic &= rk.rand<Bitboard>();
-
-        if (BitCount8Bit[(mask * magic) >> 56] >= 6)
-            return magic;
-    }
+    Bitboard m = rk.rand<Bitboard>();
+    m = (m >> s1) | (m << (64 - s1));
+    m &= rk.rand<Bitboard>();
+    m = (m >> s2) | (m << (64 - s2));
+    return m & rk.rand<Bitboard>();
   }
 
 
@@ -336,7 +328,9 @@ namespace {
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
         do {
-            magics[s] = pick_random(masks[s], rk, booster);
+            do magics[s] = pick_random(rk, booster);
+            while (BitCount8Bit[(magics[s] * masks[s]) >> 56] < 6);
+
             memset(attacks[s], 0, size * sizeof(Bitboard));
 
             // A good magic must map every possible occupancy to an index that
@@ -349,6 +343,8 @@ namespace {
 
                 if (attack && attack != reference[i])
                     break;
+
+                assert(reference[i] != 0);
 
                 attack = reference[i];
             }
