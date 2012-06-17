@@ -59,6 +59,7 @@ private:
   Bitboard passedPawns[2];
   Bitboard pawnAttacks[2];
   Square kingSquares[2];
+  int minKPdistance[2];
   int castleRights[2];
   Score value;
   int halfOpenFiles[2];

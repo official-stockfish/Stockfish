@@ -50,6 +50,7 @@ extern Bitboard ThisAndAdjacentFilesBB[8];
 extern Bitboard InFrontBB[2][8];
 extern Bitboard StepAttacksBB[16][64];
 extern Bitboard BetweenBB[64][64];
+extern Bitboard DistanceRingsBB[64][8];
 extern Bitboard ForwardBB[2][64];
 extern Bitboard PassedPawnMask[2][64];
 extern Bitboard AttackSpanMask[2][64];

@@ -261,6 +261,11 @@ Score PawnEntry::update_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;
   castleRights[Us] = pos.can_castle(Us);
+  minKPdistance[Us] = 0;
+
+  Bitboard pawns = pos.pieces(Us, PAWN);
+  if (pawns)
+      while (!(DistanceRingsBB[ksq][minKPdistance[Us]++] & pawns)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
       return kingSafety[Us] = SCORE_ZERO;

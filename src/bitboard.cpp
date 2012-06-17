@@ -45,6 +45,7 @@ Bitboard ThisAndAdjacentFilesBB[8];
 Bitboard InFrontBB[2][8];
 Bitboard StepAttacksBB[16][64];
 Bitboard BetweenBB[64][64];
+Bitboard DistanceRingsBB[64][8];
 Bitboard ForwardBB[2][64];
 Bitboard PassedPawnMask[2][64];
 Bitboard AttackSpanMask[2][64];
@@ -194,6 +195,12 @@ void Bitboards::init() {
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
           SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
+
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
+      for (int d = 1; d < 8; d++)
+          for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+              if (SquareDistance[s1][s2] == d)
+                  DistanceRingsBB[s1][d - 1] |= s2;
 
   for (int i = 0; i < 64; i++)
       if (!Is64Bit) // Matt Taylor's folding trick for 32 bit systems
