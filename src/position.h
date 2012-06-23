@@ -141,6 +141,7 @@ public:
   // Properties of moves
   bool move_gives_check(Move m, const CheckInfo& ci) const;
   bool move_attacks_square(Move m, Square s) const;
+  bool move_is_legal(const Move m) const;
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool is_pseudo_legal(const Move m) const;
   bool is_capture(Move m) const;
@@ -197,7 +198,6 @@ private:
   void clear();
   void put_piece(Piece p, Square s);
   void set_castle_right(Color c, Square rfrom);
-  bool move_is_legal(const Move m) const;
 
   // Helper template functions
   template<bool Do> void do_castle_move(Move m);
