@@ -143,7 +143,7 @@ void Bitboards::print(Bitboard b) {
       std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
 
       for (File file = FILE_A; file <= FILE_H; file++)
-          std::cout << "| " << (b & make_square(file, rank) ? "X " : "  ");
+          std::cout << "| " << (b & (file | rank) ? "X " : "  ");
 
       std::cout << "|\n";
   }

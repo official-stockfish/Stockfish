@@ -977,7 +977,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         while (b)
         {
             s = pop_1st_bit(&b);
-            queeningSquare = relative_square(c, make_square(file_of(s), RANK_8));
+            queeningSquare = relative_square(c, file_of(s) | RANK_8);
             queeningPath = forward_bb(c, s);
 
             // Compute plies to queening and check direct advancement
@@ -1020,7 +1020,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         s = pop_1st_bit(&b);
 
         // Compute plies from queening
-        queeningSquare = relative_square(loserSide, make_square(file_of(s), RANK_8));
+        queeningSquare = relative_square(loserSide, file_of(s) | RANK_8);
         movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 
@@ -1044,7 +1044,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         minKingDist = kingptg = 256;
 
         // Compute plies from queening
-        queeningSquare = relative_square(loserSide, make_square(file_of(s), RANK_8));
+        queeningSquare = relative_square(loserSide, file_of(s) | RANK_8);
         movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
         pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
 

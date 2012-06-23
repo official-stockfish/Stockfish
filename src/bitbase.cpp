@@ -117,7 +117,7 @@ namespace {
     stm  = Color(idx & 1);
     bksq = Square((idx >> 1) & 63);
     wksq = Square((idx >> 7) & 63);
-    psq  = make_square(File((idx >> 13) & 3), Rank((idx >> 15) + 1));
+    psq  = File((idx >> 13) & 3) | Rank((idx >> 15) + 1);
   }
 
   Result KPKPosition::classify_leaf(int idx) {

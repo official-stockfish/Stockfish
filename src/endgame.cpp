@@ -262,7 +262,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
       bpsq = ~bpsq;
   }
 
-  Square queeningSq = make_square(file_of(bpsq), RANK_1);
+  Square queeningSq = file_of(bpsq) | RANK_1;
   Value result;
 
   // If the stronger side's king is in front of the pawn, it's a win
@@ -414,7 +414,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       && !(pawns & ~file_bb(pawnFile)))
   {
       Square bishopSq = pos.piece_list(strongerSide, BISHOP)[0];
-      Square queeningSq = relative_square(strongerSide, make_square(pawnFile, RANK_8));
+      Square queeningSq = relative_square(strongerSide, pawnFile | RANK_8);
       Square kingSq = pos.king_square(weakerSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
@@ -513,7 +513,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
   File f = file_of(wpsq);
   Rank r = rank_of(wpsq);
-  Square queeningSq = make_square(f, RANK_8);
+  Square queeningSq = f | RANK_8;
   int tempo = (pos.side_to_move() == strongerSide);
 
   // If the pawn is not too far advanced and the defending king defends the
@@ -752,12 +752,12 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
   if (relative_rank(strongerSide, psq1) > relative_rank(strongerSide, psq2))
   {
       blockSq1 = psq1 + pawn_push(strongerSide);
-      blockSq2 = make_square(file_of(psq2), rank_of(psq1));
+      blockSq2 = file_of(psq2) | rank_of(psq1);
   }
   else
   {
       blockSq1 = psq2 + pawn_push(strongerSide);
-      blockSq2 = make_square(file_of(psq1), rank_of(psq2));
+      blockSq2 = file_of(psq1) | rank_of(psq2);
   }
 
   switch (file_distance(psq1, psq2))

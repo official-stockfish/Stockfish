@@ -43,7 +43,7 @@ const string move_to_uci(Move m, bool chess960) {
       return "0000";
 
   if (is_castle(m) && !chess960)
-      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
+      to = (to > from ? FILE_G : FILE_C) | rank_of(from);
 
   if (is_promotion(m))
       promotion = char(tolower(piece_type_to_char(promotion_type(m))));
@@ -89,7 +89,7 @@ const string move_to_san(Position& pos, Move m) {
   PieceType pt = type_of(pos.piece_on(from));
 
   if (is_castle(m))
-      san = to_sq(m) < from_sq(m) ? "O-O-O" : "O-O";
+      san = to > from ? "O-O" : "O-O-O";
   else
   {
       if (pt != PAWN)

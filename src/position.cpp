@@ -187,7 +187,7 @@ void Position::from_fen(const string& fenStr, bool isChess960, Thread* th) {
           for (rsq = relative_square(c, SQ_A1); type_of(piece_on(rsq)) != ROOK; rsq++) {}
 
       else if (token >= 'A' && token <= 'H')
-          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+          rsq = File(token - 'A') | relative_rank(c, RANK_1);
 
       else
           continue;
@@ -199,7 +199,7 @@ void Position::from_fen(const string& fenStr, bool isChess960, Thread* th) {
   if (   ((fen >> col) && (col >= 'a' && col <= 'h'))
       && ((fen >> row) && (row == '3' || row == '6')))
   {
-      st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
+      st->epSquare = File(col - 'a') | Rank(row - '1');
 
       if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
           st->epSquare = SQ_NONE;
@@ -268,7 +268,7 @@ const string Position::to_fen() const {
 
       for (File file = FILE_A; file <= FILE_H; file++)
       {
-          sq = make_square(file, rank);
+          sq = file | rank;
 
           if (is_empty(sq))
               emptyCnt++;
@@ -656,7 +656,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   // the captured pawn.
   if (is_enpassant(m))
   {
-      Square capsq = make_square(file_of(to), rank_of(from));
+      Square capsq = file_of(to) | rank_of(from);
       Bitboard b = (pieces() ^ from ^ capsq) | to;
 
       return  (attacks_bb<  ROOK>(ksq, b) & pieces(us, QUEEN, ROOK))

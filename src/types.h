@@ -335,6 +335,10 @@ inline Square operator~(Square s) {
   return Square(s ^ 56); // Vertical flip SQ_A1 -> SQ_A8
 }
 
+inline Square operator|(File f, Rank r) {
+  return Square((r << 3) | f);
+}
+
 inline Value mate_in(int ply) {
   return VALUE_MATE - ply;
 }
@@ -357,10 +361,6 @@ inline PieceType type_of(Piece p)  {
 
 inline Color color_of(Piece p) {
   return Color(p >> 3);
-}
-
-inline Square make_square(File f, Rank r) {
-  return Square((r << 3) | f);
 }
 
 inline bool is_ok(Square s) {
