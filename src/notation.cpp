@@ -25,6 +25,8 @@
 
 using std::string;
 
+static const char* PieceToChar = " PNBRQK pnbrqk";
+
 /// move_to_uci() converts a move to a string in coordinate notation
 /// (g1f3, a7a8q, etc.). The only special case is castling moves, where we print
 /// in the e1g1 notation in normal chess mode, and in e1h1 notation in chess960
@@ -47,7 +49,7 @@ const string move_to_uci(Move m, bool chess960) {
   string move = square_to_string(from) + square_to_string(to);
 
   if (type_of(m) == PROMOTION)
-      move += char(tolower(piece_type_to_char(promotion_type(m))));
+      move += PieceToChar[promotion_type(m) + 7]; // Lower case
 
   return move;
 }
@@ -85,23 +87,24 @@ const string move_to_san(Position& pos, Move m) {
   Bitboard attackers;
   bool ambiguousMove, ambiguousFile, ambiguousRank;
   string san;
+  Color us = pos.side_to_move();
   Square from = from_sq(m);
   Square to = to_sq(m);
-  PieceType pt = type_of(pos.piece_on(from));
+  Piece pc = pos.piece_on(from);
 
   if (type_of(m) == CASTLE)
       san = to > from ? "O-O" : "O-O-O";
   else
   {
-      if (pt != PAWN)
+      if (type_of(pc) != PAWN)
       {
-          san = piece_type_to_char(pt);
+          san = PieceToChar[pc];
 
           // Disambiguation if we have more then one piece with destination 'to'
           // note that for pawns is not needed because starting file is explicit.
-          attackers = pos.attackers_to(to) & pos.pieces(pos.side_to_move(), pt);
-          attackers ^= from;
           ambiguousMove = ambiguousFile = ambiguousRank = false;
+
+          attackers = (pos.attacks_from(pc, to) & pos.pieces(us)) ^ from;
 
           while (attackers)
           {
@@ -128,19 +131,16 @@ const string move_to_san(Position& pos, Move m) {
                   san += square_to_string(from);
           }
       }
+      else if (pos.is_capture(m))
+          san = file_to_char(file_of(from));
 
       if (pos.is_capture(m))
-      {
-          if (pt == PAWN)
-              san += file_to_char(file_of(from));
-
           san += 'x';
-      }
 
       san += square_to_string(to);
 
       if (type_of(m) == PROMOTION)
-          san += string("=") + piece_type_to_char(promotion_type(m));
+          san += string("=") + PieceToChar[promotion_type(m)];
   }
 
   if (pos.move_gives_check(m, CheckInfo(pos)))

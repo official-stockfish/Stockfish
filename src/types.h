@@ -415,10 +415,6 @@ inline int square_distance(Square s1, Square s2) {
   return SquareDistance[s1][s2];
 }
 
-inline char piece_type_to_char(PieceType pt) {
-  return " PNBRQK"[pt];
-}
-
 inline char file_to_char(File f) {
   return char(f - FILE_A + int('a'));
 }
