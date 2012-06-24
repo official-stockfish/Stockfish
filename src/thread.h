@@ -102,18 +102,18 @@ public:
 };
 
 
-/// ThreadsManager class handles all the threads related stuff like init, starting,
+/// ThreadPool class handles all the threads related stuff like init, starting,
 /// parking and, the most important, launching a slave thread at a split point.
 /// All the access to shared thread data is done through this class.
 
-class ThreadsManager {
-  /* As long as the single ThreadsManager object is defined as a global we don't
+class ThreadPool {
+  /* As long as the single ThreadPool object is defined as a global we don't
      need to explicitly initialize to zero its data members because variables with
      static storage duration are automatically set to zero before enter main()
   */
 public:
-  void init(); // No c'tor becuase Threads is static and we need engine initialized
-  ~ThreadsManager();
+  void init(); // No c'tor becuase Threads is global and we need engine initialized
+  ~ThreadPool();
 
   Thread& operator[](int id) { return *threads[id]; }
   bool use_sleeping_threads() const { return useSleepingThreads; }
@@ -145,6 +145,6 @@ private:
   bool useSleepingThreads;
 };
 
-extern ThreadsManager Threads;
+extern ThreadPool Threads;
 
 #endif // !defined(THREAD_H_INCLUDED)
