@@ -134,7 +134,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   // Stalemate detection with lone king
   if (    pos.side_to_move() == weakerSide
       && !pos.in_check()
-      && !MoveList<MV_LEGAL>(pos).size()) {
+      && !MoveList<LEGAL>(pos).size()) {
     return VALUE_DRAW;
   }
 

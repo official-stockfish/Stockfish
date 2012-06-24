@@ -22,23 +22,23 @@
 
 #include "types.h"
 
-enum MoveType {
-  MV_CAPTURE,
-  MV_QUIET,
-  MV_QUIET_CHECK,
-  MV_EVASION,
-  MV_NON_EVASION,
-  MV_LEGAL
+enum GenType {
+  CAPTURES,
+  QUIETS,
+  QUIET_CHECKS,
+  EVASIONS,
+  NON_EVASIONS,
+  LEGAL
 };
 
 class Position;
 
-template<MoveType>
+template<GenType>
 MoveStack* generate(const Position& pos, MoveStack* mlist);
 
 /// The MoveList struct is a simple wrapper around generate(), sometimes comes
 /// handy to use this class instead of the low level generate() function.
-template<MoveType T>
+template<GenType T>
 struct MoveList {
 
   explicit MoveList(const Position& pos) : cur(mlist), last(generate<T>(pos, mlist)) {}

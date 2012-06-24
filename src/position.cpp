@@ -448,7 +448,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
   // the move is made.
-  if (is_enpassant(m))
+  if (type_of(m) == ENPASSANT)
   {
       Color them = ~us;
       Square to = to_sq(m);
@@ -469,7 +469,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
   if (type_of(piece_on(from)) == KING)
-      return is_castle(m) || !(attackers_to(to_sq(m)) & pieces(~us));
+      return type_of(m) == CASTLE || !(attackers_to(to_sq(m)) & pieces(~us));
 
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
@@ -485,7 +485,7 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 
 bool Position::move_is_legal(const Move m) const {
 
-  for (MoveList<MV_LEGAL> ml(*this); !ml.end(); ++ml)
+  for (MoveList<LEGAL> ml(*this); !ml.end(); ++ml)
       if (ml.move() == m)
           return true;
 
@@ -506,7 +506,7 @@ bool Position::is_pseudo_legal(const Move m) const {
   Piece pc = piece_moved(m);
 
   // Use a slower but simpler function for uncommon cases
-  if (is_special(m))
+  if (type_of(m) != NORMAL)
       return move_is_legal(m);
 
   // Is not a promotion, so promotion piece must be empty
@@ -640,21 +640,21 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   }
 
   // Can we skip the ugly special cases ?
-  if (!is_special(m))
+  if (type_of(m) == NORMAL)
       return false;
 
   Color us = sideToMove;
   Square ksq = king_square(~us);
 
   // Promotion with check ?
-  if (is_promotion(m))
+  if (type_of(m) == PROMOTION)
       return attacks_from(Piece(promotion_type(m)), to, pieces() ^ from) & ksq;
 
   // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
   // need to handle is the unusual case of a discovered check through
   // the captured pawn.
-  if (is_enpassant(m))
+  if (type_of(m) == ENPASSANT)
   {
       Square capsq = file_of(to) | rank_of(from);
       Bitboard b = (pieces() ^ from ^ capsq) | to;
@@ -664,7 +664,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   }
 
   // Castling with check ?
-  if (is_castle(m))
+  if (type_of(m) == CASTLE)
   {
       Square kfrom = from;
       Square rfrom = to; // 'King captures the rook' notation
@@ -713,7 +713,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->rule50++;
   st->pliesFromNull++;
 
-  if (is_castle(m))
+  if (type_of(m) == CASTLE)
   {
       st->key = k;
       do_castle_move<true>(m);
@@ -726,7 +726,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   Square to = to_sq(m);
   Piece piece = piece_on(from);
   PieceType pt = type_of(piece);
-  PieceType capture = is_enpassant(m) ? PAWN : type_of(piece_on(to));
+  PieceType capture = type_of(m) == ENPASSANT ? PAWN : type_of(piece_on(to));
 
   assert(color_of(piece) == us);
   assert(color_of(piece_on(to)) != us);
@@ -740,7 +740,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       // update non-pawn material.
       if (capture == PAWN)
       {
-          if (is_enpassant(m))
+          if (type_of(m) == ENPASSANT)
           {
               capsq += pawn_push(them);
 
@@ -832,7 +832,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           k ^= zobEp[file_of(st->epSquare)];
       }
 
-      if (is_promotion(m))
+      if (type_of(m) == PROMOTION)
       {
           PieceType promotion = promotion_type(m);
 
@@ -892,7 +892,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   if (moveIsCheck)
   {
-      if (is_special(m))
+      if (type_of(m) != NORMAL)
           st->checkersBB = attackers_to(king_square(them)) & pieces(us);
       else
       {
@@ -927,7 +927,7 @@ void Position::undo_move(Move m) {
 
   sideToMove = ~sideToMove;
 
-  if (is_castle(m))
+  if (type_of(m) == CASTLE)
   {
       do_castle_move<false>(m);
       return;
@@ -945,7 +945,7 @@ void Position::undo_move(Move m) {
   assert(color_of(piece) == us);
   assert(capture != KING);
 
-  if (is_promotion(m))
+  if (type_of(m) == PROMOTION)
   {
       PieceType promotion = promotion_type(m);
 
@@ -988,7 +988,7 @@ void Position::undo_move(Move m) {
   {
       Square capsq = to;
 
-      if (is_enpassant(m))
+      if (type_of(m) == ENPASSANT)
       {
           capsq -= pawn_push(us);
 
@@ -1025,7 +1025,7 @@ template<bool Do>
 void Position::do_castle_move(Move m) {
 
   assert(is_ok(m));
-  assert(is_castle(m));
+  assert(type_of(m) == CASTLE);
 
   Square kto, kfrom, rfrom, rto, kAfter, rAfter;
 
@@ -1188,7 +1188,7 @@ int Position::see(Move m) const {
   // As castle moves are implemented as capturing the rook, they have
   // SEE == RookValueMidgame most of the times (unless the rook is under
   // attack).
-  if (is_castle(m))
+  if (type_of(m) == CASTLE)
       return 0;
 
   from = from_sq(m);
@@ -1197,7 +1197,7 @@ int Position::see(Move m) const {
   occ = pieces();
 
   // Handle en passant moves
-  if (is_enpassant(m))
+  if (type_of(m) == ENPASSANT)
   {
       Square capQq = to - pawn_push(sideToMove);
 
@@ -1420,7 +1420,7 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by the 50 moves rule?
-  if (st->rule50 > 99 && (!in_check() || MoveList<MV_LEGAL>(*this).size()))
+  if (st->rule50 > 99 && (!in_check() || MoveList<LEGAL>(*this).size()))
       return true;
 
   // Draw by repetition?

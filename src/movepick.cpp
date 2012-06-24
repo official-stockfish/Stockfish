@@ -166,7 +166,7 @@ void MovePicker::score_captures() {
       cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
                   - type_of(pos.piece_moved(m));
 
-      if (is_promotion(m))
+      if (type_of(m) == PROMOTION)
           cur->score += PieceValueMidgame[promotion_type(m)];
   }
 }
@@ -216,7 +216,7 @@ void MovePicker::generate_next() {
   switch (++phase) {
 
   case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
-      lastMove = generate<MV_CAPTURE>(pos, moves);
+      lastMove = generate<CAPTURES>(pos, moves);
       score_captures();
       return;
 
@@ -226,7 +226,7 @@ void MovePicker::generate_next() {
       return;
 
   case QUIETS_1_S1:
-      lastQuiet = lastMove = generate<MV_QUIET>(pos, moves);
+      lastQuiet = lastMove = generate<QUIETS>(pos, moves);
       score_noncaptures();
       lastMove = std::partition(curMove, lastMove, has_positive_score);
       sort<MoveStack>(curMove, lastMove);
@@ -246,12 +246,12 @@ void MovePicker::generate_next() {
       return;
 
   case EVASIONS_S2:
-      lastMove = generate<MV_EVASION>(pos, moves);
+      lastMove = generate<EVASIONS>(pos, moves);
       score_evasions();
       return;
 
   case QUIET_CHECKS_S3:
-      lastMove = generate<MV_QUIET_CHECK>(pos, moves);
+      lastMove = generate<QUIET_CHECKS>(pos, moves);
       return;
 
   case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT: case RECAPTURE:

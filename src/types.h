@@ -119,14 +119,12 @@ enum Move {
   MOVE_NULL = 65
 };
 
-struct MoveStack {
-  Move move;
-  int score;
+enum MoveType {
+  NORMAL    = 0,
+  PROMOTION = 1 << 14,
+  ENPASSANT = 2 << 14,
+  CASTLE    = 3 << 14
 };
-
-inline bool operator<(const MoveStack& f, const MoveStack& s) {
-  return f.score < s.score;
-}
 
 enum CastleRight {  // Defined as in PolyGlot book hash key
   CASTLES_NONE = 0,
@@ -327,6 +325,15 @@ extern const Value PieceValueMidgame[17]; // Indexed by Piece or PieceType
 extern const Value PieceValueEndgame[17];
 extern int SquareDistance[64][64];
 
+struct MoveStack {
+  Move move;
+  int score;
+};
+
+inline bool operator<(const MoveStack& f, const MoveStack& s) {
+  return f.score < s.score;
+}
+
 inline Color operator~(Color c) {
   return Color(c ^ 1);
 }
@@ -432,20 +439,8 @@ inline Square to_sq(Move m) {
   return Square(m & 0x3F);
 }
 
-inline bool is_special(Move m) {
-  return m & (3 << 14);
-}
-
-inline bool is_promotion(Move m) {
-  return (m & (3 << 14)) == (1 << 14);
-}
-
-inline int is_enpassant(Move m) {
-  return (m & (3 << 14)) == (2 << 14);
-}
-
-inline int is_castle(Move m) {
-  return (m & (3 << 14)) == (3 << 14);
+inline MoveType type_of(Move m) {
+  return MoveType(m & (3 << 14));
 }
 
 inline PieceType promotion_type(Move m) {

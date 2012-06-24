@@ -441,7 +441,7 @@ void ThreadPool::start_searching(const Position& pos, const LimitsType& limits,
   Limits = limits;
   RootMoves.clear();
 
-  for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
+  for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
       if (searchMoves.empty() || count(searchMoves.begin(), searchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 

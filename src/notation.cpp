@@ -34,7 +34,6 @@ const string move_to_uci(Move m, bool chess960) {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
-  string promotion;
 
   if (m == MOVE_NONE)
       return "(none)";
@@ -42,13 +41,15 @@ const string move_to_uci(Move m, bool chess960) {
   if (m == MOVE_NULL)
       return "0000";
 
-  if (is_castle(m) && !chess960)
+  if (type_of(m) == CASTLE && !chess960)
       to = (to > from ? FILE_G : FILE_C) | rank_of(from);
 
-  if (is_promotion(m))
-      promotion = char(tolower(piece_type_to_char(promotion_type(m))));
+  string move = square_to_string(from) + square_to_string(to);
 
-  return square_to_string(from) + square_to_string(to) + promotion;
+  if (type_of(m) == PROMOTION)
+      move += char(tolower(piece_type_to_char(promotion_type(m))));
+
+  return move;
 }
 
 
@@ -60,7 +61,7 @@ Move move_from_uci(const Position& pos, string& str) {
   if (str.length() == 5) // Junior could send promotion piece in uppercase
       str[4] = char(tolower(str[4]));
 
-  for (MoveList<MV_LEGAL> ml(pos); !ml.end(); ++ml)
+  for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
       if (str == move_to_uci(ml.move(), pos.is_chess960()))
           return ml.move();
 
@@ -88,7 +89,7 @@ const string move_to_san(Position& pos, Move m) {
   Square to = to_sq(m);
   PieceType pt = type_of(pos.piece_on(from));
 
-  if (is_castle(m))
+  if (type_of(m) == CASTLE)
       san = to > from ? "O-O" : "O-O-O";
   else
   {
@@ -138,7 +139,7 @@ const string move_to_san(Position& pos, Move m) {
 
       san += square_to_string(to);
 
-      if (is_promotion(m))
+      if (type_of(m) == PROMOTION)
           san += string("=") + piece_type_to_char(promotion_type(m));
   }
 
@@ -146,7 +147,7 @@ const string move_to_san(Position& pos, Move m) {
   {
       StateInfo st;
       pos.do_move(m, st);
-      san += MoveList<MV_LEGAL>(pos).size() ? "+" : "#";
+      san += MoveList<LEGAL>(pos).size() ? "+" : "#";
       pos.undo_move(m);
   }
 
