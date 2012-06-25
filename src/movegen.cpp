@@ -59,7 +59,7 @@ namespace {
         && (pos.attackers_to(kto, pos.pieces() ^ rfrom) & enemies))
             return mlist;
 
-    (*mlist++).move = make_castle(kfrom, rfrom);
+    (*mlist++).move = make<CASTLE>(kfrom, rfrom);
 
     if (OnlyChecks && !pos.move_gives_check((mlist - 1)->move, CheckInfo(pos)))
         mlist--;
@@ -90,19 +90,19 @@ namespace {
         Square to = pop_1st_bit(&b);
 
         if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-            (*mlist++).move = make_promotion(to - Delta, to, QUEEN);
+            (*mlist++).move = make<PROMOTION>(to - Delta, to, QUEEN);
 
         if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
         {
-            (*mlist++).move = make_promotion(to - Delta, to, ROOK);
-            (*mlist++).move = make_promotion(to - Delta, to, BISHOP);
-            (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
+            (*mlist++).move = make<PROMOTION>(to - Delta, to, ROOK);
+            (*mlist++).move = make<PROMOTION>(to - Delta, to, BISHOP);
+            (*mlist++).move = make<PROMOTION>(to - Delta, to, KNIGHT);
         }
 
         // Knight-promotion is the only one that can give a direct check not
         // already included in the queen-promotion.
         if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ksq))
-            (*mlist++).move = make_promotion(to - Delta, to, KNIGHT);
+            (*mlist++).move = make<PROMOTION>(to - Delta, to, KNIGHT);
         else
             (void)ksq; // Silence a warning under MSVC
     }
@@ -207,7 +207,7 @@ namespace {
             assert(b1);
 
             while (b1)
-                (*mlist++).move = make_enpassant(pop_1st_bit(&b1), pos.ep_square());
+                (*mlist++).move = make<ENPASSANT>(pop_1st_bit(&b1), pos.ep_square());
         }
     }
 

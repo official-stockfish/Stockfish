@@ -442,7 +442,7 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
   // the special Move's flags (bit 14-15) that are not supported by PolyGlot.
   int pt = (move >> 12) & 7;
   if (pt)
-      move = make_promotion(from_sq(move), to_sq(move), PieceType(pt + 1));
+      move = make<PROMOTION>(from_sq(move), to_sq(move), PieceType(pt + 1));
 
   // Add 'special move' flags and verify it is legal
   for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)

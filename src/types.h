@@ -447,16 +447,9 @@ inline Move make_move(Square from, Square to) {
   return Move(to | (from << 6));
 }
 
-inline Move make_promotion(Square from, Square to, PieceType pt) {
-  return Move(to | (from << 6) | (1 << 14) | ((pt - 2) << 12)) ;
-}
-
-inline Move make_enpassant(Square from, Square to) {
-  return Move(to | (from << 6) | (2 << 14));
-}
-
-inline Move make_castle(Square from, Square to) {
-  return Move(to | (from << 6) | (3 << 14));
+template<MoveType T>
+inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
+  return Move(to | (from << 6) | T | ((pt - KNIGHT) << 12)) ;
 }
 
 inline bool is_ok(Move m) {
