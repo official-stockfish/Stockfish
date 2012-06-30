@@ -26,7 +26,6 @@
 #include "position.h"
 #include "search.h"
 #include "thread.h"
-#include "tt.h"
 #include "ucioption.h"
 
 using namespace std;
@@ -94,7 +93,7 @@ void UCI::loop(const string& args) {
           go(pos, is);
 
       else if (token == "ucinewgame")
-          TT.clear();
+      { /* Avoid returning "Unknown command" */ }
 
       else if (token == "isready")
           sync_cout << "readyok" << sync_endl;
