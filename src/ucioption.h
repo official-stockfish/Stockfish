@@ -38,7 +38,7 @@ public:
   UCIOption(const char* v, Fn* = NULL);
   UCIOption(int v, int min, int max, Fn* = NULL);
 
-  void operator=(const std::string& v);
+  UCIOption& operator=(const std::string& v);
 
   operator int() const {
     assert(type == "check" || type == "spin");

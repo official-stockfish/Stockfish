@@ -134,18 +134,20 @@ UCIOption::UCIOption(int v, int minv, int maxv, Fn* f) : type("spin"), min(minv)
 /// check for option's limits, but we could receive the new value directly from
 /// the user by console window, so let's check the bounds anyway.
 
-void UCIOption::operator=(const string& v) {
+UCIOption& UCIOption::operator=(const string& v) {
 
   assert(!type.empty());
 
   if (   (type != "button" && v.empty())
       || (type == "check" && v != "true" && v != "false")
       || (type == "spin" && (atoi(v.c_str()) < min || atoi(v.c_str()) > max)))
-      return;
+      return *this;
 
   if (type != "button")
       currentValue = v;
 
   if (on_change)
       (*on_change)(*this);
+
+  return *this;
 }

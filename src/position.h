@@ -97,7 +97,7 @@ public:
   Position(const Position& p) { *this = p; }
   Position(const Position& p, Thread* t) { *this = p; thisThread = t; }
   Position(const std::string& f, bool c960, Thread* t) { from_fen(f, c960, t); }
-  void operator=(const Position&);
+  Position& operator=(const Position&);
 
   // Text input/output
   void from_fen(const std::string& fen, bool isChess960, Thread* th);

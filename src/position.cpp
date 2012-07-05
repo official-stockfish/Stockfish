@@ -89,7 +89,7 @@ CheckInfo::CheckInfo(const Position& pos) {
 /// object do not depend on any external data so we detach state pointer from
 /// the source one.
 
-void Position::operator=(const Position& pos) {
+Position& Position::operator=(const Position& pos) {
 
   memcpy(this, &pos, sizeof(Position));
   startState = *st;
@@ -97,6 +97,8 @@ void Position::operator=(const Position& pos) {
   nodes = 0;
 
   assert(pos_is_ok());
+
+  return *this;
 }
 
 
