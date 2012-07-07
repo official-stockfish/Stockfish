@@ -51,7 +51,7 @@ struct Log : public std::ofstream {
 
 struct Time {
   void restart() { system_time(&t); }
-  uint64_t msec() const { return time_to_msec(t); }
+  int64_t msec() const { return time_to_msec(t); }
   int elapsed() const { return int(current_time().msec() - time_to_msec(t)); }
 
   static Time current_time() { Time t; t.restart(); return t; }
