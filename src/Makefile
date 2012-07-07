@@ -270,7 +270,8 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),clang)
-		CXXFLAGS += -O4
+		### -O4 requires a linker that supports LLVM's LTO
+		CXXFLAGS += -O3
 
 		ifeq ($(os),osx)
 			ifeq ($(arch),i386)
