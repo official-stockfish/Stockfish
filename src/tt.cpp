@@ -20,6 +20,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "bitboard.h"
 #include "tt.h"
 
 TranspositionTable TT; // Our global transposition table
@@ -37,18 +38,13 @@ TranspositionTable::~TranspositionTable() {
 
 
 /// TranspositionTable::set_size() sets the size of the transposition table,
-/// measured in megabytes.
+/// measured in megabytes. Transposition table consists of a power of 2 number of
+/// TTCluster and each cluster consists of ClusterSize number of TTEntries. Each
+/// non-empty entry contains information of exactly one position.
 
 void TranspositionTable::set_size(size_t mbSize) {
 
-  size_t newSize = 1024;
-
-  // Transposition table consists of clusters and each cluster consists
-  // of ClusterSize number of TTEntries. Each non-empty entry contains
-  // information of exactly one position and newSize is the number of
-  // clusters we are going to allocate.
-  while (2ULL * newSize * sizeof(TTCluster) <= (mbSize << 20))
-      newSize *= 2;
+  size_t newSize = 1ULL << last_1((mbSize << 20) / sizeof(TTCluster));
 
   if (newSize == size)
       return;
@@ -56,13 +52,15 @@ void TranspositionTable::set_size(size_t mbSize) {
   size = newSize;
   delete [] entries;
   entries = new (std::nothrow) TTCluster[size];
+
   if (!entries)
   {
       std::cerr << "Failed to allocate " << mbSize
                 << "MB for transposition table." << std::endl;
       exit(EXIT_FAILURE);
   }
-  clear();
+
+  clear(); // operator new is not guaranteed to initialize memory to zero
 }
 
 
