@@ -94,33 +94,33 @@ void dbg_print() {
 /// usual i/o functionality and without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
+struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
+
+  Tie(streambuf* b, ofstream* f) : buf(b), file(f) {}
+
+  int sync() { return file->rdbuf()->pubsync(), buf->pubsync(); }
+  int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
+  int underflow() { return buf->sgetc(); }
+  int uflow() { return log(buf->sbumpc(), ">> "); }
+
+  streambuf* buf;
+  ofstream* file;
+
+  int log(int c, const char* prefix) {
+
+    static int last = '\n';
+
+    if (last == '\n')
+        file->rdbuf()->sputn(prefix, 3);
+
+    return last = file->rdbuf()->sputc((char)c);
+  }
+};
+
 class Logger {
 
-  Logger() : in(cin.rdbuf(), file), out(cout.rdbuf(), file) {}
-  ~Logger() { start(false); }
-
-  struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
-
-    Tie(streambuf* b, ofstream& f) : buf(b), file(f) {}
-
-    int sync() { return file.rdbuf()->pubsync(), buf->pubsync(); }
-    int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
-    int underflow() { return buf->sgetc(); }
-    int uflow() { return log(buf->sbumpc(), ">> "); }
-
-    int log(int c, const char* prefix) {
-
-      static int last = '\n';
-
-      if (last == '\n')
-          file.rdbuf()->sputn(prefix, 3);
-
-      return last = file.rdbuf()->sputc((char)c);
-    }
-
-    streambuf* buf;
-    ofstream& file;
-  };
+  Logger() : in(cin.rdbuf(), &file), out(cout.rdbuf(), &file) {}
+ ~Logger() { start(false); }
 
   ofstream file;
   Tie in, out;
