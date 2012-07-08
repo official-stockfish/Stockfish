@@ -582,7 +582,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
             assert(b);
 
             if (!more_than_one(b) && (b & pos.pieces(Them)))
-                score += ThreatBonus[Piece][type_of(pos.piece_on(first_1(b)))];
+                score += ThreatBonus[Piece][type_of(pos.piece_on(lsb(b)))];
         }
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
@@ -870,7 +870,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         return SCORE_ZERO;
 
     do {
-        Square s = pop_1st_bit(&b);
+        Square s = pop_lsb(&b);
 
         assert(pos.pawn_is_passed(Us, s));
 
@@ -976,7 +976,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         while (b)
         {
-            s = pop_1st_bit(&b);
+            s = pop_lsb(&b);
             queeningSquare = relative_square(c, file_of(s) | RANK_8);
             queeningPath = forward_bb(c, s);
 
@@ -1017,7 +1017,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     while (b)
     {
-        s = pop_1st_bit(&b);
+        s = pop_lsb(&b);
 
         // Compute plies from queening
         queeningSquare = relative_square(loserSide, file_of(s) | RANK_8);
@@ -1039,7 +1039,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     while (b)
     {
-        s = pop_1st_bit(&b);
+        s = pop_lsb(&b);
         sacptg = blockersCount = 0;
         minKingDist = kingptg = 256;
 
@@ -1058,7 +1058,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         // How many plies does it take to remove all the blocking pawns?
         while (blockers)
         {
-            blockSq = pop_1st_bit(&blockers);
+            blockSq = pop_lsb(&blockers);
             movesToGo = 256;
 
             // Check pawns that can give support to overcome obstacle, for instance
@@ -1069,7 +1069,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
                 while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
                 {
-                    d = square_distance(blockSq, pop_1st_bit(&b2)) - 2;
+                    d = square_distance(blockSq, pop_lsb(&b2)) - 2;
                     movesToGo = std::min(movesToGo, d);
                 }
             }
@@ -1079,7 +1079,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
             while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
             {
-                d = square_distance(blockSq, pop_1st_bit(&b2)) - 2;
+                d = square_distance(blockSq, pop_lsb(&b2)) - 2;
                 movesToGo = std::min(movesToGo, d);
             }
 

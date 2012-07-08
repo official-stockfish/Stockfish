@@ -90,7 +90,7 @@ inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
 #if !defined(USE_POPCNT)
 
   assert(false);
-  return int(b != 0); // Avoid 'b not used' warning
+  return b != 0; // Avoid 'b not used' warning
 
 #elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
 

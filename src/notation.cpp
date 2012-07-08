@@ -108,7 +108,7 @@ const string move_to_san(Position& pos, Move m) {
 
           while (attackers)
           {
-              Square sq = pop_1st_bit(&attackers);
+              Square sq = pop_lsb(&attackers);
 
               // Pinned pieces are not included in the possible sub-set
               if (!pos.pl_move_is_legal(make_move(sq, to), pos.pinned_pieces()))

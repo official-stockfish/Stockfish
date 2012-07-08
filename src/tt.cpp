@@ -44,7 +44,7 @@ TranspositionTable::~TranspositionTable() {
 
 void TranspositionTable::set_size(size_t mbSize) {
 
-  size_t newSize = 1ULL << last_1((mbSize << 20) / sizeof(TTCluster));
+  size_t newSize = 1ULL << msb((mbSize << 20) / sizeof(TTCluster));
 
   if (newSize == size)
       return;
@@ -60,7 +60,7 @@ void TranspositionTable::set_size(size_t mbSize) {
       exit(EXIT_FAILURE);
   }
 
-  clear(); // operator new is not guaranteed to initialize memory to zero
+  clear(); // Operator new is not guaranteed to initialize memory to zero
 }
 
 

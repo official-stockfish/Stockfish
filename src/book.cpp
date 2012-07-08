@@ -316,7 +316,7 @@ namespace {
     {
         // Piece offset is at 64 * polyPiece where polyPiece is defined as:
         // BP = 0, WP = 1, BN = 2, WN = 3, ... BK = 10, WK = 11
-        Square s = pop_1st_bit(&b);
+        Square s = pop_lsb(&b);
         Piece p = pos.piece_on(s);
         int polyPiece = 2 * (type_of(p) - 1) + (color_of(p) == WHITE);
         key ^= ZobPiece[64 * polyPiece + s];
@@ -325,7 +325,7 @@ namespace {
     b = pos.can_castle(ALL_CASTLES);
 
     while (b)
-        key ^= ZobCastle[pop_1st_bit(&b)];
+        key ^= ZobCastle[pop_lsb(&b)];
 
     if (pos.ep_square() != SQ_NONE)
         key ^= ZobEnPassant[file_of(pos.ep_square())];

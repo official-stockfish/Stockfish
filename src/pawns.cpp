@@ -240,12 +240,12 @@ Value PawnEntry::shelter_storm(const Position& pos, Square ksq) {
   {
       // Shelter penalty is higher for the pawn in front of the king
       b = ourPawns & FileBB[f];
-      rkUs = b ? rank_of(Us == WHITE ? first_1(b) : ~last_1(b)) : RANK_1;
+      rkUs = b ? rank_of(Us == WHITE ? lsb(b) : ~msb(b)) : RANK_1;
       safety -= ShelterWeakness[f != kf][rkUs];
 
       // Storm danger is smaller if enemy pawn is blocked
       b  = theirPawns & FileBB[f];
-      rkThem = b ? rank_of(Us == WHITE ? first_1(b) : ~last_1(b)) : RANK_1;
+      rkThem = b ? rank_of(Us == WHITE ? lsb(b) : ~msb(b)) : RANK_1;
       safety -= StormDanger[rkThem == rkUs + 1][rkThem];
   }
 

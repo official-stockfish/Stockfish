@@ -25,10 +25,10 @@
 
 /// Simple macro to wrap a very common while loop, no facny, no flexibility,
 /// hardcoded names 'mlist' and 'from'.
-#define SERIALIZE(b) while (b) (*mlist++).move = make_move(from, pop_1st_bit(&b))
+#define SERIALIZE(b) while (b) (*mlist++).move = make_move(from, pop_lsb(&b))
 
 /// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
-#define SERIALIZE_PAWNS(b, d) while (b) { Square to = pop_1st_bit(&b); \
+#define SERIALIZE_PAWNS(b, d) while (b) { Square to = pop_lsb(&b); \
                                          (*mlist++).move = make_move(to - (d), to); }
 namespace {
 
@@ -87,7 +87,7 @@ namespace {
 
     while (b)
     {
-        Square to = pop_1st_bit(&b);
+        Square to = pop_lsb(&b);
 
         if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
             (*mlist++).move = make<PROMOTION>(to - Delta, to, QUEEN);
@@ -207,7 +207,7 @@ namespace {
             assert(b1);
 
             while (b1)
-                (*mlist++).move = make<ENPASSANT>(pop_1st_bit(&b1), pos.ep_square());
+                (*mlist++).move = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
         }
     }
 
@@ -343,7 +343,7 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
 
   while (dc)
   {
-     Square from = pop_1st_bit(&dc);
+     Square from = pop_lsb(&dc);
      PieceType pt = type_of(pos.piece_on(from));
 
      if (pt == PAWN)
@@ -398,7 +398,7 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
   do
   {
       checkersCnt++;
-      checksq = pop_1st_bit(&b);
+      checksq = pop_lsb(&b);
 
       assert(color_of(pos.piece_on(checksq)) == ~us);
 

@@ -69,40 +69,35 @@ namespace {
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index);
 }
 
-/// first_1() finds the least significant nonzero bit in a nonzero bitboard.
-/// pop_1st_bit() finds and clears the least significant nonzero bit in a
-/// nonzero bitboard.
+/// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
+/// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.
 
-#if defined(IS_64BIT) && !defined(USE_BSFQ)
+#if !defined(USE_BSFQ)
 
-Square first_1(Bitboard b) {
-  return Square(BSFTable[((b & -b) * 0x218A392CD3D5DBFULL) >> 58]);
-}
+Square lsb(Bitboard b) {
 
-Square pop_1st_bit(Bitboard* b) {
-  Bitboard bb = *b;
-  *b &= (*b - 1);
-  return Square(BSFTable[((bb & -bb) * 0x218A392CD3D5DBFULL) >> 58]);
-}
+  if (Is64Bit)
+      return Square(BSFTable[((b & -b) * 0x218A392CD3D5DBFULL) >> 58]);
 
-#elif !defined(USE_BSFQ)
-
-Square first_1(Bitboard b) {
   b ^= (b - 1);
   uint32_t fold = unsigned(b) ^ unsigned(b >> 32);
   return Square(BSFTable[(fold * 0x783A9B23) >> 26]);
 }
 
-Square pop_1st_bit(Bitboard* b) {
+Square pop_lsb(Bitboard* b) {
 
   Bitboard bb = *b;
   *b = bb & (bb - 1);
+
+  if (Is64Bit)
+      return Square(BSFTable[((bb & -bb) * 0x218A392CD3D5DBFULL) >> 58]);
+
   bb ^= (bb - 1);
   uint32_t fold = unsigned(bb) ^ unsigned(bb >> 32);
   return Square(BSFTable[(fold * 0x783A9B23) >> 26]);
 }
 
-Square last_1(Bitboard b) {
+Square msb(Bitboard b) {
 
   unsigned b32;
   int result = 0;

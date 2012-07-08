@@ -196,8 +196,8 @@ namespace {
 
     while (b)
     {
-        r |= Us == WHITE ? db[index(pop_1st_bit(&b), bksq, psq, BLACK)]
-                         : db[index(wksq, pop_1st_bit(&b), psq, WHITE)];
+        r |= Us == WHITE ? db[index(pop_lsb(&b), bksq, psq, BLACK)]
+                         : db[index(wksq, pop_lsb(&b), psq, WHITE)];
 
         if (Us == WHITE && (r & WIN))
             return WIN;
