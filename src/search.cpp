@@ -171,14 +171,10 @@ namespace {
   // 'dangerous' moves so that we avoid to prune it.
   FORCE_INLINE bool is_dangerous(const Position& pos, Move m, bool captureOrPromotion) {
 
-    // Test for a pawn pushed to 7th or a passed pawn move
-    if (type_of(pos.piece_moved(m)) == PAWN)
-    {
-        Color c = pos.side_to_move();
-        if (   relative_rank(c, to_sq(m)) == RANK_7
-            || pos.pawn_is_passed(c, to_sq(m)))
-            return true;
-    }
+    // Test for a passed pawn move
+    if (   type_of(pos.piece_moved(m)) == PAWN
+        && pos.pawn_is_passed(pos.side_to_move(), to_sq(m)))
+        return true;
 
     // Test for a capture that triggers a pawn endgame
     if (    captureOrPromotion
