@@ -874,19 +874,18 @@ split_point_start: // At split points actual search starts from here
       if (    singularExtensionNode
           && !ext
           &&  move == ttMove
-          &&  pos.pl_move_is_legal(move, ci.pinned))
+          &&  pos.pl_move_is_legal(move, ci.pinned)
+          &&  abs(ttValue) < VALUE_KNOWN_WIN)
       {
-          if (abs(ttValue) < VALUE_KNOWN_WIN)
-          {
-              Value rBeta = ttValue - int(depth);
-              ss->excludedMove = move;
-              ss->skipNullMove = true;
-              value = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2);
-              ss->skipNullMove = false;
-              ss->excludedMove = MOVE_NONE;
-              if (value < rBeta)
-                  ext = ONE_PLY;
-          }
+          Value rBeta = ttValue - int(depth);
+          ss->excludedMove = move;
+          ss->skipNullMove = true;
+          value = search<NonPV>(pos, ss, rBeta - 1, rBeta, depth / 2);
+          ss->skipNullMove = false;
+          ss->excludedMove = MOVE_NONE;
+
+          if (value < rBeta)
+              ext = ONE_PLY;
       }
 
       // Update current move (this must be done after singular extension search)
