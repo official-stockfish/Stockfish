@@ -171,12 +171,16 @@ namespace {
   // 'dangerous' moves so that we avoid to prune it.
   FORCE_INLINE bool is_dangerous(const Position& pos, Move m, bool captureOrPromotion) {
 
-    // Test for a passed pawn move
+    // Castle move?
+    if (type_of(m) == CASTLE)
+        return true;
+
+    // Passed pawn move?
     if (   type_of(pos.piece_moved(m)) == PAWN
         && pos.pawn_is_passed(pos.side_to_move(), to_sq(m)))
         return true;
 
-    // Test for a capture that triggers a pawn endgame
+    // Entering a pawn endgame?
     if (    captureOrPromotion
         &&  type_of(pos.piece_on(to_sq(m))) != PAWN
         &&  type_of(m) == NORMAL
@@ -897,7 +901,6 @@ split_point_start: // At split points actual search starts from here
           && !inCheck
           && !dangerous
           &&  move != ttMove
-          &&  type_of(move) != CASTLE
           && (bestValue > VALUE_MATED_IN_MAX_PLY || bestValue == -VALUE_INFINITE))
       {
           // Move count based pruning
@@ -956,7 +959,6 @@ split_point_start: // At split points actual search starts from here
           && !isPvMove
           && !captureOrPromotion
           && !dangerous
-          &&  type_of(move) != CASTLE
           &&  ss->killers[0] != move
           &&  ss->killers[1] != move)
       {
