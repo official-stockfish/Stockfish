@@ -145,8 +145,8 @@ namespace {
   Value refine_eval(const TTEntry* tte, Value ttValue, Value defaultEval);
   Move do_skill_level();
   string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
-  void pv_info_to_log(Position& pos, int depth, Value score, int time, Move pv[]);
-  void pv_info_to_uci(const Position& pos, int depth, Value alpha, Value beta);
+  string pretty_pv(Position& pos, int depth, Value score, int time, Move pv[]);
+  string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
 
   // MovePickerExt class template extends MovePicker and allows to choose at
   // compile time the proper moves source according to the type of node. In the
@@ -427,7 +427,7 @@ namespace {
                 // Send full PV info to GUI if we are going to leave the loop or
                 // if we have a fail high/low and we are deep in the search.
                 if ((bestValue > alpha && bestValue < beta) || SearchTime.elapsed() > 2000)
-                    pv_info_to_uci(pos, depth, alpha, beta);
+                    cout << uci_pv(pos, depth, alpha, beta) << endl;
 
                 // In case of failing high/low increase aspiration window and
                 // research, otherwise exit the fail high/low loop.
@@ -457,7 +457,11 @@ namespace {
             skillBest = do_skill_level();
 
         if (!Signals.stop && Options["Use Search Log"])
-             pv_info_to_log(pos, depth, bestValue, SearchTime.elapsed(), &RootMoves[0].pv[0]);
+        {
+            Log log(Options["Search Log Filename"]);
+            log << pretty_pv(pos, depth, bestValue, SearchTime.elapsed(), &RootMoves[0].pv[0])
+                << endl;
+        }
 
         // Filter out startup noise when monitoring best move stability
         if (depth > 2 && BestMoveChanges)
@@ -1530,12 +1534,13 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // pv_info_to_uci() sends search info to GUI. UCI protocol requires to send all
-  // the PV lines also if are still to be searched and so refer to the previous
-  // search score.
+  // uci_pv() formats PV information according to UCI protocol. UCI requires
+  // to send all the PV lines also if are still to be searched and so refer to
+  // the previous search score.
 
-  void pv_info_to_uci(const Position& pos, int depth, Value alpha, Value beta) {
+  string uci_pv(const Position& pos, int depth, Value alpha, Value beta) {
 
+    std::stringstream s;
     int t = SearchTime.elapsed();
     int selDepth = 0;
 
@@ -1552,26 +1557,30 @@ split_point_start: // At split points actual search starts from here
 
         int d = (updated ? depth : depth - 1);
         Value v = (updated ? RootMoves[i].score : RootMoves[i].prevScore);
-        std::stringstream s;
 
-        for (int j = 0; RootMoves[i].pv[j] != MOVE_NONE; j++)
+        if (s.rdbuf()->in_avail())
+            s << "\n";
+
+        s << "info depth " << d
+          << " seldepth " << selDepth
+          << " score " << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
+          << " nodes " << pos.nodes_searched()
+          << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
+          << " time " << t
+          << " multipv " << i + 1
+          << " pv";
+
+        for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; j++)
             s <<  " " << move_to_uci(RootMoves[i].pv[j], Chess960);
-
-        cout << "info depth " << d
-             << " seldepth " << selDepth
-             << " score " << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
-             << " nodes " << pos.nodes_searched()
-             << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
-             << " time " << t
-             << " multipv " << i + 1
-             << " pv" << s.str() << endl;
     }
+
+    return s.str();
   }
 
 
-  // pv_info_to_log() writes human-readable search information to the log file
-  // (which is created when the UCI parameter "Use Search Log" is "true"). It
-  // uses the two below helpers to pretty format time and score respectively.
+  // pretty_pv() formats human-readable search information, typically to be
+  // appended to the search log file. It uses the two helpers below to pretty
+  // format time and score respectively.
 
   string time_to_string(int millisecs) {
 
@@ -1598,8 +1607,10 @@ split_point_start: // At split points actual search starts from here
 
     if (v >= VALUE_MATE_IN_MAX_PLY)
         s << "#" << (VALUE_MATE - v + 1) / 2;
+
     else if (v <= VALUE_MATED_IN_MAX_PLY)
         s << "-#" << (VALUE_MATE + v) / 2;
+
     else
         s << std::setprecision(2) << std::fixed << std::showpos
           << float(v) / PawnValueMidgame;
@@ -1607,7 +1618,7 @@ split_point_start: // At split points actual search starts from here
     return s.str();
   }
 
-  void pv_info_to_log(Position& pos, int depth, Value value, int time, Move pv[]) {
+  string pretty_pv(Position& pos, int depth, Value value, int time, Move pv[]) {
 
     const int64_t K = 1000;
     const int64_t M = 1000000;
@@ -1653,8 +1664,7 @@ split_point_start: // At split points actual search starts from here
     while (m != pv)
         pos.undo_move(*--m);
 
-    Log l(Options["Search Log Filename"]);
-    l << s.str() << endl;
+    return s.str();
   }
 
 
