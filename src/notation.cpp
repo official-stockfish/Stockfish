@@ -75,7 +75,7 @@ const string move_to_uci(Move m, bool chess960) {
   string move = square_to_string(from) + square_to_string(to);
 
   if (type_of(m) == PROMOTION)
-      move += PieceToChar[promotion_type(m) + 7]; // Lower case
+      move += PieceToChar[make_piece(BLACK, promotion_type(m))]; // Lower case
 
   return move;
 }
@@ -117,20 +117,21 @@ const string move_to_san(Position& pos, Move m) {
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = pos.piece_on(from);
+  PieceType pt = type_of(pc);
 
   if (type_of(m) == CASTLE)
       san = to > from ? "O-O" : "O-O-O";
   else
   {
-      if (type_of(pc) != PAWN)
+      if (pt != PAWN)
       {
-          san = PieceToChar[pc];
+          san = PieceToChar[pt]; // Upper case
 
           // Disambiguation if we have more then one piece with destination 'to'
           // note that for pawns is not needed because starting file is explicit.
           ambiguousMove = ambiguousFile = ambiguousRank = false;
 
-          attackers = (pos.attacks_from(pc, to) & pos.pieces(us)) ^ from;
+          attackers = (pos.attacks_from(pc, to) & pos.pieces(us, pt)) ^ from;
 
           while (attackers)
           {
