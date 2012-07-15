@@ -22,6 +22,7 @@
 #include <string>
 
 #include "evaluate.h"
+#include "notation.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
