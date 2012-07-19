@@ -2,7 +2,7 @@
 ---------------
 
 Stockfish is a free UCI chess engine derived from Glaurung 2.1. It is
-not a complete chess program and requires some UCI compatible GUI
+not a complete chess program and requires some UCI-compatible GUI
 (e.g. XBoard with PolyGlot, eboard, Arena, Sigma Chess, Shredder, Chess
 Partner or Fritz) in order to be used comfortably. Read the
 documentation for your GUI of choice for information about how to use
@@ -42,23 +42,23 @@ This distribution of Stockfish consists of the following files:
 
 This version of Stockfish has support for PolyGlot opening books. For
 information about how to create such books, consult the PolyGlot
-documentation. The book file can be selected by setting the UCI
-parameter "Book File".
+documentation. The book file can be selected by setting the "Book File"
+UCI parameter.
 
 
 4. Compiling it yourself
 ------------------------
 
-On Unix-like systems, it should usually be possible to compile Stockfish
+On Unix-like systems, it should be possible to compile Stockfish
 directly from the source code with the included Makefile.
 
 Stockfish has support for 32 or 64-bit CPUs, the hardware POPCNT
 instruction, big-endian machines such as Power PC, and other platforms.
 
-In general is recommended to run 'make help' to see a list of make
+In general it is recommended to run 'make help' to see a list of make
 targets with corresponding descriptions. When not using Makefile to
 compile (for instance with Microsoft MSVC) you need to manually
-set/unset some switches in the compiler command line; see file types.h
+set/unset some switches in the compiler command line; see file "types.h"
 for a quick reference.
 
 
