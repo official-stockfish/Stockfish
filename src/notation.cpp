@@ -28,7 +28,7 @@
 
 using namespace std;
 
-static const char* PieceToChar = " PNBRQK pnbrqk";
+static const char* PieceToChar = " PNBRQK  pnbrqk";
 
 
 /// score_to_uci() converts a value to a string suitable for use with the UCI
