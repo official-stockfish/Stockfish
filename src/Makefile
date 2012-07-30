@@ -20,11 +20,18 @@
 ### Section 1. General Configuration
 ### ==========================================================================
 
+### Establish the operating system name
+UNAME = $(shell uname)
+
 ### Executable name
 EXE = stockfish
 
 ### Installation dir definitions
 PREFIX = /usr/local
+# Haiku has a non-standard filesystem layout
+ifeq ($(UNAME),Haiku)
+	PREFIX=/boot/common
+endif
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
@@ -229,7 +236,10 @@ LDFLAGS = $(EXTRALDFLAGS)
 
 ### On mingw use Windows threads, otherwise POSIX
 ifneq ($(comp),mingw)
-	LDFLAGS += -lpthread
+	# Haiku has pthreads in its libroot, so only link it in on other platforms
+	ifneq ($(UNAME),Haiku)
+		LDFLAGS += -lpthread
+	endif
 endif
 
 ifeq ($(os),osx)
