@@ -132,10 +132,10 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  int e = time.elapsed();
+  int e = time.elapsed() + 1; // Assure positive to avoid a 'divide by zero'
 
   cerr << "\n==========================="
        << "\nTotal time (ms) : " << e
        << "\nNodes searched  : " << nodes
-       << "\nNodes/second    : " << int(nodes / (e / 1000.0)) << endl;
+       << "\nNodes/second    : " << 1000 * nodes / e << endl;
 }
