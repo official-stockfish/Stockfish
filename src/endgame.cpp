@@ -20,13 +20,12 @@
 #include <algorithm>
 #include <cassert>
 
+#include "bitboard.h"
 #include "bitcount.h"
 #include "endgame.h"
 #include "movegen.h"
 
 using std::string;
-
-extern uint32_t probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm);
 
 namespace {
 
@@ -223,7 +222,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
       wpsq = mirror(wpsq);
   }
 
-  if (!probe_kpk_bitbase(wksq, wpsq, bksq, stm))
+  if (!Bitbases::probe_kpk(wksq, wpsq, bksq, stm))
       return VALUE_DRAW;
 
   Value result =  VALUE_KNOWN_WIN
@@ -893,5 +892,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
   // it's probably at least a draw even with the pawn.
-  return probe_kpk_bitbase(wksq, wpsq, bksq, stm) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
+  return Bitbases::probe_kpk(wksq, wpsq, bksq, stm) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }

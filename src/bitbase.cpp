@@ -62,14 +62,14 @@ namespace {
 }
 
 
-uint32_t probe_kpk_bitbase(Square wksq, Square wpsq, Square bksq, Color stm) {
+uint32_t Bitbases::probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm) {
 
   int idx = index(wksq, bksq, wpsq, stm);
   return KPKBitbase[idx / 32] & (1 << (idx & 31));
 }
 
 
-void kpk_bitbase_init() {
+void Bitbases::init_kpk() {
 
   Result db[IndexMax];
   KPKPosition pos;
