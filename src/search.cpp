@@ -51,11 +51,6 @@ using std::endl;
 using Eval::evaluate;
 using namespace Search;
 
-// For some reason argument-dependent lookup (ADL) doesn't work for Android's
-// STLPort, so explicitly qualify following functions.
-using std::count;
-using std::find;
-
 namespace {
 
   // Set to true to force running with one thread. Used for debugging
@@ -253,9 +248,9 @@ void Search::think() {
   {
       Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
 
-      if (bookMove && count(RootMoves.begin(), RootMoves.end(), bookMove))
+      if (bookMove && std::count(RootMoves.begin(), RootMoves.end(), bookMove))
       {
-          std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), bookMove));
+          std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), bookMove));
           goto finalize;
       }
   }
@@ -496,7 +491,7 @@ namespace {
         if (skillBest == MOVE_NONE) // Still unassigned ?
             skillBest = do_skill_level();
 
-        std::swap(RootMoves[0], *find(RootMoves.begin(), RootMoves.end(), skillBest));
+        std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), skillBest));
     }
   }
 
@@ -815,7 +810,7 @@ split_point_start: // At split points actual search starts from here
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List, as a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched.
-      if (RootNode && !count(RootMoves.begin() + PVIdx, RootMoves.end(), move))
+      if (RootNode && !std::count(RootMoves.begin() + PVIdx, RootMoves.end(), move))
           continue;
 
       // At PV and SpNode nodes we want all moves to be legal since the beginning
@@ -991,7 +986,7 @@ split_point_start: // At split points actual search starts from here
       // be trusted, and we don't update the best move and/or PV.
       if (RootNode && !Signals.stop)
       {
-          RootMove& rm = *find(RootMoves.begin(), RootMoves.end(), move);
+          RootMove& rm = *std::find(RootMoves.begin(), RootMoves.end(), move);
 
           // PV move or new best move ?
           if (isPvMove || value > alpha)
