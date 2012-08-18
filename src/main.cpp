@@ -28,13 +28,14 @@
 #include "tt.h"
 #include "ucioption.h"
 
-extern void uci_loop(const std::string&);
-extern void kpk_bitbase_init();
+void uci_loop(const std::string&);
+void kpk_bitbase_init();
 
 int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
 
+  UCIOptions::init(Options);
   Bitboards::init();
   Position::init();
   kpk_bitbase_init();

@@ -25,7 +25,15 @@
 #include <map>
 #include <string>
 
-struct OptionsMap;
+class UCIOption;
+
+/// Custom comparator because UCI options should be case insensitive
+struct CaseInsensitiveLess {
+  bool operator() (const std::string&, const std::string&) const;
+};
+
+/// Our options container is actually a std::map
+typedef std::map<std::string, UCIOption, CaseInsensitiveLess> OptionsMap;
 
 /// UCIOption class implements an option as defined by UCI protocol
 class UCIOption {
@@ -59,19 +67,8 @@ private:
   Fn* on_change;
 };
 
-
-/// Custom comparator because UCI options should be case insensitive
-struct CaseInsensitiveLess {
-  bool operator() (const std::string&, const std::string&) const;
-};
-
-
-/// Our options container is actually a map with a customized c'tor
-struct OptionsMap : public std::map<std::string, UCIOption, CaseInsensitiveLess> {
-  OptionsMap();
-};
-
-extern std::ostream& operator<<(std::ostream&, const OptionsMap&);
 extern OptionsMap Options;
+
+namespace UCIOptions { void init(OptionsMap&); }
 
 #endif // !defined(UCIOPTION_H_INCLUDED)
