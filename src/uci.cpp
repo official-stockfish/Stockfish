@@ -54,7 +54,7 @@ namespace {
 /// that we exit gracefully if the GUI dies unexpectedly. In addition to the UCI
 /// commands, the function also supports a few debug commands.
 
-void uci_loop(const string& args) {
+void UCI::loop(const string& args) {
 
   Position pos(StartFEN, false, Threads.main_thread()); // The root position
   string cmd, token;

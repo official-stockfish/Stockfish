@@ -20,12 +20,12 @@
 #if !defined(UCIOPTION_H_INCLUDED)
 #define UCIOPTION_H_INCLUDED
 
-#include <cassert>
-#include <cstdlib>
 #include <map>
 #include <string>
 
-class UCIOption;
+namespace UCI {
+
+class Option;
 
 /// Custom comparator because UCI options should be case insensitive
 struct CaseInsensitiveLess {
@@ -33,30 +33,22 @@ struct CaseInsensitiveLess {
 };
 
 /// Our options container is actually a std::map
-typedef std::map<std::string, UCIOption, CaseInsensitiveLess> OptionsMap;
+typedef std::map<std::string, Option, CaseInsensitiveLess> OptionsMap;
 
-/// UCIOption class implements an option as defined by UCI protocol
-class UCIOption {
+/// Option class implements an option as defined by UCI protocol
+class Option {
 
-  typedef void (Fn)(const UCIOption&);
+  typedef void (Fn)(const Option&);
 
 public:
-  UCIOption(Fn* = NULL);
-  UCIOption(bool v, Fn* = NULL);
-  UCIOption(const char* v, Fn* = NULL);
-  UCIOption(int v, int min, int max, Fn* = NULL);
+  Option(Fn* = NULL);
+  Option(bool v, Fn* = NULL);
+  Option(const char* v, Fn* = NULL);
+  Option(int v, int min, int max, Fn* = NULL);
 
-  UCIOption& operator=(const std::string& v);
-
-  operator int() const {
-    assert(type == "check" || type == "spin");
-    return (type == "spin" ? atoi(currentValue.c_str()) : currentValue == "true");
-  }
-
-  operator std::string() const {
-    assert(type == "string");
-    return currentValue;
-  }
+  Option& operator=(const std::string& v);
+  operator int() const;
+  operator std::string() const;
 
 private:
   friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
@@ -67,8 +59,11 @@ private:
   Fn* on_change;
 };
 
-extern OptionsMap Options;
+void init(OptionsMap&);
+void loop(const std::string&);
 
-namespace UCIOptions { void init(OptionsMap&); }
+} // namespace UCI
+
+extern UCI::OptionsMap Options;
 
 #endif // !defined(UCIOPTION_H_INCLUDED)
