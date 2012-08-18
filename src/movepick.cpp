@@ -23,6 +23,7 @@
 
 #include "movegen.h"
 #include "movepick.h"
+#include "thread.h"
 
 namespace {
 
@@ -58,13 +59,14 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
-                       Search::Stack* ss, Value beta) : pos(p), H(h), depth(d) {
+                       Search::Stack* s, Value beta) : pos(p), H(h), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
   captureThreshold = 0;
   curMove = lastMove = moves;
   lastBadCapture = moves + MAX_MOVES - 1;
+  ss = s;
 
   if (p.in_check())
       phase = EVASION;
@@ -270,10 +272,9 @@ void MovePicker::generate_next() {
 /// It returns a new pseudo legal move every time it is called, until there
 /// are no more moves left. It picks the move with the biggest score from a list
 /// of generated moves taking care not to return the tt move if has already been
-/// searched previously. Note that this function is not thread safe so should be
-/// lock protected by caller when accessed through a shared MovePicker object.
-
-Move MovePicker::next_move() {
+/// searched previously.
+template<>
+Move MovePicker::next_move<false>() {
 
   Move move;
 
@@ -354,3 +355,10 @@ Move MovePicker::next_move() {
       }
   }
 }
+
+
+/// Version of next_move() to use at split point nodes where the move is grabbed
+/// from the split point's shared MovePicker object. This function is not thread
+/// safe so should be lock protected by the caller.
+template<>
+Move MovePicker::next_move<true>() { return ss->sp->mp->next_move<false>(); }

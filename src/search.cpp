@@ -146,25 +146,6 @@ namespace {
   Move do_skill_level();
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
 
-  // MovePickerExt class template extends MovePicker and allows to choose at
-  // compile time the proper moves source according to the type of node. In the
-  // default case we simply create and use a standard MovePicker object.
-  template<bool SpNode> struct MovePickerExt : public MovePicker {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, Stack* ss, Value b)
-                  : MovePicker(p, ttm, d, h, ss, b) {}
-  };
-
-  // In case of a SpNode we use split point's shared MovePicker object as moves source
-  template<> struct MovePickerExt<true> : public MovePicker {
-
-    MovePickerExt(const Position& p, Move ttm, Depth d, const History& h, Stack* ss, Value b)
-                  : MovePicker(p, ttm, d, h, ss, b), mp(ss->sp->mp) {}
-
-    Move next_move() { return mp->next_move(); }
-    MovePicker* mp;
-  };
-
   // is_dangerous() checks whether a move belongs to some classes of known
   // 'dangerous' moves so that we avoid to prune it.
   FORCE_INLINE bool is_dangerous(const Position& pos, Move m, bool captureOrPromotion) {
@@ -779,7 +760,7 @@ namespace {
         MovePicker mp(pos, ttMove, H, pos.captured_piece_type());
         CheckInfo ci(pos);
 
-        while ((move = mp.next_move()) != MOVE_NONE)
+        while ((move = mp.next_move<false>()) != MOVE_NONE)
             if (pos.pl_move_is_legal(move, ci.pinned))
             {
                 ss->currentMove = move;
@@ -808,7 +789,7 @@ namespace {
 
 split_point_start: // At split points actual search starts from here
 
-    MovePickerExt<SpNode> mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
+    MovePicker mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     futilityBase = ss->eval + ss->evalMargin;
     singularExtensionNode =   !RootNode
@@ -822,7 +803,7 @@ split_point_start: // At split points actual search starts from here
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
     while (    bestValue < beta
-           && (move = mp.next_move()) != MOVE_NONE
+           && (move = mp.next_move<SpNode>()) != MOVE_NONE
            && !thisThread->cutoff_occurred()
            && !Signals.stop)
     {
@@ -1213,7 +1194,7 @@ split_point_start: // At split points actual search starts from here
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
     while (   bestValue < beta
-           && (move = mp.next_move()) != MOVE_NONE)
+           && (move = mp.next_move<false>()) != MOVE_NONE)
     {
       assert(is_ok(move));
 
