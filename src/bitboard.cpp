@@ -55,6 +55,10 @@ int SquareDistance[64][64];
 
 namespace {
 
+  // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
+  const uint64_t DeBruijn_64 = 0x218A392CD3D5DBFULL;
+  const uint32_t DeBruijn_32 = 0x783A9B23;
+
   CACHE_LINE_ALIGNMENT
 
   int BSFTable[64];
@@ -77,11 +81,11 @@ namespace {
 Square lsb(Bitboard b) {
 
   if (Is64Bit)
-      return Square(BSFTable[((b & -b) * 0x218A392CD3D5DBFULL) >> 58]);
+      return Square(BSFTable[((b & -b) * DeBruijn_64) >> 58]);
 
   b ^= (b - 1);
   uint32_t fold = unsigned(b) ^ unsigned(b >> 32);
-  return Square(BSFTable[(fold * 0x783A9B23) >> 26]);
+  return Square(BSFTable[(fold * DeBruijn_32) >> 26]);
 }
 
 Square pop_lsb(Bitboard* b) {
@@ -90,11 +94,11 @@ Square pop_lsb(Bitboard* b) {
   *b = bb & (bb - 1);
 
   if (Is64Bit)
-      return Square(BSFTable[((bb & -bb) * 0x218A392CD3D5DBFULL) >> 58]);
+      return Square(BSFTable[((bb & -bb) * DeBruijn_64) >> 58]);
 
   bb ^= (bb - 1);
   uint32_t fold = unsigned(bb) ^ unsigned(bb >> 32);
-  return Square(BSFTable[(fold * 0x783A9B23) >> 26]);
+  return Square(BSFTable[(fold * DeBruijn_32) >> 26]);
 }
 
 Square msb(Bitboard b) {
@@ -203,10 +207,10 @@ void Bitboards::init() {
           Bitboard b = 1ULL << i;
           b ^= b - 1;
           b ^= b >> 32;
-          BSFTable[(uint32_t)(b * 0x783A9B23) >> 26] = i;
+          BSFTable[(uint32_t)(b * DeBruijn_32) >> 26] = i;
       }
       else
-          BSFTable[((1ULL << i) * 0x218A392CD3D5DBFULL) >> 58] = i;
+          BSFTable[((1ULL << i) * DeBruijn_64) >> 58] = i;
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
