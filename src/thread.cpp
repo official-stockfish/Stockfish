@@ -55,7 +55,7 @@ Thread::Thread(Fn fn) {
   lock_init(sleepLock);
   cond_init(sleepCond);
 
-  for (int j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
+  for (size_t j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
       lock_init(splitPoints[j].lock);
 
   if (!thread_create(handle, start_routine, this))
@@ -213,7 +213,7 @@ void ThreadPool::init() {
 
 ThreadPool::~ThreadPool() {
 
-  for (int i = 0; i < size(); i++)
+  for (size_t i = 0; i < size(); i++)
       delete threads[i];
 
   delete timer;
@@ -232,7 +232,7 @@ void ThreadPool::read_uci_options() {
   maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
   minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
   useSleepingThreads      = Options["Use Sleeping Threads"];
-  int requested           = Options["Threads"];
+  size_t requested        = Options["Threads"];
 
   assert(requested > 0);
 
@@ -253,7 +253,7 @@ void ThreadPool::read_uci_options() {
 
 void ThreadPool::wake_up() const {
 
-  for (int i = 0; i < size(); i++)
+  for (size_t i = 0; i < size(); i++)
   {
       threads[i]->maxPly = 0;
       threads[i]->do_sleep = false;
@@ -269,7 +269,7 @@ void ThreadPool::wake_up() const {
 
 void ThreadPool::sleep() const {
 
-  for (int i = 1; i < size(); i++) // Main thread will go to sleep by itself
+  for (size_t i = 1; i < size(); i++) // Main thread will go to sleep by itself
       threads[i]->do_sleep = true; // to avoid a race with start_searching()
 }
 
@@ -279,7 +279,7 @@ void ThreadPool::sleep() const {
 
 bool ThreadPool::available_slave_exists(Thread* master) const {
 
-  for (int i = 0; i < size(); i++)
+  for (size_t i = 0; i < size(); i++)
       if (threads[i]->is_available_to(master))
           return true;
 
@@ -344,7 +344,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   lock_grab(sp->lock);
   lock_grab(splitLock);
 
-  for (int i = 0; i < size() && !Fake; ++i)
+  for (size_t i = 0; i < size() && !Fake; ++i)
       if (threads[i]->is_available_to(master))
       {
           sp->slavesMask |= 1ULL << i;

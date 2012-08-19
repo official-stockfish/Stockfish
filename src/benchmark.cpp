@@ -120,7 +120,7 @@ void benchmark(const Position& current, istream& is) {
 
       if (limitType == "perft")
       {
-          int64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
+          size_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
           cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
           nodes += cnt;
       }

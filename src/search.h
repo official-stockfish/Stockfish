@@ -98,7 +98,7 @@ extern Position RootPosition;
 extern Time SearchTime;
 
 extern void init();
-extern int64_t perft(Position& pos, Depth depth);
+extern size_t perft(Position& pos, Depth depth);
 extern void think();
 
 } // namespace Search

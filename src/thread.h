@@ -67,14 +67,11 @@ struct SplitPoint {
 
 class Thread {
 
-  Thread(const Thread&);            // Only declared to disable the default ones
-  Thread& operator=(const Thread&); // that are not suitable in this case.
-
-  typedef void (Thread::* Fn) ();
+  typedef void (Thread::* Fn) (); // Pointer to member function
 
 public:
   Thread(Fn fn);
-  ~Thread();
+ ~Thread();
 
   void wake_up();
   bool cutoff_occurred() const;
@@ -88,7 +85,7 @@ public:
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   MaterialTable materialTable;
   PawnTable pawnTable;
-  int idx;
+  size_t idx;
   int maxPly;
   Lock sleepLock;
   WaitCondition sleepCond;
@@ -107,18 +104,15 @@ public:
 /// All the access to shared thread data is done through this class.
 
 class ThreadPool {
-  /* As long as the single ThreadPool object is defined as a global we don't
-     need to explicitly initialize to zero its data members because variables with
-     static storage duration are automatically set to zero before enter main()
-  */
+
 public:
-  void init(); // No c'tor becuase Threads is global and we need engine initialized
+  void init(); // No c'tor, Threads object is global and engine shall be fully initialized
   ~ThreadPool();
 
   Thread& operator[](int id) { return *threads[id]; }
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
-  int size() const { return (int)threads.size(); }
+  size_t size() const { return threads.size(); }
   Thread* main_thread() { return threads[0]; }
 
   void wake_up() const;
