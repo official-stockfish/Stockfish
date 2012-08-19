@@ -1728,8 +1728,11 @@ void Thread::idle_loop() {
           // case we are the last slave of the split point.
           if (    Threads.use_sleeping_threads()
               &&  this != sp->master
-              && !sp->master->is_searching)
+              && !sp->slavesMask)
+          {
+              assert(!sp->master->is_searching);
               sp->master->wake_up();
+          }
 
           // After releasing the lock we cannot access anymore any SplitPoint
           // related data in a safe way becuase it could have been released under
