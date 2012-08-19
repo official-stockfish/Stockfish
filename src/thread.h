@@ -76,8 +76,7 @@ public:
   void wake_up();
   bool cutoff_occurred() const;
   bool is_available_to(Thread* master) const;
-  void idle_loop(SplitPoint* sp_master);
-  void idle_loop() { idle_loop(NULL); } // Hack to allow storing in start_fn
+  void idle_loop();
   void main_loop();
   void timer_loop();
   void wait_for_stop_or_ponderhit();

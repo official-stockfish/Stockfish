@@ -365,12 +365,11 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its is_searching flag is set.
-  // We pass the split point as a parameter to the idle loop, which means that
-  // the thread will return from the idle loop when all slaves have finished
+  // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
   if (slavesCnt || Fake)
   {
-      master->idle_loop(sp);
+      master->idle_loop();
 
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.

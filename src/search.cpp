@@ -1643,11 +1643,15 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 }
 
 
-/// Thread::idle_loop() is where the thread is parked when it has no work to do.
-/// The parameter 'master_sp', if non-NULL, is a pointer to an active SplitPoint
-/// object for which the thread is the master.
+/// Thread::idle_loop() is where the thread is parked when it has no work to do
 
-void Thread::idle_loop(SplitPoint* sp_master) {
+void Thread::idle_loop() {
+
+  // Pointer 'sp_master', if non-NULL, points to the active SplitPoint
+  // object for which the thread is the master.
+  const SplitPoint* sp_master = splitPointsCnt ? curSplitPoint : NULL;
+
+  assert(!sp_master || (sp_master->master == this && is_searching));
 
   // If this thread is the master of a split point and all slaves have
   // finished their work at this split point, return from the idle loop.
