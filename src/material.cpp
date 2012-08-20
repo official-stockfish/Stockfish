@@ -63,11 +63,11 @@ namespace {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     return   pos.non_pawn_material(Them) == VALUE_ZERO
           && pos.piece_count(Them, PAWN) == 0
-          && pos.non_pawn_material(Us)   >= RookValueMidgame;
+          && pos.non_pawn_material(Us)   >= RookValueMg;
   }
 
   template<Color Us> bool is_KBPsKs(const Position& pos) {
-    return   pos.non_pawn_material(Us)   == BishopValueMidgame
+    return   pos.non_pawn_material(Us)   == BishopValueMg
           && pos.piece_count(Us, BISHOP) == 1
           && pos.piece_count(Us, PAWN)   >= 1;
   }
@@ -75,7 +75,7 @@ namespace {
   template<Color Us> bool is_KQKRPs(const Position& pos) {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     return   pos.piece_count(Us, PAWN)    == 0
-          && pos.non_pawn_material(Us)    == QueenValueMidgame
+          && pos.non_pawn_material(Us)    == QueenValueMg
           && pos.piece_count(Us, QUEEN)   == 1
           && pos.piece_count(Them, ROOK)  == 1
           && pos.piece_count(Them, PAWN)  >= 1;
@@ -191,20 +191,20 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
   }
 
   // No pawns makes it difficult to win, even with a material advantage
-  if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMidgame)
+  if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMg)
   {
       e->factor[WHITE] = (uint8_t)
-      (npm_w == npm_b || npm_w < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(WHITE, BISHOP), 2)]);
+      (npm_w == npm_b || npm_w < RookValueMg ? 0 : NoPawnsSF[std::min(pos.piece_count(WHITE, BISHOP), 2)]);
   }
 
-  if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMidgame)
+  if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMg)
   {
       e->factor[BLACK] = (uint8_t)
-      (npm_w == npm_b || npm_b < RookValueMidgame ? 0 : NoPawnsSF[std::min(pos.piece_count(BLACK, BISHOP), 2)]);
+      (npm_w == npm_b || npm_b < RookValueMg ? 0 : NoPawnsSF[std::min(pos.piece_count(BLACK, BISHOP), 2)]);
   }
 
   // Compute the space weight
-  if (npm_w + npm_b >= 2 * QueenValueMidgame + 4 * RookValueMidgame + 2 * KnightValueMidgame)
+  if (npm_w + npm_b >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
   {
       int minorPieceCount =  pos.piece_count(WHITE, KNIGHT) + pos.piece_count(WHITE, BISHOP)
                            + pos.piece_count(BLACK, KNIGHT) + pos.piece_count(BLACK, BISHOP);

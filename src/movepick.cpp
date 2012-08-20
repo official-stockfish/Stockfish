@@ -79,8 +79,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       killers[1].move = ss->killers[1];
 
       // Consider sligtly negative captures as good if at low depth and far from beta
-      if (ss && ss->eval < beta - PawnValueMidgame && d < 3 * ONE_PLY)
-          captureThreshold = -PawnValueMidgame;
+      if (ss && ss->eval < beta - PawnValueMg && d < 3 * ONE_PLY)
+          captureThreshold = -PawnValueMg;
 
       // Consider negative captures as good if still enough to reach beta
       else if (ss && ss->eval > beta)
@@ -131,7 +131,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType 
   phase = PROBCUT;
 
   // In ProbCut we generate only captures better than parent's captured piece
-  captureThreshold = PieceValueMidgame[pt];
+  captureThreshold = PieceValue[Mg][pt];
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
 
   if (ttMove && (!pos.is_capture(ttMove) ||  pos.see(ttMove) <= captureThreshold))
@@ -165,11 +165,11 @@ void MovePicker::score_captures() {
   for (MoveStack* cur = moves; cur != lastMove; cur++)
   {
       m = cur->move;
-      cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
+      cur->score =  PieceValue[Mg][pos.piece_on(to_sq(m))]
                   - type_of(pos.piece_moved(m));
 
       if (type_of(m) == PROMOTION)
-          cur->score += PieceValueMidgame[promotion_type(m)];
+          cur->score += PieceValue[Mg][promotion_type(m)];
   }
 }
 
@@ -200,7 +200,7 @@ void MovePicker::score_evasions() {
       if ((seeScore = pos.see_sign(m)) < 0)
           cur->score = seeScore - History::MaxValue; // Be sure we are at the bottom
       else if (pos.is_capture(m))
-          cur->score =  PieceValueMidgame[pos.piece_on(to_sq(m))]
+          cur->score =  PieceValue[Mg][pos.piece_on(to_sq(m))]
                       - type_of(pos.piece_moved(m)) + History::MaxValue;
       else
           cur->score = H.value(pos.piece_moved(m), to_sq(m));

@@ -435,8 +435,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
       && sf == SCALE_FACTOR_NORMAL)
   {
       // Only the two bishops ?
-      if (   pos.non_pawn_material(WHITE) == BishopValueMidgame
-          && pos.non_pawn_material(BLACK) == BishopValueMidgame)
+      if (   pos.non_pawn_material(WHITE) == BishopValueMg
+          && pos.non_pawn_material(BLACK) == BishopValueMg)
       {
           // Check for KBP vs KB with only a single pawn that is almost
           // certainly a draw or at least two pawns.
@@ -492,7 +492,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     // Init king safety tables only if we are going to use them
     if (   pos.piece_count(Us, QUEEN)
-        && pos.non_pawn_material(Us) >= QueenValueMidgame + RookValueMidgame)
+        && pos.non_pawn_material(Us) >= QueenValueMg + RookValueMg)
     {
         ei.kingRing[Them] = (b | (Us == WHITE ? b >> 8 : b << 8));
         b &= ei.attackedBy[Us][PAWN];
@@ -938,7 +938,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         // value if the other side has a rook or queen.
         if (file_of(s) == FILE_A || file_of(s) == FILE_H)
         {
-            if (pos.non_pawn_material(Them) <= KnightValueMidgame)
+            if (pos.non_pawn_material(Them) <= KnightValueMg)
                 ebonus += ebonus / 4;
             else if (pos.pieces(Them, ROOK, QUEEN))
                 ebonus -= ebonus / 4;
@@ -1172,7 +1172,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // A couple of little helpers used by tracing code, to_cp() converts a value to
   // a double in centipawns scale, trace_add() stores white and black scores.
 
-  double to_cp(Value v) { return double(v) / double(PawnValueMidgame); }
+  double to_cp(Value v) { return double(v) / double(PawnValueMg); }
 
   void trace_add(int idx, Score wScore, Score bScore) {
 
