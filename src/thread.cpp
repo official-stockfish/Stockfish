@@ -55,7 +55,7 @@ Thread::Thread(Fn fn) {
   lock_init(sleepLock);
   cond_init(sleepCond);
 
-  for (size_t j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
+  for (int j = 0; j < MAX_SPLITPOINTS_PER_THREAD; j++)
       lock_init(splitPoints[j].lock);
 
   if (!thread_create(handle, start_routine, this))
@@ -314,41 +314,41 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
       return bestValue;
 
   // Pick the next available split point from the split point stack
-  SplitPoint* sp = &master->splitPoints[master->splitPointsCnt];
+  SplitPoint& sp = master->splitPoints[master->splitPointsCnt];
 
-  sp->parent = master->curSplitPoint;
-  sp->master = master;
-  sp->cutoff = false;
-  sp->slavesMask = 1ULL << master->idx;
-  sp->depth = depth;
-  sp->bestMove = *bestMove;
-  sp->threatMove = threatMove;
-  sp->alpha = alpha;
-  sp->beta = beta;
-  sp->nodeType = nodeType;
-  sp->bestValue = bestValue;
-  sp->mp = mp;
-  sp->moveCount = moveCount;
-  sp->pos = &pos;
-  sp->nodes = 0;
-  sp->ss = ss;
+  sp.parent = master->curSplitPoint;
+  sp.master = master;
+  sp.cutoff = false;
+  sp.slavesMask = 1ULL << master->idx;
+  sp.depth = depth;
+  sp.bestMove = *bestMove;
+  sp.threatMove = threatMove;
+  sp.alpha = alpha;
+  sp.beta = beta;
+  sp.nodeType = nodeType;
+  sp.bestValue = bestValue;
+  sp.mp = mp;
+  sp.moveCount = moveCount;
+  sp.pos = &pos;
+  sp.nodes = 0;
+  sp.ss = ss;
 
   assert(master->is_searching);
 
-  master->curSplitPoint = sp;
+  master->curSplitPoint = &sp;
   int slavesCnt = 0;
 
   // Try to allocate available threads and ask them to start searching setting
   // is_searching flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
-  lock_grab(sp->lock);
+  lock_grab(sp.lock);
   lock_grab(splitLock);
 
   for (size_t i = 0; i < size() && !Fake; ++i)
       if (threads[i]->is_available_to(master))
       {
-          sp->slavesMask |= 1ULL << i;
-          threads[i]->curSplitPoint = sp;
+          sp.slavesMask |= 1ULL << i;
+          threads[i]->curSplitPoint = &sp;
           threads[i]->is_searching = true; // Slave leaves idle_loop()
 
           if (useSleepingThreads)
@@ -361,7 +361,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   master->splitPointsCnt++;
 
   lock_release(splitLock);
-  lock_release(sp->lock);
+  lock_release(sp.lock);
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its is_searching flag is set.
@@ -379,19 +379,19 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that setting is_searching and decreasing splitPointsCnt is
   // done under lock protection to avoid a race with Thread::is_available_to().
-  lock_grab(sp->lock); // To protect sp->nodes
+  lock_grab(sp.lock); // To protect sp.nodes
   lock_grab(splitLock);
 
   master->is_searching = true;
   master->splitPointsCnt--;
-  master->curSplitPoint = sp->parent;
-  pos.set_nodes_searched(pos.nodes_searched() + sp->nodes);
-  *bestMove = sp->bestMove;
+  master->curSplitPoint = sp.parent;
+  pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
+  *bestMove = sp.bestMove;
 
   lock_release(splitLock);
-  lock_release(sp->lock);
+  lock_release(sp.lock);
 
-  return sp->bestValue;
+  return sp.bestValue;
 }
 
 // Explicit template instantiations
@@ -428,7 +428,7 @@ void ThreadPool::wait_for_search_finished() {
 // a new search, then returns immediately.
 
 void ThreadPool::start_searching(const Position& pos, const LimitsType& limits,
-                                     const std::vector<Move>& searchMoves) {
+                                 const std::vector<Move>& searchMoves) {
   wait_for_search_finished();
 
   SearchTime.restart(); // As early as possible
