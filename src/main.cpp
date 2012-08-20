@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 
   UCI::init(Options);
   Bitboards::init();
-  Position::init();
+  Zobrist::init();
   Bitbases::init_kpk();
   Search::init();
   Threads.init();

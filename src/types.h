@@ -321,9 +321,21 @@ inline Score apply_weight(Score v, Score w) {
 #undef ENABLE_OPERATORS_ON
 #undef ENABLE_SAFE_OPERATORS_ON
 
+namespace Zobrist {
+
+  extern Key psq[2][8][64]; // [color][pieceType][square]/[piece count]
+  extern Key enpassant[8];  // [file]
+  extern Key castle[16];    // [castleRight]
+  extern Key side;
+  extern Key exclusion;
+
+  void init();
+}
+
+extern Score pieceSquareTable[16][64];
+extern int SquareDistance[64][64];
 extern const Value PieceValueMidgame[17]; // Indexed by Piece or PieceType
 extern const Value PieceValueEndgame[17];
-extern int SquareDistance[64][64];
 
 struct MoveStack {
   Move move;
