@@ -94,7 +94,6 @@ struct ReducedStateInfo {
 class Position {
 public:
   Position() {}
-  Position(const Position& p) { *this = p; }
   Position(const Position& p, Thread* t) { *this = p; thisThread = t; }
   Position(const std::string& f, bool c960, Thread* t) { from_fen(f, c960, t); }
   Position& operator=(const Position&);
