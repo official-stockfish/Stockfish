@@ -108,7 +108,7 @@ public:
   void init(); // No c'tor, Threads object is global and engine shall be fully initialized
   ~ThreadPool();
 
-  Thread& operator[](int id) { return *threads[id]; }
+  Thread& operator[](size_t id) { return *threads[id]; }
   bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
   size_t size() const { return threads.size(); }
