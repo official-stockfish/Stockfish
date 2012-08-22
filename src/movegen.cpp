@@ -216,31 +216,25 @@ namespace {
 
 
   template<PieceType Pt>
-  inline MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist,
-                                           Color us, const CheckInfo& ci) {
+  FORCE_INLINE MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist,
+                                                 Color us, const CheckInfo& ci) {
     assert(Pt != KING && Pt != PAWN);
 
-    Bitboard b, target;
-    Square from;
     const Square* pl = pos.piece_list(us, Pt);
 
-    if (*pl != SQ_NONE)
+    for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {
-        target = ci.checkSq[Pt] & ~pos.pieces(); // Non capture checks only
+        Bitboard target = ci.checkSq[Pt] & ~pos.pieces(); // Non capture checks only
 
-        do {
-            from = *pl;
+        if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+            && !(PseudoAttacks[Pt][from] & target))
+            continue;
 
-            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
-                && !(PseudoAttacks[Pt][from] & target))
-                continue;
+        if (ci.dcCandidates && (ci.dcCandidates & from))
+            continue;
 
-            if (ci.dcCandidates && (ci.dcCandidates & from))
-                continue;
-
-            b = pos.attacks_from<Pt>(from) & target;
-            SERIALIZE(b);
-        } while (*++pl != SQ_NONE);
+        Bitboard b = pos.attacks_from<Pt>(from) & target;
+        SERIALIZE(b);
     }
 
     return mlist;
@@ -252,16 +246,13 @@ namespace {
                                          Color us, Bitboard target) {
     assert(Pt != KING && Pt != PAWN);
 
-    Bitboard b;
-    Square from;
     const Square* pl = pos.piece_list(us, Pt);
 
-    if (*pl != SQ_NONE)
-        do {
-            from = *pl;
-            b = pos.attacks_from<Pt>(from) & target;
-            SERIALIZE(b);
-        } while (*++pl != SQ_NONE);
+    for (Square from = *pl; from != SQ_NONE; from = *++pl)
+    {
+        Bitboard b = pos.attacks_from<Pt>(from) & target;
+        SERIALIZE(b);
+    }
 
     return mlist;
   }
