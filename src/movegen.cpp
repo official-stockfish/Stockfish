@@ -215,52 +215,40 @@ namespace {
   }
 
 
-  template<PieceType Pt>
-  FORCE_INLINE MoveStack* generate_direct_checks(const Position& pos, MoveStack* mlist,
-                                                 Color us, const CheckInfo& ci) {
+  template<PieceType Pt, bool OnlyChecks> FORCE_INLINE
+  MoveStack* generate_moves(const Position& pos, MoveStack* mlist, Color us,
+                            Bitboard target, const CheckInfo* ci = NULL) {
+
     assert(Pt != KING && Pt != PAWN);
 
     const Square* pl = pos.piece_list(us, Pt);
 
     for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {
-        Bitboard target = ci.checkSq[Pt] & ~pos.pieces(); // Non capture checks only
+        if (OnlyChecks)
+        {
+            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+                && !(PseudoAttacks[Pt][from] & target & ci->checkSq[Pt]))
+                continue;
 
-        if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
-            && !(PseudoAttacks[Pt][from] & target))
-            continue;
-
-        if (ci.dcCandidates && (ci.dcCandidates & from))
-            continue;
+            if (ci->dcCandidates && (ci->dcCandidates & from))
+                continue;
+        }
 
         Bitboard b = pos.attacks_from<Pt>(from) & target;
+
+        if (OnlyChecks)
+            b &= ci->checkSq[Pt];
+
         SERIALIZE(b);
     }
 
     return mlist;
   }
 
-
-  template<PieceType Pt>
-  FORCE_INLINE MoveStack* generate_moves(const Position& pos, MoveStack* mlist,
-                                         Color us, Bitboard target) {
-    assert(Pt != KING && Pt != PAWN);
-
-    const Square* pl = pos.piece_list(us, Pt);
-
-    for (Square from = *pl; from != SQ_NONE; from = *++pl)
-    {
-        Bitboard b = pos.attacks_from<Pt>(from) & target;
-        SERIALIZE(b);
-    }
-
-    return mlist;
-  }
-
-
-  template<>
-  FORCE_INLINE MoveStack* generate_moves<KING>(const Position& pos, MoveStack* mlist,
-                                               Color us, Bitboard target) {
+  template<> FORCE_INLINE
+  MoveStack* generate_moves<KING, false>(const Position& pos, MoveStack* mlist, Color us,
+                                         Bitboard target, const CheckInfo*) {
     Square from = pos.king_square(us);
     Bitboard b = pos.attacks_from<KING>(from) & target;
     SERIALIZE(b);
@@ -300,15 +288,15 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   mlist = (us == WHITE ? generate_pawn_moves<WHITE, Type>(pos, mlist, target)
                        : generate_pawn_moves<BLACK, Type>(pos, mlist, target));
 
-  mlist = generate_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_moves<ROOK>(pos, mlist, us, target);
-  mlist = generate_moves<QUEEN>(pos, mlist, us, target);
-  mlist = generate_moves<KING>(pos, mlist, us, target);
+  mlist = generate_moves<KNIGHT, false>(pos, mlist, us, target);
+  mlist = generate_moves<BISHOP, false>(pos, mlist, us, target);
+  mlist = generate_moves<ROOK,   false>(pos, mlist, us, target);
+  mlist = generate_moves<QUEEN,  false>(pos, mlist, us, target);
+  mlist = generate_moves<KING,   false>(pos, mlist, us, target);
 
   if (Type != CAPTURES && pos.can_castle(us))
   {
-      mlist = generate_castle<KING_SIDE, false>(pos, mlist, us);
+      mlist = generate_castle<KING_SIDE,  false>(pos, mlist, us);
       mlist = generate_castle<QUEEN_SIDE, false>(pos, mlist, us);
   }
 
@@ -330,6 +318,7 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
 
   Color us = pos.side_to_move();
   CheckInfo ci(pos);
+  Bitboard empty = ~pos.pieces();
   Bitboard dc = ci.dcCandidates;
 
   while (dc)
@@ -351,14 +340,14 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
   mlist = (us == WHITE ? generate_pawn_moves<WHITE, QUIET_CHECKS>(pos, mlist, ci.dcCandidates, ci.ksq)
                        : generate_pawn_moves<BLACK, QUIET_CHECKS>(pos, mlist, ci.dcCandidates, ci.ksq));
 
-  mlist = generate_direct_checks<KNIGHT>(pos, mlist, us, ci);
-  mlist = generate_direct_checks<BISHOP>(pos, mlist, us, ci);
-  mlist = generate_direct_checks<ROOK>(pos, mlist, us, ci);
-  mlist = generate_direct_checks<QUEEN>(pos, mlist, us, ci);
+  mlist = generate_moves<KNIGHT, true>(pos, mlist, us, empty, &ci);
+  mlist = generate_moves<BISHOP, true>(pos, mlist, us, empty, &ci);
+  mlist = generate_moves<ROOK,   true>(pos, mlist, us, empty, &ci);
+  mlist = generate_moves<QUEEN,  true>(pos, mlist, us, empty, &ci);
 
   if (pos.can_castle(us))
   {
-      mlist = generate_castle<KING_SIDE, true>(pos, mlist, us);
+      mlist = generate_castle<KING_SIDE,  true>(pos, mlist, us);
       mlist = generate_castle<QUEEN_SIDE, true>(pos, mlist, us);
   }
 
@@ -430,10 +419,10 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
   mlist = (us == WHITE ? generate_pawn_moves<WHITE, EVASIONS>(pos, mlist, target)
                        : generate_pawn_moves<BLACK, EVASIONS>(pos, mlist, target));
 
-  mlist = generate_moves<KNIGHT>(pos, mlist, us, target);
-  mlist = generate_moves<BISHOP>(pos, mlist, us, target);
-  mlist = generate_moves<ROOK>(pos, mlist, us, target);
-  return  generate_moves<QUEEN>(pos, mlist, us, target);
+  mlist = generate_moves<KNIGHT, false>(pos, mlist, us, target);
+  mlist = generate_moves<BISHOP, false>(pos, mlist, us, target);
+  mlist = generate_moves<ROOK,   false>(pos, mlist, us, target);
+  return  generate_moves<QUEEN,  false>(pos, mlist, us, target);
 }
 
 
