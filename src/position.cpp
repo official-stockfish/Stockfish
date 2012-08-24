@@ -1271,12 +1271,11 @@ int Position::see(Move m) const {
       // Locate the least valuable attacker for the side to move. The loop
       // below looks like it is potentially infinite, but it isn't. We know
       // that the side to move still has at least one attacker left.
-      for (pt = PAWN; !(stmAttackers & pieces(pt)); pt++)
+      for (pt = PAWN; (b = stmAttackers & pieces(pt)) == 0; pt++)
           assert(pt < KING);
 
       // Remove the attacker we just found from the 'occupied' bitboard,
       // and scan for new X-ray attacks behind the attacker.
-      b = stmAttackers & pieces(pt);
       occ ^= (b & (~b + 1));
       attackers |=  (attacks_bb<ROOK>(to, occ)   & pieces(ROOK, QUEEN))
                   | (attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN));
