@@ -819,7 +819,7 @@ split_point_start: // At split points actual search starts from here
       if (SpNode)
       {
           moveCount = ++sp->moveCount;
-          lock_release(sp->lock);
+          sp->mutex.unlock();
       }
       else
           moveCount++;
@@ -885,7 +885,7 @@ split_point_start: // At split points actual search starts from here
               && (!threatMove || !connected_threat(pos, move, threatMove)))
           {
               if (SpNode)
-                  lock_grab(sp->lock);
+                  sp->mutex.lock();
 
               continue;
           }
@@ -900,7 +900,7 @@ split_point_start: // At split points actual search starts from here
           if (futilityValue < beta)
           {
               if (SpNode)
-                  lock_grab(sp->lock);
+                  sp->mutex.lock();
 
               continue;
           }
@@ -910,7 +910,7 @@ split_point_start: // At split points actual search starts from here
               && pos.see_sign(move) < 0)
           {
               if (SpNode)
-                  lock_grab(sp->lock);
+                  sp->mutex.lock();
 
               continue;
           }
@@ -974,7 +974,7 @@ split_point_start: // At split points actual search starts from here
       // Step 18. Check for new best move
       if (SpNode)
       {
-          lock_grab(sp->lock);
+          sp->mutex.lock();
           bestValue = sp->bestValue;
           alpha = sp->alpha;
       }
@@ -1670,12 +1670,12 @@ void Thread::idle_loop() {
           }
 
           // Grab the lock to avoid races with Thread::wake_up()
-          lock_grab(sleepLock);
+          mutex.lock();
 
           // If we are master and all slaves have finished don't go to sleep
           if (sp_master && !sp_master->slavesMask)
           {
-              lock_release(sleepLock);
+              mutex.unlock();
               break;
           }
 
@@ -1684,9 +1684,9 @@ void Thread::idle_loop() {
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
           if (do_sleep || !is_searching)
-              cond_wait(sleepCond, sleepLock);
+              sleepCondition.wait(mutex);
 
-          lock_release(sleepLock);
+          mutex.unlock();
       }
 
       // If this thread has been assigned work, launch a search
@@ -1694,12 +1694,12 @@ void Thread::idle_loop() {
       {
           assert(!do_sleep && !do_exit);
 
-          lock_grab(Threads.splitLock);
+          Threads.mutex.lock();
 
           assert(is_searching);
           SplitPoint* sp = curSplitPoint;
 
-          lock_release(Threads.splitLock);
+          Threads.mutex.unlock();
 
           Stack ss[MAX_PLY_PLUS_2];
           Position pos(*sp->pos, this);
@@ -1707,7 +1707,7 @@ void Thread::idle_loop() {
           memcpy(ss, sp->ss - 1, 4 * sizeof(Stack));
           (ss+1)->sp = sp;
 
-          lock_grab(sp->lock);
+          sp->mutex.lock();
 
           if (sp->nodeType == Root)
               search<SplitPointRoot>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
@@ -1738,7 +1738,7 @@ void Thread::idle_loop() {
           // related data in a safe way becuase it could have been released under
           // our feet by the sp master. Also accessing other Thread objects is
           // unsafe because if we are exiting there is a chance are already freed.
-          lock_release(sp->lock);
+          sp->mutex.unlock();
       }
   }
 }
