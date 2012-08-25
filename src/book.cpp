@@ -301,10 +301,10 @@ namespace {
   };
 
   // Offsets to the PolyGlotRandoms[] array of zobrist keys
-  const Key* ZobPiece     = PolyGlotRandoms +   0;
-  const Key* ZobCastle    = PolyGlotRandoms + 768;
-  const Key* ZobEnPassant = PolyGlotRandoms + 772;
-  const Key* ZobTurn      = PolyGlotRandoms + 780;
+  const Key* ZobPiece     = PolyGlotRandoms;
+  const Key* ZobCastle    = ZobPiece     + 12 * 64; // Pieces * squares
+  const Key* ZobEnPassant = ZobCastle    + 4;       // Castle flags
+  const Key* ZobTurn      = ZobEnPassant + 8;       // Number of files
 
   // book_key() returns the PolyGlot hash key of the given position
   uint64_t book_key(const Position& pos) {
@@ -314,12 +314,12 @@ namespace {
 
     while (b)
     {
-        // Piece offset is at 64 * polyPiece where polyPiece is defined as:
+        // In PolyGlotRandoms[] pieces are stored in the following sequence:
         // BP = 0, WP = 1, BN = 2, WN = 3, ... BK = 10, WK = 11
         Square s = pop_lsb(&b);
         Piece p = pos.piece_on(s);
-        int polyPiece = 2 * (type_of(p) - 1) + (color_of(p) == WHITE);
-        key ^= ZobPiece[64 * polyPiece + s];
+        int pieceOfs = 2 * (type_of(p) - 1) + (color_of(p) == WHITE);
+        key ^= ZobPiece[64 * pieceOfs + s];
     }
 
     b = pos.can_castle(ALL_CASTLES);
@@ -338,7 +338,7 @@ namespace {
 
 } // namespace
 
-Book::Book() : size(0) {
+Book::Book() {
 
   for (int i = Time::current_time().msec() % 10000; i > 0; i--)
       RKiss.rand<unsigned>(); // Make random number generation less deterministic
@@ -370,30 +370,14 @@ template<> Book& Book::operator>>(BookEntry& e) {
 
 bool Book::open(const char* fName) {
 
-  fileName = "";
-
   if (is_open()) // Cannot close an already closed file
       close();
 
-  ifstream::open(fName, ifstream::in | ifstream::binary | ios::ate);
+  ifstream::open(fName, ifstream::in | ifstream::binary);
 
-  if (!is_open())
-  {
-      clear();
-      return false; // Silently fail if the file is not found
-  }
-
-  // Get the book size in number of entries, we are already at the end of file
-  size = (size_t)tellg() / sizeof(BookEntry);
-
-  if (!good())
-  {
-      cerr << "Failed to open book file " << fName << endl;
-      exit(EXIT_FAILURE);
-  }
-
-  fileName = fName; // Set only if successful
-  return true;
+  fileName = is_open() ? fName : "";
+  ifstream::clear(); // Reset any error flag to allow retry ifstream::open()
+  return !fileName.empty();
 }
 
 
@@ -403,16 +387,16 @@ bool Book::open(const char* fName) {
 
 Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
 
+  if (fileName != fName && !open(fName.c_str()))
+      return MOVE_NONE;
+
   BookEntry e;
   uint16_t best = 0;
   unsigned sum = 0;
   Move move = MOVE_NONE;
   uint64_t key = book_key(pos);
 
-  if (fileName != fName && !open(fName.c_str()))
-      return MOVE_NONE;
-
-  binary_search(key);
+  seekg(find_first(key) * sizeof(BookEntry), ios_base::beg);
 
   while (*this >> e, e.key == key && good())
   {
@@ -453,17 +437,16 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
 }
 
 
-/// Book::binary_search() takes a book key as input, and does a binary search
-/// through the book file for the given key. File stream current position is set
-/// to the leftmost book entry with the same key as the input.
+/// Book::find_first() takes a book key as input, and does a binary search
+/// through the book file for the given key. Returns the index of the leftmost
+/// book entry with the same key as the input.
 
-void Book::binary_search(uint64_t key) {
+size_t Book::find_first(uint64_t key) {
 
-  size_t low, high, mid;
+  seekg(0, ios::end); // Move pointer to end, so tellg() gets file's size
+
+  size_t low = 0, mid, high = (size_t)tellg() / sizeof(BookEntry) - 1;
   BookEntry e;
-
-  low = 0;
-  high = size - 1;
 
   assert(low <= high);
 
@@ -484,5 +467,5 @@ void Book::binary_search(uint64_t key) {
 
   assert(low == high);
 
-  seekg(low * sizeof(BookEntry), ios_base::beg);
+  return low;
 }

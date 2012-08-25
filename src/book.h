@@ -48,11 +48,10 @@ private:
   template<typename T> Book& operator>>(T& n);
 
   bool open(const char* fName);
-  void binary_search(uint64_t key);
+  size_t find_first(uint64_t key);
 
   RKISS RKiss;
   std::string fileName;
-  size_t size;
 };
 
 #endif // !defined(BOOK_H_INCLUDED)
