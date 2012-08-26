@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <deque>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -37,11 +38,6 @@ namespace {
 
   // FEN string of the initial position, normal chess
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-  // Keep track of position keys along the setup moves (from start position to the
-  // position just before to start searching). This is needed by draw detection
-  // where, due to 50 moves rule, we need to check at most 100 plies back.
-  StateInfo StateRingBuf[102], *SetupState = StateRingBuf;
 
   void set_option(istringstream& up);
   void set_position(Position& pos, istringstream& up);
@@ -152,12 +148,16 @@ void UCI::loop(const string& args) {
 
 namespace {
 
-  // set_position() is called when engine receives the "position" UCI
-  // command. The function sets up the position described in the given
-  // fen string ("fen") or the starting position ("startpos") and then
-  // makes the moves given in the following move list ("moves").
+  // set_position() is called when engine receives the "position" UCI command.
+  // The function sets up the position described in the given fen string ("fen")
+  // or the starting position ("startpos") and then makes the moves given in the
+  // following move list ("moves").
 
   void set_position(Position& pos, istringstream& is) {
+
+    // Keep track of position keys along the setup moves (from start position to the
+    // position just before to start searching). Needed by repetition draw detection.
+    static std::deque<StateInfo> st;
 
     Move m;
     string token, fen;
@@ -176,15 +176,13 @@ namespace {
         return;
 
     pos.from_fen(fen, Options["UCI_Chess960"], Threads.main_thread());
+    st.clear();
 
     // Parse move list (if any)
     while (is >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
     {
-        pos.do_move(m, *SetupState);
-
-        // Increment pointer to StateRingBuf circular buffer
-        if (++SetupState - StateRingBuf >= 102)
-            SetupState = StateRingBuf;
+        st.push_back(StateInfo());
+        pos.do_move(m, st.back());
     }
   }
 
