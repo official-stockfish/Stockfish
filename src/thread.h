@@ -145,8 +145,8 @@ public:
   bool available_slave_exists(Thread* master) const;
   void set_timer(int msec);
   void wait_for_search_finished();
-  void start_searching(const Position& pos, const Search::LimitsType& limits,
-                       const std::vector<Move>& searchMoves);
+  void start_searching(const Position&, const Search::LimitsType&,
+                       const std::vector<Move>&, Search::StateStackPtr&);
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,

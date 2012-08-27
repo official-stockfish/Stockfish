@@ -110,6 +110,7 @@ void benchmark(const Position& current, istream& is) {
   }
 
   int64_t nodes = 0;
+  Search::StateStackPtr st;
   Time time = Time::current_time();
 
   for (size_t i = 0; i < fens.size(); i++)
@@ -126,7 +127,7 @@ void benchmark(const Position& current, istream& is) {
       }
       else
       {
-          Threads.start_searching(pos, limits, vector<Move>());
+          Threads.start_searching(pos, limits, vector<Move>(), st);
           Threads.wait_for_search_finished();
           nodes += Search::RootPosition.nodes_searched();
       }

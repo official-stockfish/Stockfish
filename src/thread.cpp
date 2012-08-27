@@ -414,7 +414,7 @@ void ThreadPool::wait_for_search_finished() {
 // a new search, then returns immediately.
 
 void ThreadPool::start_searching(const Position& pos, const LimitsType& limits,
-                                 const std::vector<Move>& searchMoves) {
+                                 const std::vector<Move>& searchMoves, StateStackPtr& states) {
   wait_for_search_finished();
 
   SearchTime.restart(); // As early as possible
@@ -424,6 +424,7 @@ void ThreadPool::start_searching(const Position& pos, const LimitsType& limits,
 
   RootPosition = pos;
   Limits = limits;
+  SetupStates = states; // Ownership transfer here
   RootMoves.clear();
 
   for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
