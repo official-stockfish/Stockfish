@@ -363,6 +363,8 @@ void Position::print(Move move) const {
 
   string brd = twoRows + twoRows + twoRows + twoRows + dottedLine;
 
+  sync_cout;
+
   if (move)
   {
       Position p(*this);
@@ -373,7 +375,7 @@ void Position::print(Move move) const {
       if (piece_on(sq) != NO_PIECE)
           brd[513 - 68*rank_of(sq) + 4*file_of(sq)] = PieceToChar[piece_on(sq)];
 
-  cout << brd << "\nFen is: " << to_fen() << "\nKey is: " << st->key << endl;
+  cout << brd << "\nFen is: " << to_fen() << "\nKey is: " << st->key << sync_endl;
 }
 
 

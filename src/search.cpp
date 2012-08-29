@@ -47,8 +47,6 @@ namespace Search {
 }
 
 using std::string;
-using std::cout;
-using std::endl;
 using Eval::evaluate;
 using namespace Search;
 
@@ -237,8 +235,8 @@ void Search::think() {
 
   if (RootMoves.empty())
   {
-      cout << "info depth 0 score "
-           << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << endl;
+      sync_cout << "info depth 0 score "
+                << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << sync_endl;
 
       RootMoves.push_back(MOVE_NONE);
       goto finalize;
@@ -272,7 +270,7 @@ void Search::think() {
           << " time: "        << Limits.time[pos.side_to_move()]
           << " increment: "   << Limits.inc[pos.side_to_move()]
           << " moves to go: " << Limits.movestogo
-          << endl;
+          << std::endl;
   }
 
   Threads.wake_up();
@@ -301,7 +299,7 @@ void Search::think() {
 
       StateInfo st;
       pos.do_move(RootMoves[0].pv[0], st);
-      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << endl;
+      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << std::endl;
       pos.undo_move(RootMoves[0].pv[0]);
   }
 
@@ -314,8 +312,8 @@ finalize:
       pos.this_thread()->wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
-  cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
-       << " ponder "  << move_to_uci(RootMoves[0].pv[1], Chess960) << endl;
+  sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
+            << " ponder "  << move_to_uci(RootMoves[0].pv[1], Chess960) << sync_endl;
 }
 
 
@@ -401,7 +399,7 @@ namespace {
                 // Send full PV info to GUI if we are going to leave the loop or
                 // if we have a fail high/low and we are deep in the search.
                 if ((bestValue > alpha && bestValue < beta) || SearchTime.elapsed() > 2000)
-                    cout << uci_pv(pos, depth, alpha, beta) << endl;
+                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
 
                 // In case of failing high/low increase aspiration window and
                 // research, otherwise exit the fail high/low loop.
@@ -434,7 +432,7 @@ namespace {
         {
             Log log(Options["Search Log Filename"]);
             log << pretty_pv(pos, depth, bestValue, SearchTime.elapsed(), &RootMoves[0].pv[0])
-                << endl;
+                << std::endl;
         }
 
         // Filter out startup noise when monitoring best move stability
@@ -830,9 +828,9 @@ split_point_start: // At split points actual search starts from here
           Signals.firstRootMove = (moveCount == 1);
 
           if (thisThread == Threads.main_thread() && SearchTime.elapsed() > 2000)
-              cout << "info depth " << depth / ONE_PLY
-                   << " currmove " << move_to_uci(move, Chess960)
-                   << " currmovenumber " << moveCount + PVIdx << endl;
+              sync_cout << "info depth " << depth / ONE_PLY
+                        << " currmove " << move_to_uci(move, Chess960)
+                        << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
       isPvMove = (PvNode && moveCount <= 1);

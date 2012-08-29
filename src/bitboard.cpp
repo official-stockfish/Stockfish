@@ -23,6 +23,7 @@
 
 #include "bitboard.h"
 #include "bitcount.h"
+#include "misc.h"
 #include "rkiss.h"
 
 CACHE_LINE_ALIGNMENT
@@ -137,6 +138,8 @@ Square msb(Bitboard b) {
 
 void Bitboards::print(Bitboard b) {
 
+  sync_cout;
+
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
       std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
@@ -146,7 +149,7 @@ void Bitboards::print(Bitboard b) {
 
       std::cout << "|\n";
   }
-  std::cout << "+---+---+---+---+---+---+---+---+" << std::endl;
+  std::cout << "+---+---+---+---+---+---+---+---+" << sync_endl;
 }
 
 

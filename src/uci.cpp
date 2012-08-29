@@ -97,7 +97,7 @@ void UCI::loop(const string& args) {
           TT.clear();
 
       else if (token == "isready")
-          cout << "readyok" << endl;
+          sync_cout << "readyok" << sync_endl;
 
       else if (token == "position")
           set_position(pos, is);
@@ -112,20 +112,20 @@ void UCI::loop(const string& args) {
           pos.flip();
 
       else if (token == "eval")
-          cout << Eval::trace(pos) << endl;
+          sync_cout << Eval::trace(pos) << sync_endl;
 
       else if (token == "bench")
           benchmark(pos, is);
 
       else if (token == "key")
-          cout << "key: " << hex     << pos.key()
-               << "\nmaterial key: " << pos.material_key()
-               << "\npawn key: "     << pos.pawn_key() << endl;
+          sync_cout << "key: " << hex     << pos.key()
+                    << "\nmaterial key: " << pos.material_key()
+                    << "\npawn key: "     << pos.pawn_key() << sync_endl;
 
       else if (token == "uci")
-          cout << "id name "     << engine_info(true)
-               << "\n"           << Options
-               << "\nuciok"      << endl;
+          sync_cout << "id name " << engine_info(true)
+                    << "\n"       << Options
+                    << "\nuciok"  << sync_endl;
 
       else if (token == "perft" && (is >> token)) // Read depth
       {
@@ -138,7 +138,7 @@ void UCI::loop(const string& args) {
       }
 
       else
-          cout << "Unknown command: " << cmd << endl;
+          sync_cout << "Unknown command: " << cmd << sync_endl;
 
       if (!args.empty()) // Command line arguments have one-shot behaviour
       {
@@ -206,7 +206,7 @@ namespace {
     if (Options.count(name))
         Options[name] = value;
     else
-        cout << "No such option: " << name << endl;
+        sync_cout << "No such option: " << name << sync_endl;
   }
 
 
