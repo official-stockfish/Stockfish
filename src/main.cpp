@@ -37,8 +37,8 @@ int main(int argc, char* argv[]) {
   Zobrist::init();
   Bitbases::init_kpk();
   Search::init();
-  Threads.init();
   Eval::init();
+  Threads.init();
   TT.set_size(Options["Hash"]);
 
   std::string args;
@@ -47,4 +47,6 @@ int main(int argc, char* argv[]) {
       args += std::string(argv[i]) + " ";
 
   UCI::loop(args);
+
+  Threads.exit();
 }

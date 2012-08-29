@@ -196,9 +196,9 @@ void ThreadPool::init() {
 }
 
 
-// d'tor cleanly terminates the threads when the program exits.
+// exit() cleanly terminates the threads before the program exits.
 
-ThreadPool::~ThreadPool() {
+void ThreadPool::exit() {
 
   for (size_t i = 0; i < threads.size(); i++)
       delete threads[i];

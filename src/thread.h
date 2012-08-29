@@ -130,8 +130,8 @@ public:
 class ThreadPool {
 
 public:
-  void init(); // No c'tor, Threads object is global and engine shall be fully initialized
- ~ThreadPool();
+  void init(); // No c'tor and d'tor, threads rely on globals that should
+  void exit(); // be initialized and valid during the whole thread lifetime.
 
   Thread& operator[](size_t id) { return *threads[id]; }
   bool use_sleeping_threads() const { return useSleepingThreads; }
