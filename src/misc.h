@@ -65,4 +65,11 @@ private:
   std::vector<Entry> e;
 };
 
+
+enum SyncCout { io_lock, io_unlock };
+std::ostream& operator<<(std::ostream&, SyncCout);
+
+#define sync_cout std::cout << io_lock
+#define sync_endl std::endl << io_unlock
+
 #endif // !defined(MISC_H_INCLUDED)

@@ -146,6 +146,23 @@ public:
 };
 
 
+/// Used to serialize access to std::cout to avoid multiple threads to write at
+/// the same time.
+
+std::ostream& operator<<(std::ostream& os, SyncCout sc) {
+
+  static Mutex m;
+
+  if (sc == io_lock)
+      m.lock();
+
+  if (sc == io_unlock)
+      m.unlock();
+
+  return os;
+}
+
+
 /// Trampoline helper to avoid moving Logger to misc.h
 void start_logger(bool b) { Logger::start(b); }
 
