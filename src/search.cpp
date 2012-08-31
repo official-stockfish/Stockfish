@@ -1753,7 +1753,7 @@ void check_time() {
 
   if (lastInfoTime.elapsed() >= 1000)
   {
-      lastInfoTime.restart();
+      lastInfoTime = Time::current_time();
       dbg_print();
   }
 
