@@ -102,6 +102,37 @@ void init() {
 } // namespace Zobrist
 
 
+/// next_attacker() is an helper function used by see() to locate the least
+/// valuable attacker for the side to move, remove the attacker we just found
+/// from the 'occupied' bitboard and scan for new X-ray attacks behind it.
+
+template<PieceType Pt> static FORCE_INLINE
+PieceType next_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
+                        Bitboard& occupied, Bitboard& attackers) {
+
+  const PieceType NextPt = PieceType((int)Pt + 1);
+
+  if (!(stmAttackers & bb[Pt]))
+      return next_attacker<NextPt>(bb, to, stmAttackers, occupied, attackers);
+
+  Bitboard b = stmAttackers & bb[Pt];
+  occupied ^= b & ~(b - 1);
+
+  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
+      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
+
+  if (Pt == ROOK || Pt == QUEEN)
+      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
+
+  return Pt;
+}
+
+template<> FORCE_INLINE
+PieceType next_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bitboard&, Bitboard&) {
+  return KING; // No need to update bitboards, it is the last cycle
+}
+
+
 /// CheckInfo c'tor
 
 CheckInfo::CheckInfo(const Position& pos) {
@@ -1218,7 +1249,7 @@ int Position::see_sign(Move m) const {
 int Position::see(Move m) const {
 
   Square from, to;
-  Bitboard occupied, attackers, stmAttackers, b;
+  Bitboard occupied, attackers, stmAttackers;
   int swapList[32], slIndex = 1;
   PieceType captured;
   Color stm;
@@ -1274,19 +1305,10 @@ int Position::see(Move m) const {
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[Mg][captured];
       slIndex++;
 
-      // Locate the least valuable attacker for the side to move. The loop
-      // below looks like it is potentially infinite, but it isn't. We know
-      // that the side to move still has at least one attacker left.
-      for (captured = PAWN; (b = stmAttackers & pieces(captured)) == 0; captured++)
-          assert(captured < KING);
+      // Locate and remove from 'occupied' the next least valuable attacker
+      captured = next_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
 
-      // Remove the attacker we just found from the 'occupied' bitboard,
-      // and scan for new X-ray attacks behind the attacker.
-      occupied ^= (b & (~b + 1));
-      attackers |=  (attacks_bb<ROOK>(to, occupied)   & pieces(ROOK, QUEEN))
-                  | (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN));
-
-      attackers &= occupied; // Cut out pieces we've already done
+      attackers &= occupied; // Remove the just found attacker
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
