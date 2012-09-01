@@ -1218,47 +1218,45 @@ int Position::see_sign(Move m) const {
 int Position::see(Move m) const {
 
   Square from, to;
-  Bitboard occ, attackers, stmAttackers, b;
+  Bitboard occupied, attackers, stmAttackers, b;
   int swapList[32], slIndex = 1;
-  PieceType capturedType, pt;
+  PieceType captured;
   Color stm;
 
   assert(is_ok(m));
 
-  // As castle moves are implemented as capturing the rook, they have
-  // SEE == RookValueMidgame most of the times (unless the rook is under
-  // attack).
-  if (type_of(m) == CASTLE)
-      return 0;
-
   from = from_sq(m);
   to = to_sq(m);
-  capturedType = type_of(piece_on(to));
-  occ = pieces();
+  captured = type_of(piece_on(to));
+  occupied = pieces() ^ from;
 
   // Handle en passant moves
   if (type_of(m) == ENPASSANT)
   {
       Square capQq = to - pawn_push(sideToMove);
 
-      assert(!capturedType);
+      assert(!captured);
       assert(type_of(piece_on(capQq)) == PAWN);
 
       // Remove the captured pawn
-      occ ^= capQq;
-      capturedType = PAWN;
+      occupied ^= capQq;
+      captured = PAWN;
   }
+  else if (type_of(m) == CASTLE)
+      // Castle moves are implemented as king capturing the rook so cannot be
+      // handled correctly. Simply return 0 that is always the correct value
+      // unless the rook is ends up under attack.
+      return 0;
 
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
-  occ ^= from;
-  attackers = attackers_to(to, occ);
+  attackers = attackers_to(to, occupied);
 
   // If the opponent has no attackers we are finished
   stm = ~color_of(piece_on(from));
   stmAttackers = attackers & pieces(stm);
   if (!stmAttackers)
-      return PieceValue[Mg][capturedType];
+      return PieceValue[Mg][captured];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1266,42 +1264,40 @@ int Position::see(Move m) const {
   // destination square, where the sides alternately capture, and always
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
-  swapList[0] = PieceValue[Mg][capturedType];
-  capturedType = type_of(piece_on(from));
+  swapList[0] = PieceValue[Mg][captured];
+  captured = type_of(piece_on(from));
 
   do {
+      assert(slIndex < 32);
+
+      // Add the new entry to the swap list
+      swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[Mg][captured];
+      slIndex++;
+
       // Locate the least valuable attacker for the side to move. The loop
       // below looks like it is potentially infinite, but it isn't. We know
       // that the side to move still has at least one attacker left.
-      for (pt = PAWN; (b = stmAttackers & pieces(pt)) == 0; pt++)
-          assert(pt < KING);
+      for (captured = PAWN; (b = stmAttackers & pieces(captured)) == 0; captured++)
+          assert(captured < KING);
 
       // Remove the attacker we just found from the 'occupied' bitboard,
       // and scan for new X-ray attacks behind the attacker.
-      occ ^= (b & (~b + 1));
-      attackers |=  (attacks_bb<ROOK>(to, occ)   & pieces(ROOK, QUEEN))
-                  | (attacks_bb<BISHOP>(to, occ) & pieces(BISHOP, QUEEN));
+      occupied ^= (b & (~b + 1));
+      attackers |=  (attacks_bb<ROOK>(to, occupied)   & pieces(ROOK, QUEEN))
+                  | (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN));
 
-      attackers &= occ; // Cut out pieces we've already done
-
-      // Add the new entry to the swap list
-      assert(slIndex < 32);
-      swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[Mg][capturedType];
-      slIndex++;
-
-      // Remember the value of the capturing piece, and change the side to
-      // move before beginning the next iteration.
-      capturedType = pt;
+      attackers &= occupied; // Cut out pieces we've already done
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
       // Stop before processing a king capture
-      if (capturedType == KING && stmAttackers)
+      if (captured == KING && stmAttackers)
       {
           assert(slIndex < 32);
           swapList[slIndex++] = QueenValueMg * 16;
           break;
       }
+
   } while (stmAttackers);
 
   // Having built the swap list, we negamax through it to find the best
