@@ -106,25 +106,24 @@ void init() {
 /// valuable attacker for the side to move, remove the attacker we just found
 /// from the 'occupied' bitboard and scan for new X-ray attacks behind it.
 
-template<PieceType Pt> static FORCE_INLINE
+template<int Pt> static FORCE_INLINE
 PieceType next_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
                         Bitboard& occupied, Bitboard& attackers) {
 
-  const PieceType NextPt = PieceType((int)Pt + 1);
+  if (stmAttackers & bb[Pt])
+  {
+      Bitboard b = stmAttackers & bb[Pt];
+      occupied ^= b & ~(b - 1);
 
-  if (!(stmAttackers & bb[Pt]))
-      return next_attacker<NextPt>(bb, to, stmAttackers, occupied, attackers);
+      if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
+          attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
 
-  Bitboard b = stmAttackers & bb[Pt];
-  occupied ^= b & ~(b - 1);
+      if (Pt == ROOK || Pt == QUEEN)
+          attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
 
-  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
-
-  if (Pt == ROOK || Pt == QUEEN)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
-
-  return Pt;
+      return (PieceType)Pt;
+  }
+  return next_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
 }
 
 template<> FORCE_INLINE
@@ -1312,11 +1311,12 @@ int Position::see(Move m) const {
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
-      // Stop before processing a king capture
-      if (captured == KING && stmAttackers)
+      if (captured == KING)
       {
-          assert(slIndex < 32);
-          swapList[slIndex++] = QueenValueMg * 16;
+          // Stop before processing a king capture
+          if (stmAttackers)
+              swapList[slIndex++] = QueenValueMg * 16;
+
           break;
       }
 
