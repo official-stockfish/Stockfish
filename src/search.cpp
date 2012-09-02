@@ -1494,7 +1494,7 @@ split_point_start: // At split points actual search starts from here
     static RKISS rk;
 
     // PRNG sequence should be not deterministic
-    for (int i = Time::current_time().msec() % 50; i > 0; i--)
+    for (int i = Time::now().msec() % 50; i > 0; i--)
         rk.rand<unsigned>();
 
     // RootMoves are already sorted by score in descending order
@@ -1749,11 +1749,11 @@ void Thread::idle_loop() {
 
 void check_time() {
 
-  static Time lastInfoTime = Time::current_time();
+  static Time lastInfoTime = Time::now();
 
   if (lastInfoTime.elapsed() >= 1000)
   {
-      lastInfoTime = Time::current_time();
+      lastInfoTime = Time::now();
       dbg_print();
   }
 

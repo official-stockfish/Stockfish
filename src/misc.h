@@ -46,9 +46,9 @@ struct Log : public std::ofstream {
 
 struct Time {
   int64_t msec() const { return time_to_msec(t); }
-  int elapsed() const { return int(current_time().msec() - msec()); }
+  int elapsed() const { return int(now().msec() - msec()); }
 
-  static Time current_time() { Time t; system_time(&t.t); return t; }
+  static Time now() { Time t; system_time(&t.t); return t; }
 
 private:
   sys_time_t t;

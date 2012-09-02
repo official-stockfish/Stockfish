@@ -340,7 +340,7 @@ namespace {
 
 Book::Book() {
 
-  for (int i = Time::current_time().msec() % 10000; i > 0; i--)
+  for (int i = Time::now().msec() % 10000; i > 0; i--)
       RKiss.rand<unsigned>(); // Make random number generation less deterministic
 }
 

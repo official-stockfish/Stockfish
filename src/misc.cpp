@@ -201,7 +201,7 @@ void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
   int tm = msec;
 #else
   timespec ts, *tm = &ts;
-  uint64_t ms = Time::current_time().msec() + msec;
+  uint64_t ms = Time::now().msec() + msec;
 
   ts.tv_sec = ms / 1000;
   ts.tv_nsec = (ms % 1000) * 1000000LL;
