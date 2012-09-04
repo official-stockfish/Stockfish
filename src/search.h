@@ -99,7 +99,7 @@ extern volatile SignalsType Signals;
 extern LimitsType Limits;
 extern std::vector<RootMove> RootMoves;
 extern Position RootPosition;
-extern Time SearchTime;
+extern Time::point SearchTime;
 extern StateStackPtr SetupStates;
 
 extern void init();

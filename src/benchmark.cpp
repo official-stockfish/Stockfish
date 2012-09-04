@@ -111,7 +111,7 @@ void benchmark(const Position& current, istream& is) {
 
   int64_t nodes = 0;
   Search::StateStackPtr st;
-  Time time = Time::now();
+  Time::point t = Time::now();
 
   for (size_t i = 0; i < fens.size(); i++)
   {
@@ -133,7 +133,7 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  int e = time.elapsed() + 1; // Assure positive to avoid a 'divide by zero'
+  int e = Time::now() - t + 1; // Assure positive to avoid a 'divide by zero'
 
   cerr << "\n==========================="
        << "\nTotal time (ms) : " << e

@@ -68,6 +68,13 @@ const string engine_info(bool to_uci) {
 }
 
 
+/// Convert system time to milliseconds. That's all we need.
+
+Time::point Time::now() {
+  sys_time_t t; system_time(&t); return time_to_msec(t);
+}
+
+
 /// Debug functions used mainly to collect run-time statistics
 
 static uint64_t hits[2], means[2];
@@ -201,7 +208,7 @@ void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
   int tm = msec;
 #else
   timespec ts, *tm = &ts;
-  uint64_t ms = Time::now().msec() + msec;
+  uint64_t ms = Time::now() + msec;
 
   ts.tv_sec = ms / 1000;
   ts.tv_nsec = (ms % 1000) * 1000000LL;
