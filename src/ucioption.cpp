@@ -127,7 +127,7 @@ Option::Option(Fn* f) : type("button"), min(0), max(0), idx(Options.size()), on_
 {}
 
 Option::Option(int v, int minv, int maxv, Fn* f) : type("spin"), min(minv), max(maxv), idx(Options.size()), on_change(f)
-{ defaultValue = currentValue = std::to_string(v); }
+{ std::ostringstream ss; ss << v; defaultValue = currentValue = ss.str(); }
 
 
 Option::operator int() const {
