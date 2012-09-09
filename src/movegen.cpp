@@ -431,16 +431,16 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
 template<>
 MoveStack* generate<LEGAL>(const Position& pos, MoveStack* mlist) {
 
-  MoveStack *last, *cur = mlist;
+  MoveStack *end, *cur = mlist;
   Bitboard pinned = pos.pinned_pieces();
 
-  last = pos.in_check() ? generate<EVASIONS>(pos, mlist)
-                        : generate<NON_EVASIONS>(pos, mlist);
-  while (cur != last)
+  end = pos.in_check() ? generate<EVASIONS>(pos, mlist)
+                       : generate<NON_EVASIONS>(pos, mlist);
+  while (cur != end)
       if (!pos.pl_move_is_legal(cur->move, pinned))
-          cur->move = (--last)->move;
+          cur->move = (--end)->move;
       else
           cur++;
 
-  return last;
+  return end;
 }
