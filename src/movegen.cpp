@@ -17,7 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <cassert>
 
 #include "movegen.h"
@@ -47,9 +46,8 @@ namespace {
 
     assert(!pos.in_check());
 
-    for (Square s = std::min(kfrom, kto), e = std::max(kfrom, kto); s <= e; s++)
-        if (    s != kfrom // We are not in check
-            && (pos.attackers_to(s) & enemies))
+    for (Square s = kto; s != kfrom; s += (Square)(Side == KING_SIDE ? -1 : 1))
+        if (pos.attackers_to(s) & enemies)
             return mlist;
 
     // Because we generate only legal castling moves we need to verify that
