@@ -365,7 +365,8 @@ namespace {
 
             // Start with a small aspiration window and, in case of fail high/low,
             // research with bigger window until not failing high/low anymore.
-            do {
+            while (true)
+            {
                 // Search starts from ss+1 to allow referencing (ss-1). This is
                 // needed by update gains and ss copy when splitting at Root.
                 bestValue = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
@@ -419,9 +420,15 @@ namespace {
                 else
                     break;
 
-                assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
+                // Search with full window in case we have a win/mate score
+                if (abs(bestValue) >= VALUE_KNOWN_WIN)
+                {
+                    alpha = -VALUE_INFINITE;
+                    beta  =  VALUE_INFINITE;
+                }
 
-            } while (abs(bestValue) < VALUE_KNOWN_WIN);
+                assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
+            }
         }
 
         // Skills: Do we need to pick now the best move ?
