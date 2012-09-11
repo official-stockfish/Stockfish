@@ -420,11 +420,13 @@ MoveStack* generate<LEGAL>(const Position& pos, MoveStack* mlist) {
 
   MoveStack *end, *cur = mlist;
   Bitboard pinned = pos.pinned_pieces();
+  Square ksq = pos.king_square(pos.side_to_move());
 
   end = pos.in_check() ? generate<EVASIONS>(pos, mlist)
                        : generate<NON_EVASIONS>(pos, mlist);
   while (cur != end)
-      if (!pos.pl_move_is_legal(cur->move, pinned))
+      if (   (pinned || from_sq(cur->move) == ksq || type_of(cur->move) == ENPASSANT)
+          && !pos.pl_move_is_legal(cur->move, pinned))
           cur->move = (--end)->move;
       else
           cur++;
