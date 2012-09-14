@@ -290,11 +290,11 @@ void Search::think() {
 
   if (Options["Use Search Log"])
   {
-      int e = Time::now() - SearchTime;
+      Time::point elapsed = Time::now() - SearchTime + 1;
 
       Log log(Options["Search Log Filename"]);
       log << "Nodes: "          << pos.nodes_searched()
-          << "\nNodes/second: " << (e > 0 ? pos.nodes_searched() * 1000 / e : 0)
+          << "\nNodes/second: " << pos.nodes_searched() * 1000 / elapsed
           << "\nBest move: "    << move_to_san(pos, RootMoves[0].pv[0]);
 
       StateInfo st;
@@ -1536,7 +1536,7 @@ split_point_start: // At split points actual search starts from here
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta) {
 
     std::stringstream s;
-    int t = Time::now() - SearchTime;
+    Time::point elaspsed = Time::now() - SearchTime + 1;
     int selDepth = 0;
 
     for (size_t i = 0; i < Threads.size(); i++)
@@ -1557,12 +1557,12 @@ split_point_start: // At split points actual search starts from here
             s << "\n";
 
         s << "info depth " << d
-          << " seldepth " << selDepth
-          << " score " << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
-          << " nodes " << pos.nodes_searched()
-          << " nps " << (t > 0 ? pos.nodes_searched() * 1000 / t : 0)
-          << " time " << t
-          << " multipv " << i + 1
+          << " seldepth "  << selDepth
+          << " score "     << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
+          << " nodes "     << pos.nodes_searched()
+          << " nps "       << pos.nodes_searched() * 1000 / elaspsed
+          << " time "      << elaspsed
+          << " multipv "   << i + 1
           << " pv";
 
         for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; j++)
@@ -1760,15 +1760,15 @@ void check_time() {
   if (Limits.ponder)
       return;
 
-  int e = Time::now() - SearchTime;
+  Time::point elapsed = Time::now() - SearchTime;
   bool stillAtFirstMove =    Signals.firstRootMove
                          && !Signals.failedLowAtRoot
-                         &&  e > TimeMgr.available_time();
+                         &&  elapsed > TimeMgr.available_time();
 
-  bool noMoreTime =   e > TimeMgr.maximum_time() - 2 * TimerResolution
+  bool noMoreTime =   elapsed > TimeMgr.maximum_time() - 2 * TimerResolution
                    || stillAtFirstMove;
 
   if (   (Limits.use_time_management() && noMoreTime)
-      || (Limits.movetime && e >= Limits.movetime))
+      || (Limits.movetime && elapsed >= Limits.movetime))
       Signals.stop = true;
 }

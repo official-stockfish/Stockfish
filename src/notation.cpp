@@ -186,14 +186,14 @@ const string move_to_san(Position& pos, Move m) {
 /// appended to the search log file. It uses the two helpers below to pretty
 /// format time and score respectively.
 
-static string time_to_string(int millisecs) {
+static string time_to_string(int64_t msecs) {
 
   const int MSecMinute = 1000 * 60;
   const int MSecHour   = 1000 * 60 * 60;
 
-  int hours = millisecs / MSecHour;
-  int minutes =  (millisecs % MSecHour) / MSecMinute;
-  int seconds = ((millisecs % MSecHour) % MSecMinute) / 1000;
+  int64_t hours   =   msecs / MSecHour;
+  int64_t minutes =  (msecs % MSecHour) / MSecMinute;
+  int64_t seconds = ((msecs % MSecHour) % MSecMinute) / 1000;
 
   stringstream s;
 
@@ -221,7 +221,7 @@ static string score_to_string(Value v) {
   return s.str();
 }
 
-string pretty_pv(Position& pos, int depth, Value value, int time, Move pv[]) {
+string pretty_pv(Position& pos, int depth, Value value, int64_t msecs, Move pv[]) {
 
   const int64_t K = 1000;
   const int64_t M = 1000000;
@@ -234,7 +234,7 @@ string pretty_pv(Position& pos, int depth, Value value, int time, Move pv[]) {
 
   s << setw(2) << depth
     << setw(8) << score_to_string(value)
-    << setw(8) << time_to_string(time);
+    << setw(8) << time_to_string(msecs);
 
   if (pos.nodes_searched() < M)
       s << setw(8) << pos.nodes_searched() / 1 << "  ";
