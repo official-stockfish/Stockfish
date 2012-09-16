@@ -31,7 +31,7 @@
                                          (*mlist++).move = make_move(to - (d), to); }
 namespace {
 
-  template<CastlingSide Side, bool Checks>
+  template<CastlingSide Side, bool Checks, bool Chess960>
   MoveStack* generate_castle(const Position& pos, MoveStack* mlist, Color us) {
 
     if (pos.castle_impeded(us, Side) || !pos.can_castle(make_castle_right(us, Side)))
@@ -46,16 +46,18 @@ namespace {
 
     assert(!pos.in_check());
 
-    for (Square s = kto; s != kfrom; s += (Square)(Side == KING_SIDE ? -1 : 1))
+    const int K = Chess960 ? kto > kfrom ? -1 : 1
+                           : Side == KING_SIDE ? -1 : 1;
+
+    for (Square s = kto; s != kfrom; s += (Square)K)
         if (pos.attackers_to(s) & enemies)
             return mlist;
 
     // Because we generate only legal castling moves we need to verify that
     // when moving the castling rook we do not discover some hidden checker.
     // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (    pos.is_chess960()
-        && (pos.attackers_to(kto, pos.pieces() ^ rfrom) & enemies))
-            return mlist;
+    if (Chess960 && (pos.attackers_to(kto, pos.pieces() ^ rfrom) & enemies))
+        return mlist;
 
     (*mlist++).move = make<CASTLE>(kfrom, rfrom);
 
@@ -273,8 +275,16 @@ namespace {
 
     if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(us))
     {
-        mlist = generate_castle<KING_SIDE,  Type == QUIET_CHECKS>(pos, mlist, us);
-        mlist = generate_castle<QUEEN_SIDE, Type == QUIET_CHECKS>(pos, mlist, us);
+        if (pos.is_chess960())
+        {
+            mlist = generate_castle<KING_SIDE,  Type == QUIET_CHECKS, true>(pos, mlist, us);
+            mlist = generate_castle<QUEEN_SIDE, Type == QUIET_CHECKS, true>(pos, mlist, us);
+        }
+        else
+        {
+            mlist = generate_castle<KING_SIDE,  Type == QUIET_CHECKS, false>(pos, mlist, us);
+            mlist = generate_castle<QUEEN_SIDE, Type == QUIET_CHECKS, false>(pos, mlist, us);
+        }
     }
 
     return mlist;
