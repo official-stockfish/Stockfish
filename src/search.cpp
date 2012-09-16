@@ -224,7 +224,7 @@ size_t Search::perft(Position& pos, Depth depth) {
 
 void Search::think() {
 
-  static Book book; // Defined static to initialize the PRNG only once
+  static PolyglotBook book; // Defined static to initialize the PRNG only once
 
   Position& pos = RootPosition;
   Chess960 = pos.is_chess960();

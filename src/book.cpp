@@ -35,6 +35,16 @@ using namespace std;
 
 namespace {
 
+  // A Polyglot book is a series of "entries" of 16 bytes. All integers are
+  // stored in big-endian format, with highest byte first (regardless of size).
+  // The entries are ordered according to the key in ascending order.
+  struct BookEntry {
+    uint64_t key;
+    uint16_t move;
+    uint16_t count;
+    uint32_t learn;
+  };
+
   // Random numbers from PolyGlot, used to compute book hash keys
   const Key PolyGlotRandoms[781] = {
     0x9D39247E33776D41ULL, 0x2AF7398005AAA5C7ULL, 0x44DB015024623547ULL,
@@ -338,20 +348,20 @@ namespace {
 
 } // namespace
 
-Book::Book() {
+PolyglotBook::PolyglotBook() {
 
   for (int i = Time::now() % 10000; i > 0; i--)
       RKiss.rand<unsigned>(); // Make random number generation less deterministic
 }
 
-Book::~Book() { if (is_open()) close(); }
+PolyglotBook::~PolyglotBook() { if (is_open()) close(); }
 
 
-/// Book::operator>>() reads sizeof(T) chars from the file's binary byte stream
-/// and converts them in a number of type T. A Polyglot book stores numbers in
+/// operator>>() reads sizeof(T) chars from the file's binary byte stream and
+/// converts them in a number of type T. A Polyglot book stores numbers in
 /// big-endian format.
 
-template<typename T> Book& Book::operator>>(T& n) {
+template<typename T> PolyglotBook& PolyglotBook::operator>>(T& n) {
 
   n = 0;
   for (size_t i = 0; i < sizeof(T); i++)
@@ -360,15 +370,15 @@ template<typename T> Book& Book::operator>>(T& n) {
   return *this;
 }
 
-template<> Book& Book::operator>>(BookEntry& e) {
+template<> PolyglotBook& PolyglotBook::operator>>(BookEntry& e) {
   return *this >> e.key >> e.move >> e.count >> e.learn;
 }
 
 
-/// Book::open() tries to open a book file with the given name after closing
-/// any exsisting one.
+/// open() tries to open a book file with the given name after closing any
+/// exsisting one.
 
-bool Book::open(const char* fName) {
+bool PolyglotBook::open(const char* fName) {
 
   if (is_open()) // Cannot close an already closed file
       close();
@@ -381,11 +391,11 @@ bool Book::open(const char* fName) {
 }
 
 
-/// Book::probe() tries to find a book move for the given position. If no move
-/// is found returns MOVE_NONE. If pickBest is true returns always the highest
+/// probe() tries to find a book move for the given position. If no move is
+/// found returns MOVE_NONE. If pickBest is true returns always the highest
 /// rated move, otherwise randomly chooses one, based on the move score.
 
-Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
+Move PolyglotBook::probe(const Position& pos, const string& fName, bool pickBest) {
 
   if (fileName != fName && !open(fName.c_str()))
       return MOVE_NONE;
@@ -437,11 +447,11 @@ Move Book::probe(const Position& pos, const string& fName, bool pickBest) {
 }
 
 
-/// Book::find_first() takes a book key as input, and does a binary search
-/// through the book file for the given key. Returns the index of the leftmost
-/// book entry with the same key as the input.
+/// find_first() takes a book key as input, and does a binary search through
+/// the book file for the given key. Returns the index of the leftmost book
+/// entry with the same key as the input.
 
-size_t Book::find_first(uint64_t key) {
+size_t PolyglotBook::find_first(uint64_t key) {
 
   seekg(0, ios::end); // Move pointer to end, so tellg() gets file's size
 
