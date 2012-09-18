@@ -62,8 +62,8 @@ namespace {
 
   CACHE_LINE_ALIGNMENT
 
-  int BSFTable[64];
   int MS1BTable[256];
+  Square BSFTable[64];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
   uint8_t BitCount8Bit[256];
@@ -79,27 +79,23 @@ namespace {
 
 #if !defined(USE_BSFQ)
 
-Square lsb(Bitboard b) {
+FORCE_INLINE unsigned bsf_index(Bitboard b) {
 
   if (Is64Bit)
-      return Square(BSFTable[((b & -b) * DeBruijn_64) >> 58]);
+      return ((b & -b) * DeBruijn_64) >> 58;
 
+  // Use Matt Taylor's folding trick for 32 bit systems
   b ^= (b - 1);
-  uint32_t fold = unsigned(b) ^ unsigned(b >> 32);
-  return Square(BSFTable[(fold * DeBruijn_32) >> 26]);
+  return ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
 }
+
+Square lsb(Bitboard b) { return BSFTable[bsf_index(b)]; }
 
 Square pop_lsb(Bitboard* b) {
 
   Bitboard bb = *b;
   *b = bb & (bb - 1);
-
-  if (Is64Bit)
-      return Square(BSFTable[((bb & -bb) * DeBruijn_64) >> 58]);
-
-  bb ^= (bb - 1);
-  uint32_t fold = unsigned(bb) ^ unsigned(bb >> 32);
-  return Square(BSFTable[(fold * DeBruijn_32) >> 26]);
+  return BSFTable[bsf_index(bb)];
 }
 
 Square msb(Bitboard b) {
@@ -127,7 +123,7 @@ Square msb(Bitboard b) {
       result += 8;
   }
 
-  return Square(result + MS1BTable[b32]);
+  return (Square)(result + MS1BTable[b32]);
 }
 
 #endif // !defined(USE_BSFQ)
@@ -161,6 +157,9 @@ void Bitboards::init() {
   for (int k = 0, i = 0; i < 8; i++)
       while (k < (2 << i))
           MS1BTable[k++] = i;
+
+  for (int i = 0; i < 64; i++)
+      BSFTable[bsf_index(1ULL << i)] = Square(i);
 
   for (Bitboard b = 0; b < 256; b++)
       BitCount8Bit[b] = (uint8_t)popcount<Max15>(b);
@@ -203,17 +202,6 @@ void Bitboards::init() {
           for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
               if (SquareDistance[s1][s2] == d)
                   DistanceRingsBB[s1][d - 1] |= s2;
-
-  for (int i = 0; i < 64; i++)
-      if (!Is64Bit) // Matt Taylor's folding trick for 32 bit systems
-      {
-          Bitboard b = 1ULL << i;
-          b ^= b - 1;
-          b ^= b >> 32;
-          BSFTable[(uint32_t)(b * DeBruijn_32) >> 26] = i;
-      }
-      else
-          BSFTable[((1ULL << i) * DeBruijn_64) >> 58] = i;
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
