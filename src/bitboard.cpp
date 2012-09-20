@@ -72,22 +72,22 @@ namespace {
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index);
+
+  FORCE_INLINE unsigned bsf_index(Bitboard b) {
+
+    if (Is64Bit)
+        return ((b & -b) * DeBruijn_64) >> 58;
+
+    // Use Matt Taylor's folding trick for 32 bit systems
+    b ^= (b - 1);
+    return ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
+  }
 }
 
 /// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.
 
 #if !defined(USE_BSFQ)
-
-FORCE_INLINE unsigned bsf_index(Bitboard b) {
-
-  if (Is64Bit)
-      return ((b & -b) * DeBruijn_64) >> 58;
-
-  // Use Matt Taylor's folding trick for 32 bit systems
-  b ^= (b - 1);
-  return ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
-}
 
 Square lsb(Bitboard b) { return BSFTable[bsf_index(b)]; }
 
