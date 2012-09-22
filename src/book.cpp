@@ -440,7 +440,7 @@ Move PolyglotBook::probe(const Position& pos, const string& fName, bool pickBest
 
   // Add 'special move' flags and verify it is legal
   for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
-      if (move == (ml.move() & 0x3FFF))
+      if (move == (ml.move() ^ type_of(ml.move())))
           return ml.move();
 
   return MOVE_NONE;
