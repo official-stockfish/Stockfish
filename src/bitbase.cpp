@@ -71,7 +71,7 @@ uint32_t Bitbases::probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm) {
 
 void Bitbases::init_kpk() {
 
-  Result db[IndexMax];
+  Result* db = new Result[IndexMax]; // Avoid to hit stack limit on some platforms
   KPKPosition pos;
   int idx, bit, repeat = 1;
 
@@ -90,6 +90,8 @@ void Bitbases::init_kpk() {
       for (bit = 0; bit < 32; bit++)
           if (db[32 * idx + bit] == WIN)
               KPKBitbase[idx] |= 1 << bit;
+
+  delete [] db;
 }
 
 
