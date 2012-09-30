@@ -42,7 +42,7 @@ namespace { extern "C" {
 // Thread c'tor starts a newly-created thread of execution that will call
 // the idle loop function pointed by start_fn going immediately to sleep.
 
-Thread::Thread(Fn fn) {
+Thread::Thread(Fn fn) : splitPoints() {
 
   is_searching = do_exit = false;
   maxPly = splitPointsCnt = 0;
@@ -200,10 +200,10 @@ void ThreadPool::init() {
 
 void ThreadPool::exit() {
 
+  delete timer; // As first becuase check_time() accesses threads data
+
   for (size_t i = 0; i < threads.size(); i++)
       delete threads[i];
-
-  delete timer;
 }
 
 
@@ -327,8 +327,8 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // Try to allocate available threads and ask them to start searching setting
   // is_searching flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
-  sp.mutex.lock();
   mutex.lock();
+  sp.mutex.lock();
 
   for (size_t i = 0; i < threads.size() && !Fake; ++i)
       if (threads[i]->is_available_to(master))
@@ -346,8 +346,8 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
 
   master->splitPointsCnt++;
 
-  mutex.unlock();
   sp.mutex.unlock();
+  mutex.unlock();
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its is_searching flag is set.
@@ -365,8 +365,8 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that setting is_searching and decreasing splitPointsCnt is
   // done under lock protection to avoid a race with Thread::is_available_to().
-  sp.mutex.lock(); // To protect sp.nodes
   mutex.lock();
+  sp.mutex.lock();
 
   master->is_searching = true;
   master->splitPointsCnt--;
@@ -374,8 +374,8 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
 
-  mutex.unlock();
   sp.mutex.unlock();
+  mutex.unlock();
 
   return sp.bestValue;
 }

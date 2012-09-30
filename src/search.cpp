@@ -279,6 +279,8 @@ void Search::think() {
   // used to check for remaining available thinking time.
   if (Limits.use_time_management())
       Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 16, TimerResolution)));
+  else if (Limits.nodes)
+      Threads.set_timer(2 * TimerResolution);
   else
       Threads.set_timer(100);
 
@@ -565,10 +567,6 @@ namespace {
         (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
         (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
     }
-
-    // Enforce node limit here. FIXME: This only works with 1 search thread.
-    if (Limits.nodes && pos.nodes_searched() >= Limits.nodes)
-        Signals.stop = true;
 
     if (!RootNode)
     {
@@ -1712,6 +1710,10 @@ void Thread::idle_loop() {
 
           sp->mutex.lock();
 
+          assert(sp->activePositions[idx] == NULL);
+
+          sp->activePositions[idx] = &pos;
+
           if (sp->nodeType == Root)
               search<SplitPointRoot>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
           else if (sp->nodeType == PV)
@@ -1724,6 +1726,7 @@ void Thread::idle_loop() {
           assert(is_searching);
 
           is_searching = false;
+          sp->activePositions[idx] = NULL;
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
 
@@ -1754,6 +1757,7 @@ void Thread::idle_loop() {
 void check_time() {
 
   static Time::point lastInfoTime = Time::now();
+  int64_t nodes = 0; // Workaround silly 'uninitialized' gcc warning
 
   if (Time::now() - lastInfoTime >= 1000)
   {
@@ -1764,6 +1768,35 @@ void check_time() {
   if (Limits.ponder)
       return;
 
+  if (Limits.nodes)
+  {
+      Threads.mutex.lock();
+
+      nodes = RootPosition.nodes_searched();
+
+      // Loop across all split points and sum accumulated SplitPoint nodes plus
+      // all the currently active slaves positions.
+      for (size_t i = 0; i < Threads.size(); i++)
+          for (int j = 0; j < Threads[i].splitPointsCnt; j++)
+          {
+              SplitPoint& sp = Threads[i].splitPoints[j];
+
+              sp.mutex.lock();
+
+              nodes += sp.nodes;
+              Bitboard sm = sp.slavesMask;
+              while (sm)
+              {
+                  Position* pos = sp.activePositions[pop_lsb(&sm)];
+                  nodes += pos ? pos->nodes_searched() : 0;
+              }
+
+              sp.mutex.unlock();
+          }
+
+      Threads.mutex.unlock();
+  }
+
   Time::point elapsed = Time::now() - SearchTime;
   bool stillAtFirstMove =    Signals.firstRootMove
                          && !Signals.failedLowAtRoot
@@ -1773,6 +1806,7 @@ void check_time() {
                    || stillAtFirstMove;
 
   if (   (Limits.use_time_management() && noMoreTime)
-      || (Limits.movetime && elapsed >= Limits.movetime))
+      || (Limits.movetime && elapsed >= Limits.movetime)
+      || (Limits.nodes && nodes >= Limits.nodes))
       Signals.stop = true;
 }
