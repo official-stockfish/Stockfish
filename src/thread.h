@@ -151,7 +151,7 @@ public:
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
-              Depth depth, Move threatMove, int moveCount, MovePicker* mp, int nodeType);
+              Depth depth, Move threatMove, int moveCount, MovePicker& mp, int nodeType);
 private:
   friend class Thread;
   friend void check_time();

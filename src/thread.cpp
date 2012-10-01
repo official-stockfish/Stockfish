@@ -284,8 +284,8 @@ bool ThreadPool::available_slave_exists(Thread* master) const {
 
 template <bool Fake>
 Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
-                        Value bestValue, Move* bestMove, Depth depth,
-                        Move threatMove, int moveCount, MovePicker* mp, int nodeType) {
+                        Value bestValue, Move* bestMove, Depth depth, Move threatMove,
+                        int moveCount, MovePicker& mp, int nodeType) {
 
   assert(pos.pos_is_ok());
   assert(bestValue > -VALUE_INFINITE);
@@ -313,7 +313,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp.beta = beta;
   sp.nodeType = nodeType;
   sp.bestValue = bestValue;
-  sp.mp = mp;
+  sp.mp = &mp;
   sp.moveCount = moveCount;
   sp.pos = &pos;
   sp.nodes = 0;
@@ -381,8 +381,8 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
 }
 
 // Explicit template instantiations
-template Value ThreadPool::split<false>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker*, int);
-template Value ThreadPool::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker*, int);
+template Value ThreadPool::split<false>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
+template Value ThreadPool::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
 
 
 // set_timer() is used to set the timer to trigger after msec milliseconds.
