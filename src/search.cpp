@@ -863,7 +863,7 @@ split_point_start: // At split points actual search starts from here
           ss->excludedMove = MOVE_NONE;
 
           if (value < rBeta)
-              ext = ONE_PLY;
+              ext = rBeta >= beta ? ONE_PLY + ONE_PLY / 2 : ONE_PLY;
       }
 
       // Update current move (this must be done after singular extension search)
