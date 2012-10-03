@@ -88,10 +88,6 @@ namespace {
     return (Depth) Reductions[PvNode][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
-  // Easy move margin. An easy move candidate must be at least this much better
-  // than the second best move.
-  const Value EasyMoveMargin = Value(0x150);
-
   // This is the minimum interval in msec between two check_time() calls
   const int TimerResolution = 5;
 
@@ -450,7 +446,7 @@ namespace {
                 && (   (bestMoveNeverChanged &&  pos.captured_piece_type())
                     || Time::now() - SearchTime > (TimeMgr.available_time() * 40) / 100))
             {
-                Value rBeta = bestValue - EasyMoveMargin;
+                Value rBeta = bestValue - 2 * PawnValueMg;
                 (ss+1)->excludedMove = RootMoves[0].pv[0];
                 (ss+1)->skipNullMove = true;
                 Value v = search<NonPV>(pos, ss+1, rBeta - 1, rBeta, (depth - 3) * ONE_PLY);
@@ -1494,7 +1490,7 @@ split_point_start: // At split points actual search starts from here
         int s = RootMoves[i].score;
 
         // Don't allow crazy blunders even at very low skills
-        if (i > 0 && RootMoves[i-1].score > s + EasyMoveMargin)
+        if (i > 0 && RootMoves[i-1].score > s + 2 * PawnValueMg)
             break;
 
         // This is our magic formula
