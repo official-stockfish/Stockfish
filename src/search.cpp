@@ -78,11 +78,6 @@ namespace {
                            : 2 * VALUE_INFINITE;
   }
 
-  inline int futility_move_count(Depth d) {
-
-    return d < 16 * ONE_PLY ? FutilityMoveCounts[d] : MAX_MOVES;
-  }
-
   // Reduction lookup tables (initialized at startup) and their access function
   int8_t Reductions[2][64][64]; // [pv][depth][moveNumber]
 
@@ -640,10 +635,10 @@ namespace {
         && !ss->skipNullMove
         &&  depth < 4 * ONE_PLY
         && !inCheck
-        &&  refinedValue - futility_margin(depth, 0) >= beta
+        &&  refinedValue - FutilityMargins[depth][0] >= beta
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
         &&  pos.non_pawn_material(pos.side_to_move()))
-        return refinedValue - futility_margin(depth, 0);
+        return refinedValue - FutilityMargins[depth][0];
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
     if (   !PvNode
@@ -768,7 +763,7 @@ split_point_start: // At split points actual search starts from here
 
     // Step 11. Loop through moves
     // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
-    while (bestValue < beta && (move = mp.next_move<SpNode>()) != MOVE_NONE)
+    while ((move = mp.next_move<SpNode>()) != MOVE_NONE)
     {
       assert(is_ok(move));
 
@@ -849,7 +844,8 @@ split_point_start: // At split points actual search starts from here
           && (bestValue > VALUE_MATED_IN_MAX_PLY || bestValue == -VALUE_INFINITE))
       {
           // Move count based pruning
-          if (   moveCount >= futility_move_count(depth)
+          if (   depth < 16 * ONE_PLY
+              && moveCount >= FutilityMoveCounts[depth]
               && (!threatMove || !connected_threat(pos, move, threatMove)))
           {
               if (SpNode)
@@ -981,23 +977,23 @@ split_point_start: // At split points actual search starts from here
       if (value > bestValue)
       {
           bestValue = value;
+          if (SpNode) sp->bestValue = value;
 
           if (value > alpha)
           {
               bestMove = move;
+              if (SpNode) sp->bestMove = move;
 
               if (PvNode && value < beta)
-                  alpha = bestValue; // Update alpha here! Always alpha < beta
-          }
-
-          if (SpNode)
-          {
-              sp->bestValue = bestValue;
-              sp->bestMove = bestMove;
-              sp->alpha = alpha;
-
-              if (bestValue >= beta)
-                  sp->cutoff = true;
+              {
+                  alpha = value; // Update alpha here! Always alpha < beta
+                  if (SpNode) sp->alpha = alpha;
+              }
+              else // Fail high
+              {
+                  if (SpNode) sp->cutoff = true;
+                  break;
+              }
           }
       }
 
@@ -1006,8 +1002,11 @@ split_point_start: // At split points actual search starts from here
           &&  depth >= Threads.min_split_depth()
           &&  bestValue < beta
           &&  Threads.available_slave_exists(thisThread))
+      {
           bestValue = Threads.split<FakeSplit>(pos, ss, alpha, beta, bestValue, &bestMove,
                                                depth, threatMove, moveCount, mp, NT);
+          break;
+      }
     }
 
     if (SpNode)
