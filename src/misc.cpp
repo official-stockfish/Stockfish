@@ -237,8 +237,13 @@ void prefetch(char* addr) {
    __asm__ ("");
 #  endif
 
+#  if defined(__INTEL_COMPILER) || defined(__ICL) || defined(_MSC_VER)
   _mm_prefetch(addr, _MM_HINT_T2);
   _mm_prefetch(addr+64, _MM_HINT_T2); // 64 bytes ahead
+#  else
+  __builtin_prefetch(addr);
+  __builtin_prefetch(addr+64);
+#  endif
 }
 
 #endif
