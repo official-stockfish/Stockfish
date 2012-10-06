@@ -175,6 +175,7 @@ endif
 ifeq ($(COMP),mingw)
 	comp=mingw
 	CXX=g++
+	prefetch = yes
 	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
@@ -184,6 +185,7 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
+	prefetch = yes
 	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
@@ -202,6 +204,7 @@ endif
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
+	prefetch = yes
 	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
