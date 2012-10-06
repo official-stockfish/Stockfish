@@ -96,9 +96,8 @@ inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
 
 #else
 
-  unsigned long ret;
-  __asm__("popcnt %1, %0" : "=r" (ret) : "r" (b));
-  return ret;
+  __asm__("popcnt %1, %0" : "=r" (b) : "r" (b));
+  return b;
 
 #endif
 }
