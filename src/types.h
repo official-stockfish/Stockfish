@@ -41,7 +41,7 @@
 
 #include "platform.h"
 
-#if defined(_WIN64)
+#if defined(_WIN64) && !defined(IS_64BIT)
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
 #  define USE_BSFQ
