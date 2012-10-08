@@ -51,6 +51,10 @@
 #  include <nmmintrin.h> // Intel header for _mm_popcnt_u64() intrinsic
 #endif
 
+#  if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
+#   include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
+#  endif
+
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #  define CACHE_LINE_ALIGNMENT __declspec(align(64))
 #else
