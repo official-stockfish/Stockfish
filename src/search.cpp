@@ -110,30 +110,6 @@ namespace {
   Move do_skill_level();
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
 
-  // is_dangerous() checks whether a move belongs to some classes of known
-  // 'dangerous' moves so that we avoid to prune it.
-  FORCE_INLINE bool is_dangerous(const Position& pos, Move m, bool captureOrPromotion) {
-
-    // Castle move?
-    if (type_of(m) == CASTLE)
-        return true;
-
-    // Passed pawn move?
-    if (   type_of(pos.piece_moved(m)) == PAWN
-        && pos.pawn_is_passed(pos.side_to_move(), to_sq(m)))
-        return true;
-
-    // Entering a pawn endgame?
-    if (    captureOrPromotion
-        &&  type_of(pos.piece_on(to_sq(m))) != PAWN
-        &&  type_of(m) == NORMAL
-        && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
-            - PieceValue[Mg][pos.piece_on(to_sq(m))] == VALUE_ZERO))
-        return true;
-
-    return false;
-  }
-
 } // namespace
 
 
@@ -800,10 +776,17 @@ split_point_start: // At split points actual search starts from here
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
+      ext = DEPTH_ZERO;
       captureOrPromotion = pos.is_capture_or_promotion(move);
       givesCheck = pos.move_gives_check(move, ci);
-      dangerous = givesCheck || is_dangerous(pos, move, captureOrPromotion);
-      ext = DEPTH_ZERO;
+      dangerous =   givesCheck
+                 || pos.is_passed_pawn_push(move)
+                 || type_of(move) == CASTLE
+                 || (   captureOrPromotion // Entering a pawn endgame?
+                     && type_of(pos.piece_on(to_sq(move))) != PAWN
+                     && type_of(move) == NORMAL
+                     && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
+                         - PieceValue[Mg][pos.piece_on(to_sq(move))] == VALUE_ZERO));
 
       // Step 12. Extend checks and, in PV nodes, also dangerous moves
       if (PvNode && dangerous)
