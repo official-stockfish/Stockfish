@@ -126,12 +126,12 @@ ifeq ($(ARCH),x86-32-old)
 endif
 
 #arm section
-ifeq ($(ARCH),arm-32)
-	arch = arm-32
+ifeq ($(ARCH),armv7)
+	arch = armv7
 	os = any
 	bits = 32
 	prefetch = yes
-	bsfq = no
+	bsfq = yes
 	popcnt = no
 endif
 
@@ -276,7 +276,7 @@ ifeq ($(optimize),yes)
 			endif
 		endif
 
-		ifeq ($(arch),arm-32)
+		ifeq ($(arch),armv7)
 			CXXFLAGS += -fno-gcse
 		endif
 	endif
@@ -315,7 +315,7 @@ endif
 
 ### 3.7 prefetch
 ifeq ($(prefetch),yes)
-	ifneq ($(arch),arm-32)
+	ifneq ($(arch),armv7)
 		CXXFLAGS += -msse
 		DEPENDFLAGS += -msse
 	endif
@@ -376,7 +376,7 @@ help:
 	@echo "osx-ppc-32           > PPC-Mac OS X 32 bit"
 	@echo "osx-x86-64           > x86-Mac OS X 64 bit"
 	@echo "osx-x86-32           > x86-Mac OS X 32 bit"
-	@echo "arm-32               > ARM 32 bit"
+	@echo "armv7                > ARMv7 32 bit"
 	@echo "general-64           > unspecified 64-bit"
 	@echo "general-32           > unspecified 32-bit"
 	@echo ""
@@ -466,7 +466,7 @@ config-sanity:
 	@test "$(debug)" = "yes" || test "$(debug)" = "no"
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "arm-32"
+	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
 	@test "$(os)" = "any" || test "$(os)" = "osx"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
