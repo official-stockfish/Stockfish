@@ -826,7 +826,8 @@ split_point_start: // At split points actual search starts from here
           && !inCheck
           && !dangerous
           &&  move != ttMove
-          && (bestValue > VALUE_MATED_IN_MAX_PLY || bestValue == -VALUE_INFINITE))
+          && (bestValue > VALUE_MATED_IN_MAX_PLY || (   bestValue == -VALUE_INFINITE
+                                                     && alpha > VALUE_MATED_IN_MAX_PLY)))
       {
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
