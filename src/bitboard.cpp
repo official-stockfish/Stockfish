@@ -66,7 +66,6 @@ namespace {
   Square BSFTable[64];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
-  uint8_t BitCount8Bit[256];
 
   typedef unsigned (Fn)(Square, Bitboard);
 
@@ -158,9 +157,6 @@ void Bitboards::init() {
 
   for (int i = 0; i < 64; i++)
       BSFTable[bsf_index(1ULL << i)] = Square(i);
-
-  for (Bitboard b = 0; b < 256; b++)
-      BitCount8Bit[b] = (uint8_t)popcount<Max15>(b);
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       SquareBB[s] = 1ULL << s;
@@ -324,7 +320,7 @@ namespace {
         // until we find the one that passes the verification test.
         do {
             do magics[s] = pick_random(rk, booster);
-            while (BitCount8Bit[(magics[s] * masks[s]) >> 56] < 6);
+            while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
             memset(attacks[s], 0, size * sizeof(Bitboard));
 
