@@ -104,7 +104,6 @@ namespace {
   bool connected_moves(const Position& pos, Move m1, Move m2);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
-  bool can_return_tt(const TTEntry* tte, Depth depth, Value ttValue, Value beta);
   bool connected_threat(const Position& pos, Move m, Move threat);
   Value refine_eval(const TTEntry* tte, Value ttValue, Value defaultEval);
   Move do_skill_level();
@@ -544,8 +543,11 @@ namespace {
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
     // smooth experience in analysis mode. We don't probe at Root nodes otherwise
     // we should also update RootMoveList to avoid bogus output.
-    if (!RootNode && tte && (PvNode ? tte->depth() >= depth && tte->type() == BOUND_EXACT
-                                    : can_return_tt(tte, depth, ttValue, beta)))
+    if (   !RootNode
+        && tte && tte->depth() >= depth
+        && (           PvNode ?  tte->type() == BOUND_EXACT
+            : ttValue >= beta ? (tte->type() & BOUND_LOWER)
+                              : (tte->type() & BOUND_UPPER)))
     {
         TT.refresh(tte);
         ss->currentMove = ttMove; // Can be MOVE_NONE
@@ -1095,7 +1097,10 @@ split_point_start: // At split points actual search starts from here
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
     ttDepth = inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NO_CHECKS;
 
-    if (!PvNode && tte && can_return_tt(tte, ttDepth, ttValue, beta))
+    if (   tte && tte->depth() >= ttDepth
+        && (           PvNode ?  tte->type() == BOUND_EXACT
+            : ttValue >= beta ? (tte->type() & BOUND_LOWER)
+                              : (tte->type() & BOUND_UPPER)))
     {
         ss->currentMove = ttMove; // Can be MOVE_NONE
         return ttValue;
@@ -1416,20 +1421,6 @@ split_point_start: // At split points actual search starts from here
         return true;
 
     return false;
-  }
-
-
-  // can_return_tt() returns true if a transposition table score can be used to
-  // cut-off at a given point in search.
-
-  bool can_return_tt(const TTEntry* tte, Depth depth, Value v, Value beta) {
-
-    return   (   tte->depth() >= depth
-              || v >= std::max(VALUE_MATE_IN_MAX_PLY, beta)
-              || v < std::min(VALUE_MATED_IN_MAX_PLY, beta))
-
-          && (   ((tte->type() & BOUND_LOWER) && v >= beta)
-              || ((tte->type() & BOUND_UPPER) && v < beta));
   }
 
 
