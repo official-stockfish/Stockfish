@@ -57,7 +57,7 @@ int SquareDistance[64][64];
 namespace {
 
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
-  const uint64_t DeBruijn_64 = 0x218A392CD3D5DBFULL;
+  const uint64_t DeBruijn_64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn_32 = 0x783A9B23;
 
   CACHE_LINE_ALIGNMENT
@@ -75,12 +75,10 @@ namespace {
 
   FORCE_INLINE unsigned bsf_index(Bitboard b) {
 
-    if (Is64Bit)
-        return ((b & -b) * DeBruijn_64) >> 58;
-
-    // Use Matt Taylor's folding trick for 32 bit systems
+    // Matt Taylor's folding for 32 bit systems, extended to 64 bits by Kim Walisch
     b ^= (b - 1);
-    return ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
+    return Is64Bit ? (b * DeBruijn_64) >> 58
+                   : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
   }
 }
 
