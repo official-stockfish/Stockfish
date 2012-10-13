@@ -175,8 +175,9 @@ void Search::think() {
   Position& pos = RootPosition;
   Chess960 = pos.is_chess960();
   Eval::RootColor = pos.side_to_move();
-  Eval::ValueDraw[ Eval::RootColor] = VALUE_DRAW - Eval::ContemptFactor;
-  Eval::ValueDraw[~Eval::RootColor] = VALUE_DRAW + Eval::ContemptFactor;
+  int scaledCF = Eval::ContemptFactor * MaterialTable::game_phase(pos) / PHASE_MIDGAME;
+  Eval::ValueDraw[ Eval::RootColor] = VALUE_DRAW - Value(scaledCF);
+  Eval::ValueDraw[~Eval::RootColor] = VALUE_DRAW + Value(scaledCF);
   TimeMgr.init(Limits, pos.startpos_ply_counter(), pos.side_to_move());
   TT.new_search();
   H.clear();
