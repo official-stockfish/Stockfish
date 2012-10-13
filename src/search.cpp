@@ -91,6 +91,7 @@ namespace {
   int BestMoveChanges;
   int SkillLevel;
   bool SkillLevelEnabled, Chess960;
+  Value DrawValue[2];
   History H;
 
   template <NodeType NT>
@@ -174,9 +175,6 @@ void Search::think() {
   Position& pos = RootPosition;
   Chess960 = pos.is_chess960();
   Eval::RootColor = pos.side_to_move();
-  int scaledCF = Eval::ContemptFactor * MaterialTable::game_phase(pos) / PHASE_MIDGAME;
-  Eval::ValueDraw[ Eval::RootColor] = VALUE_DRAW - Value(scaledCF);
-  Eval::ValueDraw[~Eval::RootColor] = VALUE_DRAW + Value(scaledCF);
   TimeMgr.init(Limits, pos.startpos_ply_counter(), pos.side_to_move());
   TT.new_search();
   H.clear();
@@ -189,6 +187,16 @@ void Search::think() {
       RootMoves.push_back(MOVE_NONE);
       goto finalize;
   }
+
+  if (Options["Contempt Factor"] && !Options["UCI_AnalyseMode"])
+  {
+      int cf = Options["Contempt Factor"] * PawnValueMg / 100;  // In centipawns
+      cf = cf * MaterialTable::game_phase(pos) / PHASE_MIDGAME; // Scale down with phase
+      DrawValue[ Eval::RootColor] = VALUE_DRAW - Value(cf);
+      DrawValue[~Eval::RootColor] = VALUE_DRAW + Value(cf);
+  }
+  else
+      DrawValue[WHITE] = DrawValue[BLACK] = VALUE_DRAW;
 
   if (Options["OwnBook"] && !Limits.infinite)
   {
@@ -516,7 +524,7 @@ namespace {
     {
         // Step 2. Check for aborted search and immediate draw
         if (Signals.stop || pos.is_draw<false>() || ss->ply > MAX_PLY)
-            return Eval::ValueDraw[pos.side_to_move()];
+            return DrawValue[pos.side_to_move()];
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -577,7 +585,8 @@ namespace {
     else
     {
         refinedValue = ss->eval = evaluate(pos, ss->evalMargin);
-        TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
+        TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
+                 ss->eval, ss->evalMargin);
     }
 
     // Update gain for the parent non-capture move given the static position
@@ -1083,7 +1092,7 @@ split_point_start: // At split points actual search starts from here
 
     // Check for an instant draw or maximum ply reached
     if (pos.is_draw<true>() || ss->ply > MAX_PLY)
-        return Eval::ValueDraw[pos.side_to_move()];
+        return DrawValue[pos.side_to_move()];
 
     // Transposition table lookup. At PV nodes, we don't use the TT for
     // pruning, but only for move ordering.
@@ -1095,8 +1104,8 @@ split_point_start: // At split points actual search starts from here
     // Decide whether or not to include checks, this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
-    ttDepth = inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NO_CHECKS;
-
+    ttDepth = inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
+                                                  : DEPTH_QS_NO_CHECKS;
     if (   tte && tte->depth() >= ttDepth
         && (           PvNode ?  tte->type() == BOUND_EXACT
             : ttValue >= beta ? (tte->type() & BOUND_LOWER)
@@ -1129,7 +1138,8 @@ split_point_start: // At split points actual search starts from here
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER, DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
+                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER,
+                         DEPTH_NONE, MOVE_NONE, ss->eval, ss->evalMargin);
 
             return bestValue;
         }
