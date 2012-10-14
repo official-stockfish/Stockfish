@@ -66,7 +66,7 @@ void benchmark(const Position& current, istream& is) {
   vector<string> fens;
 
   // Assign default values to missing arguments
-  string ttSize    = (is >> token) ? token : "128";
+  string ttSize    = (is >> token) ? token : "32";
   string threads   = (is >> token) ? token : "1";
   string limit     = (is >> token) ? token : "12";
   string fenFile   = (is >> token) ? token : "default";
