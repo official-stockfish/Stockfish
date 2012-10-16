@@ -250,7 +250,7 @@ ifeq ($(comp),clang)
 endif
 
 ifeq ($(os),osx)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.6
+	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.0
 endif
 
 ### 3.3 General linker settings
@@ -265,7 +265,7 @@ ifneq ($(comp),mingw)
 endif
 
 ifeq ($(os),osx)
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.6
+	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.0
 endif
 
 ### 3.4 Debugging
