@@ -1023,7 +1023,8 @@ split_point_start: // At split points actual search starts from here
     // If we are in a singular extension search then return a fail low score.
     // A split node has at least one move, the one tried before to be splitted.
     if (!moveCount)
-        return excludedMove ? alpha : inCheck ? mated_in(ss->ply) : VALUE_DRAW;
+        return  excludedMove ? alpha
+              : inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
 
     // If we have pruned all the moves without searching return a fail-low score
     if (bestValue == -VALUE_INFINITE)
