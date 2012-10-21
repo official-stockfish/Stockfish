@@ -267,8 +267,6 @@ namespace {
 
 namespace Eval {
 
-  Color RootColor;
-
   /// evaluate() is the main evaluation function. It always computes two
   /// values, an endgame score and a middle game score, and interpolates
   /// between them based on the remaining material.
@@ -319,7 +317,7 @@ namespace Eval {
     Value margin;
     std::string totals;
 
-    RootColor = pos.side_to_move();
+    Search::RootColor = pos.side_to_move();
 
     TraceStream.str("");
     TraceStream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
@@ -853,8 +851,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
         // value that will be used for pruning because this value can sometimes
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
-        score -= KingDangerTable[Us == Eval::RootColor][attackUnits];
-        margins[Us] += mg_value(KingDangerTable[Us == Eval::RootColor][attackUnits]);
+        score -= KingDangerTable[Us == Search::RootColor][attackUnits];
+        margins[Us] += mg_value(KingDangerTable[Us == Search::RootColor][attackUnits]);
     }
 
     if (Trace)

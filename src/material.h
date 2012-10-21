@@ -27,13 +27,6 @@
 
 const int MaterialTableSize = 8192;
 
-/// Game phase
-enum Phase {
-  PHASE_ENDGAME = 0,
-  PHASE_MIDGAME = 128
-};
-
-
 /// MaterialEntry is a class which contains various information about a
 /// material configuration. It contains a material balance evaluation,
 /// a function pointer to a special endgame evaluation function (which in

@@ -144,6 +144,11 @@ enum CastlingSide {
   QUEEN_SIDE
 };
 
+enum Phase {
+  PHASE_ENDGAME = 0,
+  PHASE_MIDGAME = 128
+};
+
 enum ScaleFactor {
   SCALE_FACTOR_DRAW   = 0,
   SCALE_FACTOR_NORMAL = 64,
