@@ -440,11 +440,11 @@ inline int square_distance(Square s1, Square s2) {
 }
 
 inline char file_to_char(File f) {
-  return char(f - FILE_A + int('a'));
+  return char(f - FILE_A + 'a');
 }
 
 inline char rank_to_char(Rank r) {
-  return char(r - RANK_1 + int('1'));
+  return char(r - RANK_1 + '1');
 }
 
 inline Square pawn_push(Color c) {
