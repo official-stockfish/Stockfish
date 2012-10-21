@@ -41,7 +41,7 @@ static const string PieceToChar(" PNBRQK  pnbrqk");
 CACHE_LINE_ALIGNMENT
 
 Score pieceSquareTable[PIECE_NB][SQUARE_NB];
-Value PieceValue[2][18] = { // [Mg / Eg][piece / pieceType]
+Value PieceValue[PHASE_NB][PIECE_NB] = {
 { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
 { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg } };
 
@@ -86,10 +86,10 @@ void init() {
 
   for (PieceType pt = PAWN; pt <= KING; pt++)
   {
-      PieceValue[Mg][make_piece(BLACK, pt)] = PieceValue[Mg][pt];
-      PieceValue[Eg][make_piece(BLACK, pt)] = PieceValue[Eg][pt];
+      PieceValue[MG][make_piece(BLACK, pt)] = PieceValue[MG][pt];
+      PieceValue[EG][make_piece(BLACK, pt)] = PieceValue[EG][pt];
 
-      Score v = make_score(PieceValue[Mg][pt], PieceValue[Eg][pt]);
+      Score v = make_score(PieceValue[MG][pt], PieceValue[EG][pt]);
 
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
@@ -830,7 +830,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->pawnKey ^= Zobrist::psq[them][PAWN][capsq];
       }
       else
-          st->npMaterial[them] -= PieceValue[Mg][capture];
+          st->npMaterial[them] -= PieceValue[MG][capture];
 
       // Remove the captured piece
       byTypeBB[ALL_PIECES] ^= capsq;
@@ -938,7 +938,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
                          - pieceSquareTable[make_piece(us, PAWN)][to];
 
           // Update material
-          st->npMaterial[us] += PieceValue[Mg][promotion];
+          st->npMaterial[us] += PieceValue[MG][promotion];
       }
 
       // Update pawn hash key
@@ -1243,7 +1243,7 @@ int Position::see_sign(Move m) const {
   // Early return if SEE cannot be negative because captured piece value
   // is not less then capturing one. Note that king moves always return
   // here because king midgame value is set to 0.
-  if (PieceValue[Mg][piece_on(to_sq(m))] >= PieceValue[Mg][piece_moved(m)])
+  if (PieceValue[MG][piece_on(to_sq(m))] >= PieceValue[MG][piece_moved(m)])
       return 1;
 
   return see(m);
@@ -1290,7 +1290,7 @@ int Position::see(Move m) const {
   stm = ~color_of(piece_on(from));
   stmAttackers = attackers & pieces(stm);
   if (!stmAttackers)
-      return PieceValue[Mg][captured];
+      return PieceValue[MG][captured];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1298,14 +1298,14 @@ int Position::see(Move m) const {
   // destination square, where the sides alternately capture, and always
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
-  swapList[0] = PieceValue[Mg][captured];
+  swapList[0] = PieceValue[MG][captured];
   captured = type_of(piece_on(from));
 
   do {
       assert(slIndex < 32);
 
       // Add the new entry to the swap list
-      swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[Mg][captured];
+      swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
       slIndex++;
 
       // Locate and remove from 'occupied' the next least valuable attacker
@@ -1463,7 +1463,7 @@ Value Position::compute_non_pawn_material(Color c) const {
   Value value = VALUE_ZERO;
 
   for (PieceType pt = KNIGHT; pt <= QUEEN; pt++)
-      value += piece_count(c, pt) * PieceValue[Mg][pt];
+      value += piece_count(c, pt) * PieceValue[MG][pt];
 
   return value;
 }

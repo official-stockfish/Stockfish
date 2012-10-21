@@ -802,7 +802,7 @@ split_point_start: // At split points actual search starts from here
                      && type_of(pos.piece_on(to_sq(move))) != PAWN
                      && type_of(move) == NORMAL
                      && (  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK)
-                         - PieceValue[Mg][pos.piece_on(to_sq(move))] == VALUE_ZERO));
+                         - PieceValue[MG][pos.piece_on(to_sq(move))] == VALUE_ZERO));
 
       // Step 12. Extend checks and, in PV nodes, also dangerous moves
       if (PvNode && dangerous)
@@ -1184,7 +1184,7 @@ split_point_start: // At split points actual search starts from here
           && !pos.is_passed_pawn_push(move))
       {
           futilityValue =  futilityBase
-                         + PieceValue[Eg][pos.piece_on(to_sq(move))]
+                         + PieceValue[EG][pos.piece_on(to_sq(move))]
                          + (type_of(move) == ENPASSANT ? PawnValueEg : VALUE_ZERO);
 
           if (futilityValue < beta)
@@ -1315,7 +1315,7 @@ split_point_start: // At split points actual search starts from here
     while (b)
     {
         // Note that here we generate illegal "double move"!
-        if (futilityBase + PieceValue[Eg][pos.piece_on(pop_lsb(&b))] >= beta)
+        if (futilityBase + PieceValue[EG][pos.piece_on(pop_lsb(&b))] >= beta)
             return true;
     }
 
@@ -1420,7 +1420,7 @@ split_point_start: // At split points actual search starts from here
     // Case 2: If the threatened piece has value less than or equal to the
     // value of the threatening piece, don't prune moves which defend it.
     if (   pos.is_capture(threat)
-        && (   PieceValue[Mg][pos.piece_on(tfrom)] >= PieceValue[Mg][pos.piece_on(tto)]
+        && (   PieceValue[MG][pos.piece_on(tfrom)] >= PieceValue[MG][pos.piece_on(tto)]
             || type_of(pos.piece_on(tfrom)) == KING)
         && pos.move_attacks_square(m, tto))
         return true;
