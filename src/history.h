@@ -44,8 +44,8 @@ public:
   static const Value MaxValue = Value(2000);
 
 private:
-  Value history[16][64];  // [piece][to_square]
-  Value maxGains[16][64]; // [piece][to_square]
+  Value history[PIECE_NB][SQUARE_NB];
+  Value maxGains[PIECE_NB][SQUARE_NB];
 };
 
 inline void History::clear() {

@@ -56,14 +56,14 @@ private:
   Value shelter_storm(const Position& pos, Square ksq);
 
   Key key;
-  Bitboard passedPawns[2];
-  Bitboard pawnAttacks[2];
-  Square kingSquares[2];
-  int minKPdistance[2];
-  int castleRights[2];
+  Bitboard passedPawns[COLOR_NB];
+  Bitboard pawnAttacks[COLOR_NB];
+  Square kingSquares[COLOR_NB];
+  int minKPdistance[COLOR_NB];
+  int castleRights[COLOR_NB];
   Score value;
-  int halfOpenFiles[2];
-  Score kingSafety[2];
+  int halfOpenFiles[COLOR_NB];
+  Score kingSafety[COLOR_NB];
 };
 
 

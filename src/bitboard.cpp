@@ -28,31 +28,31 @@
 
 CACHE_LINE_ALIGNMENT
 
-Bitboard RMasks[64];
-Bitboard RMagics[64];
-Bitboard* RAttacks[64];
-unsigned RShifts[64];
+Bitboard RMasks[SQUARE_NB];
+Bitboard RMagics[SQUARE_NB];
+Bitboard* RAttacks[SQUARE_NB];
+unsigned RShifts[SQUARE_NB];
 
-Bitboard BMasks[64];
-Bitboard BMagics[64];
-Bitboard* BAttacks[64];
-unsigned BShifts[64];
+Bitboard BMasks[SQUARE_NB];
+Bitboard BMagics[SQUARE_NB];
+Bitboard* BAttacks[SQUARE_NB];
+unsigned BShifts[SQUARE_NB];
 
-Bitboard SquareBB[64];
-Bitboard FileBB[8];
-Bitboard RankBB[8];
-Bitboard AdjacentFilesBB[8];
-Bitboard ThisAndAdjacentFilesBB[8];
-Bitboard InFrontBB[2][8];
-Bitboard StepAttacksBB[16][64];
-Bitboard BetweenBB[64][64];
-Bitboard DistanceRingsBB[64][8];
-Bitboard ForwardBB[2][64];
-Bitboard PassedPawnMask[2][64];
-Bitboard AttackSpanMask[2][64];
-Bitboard PseudoAttacks[6][64];
+Bitboard SquareBB[SQUARE_NB];
+Bitboard FileBB[FILE_NB];
+Bitboard RankBB[RANK_NB];
+Bitboard AdjacentFilesBB[FILE_NB];
+Bitboard ThisAndAdjacentFilesBB[FILE_NB];
+Bitboard InFrontBB[COLOR_NB][RANK_NB];
+Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
+Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+Bitboard DistanceRingsBB[SQUARE_NB][8];
+Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
+Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
+Bitboard AttackSpanMask[COLOR_NB][SQUARE_NB];
+Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
-int SquareDistance[64][64];
+int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 namespace {
 
@@ -63,7 +63,7 @@ namespace {
   CACHE_LINE_ALIGNMENT
 
   int MS1BTable[256];
-  Square BSFTable[64];
+  Square BSFTable[SQUARE_NB];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
 

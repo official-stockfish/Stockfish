@@ -82,7 +82,7 @@ struct LimitsType {
   LimitsType() { memset(this, 0, sizeof(LimitsType)); }
   bool use_time_management() const { return !(movetime | depth | nodes | infinite); }
 
-  int time[2], inc[2], movestogo, depth, nodes, movetime, infinite, ponder;
+  int time[COLOR_NB], inc[COLOR_NB], movestogo, depth, nodes, movetime, infinite, ponder;
 };
 
 

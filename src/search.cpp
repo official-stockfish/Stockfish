@@ -92,7 +92,7 @@ namespace {
   int BestMoveChanges;
   int SkillLevel;
   bool SkillLevelEnabled, Chess960;
-  Value DrawValue[2];
+  Value DrawValue[COLOR_NB];
   History H;
 
   template <NodeType NT>

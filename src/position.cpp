@@ -40,16 +40,16 @@ static const string PieceToChar(" PNBRQK  pnbrqk");
 
 CACHE_LINE_ALIGNMENT
 
-Score pieceSquareTable[16][64]; // [piece][square]
-Value PieceValue[2][18] = {     // [Mg / Eg][piece / pieceType]
+Score pieceSquareTable[PIECE_NB][SQUARE_NB];
+Value PieceValue[2][18] = { // [Mg / Eg][piece / pieceType]
 { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
 { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg } };
 
 namespace Zobrist {
 
-Key psq[2][8][64]; // [color][pieceType][square / piece count]
-Key enpassant[8];  // [file]
-Key castle[16];    // [castleRight]
+Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+Key enpassant[FILE_NB];
+Key castle[CASTLE_RIGHT_NB];
 Key side;
 Key exclusion;
 
@@ -1593,7 +1593,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   if ((*step)++, debugKingCount)
   {
-      int kingCount[2] = {};
+      int kingCount[COLOR_NB] = {};
 
       for (Square s = SQ_A1; s <= SQ_H8; s++)
           if (type_of(piece_on(s)) == KING)

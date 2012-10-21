@@ -40,11 +40,11 @@ namespace {
 
   const int LinearCoefficients[6] = { 1617, -162, -1172, -190, 105, 26 };
 
-  const int QuadraticCoefficientsSameColor[][8] = {
+  const int QuadraticCoefficientsSameColor[][PIECE_TYPE_NB] = {
   { 7, 7, 7, 7, 7, 7 }, { 39, 2, 7, 7, 7, 7 }, { 35, 271, -4, 7, 7, 7 },
   { 7, 25, 4, 7, 7, 7 }, { -27, -2, 46, 100, 56, 7 }, { 58, 29, 83, 148, -3, -25 } };
 
-  const int QuadraticCoefficientsOppositeColor[][8] = {
+  const int QuadraticCoefficientsOppositeColor[][PIECE_TYPE_NB] = {
   { 41, 41, 41, 41, 41, 41 }, { 37, 41, 41, 41, 41, 41 }, { 10, 62, 41, 41, 41, 41 },
   { 57, 64, 39, 41, 41, 41 }, { 50, 40, 23, -22, 41, 41 }, { 106, 101, 3, 151, 171, 41 } };
 
@@ -215,7 +215,7 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
   // for the bishop pair "extended piece", this allow us to be more flexible
   // in defining bishop pair bonuses.
-  const int pieceCount[2][8] = {
+  const int pieceCount[COLOR_NB][PIECE_TYPE_NB] = {
   { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(WHITE, PAWN), pos.piece_count(WHITE, KNIGHT),
     pos.piece_count(WHITE, BISHOP)    , pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
   { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
@@ -230,7 +230,7 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
 /// piece type for both colors.
 
 template<Color Us>
-int MaterialTable::imbalance(const int pieceCount[][8]) {
+int MaterialTable::imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
