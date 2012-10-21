@@ -400,10 +400,8 @@ void Position::print(Move move) const {
   sync_cout;
 
   if (move)
-  {
-      Position p(*this);
-      cout << "\nMove is: " << (sideToMove == BLACK ? ".." : "") << move_to_san(p, move);
-  }
+      cout << "\nMove is: " << (sideToMove == BLACK ? ".." : "")
+           << move_to_san(*const_cast<Position*>(this), move);
 
   for (Square sq = SQ_A1; sq <= SQ_H8; sq++)
       if (piece_on(sq) != NO_PIECE)
