@@ -79,12 +79,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
       killers[1].move = ss->killers[1];
 
       // Consider sligtly negative captures as good if at low depth and far from beta
-      if (ss && ss->eval < beta - PawnValueMg && d < 3 * ONE_PLY)
+      if (ss && ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)
           captureThreshold = -PawnValueMg;
 
       // Consider negative captures as good if still enough to reach beta
-      else if (ss && ss->eval > beta)
-          captureThreshold = beta - ss->eval;
+      else if (ss && ss->staticEval > beta)
+          captureThreshold = beta - ss->staticEval;
   }
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
