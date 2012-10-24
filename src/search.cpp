@@ -87,10 +87,9 @@ namespace {
     return (Depth) Reductions[PvNode][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
-  size_t MultiPV, UCIMultiPV, PVIdx;
+  size_t PVSize, PVIdx;
   TimeManager TimeMgr;
   int BestMoveChanges;
-  bool Chess960;
   Value DrawValue[COLOR_NB];
   History H;
 
@@ -187,7 +186,6 @@ void Search::think() {
   static PolyglotBook book; // Defined static to initialize the PRNG only once
 
   Position& pos = RootPosition;
-  Chess960 = pos.is_chess960();
   RootColor = pos.side_to_move();
   TimeMgr.init(Limits, pos.startpos_ply_counter(), pos.side_to_move());
   TT.new_search();
@@ -276,8 +274,8 @@ finalize:
       pos.this_thread()->wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
-  sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], Chess960)
-            << " ponder "  << move_to_uci(RootMoves[0].pv[1], Chess960) << sync_endl;
+  sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], pos.is_chess960())
+            << " ponder "  << move_to_uci(RootMoves[0].pv[1], pos.is_chess960()) << sync_endl;
 }
 
 
@@ -299,12 +297,15 @@ namespace {
     bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
-    UCIMultiPV = Options["MultiPV"];
+    PVSize = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
 
-    // Do we have to play with skill handicap? In this case enable MultiPV that
-    // we will use behind the scenes to retrieve a set of possible moves.
-    MultiPV = skill.enabled() ? std::max(UCIMultiPV, (size_t)4) : UCIMultiPV;
+    // Do we have to play with skill handicap? In this case enable MultiPV search
+    // that we will use behind the scenes to retrieve a set of possible moves.
+    if (skill.enabled() && PVSize < 4)
+        PVSize = 4;
+
+    PVSize = std::min(PVSize, RootMoves.size());
 
     // Iterative deepening loop until requested to stop or target depth reached
     while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
@@ -314,11 +315,11 @@ namespace {
         for (size_t i = 0; i < RootMoves.size(); i++)
             RootMoves[i].prevScore = RootMoves[i].score;
 
-        prevBestMoveChanges = BestMoveChanges;
+        prevBestMoveChanges = BestMoveChanges; // Only sensible when PVSize == 1
         BestMoveChanges = 0;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (PVIdx = 0; PVIdx < std::min(MultiPV, RootMoves.size()); PVIdx++)
+        for (PVIdx = 0; PVIdx < PVSize; PVIdx++)
         {
             // Set aspiration window default width
             if (depth >= 5 && abs(RootMoves[PVIdx].prevScore) < VALUE_KNOWN_WIN)
@@ -417,7 +418,7 @@ namespace {
             bool stop = false; // Local variable, not the volatile Signals.stop
 
             // Take in account some extra time if the best move has changed
-            if (depth > 4 && depth < 50)
+            if (depth > 4 && depth < 50 &&  PVSize == 1)
                 TimeMgr.pv_instability(BestMoveChanges, prevBestMoveChanges);
 
             // Stop search if most of available time is already consumed. We
@@ -429,6 +430,7 @@ namespace {
             // Stop search early if one move seems to be much better than others
             if (    depth >= 12
                 && !stop
+                &&  PVSize == 1
                 && (   (bestMoveNeverChanged &&  pos.captured_piece_type())
                     || Time::now() - SearchTime > (TimeMgr.available_time() * 40) / 100))
             {
@@ -790,7 +792,7 @@ split_point_start: // At split points actual search starts from here
 
           if (thisThread == Threads.main_thread() && Time::now() - SearchTime > 2000)
               sync_cout << "info depth " << depth / ONE_PLY
-                        << " currmove " << move_to_uci(move, Chess960)
+                        << " currmove " << move_to_uci(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
@@ -970,7 +972,7 @@ split_point_start: // At split points actual search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (!pvMove && MultiPV == 1)
+              if (!pvMove)
                   BestMoveChanges++;
           }
           else
@@ -1443,8 +1445,6 @@ split_point_start: // At split points actual search starts from here
 
   Move Skill::pick_move() {
 
-    assert(MultiPV > 1);
-
     static RKISS rk;
 
     // PRNG sequence should be not deterministic
@@ -1452,8 +1452,7 @@ split_point_start: // At split points actual search starts from here
         rk.rand<unsigned>();
 
     // RootMoves are already sorted by score in descending order
-    size_t size = std::min(MultiPV, RootMoves.size());
-    int variance = std::min(RootMoves[0].score - RootMoves[size - 1].score, PawnValueMg);
+    int variance = std::min(RootMoves[0].score - RootMoves[PVSize - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
     int max_s = -VALUE_INFINITE;
     best = MOVE_NONE;
@@ -1461,7 +1460,7 @@ split_point_start: // At split points actual search starts from here
     // Choose best move. For each move score we add two terms both dependent on
     // weakness, one deterministic and bigger for weaker moves, and one random,
     // then we choose the move with the resulting highest score.
-    for (size_t i = 0; i < size; i++)
+    for (size_t i = 0; i < PVSize; i++)
     {
         int s = RootMoves[i].score;
 
@@ -1497,7 +1496,7 @@ split_point_start: // At split points actual search starts from here
         if (Threads[i].maxPly > selDepth)
             selDepth = Threads[i].maxPly;
 
-    for (size_t i = 0; i < std::min(UCIMultiPV, RootMoves.size()); i++)
+    for (size_t i = 0; i < std::min((size_t)Options["MultiPV"], RootMoves.size()); i++)
     {
         bool updated = (i <= PVIdx);
 
@@ -1520,7 +1519,7 @@ split_point_start: // At split points actual search starts from here
           << " pv";
 
         for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; j++)
-            s <<  " " << move_to_uci(RootMoves[i].pv[j], Chess960);
+            s <<  " " << move_to_uci(RootMoves[i].pv[j], pos.is_chess960());
     }
 
     return s.str();
