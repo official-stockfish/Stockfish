@@ -91,6 +91,7 @@ namespace {
   TimeManager TimeMgr;
   int BestMoveChanges;
   int SkillLevel;
+  Move skillBest;
   bool SkillLevelEnabled, Chess960;
   Value DrawValue[COLOR_NB];
   History H;
@@ -215,6 +216,7 @@ void Search::think() {
   // Do we have to play with skill handicap? In this case enable MultiPV that
   // we will use behind the scenes to retrieve a set of possible moves.
   SkillLevelEnabled = (SkillLevel < 20);
+  skillBest = MOVE_NONE;
   MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, (size_t)4) : UCIMultiPV);
 
   if (Options["Use Search Log"])
@@ -245,6 +247,15 @@ void Search::think() {
 
   Threads.set_timer(0); // Stop timer
   Threads.sleep();
+
+  // When using skills swap best PV line with the sub-optimal one
+  if (SkillLevelEnabled)
+  {
+      if (skillBest == MOVE_NONE) // Still unassigned ?
+          skillBest = do_skill_level();
+
+      std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), skillBest));
+  }
 
   if (Options["Use Search Log"])
   {
@@ -287,7 +298,6 @@ namespace {
     int depth, prevBestMoveChanges;
     Value bestValue, alpha, beta, delta;
     bool bestMoveNeverChanged = true;
-    Move skillBest = MOVE_NONE;
 
     memset(ss, 0, 4 * sizeof(Stack));
     depth = BestMoveChanges = 0;
@@ -295,7 +305,7 @@ namespace {
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
 
     // Iterative deepening loop until requested to stop or target depth reached
-    while (!Signals.stop && ++depth <= MAX_PLY && (!Limits.depth || depth <= Limits.depth))
+    while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
     {
         // Save last iteration's scores before first PV line is searched and all
         // the move scores but the (new) PV are set to -VALUE_INFINITE.
@@ -337,52 +347,47 @@ namespace {
                 // the already searched PV lines are preserved.
                 sort<RootMove>(RootMoves.begin() + PVIdx, RootMoves.end());
 
-                // In case we have found an exact score and we are going to leave
-                // the fail high/low loop then reorder the PV moves, otherwise
-                // leave the last PV move in its position so to be searched again.
-                // Of course this is needed only in MultiPV search.
-                if (PVIdx && bestValue > alpha && bestValue < beta)
-                    sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx);
-
                 // Write PV back to transposition table in case the relevant
                 // entries have been overwritten during the search.
                 for (size_t i = 0; i <= PVIdx; i++)
                     RootMoves[i].insert_pv_in_tt(pos);
 
-                // If search has been stopped exit the aspiration window loop.
-                // Sorting and writing PV back to TT is safe becuase RootMoves
-                // is still valid, although refers to previous iteration.
+                // If search has been stopped return immediately. Sorting and
+                // writing PV back to TT is safe becuase RootMoves is still
+                // valid, although refers to previous iteration.
                 if (Signals.stop)
-                    break;
-
-                // Send full PV info to GUI if we are going to leave the loop or
-                // if we have a fail high/low and we are deep in the search.
-                if ((bestValue > alpha && bestValue < beta) || Time::now() - SearchTime > 2000)
-                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+                    return;
 
                 // In case of failing high/low increase aspiration window and
-                // research, otherwise exit the fail high/low loop.
-                if (bestValue >= beta)
+                // research, otherwise sort multi-PV lines and exit the loop.
+                if (bestValue > alpha && bestValue < beta)
+                {
+                    sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx);
+                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+                    break;
+                }
+
+                // Give some update (without cluttering the UI) before to research
+                if (Time::now() - SearchTime > 3000)
+                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+
+                if (abs(bestValue) >= VALUE_KNOWN_WIN)
+                {
+                    alpha = -VALUE_INFINITE;
+                    beta  =  VALUE_INFINITE;
+                }
+                else if (bestValue >= beta)
                 {
                     beta += delta;
                     delta += delta / 2;
                 }
-                else if (bestValue <= alpha)
+                else
                 {
                     Signals.failedLowAtRoot = true;
                     Signals.stopOnPonderhit = false;
 
                     alpha -= delta;
                     delta += delta / 2;
-                }
-                else
-                    break;
-
-                // Search with full window in case we have a win/mate score
-                if (abs(bestValue) >= VALUE_KNOWN_WIN)
-                {
-                    alpha = -VALUE_INFINITE;
-                    beta  =  VALUE_INFINITE;
                 }
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
@@ -393,7 +398,7 @@ namespace {
         if (SkillLevelEnabled && depth == 1 + SkillLevel)
             skillBest = do_skill_level();
 
-        if (!Signals.stop && Options["Use Search Log"])
+        if (Options["Use Search Log"])
         {
             Log log(Options["Search Log Filename"]);
             log << pretty_pv(pos, depth, bestValue, Time::now() - SearchTime, &RootMoves[0].pv[0])
@@ -405,7 +410,7 @@ namespace {
             bestMoveNeverChanged = false;
 
         // Do we have time for the next iteration? Can we stop searching now?
-        if (!Signals.stop && !Signals.stopOnPonderhit && Limits.use_time_management())
+        if (Limits.use_time_management() && !Signals.stopOnPonderhit)
         {
             bool stop = false; // Local variable, not the volatile Signals.stop
 
@@ -446,15 +451,6 @@ namespace {
                     Signals.stop = true;
             }
         }
-    }
-
-    // When using skills swap best PV line with the sub-optimal one
-    if (SkillLevelEnabled)
-    {
-        if (skillBest == MOVE_NONE) // Still unassigned ?
-            skillBest = do_skill_level();
-
-        std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), skillBest));
     }
   }
 
@@ -821,8 +817,8 @@ split_point_start: // At split points actual search starts from here
       // on all the other moves but the ttMove, if result is lower than ttValue minus
       // a margin then we extend ttMove.
       if (    singularExtensionNode
-          && !ext
           &&  move == ttMove
+          && !ext
           &&  pos.pl_move_is_legal(move, ci.pinned)
           &&  abs(ttValue) < VALUE_KNOWN_WIN)
       {
