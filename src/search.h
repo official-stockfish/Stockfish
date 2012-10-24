@@ -98,7 +98,7 @@ typedef std::auto_ptr<std::stack<StateInfo> > StateStackPtr;
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
 extern std::vector<RootMove> RootMoves;
-extern Position RootPosition;
+extern Position RootPos;
 extern Color RootColor;
 extern Time::point SearchTime;
 extern StateStackPtr SetupStates;

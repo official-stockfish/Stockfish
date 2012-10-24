@@ -129,7 +129,7 @@ void benchmark(const Position& current, istream& is) {
       {
           Threads.start_searching(pos, limits, vector<Move>(), st);
           Threads.wait_for_search_finished();
-          nodes += Search::RootPosition.nodes_searched();
+          nodes += Search::RootPos.nodes_searched();
       }
   }
 

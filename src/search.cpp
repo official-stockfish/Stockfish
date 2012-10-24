@@ -41,7 +41,7 @@ namespace Search {
   volatile SignalsType Signals;
   LimitsType Limits;
   std::vector<RootMove> RootMoves;
-  Position RootPosition;
+  Position RootPos;
   Color RootColor;
   Time::point SearchTime;
   StateStackPtr SetupStates;
@@ -179,40 +179,28 @@ size_t Search::perft(Position& pos, Depth depth) {
 
 /// Search::think() is the external interface to Stockfish's search, and is
 /// called by the main thread when the program receives the UCI 'go' command. It
-/// searches from RootPosition and at the end prints the "bestmove" to output.
+/// searches from RootPos and at the end prints the "bestmove" to output.
 
 void Search::think() {
 
   static PolyglotBook book; // Defined static to initialize the PRNG only once
 
-  Position& pos = RootPosition;
-  RootColor = pos.side_to_move();
-  TimeMgr.init(Limits, pos.startpos_ply_counter(), pos.side_to_move());
-  TT.new_search();
-  H.clear();
+  RootColor = RootPos.side_to_move();
+  TimeMgr.init(Limits, RootPos.startpos_ply_counter(), RootColor);
 
   if (RootMoves.empty())
   {
-      sync_cout << "info depth 0 score "
-                << score_to_uci(pos.in_check() ? -VALUE_MATE : VALUE_DRAW) << sync_endl;
-
       RootMoves.push_back(MOVE_NONE);
+      sync_cout << "info depth 0 score "
+                << score_to_uci(RootPos.in_check() ? -VALUE_MATE : VALUE_DRAW)
+                << sync_endl;
+
       goto finalize;
   }
 
-  if (Options["Contempt Factor"] && !Options["UCI_AnalyseMode"])
-  {
-      int cf = Options["Contempt Factor"] * PawnValueMg / 100;  // In centipawns
-      cf = cf * MaterialTable::game_phase(pos) / PHASE_MIDGAME; // Scale down with phase
-      DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
-      DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
-  }
-  else
-      DrawValue[WHITE] = DrawValue[BLACK] = VALUE_DRAW;
-
   if (Options["OwnBook"] && !Limits.infinite)
   {
-      Move bookMove = book.probe(pos, Options["Book File"], Options["Best Book Move"]);
+      Move bookMove = book.probe(RootPos, Options["Book File"], Options["Best Book Move"]);
 
       if (bookMove && std::count(RootMoves.begin(), RootMoves.end(), bookMove))
       {
@@ -221,14 +209,24 @@ void Search::think() {
       }
   }
 
+  if (Options["Contempt Factor"] && !Options["UCI_AnalyseMode"])
+  {
+      int cf = Options["Contempt Factor"] * PawnValueMg / 100; // From centipawns
+      cf = cf * MaterialTable::game_phase(RootPos) / PHASE_MIDGAME; // Scale down with phase
+      DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
+      DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
+  }
+  else
+      DrawValue[WHITE] = DrawValue[BLACK] = VALUE_DRAW;
+
   if (Options["Use Search Log"])
   {
       Log log(Options["Search Log Filename"]);
-      log << "\nSearching: "  << pos.to_fen()
+      log << "\nSearching: "  << RootPos.to_fen()
           << "\ninfinite: "   << Limits.infinite
           << " ponder: "      << Limits.ponder
-          << " time: "        << Limits.time[pos.side_to_move()]
-          << " increment: "   << Limits.inc[pos.side_to_move()]
+          << " time: "        << Limits.time[RootColor]
+          << " increment: "   << Limits.inc[RootColor]
           << " moves to go: " << Limits.movestogo
           << std::endl;
   }
@@ -238,14 +236,14 @@ void Search::think() {
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
   if (Limits.use_time_management())
-      Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 16, TimerResolution)));
+      Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 16,
+                                               TimerResolution)));
   else if (Limits.nodes)
       Threads.set_timer(2 * TimerResolution);
   else
       Threads.set_timer(100);
 
-  // We're ready to start searching. Call the iterative deepening loop function
-  id_loop(pos);
+  id_loop(RootPos); // Let's start searching !
 
   Threads.set_timer(0); // Stop timer
   Threads.sleep();
@@ -255,14 +253,14 @@ void Search::think() {
       Time::point elapsed = Time::now() - SearchTime + 1;
 
       Log log(Options["Search Log Filename"]);
-      log << "Nodes: "          << pos.nodes_searched()
-          << "\nNodes/second: " << pos.nodes_searched() * 1000 / elapsed
-          << "\nBest move: "    << move_to_san(pos, RootMoves[0].pv[0]);
+      log << "Nodes: "          << RootPos.nodes_searched()
+          << "\nNodes/second: " << RootPos.nodes_searched() * 1000 / elapsed
+          << "\nBest move: "    << move_to_san(RootPos, RootMoves[0].pv[0]);
 
       StateInfo st;
-      pos.do_move(RootMoves[0].pv[0], st);
-      log << "\nPonder move: " << move_to_san(pos, RootMoves[0].pv[1]) << std::endl;
-      pos.undo_move(RootMoves[0].pv[0]);
+      RootPos.do_move(RootMoves[0].pv[0], st);
+      log << "\nPonder move: " << move_to_san(RootPos, RootMoves[0].pv[1]) << std::endl;
+      RootPos.undo_move(RootMoves[0].pv[0]);
   }
 
 finalize:
@@ -271,11 +269,12 @@ finalize:
   // but if we are pondering or in infinite search, we shouldn't print the best
   // move before we are told to do so.
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
-      pos.this_thread()->wait_for_stop_or_ponderhit();
+      RootPos.this_thread()->wait_for_stop_or_ponderhit();
 
   // Best move could be MOVE_NONE when searching on a stalemate position
-  sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], pos.is_chess960())
-            << " ponder "  << move_to_uci(RootMoves[0].pv[1], pos.is_chess960()) << sync_endl;
+  sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], RootPos.is_chess960())
+            << " ponder "  << move_to_uci(RootMoves[0].pv[1], RootPos.is_chess960())
+            << sync_endl;
 }
 
 
@@ -296,6 +295,8 @@ namespace {
     depth = BestMoveChanges = 0;
     bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
+    TT.new_search();
+    H.clear();
 
     PVSize = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
@@ -1723,7 +1724,7 @@ void check_time() {
   {
       Threads.mutex.lock();
 
-      nodes = RootPosition.nodes_searched();
+      nodes = RootPos.nodes_searched();
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active slaves positions.
