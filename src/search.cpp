@@ -958,7 +958,7 @@ split_point_start: // At split points actual search starts from here
       // ran out of time. In this case, the return value of the search cannot
       // be trusted, and we don't update the best move and/or PV.
       if (Signals.stop || thisThread->cutoff_occurred())
-          return bestValue;
+          return value; // To avoid returning VALUE_INFINITE
 
       if (RootNode)
       {
