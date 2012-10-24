@@ -90,9 +90,7 @@ namespace {
   size_t MultiPV, UCIMultiPV, PVIdx;
   TimeManager TimeMgr;
   int BestMoveChanges;
-  int SkillLevel;
-  Move skillBest;
-  bool SkillLevelEnabled, Chess960;
+  bool Chess960;
   Value DrawValue[COLOR_NB];
   History H;
 
@@ -108,8 +106,23 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
-  Move do_skill_level();
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
+
+  struct Skill {
+    Skill(int l) : level(l), best(MOVE_NONE) {}
+   ~Skill() {
+      if (enabled()) // Swap best PV line with the sub-optimal one
+          std::swap(RootMoves[0], *std::find(RootMoves.begin(),
+                    RootMoves.end(), best ? best : pick_move()));
+    }
+
+    bool enabled() const { return level < 20; }
+    bool time_to_pick(int depth) const { return depth == 1 + level; }
+    Move pick_move();
+
+    int level;
+    Move best;
+  };
 
 } // namespace
 
@@ -210,15 +223,6 @@ void Search::think() {
       }
   }
 
-  UCIMultiPV = Options["MultiPV"];
-  SkillLevel = Options["Skill Level"];
-
-  // Do we have to play with skill handicap? In this case enable MultiPV that
-  // we will use behind the scenes to retrieve a set of possible moves.
-  SkillLevelEnabled = (SkillLevel < 20);
-  skillBest = MOVE_NONE;
-  MultiPV = (SkillLevelEnabled ? std::max(UCIMultiPV, (size_t)4) : UCIMultiPV);
-
   if (Options["Use Search Log"])
   {
       Log log(Options["Search Log Filename"]);
@@ -247,15 +251,6 @@ void Search::think() {
 
   Threads.set_timer(0); // Stop timer
   Threads.sleep();
-
-  // When using skills swap best PV line with the sub-optimal one
-  if (SkillLevelEnabled)
-  {
-      if (skillBest == MOVE_NONE) // Still unassigned ?
-          skillBest = do_skill_level();
-
-      std::swap(RootMoves[0], *std::find(RootMoves.begin(), RootMoves.end(), skillBest));
-  }
 
   if (Options["Use Search Log"])
   {
@@ -303,6 +298,13 @@ namespace {
     depth = BestMoveChanges = 0;
     bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
+
+    UCIMultiPV = Options["MultiPV"];
+    Skill skill(Options["Skill Level"]);
+
+    // Do we have to play with skill handicap? In this case enable MultiPV that
+    // we will use behind the scenes to retrieve a set of possible moves.
+    MultiPV = skill.enabled() ? std::max(UCIMultiPV, (size_t)4) : UCIMultiPV;
 
     // Iterative deepening loop until requested to stop or target depth reached
     while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
@@ -359,13 +361,9 @@ namespace {
                     return;
 
                 // In case of failing high/low increase aspiration window and
-                // research, otherwise sort multi-PV lines and exit the loop.
+                // research, otherwise exit the loop.
                 if (bestValue > alpha && bestValue < beta)
-                {
-                    sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx);
-                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
                     break;
-                }
 
                 // Give some update (without cluttering the UI) before to research
                 if (Time::now() - SearchTime > 3000)
@@ -392,11 +390,15 @@ namespace {
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
+
+            // Sort the PV lines searched so far and update the GUI
+            sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx);
+            sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
-        // Skills: Do we need to pick now the best move ?
-        if (SkillLevelEnabled && depth == 1 + SkillLevel)
-            skillBest = do_skill_level();
+        // Do we need to pick now the sub-optimal best move ?
+        if (skill.enabled() && skill.time_to_pick(depth))
+            skill.pick_move();
 
         if (Options["Use Search Log"])
         {
@@ -1437,9 +1439,9 @@ split_point_start: // At split points actual search starts from here
 
 
   // When playing with strength handicap choose best move among the MultiPV set
-  // using a statistical rule dependent on SkillLevel. Idea by Heinz van Saanen.
+  // using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
 
-  Move do_skill_level() {
+  Move Skill::pick_move() {
 
     assert(MultiPV > 1);
 
@@ -1452,9 +1454,9 @@ split_point_start: // At split points actual search starts from here
     // RootMoves are already sorted by score in descending order
     size_t size = std::min(MultiPV, RootMoves.size());
     int variance = std::min(RootMoves[0].score - RootMoves[size - 1].score, PawnValueMg);
-    int weakness = 120 - 2 * SkillLevel;
+    int weakness = 120 - 2 * level;
     int max_s = -VALUE_INFINITE;
-    Move best = MOVE_NONE;
+    best = MOVE_NONE;
 
     // Choose best move. For each move score we add two terms both dependent on
     // weakness, one deterministic and bigger for weaker moves, and one random,
