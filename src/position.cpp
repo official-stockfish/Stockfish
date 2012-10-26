@@ -1467,39 +1467,31 @@ Value Position::compute_non_pawn_material(Color c) const {
 /// Position::is_draw() tests whether the position is drawn by material,
 /// repetition, or the 50 moves rule. It does not detect stalemates, this
 /// must be done by the search.
-template<bool SkipRepetition, bool SkipThreeFoldCheck>
+template<bool CheckRepetition, bool CheckThreeFold>
 bool Position::is_draw() const {
 
-  // Draw by material?
   if (   !pieces(PAWN)
       && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMg))
       return true;
 
-  // Draw by the 50 moves rule?
   if (st->rule50 > 99 && (!in_check() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  // Draw by repetition?
-  if (!SkipRepetition)
+  if (CheckRepetition)
   {
-      int i = 4, e = std::min(st->rule50, st->pliesFromNull), rep_count=0;
+      int i = 4, e = std::min(st->rule50, st->pliesFromNull);
 
       if (i <= e)
       {
           StateInfo* stp = st->previous->previous;
 
-          do {
+          for (int cnt = 0; i <= e; i += 2)
+          {
               stp = stp->previous->previous;
 
-              if (stp->key == st->key)
-              {
-                if(SkipThreeFoldCheck) return true;
-                else if(++rep_count>=2) return true;
-              }
-
-              i +=2;
-
-          } while (i <= e);
+              if (stp->key == st->key && (!CheckThreeFold || ++cnt >= 2))
+                  return true;
+          }
       }
   }
 
@@ -1507,8 +1499,8 @@ bool Position::is_draw() const {
 }
 
 // Explicit template instantiations
-template bool Position::is_draw<false,true>() const;
-template bool Position::is_draw<true,true>() const;
+template bool Position::is_draw<true,  true>() const;
+template bool Position::is_draw<true, false>() const;
 template bool Position::is_draw<false,false>() const;
 
 
