@@ -553,13 +553,13 @@ namespace {
     // smooth experience in analysis mode. We don't probe at Root nodes otherwise
     // we should also update RootMoveList to avoid bogus output.
     if (   !RootNode
-        && tte && tte->depth() >= depth
+        && tte
+        && tte->depth() >= depth
+        && ttValue != VALUE_NONE // Only in case of TT access race
         && (           PvNode ?  tte->type() == BOUND_EXACT
             : ttValue >= beta ? (tte->type() & BOUND_LOWER)
                               : (tte->type() & BOUND_UPPER)))
     {
-        assert(ttValue != VALUE_NONE); // Due to depth > DEPTH_NONE
-
         TT.refresh(tte);
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
@@ -580,16 +580,22 @@ namespace {
 
     else if (tte)
     {
-        assert(tte->static_value() != VALUE_NONE);
-        assert(ttValue != VALUE_NONE || tte->type() == BOUND_NONE);
+        // Following asserts are valid only in single thread condition because
+        // TT access is always racy and its contents cannot be trusted.
+        assert(tte->static_value() != VALUE_NONE || Threads.size() > 1);
+        assert(ttValue != VALUE_NONE || tte->type() == BOUND_NONE || Threads.size() > 1);
 
         ss->staticEval = eval = tte->static_value();
         ss->evalMargin = tte->static_value_margin();
 
+        if (eval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
+            eval = ss->staticEval = evaluate(pos, ss->evalMargin);
+
         // Can ttValue be used as a better position evaluation?
-        if (   ((tte->type() & BOUND_LOWER) && ttValue > eval)
-            || ((tte->type() & BOUND_UPPER) && ttValue < eval))
-            eval = ttValue;
+        if (ttValue != VALUE_NONE)
+            if (   ((tte->type() & BOUND_LOWER) && ttValue > eval)
+                || ((tte->type() & BOUND_UPPER) && ttValue < eval))
+                eval = ttValue;
     }
     else
     {
@@ -1118,13 +1124,13 @@ split_point_start: // At split points actual search starts from here
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
     ttDepth = inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
                                                   : DEPTH_QS_NO_CHECKS;
-    if (   tte && tte->depth() >= ttDepth
+    if (   tte
+        && tte->depth() >= ttDepth
+        && ttValue != VALUE_NONE // Only in case of TT access race
         && (           PvNode ?  tte->type() == BOUND_EXACT
             : ttValue >= beta ? (tte->type() & BOUND_LOWER)
                               : (tte->type() & BOUND_UPPER)))
     {
-        assert(ttValue != VALUE_NONE); // Due to ttDepth > DEPTH_NONE
-
         ss->currentMove = ttMove; // Can be MOVE_NONE
         return ttValue;
     }
@@ -1140,10 +1146,13 @@ split_point_start: // At split points actual search starts from here
     {
         if (tte)
         {
-            assert(tte->static_value() != VALUE_NONE);
+            assert(tte->static_value() != VALUE_NONE || Threads.size() > 1);
 
             ss->staticEval = bestValue = tte->static_value();
             ss->evalMargin = tte->static_value_margin();
+
+            if (ss->staticEval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
+                ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
         }
         else
             ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
