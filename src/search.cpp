@@ -1547,29 +1547,27 @@ void RootMove::extract_pv_from_tt(Position& pos) {
 
   StateInfo state[MAX_PLY_PLUS_2], *st = state;
   TTEntry* tte;
-  int ply = 1;
+  int ply = 0;
   Move m = pv[0];
 
-  assert(m != MOVE_NONE && pos.is_pseudo_legal(m));
-
   pv.clear();
-  pv.push_back(m);
-  pos.do_move(m, *st++);
 
-  while (   (tte = TT.probe(pos.key())) != NULL
-         && (m = tte->move()) != MOVE_NONE // Local copy, TT entry could change
-         && pos.is_pseudo_legal(m)
-         && pos.pl_move_is_legal(m, pos.pinned_pieces())
-         && ply < MAX_PLY
-         && (!pos.is_draw<true, true>() || ply < 2))
-  {
+  do {
       pv.push_back(m);
-      pos.do_move(m, *st++);
-      ply++;
-  }
-  pv.push_back(MOVE_NONE);
 
-  do pos.undo_move(pv[--ply]); while (ply);
+      assert(pos.move_is_legal(pv[ply]));
+      pos.do_move(pv[ply++], *st++);
+      tte = TT.probe(pos.key());
+
+  } while (   tte
+           && pos.is_pseudo_legal(m = tte->move()) // Local copy, TT could change
+           && pos.pl_move_is_legal(m, pos.pinned_pieces())
+           && ply < MAX_PLY
+           && (!pos.is_draw<true, true>() || ply < 2));
+
+  pv.push_back(MOVE_NONE); // Must be zero-terminating
+
+  while (ply) pos.undo_move(pv[--ply]);
 }
 
 
@@ -1581,27 +1579,28 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
   StateInfo state[MAX_PLY_PLUS_2], *st = state;
   TTEntry* tte;
-  Key k;
-  Value v, m = VALUE_NONE;
   int ply = 0;
-
-  assert(pv[ply] != MOVE_NONE && pos.is_pseudo_legal(pv[ply]));
+  Value v, m;
 
   do {
-      k = pos.key();
-      tte = TT.probe(k);
+      tte = TT.probe(pos.key());
 
-      // Don't overwrite existing correct entries
-      if (!tte || tte->move() != pv[ply])
+      if (!tte || tte->move() != pv[ply]) // Don't overwrite correct entries
       {
-          v = (pos.in_check() ? VALUE_NONE : evaluate(pos, m));
-          TT.store(k, VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], v, m);
+          if (pos.in_check())
+              v = m = VALUE_NONE;
+          else
+              v = evaluate(pos, m);
+
+          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], v, m);
       }
-      pos.do_move(pv[ply], *st++);
 
-  } while (pv[++ply] != MOVE_NONE);
+      assert(pos.move_is_legal(pv[ply]));
+      pos.do_move(pv[ply++], *st++);
 
-  do pos.undo_move(pv[--ply]); while (ply);
+  } while (pv[ply] != MOVE_NONE);
+
+  while (ply) pos.undo_move(pv[--ply]);
 }
 
 
