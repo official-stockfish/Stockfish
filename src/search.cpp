@@ -100,7 +100,7 @@ namespace {
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
   void id_loop(Position& pos);
-  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta);
+  bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta);
   bool connected_moves(const Position& pos, Move m1, Move m2);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
@@ -1292,40 +1292,56 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // check_is_dangerous() tests if a checking move can be pruned in qsearch().
-  // bestValue is updated only when returning false because in that case move
-  // will be pruned.
+  // value_to_tt() adjusts a mate score from "plies to mate from the root" to
+  // "plies to mate from the current position". Non-mate scores are unchanged.
+  // The function is called before storing a value to the transposition table.
 
-  bool check_is_dangerous(Position &pos, Move move, Value futilityBase, Value beta)
+  Value value_to_tt(Value v, int ply) {
+
+    assert(v != VALUE_NONE);
+
+    return  v >= VALUE_MATE_IN_MAX_PLY  ? v + ply
+          : v <= VALUE_MATED_IN_MAX_PLY ? v - ply : v;
+  }
+
+
+  // value_from_tt() is the inverse of value_to_tt(): It adjusts a mate score
+  // from the transposition table (where refers to the plies to mate/be mated
+  // from current position) to "plies to mate/be mated from the root".
+
+  Value value_from_tt(Value v, int ply) {
+
+    return  v == VALUE_NONE             ? VALUE_NONE
+          : v >= VALUE_MATE_IN_MAX_PLY  ? v - ply
+          : v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
+  }
+
+
+  // check_is_dangerous() tests if a checking move can be pruned in qsearch()
+
+  bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta)
   {
-    Bitboard b, occ, oldAtt, newAtt, kingAtt;
-    Square from, to, ksq;
-    Piece pc;
-    Color them;
+    Piece pc = pos.piece_moved(move);
+    Square from = from_sq(move);
+    Square to = to_sq(move);
+    Color them = ~pos.side_to_move();
+    Square ksq = pos.king_square(them);
+    Bitboard enemies = pos.pieces(them);
+    Bitboard kingAtt = pos.attacks_from<KING>(ksq);
+    Bitboard occ = pos.pieces() ^ from ^ ksq;
+    Bitboard oldAtt = pos.attacks_from(pc, from, occ);
+    Bitboard newAtt = pos.attacks_from(pc, to, occ);
 
-    from = from_sq(move);
-    to = to_sq(move);
-    them = ~pos.side_to_move();
-    ksq = pos.king_square(them);
-    kingAtt = pos.attacks_from<KING>(ksq);
-    pc = pos.piece_moved(move);
-
-    occ = pos.pieces() ^ from ^ ksq;
-    oldAtt = pos.attacks_from(pc, from, occ);
-    newAtt = pos.attacks_from(pc,   to, occ);
-
-    // Rule 1. Checks which give opponent's king at most one escape square are dangerous
-    b = kingAtt & ~pos.pieces(them) & ~newAtt & ~(1ULL << to);
-
-    if (!more_than_one(b))
+    // Checks which give opponent's king at most one escape square are dangerous
+    if (!more_than_one(kingAtt & ~(enemies | newAtt | to)))
         return true;
 
-    // Rule 2. Queen contact check is very dangerous
+    // Queen contact check is very dangerous
     if (type_of(pc) == QUEEN && (kingAtt & to))
         return true;
 
-    // Rule 3. Creating new double threats with checks
-    b = pos.pieces(them) & newAtt & ~oldAtt & ~(1ULL << ksq);
+    // Creating new double threats with checks is dangerous
+    Bitboard b = (enemies ^ ksq) & newAtt & ~oldAtt;
     while (b)
     {
         // Note that here we generate illegal "double move"!
@@ -1382,31 +1398,6 @@ split_point_start: // At split points actual search starts from here
         return true;
 
     return false;
-  }
-
-
-  // value_to_tt() adjusts a mate score from "plies to mate from the root" to
-  // "plies to mate from the current position". Non-mate scores are unchanged.
-  // The function is called before storing a value to the transposition table.
-
-  Value value_to_tt(Value v, int ply) {
-
-    assert(v != VALUE_NONE);
-
-    return  v >= VALUE_MATE_IN_MAX_PLY  ? v + ply
-          : v <= VALUE_MATED_IN_MAX_PLY ? v - ply : v;
-  }
-
-
-  // value_from_tt() is the inverse of value_to_tt(): It adjusts a mate score
-  // from the transposition table (where refers to the plies to mate/be mated
-  // from current position) to "plies to mate/be mated from the root".
-
-  Value value_from_tt(Value v, int ply) {
-
-    return  v == VALUE_NONE             ? VALUE_NONE
-          : v >= VALUE_MATE_IN_MAX_PLY  ? v - ply
-          : v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
   }
 
 
@@ -1500,23 +1491,24 @@ split_point_start: // At split points actual search starts from here
 
     std::stringstream s;
     Time::point elaspsed = Time::now() - SearchTime + 1;
+    size_t uciPVSize = std::min((size_t)Options["MultiPV"], RootMoves.size());
     int selDepth = 0;
 
     for (size_t i = 0; i < Threads.size(); i++)
         if (Threads[i].maxPly > selDepth)
             selDepth = Threads[i].maxPly;
 
-    for (size_t i = 0; i < std::min((size_t)Options["MultiPV"], RootMoves.size()); i++)
+    for (size_t i = 0; i < uciPVSize; i++)
     {
         bool updated = (i <= PVIdx);
 
         if (depth == 1 && !updated)
             continue;
 
-        int d = (updated ? depth : depth - 1);
-        Value v = (updated ? RootMoves[i].score : RootMoves[i].prevScore);
+        int d   = updated ? depth : depth - 1;
+        Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
-        if (s.rdbuf()->in_avail())
+        if (s.rdbuf()->in_avail()) // Not at first line
             s << "\n";
 
         s << "info depth " << d
