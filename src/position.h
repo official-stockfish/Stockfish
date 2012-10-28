@@ -21,6 +21,7 @@
 #define POSITION_H_INCLUDED
 
 #include <cassert>
+#include <cstddef>
 
 #include "bitboard.h"
 #include "types.h"
@@ -44,7 +45,7 @@ struct CheckInfo {
 
 /// The StateInfo struct stores information we need to restore a Position
 /// object to its previous state when we retract a move. Whenever a move
-/// is made on the board (by calling Position::do_move), an StateInfo object
+/// is made on the board (by calling Position::do_move), a StateInfo object
 /// must be passed as a parameter.
 
 struct StateInfo {
@@ -60,13 +61,10 @@ struct StateInfo {
   StateInfo* previous;
 };
 
-struct ReducedStateInfo {
-  Key pawnKey, materialKey;
-  Value npMaterial[COLOR_NB];
-  int castleRights, rule50, pliesFromNull;
-  Score psqScore;
-  Square epSquare;
-};
+
+/// When making a move the current StateInfo up to 'key' excluded is copied to
+/// the new one. Here we calculate the quad words (64bits) needed to be copied.
+const size_t StateCopySize64 = offsetof(StateInfo, key) / sizeof(uint64_t) + 1;
 
 
 /// The position data structure. A position consists of the following data:
