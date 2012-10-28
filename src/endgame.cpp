@@ -95,6 +95,7 @@ Endgames::Endgames() {
   add<KRKP>("KRKP");
   add<KRKB>("KRKB");
   add<KRKN>("KRKN");
+  add<KQKP>("KQKP");
   add<KQKR>("KQKR");
   add<KBBKN>("KBBKN");
 
@@ -169,12 +170,12 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
-  Square bishopSquare = pos.piece_list(strongerSide, BISHOP)[0];
+  Square bishopSq = pos.piece_list(strongerSide, BISHOP)[0];
 
   // kbnk_mate_table() tries to drive toward corners A1 or H8,
   // if we have a bishop that cannot reach the above squares we
   // mirror the kings so to drive enemy toward corners A8 or H1.
-  if (opposite_colors(bishopSquare, SQ_A1))
+  if (opposite_colors(bishopSq, SQ_A1))
   {
       winnerKSq = mirror(winnerKSq);
       loserKSq = mirror(loserKSq);
@@ -322,6 +323,37 @@ Value Endgame<KRKN>::operator()(const Position& pos) const {
   Square bksq = pos.king_square(weakerSide);
   Square bnsq = pos.piece_list(weakerSide, KNIGHT)[0];
   Value result = Value(MateTable[bksq] + penalty[square_distance(bksq, bnsq)]);
+  return strongerSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// KQ vs KP.  In general, a win for the stronger side, however, there are a few
+/// important exceptions.  Pawn on 7th rank, A,C,F or H file, with king next can
+/// be a draw, so we scale down to distance between kings only.
+template<>
+Value Endgame<KQKP>::operator()(const Position& pos) const {
+
+  assert(pos.non_pawn_material(strongerSide) == QueenValueMg);
+  assert(pos.piece_count(strongerSide, PAWN) == 0);
+  assert(pos.non_pawn_material(weakerSide) == 0);
+  assert(pos.piece_count(weakerSide, PAWN) == 1);
+
+  Square winnerKSq = pos.king_square(strongerSide);
+  Square loserKSq = pos.king_square(weakerSide);
+  Square pawnSq = pos.piece_list(weakerSide, PAWN)[0];
+
+  Value result =  QueenValueEg
+                - PawnValueEg
+                + DistanceBonus[square_distance(winnerKSq, loserKSq)];
+
+  if (   square_distance(loserKSq, pawnSq) == 1
+      && relative_rank(weakerSide, pawnSq) == RANK_7)
+  {
+      File f = file_of(pawnSq);
+
+      if (f == FILE_A || f == FILE_C || f == FILE_F || f == FILE_H)
+          result = Value(DistanceBonus[square_distance(winnerKSq, loserKSq)]);
+  }
   return strongerSide == pos.side_to_move() ? result : -result;
 }
 
