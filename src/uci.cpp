@@ -90,44 +90,7 @@ void UCI::loop(const string& args) {
           }
       }
 
-      else if (token == "go")
-          go(pos, is);
-
-      else if (token == "ucinewgame")
-          TT.clear();
-
-      else if (token == "isready")
-          sync_cout << "readyok" << sync_endl;
-
-      else if (token == "position")
-          set_position(pos, is);
-
-      else if (token == "setoption")
-          set_option(is);
-
-      else if (token == "d")
-          pos.print();
-
-      else if (token == "flip")
-          pos.flip();
-
-      else if (token == "eval")
-          sync_cout << Eval::trace(pos) << sync_endl;
-
-      else if (token == "bench")
-          benchmark(pos, is);
-
-      else if (token == "key")
-          sync_cout << "key: " << hex     << pos.key()
-                    << "\nmaterial key: " << pos.material_key()
-                    << "\npawn key: "     << pos.pawn_key() << sync_endl;
-
-      else if (token == "uci")
-          sync_cout << "id name " << engine_info(true)
-                    << "\n"       << Options
-                    << "\nuciok"  << sync_endl;
-
-      else if (token == "perft" && (is >> token)) // Read depth
+      else if (token == "perft" && (is >> token)) // Read requested depth
       {
           stringstream ss;
 
@@ -137,6 +100,24 @@ void UCI::loop(const string& args) {
           benchmark(pos, ss);
       }
 
+      else if (token == "key") sync_cout <<   "position key: " << hex << pos.key()
+                                         << "\nmaterial key: " << pos.material_key()
+                                         << "\npawn key:     " << pos.pawn_key()
+                                         << sync_endl;
+
+      else if (token == "uci") sync_cout << "id name " << engine_info(true)
+                                         << "\n"       << Options
+                                         << "\nuciok"  << sync_endl;
+
+      else if (token == "ucinewgame") TT.clear();
+      else if (token == "go")         go(pos, is);
+      else if (token == "position")   set_position(pos, is);
+      else if (token == "setoption")  set_option(is);
+      else if (token == "d")          pos.print();
+      else if (token == "flip")       pos.flip();
+      else if (token == "bench")      benchmark(pos, is);
+      else if (token == "isready")    sync_cout << "readyok" << sync_endl;
+      else if (token == "eval")       sync_cout << Eval::trace(pos) << sync_endl;
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
@@ -222,29 +203,20 @@ namespace {
 
     while (is >> token)
     {
-        if (token == "wtime")
-            is >> limits.time[WHITE];
-        else if (token == "btime")
-            is >> limits.time[BLACK];
-        else if (token == "winc")
-            is >> limits.inc[WHITE];
-        else if (token == "binc")
-            is >> limits.inc[BLACK];
-        else if (token == "movestogo")
-            is >> limits.movestogo;
-        else if (token == "depth")
-            is >> limits.depth;
-        else if (token == "nodes")
-            is >> limits.nodes;
-        else if (token == "movetime")
-            is >> limits.movetime;
-        else if (token == "infinite")
-            limits.infinite = true;
-        else if (token == "ponder")
-            limits.ponder = true;
-        else if (token == "searchmoves")
+        if (token == "searchmoves")
             while (is >> token)
                 searchMoves.push_back(move_from_uci(pos, token));
+
+        else if (token == "wtime")     is >> limits.time[WHITE];
+        else if (token == "btime")     is >> limits.time[BLACK];
+        else if (token == "winc")      is >> limits.inc[WHITE];
+        else if (token == "binc")      is >> limits.inc[BLACK];
+        else if (token == "movestogo") is >> limits.movestogo;
+        else if (token == "depth")     is >> limits.depth;
+        else if (token == "nodes")     is >> limits.nodes;
+        else if (token == "movetime")  is >> limits.movetime;
+        else if (token == "infinite")  limits.infinite = true;
+        else if (token == "ponder")    limits.ponder = true;
     }
 
     Threads.start_searching(pos, limits, searchMoves, SetupStates);
