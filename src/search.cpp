@@ -1426,8 +1426,8 @@ split_point_start: // At split points actual search starts from here
         && (   PieceValue[MG][pos.piece_on(tfrom)] >= PieceValue[MG][pos.piece_on(tto)]
             || type_of(pos.piece_on(tfrom)) == KING))
     {
-        // Update occupancy as if the piece is moving
-        Bitboard occ = pos.pieces() ^ mfrom ^ mto;
+        // Update occupancy as if the piece and the threat are moving
+        Bitboard occ = pos.pieces() ^ mfrom ^ mto ^ tfrom;
         Piece piece = pos.piece_on(mfrom);
 
         // The moved piece attacks the square 'tto' ?
