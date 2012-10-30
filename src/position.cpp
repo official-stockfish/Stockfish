@@ -473,37 +473,6 @@ Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
 }
 
 
-/// Position::move_attacks_square() tests whether a move from the current
-/// position attacks a given square.
-
-bool Position::move_attacks_square(Move m, Square s) const {
-
-  assert(is_ok(m));
-  assert(is_ok(s));
-
-  Bitboard occ, xray;
-  Square from = from_sq(m);
-  Square to = to_sq(m);
-  Piece piece = piece_moved(m);
-
-  assert(!is_empty(from));
-
-  // Update occupancy as if the piece is moving
-  occ = pieces() ^ from ^ to;
-
-  // The piece moved in 'to' attacks the square 's' ?
-  if (attacks_from(piece, to, occ) & s)
-      return true;
-
-  // Scan for possible X-ray attackers behind the moved piece
-  xray =  (attacks_bb<  ROOK>(s, occ) & pieces(color_of(piece), QUEEN, ROOK))
-        | (attacks_bb<BISHOP>(s, occ) & pieces(color_of(piece), QUEEN, BISHOP));
-
-  // Verify attackers are triggered by our move and not already existing
-  return xray && (xray ^ (xray & attacks_from<QUEEN>(s)));
-}
-
-
 /// Position::pl_move_is_legal() tests whether a pseudo-legal move is legal
 
 bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
