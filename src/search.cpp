@@ -96,7 +96,7 @@ namespace {
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
-  template <NodeType NT>
+  template <NodeType NT, bool InCheck>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
   void id_loop(Position& pos);
@@ -626,7 +626,7 @@ namespace {
         && !pos.pawn_on_7th(pos.side_to_move()))
     {
         Value rbeta = beta - razor_margin(depth);
-        Value v = qsearch<NonPV>(pos, ss, rbeta-1, rbeta, DEPTH_ZERO);
+        Value v = qsearch<NonPV, false>(pos, ss, rbeta-1, rbeta, DEPTH_ZERO);
         if (v < rbeta)
             // Logically we should return (v + razor_margin(depth)), but
             // surprisingly this did slightly weaker in tests.
@@ -665,7 +665,7 @@ namespace {
 
         pos.do_null_move<true>(st);
         (ss+1)->skipNullMove = true;
-        nullValue = depth-R < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
+        nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                       : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R);
         (ss+1)->skipNullMove = false;
         pos.do_null_move<false>(st);
@@ -935,7 +935,9 @@ split_point_start: // At split points actual search starts from here
       if (doFullDepthSearch)
       {
           alpha = SpNode ? sp->alpha : alpha;
-          value = newDepth < ONE_PLY ? -qsearch<NonPV>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
+          value = newDepth < ONE_PLY ?
+                          givesCheck ? -qsearch<NonPV,  true>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
+                                     : -qsearch<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
                                      : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth);
       }
 
@@ -943,9 +945,10 @@ split_point_start: // At split points actual search starts from here
       // high, in the latter case search only if value < beta, otherwise let the
       // parent node to fail low with value <= alpha and to try another move.
       if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta))))
-          value = newDepth < ONE_PLY ? -qsearch<PV>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
+          value = newDepth < ONE_PLY ?
+                          givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
+                                     : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                      : - search<PV>(pos, ss+1, -beta, -alpha, newDepth);
-
       // Step 17. Undo move
       pos.undo_move(move);
 
@@ -1086,12 +1089,13 @@ split_point_start: // At split points actual search starts from here
   // search function when the remaining depth is zero (or, to be more precise,
   // less than ONE_PLY).
 
-  template <NodeType NT>
+  template <NodeType NT, bool InCheck>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
 
     const bool PvNode = (NT == PV);
 
     assert(NT == PV || NT == NonPV);
+    assert(InCheck == pos.in_check());
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= DEPTH_ZERO);
@@ -1101,10 +1105,9 @@ split_point_start: // At split points actual search starts from here
     Key posKey;
     Move ttMove, move, bestMove;
     Value bestValue, value, ttValue, futilityValue, futilityBase;
-    bool inCheck, givesCheck, enoughMaterial, evasionPrunable;
+    bool givesCheck, enoughMaterial, evasionPrunable;
     Depth ttDepth;
 
-    inCheck = pos.in_check();
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
 
@@ -1122,7 +1125,7 @@ split_point_start: // At split points actual search starts from here
     // Decide whether or not to include checks, this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
-    ttDepth = inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
+    ttDepth = InCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
                                                   : DEPTH_QS_NO_CHECKS;
     if (   tte
         && tte->depth() >= ttDepth
@@ -1136,7 +1139,7 @@ split_point_start: // At split points actual search starts from here
     }
 
     // Evaluate the position statically
-    if (inCheck)
+    if (InCheck)
     {
         ss->staticEval = ss->evalMargin = VALUE_NONE;
         bestValue = futilityBase = -VALUE_INFINITE;
@@ -1190,7 +1193,7 @@ split_point_start: // At split points actual search starts from here
 
       // Futility pruning
       if (   !PvNode
-          && !inCheck
+          && !InCheck
           && !givesCheck
           &&  move != ttMove
           &&  enoughMaterial
@@ -1218,14 +1221,14 @@ split_point_start: // At split points actual search starts from here
 
       // Detect non-capture evasions that are candidate to be pruned
       evasionPrunable =   !PvNode
-                       &&  inCheck
+                       &&  InCheck
                        &&  bestValue > VALUE_MATED_IN_MAX_PLY
                        && !pos.is_capture(move)
                        && !pos.can_castle(pos.side_to_move());
 
       // Don't search moves with negative SEE values
       if (   !PvNode
-          && (!inCheck || evasionPrunable)
+          && (!InCheck || evasionPrunable)
           &&  move != ttMove
           &&  type_of(move) != PROMOTION
           &&  pos.see_sign(move) < 0)
@@ -1233,7 +1236,7 @@ split_point_start: // At split points actual search starts from here
 
       // Don't search useless checks
       if (   !PvNode
-          && !inCheck
+          && !InCheck
           &&  givesCheck
           &&  move != ttMove
           && !pos.is_capture_or_promotion(move)
@@ -1249,7 +1252,8 @@ split_point_start: // At split points actual search starts from here
 
       // Make and search the move
       pos.do_move(move, st, ci, givesCheck);
-      value = -qsearch<NT>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
+      value = givesCheck ? -qsearch<NT,  true>(pos, ss+1, -beta, -alpha, depth - ONE_PLY)
+                         : -qsearch<NT, false>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
@@ -1279,7 +1283,7 @@ split_point_start: // At split points actual search starts from here
 
     // All legal moves have been searched. A special case: If we're in check
     // and no legal moves were found, it is checkmate.
-    if (inCheck && bestValue == -VALUE_INFINITE)
+    if (InCheck && bestValue == -VALUE_INFINITE)
         return mated_in(ss->ply); // Plies to mate from the root
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
