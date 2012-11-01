@@ -280,7 +280,7 @@ FORCE_INLINE Square msb(Bitboard b) {
 
 FORCE_INLINE Square pop_lsb(Bitboard* b) {
   const Square s = lsb(*b);
-  *b &= ~(1ULL << s);
+  *b &= *b - 1;
   return s;
 }
 
