@@ -394,7 +394,7 @@ namespace {
             }
 
             // Sort the PV lines searched so far and update the GUI
-            sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx);
+            sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
             sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 

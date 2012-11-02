@@ -490,15 +490,15 @@ inline const std::string square_to_string(Square s) {
 /// Our insertion sort implementation, works with pointers and iterators and is
 /// guaranteed to be stable, as is needed.
 template<typename T, typename K>
-void sort(K first, K last)
+void sort(K begin, K end)
 {
   T tmp;
   K p, q;
 
-  for (p = first + 1; p < last; p++)
+  for (p = begin + 1; p < end; p++)
   {
       tmp = *p;
-      for (q = p; q != first && *(q-1) < tmp; --q)
+      for (q = p; q != begin && *(q-1) < tmp; --q)
           *q = *(q-1);
       *q = tmp;
   }
