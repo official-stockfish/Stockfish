@@ -1448,13 +1448,13 @@ bool Position::is_draw() const {
 
   if (CheckRepetition)
   {
-      int i = 4, e = std::min(st->rule50, st->pliesFromNull);
+      int i = 4, e = std::min(st->rule50, st->pliesFromNull), cnt;
 
       if (i <= e)
       {
           StateInfo* stp = st->previous->previous;
 
-          for (int cnt = 0; i <= e; i += 2)
+          for (cnt = 0; i <= e; i += 2)
           {
               stp = stp->previous->previous;
 
