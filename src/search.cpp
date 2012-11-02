@@ -1391,7 +1391,7 @@ split_point_start: // At split points actual search starts from here
 
     // Case 4: The destination square for m2 is defended by the moving piece in m1
     p1 = pos.piece_on(t1);
-    if (pos.attacks_from(p1, t1) & t2)
+    if (pos.attacks_from(p1, t1, pos.pieces() ^ f2) & t2)
         return true;
 
     // Case 5: Discovered check, checking piece is the piece moved in m1
