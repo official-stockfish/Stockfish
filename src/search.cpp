@@ -1378,7 +1378,7 @@ split_point_start: // At split points actual search starts from here
         return true;
 
     // Moving through the vacated square
-    if (piece_is_slider(pos.piece_on(f2)) && (between_bb(f2, t2) & f1))
+    if (between_bb(f2, t2) & f1)
       return true;
 
     // The destination square for m2 is defended by the moving piece in m1
