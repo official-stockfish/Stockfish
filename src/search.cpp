@@ -101,7 +101,7 @@ namespace {
 
   void id_loop(Position& pos);
   bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta);
-  bool connected_moves(const Position& pos, Move m1, Move m2);
+  bool yields_to_threat(const Position& pos, Move move, Move threat);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   bool connected_threat(const Position& pos, Move m, Move threat);
@@ -700,7 +700,7 @@ namespace {
             if (   depth < 5 * ONE_PLY
                 && (ss-1)->reduction
                 && threatMove != MOVE_NONE
-                && connected_moves(pos, (ss-1)->currentMove, threatMove))
+                && yields_to_threat(pos, (ss-1)->currentMove, threatMove))
                 return beta - 1;
         }
     }
@@ -1357,39 +1357,43 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // connected_moves() tests whether two moves are 'connected' in the sense
-  // that the first move somehow made the second move possible (for instance
-  // if the moving piece is the same in both moves). The first move is assumed
-  // to be the move that was made to reach the current position, while the
-  // second move is assumed to be a move from the current position.
+  // yields_to_threat() tests whether the move at previous ply yields to the so
+  // called threat move (the best move returned from a null search that fails
+  // low). Here 'yields to' means that the move somehow made the threat possible
+  // for instance if the moving piece is the same in both moves.
 
-  bool connected_moves(const Position& pos, Move m1, Move m2) {
+  bool yields_to_threat(const Position& pos, Move move, Move threat) {
 
-    assert(is_ok(m1));
-    assert(is_ok(m2));
+    assert(is_ok(move));
+    assert(is_ok(threat));
 
-    Square t1 = to_sq(m1);
-    Square f1 = from_sq(m1);
-    Square t2 = to_sq(m2);
-    Square f2 = from_sq(m2);
+    Square t1 = to_sq(move);
+    Square f1 = from_sq(move);
+    Square t2 = to_sq(threat);
+    Square f2 = from_sq(threat);
 
-    // The moving piece is the same or its destination square was vacated by m1
+    // We are suposed to be called upon returning from a null search
+    assert(color_of(pos.piece_on(f2)) == ~pos.side_to_move());
+
+    // The piece is the same or threat's destination was vacated by the move
     if (t1 == f2 || t2 == f1)
         return true;
 
-    // Moving through the vacated square
+    // Threat moves through the vacated square
     if (between_bb(f2, t2) & f1)
       return true;
 
-    // The destination square for m2 is defended by the moving piece in m1
+    // Threat's destination is defended by the move's piece
     Bitboard t1_att = pos.attacks_from(pos.piece_on(t1), t1, pos.pieces() ^ f2);
     if (t1_att & t2)
         return true;
 
-    // Discovered check, checking piece is the piece moved in m1
-    Square ksq = pos.king_square(pos.side_to_move());
-    if ((t1_att & ksq) && (between_bb(t1, ksq) & f2))
+    // Threat gives a discovered check through the move's checking piece
+    if (t1_att & pos.king_square(pos.side_to_move()))
+    {
+        assert(between_bb(t1, pos.king_square(pos.side_to_move())) & f2);
         return true;
+    }
 
     return false;
   }
