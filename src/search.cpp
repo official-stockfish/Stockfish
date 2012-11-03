@@ -1365,40 +1365,30 @@ split_point_start: // At split points actual search starts from here
 
   bool connected_moves(const Position& pos, Move m1, Move m2) {
 
-    Square f1, t1, f2, t2;
-    Piece p1, p2;
-    Square ksq;
-
     assert(is_ok(m1));
     assert(is_ok(m2));
 
-    // Case 1: The moving piece is the same in both moves
-    f2 = from_sq(m2);
-    t1 = to_sq(m1);
-    if (f2 == t1)
+    Square t1 = to_sq(m1);
+    Square f1 = from_sq(m1);
+    Square t2 = to_sq(m2);
+    Square f2 = from_sq(m2);
+
+    // The moving piece is the same or its destination square was vacated by m1
+    if (t1 == f2 || t2 == f1)
         return true;
 
-    // Case 2: The destination square for m2 was vacated by m1
-    t2 = to_sq(m2);
-    f1 = from_sq(m1);
-    if (t2 == f1)
-        return true;
-
-    // Case 3: Moving through the vacated square
-    p2 = pos.piece_on(f2);
-    if (piece_is_slider(p2) && (between_bb(f2, t2) & f1))
+    // Moving through the vacated square
+    if (piece_is_slider(pos.piece_on(f2)) && (between_bb(f2, t2) & f1))
       return true;
 
-    // Case 4: The destination square for m2 is defended by the moving piece in m1
-    p1 = pos.piece_on(t1);
-    if (pos.attacks_from(p1, t1, pos.pieces() ^ f2) & t2)
+    // The destination square for m2 is defended by the moving piece in m1
+    Bitboard t1_att = pos.attacks_from(pos.piece_on(t1), t1, pos.pieces() ^ f2);
+    if (t1_att & t2)
         return true;
 
-    // Case 5: Discovered check, checking piece is the piece moved in m1
-    ksq = pos.king_square(pos.side_to_move());
-    if (    piece_is_slider(p1)
-        && (between_bb(t1, ksq) & f2)
-        && (pos.attacks_from(p1, t1, pos.pieces() ^ f2) & ksq))
+    // Discovered check, checking piece is the piece moved in m1
+    Square ksq = pos.king_square(pos.side_to_move());
+    if ((t1_att & ksq) && (between_bb(t1, ksq) & f2))
         return true;
 
     return false;
