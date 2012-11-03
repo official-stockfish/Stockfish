@@ -62,10 +62,6 @@ namespace {
   // Different node types, used as template parameter
   enum NodeType { Root, PV, NonPV, SplitPointRoot, SplitPointPV, SplitPointNonPV };
 
-  // Lookup table to check if a Piece is a slider and its access function
-  const bool Slidings[18] = { 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1 };
-  inline bool piece_is_slider(Piece p) { return Slidings[p]; }
-
   // Dynamic razoring margin based on depth
   inline Value razor_margin(Depth d) { return Value(512 + 16 * int(d)); }
 
@@ -1437,10 +1433,8 @@ split_point_start: // At split points actual search starts from here
             return true;
     }
 
-    // If the threat piece is a slider, don't prune safe moves which block it
-    if (    piece_is_slider(pos.piece_on(tfrom))
-        && (between_bb(tfrom, tto) & mto)
-        &&  pos.see_sign(move) >= 0)
+    // Don't prune safe moves which block the threat path
+    if ((between_bb(tfrom, tto) & mto) && pos.see_sign(move) >= 0)
         return true;
 
     return false;
