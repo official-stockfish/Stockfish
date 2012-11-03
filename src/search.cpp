@@ -1016,8 +1016,12 @@ split_point_start: // At split points actual search starts from here
           &&  depth >= Threads.min_split_depth()
           &&  bestValue < beta
           &&  Threads.available_slave_exists(thisThread))
+      {
           bestValue = Threads.split<FakeSplit>(pos, ss, alpha, beta, bestValue, &bestMove,
                                                depth, threatMove, moveCount, mp, NT);
+          if (bestValue >= beta)
+              break;
+      }
     }
 
     if (SpNode)
