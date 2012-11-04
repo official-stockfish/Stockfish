@@ -1154,6 +1154,11 @@ split_point_start: // At split points actual search starts from here
             if (ss->staticEval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
                 ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
         }
+        else if ((ss-1)->currentMove == MOVE_NULL)
+        {
+            ss->staticEval = bestValue = -(ss-1)->staticEval;
+            ss->evalMargin = VALUE_ZERO; // Hack, we really don't know the value
+        }
         else
             ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
 
