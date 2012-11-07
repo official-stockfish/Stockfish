@@ -483,7 +483,8 @@ namespace {
     Depth ext, newDepth;
     Value bestValue, value, ttValue;
     Value eval, nullValue, futilityValue;
-    bool inCheck, givesCheck, pvMove, singularExtensionNode;
+    CheckType givesCheck;
+    bool inCheck, pvMove, singularExtensionNode;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, playedMoveCount;
 
@@ -815,7 +816,7 @@ split_point_start: // At split points actual search starts from here
       if (PvNode && dangerous)
           ext = ONE_PLY;
 
-      else if (givesCheck && pos.see_sign(move) >= 0)
+      else if (givesCheck && (givesCheck == DISCO_CHECK || pos.see_sign(move) >= 0))
           ext = ONE_PLY / 2;
 
       // Singular extension search. If all moves but one fail low on a search of
@@ -882,6 +883,7 @@ split_point_start: // At split points actual search starts from here
 
           // Prune moves with negative SEE at low depths
           if (   predictedDepth < 2 * ONE_PLY
+              && givesCheck != DISCO_CHECK
               && pos.see_sign(move) < 0)
           {
               if (SpNode)
@@ -1102,7 +1104,8 @@ split_point_start: // At split points actual search starts from here
     Key posKey;
     Move ttMove, move, bestMove;
     Value bestValue, value, ttValue, futilityValue, futilityBase;
-    bool givesCheck, enoughMaterial, evasionPrunable, fromNull;
+    CheckType givesCheck;
+    bool enoughMaterial, evasionPrunable, fromNull;
     Depth ttDepth;
 
     ss->currentMove = bestMove = MOVE_NONE;
@@ -1234,6 +1237,7 @@ split_point_start: // At split points actual search starts from here
       if (   !PvNode
           && (!InCheck || evasionPrunable)
           &&  move != ttMove
+          &&  givesCheck != DISCO_CHECK
           &&  type_of(move) != PROMOTION
           &&  pos.see_sign(move) < 0)
           continue;

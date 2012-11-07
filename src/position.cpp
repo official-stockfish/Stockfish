@@ -657,7 +657,7 @@ bool Position::is_pseudo_legal(const Move m) const {
 
 /// Position::move_gives_check() tests whether a pseudo-legal move gives a check
 
-bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
+CheckType Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   assert(is_ok(m));
   assert(ci.dcCandidates == discovered_check_candidates());
@@ -669,7 +669,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
   // Direct check ?
   if (ci.checkSq[pt] & to)
-      return true;
+      return DIRECT_CHECK;
 
   // Discovery check ?
   if (ci.dcCandidates && (ci.dcCandidates & from))
@@ -677,19 +677,19 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       // For pawn and king moves we need to verify also direction
       if (   (pt != PAWN && pt != KING)
           || !squares_aligned(from, to, king_square(~sideToMove)))
-          return true;
+          return DISCO_CHECK;
   }
 
   // Can we skip the ugly special cases ?
   if (type_of(m) == NORMAL)
-      return false;
+      return NO_CHECK;
 
   Color us = sideToMove;
   Square ksq = king_square(~us);
 
   // Promotion with check ?
   if (type_of(m) == PROMOTION)
-      return attacks_from(Piece(promotion_type(m)), to, pieces() ^ from) & ksq;
+      return attacks_from(Piece(promotion_type(m)), to, pieces() ^ from) & ksq ? DIRECT_CHECK : NO_CHECK;
 
   // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
@@ -701,7 +701,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       Bitboard b = (pieces() ^ from ^ capsq) | to;
 
       return  (attacks_bb<  ROOK>(ksq, b) & pieces(us, QUEEN, ROOK))
-            | (attacks_bb<BISHOP>(ksq, b) & pieces(us, QUEEN, BISHOP));
+            | (attacks_bb<BISHOP>(ksq, b) & pieces(us, QUEEN, BISHOP)) ? DISCO_CHECK : NO_CHECK;
   }
 
   // Castling with check ?
@@ -713,10 +713,10 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       Square rto = relative_square(us, rfrom > kfrom ? SQ_F1 : SQ_D1);
       Bitboard b = (pieces() ^ kfrom ^ rfrom) | rto | kto;
 
-      return attacks_bb<ROOK>(rto, b) & ksq;
+      return attacks_bb<ROOK>(rto, b) & ksq ? DIRECT_CHECK : NO_CHECK;
   }
 
-  return false;
+  return NO_CHECK;
 }
 
 
