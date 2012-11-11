@@ -1101,9 +1101,13 @@ split_point_start: // At split points actual search starts from here
     const TTEntry* tte;
     Key posKey;
     Move ttMove, move, bestMove;
-    Value bestValue, value, ttValue, futilityValue, futilityBase;
+    Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
     bool givesCheck, enoughMaterial, evasionPrunable, fromNull;
     Depth ttDepth;
+
+    // To flag BOUND_EXACT a node with eval above alpha and no available moves
+    if (PvNode)
+        oldAlpha = alpha;
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
@@ -1291,7 +1295,7 @@ split_point_start: // At split points actual search starts from here
         return mated_in(ss->ply); // Plies to mate from the root
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
-             PvNode && bestMove != MOVE_NONE ? BOUND_EXACT : BOUND_UPPER,
+             PvNode && bestValue > oldAlpha ? BOUND_EXACT : BOUND_UPPER,
              ttDepth, bestMove, ss->staticEval, ss->evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
