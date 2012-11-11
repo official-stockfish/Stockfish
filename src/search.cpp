@@ -218,7 +218,7 @@ void Search::think() {
   if (Options["Use Search Log"])
   {
       Log log(Options["Search Log Filename"]);
-      log << "\nSearching: "  << RootPos.to_fen()
+      log << "\nSearching: "  << RootPos.fen()
           << "\ninfinite: "   << Limits.infinite
           << " ponder: "      << Limits.ponder
           << " time: "        << Limits.time[RootColor]

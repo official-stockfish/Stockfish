@@ -113,9 +113,9 @@ void UCI::loop(const string& args) {
       else if (token == "go")         go(pos, is);
       else if (token == "position")   set_position(pos, is);
       else if (token == "setoption")  set_option(is);
-      else if (token == "d")          pos.print();
       else if (token == "flip")       pos.flip();
       else if (token == "bench")      benchmark(pos, is);
+      else if (token == "d")          sync_cout << pos.pretty() << sync_endl;
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "eval")       sync_cout << Eval::trace(pos) << sync_endl;
       else
@@ -155,7 +155,7 @@ namespace {
     else
         return;
 
-    pos.from_fen(fen, Options["UCI_Chess960"], Threads.main_thread());
+    pos.set(fen, Options["UCI_Chess960"], Threads.main_thread());
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
 
     // Parse move list (if any)
