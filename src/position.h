@@ -136,7 +136,7 @@ public:
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
 
   // Properties of moves
-  CheckType move_gives_check(Move m, const CheckInfo& ci) const;
+  bool move_gives_check(Move m, const CheckInfo& ci) const;
   bool move_is_legal(const Move m) const;
   bool pl_move_is_legal(Move m, Bitboard pinned) const;
   bool is_pseudo_legal(const Move m) const;

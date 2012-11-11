@@ -130,12 +130,6 @@ enum MoveType {
   CASTLE    = 3 << 14
 };
 
-enum CheckType {
-  NO_CHECK,
-  DIRECT_CHECK,
-  DISCO_CHECK
-};
-
 enum CastleRight {  // Defined as in PolyGlot book hash key
   CASTLES_NONE = 0,
   WHITE_OO     = 1,
