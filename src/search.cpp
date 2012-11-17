@@ -1003,8 +1003,10 @@ split_point_start: // At split points actual search starts from here
                   alpha = value; // Update alpha here! Always alpha < beta
                   if (SpNode) sp->alpha = value;
               }
-              else // Fail high
+              else
               {
+                  assert(value >= beta); // Fail high
+
                   if (SpNode) sp->cutoff = true;
                   break;
               }
