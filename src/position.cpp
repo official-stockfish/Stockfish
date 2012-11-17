@@ -688,15 +688,16 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
   Color us = sideToMove;
   Square ksq = king_square(~us);
 
-  // Promotion with check ?
-  if (type_of(m) == PROMOTION)
+  switch (type_of(m))
+  {
+  case PROMOTION:
       return attacks_from(Piece(promotion_type(m)), to, pieces() ^ from) & ksq;
 
   // En passant capture with check ? We have already handled the case
   // of direct checks and ordinary discovered check, the only case we
   // need to handle is the unusual case of a discovered check through
   // the captured pawn.
-  if (type_of(m) == ENPASSANT)
+  case ENPASSANT:
   {
       Square capsq = file_of(to) | rank_of(from);
       Bitboard b = (pieces() ^ from ^ capsq) | to;
@@ -704,9 +705,7 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       return  (attacks_bb<  ROOK>(ksq, b) & pieces(us, QUEEN, ROOK))
             | (attacks_bb<BISHOP>(ksq, b) & pieces(us, QUEEN, BISHOP));
   }
-
-  // Castling with check ?
-  if (type_of(m) == CASTLE)
+  case CASTLE:
   {
       Square kfrom = from;
       Square rfrom = to; // 'King captures the rook' notation
@@ -716,8 +715,10 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
 
       return attacks_bb<ROOK>(rto, b) & ksq;
   }
-
-  return false;
+  default:
+      assert(false);
+      return false;
+  }
 }
 
 
