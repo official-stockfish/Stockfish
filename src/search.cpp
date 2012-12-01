@@ -574,31 +574,21 @@ namespace {
     // Step 5. Evaluate the position statically and update parent's gain statistics
     if (inCheck)
         ss->staticEval = ss->evalMargin = eval = VALUE_NONE;
-
-    else if (tte)
-    {
-        // Following asserts are valid only in single thread condition because
-        // TT access is always racy and its contents cannot be trusted.
-        assert(tte->static_value() != VALUE_NONE || Threads.size() > 1);
-        assert(ttValue != VALUE_NONE || tte->type() == BOUND_NONE || Threads.size() > 1);
-
-        ss->staticEval = eval = tte->static_value();
-        ss->evalMargin = tte->static_value_margin();
-
-        if (eval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
-            eval = ss->staticEval = evaluate(pos, ss->evalMargin);
-
-        // Can ttValue be used as a better position evaluation?
-        if (ttValue != VALUE_NONE)
-            if (   ((tte->type() & BOUND_LOWER) && ttValue > eval)
-                || ((tte->type() & BOUND_UPPER) && ttValue < eval))
-                eval = ttValue;
-    }
     else
     {
         eval = ss->staticEval = evaluate(pos, ss->evalMargin);
-        TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
-                 ss->staticEval, ss->evalMargin);
+
+        // Can ttValue be used as a better position evaluation?
+        if (tte && ttValue != VALUE_NONE)
+        {
+            if (   ((tte->type() & BOUND_LOWER) && ttValue > eval)
+                || ((tte->type() & BOUND_UPPER) && ttValue < eval))
+                eval = ttValue;
+        }
+
+        if (!tte)
+            TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
+                     ss->staticEval, ss->evalMargin);
     }
 
     // Update gain for the parent non-capture move given the static position
@@ -1151,18 +1141,7 @@ split_point_start: // At split points actual search starts from here
     }
     else
     {
-        if (tte)
-        {
-            assert(tte->static_value() != VALUE_NONE || Threads.size() > 1);
-
-            ss->staticEval = bestValue = tte->static_value();
-            ss->evalMargin = tte->static_value_margin();
-
-            if (ss->staticEval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
-                ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
-        }
-        else
-            ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
+        ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
