@@ -585,10 +585,6 @@ namespace {
                 || ((tte->type() & BOUND_UPPER) && ttValue < eval))
                 eval = ttValue;
         }
-
-        if (!tte)
-            TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
-                     ss->staticEval, ss->evalMargin);
     }
 
     // Update gain for the parent non-capture move given the static position
