@@ -1037,8 +1037,7 @@ split_point_start: // At split points actual search starts from here
 
     if (bestValue >= beta) // Failed high
     {
-        TT.store(posKey, value_to_tt(bestValue, ss->ply), BOUND_LOWER, depth,
-                 bestMove, ss->staticEval, ss->evalMargin);
+        TT.store(posKey, value_to_tt(bestValue, ss->ply), BOUND_LOWER, depth, bestMove);
 
         if (!pos.is_capture_or_promotion(bestMove) && !inCheck)
         {
@@ -1063,7 +1062,7 @@ split_point_start: // At split points actual search starts from here
     else // Failed low or PV search
         TT.store(posKey, value_to_tt(bestValue, ss->ply),
                  PvNode && bestMove != MOVE_NONE ? BOUND_EXACT : BOUND_UPPER,
-                 depth, bestMove, ss->staticEval, ss->evalMargin);
+                 depth, bestMove);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1143,8 +1142,7 @@ split_point_start: // At split points actual search starts from here
         if (bestValue >= beta)
         {
             if (!tte)
-                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER,
-                         DEPTH_NONE, MOVE_NONE, ss->staticEval, ss->evalMargin);
+                TT.store(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER, DEPTH_NONE, MOVE_NONE);
 
             return bestValue;
         }
@@ -1252,9 +1250,7 @@ split_point_start: // At split points actual search starts from here
               }
               else // Fail high
               {
-                  TT.store(posKey, value_to_tt(value, ss->ply), BOUND_LOWER,
-                           ttDepth, move, ss->staticEval, ss->evalMargin);
-
+                  TT.store(posKey, value_to_tt(value, ss->ply), BOUND_LOWER, ttDepth, move);
                   return value;
               }
           }
@@ -1268,7 +1264,7 @@ split_point_start: // At split points actual search starts from here
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              PvNode && bestValue > oldAlpha ? BOUND_EXACT : BOUND_UPPER,
-             ttDepth, bestMove, ss->staticEval, ss->evalMargin);
+             ttDepth, bestMove);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1559,20 +1555,12 @@ void RootMove::insert_pv_in_tt(Position& pos) {
   StateInfo state[MAX_PLY_PLUS_2], *st = state;
   TTEntry* tte;
   int ply = 0;
-  Value v, m;
 
   do {
       tte = TT.probe(pos.key());
 
       if (!tte || tte->move() != pv[ply]) // Don't overwrite correct entries
-      {
-          if (pos.in_check())
-              v = m = VALUE_NONE;
-          else
-              v = evaluate(pos, m);
-
-          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], v, m);
-      }
+          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply]);
 
       assert(pos.move_is_legal(pv[ply]));
       pos.do_move(pv[ply++], *st++);
