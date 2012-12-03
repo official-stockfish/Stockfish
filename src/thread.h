@@ -28,7 +28,7 @@
 #include "position.h"
 #include "search.h"
 
-const int MAX_THREADS = 32;
+const int MAX_THREADS = 64; // Because SplitPoint::slavesMask is a uint64_t
 const int MAX_SPLITPOINTS_PER_THREAD = 8;
 
 struct Mutex {
