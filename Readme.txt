@@ -8,7 +8,7 @@ Partner or Fritz) in order to be used comfortably. Read the
 documentation for your GUI of choice for information about how to use
 Stockfish with it.
 
-This version of Stockfish supports up to 32 CPUs, but has not been
+This version of Stockfish supports up to 64 CPUs, but has not been
 tested thoroughly with more than 4.  The program tries to detect the
 number of CPUs on your computer and sets the number of search threads
 accordingly, but please be aware that the detection is not always
