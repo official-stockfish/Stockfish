@@ -35,6 +35,7 @@
 ///               | only in 64-bit mode. For compiling requires hardware with
 ///               | popcnt support.
 
+#include <cassert>
 #include <cctype>
 #include <climits>
 #include <cstdlib>
@@ -391,7 +392,8 @@ inline PieceType type_of(Piece p)  {
 }
 
 inline Color color_of(Piece p) {
-  return p == NO_PIECE ? NO_COLOR : Color(p >> 3);
+  assert(p != NO_PIECE);
+  return Color(p >> 3);
 }
 
 inline bool is_ok(Square s) {

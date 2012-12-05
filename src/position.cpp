@@ -561,7 +561,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       return false;
 
   // The destination square cannot be occupied by a friendly piece
-  if (color_of(piece_on(to)) == us)
+  if (piece_on(to) != NO_PIECE && color_of(piece_on(to)) == us)
       return false;
 
   // Handle the special case of a pawn move
@@ -587,7 +587,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       case DELTA_SE:
       // Capture. The destination square must be occupied by an enemy
       // piece (en passant captures was handled earlier).
-      if (color_of(piece_on(to)) != them)
+      if (piece_on(to) == NO_PIECE || color_of(piece_on(to)) != them)
           return false;
 
       // From and to files must be one file apart, avoids a7h5
@@ -772,7 +772,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   PieceType capture = type_of(m) == ENPASSANT ? PAWN : type_of(piece_on(to));
 
   assert(color_of(piece) == us);
-  assert(color_of(piece_on(to)) != us);
+  assert(piece_on(to) == NO_PIECE || color_of(piece_on(to)) == them);
   assert(capture != KING);
 
   if (capture)
