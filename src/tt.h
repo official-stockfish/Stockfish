@@ -59,20 +59,38 @@ public:
   void update(Value v, Bound b, Depth d, Move m, int g) {
 
     move16      = (uint16_t)m;
-    bound      |= (uint8_t)b;
     generation8 = (uint8_t)g;
+
+    if (bound == BOUND_EXACT)
+        bound = BOUND_UPPER | BOUND_LOWER; // Drop 'EXACT' flag
 
     if (b & BOUND_UPPER)
     {
         valueUpper = (int16_t)v;
         depthUpper = (int16_t)d;
+
+        if ((bound & BOUND_LOWER) && v < valueLower)
+        {
+            bound ^= BOUND_LOWER;
+            valueLower = VALUE_NONE;
+            depthLower = DEPTH_NONE;
+        }
     }
 
     if (b & BOUND_LOWER)
     {
         valueLower = (int16_t)v;
         depthLower = (int16_t)d;
+
+        if ((bound & BOUND_UPPER) && v > valueUpper)
+        {
+            bound ^= BOUND_UPPER;
+            valueUpper = VALUE_NONE;
+            depthUpper = DEPTH_NONE;
+        }
     }
+
+    bound |= (uint8_t)b;
   }
 
   void set_generation(int g) { generation8 = (uint8_t)g; }
