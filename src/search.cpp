@@ -573,7 +573,7 @@ namespace {
 
         // Fail Low
         if (  (tte->type() & BOUND_UPPER)
-            && ttValueUpper < beta
+            && ttValueUpper <= alpha
             && tte->depth_upper() >= depth
             && ttValueUpper != VALUE_NONE) // Only in case of TT access race
         {
@@ -1144,7 +1144,7 @@ split_point_start: // At split points actual search starts from here
 
         // Fail Low
         if (  (tte->type() & BOUND_UPPER)
-            && ttValueUpper < beta
+            && ttValueUpper <= alpha
             && tte->depth_upper() >= ttDepth
             && ttValueUpper != VALUE_NONE) // Only in case of TT access race
         {
