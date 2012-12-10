@@ -82,7 +82,7 @@ void TranspositionTable::clear() {
 /// more valuable than a TTEntry t2 if t1 is from the current search and t2 is from
 /// a previous search, or if the depth of t1 is bigger than the depth of t2.
 
-void TranspositionTable::store(const Key posKey, Value v, Bound t, Depth d, Move m) {
+void TranspositionTable::store(const Key posKey, Value v, Bound b, Depth d, Move m) {
 
   int c1, c2, c3;
   TTEntry *tte, *replace;
@@ -92,13 +92,16 @@ void TranspositionTable::store(const Key posKey, Value v, Bound t, Depth d, Move
 
   for (int i = 0; i < ClusterSize; i++, tte++)
   {
-      if (!tte->key() || tte->key() == posKey32) // Empty or overwrite old
+      if (!tte->key())
+          tte->save(posKey32, v, b, d, m, generation);
+
+      if (tte->key() == posKey32)
       {
           // Preserve any existing ttMove
           if (m == MOVE_NONE)
               m = tte->move();
 
-          tte->save(posKey32, v, t, d, m, generation);
+          tte->update(v, b, d, m, generation);
           return;
       }
 
@@ -110,7 +113,7 @@ void TranspositionTable::store(const Key posKey, Value v, Bound t, Depth d, Move
       if (c1 + c2 + c3 > 0)
           replace = tte;
   }
-  replace->save(posKey32, v, t, d, m, generation);
+  replace->save(posKey32, v, b, d, m, generation);
 }
 
 

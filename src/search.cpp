@@ -482,7 +482,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove, threatMove;
     Depth ext, newDepth;
-    Value bestValue, value, ttValue;
+    Value bestValue, value, ttValue, ttValueUpper;
     Value eval, nullValue, futilityValue;
     bool inCheck, givesCheck, pvMove, singularExtensionNode;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
@@ -544,31 +544,43 @@ namespace {
     tte = TT.probe(posKey);
     ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
     ttValue = tte ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+    ttValueUpper = tte ? value_from_tt(tte->value_upper(), ss->ply) : VALUE_NONE;
 
     // At PV nodes we check for exact scores, while at non-PV nodes we check for
     // a fail high/low. Biggest advantage at probing at PV nodes is to have a
     // smooth experience in analysis mode. We don't probe at Root nodes otherwise
     // we should also update RootMoveList to avoid bogus output.
-    if (   !RootNode
-        && tte
-        && tte->depth() >= depth
-        && ttValue != VALUE_NONE // Only in case of TT access race
-        && (           PvNode ?  tte->type() == BOUND_EXACT
-            : ttValue >= beta ? (tte->type() & BOUND_LOWER)
-                              : (tte->type() & BOUND_UPPER)))
+    if (!RootNode && tte)
     {
-        TT.refresh(tte);
-        ss->currentMove = ttMove; // Can be MOVE_NONE
-
-        if (    ttValue >= beta
-            &&  ttMove
-            && !pos.is_capture_or_promotion(ttMove)
-            &&  ttMove != ss->killers[0])
+        // Fail High
+        if (  (tte->type() & BOUND_LOWER)
+            && ttValue >= beta
+            && tte->depth() >= depth
+            && ttValue != VALUE_NONE) // Only in case of TT access race
         {
-            ss->killers[1] = ss->killers[0];
-            ss->killers[0] = ttMove;
+            // Update killers, we assume ttMove caused a cut-off
+            if (    ttMove
+                && !pos.is_capture_or_promotion(ttMove)
+                &&  ttMove != ss->killers[0])
+            {
+                ss->killers[1] = ss->killers[0];
+                ss->killers[0] = ttMove;
+            }
+            TT.refresh(tte);
+            ss->currentMove = ttMove; // Can be MOVE_NONE
+            return ttValue;
         }
-        return ttValue;
+
+        // Fail Low
+        if (  (tte->type() & BOUND_UPPER)
+            && ttValueUpper <= alpha
+            && tte->depth_upper() >= depth
+            && ttValueUpper != VALUE_NONE) // Only in case of TT access race
+        {
+            TT.refresh(tte);
+            ss->currentMove = ttMove; // Can be MOVE_NONE
+            return ttValueUpper;
+        }
     }
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
@@ -1089,7 +1101,7 @@ split_point_start: // At split points actual search starts from here
     const TTEntry* tte;
     Key posKey;
     Move ttMove, move, bestMove;
-    Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
+    Value bestValue, value, ttValue, ttValueUpper, futilityValue, futilityBase, oldAlpha;
     bool givesCheck, enoughMaterial, evasionPrunable, fromNull;
     Depth ttDepth;
 
@@ -1111,21 +1123,34 @@ split_point_start: // At split points actual search starts from here
     tte = TT.probe(posKey);
     ttMove = tte ? tte->move() : MOVE_NONE;
     ttValue = tte ? value_from_tt(tte->value(),ss->ply) : VALUE_NONE;
+    ttValueUpper = tte ? value_from_tt(tte->value_upper(),ss->ply) : VALUE_NONE;
 
     // Decide whether or not to include checks, this fixes also the type of
     // TT entry depth that we are going to use. Note that in qsearch we use
     // only two types of depth in TT: DEPTH_QS_CHECKS or DEPTH_QS_NO_CHECKS.
     ttDepth = InCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
                                                   : DEPTH_QS_NO_CHECKS;
-    if (   tte
-        && tte->depth() >= ttDepth
-        && ttValue != VALUE_NONE // Only in case of TT access race
-        && (           PvNode ?  tte->type() == BOUND_EXACT
-            : ttValue >= beta ? (tte->type() & BOUND_LOWER)
-                              : (tte->type() & BOUND_UPPER)))
+    if (tte)
     {
-        ss->currentMove = ttMove; // Can be MOVE_NONE
-        return ttValue;
+        // Fail High
+        if (  (tte->type() & BOUND_LOWER)
+            && ttValue >= beta
+            && tte->depth() >= ttDepth
+            && ttValue != VALUE_NONE) // Only in case of TT access race
+        {
+            ss->currentMove = ttMove; // Can be MOVE_NONE
+            return ttValue;
+        }
+
+        // Fail Low
+        if (  (tte->type() & BOUND_UPPER)
+            && ttValueUpper <= alpha
+            && tte->depth_upper() >= ttDepth
+            && ttValueUpper != VALUE_NONE) // Only in case of TT access race
+        {
+            ss->currentMove = ttMove; // Can be MOVE_NONE
+            return ttValueUpper;
+        }
     }
 
     // Evaluate the position statically
