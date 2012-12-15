@@ -46,61 +46,19 @@ class TTEntry {
 public:
   void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g) {
 
-    key32       = (uint32_t)k;
-    move16      = (uint16_t)m;
-    bound       = (uint8_t)b;
-    generation8 = (uint8_t)g;
-    valueUpper = (int16_t)(b & BOUND_UPPER ? v : VALUE_NONE);
-    depthUpper = (int16_t)(b & BOUND_UPPER ? d : DEPTH_NONE);
-    valueLower = (int16_t)(b & BOUND_LOWER ? v : VALUE_NONE);
-    depthLower = (int16_t)(b & BOUND_LOWER ? d : DEPTH_NONE);
+    key32        = (uint32_t)k;
+    move16       = (uint16_t)m;
+    bound        = (uint8_t)b;
+    generation8  = (uint8_t)g;
+    value16      = (int16_t)v;
+    depth16      = (int16_t)d;
   }
-
-  void update(Value v, Bound b, Depth d, Move m, int g) {
-
-    move16      = (uint16_t)m;
-    generation8 = (uint8_t)g;
-
-    if (bound == BOUND_EXACT)
-        bound = BOUND_UPPER | BOUND_LOWER; // Drop 'EXACT' flag
-
-    if (b & BOUND_UPPER)
-    {
-        valueUpper = (int16_t)v;
-        depthUpper = (int16_t)d;
-
-        if ((bound & BOUND_LOWER) && v < valueLower)
-        {
-            bound ^= BOUND_LOWER;
-            valueLower = VALUE_NONE;
-            depthLower = DEPTH_NONE;
-        }
-    }
-
-    if (b & BOUND_LOWER)
-    {
-        valueLower = (int16_t)v;
-        depthLower = (int16_t)d;
-
-        if ((bound & BOUND_UPPER) && v > valueUpper)
-        {
-            bound ^= BOUND_UPPER;
-            valueUpper = VALUE_NONE;
-            depthUpper = DEPTH_NONE;
-        }
-    }
-
-    bound |= (uint8_t)b;
-  }
-
   void set_generation(int g) { generation8 = (uint8_t)g; }
 
   uint32_t key() const              { return key32; }
-  Depth depth() const               { return (Depth)depthLower; }
-  Depth depth_upper() const         { return (Depth)depthUpper; }
+  Depth depth() const               { return (Depth)depth16; }
   Move move() const                 { return (Move)move16; }
-  Value value() const               { return (Value)valueLower; }
-  Value value_upper() const         { return (Value)valueUpper; }
+  Value value() const               { return (Value)value16; }
   Bound type() const                { return (Bound)bound; }
   int generation() const            { return (int)generation8; }
 
@@ -108,7 +66,7 @@ private:
   uint32_t key32;
   uint16_t move16;
   uint8_t bound, generation8;
-  int16_t valueLower, depthLower, valueUpper, depthUpper;
+  int16_t value16, depth16;
 };
 
 
@@ -138,7 +96,7 @@ public:
   ~TranspositionTable();
   void set_size(size_t mbSize);
   void clear();
-  void store(const Key posKey, Value v, Bound b, Depth d, Move m);
+  void store(const Key posKey, Value v, Bound type, Depth d, Move m);
   TTEntry* probe(const Key posKey) const;
   void new_search();
   TTEntry* first_entry(const Key posKey) const;
