@@ -919,7 +919,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Prefetch pawn and material hash tables
   prefetch((char*)thisThread->pawnTable.entries[st->pawnKey]);
-  prefetch((char*)thisThread->materialTable.entries[st->materialKey]);
+  prefetch((char*)thisThread->materialTable[st->materialKey]);
 
   // Update incremental scores
   st->psqScore += psq_delta(piece, from, to);

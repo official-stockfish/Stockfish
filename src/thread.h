@@ -110,7 +110,8 @@ public:
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Eval::Table evalTable;
-  MaterialTable materialTable;
+  Material::Table materialTable;
+  Endgames endgames;
   PawnTable pawnTable;
   size_t idx;
   int maxPly;

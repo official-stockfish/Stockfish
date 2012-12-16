@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
+#include <algorithm>  // For std::min
 #include <cassert>
 #include <cstring>
 
@@ -81,18 +81,54 @@ namespace {
           && pos.piece_count(Them, PAWN)  >= 1;
   }
 
+  /// imbalance() calculates imbalance comparing piece count of each
+  /// piece type for both colors.
+
+  template<Color Us>
+  int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    int pt1, pt2, pc, v;
+    int value = 0;
+
+    // Redundancy of major pieces, formula based on Kaufman's paper
+    // "The Evaluation of Material Imbalances in Chess"
+    if (pieceCount[Us][ROOK] > 0)
+        value -=  RedundantRookPenalty * (pieceCount[Us][ROOK] - 1)
+                + RedundantQueenPenalty * pieceCount[Us][QUEEN];
+
+    // Second-degree polynomial material imbalance by Tord Romstad
+    for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
+    {
+        pc = pieceCount[Us][pt1];
+        if (!pc)
+            continue;
+
+        v = LinearCoefficients[pt1];
+
+        for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
+            v +=  QuadraticCoefficientsSameColor[pt1][pt2] * pieceCount[Us][pt2]
+                + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
+
+        value += pc * v;
+    }
+    return value;
+  }
+
 } // namespace
 
+namespace Material {
 
-/// MaterialTable::probe() takes a position object as input, looks up a MaterialEntry
+/// Material::probe() takes a position object as input, looks up a MaterialEntry
 /// object, and returns a pointer to it. If the material configuration is not
 /// already present in the table, it is computed and stored there, so we don't
 /// have to recompute everything when the same material configuration occurs again.
 
-MaterialEntry* MaterialTable::probe(const Position& pos) {
+Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
 
   Key key = pos.material_key();
-  MaterialEntry* e = entries[key];
+  Entry* e = entries[key];
 
   // If e->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
@@ -100,10 +136,10 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
   if (e->key == key)
       return e;
 
-  memset(e, 0, sizeof(MaterialEntry));
+  memset(e, 0, sizeof(Entry));
   e->key = key;
   e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-  e->gamePhase = MaterialTable::game_phase(pos);
+  e->gamePhase = game_phase(pos);
 
   // Let's look if we have a specialized evaluation function for this
   // particular material configuration. First we look for a fixed
@@ -226,47 +262,11 @@ MaterialEntry* MaterialTable::probe(const Position& pos) {
 }
 
 
-/// MaterialTable::imbalance() calculates imbalance comparing piece count of each
-/// piece type for both colors.
-
-template<Color Us>
-int MaterialTable::imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
-
-  const Color Them = (Us == WHITE ? BLACK : WHITE);
-
-  int pt1, pt2, pc, v;
-  int value = 0;
-
-  // Redundancy of major pieces, formula based on Kaufman's paper
-  // "The Evaluation of Material Imbalances in Chess"
-  if (pieceCount[Us][ROOK] > 0)
-      value -=  RedundantRookPenalty * (pieceCount[Us][ROOK] - 1)
-              + RedundantQueenPenalty * pieceCount[Us][QUEEN];
-
-  // Second-degree polynomial material imbalance by Tord Romstad
-  for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
-  {
-      pc = pieceCount[Us][pt1];
-      if (!pc)
-          continue;
-
-      v = LinearCoefficients[pt1];
-
-      for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; pt2++)
-          v +=  QuadraticCoefficientsSameColor[pt1][pt2] * pieceCount[Us][pt2]
-              + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
-
-      value += pc * v;
-  }
-  return value;
-}
-
-
-/// MaterialTable::game_phase() calculates the phase given the current
+/// Material::game_phase() calculates the phase given the current
 /// position. Because the phase is strictly a function of the material, it
 /// is stored in MaterialEntry.
 
-Phase MaterialTable::game_phase(const Position& pos) {
+Phase game_phase(const Position& pos) {
 
   Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
 
@@ -274,3 +274,5 @@ Phase MaterialTable::game_phase(const Position& pos) {
         : npm <= EndgameLimit ? PHASE_ENDGAME
         : Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
+
+} // namespace Material

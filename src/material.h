@@ -25,31 +25,26 @@
 #include "position.h"
 #include "types.h"
 
-const int MaterialTableSize = 8192;
+namespace Material {
 
-/// MaterialEntry is a class which contains various information about a
-/// material configuration. It contains a material balance evaluation,
-/// a function pointer to a special endgame evaluation function (which in
-/// most cases is NULL, meaning that the standard evaluation function will
-/// be used), and "scale factors" for black and white.
+/// Material::Entry contains various information about a material configuration.
+/// It contains a material balance evaluation, a function pointer to a special
+/// endgame evaluation function (which in most cases is NULL, meaning that the
+/// standard evaluation function will be used), and "scale factors".
 ///
 /// The scale factors are used to scale the evaluation score up or down.
 /// For instance, in KRB vs KR endgames, the score is scaled down by a factor
 /// of 4, which will result in scores of absolute value less than one pawn.
 
-class MaterialEntry {
+struct Entry {
 
-  friend struct MaterialTable;
-
-public:
-  Score material_value() const;
+  Score material_value() const { return make_score(value, value); }
+  int space_weight() const { return spaceWeight; }
+  Phase game_phase() const { return gamePhase; }
+  bool specialized_eval_exists() const { return evaluationFunction != NULL; }
+  Value evaluate(const Position& p) const { return (*evaluationFunction)(p); }
   ScaleFactor scale_factor(const Position& pos, Color c) const;
-  int space_weight() const;
-  Phase game_phase() const;
-  bool specialized_eval_exists() const;
-  Value evaluate(const Position& pos) const;
 
-private:
   Key key;
   int16_t value;
   uint8_t factor[COLOR_NB];
@@ -59,55 +54,24 @@ private:
   Phase gamePhase;
 };
 
+typedef HashTable<Entry, 8192> Table;
 
-/// The MaterialTable class represents a material hash table. The most important
-/// method is probe(), which returns a pointer to a MaterialEntry object.
+Entry* probe(const Position& pos, Table& entries, Endgames& endgames);
+Phase game_phase(const Position& pos);
 
-struct MaterialTable {
-
-  MaterialEntry* probe(const Position& pos);
-  static Phase game_phase(const Position& pos);
-  template<Color Us> static int imbalance(const int pieceCount[][PIECE_TYPE_NB]);
-
-  HashTable<MaterialEntry, MaterialTableSize> entries;
-  Endgames endgames;
-};
-
-
-/// MaterialEntry::scale_factor takes a position and a color as input, and
+/// Material::scale_factor takes a position and a color as input, and
 /// returns a scale factor for the given color. We have to provide the
 /// position in addition to the color, because the scale factor need not
 /// to be a constant: It can also be a function which should be applied to
 /// the position. For instance, in KBP vs K endgames, a scaling function
 /// which checks for draws with rook pawns and wrong-colored bishops.
 
-inline ScaleFactor MaterialEntry::scale_factor(const Position& pos, Color c) const {
+inline ScaleFactor Entry::scale_factor(const Position& pos, Color c) const {
 
-  if (!scalingFunction[c])
-      return ScaleFactor(factor[c]);
-
-  ScaleFactor sf = (*scalingFunction[c])(pos);
-  return sf == SCALE_FACTOR_NONE ? ScaleFactor(factor[c]) : sf;
+  return !scalingFunction[c] || (*scalingFunction[c])(pos) == SCALE_FACTOR_NONE
+        ? ScaleFactor(factor[c]) : (*scalingFunction[c])(pos);
 }
 
-inline Value MaterialEntry::evaluate(const Position& pos) const {
-  return (*evaluationFunction)(pos);
-}
-
-inline Score MaterialEntry::material_value() const {
-  return make_score(value, value);
-}
-
-inline int MaterialEntry::space_weight() const {
-  return spaceWeight;
-}
-
-inline Phase MaterialEntry::game_phase() const {
-  return gamePhase;
-}
-
-inline bool MaterialEntry::specialized_eval_exists() const {
-  return evaluationFunction != NULL;
 }
 
 #endif // !defined(MATERIAL_H_INCLUDED)

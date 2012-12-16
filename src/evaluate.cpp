@@ -36,7 +36,7 @@ namespace {
   struct EvalInfo {
 
     // Pointers to material and pawn hash table entries
-    MaterialEntry* mi;
+    Material::Entry* mi;
     PawnEntry* pi;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
@@ -367,7 +367,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
   Score score, mobilityWhite, mobilityBlack;
 
   Key key = pos.key();
-  Eval::Entry* e = pos.this_thread()->evalTable[key];
+  Thread* th = pos.this_thread();
+  Eval::Entry* e = th->evalTable[key];
 
   // If e->key matches the position's hash key, it means that we have analysed
   // this node before, and we can simply return the information we found the last
@@ -391,7 +392,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   score = pos.psq_score() + (pos.side_to_move() == WHITE ? Tempo : -Tempo);
 
   // Probe the material hash table
-  ei.mi = pos.this_thread()->materialTable.probe(pos);
+  ei.mi = Material::probe(pos, th->materialTable, th->endgames);
   score += ei.mi->material_value();
 
   // If we have a specialized evaluation function for the current material
