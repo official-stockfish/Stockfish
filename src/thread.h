@@ -112,7 +112,7 @@ public:
   Eval::Table evalTable;
   Material::Table materialTable;
   Endgames endgames;
-  PawnTable pawnTable;
+  Pawns::Table pawnsTable;
   size_t idx;
   int maxPly;
   Mutex mutex;

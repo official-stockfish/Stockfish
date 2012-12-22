@@ -37,7 +37,7 @@ namespace {
 
     // Pointers to material and pawn hash table entries
     Material::Entry* mi;
-    PawnEntry* pi;
+    Pawns::Entry* pi;
 
     // attackedBy[color][piece type] is a bitboard representing all squares
     // attacked by a given color and piece type, attackedBy[color][0] contains
@@ -405,7 +405,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
   // Probe the pawn hash table
-  ei.pi = pos.this_thread()->pawnTable.probe(pos);
+  ei.pi = Pawns::probe(pos, th->pawnsTable);
   score += ei.pi->pawns_value();
 
   // Initialize attack and king safety bitboards
