@@ -485,12 +485,13 @@ namespace {
     Value bestValue, value, ttValue;
     Value eval, nullValue, futilityValue;
     bool inCheck, givesCheck, pvMove, singularExtensionNode;
-    bool captureOrPromotion, dangerous, doFullDepthSearch;
+    bool captureOrPromotion, dangerous, doFullDepthSearch, threatExtension;
     int moveCount, playedMoveCount;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
     moveCount = playedMoveCount = 0;
+    threatExtension = false;
     inCheck = pos.checkers();
 
     if (SpNode)
@@ -675,16 +676,15 @@ namespace {
             // The null move failed low, which means that we may be faced with
             // some kind of threat. If the previous move was reduced, check if
             // the move that refuted the null move was somehow connected to the
-            // move which was reduced. If a connection is found, return a fail
-            // low score (which will cause the reduced move to fail high in the
-            // parent node, which will trigger a re-search with full depth).
+            // move which was reduced. If a connection is found extend moves that
+            // defend against threat.
             threatMove = (ss+1)->currentMove;
 
             if (   depth < 5 * ONE_PLY
                 && (ss-1)->reduction
                 && threatMove != MOVE_NONE
                 && yields_to_threat(pos, (ss-1)->currentMove, threatMove))
-                return beta - 1;
+                threatExtension = true;
         }
     }
 
@@ -800,6 +800,9 @@ split_point_start: // At split points actual search starts from here
 
       // Step 12. Extend checks and, in PV nodes, also dangerous moves
       if (PvNode && dangerous)
+          ext = ONE_PLY;
+
+      else if (threatExtension && prevents_threat(pos, move, threatMove))
           ext = ONE_PLY;
 
       else if (givesCheck && pos.see_sign(move) >= 0)
