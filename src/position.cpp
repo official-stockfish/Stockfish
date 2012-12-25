@@ -521,20 +521,6 @@ bool Position::pl_move_is_legal(Move m, Bitboard pinned) const {
 }
 
 
-/// Position::move_is_legal() takes a random move and tests whether the move
-/// is legal. This version is not very fast and should be used only in non
-/// time-critical paths.
-
-bool Position::move_is_legal(const Move m) const {
-
-  for (MoveList<LEGAL> ml(*this); !ml.end(); ++ml)
-      if (ml.move() == m)
-          return true;
-
-  return false;
-}
-
-
 /// Position::is_pseudo_legal() takes a random move and tests whether the move
 /// is pseudo legal. It is used to validate moves from TT that can be corrupted
 /// due to SMP concurrent access or hash position key aliasing.
@@ -548,7 +534,7 @@ bool Position::is_pseudo_legal(const Move m) const {
 
   // Use a slower but simpler function for uncommon cases
   if (type_of(m) != NORMAL)
-      return move_is_legal(m);
+      return MoveList<LEGAL>(*this).contains(m);
 
   // Is not a promotion, so promotion piece must be empty
   if (promotion_type(m) - 2 != NO_PIECE_TYPE)

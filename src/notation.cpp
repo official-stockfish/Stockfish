@@ -108,7 +108,7 @@ const string move_to_san(Position& pos, Move m) {
   if (m == MOVE_NULL)
       return "(null)";
 
-  assert(pos.move_is_legal(m));
+  assert(MoveList<LEGAL>(pos).contains(m));
 
   Bitboard attackers;
   bool ambiguousMove, ambiguousFile, ambiguousRank;
