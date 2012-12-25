@@ -47,7 +47,7 @@ struct MoveList {
   Move move() const { return cur->move; }
   size_t size() const { return last - mlist; }
   bool contains(Move m) const {
-    for (const MoveStack* it(mlist) ; it != last; ++it) if (it->move == m) return true;
+    for (const MoveStack* it(mlist); it != last; ++it) if (it->move == m) return true;
     return false;
   }
 

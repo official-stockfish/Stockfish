@@ -475,7 +475,7 @@ inline Move make_move(Square from, Square to) {
 
 template<MoveType T>
 inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  return Move(to | (from << 6) | T | ((pt - KNIGHT) << 12)) ;
+  return Move(to | (from << 6) | T | ((pt - KNIGHT) << 12));
 }
 
 inline bool is_ok(Move m) {
