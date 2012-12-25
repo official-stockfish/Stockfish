@@ -542,7 +542,6 @@ bool Position::move_is_legal(const Move m) const {
 bool Position::is_pseudo_legal(const Move m) const {
 
   Color us = sideToMove;
-  Color them = ~sideToMove;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_moved(m);
@@ -587,7 +586,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       case DELTA_SE:
       // Capture. The destination square must be occupied by an enemy
       // piece (en passant captures was handled earlier).
-      if (piece_on(to) == NO_PIECE || color_of(piece_on(to)) != them)
+      if (piece_on(to) == NO_PIECE || color_of(piece_on(to)) != ~us)
           return false;
 
       // From and to files must be one file apart, avoids a7h5
@@ -636,14 +635,12 @@ bool Position::is_pseudo_legal(const Move m) const {
   {
       if (type_of(pc) != KING)
       {
-          Bitboard b = checkers();
-          Square checksq = pop_lsb(&b);
-
-          if (b) // double check ? In this case a king move is required
+          // Double check? In this case a king move is required
+          if (more_than_one(checkers()))
               return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          if (!((between_bb(checksq, king_square(us)) | checkers()) & to))
+          if (!((between_bb(lsb(checkers()), king_square(us)) | checkers()) & to))
               return false;
       }
       // In case of king moves under check we have to remove king so to catch
