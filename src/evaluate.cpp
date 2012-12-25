@@ -361,7 +361,7 @@ namespace {
 template<bool Trace>
 Value do_evaluate(const Position& pos, Value& margin) {
 
-  assert(!pos.in_check());
+  assert(!pos.checkers());
 
   EvalInfo ei;
   Score score, mobilityWhite, mobilityBlack;
@@ -1014,7 +1014,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
             // Opponent king cannot block because path is defended and position
             // is not in check. So only friendly pieces can be blockers.
-            assert(!pos.in_check());
+            assert(!pos.checkers());
             assert((queeningPath & pos.pieces()) == (queeningPath & pos.pieces(c)));
 
             // Add moves needed to free the path from friendly pieces and retest condition

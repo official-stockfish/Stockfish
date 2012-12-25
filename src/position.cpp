@@ -617,7 +617,7 @@ bool Position::is_pseudo_legal(const Move m) const {
   // Evasions generator already takes care to avoid some kind of illegal moves
   // and pl_move_is_legal() relies on this. So we have to take care that the
   // same kind of moves are filtered out here.
-  if (in_check())
+  if (checkers())
   {
       if (type_of(pc) != KING)
       {
@@ -1144,7 +1144,7 @@ void Position::do_castle_move(Move m) {
 template<bool Do>
 void Position::do_null_move(StateInfo& backupSt) {
 
-  assert(!in_check());
+  assert(!checkers());
 
   // Back up the information necessary to undo the null move to the supplied
   // StateInfo object. Note that differently from normal case here backupSt
@@ -1428,7 +1428,7 @@ bool Position::is_draw() const {
       && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMg))
       return true;
 
-  if (st->rule50 > 99 && (!in_check() || MoveList<LEGAL>(*this).size()))
+  if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
   if (CheckRepetition)

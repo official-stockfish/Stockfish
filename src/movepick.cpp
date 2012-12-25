@@ -68,7 +68,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
   endBadCaptures = moves + MAX_MOVES - 1;
   ss = s;
 
-  if (p.in_check())
+  if (p.checkers())
       phase = EVASION;
 
   else
@@ -96,7 +96,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
   assert(d <= DEPTH_ZERO);
 
-  if (p.in_check())
+  if (p.checkers())
       phase = EVASION;
 
   else if (d > DEPTH_QS_NO_CHECKS)
@@ -126,7 +126,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType pt)
                        : pos(p), H(h), cur(moves), end(moves) {
 
-  assert(!pos.in_check());
+  assert(!pos.checkers());
 
   phase = PROBCUT;
 

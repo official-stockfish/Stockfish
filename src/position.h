@@ -122,7 +122,6 @@ public:
   Square castle_rook_square(Color c, CastlingSide s) const;
 
   // Checking
-  bool in_check() const;
   Bitboard checkers() const;
   Bitboard discovered_check_candidates() const;
   Bitboard pinned_pieces() const;
@@ -328,10 +327,6 @@ inline Bitboard Position::attackers_to(Square s) const {
 
 inline Bitboard Position::checkers() const {
   return st->checkersBB;
-}
-
-inline bool Position::in_check() const {
-  return st->checkersBB != 0;
 }
 
 inline Bitboard Position::discovered_check_candidates() const {

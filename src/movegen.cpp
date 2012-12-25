@@ -44,7 +44,7 @@ namespace {
     Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
 
-    assert(!pos.in_check());
+    assert(!pos.checkers());
 
     const int K = Chess960 ? kto > kfrom ? -1 : 1
                            : Side == KING_SIDE ? -1 : 1;
@@ -307,7 +307,7 @@ template<GenType Type>
 MoveStack* generate(const Position& pos, MoveStack* mlist) {
 
   assert(Type == CAPTURES || Type == QUIETS || Type == NON_EVASIONS);
-  assert(!pos.in_check());
+  assert(!pos.checkers());
 
   Color us = pos.side_to_move();
   Bitboard target;
@@ -335,7 +335,7 @@ template MoveStack* generate<NON_EVASIONS>(const Position&, MoveStack*);
 template<>
 MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
 
-  assert(!pos.in_check());
+  assert(!pos.checkers());
 
   Color us = pos.side_to_move();
   CheckInfo ci(pos);
@@ -366,7 +366,7 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
 template<>
 MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
 
-  assert(pos.in_check());
+  assert(pos.checkers());
 
   Square from, checksq;
   int checkersCnt = 0;
@@ -432,7 +432,7 @@ MoveStack* generate<LEGAL>(const Position& pos, MoveStack* mlist) {
   Bitboard pinned = pos.pinned_pieces();
   Square ksq = pos.king_square(pos.side_to_move());
 
-  end = pos.in_check() ? generate<EVASIONS>(pos, mlist)
+  end = pos.checkers() ? generate<EVASIONS>(pos, mlist)
                        : generate<NON_EVASIONS>(pos, mlist);
   while (cur != end)
       if (   (pinned || from_sq(cur->move) == ksq || type_of(cur->move) == ENPASSANT)
