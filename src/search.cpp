@@ -99,8 +99,8 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta);
-  bool yields_to_threat(const Position& pos, Move move, Move threat);
-  bool prevents_threat(const Position& pos, Move move, Move threat);
+  bool allows_move(const Position& pos, Move first, Move second);
+  bool prevents_move(const Position& pos, Move first, Move second);
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
 
   struct Skill {
@@ -683,7 +683,7 @@ namespace {
             if (   depth < 5 * ONE_PLY
                 && (ss-1)->reduction
                 && threatMove != MOVE_NONE
-                && yields_to_threat(pos, (ss-1)->currentMove, threatMove))
+                && allows_move(pos, (ss-1)->currentMove, threatMove))
                 threatExtension = true;
         }
     }
@@ -802,7 +802,7 @@ split_point_start: // At split points actual search starts from here
       if (PvNode && dangerous)
           ext = ONE_PLY;
 
-      else if (threatExtension && prevents_threat(pos, move, threatMove))
+      else if (threatExtension && prevents_move(pos, move, threatMove))
           ext = ONE_PLY;
 
       else if (givesCheck && pos.see_sign(move) >= 0)
@@ -847,7 +847,7 @@ split_point_start: // At split points actual search starts from here
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
               && moveCount >= FutilityMoveCounts[depth]
-              && (!threatMove || !prevents_threat(pos, move, threatMove)))
+              && (!threatMove || !prevents_move(pos, move, threatMove)))
           {
               if (SpNode)
                   sp->mutex.lock();
@@ -1346,39 +1346,40 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // yields_to_threat() tests whether the move at previous ply yields to the so
-  // called threat move (the best move returned from a null search that fails
-  // low). Here 'yields to' means that the move somehow made the threat possible
-  // for instance if the moving piece is the same in both moves.
+  // allows_move() tests whether the move at previous ply (first) somehow makes a
+  // second move possible, for instance if the moving piece is the same in both
+  // moves. Normally the second move is the threat move (the best move returned
+  // from a null search that fails low).
 
-  bool yields_to_threat(const Position& pos, Move move, Move threat) {
+  bool allows_move(const Position& pos, Move first, Move second) {
 
-    assert(is_ok(move));
-    assert(is_ok(threat));
-    assert(color_of(pos.piece_on(from_sq(threat))) == ~pos.side_to_move());
+    assert(is_ok(first));
+    assert(is_ok(second));
+    assert(color_of(pos.piece_on(from_sq(second))) == ~pos.side_to_move());
+    assert(color_of(pos.piece_on(to_sq(first))) == ~pos.side_to_move());
 
-    Square mfrom = from_sq(move);
-    Square mto = to_sq(move);
-    Square tfrom = from_sq(threat);
-    Square tto = to_sq(threat);
+    Square m1from = from_sq(first);
+    Square m2from = from_sq(second);
+    Square m1to = to_sq(first);
+    Square m2to = to_sq(second);
 
-    // The piece is the same or threat's destination was vacated by the move
-    if (mto == tfrom || tto == mfrom)
+    // The piece is the same or second's destination was vacated by the first move
+    if (m1to == m2from || m2to == m1from)
         return true;
 
-    // Threat moves through the vacated square
-    if (between_bb(tfrom, tto) & mfrom)
+    // Second one moves through the square vacated by first one
+    if (between_bb(m2from, m2to) & m1from)
       return true;
 
-    // Threat's destination is defended by the move's piece
-    Bitboard matt = pos.attacks_from(pos.piece_on(mto), mto, pos.pieces() ^ tfrom);
-    if (matt & tto)
+    // Second's destination is defended by the first move's piece
+    Bitboard m1att = pos.attacks_from(pos.piece_on(m1to), m1to, pos.pieces() ^ m2from);
+    if (m1att & m2to)
         return true;
 
-    // Threat gives a discovered check through the move's checking piece
-    if (matt & pos.king_square(pos.side_to_move()))
+    // Second move gives a discovered check through the first's checking piece
+    if (m1att & pos.king_square(pos.side_to_move()))
     {
-        assert(between_bb(mto, pos.king_square(pos.side_to_move())) & tfrom);
+        assert(between_bb(m1to, pos.king_square(pos.side_to_move())) & m2from);
         return true;
     }
 
@@ -1386,51 +1387,52 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // prevents_threat() tests whether a move is able to defend against the so
-  // called threat move (the best move returned from a null search that fails
-  // low). In this case will not be pruned.
+  // prevents_move() tests whether a move (first) is able to defend against an
+  // opponent's move (second). In this case will not be pruned. Normally the
+  // second move is the threat move (the best move returned from a null search
+  // that fails low).
 
-  bool prevents_threat(const Position& pos, Move move, Move threat) {
+  bool prevents_move(const Position& pos, Move first, Move second) {
 
-    assert(is_ok(move));
-    assert(is_ok(threat));
-    assert(!pos.is_capture_or_promotion(move));
-    assert(!pos.is_passed_pawn_push(move));
+    assert(is_ok(first));
+    assert(is_ok(second));
+    assert(!pos.is_capture_or_promotion(first));
+    assert(!pos.is_passed_pawn_push(first));
 
-    Square mfrom = from_sq(move);
-    Square mto = to_sq(move);
-    Square tfrom = from_sq(threat);
-    Square tto = to_sq(threat);
+    Square m1from = from_sq(first);
+    Square m2from = from_sq(second);
+    Square m1to = to_sq(first);
+    Square m2to = to_sq(second);
 
     // Don't prune moves of the threatened piece
-    if (mfrom == tto)
+    if (m1from == m2to)
         return true;
 
     // If the threatened piece has value less than or equal to the value of the
     // threat piece, don't prune moves which defend it.
-    if (    pos.is_capture(threat)
-        && (   PieceValue[MG][pos.piece_on(tfrom)] >= PieceValue[MG][pos.piece_on(tto)]
-            || type_of(pos.piece_on(tfrom)) == KING))
+    if (    pos.is_capture(second)
+        && (   PieceValue[MG][pos.piece_on(m2from)] >= PieceValue[MG][pos.piece_on(m2to)]
+            || type_of(pos.piece_on(m2from)) == KING))
     {
         // Update occupancy as if the piece and the threat are moving
-        Bitboard occ = pos.pieces() ^ mfrom ^ mto ^ tfrom;
-        Piece piece = pos.piece_on(mfrom);
+        Bitboard occ = pos.pieces() ^ m1from ^ m1to ^ m2from;
+        Piece piece = pos.piece_on(m1from);
 
         // The moved piece attacks the square 'tto' ?
-        if (pos.attacks_from(piece, mto, occ) & tto)
+        if (pos.attacks_from(piece, m1to, occ) & m2to)
             return true;
 
         // Scan for possible X-ray attackers behind the moved piece
-        Bitboard xray =  (attacks_bb<  ROOK>(tto, occ) & pos.pieces(color_of(piece), QUEEN, ROOK))
-                       | (attacks_bb<BISHOP>(tto, occ) & pos.pieces(color_of(piece), QUEEN, BISHOP));
+        Bitboard xray =  (attacks_bb<  ROOK>(m2to, occ) & pos.pieces(color_of(piece), QUEEN, ROOK))
+                       | (attacks_bb<BISHOP>(m2to, occ) & pos.pieces(color_of(piece), QUEEN, BISHOP));
 
         // Verify attackers are triggered by our move and not already existing
-        if (xray && (xray ^ (xray & pos.attacks_from<QUEEN>(tto))))
+        if (xray && (xray ^ (xray & pos.attacks_from<QUEEN>(m2to))))
             return true;
     }
 
     // Don't prune safe moves which block the threat path
-    if ((between_bb(tfrom, tto) & mto) && pos.see_sign(move) >= 0)
+    if ((between_bb(m2from, m2to) & m1to) && pos.see_sign(first) >= 0)
         return true;
 
     return false;
