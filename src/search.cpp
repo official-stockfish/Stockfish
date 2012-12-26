@@ -1396,8 +1396,6 @@ split_point_start: // At split points actual search starts from here
 
     assert(is_ok(first));
     assert(is_ok(second));
-    assert(!pos.is_capture_or_promotion(first));
-    assert(!pos.is_passed_pawn_push(first));
 
     Square m1from = from_sq(first);
     Square m2from = from_sq(second);
