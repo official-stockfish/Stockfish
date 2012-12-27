@@ -407,14 +407,15 @@ const string Position::pretty(Move move) const {
       if (piece_on(sq) != NO_PIECE)
           brd[513 - 68*rank_of(sq) + 4*file_of(sq)] = PieceToChar[piece_on(sq)];
 
-  ss << brd << "\nFen: " << fen() << "\nKey: " << st->key;
+  ss << brd << "\nFen: " << fen() << "\nKey: " << st->key << "\nCheckers: ";
 
-  if (checkers())
-  {
-      ss << "\nCheckers: ";
-      for (Bitboard b = checkers(); b; )
-          ss << square_to_string(pop_lsb(&b)) << " ";
-  }
+  for (Bitboard b = checkers(); b; )
+      ss << square_to_string(pop_lsb(&b)) << " ";
+
+  ss << "\nLegal moves: ";
+  for (MoveList<LEGAL> ml(*this); !ml.end(); ++ml)
+      ss << move_to_san(*const_cast<Position*>(this), ml.move()) << " ";
+
   return ss.str();
 }
 
