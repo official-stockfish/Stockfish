@@ -20,7 +20,6 @@
 #if !defined(EVALUATE_H_INCLUDED)
 #define EVALUATE_H_INCLUDED
 
-#include "misc.h"
 #include "types.h"
 
 class Position;
@@ -30,16 +29,6 @@ namespace Eval {
 extern void init();
 extern Value evaluate(const Position& pos, Value& margin);
 extern std::string trace(const Position& pos);
-
-const int TableSize = 262144;
-
-struct Entry {
-  Key key;
-  Value value;
-  int16_t margins[2];
-};
-
-struct Table : HashTable<Entry, TableSize> {};
 
 }
 
