@@ -82,6 +82,9 @@ void benchmark(const Position& current, istream& is) {
   else if (limitType == "nodes")
       limits.nodes = atoi(limit.c_str());
 
+  else if (limitType == "mate")
+      limits.mate = atoi(limit.c_str());
+
   else
       limits.depth = atoi(limit.c_str());
 
