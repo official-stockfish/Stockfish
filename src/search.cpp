@@ -194,7 +194,7 @@ void Search::think() {
       goto finalize;
   }
 
-  if (Options["OwnBook"] && !Limits.infinite)
+  if (Options["OwnBook"] && !Limits.infinite && !Limits.mate)
   {
       Move bookMove = book.probe(RootPos, Options["Book File"], Options["Best Book Move"]);
 
@@ -410,6 +410,12 @@ namespace {
         if (depth > 2 && BestMoveChanges)
             bestMoveNeverChanged = false;
 
+        // Do we have found a "mate in x"?
+        if (   Limits.mate
+            && bestValue >= VALUE_MATE_IN_MAX_PLY
+            && VALUE_MATE - bestValue <= 2 * Limits.mate)
+            Signals.stop = true;
+
         // Do we have time for the next iteration? Can we stop searching now?
         if (Limits.use_time_management() && !Signals.stopOnPonderhit)
         {
@@ -601,6 +607,11 @@ namespace {
         TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
                  ss->staticEval, ss->evalMargin);
     }
+
+    // Handling of UCI command 'mate in x moves'. We simply return if after
+    // 'x' moves we still have not checkmated the opponent.
+    if (PvNode && !RootNode && !inCheck && Limits.mate && ss->ply > 2 * Limits.mate)
+        return eval;
 
     // Update gain for the parent non-capture move given the static position
     // evaluation before and after the move.
