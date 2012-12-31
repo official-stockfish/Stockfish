@@ -61,17 +61,15 @@ class RKISS {
     return s.d = e + s.a;
   }
 
-  // Init seed and scramble a few rounds
-  void raninit() {
+public:
+  RKISS(int seed = 73) {
 
     s.a = 0xf1ea5eed;
     s.b = s.c = s.d = 0xd4e12c77;
-    for (int i = 0; i < 73; i++)
+    for (int i = 0; i < seed; i++) // Scramble a few rounds
         rand64();
   }
 
-public:
-  RKISS() { raninit(); }
   template<typename T> T rand() { return T(rand64()); }
 };
 

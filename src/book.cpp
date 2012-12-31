@@ -348,11 +348,7 @@ namespace {
 
 } // namespace
 
-PolyglotBook::PolyglotBook() {
-
-  for (int i = Time::now() % 10000; i > 0; i--)
-      RKiss.rand<unsigned>(); // Make random number generation less deterministic
-}
+PolyglotBook::PolyglotBook() : RKiss(Time::now() % 10000) {}
 
 PolyglotBook::~PolyglotBook() { if (is_open()) close(); }
 
