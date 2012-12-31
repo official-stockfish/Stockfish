@@ -1146,7 +1146,11 @@ Value do_evaluate(const Position& pos, Value& margin) {
     behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
     behind |= (Us == WHITE ? behind >> 16 : behind << 16);
 
-    return popcount<Max15>(safe) + popcount<Max15>(behind & safe);
+    // Since SpaceMask[Us] is fully on our half of the board
+    assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
+
+    // Count safe + (behind & safe) with a single popcount
+    return popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
   }
 
 
