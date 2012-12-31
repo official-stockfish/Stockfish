@@ -584,15 +584,9 @@ namespace {
 
     else if (tte)
     {
-        // Following asserts are valid only in single thread condition because
-        // TT access is always racy and its contents cannot be trusted.
-        assert(tte->static_value() != VALUE_NONE || Threads.size() > 1);
-        assert(ttValue != VALUE_NONE || tte->type() == BOUND_NONE || Threads.size() > 1);
-
-        ss->staticEval = eval = tte->static_value();
-        ss->evalMargin = tte->static_value_margin();
-
-        if (eval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
+        // Never assume anything on values stored in TT
+        if (  (ss->staticEval = eval = tte->static_value()) == VALUE_NONE
+            ||(ss->evalMargin = tte->static_value_margin()) == VALUE_NONE)
             eval = ss->staticEval = evaluate(pos, ss->evalMargin);
 
         // Can ttValue be used as a better position evaluation?
@@ -1175,12 +1169,9 @@ split_point_start: // At split points actual search starts from here
         }
         else if (tte)
         {
-            assert(tte->static_value() != VALUE_NONE || Threads.size() > 1);
-
-            ss->staticEval = bestValue = tte->static_value();
-            ss->evalMargin = tte->static_value_margin();
-
-            if (ss->staticEval == VALUE_NONE || ss->evalMargin == VALUE_NONE) // Due to a race
+            // Never assume anything on values stored in TT
+            if (  (ss->staticEval = bestValue = tte->static_value()) == VALUE_NONE
+                ||(ss->evalMargin = tte->static_value_margin()) == VALUE_NONE)
                 ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
         }
         else
