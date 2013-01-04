@@ -331,32 +331,25 @@ void Position::set_castle_right(Color c, Square rfrom) {
 const string Position::fen() const {
 
   std::ostringstream ss;
-  Square sq;
-  int emptyCnt;
 
   for (Rank rank = RANK_8; rank >= RANK_1; rank--)
   {
-      emptyCnt = 0;
-
       for (File file = FILE_A; file <= FILE_H; file++)
       {
-          sq = file | rank;
+          Square sq = file | rank;
 
           if (is_empty(sq))
-              emptyCnt++;
-          else
           {
-              if (emptyCnt > 0)
-              {
-                  ss << emptyCnt;
-                  emptyCnt = 0;
-              }
-              ss << PieceToChar[piece_on(sq)];
-          }
-      }
+              int emptyCnt = 1;
 
-      if (emptyCnt > 0)
-          ss << emptyCnt;
+              for ( ; file < FILE_H && is_empty(sq++); file++)
+                  emptyCnt++;
+
+              ss << emptyCnt;
+          }
+          else
+              ss << PieceToChar[piece_on(sq)];
+      }
 
       if (rank > RANK_1)
           ss << '/';
