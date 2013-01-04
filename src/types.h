@@ -441,8 +441,8 @@ inline int square_distance(Square s1, Square s2) {
   return SquareDistance[s1][s2];
 }
 
-inline char file_to_char(File f) {
-  return char(f - FILE_A + 'a');
+inline char file_to_char(File f, bool tolower = true) {
+  return char(f - FILE_A + (tolower ? 'a' : 'A'));
 }
 
 inline char rank_to_char(Rank r) {

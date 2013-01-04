@@ -358,16 +358,16 @@ const string Position::fen() const {
   ss << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      ss << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE, KING_SIDE))))) : 'K');
+      ss << (chess960 ? file_to_char(file_of(castle_rook_square(WHITE,  KING_SIDE)), false) : 'K');
 
   if (can_castle(WHITE_OOO))
-      ss << (chess960 ? char(toupper(file_to_char(file_of(castle_rook_square(WHITE, QUEEN_SIDE))))) : 'Q');
+      ss << (chess960 ? file_to_char(file_of(castle_rook_square(WHITE, QUEEN_SIDE)), false) : 'Q');
 
   if (can_castle(BLACK_OO))
-      ss << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK, KING_SIDE))) : 'k');
+      ss << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK,  KING_SIDE)),  true) : 'k');
 
   if (can_castle(BLACK_OOO))
-      ss << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK, QUEEN_SIDE))) : 'q');
+      ss << (chess960 ? file_to_char(file_of(castle_rook_square(BLACK, QUEEN_SIDE)),  true) : 'q');
 
   if (st->castleRights == CASTLES_NONE)
       ss << '-';
