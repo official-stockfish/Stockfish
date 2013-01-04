@@ -75,8 +75,8 @@ namespace {
   const int GrainSize = 8;
 
   // Evaluation weights, initialized from UCI options
-  enum { Mobility, PassedPawns, Space, KingDangerUs, KingDangerThem };
-  Score Weights[6];
+  enum { Mobility, PassedPawns, Space };
+  Score Weights[3];
 
   typedef Value V;
   #define S(mg, eg) make_score(mg, eg)
@@ -88,7 +88,7 @@ namespace {
   //
   // Values modified by Joona Kiiski
   const Score WeightsInternal[] = {
-      S(252, 344), S(216, 266), S(46, 0), S(247, 0), S(259, 0)
+      S(252, 344), S(216, 266), S(46, 0)
   };
 
   // MobilityBonus[PieceType][attacked] contains mobility bonuses for middle and
@@ -195,6 +195,10 @@ namespace {
   // the strength of the enemy attack are added up into an integer, which
   // is used as an index to KingDangerTable[].
   //
+  // King safety evaluation is asymmetrical and different for us (root color)
+  // and for our opponent. These values are used to init KingDangerTable.
+  const int KingDangerWeights[] = { 259, 247 };
+
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
 
@@ -281,19 +285,16 @@ namespace Eval {
 
   void init() {
 
-    Weights[Mobility]       = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightsInternal[Mobility]);
-    Weights[PassedPawns]    = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightsInternal[PassedPawns]);
-    Weights[Space]          = weight_option("Space", "Space", WeightsInternal[Space]);
-    Weights[KingDangerUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingDangerUs]);
-    Weights[KingDangerThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingDangerThem]);
+    Weights[Mobility]    = weight_option("Mobility (Middle Game)", "Mobility (Endgame)", WeightsInternal[Mobility]);
+    Weights[PassedPawns] = weight_option("Passed Pawns (Middle Game)", "Passed Pawns (Endgame)", WeightsInternal[PassedPawns]);
+    Weights[Space]       = weight_option("Space", "Space", WeightsInternal[Space]);
 
-    // King safety is asymmetrical. Our king danger level is weighted by
-    // "Cowardice" UCI parameter, instead the opponent one by "Aggressiveness".
-    // If running in analysis mode, make sure we use symmetrical king safety. We
-    // do this by replacing both Weights[kingDangerUs] and Weights[kingDangerThem]
-    // by their average.
+    int KingDanger[] = { KingDangerWeights[0], KingDangerWeights[1] };
+
+    // If running in analysis mode, make sure we use symmetrical king safety.
+    // We do so by replacing both KingDanger weights by their average.
     if (Options["UCI_AnalyseMode"])
-        Weights[KingDangerUs] = Weights[KingDangerThem] = (Weights[KingDangerUs] + Weights[KingDangerThem]) / 2;
+        KingDanger[0] = KingDanger[1] = (KingDanger[0] + KingDanger[1]) / 2;
 
     const int MaxSlope = 30;
     const int Peak = 1280;
@@ -302,8 +303,8 @@ namespace Eval {
     {
         t = std::min(Peak, std::min(int(0.4 * i * i), t + MaxSlope));
 
-        KingDangerTable[1][i] = apply_weight(make_score(t, 0), Weights[KingDangerUs]);
-        KingDangerTable[0][i] = apply_weight(make_score(t, 0), Weights[KingDangerThem]);
+        KingDangerTable[0][i] = apply_weight(make_score(t, 0), make_score(KingDanger[0], 0));
+        KingDangerTable[1][i] = apply_weight(make_score(t, 0), make_score(KingDanger[1], 0));
     }
   }
 
