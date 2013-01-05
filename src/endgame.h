@@ -112,7 +112,7 @@ class Endgames {
 
 public:
   Endgames();
-  ~Endgames();
+ ~Endgames();
 
   template<typename T> T probe(Key key, T& eg)
   { return eg = map(eg).count(key) ? map(eg)[key] : NULL; }
