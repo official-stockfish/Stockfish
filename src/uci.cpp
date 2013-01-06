@@ -56,14 +56,10 @@ namespace {
 void UCI::loop(const string& args) {
 
   Position pos(StartFEN, false, Threads.main_thread()); // The root position
-  string cmd, token;
+  string token, cmd = args;
 
-  while (token != "quit")
-  {
-      if (!args.empty())
-          cmd = args;
-
-      else if (!getline(cin, cmd)) // Block here waiting for input
+  do {
+      if (args.empty() && !getline(cin, cmd)) // Block here waiting for input
           cmd = "quit";
 
       istringstream is(cmd);
@@ -73,9 +69,8 @@ void UCI::loop(const string& args) {
       if (token == "quit" || token == "stop")
       {
           Search::Signals.stop = true;
-          Threads.wait_for_search_finished(); // Cannot quit while threads are running
+          Threads.main_thread()->wake_up(); // Could be sleeping
       }
-
       else if (token == "ponderhit")
       {
           // The opponent has played the expected move. GUI sends "ponderhit" if
@@ -89,8 +84,7 @@ void UCI::loop(const string& args) {
               Threads.main_thread()->wake_up(); // Could be sleeping
           }
       }
-
-      else if (token == "perft" && (is >> token)) // Read requested depth
+      else if (token == "perft" && (is >> token)) // Read perft depth
       {
           stringstream ss;
 
@@ -99,7 +93,6 @@ void UCI::loop(const string& args) {
 
           benchmark(pos, ss);
       }
-
       else if (token == "key") sync_cout <<   "position key: " << hex << pos.key()
                                          << "\nmaterial key: " << pos.material_key()
                                          << "\npawn key:     " << pos.pawn_key()
@@ -121,12 +114,9 @@ void UCI::loop(const string& args) {
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
-      if (!args.empty()) // Command line arguments have one-shot behaviour
-      {
-          Threads.wait_for_search_finished();
-          break;
-      }
-  }
+  } while (token != "quit" && args.empty()); // Args have one-shot behaviour
+
+  Threads.wait_for_search_finished(); // Cannot quit while search is running
 }
 
 
@@ -192,7 +182,7 @@ namespace {
 
 
   // go() is called when engine receives the "go" UCI command. The function sets
-  // the thinking time and other parameters from the input string, and then starts
+  // the thinking time and other parameters from the input string, and starts
   // the search.
 
   void go(Position& pos, istringstream& is) {

@@ -404,7 +404,6 @@ void ThreadPool::wait_for_search_finished() {
 
   Thread* t = main_thread();
   t->mutex.lock();
-  t->sleepCondition.notify_one(); // In case is waiting for stop or ponderhit
   while (!t->do_sleep) sleepCondition.wait(t->mutex);
   t->mutex.unlock();
 }
