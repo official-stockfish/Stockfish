@@ -1109,7 +1109,7 @@ split_point_start: // At split points actual search starts from here
     Key posKey;
     Move ttMove, move, bestMove;
     Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
-    bool givesCheck, enoughMaterial, evasionPrunable, fromNull;
+    bool givesCheck, enoughMaterial, evasionPrunable;
     Depth ttDepth;
 
     // To flag BOUND_EXACT a node with eval above alpha and no available moves
@@ -1118,7 +1118,6 @@ split_point_start: // At split points actual search starts from here
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
-    fromNull = (ss-1)->currentMove == MOVE_NULL;
 
     // Check for an instant draw or maximum ply reached
     if (pos.is_draw<false, false>() || ss->ply > MAX_PLY)
@@ -1156,13 +1155,7 @@ split_point_start: // At split points actual search starts from here
     }
     else
     {
-        if (fromNull)
-        {
-            // Approximated score. Real one is slightly higher due to tempo
-            ss->staticEval = bestValue = -(ss-1)->staticEval;
-            ss->evalMargin = VALUE_ZERO;
-        }
-        else if (tte)
+        if (tte)
         {
             // Never assume anything on values stored in TT
             if (  (ss->staticEval = bestValue = tte->static_value()) == VALUE_NONE
@@ -1206,7 +1199,6 @@ split_point_start: // At split points actual search starts from here
       // Futility pruning
       if (   !PvNode
           && !InCheck
-          && !fromNull
           && !givesCheck
           &&  move != ttMove
           &&  enoughMaterial
