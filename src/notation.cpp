@@ -137,7 +137,7 @@ const string move_to_san(Position& pos, Move m) {
           {
               Square sq = pop_lsb(&attackers);
 
-              // Pinned pieces are not included in the possible sub-set
+              // If the move is illegal, the piece is not included in the sub-set
               if (!pos.pl_move_is_legal(make_move(sq, to), pos.pinned_pieces()))
                   continue;
 
