@@ -50,7 +50,7 @@ Thread::Thread(Fn fn) : splitPoints() {
   start_fn = fn;
   idx = Threads.size();
 
-  do_sleep = (fn != &Thread::main_loop); // Avoid a race with start_searching()
+  is_finished = (fn != &Thread::main_loop); // Avoid a race with start_searching()
 
   if (!thread_create(handle, start_routine, this))
   {
@@ -64,7 +64,7 @@ Thread::Thread(Fn fn) : splitPoints() {
 
 Thread::~Thread() {
 
-  assert(do_sleep);
+  assert(is_finished);
 
   do_exit = true; // Search must be already finished
   notify_one();
@@ -98,10 +98,10 @@ void Thread::main_loop() {
   {
       mutex.lock();
 
-      do_sleep = true; // Always return to sleep after a search
+      is_finished = true; // Always return to sleep after a search
       is_searching = false;
 
-      while (do_sleep && !do_exit)
+      while (is_finished && !do_exit)
       {
           Threads.sleepCondition.notify_one(); // Wake up UI thread if needed
           sleepCondition.wait(mutex);
@@ -186,6 +186,7 @@ void ThreadPool::init() {
 
   timer = new Thread(&Thread::timer_loop);
   threads.push_back(new Thread(&Thread::main_loop));
+  sleepWhileIdle = true;
   read_uci_options();
 }
 
@@ -210,7 +211,6 @@ void ThreadPool::read_uci_options() {
 
   maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
   minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
-  useSleepingThreads      = Options["Use Sleeping Threads"];
   size_t requested        = Options["Threads"];
 
   assert(requested > 0);
@@ -302,9 +302,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
           sp.slavesMask |= 1ULL << i;
           threads[i]->curSplitPoint = &sp;
           threads[i]->is_searching = true; // Slave leaves idle_loop()
-
-          if (useSleepingThreads)
-              threads[i]->notify_one();
+          threads[i]->notify_one(); // Could be sleeping
 
           if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Master is always included
               break;
@@ -358,7 +356,7 @@ void ThreadPool::wait_for_search_finished() {
 
   Thread* t = main_thread();
   t->mutex.lock();
-  while (!t->do_sleep) sleepCondition.wait(t->mutex);
+  while (!t->is_finished) sleepCondition.wait(t->mutex);
   t->mutex.unlock();
 }
 
@@ -384,6 +382,6 @@ void ThreadPool::start_searching(const Position& pos, const LimitsType& limits,
       if (searchMoves.empty() || count(searchMoves.begin(), searchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
-  main_thread()->do_sleep = false;
-  main_thread()->notify_one();
+  main_thread()->is_finished = false;
+  main_thread()->notify_one(); // Starts main thread
 }

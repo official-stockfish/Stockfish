@@ -227,15 +227,11 @@ void Search::think() {
           << std::endl;
   }
 
-  // Reset and wake up the threads
+  // Reset the threads, still sleeping: will be wake up at split time
   for (size_t i = 0; i < Threads.size(); i++)
-  {
       Threads[i].maxPly = 0;
-      Threads[i].do_sleep = false;
 
-      if (!Threads.use_sleeping_threads())
-          Threads[i].notify_one();
-  }
+  Threads.sleepWhileIdle = Options["Use Sleeping Threads"];
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
@@ -249,11 +245,7 @@ void Search::think() {
   id_loop(RootPos); // Let's start searching !
 
   Threads.timer_thread()->maxPly = 0; // Stop the timer
-
-  // Main thread will go to sleep by itself to avoid a race with start_searching()
-  for (size_t i = 0; i < Threads.size(); i++)
-      if (&Threads[i] != Threads.main_thread())
-          Threads[i].do_sleep = true;
+  Threads.sleepWhileIdle = true; // Send idle threads to sleep
 
   if (Options["Use Search Log"])
   {
@@ -1632,9 +1624,7 @@ void Thread::idle_loop() {
   {
       // If we are not searching, wait for a condition to be signaled
       // instead of wasting CPU time polling for work.
-      while (   do_sleep
-             || do_exit
-             || (!is_searching && Threads.use_sleeping_threads()))
+      while (do_exit || (!is_searching && Threads.sleepWhileIdle))
       {
           if (do_exit)
           {
@@ -1656,7 +1646,7 @@ void Thread::idle_loop() {
           // particular we need to avoid a deadlock in case a master thread has,
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
-          if (do_sleep || !is_searching)
+          if (!is_searching && Threads.sleepWhileIdle)
               sleepCondition.wait(mutex);
 
           mutex.unlock();
@@ -1665,7 +1655,7 @@ void Thread::idle_loop() {
       // If this thread has been assigned work, launch a search
       if (is_searching)
       {
-          assert(!do_sleep && !do_exit);
+          assert(/*!is_finished &&*/ !do_exit);
 
           Threads.mutex.lock();
 
@@ -1704,7 +1694,7 @@ void Thread::idle_loop() {
 
           // Wake up master thread so to allow it to return from the idle loop in
           // case we are the last slave of the split point.
-          if (    Threads.use_sleeping_threads()
+          if (    Threads.sleepWhileIdle
               &&  this != sp->master
               && !sp->slavesMask)
           {

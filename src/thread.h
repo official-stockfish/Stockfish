@@ -120,7 +120,7 @@ public:
   SplitPoint* volatile curSplitPoint;
   volatile int splitPointsCnt;
   volatile bool is_searching;
-  volatile bool do_sleep;
+  volatile bool is_finished;
   volatile bool do_exit;
 };
 
@@ -136,7 +136,6 @@ public:
   void exit(); // be initialized and valid during the whole thread lifetime.
 
   Thread& operator[](size_t id) { return *threads[id]; }
-  bool use_sleeping_threads() const { return useSleepingThreads; }
   int min_split_depth() const { return minimumSplitDepth; }
   size_t size() const { return threads.size(); }
   Thread* main_thread() { return threads[0]; }
@@ -161,7 +160,8 @@ private:
   ConditionVariable sleepCondition;
   Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
-  bool useSleepingThreads;
+public:
+  bool sleepWhileIdle;
 };
 
 extern ThreadPool Threads;
