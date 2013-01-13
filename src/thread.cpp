@@ -131,17 +131,12 @@ void Thread::notify_one() {
 }
 
 
-// Thread::wait_for_stop() is called when the maximum depth is reached while
-// the program is pondering. The point is to work around a wrinkle in the UCI
-// protocol: When pondering, the engine is not allowed to give a "bestmove"
-// before the GUI sends it a "stop" or "ponderhit" command. We simply wait here
-// until one of these commands (that raise Signals.stop) is sent and
-// then return, after which the bestmove and pondermove will be printed.
+// Thread::wait_for() set the thread to sleep until condition 'b' turns true
 
-void Thread::wait_for_stop() {
+void Thread::wait_for(volatile const bool& b) {
 
   mutex.lock();
-  while (!Signals.stop) sleepCondition.wait(mutex);
+  while (!b) sleepCondition.wait(mutex);
   mutex.unlock();
 }
 
@@ -227,34 +222,6 @@ void ThreadPool::read_uci_options() {
       delete threads.back();
       threads.pop_back();
   }
-}
-
-
-// wake_up() is called before a new search to start the threads that are waiting
-// on the sleep condition and to reset maxPly. When useSleepingThreads is set
-// threads will be woken up at split time.
-
-void ThreadPool::wake_up() const {
-
-  for (size_t i = 0; i < threads.size(); i++)
-  {
-      threads[i]->maxPly = 0;
-      threads[i]->do_sleep = false;
-
-      if (!useSleepingThreads)
-          threads[i]->notify_one();
-  }
-}
-
-
-// sleep() is called after the search finishes to ask all the threads but the
-// main one to go waiting on a sleep condition.
-
-void ThreadPool::sleep() const {
-
-  // Main thread will go to sleep by itself to avoid a race with start_searching()
-  for (size_t i = 1; i < threads.size(); i++)
-      threads[i]->do_sleep = true;
 }
 
 

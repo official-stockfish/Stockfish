@@ -105,7 +105,7 @@ public:
   void idle_loop();
   void main_loop();
   void timer_loop();
-  void wait_for_stop();
+  void wait_for(volatile const bool& b);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Material::Table materialTable;
@@ -141,8 +141,6 @@ public:
   size_t size() const { return threads.size(); }
   Thread* main_thread() { return threads[0]; }
 
-  void wake_up() const;
-  void sleep() const;
   void read_uci_options();
   bool available_slave_exists(Thread* master) const;
   void set_timer(int msec);

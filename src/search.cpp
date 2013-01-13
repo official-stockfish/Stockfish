@@ -227,7 +227,15 @@ void Search::think() {
           << std::endl;
   }
 
-  Threads.wake_up();
+  // Reset and wake up the threads
+  for (size_t i = 0; i < Threads.size(); i++)
+  {
+      Threads[i].maxPly = 0;
+      Threads[i].do_sleep = false;
+
+      if (!Threads.use_sleeping_threads())
+          Threads[i].notify_one();
+  }
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
@@ -242,7 +250,11 @@ void Search::think() {
   id_loop(RootPos); // Let's start searching !
 
   Threads.set_timer(0); // Stop timer
-  Threads.sleep();
+
+  // Main thread will go to sleep by itself to avoid a race with start_searching()
+  for (size_t i = 0; i < Threads.size(); i++)
+      if (&Threads[i] != Threads.main_thread())
+          Threads[i].do_sleep = true;
 
   if (Options["Use Search Log"])
   {
@@ -262,12 +274,14 @@ void Search::think() {
 finalize:
 
   // When we reach max depth we arrive here even without Signals.stop is raised,
-  // but if we are pondering or in infinite search, we shouldn't print the best
-  // move before we are told to do so.
+  // but if we are pondering or in infinite search, according to UCI protocol,
+  // we shouldn't print the best move before the GUI sends a "stop" or "ponderhit"
+  // command. We simply wait here until GUI sends one of those commands (that
+  // raise Signals.stop).
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
   {
       Signals.stopOnPonderhit = true;
-      RootPos.this_thread()->wait_for_stop();
+      RootPos.this_thread()->wait_for(Signals.stop);
   }
 
   // Best move could be MOVE_NONE when searching on a stalemate position
