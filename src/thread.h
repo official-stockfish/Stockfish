@@ -105,7 +105,7 @@ public:
   void idle_loop();
   void main_loop();
   void timer_loop();
-  void wait_for_stop_or_ponderhit();
+  void wait_for_stop();
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Material::Table materialTable;

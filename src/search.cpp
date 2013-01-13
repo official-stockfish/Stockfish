@@ -265,7 +265,10 @@ finalize:
   // but if we are pondering or in infinite search, we shouldn't print the best
   // move before we are told to do so.
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
-      RootPos.this_thread()->wait_for_stop_or_ponderhit();
+  {
+      Signals.stopOnPonderhit = true;
+      RootPos.this_thread()->wait_for_stop();
+  }
 
   // Best move could be MOVE_NONE when searching on a stalemate position
   sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], RootPos.is_chess960())

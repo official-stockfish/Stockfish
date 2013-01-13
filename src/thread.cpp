@@ -131,16 +131,14 @@ void Thread::wake_up() {
 }
 
 
-// Thread::wait_for_stop_or_ponderhit() is called when the maximum depth is
-// reached while the program is pondering. The point is to work around a wrinkle
-// in the UCI protocol: When pondering, the engine is not allowed to give a
-// "bestmove" before the GUI sends it a "stop" or "ponderhit" command. We simply
-// wait here until one of these commands (that raise StopRequest) is sent and
+// Thread::wait_for_stop() is called when the maximum depth is reached while
+// the program is pondering. The point is to work around a wrinkle in the UCI
+// protocol: When pondering, the engine is not allowed to give a "bestmove"
+// before the GUI sends it a "stop" or "ponderhit" command. We simply wait here
+// until one of these commands (that raise Signals.stop) is sent and
 // then return, after which the bestmove and pondermove will be printed.
 
-void Thread::wait_for_stop_or_ponderhit() {
-
-  Signals.stopOnPonderhit = true;
+void Thread::wait_for_stop() {
 
   mutex.lock();
   while (!Signals.stop) sleepCondition.wait(mutex);
