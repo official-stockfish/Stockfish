@@ -239,17 +239,16 @@ void Search::think() {
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
-  if (Limits.use_time_management())
-      Threads.set_timer(std::min(100, std::max(TimeMgr.available_time() / 16,
-                                               TimerResolution)));
-  else if (Limits.nodes)
-      Threads.set_timer(2 * TimerResolution);
-  else
-      Threads.set_timer(100);
+  Threads.timer_thread()->maxPly = /* Hack: we use maxPly to set timer interval */
+  Limits.use_time_management() ? std::min(100, std::max(TimeMgr.available_time() / 16, TimerResolution)) :
+                  Limits.nodes ? 2 * TimerResolution
+                               : 100;
+
+  Threads.timer_thread()->notify_one(); // Wake up the recurring timer
 
   id_loop(RootPos); // Let's start searching !
 
-  Threads.set_timer(0); // Stop timer
+  Threads.timer_thread()->maxPly = 0; // Stop the timer
 
   // Main thread will go to sleep by itself to avoid a race with start_searching()
   for (size_t i = 0; i < Threads.size(); i++)

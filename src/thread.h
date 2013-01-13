@@ -140,10 +140,10 @@ public:
   int min_split_depth() const { return minimumSplitDepth; }
   size_t size() const { return threads.size(); }
   Thread* main_thread() { return threads[0]; }
+  Thread* timer_thread() { return timer; }
 
   void read_uci_options();
   bool available_slave_exists(Thread* master) const;
-  void set_timer(int msec);
   void wait_for_search_finished();
   void start_searching(const Position&, const Search::LimitsType&,
                        const std::vector<Move>&, Search::StateStackPtr&);

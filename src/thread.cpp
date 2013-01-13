@@ -80,7 +80,8 @@ void Thread::timer_loop() {
   while (!do_exit)
   {
       mutex.lock();
-      sleepCondition.wait_for(mutex, maxPly ? maxPly : INT_MAX);
+      while (!maxPly && !do_exit)
+          sleepCondition.wait_for(mutex, maxPly ? maxPly : INT_MAX);
       mutex.unlock();
       check_time();
   }
@@ -234,16 +235,6 @@ bool ThreadPool::available_slave_exists(Thread* master) const {
           return true;
 
   return false;
-}
-
-
-// set_timer() is used to set the timer to trigger after msec milliseconds.
-// If msec is 0 then timer is stopped.
-
-void ThreadPool::set_timer(int msec) {
-
-  timer->maxPly = msec;
-  timer->notify_one(); // Wake up and restart the timer
 }
 
 
