@@ -93,18 +93,14 @@ struct SplitPoint {
 
 class Thread {
 
-  typedef void (Thread::* Fn) (); // Pointer to member function
-
 public:
-  Thread(Fn fn);
- ~Thread();
+  Thread();
+  virtual ~Thread();
 
+  virtual void idle_loop();
   void notify_one();
   bool cutoff_occurred() const;
   bool is_available_to(Thread* master) const;
-  void idle_loop();
-  void main_loop();
-  void timer_loop();
   void wait_for(volatile const bool& b);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
@@ -116,12 +112,22 @@ public:
   Mutex mutex;
   ConditionVariable sleepCondition;
   NativeHandle handle;
-  Fn start_fn;
   SplitPoint* volatile curSplitPoint;
   volatile int splitPointsCnt;
   volatile bool is_searching;
-  volatile bool is_finished;
   volatile bool do_exit;
+};
+
+struct TimerThread : public Thread {
+  TimerThread() : msec(0) {}
+  virtual void idle_loop();
+  int msec;
+};
+
+struct MainThread : public Thread {
+  MainThread() : is_finished(false) {} // Avoid a race with start_searching()
+  virtual void idle_loop();
+  volatile bool is_finished;
 };
 
 
@@ -138,8 +144,8 @@ public:
   Thread& operator[](size_t id) { return *threads[id]; }
   int min_split_depth() const { return minimumSplitDepth; }
   size_t size() const { return threads.size(); }
-  Thread* main_thread() { return threads[0]; }
-  Thread* timer_thread() { return timer; }
+  MainThread* main_thread() { return static_cast<MainThread*>(threads[0]); }
+  TimerThread* timer_thread() { return timer; }
 
   void read_uci_options();
   bool available_slave_exists(Thread* master) const;
@@ -152,10 +158,11 @@ public:
               Depth depth, Move threatMove, int moveCount, MovePicker& mp, int nodeType);
 private:
   friend class Thread;
+  friend struct MainThread;
   friend void check_time();
 
   std::vector<Thread*> threads;
-  Thread* timer;
+  TimerThread* timer;
   Mutex mutex;
   ConditionVariable sleepCondition;
   Depth minimumSplitDepth;

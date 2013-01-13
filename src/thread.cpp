@@ -32,25 +32,22 @@ ThreadPool Threads; // Global object
 namespace { extern "C" {
 
  // start_routine() is the C function which is called when a new thread
- // is launched. It is a wrapper to member function pointed by start_fn.
+ // is launched. It is a wrapper to the virtual function idle_loop().
 
- long start_routine(Thread* th) { (th->*(th->start_fn))(); return 0; }
+ long start_routine(Thread* th) { th->idle_loop(); return 0; }
 
 } }
 
 
 // Thread c'tor starts a newly-created thread of execution that will call
-// the idle loop function pointed by start_fn going immediately to sleep.
+// the the virtual function idle_loop(), going immediately to sleep.
 
-Thread::Thread(Fn fn) : splitPoints() {
+Thread::Thread() : splitPoints() {
 
   is_searching = do_exit = false;
   maxPly = splitPointsCnt = 0;
   curSplitPoint = NULL;
-  start_fn = fn;
   idx = Threads.size();
-
-  is_finished = (fn != &Thread::main_loop); // Avoid a race with start_searching()
 
   if (!thread_create(handle, start_routine, this))
   {
@@ -60,11 +57,9 @@ Thread::Thread(Fn fn) : splitPoints() {
 }
 
 
-// Thread d'tor waits for thread termination before to return.
+// Thread d'tor waits for thread termination before to return
 
 Thread::~Thread() {
-
-  assert(is_finished);
 
   do_exit = true; // Search must be already finished
   notify_one();
@@ -72,27 +67,27 @@ Thread::~Thread() {
 }
 
 
-// Thread::timer_loop() is where the timer thread waits maxPly milliseconds and
-// then calls check_time(). If maxPly is 0 thread sleeps until is woken up.
+// TimerThread::idle_loop() is where the timer thread waits msec milliseconds
+// and then calls check_time(). If msec is 0 thread sleeps until is woken up.
 extern void check_time();
 
-void Thread::timer_loop() {
+void TimerThread::idle_loop() {
 
   while (!do_exit)
   {
       mutex.lock();
-      while (!maxPly && !do_exit)
-          sleepCondition.wait_for(mutex, maxPly ? maxPly : INT_MAX);
+      while (!msec && !do_exit)
+          sleepCondition.wait_for(mutex, msec ? msec : INT_MAX);
       mutex.unlock();
       check_time();
   }
 }
 
 
-// Thread::main_loop() is where the main thread is parked waiting to be started
+// MainThread::idle_loop() is where the main thread is parked waiting to be started
 // when there is a new search. Main thread will launch all the slave threads.
 
-void Thread::main_loop() {
+void MainThread::idle_loop() {
 
   while (true)
   {
@@ -121,8 +116,7 @@ void Thread::main_loop() {
 }
 
 
-// Thread::notify_one() wakes up the thread, normally at the beginning of the
-// search or, if "sleeping threads" is used at split time.
+// Thread::notify_one() wakes up the thread, normally at split time
 
 void Thread::notify_one() {
 
@@ -184,9 +178,9 @@ bool Thread::is_available_to(Thread* master) const {
 
 void ThreadPool::init() {
 
-  timer = new Thread(&Thread::timer_loop);
-  threads.push_back(new Thread(&Thread::main_loop));
   sleepWhileIdle = true;
+  timer = new TimerThread();
+  threads.push_back(new MainThread());
   read_uci_options();
 }
 
@@ -216,7 +210,7 @@ void ThreadPool::read_uci_options() {
   assert(requested > 0);
 
   while (threads.size() < requested)
-      threads.push_back(new Thread(&Thread::idle_loop));
+      threads.push_back(new Thread());
 
   while (threads.size() > requested)
   {
@@ -319,7 +313,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // their work at this split point.
   if (slavesCnt || Fake)
   {
-      master->idle_loop();
+      master->Thread::idle_loop(); // Force a call to base class idle_loop()
 
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.
@@ -354,7 +348,7 @@ template Value ThreadPool::split<true>(Position&, Stack*, Value, Value, Value, M
 
 void ThreadPool::wait_for_search_finished() {
 
-  Thread* t = main_thread();
+  MainThread* t = main_thread();
   t->mutex.lock();
   while (!t->is_finished) sleepCondition.wait(t->mutex);
   t->mutex.unlock();

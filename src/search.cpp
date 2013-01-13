@@ -235,7 +235,7 @@ void Search::think() {
 
   // Set best timer interval to avoid lagging under time pressure. Timer is
   // used to check for remaining available thinking time.
-  Threads.timer_thread()->maxPly = /* Hack: we use maxPly to set timer interval */
+  Threads.timer_thread()->msec =
   Limits.use_time_management() ? std::min(100, std::max(TimeMgr.available_time() / 16, TimerResolution)) :
                   Limits.nodes ? 2 * TimerResolution
                                : 100;
@@ -244,7 +244,7 @@ void Search::think() {
 
   id_loop(RootPos); // Let's start searching !
 
-  Threads.timer_thread()->maxPly = 0; // Stop the timer
+  Threads.timer_thread()->msec = 0; // Stop the timer
   Threads.sleepWhileIdle = true; // Send idle threads to sleep
 
   if (Options["Use Search Log"])
@@ -1655,7 +1655,7 @@ void Thread::idle_loop() {
       // If this thread has been assigned work, launch a search
       if (is_searching)
       {
-          assert(/*!is_finished &&*/ !do_exit);
+          assert(!do_exit);
 
           Threads.mutex.lock();
 
