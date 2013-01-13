@@ -902,7 +902,7 @@ split_point_start: // At split points actual search starts from here
           continue;
       }
 
-      pvMove = PvNode ? moveCount == 1 : false;
+      pvMove = PvNode && moveCount == 1;
       ss->currentMove = move;
       if (!SpNode && !captureOrPromotion && playedMoveCount < 64)
           movesSearched[playedMoveCount++] = move;
@@ -994,24 +994,21 @@ split_point_start: // At split points actual search starts from here
 
       if (value > bestValue)
       {
-          bestValue = value;
-          if (SpNode) sp->bestValue = value;
+          bestValue = SpNode ? sp->bestValue = value : value;
 
           if (value > alpha)
           {
-              bestMove = move;
-              if (SpNode) sp->bestMove = move;
+              bestMove = SpNode ? sp->bestMove = move : move;
 
-              if (PvNode && value < beta)
-              {
-                  alpha = value; // Update alpha here! Always alpha < beta
-                  if (SpNode) sp->alpha = value;
-              }
+              if (PvNode && value < beta) // Update alpha! Always alpha < beta
+                  alpha = SpNode ? sp->alpha = value : value;
               else
               {
                   assert(value >= beta); // Fail high
 
-                  if (SpNode) sp->cutoff = true;
+                  if (SpNode)
+                      sp->cutoff = true;
+
                   break;
               }
           }
