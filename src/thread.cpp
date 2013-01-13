@@ -49,7 +49,8 @@ Thread::Thread(Fn fn) : splitPoints() {
   curSplitPoint = NULL;
   start_fn = fn;
   idx = Threads.size();
-  do_sleep = true;
+
+  do_sleep = (fn != &Thread::main_loop); // Avoid a race with start_searching()
 
   if (!thread_create(handle, start_routine, this))
   {
