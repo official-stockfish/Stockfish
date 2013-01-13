@@ -67,7 +67,7 @@ Thread::~Thread() {
   assert(do_sleep);
 
   do_exit = true; // Search must be already finished
-  wake_up();
+  notify_one();
   thread_join(handle); // Wait for thread termination
 }
 
@@ -120,10 +120,10 @@ void Thread::main_loop() {
 }
 
 
-// Thread::wake_up() wakes up the thread, normally at the beginning of the search
-// or, if "sleeping threads" is used at split time.
+// Thread::notify_one() wakes up the thread, normally at the beginning of the
+// search or, if "sleeping threads" is used at split time.
 
-void Thread::wake_up() {
+void Thread::notify_one() {
 
   mutex.lock();
   sleepCondition.notify_one();
@@ -242,7 +242,7 @@ void ThreadPool::wake_up() const {
       threads[i]->do_sleep = false;
 
       if (!useSleepingThreads)
-          threads[i]->wake_up();
+          threads[i]->notify_one();
   }
 }
 
@@ -268,6 +268,16 @@ bool ThreadPool::available_slave_exists(Thread* master) const {
           return true;
 
   return false;
+}
+
+
+// set_timer() is used to set the timer to trigger after msec milliseconds.
+// If msec is 0 then timer is stopped.
+
+void ThreadPool::set_timer(int msec) {
+
+  timer->maxPly = msec;
+  timer->notify_one(); // Wake up and restart the timer
 }
 
 
@@ -336,7 +346,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
           threads[i]->is_searching = true; // Slave leaves idle_loop()
 
           if (useSleepingThreads)
-              threads[i]->wake_up();
+              threads[i]->notify_one();
 
           if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Master is always included
               break;
@@ -383,18 +393,6 @@ template Value ThreadPool::split<false>(Position&, Stack*, Value, Value, Value, 
 template Value ThreadPool::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
 
 
-// set_timer() is used to set the timer to trigger after msec milliseconds.
-// If msec is 0 then timer is stopped.
-
-void ThreadPool::set_timer(int msec) {
-
-  timer->mutex.lock();
-  timer->maxPly = msec;
-  timer->sleepCondition.notify_one(); // Wake up and restart the timer
-  timer->mutex.unlock();
-}
-
-
 // wait_for_search_finished() waits for main thread to go to sleep, this means
 // search is finished. Then returns.
 
@@ -429,5 +427,5 @@ void ThreadPool::start_searching(const Position& pos, const LimitsType& limits,
           RootMoves.push_back(RootMove(ml.move()));
 
   main_thread()->do_sleep = false;
-  main_thread()->wake_up();
+  main_thread()->notify_one();
 }

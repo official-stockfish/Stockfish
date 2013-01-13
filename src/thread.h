@@ -99,7 +99,7 @@ public:
   Thread(Fn fn);
  ~Thread();
 
-  void wake_up();
+  void notify_one();
   bool cutoff_occurred() const;
   bool is_available_to(Thread* master) const;
   void idle_loop();

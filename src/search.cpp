@@ -1696,7 +1696,7 @@ void Thread::idle_loop() {
               && !sp->slavesMask)
           {
               assert(!sp->master->is_searching);
-              sp->master->wake_up();
+              sp->master->notify_one();
           }
 
           // After releasing the lock we cannot access anymore any SplitPoint
