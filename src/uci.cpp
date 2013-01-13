@@ -66,19 +66,14 @@ void UCI::loop(const string& args) {
 
       is >> skipws >> token;
 
-      if (token == "quit" || token == "stop")
+      if (token == "quit" || token == "stop" || token == "ponderhit")
       {
-          Search::Signals.stop = true;
-          Threads.main_thread()->wake_up(); // Could be sleeping
-      }
-      else if (token == "ponderhit")
-      {
-          // GUI sends "ponderhit" if we were told to ponder on the same move the
+          // GUI sends 'ponderhit' to tell us to ponder on the same move the
           // opponent has played. In case Signals.stopOnPonderhit is set we are
-          // waiting for "ponderhit" to stop the search (for instance because we
+          // waiting for 'ponderhit' to stop the search (for instance because we
           // already ran out of time), otherwise we should continue searching but
           // switching from pondering to normal search.
-          if (Search::Signals.stopOnPonderhit)
+          if (token != "ponderhit" || Search::Signals.stopOnPonderhit)
           {
               Search::Signals.stop = true;
               Threads.main_thread()->wake_up(); // Could be sleeping
