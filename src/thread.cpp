@@ -76,11 +76,14 @@ void TimerThread::idle_loop() {
   while (!do_exit)
   {
       mutex.lock();
-      do sleepCondition.wait_for(mutex, msec ? msec : INT_MAX);
-      while (!msec && !do_exit); // Don't allow wakeups when msec = 0
+
+      if (!do_exit)
+          sleepCondition.wait_for(mutex, msec ? msec : INT_MAX);
+
       mutex.unlock();
 
-      check_time();
+      if (msec)
+          check_time();
   }
 }
 

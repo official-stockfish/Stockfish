@@ -1588,7 +1588,7 @@ void Thread::idle_loop() {
           // particular we need to avoid a deadlock in case a master thread has,
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
-          if (!is_searching && Threads.sleepWhileIdle)
+          if (!is_searching && !do_exit)
               sleepCondition.wait(mutex);
 
           mutex.unlock();
