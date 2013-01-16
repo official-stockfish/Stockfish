@@ -1007,7 +1007,7 @@ split_point_start: // At split points actual search starts from here
 
       // Step 19. Check for splitting the search
       if (   !SpNode
-          &&  depth >= Threads.min_split_depth()
+          &&  depth >= Threads.minimumSplitDepth
           &&  Threads.available_slave_exists(thisThread))
       {
           assert(bestValue < beta);
@@ -1558,7 +1558,7 @@ void Thread::idle_loop() {
   // object for which the thread is the master.
   const SplitPoint* sp_master = splitPointsCnt ? curSplitPoint : NULL;
 
-  assert(!sp_master || (sp_master->master == this && is_searching));
+  assert(!sp_master || (sp_master->master == this && searching));
 
   // If this thread is the master of a split point and all slaves have
   // finished their work at this split point, return from the idle loop.
@@ -1566,9 +1566,9 @@ void Thread::idle_loop() {
   {
       // If we are not searching, wait for a condition to be signaled
       // instead of wasting CPU time polling for work.
-      while (do_exit || (!is_searching && Threads.sleepWhileIdle))
+      while ((!searching && Threads.sleepWhileIdle) || exit)
       {
-          if (do_exit)
+          if (exit)
           {
               assert(!sp_master);
               return;
@@ -1588,20 +1588,20 @@ void Thread::idle_loop() {
           // particular we need to avoid a deadlock in case a master thread has,
           // in the meanwhile, allocated us and sent the wake_up() call before we
           // had the chance to grab the lock.
-          if (!is_searching && !do_exit)
+          if (!searching && !exit)
               sleepCondition.wait(mutex);
 
           mutex.unlock();
       }
 
       // If this thread has been assigned work, launch a search
-      if (is_searching)
+      if (searching)
       {
-          assert(!do_exit);
+          assert(!exit);
 
           Threads.mutex.lock();
 
-          assert(is_searching);
+          assert(searching);
           SplitPoint* sp = curSplitPoint;
 
           Threads.mutex.unlock();
@@ -1627,9 +1627,9 @@ void Thread::idle_loop() {
           else
               assert(false);
 
-          assert(is_searching);
+          assert(searching);
 
-          is_searching = false;
+          searching = false;
           sp->activePositions[idx] = NULL;
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
@@ -1640,7 +1640,7 @@ void Thread::idle_loop() {
               &&  this != sp->master
               && !sp->slavesMask)
           {
-              assert(!sp->master->is_searching);
+              assert(!sp->master->searching);
               sp->master->notify_one();
           }
 

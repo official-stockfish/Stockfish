@@ -56,7 +56,7 @@ private:
   WaitCondition c;
 };
 
-class Thread;
+struct Thread;
 
 struct SplitPoint {
 
@@ -91,9 +91,8 @@ struct SplitPoint {
 /// tables so that once we get a pointer to an entry its life time is unlimited
 /// and we don't have to care about someone changing the entry under our feet.
 
-class Thread {
+struct Thread {
 
-public:
   Thread();
   virtual ~Thread();
 
@@ -114,20 +113,24 @@ public:
   NativeHandle handle;
   SplitPoint* volatile curSplitPoint;
   volatile int splitPointsCnt;
-  volatile bool is_searching;
-  volatile bool do_exit;
+  volatile bool searching;
+  volatile bool exit;
+};
+
+
+/// MainThread and TimerThread are sublassed from Thread to charaterize the two
+/// special threads: the main one and the recurring timer.
+
+struct MainThread : public Thread {
+  MainThread() : thinking(true) {} // Avoid a race with start_thinking()
+  virtual void idle_loop();
+  volatile bool thinking;
 };
 
 struct TimerThread : public Thread {
   TimerThread() : msec(0) {}
   virtual void idle_loop();
   int msec;
-};
-
-struct MainThread : public Thread {
-  MainThread() : is_finished(false) {} // Avoid a race with start_searching()
-  virtual void idle_loop();
-  volatile bool is_finished;
 };
 
 
@@ -142,22 +145,25 @@ public:
   void exit(); // be initialized and valid during the whole thread lifetime.
 
   Thread& operator[](size_t id) { return *threads[id]; }
-  int min_split_depth() const { return minimumSplitDepth; }
   size_t size() const { return threads.size(); }
   MainThread* main_thread() { return static_cast<MainThread*>(threads[0]); }
   TimerThread* timer_thread() { return timer; }
 
   void read_uci_options();
   bool available_slave_exists(Thread* master) const;
-  void wait_for_search_finished();
-  void start_searching(const Position&, const Search::LimitsType&,
+  void wait_for_think_finished();
+  void start_thinking(const Position&, const Search::LimitsType&,
                        const std::vector<Move>&, Search::StateStackPtr&);
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
               Depth depth, Move threatMove, int moveCount, MovePicker& mp, int nodeType);
+
+  bool sleepWhileIdle;
+  Depth minimumSplitDepth;
+
 private:
-  friend class Thread;
+  friend struct Thread;
   friend struct MainThread;
   friend void check_time();
 
@@ -165,10 +171,7 @@ private:
   TimerThread* timer;
   Mutex mutex;
   ConditionVariable sleepCondition;
-  Depth minimumSplitDepth;
   int maxThreadsPerSplitPoint;
-public:
-  bool sleepWhileIdle;
 };
 
 extern ThreadPool Threads;
