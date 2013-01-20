@@ -63,10 +63,10 @@ struct SplitPoint {
   // Const data after split point has been setup
   const Position* pos;
   const Search::Stack* ss;
+  Thread* master;
   Depth depth;
   Value beta;
   int nodeType;
-  Thread* master;
   Move threatMove;
 
   // Const pointers to shared data
@@ -75,7 +75,7 @@ struct SplitPoint {
 
   // Shared data
   Mutex mutex;
-  Position* activePositions[MAX_THREADS];
+  Position* slavesPositions[MAX_THREADS];
   volatile uint64_t slavesMask;
   volatile int64_t nodes;
   volatile Value alpha;
@@ -111,14 +111,14 @@ struct Thread {
   Mutex mutex;
   ConditionVariable sleepCondition;
   NativeHandle handle;
-  SplitPoint* volatile curSplitPoint;
-  volatile int splitPointsCnt;
+  SplitPoint* volatile activeSplitPoint;
+  volatile int splitPointsSize;
   volatile bool searching;
   volatile bool exit;
 };
 
 
-/// MainThread and TimerThread are sublassed from Thread to charaterize the two
+/// MainThread and TimerThread are sublassed from Thread to characterize the two
 /// special threads: the main one and the recurring timer.
 
 struct MainThread : public Thread {
@@ -150,7 +150,7 @@ public:
   TimerThread* timer_thread() { return timer; }
 
   void read_uci_options();
-  bool available_slave_exists(Thread* master) const;
+  bool slave_available(Thread* master) const;
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&,
                        const std::vector<Move>&, Search::StateStackPtr&);
@@ -161,16 +161,12 @@ public:
 
   bool sleepWhileIdle;
   Depth minimumSplitDepth;
-
-private:
-  friend struct Thread;
-  friend struct MainThread;
-  friend void check_time();
-
-  std::vector<Thread*> threads;
-  TimerThread* timer;
   Mutex mutex;
   ConditionVariable sleepCondition;
+
+private:
+  std::vector<Thread*> threads;
+  TimerThread* timer;
   int maxThreadsPerSplitPoint;
 };
 

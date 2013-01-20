@@ -45,8 +45,8 @@ namespace { extern "C" {
 Thread::Thread() : splitPoints() {
 
   searching = exit = false;
-  maxPly = splitPointsCnt = 0;
-  curSplitPoint = NULL;
+  maxPly = splitPointsSize = 0;
+  activeSplitPoint = NULL;
   idx = Threads.size();
 
   if (!thread_create(handle, start_routine, this))
@@ -146,7 +146,7 @@ void Thread::wait_for(volatile const bool& b) {
 
 bool Thread::cutoff_occurred() const {
 
-  for (SplitPoint* sp = curSplitPoint; sp; sp = sp->parent)
+  for (SplitPoint* sp = activeSplitPoint; sp; sp = sp->parent)
       if (sp->cutoff)
           return true;
 
@@ -157,9 +157,9 @@ bool Thread::cutoff_occurred() const {
 // Thread::is_available_to() checks whether the thread is available to help the
 // thread 'master' at a split point. An obvious requirement is that thread must
 // be idle. With more than two threads, this is not sufficient: If the thread is
-// the master of some active split point, it is only available as a slave to the
-// slaves which are busy searching the split point at the top of slaves split
-// point stack (the "helpful master concept" in YBWC terminology).
+// the master of some split point, it is only available as a slave to the slaves
+// which are busy searching the split point at the top of slaves split point
+// stack (the "helpful master concept" in YBWC terminology).
 
 bool Thread::is_available_to(Thread* master) const {
 
@@ -168,11 +168,11 @@ bool Thread::is_available_to(Thread* master) const {
 
   // Make a local copy to be sure doesn't become zero under our feet while
   // testing next condition and so leading to an out of bound access.
-  int spCnt = splitPointsCnt;
+  int size = splitPointsSize;
 
-  // No active split points means that the thread is available as a slave for any
+  // No split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !spCnt || (splitPoints[spCnt - 1].slavesMask & (1ULL << master->idx));
+  return !size || (splitPoints[size - 1].slavesMask & (1ULL << master->idx));
 }
 
 
@@ -225,10 +225,10 @@ void ThreadPool::read_uci_options() {
 }
 
 
-// available_slave_exists() tries to find an idle thread which is available as
-// a slave for the thread 'master'.
+// slave_available() tries to find an idle thread which is available as a slave
+// for the thread 'master'.
 
-bool ThreadPool::available_slave_exists(Thread* master) const {
+bool ThreadPool::slave_available(Thread* master) const {
 
   for (size_t i = 0; i < threads.size(); i++)
       if (threads[i]->is_available_to(master))
@@ -261,15 +261,14 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
 
   Thread* master = pos.this_thread();
 
-  if (master->splitPointsCnt >= MAX_SPLITPOINTS_PER_THREAD)
+  if (master->splitPointsSize >= MAX_SPLITPOINTS_PER_THREAD)
       return bestValue;
 
   // Pick the next available split point from the split point stack
-  SplitPoint& sp = master->splitPoints[master->splitPointsCnt];
+  SplitPoint& sp = master->splitPoints[master->splitPointsSize];
 
-  sp.parent = master->curSplitPoint;
   sp.master = master;
-  sp.cutoff = false;
+  sp.parent = master->activeSplitPoint;
   sp.slavesMask = 1ULL << master->idx;
   sp.depth = depth;
   sp.bestMove = *bestMove;
@@ -282,15 +281,16 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp.moveCount = moveCount;
   sp.pos = &pos;
   sp.nodes = 0;
+  sp.cutoff = false;
   sp.ss = ss;
+
+  master->activeSplitPoint = &sp;
+  int slavesCnt = 0;
 
   assert(master->searching);
 
-  master->curSplitPoint = &sp;
-  int slavesCnt = 0;
-
   // Try to allocate available threads and ask them to start searching setting
-  // is_searching flag. This must be done under lock protection to avoid concurrent
+  // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
   mutex.lock();
   sp.mutex.lock();
@@ -299,21 +299,21 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
       if (threads[i]->is_available_to(master))
       {
           sp.slavesMask |= 1ULL << i;
-          threads[i]->curSplitPoint = &sp;
+          threads[i]->activeSplitPoint = &sp;
           threads[i]->searching = true; // Slave leaves idle_loop()
           threads[i]->notify_one(); // Could be sleeping
 
-          if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Master is always included
+          if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Include master
               break;
       }
 
-  master->splitPointsCnt++;
+  master->splitPointsSize++;
 
   sp.mutex.unlock();
   mutex.unlock();
 
   // Everything is set up. The master thread enters the idle loop, from which
-  // it will instantly launch a search, because its is_searching flag is set.
+  // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
   if (slavesCnt || Fake)
@@ -326,14 +326,14 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   }
 
   // We have returned from the idle loop, which means that all threads are
-  // finished. Note that setting is_searching and decreasing splitPointsCnt is
+  // finished. Note that setting 'searching' and decreasing splitPointsSize is
   // done under lock protection to avoid a race with Thread::is_available_to().
   mutex.lock();
   sp.mutex.lock();
 
   master->searching = true;
-  master->splitPointsCnt--;
-  master->curSplitPoint = sp.parent;
+  master->splitPointsSize--;
+  master->activeSplitPoint = sp.parent;
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
 

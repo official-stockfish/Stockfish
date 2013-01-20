@@ -1008,7 +1008,7 @@ split_point_start: // At split points actual search starts from here
       // Step 19. Check for splitting the search
       if (   !SpNode
           &&  depth >= Threads.minimumSplitDepth
-          &&  Threads.available_slave_exists(thisThread))
+          &&  Threads.slave_available(thisThread))
       {
           assert(bestValue < beta);
 
@@ -1554,31 +1554,31 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
 void Thread::idle_loop() {
 
-  // Pointer 'sp_master', if non-NULL, points to the active SplitPoint
-  // object for which the thread is the master.
-  const SplitPoint* sp_master = splitPointsCnt ? curSplitPoint : NULL;
+  // Pointer 'this_sp' is not null only if we are called from split(), and not
+  // at the thread creation. So it means we are the split point's master.
+  const SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : NULL;
 
-  assert(!sp_master || (sp_master->master == this && searching));
+  assert(!this_sp || (this_sp->master == this && searching));
 
-  // If this thread is the master of a split point and all slaves have
-  // finished their work at this split point, return from the idle loop.
-  while (!sp_master || sp_master->slavesMask)
+  // If this thread is the master of a split point and all slaves have finished
+  // their work at this split point, return from the idle loop.
+  while (!this_sp || this_sp->slavesMask)
   {
-      // If we are not searching, wait for a condition to be signaled
-      // instead of wasting CPU time polling for work.
+      // If we are not searching, wait for a condition to be signaled instead of
+      // wasting CPU time polling for work.
       while ((!searching && Threads.sleepWhileIdle) || exit)
       {
           if (exit)
           {
-              assert(!sp_master);
+              assert(!this_sp);
               return;
           }
 
-          // Grab the lock to avoid races with Thread::wake_up()
+          // Grab the lock to avoid races with Thread::notify_one()
           mutex.lock();
 
-          // If we are master and all slaves have finished don't go to sleep
-          if (sp_master && !sp_master->slavesMask)
+          // If we are master and all slaves have finished then exit idle_loop
+          if (this_sp && !this_sp->slavesMask)
           {
               mutex.unlock();
               break;
@@ -1586,8 +1586,8 @@ void Thread::idle_loop() {
 
           // Do sleep after retesting sleep conditions under lock protection, in
           // particular we need to avoid a deadlock in case a master thread has,
-          // in the meanwhile, allocated us and sent the wake_up() call before we
-          // had the chance to grab the lock.
+          // in the meanwhile, allocated us and sent the notify_one() call before
+          // we had the chance to grab the lock.
           if (!searching && !exit)
               sleepCondition.wait(mutex);
 
@@ -1602,7 +1602,7 @@ void Thread::idle_loop() {
           Threads.mutex.lock();
 
           assert(searching);
-          SplitPoint* sp = curSplitPoint;
+          SplitPoint* sp = activeSplitPoint;
 
           Threads.mutex.unlock();
 
@@ -1614,28 +1614,33 @@ void Thread::idle_loop() {
 
           sp->mutex.lock();
 
-          assert(sp->activePositions[idx] == NULL);
+          assert(sp->slavesPositions[idx] == NULL);
 
-          sp->activePositions[idx] = &pos;
+          sp->slavesPositions[idx] = &pos;
 
-          if (sp->nodeType == Root)
+          switch (sp->nodeType) {
+          case Root:
               search<SplitPointRoot>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
-          else if (sp->nodeType == PV)
+              break;
+          case PV:
               search<SplitPointPV>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
-          else if (sp->nodeType == NonPV)
+              break;
+          case NonPV:
               search<SplitPointNonPV>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
-          else
+              break;
+          default:
               assert(false);
+          }
 
           assert(searching);
 
           searching = false;
-          sp->activePositions[idx] = NULL;
+          sp->slavesPositions[idx] = NULL;
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
 
-          // Wake up master thread so to allow it to return from the idle loop in
-          // case we are the last slave of the split point.
+          // Wake up master thread so to allow it to return from the idle loop
+          // in case we are the last slave of the split point.
           if (    Threads.sleepWhileIdle
               &&  this != sp->master
               && !sp->slavesMask)
@@ -1681,7 +1686,7 @@ void check_time() {
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active slaves positions.
       for (size_t i = 0; i < Threads.size(); i++)
-          for (int j = 0; j < Threads[i].splitPointsCnt; j++)
+          for (int j = 0; j < Threads[i].splitPointsSize; j++)
           {
               SplitPoint& sp = Threads[i].splitPoints[j];
 
@@ -1691,7 +1696,7 @@ void check_time() {
               Bitboard sm = sp.slavesMask;
               while (sm)
               {
-                  Position* pos = sp.activePositions[pop_lsb(&sm)];
+                  Position* pos = sp.slavesPositions[pop_lsb(&sm)];
                   nodes += pos ? pos->nodes_searched() : 0;
               }
 
