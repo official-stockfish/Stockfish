@@ -167,7 +167,7 @@ public:
 private:
   std::vector<Thread*> threads;
   TimerThread* timer;
-  int maxThreadsPerSplitPoint;
+  size_t maxThreadsPerSplitPoint;
 };
 
 extern ThreadPool Threads;

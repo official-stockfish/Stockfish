@@ -176,10 +176,10 @@ bool Thread::is_available_to(Thread* master) const {
 }
 
 
-// init() is called at startup. Initializes lock and condition variable and
-// launches requested threads sending them immediately to sleep. We cannot use
+// init() is called at startup to create and launch requested threads, that will
+// go immediately to sleep due to 'sleepWhileIdle' set to true. We cannot use
 // a c'tor becuase Threads is a static object and we need a fully initialized
-// engine at this point due to allocation of endgames in Thread c'tor.
+// engine at this point due to allocation of Endgames in Thread c'tor.
 
 void ThreadPool::init() {
 
@@ -190,11 +190,11 @@ void ThreadPool::init() {
 }
 
 
-// exit() cleanly terminates the threads before the program exits.
+// exit() cleanly terminates the threads before the program exits
 
 void ThreadPool::exit() {
 
-  delete timer; // As first becuase check_time() accesses threads data
+  delete timer; // As first because check_time() accesses threads data
 
   for (size_t i = 0; i < threads.size(); i++)
       delete threads[i];
@@ -240,12 +240,12 @@ bool ThreadPool::slave_available(Thread* master) const {
 
 // split() does the actual work of distributing the work at a node between
 // several available threads. If it does not succeed in splitting the node
-// (because no idle threads are available, or because we have no unused split
-// point objects), the function immediately returns. If splitting is possible, a
-// SplitPoint object is initialized with all the data that must be copied to the
-// helper threads and then helper threads are told that they have been assigned
-// work. This will cause them to instantly leave their idle loops and call
-// search(). When all threads have returned from search() then split() returns.
+// (because no idle threads are available), the function immediately returns.
+// If splitting is possible, a SplitPoint object is initialized with all the
+// data that must be copied to the helper threads and then helper threads are
+// told that they have been assigned work. This will cause them to instantly
+// leave their idle loops and call search(). When all threads have returned from
+// search() then split() returns.
 
 template <bool Fake>
 Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
@@ -253,16 +253,14 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
                         int moveCount, MovePicker& mp, int nodeType) {
 
   assert(pos.pos_is_ok());
+  assert(bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
   assert(bestValue > -VALUE_INFINITE);
-  assert(bestValue <= alpha);
-  assert(alpha < beta);
-  assert(beta <= VALUE_INFINITE);
-  assert(depth > DEPTH_ZERO);
+  assert(depth >= Threads.minimumSplitDepth);
 
   Thread* master = pos.this_thread();
 
-  if (master->splitPointsSize >= MAX_SPLITPOINTS_PER_THREAD)
-      return bestValue;
+  assert(master->searching);
+  assert(master->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
 
   // Pick the next available split point from the split point stack
   SplitPoint& sp = master->splitPoints[master->splitPointsSize];
@@ -284,30 +282,25 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   sp.cutoff = false;
   sp.ss = ss;
 
-  master->activeSplitPoint = &sp;
-  int slavesCnt = 0;
-
-  assert(master->searching);
-
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
   mutex.lock();
   sp.mutex.lock();
 
+  master->splitPointsSize++;
+  master->activeSplitPoint = &sp;
+
+  size_t slavesCnt = 1; // Master is always included
+
   for (size_t i = 0; i < threads.size() && !Fake; ++i)
-      if (threads[i]->is_available_to(master))
+      if (threads[i]->is_available_to(master) && ++slavesCnt <= maxThreadsPerSplitPoint)
       {
           sp.slavesMask |= 1ULL << i;
           threads[i]->activeSplitPoint = &sp;
           threads[i]->searching = true; // Slave leaves idle_loop()
           threads[i]->notify_one(); // Could be sleeping
-
-          if (++slavesCnt + 1 >= maxThreadsPerSplitPoint) // Include master
-              break;
       }
-
-  master->splitPointsSize++;
 
   sp.mutex.unlock();
   mutex.unlock();
@@ -316,7 +309,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  if (slavesCnt || Fake)
+  if (slavesCnt > 1 || Fake)
   {
       master->Thread::idle_loop(); // Force a call to base class idle_loop()
 

@@ -1008,7 +1008,8 @@ split_point_start: // At split points actual search starts from here
       // Step 19. Check for splitting the search
       if (   !SpNode
           &&  depth >= Threads.minimumSplitDepth
-          &&  Threads.slave_available(thisThread))
+          &&  Threads.slave_available(thisThread)
+          &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
       {
           assert(bestValue < beta);
 
