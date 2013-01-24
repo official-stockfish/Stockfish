@@ -1342,7 +1342,6 @@ split_point_start: // At split points actual search starts from here
     Bitboard b = (enemies ^ ksq) & newAtt & ~oldAtt;
     while (b)
     {
-        // Note that here we generate illegal "double move"!
         if (futilityBase + PieceValue[EG][pos.piece_on(pop_lsb(&b))] >= beta)
             return true;
     }
