@@ -296,7 +296,7 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   for (size_t i = 0; i < threads.size() && !Fake; ++i)
       if (threads[i]->is_available_to(master) && ++slavesCnt <= maxThreadsPerSplitPoint)
       {
-          sp.slavesMask |= 1ULL << i;
+          sp.slavesMask |= 1ULL << threads[i]->idx;
           threads[i]->activeSplitPoint = &sp;
           threads[i]->searching = true; // Slave leaves idle_loop()
           threads[i]->notify_one(); // Could be sleeping
@@ -352,8 +352,8 @@ void ThreadPool::wait_for_think_finished() {
 }
 
 
-// start_thinking() wakes up the main thread sleeping in  main_loop() so to start
-// a new search, then returns immediately.
+// start_thinking() wakes up the main thread sleeping in MainThread::idle_loop()
+// so to start a new search, then returns immediately.
 
 void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
                                 const std::vector<Move>& searchMoves, StateStackPtr& states) {

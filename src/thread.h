@@ -153,7 +153,7 @@ public:
   bool slave_available(Thread* master) const;
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&,
-                       const std::vector<Move>&, Search::StateStackPtr&);
+                      const std::vector<Move>&, Search::StateStackPtr&);
 
   template <bool Fake>
   Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
