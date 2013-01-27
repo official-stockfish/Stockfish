@@ -740,13 +740,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   st->rule50++;
   st->pliesFromNull++;
 
-  if (type_of(m) == CASTLE)
-  {
-      st->key = k;
-      do_castle_move<true>(m);
-      return;
-  }
-
   Color us = sideToMove;
   Color them = ~us;
   Square from = from_sq(m);
@@ -756,8 +749,24 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   PieceType capture = type_of(m) == ENPASSANT ? PAWN : type_of(piece_on(to));
 
   assert(color_of(piece) == us);
-  assert(piece_on(to) == NO_PIECE || color_of(piece_on(to)) == them);
+  assert(piece_on(to) == NO_PIECE || color_of(piece_on(to)) == them || type_of(m) == CASTLE);
   assert(capture != KING);
+
+  if (type_of(m) == CASTLE)
+  {
+      assert(piece == make_piece(us, KING));
+
+      bool kingSide = to > from;
+      Square rfrom = to; // Castle is encoded as "king captures friendly rook"
+      Square rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
+      to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+      capture = NO_PIECE_TYPE;
+
+      do_castle(from, to, rfrom, rto);
+
+      st->psqScore += psq_delta(make_piece(us, ROOK), rfrom, rto);
+      k ^= Zobrist::psq[us][ROOK][rfrom] ^ Zobrist::psq[us][ROOK][rto];
+  }
 
   if (capture)
   {
@@ -835,19 +844,22 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Prefetch TT access as soon as we know the new hash key
   prefetch((char*)TT.first_entry(k));
 
-  // Move the piece
-  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[ALL_PIECES] ^= from_to_bb;
-  byTypeBB[pt] ^= from_to_bb;
-  byColorBB[us] ^= from_to_bb;
+  // Move the piece. The tricky Chess960 castle is handled earlier
+  if (type_of(m) != CASTLE)
+  {
+      Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
+      byTypeBB[ALL_PIECES] ^= from_to_bb;
+      byTypeBB[pt] ^= from_to_bb;
+      byColorBB[us] ^= from_to_bb;
 
-  board[to] = board[from];
-  board[from] = NO_PIECE;
+      board[from] = NO_PIECE;
+      board[to] = piece;
 
-  // Update piece lists, index[from] is not updated and becomes stale. This
-  // works as long as index[] is accessed just by known occupied squares.
-  index[to] = index[from];
-  pieceList[us][pt][index[to]] = to;
+      // Update piece lists, index[from] is not updated and becomes stale. This
+      // works as long as index[] is accessed just by known occupied squares.
+      index[to] = index[from];
+      pieceList[us][pt][index[to]] = to;
+  }
 
   // If the moving piece is a pawn do some special extra work
   if (pt == PAWN)
@@ -952,19 +964,14 @@ void Position::undo_move(Move m) {
 
   sideToMove = ~sideToMove;
 
-  if (type_of(m) == CASTLE)
-      return do_castle_move<false>(m);
-
   Color us = sideToMove;
   Color them = ~us;
   Square from = from_sq(m);
   Square to = to_sq(m);
-  Piece piece = piece_on(to);
-  PieceType pt = type_of(piece);
+  PieceType pt = type_of(piece_on(to));
   PieceType capture = st->capturedType;
 
-  assert(is_empty(from));
-  assert(color_of(piece) == us);
+  assert(is_empty(from) || type_of(m) == CASTLE);
   assert(capture != KING);
 
   if (type_of(m) == PROMOTION)
@@ -992,19 +999,32 @@ void Position::undo_move(Move m) {
       pt = PAWN;
   }
 
-  // Put the piece back at the source square
-  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[ALL_PIECES] ^= from_to_bb;
-  byTypeBB[pt] ^= from_to_bb;
-  byColorBB[us] ^= from_to_bb;
+  if (type_of(m) == CASTLE)
+  {
+      bool kingSide = to > from;
+      Square rfrom = to; // Castle is encoded as "king captures friendly rook"
+      Square rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
+      to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+      capture = NO_PIECE_TYPE;
+      pt = KING;
+      do_castle(to, from, rto, rfrom);
+  }
+  else
+  {
+      // Put the piece back at the source square
+      Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
+      byTypeBB[ALL_PIECES] ^= from_to_bb;
+      byTypeBB[pt] ^= from_to_bb;
+      byColorBB[us] ^= from_to_bb;
 
-  board[from] = board[to];
-  board[to] = NO_PIECE;
+      board[to] = NO_PIECE;
+      board[from] = make_piece(us, pt);
 
-  // Update piece lists, index[to] is not updated and becomes stale. This
-  // works as long as index[] is accessed just by known occupied squares.
-  index[from] = index[to];
-  pieceList[us][pt][index[from]] = from;
+      // Update piece lists, index[to] is not updated and becomes stale. This
+      // works as long as index[] is accessed just by known occupied squares.
+      index[from] = index[to];
+      pieceList[us][pt][index[from]] = from;
+  }
 
   if (capture)
   {
@@ -1039,38 +1059,12 @@ void Position::undo_move(Move m) {
 }
 
 
-/// Position::do_castle_move() is a private method used to do/undo a castling
-/// move. Note that castling moves are encoded as "king captures friendly rook"
-/// moves, for instance white short castling in a non-Chess960 game is encoded
-/// as e1h1.
-template<bool Do>
-void Position::do_castle_move(Move m) {
+/// Position::do_castle() is a helper used to do/undo a castling move. This
+/// is a bit tricky, especially in Chess960.
 
-  assert(is_ok(m));
-  assert(type_of(m) == CASTLE);
+void Position::do_castle(Square kfrom, Square kto, Square rfrom, Square rto) {
 
   Color us = sideToMove;
-  Square kfrom, kto, rfrom, rto;
-
-  bool kingSide = to_sq(m) > from_sq(m);
-  kfrom = kto = from_sq(m);
-  rfrom = rto = to_sq(m);
-
-  if (Do)
-  {
-      kto = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
-      rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
-  }
-  else
-  {
-      kfrom = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
-      rfrom = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
-  }
-
-  assert(piece_on(kfrom) == make_piece(us, KING));
-  assert(piece_on(rfrom) == make_piece(us, ROOK));
-
-  // Move the pieces, with some care; in chess960 could be kto == rfrom
   Bitboard k_from_to_bb = SquareBB[kfrom] ^ SquareBB[kto];
   Bitboard r_from_to_bb = SquareBB[rfrom] ^ SquareBB[rto];
   byTypeBB[KING] ^= k_from_to_bb;
@@ -1078,52 +1072,17 @@ void Position::do_castle_move(Move m) {
   byTypeBB[ALL_PIECES] ^= k_from_to_bb ^ r_from_to_bb;
   byColorBB[us] ^= k_from_to_bb ^ r_from_to_bb;
 
-  // Update board
+  // Could be from == to, so first set NO_PIECE then KING and ROOK
   board[kfrom] = board[rfrom] = NO_PIECE;
   board[kto] = make_piece(us, KING);
   board[rto] = make_piece(us, ROOK);
 
-  // Update piece lists
-  pieceList[us][KING][index[kfrom]] = kto;
-  pieceList[us][ROOK][index[rfrom]] = rto;
-  int tmp = index[rfrom]; // In Chess960 could be kto == rfrom
-  index[kto] = index[kfrom];
-  index[rto] = tmp;
-
-  if (Do)
-  {
-      // Reset capture field
-      st->capturedType = NO_PIECE_TYPE;
-
-      // Update incremental scores
-      st->psqScore += psq_delta(make_piece(us, KING), kfrom, kto);
-      st->psqScore += psq_delta(make_piece(us, ROOK), rfrom, rto);
-
-      // Update hash key
-      st->key ^= Zobrist::psq[us][KING][kfrom] ^ Zobrist::psq[us][KING][kto];
-      st->key ^= Zobrist::psq[us][ROOK][rfrom] ^ Zobrist::psq[us][ROOK][rto];
-
-      // Clear en passant square
-      if (st->epSquare != SQ_NONE)
-      {
-          st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
-          st->epSquare = SQ_NONE;
-      }
-
-      // Update castling rights
-      st->key ^= Zobrist::castle[st->castleRights & castleRightsMask[kfrom]];
-      st->castleRights &= ~castleRightsMask[kfrom];
-
-      // Update checkers BB
-      st->checkersBB = attackers_to(king_square(~us)) & pieces(us);
-
-      sideToMove = ~sideToMove;
-  }
-  else
-      // Undo: point our state pointer back to the previous state
-      st = st->previous;
-
-  assert(pos_is_ok());
+  // Could be kfrom == rto, so use a 'tmp' variable
+  int tmp = index[kfrom];
+  index[rto] = index[rfrom];
+  index[kto] = tmp;
+  pieceList[us][KING][index[kto]] = kto;
+  pieceList[us][ROOK][index[rto]] = rto;
 }
 
 

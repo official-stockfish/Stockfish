@@ -191,8 +191,8 @@ private:
   void put_piece(Piece p, Square s);
   void set_castle_right(Color c, Square rfrom);
 
-  // Helper template functions
-  template<bool Do> void do_castle_move(Move m);
+  // Helper functions
+  void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
   template<bool FindPinned> Bitboard hidden_checkers() const;
 
   // Computing hash keys from scratch (for initialization and debugging)
