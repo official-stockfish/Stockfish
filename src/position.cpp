@@ -802,9 +802,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       pieceList[them][capture][index[lastSquare]] = lastSquare;
       pieceList[them][capture][pieceCount[them][capture]] = SQ_NONE;
 
-      // Update hash keys
+      // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[them][capture][capsq];
       st->materialKey ^= Zobrist::psq[them][capture][pieceCount[them][capture]];
+      prefetch((char*)thisThread->materialTable[st->materialKey]);
 
       // Update incremental scores
       st->psqScore -= pieceSquareTable[make_piece(them, capture)][capsq];
@@ -831,7 +832,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       st->castleRights &= ~cr;
   }
 
-  // Prefetch TT access as soon as we know key is updated
+  // Prefetch TT access as soon as we know the new hash key
   prefetch((char*)TT.first_entry(k));
 
   // Move the piece
@@ -894,16 +895,13 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->npMaterial[us] += PieceValue[MG][promotion];
       }
 
-      // Update pawn hash key
+      // Update pawn hash key and prefetch access to pawnsTable
       st->pawnKey ^= Zobrist::psq[us][PAWN][from] ^ Zobrist::psq[us][PAWN][to];
+      prefetch((char*)thisThread->pawnsTable[st->pawnKey]);
 
       // Reset rule 50 draw counter
       st->rule50 = 0;
   }
-
-  // Prefetch pawn and material hash tables
-  prefetch((char*)thisThread->pawnsTable[st->pawnKey]);
-  prefetch((char*)thisThread->materialTable[st->materialKey]);
 
   // Update incremental scores
   st->psqScore += psq_delta(piece, from, to);
