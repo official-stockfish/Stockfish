@@ -667,12 +667,12 @@ namespace {
         if (eval - PawnValueMg > beta)
             R += ONE_PLY;
 
-        pos.do_null_move<true>(st);
+        pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
         nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                       : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R);
         (ss+1)->skipNullMove = false;
-        pos.do_null_move<false>(st);
+        pos.undo_null_move();
 
         if (nullValue >= beta)
         {

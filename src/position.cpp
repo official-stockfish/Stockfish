@@ -953,10 +953,7 @@ void Position::undo_move(Move m) {
   sideToMove = ~sideToMove;
 
   if (type_of(m) == CASTLE)
-  {
-      do_castle_move<false>(m);
-      return;
-  }
+      return do_castle_move<false>(m);
 
   Color us = sideToMove;
   Color them = ~us;
@@ -1082,11 +1079,9 @@ void Position::do_castle_move(Move m) {
   byColorBB[us] ^= k_from_to_bb ^ r_from_to_bb;
 
   // Update board
-  Piece king = make_piece(us, KING);
-  Piece rook = make_piece(us, ROOK);
   board[kfrom] = board[rfrom] = NO_PIECE;
-  board[kto] = king;
-  board[rto] = rook;
+  board[kto] = make_piece(us, KING);
+  board[rto] = make_piece(us, ROOK);
 
   // Update piece lists
   pieceList[us][KING][index[kfrom]] = kto;
@@ -1101,8 +1096,8 @@ void Position::do_castle_move(Move m) {
       st->capturedType = NO_PIECE_TYPE;
 
       // Update incremental scores
-      st->psqScore += psq_delta(king, kfrom, kto);
-      st->psqScore += psq_delta(rook, rfrom, rto);
+      st->psqScore += psq_delta(make_piece(us, KING), kfrom, kto);
+      st->psqScore += psq_delta(make_piece(us, ROOK), rfrom, rto);
 
       // Update hash key
       st->key ^= Zobrist::psq[us][KING][kfrom] ^ Zobrist::psq[us][KING][kto];
@@ -1132,47 +1127,42 @@ void Position::do_castle_move(Move m) {
 }
 
 
-/// Position::do_null_move() is used to do/undo a "null move": It flips the side
-/// to move and updates the hash key without executing any move on the board.
-template<bool Do>
-void Position::do_null_move(StateInfo& backupSt) {
+/// Position::do(undo)_null_move() is used to do(undo) a "null move": It flips
+/// the side to move without executing any move on the board.
+
+void Position::do_null_move(StateInfo& newSt) {
 
   assert(!checkers());
 
-  // Back up the information necessary to undo the null move to the supplied
-  // StateInfo object. Note that differently from normal case here backupSt
-  // is actually used as a backup storage not as the new state. This reduces
-  // the number of fields to be copied.
-  StateInfo* src = Do ? st : &backupSt;
-  StateInfo* dst = Do ? &backupSt : st;
+  memcpy(&newSt, st, sizeof(StateInfo)); // Fully copy here
 
-  dst->key      = src->key;
-  dst->epSquare = src->epSquare;
-  dst->psqScore = src->psqScore;
-  dst->rule50   = src->rule50;
-  dst->pliesFromNull = src->pliesFromNull;
+  newSt.previous = st;
+  st = &newSt;
+
+  if (st->epSquare != SQ_NONE)
+  {
+      st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
+      st->epSquare = SQ_NONE;
+  }
+
+  st->key ^= Zobrist::side;
+  prefetch((char*)TT.first_entry(st->key));
+
+  st->rule50++;
+  st->pliesFromNull = 0;
 
   sideToMove = ~sideToMove;
-
-  if (Do)
-  {
-      if (st->epSquare != SQ_NONE)
-          st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
-
-      st->key ^= Zobrist::side;
-      prefetch((char*)TT.first_entry(st->key));
-
-      st->epSquare = SQ_NONE;
-      st->rule50++;
-      st->pliesFromNull = 0;
-  }
 
   assert(pos_is_ok());
 }
 
-// Explicit template instantiations
-template void Position::do_null_move<false>(StateInfo& backupSt);
-template void Position::do_null_move<true>(StateInfo& backupSt);
+void Position::undo_null_move() {
+
+  assert(!checkers());
+
+  st = st->previous;
+  sideToMove = ~sideToMove;
+}
 
 
 /// Position::see() is a static exchange evaluator: It tries to estimate the
