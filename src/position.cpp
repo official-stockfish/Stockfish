@@ -1052,29 +1052,23 @@ void Position::do_castle_move(Move m) {
   assert(is_ok(m));
   assert(type_of(m) == CASTLE);
 
-  Square kto, kfrom, rfrom, rto, kAfter, rAfter;
-
   Color us = sideToMove;
-  Square kBefore = from_sq(m);
-  Square rBefore = to_sq(m);
+  Square kfrom, kto, rfrom, rto;
 
-  // Find after-castle squares for king and rook
-  if (rBefore > kBefore) // O-O
+  bool kingSide = to_sq(m) > from_sq(m);
+  kfrom = kto = from_sq(m);
+  rfrom = rto = to_sq(m);
+
+  if (Do)
   {
-      kAfter = relative_square(us, SQ_G1);
-      rAfter = relative_square(us, SQ_F1);
+      kto = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+      rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   }
-  else // O-O-O
+  else
   {
-      kAfter = relative_square(us, SQ_C1);
-      rAfter = relative_square(us, SQ_D1);
+      kfrom = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+      rfrom = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
   }
-
-  kfrom = Do ? kBefore : kAfter;
-  rfrom = Do ? rBefore : rAfter;
-
-  kto = Do ? kAfter : kBefore;
-  rto = Do ? rAfter : rBefore;
 
   assert(piece_on(kfrom) == make_piece(us, KING));
   assert(piece_on(rfrom) == make_piece(us, ROOK));
