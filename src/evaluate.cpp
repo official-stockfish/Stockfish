@@ -577,6 +577,18 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         mobility += MobilityBonus[Piece][mob];
 
+        // Add a bonus if a slider is pinning an enemy piece
+        if (   (Piece == BISHOP || Piece == ROOK || Piece == QUEEN)
+            && (PseudoAttacks[Piece][pos.king_square(Them)] & s))
+        {
+            b = BetweenBB[s][pos.king_square(Them)] & pos.pieces();
+
+            assert(b);
+
+            if (!more_than_one(b) && (b & pos.pieces(Them)))
+                score += ThreatBonus[Piece][type_of(pos.piece_on(lsb(b)))];
+        }
+
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (ei.attackedBy[Them][PAWN] & s)
@@ -687,7 +699,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
                       & ~ei.attackedBy[Them][0];
 
     if (undefendedMinors)
-        score += UndefendedMinorPenalty;
+        score += more_than_one(undefendedMinors) ? UndefendedMinorPenalty * 2
+                                                 : UndefendedMinorPenalty;
 
     // Enemy pieces not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
