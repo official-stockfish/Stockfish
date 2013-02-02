@@ -371,8 +371,8 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   RootMoves.clear();
 
   for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
-      if (  searchMoves.empty()
-         || std::count(searchMoves.begin(), searchMoves.end(), ml.move()))
+      if (   searchMoves.empty()
+          || std::count(searchMoves.begin(), searchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
   main_thread()->thinking = true;

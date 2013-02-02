@@ -86,7 +86,8 @@ namespace {
   TimeManager TimeMgr;
   int BestMoveChanges;
   Value DrawValue[COLOR_NB];
-  History H;
+  History Hist;
+  Gains Gain;
 
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
@@ -299,7 +300,8 @@ namespace {
     bestValue = delta = -VALUE_INFINITE;
     ss->currentMove = MOVE_NULL; // Hack to skip update gains
     TT.new_search();
-    H.clear();
+    Hist.clear();
+    Gain.clear();
 
     PVSize = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
@@ -617,7 +619,7 @@ namespace {
         &&  type_of(move) == NORMAL)
     {
         Square to = to_sq(move);
-        H.update_gain(pos.piece_on(to), to, -(ss-1)->staticEval - ss->staticEval);
+        Gain.update(pos.piece_on(to), to, -(ss-1)->staticEval - ss->staticEval);
     }
 
     // Step 6. Razoring (is omitted in PV nodes)
@@ -727,7 +729,7 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-        MovePicker mp(pos, ttMove, H, pos.captured_piece_type());
+        MovePicker mp(pos, ttMove, Hist, pos.captured_piece_type());
         CheckInfo ci(pos);
 
         while ((move = mp.next_move<false>()) != MOVE_NONE)
@@ -759,7 +761,7 @@ namespace {
 
 split_point_start: // At split points actual search starts from here
 
-    MovePicker mp(pos, ttMove, depth, H, ss, PvNode ? -VALUE_INFINITE : beta);
+    MovePicker mp(pos, ttMove, depth, Hist, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     singularExtensionNode =   !RootNode
@@ -878,7 +880,7 @@ split_point_start: // At split points actual search starts from here
           // but fixing this made program slightly weaker.
           Depth predictedDepth = newDepth - reduction<PvNode>(depth, moveCount);
           futilityValue =  ss->staticEval + ss->evalMargin + futility_margin(predictedDepth, moveCount)
-                         + H.gain(pos.piece_moved(move), to_sq(move));
+                         + Gain[pos.piece_moved(move)][to_sq(move)];
 
           if (futilityValue < beta)
           {
@@ -1070,13 +1072,13 @@ split_point_start: // At split points actual search starts from here
 
             // Increase history value of the cut-off move
             Value bonus = Value(int(depth) * int(depth));
-            H.update(pos.piece_moved(bestMove), to_sq(bestMove), bonus);
+            Hist.update(pos.piece_moved(bestMove), to_sq(bestMove), bonus);
 
             // Decrease history of all the other played non-capture moves
             for (int i = 0; i < playedMoveCount - 1; i++)
             {
                 Move m = movesSearched[i];
-                H.update(pos.piece_moved(m), to_sq(m), -bonus);
+                Hist.update(pos.piece_moved(m), to_sq(m), -bonus);
             }
         }
     }
@@ -1188,7 +1190,7 @@ split_point_start: // At split points actual search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, H, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, Hist, to_sq((ss-1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
