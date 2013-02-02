@@ -20,10 +20,34 @@
 #if !defined MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include "history.h"
 #include "position.h"
 #include "search.h"
 #include "types.h"
+
+
+/// The History class stores statistics about how often different moves
+/// have been successful or unsuccessful during the current search. These
+/// statistics are used for reduction and move ordering decisions. History
+/// entries are stored according only to moving piece and destination square,
+/// in particular two moves with different origin but same destination and
+/// same piece will be considered identical.
+
+class History {
+public:
+
+  static const Value Max = Value(2000);
+
+  const Value* operator[](Piece p) const { return &history[p][0]; }
+  Value gain(Piece p, Square to) const { return gains[p][to]; }
+
+  void clear();
+  void update(Piece p, Square to, Value bonus);
+  void update_gain(Piece p, Square to, Value gain);
+
+private:
+  Value history[PIECE_NB][SQUARE_NB];
+  Value gains[PIECE_NB][SQUARE_NB];
+};
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the

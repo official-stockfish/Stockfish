@@ -52,6 +52,23 @@ namespace {
 }
 
 
+/// History class method definitions
+
+void History::clear() {
+  memset(history, 0, sizeof(history));
+  memset(gains, 0, sizeof(gains));
+}
+
+void History::update(Piece p, Square to, Value bonus) {
+  if (abs(history[p][to] + bonus) < History::Max)
+      history[p][to] += bonus;
+}
+
+void History::update_gain(Piece p, Square to, Value gain) {
+  gains[p][to] = std::max(gain, gains[p][to] - 1);
+}
+
+
 /// Constructors of the MovePicker class. As arguments we pass information
 /// to help it to return the presumably good moves first, to decide which
 /// moves to return (in the quiescence search, for instance, we only want to
@@ -180,7 +197,7 @@ void MovePicker::score_noncaptures() {
   for (MoveStack* it = moves; it != end; ++it)
   {
       m = it->move;
-      it->score = H.value(pos.piece_moved(m), to_sq(m));
+      it->score = H[pos.piece_moved(m)][to_sq(m)];
   }
 }
 
@@ -198,12 +215,12 @@ void MovePicker::score_evasions() {
   {
       m = it->move;
       if ((seeScore = pos.see_sign(m)) < 0)
-          it->score = seeScore - History::MaxValue; // Be sure we are at the bottom
+          it->score = seeScore - History::Max; // Be sure we are at the bottom
       else if (pos.is_capture(m))
           it->score =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                     - type_of(pos.piece_moved(m)) + History::MaxValue;
+                     - type_of(pos.piece_moved(m)) + History::Max;
       else
-          it->score = H.value(pos.piece_moved(m), to_sq(m));
+          it->score = H[pos.piece_moved(m)][to_sq(m)];
   }
 }
 
