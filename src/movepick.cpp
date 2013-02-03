@@ -20,7 +20,6 @@
 
 #include <cassert>
 
-#include "movegen.h"
 #include "movepick.h"
 #include "thread.h"
 
@@ -140,12 +139,10 @@ MovePicker::MovePicker(const Position& p, Move ttm, const History& h, PieceType 
 }
 
 
-/// MovePicker::score_captures(), MovePicker::score_noncaptures() and
-/// MovePicker::score_evasions() assign a numerical move ordering score
-/// to each move in a move list.  The moves with highest scores will be
-/// picked first by next_move().
-
-void MovePicker::score_captures() {
+/// score() assign a numerical move ordering score to each move in a move list.
+/// The moves with highest scores will be picked first.
+template<>
+void MovePicker::score<CAPTURES>() {
   // Winning and equal captures in the main search are ordered by MVV/LVA.
   // Suprisingly, this appears to perform slightly better than SEE based
   // move ordering. The reason is probably that in a position with a winning
@@ -175,7 +172,8 @@ void MovePicker::score_captures() {
   }
 }
 
-void MovePicker::score_noncaptures() {
+template<>
+void MovePicker::score<QUIETS>() {
 
   Move m;
 
@@ -186,21 +184,20 @@ void MovePicker::score_noncaptures() {
   }
 }
 
-void MovePicker::score_evasions() {
+template<>
+void MovePicker::score<EVASIONS>() {
   // Try good captures ordered by MVV/LVA, then non-captures if destination square
   // is not under attack, ordered by history value, then bad-captures and quiet
   // moves with a negative SEE. This last group is ordered by the SEE score.
   Move m;
   int seeScore;
 
-  if (end < moves + 2)
-      return;
-
   for (MoveStack* it = moves; it != end; ++it)
   {
       m = it->move;
       if ((seeScore = pos.see_sign(m)) < 0)
-          it->score = seeScore - History::Max; // Be sure we are at the bottom
+          it->score = seeScore - History::Max; // At the bottom
+
       else if (pos.is_capture(m))
           it->score =  PieceValue[MG][pos.piece_on(to_sq(m))]
                      - type_of(pos.piece_moved(m)) + History::Max;
@@ -210,8 +207,8 @@ void MovePicker::score_evasions() {
 }
 
 
-/// MovePicker::generate_next() generates, scores and sorts the next bunch of moves,
-/// when there are no more moves to try for the current phase.
+/// generate_next() generates, scores and sorts the next bunch of moves, when
+/// there are no more moves to try for the current phase.
 
 void MovePicker::generate_next() {
 
@@ -221,7 +218,7 @@ void MovePicker::generate_next() {
 
   case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
       end = generate<CAPTURES>(pos, moves);
-      score_captures();
+      score<CAPTURES>();
       return;
 
   case KILLERS_S1:
@@ -231,7 +228,7 @@ void MovePicker::generate_next() {
 
   case QUIETS_1_S1:
       endQuiets = end = generate<QUIETS>(pos, moves);
-      score_noncaptures();
+      score<QUIETS>();
       end = std::partition(cur, end, has_positive_score);
       sort<MoveStack>(cur, end);
       return;
@@ -251,7 +248,8 @@ void MovePicker::generate_next() {
 
   case EVASIONS_S2:
       end = generate<EVASIONS>(pos, moves);
-      score_evasions();
+      if (end > moves + 1)
+          score<EVASIONS>();
       return;
 
   case QUIET_CHECKS_S3:
@@ -270,11 +268,10 @@ void MovePicker::generate_next() {
 }
 
 
-/// MovePicker::next_move() is the most important method of the MovePicker class.
-/// It returns a new pseudo legal move every time it is called, until there
-/// are no more moves left. It picks the move with the biggest score from a list
-/// of generated moves taking care not to return the tt move if has already been
-/// searched previously.
+/// next_move() is the most important method of the MovePicker class. It returns
+/// a new pseudo legal move every time is called, until there are no more moves
+/// left. It picks the move with the biggest score from a list of generated moves
+/// taking care not returning the ttMove if has already been searched previously.
 template<>
 Move MovePicker::next_move<false>() {
 
@@ -361,6 +358,6 @@ Move MovePicker::next_move<false>() {
 
 /// Version of next_move() to use at split point nodes where the move is grabbed
 /// from the split point's shared MovePicker object. This function is not thread
-/// safe so should be lock protected by the caller.
+/// safe so must be lock protected by the caller.
 template<>
 Move MovePicker::next_move<true>() { return ss->sp->mp->next_move<false>(); }
