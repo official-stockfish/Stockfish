@@ -99,8 +99,8 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta);
-  bool allows_move(const Position& pos, Move first, Move second);
-  bool prevents_move(const Position& pos, Move first, Move second);
+  bool allows(const Position& pos, Move first, Move second);
+  bool refutes(const Position& pos, Move first, Move second);
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
 
   struct Skill {
@@ -706,7 +706,7 @@ namespace {
             if (   depth < 5 * ONE_PLY
                 && (ss-1)->reduction
                 && threatMove != MOVE_NONE
-                && allows_move(pos, (ss-1)->currentMove, threatMove))
+                && allows(pos, (ss-1)->currentMove, threatMove))
                 return beta - 1;
         }
     }
@@ -867,7 +867,7 @@ split_point_start: // At split points actual search starts from here
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
               && moveCount >= FutilityMoveCounts[depth]
-              && (!threatMove || !prevents_move(pos, move, threatMove)))
+              && (!threatMove || !refutes(pos, move, threatMove)))
           {
               if (SpNode)
                   sp->mutex.lock();
@@ -1367,12 +1367,12 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // allows_move() tests whether the move at previous ply (first) somehow makes a
-  // second move possible, for instance if the moving piece is the same in both
-  // moves. Normally the second move is the threat move (the best move returned
+  // allows() tests whether the 'first' move at previous ply somehow makes the
+  // 'second' move possible, for instance if the moving piece is the same in
+  // both moves. Normally the second move is the threat (the best move returned
   // from a null search that fails low).
 
-  bool allows_move(const Position& pos, Move first, Move second) {
+  bool allows(const Position& pos, Move first, Move second) {
 
     assert(is_ok(first));
     assert(is_ok(second));
@@ -1408,12 +1408,11 @@ split_point_start: // At split points actual search starts from here
   }
 
 
-  // prevents_move() tests whether a move (first) is able to defend against an
-  // opponent's move (second). In this case will not be pruned. Normally the
-  // second move is the threat move (the best move returned from a null search
-  // that fails low).
+  // refutes() tests whether a 'first' move is able to defend against a 'second'
+  // opponent's move. In this case will not be pruned. Normally the second move
+  // is the threat (the best move returned from a null search that fails low).
 
-  bool prevents_move(const Position& pos, Move first, Move second) {
+  bool refutes(const Position& pos, Move first, Move second) {
 
     assert(is_ok(first));
     assert(is_ok(second));
