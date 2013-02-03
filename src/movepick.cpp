@@ -168,7 +168,10 @@ void MovePicker::score_captures() {
                  - type_of(pos.piece_moved(m));
 
       if (type_of(m) == PROMOTION)
-          it->score += PieceValue[MG][promotion_type(m)];
+          it->score += PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
+
+      else if (type_of(m) == ENPASSANT)
+          it->score += PieceValue[MG][PAWN];
   }
 }
 
