@@ -400,6 +400,7 @@ namespace {
 
             // Sort the PV lines searched so far and update the GUI
             sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
+
             if (PVIdx + 1 == PVSize || Time::now() - SearchTime > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
@@ -922,8 +923,9 @@ split_point_start: // At split points actual search starts from here
           && !pvMove
           && !captureOrPromotion
           && !dangerous
-          &&  ss->killers[0] != move
-          &&  ss->killers[1] != move)
+          &&  move != ttMove
+          &&  move != ss->killers[0]
+          &&  move != ss->killers[1])
       {
           ss->reduction = reduction<PvNode>(depth, moveCount);
           Depth d = std::max(newDepth - ss->reduction, ONE_PLY);
