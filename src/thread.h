@@ -63,15 +63,15 @@ struct SplitPoint {
   // Const data after split point has been setup
   const Position* pos;
   const Search::Stack* ss;
-  Thread* master;
+  Thread* masterThread;
   Depth depth;
   Value beta;
   int nodeType;
   Move threatMove;
 
   // Const pointers to shared data
-  MovePicker* mp;
-  SplitPoint* parent;
+  MovePicker* movePicker;
+  SplitPoint* parentSplitPoint;
 
   // Shared data
   Mutex mutex;

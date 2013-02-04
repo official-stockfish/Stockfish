@@ -1616,7 +1616,7 @@ void Thread::idle_loop() {
   // at the thread creation. So it means we are the split point's master.
   const SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : NULL;
 
-  assert(!this_sp || (this_sp->master == this && searching));
+  assert(!this_sp || (this_sp->masterThread == this && searching));
 
   // If this thread is the master of a split point and all slaves have finished
   // their work at this split point, return from the idle loop.
@@ -1700,11 +1700,11 @@ void Thread::idle_loop() {
           // Wake up master thread so to allow it to return from the idle loop
           // in case we are the last slave of the split point.
           if (    Threads.sleepWhileIdle
-              &&  this != sp->master
+              &&  this != sp->masterThread
               && !sp->slavesMask)
           {
-              assert(!sp->master->searching);
-              sp->master->notify_one();
+              assert(!sp->masterThread->searching);
+              sp->masterThread->notify_one();
           }
 
           // After releasing the lock we cannot access anymore any SplitPoint
