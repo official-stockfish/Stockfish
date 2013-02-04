@@ -186,7 +186,7 @@ void ThreadPool::init() {
 
   sleepWhileIdle = true;
   timer = new TimerThread();
-  threads.push_back(new MainThread());
+  push_back(new MainThread());
   read_uci_options();
 }
 
@@ -197,8 +197,8 @@ void ThreadPool::exit() {
 
   delete timer; // As first because check_time() accesses threads data
 
-  for (size_t i = 0; i < threads.size(); i++)
-      delete threads[i];
+  for (iterator it = begin(); it != end(); ++it)
+      delete *it;
 }
 
 
@@ -215,13 +215,13 @@ void ThreadPool::read_uci_options() {
 
   assert(requested > 0);
 
-  while (threads.size() < requested)
-      threads.push_back(new Thread());
+  while (size() < requested)
+      push_back(new Thread());
 
-  while (threads.size() > requested)
+  while (size() > requested)
   {
-      delete threads.back();
-      threads.pop_back();
+      delete back();
+      pop_back();
   }
 }
 
@@ -231,8 +231,8 @@ void ThreadPool::read_uci_options() {
 
 bool ThreadPool::slave_available(Thread* master) const {
 
-  for (size_t i = 0; i < threads.size(); i++)
-      if (threads[i]->is_available_to(master))
+  for (const_iterator it = begin(); it != end(); ++it)
+      if ((*it)->is_available_to(master))
           return true;
 
   return false;
@@ -290,16 +290,20 @@ Value Thread::split(Position& pos, Stack* ss, Value alpha, Value beta,
   splitPointsSize++;
   activeSplitPoint = &sp;
 
-  size_t slavesCnt = 1; // Master is always included
+  size_t slavesCnt = 1; // This thread is always included
 
-  for (size_t i = 0; i < Threads.size() && !Fake; ++i)
-      if (Threads[i].is_available_to(this) && ++slavesCnt <= Threads.maxThreadsPerSplitPoint)
+  for (ThreadPool::iterator it = Threads.begin(); it != Threads.end() && !Fake; ++it)
+  {
+      Thread* slave = *it;
+
+      if (slave->is_available_to(this) && ++slavesCnt <= Threads.maxThreadsPerSplitPoint)
       {
-          sp.slavesMask |= 1ULL << Threads[i].idx;
-          Threads[i].activeSplitPoint = &sp;
-          Threads[i].searching = true; // Slave leaves idle_loop()
-          Threads[i].notify_one(); // Could be sleeping
+          sp.slavesMask |= 1ULL << slave->idx;
+          slave->activeSplitPoint = &sp;
+          slave->searching = true; // Slave leaves idle_loop()
+          slave->notify_one(); // Could be sleeping
       }
+  }
 
   sp.mutex.unlock();
   Threads.mutex.unlock();
