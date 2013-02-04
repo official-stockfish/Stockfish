@@ -1030,8 +1030,8 @@ split_point_start: // At split points actual search starts from here
       {
           assert(bestValue < beta);
 
-          bestValue = Threads.split<FakeSplit>(pos, ss, alpha, beta, bestValue, &bestMove,
-                                               depth, threatMove, moveCount, mp, NT);
+          bestValue = thisThread->split<FakeSplit>(pos, ss, alpha, beta, bestValue, &bestMove,
+                                                   depth, threatMove, moveCount, mp, NT);
           if (bestValue >= beta)
               break;
       }

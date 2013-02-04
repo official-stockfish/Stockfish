@@ -249,26 +249,24 @@ bool ThreadPool::slave_available(Thread* master) const {
 // search() then split() returns.
 
 template <bool Fake>
-Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
-                        Value bestValue, Move* bestMove, Depth depth, Move threatMove,
-                        int moveCount, MovePicker& mp, int nodeType) {
+Value Thread::split(Position& pos, Stack* ss, Value alpha, Value beta,
+                    Value bestValue, Move* bestMove, Depth depth, Move threatMove,
+                    int moveCount, MovePicker& mp, int nodeType) {
 
   assert(pos.pos_is_ok());
   assert(bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
   assert(bestValue > -VALUE_INFINITE);
   assert(depth >= Threads.minimumSplitDepth);
 
-  Thread* thisThread = pos.this_thread();
-
-  assert(thisThread->searching);
-  assert(thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
+  assert(searching);
+  assert(splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
 
   // Pick the next available split point from the split point stack
-  SplitPoint& sp = thisThread->splitPoints[thisThread->splitPointsSize];
+  SplitPoint& sp = splitPoints[splitPointsSize];
 
-  sp.masterThread = thisThread;
-  sp.parentSplitPoint = thisThread->activeSplitPoint;
-  sp.slavesMask = 1ULL << thisThread->idx;
+  sp.masterThread = this;
+  sp.parentSplitPoint = activeSplitPoint;
+  sp.slavesMask = 1ULL << idx;
   sp.depth = depth;
   sp.bestMove = *bestMove;
   sp.threatMove = threatMove;
@@ -286,25 +284,25 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
-  mutex.lock();
+  Threads.mutex.lock();
   sp.mutex.lock();
 
-  thisThread->splitPointsSize++;
-  thisThread->activeSplitPoint = &sp;
+  splitPointsSize++;
+  activeSplitPoint = &sp;
 
   size_t slavesCnt = 1; // Master is always included
 
-  for (size_t i = 0; i < threads.size() && !Fake; ++i)
-      if (threads[i]->is_available_to(thisThread) && ++slavesCnt <= maxThreadsPerSplitPoint)
+  for (size_t i = 0; i < Threads.size() && !Fake; ++i)
+      if (Threads[i].is_available_to(this) && ++slavesCnt <= Threads.maxThreadsPerSplitPoint)
       {
-          sp.slavesMask |= 1ULL << threads[i]->idx;
-          threads[i]->activeSplitPoint = &sp;
-          threads[i]->searching = true; // Slave leaves idle_loop()
-          threads[i]->notify_one(); // Could be sleeping
+          sp.slavesMask |= 1ULL << Threads[i].idx;
+          Threads[i].activeSplitPoint = &sp;
+          Threads[i].searching = true; // Slave leaves idle_loop()
+          Threads[i].notify_one(); // Could be sleeping
       }
 
   sp.mutex.unlock();
-  mutex.unlock();
+  Threads.mutex.unlock();
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its 'searching' flag is set.
@@ -312,34 +310,34 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // their work at this split point.
   if (slavesCnt > 1 || Fake)
   {
-      thisThread->Thread::idle_loop(); // Force a call to base class idle_loop()
+      Thread::idle_loop(); // Force a call to base class idle_loop()
 
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.
-      assert(!thisThread->searching);
+      assert(!searching);
   }
 
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that setting 'searching' and decreasing splitPointsSize is
   // done under lock protection to avoid a race with Thread::is_available_to().
-  mutex.lock();
+  Threads.mutex.lock();
   sp.mutex.lock();
 
-  thisThread->searching = true;
-  thisThread->splitPointsSize--;
-  thisThread->activeSplitPoint = sp.parentSplitPoint;
+  searching = true;
+  splitPointsSize--;
+  activeSplitPoint = sp.parentSplitPoint;
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
 
   sp.mutex.unlock();
-  mutex.unlock();
+  Threads.mutex.unlock();
 
   return sp.bestValue;
 }
 
 // Explicit template instantiations
-template Value ThreadPool::split<false>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
-template Value ThreadPool::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
+template Value Thread::split<false>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
+template Value Thread::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
 
 
 // wait_for_think_finished() waits for main thread to go to sleep then returns

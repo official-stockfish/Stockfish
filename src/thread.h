@@ -102,6 +102,10 @@ struct Thread {
   bool is_available_to(Thread* master) const;
   void wait_for(volatile const bool& b);
 
+  template <bool Fake>
+  Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
+              Depth depth, Move threatMove, int moveCount, MovePicker& mp, int nodeType);
+
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Material::Table materialTable;
   Endgames endgames;
@@ -155,19 +159,15 @@ public:
   void start_thinking(const Position&, const Search::LimitsType&,
                       const std::vector<Move>&, Search::StateStackPtr&);
 
-  template <bool Fake>
-  Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
-              Depth depth, Move threatMove, int moveCount, MovePicker& mp, int nodeType);
-
   bool sleepWhileIdle;
   Depth minimumSplitDepth;
+  size_t maxThreadsPerSplitPoint;
   Mutex mutex;
   ConditionVariable sleepCondition;
 
 private:
   std::vector<Thread*> threads;
   TimerThread* timer;
-  size_t maxThreadsPerSplitPoint;
 };
 
 extern ThreadPool Threads;
