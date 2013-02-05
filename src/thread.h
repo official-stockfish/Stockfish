@@ -103,8 +103,8 @@ struct Thread {
   void wait_for(volatile const bool& b);
 
   template <bool Fake>
-  Value split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value bestValue, Move* bestMove,
-              Depth depth, Move threatMove, int moveCount, MovePicker& mp, int nodeType);
+  void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
+             Depth depth, Move threatMove, int moveCount, MovePicker* movePicker, int nodeType);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Material::Table materialTable;
