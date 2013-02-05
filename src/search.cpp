@@ -98,7 +98,7 @@ namespace {
   void id_loop(Position& pos);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
-  bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta);
+  bool check_is_dangerous(const Position& pos, Move move, Value futilityBase, Value beta);
   bool allows(const Position& pos, Move first, Move second);
   bool refutes(const Position& pos, Move first, Move second);
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
@@ -1335,7 +1335,7 @@ split_point_start: // At split points actual search starts from here
 
   // check_is_dangerous() tests if a checking move can be pruned in qsearch()
 
-  bool check_is_dangerous(Position& pos, Move move, Value futilityBase, Value beta)
+  bool check_is_dangerous(const Position& pos, Move move, Value futilityBase, Value beta)
   {
     Piece pc = pos.piece_moved(move);
     Square from = from_sq(move);
