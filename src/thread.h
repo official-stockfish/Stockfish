@@ -149,7 +149,7 @@ struct ThreadPool : public std::vector<Thread*> {
 
   MainThread* main_thread() { return static_cast<MainThread*>((*this)[0]); }
   void read_uci_options();
-  bool slave_available(Thread* master) const;
+  Thread* available_slave(Thread* master) const;
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&,
                       const std::vector<Move>&, Search::StateStackPtr&);

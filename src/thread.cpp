@@ -229,13 +229,13 @@ void ThreadPool::read_uci_options() {
 // slave_available() tries to find an idle thread which is available as a slave
 // for the thread 'master'.
 
-bool ThreadPool::slave_available(Thread* master) const {
+Thread* ThreadPool::available_slave(Thread* master) const {
 
   for (const_iterator it = begin(); it != end(); ++it)
       if ((*it)->is_available_to(master))
-          return true;
+          return *it;
 
-  return false;
+  return NULL;
 }
 
 
@@ -290,18 +290,15 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   activeSplitPoint = &sp;
 
   size_t slavesCnt = 1; // This thread is always included
+  Thread* slave;
 
-  for (ThreadPool::iterator it = Threads.begin(); it != Threads.end() && !Fake; ++it)
+  while (    (slave = Threads.available_slave(this)) != NULL
+         && ++slavesCnt <= Threads.maxThreadsPerSplitPoint && !Fake)
   {
-      Thread* slave = *it;
-
-      if (slave->is_available_to(this) && ++slavesCnt <= Threads.maxThreadsPerSplitPoint)
-      {
-          sp.slavesMask |= 1ULL << slave->idx;
-          slave->activeSplitPoint = &sp;
-          slave->searching = true; // Slave leaves idle_loop()
-          slave->notify_one(); // Could be sleeping
-      }
+      sp.slavesMask |= 1ULL << slave->idx;
+      slave->activeSplitPoint = &sp;
+      slave->searching = true; // Slave leaves idle_loop()
+      slave->notify_one(); // Could be sleeping
   }
 
   sp.mutex.unlock();
