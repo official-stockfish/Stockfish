@@ -19,6 +19,7 @@
 
 #include <algorithm> // For std::count
 #include <cassert>
+#include <cstring> // For memset
 #include <iostream>
 
 #include "movegen.h"
@@ -43,7 +44,7 @@ namespace { extern "C" {
 // Thread c'tor starts a newly-created thread of execution that will call
 // the the virtual function idle_loop(), going immediately to sleep.
 
-Thread::Thread() : splitPoints() {
+Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
 
   searching = exit = false;
   maxPly = splitPointsSize = 0;
@@ -279,6 +280,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.nodes = 0;
   sp.cutoff = false;
   sp.ss = ss;
+
+  memset(sp.slavesPositions, 0, sizeof(sp.slavesPositions));
 
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
