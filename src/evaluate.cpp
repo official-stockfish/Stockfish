@@ -496,7 +496,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     // Init king safety tables only if we are going to use them
     if (   pos.piece_count(Us, QUEEN)
-        && pos.non_pawn_material(Us) >= QueenValueMg + RookValueMg)
+        && pos.non_pawn_material(Us) > QueenValueMg + PawnValueMg)
     {
         ei.kingRing[Them] = (b | (Us == WHITE ? b >> 8 : b << 8));
         b &= ei.attackedBy[Us][PAWN];
