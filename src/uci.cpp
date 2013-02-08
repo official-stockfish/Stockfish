@@ -44,7 +44,7 @@ namespace {
 
   void set_option(istringstream& up);
   void set_position(Position& pos, istringstream& up);
-  void go(Position& pos, istringstream& up);
+  void go(const Position& pos, istringstream& up);
 }
 
 
@@ -182,7 +182,7 @@ namespace {
   // the thinking time and other parameters from the input string, and starts
   // the search.
 
-  void go(Position& pos, istringstream& is) {
+  void go(const Position& pos, istringstream& is) {
 
     Search::LimitsType limits;
     vector<Move> searchMoves;
