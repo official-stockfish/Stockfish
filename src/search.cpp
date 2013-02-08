@@ -1672,9 +1672,9 @@ void Thread::idle_loop() {
 
           sp->mutex.lock();
 
-          assert(sp->slavesPositions[idx] == NULL);
+          assert(activePosition == NULL);
 
-          sp->slavesPositions[idx] = &pos;
+          activePosition = &pos;
 
           switch (sp->nodeType) {
           case Root:
@@ -1693,7 +1693,7 @@ void Thread::idle_loop() {
           assert(searching);
 
           searching = false;
-          sp->slavesPositions[idx] = NULL;
+          activePosition = NULL;
           sp->slavesMask &= ~(1ULL << idx);
           sp->nodes += pos.nodes_searched();
 
@@ -1742,7 +1742,7 @@ void check_time() {
       nodes = RootPos.nodes_searched();
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
-      // all the currently active slaves positions.
+      // all the currently active positions nodes.
       for (size_t i = 0; i < Threads.size(); i++)
           for (int j = 0; j < Threads[i]->splitPointsSize; j++)
           {
@@ -1754,8 +1754,9 @@ void check_time() {
               Bitboard sm = sp.slavesMask;
               while (sm)
               {
-                  Position* pos = sp.slavesPositions[pop_lsb(&sm)];
-                  nodes += pos ? pos->nodes_searched() : 0;
+                  Position* pos = Threads[pop_lsb(&sm)]->activePosition;
+                  if (pos)
+                      nodes += pos->nodes_searched();
               }
 
               sp.mutex.unlock();

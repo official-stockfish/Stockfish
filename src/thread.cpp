@@ -19,7 +19,6 @@
 
 #include <algorithm> // For std::count
 #include <cassert>
-#include <cstring> // For memset
 #include <iostream>
 
 #include "movegen.h"
@@ -49,6 +48,7 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
   searching = exit = false;
   maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
+  activePosition = NULL;
   idx = Threads.size();
 
   if (!thread_create(handle, start_routine, this))
@@ -281,8 +281,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.cutoff = false;
   sp.ss = ss;
 
-  memset(sp.slavesPositions, 0, sizeof(sp.slavesPositions));
-
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
@@ -291,6 +289,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 
   splitPointsSize++;
   activeSplitPoint = &sp;
+  activePosition = NULL;
 
   size_t slavesCnt = 1; // This thread is always included
   Thread* slave;
@@ -318,6 +317,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.
       assert(!searching);
+      assert(!activePosition);
   }
 
   // We have returned from the idle loop, which means that all threads are
@@ -329,6 +329,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   searching = true;
   splitPointsSize--;
   activeSplitPoint = sp.parentSplitPoint;
+  activePosition = &pos;
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
   *bestValue = sp.bestValue;
