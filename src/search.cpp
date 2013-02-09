@@ -594,8 +594,8 @@ namespace {
     else if (tte)
     {
         // Never assume anything on values stored in TT
-        if (  (ss->staticEval = eval = tte->static_value()) == VALUE_NONE
-            ||(ss->evalMargin = tte->static_value_margin()) == VALUE_NONE)
+        if (  (ss->staticEval = eval = tte->eval_value()) == VALUE_NONE
+            ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
             eval = ss->staticEval = evaluate(pos, ss->evalMargin);
 
         // Can ttValue be used as a better position evaluation?
@@ -1164,8 +1164,8 @@ split_point_start: // At split points actual search starts from here
         if (tte)
         {
             // Never assume anything on values stored in TT
-            if (  (ss->staticEval = bestValue = tte->static_value()) == VALUE_NONE
-                ||(ss->evalMargin = tte->static_value_margin()) == VALUE_NONE)
+            if (  (ss->staticEval = bestValue = tte->eval_value()) == VALUE_NONE
+                ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
                 ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
         }
         else
