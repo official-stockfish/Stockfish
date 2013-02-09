@@ -96,7 +96,7 @@ public:
   void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV, Value kingD);
 
 private:
-  size_t size;
+  uint32_t clusterMask;
   TTEntry* entries;
   uint8_t generation; // Size must be not bigger then TTEntry::generation8
 };
@@ -110,7 +110,7 @@ extern TranspositionTable TT;
 
 inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
-  return entries + ((uint32_t)key & (size - 1)) * ClusterSize;
+  return entries + ((uint32_t)key & clusterMask) * ClusterSize;
 }
 
 

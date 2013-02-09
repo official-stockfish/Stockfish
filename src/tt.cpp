@@ -32,12 +32,14 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::set_size(size_t mbSize) {
 
-  size_t newSize = 1ULL << msb((mbSize << 20) / sizeof(TTEntry[ClusterSize]));
+  assert(msb((mbSize << 20) / sizeof(TTEntry)) < 32);
 
-  if (newSize == size)
+  uint32_t size = 1 << msb((mbSize << 20) / sizeof(TTEntry[ClusterSize]));
+
+  if (clusterMask == size - 1)
       return;
 
-  size = newSize;
+  clusterMask = size - 1;
   delete [] entries;
   entries = new (std::nothrow) TTEntry[size * ClusterSize];
 
@@ -58,7 +60,7 @@ void TranspositionTable::set_size(size_t mbSize) {
 
 void TranspositionTable::clear() {
 
-  memset(entries, 0, size * sizeof(TTEntry[ClusterSize]));
+  memset(entries, 0, (clusterMask + 1) * sizeof(TTEntry[ClusterSize]));
 }
 
 
