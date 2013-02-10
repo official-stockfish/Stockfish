@@ -35,6 +35,20 @@ namespace {
     STOP
   };
 
+  // Our insertion sort, guaranteed to be stable, as is needed
+  void insertion_sort(MoveStack* begin, MoveStack* end)
+  {
+    MoveStack tmp, *p, *q;
+
+    for (p = begin + 1; p < end; ++p)
+    {
+        tmp = *p;
+        for (q = p; q != begin && *(q-1) < tmp; --q)
+            *q = *(q-1);
+        *q = tmp;
+    }
+  }
+
   // Unary predicate used by std::partition to split positive scores from remaining
   // ones so to sort separately the two sets, and with the second sort delayed.
   inline bool has_positive_score(const MoveStack& ms) { return ms.score > 0; }
@@ -230,14 +244,14 @@ void MovePicker::generate_next() {
       endQuiets = end = generate<QUIETS>(pos, moves);
       score<QUIETS>();
       end = std::partition(cur, end, has_positive_score);
-      sort<MoveStack>(cur, end);
+      insertion_sort(cur, end);
       return;
 
   case QUIETS_2_S1:
       cur = end;
       end = endQuiets;
       if (depth >= 3 * ONE_PLY)
-          sort<MoveStack>(cur, end);
+          insertion_sort(cur, end);
       return;
 
   case BAD_CAPTURES_S1:

@@ -354,7 +354,7 @@ namespace {
                 // we want to keep the same order for all the moves but the new
                 // PV that goes to the front. Note that in case of MultiPV search
                 // the already searched PV lines are preserved.
-                sort<RootMove>(RootMoves.begin() + PVIdx, RootMoves.end());
+                std::stable_sort(RootMoves.begin() + PVIdx, RootMoves.end());
 
                 // Write PV back to transposition table in case the relevant
                 // entries have been overwritten during the search.
@@ -399,7 +399,7 @@ namespace {
             }
 
             // Sort the PV lines searched so far and update the GUI
-            sort<RootMove>(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
+            std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
             if (PVIdx + 1 == PVSize || Time::now() - SearchTime > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;

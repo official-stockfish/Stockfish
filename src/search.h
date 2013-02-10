@@ -56,12 +56,11 @@ struct Stack {
 /// all non-pv moves.
 struct RootMove {
 
-  RootMove(){} // Needed by sort()
   RootMove(Move m) : score(-VALUE_INFINITE), prevScore(-VALUE_INFINITE) {
     pv.push_back(m); pv.push_back(MOVE_NONE);
   }
 
-  bool operator<(const RootMove& m) const { return score < m.score; }
+  bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
   bool operator==(const Move& m) const { return pv[0] == m; }
 
   void extract_pv_from_tt(Position& pos);
