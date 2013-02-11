@@ -20,10 +20,46 @@
 #if !defined MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include "history.h"
+#include <algorithm> // For std::max
+#include <cstring>   // For memset
+
+#include "movegen.h"
 #include "position.h"
 #include "search.h"
 #include "types.h"
+
+
+/// The Stats struct stores moves statistics. According to the template parameter
+/// the class can store both History and Gains type statistics. History records
+/// how often different moves have been successful or unsuccessful during the
+/// current search and is used for reduction and move ordering decisions. Gains
+/// records the move's best evaluation gain from one ply to the next and is used
+/// for pruning decisions. Entries are stored according only to moving piece and
+/// destination square, in particular two moves with different origin but same
+/// destination and same piece will be considered identical.
+template<bool Gain>
+struct Stats {
+
+  static const Value Max = Value(2000);
+
+  const Value* operator[](Piece p) const { return &table[p][0]; }
+  void clear() { memset(table, 0, sizeof(table)); }
+
+  void update(Piece p, Square to, Value v) {
+
+    if (Gain)
+        table[p][to] = std::max(v, table[p][to] - 1);
+
+    else if (abs(table[p][to] + v) < Max)
+        table[p][to] +=  v;
+  }
+
+private:
+  Value table[PIECE_NB][SQUARE_NB];
+};
+
+typedef Stats<false> History;
+typedef Stats<true> Gains;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -44,13 +80,11 @@ public:
   template<bool SpNode> Move next_move();
 
 private:
-  void score_captures();
-  void score_noncaptures();
-  void score_evasions();
+  template<GenType> void score();
   void generate_next();
 
   const Position& pos;
-  const History& H;
+  const History& Hist;
   Search::Stack* ss;
   Depth depth;
   Move ttMove;

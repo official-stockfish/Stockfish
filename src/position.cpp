@@ -802,7 +802,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       // Update piece list, move the last piece at index[capsq] position and
       // shrink the list.
       //
-      // WARNING: This is a not revresible operation. When we will reinsert the
+      // WARNING: This is a not reversible operation. When we will reinsert the
       // captured piece in undo_move() we will put it at the end of the list and
       // not in its original place, it means index[] and pieceList[] are not
       // guaranteed to be invariant to a do_move() + undo_move() sequence.
