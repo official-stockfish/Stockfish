@@ -249,41 +249,38 @@ namespace {
   }
 
 
-  FORCE_INLINE MoveStack* generate_king_moves(const Position& pos, MoveStack* mlist,
-                                              Color us, Bitboard target) {
-    Square from = pos.king_square(us);
-    Bitboard b = pos.attacks_from<KING>(from) & target;
-    SERIALIZE(b);
-    return mlist;
-  }
-
-
   template<GenType Type> FORCE_INLINE
-  MoveStack* generate_all_moves(const Position& pos, MoveStack* mlist, Color us,
-                                Bitboard target, const CheckInfo* ci = NULL) {
+  MoveStack* generate_all(const Position& pos, MoveStack* mlist, Color us,
+                          Bitboard target, const CheckInfo* ci = NULL) {
+
+    const bool Checks = Type == QUIET_CHECKS;
 
     mlist = (us == WHITE ? generate_pawn_moves<WHITE, Type>(pos, mlist, target, ci)
                          : generate_pawn_moves<BLACK, Type>(pos, mlist, target, ci));
 
-    mlist = generate_moves<KNIGHT, Type == QUIET_CHECKS>(pos, mlist, us, target, ci);
-    mlist = generate_moves<BISHOP, Type == QUIET_CHECKS>(pos, mlist, us, target, ci);
-    mlist = generate_moves<ROOK,   Type == QUIET_CHECKS>(pos, mlist, us, target, ci);
-    mlist = generate_moves<QUEEN,  Type == QUIET_CHECKS>(pos, mlist, us, target, ci);
+    mlist = generate_moves<KNIGHT, Checks>(pos, mlist, us, target, ci);
+    mlist = generate_moves<BISHOP, Checks>(pos, mlist, us, target, ci);
+    mlist = generate_moves<ROOK,   Checks>(pos, mlist, us, target, ci);
+    mlist = generate_moves<QUEEN,  Checks>(pos, mlist, us, target, ci);
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
-        mlist = generate_king_moves(pos, mlist, us, target);
+    {
+        Square from = pos.king_square(us);
+        Bitboard b = pos.attacks_from<KING>(from) & target;
+        SERIALIZE(b);
+    }
 
     if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(us))
     {
         if (pos.is_chess960())
         {
-            mlist = generate_castle<KING_SIDE,  Type == QUIET_CHECKS, true>(pos, mlist, us);
-            mlist = generate_castle<QUEEN_SIDE, Type == QUIET_CHECKS, true>(pos, mlist, us);
+            mlist = generate_castle<KING_SIDE,  Checks, true>(pos, mlist, us);
+            mlist = generate_castle<QUEEN_SIDE, Checks, true>(pos, mlist, us);
         }
         else
         {
-            mlist = generate_castle<KING_SIDE,  Type == QUIET_CHECKS, false>(pos, mlist, us);
-            mlist = generate_castle<QUEEN_SIDE, Type == QUIET_CHECKS, false>(pos, mlist, us);
+            mlist = generate_castle<KING_SIDE,  Checks, false>(pos, mlist, us);
+            mlist = generate_castle<QUEEN_SIDE, Checks, false>(pos, mlist, us);
         }
     }
 
@@ -310,18 +307,12 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
   assert(!pos.checkers());
 
   Color us = pos.side_to_move();
-  Bitboard target;
 
-  if (Type == CAPTURES)
-      target = pos.pieces(~us);
+  Bitboard target = Type == CAPTURES     ?  pos.pieces(~us)
+                  : Type == QUIETS       ? ~pos.pieces()
+                  : Type == NON_EVASIONS ? ~pos.pieces(us) : 0;
 
-  else if (Type == QUIETS)
-      target = ~pos.pieces();
-
-  else if (Type == NON_EVASIONS)
-      target = ~pos.pieces(us);
-
-  return generate_all_moves<Type>(pos, mlist, us, target);
+  return generate_all<Type>(pos, mlist, us, target);
 }
 
 // Explicit template instantiations
@@ -337,7 +328,6 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
 
   assert(!pos.checkers());
 
-  Color us = pos.side_to_move();
   CheckInfo ci(pos);
   Bitboard dc = ci.dcCandidates;
 
@@ -357,7 +347,7 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
      SERIALIZE(b);
   }
 
-  return generate_all_moves<QUIET_CHECKS>(pos, mlist, us, ~pos.pieces(), &ci);
+  return generate_all<QUIET_CHECKS>(pos, mlist, pos.side_to_move(), ~pos.pieces(), &ci);
 }
 
 
@@ -419,7 +409,7 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
   // Generate blocking evasions or captures of the checking piece
   Bitboard target = between_bb(checksq, ksq) | pos.checkers();
 
-  return generate_all_moves<EVASIONS>(pos, mlist, us, target);
+  return generate_all<EVASIONS>(pos, mlist, us, target);
 }
 
 

@@ -44,7 +44,7 @@
 class TTEntry {
 
 public:
-  void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value statV, Value statM) {
+  void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value ev, Value em) {
 
     key32        = (uint32_t)k;
     move16       = (uint16_t)m;
@@ -52,63 +52,52 @@ public:
     generation8  = (uint8_t)g;
     value16      = (int16_t)v;
     depth16      = (int16_t)d;
-    staticValue  = (int16_t)statV;
-    staticMargin = (int16_t)statM;
+    evalValue    = (int16_t)ev;
+    evalMargin   = (int16_t)em;
   }
   void set_generation(int g) { generation8 = (uint8_t)g; }
 
-  uint32_t key() const              { return key32; }
-  Depth depth() const               { return (Depth)depth16; }
-  Move move() const                 { return (Move)move16; }
-  Value value() const               { return (Value)value16; }
-  Bound type() const                { return (Bound)bound; }
-  int generation() const            { return (int)generation8; }
-  Value static_value() const        { return (Value)staticValue; }
-  Value static_value_margin() const { return (Value)staticMargin; }
+  uint32_t key() const      { return key32; }
+  Depth depth() const       { return (Depth)depth16; }
+  Move move() const         { return (Move)move16; }
+  Value value() const       { return (Value)value16; }
+  Bound type() const        { return (Bound)bound; }
+  int generation() const    { return (int)generation8; }
+  Value eval_value() const  { return (Value)evalValue; }
+  Value eval_margin() const { return (Value)evalMargin; }
 
 private:
   uint32_t key32;
   uint16_t move16;
   uint8_t bound, generation8;
-  int16_t value16, depth16, staticValue, staticMargin;
+  int16_t value16, depth16, evalValue, evalMargin;
 };
 
 
-/// This is the number of TTEntry slots for each cluster
-const int ClusterSize = 4;
-
-
-/// TTCluster consists of ClusterSize number of TTEntries. Size of TTCluster
-/// must not be bigger than a cache line size. In case it is less, it should
-/// be padded to guarantee always aligned accesses.
-
-struct TTCluster {
-  TTEntry data[ClusterSize];
-};
-
-
-/// The transposition table class. This is basically just a huge array containing
-/// TTCluster objects, and a few methods for writing and reading entries.
+/// A TranspositionTable consists of a power of 2 number of clusters and each
+/// cluster consists of ClusterSize number of TTEntry. Each non-empty entry
+/// contains information of exactly one position. Size of a cluster shall not be
+/// bigger than a cache line size. In case it is less, it should be padded to
+/// guarantee always aligned accesses.
 
 class TranspositionTable {
 
-  TranspositionTable(const TranspositionTable&);
-  TranspositionTable& operator=(const TranspositionTable&);
+  static const unsigned ClusterSize = 4; // A cluster is 64 Bytes
 
 public:
-  TranspositionTable();
- ~TranspositionTable();
+ ~TranspositionTable() { delete [] table; }
+  void new_search() { generation++; }
+
+  TTEntry* probe(const Key key) const;
+  TTEntry* first_entry(const Key key) const;
+  void refresh(const TTEntry* tte) const;
   void set_size(size_t mbSize);
   void clear();
-  void store(const Key posKey, Value v, Bound type, Depth d, Move m, Value statV, Value kingD);
-  TTEntry* probe(const Key posKey) const;
-  void new_search();
-  TTEntry* first_entry(const Key posKey) const;
-  void refresh(const TTEntry* tte) const;
+  void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV, Value kingD);
 
 private:
-  size_t size;
-  TTCluster* entries;
+  uint32_t hashMask;
+  TTEntry* table;
   uint8_t generation; // Size must be not bigger then TTEntry::generation8
 };
 
@@ -119,9 +108,9 @@ extern TranspositionTable TT;
 /// a cluster given a position. The lowest order bits of the key are used to
 /// get the index of the cluster.
 
-inline TTEntry* TranspositionTable::first_entry(const Key posKey) const {
+inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
-  return entries[((uint32_t)posKey) & (size - 1)].data;
+  return table + ((uint32_t)key & hashMask);
 }
 
 

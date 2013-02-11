@@ -577,16 +577,15 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         mobility += MobilityBonus[Piece][mob];
 
-        if (Piece == BISHOP && (PseudoAttacks[Piece][pos.king_square(Them)] & s)) {
-             const Bitboard between = BetweenBB[s][pos.king_square(Them)] & pos.pieces();
-             if (!more_than_one(between))
-                 score += make_score(25, 25);
-        }
-
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (ei.attackedBy[Them][PAWN] & s)
             score -= ThreatenedByPawnPenalty[Piece];
+        else if (Piece == BISHOP && (PseudoAttacks[Piece][pos.king_square(Them)] & s)) {
+             const Bitboard between = BetweenBB[s][pos.king_square(Them)] & pos.pieces();
+             if (!more_than_one(between))
+                 score += make_score(15, 25);
+        }
 
         // Bishop and knight outposts squares
         if (    (Piece == BISHOP || Piece == KNIGHT)
@@ -693,7 +692,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
                       & ~ei.attackedBy[Them][0];
 
     if (undefendedMinors)
-        score += UndefendedMinorPenalty;
+        score += more_than_one(undefendedMinors) ? UndefendedMinorPenalty * 2
+                                                 : UndefendedMinorPenalty;
 
     // Enemy pieces not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)

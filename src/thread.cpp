@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm> // For std::count
 #include <cassert>
 #include <iostream>
 
@@ -42,11 +43,12 @@ namespace { extern "C" {
 // Thread c'tor starts a newly-created thread of execution that will call
 // the the virtual function idle_loop(), going immediately to sleep.
 
-Thread::Thread() : splitPoints() {
+Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
 
   searching = exit = false;
   maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
+  activePosition = NULL;
   idx = Threads.size();
 
   if (!thread_create(handle, start_routine, this))
@@ -146,7 +148,7 @@ void Thread::wait_for(volatile const bool& b) {
 
 bool Thread::cutoff_occurred() const {
 
-  for (SplitPoint* sp = activeSplitPoint; sp; sp = sp->parent)
+  for (SplitPoint* sp = activeSplitPoint; sp; sp = sp->parentSplitPoint)
       if (sp->cutoff)
           return true;
 
@@ -185,7 +187,7 @@ void ThreadPool::init() {
 
   sleepWhileIdle = true;
   timer = new TimerThread();
-  threads.push_back(new MainThread());
+  push_back(new MainThread());
   read_uci_options();
 }
 
@@ -196,8 +198,8 @@ void ThreadPool::exit() {
 
   delete timer; // As first because check_time() accesses threads data
 
-  for (size_t i = 0; i < threads.size(); i++)
-      delete threads[i];
+  for (iterator it = begin(); it != end(); ++it)
+      delete *it;
 }
 
 
@@ -214,13 +216,13 @@ void ThreadPool::read_uci_options() {
 
   assert(requested > 0);
 
-  while (threads.size() < requested)
-      threads.push_back(new Thread());
+  while (size() < requested)
+      push_back(new Thread());
 
-  while (threads.size() > requested)
+  while (size() > requested)
   {
-      delete threads.back();
-      threads.pop_back();
+      delete back();
+      pop_back();
   }
 }
 
@@ -228,13 +230,13 @@ void ThreadPool::read_uci_options() {
 // slave_available() tries to find an idle thread which is available as a slave
 // for the thread 'master'.
 
-bool ThreadPool::slave_available(Thread* master) const {
+Thread* ThreadPool::available_slave(Thread* master) const {
 
-  for (size_t i = 0; i < threads.size(); i++)
-      if (threads[i]->is_available_to(master))
-          return true;
+  for (const_iterator it = begin(); it != end(); ++it)
+      if ((*it)->is_available_to(master))
+          return *it;
 
-  return false;
+  return NULL;
 }
 
 
@@ -248,34 +250,31 @@ bool ThreadPool::slave_available(Thread* master) const {
 // search() then split() returns.
 
 template <bool Fake>
-Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
-                        Value bestValue, Move* bestMove, Depth depth, Move threatMove,
-                        int moveCount, MovePicker& mp, int nodeType) {
+void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bestValue,
+                   Move* bestMove, Depth depth, Move threatMove, int moveCount,
+                   MovePicker* movePicker, int nodeType) {
 
   assert(pos.pos_is_ok());
-  assert(bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
-  assert(bestValue > -VALUE_INFINITE);
+  assert(*bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
+  assert(*bestValue > -VALUE_INFINITE);
   assert(depth >= Threads.minimumSplitDepth);
-
-  Thread* master = pos.this_thread();
-
-  assert(master->searching);
-  assert(master->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
+  assert(searching);
+  assert(splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
 
   // Pick the next available split point from the split point stack
-  SplitPoint& sp = master->splitPoints[master->splitPointsSize];
+  SplitPoint& sp = splitPoints[splitPointsSize];
 
-  sp.master = master;
-  sp.parent = master->activeSplitPoint;
-  sp.slavesMask = 1ULL << master->idx;
+  sp.masterThread = this;
+  sp.parentSplitPoint = activeSplitPoint;
+  sp.slavesMask = 1ULL << idx;
   sp.depth = depth;
+  sp.bestValue = *bestValue;
   sp.bestMove = *bestMove;
   sp.threatMove = threatMove;
   sp.alpha = alpha;
   sp.beta = beta;
   sp.nodeType = nodeType;
-  sp.bestValue = bestValue;
-  sp.mp = &mp;
+  sp.movePicker = movePicker;
   sp.moveCount = moveCount;
   sp.pos = &pos;
   sp.nodes = 0;
@@ -285,25 +284,27 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
-  mutex.lock();
+  Threads.mutex.lock();
   sp.mutex.lock();
 
-  master->splitPointsSize++;
-  master->activeSplitPoint = &sp;
+  splitPointsSize++;
+  activeSplitPoint = &sp;
+  activePosition = NULL;
 
-  size_t slavesCnt = 1; // Master is always included
+  size_t slavesCnt = 1; // This thread is always included
+  Thread* slave;
 
-  for (size_t i = 0; i < threads.size() && !Fake; ++i)
-      if (threads[i]->is_available_to(master) && ++slavesCnt <= maxThreadsPerSplitPoint)
-      {
-          sp.slavesMask |= 1ULL << threads[i]->idx;
-          threads[i]->activeSplitPoint = &sp;
-          threads[i]->searching = true; // Slave leaves idle_loop()
-          threads[i]->notify_one(); // Could be sleeping
-      }
+  while (    (slave = Threads.available_slave(this)) != NULL
+         && ++slavesCnt <= Threads.maxThreadsPerSplitPoint && !Fake)
+  {
+      sp.slavesMask |= 1ULL << slave->idx;
+      slave->activeSplitPoint = &sp;
+      slave->searching = true; // Slave leaves idle_loop()
+      slave->notify_one(); // Could be sleeping
+  }
 
   sp.mutex.unlock();
-  mutex.unlock();
+  Threads.mutex.unlock();
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its 'searching' flag is set.
@@ -311,34 +312,35 @@ Value ThreadPool::split(Position& pos, Stack* ss, Value alpha, Value beta,
   // their work at this split point.
   if (slavesCnt > 1 || Fake)
   {
-      master->Thread::idle_loop(); // Force a call to base class idle_loop()
+      Thread::idle_loop(); // Force a call to base class idle_loop()
 
       // In helpful master concept a master can help only a sub-tree of its split
       // point, and because here is all finished is not possible master is booked.
-      assert(!master->searching);
+      assert(!searching);
+      assert(!activePosition);
   }
 
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that setting 'searching' and decreasing splitPointsSize is
   // done under lock protection to avoid a race with Thread::is_available_to().
-  mutex.lock();
+  Threads.mutex.lock();
   sp.mutex.lock();
 
-  master->searching = true;
-  master->splitPointsSize--;
-  master->activeSplitPoint = sp.parent;
+  searching = true;
+  splitPointsSize--;
+  activeSplitPoint = sp.parentSplitPoint;
+  activePosition = &pos;
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
+  *bestValue = sp.bestValue;
 
   sp.mutex.unlock();
-  mutex.unlock();
-
-  return sp.bestValue;
+  Threads.mutex.unlock();
 }
 
 // Explicit template instantiations
-template Value ThreadPool::split<false>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
-template Value ThreadPool::split<true>(Position&, Stack*, Value, Value, Value, Move*, Depth, Move, int, MovePicker&, int);
+template void Thread::split<false>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int);
+template void Thread::split< true>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int);
 
 
 // wait_for_think_finished() waits for main thread to go to sleep then returns
@@ -370,7 +372,8 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   RootMoves.clear();
 
   for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
-      if (searchMoves.empty() || count(searchMoves.begin(), searchMoves.end(), ml.move()))
+      if (   searchMoves.empty()
+          || std::count(searchMoves.begin(), searchMoves.end(), ml.move()))
           RootMoves.push_back(RootMove(ml.move()));
 
   main_thread()->thinking = true;
