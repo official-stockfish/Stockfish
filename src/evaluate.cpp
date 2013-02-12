@@ -150,6 +150,8 @@ namespace {
 
   #undef S
 
+  Score BishopPinBonus = make_score(15, 25);
+
   // Bonus for having the side to move (modified by Joona Kiiski)
   const Score Tempo = make_score(24, 11);
 
@@ -306,6 +308,8 @@ namespace Eval {
         KingDangerTable[0][i] = apply_weight(make_score(t, 0), make_score(KingDanger[0], 0));
         KingDangerTable[1][i] = apply_weight(make_score(t, 0), make_score(KingDanger[1], 0));
     }
+
+    BishopPinBonus = make_score(Options["pin_open"], Options["pin_end"]);
   }
 
 
@@ -584,7 +588,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         else if (Piece == BISHOP && (PseudoAttacks[Piece][pos.king_square(Them)] & s)) {
              const Bitboard between = BetweenBB[s][pos.king_square(Them)] & pos.pieces();
              if (!more_than_one(between))
-                 score += make_score(15, 25);
+                 score += BishopPinBonus;
         }
 
         // Bishop and knight outposts squares
@@ -692,8 +696,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                       & ~ei.attackedBy[Them][0];
 
     if (undefendedMinors)
-        score += more_than_one(undefendedMinors) ? UndefendedMinorPenalty * 2
-                                                 : UndefendedMinorPenalty;
+        score += UndefendedMinorPenalty;
 
     // Enemy pieces not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
