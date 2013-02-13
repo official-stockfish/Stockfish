@@ -39,9 +39,9 @@ namespace {
   // bit  1- 6: black king square (from SQ_A1 to SQ_H8)
   // bit  7-12: white king square (from SQ_A1 to SQ_H8)
   // bit 13-14: white pawn file (from FILE_A to FILE_D)
-  // bit 15-17: white pawn rank - 1 (from RANK_2 - 1 to RANK_7 - 1)
+  // bit 15-17: white pawn 6 - rank (from 6 - RANK_7 to 6 - RANK_2)
   unsigned index(Color stm, Square bksq, Square wksq, Square psq) {
-    return stm + (bksq << 1) + (wksq << 7) + (file_of(psq) << 13) + ((rank_of(psq) - 1) << 15);
+    return stm + (bksq << 1) + (wksq << 7) + (file_of(psq) << 13) + ((6 - rank_of(psq)) << 15);
   }
 
   enum Result {
@@ -94,7 +94,7 @@ void Bitbases::init_kpk() {
   for (idx = 0; idx < IndexMax; idx++)
       db[idx].classify_leaf(idx);
 
-  // Iterate until all positions are classified (30 cycles needed)
+  // Iterate until all positions are classified (26 cycles needed)
   while (repeat)
       for (repeat = idx = 0; idx < IndexMax; idx++)
           if (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN)
@@ -114,7 +114,7 @@ namespace {
     stm  = Color(idx & 1);
     bksq = Square((idx >> 1) & 0x3F);
     wksq = Square((idx >> 7) & 0x3F);
-    psq  = File((idx >> 13) & 3) | Rank((idx >> 15) + 1);
+    psq  = File((idx >> 13) & 3) | Rank(6 - (idx >> 15));
 
     // Check if two pieces are on the same square or if a king can be captured
     if (   wksq == psq || wksq == bksq || bksq == psq
