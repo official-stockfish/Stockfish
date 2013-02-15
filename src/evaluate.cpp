@@ -150,6 +150,7 @@ namespace {
 
   #undef S
 
+  // CLOP now likes 85, 31 - try next
   Score BishopPinBonus = make_score(66, 11);
 
   // Bonus for having the side to move (modified by Joona Kiiski)
