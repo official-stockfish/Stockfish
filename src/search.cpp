@@ -182,7 +182,7 @@ void Search::think() {
   static PolyglotBook book; // Defined static to initialize the PRNG only once
 
   RootColor = RootPos.side_to_move();
-  TimeMgr.init(Limits, RootPos.startpos_ply_counter(), RootColor);
+  TimeMgr.init(Limits, RootPos.game_ply(), RootColor);
 
   if (RootMoves.empty())
   {

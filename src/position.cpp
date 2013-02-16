@@ -278,11 +278,11 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   }
 
   // 5-6. Halfmove clock and fullmove number
-  ss >> std::skipws >> st->rule50 >> startPosPly;
+  ss >> std::skipws >> st->rule50 >> gamePly;
 
   // Convert from fullmove starting from 1 to ply starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  startPosPly = std::max(2 * (startPosPly - 1), 0) + int(sideToMove == BLACK);
+  gamePly = std::max(2 * (gamePly - 1), 0) + int(sideToMove == BLACK);
 
   st->key = compute_key();
   st->pawnKey = compute_pawn_key();
@@ -373,7 +373,7 @@ const string Position::fen() const {
       ss << '-';
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + square_to_string(ep_square()) + " ")
-      << st->rule50 << " " << 1 + (startPosPly - int(sideToMove == BLACK)) / 2;
+      << st->rule50 << " " << 1 + (gamePly - int(sideToMove == BLACK)) / 2;
 
   return ss.str();
 }
@@ -735,8 +735,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Update side to move
   k ^= Zobrist::side;
 
-  // Increment the 50 moves rule draw counter. Resetting it to zero in the
-  // case of a capture or a pawn move is taken care of later.
+  // Increment ply counters.In particular rule50 will be later reset it to zero
+  // in case of a capture or a pawn move.
+  gamePly++;
   st->rule50++;
   st->pliesFromNull++;
 
@@ -1054,6 +1055,7 @@ void Position::undo_move(Move m) {
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
+  gamePly--;
 
   assert(pos_is_ok());
 }
@@ -1417,7 +1419,7 @@ void Position::flip() {
   thisThread = pos.this_thread();
   nodes = pos.nodes_searched();
   chess960 = pos.is_chess960();
-  startPosPly = pos.startpos_ply_counter();
+  gamePly = pos.game_ply();
 
   for (Square s = SQ_A1; s <= SQ_H8; s++)
       if (!pos.is_empty(s))
