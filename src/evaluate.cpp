@@ -151,7 +151,7 @@ namespace {
   #undef S
 
   // CLOP now likes 85, 31 - try next
-  Score BishopPinBonus = make_score(66, 11);
+  const Score BishopPinBonus = make_score(34, 17);
 
   // Bonus for having the side to move (modified by Joona Kiiski)
   const Score Tempo = make_score(24, 11);
@@ -309,8 +309,6 @@ namespace Eval {
         KingDangerTable[0][i] = apply_weight(make_score(t, 0), make_score(KingDanger[0], 0));
         KingDangerTable[1][i] = apply_weight(make_score(t, 0), make_score(KingDanger[1], 0));
     }
-
-    BishopPinBonus = make_score(Options["pin_open"], Options["pin_end"]);
   }
 
 
