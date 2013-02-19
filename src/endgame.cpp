@@ -199,21 +199,21 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   assert(pos.piece_count(weakerSide, PAWN) == 0);
 
   Square wksq, bksq, wpsq;
-  Color stm;
+  Color us;
 
   if (strongerSide == WHITE)
   {
       wksq = pos.king_square(WHITE);
       bksq = pos.king_square(BLACK);
       wpsq = pos.piece_list(WHITE, PAWN)[0];
-      stm = pos.side_to_move();
+      us   = pos.side_to_move();
   }
   else
   {
       wksq = ~pos.king_square(BLACK);
       bksq = ~pos.king_square(WHITE);
       wpsq = ~pos.piece_list(BLACK, PAWN)[0];
-      stm  = ~pos.side_to_move();
+      us   = ~pos.side_to_move();
   }
 
   if (file_of(wpsq) >= FILE_E)
@@ -223,7 +223,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
       wpsq = mirror(wpsq);
   }
 
-  if (!Bitbases::probe_kpk(wksq, wpsq, bksq, stm))
+  if (!Bitbases::probe_kpk(wksq, wpsq, bksq, us))
       return VALUE_DRAW;
 
   Value result = VALUE_KNOWN_WIN + PawnValueEg + Value(rank_of(wpsq));
@@ -920,14 +920,14 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   Square wksq = pos.king_square(strongerSide);
   Square bksq = pos.king_square(weakerSide);
   Square wpsq = pos.piece_list(strongerSide, PAWN)[0];
-  Color stm = pos.side_to_move();
+  Color us = pos.side_to_move();
 
   if (strongerSide == BLACK)
   {
       wksq = ~wksq;
       bksq = ~bksq;
       wpsq = ~wpsq;
-      stm  = ~stm;
+      us   = ~us;
   }
 
   if (file_of(wpsq) >= FILE_E)
@@ -945,5 +945,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
   // it's probably at least a draw even with the pawn.
-  return Bitbases::probe_kpk(wksq, wpsq, bksq, stm) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
+  return Bitbases::probe_kpk(wksq, wpsq, bksq, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }

@@ -33,7 +33,7 @@ void print(Bitboard b);
 namespace Bitbases {
 
 void init_kpk();
-bool probe_kpk(Square wksq, Square wpsq, Square bksq, Color stm);
+bool probe_kpk(Square wksq, Square wpsq, Square bksq, Color us);
 
 }
 
