@@ -150,8 +150,7 @@ namespace {
 
   #undef S
 
-  // CLOP now likes 85, 31 - try next
-  const Score BishopPinBonus = make_score(34, 17);
+  const Score BishopPinBonus = make_score(66, 11);
 
   // Bonus for having the side to move (modified by Joona Kiiski)
   const Score Tempo = make_score(24, 11);
