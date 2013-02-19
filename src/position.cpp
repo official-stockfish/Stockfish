@@ -19,6 +19,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -400,7 +401,8 @@ const string Position::pretty(Move move) const {
       if (piece_on(sq) != NO_PIECE)
           brd[513 - 68*rank_of(sq) + 4*file_of(sq)] = PieceToChar[piece_on(sq)];
 
-  ss << brd << "\nFen: " << fen() << "\nKey: " << st->key << "\nCheckers: ";
+  ss << brd << "\nFen: " << fen() << "\nKey: " << std::hex << std::uppercase
+     << std::setfill('0') << std::setw(16) << st->key << "\nCheckers: ";
 
   for (Bitboard b = checkers(); b; )
       ss << square_to_string(pop_lsb(&b)) << " ";
