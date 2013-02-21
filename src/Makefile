@@ -256,6 +256,10 @@ endif
 ### 3.3 General linker settings
 LDFLAGS = $(EXTRALDFLAGS)
 
+ifeq ($(comp),mingw)
+	LDFLAGS += -static-libstdc++ -static-libgcc
+endif
+
 ### On mingw use Windows threads, otherwise POSIX
 ifneq ($(comp),mingw)
 	# Haiku has pthreads in its libroot, so only link it in on other platforms
