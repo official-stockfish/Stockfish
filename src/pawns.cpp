@@ -231,7 +231,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   Rank rkUs, rkThem;
   File kf = file_of(ksq);
 
-  kf = (kf == FILE_A) ? kf++ : (kf == FILE_H) ? kf-- : kf;
+  kf = (kf == FILE_A) ? FILE_B : (kf == FILE_H) ? FILE_G : kf;
 
   for (int f = kf - 1; f <= kf + 1; f++)
   {
