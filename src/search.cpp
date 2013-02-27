@@ -860,8 +860,7 @@ split_point_start: // At split points actual search starts from here
       if (   !captureOrPromotion
           && !inCheck
           && !dangerous
-          &&  move != ttMove
-          &&  alpha > VALUE_MATED_IN_MAX_PLY)
+          &&  move != ttMove)
       {
           // Move count based pruning
           if (   !PvNode
