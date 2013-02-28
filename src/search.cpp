@@ -927,7 +927,8 @@ split_point_start: // At split points actual search starts from here
       {
           ss->reduction = reduction<PvNode>(depth, moveCount);
           Depth d = std::max(newDepth - ss->reduction, ONE_PLY);
-          alpha = SpNode ? sp->alpha : alpha;
+          if (SpNode)
+              alpha = sp->alpha;
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d);
 
@@ -940,7 +941,9 @@ split_point_start: // At split points actual search starts from here
       // Step 16. Full depth search, when LMR is skipped or fails high
       if (doFullDepthSearch)
       {
-          alpha = SpNode ? sp->alpha : alpha;
+          if (SpNode)
+              alpha = sp->alpha;
+
           value = newDepth < ONE_PLY ?
                           givesCheck ? -qsearch<NonPV,  true>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
                                      : -qsearch<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
