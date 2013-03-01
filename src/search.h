@@ -38,7 +38,7 @@ namespace Search {
 /// has its own array of Stack objects, indexed by the current ply.
 
 struct Stack {
-  SplitPoint* sp;
+  SplitPoint* splitPoint;
   int ply;
   Move currentMove;
   Move excludedMove;

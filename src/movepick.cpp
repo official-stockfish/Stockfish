@@ -374,4 +374,4 @@ Move MovePicker::next_move<false>() {
 /// from the split point's shared MovePicker object. This function is not thread
 /// safe so must be lock protected by the caller.
 template<>
-Move MovePicker::next_move<true>() { return ss->sp->movePicker->next_move<false>(); }
+Move MovePicker::next_move<true>() { return ss->splitPoint->movePicker->next_move<false>(); }
