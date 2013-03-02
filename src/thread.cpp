@@ -357,8 +357,8 @@ void ThreadPool::wait_for_think_finished() {
 // start_thinking() wakes up the main thread sleeping in MainThread::idle_loop()
 // so to start a new search, then returns immediately.
 
-void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
-                                const std::vector<Move>& searchMoves, StateStackPtr& states) {
+void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits, const std::vector<Move>& searchMoves,
+                                StateStackPtr& setupStates, MovesVectPtr& setupMoves) {
   wait_for_think_finished();
 
   SearchTime = Time::now(); // As early as possible
@@ -368,7 +368,8 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
 
   RootPos = pos;
   Limits = limits;
-  SetupStates = states; // Ownership transfer here
+  SetupStates = setupStates; // Ownership transfer here
+  SetupMoves = setupMoves;   // Ownership transfer here
   RootMoves.clear();
 
   for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)

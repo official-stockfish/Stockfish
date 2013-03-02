@@ -93,6 +93,7 @@ struct SignalsType {
 };
 
 typedef std::auto_ptr<std::stack<StateInfo> > StateStackPtr;
+typedef std::auto_ptr<std::vector<Move> > MovesVectPtr;
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
@@ -101,6 +102,7 @@ extern Position RootPos;
 extern Color RootColor;
 extern Time::point SearchTime;
 extern StateStackPtr SetupStates;
+extern MovesVectPtr SetupMoves;
 
 extern void init();
 extern size_t perft(Position& pos, Depth depth);

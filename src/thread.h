@@ -151,8 +151,8 @@ struct ThreadPool : public std::vector<Thread*> {
   void read_uci_options();
   Thread* available_slave(Thread* master) const;
   void wait_for_think_finished();
-  void start_thinking(const Position&, const Search::LimitsType&,
-                      const std::vector<Move>&, Search::StateStackPtr&);
+  void start_thinking(const Position&, const Search::LimitsType&, const std::vector<Move>&,
+                      Search::StateStackPtr&, Search::MovesVectPtr&);
 
   bool sleepWhileIdle;
   Depth minimumSplitDepth;

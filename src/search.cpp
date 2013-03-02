@@ -44,6 +44,7 @@ namespace Search {
   Color RootColor;
   Time::point SearchTime;
   StateStackPtr SetupStates;
+  MovesVectPtr SetupMoves;
 }
 
 using std::string;
