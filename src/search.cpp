@@ -442,11 +442,16 @@ namespace {
             if (Time::now() - SearchTime > (TimeMgr.available_time() * 62) / 100)
                 stop = true;
 
+            bool recapture =   pos.is_capture(RootMoves[0].pv[0])
+                            && pos.captured_piece_type()
+                            && SetupMoves->size()
+                            && to_sq(SetupMoves->back()) == to_sq(RootMoves[0].pv[0]);
+
             // Stop search early if one move seems to be much better than others
             if (    depth >= 12
                 && !stop
                 &&  PVSize == 1
-                && (   (bestMoveNeverChanged &&  pos.captured_piece_type())
+                && (   (bestMoveNeverChanged && recapture)
                     || Time::now() - SearchTime > (TimeMgr.available_time() * 40) / 100))
             {
                 Value rBeta = bestValue - 2 * PawnValueMg;
