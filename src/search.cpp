@@ -452,6 +452,7 @@ namespace {
                 && !stop
                 &&  PVSize == 1
                 && (   (bestMoveNeverChanged && recapture)
+                    || RootMoves.size() == 1
                     || Time::now() - SearchTime > (TimeMgr.available_time() * 40) / 100))
             {
                 Value rBeta = bestValue - 2 * PawnValueMg;
