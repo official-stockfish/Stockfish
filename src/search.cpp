@@ -1622,7 +1622,7 @@ void Thread::idle_loop() {
 
   // Pointer 'this_sp' is not null only if we are called from split(), and not
   // at the thread creation. So it means we are the split point's master.
-  const SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : NULL;
+  SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : NULL;
 
   assert(!this_sp || (this_sp->masterThread == this && searching));
 
@@ -1630,6 +1630,9 @@ void Thread::idle_loop() {
   // their work at this split point, return from the idle loop.
   while (!this_sp || this_sp->slavesMask)
   {
+      if (this_sp)
+          this_sp->mutex.unlock();
+
       // If we are not searching, wait for a condition to be signaled instead of
       // wasting CPU time polling for work.
       while ((!searching && Threads.sleepWhileIdle) || exit)
@@ -1721,6 +1724,9 @@ void Thread::idle_loop() {
           // unsafe because if we are exiting there is a chance are already freed.
           sp->mutex.unlock();
       }
+
+      if(this_sp)
+          this_sp->mutex.lock();
   }
 }
 
