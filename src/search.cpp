@@ -1626,13 +1626,8 @@ void Thread::idle_loop() {
 
   assert(!this_sp || (this_sp->masterThread == this && searching));
 
-  // If this thread is the master of a split point and all slaves have finished
-  // their work at this split point, return from the idle loop.
-  while (!this_sp || this_sp->slavesMask)
+  while (true)
   {
-      if (this_sp)
-          this_sp->mutex.unlock();
-
       // If we are not searching, wait for a condition to be signaled instead of
       // wasting CPU time polling for work.
       while ((!searching && Threads.sleepWhileIdle) || exit)
@@ -1725,8 +1720,16 @@ void Thread::idle_loop() {
           sp->mutex.unlock();
       }
 
-      if(this_sp)
+      // If this thread is the master of a split point and all slaves have finished
+      // their work at this split point, return from the idle loop.
+      if (this_sp && !this_sp->slavesMask)
+      {
           this_sp->mutex.lock();
+          bool finished = !this_sp->slavesMask; // Retest under lock protection
+          this_sp->mutex.unlock();
+          if (finished)
+              return;
+      }
   }
 }
 

@@ -312,7 +312,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
       sp.mutex.unlock();
       Threads.mutex.unlock();
 
-      // Calling idle_loop with sp.mutex locked
       Thread::idle_loop(); // Force a call to base class idle_loop()
 
       // In helpful master concept a master can help only a sub-tree of its split
@@ -323,10 +322,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
       // We have returned from the idle loop, which means that all threads are
       // finished. Note that setting 'searching' and decreasing splitPointsSize is
       // done under lock protection to avoid a race with Thread::is_available_to().
-      // idle_loop returns with sp.mutex locked but we must unlock it inorder to
-      // lock Threads.mutex without conflicting with check_time() (threads holding 
-      // multiple locks must always acquired them in the same order to avoid deadlocks)
-      sp.mutex.unlock(); 
       Threads.mutex.lock();
       sp.mutex.lock();
   }
