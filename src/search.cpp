@@ -294,7 +294,6 @@ namespace {
     Stack ss[MAX_PLY_PLUS_2];
     int depth, prevBestMoveChanges;
     Value bestValue, alpha, beta, delta;
-    bool bestMoveNeverChanged = true;
 
     memset(ss, 0, 4 * sizeof(Stack));
     depth = BestMoveChanges = 0;
@@ -417,10 +416,6 @@ namespace {
                 << std::endl;
         }
 
-        // Filter out startup noise when monitoring best move stability
-        if (depth > 2 && BestMoveChanges)
-            bestMoveNeverChanged = false;
-
         // Do we have found a "mate in x"?
         if (   Limits.mate
             && bestValue >= VALUE_MATE_IN_MAX_PLY
@@ -442,18 +437,12 @@ namespace {
             if (Time::now() - SearchTime > (TimeMgr.available_time() * 62) / 100)
                 stop = true;
 
-            bool recapture =   pos.is_capture(RootMoves[0].pv[0])
-                            && pos.captured_piece_type()
-                            && SetupMoves->size()
-                            && to_sq(SetupMoves->back()) == to_sq(RootMoves[0].pv[0]);
-
             // Stop search early if one move seems to be much better than others
             if (    depth >= 12
                 && !stop
                 &&  PVSize == 1
-                && (   (bestMoveNeverChanged && recapture)
-                    || RootMoves.size() == 1
-                    || Time::now() - SearchTime > (TimeMgr.available_time() * 40) / 100))
+                && (   RootMoves.size() == 1
+                    || Time::now() - SearchTime > (TimeMgr.available_time() * 20) / 100))
             {
                 Value rBeta = bestValue - 2 * PawnValueMg;
                 (ss+1)->excludedMove = RootMoves[0].pv[0];
