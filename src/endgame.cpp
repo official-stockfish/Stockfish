@@ -100,6 +100,7 @@ Endgames::Endgames() {
   add<KBBKN>("KBBKN");
 
   add<KNPK>("KNPK");
+  add<KNPKB>("KNPKB");
   add<KRPKR>("KRPKR");
   add<KBPKB>("KBPKB");
   add<KBPKN>("KBPKN");
@@ -899,6 +900,24 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
   if (   pawnSq == relative_square(strongerSide, SQ_H7)
       && square_distance(weakerKingSq, relative_square(strongerSide, SQ_H8)) <= 1)
       return SCALE_FACTOR_DRAW;
+
+  return SCALE_FACTOR_NONE;
+}
+
+
+/// K, knight and a pawn vs K and bishop. If knight can block bishop from taking
+/// pawn, it's a win. Otherwise, drawn.
+template<>
+ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
+
+  Square pawnSq = pos.piece_list(strongerSide, PAWN)[0];
+  Square bishopSq = pos.piece_list(weakerSide, BISHOP)[0];
+  Square weakerKingSq = pos.king_square(weakerSide);
+
+  // King needs to get close to promoting pawn to prevent knight from blocking.
+  // Rules for this are very tricky, so just approximate.
+  if (forward_bb(strongerSide, pawnSq) & pos.attacks_from<BISHOP>(bishopSq))
+      return ScaleFactor(square_distance(weakerKingSq, pawnSq));
 
   return SCALE_FACTOR_NONE;
 }
