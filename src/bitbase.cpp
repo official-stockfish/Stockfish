@@ -89,7 +89,8 @@ void Bitbases::init_kpk() {
   for (idx = 0; idx < IndexMax; idx++)
       db[idx].classify_leaf(idx);
 
-  // Iterate until all positions are classified (15 cycles needed)
+  // Iterate through the positions until no more of the unknown positions can be
+  // changed to either wins or draws (15 cycles needed).
   while (repeat)
       for (repeat = idx = 0; idx < IndexMax; idx++)
           if (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN)
