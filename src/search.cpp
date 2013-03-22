@@ -879,9 +879,14 @@ split_point_start: // At split points actual search starts from here
 
           if (futilityValue < beta)
           {
-              if (SpNode)
-                  splitPoint->mutex.lock();
+              bestValue = std::max(bestValue, futilityValue);
 
+              if (SpNode)
+              {
+                  splitPoint->mutex.lock();
+                  if (bestValue > splitPoint->bestValue)
+                      splitPoint->bestValue = bestValue;
+              }
               continue;
           }
 
