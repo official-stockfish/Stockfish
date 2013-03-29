@@ -856,7 +856,8 @@ split_point_start: // At split points actual search starts from here
           && !captureOrPromotion
           && !inCheck
           && !dangerous
-          &&  move != ttMove)
+          &&  move != ttMove
+          &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
@@ -878,9 +879,14 @@ split_point_start: // At split points actual search starts from here
 
           if (futilityValue < beta)
           {
-              if (SpNode)
-                  splitPoint->mutex.lock();
+              bestValue = std::max(bestValue, futilityValue);
 
+              if (SpNode)
+              {
+                  splitPoint->mutex.lock();
+                  if (bestValue > splitPoint->bestValue)
+                      splitPoint->bestValue = bestValue;
+              }
               continue;
           }
 
