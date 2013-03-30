@@ -1148,6 +1148,16 @@ int Position::see_sign(Move m) const {
 }
 
 int Position::see(Move m) const {
+  return do_see<false>(m, 0);
+}
+
+int Position::see_asymm(Move m, int asymmThreshold) const
+{
+  return do_see<true>(m, asymmThreshold);
+}
+
+template <bool Asymmetric>
+int Position::do_see(Move m, int asymmThreshold) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
@@ -1223,6 +1233,16 @@ int Position::see(Move m) const {
       }
 
   } while (stmAttackers);
+
+  // FIXME: Document
+  if (Asymmetric)
+  {
+      for (int i = 0; i < slIndex ; slIndex += 2)
+      {
+          if (swapList[slIndex] < asymmThreshold)
+               swapList[slIndex] = - QueenValueMg * 16;
+      }
+  }
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
