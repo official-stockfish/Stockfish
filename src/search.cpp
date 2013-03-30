@@ -1228,7 +1228,7 @@ split_point_start: // At split points actual search starts from here
           // Prune moves with negative or equal SEE
           if (   futilityBase < beta
               && depth < DEPTH_ZERO
-              && pos.see(move) <= 0)
+              && pos.see_asymm(move, beta - futilityBase) <= 0)
           {
               bestValue = std::max(bestValue, futilityBase);
               continue;
