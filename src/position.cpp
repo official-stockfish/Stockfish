@@ -1237,10 +1237,10 @@ int Position::do_see(Move m, int asymmThreshold) const {
   // FIXME: Document
   if (Asymmetric)
   {
-      for (int i = 0; i < slIndex ; slIndex += 2)
+      for (int i = 0; i < slIndex ; i += 2)
       {
-          if (swapList[slIndex] < asymmThreshold)
-               swapList[slIndex] = - QueenValueMg * 16;
+          if (swapList[i] < asymmThreshold)
+               swapList[i] = - QueenValueMg * 16;
       }
   }
 
