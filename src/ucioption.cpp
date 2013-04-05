@@ -74,7 +74,7 @@ void init(OptionsMap& o) {
   o["Max Threads per Split Point"] = Option(5, 4, 8, on_threads);
   o["Threads"]                     = Option(cpus, 1, MAX_THREADS, on_threads);
   o["Use Sleeping Threads"]        = Option(true);
-  o["Hash"]                        = Option(32, 4, 8192, on_hash_size);
+  o["Hash"]                        = Option(32, 1, 8192, on_hash_size);
   o["Clear Hash"]                  = Option(on_clear_hash);
   o["Ponder"]                      = Option(true);
   o["OwnBook"]                     = Option(false);
