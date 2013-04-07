@@ -70,6 +70,8 @@ void init(OptionsMap& o) {
   o["Passed Pawns (Middle Game)"]  = Option(100, 0, 200, on_eval);
   o["Passed Pawns (Endgame)"]      = Option(100, 0, 200, on_eval);
   o["Space"]                       = Option(100, 0, 200, on_eval);
+  o["Aggressiveness"]              = Option(100, 0, 200, on_eval);
+  o["Cowardice"]                   = Option(100, 0, 200, on_eval);
   o["Min Split Depth"]             = Option(msd, 4, 12, on_threads);
   o["Max Threads per Split Point"] = Option(5, 4, 8, on_threads);
   o["Threads"]                     = Option(cpus, 1, MAX_THREADS, on_threads);
