@@ -1151,6 +1151,11 @@ int Position::see(Move m) const {
   return do_see<false>(m, 0);
 }
 
+/// Position::see_asymm() takes tempi into account.
+/// If the side who initiated the capturing sequence does the last capture,
+/// he loses a tempo. In this case if the result is below asymmThreshold 
+/// the capturing sequence is considered bad.
+
 int Position::see_asymm(Move m, int asymmThreshold) const
 {
   return do_see<true>(m, asymmThreshold);
@@ -1234,7 +1239,9 @@ int Position::do_see(Move m, int asymmThreshold) const {
 
   } while (stmAttackers);
 
-  // FIXME: Document
+  // If we are doing asymmetric SEE evaluation and the same side does the first
+  // and the last capture, he loses a tempo and gain must be at least worth "asymmThreshold".
+  // If not, we replace the score with a very low value, before negamaxing.
   if (Asymmetric)
   {
       for (int i = 0; i < slIndex ; i += 2)

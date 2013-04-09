@@ -161,7 +161,6 @@ public:
   int see(Move m) const;
   int see_sign(Move m) const;
   int see_asymm(Move m, int asymmThreshold) const;
-  template <bool Asymmetric> int do_see(Move m, int asymmThreshold) const; //FIXME: private!!
 
   // Accessing hash keys
   Key key() const;
@@ -195,6 +194,7 @@ private:
 
   // Helper functions
   void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
+  template<bool Asymmetric> int do_see(Move m, int asymmThreshold) const;
   template<bool FindPinned> Bitboard hidden_checkers() const;
 
   // Computing hash keys from scratch (for initialization and debugging)

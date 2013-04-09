@@ -1225,7 +1225,8 @@ split_point_start: // At split points actual search starts from here
               continue;
           }
 
-          // Prune moves with negative or equal SEE
+          // Prune moves with negative or equal SEE.
+          // Also prune moves with positive SEE where capturing loses a tempo and SEE < beta - futilityBase.
           if (   futilityBase < beta
               && depth < DEPTH_ZERO
               && pos.see_asymm(move, beta - futilityBase) <= 0)
