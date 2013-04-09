@@ -158,9 +158,8 @@ public:
   void undo_null_move();
 
   // Static exchange evaluation
-  int see(Move m) const;
+  int see(Move m, int asymmThreshold = 0) const;
   int see_sign(Move m) const;
-  int see_asymm(Move m, int asymmThreshold) const;
 
   // Accessing hash keys
   Key key() const;
@@ -194,7 +193,6 @@ private:
 
   // Helper functions
   void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
-  template<bool Asymmetric> int do_see(Move m, int asymmThreshold) const;
   template<bool FindPinned> Bitboard hidden_checkers() const;
 
   // Computing hash keys from scratch (for initialization and debugging)

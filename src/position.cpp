@@ -1129,10 +1129,10 @@ void Position::undo_null_move() {
 
 
 /// Position::see() is a static exchange evaluator: It tries to estimate the
-/// material gain or loss resulting from a move. There are three versions of
-/// this function: One which takes a destination square as input, one takes a
-/// move, and one which takes a 'from' and a 'to' square. The function does
-/// not yet understand promotions captures.
+/// material gain or loss resulting from a move. Parameter 'asymmThreshold' takes
+/// tempi into account. If the side who initiated the capturing sequence does the
+/// last capture, he loses a tempo and if the result is below 'asymmThreshold'
+/// the capturing sequence is considered bad.
 
 int Position::see_sign(Move m) const {
 
@@ -1147,22 +1147,7 @@ int Position::see_sign(Move m) const {
   return see(m);
 }
 
-int Position::see(Move m) const {
-  return do_see<false>(m, 0);
-}
-
-/// Position::see_asymm() takes tempi into account.
-/// If the side who initiated the capturing sequence does the last capture,
-/// he loses a tempo. In this case if the result is below asymmThreshold 
-/// the capturing sequence is considered bad.
-
-int Position::see_asymm(Move m, int asymmThreshold) const
-{
-  return do_see<true>(m, asymmThreshold);
-}
-
-template <bool Asymmetric>
-int Position::do_see(Move m, int asymmThreshold) const {
+int Position::see(Move m, int asymmThreshold) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
@@ -1240,16 +1225,13 @@ int Position::do_see(Move m, int asymmThreshold) const {
   } while (stmAttackers);
 
   // If we are doing asymmetric SEE evaluation and the same side does the first
-  // and the last capture, he loses a tempo and gain must be at least worth "asymmThreshold".
-  // If not, we replace the score with a very low value, before negamaxing.
-  if (Asymmetric)
-  {
-      for (int i = 0; i < slIndex ; i += 2)
-      {
+  // and the last capture, he loses a tempo and gain must be at least worth
+  // 'asymmThreshold', otherwise we replace the score with a very low value,
+  // before negamaxing.
+  if (asymmThreshold)
+      for (int i = 0; i < slIndex; i += 2)
           if (swapList[i] < asymmThreshold)
-               swapList[i] = - QueenValueMg * 16;
-      }
-  }
+              swapList[i] = - QueenValueMg * 16;
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
