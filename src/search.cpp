@@ -1129,7 +1129,7 @@ split_point_start: // At split points actual search starts from here
     ss->ply = (ss-1)->ply + 1;
 
     // Check for an instant draw or maximum ply reached
-    if (pos.is_draw<true>() || ss->ply > MAX_PLY)
+    if (pos.is_draw<false>() || ss->ply > MAX_PLY)
         return DrawValue[pos.side_to_move()];
 
     // Decide whether or not to include checks, this fixes also the type of
