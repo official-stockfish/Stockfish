@@ -1376,7 +1376,6 @@ Value Position::compute_non_pawn_material(Color c) const {
 /// Position::is_draw() tests whether the position is drawn by material,
 /// repetition, or the 50 moves rule. It does not detect stalemates, this
 /// must be done by the search.
-template<bool SkipRepetition>
 bool Position::is_draw() const {
 
   // Draw by material?
@@ -1389,32 +1388,25 @@ bool Position::is_draw() const {
       return true;
 
   // Draw by repetition?
-  if (!SkipRepetition)
+  int i = 4, e = std::min(st->rule50, st->pliesFromNull);
+
+  if (i <= e)
   {
-      int i = 4, e = std::min(st->rule50, st->pliesFromNull);
+      StateInfo* stp = st->previous->previous;
 
-      if (i <= e)
-      {
-          StateInfo* stp = st->previous->previous;
+      do {
+          stp = stp->previous->previous;
 
-          do {
-              stp = stp->previous->previous;
+          if (stp->key == st->key)
+              return true;
 
-              if (stp->key == st->key)
-                  return true;
+          i += 2;
 
-              i += 2;
-
-          } while (i <= e);
-      }
+      } while (i <= e);
   }
 
   return false;
 }
-
-// Explicit template instantiations
-template bool Position::is_draw<false>() const;
-template bool Position::is_draw<true>() const;
 
 
 /// Position::flip() flips position with the white and black sides reversed. This

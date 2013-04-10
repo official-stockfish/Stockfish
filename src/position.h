@@ -179,7 +179,7 @@ public:
   Thread* this_thread() const;
   int64_t nodes_searched() const;
   void set_nodes_searched(int64_t n);
-  template<bool SkipRepetition> bool is_draw() const;
+  bool is_draw() const;
 
   // Position consistency check, for debugging
   bool pos_is_ok(int* failedStep = NULL) const;
