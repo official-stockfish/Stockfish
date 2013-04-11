@@ -156,12 +156,12 @@ namespace {
   const Score Tempo = make_score(24, 11);
 
   // Rooks and queens on the 7th rank
-  const Score RookOn7thBonus  = make_score(3, 20);
-  const Score QueenOn7thBonus = make_score(1,  8);
+  const Score RookOn7thBonus  = make_score(11, 20);
+  const Score QueenOn7thBonus = make_score( 3,  8);
 
   // Rooks and queens attacking pawns on the same rank
-  const Score RookOnPawnBonus  = make_score(3, 48);
-  const Score QueenOnPawnBonus = make_score(1, 40);
+  const Score RookOnPawnBonus  = make_score(10, 28);
+  const Score QueenOnPawnBonus = make_score( 4, 20);
 
   // Rooks on open files (modified by Joona Kiiski)
   const Score RookOpenFileBonus     = make_score(43, 21);
