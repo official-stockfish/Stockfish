@@ -857,7 +857,7 @@ split_point_start: // At split points actual search starts from here
           && !captureOrPromotion
           && !inCheck
           && !dangerous
-          &&  move != ttMove
+       /* &&  move != ttMove Already implicit in the next condition */
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Move count based pruning
