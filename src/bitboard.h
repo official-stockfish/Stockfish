@@ -63,6 +63,8 @@ extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 extern Bitboard AttackSpanMask[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
+const Bitboard WhiteSquares = 0x55AA55AA55AA55AAULL;
+const Bitboard BlackSquares = 0xAA55AA55AA55AA55ULL;
 
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
