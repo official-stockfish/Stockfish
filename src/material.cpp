@@ -39,14 +39,14 @@ namespace {
   const Value RedundantRookPenalty  = Value(554);
 
   //                                  pair  pawn knight bishop rook queen
-  const int LinearCoefficients[6] = { 1617, -162, -1172,  -62,  105,  26 };
+  const int LinearCoefficients[6] = { 1617, -162, -1172, -190,  105,  26 };
 
   const int QuadraticCoefficientsSameColor[][PIECE_TYPE_NB] = {
     // pair pawn knight bishop rook queen
     {   7                               }, // Bishop pair
     {  39,    2                         }, // Pawn
     {  35,  271,  -4                    }, // Knight
-    {   7,   25,   4,    7              }, // Bishop
+    {   7,  105,   4,    7              }, // Bishop
     { -27,   -2,  46,   100,   56       }, // Rook
     {  58,   29,  83,   148,   -3,  -25 }  // Queen
   };
