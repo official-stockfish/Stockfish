@@ -63,7 +63,6 @@ extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 extern Bitboard AttackSpanMask[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
-const Bitboard WhiteSquares = 0x55AA55AA55AA55AAULL;
 const Bitboard BlackSquares = 0xAA55AA55AA55AA55ULL;
 
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
@@ -201,8 +200,7 @@ inline bool squares_aligned(Square s1, Square s2, Square s3) {
 /// the same color of the given square.
 
 inline Bitboard same_color_squares(Square s) {
-  return Bitboard(0xAA55AA55AA55AA55ULL) & s ?  0xAA55AA55AA55AA55ULL
-                                             : ~0xAA55AA55AA55AA55ULL;
+  return BlackSquares & s ? BlackSquares : ~BlackSquares;
 }
 
 

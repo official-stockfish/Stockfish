@@ -176,11 +176,11 @@ namespace {
             value += CandidateBonus[relative_rank(Us, s)];
     }
 
-    e->pawnsOnWhiteSquaresCount[Us]   = popcount<Max15>(ourPawns   & WhiteSquares);
-    e->pawnsOnWhiteSquaresCount[Them] = popcount<Max15>(theirPawns & WhiteSquares);
+    e->pawnsOnSquares[Us][BLACK] = popcount<Max15>(ourPawns & BlackSquares);
+    e->pawnsOnSquares[Us][WHITE] = pos.piece_count(Us, PAWN) - e->pawnsOnSquares[Us][BLACK];
 
-    e->pawnsOnBlackSquaresCount[Us]   = popcount<Max15>(ourPawns   & BlackSquares);
-    e->pawnsOnBlackSquaresCount[Them] = popcount<Max15>(theirPawns & BlackSquares); 
+    e->pawnsOnSquares[Them][BLACK] = popcount<Max15>(theirPawns & BlackSquares);
+    e->pawnsOnSquares[Them][WHITE] = pos.piece_count(Them, PAWN) - e->pawnsOnSquares[Them][BLACK];
 
     return value;
   }
