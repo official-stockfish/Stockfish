@@ -40,6 +40,7 @@ struct Entry {
   int file_is_half_open(Color c, File f) const { return halfOpenFiles[c] & (1 << int(f)); }
   int has_open_file_to_left(Color c, File f) const { return halfOpenFiles[c] & ((1 << int(f)) - 1); }
   int has_open_file_to_right(Color c, File f) const { return halfOpenFiles[c] & ~((1 << int(f+1)) - 1); }
+  int same_colored_pawn_count(Square s, Color c) const { return (BlackSquares & s) ? pawnsOnBlackSquaresCount[c] : pawnsOnWhiteSquaresCount[c]; } 
 
   template<Color Us>
   Score king_safety(const Position& pos, Square ksq)  {
@@ -63,6 +64,8 @@ struct Entry {
   Score value;
   int halfOpenFiles[COLOR_NB];
   Score kingSafety[COLOR_NB];
+  int pawnsOnWhiteSquaresCount[COLOR_NB];
+  int pawnsOnBlackSquaresCount[COLOR_NB];
 };
 
 typedef HashTable<Entry, 16384> Table;
