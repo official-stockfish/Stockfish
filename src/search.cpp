@@ -643,10 +643,10 @@ namespace {
         && !ss->skipNullMove
         &&  depth < 4 * ONE_PLY
         && !inCheck
-        &&  eval - FutilityMargins[depth][(ss-1)->futMc] >= beta
+        &&  eval - futility_margin(depth, (ss-1)->futMc) >= beta
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
         &&  pos.non_pawn_material(pos.side_to_move()))
-        return eval - FutilityMargins[depth][(ss-1)->futMc];
+        return eval - futility_margin(depth, (ss-1)->futMc);
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
     if (   !PvNode
