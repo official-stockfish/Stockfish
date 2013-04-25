@@ -47,6 +47,7 @@ struct Stack {
   Value staticEval;
   Value evalMargin;
   int skipNullMove;
+  int futilityMoveCount;
 };
 
 
