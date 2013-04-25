@@ -49,7 +49,7 @@ struct Stack {
   Value evalMargin;
   int skipNullMove;
   int futilityMoveCount;
-  Eval::Info* ei;
+  Eval::Info ei;
 };
 
 
