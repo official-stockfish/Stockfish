@@ -489,6 +489,7 @@ namespace {
 
     Move movesSearched[64];
     StateInfo st;
+    Eval::Info ei;
     const TTEntry *tte;
     SplitPoint* splitPoint;
     Key posKey;
@@ -523,6 +524,7 @@ namespace {
     bestValue = -VALUE_INFINITE;
     ss->currentMove = threatMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
+    ss->ei = &ei;
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
@@ -592,7 +594,7 @@ namespace {
         // Never assume anything on values stored in TT
         if (  (ss->staticEval = eval = tte->eval_value()) == VALUE_NONE
             ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos, ss->evalMargin);
+            eval = ss->staticEval = evaluate(pos, ss->evalMargin, &ei);
 
         // Can ttValue be used as a better position evaluation?
         if (ttValue != VALUE_NONE)
@@ -602,7 +604,7 @@ namespace {
     }
     else
     {
-        eval = ss->staticEval = evaluate(pos, ss->evalMargin);
+        eval = ss->staticEval = evaluate(pos, ss->evalMargin, &ei);
         TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
                  ss->staticEval, ss->evalMargin);
     }
@@ -1119,6 +1121,7 @@ split_point_start: // At split points actual search starts from here
     assert(depth <= DEPTH_ZERO);
 
     StateInfo st;
+    Eval::Info ei;
     const TTEntry* tte;
     Key posKey;
     Move ttMove, move, bestMove;
@@ -1175,10 +1178,10 @@ split_point_start: // At split points actual search starts from here
             // Never assume anything on values stored in TT
             if (  (ss->staticEval = bestValue = tte->eval_value()) == VALUE_NONE
                 ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
+                ss->staticEval = bestValue = evaluate(pos, ss->evalMargin, &ei);
         }
         else
-            ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
+            ss->staticEval = bestValue = evaluate(pos, ss->evalMargin, &ei);
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
