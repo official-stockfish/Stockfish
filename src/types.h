@@ -56,10 +56,11 @@
 #   include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
 #  endif
 
+#define CACHE_LINE_SIZE 64
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#  define CACHE_LINE_ALIGNMENT __declspec(align(64))
+#  define CACHE_LINE_ALIGNMENT __declspec(align(CACHE_LINE_SIZE))
 #else
-#  define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(64)))
+#  define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(CACHE_LINE_SIZE)))
 #endif
 
 #if defined(_MSC_VER)
