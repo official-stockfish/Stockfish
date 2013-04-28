@@ -33,7 +33,7 @@ using namespace std;
 /// Version number. If Version is left empty, then Tag plus current
 /// date, in the format DD-MM-YY, are used as a version number.
 
-static const string Version = "";
+static const string Version = "3";
 static const string Tag = "";
 
 
