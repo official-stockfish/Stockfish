@@ -50,8 +50,7 @@ void TranspositionTable::set_size(size_t mbSize) {
       exit(EXIT_FAILURE);
   }
 
-  // Align table start address to a cache line
-  for (char* c = (char*)mem; unsigned(table = (TTEntry*)(c)) % CACHE_LINE_SIZE; c++) {}
+  table = (TTEntry*)((uintptr_t(mem) + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1));
   clear(); // Operator new is not guaranteed to initialize memory to zero
 }
 
