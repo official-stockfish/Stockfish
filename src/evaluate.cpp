@@ -730,7 +730,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     Score score = mobility = SCORE_ZERO;
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
-    const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces(Us));
+    const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces(Us, PAWN, KING));
 
     score += evaluate_pieces<KNIGHT, Us, Trace>(pos, ei, mobility, mobilityArea);
     score += evaluate_pieces<BISHOP, Us, Trace>(pos, ei, mobility, mobilityArea);
