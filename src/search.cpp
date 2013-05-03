@@ -264,6 +264,10 @@ void Search::think() {
 
 finalize:
 
+  // When search is stopped this info is not printed
+  sync_cout << "info nodes " << RootPos.nodes_searched()
+            << " time " << Time::now() - SearchTime + 1 << sync_endl;
+
   // When we reach max depth we arrive here even without Signals.stop is raised,
   // but if we are pondering or in infinite search, according to UCI protocol,
   // we shouldn't print the best move before the GUI sends a "stop" or "ponderhit"
