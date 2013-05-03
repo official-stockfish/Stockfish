@@ -178,7 +178,7 @@ void start_logger(bool b) { Logger::start(b); }
 
 int cpu_count() {
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
   SYSTEM_INFO s;
   GetSystemInfo(&s);
   return s.dwNumberOfProcessors;
@@ -204,7 +204,7 @@ int cpu_count() {
 
 void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
   int tm = msec;
 #else
   timespec ts, *tm = &ts;

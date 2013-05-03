@@ -43,7 +43,7 @@ typedef unsigned __int64 uint64_t;
 #  include <unistd.h>  // Used by sysconf(_SC_NPROCESSORS_ONLN)
 #endif
 
-#if !defined(_WIN32) && !defined(_WIN64) // Linux - Unix
+#if !defined(_WIN32) // Linux - Unix
 
 #  include <sys/time.h>
 typedef timeval sys_time_t;
