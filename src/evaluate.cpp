@@ -648,25 +648,13 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 continue;
 
             ksq = pos.king_square(Us);
+            bool left = file_of(ksq) < FILE_E;
 
-            if (    file_of(ksq) >= FILE_E
-                &&  file_of(s) > file_of(ksq)
+            if (   ((left && file_of(s) < file_of(ksq)) || (!left && file_of(s) > file_of(ksq)))
                 && (relative_rank(Us, ksq) == RANK_1 || rank_of(ksq) == rank_of(s))
-                && !ei.pi->has_open_file_to_right(Us, file_of(ksq)))
-            {
-                // Is there a half-open file between the king and the edge of the board?
-                    score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
-                                                           : (TrappedRookPenalty - mob * 16), 0);
-            }
-            else if (    file_of(ksq) <= FILE_D
-                     &&  file_of(s) < file_of(ksq)
-                     && (relative_rank(Us, ksq) == RANK_1 || rank_of(ksq) == rank_of(s))
-                     && !ei.pi->has_open_file_to_left(Us, file_of(ksq)))
-            {
-                // Is there a half-open file between the king and the edge of the board?
-                    score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
-                                                           : (TrappedRookPenalty - mob * 16), 0);
-            }
+                && (!ei.pi->has_open_file_on_side(Us, file_of(ksq), left)))
+                score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
+                                                       : (TrappedRookPenalty - mob * 16), 0);
         }
     }
 
