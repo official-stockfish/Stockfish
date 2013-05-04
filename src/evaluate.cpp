@@ -642,17 +642,17 @@ Value do_evaluate(const Position& pos, Value& margin) {
                     score += RookHalfOpenFileBonus;
             }
 
-            // Penalize rooks which are trapped inside a king. Penalize more if
-            // king has lost right to castle.
             if (mob > 6 || ei.pi->file_is_half_open(Us, f))
                 continue;
 
             ksq = pos.king_square(Us);
-            bool left = file_of(ksq) < FILE_E;
 
-            if (   ((left && file_of(s) < file_of(ksq)) || (!left && file_of(s) > file_of(ksq)))
-                && (relative_rank(Us, ksq) == RANK_1 && rank_of(ksq) == rank_of(s))
-                && (!ei.pi->has_open_file_on_side(Us, file_of(ksq), left)))
+            // Penalize rooks which are trapped inside a king. Penalize more if
+            // king has lost right to castle.
+            if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
+                && rank_of(ksq) == rank_of(s)
+                && relative_rank(Us, ksq) == RANK_1
+                && !ei.pi->has_open_file_on_side(Us, file_of(ksq), file_of(ksq) < FILE_E))
                 score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
                                                        : (TrappedRookPenalty - mob * 16), 0);
         }
