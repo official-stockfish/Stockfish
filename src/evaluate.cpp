@@ -651,7 +651,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
             bool left = file_of(ksq) < FILE_E;
 
             if (   ((left && file_of(s) < file_of(ksq)) || (!left && file_of(s) > file_of(ksq)))
-                && (relative_rank(Us, ksq) == RANK_1 || rank_of(ksq) == rank_of(s))
+                && (relative_rank(Us, ksq) == RANK_1 && rank_of(ksq) == rank_of(s))
                 && (!ei.pi->has_open_file_on_side(Us, file_of(ksq), left)))
                 score -= make_score(pos.can_castle(Us) ? (TrappedRookPenalty - mob * 16) / 2
                                                        : (TrappedRookPenalty - mob * 16), 0);
