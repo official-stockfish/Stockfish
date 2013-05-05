@@ -900,16 +900,30 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 else
                     unsafeSquares = squaresToQueen & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
 
-                // If there aren't enemy attacks or pieces along the path to queen give
-                // huge bonus. Even bigger if we protect the pawn's path.
-                if (!unsafeSquares)
-                    ebonus += Value(rr * (squaresToQueen == defendedSquares ? 17 : 15));
-                else
-                    // OK, there are enemy attacks or pieces (but not pawns). Are those
-                    // squares which are attacked by the enemy also attacked by us ?
-                    // If yes, big bonus (but smaller than when there are no enemy attacks),
-                    // if no, somewhat smaller bonus.
-                    ebonus += Value(rr * ((unsafeSquares & defendedSquares) == unsafeSquares ? 13 : 8));
+                // Default bonus for the empty square in front
+                int bonusMultiplier = 3;
+
+                if ((defendedSquares & SquareBB[blockSq]) != 0)
+                {
+                    // Defending the square in front
+                    bonusMultiplier += 2;
+                    if ((unsafeSquares & defendedSquares) == unsafeSquares)
+                        // Defending all the attacked squares
+                        // bigger bonus if we are defending everything
+                        bonusMultiplier += (squaresToQueen == defendedSquares) ? 4 : 2;
+                }
+
+                if ((unsafeSquares & SquareBB[blockSq]) == 0)
+                {
+                    // The square infront isn't attacked
+                    bonusMultiplier += 6;
+                    if (!unsafeSquares)
+                        bonusMultiplier += 6;
+                }
+
+                Value bonus = Value(rr * bonusMultiplier);
+                ebonus += bonus;
+                mbonus += bonus;
             }
         } // rr != 0
 
