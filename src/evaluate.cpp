@@ -677,8 +677,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     Score score = SCORE_ZERO;
 
     // Undefended minors get penalized even if not under attack
-    undefendedMinors =  pos.pieces(Them)
-                      & (pos.pieces(BISHOP) | pos.pieces(KNIGHT))
+    undefendedMinors =  pos.pieces(Them, BISHOP, KNIGHT)
                       & ~ei.attackedBy[Them][ALL_PIECES];
 
     if (undefendedMinors)
