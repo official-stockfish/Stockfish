@@ -899,30 +899,19 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 else
                     unsafeSquares = squaresToQueen & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
 
-                // Default bonus for the empty square in front
-                int bonusMultiplier = 3;
+                // If there aren't enemy attacks huge bonus, a bit smaller if at
+                // least block square is not attacked, otherwise smallest bonus.
+                int k = !unsafeSquares ? 15 : !(unsafeSquares & blockSq) ? 9 : 3;
 
-                if ((defendedSquares & SquareBB[blockSq]) != 0)
-                {
-                    // Defending the square in front
-                    bonusMultiplier += 2;
-                    if ((unsafeSquares & defendedSquares) == unsafeSquares)
-                        // Defending all the attacked squares
-                        // bigger bonus if we are defending everything
-                        bonusMultiplier += (squaresToQueen == defendedSquares) ? 4 : 2;
-                }
+                // Big bonus if the path to queen is fully defended, a bit less
+                // if at least block square is defended.
+                if (defendedSquares == squaresToQueen)
+                    k += 6;
 
-                if ((unsafeSquares & SquareBB[blockSq]) == 0)
-                {
-                    // The square infront isn't attacked
-                    bonusMultiplier += 6;
-                    if (!unsafeSquares)
-                        bonusMultiplier += 6;
-                }
+                else if (defendedSquares & blockSq)
+                    k += (unsafeSquares & defendedSquares) == unsafeSquares ? 4 : 2;
 
-                Value bonus = Value(rr * bonusMultiplier);
-                ebonus += bonus;
-                mbonus += bonus;
+                mbonus += Value(k * rr), ebonus += Value(k * rr);
             }
         } // rr != 0
 
