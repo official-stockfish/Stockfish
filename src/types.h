@@ -268,7 +268,7 @@ inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
 /// Extracting the signed lower and upper 16 bits it not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
-inline Value mg_value(Score s) { return Value(((s + 32768) & ~0xffff) / 0x10000); }
+inline Value mg_value(Score s) { return Value(((s + 0x8000) & ~0xffff) / 0x10000); }
 
 /// On Intel 64 bit we have a small speed regression with the standard conforming
 /// version, so use a faster code in this case that, although not 100% standard

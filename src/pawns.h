@@ -37,9 +37,10 @@ struct Entry {
   Score pawns_value() const { return value; }
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
-  int file_is_half_open(Color c, File f) const { return halfOpenFiles[c] & (1 << int(f)); }
   int pawns_on_same_color_squares(Color c, Square s) const { return pawnsOnSquares[c][!!(BlackSquares & s)]; }
-  int has_open_file_on_side(Color c, File f, bool left) const {
+  int half_open(Color c, File f) const { return halfOpenFiles[c] & (1 << int(f)); }
+  int half_open_on_side(Color c, File f, bool left) const {
+
     return halfOpenFiles[c] & (left ? ((1 << int(f)) - 1) : ~((1 << int(f+1)) - 1));
   }
 
