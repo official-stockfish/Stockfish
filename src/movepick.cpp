@@ -71,7 +71,7 @@ namespace {
 /// move ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
-                       Search::Stack* s, Value beta) : pos(p), Hist(h), depth(d) {
+                       Search::Stack* s, Move refutationMove, Value beta) : pos(p), Hist(h), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
@@ -89,6 +89,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const History& h,
 
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
+      killers[2].move = refutationMove;
 
       // Consider sligtly negative captures as good if at low depth and far from beta
       if (ss && ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)
@@ -237,7 +238,7 @@ void MovePicker::generate_next() {
 
   case KILLERS_S1:
       cur = killers;
-      end = cur + 2;
+      end = cur + 3;
       return;
 
   case QUIETS_1_S1:
@@ -329,7 +330,8 @@ Move MovePicker::next_move<false>() {
           move = (cur++)->move;
           if (   move != ttMove
               && move != killers[0].move
-              && move != killers[1].move)
+              && move != killers[1].move
+              && move != killers[2].move)
               return move;
           break;
 

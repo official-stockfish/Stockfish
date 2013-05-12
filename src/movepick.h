@@ -61,6 +61,17 @@ private:
 typedef Stats<false> History;
 typedef Stats<true> Gains;
 
+// FIXME: Document me
+struct RefutationTable {
+
+  void clear() { memset(table, 0, sizeof(table)); }
+  void update(Piece p, Square to, Move m) { table[p][to] = m; }
+  Move get(Piece p, Square to) const { return table[p][to]; }
+
+private:
+  Move table[PIECE_NB][SQUARE_NB]; // Mapping: "move A" -> "move B which refutes move A"
+
+};
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
@@ -74,7 +85,7 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
 
 public:
-  MovePicker(const Position&, Move, Depth, const History&, Search::Stack*, Value);
+  MovePicker(const Position&, Move, Depth, const History&, Search::Stack*, Move, Value);
   MovePicker(const Position&, Move, Depth, const History&, Square);
   MovePicker(const Position&, Move, const History&, PieceType);
   template<bool SpNode> Move next_move();
@@ -88,7 +99,7 @@ private:
   Search::Stack* ss;
   Depth depth;
   Move ttMove;
-  MoveStack killers[2];
+  MoveStack killers[3];
   Square recaptureSquare;
   int captureThreshold, phase;
   MoveStack *cur, *end, *endQuiets, *endBadCaptures;
