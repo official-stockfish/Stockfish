@@ -30,21 +30,23 @@
 
 
 /// The Stats struct stores moves statistics. According to the template parameter
-/// the class can store both History and Gains type statistics. History records
+/// the class can store History, Gains and Refutations statistics. History records
 /// how often different moves have been successful or unsuccessful during the
 /// current search and is used for reduction and move ordering decisions. Gains
 /// records the move's best evaluation gain from one ply to the next and is used
-/// for pruning decisions. Entries are stored according only to moving piece and
-/// destination square, in particular two moves with different origin but same
-/// destination and same piece will be considered identical.
-template<bool Gain>
+/// for pruning decisions. Refutations store the move that refute a previous one.
+/// Entries are stored according only to moving piece and destination square, in
+/// particular two moves with different origin but same destination and same piece
+/// will be considered identical.
+template<bool Gain, typename T>
 struct Stats {
 
   static const Value Max = Value(2000);
 
-  const Value* operator[](Piece p) const { return &table[p][0]; }
+  const T* operator[](Piece p) const { return &table[p][0]; }
   void clear() { memset(table, 0, sizeof(table)); }
 
+  void update(Piece p, Square to, Move m) { table[p][to] = m; }
   void update(Piece p, Square to, Value v) {
 
     if (Gain)
@@ -55,23 +57,13 @@ struct Stats {
   }
 
 private:
-  Value table[PIECE_NB][SQUARE_NB];
+  T table[PIECE_NB][SQUARE_NB];
 };
 
-typedef Stats<false> History;
-typedef Stats<true> Gains;
+typedef Stats<true, Value> Gains;
+typedef Stats<false, Value> History;
+typedef Stats<false, Move> Refutations;
 
-// FIXME: Document me
-struct RefutationTable {
-
-  void clear() { memset(table, 0, sizeof(table)); }
-  void update(Piece p, Square to, Move m) { table[p][to] = m; }
-  Move get(Piece p, Square to) const { return table[p][to]; }
-
-private:
-  Move table[PIECE_NB][SQUARE_NB]; // Mapping: "move A" -> "move B which refutes move A"
-
-};
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
@@ -85,7 +77,7 @@ class MovePicker {
   MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
 
 public:
-  MovePicker(const Position&, Move, Depth, const History&, Search::Stack*, Move, Value);
+  MovePicker(const Position&, Move, Depth, const History&, const Refutations&, Search::Stack*, Value);
   MovePicker(const Position&, Move, Depth, const History&, Square);
   MovePicker(const Position&, Move, const History&, PieceType);
   template<bool SpNode> Move next_move();

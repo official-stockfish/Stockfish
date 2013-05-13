@@ -159,9 +159,9 @@ namespace {
   const Score QueenOnPawnBonus       = make_score( 4, 20);
   const Score RookOpenFileBonus      = make_score(43, 21);
   const Score RookHalfOpenFileBonus  = make_score(19, 10);
-  const Score BishopPawnsPenalty     = make_score(8, 12);
+  const Score BishopPawnsPenalty     = make_score( 8, 12);
   const Score UndefendedMinorPenalty = make_score(25, 10);
-  const Score TrappedRookPenalty     = make_score(90, 0);
+  const Score TrappedRookPenalty     = make_score(90,  0);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
