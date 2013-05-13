@@ -239,7 +239,7 @@ void MovePicker::generate_next() {
 
   case KILLERS_S1:
       cur = killers;
-      end = cur + 3;
+      end = cur + 3 - (killers[2].move == killers[0].move || killers[2].move == killers[1].move);
       return;
 
   case QUIETS_1_S1:
