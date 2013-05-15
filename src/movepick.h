@@ -42,10 +42,18 @@ struct Stats {
 
   static const Value Max = Value(2000);
 
-  const T* operator[](Piece p) const { return &table[p][0]; }
+  const T* operator[](Piece p) const { return table[p]; }
   void clear() { memset(table, 0, sizeof(table)); }
 
-  void update(Piece p, Square to, Move m) { table[p][to] = m; }
+  void update(Piece p, Square to, Move m) {
+
+    if (m == table[p][to].first)
+        return;
+
+    table[p][to].second = table[p][to].first;
+    table[p][to].first = m;
+  }
+
   void update(Piece p, Square to, Value v) {
 
     if (Gain)
@@ -61,7 +69,7 @@ private:
 
 typedef Stats< true, Value> GainsStats;
 typedef Stats<false, Value> HistoryStats;
-typedef Stats<false,  Move> CountermovesStats;
+typedef Stats<false, std::pair<Move, Move> > CountermovesStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -92,7 +100,7 @@ private:
   Search::Stack* ss;
   Depth depth;
   Move ttMove;
-  MoveStack killers[3];
+  MoveStack killers[4];
   Square recaptureSquare;
   int captureThreshold, phase;
   MoveStack *cur, *end, *endQuiets, *endBadCaptures;
