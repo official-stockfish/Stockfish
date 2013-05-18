@@ -78,6 +78,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   captureThreshold = 0;
   cur = end = moves;
   endBadCaptures = moves + MAX_MOVES - 1;
+  countermoves = cm;
   ss = s;
 
   if (p.checkers())
@@ -87,17 +88,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   {
       phase = MAIN_SEARCH;
 
-      killers[0].move = ss->killers[0];
-      killers[1].move = ss->killers[1];
-      killers[2].move = cm[0];
-      killers[3].move = cm[1];
-
       // Consider sligtly negative captures as good if at low depth and far from beta
-      if (ss && ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)
+      if (ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)
           captureThreshold = -PawnValueMg;
 
       // Consider negative captures as good if still enough to reach beta
-      else if (ss && ss->staticEval > beta)
+      else if (ss->staticEval > beta)
           captureThreshold = beta - ss->staticEval;
   }
 
@@ -241,15 +237,18 @@ void MovePicker::generate_next() {
       cur = killers;
       end = cur + 2;
 
-      if ((cur+3)->move && (cur+3)->move == (cur+2)->move) // Due to a SMP race
-          (cur+3)->move = MOVE_NONE;
+      killers[0].move = ss->killers[0];
+      killers[1].move = ss->killers[1];
+      killers[2].move = killers[3].move = MOVE_NONE;
 
       // Be sure countermoves are different from killers
-      if ((cur+2)->move != cur->move && (cur+2)->move != (cur+1)->move)
-          end++;
+      for (int i = 0; i < 2; i++)
+          if (countermoves[i] != cur->move && countermoves[i] != (cur+1)->move)
+              (end++)->move = countermoves[i];
 
-      if ((cur+3)->move != cur->move && (cur+3)->move != (cur+1)->move)
-          (end++)->move = (cur+3)->move;
+      if (countermoves[1] && countermoves[1] == countermoves[0]) // Due to SMP races
+          killers[3].move = MOVE_NONE;
+
       return;
 
   case QUIETS_1_S1:
