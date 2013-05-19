@@ -70,7 +70,7 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const CountermovesStats& cm,
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, Move* cm,
                        Search::Stack* s, Value beta) : pos(p), history(h), depth(d) {
 
   assert(d > DEPTH_ZERO);
@@ -89,9 +89,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
 
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
-      Square prevSq = to_sq((ss-1)->currentMove);
-      killers[2].move = cm[pos.piece_on(prevSq)][prevSq].first;
-      killers[3].move = cm[pos.piece_on(prevSq)][prevSq].second;
+      killers[2].move = cm[0];
+      killers[3].move = cm[1];
 
       // Consider sligtly negative captures as good if at low depth and far from beta
       if (ss && ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)

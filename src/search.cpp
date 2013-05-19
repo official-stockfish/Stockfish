@@ -766,7 +766,11 @@ namespace {
 
 split_point_start: // At split points actual search starts from here
 
-    MovePicker mp(pos, ttMove, depth, History, Countermoves, ss, PvNode ? -VALUE_INFINITE : beta);
+    Square prevMoveSq = to_sq((ss-1)->currentMove);
+    Move countermoves[] = { Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq].first,
+                            Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq].second };
+
+    MovePicker mp(pos, ttMove, depth, History, countermoves, ss, PvNode ? -VALUE_INFINITE : beta);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     singularExtensionNode =   !RootNode
@@ -942,6 +946,9 @@ split_point_start: // At split points actual search starts from here
           &&  move != ss->killers[1])
       {
           ss->reduction = reduction<PvNode>(depth, moveCount);
+          if (move == countermoves[0] || move == countermoves[1])
+              ss->reduction = std::max(DEPTH_ZERO, ss->reduction-ONE_PLY);
+
           Depth d = std::max(newDepth - ss->reduction, ONE_PLY);
           if (SpNode)
               alpha = splitPoint->alpha;
@@ -1093,10 +1100,7 @@ split_point_start: // At split points actual search starts from here
             Value bonus = Value(int(depth) * int(depth));
             History.update(pos.piece_moved(bestMove), to_sq(bestMove), bonus);
             if (is_ok((ss-1)->currentMove))
-            {
-                Square prevSq = to_sq((ss-1)->currentMove);
-                Countermoves.update(pos.piece_on(prevSq), prevSq, bestMove);
-            }
+                Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, bestMove);
 
             // Decrease history of all the other played non-capture moves
             for (int i = 0; i < playedMoveCount - 1; i++)
