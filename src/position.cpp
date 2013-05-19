@@ -408,7 +408,7 @@ const string Position::pretty(Move move) const {
       ss << square_to_string(pop_lsb(&b)) << " ";
 
   ss << "\nLegal moves: ";
-  for (MoveList<LEGAL> it(*this); !it.end(); ++it)
+  for (MoveList<LEGAL> it(*this); *it; ++it)
       ss << move_to_san(*const_cast<Position*>(this), *it) << " ";
 
   return ss.str();

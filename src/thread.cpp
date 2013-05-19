@@ -371,7 +371,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   SetupStates = states; // Ownership transfer here
   RootMoves.clear();
 
-  for (MoveList<LEGAL> it(pos); !it.end(); ++it)
+  for (MoveList<LEGAL> it(pos); *it; ++it)
       if (   searchMoves.empty()
           || std::count(searchMoves.begin(), searchMoves.end(), *it))
           RootMoves.push_back(RootMove(*it));
