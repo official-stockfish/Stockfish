@@ -163,11 +163,11 @@ size_t Search::perft(Position& pos, Depth depth) {
   size_t cnt = 0;
   CheckInfo ci(pos);
 
-  for (MoveList<LEGAL> ml(pos); !ml.end(); ++ml)
+  for (MoveList<LEGAL> it(pos); !it.end(); ++it)
   {
-      pos.do_move(ml.move(), st, ci, pos.move_gives_check(ml.move(), ci));
+      pos.do_move(*it, st, ci, pos.move_gives_check(*it, ci));
       cnt += perft(pos, depth - ONE_PLY);
-      pos.undo_move(ml.move());
+      pos.undo_move(*it);
   }
 
   return cnt;

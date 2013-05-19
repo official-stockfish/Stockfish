@@ -43,8 +43,8 @@ struct MoveList {
 
   explicit MoveList(const Position& pos) : cur(mlist), last(generate<T>(pos, mlist)) {}
   void operator++() { cur++; }
+  Move operator*() const { return cur->move; }
   bool end() const { return cur == last; }
-  Move move() const { return cur->move; }
   size_t size() const { return last - mlist; }
   bool contains(Move m) const {
     for (const MoveStack* it(mlist); it != last; ++it) if (it->move == m) return true;
