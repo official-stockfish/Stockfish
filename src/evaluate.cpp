@@ -72,7 +72,7 @@ namespace {
   };
 
   // Evaluation grain size, must be a power of 2
-  const int GrainSize = 8;
+  const int GrainSize = 4;
 
   // Evaluation weights, initialized from UCI options
   enum { Mobility, PassedPawns, Space, KingDangerUs, KingDangerThem };

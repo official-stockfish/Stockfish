@@ -1251,7 +1251,6 @@ split_point_start: // At split points actual search starts from here
           // Prune moves with negative or equal SEE and also moves with positive
           // SEE where capturing piece loses a tempo and SEE < beta - futilityBase.
           if (   futilityBase < beta
-              && depth < DEPTH_ZERO
               && pos.see(move, beta - futilityBase) <= 0)
           {
               bestValue = std::max(bestValue, futilityBase);
