@@ -62,8 +62,6 @@ namespace {
     S(34,68), S(83,166), S(0, 0), S( 0, 0)
   };
 
-  const Score PawnStructureWeight = S(233, 201);
-
   // Weakness of our pawn shelter in front of the king indexed by [king pawn][rank]
   const Value ShelterWeakness[2][RANK_NB] =
   { { V(141), V(0), V(38), V(102), V(128), V(141), V(141) },
@@ -215,9 +213,6 @@ Entry* probe(const Position& pos, Table& entries) {
 
   e->value =  evaluate_pawns<WHITE>(pos, wPawns, bPawns, e)
             - evaluate_pawns<BLACK>(pos, bPawns, wPawns, e);
-
-  e->value = apply_weight(e->value, PawnStructureWeight);
-
   return e;
 }
 

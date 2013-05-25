@@ -325,12 +325,6 @@ inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
-/// Weight score v by score w trying to prevent overflow
-inline Score apply_weight(Score v, Score w) {
-  return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
-                    (int(eg_value(v)) * eg_value(w)) / 0x100);
-}
-
 #undef ENABLE_OPERATORS_ON
 #undef ENABLE_SAFE_OPERATORS_ON
 
