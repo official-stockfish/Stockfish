@@ -45,9 +45,6 @@ static const string Tag = "";
 const string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-  const string cpu64(Is64Bit ? " 64bit" : "");
-  const string popcnt(HasPopCnt ? " SSE4.2" : "");
-
   string month, day, year;
   stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
@@ -58,10 +55,12 @@ const string engine_info(bool to_uci) {
       date >> month >> day >> year;
 
       s << Tag << string(Tag.empty() ? "" : " ") << setfill('0') << setw(2) << day
-        << "-" << setw(2) << (1 + months.find(month) / 4) << "-" << year.substr(2);
+        << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
-  s << cpu64 << popcnt << (to_uci ? "\nid author ": " by ")
+  s << (Is64Bit ? " 64" : "")
+    << (HasPopCnt ? " SSE4.2" : "")
+    << (to_uci ? "\nid author ": " by ")
     << "Tord Romstad, Marco Costalba and Joona Kiiski";
 
   return s.str();
