@@ -834,8 +834,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
         int rr = r * (r - 1);
 
         // Base bonus based on rank
-        Value mbonus = Value(20 * rr);
-        Value ebonus = Value(10 * (rr + r + 1));
+        Value mbonus = Value(17 * rr);
+        Value ebonus = Value(7 * (rr + r + 1));
 
         if (rr)
         {
