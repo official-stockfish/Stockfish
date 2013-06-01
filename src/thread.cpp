@@ -366,10 +366,14 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
+  RootMoves.clear();
   RootPos = pos;
   Limits = limits;
-  SetupStates = states; // Ownership transfer here
-  RootMoves.clear();
+  if (states.get()) // If we don't set a new position, preserve current state
+  {
+      SetupStates = states; // Ownership transfer here
+      assert(!states.get());
+  }
 
   for (MoveList<LEGAL> it(pos); *it; ++it)
       if (   searchMoves.empty()
