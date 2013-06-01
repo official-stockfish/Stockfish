@@ -31,6 +31,20 @@
 
 namespace {
 
+  enum ExtendedPieceType { // Used for tracing
+    PST = 8, IMBALANCE, MOBILITY, THREAT, PASSED, UNSTOPPABLE, SPACE, TOTAL
+  };
+
+  namespace Tracing {
+
+    Score scores[COLOR_NB][TOTAL + 1];
+    std::stringstream stream;
+
+    void add(int idx, Score term_w, Score term_b = SCORE_ZERO);
+    void row(const char* name, int idx);
+    std::string do_trace(const Position& pos);
+  }
+
   // Struct EvalInfo contains various information computed and collected
   // by the evaluation functions.
   struct EvalInfo {
@@ -91,9 +105,9 @@ namespace {
       S(289, 344), S(233, 201), S(221, 273), S(46, 0), S(271, 0), S(307, 0)
   };
 
-  // MobilityBonus[PieceType][attacked] contains mobility bonuses for middle and
-  // end game, indexed by piece type and number of attacked squares not occupied
-  // by friendly pieces.
+  // MobilityBonus[PieceType][attacked] contains bonuses for middle and end
+  // game, indexed by piece type and number of attacked squares not occupied by
+  // friendly pieces.
   const Score MobilityBonus[][32] = {
      {}, {},
      { S(-35,-30), S(-22,-20), S(-9,-10), S( 3,  0), S(15, 10), S(27, 20), // Knights
@@ -112,9 +126,9 @@ namespace {
        S( 25, 41), S( 25, 41) }
   };
 
-  // OutpostBonus[PieceType][Square] contains outpost bonuses of knights and
-  // bishops, indexed by piece type and square (from white's point of view).
-  const Value OutpostBonus[][SQUARE_NB] = {
+  // Outpost[PieceType][Square] contains bonuses of knights and bishops, indexed
+  // by piece type and square (from white's point of view).
+  const Value Outpost[][SQUARE_NB] = {
   {
   //  A     B     C     D     E     F     G     H
     V(0), V(0), V(0), V(0), V(0), V(0), V(0), V(0), // Knights
@@ -132,9 +146,9 @@ namespace {
     V(0), V(5), V(8), V(8), V(8), V(8), V(5), V(0) }
   };
 
-  // ThreatBonus[attacking][attacked] contains threat bonuses according to
-  // which piece type attacks which one.
-  const Score ThreatBonus[][PIECE_TYPE_NB] = {
+  // Threat[attacking][attacked] contains bonuses according to which piece
+  // type attacks which one.
+  const Score Threat[][PIECE_TYPE_NB] = {
     {}, {},
     { S(0, 0), S( 7, 39), S( 0,  0), S(24, 49), S(41,100), S(41,100) }, // KNIGHT
     { S(0, 0), S( 7, 39), S(24, 49), S( 0,  0), S(41,100), S(41,100) }, // BISHOP
@@ -142,31 +156,30 @@ namespace {
     { S(0, 0), S(15, 39), S(15, 39), S(15, 39), S(15, 39), S( 0,  0) }  // QUEEN
   };
 
-  // ThreatenedByPawnPenalty[PieceType] contains a penalty according to which
-  // piece type is attacked by an enemy pawn.
-  const Score ThreatenedByPawnPenalty[] = {
+  // ThreatenedByPawn[PieceType] contains a penalty according to which piece
+  // type is attacked by an enemy pawn.
+  const Score ThreatenedByPawn[] = {
     S(0, 0), S(0, 0), S(56, 70), S(56, 70), S(76, 99), S(86, 118)
   };
 
   #undef S
 
-  const Score Tempo = make_score(24, 11);
-
-  const Score BishopPinBonus         = make_score(66, 11);
-  const Score RookOn7thBonus         = make_score(11, 20);
-  const Score QueenOn7thBonus        = make_score( 3,  8);
-  const Score RookOnPawnBonus        = make_score(10, 28);
-  const Score QueenOnPawnBonus       = make_score( 4, 20);
-  const Score RookOpenFileBonus      = make_score(43, 21);
-  const Score RookHalfOpenFileBonus  = make_score(19, 10);
-  const Score BishopPawnsPenalty     = make_score( 8, 12);
-  const Score UndefendedMinorPenalty = make_score(25, 10);
-  const Score TrappedRookPenalty     = make_score(90,  0);
+  const Score Tempo            = make_score(24, 11);
+  const Score BishopPin        = make_score(66, 11);
+  const Score RookOn7th        = make_score(11, 20);
+  const Score QueenOn7th       = make_score( 3,  8);
+  const Score RookOnPawn       = make_score(10, 28);
+  const Score QueenOnPawn      = make_score( 4, 20);
+  const Score RookOpenFile     = make_score(43, 21);
+  const Score RookSemiopenFile = make_score(19, 10);
+  const Score BishopPawns      = make_score( 8, 12);
+  const Score UndefendedMinor  = make_score(25, 10);
+  const Score TrappedRook      = make_score(90,  0);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
   // happen in Chess960 games.
-  const Score TrappedBishopA1H1Penalty = make_score(50, 50);
+  const Score TrappedBishopA1H1 = make_score(50, 50);
 
   // The SpaceMask[Color] contains the area of the board which is considered
   // by the space evaluation. In the middle game, each side is given a bonus
@@ -182,24 +195,24 @@ namespace {
   };
 
   // King danger constants and variables. The king danger scores are taken
-  // from the KingDangerTable[]. Various little "meta-bonuses" measuring
+  // from the KingDanger[]. Various little "meta-bonuses" measuring
   // the strength of the enemy attack are added up into an integer, which
-  // is used as an index to KingDangerTable[].
+  // is used as an index to KingDanger[].
   //
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
 
   // Bonuses for enemy's safe checks
-  const int QueenContactCheckBonus = 6;
-  const int RookContactCheckBonus  = 4;
-  const int QueenCheckBonus        = 3;
-  const int RookCheckBonus         = 2;
-  const int BishopCheckBonus       = 1;
-  const int KnightCheckBonus       = 1;
+  const int QueenContactCheck = 6;
+  const int RookContactCheck  = 4;
+  const int QueenCheck        = 3;
+  const int RookCheck         = 2;
+  const int BishopCheck       = 1;
+  const int KnightCheck       = 1;
 
-  // InitKingDanger[Square] contains penalties based on the position of the
+  // KingExposed[Square] contains penalties based on the position of the
   // defending king, indexed by king's square (from white's point of view).
-  const int InitKingDanger[] = {
+  const int KingExposed[] = {
      2,  0,  2,  5,  5,  2,  0,  2,
      2,  2,  4,  8,  8,  4,  2,  2,
      7, 10, 12, 12, 12, 12, 10,  7,
@@ -210,19 +223,9 @@ namespace {
     15, 15, 15, 15, 15, 15, 15, 15
   };
 
-  // KingDangerTable[Color][attackUnits] contains the actual king danger
-  // weighted scores, indexed by color and by a calculated integer number.
-  Score KingDangerTable[COLOR_NB][128];
-
-  // TracedTerms[Color][PieceType || TracedType] contains a breakdown of the
-  // evaluation terms, used when tracing.
-  Score TracedScores[COLOR_NB][16];
-  std::stringstream TraceStream;
-
-  enum TracedType {
-    PST = 8, IMBALANCE = 9, MOBILITY = 10, THREAT = 11,
-    PASSED = 12, UNSTOPPABLE = 13, SPACE = 14, TOTAL = 15
-  };
+  // KingDanger[Color][attackUnits] contains the actual king danger weighted
+  // scores, indexed by color and by a calculated integer number.
+  Score KingDanger[COLOR_NB][128];
 
   // Function prototypes
   template<bool Trace>
@@ -252,8 +255,6 @@ namespace {
   Score apply_weight(Score v, Score w);
   Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
   double to_cp(Value v);
-  void trace_add(int idx, Score term_w, Score term_b = SCORE_ZERO);
-  void trace_row(const char* name, int idx);
 }
 
 
@@ -265,6 +266,14 @@ namespace Eval {
 
   Value evaluate(const Position& pos, Value& margin) {
     return do_evaluate<false>(pos, margin);
+  }
+
+
+  /// trace() is like evaluate() but instead of a value returns a string suitable
+  /// to be print on stdout with the detailed descriptions and values of each
+  /// evaluation term. Used mainly for debugging.
+  std::string trace(const Position& pos) {
+    return Tracing::do_trace(pos);
   }
 
 
@@ -287,55 +296,9 @@ namespace Eval {
     {
         t = std::min(Peak, std::min(int(0.4 * i * i), t + MaxSlope));
 
-        KingDangerTable[1][i] = apply_weight(make_score(t, 0), Weights[KingDangerUs]);
-        KingDangerTable[0][i] = apply_weight(make_score(t, 0), Weights[KingDangerThem]);
+        KingDanger[1][i] = apply_weight(make_score(t, 0), Weights[KingDangerUs]);
+        KingDanger[0][i] = apply_weight(make_score(t, 0), Weights[KingDangerThem]);
     }
-  }
-
-
-  /// trace() is like evaluate() but instead of a value returns a string suitable
-  /// to be print on stdout with the detailed descriptions and values of each
-  /// evaluation term. Used mainly for debugging.
-
-  std::string trace(const Position& pos) {
-
-    Value margin;
-    std::string totals;
-
-    Search::RootColor = pos.side_to_move();
-
-    TraceStream.str("");
-    TraceStream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
-    memset(TracedScores, 0, 2 * 16 * sizeof(Score));
-
-    do_evaluate<true>(pos, margin);
-
-    totals = TraceStream.str();
-    TraceStream.str("");
-
-    TraceStream << std::setw(21) << "Eval term " << "|    White    |    Black    |     Total     \n"
-                <<             "                     |   MG    EG  |   MG    EG  |   MG     EG   \n"
-                <<             "---------------------+-------------+-------------+---------------\n";
-
-    trace_row("Material, PST, Tempo", PST);
-    trace_row("Material imbalance", IMBALANCE);
-    trace_row("Pawns", PAWN);
-    trace_row("Knights", KNIGHT);
-    trace_row("Bishops", BISHOP);
-    trace_row("Rooks", ROOK);
-    trace_row("Queens", QUEEN);
-    trace_row("Mobility", MOBILITY);
-    trace_row("King safety", KING);
-    trace_row("Threats", THREAT);
-    trace_row("Passed pawns", PASSED);
-    trace_row("Unstoppable pawns", UNSTOPPABLE);
-    trace_row("Space", SPACE);
-
-    TraceStream <<             "---------------------+-------------+-------------+---------------\n";
-    trace_row("Total", TOTAL);
-    TraceStream << totals;
-
-    return TraceStream.str();
   }
 
 } // namespace Eval
@@ -443,21 +406,21 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // In case of tracing add all single evaluation contributions for both white and black
   if (Trace)
   {
-      trace_add(PST, pos.psq_score());
-      trace_add(IMBALANCE, ei.mi->material_value());
-      trace_add(PAWN, ei.pi->pawns_value());
-      trace_add(UNSTOPPABLE, evaluate_unstoppable_pawns(pos, ei));
+      Tracing::add(PST, pos.psq_score());
+      Tracing::add(IMBALANCE, ei.mi->material_value());
+      Tracing::add(PAWN, ei.pi->pawns_value());
+      Tracing::add(UNSTOPPABLE, evaluate_unstoppable_pawns(pos, ei));
       Score w = make_score(ei.mi->space_weight() * evaluate_space<WHITE>(pos, ei), 0);
       Score b = make_score(ei.mi->space_weight() * evaluate_space<BLACK>(pos, ei), 0);
-      trace_add(SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
-      trace_add(TOTAL, score);
-      TraceStream << "\nUncertainty margin: White: " << to_cp(margins[WHITE])
-                  << ", Black: " << to_cp(margins[BLACK])
-                  << "\nScaling: " << std::noshowpos
-                  << std::setw(6) << 100.0 * ei.mi->game_phase() / 128.0 << "% MG, "
-                  << std::setw(6) << 100.0 * (1.0 - ei.mi->game_phase() / 128.0) << "% * "
-                  << std::setw(6) << (100.0 * sf) / SCALE_FACTOR_NORMAL << "% EG.\n"
-                  << "Total evaluation: " << to_cp(v);
+      Tracing::add(SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
+      Tracing::add(TOTAL, score);
+      Tracing::stream << "\nUncertainty margin: White: " << to_cp(margins[WHITE])
+                      << ", Black: " << to_cp(margins[BLACK])
+                      << "\nScaling: " << std::noshowpos
+                      << std::setw(6) << 100.0 * ei.mi->game_phase() / 128.0 << "% MG, "
+                      << std::setw(6) << 100.0 * (1.0 - ei.mi->game_phase() / 128.0) << "% * "
+                      << std::setw(6) << (100.0 * sf) / SCALE_FACTOR_NORMAL << "% EG.\n"
+                      << "Total evaluation: " << to_cp(v);
   }
 
   return pos.side_to_move() == WHITE ? v : -v;
@@ -498,7 +461,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     assert (Piece == BISHOP || Piece == KNIGHT);
 
     // Initial bonus based on square
-    Value bonus = OutpostBonus[Piece == BISHOP][relative_square(Us, s)];
+    Value bonus = Outpost[Piece == BISHOP][relative_square(Us, s)];
 
     // Increase bonus if supported by pawn, especially if the opponent has
     // no minor piece which can exchange the outpost piece.
@@ -552,18 +515,18 @@ Value do_evaluate(const Position& pos, Value& margin) {
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (ei.attackedBy[Them][PAWN] & s)
-            score -= ThreatenedByPawnPenalty[Piece];
+            score -= ThreatenedByPawn[Piece];
 
         // Otherwise give a bonus if we are a bishop and can pin a piece or can
         // give a discovered check through an x-ray attack.
         else if (    Piece == BISHOP
                  && (PseudoAttacks[Piece][pos.king_square(Them)] & s)
                  && !more_than_one(BetweenBB[s][pos.king_square(Them)] & pos.pieces()))
-                 score += BishopPinBonus;
+                 score += BishopPin;
 
         // Penalty for bishop with same coloured pawns
         if (Piece == BISHOP)
-            score -= BishopPawnsPenalty * ei.pi->pawns_on_same_color_squares(Us, s);
+            score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
 
         // Bishop and knight outposts squares
         if (    (Piece == BISHOP || Piece == KNIGHT)
@@ -576,22 +539,22 @@ Value do_evaluate(const Position& pos, Value& margin) {
             // Major piece on 7th rank and enemy king trapped on 8th
             if (   relative_rank(Us, s) == RANK_7
                 && relative_rank(Us, pos.king_square(Them)) == RANK_8)
-                score += Piece == ROOK ? RookOn7thBonus : QueenOn7thBonus;
+                score += Piece == ROOK ? RookOn7th : QueenOn7th;
 
             // Major piece attacking enemy pawns on the same rank
             Bitboard pawns = pos.pieces(Them, PAWN) & rank_bb(s);
             if (pawns)
-                score += popcount<Max15>(pawns) * (Piece == ROOK ? RookOnPawnBonus : QueenOnPawnBonus);
+                score += popcount<Max15>(pawns) * (Piece == ROOK ? RookOnPawn : QueenOnPawn);
         }
 
         // Special extra evaluation for rooks
         if (Piece == ROOK)
         {
-            // Give a bonus for a rook on a open or half-open file
-            if (ei.pi->half_open(Us, file_of(s)))
-                score += ei.pi->half_open(Them, file_of(s)) ? RookOpenFileBonus
-                                                            : RookHalfOpenFileBonus;
-            if (mob > 6 || ei.pi->half_open(Us, file_of(s)))
+            // Give a bonus for a rook on a open or semi-open file
+            if (ei.pi->semiopen(Us, file_of(s)))
+                score += ei.pi->semiopen(Them, file_of(s)) ? RookOpenFile : RookSemiopenFile;
+
+            if (mob > 6 || ei.pi->semiopen(Us, file_of(s)))
                 continue;
 
             Square ksq = pos.king_square(Us);
@@ -600,8 +563,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
             // king has lost right to castle.
             if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
-                && !ei.pi->half_open_on_side(Us, file_of(ksq), file_of(ksq) < FILE_E))
-                score -= (TrappedRookPenalty - make_score(mob * 8, 0)) * (pos.can_castle(Us) ? 1 : 2);
+                && !ei.pi->semiopen_on_side(Us, file_of(ksq), file_of(ksq) < FILE_E))
+                score -= (TrappedRook - make_score(mob * 8, 0)) * (pos.can_castle(Us) ? 1 : 2);
         }
 
         // An important Chess960 pattern: A cornered bishop blocked by a friendly
@@ -614,14 +577,14 @@ Value do_evaluate(const Position& pos, Value& margin) {
             const enum Piece P = make_piece(Us, PAWN);
             Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
             if (pos.piece_on(s + d) == P)
-                score -= !pos.is_empty(s + d + pawn_push(Us)) ? TrappedBishopA1H1Penalty * 4
-                        : pos.piece_on(s + d + d) == P        ? TrappedBishopA1H1Penalty * 2
-                                                              : TrappedBishopA1H1Penalty;
+                score -= !pos.is_empty(s + d + pawn_push(Us)) ? TrappedBishopA1H1 * 4
+                        : pos.piece_on(s + d + d) == P        ? TrappedBishopA1H1 * 2
+                                                              : TrappedBishopA1H1;
         }
     }
 
     if (Trace)
-        TracedScores[Us][Piece] = score;
+        Tracing::scores[Us][Piece] = score;
 
     return score;
   }
@@ -643,7 +606,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                       & ~ei.attackedBy[Them][ALL_PIECES];
 
     if (undefendedMinors)
-        score += UndefendedMinorPenalty;
+        score += UndefendedMinor;
 
     // Enemy pieces not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
@@ -660,11 +623,11 @@ Value do_evaluate(const Position& pos, Value& margin) {
             if (b)
                 for (PieceType pt2 = PAWN; pt2 < KING; pt2++)
                     if (b & pos.pieces(pt2))
-                        score += ThreatBonus[pt1][pt2];
+                        score += Threat[pt1][pt2];
         }
 
     if (Trace)
-        TracedScores[Us][THREAT] = score;
+        Tracing::scores[Us][THREAT] = score;
 
     return score;
   }
@@ -693,7 +656,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                                     | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                                     | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
     if (Trace)
-        TracedScores[Us][MOBILITY] = apply_weight(mobility, Weights[Mobility]);
+        Tracing::scores[Us][MOBILITY] = apply_weight(mobility, Weights[Mobility]);
 
     return score;
   }
@@ -726,13 +689,13 @@ Value do_evaluate(const Position& pos, Value& margin) {
                         | ei.attackedBy[Us][QUEEN]);
 
         // Initialize the 'attackUnits' variable, which is used later on as an
-        // index to the KingDangerTable[] array. The initial value is based on
-        // the number and types of the enemy's attacking pieces, the number of
+        // index to the KingDanger[] array. The initial value is based on the
+        // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king, the square of the
         // king, and the quality of the pawn shelter.
         attackUnits =  std::min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
-                     + InitKingDanger[relative_square(Us, ksq)]
+                     + KingExposed[relative_square(Us, ksq)]
                      - mg_value(score) / 32;
 
         // Analyse enemy's safe queen contact checks. First find undefended
@@ -744,7 +707,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
             b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
                   | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]);
             if (b)
-                attackUnits +=  QueenContactCheckBonus
+                attackUnits +=  QueenContactCheck
                               * popcount<Max15>(b)
                               * (Them == pos.side_to_move() ? 2 : 1);
         }
@@ -762,7 +725,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
             b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
                   | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][QUEEN]);
             if (b)
-                attackUnits +=  RookContactCheckBonus
+                attackUnits +=  RookContactCheck
                               * popcount<Max15>(b)
                               * (Them == pos.side_to_move() ? 2 : 1);
         }
@@ -776,37 +739,37 @@ Value do_evaluate(const Position& pos, Value& margin) {
         // Enemy queen safe checks
         b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
         if (b)
-            attackUnits += QueenCheckBonus * popcount<Max15>(b);
+            attackUnits += QueenCheck * popcount<Max15>(b);
 
         // Enemy rooks safe checks
         b = b1 & ei.attackedBy[Them][ROOK];
         if (b)
-            attackUnits += RookCheckBonus * popcount<Max15>(b);
+            attackUnits += RookCheck * popcount<Max15>(b);
 
         // Enemy bishops safe checks
         b = b2 & ei.attackedBy[Them][BISHOP];
         if (b)
-            attackUnits += BishopCheckBonus * popcount<Max15>(b);
+            attackUnits += BishopCheck * popcount<Max15>(b);
 
         // Enemy knights safe checks
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
-            attackUnits += KnightCheckBonus * popcount<Max15>(b);
+            attackUnits += KnightCheck * popcount<Max15>(b);
 
-        // To index KingDangerTable[] attackUnits must be in [0, 99] range
+        // To index KingDanger[] attackUnits must be in [0, 99] range
         attackUnits = std::min(99, std::max(0, attackUnits));
 
-        // Finally, extract the king danger score from the KingDangerTable[]
+        // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from evaluation. Set also margins[]
         // value that will be used for pruning because this value can sometimes
         // be very big, and so capturing a single attacking piece can therefore
         // result in a score change far bigger than the value of the captured piece.
-        score -= KingDangerTable[Us == Search::RootColor][attackUnits];
-        margins[Us] += mg_value(KingDangerTable[Us == Search::RootColor][attackUnits]);
+        score -= KingDanger[Us == Search::RootColor][attackUnits];
+        margins[Us] += mg_value(KingDanger[Us == Search::RootColor][attackUnits]);
     }
 
     if (Trace)
-        TracedScores[Us][KING] = score;
+        Tracing::scores[Us][KING] = score;
 
     return score;
   }
@@ -907,7 +870,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     }
 
     if (Trace)
-        TracedScores[Us][PASSED] = apply_weight(score, Weights[PassedPawns]);
+        Tracing::scores[Us][PASSED] = apply_weight(score, Weights[PassedPawns]);
 
     // Add the scores to the middle game and endgame eval
     return apply_weight(score, Weights[PassedPawns]);
@@ -1140,41 +1103,75 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
 
-  // A couple of little helpers used by tracing code, to_cp() converts a value to
-  // a double in centipawns scale, trace_add() stores white and black scores.
+  // Tracing functions definitions
 
   double to_cp(Value v) { return double(v) / double(PawnValueMg); }
 
-  void trace_add(int idx, Score wScore, Score bScore) {
+  void Tracing::add(int idx, Score wScore, Score bScore) {
 
-    TracedScores[WHITE][idx] = wScore;
-    TracedScores[BLACK][idx] = bScore;
+    scores[WHITE][idx] = wScore;
+    scores[BLACK][idx] = bScore;
   }
 
+  void Tracing::row(const char* name, int idx) {
 
-  // trace_row() is an helper function used by tracing code to register the
-  // values of a single evaluation term.
-
-  void trace_row(const char* name, int idx) {
-
-    Score wScore = TracedScores[WHITE][idx];
-    Score bScore = TracedScores[BLACK][idx];
+    Score wScore = scores[WHITE][idx];
+    Score bScore = scores[BLACK][idx];
 
     switch (idx) {
     case PST: case IMBALANCE: case PAWN: case UNSTOPPABLE: case TOTAL:
-        TraceStream << std::setw(20) << name << " |   ---   --- |   ---   --- | "
-                    << std::setw(6)  << to_cp(mg_value(wScore)) << " "
-                    << std::setw(6)  << to_cp(eg_value(wScore)) << " \n";
+        stream << std::setw(20) << name << " |   ---   --- |   ---   --- | "
+               << std::setw(6)  << to_cp(mg_value(wScore)) << " "
+               << std::setw(6)  << to_cp(eg_value(wScore)) << " \n";
         break;
     default:
-        TraceStream << std::setw(20) << name << " | " << std::noshowpos
-                    << std::setw(5)  << to_cp(mg_value(wScore)) << " "
-                    << std::setw(5)  << to_cp(eg_value(wScore)) << " | "
-                    << std::setw(5)  << to_cp(mg_value(bScore)) << " "
-                    << std::setw(5)  << to_cp(eg_value(bScore)) << " | "
-                    << std::showpos
-                    << std::setw(6)  << to_cp(mg_value(wScore - bScore)) << " "
-                    << std::setw(6)  << to_cp(eg_value(wScore - bScore)) << " \n";
+        stream << std::setw(20) << name << " | " << std::noshowpos
+               << std::setw(5)  << to_cp(mg_value(wScore)) << " "
+               << std::setw(5)  << to_cp(eg_value(wScore)) << " | "
+               << std::setw(5)  << to_cp(mg_value(bScore)) << " "
+               << std::setw(5)  << to_cp(eg_value(bScore)) << " | "
+               << std::showpos
+               << std::setw(6)  << to_cp(mg_value(wScore - bScore)) << " "
+               << std::setw(6)  << to_cp(eg_value(wScore - bScore)) << " \n";
     }
+  }
+
+  std::string Tracing::do_trace(const Position& pos) {
+
+    Search::RootColor = pos.side_to_move();
+
+    stream.str("");
+    stream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
+    memset(scores, 0, 2 * (TOTAL + 1) * sizeof(Score));
+
+    Value margin;
+    do_evaluate<true>(pos, margin);
+
+    std::string totals = stream.str();
+    stream.str("");
+
+    stream << std::setw(21) << "Eval term " << "|    White    |    Black    |     Total     \n"
+                    <<             "                     |   MG    EG  |   MG    EG  |   MG     EG   \n"
+                    <<             "---------------------+-------------+-------------+---------------\n";
+
+    row("Material, PST, Tempo", PST);
+    row("Material imbalance", IMBALANCE);
+    row("Pawns", PAWN);
+    row("Knights", KNIGHT);
+    row("Bishops", BISHOP);
+    row("Rooks", ROOK);
+    row("Queens", QUEEN);
+    row("Mobility", MOBILITY);
+    row("King safety", KING);
+    row("Threats", THREAT);
+    row("Passed pawns", PASSED);
+    row("Unstoppable pawns", UNSTOPPABLE);
+    row("Space", SPACE);
+
+    stream <<             "---------------------+-------------+-------------+---------------\n";
+    row("Total", TOTAL);
+    stream << totals;
+
+    return stream.str();
   }
 }

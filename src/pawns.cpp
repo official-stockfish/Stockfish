@@ -30,34 +30,34 @@ namespace {
   #define S(mg, eg) make_score(mg, eg)
 
   // Doubled pawn penalty by opposed flag and file
-  const Score DoubledPawnPenalty[2][FILE_NB] = {
+  const Score Doubled[2][FILE_NB] = {
   { S(13, 43), S(20, 48), S(23, 48), S(23, 48),
     S(23, 48), S(23, 48), S(20, 48), S(13, 43) },
   { S(13, 43), S(20, 48), S(23, 48), S(23, 48),
     S(23, 48), S(23, 48), S(20, 48), S(13, 43) }};
 
   // Isolated pawn penalty by opposed flag and file
-  const Score IsolatedPawnPenalty[2][FILE_NB] = {
+  const Score Isolated[2][FILE_NB] = {
   { S(37, 45), S(54, 52), S(60, 52), S(60, 52),
     S(60, 52), S(60, 52), S(54, 52), S(37, 45) },
   { S(25, 30), S(36, 35), S(40, 35), S(40, 35),
     S(40, 35), S(40, 35), S(36, 35), S(25, 30) }};
 
   // Backward pawn penalty by opposed flag and file
-  const Score BackwardPawnPenalty[2][FILE_NB] = {
+  const Score Backward[2][FILE_NB] = {
   { S(30, 42), S(43, 46), S(49, 46), S(49, 46),
     S(49, 46), S(49, 46), S(43, 46), S(30, 42) },
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) }};
 
   // Pawn chain membership bonus by file
-  const Score ChainBonus[FILE_NB] = {
+  const Score ChainMember[FILE_NB] = {
     S(11,-1), S(13,-1), S(13,-1), S(14,-1),
     S(14,-1), S(13,-1), S(13,-1), S(11,-1)
   };
 
   // Candidate passed pawn bonus by rank
-  const Score CandidateBonus[RANK_NB] = {
+  const Score CandidatePassed[RANK_NB] = {
     S( 0, 0), S( 6, 13), S(6,13), S(14,29),
     S(34,68), S(83,166), S(0, 0), S( 0, 0)
   };
@@ -101,8 +101,8 @@ namespace {
         f = file_of(s);
         r = rank_of(s);
 
-        // This file cannot be half open
-        e->halfOpenFiles[Us] &= ~(1 << f);
+        // This file cannot be semi-open
+        e->semiopenFiles[Us] &= ~(1 << f);
 
         // Our rank plus previous one. Used for chain detection
         b = rank_bb(r) | rank_bb(Us == WHITE ? r - Rank(1) : r + Rank(1));
@@ -159,19 +159,19 @@ namespace {
 
         // Score this pawn
         if (isolated)
-            value -= IsolatedPawnPenalty[opposed][f];
+            value -= Isolated[opposed][f];
 
         if (doubled)
-            value -= DoubledPawnPenalty[opposed][f];
+            value -= Doubled[opposed][f];
 
         if (backward)
-            value -= BackwardPawnPenalty[opposed][f];
+            value -= Backward[opposed][f];
 
         if (chain)
-            value += ChainBonus[f];
+            value += ChainMember[f];
 
         if (candidate)
-            value += CandidateBonus[relative_rank(Us, s)];
+            value += CandidatePassed[relative_rank(Us, s)];
     }
 
     e->pawnsOnSquares[Us][BLACK] = popcount<Max15>(ourPawns & BlackSquares);
@@ -204,7 +204,7 @@ Entry* probe(const Position& pos, Table& entries) {
   e->key = key;
   e->passedPawns[WHITE] = e->passedPawns[BLACK] = 0;
   e->kingSquares[WHITE] = e->kingSquares[BLACK] = SQ_NONE;
-  e->halfOpenFiles[WHITE] = e->halfOpenFiles[BLACK] = 0xFF;
+  e->semiopenFiles[WHITE] = e->semiopenFiles[BLACK] = 0xFF;
 
   Bitboard wPawns = pos.pieces(WHITE, PAWN);
   Bitboard bPawns = pos.pieces(BLACK, PAWN);

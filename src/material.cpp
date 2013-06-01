@@ -35,8 +35,8 @@ namespace {
   const int NoPawnsSF[4] = { 6, 12, 32 };
 
   // Polynomial material balance parameters
-  const Value RedundantQueenPenalty = Value(320);
-  const Value RedundantRookPenalty  = Value(554);
+  const Value RedundantQueen = Value(320);
+  const Value RedundantRook  = Value(554);
 
   //                                  pair  pawn knight bishop rook queen
   const int LinearCoefficients[6] = { 1617, -162, -1172, -190,  105,  26 };
@@ -109,8 +109,8 @@ namespace {
     // Redundancy of major pieces, formula based on Kaufman's paper
     // "The Evaluation of Material Imbalances in Chess"
     if (pieceCount[Us][ROOK] > 0)
-        value -=  RedundantRookPenalty * (pieceCount[Us][ROOK] - 1)
-                + RedundantQueenPenalty * pieceCount[Us][QUEEN];
+        value -=  RedundantRook * (pieceCount[Us][ROOK] - 1)
+                + RedundantQueen * pieceCount[Us][QUEEN];
 
     // Second-degree polynomial material imbalance by Tord Romstad
     for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; pt1++)
