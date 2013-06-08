@@ -416,8 +416,12 @@ namespace {
 
         if (Options["Use Search Log"])
         {
+            RootMove& rm = RootMoves[0];
+            if (skill.best != MOVE_NONE)
+                rm = *std::find(RootMoves.begin(), RootMoves.end(), skill.best);
+
             Log log(Options["Search Log Filename"]);
-            log << pretty_pv(pos, depth, bestValue, Time::now() - SearchTime, &RootMoves[0].pv[0])
+            log << pretty_pv(pos, depth, rm.score, Time::now() - SearchTime, rm.pv.data())
                 << std::endl;
         }
 
