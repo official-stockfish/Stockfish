@@ -1467,15 +1467,15 @@ split_point_start: // At split points actual search starts from here
     {
         // Update occupancy as if the piece and the threat are moving
         Bitboard occ = pos.pieces() ^ m1from ^ m1to ^ m2from;
-        Piece piece = pos.piece_on(m1from);
+        Piece pc = pos.piece_on(m1from);
 
         // The moved piece attacks the square 'tto' ?
-        if (pos.attacks_from(piece, m1to, occ) & m2to)
+        if (pos.attacks_from(pc, m1to, occ) & m2to)
             return true;
 
         // Scan for possible X-ray attackers behind the moved piece
-        Bitboard xray =  (attacks_bb<  ROOK>(m2to, occ) & pos.pieces(color_of(piece), QUEEN, ROOK))
-                       | (attacks_bb<BISHOP>(m2to, occ) & pos.pieces(color_of(piece), QUEEN, BISHOP));
+        Bitboard xray =  (attacks_bb<  ROOK>(m2to, occ) & pos.pieces(color_of(pc), QUEEN, ROOK))
+                       | (attacks_bb<BISHOP>(m2to, occ) & pos.pieces(color_of(pc), QUEEN, BISHOP));
 
         // Verify attackers are triggered by our move and not already existing
         if (xray && (xray ^ (xray & pos.attacks_from<QUEEN>(m2to))))

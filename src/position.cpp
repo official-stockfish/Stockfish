@@ -747,17 +747,17 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   Color them = ~us;
   Square from = from_sq(m);
   Square to = to_sq(m);
-  Piece piece = piece_on(from);
-  PieceType pt = type_of(piece);
+  Piece pc = piece_on(from);
+  PieceType pt = type_of(pc);
   PieceType capture = type_of(m) == ENPASSANT ? PAWN : type_of(piece_on(to));
 
-  assert(color_of(piece) == us);
+  assert(color_of(pc) == us);
   assert(piece_on(to) == NO_PIECE || color_of(piece_on(to)) == them || type_of(m) == CASTLE);
   assert(capture != KING);
 
   if (type_of(m) == CASTLE)
   {
-      assert(piece == make_piece(us, KING));
+      assert(pc == make_piece(us, KING));
 
       bool kingSide = to > from;
       Square rfrom = to; // Castle is encoded as "king captures friendly rook"
@@ -857,7 +857,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       byColorBB[us] ^= from_to_bb;
 
       board[from] = NO_PIECE;
-      board[to] = piece;
+      board[to] = pc;
 
       // Update piece lists, index[from] is not updated and becomes stale. This
       // works as long as index[] is accessed just by known occupied squares.
@@ -920,7 +920,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   }
 
   // Update incremental scores
-  st->psqScore += pieceSquareTable[piece][to] - pieceSquareTable[piece][from];
+  st->psqScore += pieceSquareTable[pc][to] - pieceSquareTable[pc][from];
 
   // Set capture piece
   st->capturedType = capture;
