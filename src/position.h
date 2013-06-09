@@ -346,10 +346,6 @@ inline Key Position::key() const {
   return st->key;
 }
 
-inline Key Position::exclusion_key() const {
-  return st->key ^ Zobrist::exclusion;
-}
-
 inline Key Position::pawn_key() const {
   return st->pawnKey;
 }

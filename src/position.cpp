@@ -46,11 +46,16 @@ Value PieceValue[PHASE_NB][PIECE_NB] = {
 { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
 { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg } };
 
-Key Zobrist::psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
-Key Zobrist::enpassant[FILE_NB];
-Key Zobrist::castle[CASTLE_RIGHT_NB];
-Key Zobrist::side;
-Key Zobrist::exclusion;
+namespace Zobrist {
+
+  Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+  Key enpassant[FILE_NB];
+  Key castle[CASTLE_RIGHT_NB];
+  Key side;
+  Key exclusion;
+}
+
+Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion;}
 
 namespace {
 

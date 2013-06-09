@@ -328,15 +328,6 @@ inline Score operator/(Score s, int i) {
 #undef ENABLE_OPERATORS_ON
 #undef ENABLE_SAFE_OPERATORS_ON
 
-namespace Zobrist {
-
-  extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
-  extern Key enpassant[FILE_NB];
-  extern Key castle[CASTLE_RIGHT_NB];
-  extern Key side;
-  extern Key exclusion;
-}
-
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
