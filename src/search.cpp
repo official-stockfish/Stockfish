@@ -716,7 +716,7 @@ namespace {
                 && (ss-1)->reduction
                 && threatMove != MOVE_NONE
                 && allows(pos, (ss-1)->currentMove, threatMove))
-                return beta - 1;
+                return alpha;
         }
     }
 
