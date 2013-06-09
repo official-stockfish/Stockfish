@@ -295,14 +295,14 @@ namespace {
 
   void id_loop(Position& pos) {
 
-    Stack ss[MAX_PLY_PLUS_2];
+    Stack stack[MAX_PLY_PLUS_2], *ss = stack+1; // To allow referencing (ss-1)
     int depth, prevBestMoveChanges;
     Value bestValue, alpha, beta, delta;
 
-    memset(ss, 0, 4 * sizeof(Stack));
+    memset(ss-1, 0, 4 * sizeof(Stack));
     depth = BestMoveChanges = 0;
     bestValue = delta = -VALUE_INFINITE;
-    ss->currentMove = MOVE_NULL; // Hack to skip update gains
+    (ss-1)->currentMove = MOVE_NULL; // Hack to skip update gains
     TT.new_search();
     History.clear();
     Gains.clear();
@@ -349,9 +349,7 @@ namespace {
             // research with bigger window until not failing high/low anymore.
             while (true)
             {
-                // Search starts from ss+1 to allow referencing (ss-1). This is
-                // needed by update gains and ss copy when splitting at Root.
-                bestValue = search<Root>(pos, ss+1, alpha, beta, depth * ONE_PLY);
+                bestValue = search<Root>(pos, ss, alpha, beta, depth * ONE_PLY);
 
                 // Bring to front the best move. It is critical that sorting is
                 // done with a stable algorithm because all the values but the first
@@ -1693,11 +1691,11 @@ void Thread::idle_loop() {
 
           Threads.mutex.unlock();
 
-          Stack ss[MAX_PLY_PLUS_2];
+          Stack stack[MAX_PLY_PLUS_2], *ss = stack+1; // To allow referencing (ss-1)
           Position pos(*sp->pos, this);
 
-          memcpy(ss, sp->ss - 1, 4 * sizeof(Stack));
-          (ss+1)->splitPoint = sp;
+          memcpy(ss-1, sp->ss-1, 4 * sizeof(Stack));
+          ss->splitPoint = sp;
 
           sp->mutex.lock();
 
@@ -1707,13 +1705,13 @@ void Thread::idle_loop() {
 
           switch (sp->nodeType) {
           case Root:
-              search<SplitPointRoot>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
+              search<SplitPointRoot>(pos, ss, sp->alpha, sp->beta, sp->depth);
               break;
           case PV:
-              search<SplitPointPV>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
+              search<SplitPointPV>(pos, ss, sp->alpha, sp->beta, sp->depth);
               break;
           case NonPV:
-              search<SplitPointNonPV>(pos, ss+1, sp->alpha, sp->beta, sp->depth);
+              search<SplitPointNonPV>(pos, ss, sp->alpha, sp->beta, sp->depth);
               break;
           default:
               assert(false);
