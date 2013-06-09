@@ -105,9 +105,9 @@ void init() {
 
 namespace {
 
-/// next_attacker() is an helper function used by see() to locate the least
-/// valuable attacker for the side to move, remove the attacker we just found
-/// from the 'occupied' bitboard and scan for new X-ray attacks behind it.
+// next_attacker() is an helper function used by see() to locate the least
+// valuable attacker for the side to move, remove the attacker we just found
+// from the 'occupied' bitboard and scan for new X-ray attacks behind it.
 
 template<int Pt> FORCE_INLINE
 PieceType next_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
@@ -767,8 +767,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
       do_castle(from, to, rfrom, rto);
 
-      st->psqScore += psq_delta(make_piece(us, ROOK), rfrom, rto);
       k ^= Zobrist::psq[us][ROOK][rfrom] ^ Zobrist::psq[us][ROOK][rto];
+      st->psqScore += pieceSquareTable[make_piece(us, ROOK)][rto]
+                    - pieceSquareTable[make_piece(us, ROOK)][rfrom];
   }
 
   if (capture)
@@ -919,7 +920,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   }
 
   // Update incremental scores
-  st->psqScore += psq_delta(piece, from, to);
+  st->psqScore += pieceSquareTable[piece][to] - pieceSquareTable[piece][from];
 
   // Set capture piece
   st->capturedType = capture;

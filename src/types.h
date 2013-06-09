@@ -339,9 +339,6 @@ namespace Zobrist {
   void init();
 }
 
-CACHE_LINE_ALIGNMENT
-
-extern Score pieceSquareTable[PIECE_NB][SQUARE_NB];
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 

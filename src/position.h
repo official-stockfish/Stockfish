@@ -169,7 +169,6 @@ public:
 
   // Incremental piece-square evaluation
   Score psq_score() const;
-  Score psq_delta(Piece p, Square from, Square to) const;
   Value non_pawn_material(Color c) const;
 
   // Other properties of the position
@@ -356,10 +355,6 @@ inline Key Position::pawn_key() const {
 
 inline Key Position::material_key() const {
   return st->materialKey;
-}
-
-inline Score Position::psq_delta(Piece p, Square from, Square to) const {
-  return pieceSquareTable[p][to] - pieceSquareTable[p][from];
 }
 
 inline Score Position::psq_score() const {
