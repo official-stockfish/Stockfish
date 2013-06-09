@@ -252,7 +252,7 @@ Thread* ThreadPool::available_slave(Thread* master) const {
 template <bool Fake>
 void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bestValue,
                    Move* bestMove, Depth depth, Move threatMove, int moveCount,
-                   MovePicker* movePicker, int nodeType) {
+                   MovePicker* movePicker, int nodeType, bool cutNode) {
 
   assert(pos.pos_is_ok());
   assert(*bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
@@ -274,6 +274,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.alpha = alpha;
   sp.beta = beta;
   sp.nodeType = nodeType;
+  sp.cutNode = cutNode;
   sp.movePicker = movePicker;
   sp.moveCount = moveCount;
   sp.pos = &pos;
@@ -339,8 +340,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 }
 
 // Explicit template instantiations
-template void Thread::split<false>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int);
-template void Thread::split< true>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int);
+template void Thread::split<false>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int, bool);
+template void Thread::split< true>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int, bool);
 
 
 // wait_for_think_finished() waits for main thread to go to sleep then returns
