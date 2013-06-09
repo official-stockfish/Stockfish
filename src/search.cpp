@@ -455,11 +455,11 @@ namespace {
                     || Time::now() - SearchTime > (TimeMgr.available_time() * 20) / 100))
             {
                 Value rBeta = bestValue - 2 * PawnValueMg;
-                (ss+1)->excludedMove = RootMoves[0].pv[0];
-                (ss+1)->skipNullMove = true;
-                Value v = search<NonPV>(pos, ss+1, rBeta - 1, rBeta, (depth - 3) * ONE_PLY);
-                (ss+1)->skipNullMove = false;
-                (ss+1)->excludedMove = MOVE_NONE;
+                ss->excludedMove = RootMoves[0].pv[0];
+                ss->skipNullMove = true;
+                Value v = search<NonPV>(pos, ss, rBeta - 1, rBeta, (depth - 3) * ONE_PLY);
+                ss->skipNullMove = false;
+                ss->excludedMove = MOVE_NONE;
 
                 if (v < rBeta)
                     stop = true;
