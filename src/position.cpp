@@ -85,17 +85,17 @@ void init() {
   side = rk.rand<Key>();
   exclusion  = rk.rand<Key>();
 
-  for (PieceType pt = PAWN; pt <= KING; pt++)
+  for (Piece pc = W_PAWN; pc <= W_KING; pc++)
   {
-      PieceValue[MG][make_piece(BLACK, pt)] = PieceValue[MG][pt];
-      PieceValue[EG][make_piece(BLACK, pt)] = PieceValue[EG][pt];
+      PieceValue[MG][~pc] = PieceValue[MG][pc];
+      PieceValue[EG][~pc] = PieceValue[EG][pc];
 
-      Score v = make_score(PieceValue[MG][pt], PieceValue[EG][pt]);
+      Score v = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
       for (Square s = SQ_A1; s <= SQ_H8; s++)
       {
-          pieceSquareTable[make_piece(WHITE, pt)][ s] =  (v + PSQT[pt][s]);
-          pieceSquareTable[make_piece(BLACK, pt)][~s] = -(v + PSQT[pt][s]);
+          pieceSquareTable[ pc][ s] =  (v + PSQT[pc][s]);
+          pieceSquareTable[~pc][~s] = -(v + PSQT[pc][s]);
       }
   }
 }
