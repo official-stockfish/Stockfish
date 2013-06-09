@@ -335,8 +335,6 @@ namespace Zobrist {
   extern Key castle[CASTLE_RIGHT_NB];
   extern Key side;
   extern Key exclusion;
-
-  void init();
 }
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];

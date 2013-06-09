@@ -52,7 +52,7 @@ struct StateInfo {
   Key pawnKey, materialKey;
   Value npMaterial[COLOR_NB];
   int castleRights, rule50, pliesFromNull;
-  Score psqScore;
+  Score psq;
   Square epSquare;
 
   Key key;
@@ -95,6 +95,7 @@ public:
   Position(const Position& p, Thread* t) { *this = p; thisThread = t; }
   Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
   Position& operator=(const Position&);
+  static void init();
 
   // Text input/output
   void set(const std::string& fen, bool isChess960, Thread* th);
@@ -358,7 +359,7 @@ inline Key Position::material_key() const {
 }
 
 inline Score Position::psq_score() const {
-  return st->psqScore;
+  return st->psq;
 }
 
 inline Value Position::non_pawn_material(Color c) const {
