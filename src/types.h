@@ -359,10 +359,6 @@ inline Square operator~(Square s) {
   return Square(s ^ 56); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-inline Piece operator~(Piece c) {
-  return Piece(c ^ 8);
-}
-
 inline Square operator|(File f, Rank r) {
   return Square((r << 3) | f);
 }
