@@ -419,7 +419,7 @@ namespace {
                 rm = *std::find(RootMoves.begin(), RootMoves.end(), skill.best);
 
             Log log(Options["Search Log Filename"]);
-            log << pretty_pv(pos, depth, rm.score, Time::now() - SearchTime, rm.pv.data())
+            log << pretty_pv(pos, depth, rm.score, Time::now() - SearchTime, &rm.pv[0])
                 << std::endl;
         }
 
