@@ -23,23 +23,16 @@
 #include "misc.h"
 #include "types.h"
 
-/// The TTEntry is the class of transposition table entries
+/// The TTEntry is the 128 bit transposition table entry, defined as below:
 ///
-/// A TTEntry needs 128 bits to be stored
-///
-/// bit  0-31: key
-/// bit 32-63: data
-/// bit 64-79: value
-/// bit 80-95: depth
-/// bit 96-111: static value
-/// bit 112-127: margin of static value
-///
-/// the 32 bits of the data field are so defined
-///
-/// bit  0-15: move
-/// bit 16-20: not used
-/// bit 21-22: value type
-/// bit 23-31: generation
+/// key: 32 bit
+/// move: 16 bit
+/// bound type: 8 bit
+/// generation: 8 bit
+/// value: 16 bit
+/// depth: 16 bit
+/// static value: 16 bit
+/// static margin: 16 bit
 
 class TTEntry {
 
