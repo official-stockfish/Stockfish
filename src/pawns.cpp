@@ -93,7 +93,7 @@ namespace {
     Rank r;
     bool passed, isolated, doubled, opposed, chain, backward, candidate;
     Score value = SCORE_ZERO;
-    const Square* pl = pos.piece_list(Us, PAWN);
+    const Square* pl = pos.list<PAWN>(Us);
 
     Bitboard ourPawns = pos.pieces(Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
@@ -103,7 +103,7 @@ namespace {
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
     e->pawnsOnSquares[Us][BLACK] = popcount<Max15>(ourPawns & BlackSquares);
-    e->pawnsOnSquares[Us][WHITE] = pos.piece_count(Us, PAWN) - e->pawnsOnSquares[Us][BLACK];
+    e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
 
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)

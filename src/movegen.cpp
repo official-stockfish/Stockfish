@@ -211,7 +211,7 @@ namespace {
 
     assert(Pt != KING && Pt != PAWN);
 
-    const Square* pl = pos.piece_list(us, Pt);
+    const Square* pl = pos.list<Pt>(us);
 
     for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {

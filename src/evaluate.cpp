@@ -391,7 +391,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
       {
           // Check for KBP vs KB with only a single pawn that is almost
           // certainly a draw or at least two pawns.
-          bool one_pawn = (pos.piece_count(WHITE, PAWN) + pos.piece_count(BLACK, PAWN) == 1);
+          bool one_pawn = (pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK) == 1);
           sf = one_pawn ? ScaleFactor(8) : ScaleFactor(32);
       }
       else
@@ -440,8 +440,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
 
     // Init king safety tables only if we are going to use them
-    if (   pos.piece_count(Us, QUEEN)
-        && pos.non_pawn_material(Us) > QueenValueMg + PawnValueMg)
+    if (pos.count<QUEEN>(Us) && pos.non_pawn_material(Us) > QueenValueMg + PawnValueMg)
     {
         ei.kingRing[Them] = b | shift_bb<Down>(b);
         b &= ei.attackedBy[Us][PAWN];
@@ -488,7 +487,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     Score score = SCORE_ZERO;
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Square* pl = pos.piece_list(Us, Piece);
+    const Square* pl = pos.list<Piece>(Us);
 
     ei.attackedBy[Us][Piece] = 0;
 

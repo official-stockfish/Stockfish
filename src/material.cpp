@@ -75,24 +75,24 @@ namespace {
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return   pos.non_pawn_material(Them) == VALUE_ZERO
-          && pos.piece_count(Them, PAWN) == 0
-          && pos.non_pawn_material(Us)   >= RookValueMg;
+    return  !pos.count<PAWN>(Them)
+          && pos.non_pawn_material(Them) == VALUE_ZERO
+          && pos.non_pawn_material(Us) >= RookValueMg;
   }
 
   template<Color Us> bool is_KBPsKs(const Position& pos) {
-    return   pos.non_pawn_material(Us)   == BishopValueMg
-          && pos.piece_count(Us, BISHOP) == 1
-          && pos.piece_count(Us, PAWN)   >= 1;
+    return   pos.non_pawn_material(Us) == BishopValueMg
+          && pos.count<BISHOP>(Us) == 1
+          && pos.count<PAWN  >(Us) >= 1;
   }
 
   template<Color Us> bool is_KQKRPs(const Position& pos) {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return   pos.piece_count(Us, PAWN)    == 0
-          && pos.non_pawn_material(Us)    == QueenValueMg
-          && pos.piece_count(Us, QUEEN)   == 1
-          && pos.piece_count(Them, ROOK)  == 1
-          && pos.piece_count(Them, PAWN)  >= 1;
+    return  !pos.count<PAWN>(Us)
+          && pos.non_pawn_material(Us) == QueenValueMg
+          && pos.count<QUEEN>(Us)  == 1
+          && pos.count<ROOK>(Them) == 1
+          && pos.count<PAWN>(Them) >= 1;
   }
 
   /// imbalance() calculates imbalance comparing piece count of each
@@ -180,8 +180,8 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       assert((pos.pieces(WHITE, KNIGHT) | pos.pieces(WHITE, BISHOP)));
       assert((pos.pieces(BLACK, KNIGHT) | pos.pieces(BLACK, BISHOP)));
 
-      if (   pos.piece_count(WHITE, BISHOP) + pos.piece_count(WHITE, KNIGHT) <= 2
-          && pos.piece_count(BLACK, BISHOP) + pos.piece_count(BLACK, KNIGHT) <= 2)
+      if (   pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE) <= 2
+          && pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK) <= 2)
       {
           e->evaluationFunction = &EvaluateKmmKm[pos.side_to_move()];
           return e;
@@ -221,17 +221,17 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
 
   if (npm_w + npm_b == VALUE_ZERO)
   {
-      if (pos.piece_count(BLACK, PAWN) == 0)
+      if (!pos.count<PAWN>(BLACK))
       {
-          assert(pos.piece_count(WHITE, PAWN) >= 2);
+          assert(pos.count<PAWN>(WHITE) >= 2);
           e->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
       }
-      else if (pos.piece_count(WHITE, PAWN) == 0)
+      else if (!pos.count<PAWN>(WHITE))
       {
-          assert(pos.piece_count(BLACK, PAWN) >= 2);
+          assert(pos.count<PAWN>(BLACK) >= 2);
           e->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
       }
-      else if (pos.piece_count(WHITE, PAWN) == 1 && pos.piece_count(BLACK, PAWN) == 1)
+      else if (pos.count<PAWN>(WHITE) == 1 && pos.count<PAWN>(BLACK) == 1)
       {
           // This is a special case because we set scaling functions
           // for both colors instead of only one.
@@ -241,23 +241,23 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   }
 
   // No pawns makes it difficult to win, even with a material advantage
-  if (pos.piece_count(WHITE, PAWN) == 0 && npm_w - npm_b <= BishopValueMg)
+  if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
   {
       e->factor[WHITE] = (uint8_t)
-      (npm_w == npm_b || npm_w < RookValueMg ? 0 : NoPawnsSF[std::min(pos.piece_count(WHITE, BISHOP), 2)]);
+      (npm_w == npm_b || npm_w < RookValueMg ? 0 : NoPawnsSF[std::min(pos.count<BISHOP>(WHITE), 2)]);
   }
 
-  if (pos.piece_count(BLACK, PAWN) == 0 && npm_b - npm_w <= BishopValueMg)
+  if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
   {
       e->factor[BLACK] = (uint8_t)
-      (npm_w == npm_b || npm_b < RookValueMg ? 0 : NoPawnsSF[std::min(pos.piece_count(BLACK, BISHOP), 2)]);
+      (npm_w == npm_b || npm_b < RookValueMg ? 0 : NoPawnsSF[std::min(pos.count<BISHOP>(BLACK), 2)]);
   }
 
   // Compute the space weight
   if (npm_w + npm_b >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
   {
-      int minorPieceCount =  pos.piece_count(WHITE, KNIGHT) + pos.piece_count(WHITE, BISHOP)
-                           + pos.piece_count(BLACK, KNIGHT) + pos.piece_count(BLACK, BISHOP);
+      int minorPieceCount =  pos.count<KNIGHT>(WHITE) + pos.count<BISHOP>(WHITE)
+                           + pos.count<KNIGHT>(BLACK) + pos.count<BISHOP>(BLACK);
 
       e->spaceWeight = minorPieceCount * minorPieceCount;
   }
@@ -266,10 +266,10 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   // for the bishop pair "extended piece", this allow us to be more flexible
   // in defining bishop pair bonuses.
   const int pieceCount[COLOR_NB][PIECE_TYPE_NB] = {
-  { pos.piece_count(WHITE, BISHOP) > 1, pos.piece_count(WHITE, PAWN), pos.piece_count(WHITE, KNIGHT),
-    pos.piece_count(WHITE, BISHOP)    , pos.piece_count(WHITE, ROOK), pos.piece_count(WHITE, QUEEN) },
-  { pos.piece_count(BLACK, BISHOP) > 1, pos.piece_count(BLACK, PAWN), pos.piece_count(BLACK, KNIGHT),
-    pos.piece_count(BLACK, BISHOP)    , pos.piece_count(BLACK, ROOK), pos.piece_count(BLACK, QUEEN) } };
+  { pos.count<BISHOP>(WHITE) > 1, pos.count<PAWN>(WHITE), pos.count<KNIGHT>(WHITE),
+    pos.count<BISHOP>(WHITE)    , pos.count<ROOK>(WHITE), pos.count<QUEEN >(WHITE) },
+  { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
+    pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
   e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
   return e;
