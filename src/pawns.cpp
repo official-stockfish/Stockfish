@@ -84,6 +84,7 @@ namespace {
                        Bitboard theirPawns, Pawns::Entry* e) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Square  Up = (Us == WHITE ? DELTA_N : DELTA_S);
 
     Bitboard b;
     Square s;
@@ -138,7 +139,7 @@ namespace {
 
             // The friendly pawn needs to be at least two ranks closer than the
             // enemy pawn in order to help the potentially backward pawn advance.
-            backward = (b | (Us == WHITE ? b << 8 : b >> 8)) & theirPawns;
+            backward = (b | shift_bb<Up>(b)) & theirPawns;
         }
 
         assert(opposed | passed | (attack_span_mask(Us, s) & theirPawns));
@@ -208,8 +209,8 @@ Entry* probe(const Position& pos, Table& entries) {
 
   Bitboard wPawns = pos.pieces(WHITE, PAWN);
   Bitboard bPawns = pos.pieces(BLACK, PAWN);
-  e->pawnAttacks[WHITE] = ((wPawns & ~FileHBB) << 9) | ((wPawns & ~FileABB) << 7);
-  e->pawnAttacks[BLACK] = ((bPawns & ~FileHBB) >> 7) | ((bPawns & ~FileABB) >> 9);
+  e->pawnAttacks[WHITE] = shift_bb<DELTA_NE>(wPawns) | shift_bb<DELTA_NW>(wPawns);
+  e->pawnAttacks[BLACK] = shift_bb<DELTA_SE>(bPawns) | shift_bb<DELTA_SW>(bPawns);
 
   e->value =  evaluate_pawns<WHITE>(pos, wPawns, bPawns, e)
             - evaluate_pawns<BLACK>(pos, bPawns, wPawns, e);

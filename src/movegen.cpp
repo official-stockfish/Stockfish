@@ -68,23 +68,11 @@ namespace {
   }
 
 
-  template<Square Delta>
-  inline Bitboard move_pawns(Bitboard p) {
-
-    return  Delta == DELTA_N  ?  p << 8
-          : Delta == DELTA_S  ?  p >> 8
-          : Delta == DELTA_NE ? (p & ~FileHBB) << 9
-          : Delta == DELTA_SE ? (p & ~FileHBB) >> 7
-          : Delta == DELTA_NW ? (p & ~FileABB) << 7
-          : Delta == DELTA_SW ? (p & ~FileABB) >> 9 : 0;
-  }
-
-
   template<GenType Type, Square Delta>
   inline MoveStack* generate_promotions(MoveStack* mlist, Bitboard pawnsOn7,
                                         Bitboard target, const CheckInfo* ci) {
 
-    Bitboard b = move_pawns<Delta>(pawnsOn7) & target;
+    Bitboard b = shift_bb<Delta>(pawnsOn7) & target;
 
     while (b)
     {
@@ -122,9 +110,9 @@ namespace {
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB  : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB  : Rank6BB);
-    const Square   UP       = (Us == WHITE ? DELTA_N  : DELTA_S);
-    const Square   RIGHT    = (Us == WHITE ? DELTA_NE : DELTA_SW);
-    const Square   LEFT     = (Us == WHITE ? DELTA_NW : DELTA_SE);
+    const Square   Up       = (Us == WHITE ? DELTA_N  : DELTA_S);
+    const Square   Right    = (Us == WHITE ? DELTA_NE : DELTA_SW);
+    const Square   Left     = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
     Bitboard b1, b2, dc1, dc2, emptySquares;
 
@@ -139,8 +127,8 @@ namespace {
     {
         emptySquares = (Type == QUIETS || Type == QUIET_CHECKS ? target : ~pos.pieces());
 
-        b1 = move_pawns<UP>(pawnsNotOn7)   & emptySquares;
-        b2 = move_pawns<UP>(b1 & TRank3BB) & emptySquares;
+        b1 = shift_bb<Up>(pawnsNotOn7)   & emptySquares;
+        b2 = shift_bb<Up>(b1 & TRank3BB) & emptySquares;
 
         if (Type == EVASIONS) // Consider only blocking squares
         {
@@ -159,16 +147,16 @@ namespace {
             // promotion has been already generated among captures.
             if (pawnsNotOn7 & ci->dcCandidates)
             {
-                dc1 = move_pawns<UP>(pawnsNotOn7 & ci->dcCandidates) & emptySquares & ~file_bb(ci->ksq);
-                dc2 = move_pawns<UP>(dc1 & TRank3BB) & emptySquares;
+                dc1 = shift_bb<Up>(pawnsNotOn7 & ci->dcCandidates) & emptySquares & ~file_bb(ci->ksq);
+                dc2 = shift_bb<Up>(dc1 & TRank3BB) & emptySquares;
 
                 b1 |= dc1;
                 b2 |= dc2;
             }
         }
 
-        SERIALIZE_PAWNS(b1, UP);
-        SERIALIZE_PAWNS(b2, UP + UP);
+        SERIALIZE_PAWNS(b1, Up);
+        SERIALIZE_PAWNS(b2, Up + Up);
     }
 
     // Promotions and underpromotions
@@ -180,19 +168,19 @@ namespace {
         if (Type == EVASIONS)
             emptySquares &= target;
 
-        mlist = generate_promotions<Type, RIGHT>(mlist, pawnsOn7, enemies, ci);
-        mlist = generate_promotions<Type, LEFT>(mlist, pawnsOn7, enemies, ci);
-        mlist = generate_promotions<Type, UP>(mlist, pawnsOn7, emptySquares, ci);
+        mlist = generate_promotions<Type, Right>(mlist, pawnsOn7, enemies, ci);
+        mlist = generate_promotions<Type, Left >(mlist, pawnsOn7, enemies, ci);
+        mlist = generate_promotions<Type, Up>(mlist, pawnsOn7, emptySquares, ci);
     }
 
     // Standard and en-passant captures
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
     {
-        b1 = move_pawns<RIGHT>(pawnsNotOn7) & enemies;
-        b2 = move_pawns<LEFT >(pawnsNotOn7) & enemies;
+        b1 = shift_bb<Right>(pawnsNotOn7) & enemies;
+        b2 = shift_bb<Left >(pawnsNotOn7) & enemies;
 
-        SERIALIZE_PAWNS(b1, RIGHT);
-        SERIALIZE_PAWNS(b2, LEFT);
+        SERIALIZE_PAWNS(b1, Right);
+        SERIALIZE_PAWNS(b2, Left);
 
         if (pos.ep_square() != SQ_NONE)
         {
@@ -201,7 +189,7 @@ namespace {
             // An en passant capture can be an evasion only if the checking piece
             // is the double pushed pawn and so is in the target. Otherwise this
             // is a discovery check and we are forced to do otherwise.
-            if (Type == EVASIONS && !(target & (pos.ep_square() - UP)))
+            if (Type == EVASIONS && !(target & (pos.ep_square() - Up)))
                 return mlist;
 
             b1 = pawnsNotOn7 & pos.attacks_from<PAWN>(pos.ep_square(), Them);

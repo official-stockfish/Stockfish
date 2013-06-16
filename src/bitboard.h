@@ -96,6 +96,18 @@ inline bool more_than_one(Bitboard b) {
 }
 
 
+/// shift_bb() moves bitboard one step along direction Delta. Mainly for pawns.
+
+template<Square Delta>
+inline Bitboard shift_bb(Bitboard b) {
+
+  return  Delta == DELTA_N  ?  b             << 8 : Delta == DELTA_S  ?  b             >> 8
+        : Delta == DELTA_NE ? (b & ~FileHBB) << 9 : Delta == DELTA_SE ? (b & ~FileHBB) >> 7
+        : Delta == DELTA_NW ? (b & ~FileABB) << 7 : Delta == DELTA_SW ? (b & ~FileABB) >> 9
+        : 0;
+}
+
+
 /// rank_bb() and file_bb() take a file or a square as input and return
 /// a bitboard representing all squares on the given file or rank.
 

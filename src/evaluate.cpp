@@ -433,7 +433,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
   template<Color Us>
   void init_eval_info(const Position& pos, EvalInfo& ei) {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Color  Them = (Us == WHITE ? BLACK : WHITE);
+    const Square Down = (Us == WHITE ? DELTA_S : DELTA_N);
 
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
     ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
@@ -442,7 +443,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     if (   pos.piece_count(Us, QUEEN)
         && pos.non_pawn_material(Us) > QueenValueMg + PawnValueMg)
     {
-        ei.kingRing[Them] = (b | (Us == WHITE ? b >> 8 : b << 8));
+        ei.kingRing[Them] = b | shift_bb<Down>(b);
         b &= ei.attackedBy[Us][PAWN];
         ei.kingAttackersCount[Us] = b ? popcount<Max15>(b) / 2 : 0;
         ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = 0;
