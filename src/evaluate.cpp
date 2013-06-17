@@ -541,8 +541,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 && relative_rank(Us, pos.king_square(Them)) == RANK_8)
                 score += Piece == ROOK ? RookOn7th : QueenOn7th;
 
-            // Major piece attacking enemy pawns on the same rank
-            Bitboard pawns = pos.pieces(Them, PAWN) & rank_bb(s);
+            // Major piece attacking enemy pawns on the same rank/file
+            Bitboard pawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
             if (pawns)
                 score += popcount<Max15>(pawns) * (Piece == ROOK ? RookOnPawn : QueenOnPawn);
         }
