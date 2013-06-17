@@ -1541,11 +1541,9 @@ bool Position::pos_is_ok(int* failedStep) const {
       return false;
 
   if ((*step)++, debugNonPawnMaterial)
-  {
       if (   st->npMaterial[WHITE] != compute_non_pawn_material(WHITE)
           || st->npMaterial[BLACK] != compute_non_pawn_material(BLACK))
           return false;
-  }
 
   if ((*step)++, debugPieceCounts)
       for (Color c = WHITE; c <= BLACK; c++)
@@ -1557,13 +1555,9 @@ bool Position::pos_is_ok(int* failedStep) const {
       for (Color c = WHITE; c <= BLACK; c++)
           for (PieceType pt = PAWN; pt <= KING; pt++)
               for (int i = 0; i < pieceCount[c][pt]; i++)
-              {
-                  if (board[pieceList[c][pt][i]] != make_piece(c, pt))
+                  if (   board[pieceList[c][pt][i]] != make_piece(c, pt)
+                      || index[pieceList[c][pt][i]] != i)
                       return false;
-
-                  if (index[pieceList[c][pt][i]] != i)
-                      return false;
-              }
 
   if ((*step)++, debugCastleSquares)
       for (Color c = WHITE; c <= BLACK; c++)
@@ -1574,10 +1568,8 @@ bool Position::pos_is_ok(int* failedStep) const {
               if (!can_castle(cr))
                   continue;
 
-              if ((castleRightsMask[king_square(c)] & cr) != cr)
-                  return false;
-
-              if (   piece_on(castleRookSquare[c][s]) != make_piece(c, ROOK)
+              if (  (castleRightsMask[king_square(c)] & cr) != cr
+                  || piece_on(castleRookSquare[c][s]) != make_piece(c, ROOK)
                   || castleRightsMask[castleRookSquare[c][s]] != cr)
                   return false;
           }
