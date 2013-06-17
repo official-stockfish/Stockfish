@@ -726,7 +726,6 @@ namespace {
         &&  depth >= 5 * ONE_PLY
         && !inCheck
         && !ss->skipNullMove
-        &&  excludedMove == MOVE_NONE
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = beta + 200;
