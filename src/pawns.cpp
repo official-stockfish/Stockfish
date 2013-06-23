@@ -134,7 +134,7 @@ namespace {
         // be backward. If there are friendly pawns behind on adjacent files
         // or if can capture an enemy pawn it cannot be backward either.
         if (   !(passed | isolated | chain)
-            && !(ourPawns & attack_span_mask(Them, s))
+            && !(ourPawns & pawn_attack_span(Them, s))
             && !(pos.attacks_from<PAWN>(s, Us) & theirPawns))
         {
             // We now know that there are no friendly pawns beside or behind this
@@ -153,15 +153,15 @@ namespace {
             backward = (b | shift_bb<Up>(b)) & theirPawns;
         }
 
-        assert(opposed | passed | (attack_span_mask(Us, s) & theirPawns));
+        assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
         // A not passed pawn is a candidate to become passed if it is free to
         // advance and if the number of friendly pawns beside or behind this
         // pawn on adjacent files is higher or equal than the number of
         // enemy pawns in the forward direction on the adjacent files.
         candidate =   !(opposed | passed | backward | isolated)
-                   && (b = attack_span_mask(Them, s + pawn_push(Us)) & ourPawns) != 0
-                   &&  popcount<Max15>(b) >= popcount<Max15>(attack_span_mask(Us, s) & theirPawns);
+                   && (b = pawn_attack_span(Them, s + pawn_push(Us)) & ourPawns) != 0
+                   &&  popcount<Max15>(b) >= popcount<Max15>(pawn_attack_span(Us, s) & theirPawns);
 
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate passed pawns. Only the frontmost passed

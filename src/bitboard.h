@@ -53,14 +53,13 @@ extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard FileBB[FILE_NB];
 extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
-extern Bitboard ThisAndAdjacentFilesBB[FILE_NB];
 extern Bitboard InFrontBB[COLOR_NB][RANK_NB];
 extern Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard DistanceRingsBB[SQUARE_NB][8];
 extern Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
 extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
-extern Bitboard AttackSpanMask[COLOR_NB][SQUARE_NB];
+extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 const Bitboard BlackSquares = 0xAA55AA55AA55AA55ULL;
@@ -136,14 +135,6 @@ inline Bitboard adjacent_files_bb(File f) {
 }
 
 
-/// this_and_adjacent_files_bb takes a file as input and returns a bitboard
-/// representing all squares on the given and adjacent files.
-
-inline Bitboard this_and_adjacent_files_bb(File f) {
-  return ThisAndAdjacentFilesBB[f];
-}
-
-
 /// in_front_bb() takes a color and a rank or square as input, and returns a
 /// bitboard representing all the squares on all ranks in front of the rank
 /// (or square), from the given color's point of view.  For instance,
@@ -194,8 +185,8 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 /// when it moves along its file starting from the given square. Definition is:
 /// AttackSpanMask[c][s] = in_front_bb(c, s) & adjacent_files_bb(s);
 
-inline Bitboard attack_span_mask(Color c, Square s) {
-  return AttackSpanMask[c][s];
+inline Bitboard pawn_attack_span(Color c, Square s) {
+  return PawnAttackSpan[c][s];
 }
 
 
