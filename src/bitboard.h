@@ -135,18 +135,13 @@ inline Bitboard adjacent_files_bb(File f) {
 }
 
 
-/// in_front_bb() takes a color and a rank or square as input, and returns a
-/// bitboard representing all the squares on all ranks in front of the rank
-/// (or square), from the given color's point of view.  For instance,
-/// in_front_bb(WHITE, RANK_5) will give all squares on ranks 6, 7 and 8, while
-/// in_front_bb(BLACK, SQ_D3) will give all squares on ranks 1 and 2.
+/// in_front_bb() takes a color and a rank as input, and returns a bitboard
+/// representing all the squares on all ranks in front of the rank, from the
+/// given color's point of view. For instance, in_front_bb(BLACK, RANK_3) will
+/// give all squares on ranks 1 and 2.
 
 inline Bitboard in_front_bb(Color c, Rank r) {
   return InFrontBB[c][r];
-}
-
-inline Bitboard in_front_bb(Color c, Square s) {
-  return InFrontBB[c][rank_of(s)];
 }
 
 

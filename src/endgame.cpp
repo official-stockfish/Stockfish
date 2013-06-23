@@ -704,7 +704,7 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
       // Does the defending king block the pawns?
       if (   square_distance(ksq, relative_square(strongerSide, SQ_A8)) <= 1
           || (    file_of(ksq) == FILE_A
-              && !(in_front_bb(strongerSide, ksq) & pawns)))
+              && !(in_front_bb(strongerSide, rank_of(ksq)) & pawns)))
           return SCALE_FACTOR_DRAW;
   }
   // Are all pawns on the 'h' file?
@@ -713,7 +713,7 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
     // Does the defending king block the pawns?
     if (   square_distance(ksq, relative_square(strongerSide, SQ_H8)) <= 1
         || (    file_of(ksq) == FILE_H
-            && !(in_front_bb(strongerSide, ksq) & pawns)))
+            && !(in_front_bb(strongerSide, rank_of(ksq)) & pawns)))
         return SCALE_FACTOR_DRAW;
   }
   return SCALE_FACTOR_NONE;

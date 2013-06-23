@@ -220,7 +220,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   const Color Them = (Us == WHITE ? BLACK : WHITE);
 
   Value safety = MaxSafetyBonus;
-  Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, ksq) | rank_bb(ksq));
+  Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us) & ~rank_bb(ksq);
   Bitboard theirPawns = b & pos.pieces(Them);
   Rank rkUs, rkThem;
