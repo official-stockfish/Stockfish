@@ -156,7 +156,7 @@ inline Bitboard file_bb(Square s) {
 }
 
 
-/// adjacent_files_bb takes a file as input and returns a bitboard representing
+/// adjacent_files_bb() takes a file as input and returns a bitboard representing
 /// all squares on the adjacent files.
 
 inline Bitboard adjacent_files_bb(File f) {
@@ -174,7 +174,7 @@ inline Bitboard in_front_bb(Color c, Rank r) {
 }
 
 
-/// between_bb returns a bitboard representing all squares between two squares.
+/// between_bb() returns a bitboard representing all squares between two squares.
 /// For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with the bits for
 /// square d5 and e6 set.  If s1 and s2 are not on the same line, file or diagonal,
 /// 0 is returned.
@@ -184,7 +184,7 @@ inline Bitboard between_bb(Square s1, Square s2) {
 }
 
 
-/// forward_bb takes a color and a square as input, and returns a bitboard
+/// forward_bb() takes a color and a square as input, and returns a bitboard
 /// representing all squares along the line in front of the square, from the
 /// point of view of the given color. Definition of the table is:
 /// ForwardBB[c][s] = in_front_bb(c, s) & file_bb(s)
@@ -194,27 +194,27 @@ inline Bitboard forward_bb(Color c, Square s) {
 }
 
 
-/// passed_pawn_mask takes a color and a square as input, and returns a
-/// bitboard mask which can be used to test if a pawn of the given color on
-/// the given square is a passed pawn. Definition of the table is:
-/// PassedPawnMask[c][s] = in_front_bb(c, s) & this_and_adjacent_files_bb(s)
-
-inline Bitboard passed_pawn_mask(Color c, Square s) {
-  return PassedPawnMask[c][s];
-}
-
-
-/// attack_span_mask takes a color and a square as input, and returns a bitboard
+/// pawn_attack_span() takes a color and a square as input, and returns a bitboard
 /// representing all squares that can be attacked by a pawn of the given color
 /// when it moves along its file starting from the given square. Definition is:
-/// AttackSpanMask[c][s] = in_front_bb(c, s) & adjacent_files_bb(s);
+/// PawnAttackSpan[c][s] = in_front_bb(c, s) & adjacent_files_bb(s);
 
 inline Bitboard pawn_attack_span(Color c, Square s) {
   return PawnAttackSpan[c][s];
 }
 
 
-/// squares_aligned returns true if the squares s1, s2 and s3 are aligned
+/// passed_pawn_mask() takes a color and a square as input, and returns a
+/// bitboard mask which can be used to test if a pawn of the given color on
+/// the given square is a passed pawn. Definition of the table is:
+/// PassedPawnMask[c][s] = pawn_attack_span(c, s) | forward_bb(c, s)
+
+inline Bitboard passed_pawn_mask(Color c, Square s) {
+  return PassedPawnMask[c][s];
+}
+
+
+/// squares_aligned() returns true if the squares s1, s2 and s3 are aligned
 /// either on a straight or on a diagonal line.
 
 inline bool squares_aligned(Square s1, Square s2, Square s3) {
