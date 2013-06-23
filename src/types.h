@@ -310,7 +310,6 @@ inline Score operator/(Score s, int i) {
 #undef ENABLE_SAFE_OPERATORS_ON
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
-extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
 struct MoveStack {
   Move move;
@@ -389,18 +388,6 @@ inline Rank relative_rank(Color c, Square s) {
 inline bool opposite_colors(Square s1, Square s2) {
   int s = int(s1) ^ int(s2);
   return ((s >> 3) ^ s) & 1;
-}
-
-inline int file_distance(Square s1, Square s2) {
-  return abs(file_of(s1) - file_of(s2));
-}
-
-inline int rank_distance(Square s1, Square s2) {
-  return abs(rank_of(s1) - rank_of(s2));
-}
-
-inline int square_distance(Square s1, Square s2) {
-  return SquareDistance[s1][s2];
 }
 
 inline char file_to_char(File f, bool tolower = true) {

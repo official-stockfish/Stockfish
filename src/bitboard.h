@@ -80,6 +80,8 @@ extern Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 extern Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
+extern int SquareDistance[SQUARE_NB][SQUARE_NB];
+
 const Bitboard BlackSquares = 0xAA55AA55AA55AA55ULL;
 
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
@@ -105,11 +107,20 @@ inline Bitboard operator^(Bitboard b, Square s) {
   return b ^ SquareBB[s];
 }
 
-
-/// more_than_one() returns true if in 'b' there is more than one bit set
-
 inline bool more_than_one(Bitboard b) {
   return b & (b - 1);
+}
+
+inline int square_distance(Square s1, Square s2) {
+  return SquareDistance[s1][s2];
+}
+
+inline int file_distance(Square s1, Square s2) {
+  return abs(file_of(s1) - file_of(s2));
+}
+
+inline int rank_distance(Square s1, Square s2) {
+  return abs(rank_of(s1) - rank_of(s2));
 }
 
 
