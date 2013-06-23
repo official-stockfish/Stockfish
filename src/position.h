@@ -193,7 +193,7 @@ private:
 
   // Helper functions
   void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
-  template<bool FindPinned> Bitboard hidden_checkers() const;
+  Bitboard hidden_checkers(Square ksq, Color c) const;
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;
@@ -331,11 +331,11 @@ inline Bitboard Position::checkers() const {
 }
 
 inline Bitboard Position::discovered_check_candidates() const {
-  return hidden_checkers<false>();
+  return hidden_checkers(king_square(~sideToMove), sideToMove);
 }
 
 inline Bitboard Position::pinned_pieces() const {
-  return hidden_checkers<true>();
+  return hidden_checkers(king_square(sideToMove), ~sideToMove);
 }
 
 inline bool Position::pawn_is_passed(Color c, Square s) const {
