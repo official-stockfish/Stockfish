@@ -1156,8 +1156,7 @@ split_point_start: // At split points actual search starts from here
     ttDepth = InCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
                                                   : DEPTH_QS_NO_CHECKS;
 
-    // Transposition table lookup. At PV nodes, we don't use the TT for
-    // pruning, but only for move ordering.
+    // Transposition table lookup
     posKey = pos.key();
     tte = TT.probe(posKey);
     ttMove = tte ? tte->move() : MOVE_NONE;
