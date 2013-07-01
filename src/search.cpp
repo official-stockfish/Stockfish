@@ -482,7 +482,7 @@ namespace {
     assert(PvNode || (alpha == beta - 1));
     assert(depth > DEPTH_ZERO);
 
-    Move movesSearched[64];
+    Move quietsSearched[64];
     StateInfo st;
     const TTEntry *tte;
     SplitPoint* splitPoint;
@@ -493,11 +493,11 @@ namespace {
     Value eval, nullValue, futilityValue;
     bool inCheck, givesCheck, pvMove, singularExtensionNode;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
-    int moveCount, playedMoveCount;
+    int moveCount, quietCount;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
-    moveCount = playedMoveCount = 0;
+    moveCount = quietCount = 0;
     inCheck = pos.checkers();
 
     if (SpNode)
@@ -605,10 +605,10 @@ namespace {
 
     // Update gain for the parent non-capture move given the static position
     // evaluation before and after the move.
-    if (   (move = (ss-1)->currentMove) != MOVE_NULL
-        && (ss-1)->staticEval != VALUE_NONE
+    if (   !pos.captured_piece_type()
         &&  ss->staticEval != VALUE_NONE
-        && !pos.captured_piece_type()
+        && (ss-1)->staticEval != VALUE_NONE
+        && (move = (ss-1)->currentMove) != MOVE_NULL
         &&  type_of(move) == NORMAL)
     {
         Square to = to_sq(move);
@@ -917,8 +917,8 @@ split_point_start: // At split points actual search starts from here
 
       pvMove = PvNode && moveCount == 1;
       ss->currentMove = move;
-      if (!SpNode && !captureOrPromotion && playedMoveCount < 64)
-          movesSearched[playedMoveCount++] = move;
+      if (!SpNode && !captureOrPromotion && quietCount < 64)
+          quietsSearched[quietCount++] = move;
 
       // Step 14. Make the move
       pos.do_move(move, st, ci, givesCheck);
@@ -1069,43 +1069,37 @@ split_point_start: // At split points actual search starts from here
 
     // If we have pruned all the moves without searching return a fail-low score
     if (bestValue == -VALUE_INFINITE)
-    {
-        assert(!playedMoveCount);
-
         bestValue = alpha;
-    }
 
-    if (bestValue >= beta) // Failed high
+    TT.store(posKey, value_to_tt(bestValue, ss->ply),
+             bestValue >= beta  ? BOUND_LOWER :
+             PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
+             depth, bestMove, ss->staticEval, ss->evalMargin);
+
+    // Quiet best move: update killers, history and countermoves
+    if (    bestValue >= beta
+        && !pos.is_capture_or_promotion(bestMove)
+        && !inCheck)
     {
-        TT.store(posKey, value_to_tt(bestValue, ss->ply), BOUND_LOWER, depth,
-                 bestMove, ss->staticEval, ss->evalMargin);
-
-        if (!pos.is_capture_or_promotion(bestMove) && !inCheck)
+        if (ss->killers[0] != bestMove)
         {
-            if (bestMove != ss->killers[0])
-            {
-                ss->killers[1] = ss->killers[0];
-                ss->killers[0] = bestMove;
-            }
-
-            // Increase history value of the cut-off move
-            Value bonus = Value(int(depth) * int(depth));
-            History.update(pos.piece_moved(bestMove), to_sq(bestMove), bonus);
-            if (is_ok((ss-1)->currentMove))
-                Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, bestMove);
-
-            // Decrease history of all the other played non-capture moves
-            for (int i = 0; i < playedMoveCount - 1; i++)
-            {
-                Move m = movesSearched[i];
-                History.update(pos.piece_moved(m), to_sq(m), -bonus);
-            }
+            ss->killers[1] = ss->killers[0];
+            ss->killers[0] = bestMove;
         }
+
+        // Increase history value of the cut-off move and decrease all the other
+        // played non-capture moves.
+        Value bonus = Value(int(depth) * int(depth));
+        History.update(pos.piece_moved(bestMove), to_sq(bestMove), bonus);
+        for (int i = 0; i < quietCount - 1; i++)
+        {
+            Move m = quietsSearched[i];
+            History.update(pos.piece_moved(m), to_sq(m), -bonus);
+        }
+
+        if (is_ok((ss-1)->currentMove))
+            Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, bestMove);
     }
-    else // Failed low or PV search
-        TT.store(posKey, value_to_tt(bestValue, ss->ply),
-                 PvNode && bestMove != MOVE_NONE ? BOUND_EXACT : BOUND_UPPER,
-                 depth, bestMove, ss->staticEval, ss->evalMargin);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1153,8 +1147,7 @@ split_point_start: // At split points actual search starts from here
     ttDepth = InCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
                                                   : DEPTH_QS_NO_CHECKS;
 
-    // Transposition table lookup. At PV nodes, we don't use the TT for
-    // pruning, but only for move ordering.
+    // Transposition table lookup
     posKey = pos.key();
     tte = TT.probe(posKey);
     ttMove = tte ? tte->move() : MOVE_NONE;
