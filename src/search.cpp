@@ -364,8 +364,6 @@ namespace {
                 if (Signals.stop)
                     return;
 
-                delta += delta / 2;
-
                 // In case of failing low/high increase aspiration window and
                 // research, otherwise exit the loop.
                 if (bestValue <= alpha)
@@ -380,6 +378,8 @@ namespace {
 
                 else
                     break;
+
+                delta += delta / 2;
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
 
