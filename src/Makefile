@@ -231,7 +231,7 @@ ifeq ($(COMP),clang)
 endif
 
 ### 3.2 General compiler settings
-CXXFLAGS = -g -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+CXXFLAGS = -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
 ifeq ($(comp),gcc)
 	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
@@ -275,6 +275,8 @@ endif
 ### 3.4 Debugging
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
+else
+	CXXFLAGS += -g 
 endif
 
 ### 3.5 Optimization
@@ -354,12 +356,14 @@ endif
 ### needs access to the optimization flags.
 ifeq ($(comp),gcc)
 	ifeq ($(optimize),yes)
+	ifeq ($(debug),no)
 		GCC_MAJOR := `$(CXX) -dumpversion | cut -f1 -d.`
 		GCC_MINOR := `$(CXX) -dumpversion | cut -f2 -d.`
 		ifeq (1,$(shell expr \( $(GCC_MAJOR) \> 4 \) \| \( $(GCC_MAJOR) \= 4 \& $(GCC_MINOR) \>= 5 \)))
 			CXXFLAGS += -flto
 			LDFLAGS += $(CXXFLAGS)
 		endif
+	endif
 	endif
 endif
 
