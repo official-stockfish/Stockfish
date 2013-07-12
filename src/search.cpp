@@ -367,6 +367,10 @@ namespace {
                 if (Signals.stop)
                     return;
 
+                // Give some update (without cluttering the UI) before to research
+                if (Time::now() - SearchTime > 3000)
+                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+
                 // In case of failing low/high increase aspiration window and
                 // research, otherwise exit the loop.
                 if (bestValue <= alpha)
@@ -385,10 +389,6 @@ namespace {
                 delta += delta / 2;
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
-
-                // Give some update (without cluttering the UI) before to research
-                if (Time::now() - SearchTime > 3000)
-                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
             }
 
             // Sort the PV lines searched so far and update the GUI
