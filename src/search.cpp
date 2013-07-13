@@ -367,8 +367,10 @@ namespace {
                 if (Signals.stop)
                     return;
 
-                // Give some update (without cluttering the UI) before to research
-                if (Time::now() - SearchTime > 3000)
+                // When failing high/low give some update (without cluttering
+                // the UI) before to research.
+                if (  (bestValue <= alpha || bestValue >= beta)
+                    && Time::now() - SearchTime > 3000)
                     sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
