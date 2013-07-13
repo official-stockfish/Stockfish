@@ -298,7 +298,7 @@ namespace {
     int depth, prevBestMoveChanges;
     Value bestValue, alpha, beta, delta;
 
-    memset(ss-1, 0, 4 * sizeof(Stack));
+    std::memset(ss-1, 0, 4 * sizeof(Stack));
     (ss-1)->currentMove = MOVE_NULL; // Hack to skip update gains
 
     depth = BestMoveChanges = 0;
@@ -1673,7 +1673,7 @@ void Thread::idle_loop() {
           Stack stack[MAX_PLY_PLUS_2], *ss = stack+1; // To allow referencing (ss-1)
           Position pos(*sp->pos, this);
 
-          memcpy(ss-1, sp->ss-1, 4 * sizeof(Stack));
+          std::memcpy(ss-1, sp->ss-1, 4 * sizeof(Stack));
           ss->splitPoint = sp;
 
           sp->mutex.lock();

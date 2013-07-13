@@ -318,7 +318,7 @@ namespace {
             do magics[s] = pick_random(rk, booster);
             while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
-            memset(attacks[s], 0, size * sizeof(Bitboard));
+            std::memset(attacks[s], 0, size * sizeof(Bitboard));
 
             // A good magic must map every possible occupancy to an index that
             // looks up the correct sliding attack in the attacks[s] database.

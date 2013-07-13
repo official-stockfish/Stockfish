@@ -1142,7 +1142,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     stream.str("");
     stream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
-    memset(scores, 0, 2 * (TOTAL + 1) * sizeof(Score));
+    std::memset(scores, 0, 2 * (TOTAL + 1) * sizeof(Score));
 
     Value margin;
     do_evaluate<true>(pos, margin);
