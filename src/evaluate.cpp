@@ -509,7 +509,9 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 ei.kingAdjacentZoneAttacksCount[Us] += popcount<Max15>(bb);
         }
 
-        int mob = popcount<Piece == QUEEN ? Full : Max15>(b & mobilityArea);
+        int mob = Piece != QUEEN ? popcount<Max15>(b & mobilityArea)
+                                 : popcount<Full >(b & mobilityArea);
+
         mobility += MobilityBonus[Piece][mob];
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
