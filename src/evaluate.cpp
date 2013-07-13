@@ -554,7 +554,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
             if (ei.pi->semiopen(Us, file_of(s)))
                 score += ei.pi->semiopen(Them, file_of(s)) ? RookOpenFile : RookSemiopenFile;
 
-            if (mob > 6 || ei.pi->semiopen(Us, file_of(s)))
+            if (mob > 3 || ei.pi->semiopen(Us, file_of(s)))
                 continue;
 
             Square ksq = pos.king_square(Us);
