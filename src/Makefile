@@ -418,20 +418,11 @@ help:
 	@echo "make profile-build ARCH=x86-32    (This is for 32-bit systems)"
 	@echo ""
 
+.PHONY: build profile-build embed-signature
 build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
-signature-build:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
-	@echo "Running benchmark for getting the signature ..."
-	@$(SIGNBENCH) 2>&1 | grep 'Nodes searched' | grep -o ": .*" | tr -d ': ' > sign.txt
-	@sed -i -e 's,^,/static const string Version/s/"\\(.*\\)"/"sig-,1' -e 's,$$,"/1,1' sign.txt
-	@sed -i -f sign.txt misc.cpp
-	@rm sign.txt        
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
-        
 profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 	@echo ""
@@ -451,6 +442,18 @@ profile-build:
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
+
+embed-signature:
+	@echo "Running benchmark for getting the signature ..."
+	@$(SIGNBENCH) 2>&1 | grep 'Nodes searched' | grep -o ": .*" | tr -d ': ' > sign.txt
+	@sed -i -e 's,^,/static const string Version/s/"\\(.*\\)"/"sig-,1' -e 's,$$,"/1,1' sign.txt
+	@sed -i -f sign.txt misc.cpp
+	@rm sign.txt
+
+signature-build: build embed-signature       
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+
+signature-profile-build: build embed-signature profile-build
 
 strip:
 	strip $(EXE)
