@@ -30,11 +30,9 @@
 
 using namespace std;
 
-/// Version number. If Version is left empty, then Tag plus current
-/// date, in the format DD-MM-YY, are used as a version number.
-
+/// Version number. If Version is left empty, then compile date, in the
+/// format DD-MM-YY, is shown in engine_info.
 static const string Version = "";
-static const string Tag = "";
 
 
 /// engine_info() returns the full name of the current Stockfish version. This
@@ -48,14 +46,12 @@ const string engine_info(bool to_uci) {
   string month, day, year;
   stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  s << "Stockfish " << Version;
+  s << "Stockfish " << Version << setfill('0');
 
   if (Version.empty())
   {
       date >> month >> day >> year;
-
-      s << Tag << string(Tag.empty() ? "" : " ") << setfill('0') << setw(2) << day
-        << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
+      s << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
   s << (Is64Bit ? " 64" : "")

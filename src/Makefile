@@ -427,7 +427,7 @@ signature-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 	@echo "Running benchmark for getting the signature ..."
 	@$(SIGNBENCH) 2>&1 | grep 'Nodes searched' | grep -o ": .*" | tr -d ': ' > sign.txt
-	@sed -i -e 's,^,/static const string Tag/s/"\\(.*\\)"/",1' -e 's,$$,"/1,1' sign.txt
+	@sed -i -e 's,^,/static const string Version/s/"\\(.*\\)"/"sig-,1' -e 's,$$,"/1,1' sign.txt
 	@sed -i -f sign.txt misc.cpp
 	@rm sign.txt        
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
