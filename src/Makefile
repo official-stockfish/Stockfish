@@ -34,8 +34,9 @@ ifeq ($(UNAME),Haiku)
 endif
 BINDIR = $(PREFIX)/bin
 
-### Built-in benchmark for pgo-builds
+### Built-in benchmark for pgo-builds and signature
 PGOBENCH = ./$(EXE) bench 32 1 10 default depth
+SIGNBENCH = ./$(EXE) bench
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
@@ -421,6 +422,16 @@ build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
+signature-build:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+	@echo "Running benchmark for getting the signature ..."
+	@$(SIGNBENCH) 2>&1 | grep 'Nodes searched' | grep -o ": .*" | tr -d ': ' > sign.txt
+	@sed -i -e 's,^,/static const string Tag/s/"\\(.*\\)"/",1' -e 's,$$,"/1,1' sign.txt
+	@sed -i -f sign.txt misc.cpp
+	@rm sign.txt        
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+        
 profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 	@echo ""
