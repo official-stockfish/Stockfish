@@ -823,7 +823,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 // If there is an enemy rook or queen attacking the pawn from behind,
                 // add all X-ray attacks by the rook or queen. Otherwise consider only
                 // the squares in the pawn's path attacked or occupied by the enemy.
-                if (   (forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN)) // Unlikely
+                if (    unlikely(forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN))
                     && (forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN) & pos.attacks_from<ROOK>(s)))
                     unsafeSquares = squaresToQueen;
                 else
