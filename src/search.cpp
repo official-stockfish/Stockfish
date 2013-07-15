@@ -1454,7 +1454,7 @@ moves_loop: // When in check and at SpNode search starts from here
                        | (attacks_bb<BISHOP>(m2to, occ) & pos.pieces(color_of(pc), QUEEN, BISHOP));
 
         // Verify attackers are triggered by our move and not already existing
-        if (xray && (xray ^ (xray & pos.attacks_from<QUEEN>(m2to))))
+        if (xray && (xray & ~pos.attacks_from<QUEEN>(m2to))) // Unlikely xray
             return true;
     }
 
