@@ -277,7 +277,7 @@ endif
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
-	CXXFLAGS += -g 
+	CXXFLAGS += -g
 endif
 
 ### 3.5 Optimization
@@ -446,12 +446,12 @@ profile-build:
 
 embed-signature:
 	@echo "Running benchmark for getting the signature ..."
-	@$(SIGNBENCH) 2>&1 | grep 'Nodes searched' | grep -o ": .*" | tr -d ': ' > sign.txt
+	@$(SIGNBENCH) 2>&1 | sed -n 's/Nodes searched  : \(.*\)/\1/p' > sign.txt
 	@sed -i -e 's,^,/static const string Version/s/"\\(.*\\)"/"sig-,1' -e 's,$$,"/1,1' sign.txt
 	@sed -i -f sign.txt misc.cpp
 	@rm sign.txt
 
-signature-build: build embed-signature       
+signature-build: build embed-signature
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
 signature-profile-build: build embed-signature profile-build
