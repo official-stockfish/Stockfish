@@ -42,6 +42,8 @@
 
 #include "platform.h"
 
+#define unlikely(x) (x) // For code annotation purposes
+
 #if defined(_WIN64) && !defined(IS_64BIT)
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
@@ -69,14 +71,6 @@
 #  define FORCE_INLINE  inline __attribute__((always_inline))
 #else
 #  define FORCE_INLINE  inline
-#endif
-
-#ifdef __GNUC__
-#  define likely(x)   __builtin_expect(!!(x), 1)
-#  define unlikely(x) __builtin_expect(!!(x), 0)
-#else
-#  define likely(x)   (x)
-#  define unlikely(x) (x)
 #endif
 
 #if defined(USE_POPCNT)
