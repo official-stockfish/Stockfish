@@ -32,7 +32,7 @@
 namespace {
 
   template<CastlingSide Side, bool Checks, bool Chess960>
-  MoveStack* generate_castle(const Position& pos, MoveStack* mlist, Color us) {
+  ExtMove* generate_castle(const Position& pos, ExtMove* mlist, Color us) {
 
     if (pos.castle_impeded(us, Side) || !pos.can_castle(make_castle_right(us, Side)))
         return mlist;
@@ -69,8 +69,8 @@ namespace {
 
 
   template<GenType Type, Square Delta>
-  inline MoveStack* generate_promotions(MoveStack* mlist, Bitboard pawnsOn7,
-                                        Bitboard target, const CheckInfo* ci) {
+  inline ExtMove* generate_promotions(ExtMove* mlist, Bitboard pawnsOn7,
+                                      Bitboard target, const CheckInfo* ci) {
 
     Bitboard b = shift_bb<Delta>(pawnsOn7) & target;
 
@@ -101,8 +101,8 @@ namespace {
 
 
   template<Color Us, GenType Type>
-  MoveStack* generate_pawn_moves(const Position& pos, MoveStack* mlist,
-                                 Bitboard target, const CheckInfo* ci) {
+  ExtMove* generate_pawn_moves(const Position& pos, ExtMove* mlist,
+                               Bitboard target, const CheckInfo* ci) {
 
     // Compute our parametrized parameters at compile time, named according to
     // the point of view of white side.
@@ -206,8 +206,8 @@ namespace {
 
 
   template<PieceType Pt, bool Checks> FORCE_INLINE
-  MoveStack* generate_moves(const Position& pos, MoveStack* mlist, Color us,
-                            Bitboard target, const CheckInfo* ci) {
+  ExtMove* generate_moves(const Position& pos, ExtMove* mlist, Color us,
+                          Bitboard target, const CheckInfo* ci) {
 
     assert(Pt != KING && Pt != PAWN);
 
@@ -238,8 +238,8 @@ namespace {
 
 
   template<GenType Type> FORCE_INLINE
-  MoveStack* generate_all(const Position& pos, MoveStack* mlist, Color us,
-                          Bitboard target, const CheckInfo* ci = NULL) {
+  ExtMove* generate_all(const Position& pos, ExtMove* mlist, Color us,
+                        Bitboard target, const CheckInfo* ci = NULL) {
 
     const bool Checks = Type == QUIET_CHECKS;
 
@@ -289,7 +289,7 @@ namespace {
 /// non-captures. Returns a pointer to the end of the move list.
 
 template<GenType Type>
-MoveStack* generate(const Position& pos, MoveStack* mlist) {
+ExtMove* generate(const Position& pos, ExtMove* mlist) {
 
   assert(Type == CAPTURES || Type == QUIETS || Type == NON_EVASIONS);
   assert(!pos.checkers());
@@ -304,15 +304,15 @@ MoveStack* generate(const Position& pos, MoveStack* mlist) {
 }
 
 // Explicit template instantiations
-template MoveStack* generate<CAPTURES>(const Position&, MoveStack*);
-template MoveStack* generate<QUIETS>(const Position&, MoveStack*);
-template MoveStack* generate<NON_EVASIONS>(const Position&, MoveStack*);
+template ExtMove* generate<CAPTURES>(const Position&, ExtMove*);
+template ExtMove* generate<QUIETS>(const Position&, ExtMove*);
+template ExtMove* generate<NON_EVASIONS>(const Position&, ExtMove*);
 
 
 /// generate<QUIET_CHECKS> generates all pseudo-legal non-captures and knight
 /// underpromotions that give check. Returns a pointer to the end of the move list.
 template<>
-MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
+ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* mlist) {
 
   assert(!pos.checkers());
 
@@ -342,7 +342,7 @@ MoveStack* generate<QUIET_CHECKS>(const Position& pos, MoveStack* mlist) {
 /// generate<EVASIONS> generates all pseudo-legal check evasions when the side
 /// to move is in check. Returns a pointer to the end of the move list.
 template<>
-MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
+ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
 
   assert(pos.checkers());
 
@@ -404,9 +404,9 @@ MoveStack* generate<EVASIONS>(const Position& pos, MoveStack* mlist) {
 /// generate<LEGAL> generates all the legal moves in the given position
 
 template<>
-MoveStack* generate<LEGAL>(const Position& pos, MoveStack* mlist) {
+ExtMove* generate<LEGAL>(const Position& pos, ExtMove* mlist) {
 
-  MoveStack *end, *cur = mlist;
+  ExtMove *end, *cur = mlist;
   Bitboard pinned = pos.pinned_pieces();
   Square ksq = pos.king_square(pos.side_to_move());
 

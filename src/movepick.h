@@ -100,11 +100,11 @@ private:
   Move* countermoves;
   Depth depth;
   Move ttMove;
-  MoveStack killers[4];
+  ExtMove killers[4];
   Square recaptureSquare;
   int captureThreshold, phase;
-  MoveStack *cur, *end, *endQuiets, *endBadCaptures;
-  MoveStack moves[MAX_MOVES];
+  ExtMove *cur, *end, *endQuiets, *endBadCaptures;
+  ExtMove moves[MAX_MOVES];
 };
 
 #endif // !defined(MOVEPICK_H_INCLUDED)

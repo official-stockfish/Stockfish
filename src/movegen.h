@@ -34,7 +34,7 @@ enum GenType {
 class Position;
 
 template<GenType>
-MoveStack* generate(const Position& pos, MoveStack* mlist);
+ExtMove* generate(const Position& pos, ExtMove* mlist);
 
 /// The MoveList struct is a simple wrapper around generate(), sometimes comes
 /// handy to use this class instead of the low level generate() function.
@@ -46,13 +46,13 @@ struct MoveList {
   Move operator*() const { return cur->move; }
   size_t size() const { return last - mlist; }
   bool contains(Move m) const {
-    for (const MoveStack* it(mlist); it != last; ++it) if (it->move == m) return true;
+    for (const ExtMove* it(mlist); it != last; ++it) if (it->move == m) return true;
     return false;
   }
 
 private:
-  MoveStack mlist[MAX_MOVES];
-  MoveStack *cur, *last;
+  ExtMove mlist[MAX_MOVES];
+  ExtMove *cur, *last;
 };
 
 #endif // !defined(MOVEGEN_H_INCLUDED)

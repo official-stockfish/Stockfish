@@ -313,12 +313,12 @@ inline Score operator/(Score s, int i) {
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
-struct MoveStack {
+struct ExtMove {
   Move move;
   int score;
 };
 
-inline bool operator<(const MoveStack& f, const MoveStack& s) {
+inline bool operator<(const ExtMove& f, const ExtMove& s) {
   return f.score < s.score;
 }
 

@@ -36,9 +36,9 @@ namespace {
   };
 
   // Our insertion sort, guaranteed to be stable, as is needed
-  void insertion_sort(MoveStack* begin, MoveStack* end)
+  void insertion_sort(ExtMove* begin, ExtMove* end)
   {
-    MoveStack tmp, *p, *q;
+    ExtMove tmp, *p, *q;
 
     for (p = begin + 1; p < end; ++p)
     {
@@ -51,12 +51,12 @@ namespace {
 
   // Unary predicate used by std::partition to split positive scores from remaining
   // ones so to sort separately the two sets, and with the second sort delayed.
-  inline bool has_positive_score(const MoveStack& ms) { return ms.score > 0; }
+  inline bool has_positive_score(const ExtMove& ms) { return ms.score > 0; }
 
   // Picks and moves to the front the best move in the range [begin, end),
   // it is faster than sorting all the moves in advance when moves are few, as
   // normally are the possible captures.
-  inline MoveStack* pick_best(MoveStack* begin, MoveStack* end)
+  inline ExtMove* pick_best(ExtMove* begin, ExtMove* end)
   {
       std::swap(*begin, *std::max_element(begin, end));
       return begin;
@@ -170,7 +170,7 @@ void MovePicker::score<CAPTURES>() {
   // some SEE calls in case we get a cutoff (idea from Pablo Vazquez).
   Move m;
 
-  for (MoveStack* it = moves; it != end; ++it)
+  for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
       it->score =  PieceValue[MG][pos.piece_on(to_sq(m))]
@@ -189,7 +189,7 @@ void MovePicker::score<QUIETS>() {
 
   Move m;
 
-  for (MoveStack* it = moves; it != end; ++it)
+  for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
       it->score = history[pos.piece_moved(m)][to_sq(m)];
@@ -204,7 +204,7 @@ void MovePicker::score<EVASIONS>() {
   Move m;
   int seeScore;
 
-  for (MoveStack* it = moves; it != end; ++it)
+  for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
       if ((seeScore = pos.see_sign(m)) < 0)
