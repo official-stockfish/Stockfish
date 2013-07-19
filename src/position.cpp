@@ -690,9 +690,9 @@ bool Position::move_gives_check(Move m, const CheckInfo& ci) const {
       Square rfrom = to; // 'King captures the rook' notation
       Square kto = relative_square(us, rfrom > kfrom ? SQ_G1 : SQ_C1);
       Square rto = relative_square(us, rfrom > kfrom ? SQ_F1 : SQ_D1);
-      Bitboard b = (pieces() ^ kfrom ^ rfrom) | rto | kto;
 
-      return attacks_bb<ROOK>(rto, b) & ksq;
+      return   (PseudoAttacks[ROOK][rto] & ksq)
+            && (attacks_bb<ROOK>(rto, (pieces() ^ kfrom ^ rfrom) | rto | kto) & ksq);
   }
   default:
       assert(false);
