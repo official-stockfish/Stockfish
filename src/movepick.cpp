@@ -70,12 +70,11 @@ namespace {
 /// search captures, promotions and some checks) and about how important good
 /// move ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, Move* cm,
-                       Search::Stack* s, Value beta) : pos(p), history(h), depth(d) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
+                       Move* cm, Search::Stack* s) : pos(p), history(h), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
-  captureThreshold = 0;
   cur = end = moves;
   endBadCaptures = moves + MAX_MOVES - 1;
   countermoves = cm;
@@ -85,17 +84,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
       stage = EVASION;
 
   else
-  {
       stage = MAIN_SEARCH;
-
-      // Consider sligtly negative captures as good if at low depth and far from beta
-      if (ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)
-          captureThreshold = -PawnValueMg;
-
-      // Consider negative captures as good if still enough to reach beta
-      else if (ss->staticEval > beta)
-          captureThreshold = beta - ss->staticEval;
-  }
 
   ttMove = (ttm && pos.is_pseudo_legal(ttm) ? ttm : MOVE_NONE);
   end += (ttMove != MOVE_NONE);
@@ -317,9 +306,7 @@ Move MovePicker::next_move<false>() {
           move = pick_best(cur++, end)->move;
           if (move != ttMove)
           {
-              assert(captureThreshold <= 0); // Otherwise we cannot use see_sign()
-
-              if (pos.see_sign(move) >= captureThreshold)
+              if (pos.see_sign(move) >= 0)
                   return move;
 
               // Losing capture, move it to the tail of the array
