@@ -59,17 +59,18 @@ Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion;}
 
 namespace {
 
-// next_attacker() is an helper function used by see() to locate the least
+// min_attacker() is an helper function used by see() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
-// from the 'occupied' bitboard and scan for new X-ray attacks behind it.
+// from the bitboards and scan for new X-ray attacks behind it.
 
 template<int Pt> FORCE_INLINE
-PieceType next_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
-                        Bitboard& occupied, Bitboard& attackers) {
+PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
+                       Bitboard& occupied, Bitboard& attackers) {
 
-  if (stmAttackers & bb[Pt])
+  Bitboard b = stmAttackers & bb[Pt];
+
+  if (b)
   {
-      Bitboard b = stmAttackers & bb[Pt];
       occupied ^= b & ~(b - 1);
 
       if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
@@ -78,13 +79,15 @@ PieceType next_attacker(const Bitboard* bb, const Square& to, const Bitboard& st
       if (Pt == ROOK || Pt == QUEEN)
           attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
 
+      attackers &= occupied; // Remove the just found attacker
+
       return (PieceType)Pt;
   }
-  return next_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
+  return min_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
 }
 
 template<> FORCE_INLINE
-PieceType next_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bitboard&, Bitboard&) {
+PieceType min_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bitboard&, Bitboard&) {
   return KING; // No need to update bitboards, it is the last cycle
 }
 
@@ -1198,10 +1201,8 @@ int Position::see(Move m, int asymmThreshold) const {
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
       slIndex++;
 
-      // Locate and remove from 'occupied' the next least valuable attacker
-      captured = next_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
-
-      attackers &= occupied; // Remove the just found attacker
+      // Locate and remove the next least valuable attacker
+      captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
