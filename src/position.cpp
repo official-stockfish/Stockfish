@@ -1136,7 +1136,7 @@ int Position::see_sign(Move m) const {
   // Early return if SEE cannot be negative because captured piece value
   // is not less then capturing one. Note that king moves always return
   // here because king midgame value is set to 0.
-  if (PieceValue[MG][piece_on(to_sq(m))] >= PieceValue[MG][piece_moved(m)])
+  if (PieceValue[MG][piece_moved(m)] <= PieceValue[MG][piece_on(to_sq(m))])
       return 1;
 
   return see(m);
@@ -1197,6 +1197,12 @@ int Position::see(Move m, int asymmThreshold) const {
   do {
       assert(slIndex < 32);
 
+      if (captured == KING) // Stop before processing a king capture
+      {
+          swapList[slIndex++] = QueenValueMg * 16;
+          break;
+      }
+
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
       slIndex++;
@@ -1205,15 +1211,6 @@ int Position::see(Move m, int asymmThreshold) const {
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
-
-      if (captured == KING)
-      {
-          // Stop before processing a king capture
-          if (stmAttackers)
-              swapList[slIndex++] = QueenValueMg * 16;
-
-          break;
-      }
 
   } while (stmAttackers);
 
