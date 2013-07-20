@@ -68,20 +68,19 @@ PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stm
                        Bitboard& occupied, Bitboard& attackers) {
 
   Bitboard b = stmAttackers & bb[Pt];
+  if (!b)
+      return min_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
 
-  if (b)
-  {
-      occupied ^= b & ~(b - 1);
+  occupied ^= b & ~(b - 1);
 
-      if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
-          attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
+  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
+      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
 
-      if (Pt == ROOK || Pt == QUEEN)
-          attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
+  if (Pt == ROOK || Pt == QUEEN)
+      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
 
-      return (PieceType)Pt;
-  }
-  return min_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
+  attackers &= occupied; // After X-ray that may add already processed pieces
+  return (PieceType)Pt;
 }
 
 template<> FORCE_INLINE
@@ -1152,36 +1151,31 @@ int Position::see(Move m, int asymmThreshold) const {
 
   from = from_sq(m);
   to = to_sq(m);
-  captured = type_of(piece_on(to));
+  swapList[0] = PieceValue[MG][type_of(piece_on(to))];
+  stm = color_of(piece_on(from));
   occupied = pieces() ^ from;
 
-  // Handle en passant moves
+  // Castle moves are implemented as king capturing the rook so cannot be
+  // handled correctly. Simply return 0 that is always the correct value
+  // unless in the rare case the rook ends up under attack.
+  if (type_of(m) == CASTLE)
+      return 0;
+
   if (type_of(m) == ENPASSANT)
   {
-      Square capQq = to - pawn_push(sideToMove);
-
-      assert(!captured);
-      assert(type_of(piece_on(capQq)) == PAWN);
-
-      // Remove the captured pawn
-      occupied ^= capQq;
-      captured = PAWN;
+      occupied ^= to - pawn_push(stm); // Remove the captured pawn
+      swapList[0] = PieceValue[MG][PAWN];
   }
-  else if (type_of(m) == CASTLE)
-      // Castle moves are implemented as king capturing the rook so cannot be
-      // handled correctly. Simply return 0 that is always the correct value
-      // unless the rook is ends up under attack.
-      return 0;
 
   // Find all attackers to the destination square, with the moving piece
   // removed, but possibly an X-ray attacker added behind it.
-  attackers = attackers_to(to, occupied);
+  attackers = attackers_to(to, occupied) & occupied;
 
   // If the opponent has no attackers we are finished
-  stm = ~color_of(piece_on(from));
+  stm = ~stm;
   stmAttackers = attackers & pieces(stm);
   if (!stmAttackers)
-      return PieceValue[MG][captured];
+      return swapList[0];
 
   // The destination square is defended, which makes things rather more
   // difficult to compute. We proceed by building up a "swap list" containing
@@ -1189,7 +1183,6 @@ int Position::see(Move m, int asymmThreshold) const {
   // destination square, where the sides alternately capture, and always
   // capture with the least valuable piece. After each capture, we look for
   // new X-ray attacks from behind the capturing piece.
-  swapList[0] = PieceValue[MG][captured];
   captured = type_of(piece_on(from));
 
   do {
@@ -1201,16 +1194,13 @@ int Position::see(Move m, int asymmThreshold) const {
 
       // Locate and remove the next least valuable attacker
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
-      attackers &= occupied; // Remove the just found attacker
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
 
-      if (captured == KING)
+      // Stop before processing a king capture
+      if (captured == KING && stmAttackers)
       {
-          // Stop before processing a king capture
-          if (stmAttackers)
-              swapList[slIndex++] = QueenValueMg * 16;
-
+          swapList[slIndex++] = QueenValueMg * 16;
           break;
       }
 
