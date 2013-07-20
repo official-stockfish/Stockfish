@@ -1195,6 +1195,12 @@ int Position::see(Move m, int asymmThreshold) const {
   do {
       assert(slIndex < 32);
 
+      if (captured == KING) // Stop before processing a king capture
+      {
+          swapList[slIndex++] = QueenValueMg * 16;
+          break;
+      }
+
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
       slIndex++;
@@ -1204,15 +1210,6 @@ int Position::see(Move m, int asymmThreshold) const {
       attackers &= occupied; // Remove the just found attacker
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
-
-      if (captured == KING)
-      {
-          // Stop before processing a king capture
-          if (stmAttackers)
-              swapList[slIndex++] = QueenValueMg * 16;
-
-          break;
-      }
 
   } while (stmAttackers);
 
