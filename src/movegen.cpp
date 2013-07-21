@@ -346,10 +346,9 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
 
   assert(pos.checkers());
 
-  Square from, checksq;
   int checkersCnt = 0;
   Color us = pos.side_to_move();
-  Square ksq = pos.king_square(us);
+  Square ksq = pos.king_square(us), from = ksq /* For SERIALIZE */, checksq;
   Bitboard sliderAttacks = 0;
   Bitboard b = pos.checkers();
 
@@ -388,14 +387,13 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
 
   // Generate evasions for king, capture and non capture moves
   b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
-  from = ksq;
   SERIALIZE(b);
 
   if (checkersCnt > 1)
       return mlist; // Double check, only a king move can save the day
 
   // Generate blocking evasions or captures of the checking piece
-  Bitboard target = between_bb(checksq, ksq) | pos.checkers();
+  Bitboard target = between_bb(checksq, ksq) | checksq;
 
   return generate_all<EVASIONS>(pos, mlist, us, target);
 }
