@@ -102,7 +102,7 @@ private:
   Move ttMove;
   ExtMove killers[4];
   Square recaptureSquare;
-  int captureThreshold, phase;
+  int captureThreshold, stage;
   ExtMove *cur, *end, *endQuiets, *endBadCaptures;
   ExtMove moves[MAX_MOVES];
 };

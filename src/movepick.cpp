@@ -25,7 +25,7 @@
 
 namespace {
 
-  enum Sequencer {
+  enum Stages {
     MAIN_SEARCH, CAPTURES_S1, KILLERS_S1, QUIETS_1_S1, QUIETS_2_S1, BAD_CAPTURES_S1,
     EVASION,     EVASIONS_S2,
     QSEARCH_0,   CAPTURES_S3, QUIET_CHECKS_S3,
@@ -82,11 +82,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   ss = s;
 
   if (p.checkers())
-      phase = EVASION;
+      stage = EVASION;
 
   else
   {
-      phase = MAIN_SEARCH;
+      stage = MAIN_SEARCH;
 
       // Consider sligtly negative captures as good if at low depth and far from beta
       if (ss->staticEval < beta - PawnValueMg && d < 3 * ONE_PLY)
@@ -107,14 +107,14 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   assert(d <= DEPTH_ZERO);
 
   if (p.checkers())
-      phase = EVASION;
+      stage = EVASION;
 
   else if (d > DEPTH_QS_NO_CHECKS)
-      phase = QSEARCH_0;
+      stage = QSEARCH_0;
 
   else if (d > DEPTH_QS_RECAPTURES)
   {
-      phase = QSEARCH_1;
+      stage = QSEARCH_1;
 
       // Skip TT move if is not a capture or a promotion, this avoids qsearch
       // tree explosion due to a possible perpetual check or similar rare cases
@@ -124,7 +124,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   }
   else
   {
-      phase = RECAPTURE;
+      stage = RECAPTURE;
       recaptureSquare = sq;
       ttm = MOVE_NONE;
   }
@@ -138,7 +138,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Piece
 
   assert(!pos.checkers());
 
-  phase = PROBCUT;
+  stage = PROBCUT;
 
   // In ProbCut we generate only captures better than parent's captured piece
   captureThreshold = PieceValue[MG][pt];
@@ -226,7 +226,7 @@ void MovePicker::generate_next() {
 
   cur = moves;
 
-  switch (++phase) {
+  switch (++stage) {
 
   case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
       end = generate<CAPTURES>(pos, moves);
@@ -282,7 +282,7 @@ void MovePicker::generate_next() {
       return;
 
   case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT: case RECAPTURE:
-      phase = STOP;
+      stage = STOP;
   case STOP:
       end = cur + 1; // Avoid another next_phase() call
       return;
@@ -307,7 +307,7 @@ Move MovePicker::next_move<false>() {
       while (cur == end)
           generate_next();
 
-      switch (phase) {
+      switch (stage) {
 
       case MAIN_SEARCH: case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT:
           cur++;
