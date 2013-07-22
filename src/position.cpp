@@ -542,7 +542,7 @@ bool Position::is_pseudo_legal(const Move m) const {
       return false;
 
   // The destination square cannot be occupied by a friendly piece
-  if (piece_on(to) != NO_PIECE && color_of(piece_on(to)) == us)
+  if (pieces(us) & to)
       return false;
 
   // Handle the special case of a pawn move
