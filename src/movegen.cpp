@@ -24,11 +24,11 @@
 
 /// Simple macro to wrap a very common while loop, no facny, no flexibility,
 /// hardcoded names 'mlist' and 'from'.
-#define SERIALIZE(b) while (b) (*mlist++).move = make_move(from, pop_lsb(&b))
+#define SERIALIZE(b) while (b) (mlist++)->move = make_move(from, pop_lsb(&b))
 
 /// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
 #define SERIALIZE_PAWNS(b, d) while (b) { Square to = pop_lsb(&b); \
-                                         (*mlist++).move = make_move(to - (d), to); }
+                                         (mlist++)->move = make_move(to - (d), to); }
 namespace {
 
   template<CastlingSide Side, bool Checks, bool Chess960>
@@ -59,7 +59,7 @@ namespace {
     if (Chess960 && (pos.attackers_to(kto, pos.pieces() ^ rfrom) & enemies))
         return mlist;
 
-    (*mlist++).move = make<CASTLE>(kfrom, rfrom);
+    (mlist++)->move = make<CASTLE>(kfrom, rfrom);
 
     if (Checks && !pos.move_gives_check((mlist - 1)->move, CheckInfo(pos)))
         mlist--;
@@ -79,19 +79,19 @@ namespace {
         Square to = pop_lsb(&b);
 
         if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-            (*mlist++).move = make<PROMOTION>(to - Delta, to, QUEEN);
+            (mlist++)->move = make<PROMOTION>(to - Delta, to, QUEEN);
 
         if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
         {
-            (*mlist++).move = make<PROMOTION>(to - Delta, to, ROOK);
-            (*mlist++).move = make<PROMOTION>(to - Delta, to, BISHOP);
-            (*mlist++).move = make<PROMOTION>(to - Delta, to, KNIGHT);
+            (mlist++)->move = make<PROMOTION>(to - Delta, to, ROOK);
+            (mlist++)->move = make<PROMOTION>(to - Delta, to, BISHOP);
+            (mlist++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
         }
 
         // Knight-promotion is the only one that can give a direct check not
         // already included in the queen-promotion.
         if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ci->ksq))
-            (*mlist++).move = make<PROMOTION>(to - Delta, to, KNIGHT);
+            (mlist++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
         else
             (void)ci; // Silence a warning under MSVC
     }
@@ -197,7 +197,7 @@ namespace {
             assert(b1);
 
             while (b1)
-                (*mlist++).move = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
+                (mlist++)->move = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
         }
     }
 
