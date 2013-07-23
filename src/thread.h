@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(THREAD_H_INCLUDED)
+#ifndef THREAD_H_INCLUDED
 #define THREAD_H_INCLUDED
 
 #include <vector>
@@ -165,4 +165,4 @@ struct ThreadPool : public std::vector<Thread*> {
 
 extern ThreadPool Threads;
 
-#endif // !defined(THREAD_H_INCLUDED)
+#endif // #ifndef THREAD_H_INCLUDED

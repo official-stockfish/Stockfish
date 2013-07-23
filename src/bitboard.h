@@ -18,7 +18,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(BITBOARD_H_INCLUDED)
+#ifndef BITBOARD_H_INCLUDED
 #define BITBOARD_H_INCLUDED
 
 #include "types.h"
@@ -258,7 +258,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occ) {
 /// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.
 
-#if defined(USE_BSFQ)
+#ifdef BSFQ
 
 #  if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 
@@ -311,7 +311,7 @@ FORCE_INLINE Square pop_lsb(Bitboard* b) {
   return s;
 }
 
-#else // if !defined(USE_BSFQ)
+#else // if defined(USE_BSFQ)
 
 extern Square msb(Bitboard b);
 extern Square lsb(Bitboard b);
@@ -319,4 +319,4 @@ extern Square pop_lsb(Bitboard* b);
 
 #endif
 
-#endif // !defined(BITBOARD_H_INCLUDED)
+#endif // #ifndef BITBOARD_H_INCLUDED

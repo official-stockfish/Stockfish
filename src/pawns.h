@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(PAWNS_H_INCLUDED)
+#ifndef PAWNS_H_INCLUDED
 #define PAWNS_H_INCLUDED
 
 #include "misc.h"
@@ -75,4 +75,4 @@ Entry* probe(const Position& pos, Table& entries);
 
 }
 
-#endif // !defined(PAWNS_H_INCLUDED)
+#endif // #ifndef PAWNS_H_INCLUDED

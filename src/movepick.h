@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined MOVEPICK_H_INCLUDED
+#ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
 #include <algorithm> // For std::max
@@ -107,4 +107,4 @@ private:
   ExtMove moves[MAX_MOVES];
 };
 
-#endif // !defined(MOVEPICK_H_INCLUDED)
+#endif // #ifndef MOVEPICK_H_INCLUDED

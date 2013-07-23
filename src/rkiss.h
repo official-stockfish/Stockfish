@@ -22,7 +22,7 @@
   (at your option) any later version.
 */
 
-#if !defined(RKISS_H_INCLUDED)
+#ifndef RKISS_H_INCLUDED
 #define RKISS_H_INCLUDED
 
 #include "types.h"
@@ -71,4 +71,4 @@ public:
   template<typename T> T rand() { return T(rand64()); }
 };
 
-#endif // !defined(RKISS_H_INCLUDED)
+#endif // #ifndef RKISS_H_INCLUDED

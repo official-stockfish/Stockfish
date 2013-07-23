@@ -83,7 +83,7 @@ namespace {
 /// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.
 
-#if !defined(USE_BSFQ)
+#ifndef USE_BSFQ
 
 Square lsb(Bitboard b) { return BSFTable[bsf_index(b)]; }
 
@@ -122,7 +122,7 @@ Square msb(Bitboard b) {
   return (Square)(result + MS1BTable[b32]);
 }
 
-#endif // !defined(USE_BSFQ)
+#endif // ifndef USE_BSFQ
 
 
 /// Bitboards::print() prints a bitboard in an easily readable format to the

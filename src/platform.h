@@ -17,10 +17,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(PLATFORM_H_INCLUDED)
+#ifndef PLATFORM_H_INCLUDED
 #define PLATFORM_H_INCLUDED
 
-#if defined(_MSC_VER)
+#ifdef _MSC_VER
 
 // Disable some silly and noisy warning from MSVC compiler
 #pragma warning(disable: 4127) // Conditional expression is constant
@@ -43,7 +43,7 @@ typedef unsigned __int64 uint64_t;
 #  include <unistd.h>  // Used by sysconf(_SC_NPROCESSORS_ONLN)
 #endif
 
-#if !defined(_WIN32) // Linux - Unix
+#ifndef _WIN32 // Linux - Unix
 
 #  include <sys/time.h>
 typedef timeval sys_time_t;
@@ -77,7 +77,7 @@ typedef _timeb sys_time_t;
 inline void system_time(sys_time_t* t) { _ftime(t); }
 inline int64_t time_to_msec(const sys_time_t& t) { return t.time * 1000LL + t.millitm; }
 
-#if !defined(NOMINMAX)
+#ifndef NOMINMAX
 #  define NOMINMAX // disable macros min() and max()
 #endif
 
@@ -110,4 +110,4 @@ inline DWORD* dwWin9xKludge() { static DWORD dw; return &dw; }
 
 #endif
 
-#endif // !defined(PLATFORM_H_INCLUDED)
+#endif // #ifndef PLATFORM_H_INCLUDED

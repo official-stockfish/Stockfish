@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(ENDGAME_H_INCLUDED)
+#ifndef ENDGAME_H_INCLUDED
 #define ENDGAME_H_INCLUDED
 
 #include <map>
@@ -119,4 +119,4 @@ public:
   { return eg = map(eg).count(key) ? map(eg)[key] : NULL; }
 };
 
-#endif // !defined(ENDGAME_H_INCLUDED)
+#endif // #ifndef ENDGAME_H_INCLUDED

@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(PSQTAB_H_INCLUDED)
+#ifndef PSQTAB_H_INCLUDED
 #define PSQTAB_H_INCLUDED
 
 #include "types.h"
@@ -95,4 +95,4 @@ static const Score PSQT[][SQUARE_NB] = {
 
 #undef S
 
-#endif // !defined(PSQTAB_H_INCLUDED)
+#endif // #ifndef PSQTAB_H_INCLUDED

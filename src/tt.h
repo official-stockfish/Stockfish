@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(TT_H_INCLUDED)
+#ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
 #include "misc.h"
@@ -115,4 +115,4 @@ inline void TranspositionTable::refresh(const TTEntry* tte) const {
   const_cast<TTEntry*>(tte)->set_generation(generation);
 }
 
-#endif // !defined(TT_H_INCLUDED)
+#endif // #ifndef TT_H_INCLUDED

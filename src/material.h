@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(MATERIAL_H_INCLUDED)
+#ifndef MATERIAL_H_INCLUDED
 #define MATERIAL_H_INCLUDED
 
 #include "endgame.h"
@@ -74,4 +74,4 @@ inline ScaleFactor Entry::scale_factor(const Position& pos, Color c) const {
 
 }
 
-#endif // !defined(MATERIAL_H_INCLUDED)
+#endif // #ifndef MATERIAL_H_INCLUDED

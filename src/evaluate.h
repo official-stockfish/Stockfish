@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(EVALUATE_H_INCLUDED)
+#ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
 #include "types.h"
@@ -32,4 +32,4 @@ extern std::string trace(const Position& pos);
 
 }
 
-#endif // !defined(EVALUATE_H_INCLUDED)
+#endif // #ifndef EVALUATE_H_INCLUDED

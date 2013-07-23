@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(POSITION_H_INCLUDED)
+#ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
 #include <cassert>
@@ -414,4 +414,4 @@ inline Thread* Position::this_thread() const {
   return thisThread;
 }
 
-#endif // !defined(POSITION_H_INCLUDED)
+#endif // #ifndef POSITION_H_INCLUDED

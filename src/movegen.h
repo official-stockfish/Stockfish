@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if !defined(MOVEGEN_H_INCLUDED)
+#ifndef MOVEGEN_H_INCLUDED
 #define MOVEGEN_H_INCLUDED
 
 #include "types.h"
@@ -55,4 +55,4 @@ private:
   ExtMove *cur, *last;
 };
 
-#endif // !defined(MOVEGEN_H_INCLUDED)
+#endif // #ifndef MOVEGEN_H_INCLUDED
