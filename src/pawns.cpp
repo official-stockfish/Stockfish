@@ -63,15 +63,16 @@ namespace {
     S(34,68), S(83,166), S(0, 0), S( 0, 0)
   };
 
-  // Weakness of our pawn shelter in front of the king indexed by [king pawn][rank]
-  const Value ShelterWeakness[2][RANK_NB] =
-  { { V(141), V(0), V(38), V(102), V(128), V(141), V(141) },
-    { V( 61), V(0), V(16), V( 44), V( 56), V( 61), V( 61) } };
+  // Weakness of our pawn shelter in front of the king indexed by [rank]
+  const Value ShelterWeakness[RANK_NB] =
+  { V(100), V(0), V(27), V(73), V(92), V(101), V(101) };
 
-  // Danger of enemy pawns moving toward our king indexed by [pawn blocked][rank]
-  const Value StormDanger[2][RANK_NB] =
-  { { V(26), V(0), V(128), V(51), V(26) },
-    { V(13), V(0), V( 64), V(25), V(13) } };
+  // Danger of enemy pawns moving toward our king indexed by
+  // [no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
+  const Value StormDanger[3][RANK_NB] = {
+  { V( 0),  V(64), V(128), V(51), V(26) },
+  { V(26),  V(32), V( 96), V(38), V(20) },
+  { V( 0),  V( 0), V( 64), V(25), V(13) }};
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizont.
@@ -222,7 +223,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   Value safety = MaxSafetyBonus;
   Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
-  Bitboard ourPawns = b & pos.pieces(Us) & ~rank_bb(ksq);
+  Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
   Rank rkUs, rkThem;
   File kf = file_of(ksq);
@@ -231,15 +232,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   for (int f = kf - 1; f <= kf + 1; f++)
   {
-      // Shelter penalty is higher for the pawn in front of the king
       b = ourPawns & FileBB[f];
-      rkUs = b ? rank_of(Us == WHITE ? lsb(b) : ~msb(b)) : RANK_1;
-      safety -= ShelterWeakness[f != kf][rkUs];
+      rkUs = b ? relative_rank(Us, Us == WHITE ? lsb(b) : msb(b)) : RANK_1;
+      safety -= ShelterWeakness[rkUs];
 
-      // Storm danger is smaller if enemy pawn is blocked
       b  = theirPawns & FileBB[f];
-      rkThem = b ? rank_of(Us == WHITE ? lsb(b) : ~msb(b)) : RANK_1;
-      safety -= StormDanger[rkThem == rkUs + 1][rkThem];
+      rkThem = b ? relative_rank(Us, Us == WHITE ? lsb(b) : msb(b)) : RANK_1;
+      safety -= StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];
   }
 
   return safety;
