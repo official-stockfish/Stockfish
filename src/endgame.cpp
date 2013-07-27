@@ -89,7 +89,10 @@ namespace {
 
 Endgames::Endgames() {
 
+  add<KK>("KK");
   add<KPK>("KPK");
+  add<KBK>("KBK");
+  add<KNK>("KNK");
   add<KNNK>("KNNK");
   add<KBNK>("KBNK");
   add<KRKP>("KRKP");
@@ -410,17 +413,13 @@ Value Endgame<KBBKN>::operator()(const Position& pos) const {
 }
 
 
-/// K and two minors vs K and one or two minors or K and two knights against
-/// king alone are always draw.
-template<>
-Value Endgame<KmmKm>::operator()(const Position&) const {
-  return VALUE_DRAW;
-}
+/// Some cases of trivial draws
+template<> Value Endgame<KK>::operator()(const Position&) const { return VALUE_DRAW; }
+template<> Value Endgame<KBK>::operator()(const Position&) const { return VALUE_DRAW; }
+template<> Value Endgame<KNK>::operator()(const Position&) const { return VALUE_DRAW; }
+template<> Value Endgame<KNNK>::operator()(const Position&) const { return VALUE_DRAW; }
+template<> Value Endgame<KmmKm>::operator()(const Position&) const { return VALUE_DRAW; }
 
-template<>
-Value Endgame<KNNK>::operator()(const Position&) const {
-  return VALUE_DRAW;
-}
 
 /// K, bishop and one or more pawns vs K. It checks for draws with rook pawns and
 /// a bishop of the wrong color. If such a draw is detected, SCALE_FACTOR_DRAW

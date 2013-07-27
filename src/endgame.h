@@ -33,6 +33,10 @@ enum EndgameType {
 
   // Evaluation functions
 
+  KK,    // K vs K
+  KBK,   // KB vs K
+  KNK,   // KN vs K
+  KNNK,  // KNN vs K
   KXK,   // Generic "mate lone king" eval
   KBNK,  // KBN vs K
   KPK,   // KP vs K
@@ -42,7 +46,6 @@ enum EndgameType {
   KQKP,  // KQ vs KP
   KQKR,  // KQ vs KR
   KBBKN, // KBB vs KN
-  KNNK,  // KNN vs K
   KmmKm, // K and two minors vs K and one or two minors
 
 
