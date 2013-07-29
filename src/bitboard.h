@@ -82,7 +82,7 @@ extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-const Bitboard BlackSquares = 0xAA55AA55AA55AA55ULL;
+const Bitboard DarkSquares = 0xAA55AA55AA55AA55ULL;
 
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
@@ -214,20 +214,20 @@ inline Bitboard passed_pawn_mask(Color c, Square s) {
 }
 
 
+/// squares_of_color() returns a bitboard representing all squares with the same
+/// color of the given square.
+
+inline Bitboard squares_of_color(Square s) {
+  return DarkSquares & s ? DarkSquares : ~DarkSquares;
+}
+
+
 /// squares_aligned() returns true if the squares s1, s2 and s3 are aligned
 /// either on a straight or on a diagonal line.
 
 inline bool squares_aligned(Square s1, Square s2, Square s3) {
   return  (BetweenBB[s1][s2] | BetweenBB[s1][s3] | BetweenBB[s2][s3])
         & (     SquareBB[s1] |      SquareBB[s2] |      SquareBB[s3]);
-}
-
-
-/// same_color_squares() returns a bitboard representing all squares with
-/// the same color of the given square.
-
-inline Bitboard same_color_squares(Square s) {
-  return BlackSquares & s ? BlackSquares : ~BlackSquares;
 }
 
 
