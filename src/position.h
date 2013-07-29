@@ -194,6 +194,9 @@ private:
   // Helper functions
   void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
   Bitboard hidden_checkers(Square ksq, Color c) const;
+  void remove_piece(Square s, Color c, PieceType pt);
+  void add_piece(Square s, Color c, PieceType pt);
+  void move_piece(Square from, Square to, Color c, PieceType pt);
 
   // Computing hash keys from scratch (for initialization and debugging)
   Key compute_key() const;
@@ -412,6 +415,29 @@ inline PieceType Position::captured_piece_type() const {
 
 inline Thread* Position::this_thread() const {
   return thisThread;
+}
+
+inline void Position::add_piece(Square s, Color c, PieceType pt) {
+  index[s] = pieceCount[c][pt]++;
+  pieceList[c][pt][index[s]] = s;
+}
+
+inline void Position::move_piece(Square from, Square to, Color c, PieceType pt) {
+  // index[from] is not updated and becomes stale. This works as long
+  // as index[] is accessed just by known occupied squares.
+  index[to] = index[from];
+  pieceList[c][pt][index[to]] = to;
+}
+
+inline void Position::remove_piece(Square s, Color c, PieceType pt) {
+  // WARNING: This is not a reversible operation. If we remove a piece in
+  // do_move() and then replace it in undo_move() we will put it at the end of
+  // the list and not in its original place, it means index[] and pieceList[]
+  // are not guaranteed to be invariant to a do_move() + undo_move() sequence.
+  Square lastSquare = pieceList[c][pt][--pieceCount[c][pt]];
+  index[lastSquare] = index[s];
+  pieceList[c][pt][index[lastSquare]] = lastSquare;
+  pieceList[c][pt][pieceCount[c][pt]] = SQ_NONE;
 }
 
 #endif // #ifndef POSITION_H_INCLUDED
