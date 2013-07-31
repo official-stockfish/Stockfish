@@ -66,7 +66,7 @@ typedef void*(*pt_start_fn)(void*);
 #  define cond_signal(x) pthread_cond_signal(&(x))
 #  define cond_wait(x,y) pthread_cond_wait(&(x),&(y))
 #  define cond_timedwait(x,y,z) pthread_cond_timedwait(&(x),&(y),z)
-#  define thread_create(x,f,t) !pthread_create(&(x),NULL,(pt_start_fn)f,t)
+#  define thread_create(x,f,t) pthread_create(&(x),NULL,(pt_start_fn)f,t)
 #  define thread_join(x) pthread_join(x, NULL)
 
 #else // Windows and MinGW
@@ -105,7 +105,7 @@ inline DWORD* dwWin9xKludge() { static DWORD dw; return &dw; }
 #  define cond_signal(x) SetEvent(x)
 #  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(x, INFINITE); lock_grab(y); }
 #  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(x,z); lock_grab(y); }
-#  define thread_create(x,f,t) (x = CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)f,t,0,dwWin9xKludge()), x != NULL)
+#  define thread_create(x,f,t) (x = CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)f,t,0,dwWin9xKludge()))
 #  define thread_join(x) { WaitForSingleObject(x, INFINITE); CloseHandle(x); }
 
 #endif

@@ -94,7 +94,7 @@ struct SplitPoint {
 struct Thread {
 
   Thread();
-  virtual ~Thread();
+  virtual ~Thread() {}
 
   virtual void idle_loop();
   void notify_one();

@@ -19,7 +19,6 @@
 
 #include <algorithm> // For std::count
 #include <cassert>
-#include <iostream>
 
 #include "movegen.h"
 #include "search.h"
@@ -30,14 +29,32 @@ using namespace Search;
 
 ThreadPool Threads; // Global object
 
-namespace { extern "C" {
+namespace {
 
  // start_routine() is the C function which is called when a new thread
  // is launched. It is a wrapper to the virtual function idle_loop().
 
- long start_routine(Thread* th) { th->idle_loop(); return 0; }
+ extern "C" { long start_routine(Thread* th) { th->idle_loop(); return 0; } }
 
-} }
+
+ // Helpers to launch a thread after creation and joining before delete. Must be
+ // outside Thread c'tor and d'tor because object shall be fully initialized
+ // when start_routine (and hence virtual idle_loop) is called and when joining.
+
+ template<typename T> T* new_thread() {
+   T* th = new T();
+   thread_create(th->handle, start_routine, th);
+   return th;
+ }
+
+ void delete_thread(Thread* th) {
+   th->exit = true; // Search must be already finished
+   th->notify_one();
+   thread_join(th->handle); // Wait for thread termination
+   delete th;
+ }
+
+}
 
 
 // Thread c'tor starts a newly-created thread of execution that will call
@@ -50,22 +67,6 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
   activeSplitPoint = NULL;
   activePosition = NULL;
   idx = Threads.size();
-
-  if (!thread_create(handle, start_routine, this))
-  {
-      std::cerr << "Failed to create thread number " << idx << std::endl;
-      ::exit(EXIT_FAILURE);
-  }
-}
-
-
-// Thread d'tor waits for thread termination before to return
-
-Thread::~Thread() {
-
-  exit = true; // Search must be already finished
-  notify_one();
-  thread_join(handle); // Wait for thread termination
 }
 
 
@@ -186,8 +187,8 @@ bool Thread::is_available_to(Thread* master) const {
 void ThreadPool::init() {
 
   sleepWhileIdle = true;
-  timer = new TimerThread();
-  push_back(new MainThread());
+  timer = new_thread<TimerThread>();
+  push_back(new_thread<MainThread>());
   read_uci_options();
 }
 
@@ -196,10 +197,10 @@ void ThreadPool::init() {
 
 void ThreadPool::exit() {
 
-  delete timer; // As first because check_time() accesses threads data
+  delete_thread(timer); // As first because check_time() accesses threads data
 
   for (iterator it = begin(); it != end(); ++it)
-      delete *it;
+      delete_thread(*it);
 }
 
 
@@ -217,11 +218,11 @@ void ThreadPool::read_uci_options() {
   assert(requested > 0);
 
   while (size() < requested)
-      push_back(new Thread());
+      push_back(new_thread<Thread>());
 
   while (size() > requested)
   {
-      delete back();
+      delete_thread(back());
       pop_back();
   }
 }
