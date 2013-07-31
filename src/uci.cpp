@@ -56,7 +56,7 @@ namespace {
 
 void UCI::loop(const string& args) {
 
-  Position pos(StartFEN, false, Threads.main_thread()); // The root position
+  Position pos(StartFEN, false, Threads.main()); // The root position
   string token, cmd = args;
 
   do {
@@ -77,7 +77,7 @@ void UCI::loop(const string& args) {
           if (token != "ponderhit" || Search::Signals.stopOnPonderhit)
           {
               Search::Signals.stop = true;
-              Threads.main_thread()->notify_one(); // Could be sleeping
+              Threads.main()->notify_one(); // Could be sleeping
           }
           else
               Search::Limits.ponder = false;
@@ -146,7 +146,7 @@ namespace {
     else
         return;
 
-    pos.set(fen, Options["UCI_Chess960"], Threads.main_thread());
+    pos.set(fen, Options["UCI_Chess960"], Threads.main());
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
 
     // Parse move list (if any)

@@ -34,7 +34,7 @@ namespace {
  // start_routine() is the C function which is called when a new thread
  // is launched. It is a wrapper to the virtual function idle_loop().
 
- extern "C" { long start_routine(Thread* th) { th->idle_loop(); return 0; } }
+ extern "C" { long start_routine(ThreadBase* th) { th->idle_loop(); return 0; } }
 
 
  // Helpers to launch a thread after creation and joining before delete. Must be
@@ -43,11 +43,11 @@ namespace {
 
  template<typename T> T* new_thread() {
    T* th = new T();
-   thread_create(th->handle, start_routine, th);
+   thread_create(th->handle, start_routine, th); // Will go to sleep
    return th;
  }
 
- void delete_thread(Thread* th) {
+ void delete_thread(ThreadBase* th) {
    th->exit = true; // Search must be already finished
    th->notify_one();
    thread_join(th->handle); // Wait for thread termination
@@ -57,12 +57,32 @@ namespace {
 }
 
 
-// Thread c'tor starts a newly-created thread of execution that will call
-// the the virtual function idle_loop(), going immediately to sleep.
+// ThreadBase::notify_one() wakes up the thread when there is some work to do
+
+void ThreadBase::notify_one() {
+
+  mutex.lock();
+  sleepCondition.notify_one();
+  mutex.unlock();
+}
+
+
+// ThreadBase::wait_for() set the thread to sleep until condition 'b' turns true
+
+void ThreadBase::wait_for(volatile const bool& b) {
+
+  mutex.lock();
+  while (!b) sleepCondition.wait(mutex);
+  mutex.unlock();
+}
+
+
+// Thread c'tor just inits data but does not launch any thread of execution that
+// instead will be started only upon c'tor returns.
 
 Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
 
-  searching = exit = false;
+  searching = false;
   maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
   activePosition = NULL;
@@ -121,26 +141,6 @@ void MainThread::idle_loop() {
 
       searching = false;
   }
-}
-
-
-// Thread::notify_one() wakes up the thread when there is some search to do
-
-void Thread::notify_one() {
-
-  mutex.lock();
-  sleepCondition.notify_one();
-  mutex.unlock();
-}
-
-
-// Thread::wait_for() set the thread to sleep until condition 'b' turns true
-
-void Thread::wait_for(volatile const bool& b) {
-
-  mutex.lock();
-  while (!b) sleepCondition.wait(mutex);
-  mutex.unlock();
 }
 
 
@@ -349,7 +349,7 @@ template void Thread::split< true>(Position&, Stack*, Value, Value, Value*, Move
 
 void ThreadPool::wait_for_think_finished() {
 
-  MainThread* t = main_thread();
+  MainThread* t = main();
   t->mutex.lock();
   while (t->thinking) sleepCondition.wait(t->mutex);
   t->mutex.unlock();
@@ -382,6 +382,6 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
           || std::count(searchMoves.begin(), searchMoves.end(), *it))
           RootMoves.push_back(RootMove(*it));
 
-  main_thread()->thinking = true;
-  main_thread()->notify_one(); // Starts main thread
+  main()->thinking = true;
+  main()->notify_one(); // Starts main thread
 }
