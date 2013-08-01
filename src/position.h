@@ -188,14 +188,13 @@ public:
 private:
   // Initialization helpers (used while setting up a position)
   void clear();
-  void put_piece(Piece p, Square s);
   void set_castle_right(Color c, Square rfrom);
 
   // Helper functions
   void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
   Bitboard hidden_checkers(Square ksq, Color c) const;
+  void put_piece(Square s, Color c, PieceType pt);
   void remove_piece(Square s, Color c, PieceType pt);
-  void add_piece(Square s, Color c, PieceType pt);
   void move_piece(Square from, Square to, Color c, PieceType pt);
 
   // Computing hash keys from scratch (for initialization and debugging)
@@ -417,23 +416,40 @@ inline Thread* Position::this_thread() const {
   return thisThread;
 }
 
-inline void Position::add_piece(Square s, Color c, PieceType pt) {
+inline void Position::put_piece(Square s, Color c, PieceType pt) {
+
+  board[s] = make_piece(c, pt);
+  byTypeBB[ALL_PIECES] |= s;
+  byTypeBB[pt] |= s;
+  byColorBB[c] |= s;
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
 }
 
 inline void Position::move_piece(Square from, Square to, Color c, PieceType pt) {
+
   // index[from] is not updated and becomes stale. This works as long
   // as index[] is accessed just by known occupied squares.
+  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
+  byTypeBB[ALL_PIECES] ^= from_to_bb;
+  byTypeBB[pt] ^= from_to_bb;
+  byColorBB[c] ^= from_to_bb;
+  board[from] = NO_PIECE;
+  board[to] = make_piece(c, pt);
   index[to] = index[from];
   pieceList[c][pt][index[to]] = to;
 }
 
 inline void Position::remove_piece(Square s, Color c, PieceType pt) {
+
   // WARNING: This is not a reversible operation. If we remove a piece in
   // do_move() and then replace it in undo_move() we will put it at the end of
   // the list and not in its original place, it means index[] and pieceList[]
   // are not guaranteed to be invariant to a do_move() + undo_move() sequence.
+  byTypeBB[ALL_PIECES] ^= s;
+  byTypeBB[pt] ^= s;
+  byColorBB[c] ^= s;
+  /* board[s] = NO_PIECE; */ // Not needed, will be overwritten by capturing
   Square lastSquare = pieceList[c][pt][--pieceCount[c][pt]];
   index[lastSquare] = index[s];
   pieceList[c][pt][index[lastSquare]] = lastSquare;
