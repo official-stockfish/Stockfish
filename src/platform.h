@@ -40,7 +40,6 @@ typedef unsigned __int64 uint64_t;
 
 #else
 #  include <inttypes.h>
-#  include <unistd.h>  // Used by sysconf(_SC_NPROCESSORS_ONLN)
 #endif
 
 #ifndef _WIN32 // Linux - Unix
