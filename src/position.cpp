@@ -989,25 +989,12 @@ void Position::undo_move(Move m) {
 
 void Position::do_castle(Square kfrom, Square kto, Square rfrom, Square rto) {
 
-  Color us = sideToMove;
-  Bitboard k_from_to_bb = SquareBB[kfrom] ^ SquareBB[kto];
-  Bitboard r_from_to_bb = SquareBB[rfrom] ^ SquareBB[rto];
-  byTypeBB[KING] ^= k_from_to_bb;
-  byTypeBB[ROOK] ^= r_from_to_bb;
-  byTypeBB[ALL_PIECES] ^= k_from_to_bb ^ r_from_to_bb;
-  byColorBB[us] ^= k_from_to_bb ^ r_from_to_bb;
-
-  // Could be from == to, so first set NO_PIECE then KING and ROOK
-  board[kfrom] = board[rfrom] = NO_PIECE;
-  board[kto] = make_piece(us, KING);
-  board[rto] = make_piece(us, ROOK);
-
-  // Could be kfrom == rto, so use a 'tmp' variable
-  int tmp = index[kfrom];
-  index[rto] = index[rfrom];
-  index[kto] = tmp;
-  pieceList[us][KING][index[kto]] = kto;
-  pieceList[us][ROOK][index[rto]] = rto;
+  // Remove both pieces first since squares could overlap in Chess960
+  remove_piece(kfrom, sideToMove, KING);
+  remove_piece(rfrom, sideToMove, ROOK);
+  board[kfrom] = board[rfrom] = NO_PIECE; // Since remove_piece doesn't do it for us
+  put_piece(kto, sideToMove, KING);
+  put_piece(rto, sideToMove, ROOK);
 }
 
 
