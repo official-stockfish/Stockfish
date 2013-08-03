@@ -45,7 +45,7 @@ struct Log : public std::ofstream {
 
 namespace Time {
   typedef int64_t point;
-  point now();
+  inline point now() { return system_time_to_msec(); }
 }
 
 

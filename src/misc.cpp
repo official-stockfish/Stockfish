@@ -59,13 +59,6 @@ const string engine_info(bool to_uci) {
 }
 
 
-/// Convert system time to milliseconds. That's all we need.
-
-Time::point Time::now() {
-  sys_time_t t; system_time(&t); return time_to_msec(t);
-}
-
-
 /// Debug functions used mainly to collect run-time statistics
 
 static uint64_t hits[2], means[2];

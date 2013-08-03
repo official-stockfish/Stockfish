@@ -45,10 +45,12 @@ typedef unsigned __int64 uint64_t;
 #ifndef _WIN32 // Linux - Unix
 
 #  include <sys/time.h>
-typedef timeval sys_time_t;
 
-inline void system_time(sys_time_t* t) { gettimeofday(t, NULL); }
-inline int64_t time_to_msec(const sys_time_t& t) { return t.tv_sec * 1000LL + t.tv_usec / 1000; }
+inline int64_t system_time_to_msec() {
+  timeval t;
+  gettimeofday(&t, NULL);
+  return t.tv_sec * 1000LL + t.tv_usec / 1000;
+}
 
 #  include <pthread.h>
 typedef pthread_mutex_t Lock;
@@ -71,10 +73,12 @@ typedef void*(*pt_start_fn)(void*);
 #else // Windows and MinGW
 
 #  include <sys/timeb.h>
-typedef _timeb sys_time_t;
 
-inline void system_time(sys_time_t* t) { _ftime(t); }
-inline int64_t time_to_msec(const sys_time_t& t) { return t.time * 1000LL + t.millitm; }
+inline int64_t system_time_to_msec() {
+  _timeb t;
+  _ftime(&t);
+  return t.time * 1000LL + t.millitm;
+}
 
 #ifndef NOMINMAX
 #  define NOMINMAX // disable macros min() and max()
