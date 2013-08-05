@@ -1294,7 +1294,7 @@ bool Position::is_draw() const {
 /// is only useful for debugging especially for finding evaluation symmetry bugs.
 
 static char toggle_case(char c) {
-  return isupper(c) ? tolower(c) : toupper(c);
+  return char(islower(c) ? toupper(c) : tolower(c));
 }
 
 void Position::flip() {
@@ -1302,24 +1302,24 @@ void Position::flip() {
   string f, token;
   std::stringstream ss(fen());
 
-  for (int i = 0; i < 8; i++)
+  for (Rank rank = RANK_8; rank >= RANK_1; rank--) // Piece placement
   {
-      std::getline(ss, token, i < 7 ? '/' : ' ');
-      std::transform(token.begin(), token.end(), token.begin(), toggle_case);
-      f.insert(0, token + (i ? "/" : " "));
+      std::getline(ss, token, rank > RANK_1 ? '/' : ' ');
+      f.insert(0, token + (f.empty() ? " " : "/"));
   }
 
-  ss >> token; // Side to move
-  f += (token == "w" ? "b " : "w ");
+  ss >> token; // Active color
+  f += (token == "w" ? "B " : "W "); // Will be lowercased later
 
-  ss >> token; // Castling flags
-  std::transform(token.begin(), token.end(), token.begin(), toggle_case);
+  ss >> token; // Castling availability
   f += token + " ";
 
-  ss >> token; // En-passant square
+  std::transform(f.begin(), f.end(), f.begin(), toggle_case);
+
+  ss >> token; // En passant square
   f += (token == "-" ? token : token.replace(1, 1, token[1] == '3' ? "6" : "3"));
 
-  std::getline(ss, token); // Full and half moves
+  std::getline(ss, token); // Half and full moves
   f += token;
 
   set(f, is_chess960(), this_thread());
