@@ -17,12 +17,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <algorithm>
 
 #include "bitcount.h"
 #include "movegen.h"
@@ -1293,45 +1293,36 @@ bool Position::is_draw() const {
 /// Position::flip() flips position with the white and black sides reversed. This
 /// is only useful for debugging especially for finding evaluation symmetry bugs.
 
+static char toggle_case(char c) {
+  return isupper(c) ? tolower(c) : toupper(c);
+}
+
 void Position::flip() {
 
-  const Position pos(*this);
+  string f, token;
+  std::stringstream ss(fen());
 
-  clear();
+  for (int i = 0; i < 8; i++)
+  {
+      std::getline(ss, token, i < 7 ? '/' : ' ');
+      std::transform(token.begin(), token.end(), token.begin(), toggle_case);
+      f.insert(0, token + (i ? "/" : " "));
+  }
 
-  sideToMove = ~pos.side_to_move();
-  thisThread = pos.this_thread();
-  nodes = pos.nodes_searched();
-  chess960 = pos.is_chess960();
-  gamePly = pos.game_ply();
+  ss >> token; // Side to move
+  f += (token == "w" ? "b " : "w ");
 
-  for (Square s = SQ_A1; s <= SQ_H8; s++)
-      if (!pos.is_empty(s))
-      {
-          Piece p = Piece(pos.piece_on(s) ^ 8);
-          put_piece(~s, color_of(p), type_of(p));
-      }
+  ss >> token; // Castling flags
+  std::transform(token.begin(), token.end(), token.begin(), toggle_case);
+  f += token + " ";
 
-  if (pos.can_castle(WHITE_OO))
-      set_castle_right(BLACK, ~pos.castle_rook_square(WHITE, KING_SIDE));
-  if (pos.can_castle(WHITE_OOO))
-      set_castle_right(BLACK, ~pos.castle_rook_square(WHITE, QUEEN_SIDE));
-  if (pos.can_castle(BLACK_OO))
-      set_castle_right(WHITE, ~pos.castle_rook_square(BLACK, KING_SIDE));
-  if (pos.can_castle(BLACK_OOO))
-      set_castle_right(WHITE, ~pos.castle_rook_square(BLACK, QUEEN_SIDE));
+  ss >> token; // En-passant square
+  f += (token == "-" ? token : token.replace(1, 1, token[1] == '3' ? "6" : "3"));
 
-  if (pos.st->epSquare != SQ_NONE)
-      st->epSquare = ~pos.st->epSquare;
+  std::getline(ss, token); // Full and half moves
+  f += token;
 
-  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
-
-  st->key = compute_key();
-  st->pawnKey = compute_pawn_key();
-  st->materialKey = compute_material_key();
-  st->psq = compute_psq_score();
-  st->npMaterial[WHITE] = compute_non_pawn_material(WHITE);
-  st->npMaterial[BLACK] = compute_non_pawn_material(BLACK);
+  set(f, is_chess960(), this_thread());
 
   assert(pos_is_ok());
 }
