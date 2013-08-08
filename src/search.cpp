@@ -75,11 +75,11 @@ namespace {
   }
 
   // Reduction lookup tables (initialized at startup) and their access function
-  int8_t Reductions[2][64][64]; // [pv][depth][moveNumber]
+  int8_t Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
 
-  template <bool PvNode> inline Depth reduction(Depth d, int mn) {
+  template <bool PvNode> inline Depth reduction(bool i, Depth d, int mn) {
 
-    return (Depth) Reductions[PvNode][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
+    return (Depth) Reductions[PvNode][i][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
   size_t PVSize, PVIdx;
@@ -136,8 +136,14 @@ void Search::init() {
   {
       double    pvRed = log(double(hd)) * log(double(mc)) / 3.0;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
-      Reductions[1][hd][mc] = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(ONE_PLY)) : 0);
-      Reductions[0][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(ONE_PLY)) : 0);
+      Reductions[1][1][hd][mc] = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(ONE_PLY)) : 0);
+      Reductions[0][1][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(ONE_PLY)) : 0);
+
+      Reductions[1][0][hd][mc] = Reductions[1][1][hd][mc];
+      Reductions[0][0][hd][mc] = Reductions[0][1][hd][mc];
+
+      if (Reductions[0][0][hd][mc] > 2 * ONE_PLY)
+          Reductions[0][0][hd][mc] += ONE_PLY;
   }
 
   // Init futility margins array
@@ -878,7 +884,7 @@ moves_loop: // When in check and at SpNode search starts from here
           // Value based pruning
           // We illogically ignore reduction condition depth >= 3*ONE_PLY for predicted depth,
           // but fixing this made program slightly weaker.
-          Depth predictedDepth = newDepth - reduction<PvNode>(depth, moveCount);
+          Depth predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
           futilityValue =  ss->staticEval + ss->evalMargin + futility_margin(predictedDepth, moveCount)
                          + Gains[pos.piece_moved(move)][to_sq(move)];
 
@@ -937,7 +943,7 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  move != ss->killers[0]
           &&  move != ss->killers[1])
       {
-          ss->reduction = reduction<PvNode>(depth, moveCount);
+          ss->reduction = reduction<PvNode>(improving, depth, moveCount);
 
           if (!PvNode && cutNode)
               ss->reduction += ONE_PLY;
