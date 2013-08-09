@@ -775,7 +775,10 @@ moves_loop: // When in check and at SpNode search starts from here
     MovePicker mp(pos, ttMove, depth, History, countermoves, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
-    improving = ss->staticEval >= (ss-2)->staticEval;
+    improving =   ss->staticEval >= (ss-2)->staticEval
+               || ss->staticEval == VALUE_NONE
+               ||(ss-2)->staticEval == VALUE_NONE;
+
     singularExtensionNode =   !RootNode
                            && !SpNode
                            &&  depth >= (PvNode ? 6 * ONE_PLY : 8 * ONE_PLY)
