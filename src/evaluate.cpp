@@ -1083,7 +1083,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     int ev = (eg_value(v) * int(sf)) / SCALE_FACTOR_NORMAL;
     int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;
-    return Value((result + GrainSize / 2) & ~(GrainSize - 1));
+    return Value((result / GrainSize) * GrainSize); // Sign independent
   }
 
   // apply_weight() weights score v by score w trying to prevent overflow
