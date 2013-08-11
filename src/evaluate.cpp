@@ -1140,8 +1140,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   std::string Tracing::do_trace(const Position& pos) {
 
-    Search::RootColor = pos.side_to_move();
-
     stream.str("");
     stream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
     std::memset(scores, 0, 2 * (TOTAL + 1) * sizeof(Score));
