@@ -530,10 +530,17 @@ Value do_evaluate(const Position& pos, Value& margin) {
         if (Piece == BISHOP)
             score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
 
-        // Bishop and knight outposts squares
-        if (    (Piece == BISHOP || Piece == KNIGHT)
-            && !(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
-            score += evaluate_outposts<Piece, Us>(pos, ei, s);
+        if (Piece == BISHOP || Piece == KNIGHT)
+        {
+            // Bishop and knight outposts squares
+            if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
+                score += evaluate_outposts<Piece, Us>(pos, ei, s);
+
+            // Pawn in front of knight/bishop
+            if (    relative_rank(Us, s) < RANK_5
+                && (pos.pieces(PAWN) & (s + pawn_push(Us))))
+                score += make_score(16, 0);
+        }
 
         if (  (Piece == ROOK || Piece == QUEEN)
             && relative_rank(Us, s) >= RANK_5)
