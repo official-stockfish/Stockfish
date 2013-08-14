@@ -185,13 +185,11 @@ void Bitboards::init() {
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+      {
           SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
-
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-      for (int d = 1; d < 8; d++)
-          for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
-              if (SquareDistance[s1][s2] == d)
-                  DistanceRingsBB[s1][d - 1] |= s2;
+          if (s1 != s2)
+             DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+      }
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
