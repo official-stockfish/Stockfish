@@ -21,7 +21,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#include <exception>
 #include <iostream>
 #include <sstream>
 
@@ -104,8 +103,6 @@ namespace {
   bool allows(const Position& pos, Move first, Move second);
   bool refutes(const Position& pos, Move first, Move second);
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
-
-  class stop : public std::exception {};
 
   struct Skill {
     Skill(int l) : level(l), best(MOVE_NONE) {}
@@ -359,9 +356,7 @@ namespace {
             // research with bigger window until not failing high/low anymore.
             while (true)
             {
-                try {
-                    bestValue = search<Root>(pos, ss, alpha, beta, depth * ONE_PLY, false);
-                } catch (stop&) {}
+                bestValue = search<Root>(pos, ss, alpha, beta, depth * ONE_PLY, false);
 
                 // Bring to front the best move. It is critical that sorting is
                 // done with a stable algorithm because all the values but the first
@@ -546,13 +541,10 @@ namespace {
     if (PvNode && thisThread->maxPly < ss->ply)
         thisThread->maxPly = ss->ply;
 
-    if (Signals.stop || thisThread->cutoff_occurred())
-        throw stop();
-
     if (!RootNode)
     {
         // Step 2. Check for aborted search and immediate draw
-        if (pos.is_draw() || ss->ply > MAX_PLY)
+        if (Signals.stop || pos.is_draw() || ss->ply > MAX_PLY)
             return DrawValue[pos.side_to_move()];
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -1006,6 +998,13 @@ moves_loop: // When in check and at SpNode search starts from here
           bestValue = splitPoint->bestValue;
           alpha = splitPoint->alpha;
       }
+
+      // Finished searching the move. If Signals.stop is true, the search
+      // was aborted because the user interrupted the search or because we
+      // ran out of time. In this case, the return value of the search cannot
+      // be trusted, and we don't update the best move and/or PV.
+      if (Signals.stop || thisThread->cutoff_occurred())
+          return value; // To avoid returning VALUE_INFINITE
 
       if (RootNode)
       {
@@ -1697,26 +1696,21 @@ void Thread::idle_loop() {
 
           activePosition = &pos;
 
-          try {
-              switch (sp->nodeType) {
-              case Root:
-                  search<SplitPointRoot>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
-                  break;
-              case PV:
-                  search<SplitPointPV>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
-                  break;
-              case NonPV:
-                  search<SplitPointNonPV>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
-                  break;
-              default:
-                  assert(false);
-              }
+          switch (sp->nodeType) {
+          case Root:
+              search<SplitPointRoot>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
+              break;
+          case PV:
+              search<SplitPointPV>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
+              break;
+          case NonPV:
+              search<SplitPointNonPV>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
+              break;
+          default:
+              assert(false);
+          }
 
-              assert(searching);
-          }
-          catch (stop&) {
-              sp->mutex.lock(); // Exception is thrown out of lock
-          }
+          assert(searching);
 
           searching = false;
           activePosition = NULL;

@@ -232,7 +232,7 @@ ifeq ($(COMP),clang)
 endif
 
 ### 3.2 General compiler settings
-CXXFLAGS = -Wall -Wcast-qual -fno-rtti $(EXTRACXXFLAGS)
+CXXFLAGS = -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
 
 ifeq ($(comp),gcc)
 	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
