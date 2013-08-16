@@ -114,10 +114,10 @@ struct Thread : public ThreadBase {
   Thread();
   virtual void idle_loop();
   bool cutoff_occurred() const;
-  bool is_available_to(Thread* master) const;
+  bool is_available_to(const Thread* master) const;
 
   template <bool Fake>
-  void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
+  void split(Position& pos, const Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, Move threatMove, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
@@ -160,7 +160,7 @@ struct ThreadPool : public std::vector<Thread*> {
 
   MainThread* main() { return static_cast<MainThread*>((*this)[0]); }
   void read_uci_options();
-  Thread* available_slave(Thread* master) const;
+  Thread* available_slave(const Thread* master) const;
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&,
                       const std::vector<Move>&, Search::StateStackPtr&);

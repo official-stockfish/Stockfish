@@ -164,7 +164,7 @@ bool Thread::cutoff_occurred() const {
 // which are busy searching the split point at the top of slaves split point
 // stack (the "helpful master concept" in YBWC terminology).
 
-bool Thread::is_available_to(Thread* master) const {
+bool Thread::is_available_to(const Thread* master) const {
 
   if (searching)
       return false;
@@ -238,7 +238,7 @@ void ThreadPool::read_uci_options() {
 // slave_available() tries to find an idle thread which is available as a slave
 // for the thread 'master'.
 
-Thread* ThreadPool::available_slave(Thread* master) const {
+Thread* ThreadPool::available_slave(const Thread* master) const {
 
   for (const_iterator it = begin(); it != end(); ++it)
       if ((*it)->is_available_to(master))
@@ -258,7 +258,7 @@ Thread* ThreadPool::available_slave(Thread* master) const {
 // search() then split() returns.
 
 template <bool Fake>
-void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bestValue,
+void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Value* bestValue,
                    Move* bestMove, Depth depth, Move threatMove, int moveCount,
                    MovePicker* movePicker, int nodeType, bool cutNode) {
 
@@ -348,8 +348,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 }
 
 // Explicit template instantiations
-template void Thread::split<false>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int, bool);
-template void Thread::split< true>(Position&, Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int, bool);
+template void Thread::split<false>(Position&, const Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int, bool);
+template void Thread::split< true>(Position&, const Stack*, Value, Value, Value*, Move*, Depth, Move, int, MovePicker*, int, bool);
 
 
 // wait_for_think_finished() waits for main thread to go to sleep then returns

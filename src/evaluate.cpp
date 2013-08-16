@@ -238,18 +238,18 @@ namespace {
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility);
 
   template<Color Us, bool Trace>
-  Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]);
+  Score evaluate_king(const Position& pos, const EvalInfo& ei, Value margins[]);
 
   template<Color Us, bool Trace>
-  Score evaluate_threats(const Position& pos, EvalInfo& ei);
+  Score evaluate_threats(const Position& pos, const EvalInfo& ei);
 
   template<Color Us, bool Trace>
-  Score evaluate_passed_pawns(const Position& pos, EvalInfo& ei);
+  Score evaluate_passed_pawns(const Position& pos, const EvalInfo& ei);
 
   template<Color Us>
-  int evaluate_space(const Position& pos, EvalInfo& ei);
+  int evaluate_space(const Position& pos, const EvalInfo& ei);
 
-  Score evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei);
+  Score evaluate_unstoppable_pawns(const Position& pos, const EvalInfo& ei);
 
   Value interpolate(const Score& v, Phase ph, ScaleFactor sf);
   Score apply_weight(Score v, Score w);
@@ -603,7 +603,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // and the type of attacked one.
 
   template<Color Us, bool Trace>
-  Score evaluate_threats(const Position& pos, EvalInfo& ei) {
+  Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -674,7 +674,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // evaluate_king<>() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool Trace>
-  Score evaluate_king(const Position& pos, EvalInfo& ei, Value margins[]) {
+  Score evaluate_king(const Position& pos, const EvalInfo& ei, Value margins[]) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -787,7 +787,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // evaluate_passed_pawns<>() evaluates the passed pawns of the given color
 
   template<Color Us, bool Trace>
-  Score evaluate_passed_pawns(const Position& pos, EvalInfo& ei) {
+  Score evaluate_passed_pawns(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -889,7 +889,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides, this is quite
   // conservative and returns a winning score only when we are very sure that the pawn is winning.
 
-  Score evaluate_unstoppable_pawns(const Position& pos, EvalInfo& ei) {
+  Score evaluate_unstoppable_pawns(const Position& pos, const EvalInfo& ei) {
 
     Bitboard b, b2, blockers, supporters, queeningPath, candidates;
     Square s, blockSq, queeningSquare;
@@ -1054,7 +1054,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // twice. Finally, the space bonus is scaled by a weight taken from the
   // material hash table. The aim is to improve play on game opening.
   template<Color Us>
-  int evaluate_space(const Position& pos, EvalInfo& ei) {
+  int evaluate_space(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
