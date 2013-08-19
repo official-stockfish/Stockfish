@@ -134,13 +134,11 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   assert(pos.non_pawn_material(weakerSide) == VALUE_ZERO);
   assert(!pos.count<PAWN>(weakerSide));
+  assert(!pos.checkers()); // Eval is never called when in check
 
   // Stalemate detection with lone king
-  if (    pos.side_to_move() == weakerSide
-      && !pos.checkers()
-      && !MoveList<LEGAL>(pos).size()) {
-    return VALUE_DRAW;
-  }
+  if (pos.side_to_move() == weakerSide && !MoveList<LEGAL>(pos).size())
+      return VALUE_DRAW;
 
   Square winnerKSq = pos.king_square(strongerSide);
   Square loserKSq = pos.king_square(weakerSide);
@@ -152,9 +150,8 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   if (   pos.count<QUEEN>(strongerSide)
       || pos.count<ROOK>(strongerSide)
-      || pos.bishop_pair(strongerSide)) {
-    result += VALUE_KNOWN_WIN;
-  }
+      || pos.bishop_pair(strongerSide))
+      result += VALUE_KNOWN_WIN;
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
