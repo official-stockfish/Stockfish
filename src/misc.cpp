@@ -28,7 +28,7 @@ using namespace std;
 
 /// Version number. If Version is left empty, then compile date, in the
 /// format DD-MM-YY, is shown in engine_info.
-static const string Version = "4";
+static const string Version = "";
 
 
 /// engine_info() returns the full name of the current Stockfish version. This

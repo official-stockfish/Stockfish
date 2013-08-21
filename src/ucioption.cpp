@@ -72,7 +72,7 @@ void init(OptionsMap& o) {
   o["Min Split Depth"]             = Option(0, 0, 12, on_threads);
   o["Max Threads per Split Point"] = Option(5, 4,  8, on_threads);
   o["Threads"]                     = Option(1, 1, MAX_THREADS, on_threads);
-  o["Idle Threads Sleep"]          = Option(false);
+  o["Idle Threads Sleep"]          = Option(true);
   o["Hash"]                        = Option(32, 1, 8192, on_hash_size);
   o["Clear Hash"]                  = Option(on_clear_hash);
   o["Ponder"]                      = Option(true);
