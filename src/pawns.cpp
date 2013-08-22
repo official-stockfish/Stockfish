@@ -129,15 +129,15 @@ namespace {
         opposed  =   theirPawns & forward_bb(Us, s);
         passed   = !(theirPawns & passed_pawn_mask(Us, s));
 
-        // Test for backward pawn
-        backward = false;
-
+        // Test for backward pawn.
         // If the pawn is passed, isolated, or member of a pawn chain it cannot
         // be backward. If there are friendly pawns behind on adjacent files
         // or if can capture an enemy pawn it cannot be backward either.
-        if (   !(passed | isolated | chain)
-            && !(ourPawns & pawn_attack_span(Them, s))
-            && !(pos.attacks_from<PAWN>(s, Us) & theirPawns))
+        if (   (passed | isolated | chain)
+            || (ourPawns & pawn_attack_span(Them, s))
+            || (pos.attacks_from<PAWN>(s, Us) & theirPawns))
+            backward = false;
+        else
         {
             // We now know that there are no friendly pawns beside or behind this
             // pawn on adjacent files. We now check whether the pawn is
