@@ -89,10 +89,7 @@ namespace {
 
 Endgames::Endgames() {
 
-  add<KK>("KK");
   add<KPK>("KPK");
-  add<KBK>("KBK");
-  add<KNK>("KNK");
   add<KNNK>("KNNK");
   add<KBNK>("KBNK");
   add<KRKP>("KRKP");
@@ -411,9 +408,6 @@ Value Endgame<KBBKN>::operator()(const Position& pos) const {
 
 
 /// Some cases of trivial draws
-template<> Value Endgame<KK>::operator()(const Position&) const { return VALUE_DRAW; }
-template<> Value Endgame<KBK>::operator()(const Position&) const { return VALUE_DRAW; }
-template<> Value Endgame<KNK>::operator()(const Position&) const { return VALUE_DRAW; }
 template<> Value Endgame<KNNK>::operator()(const Position&) const { return VALUE_DRAW; }
 template<> Value Endgame<KmmKm>::operator()(const Position&) const { return VALUE_DRAW; }
 

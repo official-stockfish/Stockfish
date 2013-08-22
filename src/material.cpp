@@ -240,7 +240,8 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       }
   }
 
-  // No pawns makes it difficult to win, even with a material advantage
+  // No pawns makes it difficult to win, even with a material advantage. This
+  // catches some trivial draws like KK, KBK and KNK
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
   {
       e->factor[WHITE] = (uint8_t)
