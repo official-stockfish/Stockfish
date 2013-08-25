@@ -226,9 +226,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
   Rank rkUs, rkThem;
-  File kf = file_of(ksq);
-
-  kf = (kf == FILE_A) ? FILE_B : (kf == FILE_H) ? FILE_G : kf;
+  File kf = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
   for (int f = kf - 1; f <= kf + 1; f++)
   {
