@@ -92,7 +92,6 @@ namespace {
     Bitboard b;
     Square s;
     File f;
-    Rank r;
     bool passed, isolated, doubled, opposed, chain, backward, candidate;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
@@ -113,13 +112,12 @@ namespace {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
         f = file_of(s);
-        r = rank_of(s);
 
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
 
         // Our rank plus previous one. Used for chain detection
-        b = rank_bb(r) | rank_bb(Us == WHITE ? r - Rank(1) : r + Rank(1));
+        b = rank_bb(s) | rank_bb(s - pawn_push(Us));
 
         // Flag the pawn as passed, isolated, doubled or member of a pawn
         // chain (but not the backward one).
