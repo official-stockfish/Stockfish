@@ -443,18 +443,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           // The bishop has the wrong color, and the defending king is on the
           // file of the pawn(s) or the adjacent file. Find the rank of the
           // frontmost pawn.
-          Rank rank;
-          if (strongerSide == WHITE)
-          {
-              for (rank = RANK_7; !(rank_bb(rank) & pawns); rank--) {}
-              assert(rank >= RANK_2 && rank <= RANK_7);
-          }
-          else
-          {
-              for (rank = RANK_2; !(rank_bb(rank) & pawns); rank++) {}
-              rank = Rank(rank ^ 7);  // HACK to get the relative rank
-              assert(rank >= RANK_2 && rank <= RANK_7);
-          }
+          Rank rank = relative_rank(strongerSide, lsb(weakerSide, pawns));
           // If the defending king has distance 1 to the promotion square or
           // is placed somewhere in front of the pawn, it's a draw.
           if (   square_distance(kingSq, queeningSq) <= 1
@@ -469,9 +458,8 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       && pos.non_pawn_material(weakerSide) == 0
       && pos.count<PAWN>(weakerSide) >= 1)
   {
-      // Get weaker pawn closest to opponent's queening square
-      Bitboard wkPawns = pos.pieces(weakerSide, PAWN);
-      Square weakerPawnSq = strongerSide == WHITE ? msb(wkPawns) : lsb(wkPawns);
+      // Get weakerSide pawn that is closest to home rank
+      Square weakerPawnSq = lsb(weakerSide, pos.pieces(weakerSide, PAWN));
 
       Square strongerKingSq = pos.king_square(strongerSide);
       Square weakerKingSq = pos.king_square(weakerSide);

@@ -319,4 +319,9 @@ extern Square pop_lsb(Bitboard* b);
 
 #endif
 
+/// lsb() overload finds least significant bit relative to the given color
+inline Square lsb(Color c, Bitboard b) {
+  return c == WHITE ? lsb(b) : msb(b);
+}
+
 #endif // #ifndef BITBOARD_H_INCLUDED
