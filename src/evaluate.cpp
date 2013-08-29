@@ -1089,9 +1089,9 @@ Value do_evaluate(const Position& pos, Value& margin) {
     assert(eg_value(v) > -VALUE_INFINITE && eg_value(v) < VALUE_INFINITE);
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
-    int ev = (eg_value(v) * int(sf)) / SCALE_FACTOR_NORMAL;
-    int result = (mg_value(v) * int(ph) + ev * int(128 - ph)) / 128;
-    return Value((result / GrainSize) * GrainSize); // Sign independent
+    int e = (eg_value(v) * int(sf)) / SCALE_FACTOR_NORMAL;
+    int r = (mg_value(v) * int(ph) + e * int(PHASE_MIDGAME - ph)) / PHASE_MIDGAME;
+    return Value((r / GrainSize) * GrainSize); // Sign independent
   }
 
   // apply_weight() weights score v by score w trying to prevent overflow
