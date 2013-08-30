@@ -229,11 +229,11 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   for (int f = kf - 1; f <= kf + 1; f++)
   {
       b = ourPawns & FileBB[f];
-      rkUs = b ? relative_rank(Us, lsb(Us, b)) : RANK_1;
+      rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
       safety -= ShelterWeakness[rkUs];
 
       b  = theirPawns & FileBB[f];
-      rkThem = b ? relative_rank(Us, lsb(Us, b)) : RANK_1;
+      rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
       safety -= StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];
   }
 
