@@ -57,7 +57,7 @@ namespace {
 
   // Tables used to drive a piece towards or away from another piece
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
-  const int PushAway [8] = { 0, 10, 14, 20, 30, 42, 58, 80 };
+  const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Get the material key of a Position out of the given endgame key code
   // like "KBPKN". The trick here is to first forge an ad-hoc fen string
@@ -365,6 +365,11 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
   return strongerSide == pos.side_to_move() ? result : -result;
 }
 
+
+/// KBB vs KN. This is almost always a win. We try to push enemy king to a corner
+/// and away from his knight. For a reference of this difficult endgame see:
+/// en.wikipedia.org/wiki/Chess_endgame#Effect_of_tablebases_on_endgame_theory
+
 template<>
 Value Endgame<KBBKN>::operator()(const Position& pos) const {
 
@@ -374,14 +379,14 @@ Value Endgame<KBBKN>::operator()(const Position& pos) const {
   assert(pos.count<KNIGHT>(weakerSide  ) == 1);
   assert(!pos.pieces(PAWN));
 
-  Square wksq = pos.king_square(strongerSide);
-  Square bksq = pos.king_square(weakerSide);
-  Square nsq = pos.list<KNIGHT>(weakerSide)[0];
+  Square winnerKSq = pos.king_square(strongerSide);
+  Square loserKSq = pos.king_square(weakerSide);
+  Square knightSq = pos.list<KNIGHT>(weakerSide)[0];
 
-  Value result =  BishopValueEg
-                + PushClose[square_distance(wksq, bksq)]
-                + square_distance(bksq, nsq) * 32
-                + (8 - popcount<Max15>(pos.attacks_from<KNIGHT>(nsq))) * 8;
+  Value result =  VALUE_KNOWN_WIN
+                + PushToCorners[loserKSq]
+                + PushClose[square_distance(winnerKSq, loserKSq)]
+                + PushAway[square_distance(loserKSq, knightSq)];
 
   return strongerSide == pos.side_to_move() ? result : -result;
 }
