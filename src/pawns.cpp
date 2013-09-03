@@ -140,16 +140,12 @@ namespace {
             // We now know that there are no friendly pawns beside or behind this
             // pawn on adjacent files. We now check whether the pawn is
             // backward by looking in the forward direction on the adjacent
-            // files, and seeing whether we meet a friendly or an enemy pawn first.
-            b = pos.attacks_from<PAWN>(s, Us);
+            // files, and picking the closest pawn there.
+            b = pawn_attack_span(Us, s) & (ourPawns | theirPawns);
+            b = pawn_attack_span(Us, s) & rank_bb(backmost_sq(Us, b));
 
-            // Note that we are sure to find something because pawn is not passed
-            // nor isolated, so loop is potentially infinite, but it isn't.
-            while (!(b & (ourPawns | theirPawns)))
-                b = shift_bb<Up>(b);
-
-            // The friendly pawn needs to be at least two ranks closer than the
-            // enemy pawn in order to help the potentially backward pawn advance.
+            // If we have an enemy pawn in the same or next rank, the pawn is
+            // backward because it cannot advance without being captured.
             backward = (b | shift_bb<Up>(b)) & theirPawns;
         }
 
