@@ -99,7 +99,6 @@ namespace {
   void id_loop(Position& pos);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
-  bool check_is_dangerous(const Position& pos, Move move, Value futilityBase, Value beta);
   bool allows(const Position& pos, Move first, Move second);
   bool refutes(const Position& pos, Move first, Move second);
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
@@ -1267,16 +1266,6 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  pos.see_sign(move) < 0)
           continue;
 
-      // Don't search useless checks
-      if (   !PvNode
-          && !InCheck
-          &&  givesCheck
-          &&  move != ttMove
-          && !pos.is_capture_or_promotion(move)
-          &&  ss->staticEval + PawnValueMg / 4 < beta
-          && !check_is_dangerous(pos, move, futilityBase, beta))
-          continue;
-
       // Check for legality only before to do the move
       if (!pos.pl_move_is_legal(move, ci.pinned))
           continue;
@@ -1351,42 +1340,6 @@ moves_loop: // When in check and at SpNode search starts from here
     return  v == VALUE_NONE             ? VALUE_NONE
           : v >= VALUE_MATE_IN_MAX_PLY  ? v - ply
           : v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
-  }
-
-
-  // check_is_dangerous() tests if a checking move can be pruned in qsearch()
-
-  bool check_is_dangerous(const Position& pos, Move move, Value futilityBase, Value beta)
-  {
-    Piece pc = pos.piece_moved(move);
-    Square from = from_sq(move);
-    Square to = to_sq(move);
-    Color them = ~pos.side_to_move();
-    Square ksq = pos.king_square(them);
-    Bitboard enemies = pos.pieces(them);
-    Bitboard kingAtt = pos.attacks_from<KING>(ksq);
-    Bitboard occ = pos.pieces() ^ from ^ ksq;
-    Bitboard oldAtt = pos.attacks_from(pc, from, occ);
-    Bitboard newAtt = pos.attacks_from(pc, to, occ);
-
-    // Checks which give opponent's king at most one escape square are dangerous
-    if (!more_than_one(kingAtt & ~(enemies | newAtt | to)))
-        return true;
-
-    // Queen contact check is very dangerous
-    if (type_of(pc) == QUEEN && (kingAtt & to))
-        return true;
-
-    // Creating new double threats with checks is dangerous
-    Bitboard b = (enemies ^ ksq) & newAtt & ~oldAtt;
-    while (b)
-    {
-        // Note that here we generate illegal "double move"!
-        if (futilityBase + PieceValue[EG][pos.piece_on(pop_lsb(&b))] >= beta)
-            return true;
-    }
-
-    return false;
   }
 
 
