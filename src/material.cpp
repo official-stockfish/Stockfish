@@ -263,14 +263,14 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       e->spaceWeight = make_score(minorPieceCount * minorPieceCount, 0);
   }
 
-  // Evaluate the material imbalance. We use NO_PIECE_TYPE as a place holder
+  // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
   // for the bishop pair "extended piece", this allow us to be more flexible
   // in defining bishop pair bonuses.
   const int pieceCount[COLOR_NB][PIECE_TYPE_NB] = {
-  { pos.bishop_pair(WHITE)  , pos.count<PAWN>(WHITE), pos.count<KNIGHT>(WHITE),
-    pos.count<BISHOP>(WHITE), pos.count<ROOK>(WHITE), pos.count<QUEEN >(WHITE) },
-  { pos.bishop_pair(BLACK)  , pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
-    pos.count<BISHOP>(BLACK), pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
+  { pos.count<BISHOP>(WHITE) > 1, pos.count<PAWN>(WHITE), pos.count<KNIGHT>(WHITE),
+    pos.count<BISHOP>(WHITE)    , pos.count<ROOK>(WHITE), pos.count<QUEEN >(WHITE) },
+  { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
+    pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
   e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
   return e;
