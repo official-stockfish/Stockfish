@@ -1223,6 +1223,7 @@ Key Position::compute_material_key() const {
 /// game and the endgame. These functions are used to initialize the incremental
 /// scores when a new position is set up, and to verify that the scores are correctly
 /// updated by do_move and undo_move when the program is running in debug mode.
+
 Score Position::compute_psq_score() const {
 
   Score score = SCORE_ZERO;
@@ -1254,15 +1255,11 @@ Value Position::compute_non_pawn_material(Color c) const {
 }
 
 
-/// Position::is_draw() tests whether the position is drawn by material,
-/// repetition, or the 50 moves rule. It does not detect stalemates, this
-/// must be done by the search.
-bool Position::is_draw() const {
+/// Position::is_draw() tests whether the position is drawn by repetition
+/// or the 50 moves rule. It does not detect stalemates, this must be done
+/// by the search.
 
-  // Draw by material?
-  if (   !pieces(PAWN)
-      && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMg))
-      return true;
+bool Position::is_draw() const {
 
   // Draw by the 50 moves rule?
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))

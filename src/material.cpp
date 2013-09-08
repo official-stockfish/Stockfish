@@ -173,10 +173,18 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       return e;
   }
 
+  // Draw by insufficient material (trivial draws like KK, KBK and KNK)
+  if (   !pos.pieces(PAWN)
+      &&  pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) <= BishopValueMg)
+  {
+      e->evaluationFunction = &EvaluateKmmKm[pos.side_to_move()];
+      return e;
+  }
+
+  // Minor piece endgame with at least one minor piece per side and
+  // no pawns. Note that the case KmmK is already handled by KXK.
   if (!pos.pieces(PAWN) && !pos.pieces(ROOK) && !pos.pieces(QUEEN))
   {
-      // Minor piece endgame with at least one minor piece per side and
-      // no pawns. Note that the case KmmK is already handled by KXK.
       assert((pos.pieces(WHITE, KNIGHT) | pos.pieces(WHITE, BISHOP)));
       assert((pos.pieces(BLACK, KNIGHT) | pos.pieces(BLACK, BISHOP)));
 
@@ -240,8 +248,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       }
   }
 
-  // No pawns makes it difficult to win, even with a material advantage. This
-  // catches some trivial draws like KK, KBK and KNK
+  // No pawns makes it difficult to win, even with a material advantage
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
   {
       e->factor[WHITE] = (uint8_t)
