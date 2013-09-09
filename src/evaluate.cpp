@@ -818,7 +818,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
             ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 2 * rr);
 
             // If blockSq is not the queening square then consider also a second push
-            if (rank_of(blockSq) != (Us == WHITE ? RANK_8 : RANK_1))
+            if (relative_rank(Us, blockSq) != RANK_8)
                 ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr);
 
             // If the pawn is free to advance, increase bonus
