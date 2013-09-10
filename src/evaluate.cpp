@@ -32,7 +32,7 @@
 namespace {
 
   enum ExtendedPieceType { // Used for tracing
-    PST = 8, IMBALANCE, MOBILITY, THREAT, PASSED, UNSTOPPABLE, SPACE, TOTAL
+    PST = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL
   };
 
   namespace Tracing {
@@ -175,6 +175,7 @@ namespace {
   const Score MinorBehindPawn  = make_score(16,  0);
   const Score UndefendedMinor  = make_score(25, 10);
   const Score TrappedRook      = make_score(90,  0);
+  const Score Unstoppable      = make_score( 0, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -245,7 +246,7 @@ namespace {
   template<Color Us>
   int evaluate_space(const Position& pos, const EvalInfo& ei);
 
-  Score evaluate_unstoppable_pawns(const Position& pos, const EvalInfo& ei);
+  Score evaluate_unstoppable_pawns(const Position& pos, Color us, const EvalInfo& ei);
 
   Value interpolate(const Score& v, Phase ph, ScaleFactor sf);
   Score apply_weight(Score v, Score w);
@@ -360,9 +361,10 @@ Value do_evaluate(const Position& pos, Value& margin) {
   score +=  evaluate_passed_pawns<WHITE, Trace>(pos, ei)
           - evaluate_passed_pawns<BLACK, Trace>(pos, ei);
 
-  // If one side has only a king, check whether exists any unstoppable passed pawn
+  // If one side has only a king, score for potential unstoppable pawns
   if (!pos.non_pawn_material(WHITE) || !pos.non_pawn_material(BLACK))
-      score += evaluate_unstoppable_pawns(pos, ei);
+      score +=  evaluate_unstoppable_pawns(pos, WHITE, ei)
+              - evaluate_unstoppable_pawns(pos, BLACK, ei);
 
   // Evaluate space for both sides, only in middle-game.
   if (ei.mi->space_weight())
@@ -405,7 +407,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
       Tracing::add(PST, pos.psq_score());
       Tracing::add(IMBALANCE, ei.mi->material_value());
       Tracing::add(PAWN, ei.pi->pawns_value());
-      Tracing::add(UNSTOPPABLE, evaluate_unstoppable_pawns(pos, ei));
       Score w = ei.mi->space_weight() * evaluate_space<WHITE>(pos, ei);
       Score b = ei.mi->space_weight() * evaluate_space<BLACK>(pos, ei);
       Tracing::add(SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
@@ -894,160 +895,18 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
 
-  // evaluate_unstoppable_pawns() evaluates the unstoppable passed pawns for both sides, this is quite
-  // conservative and returns a winning score only when we are very sure that the pawn is winning.
+  // evaluate_unstoppable_pawns() scores the most advanced among the passed and
+  // candidate pawns. In case opponent has no pieces but pawns, this is somewhat
+  // related to the possibility pawns are unstoppable.
 
-  Score evaluate_unstoppable_pawns(const Position& pos, const EvalInfo& ei) {
+  Score evaluate_unstoppable_pawns(const Position& pos, Color us, const EvalInfo& ei) {
 
-    Bitboard b, b2, blockers, supporters, queeningPath, candidates;
-    Square s, blockSq, queeningSquare;
-    Color c, winnerSide, loserSide;
-    bool pathDefended, opposed;
-    int pliesToGo, movesToGo, oppMovesToGo, sacptg, blockersCount, minKingDist, kingptg, d;
-    int pliesToQueen[] = { 256, 256 };
+    Bitboard b = ei.pi->passed_pawns(us) | ei.pi->candidate_pawns(us);
 
-    // Step 1. Hunt for unstoppable passed pawns. If we find at least one,
-    // record how many plies are required for promotion.
-    for (c = WHITE; c <= BLACK; ++c)
-    {
-        // Skip if other side has non-pawn pieces
-        if (pos.non_pawn_material(~c))
-            continue;
-
-        b = ei.pi->passed_pawns(c);
-
-        while (b)
-        {
-            s = pop_lsb(&b);
-            queeningSquare = relative_square(c, file_of(s) | RANK_8);
-            queeningPath = forward_bb(c, s);
-
-            // Compute plies to queening and check direct advancement
-            movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(c, s) == RANK_2);
-            oppMovesToGo = square_distance(pos.king_square(~c), queeningSquare) - int(c != pos.side_to_move());
-            pathDefended = ((ei.attackedBy[c][ALL_PIECES] & queeningPath) == queeningPath);
-
-            if (movesToGo >= oppMovesToGo && !pathDefended)
-                continue;
-
-            // Opponent king cannot block because path is defended and position
-            // is not in check. So only friendly pieces can be blockers.
-            assert(!pos.checkers());
-            assert((queeningPath & pos.pieces()) == (queeningPath & pos.pieces(c)));
-
-            // Add moves needed to free the path from friendly pieces and retest condition
-            movesToGo += popcount<Max15>(queeningPath & pos.pieces(c));
-
-            if (movesToGo >= oppMovesToGo && !pathDefended)
-                continue;
-
-            pliesToGo = 2 * movesToGo - int(c == pos.side_to_move());
-            pliesToQueen[c] = std::min(pliesToQueen[c], pliesToGo);
-        }
-    }
-
-    // Step 2. If either side cannot promote at least three plies before the other side then situation
-    // becomes too complex and we give up. Otherwise we determine the possibly "winning side"
-    if (abs(pliesToQueen[WHITE] - pliesToQueen[BLACK]) < 3)
+    if (!b || pos.non_pawn_material(~us))
         return SCORE_ZERO;
 
-    winnerSide = (pliesToQueen[WHITE] < pliesToQueen[BLACK] ? WHITE : BLACK);
-    loserSide = ~winnerSide;
-
-    // Step 3. Can the losing side possibly create a new passed pawn and thus prevent the loss?
-    b = candidates = pos.pieces(loserSide, PAWN);
-
-    while (b)
-    {
-        s = pop_lsb(&b);
-
-        // Compute plies from queening
-        queeningSquare = relative_square(loserSide, file_of(s) | RANK_8);
-        movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
-        pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
-
-        // Check if (without even considering any obstacles) we're too far away or doubled
-        if (   pliesToQueen[winnerSide] + 3 <= pliesToGo
-            || (forward_bb(loserSide, s) & pos.pieces(loserSide, PAWN)))
-            candidates ^= s;
-    }
-
-    // If any candidate is already a passed pawn it _may_ promote in time. We give up.
-    if (candidates & ei.pi->passed_pawns(loserSide))
-        return SCORE_ZERO;
-
-    // Step 4. Check new passed pawn creation through king capturing and pawn sacrifices
-    b = candidates;
-
-    while (b)
-    {
-        s = pop_lsb(&b);
-        sacptg = blockersCount = 0;
-        minKingDist = kingptg = 256;
-
-        // Compute plies from queening
-        queeningSquare = relative_square(loserSide, file_of(s) | RANK_8);
-        movesToGo = rank_distance(s, queeningSquare) - int(relative_rank(loserSide, s) == RANK_2);
-        pliesToGo = 2 * movesToGo - int(loserSide == pos.side_to_move());
-
-        // Generate list of blocking pawns and supporters
-        supporters = adjacent_files_bb(file_of(s)) & candidates;
-        opposed = forward_bb(loserSide, s) & pos.pieces(winnerSide, PAWN);
-        blockers = passed_pawn_mask(loserSide, s) & pos.pieces(winnerSide, PAWN);
-
-        assert(blockers);
-
-        // How many plies does it take to remove all the blocking pawns?
-        while (blockers)
-        {
-            blockSq = pop_lsb(&blockers);
-            movesToGo = 256;
-
-            // Check pawns that can give support to overcome obstacle, for instance
-            // black pawns: a4, b4 white: b2 then pawn in b4 is giving support.
-            if (!opposed)
-            {
-                b2 = supporters & in_front_bb(winnerSide, rank_of(blockSq + pawn_push(winnerSide)));
-
-                if (b2)
-                {
-                    d = square_distance(blockSq, backmost_sq(winnerSide, b2)) - 2;
-                    movesToGo = std::min(movesToGo, d);
-                }
-            }
-
-            // Check pawns that can be sacrificed against the blocking pawn
-            b2 = pawn_attack_span(winnerSide, blockSq) & candidates & ~SquareBB[s];
-
-            if (b2)
-            {
-                d = square_distance(blockSq, backmost_sq(winnerSide, b2)) - 2;
-                movesToGo = std::min(movesToGo, d);
-            }
-
-            // If obstacle can be destroyed with an immediate pawn exchange / sacrifice,
-            // it's not a real obstacle and we have nothing to add to pliesToGo.
-            if (movesToGo <= 0)
-                continue;
-
-            // Plies needed to sacrifice against all the blocking pawns
-            sacptg += movesToGo * 2;
-            blockersCount++;
-
-            // Plies needed for the king to capture all the blocking pawns
-            d = square_distance(pos.king_square(loserSide), blockSq);
-            minKingDist = std::min(minKingDist, d);
-            kingptg = (minKingDist + blockersCount) * 2;
-        }
-
-        // Check if pawn sacrifice or king capture plan _may_ save the day
-        if (pliesToQueen[winnerSide] + 3 > pliesToGo + std::min(kingptg, sacptg))
-            return SCORE_ZERO;
-    }
-
-    // Winning pawn is unstoppable and will promote as first, return big score
-    Score score = make_score(0, (Value) 1280 - 32 * pliesToQueen[winnerSide]);
-    return winnerSide == WHITE ? score : -score;
+    return Unstoppable * int(relative_rank(WHITE, frontmost_sq(us, b)));
   }
 
 
@@ -1132,7 +991,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     Score bScore = scores[BLACK][idx];
 
     switch (idx) {
-    case PST: case IMBALANCE: case PAWN: case UNSTOPPABLE: case TOTAL:
+    case PST: case IMBALANCE: case PAWN: case TOTAL:
         stream << std::setw(20) << name << " |   ---   --- |   ---   --- | "
                << std::setw(6)  << to_cp(mg_value(wScore)) << " "
                << std::setw(6)  << to_cp(eg_value(wScore)) << " \n";
@@ -1176,7 +1035,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
     row("King safety", KING);
     row("Threats", THREAT);
     row("Passed pawns", PASSED);
-    row("Unstoppable pawns", UNSTOPPABLE);
     row("Space", SPACE);
 
     stream <<             "---------------------+-------------+-------------+---------------\n";

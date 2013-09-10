@@ -99,7 +99,7 @@ namespace {
     Bitboard ourPawns = pos.pieces(Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
-    e->passedPawns[Us] = 0;
+    e->passedPawns[Us] = e->candidatePawns[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
@@ -179,7 +179,12 @@ namespace {
             value += ChainMember[f];
 
         if (candidate)
+        {
             value += CandidatePassed[relative_rank(Us, s)];
+
+            if (!doubled)
+                e->candidatePawns[Us] |= s;
+        }
     }
 
     return value;
