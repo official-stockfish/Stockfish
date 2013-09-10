@@ -1002,19 +1002,19 @@ Value do_evaluate(const Position& pos, Value& margin) {
             {
                 b2 = supporters & in_front_bb(winnerSide, rank_of(blockSq + pawn_push(winnerSide)));
 
-                while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
+                if (b2)
                 {
-                    d = square_distance(blockSq, pop_lsb(&b2)) - 2;
+                    d = square_distance(blockSq, backmost_sq(winnerSide, b2)) - 2;
                     movesToGo = std::min(movesToGo, d);
                 }
             }
 
             // Check pawns that can be sacrificed against the blocking pawn
-            b2 = pawn_attack_span(winnerSide, blockSq) & candidates & ~(1ULL << s);
+            b2 = pawn_attack_span(winnerSide, blockSq) & candidates & ~SquareBB[s];
 
-            while (b2) // This while-loop could be replaced with LSB/MSB (depending on color)
+            if (b2)
             {
-                d = square_distance(blockSq, pop_lsb(&b2)) - 2;
+                d = square_distance(blockSq, backmost_sq(winnerSide, b2)) - 2;
                 movesToGo = std::min(movesToGo, d);
             }
 
@@ -1033,12 +1033,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
             kingptg = (minKingDist + blockersCount) * 2;
         }
 
-        // Check if pawn sacrifice plan _may_ save the day
-        if (pliesToQueen[winnerSide] + 3 > pliesToGo + sacptg)
-            return SCORE_ZERO;
-
-        // Check if king capture plan _may_ save the day (contains some false positives)
-        if (pliesToQueen[winnerSide] + 3 > pliesToGo + kingptg)
+        // Check if pawn sacrifice or king capture plan _may_ save the day
+        if (pliesToQueen[winnerSide] + 3 > pliesToGo + std::min(kingptg, sacptg))
             return SCORE_ZERO;
     }
 
