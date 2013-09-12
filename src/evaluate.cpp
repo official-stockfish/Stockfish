@@ -872,9 +872,16 @@ Value do_evaluate(const Position& pos, Value& margin) {
         {
             if (pos.non_pawn_material(Them) <= KnightValueMg)
                 ebonus += ebonus / 4;
+
             else if (pos.pieces(Them, ROOK, QUEEN))
                 ebonus -= ebonus / 4;
         }
+
+        // Increase the bonus if we have more non-pawn pieces
+        if (pos.count<ALL_PIECES>(  Us) - pos.count<PAWN>(  Us) >
+            pos.count<ALL_PIECES>(Them) - pos.count<PAWN>(Them))
+            ebonus += ebonus / 4;
+
         score += make_score(mbonus, ebonus);
 
     }
