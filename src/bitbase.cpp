@@ -55,8 +55,8 @@ namespace {
 
   struct KPKPosition {
 
-    operator Result() const { return res; }
-    Result classify_leaf(unsigned idx);
+    KPKPosition(unsigned idx);
+    operator Result() const { return result; }
     Result classify(const std::vector<KPKPosition>& db)
     { return us == WHITE ? classify<WHITE>(db) : classify<BLACK>(db); }
 
@@ -65,7 +65,7 @@ namespace {
 
     Color us;
     Square bksq, wksq, psq;
-    Result res;
+    Result result;
   };
 
 } // namespace
@@ -83,11 +83,12 @@ bool Bitbases::probe_kpk(Square wksq, Square wpsq, Square bksq, Color us) {
 void Bitbases::init_kpk() {
 
   unsigned idx, repeat = 1;
-  std::vector<KPKPosition> db(IndexMax);
+  std::vector<KPKPosition> db;
+  db.reserve(IndexMax);
 
   // Initialize db with known win / draw positions
   for (idx = 0; idx < IndexMax; idx++)
-      db[idx].classify_leaf(idx);
+      db.push_back(KPKPosition(idx));
 
   // Iterate through the positions until no more of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
@@ -104,33 +105,32 @@ void Bitbases::init_kpk() {
 
 namespace {
 
-  Result KPKPosition::classify_leaf(unsigned idx) {
+  KPKPosition::KPKPosition(unsigned idx) {
 
     wksq = Square((idx >>  0) & 0x3F);
     bksq = Square((idx >>  6) & 0x3F);
     us   = Color ((idx >> 12) & 0x01);
     psq  = File  ((idx >> 13) & 0x03) | Rank(RANK_7 - (idx >> 15));
+    result  = UNKNOWN;
 
     // Check if two pieces are on the same square or if a king can be captured
     if (   square_distance(wksq, bksq) <= 1 || wksq == psq || bksq == psq
         || (us == WHITE && (StepAttacksBB[PAWN][psq] & bksq)))
-        return res = INVALID;
+        result = INVALID;
 
-    if (us == WHITE)
+    else if (us == WHITE)
     {
         // Immediate win if pawn can be promoted without getting captured
         if (   rank_of(psq) == RANK_7
             && wksq != psq + DELTA_N
             && (   square_distance(bksq, psq + DELTA_N) > 1
                 ||(StepAttacksBB[KING][wksq] & (psq + DELTA_N))))
-            return res = WIN;
+            result = WIN;
     }
     // Immediate draw if is stalemate or king captures undefended pawn
     else if (  !(StepAttacksBB[KING][bksq] & ~(StepAttacksBB[KING][wksq] | StepAttacksBB[PAWN][psq]))
              || (StepAttacksBB[KING][bksq] & psq & ~StepAttacksBB[KING][wksq]))
-        return res = DRAW;
-
-    return res = UNKNOWN;
+        result = DRAW;
   }
 
   template<Color Us>
@@ -165,9 +165,9 @@ namespace {
     }
 
     if (Us == WHITE)
-        return res = r & WIN  ? WIN  : r & UNKNOWN ? UNKNOWN : DRAW;
+        return result = r & WIN  ? WIN  : r & UNKNOWN ? UNKNOWN : DRAW;
     else
-        return res = r & DRAW ? DRAW : r & UNKNOWN ? UNKNOWN : WIN;
+        return result = r & DRAW ? DRAW : r & UNKNOWN ? UNKNOWN : WIN;
   }
 
 } // namespace
