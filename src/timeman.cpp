@@ -17,8 +17,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 #include "search.h"
 #include "timeman.h"
@@ -110,7 +110,12 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
 
   // Initialize to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
-  optimumSearchTime = maximumSearchTime = limits.time[us];
+  optimumSearchTime = maximumSearchTime = limits.time[us]; // In msec
+
+  // Scale down emergencyBaseTime if we are under very high time pressure to
+  // avoid moving immediately and so blundering.
+  if (maximumSearchTime)
+      emergencyBaseTime /= std::max(emergencyBaseTime * 100 / maximumSearchTime, 1);
 
   // We calculate optimum time usage for different hypothetic "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
