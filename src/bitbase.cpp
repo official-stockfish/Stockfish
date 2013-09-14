@@ -93,8 +93,7 @@ void Bitbases::init_kpk() {
   // changed to either wins or draws (15 cycles needed).
   while (repeat)
       for (repeat = idx = 0; idx < IndexMax; idx++)
-          if (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN)
-              repeat = 1;
+          repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
 
   // Map 32 results into one KPKBitbase[] entry
   for (idx = 0; idx < IndexMax; idx++)
@@ -113,8 +112,7 @@ namespace {
     psq  = File  ((idx >> 13) & 0x03) | Rank(RANK_7 - (idx >> 15));
 
     // Check if two pieces are on the same square or if a king can be captured
-    if (   wksq == psq || wksq == bksq || bksq == psq
-        || (StepAttacksBB[KING][wksq] & bksq)
+    if (   square_distance(wksq, bksq) <= 1 || wksq == psq || bksq == psq
         || (us == WHITE && (StepAttacksBB[PAWN][psq] & bksq)))
         return res = INVALID;
 
@@ -162,7 +160,7 @@ namespace {
         Square s = psq + DELTA_N;
         r |= db[index(BLACK, bksq, wksq, s)]; // Single push
 
-        if (rank_of(s) == RANK_3 && s != wksq && s != bksq)
+        if (rank_of(psq) == RANK_2 && s != wksq && s != bksq)
             r |= db[index(BLACK, bksq, wksq, s + DELTA_N)]; // Double push
     }
 
