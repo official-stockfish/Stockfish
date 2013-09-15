@@ -231,7 +231,7 @@ void MovePicker::generate_next() {
       killers[2].move = killers[3].move = MOVE_NONE;
 
       // Be sure countermoves are different from killers
-      for (int i = 0; i < 2; i++)
+      for (int i = 0; i < 2; ++i)
           if (countermoves[i] != cur->move && countermoves[i] != (cur+1)->move)
               (end++)->move = countermoves[i];
 

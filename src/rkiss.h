@@ -64,7 +64,7 @@ public:
 
     s.a = 0xf1ea5eed;
     s.b = s.c = s.d = 0xd4e12c77;
-    for (int i = 0; i < seed; i++) // Scramble a few rounds
+    for (int i = 0; i < seed; ++i) // Scramble a few rounds
         rand64();
   }
 

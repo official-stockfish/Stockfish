@@ -361,7 +361,7 @@ PolyglotBook::~PolyglotBook() { if (is_open()) close(); }
 template<typename T> PolyglotBook& PolyglotBook::operator>>(T& n) {
 
   n = 0;
-  for (size_t i = 0; i < sizeof(T); i++)
+  for (size_t i = 0; i < sizeof(T); ++i)
       n = T((n << 8) + ifstream::get());
 
   return *this;

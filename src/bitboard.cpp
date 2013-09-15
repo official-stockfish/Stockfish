@@ -150,11 +150,11 @@ void Bitboards::print(Bitboard b) {
 
 void Bitboards::init() {
 
-  for (int k = 0, i = 0; i < 8; i++)
+  for (int k = 0, i = 0; i < 8; ++i)
       while (k < (2 << i))
           MS1BTable[k++] = i;
 
-  for (int i = 0; i < 64; i++)
+  for (int i = 0; i < 64; ++i)
       BSFTable[bsf_index(1ULL << i)] = Square(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
@@ -163,7 +163,7 @@ void Bitboards::init() {
   FileBB[FILE_A] = FileABB;
   RankBB[RANK_1] = Rank1BB;
 
-  for (int i = 1; i < 8; i++)
+  for (int i = 1; i < 8; ++i)
   {
       FileBB[i] = FileBB[i - 1] << 1;
       RankBB[i] = RankBB[i - 1] << 8;
@@ -235,7 +235,7 @@ namespace {
 
     Bitboard attack = 0;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; ++i)
         for (Square s = sq + deltas[i];
              is_ok(s) && square_distance(s, s - deltas[i]) == 1;
              s += deltas[i])
@@ -322,7 +322,7 @@ namespace {
             // looks up the correct sliding attack in the attacks[s] database.
             // Note that we build up the database for square 's' as a side
             // effect of verifying the magic.
-            for (i = 0; i < size; i++)
+            for (i = 0; i < size; ++i)
             {
                 Bitboard& attack = attacks[s][index(s, occupancy[i])];
 

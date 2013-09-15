@@ -116,7 +116,7 @@ void benchmark(const Position& current, istream& is) {
   Search::StateStackPtr st;
   Time::point elapsed = Time::now();
 
-  for (size_t i = 0; i < fens.size(); i++)
+  for (size_t i = 0; i < fens.size(); ++i)
   {
       Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
 

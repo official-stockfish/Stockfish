@@ -236,7 +236,7 @@ void Search::think() {
   }
 
   // Reset the threads, still sleeping: will be wake up at split time
-  for (size_t i = 0; i < Threads.size(); i++)
+  for (size_t i = 0; i < Threads.size(); ++i)
       Threads[i]->maxPly = 0;
 
   Threads.sleepWhileIdle = Options["Idle Threads Sleep"];
@@ -337,7 +337,7 @@ namespace {
 
         // Save last iteration's scores before first PV line is searched and all
         // the move scores but the (new) PV are set to -VALUE_INFINITE.
-        for (size_t i = 0; i < RootMoves.size(); i++)
+        for (size_t i = 0; i < RootMoves.size(); ++i)
             RootMoves[i].prevScore = RootMoves[i].score;
 
         // MultiPV loop. We perform a full root search for each PV line
@@ -367,7 +367,7 @@ namespace {
 
                 // Write PV back to transposition table in case the relevant
                 // entries have been overwritten during the search.
-                for (size_t i = 0; i <= PVIdx; i++)
+                for (size_t i = 0; i <= PVIdx; ++i)
                     RootMoves[i].insert_pv_in_tt(pos);
 
                 // If search has been stopped return immediately. Sorting and
@@ -1102,7 +1102,7 @@ moves_loop: // When in check and at SpNode search starts from here
         // played non-capture moves.
         Value bonus = Value(int(depth) * int(depth));
         History.update(pos.piece_moved(bestMove), to_sq(bestMove), bonus);
-        for (int i = 0; i < quietCount - 1; i++)
+        for (int i = 0; i < quietCount - 1; ++i)
         {
             Move m = quietsSearched[i];
             History.update(pos.piece_moved(m), to_sq(m), -bonus);
@@ -1456,7 +1456,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // Choose best move. For each move score we add two terms both dependent on
     // weakness, one deterministic and bigger for weaker moves, and one random,
     // then we choose the move with the resulting highest score.
-    for (size_t i = 0; i < PVSize; i++)
+    for (size_t i = 0; i < PVSize; ++i)
     {
         int s = RootMoves[i].score;
 
@@ -1489,11 +1489,11 @@ moves_loop: // When in check and at SpNode search starts from here
     size_t uciPVSize = std::min((size_t)Options["MultiPV"], RootMoves.size());
     int selDepth = 0;
 
-    for (size_t i = 0; i < Threads.size(); i++)
+    for (size_t i = 0; i < Threads.size(); ++i)
         if (Threads[i]->maxPly > selDepth)
             selDepth = Threads[i]->maxPly;
 
-    for (size_t i = 0; i < uciPVSize; i++)
+    for (size_t i = 0; i < uciPVSize; ++i)
     {
         bool updated = (i <= PVIdx);
 
@@ -1730,7 +1730,7 @@ void check_time() {
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
-      for (size_t i = 0; i < Threads.size(); i++)
+      for (size_t i = 0; i < Threads.size(); ++i)
           for (int j = 0; j < Threads[i]->splitPointsSize; j++)
           {
               SplitPoint& sp = Threads[i]->splitPoints[j];

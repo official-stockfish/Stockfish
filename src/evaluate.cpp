@@ -288,7 +288,7 @@ namespace Eval {
     const int MaxSlope = 30;
     const int Peak = 1280;
 
-    for (int t = 0, i = 1; i < 100; i++)
+    for (int t = 0, i = 1; i < 100; ++i)
     {
         t = std::min(Peak, std::min(int(0.4 * i * i), t + MaxSlope));
 

@@ -73,7 +73,7 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
   const TTEntry* tte = first_entry(key);
   uint32_t key32 = key >> 32;
 
-  for (unsigned i = 0; i < ClusterSize; i++, tte++)
+  for (unsigned i = 0; i < ClusterSize; ++i, tte++)
       if (tte->key() == key32)
           return tte;
 
@@ -97,7 +97,7 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
 
   tte = replace = first_entry(key);
 
-  for (unsigned i = 0; i < ClusterSize; i++, tte++)
+  for (unsigned i = 0; i < ClusterSize; ++i, tte++)
   {
       if (!tte->key() || tte->key() == key32) // Empty or overwrite old
       {
