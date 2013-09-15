@@ -810,8 +810,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
             Square blockSq = s + pawn_push(Us);
 
             // Adjust bonus based on kings proximity
-            ebonus += Value(square_distance(pos.king_square(Them), blockSq) * 5 * rr);
-            ebonus -= Value(square_distance(pos.king_square(Us), blockSq) * 2 * rr);
+            ebonus +=  Value(square_distance(pos.king_square(Them), blockSq) * 5 * rr)
+                     - Value(square_distance(pos.king_square(Us  ), blockSq) * 2 * rr);
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_8)
