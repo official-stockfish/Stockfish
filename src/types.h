@@ -279,10 +279,10 @@ inline T& operator-=(T& d1, const T d2) { d1 = d1 - d2; return d1; }        \
 inline T& operator*=(T& d, int i) { d = T(int(d) * i); return d; }
 
 #define ENABLE_OPERATORS_ON(T) ENABLE_SAFE_OPERATORS_ON(T)                  \
-inline T operator++(T& d, int) { d = T(int(d) + 1); return d; }             \
-inline T operator--(T& d, int) { d = T(int(d) - 1); return d; }             \
+inline T& operator++(T& d) { return d = T(int(d) + 1); }                    \
+inline T& operator--(T& d) { return d = T(int(d) - 1); }                    \
 inline T operator/(const T d, int i) { return T(int(d) / i); }              \
-inline T& operator/=(T& d, int i) { d = T(int(d) / i); return d; }
+inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
 ENABLE_OPERATORS_ON(Value)
 ENABLE_OPERATORS_ON(PieceType)

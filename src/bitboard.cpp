@@ -132,11 +132,11 @@ void Bitboards::print(Bitboard b) {
 
   sync_cout;
 
-  for (Rank rank = RANK_8; rank >= RANK_1; rank--)
+  for (Rank rank = RANK_8; rank >= RANK_1; --rank)
   {
       std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
 
-      for (File file = FILE_A; file <= FILE_H; file++)
+      for (File file = FILE_A; file <= FILE_H; ++file)
           std::cout << "| " << (b & (file | rank) ? "X " : "  ");
 
       std::cout << "|\n";
@@ -157,7 +157,7 @@ void Bitboards::init() {
   for (int i = 0; i < 64; i++)
       BSFTable[bsf_index(1ULL << i)] = Square(i);
 
-  for (Square s = SQ_A1; s <= SQ_H8; s++)
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
       SquareBB[s] = 1ULL << s;
 
   FileBB[FILE_A] = FileABB;
@@ -169,22 +169,22 @@ void Bitboards::init() {
       RankBB[i] = RankBB[i - 1] << 8;
   }
 
-  for (File f = FILE_A; f <= FILE_H; f++)
+  for (File f = FILE_A; f <= FILE_H; ++f)
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
 
-  for (Rank r = RANK_1; r < RANK_8; r++)
+  for (Rank r = RANK_1; r < RANK_8; ++r)
       InFrontBB[WHITE][r] = ~(InFrontBB[BLACK][r + 1] = InFrontBB[BLACK][r] | RankBB[r]);
 
-  for (Color c = WHITE; c <= BLACK; c++)
-      for (Square s = SQ_A1; s <= SQ_H8; s++)
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           ForwardBB[c][s]      = InFrontBB[c][rank_of(s)] & FileBB[file_of(s)];
           PawnAttackSpan[c][s] = InFrontBB[c][rank_of(s)] & AdjacentFilesBB[file_of(s)];
           PassedPawnMask[c][s] = ForwardBB[c][s] | PawnAttackSpan[c][s];
       }
 
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
       {
           SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
           if (s1 != s2)
@@ -194,9 +194,9 @@ void Bitboards::init() {
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
 
-  for (Color c = WHITE; c <= BLACK; c++)
-      for (PieceType pt = PAWN; pt <= KING; pt++)
-          for (Square s = SQ_A1; s <= SQ_H8; s++)
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt = PAWN; pt <= KING; ++pt)
+          for (Square s = SQ_A1; s <= SQ_H8; ++s)
               for (int k = 0; steps[pt][k]; k++)
               {
                   Square to = s + Square(c == WHITE ? steps[pt][k] : -steps[pt][k]);
@@ -211,14 +211,14 @@ void Bitboards::init() {
   init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, magic_index<ROOK>);
   init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, magic_index<BISHOP>);
 
-  for (Square s = SQ_A1; s <= SQ_H8; s++)
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
   {
       PseudoAttacks[QUEEN][s]  = PseudoAttacks[BISHOP][s] = attacks_bb<BISHOP>(s, 0);
       PseudoAttacks[QUEEN][s] |= PseudoAttacks[  ROOK][s] = attacks_bb<  ROOK>(s, 0);
   }
 
-  for (Square s1 = SQ_A1; s1 <= SQ_H8; s1++)
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; s2++)
+  for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           if (PseudoAttacks[QUEEN][s1] & s2)
           {
               Square delta = (s2 - s1) / square_distance(s1, s2);
@@ -281,7 +281,7 @@ namespace {
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
 
-    for (Square s = SQ_A1; s <= SQ_H8; s++)
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
         // Board edges are not considered in the relevant occupancies
         edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));

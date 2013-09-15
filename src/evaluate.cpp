@@ -622,11 +622,11 @@ Value do_evaluate(const Position& pos, Value& margin) {
     // type of attacking piece, from knights to queens. Kings are not
     // considered because are already handled in king evaluation.
     if (weakEnemies)
-        for (PieceType pt1 = KNIGHT; pt1 < KING; pt1++)
+        for (PieceType pt1 = KNIGHT; pt1 < KING; ++pt1)
         {
             b = ei.attackedBy[Us][pt1] & weakEnemies;
             if (b)
-                for (PieceType pt2 = PAWN; pt2 < KING; pt2++)
+                for (PieceType pt2 = PAWN; pt2 < KING; ++pt2)
                     if (b & pos.pieces(pt2))
                         score += Threat[pt1][pt2];
         }
@@ -908,7 +908,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
     // Step 1. Hunt for unstoppable passed pawns. If we find at least one,
     // record how many plies are required for promotion.
-    for (c = WHITE; c <= BLACK; c++)
+    for (c = WHITE; c <= BLACK; ++c)
     {
         // Skip if other side has non-pawn pieces
         if (pos.non_pawn_material(~c))
