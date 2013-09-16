@@ -906,7 +906,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     if (!b || pos.non_pawn_material(~us))
         return SCORE_ZERO;
 
-    return Unstoppable * int(relative_rank(WHITE, frontmost_sq(us, b)));
+    return Unstoppable * int(relative_rank(us, frontmost_sq(us, b)));
   }
 
 
