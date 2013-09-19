@@ -81,7 +81,7 @@ void init(OptionsMap& o) {
   o["Skill Level"]                 = Option(20, 0, 20);
   o["Emergency Move Horizon"]      = Option(40, 0, 50);
   o["Emergency Base Time"]         = Option(50, 0, 30000);
-  o["Emergency Move Time"]         = Option(10, 0, 5000);
+  o["Emergency Move Time"]         = Option(20, 0, 5000);
   o["Minimum Thinking Time"]       = Option(20, 0, 5000);
   o["Slow Mover"]                  = Option(50, 10, 1000);
   o["UCI_Chess960"]                = Option(false);
