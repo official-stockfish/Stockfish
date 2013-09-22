@@ -243,7 +243,7 @@ ifeq ($(comp),mingw)
 endif
 
 ifeq ($(comp),icc)
-	CXXFLAGS += -wd383,981,1418,1419,1476,10187,10188,11505,11503 -Wcheck -Wabi -Wdeprecated -strict-ansi
+	CXXFLAGS += -diag-disable 1476,10120 -Wcheck -Wabi -Wdeprecated -strict-ansi
 endif
 
 ifeq ($(comp),clang)
