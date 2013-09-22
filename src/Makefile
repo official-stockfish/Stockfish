@@ -311,7 +311,7 @@ ifeq ($(optimize),yes)
 		ifeq ($(os),osx)
 			CXXFLAGS += -fast -mdynamic-no-pic
 		else
-			CXXFLAGS += -O3
+			CXXFLAGS += -fast
 		endif
 	endif
 
