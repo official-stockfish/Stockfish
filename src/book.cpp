@@ -413,7 +413,7 @@ Move PolyglotBook::probe(const Position& pos, const string& fName, bool pickBest
       // Choose book move according to its score. If a move has a very
       // high score it has higher probability to be choosen than a move
       // with lower score. Note that first entry is always chosen.
-      if (   (sum && rkiss.rand<unsigned>() % sum < e.count)
+      if (   (!pickBest && sum && rkiss.rand<unsigned>() % sum < e.count)
           || (pickBest && e.count == best))
           move = Move(e.move);
   }
