@@ -609,8 +609,7 @@ namespace {
 
         // Can ttValue be used as a better position evaluation?
         if (ttValue != VALUE_NONE)
-            if (   ((tte->bound() & BOUND_LOWER) && ttValue > eval)
-                || ((tte->bound() & BOUND_UPPER) && ttValue < eval))
+            if (tte->bound() & (ttValue > eval ? BOUND_LOWER : BOUND_UPPER))
                 eval = ttValue;
     }
     else
