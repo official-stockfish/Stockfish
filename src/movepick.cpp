@@ -75,7 +75,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
 
   assert(d > DEPTH_ZERO);
 
-  cur = end = moves;
+  cur = end = moves = pos.this_thread()->get_moves_array();
   endBadCaptures = moves + MAX_MOVES - 1;
   countermoves = cm;
   ss = s;
@@ -91,10 +91,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       Square sq) : pos(p), history(h), cur(moves), end(moves) {
+                       Square sq) : pos(p), history(h) {
 
   assert(d <= DEPTH_ZERO);
 
+  cur = end = moves = pos.this_thread()->get_moves_array();
   if (p.checkers())
       stage = EVASION;
 
@@ -123,10 +124,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, PieceType pt)
-                       : pos(p), history(h), cur(moves), end(moves) {
+                       : pos(p), history(h) {
 
   assert(!pos.checkers());
 
+  cur = end = moves = pos.this_thread()->get_moves_array();
   stage = PROBCUT;
 
   // In ProbCut we generate only captures better than parent's captured piece
@@ -139,6 +141,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Piece
   end += (ttMove != MOVE_NONE);
 }
 
+MovePicker::~MovePicker() { pos.this_thread()->free_moves_array(); }
 
 /// score() assign a numerical move ordering score to each move in a move list.
 /// The moves with highest scores will be picked first.
