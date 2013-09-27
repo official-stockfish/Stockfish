@@ -88,7 +88,7 @@ const bool Is64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES      = 192;
+const int MAX_MOVES      = 256;
 const int MAX_PLY        = 100;
 const int MAX_PLY_PLUS_6 = MAX_PLY + 6;
 
