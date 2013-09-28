@@ -583,9 +583,9 @@ Value do_evaluate(const Position& pos, Value& margin) {
             const enum Piece P = make_piece(Us, PAWN);
             Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
             if (pos.piece_on(s + d) == P)
-                score -= !pos.is_empty(s + d + pawn_push(Us)) ? TrappedBishopA1H1 * 4
-                        : pos.piece_on(s + d + d) == P        ? TrappedBishopA1H1 * 2
-                                                              : TrappedBishopA1H1;
+                score -= !pos.empty(s + d + pawn_push(Us)) ? TrappedBishopA1H1 * 4
+                        : pos.piece_on(s + d + d) == P     ? TrappedBishopA1H1 * 2
+                                                           : TrappedBishopA1H1;
         }
     }
 
@@ -797,7 +797,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     {
         Square s = pop_lsb(&b);
 
-        assert(pos.pawn_is_passed(Us, s));
+        assert(pos.pawn_passed(Us, s));
 
         int r = int(relative_rank(Us, s) - RANK_2);
         int rr = r * (r - 1);
@@ -819,7 +819,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
                 ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr);
 
             // If the pawn is free to advance, increase bonus
-            if (pos.is_empty(blockSq))
+            if (pos.empty(blockSq))
             {
                 squaresToQueen = forward_bb(Us, s);
 

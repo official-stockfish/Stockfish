@@ -133,7 +133,7 @@ const string move_to_san(Position& pos, Move m) {
           while (b)
           {
               Move move = make_move(pop_lsb(&b), to);
-              if (!pos.pl_move_is_legal(move, pos.pinned_pieces()))
+              if (!pos.legal(move, pos.pinned_pieces()))
                   others ^= from_sq(move);
           }
 
@@ -149,10 +149,10 @@ const string move_to_san(Position& pos, Move m) {
                   san += square_to_string(from);
           }
       }
-      else if (pos.is_capture(m))
+      else if (pos.capture(m))
           san = file_to_char(file_of(from));
 
-      if (pos.is_capture(m))
+      if (pos.capture(m))
           san += 'x';
 
       san += square_to_string(to);
@@ -161,7 +161,7 @@ const string move_to_san(Position& pos, Move m) {
           san += string("=") + PieceToChar[WHITE][promotion_type(m)];
   }
 
-  if (pos.move_gives_check(m, CheckInfo(pos)))
+  if (pos.gives_check(m, CheckInfo(pos)))
   {
       StateInfo st;
       pos.do_move(m, st);

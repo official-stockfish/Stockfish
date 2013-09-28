@@ -157,14 +157,14 @@ bool Thread::cutoff_occurred() const {
 }
 
 
-// Thread::is_available_to() checks whether the thread is available to help the
+// Thread::available_to() checks whether the thread is available to help the
 // thread 'master' at a split point. An obvious requirement is that thread must
 // be idle. With more than two threads, this is not sufficient: If the thread is
 // the master of some split point, it is only available as a slave to the slaves
 // which are busy searching the split point at the top of slaves split point
 // stack (the "helpful master concept" in YBWC terminology).
 
-bool Thread::is_available_to(const Thread* master) const {
+bool Thread::available_to(const Thread* master) const {
 
   if (searching)
       return false;
@@ -241,7 +241,7 @@ void ThreadPool::read_uci_options() {
 Thread* ThreadPool::available_slave(const Thread* master) const {
 
   for (const_iterator it = begin(); it != end(); ++it)
-      if ((*it)->is_available_to(master))
+      if ((*it)->available_to(master))
           return *it;
 
   return NULL;
@@ -330,7 +330,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
 
       // We have returned from the idle loop, which means that all threads are
       // finished. Note that setting 'searching' and decreasing splitPointsSize is
-      // done under lock protection to avoid a race with Thread::is_available_to().
+      // done under lock protection to avoid a race with Thread::available_to().
       Threads.mutex.lock();
       sp.mutex.lock();
   }

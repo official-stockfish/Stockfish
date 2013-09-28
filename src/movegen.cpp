@@ -61,7 +61,7 @@ namespace {
 
     (mlist++)->move = make<CASTLE>(kfrom, rfrom);
 
-    if (Checks && !pos.move_gives_check((mlist - 1)->move, CheckInfo(pos)))
+    if (Checks && !pos.gives_check((mlist - 1)->move, CheckInfo(pos)))
         mlist--;
 
     return mlist;
@@ -414,7 +414,7 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* mlist) {
                        : generate<NON_EVASIONS>(pos, mlist);
   while (cur != end)
       if (   (pinned || from_sq(cur->move) == ksq || type_of(cur->move) == ENPASSANT)
-          && !pos.pl_move_is_legal(cur->move, pinned))
+          && !pos.legal(cur->move, pinned))
           cur->move = (--end)->move;
       else
           cur++;

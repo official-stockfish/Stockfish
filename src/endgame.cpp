@@ -627,8 +627,7 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
   Square bksq = pos.king_square(weakerSide);
 
   // Does the stronger side have a passed pawn?
-  if (   pos.pawn_is_passed(strongerSide, wpsq1)
-      || pos.pawn_is_passed(strongerSide, wpsq2))
+  if (pos.pawn_passed(strongerSide, wpsq1) || pos.pawn_passed(strongerSide, wpsq2))
       return SCALE_FACTOR_NONE;
 
   Rank r = std::max(relative_rank(strongerSide, wpsq1), relative_rank(strongerSide, wpsq2));
