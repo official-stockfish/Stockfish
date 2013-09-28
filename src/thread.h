@@ -115,8 +115,6 @@ struct Thread : public ThreadBase {
   virtual void idle_loop();
   bool cutoff_occurred() const;
   bool is_available_to(const Thread* master) const;
-  ExtMove* get_moves_array() { return &movePages[curPage += MAX_MOVES]; }
-  void free_moves_array() { curPage -= MAX_MOVES; }
 
   template <bool Fake>
   void split(Position& pos, const Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
@@ -127,8 +125,6 @@ struct Thread : public ThreadBase {
   Endgames endgames;
   Pawns::Table pawnsTable;
   Position* activePosition;
-  std::vector<ExtMove> movePages;
-  int curPage;
   size_t idx;
   int maxPly;
   SplitPoint* volatile activeSplitPoint;

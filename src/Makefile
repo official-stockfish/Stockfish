@@ -273,7 +273,7 @@ ifneq ($(comp),mingw)
 endif
 
 ifeq ($(os),osx)
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.0
+	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.0 -stack_size,0x4000
 endif
 
 ### 3.4 Debugging

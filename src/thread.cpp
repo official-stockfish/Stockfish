@@ -83,11 +83,10 @@ void ThreadBase::wait_for(volatile const bool& b) {
 Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
 
   searching = false;
-  maxPly = splitPointsSize = curPage = 0;
+  maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
   activePosition = NULL;
   idx = Threads.size();
-  movePages.resize(MAX_PLY_PLUS_6 * MAX_MOVES);
 }
 
 

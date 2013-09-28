@@ -87,7 +87,6 @@ public:
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, PieceType);
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Search::Stack*);
- ~MovePicker();
 
   template<bool SpNode> Move next_move();
 
@@ -104,7 +103,8 @@ private:
   ExtMove killers[4];
   Square recaptureSquare;
   int captureThreshold, stage;
-  ExtMove *moves, *cur, *end, *endQuiets, *endBadCaptures;
+  ExtMove *cur, *end, *endQuiets, *endBadCaptures;
+  ExtMove moves[MAX_MOVES];
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED
