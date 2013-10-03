@@ -75,7 +75,7 @@ void dbg_print() {
 
   if (means[0])
       cerr << "Total " << means[0] << " Mean "
-           << (float)means[1] / means[0] << endl;
+           << (double)means[1] / means[0] << endl;
 }
 
 

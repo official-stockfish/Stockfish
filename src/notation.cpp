@@ -207,7 +207,7 @@ static string score_to_string(Value v) {
       s << "-#" << (VALUE_MATE + v) / 2;
 
   else
-      s << setprecision(2) << fixed << showpos << float(v) / PawnValueMg;
+      s << setprecision(2) << fixed << showpos << double(v) / PawnValueMg;
 
   return s.str();
 }

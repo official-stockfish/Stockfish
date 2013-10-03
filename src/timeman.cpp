@@ -29,8 +29,8 @@ namespace {
   /// Constants
 
   const int MoveHorizon  = 50;    // Plan time management at most this many moves ahead
-  const float MaxRatio   = 7.0f;  // When in trouble, we can step over reserved time with this ratio
-  const float StealRatio = 0.33f; // However we must not steal time from remaining moves over this ratio
+  const double MaxRatio   = 7.0;  // When in trouble, we can step over reserved time with this ratio
+  const double StealRatio = 0.33; // However we must not steal time from remaining moves over this ratio
 
 
   // MoveImportance[] is based on naive statistical analysis of "how many games are still undecided
@@ -76,7 +76,7 @@ namespace {
 }
 
 
-void TimeManager::pv_instability(float bestMoveChanges) {
+void TimeManager::pv_instability(double bestMoveChanges) {
 
   unstablePVExtraTime = int(bestMoveChanges * optimumSearchTime);
 }
@@ -144,8 +144,8 @@ namespace {
   template<TimeType T>
   int remaining(int myTime, int movesToGo, int currentPly, int slowMover)
   {
-    const float TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
-    const float TStealRatio = (T == OptimumTime ? 0 : StealRatio);
+    const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
+    const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
     int thisMoveImportance = move_importance(currentPly) * slowMover / 100;
     int otherMovesImportance = 0;
@@ -153,8 +153,8 @@ namespace {
     for (int i = 1; i < movesToGo; ++i)
         otherMovesImportance += move_importance(currentPly + 2 * i);
 
-    float ratio1 = (TMaxRatio * thisMoveImportance) / float(TMaxRatio * thisMoveImportance + otherMovesImportance);
-    float ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / float(thisMoveImportance + otherMovesImportance);
+    double ratio1 = (TMaxRatio * thisMoveImportance) / double(TMaxRatio * thisMoveImportance + otherMovesImportance);
+    double ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / double(thisMoveImportance + otherMovesImportance);
 
     return int(floor(myTime * std::min(ratio1, ratio2)));
   }
