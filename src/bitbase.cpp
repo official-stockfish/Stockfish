@@ -87,17 +87,17 @@ void Bitbases::init_kpk() {
   db.reserve(IndexMax);
 
   // Initialize db with known win / draw positions
-  for (idx = 0; idx < IndexMax; idx++)
+  for (idx = 0; idx < IndexMax; ++idx)
       db.push_back(KPKPosition(idx));
 
   // Iterate through the positions until no more of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
   while (repeat)
-      for (repeat = idx = 0; idx < IndexMax; idx++)
+      for (repeat = idx = 0; idx < IndexMax; ++idx)
           repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
 
   // Map 32 results into one KPKBitbase[] entry
-  for (idx = 0; idx < IndexMax; idx++)
+  for (idx = 0; idx < IndexMax; ++idx)
       if (db[idx] == WIN)
           KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
 }

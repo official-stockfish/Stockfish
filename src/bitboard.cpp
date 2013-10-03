@@ -197,7 +197,7 @@ void Bitboards::init() {
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              for (int k = 0; steps[pt][k]; k++)
+              for (int k = 0; steps[pt][k]; ++k)
               {
                   Square to = s + Square(c == WHITE ? steps[pt][k] : -steps[pt][k]);
 

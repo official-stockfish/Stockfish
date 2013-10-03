@@ -42,7 +42,7 @@ template<GenType T>
 struct MoveList {
 
   explicit MoveList(const Position& pos) : cur(mlist), last(generate<T>(pos, mlist)) { last->move = MOVE_NONE; }
-  void operator++() { cur++; }
+  void operator++() { ++cur; }
   Move operator*() const { return cur->move; }
   size_t size() const { return last - mlist; }
   bool contains(Move m) const {

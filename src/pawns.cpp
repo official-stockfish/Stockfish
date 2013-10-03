@@ -227,7 +227,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   Rank rkUs, rkThem;
   File kf = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
-  for (int f = kf - 1; f <= kf + 1; f++)
+  for (int f = kf - 1; f <= kf + 1; ++f)
   {
       b = ourPawns & FileBB[f];
       rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;

@@ -128,7 +128,7 @@ void Position::init() {
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rk.rand<Key>();
 
-  for (int cr = CASTLES_NONE; cr <= ALL_CASTLES; cr++)
+  for (int cr = CASTLES_NONE; cr <= ALL_CASTLES; ++cr)
   {
       Bitboard b = cr;
       while (b)
@@ -345,7 +345,7 @@ const string Position::fen() const {
               int emptyCnt = 1;
 
               for ( ; file < FILE_H && empty(++sq); ++file)
-                  emptyCnt++;
+                  ++emptyCnt;
 
               ss << emptyCnt;
           }
@@ -718,7 +718,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   assert(is_ok(m));
   assert(&newSt != st);
 
-  nodes++;
+  ++nodes;
   Key k = st->key;
 
   // Copy some fields of old state to our new StateInfo object except the ones
@@ -734,9 +734,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   // Increment ply counters.In particular rule50 will be later reset it to zero
   // in case of a capture or a pawn move.
-  gamePly++;
-  st->rule50++;
-  st->pliesFromNull++;
+  ++gamePly;
+  ++st->rule50;
+  ++st->pliesFromNull;
 
   Color us = sideToMove;
   Color them = ~us;
@@ -978,7 +978,7 @@ void Position::undo_move(Move m) {
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
-  gamePly--;
+  --gamePly;
 
   assert(pos_is_ok());
 }
@@ -1019,7 +1019,7 @@ void Position::do_null_move(StateInfo& newSt) {
   st->key ^= Zobrist::side;
   prefetch((char*)TT.first_entry(st->key));
 
-  st->rule50++;
+  ++st->rule50;
   st->pliesFromNull = 0;
 
   sideToMove = ~sideToMove;
@@ -1106,7 +1106,7 @@ int Position::see(Move m, int asymmThreshold) const {
 
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
-      slIndex++;
+      ++slIndex;
 
       // Locate and remove the next least valuable attacker
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
@@ -1150,7 +1150,7 @@ void Position::clear() {
   st = &startState;
 
   for (int i = 0; i < PIECE_TYPE_NB; ++i)
-      for (int j = 0; j < 16; j++)
+      for (int j = 0; j < 16; ++j)
           pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
 }
 
@@ -1368,7 +1368,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
           if (type_of(piece_on(s)) == KING)
-              kingCount[color_of(piece_on(s))]++;
+              ++kingCount[color_of(piece_on(s))];
 
       if (kingCount[0] != 1 || kingCount[1] != 1)
           return false;

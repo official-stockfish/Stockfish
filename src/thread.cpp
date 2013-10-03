@@ -296,7 +296,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   Threads.mutex.lock();
   sp.mutex.lock();
 
-  splitPointsSize++;
+  ++splitPointsSize;
   activeSplitPoint = &sp;
   activePosition = NULL;
 
@@ -336,7 +336,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   }
 
   searching = true;
-  splitPointsSize--;
+  --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
   activePosition = &pos;
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);

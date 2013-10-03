@@ -499,7 +499,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         if (b & ei.kingRing[Them])
         {
-            ei.kingAttackersCount[Us]++;
+            ++ei.kingAttackersCount[Us];
             ei.kingAttackersWeight[Us] += KingAttackWeights[Piece];
             Bitboard bb = (b & ei.attackedBy[Them][KING]);
             if (bb)

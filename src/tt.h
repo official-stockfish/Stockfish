@@ -78,7 +78,7 @@ class TranspositionTable {
 
 public:
  ~TranspositionTable() { free(mem); }
-  void new_search() { generation++; }
+  void new_search() { ++generation; }
 
   const TTEntry* probe(const Key key) const;
   TTEntry* first_entry(const Key key) const;

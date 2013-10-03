@@ -62,7 +62,7 @@ namespace {
     (mlist++)->move = make<CASTLE>(kfrom, rfrom);
 
     if (Checks && !pos.gives_check((mlist - 1)->move, CheckInfo(pos)))
-        mlist--;
+        --mlist;
 
     return mlist;
   }
@@ -359,7 +359,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
   // evasions so to skip known illegal moves avoiding useless legality check later.
   do
   {
-      checkersCnt++;
+      ++checkersCnt;
       checksq = pop_lsb(&b);
 
       assert(color_of(pos.piece_on(checksq)) == ~us);
@@ -417,7 +417,7 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* mlist) {
           && !pos.legal(cur->move, pinned))
           cur->move = (--end)->move;
       else
-          cur++;
+          ++cur;
 
   return end;
 }
