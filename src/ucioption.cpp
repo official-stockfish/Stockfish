@@ -83,7 +83,7 @@ void init(OptionsMap& o) {
   o["Emergency Base Time"]         = Option(60, 0, 30000);
   o["Emergency Move Time"]         = Option(30, 0, 5000);
   o["Minimum Thinking Time"]       = Option(20, 0, 5000);
-  o["Slow Mover"]                  = Option(50, 10, 1000);
+  o["Slow Mover"]                  = Option(70, 10, 1000);
   o["UCI_Chess960"]                = Option(false);
   o["UCI_AnalyseMode"]             = Option(false, on_eval);
 }
