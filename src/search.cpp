@@ -1188,6 +1188,11 @@ moves_loop: // When in check and at SpNode search starts from here
             if (  (ss->staticEval = bestValue = tte->eval_value()) == VALUE_NONE
                 ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
                 ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
+
+            // Can ttValue be used as a better position evaluation?
+            if (ttValue != VALUE_NONE)
+                if (tte->bound() & (ttValue > bestValue ? BOUND_LOWER : BOUND_UPPER))
+                    bestValue = ttValue;
         }
         else
             ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
@@ -1205,7 +1210,7 @@ moves_loop: // When in check and at SpNode search starts from here
         if (PvNode && bestValue > alpha)
             alpha = bestValue;
 
-        futilityBase = ss->staticEval + ss->evalMargin + Value(128);
+        futilityBase = bestValue + ss->evalMargin + Value(128);
     }
 
     // Initialize a MovePicker object for the current position, and prepare
