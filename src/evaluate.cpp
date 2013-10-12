@@ -200,12 +200,12 @@ namespace {
   const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
 
   // Bonuses for enemy's safe checks
-  const int QueenContactCheck = 6;
-  const int RookContactCheck  = 4;
-  const int QueenCheck        = 3;
-  const int RookCheck         = 2;
+  const int QueenContactCheck = 12;
+  const int RookContactCheck  = 8;
+  const int QueenCheck        = 6;
+  const int RookCheck         = 4;
   const int BishopCheck       = 1;
-  const int KnightCheck       = 1;
+  const int KnightCheck       = 2;
 
   // KingExposed[Square] contains penalties based on the position of the
   // defending king, indexed by king's square (from white's point of view).
@@ -699,7 +699,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king, the square of the
         // king, and the quality of the pawn shelter.
-        attackUnits =  std::min(25, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
+        attackUnits =  std::min(20, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
                      + KingExposed[relative_square(Us, ksq)]
                      - mg_value(score) / 32;
