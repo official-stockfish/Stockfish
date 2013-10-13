@@ -451,12 +451,26 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       Square weakerKingSq = pos.king_square(weakerSide);
       Square bishopSq = pos.list<BISHOP>(strongerSide)[0];
 
-      // Draw if weaker pawn is on rank 7, bishop can't attack the pawn, and
-      // weaker king can stop opposing opponent's king from penetrating.
+      // Potential for a draw if our pawn is blocked on the 7th rank
+      // the bishop cannot attack it or they only have one pawn left
       if (   relative_rank(strongerSide, weakerPawnSq) == RANK_7
-          && opposite_colors(bishopSq, weakerPawnSq)
-          && square_distance(weakerPawnSq, weakerKingSq) <= square_distance(weakerPawnSq, strongerKingSq))
-          return SCALE_FACTOR_DRAW;
+          && (pos.pieces(strongerSide, PAWN) & (weakerPawnSq + pawn_push(weakerSide)))
+          && (opposite_colors(bishopSq, weakerPawnSq) || pos.count<PAWN>(strongerSide) == 1))
+      {
+          int strongerKingDist = square_distance(weakerPawnSq, strongerKingSq);
+          int weakerKingDist = square_distance(weakerPawnSq, weakerKingSq);
+
+          // Draw if the weak king is on it's back two ranks, within 2
+          // squares of the blocking pawn and the strong king is not
+          // closer. (I think this rule only fails in practically
+          // unreachable positions such as 5k1K/6p1/6P1/8/8/3B4/8/8 w
+          // and positions where qsearch will immediately correct the
+          // problem such as 8/4k1p1/6P1/1K6/3B4/8/8/8 w)
+          if (   relative_rank(strongerSide, weakerKingSq) >= RANK_7
+              && weakerKingDist <= 2
+              && weakerKingDist <= strongerKingDist)
+              return SCALE_FACTOR_DRAW;
+      }
   }
 
   return SCALE_FACTOR_NONE;
