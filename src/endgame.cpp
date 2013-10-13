@@ -102,6 +102,7 @@ Endgames::Endgames() {
   add<KNPK>("KNPK");
   add<KNPKB>("KNPKB");
   add<KRPKR>("KRPKR");
+  add<KRPKB>("KRPKB");
   add<KBPKB>("KBPKB");
   add<KBPKN>("KBPKN");
   add<KBPPKB>("KBPPKB");
@@ -624,6 +625,51 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   return SCALE_FACTOR_NONE;
 }
 
+template<>
+ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
+
+  assert(pos.non_pawn_material(strongerSide) == RookValueMg);
+  assert(pos.non_pawn_material(weakerSide) == BishopValueMg);
+  assert(pos.count<PAWN>(strongerSide) == 1);
+  assert(pos.count<PAWN>(weakerSide) == 0);
+
+  // Test for a rook pawn
+  if (pos.pieces(PAWN) & (FileABB | FileHBB))
+  {
+      Square ksq = pos.king_square(weakerSide);
+      Square bsq = pos.list<BISHOP>(weakerSide)[0];
+      Square psq = pos.list<PAWN>(strongerSide)[0];
+      Rank rk = relative_rank(strongerSide, psq);
+      Square push = pawn_push(strongerSide);
+
+      // If the pawn is on the 5th rank and the pawn (currently) is on
+      // the same color square as the bishop then there is a chance of
+      // a fortress. Depending on the king position give a moderate
+      // reduction or a stronger one if the defending king is near the
+      // corner but not trapped there.
+      if (rk == RANK_5 && !opposite_colors(bsq, psq))
+      {
+          int d = square_distance(psq + 3 * push, ksq);
+
+          if (d <= 2 && !(d == 0 && ksq == pos.king_square(strongerSide) + 2 * push))
+              return ScaleFactor(24);
+          else
+              return ScaleFactor(48);
+      }
+
+      // When the pawn has moved to the 6th rank we can be fairly sure
+      // it's drawn if the bishop attacks the square in front of the
+      // pawn from a reasonable distance and the defending king is near
+      // the corner
+      if (   rk == RANK_6
+          && square_distance(psq + 2 * push, ksq) <= 1
+          && (PseudoAttacks[BISHOP][bsq] & (psq + push))
+          && file_distance(bsq, psq) >= 2)
+          return ScaleFactor(8);
+  }
+
+  return SCALE_FACTOR_NONE;
+}
 
 /// K, rook and two pawns vs K, rook and one pawn. There is only a single
 /// pattern: If the stronger side has no passed pawns and the defending king
