@@ -232,7 +232,7 @@ namespace {
   void init_eval_info(const Position& pos, EvalInfo& ei);
 
   template<Color Us, bool Trace>
-  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility);
+  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score* mobility);
 
   template<Color Us, bool Trace>
   Score evaluate_king(const Position& pos, const EvalInfo& ei, Value margins[]);
@@ -310,7 +310,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   EvalInfo ei;
   Value margins[COLOR_NB];
-  Score score, mobilityWhite, mobilityBlack;
+  Score score, mobility[2] = { SCORE_ZERO, SCORE_ZERO };
   Thread* th = pos.this_thread();
 
   // margins[] store the uncertainty estimation of position's evaluation
@@ -343,10 +343,10 @@ Value do_evaluate(const Position& pos, Value& margin) {
   init_eval_info<BLACK>(pos, ei);
 
   // Evaluate pieces and mobility
-  score +=  evaluate_pieces_of_color<WHITE, Trace>(pos, ei, mobilityWhite)
-          - evaluate_pieces_of_color<BLACK, Trace>(pos, ei, mobilityBlack);
+  score +=  evaluate_pieces_of_color<WHITE, Trace>(pos, ei, mobility)
+          - evaluate_pieces_of_color<BLACK, Trace>(pos, ei, mobility);
 
-  score += apply_weight(mobilityWhite - mobilityBlack, Weights[Mobility]);
+  score += apply_weight(mobility[WHITE] - mobility[BLACK], Weights[Mobility]);
 
   // Evaluate kings after all other pieces because we need complete attack
   // information when computing the king safety evaluation.
@@ -443,7 +443,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
         b &= ei.attackedBy[Us][PAWN];
         ei.kingAttackersCount[Us] = b ? popcount<Max15>(b) / 2 : 0;
         ei.kingAdjacentZoneAttacksCount[Us] = ei.kingAttackersWeight[Us] = 0;
-    } else
+    }
+    else
         ei.kingRing[Them] = ei.kingAttackersCount[Us] = 0;
   }
 
@@ -470,14 +471,15 @@ Value do_evaluate(const Position& pos, Value& margin) {
         else
             bonus += bonus / 2;
     }
+
     return make_score(bonus, bonus);
   }
 
 
-  // evaluate_pieces<>() assigns bonuses and penalties to the pieces of a given color
+  // evaluate_pieces() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Piece, Color Us, bool Trace>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score& mobility, Bitboard mobilityArea) {
+  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility, Bitboard mobilityArea) {
 
     Bitboard b;
     Square s;
@@ -499,17 +501,15 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
         if (b & ei.kingRing[Them])
         {
-            ++ei.kingAttackersCount[Us];
+            ei.kingAttackersCount[Us]++;
             ei.kingAttackersWeight[Us] += KingAttackWeights[Piece];
-            Bitboard bb = (b & ei.attackedBy[Them][KING]);
+            Bitboard bb = b & ei.attackedBy[Them][KING];
             if (bb)
                 ei.kingAdjacentZoneAttacksCount[Us] += popcount<Max15>(bb);
         }
 
-        int mob = Piece != QUEEN ? popcount<Max15>(b & mobilityArea)
-                                 : popcount<Full >(b & mobilityArea);
-
-        mobility += MobilityBonus[Piece][mob];
+        int mob = popcount<Piece == QUEEN ? Full : Max15>(b & mobilityArea);
+        mobility[Us] += MobilityBonus[Piece][mob];
 
         // Decrease score if we are attacked by an enemy pawn. Remaining part
         // of threat evaluation must be done later when we have full attack info.
@@ -596,79 +596,34 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
 
-  // evaluate_threats<>() assigns bonuses according to the type of attacking piece
-  // and the type of attacked one.
-
-  template<Color Us, bool Trace>
-  Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
-
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-
-    Bitboard b, undefendedMinors, weakEnemies;
-    Score score = SCORE_ZERO;
-
-    // Undefended minors get penalized even if not under attack
-    undefendedMinors =  pos.pieces(Them, BISHOP, KNIGHT)
-                      & ~ei.attackedBy[Them][ALL_PIECES];
-
-    if (undefendedMinors)
-        score += UndefendedMinor;
-
-    // Enemy pieces not defended by a pawn and under our attack
-    weakEnemies =  pos.pieces(Them)
-                 & ~ei.attackedBy[Them][PAWN]
-                 & ei.attackedBy[Us][ALL_PIECES];
-
-    // Add bonus according to type of attacked enemy piece and to the
-    // type of attacking piece, from knights to queens. Kings are not
-    // considered because are already handled in king evaluation.
-    if (weakEnemies)
-        for (PieceType pt1 = KNIGHT; pt1 < KING; ++pt1)
-        {
-            b = ei.attackedBy[Us][pt1] & weakEnemies;
-            if (b)
-                for (PieceType pt2 = PAWN; pt2 < KING; ++pt2)
-                    if (b & pos.pieces(pt2))
-                        score += Threat[pt1][pt2];
-        }
-
-    if (Trace)
-        Tracing::scores[Us][THREAT] = score;
-
-    return score;
-  }
-
-
-  // evaluate_pieces_of_color<>() assigns bonuses and penalties to all the
+  // evaluate_pieces_of_color() assigns bonuses and penalties to all the
   // pieces of a given color.
 
   template<Color Us, bool Trace>
-  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score& mobility) {
+  Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score* mobility) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-
-    Score score = mobility = SCORE_ZERO;
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
     const Bitboard mobilityArea = ~(ei.attackedBy[Them][PAWN] | pos.pieces(Us, PAWN, KING));
 
-    score += evaluate_pieces<KNIGHT, Us, Trace>(pos, ei, mobility, mobilityArea);
-    score += evaluate_pieces<BISHOP, Us, Trace>(pos, ei, mobility, mobilityArea);
-    score += evaluate_pieces<ROOK,   Us, Trace>(pos, ei, mobility, mobilityArea);
-    score += evaluate_pieces<QUEEN,  Us, Trace>(pos, ei, mobility, mobilityArea);
+    Score score =  evaluate_pieces<KNIGHT, Us, Trace>(pos, ei, mobility, mobilityArea)
+                 + evaluate_pieces<BISHOP, Us, Trace>(pos, ei, mobility, mobilityArea)
+                 + evaluate_pieces<ROOK,   Us, Trace>(pos, ei, mobility, mobilityArea)
+                 + evaluate_pieces<QUEEN,  Us, Trace>(pos, ei, mobility, mobilityArea);
 
-    // Sum up all attacked squares
-    ei.attackedBy[Us][ALL_PIECES] =   ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
-                                    | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
-                                    | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
+    // Sum up all attacked squares (updated in evaluate_pieces)
+    ei.attackedBy[Us][ALL_PIECES] =  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
+                                   | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
+                                   | ei.attackedBy[Us][QUEEN]  | ei.attackedBy[Us][KING];
     if (Trace)
-        Tracing::scores[Us][MOBILITY] = apply_weight(mobility, Weights[Mobility]);
+        Tracing::scores[Us][MOBILITY] = apply_weight(mobility[Us], Weights[Mobility]);
 
     return score;
   }
 
 
-  // evaluate_king<>() assigns bonuses and penalties to a king of a given color
+  // evaluate_king() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool Trace>
   Score evaluate_king(const Position& pos, const EvalInfo& ei, Value margins[]) {
@@ -682,15 +637,15 @@ Value do_evaluate(const Position& pos, Value& margin) {
     // King shelter and enemy pawns storm
     Score score = ei.pi->king_safety<Us>(pos, ksq);
 
-    // King safety. This is quite complicated, and is almost certainly far
-    // from optimally tuned.
+    // Main king safety evaluation
     if (   ei.kingAttackersCount[Them] >= 2
         && ei.kingAdjacentZoneAttacksCount[Them])
     {
         // Find the attacked squares around the king which has no defenders
         // apart from the king itself
-        undefended = ei.attackedBy[Them][ALL_PIECES] & ei.attackedBy[Us][KING];
-        undefended &= ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
+        undefended =  ei.attackedBy[Them][ALL_PIECES]
+                    & ei.attackedBy[Us][KING]
+                    & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
                         | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                         | ei.attackedBy[Us][QUEEN]);
 
@@ -781,7 +736,50 @@ Value do_evaluate(const Position& pos, Value& margin) {
   }
 
 
-  // evaluate_passed_pawns<>() evaluates the passed pawns of the given color
+  // evaluate_threats() assigns bonuses according to the type of attacking piece
+  // and the type of attacked one.
+
+  template<Color Us, bool Trace>
+  Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    Bitboard b, undefendedMinors, weakEnemies;
+    Score score = SCORE_ZERO;
+
+    // Undefended minors get penalized even if not under attack
+    undefendedMinors =  pos.pieces(Them, BISHOP, KNIGHT)
+                      & ~ei.attackedBy[Them][ALL_PIECES];
+
+    if (undefendedMinors)
+        score += UndefendedMinor;
+
+    // Enemy pieces not defended by a pawn and under our attack
+    weakEnemies =  pos.pieces(Them)
+                 & ~ei.attackedBy[Them][PAWN]
+                 & ei.attackedBy[Us][ALL_PIECES];
+
+    // Add bonus according to type of attacked enemy piece and to the
+    // type of attacking piece, from knights to queens. Kings are not
+    // considered because are already handled in king evaluation.
+    if (weakEnemies)
+        for (PieceType pt1 = KNIGHT; pt1 < KING; ++pt1)
+        {
+            b = ei.attackedBy[Us][pt1] & weakEnemies;
+            if (b)
+                for (PieceType pt2 = PAWN; pt2 < KING; ++pt2)
+                    if (b & pos.pieces(pt2))
+                        score += Threat[pt1][pt2];
+        }
+
+    if (Trace)
+        Tracing::scores[Us][THREAT] = score;
+
+    return score;
+  }
+
+
+  // evaluate_passed_pawns() evaluates the passed pawns of the given color
 
   template<Color Us, bool Trace>
   Score evaluate_passed_pawns(const Position& pos, const EvalInfo& ei) {
