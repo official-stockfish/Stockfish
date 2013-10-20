@@ -405,6 +405,7 @@ inline void Position::put_piece(Square s, Color c, PieceType pt) {
   byTypeBB[ALL_PIECES] |= s;
   byTypeBB[pt] |= s;
   byColorBB[c] |= s;
+  pieceCount[c][ALL_PIECES]++;
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
 }
@@ -433,6 +434,7 @@ inline void Position::remove_piece(Square s, Color c, PieceType pt) {
   byTypeBB[pt] ^= s;
   byColorBB[c] ^= s;
   /* board[s] = NO_PIECE; */ // Not needed, will be overwritten by capturing
+  pieceCount[c][ALL_PIECES]--;
   Square lastSquare = pieceList[c][pt][--pieceCount[c][pt]];
   index[lastSquare] = index[s];
   pieceList[c][pt][index[lastSquare]] = lastSquare;
