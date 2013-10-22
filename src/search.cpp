@@ -150,7 +150,7 @@ void Search::init() {
 
   // Init futility margins array
   for (d = 1; d < 16; ++d) for (mc = 0; mc < 64; ++mc)
-      FutilityMargins[d][mc] = Value(112 * int(log(double(d * d) / 2) / log(2.0) + 1.001) - 8 * mc + 45);
+      FutilityMargins[d][mc] = Value(112 * int(2.9 * log(double(d))) - 8 * mc + 45);
 
   // Init futility move count array
   for (d = 0; d < 32; ++d)
