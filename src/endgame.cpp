@@ -174,11 +174,11 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
 
   // kbnk_mate_table() tries to drive toward corners A1 or H8,
   // if we have a bishop that cannot reach the above squares we
-  // mirror the kings so to drive enemy toward corners A8 or H1.
+  // flip the kings so to drive enemy toward corners A8 or H1.
   if (opposite_colors(bishopSq, SQ_A1))
   {
-      winnerKSq = mirror(winnerKSq);
-      loserKSq = mirror(loserKSq);
+      winnerKSq = ~winnerKSq;
+      loserKSq  = ~loserKSq;
   }
 
   Value result =  VALUE_KNOWN_WIN
@@ -188,6 +188,22 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
+// Returns a square that will allow us to orient the board so that
+// strongSide is white and strongSide's only pawn is on the left
+// half of the board
+Square get_flip_sq(const Position& pos, Color strongSide) {
+
+  assert(pos.count<PAWN>(strongSide) == 1);
+
+  Square psq = pos.list<PAWN>(strongSide)[0];
+
+  return (FILE_H * (file_of(psq) >= FILE_E)) | (RANK_8 * int(strongSide));
+}
+
+Square operator^(Square s, Square flip_sq) {
+  assert(flip_sq == SQ_A1 || flip_sq == SQ_H1 || flip_sq == SQ_A8 || flip_sq == SQ_H8);
+  return Square(int(s) ^ int(flip_sq));
+}
 
 /// KP vs K. This endgame is evaluated with the help of a bitbase.
 template<>
@@ -196,25 +212,14 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, VALUE_ZERO, 1));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
 
-  Square wksq = pos.king_square(strongSide);
-  Square bksq = pos.king_square(weakSide);
-  Square psq  = pos.list<PAWN>(strongSide)[0];
-  Color  us   = pos.side_to_move();
+  // Assume strongSide is white and the pawn is on files A-D
+  Square flip_sq = get_flip_sq(pos, strongSide);
 
-  if (strongSide == BLACK)
-  {
-      wksq = ~wksq;
-      bksq = ~bksq;
-      psq  = ~psq;
-      us   = ~us;
-  }
+  Square wksq = pos.king_square(strongSide)   ^ flip_sq;
+  Square bksq = pos.king_square(weakSide)     ^ flip_sq;
+  Square psq  = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
 
-  if (file_of(psq) >= FILE_E)
-  {
-      wksq = mirror(wksq);
-      bksq = mirror(bksq);
-      psq  = mirror(psq);
-  }
+  Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   if (!Bitbases::probe_kpk(wksq, psq, bksq, us))
       return VALUE_DRAW;
@@ -235,18 +240,10 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, RookValueMg, 0));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 1));
 
-  Square wksq = pos.king_square(strongSide);
-  Square bksq = pos.king_square(weakSide);
-  Square rsq  = pos.list<ROOK>(strongSide)[0];
-  Square psq  = pos.list<PAWN>(weakSide)[0];
-
-  if (strongSide == BLACK)
-  {
-      wksq = ~wksq;
-      bksq = ~bksq;
-      rsq  = ~rsq;
-      psq  = ~psq;
-  }
+  Square wksq = relative_square(strongSide, pos.king_square(strongSide));
+  Square bksq = relative_square(strongSide, pos.king_square(weakSide));
+  Square rsq  = relative_square(strongSide, pos.list<ROOK>(strongSide)[0]);
+  Square psq  = relative_square(strongSide, pos.list<PAWN>(weakSide)[0]);
 
   Square queeningSq = file_of(psq) | RANK_1;
   Value result;
@@ -486,31 +483,14 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, RookValueMg, 1));
   assert(verify_material(pos, weakSide,   RookValueMg, 0));
 
-  Square wksq = pos.king_square(strongSide);
-  Square bksq = pos.king_square(weakSide);
-  Square wrsq = pos.list<ROOK>(strongSide)[0];
-  Square wpsq = pos.list<PAWN>(strongSide)[0];
-  Square brsq = pos.list<ROOK>(weakSide)[0];
+  // Assume strongSide is white and the pawn is on files A-D
+  Square flip_sq = get_flip_sq(pos, strongSide);
 
-  // Orient the board in such a way that the stronger side is white, and the
-  // pawn is on the left half of the board.
-  if (strongSide == BLACK)
-  {
-      wksq = ~wksq;
-      wrsq = ~wrsq;
-      wpsq = ~wpsq;
-      bksq = ~bksq;
-      brsq = ~brsq;
-  }
-
-  if (file_of(wpsq) > FILE_D)
-  {
-      wksq = mirror(wksq);
-      wrsq = mirror(wrsq);
-      wpsq = mirror(wpsq);
-      bksq = mirror(bksq);
-      brsq = mirror(brsq);
-  }
+  Square wksq = pos.king_square(strongSide)   ^ flip_sq;
+  Square bksq = pos.king_square(weakSide)     ^ flip_sq;
+  Square wrsq = pos.list<ROOK>(strongSide)[0] ^ flip_sq;
+  Square wpsq = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
+  Square brsq = pos.list<ROOK>(weakSide)[0]   ^ flip_sq;
 
   File f = file_of(wpsq);
   Rank r = rank_of(wpsq);
@@ -852,15 +832,13 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, KnightValueMg, 1));
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
 
-  Square pawnSq = pos.list<PAWN>(strongSide)[0];
-  Square weakKingSq = pos.king_square(weakSide);
+  // Assume strongSide is white and the pawn is on files A-D
+  Square flip_sq = get_flip_sq(pos, strongSide);
 
-  if (   pawnSq == relative_square(strongSide, SQ_A7)
-      && square_distance(weakKingSq, relative_square(strongSide, SQ_A8)) <= 1)
-      return SCALE_FACTOR_DRAW;
+  Square pawnSq     = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
+  Square weakKingSq = pos.king_square(weakSide)     ^ flip_sq;
 
-  if (   pawnSq == relative_square(strongSide, SQ_H7)
-      && square_distance(weakKingSq, relative_square(strongSide, SQ_H8)) <= 1)
+  if (pawnSq == SQ_A7 && square_distance(SQ_A8, weakKingSq) <= 1)
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;
@@ -896,25 +874,14 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   assert(verify_material(pos, strongSide, VALUE_ZERO, 1));
   assert(verify_material(pos, weakSide,   VALUE_ZERO, 1));
 
-  Square wksq = pos.king_square(strongSide);
-  Square bksq = pos.king_square(weakSide);
-  Square psq  = pos.list<PAWN>(strongSide)[0];
-  Color  us   = pos.side_to_move();
+  // Assume strongSide is white and the pawn is on files A-D
+  Square flip_sq = get_flip_sq(pos, strongSide);
 
-  if (strongSide == BLACK)
-  {
-      wksq = ~wksq;
-      bksq = ~bksq;
-      psq  = ~psq;
-      us   = ~us;
-  }
+  Square wksq = pos.king_square(strongSide)   ^ flip_sq;
+  Square bksq = pos.king_square(weakSide)     ^ flip_sq;
+  Square psq  = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
 
-  if (file_of(psq) >= FILE_E)
-  {
-      wksq = mirror(wksq);
-      bksq = mirror(bksq);
-      psq  = mirror(psq);
-  }
+  Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
   // If the pawn has advanced to the fifth rank or further, and is not a
   // rook pawn, it's too dangerous to assume that it's at least a draw.
