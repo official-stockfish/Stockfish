@@ -53,15 +53,14 @@ namespace {
 
   // Pawn chain membership bonus by file
   const Score ChainMember[FILE_NB][RANK_NB] = {
-    { S(0, 0), S(14, 0), S(16, 4), S(18,  9), S(56, 56), S(104, 208), S(236, 472) }, 
-    { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(60, 60), S(108, 216), S(240, 480) }, 
-    { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(60, 60), S(108, 216), S(240, 480) }, 
-    { S(0, 0), S(17, 0), S(19, 6), S(22, 11), S(66, 66), S(118, 236), S(254, 508) }, 
-    { S(0, 0), S(17, 0), S(19, 6), S(22, 11), S(66, 66), S(118, 236), S(254, 508) }, 
-    { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(60, 60), S(108, 216), S(240, 480) }, 
-    { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(60, 60), S(108, 216), S(240, 480) }, 
-    { S(0, 0), S(14, 0), S(16, 4), S(18,  9), S(56, 56), S(104, 208), S(236, 472) }
-  }; 
+  { S(0, 0), S(14, 0), S(16, 4), S(18,  9), S(28, 28), S(52, 104), S(118, 236) },
+  { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(30, 30), S(54, 108), S(120, 240) },
+  { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(30, 30), S(54, 108), S(120, 240) },
+  { S(0, 0), S(17, 0), S(19, 6), S(22, 11), S(33, 33), S(59, 118), S(127, 254) },
+  { S(0, 0), S(17, 0), S(19, 6), S(22, 11), S(33, 33), S(59, 118), S(127, 254) },
+  { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(30, 30), S(54, 108), S(120, 240) },
+  { S(0, 0), S(16, 0), S(18, 5), S(20, 10), S(30, 30), S(54, 108), S(120, 240) },
+  { S(0, 0), S(14, 0), S(16, 4), S(18,  9), S(28, 28), S(52, 104), S(118, 236) }};
 
   // Candidate passed pawn bonus by rank
   const Score CandidatePassed[RANK_NB] = {
@@ -98,7 +97,6 @@ namespace {
     Bitboard b;
     Square s;
     File f;
-    Rank r;
     bool passed, isolated, doubled, opposed, chain, backward, candidate;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
@@ -119,7 +117,6 @@ namespace {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
         f = file_of(s);
-        r = relative_rank(Us, s);
 
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
@@ -184,11 +181,11 @@ namespace {
             value -= Backward[opposed][f];
 
         if (chain)
-            value += opposed ? ChainMember[f][r] / 2 : ChainMember[f][r];
+            value += ChainMember[f][relative_rank(Us, s)];
 
         if (candidate)
         {
-            value += CandidatePassed[r];
+            value += CandidatePassed[relative_rank(Us, s)];
 
             if (!doubled)
                 e->candidatePawns[Us] |= s;
