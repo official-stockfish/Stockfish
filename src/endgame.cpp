@@ -65,6 +65,21 @@ namespace {
   }
 #endif
 
+  // Map the square as if strongSide is white and strongSide's only pawn
+  // is on the left half of the board.
+  Square normalize(const Position& pos, Color strongSide, Square sq) {
+
+    assert(pos.count<PAWN>(strongSide) == 1);
+
+    if (file_of(pos.list<PAWN>(strongSide)[0]) >= FILE_E)
+        sq = mirror(sq);
+
+    if (strongSide == BLACK)
+        sq = ~sq;
+
+    return sq;
+  }
+
   // Get the material key of a Position out of the given endgame key code
   // like "KBPKN". The trick here is to first forge an ad-hoc fen string
   // and then let a Position object to do the work for us. Note that the
@@ -188,22 +203,6 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
-// Returns a square that will allow us to orient the board so that
-// strongSide is white and strongSide's only pawn is on the left
-// half of the board
-Square get_flip_sq(const Position& pos, Color strongSide) {
-
-  assert(pos.count<PAWN>(strongSide) == 1);
-
-  Square psq = pos.list<PAWN>(strongSide)[0];
-
-  return (FILE_H * (file_of(psq) >= FILE_E)) | (RANK_8 * int(strongSide));
-}
-
-Square operator^(Square s, Square flip_sq) {
-  assert(flip_sq == SQ_A1 || flip_sq == SQ_H1 || flip_sq == SQ_A8 || flip_sq == SQ_H8);
-  return Square(int(s) ^ int(flip_sq));
-}
 
 /// KP vs K. This endgame is evaluated with the help of a bitbase.
 template<>
@@ -213,11 +212,9 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
 
   // Assume strongSide is white and the pawn is on files A-D
-  Square flip_sq = get_flip_sq(pos, strongSide);
-
-  Square wksq = pos.king_square(strongSide)   ^ flip_sq;
-  Square bksq = pos.king_square(weakSide)     ^ flip_sq;
-  Square psq  = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
+  Square wksq = normalize(pos, strongSide, pos.king_square(strongSide));
+  Square bksq = normalize(pos, strongSide, pos.king_square(weakSide));
+  Square psq  = normalize(pos, strongSide, pos.list<PAWN>(strongSide)[0]);
 
   Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
@@ -484,13 +481,11 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   assert(verify_material(pos, weakSide,   RookValueMg, 0));
 
   // Assume strongSide is white and the pawn is on files A-D
-  Square flip_sq = get_flip_sq(pos, strongSide);
-
-  Square wksq = pos.king_square(strongSide)   ^ flip_sq;
-  Square bksq = pos.king_square(weakSide)     ^ flip_sq;
-  Square wrsq = pos.list<ROOK>(strongSide)[0] ^ flip_sq;
-  Square wpsq = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
-  Square brsq = pos.list<ROOK>(weakSide)[0]   ^ flip_sq;
+  Square wksq = normalize(pos, strongSide, pos.king_square(strongSide));
+  Square bksq = normalize(pos, strongSide, pos.king_square(weakSide));
+  Square wrsq = normalize(pos, strongSide, pos.list<ROOK>(strongSide)[0]);
+  Square wpsq = normalize(pos, strongSide, pos.list<PAWN>(strongSide)[0]);
+  Square brsq = normalize(pos, strongSide, pos.list<ROOK>(weakSide)[0]);
 
   File f = file_of(wpsq);
   Rank r = rank_of(wpsq);
@@ -833,10 +828,8 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
 
   // Assume strongSide is white and the pawn is on files A-D
-  Square flip_sq = get_flip_sq(pos, strongSide);
-
-  Square pawnSq     = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
-  Square weakKingSq = pos.king_square(weakSide)     ^ flip_sq;
+  Square pawnSq     = normalize(pos, strongSide, pos.list<PAWN>(strongSide)[0]);
+  Square weakKingSq = normalize(pos, strongSide, pos.king_square(weakSide));
 
   if (pawnSq == SQ_A7 && square_distance(SQ_A8, weakKingSq) <= 1)
       return SCALE_FACTOR_DRAW;
@@ -875,11 +868,9 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   assert(verify_material(pos, weakSide,   VALUE_ZERO, 1));
 
   // Assume strongSide is white and the pawn is on files A-D
-  Square flip_sq = get_flip_sq(pos, strongSide);
-
-  Square wksq = pos.king_square(strongSide)   ^ flip_sq;
-  Square bksq = pos.king_square(weakSide)     ^ flip_sq;
-  Square psq  = pos.list<PAWN>(strongSide)[0] ^ flip_sq;
+  Square wksq = normalize(pos, strongSide, pos.king_square(strongSide));
+  Square bksq = normalize(pos, strongSide, pos.king_square(weakSide));
+  Square psq  = normalize(pos, strongSide, pos.list<PAWN>(strongSide)[0]);
 
   Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
