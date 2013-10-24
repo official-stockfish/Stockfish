@@ -232,13 +232,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   Rank rkUs, rkThem;
   File kf = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
-  for (int f = kf - 1; f <= kf + 1; ++f)
+  for (File f = kf - File(1); f <= kf + File(1); ++f)
   {
-      b = ourPawns & FileBB[f];
+      b = ourPawns & file_bb(f);
       rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
       safety -= ShelterWeakness[rkUs];
 
-      b  = theirPawns & FileBB[f];
+      b  = theirPawns & file_bb(f);
       rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
       safety -= StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];
   }
