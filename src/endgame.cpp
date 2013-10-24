@@ -72,7 +72,7 @@ namespace {
     assert(pos.count<PAWN>(strongSide) == 1);
 
     if (file_of(pos.list<PAWN>(strongSide)[0]) >= FILE_E)
-        sq = mirror(sq);
+        sq = Square(sq ^ 7); // Mirror SQ_H1 -> SQ_A1
 
     if (strongSide == BLACK)
         sq = ~sq;
