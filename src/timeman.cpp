@@ -147,14 +147,14 @@ namespace {
     const double TMaxRatio   = (T == OptimumTime ? 1 : MaxRatio);
     const double TStealRatio = (T == OptimumTime ? 0 : StealRatio);
 
-    int thisMoveImportance = move_importance(currentPly) * slowMover / 100;
+    double thisMoveImportance = double(move_importance(currentPly) * slowMover) / 100;
     int otherMovesImportance = 0;
 
     for (int i = 1; i < movesToGo; ++i)
         otherMovesImportance += move_importance(currentPly + 2 * i);
 
-    double ratio1 = (TMaxRatio * thisMoveImportance) / double(TMaxRatio * thisMoveImportance + otherMovesImportance);
-    double ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / double(thisMoveImportance + otherMovesImportance);
+    double ratio1 = (TMaxRatio * thisMoveImportance) / (TMaxRatio * thisMoveImportance + otherMovesImportance);
+    double ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / (thisMoveImportance + otherMovesImportance);
 
     return int(floor(myTime * std::min(ratio1, ratio2)));
   }
