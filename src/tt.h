@@ -36,7 +36,7 @@
 
 struct TTEntry {
 
-  void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value ev, Value em) {
+  void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value ev) {
 
     key32        = (uint32_t)k;
     move16       = (uint16_t)m;
@@ -45,7 +45,6 @@ struct TTEntry {
     value16      = (int16_t)v;
     depth16      = (int16_t)d;
     evalValue    = (int16_t)ev;
-    evalMargin   = (int16_t)em;
   }
   void set_generation(uint8_t g) { generation8 = g; }
 
@@ -56,13 +55,12 @@ struct TTEntry {
   Bound bound() const       { return (Bound)bound8; }
   int generation() const    { return (int)generation8; }
   Value eval_value() const  { return (Value)evalValue; }
-  Value eval_margin() const { return (Value)evalMargin; }
 
 private:
   uint32_t key32;
   uint16_t move16;
   uint8_t bound8, generation8;
-  int16_t value16, depth16, evalValue, evalMargin;
+  int16_t value16, depth16, evalValue;
 };
 
 
@@ -85,7 +83,7 @@ public:
   void refresh(const TTEntry* tte) const;
   void set_size(size_t mbSize);
   void clear();
-  void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV, Value kingD);
+  void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV);
 
 private:
   uint32_t hashMask;
