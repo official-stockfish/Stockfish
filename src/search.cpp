@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -440,6 +441,7 @@ namespace {
 
             // Stop search early if one move seems to be much better than others
             if (    depth >= 12
+                &&  BestMoveChanges <= DBL_EPSILON
                 && !stop
                 &&  PVSize == 1
                 &&  bestValue > VALUE_MATED_IN_MAX_PLY
