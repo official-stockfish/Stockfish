@@ -101,11 +101,11 @@ void TimerThread::idle_loop() {
       mutex.lock();
 
       if (!exit)
-          sleepCondition.wait_for(mutex, msec ? msec : INT_MAX);
+          sleepCondition.wait_for(mutex, run ? Resolution : INT_MAX);
 
       mutex.unlock();
 
-      if (msec)
+      if (run)
           check_time();
   }
 }

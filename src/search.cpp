@@ -55,9 +55,6 @@ namespace {
   // Set to true to force running with one thread. Used for debugging
   const bool FakeSplit = false;
 
-  // This is the minimum interval in msec between two check_time() calls
-  const int TimerResolution = 5;
-
   // Different node types, used as template parameter
   enum NodeType { Root, PV, NonPV, SplitPointRoot, SplitPointPV, SplitPointNonPV };
 
@@ -243,19 +240,12 @@ void Search::think() {
       Threads[i]->maxPly = 0;
 
   Threads.sleepWhileIdle = Options["Idle Threads Sleep"];
-
-  // Set best timer interval to avoid lagging under time pressure. Timer is
-  // used to check for remaining available thinking time.
-  Threads.timer->msec =
-  Limits.use_time_management() ? std::min(100, std::max(TimeMgr.available_time() / 16, TimerResolution)) :
-                  Limits.nodes ? 2 * TimerResolution
-                               : 100;
-
+  Threads.timer->run = true;
   Threads.timer->notify_one(); // Wake up the recurring timer
 
   id_loop(RootPos); // Let's start searching !
 
-  Threads.timer->msec = 0; // Stop the timer
+  Threads.timer->run = false; // Stop the timer
   Threads.sleepWhileIdle = true; // Send idle threads to sleep
 
   if (Options["Write Search Log"])
@@ -1764,7 +1754,7 @@ void check_time() {
                          && !Signals.failedLowAtRoot
                          &&  elapsed > TimeMgr.available_time();
 
-  bool noMoreTime =   elapsed > TimeMgr.maximum_time() - 2 * TimerResolution
+  bool noMoreTime =   elapsed > TimeMgr.maximum_time() - 2 * TimerThread::Resolution
                    || stillAtFirstMove;
 
   if (   (Limits.use_time_management() && noMoreTime)
