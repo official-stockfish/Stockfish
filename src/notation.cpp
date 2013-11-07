@@ -133,7 +133,7 @@ const string move_to_san(Position& pos, Move m) {
           while (b)
           {
               Move move = make_move(pop_lsb(&b), to);
-              if (!pos.legal(move, pos.pinned_pieces()))
+              if (!pos.legal(move, pos.pinned_pieces(pos.side_to_move())))
                   others ^= from_sq(move);
           }
 

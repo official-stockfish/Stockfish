@@ -83,6 +83,8 @@ namespace {
     // king is on g8 and there's a white knight on g5, this knight adds
     // 2 to kingAdjacentZoneAttacksCount[BLACK].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
+
+    Bitboard pinnedPieces[COLOR_NB];
   };
 
   // Evaluation grain size, must be a power of 2
@@ -423,6 +425,8 @@ Value do_evaluate(const Position& pos) {
     const Color  Them = (Us == WHITE ? BLACK : WHITE);
     const Square Down = (Us == WHITE ? DELTA_S : DELTA_N);
 
+    ei.pinnedPieces[Us] = pos.pinned_pieces(Us);
+
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
     ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
 
@@ -486,6 +490,9 @@ Value do_evaluate(const Position& pos) {
         b = Piece == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN))
           : Piece ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
                             : pos.attacks_from<Piece>(s);
+
+        if (ei.pinnedPieces[Us] & s)
+            b &= PseudoAttacks[QUEEN][pos.king_square(Us)];
 
         ei.attackedBy[Us][Piece] |= b;
 

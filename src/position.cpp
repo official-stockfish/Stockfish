@@ -98,7 +98,7 @@ CheckInfo::CheckInfo(const Position& pos) {
   Color them = ~pos.side_to_move();
   ksq = pos.king_square(them);
 
-  pinned = pos.pinned_pieces();
+  pinned = pos.pinned_pieces(pos.side_to_move());
   dcCandidates = pos.discovered_check_candidates();
 
   checkSq[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
@@ -422,7 +422,7 @@ const string Position::pretty(Move move) const {
 /// pieces, according to the call parameters. Pinned pieces protect our king,
 /// discovery check pieces attack the enemy king.
 
-Bitboard Position::hidden_checkers(Square ksq, Color c) const {
+Bitboard Position::hidden_checkers(Square ksq, Color c, Color toMove) const {
 
   Bitboard b, pinners, result = 0;
 
@@ -435,7 +435,7 @@ Bitboard Position::hidden_checkers(Square ksq, Color c) const {
       b = between_bb(ksq, pop_lsb(&pinners)) & pieces();
 
       if (!more_than_one(b))
-          result |= b & pieces(sideToMove);
+          result |= b & pieces(toMove);
   }
   return result;
 }
@@ -477,7 +477,7 @@ Bitboard Position::attacks_from(Piece p, Square s, Bitboard occ) {
 bool Position::legal(Move m, Bitboard pinned) const {
 
   assert(is_ok(m));
-  assert(pinned == pinned_pieces());
+  assert(pinned == pinned_pieces(pos.side_to_move()));
 
   Color us = sideToMove;
   Square from = from_sq(m);

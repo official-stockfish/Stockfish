@@ -407,7 +407,7 @@ template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* mlist) {
 
   ExtMove *end, *cur = mlist;
-  Bitboard pinned = pos.pinned_pieces();
+  Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
   Square ksq = pos.king_square(pos.side_to_move());
 
   end = pos.checkers() ? generate<EVASIONS>(pos, mlist)

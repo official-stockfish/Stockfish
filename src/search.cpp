@@ -1507,7 +1507,7 @@ void RootMove::extract_pv_from_tt(Position& pos) {
 
   } while (   tte
            && pos.pseudo_legal(m = tte->move()) // Local copy, TT could change
-           && pos.legal(m, pos.pinned_pieces())
+           && pos.legal(m, pos.pinned_pieces(pos.side_to_move()))
            && ply < MAX_PLY
            && (!pos.is_draw() || ply < 2));
 

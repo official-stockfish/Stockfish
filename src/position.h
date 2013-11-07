@@ -108,7 +108,7 @@ public:
   // Checking
   Bitboard checkers() const;
   Bitboard discovered_check_candidates() const;
-  Bitboard pinned_pieces() const;
+  Bitboard pinned_pieces(Color toMove) const;
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
@@ -175,7 +175,7 @@ private:
 
   // Helper functions
   void do_castle(Square kfrom, Square kto, Square rfrom, Square rto);
-  Bitboard hidden_checkers(Square ksq, Color c) const;
+  Bitboard hidden_checkers(Square ksq, Color c, Color toMove) const;
   void put_piece(Square s, Color c, PieceType pt);
   void remove_piece(Square s, Color c, PieceType pt);
   void move_piece(Square from, Square to, Color c, PieceType pt);
@@ -316,11 +316,11 @@ inline Bitboard Position::checkers() const {
 }
 
 inline Bitboard Position::discovered_check_candidates() const {
-  return hidden_checkers(king_square(~sideToMove), sideToMove);
+  return hidden_checkers(king_square(~sideToMove), sideToMove, sideToMove);
 }
 
-inline Bitboard Position::pinned_pieces() const {
-  return hidden_checkers(king_square(sideToMove), ~sideToMove);
+inline Bitboard Position::pinned_pieces(Color toMove) const {
+  return hidden_checkers(king_square(toMove), ~toMove, toMove);
 }
 
 inline bool Position::pawn_passed(Color c, Square s) const {
