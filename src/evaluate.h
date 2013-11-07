@@ -27,7 +27,7 @@ class Position;
 namespace Eval {
 
 extern void init();
-extern Value evaluate(const Position& pos);
+extern Value evaluate(const Position& pos, Value& margin);
 extern std::string trace(const Position& pos);
 
 }
