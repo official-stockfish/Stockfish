@@ -35,10 +35,9 @@ namespace {
   const int NoPawnsSF[4] = { 6, 12, 32 };
 
   // Polynomial material balance parameters
-  const Value RedundantMajor = Value(160);
 
   //                                  pair  pawn knight bishop rook queen
-  const int LinearCoefficients[6] = { 1852, -162, -1122, -183,  302,  1 };
+  const int LinearCoefficients[6] = { 1852, -162, -1122, -183,  249, -52 };
 
   const int QuadraticCoefficientsSameColor[][PIECE_TYPE_NB] = {
     // pair pawn knight bishop rook queen
@@ -104,10 +103,6 @@ namespace {
 
     int pt1, pt2, pc, v;
     int value = 0;
-
-    // Penalty for major piece redundancy
-    if (pieceCount[Us][ROOK] + pieceCount[Us][QUEEN] > 1)
-        value -= RedundantMajor;
 
     // Second-degree polynomial material imbalance by Tord Romstad
     for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
