@@ -229,7 +229,7 @@ namespace {
 
   // Function prototypes
   template<bool Trace>
-  Value do_evaluate(const Position& pos, Value& margin);
+  Value do_evaluate(const Position& pos);
 
   template<Color Us>
   void init_eval_info(const Position& pos, EvalInfo& ei);
@@ -238,7 +238,7 @@ namespace {
   Score evaluate_pieces_of_color(const Position& pos, EvalInfo& ei, Score* mobility);
 
   template<Color Us, bool Trace>
-  Score evaluate_king(const Position& pos, const EvalInfo& ei, Value margins[]);
+  Score evaluate_king(const Position& pos, const EvalInfo& ei);
 
   template<Color Us, bool Trace>
   Score evaluate_threats(const Position& pos, const EvalInfo& ei);
@@ -264,8 +264,8 @@ namespace Eval {
   /// values, an endgame score and a middle game score, and interpolates
   /// between them based on the remaining material.
 
-  Value evaluate(const Position& pos, Value& margin) {
-    return do_evaluate<false>(pos, margin);
+  Value evaluate(const Position& pos) {
+    return do_evaluate<false>(pos);
   }
 
 
@@ -307,18 +307,13 @@ namespace Eval {
 namespace {
 
 template<bool Trace>
-Value do_evaluate(const Position& pos, Value& margin) {
+Value do_evaluate(const Position& pos) {
 
   assert(!pos.checkers());
 
   EvalInfo ei;
-  Value margins[COLOR_NB];
   Score score, mobility[2] = { SCORE_ZERO, SCORE_ZERO };
   Thread* th = pos.this_thread();
-
-  // margins[] store the uncertainty estimation of position's evaluation
-  // that typically is used by the search for pruning decisions.
-  margins[WHITE] = margins[BLACK] = VALUE_ZERO;
 
   // Initialize score by reading the incrementally updated scores included
   // in the position object (material + piece square tables) and adding
@@ -332,10 +327,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // If we have a specialized evaluation function for the current material
   // configuration, call it and return.
   if (ei.mi->specialized_eval_exists())
-  {
-      margin = VALUE_ZERO;
       return ei.mi->evaluate(pos);
-  }
 
   // Probe the pawn hash table
   ei.pi = Pawns::probe(pos, th->pawnsTable);
@@ -353,8 +345,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
 
   // Evaluate kings after all other pieces because we need complete attack
   // information when computing the king safety evaluation.
-  score +=  evaluate_king<WHITE, Trace>(pos, ei, margins)
-          - evaluate_king<BLACK, Trace>(pos, ei, margins);
+  score +=  evaluate_king<WHITE, Trace>(pos, ei)
+          - evaluate_king<BLACK, Trace>(pos, ei);
 
   // Evaluate tactical threats, we need full attack information including king
   score +=  evaluate_threats<WHITE, Trace>(pos, ei)
@@ -401,7 +393,6 @@ Value do_evaluate(const Position& pos, Value& margin) {
            sf = ScaleFactor(50);
   }
 
-  margin = margins[pos.side_to_move()];
   Value v = interpolate(score, ei.mi->game_phase(), sf);
 
   // In case of tracing add all single evaluation contributions for both white and black
@@ -414,9 +405,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
       Score b = ei.mi->space_weight() * evaluate_space<BLACK>(pos, ei);
       Tracing::add(SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
       Tracing::add(TOTAL, score);
-      Tracing::stream << "\nUncertainty margin: White: " << to_cp(margins[WHITE])
-                      << ", Black: " << to_cp(margins[BLACK])
-                      << "\nScaling: " << std::noshowpos
+      Tracing::stream << "\nScaling: " << std::noshowpos
                       << std::setw(6) << 100.0 * ei.mi->game_phase() / 128.0 << "% MG, "
                       << std::setw(6) << 100.0 * (1.0 - ei.mi->game_phase() / 128.0) << "% * "
                       << std::setw(6) << (100.0 * sf) / SCALE_FACTOR_NORMAL << "% EG.\n"
@@ -640,7 +629,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
   // evaluate_king() assigns bonuses and penalties to a king of a given color
 
   template<Color Us, bool Trace>
-  Score evaluate_king(const Position& pos, const EvalInfo& ei, Value margins[]) {
+  Score evaluate_king(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -735,12 +724,8 @@ Value do_evaluate(const Position& pos, Value& margin) {
         attackUnits = std::min(99, std::max(0, attackUnits));
 
         // Finally, extract the king danger score from the KingDanger[]
-        // array and subtract the score from evaluation. Set also margins[]
-        // value that will be used for pruning because this value can sometimes
-        // be very big, and so capturing a single attacking piece can therefore
-        // result in a score change far bigger than the value of the captured piece.
+        // array and subtract the score from evaluation.
         score -= KingDanger[Us == Search::RootColor][attackUnits];
-        margins[Us] += mg_value(KingDanger[Us == Search::RootColor][attackUnits]);
     }
 
     if (Trace)
@@ -1024,8 +1009,7 @@ Value do_evaluate(const Position& pos, Value& margin) {
     stream << std::showpoint << std::showpos << std::fixed << std::setprecision(2);
     std::memset(scores, 0, 2 * (TOTAL + 1) * sizeof(Score));
 
-    Value margin;
-    do_evaluate<true>(pos, margin);
+    do_evaluate<true>(pos);
 
     std::string totals = stream.str();
     stream.str("");

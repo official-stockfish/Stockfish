@@ -63,13 +63,10 @@ namespace {
   inline Value razor_margin(Depth d) { return Value(512 + 16 * int(d)); }
 
   // Futility lookup tables (initialized at startup) and their access functions
-  Value FutilityMargins[16][64]; // [depth][moveNumber]
   int FutilityMoveCounts[2][32]; // [improving][depth]
 
-  inline Value futility_margin(Depth d, int mn) {
-
-    return d < 7 * ONE_PLY ? FutilityMargins[std::max(int(d), 1)][std::min(mn, 63)]
-                           : 2 * VALUE_INFINITE;
+  inline Value futility_margin(Depth d) {
+    return Value(100 * int(d));
   }
 
   // Reduction lookup tables (initialized at startup) and their access function
@@ -85,7 +82,6 @@ namespace {
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   HistoryStats History;
-  GainsStats Gains;
   CountermovesStats Countermoves;
 
   template <NodeType NT>
@@ -145,10 +141,6 @@ void Search::init() {
       else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY)
           Reductions[0][0][hd][mc] += ONE_PLY / 2;
   }
-
-  // Init futility margins array
-  for (d = 1; d < 16; ++d) for (mc = 0; mc < 64; ++mc)
-      FutilityMargins[d][mc] = Value(112 * int(2.9 * log(double(d))) - 8 * mc + 45);
 
   // Init futility move count array
   for (d = 0; d < 32; ++d)
@@ -301,7 +293,6 @@ namespace {
     Value bestValue, alpha, beta, delta;
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
-    (ss-1)->currentMove = MOVE_NULL; // Hack to skip update gains
 
     depth = 0;
     BestMoveChanges = 0;
@@ -310,7 +301,6 @@ namespace {
 
     TT.new_search();
     History.clear();
-    Gains.clear();
     Countermoves.clear();
 
     PVSize = Options["MultiPV"];
@@ -499,7 +489,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove, threatMove;
     Depth ext, newDepth;
     Value bestValue, value, ttValue;
-    Value eval, nullValue, futilityValue;
+    Value eval, nullValue;
     bool inCheck, givesCheck, pvMove, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
@@ -527,7 +517,6 @@ namespace {
     bestValue = -VALUE_INFINITE;
     ss->currentMove = threatMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
-    ss->futilityMoveCount = 0;
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
@@ -591,16 +580,15 @@ namespace {
     // Step 5. Evaluate the position statically and update parent's gain statistics
     if (inCheck)
     {
-        ss->staticEval = ss->evalMargin = eval = VALUE_NONE;
+        ss->staticEval = eval = VALUE_NONE;
         goto moves_loop;
     }
 
     else if (tte)
     {
         // Never assume anything on values stored in TT
-        if (  (ss->staticEval = eval = tte->eval_value()) == VALUE_NONE
-            ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
-            eval = ss->staticEval = evaluate(pos, ss->evalMargin);
+        if ((ss->staticEval = eval = tte->eval_value()) == VALUE_NONE)
+            eval = ss->staticEval = evaluate(pos);
 
         // Can ttValue be used as a better position evaluation?
         if (ttValue != VALUE_NONE)
@@ -609,21 +597,8 @@ namespace {
     }
     else
     {
-        eval = ss->staticEval = evaluate(pos, ss->evalMargin);
-        TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
-                 ss->staticEval, ss->evalMargin);
-    }
-
-    // Update gain for the parent non-capture move given the static position
-    // evaluation before and after the move.
-    if (   !pos.captured_piece_type()
-        &&  ss->staticEval != VALUE_NONE
-        && (ss-1)->staticEval != VALUE_NONE
-        && (move = (ss-1)->currentMove) != MOVE_NULL
-        &&  type_of(move) == NORMAL)
-    {
-        Square to = to_sq(move);
-        Gains.update(pos.piece_on(to), to, -(ss-1)->staticEval - ss->staticEval);
+        eval = ss->staticEval = evaluate(pos);
+        TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->staticEval);
     }
 
     // Step 6. Razoring (skipped when in check)
@@ -642,17 +617,15 @@ namespace {
             return v;
     }
 
-    // Step 7. Static null move pruning (skipped when in check)
-    // We're betting that the opponent doesn't have a move that will reduce
-    // the score by more than futility_margin(depth) if we do a null move.
+    // Step 7. Futility pruning: child node (skipped when in check)
     if (   !PvNode
         && !ss->skipNullMove
-        &&  depth < 4 * ONE_PLY
-        &&  eval - futility_margin(depth, (ss-1)->futilityMoveCount) >= beta
+        &&  depth < 7 * ONE_PLY
+        &&  eval - futility_margin(depth) >= beta
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
         &&  abs(eval) < VALUE_KNOWN_WIN
         &&  pos.non_pawn_material(pos.side_to_move()))
-        return eval - futility_margin(depth, (ss-1)->futilityMoveCount);
+        return eval - futility_margin(depth);
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
     if (   !PvNode
@@ -855,7 +828,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // Update current move (this must be done after singular extension search)
       newDepth = depth - ONE_PLY + ext;
 
-      // Step 13. Futility pruning (is omitted in PV nodes)
+      // Step 13. Pruning at shallow depth (exclude PV nodes)
       if (   !PvNode
           && !captureOrPromotion
           && !inCheck
@@ -874,24 +847,25 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
           }
 
-          // Value based pruning
-          // We illogically ignore reduction condition depth >= 3*ONE_PLY for predicted depth,
-          // but fixing this made program slightly weaker.
           Depth predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
-          futilityValue =  ss->staticEval + ss->evalMargin + futility_margin(predictedDepth, moveCount)
-                         + Gains[pos.moved_piece(move)][to_sq(move)];
 
-          if (futilityValue < beta)
+          // Futility pruning: parent node
+          if (predictedDepth < 7 * ONE_PLY)
           {
-              bestValue = std::max(bestValue, futilityValue);
+              Value futilityValue = ss->staticEval + futility_margin(predictedDepth) + Value(128);
 
-              if (SpNode)
+              if (futilityValue <= alpha)
               {
-                  splitPoint->mutex.lock();
-                  if (bestValue > splitPoint->bestValue)
-                      splitPoint->bestValue = bestValue;
+                  bestValue = std::max(bestValue, futilityValue);
+
+                  if (SpNode)
+                  {
+                      splitPoint->mutex.lock();
+                      if (bestValue > splitPoint->bestValue)
+                          splitPoint->bestValue = bestValue;
+                  }
+                  continue;
               }
-              continue;
           }
 
           // Prune moves with negative SEE at low depths
@@ -904,12 +878,7 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
           }
 
-          // We have not pruned the move that will be searched, but remember how
-          // far in the move list we are to be more aggressive in the child node.
-          ss->futilityMoveCount = moveCount;
       }
-      else
-          ss->futilityMoveCount = 0;
 
       // Check for legality only before to do the move
       if (!RootNode && !SpNode && !pos.legal(move, ci.pinned))
@@ -1079,7 +1048,7 @@ moves_loop: // When in check and at SpNode search starts from here
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              bestValue >= beta  ? BOUND_LOWER :
              PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
-             depth, bestMove, ss->staticEval, ss->evalMargin);
+             depth, bestMove, ss->staticEval);
 
     // Quiet best move: update killers, history and countermoves
     if (    bestValue >= beta
@@ -1172,7 +1141,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // Evaluate the position statically
     if (InCheck)
     {
-        ss->staticEval = ss->evalMargin = VALUE_NONE;
+        ss->staticEval = VALUE_NONE;
         bestValue = futilityBase = -VALUE_INFINITE;
     }
     else
@@ -1180,9 +1149,8 @@ moves_loop: // When in check and at SpNode search starts from here
         if (tte)
         {
             // Never assume anything on values stored in TT
-            if (  (ss->staticEval = bestValue = tte->eval_value()) == VALUE_NONE
-                ||(ss->evalMargin = tte->eval_margin()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
+            if ((ss->staticEval = bestValue = tte->eval_value()) == VALUE_NONE)
+                ss->staticEval = bestValue = evaluate(pos);
 
             // Can ttValue be used as a better position evaluation?
             if (ttValue != VALUE_NONE)
@@ -1190,14 +1158,14 @@ moves_loop: // When in check and at SpNode search starts from here
                     bestValue = ttValue;
         }
         else
-            ss->staticEval = bestValue = evaluate(pos, ss->evalMargin);
+            ss->staticEval = bestValue = evaluate(pos);
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
         {
             if (!tte)
                 TT.store(pos.key(), value_to_tt(bestValue, ss->ply), BOUND_LOWER,
-                         DEPTH_NONE, MOVE_NONE, ss->staticEval, ss->evalMargin);
+                         DEPTH_NONE, MOVE_NONE, ss->staticEval);
 
             return bestValue;
         }
@@ -1205,7 +1173,7 @@ moves_loop: // When in check and at SpNode search starts from here
         if (PvNode && bestValue > alpha)
             alpha = bestValue;
 
-        futilityBase = bestValue + ss->evalMargin + Value(128);
+        futilityBase = bestValue + Value(128);
     }
 
     // Initialize a MovePicker object for the current position, and prepare
@@ -1294,7 +1262,7 @@ moves_loop: // When in check and at SpNode search starts from here
               else // Fail high
               {
                   TT.store(posKey, value_to_tt(value, ss->ply), BOUND_LOWER,
-                           ttDepth, move, ss->staticEval, ss->evalMargin);
+                           ttDepth, move, ss->staticEval);
 
                   return value;
               }
@@ -1309,7 +1277,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              PvNode && bestValue > oldAlpha ? BOUND_EXACT : BOUND_UPPER,
-             ttDepth, bestMove, ss->staticEval, ss->evalMargin);
+             ttDepth, bestMove, ss->staticEval);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
@@ -1572,7 +1540,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
       tte = TT.probe(pos.key());
 
       if (!tte || tte->move() != pv[ply]) // Don't overwrite correct entries
-          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], VALUE_NONE, VALUE_NONE);
+          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], VALUE_NONE);
 
       assert(MoveList<LEGAL>(pos).contains(pv[ply]));
 
