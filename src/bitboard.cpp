@@ -45,6 +45,7 @@ Bitboard AdjacentFilesBB[FILE_NB];
 Bitboard InFrontBB[COLOR_NB][RANK_NB];
 Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard DistanceRingsBB[SQUARE_NB][8];
 Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
 Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
@@ -225,6 +226,9 @@ void Bitboards::init() {
 
               for (Square s = s1 + delta; s != s2; s += delta)
                   BetweenBB[s1][s2] |= s;
+
+              PieceType pc = (PseudoAttacks[BISHOP][s1] & s2) ? BISHOP : ROOK;
+              LineBB[s1][s2] = (PseudoAttacks[pc][s1] & PseudoAttacks[pc][s2]) | s1 | s2;
           }
 }
 
