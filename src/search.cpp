@@ -82,6 +82,7 @@ namespace {
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   HistoryStats History;
+  GainsStats Gains;
   CountermovesStats Countermoves;
 
   template <NodeType NT>
@@ -293,6 +294,7 @@ namespace {
     Value bestValue, alpha, beta, delta;
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
+    (ss-1)->currentMove = MOVE_NULL; // Hack to skip update gains
 
     depth = 0;
     BestMoveChanges = 0;
@@ -301,6 +303,7 @@ namespace {
 
     TT.new_search();
     History.clear();
+    Gains.clear();
     Countermoves.clear();
 
     PVSize = Options["MultiPV"];
@@ -487,9 +490,8 @@ namespace {
     SplitPoint* splitPoint;
     Key posKey;
     Move ttMove, move, excludedMove, bestMove, threatMove;
-    Depth ext, newDepth;
-    Value bestValue, value, ttValue;
-    Value eval, nullValue;
+    Depth ext, newDepth, predictedDepth;
+    Value bestValue, value, ttValue, eval, nullValue, futilityValue;
     bool inCheck, givesCheck, pvMove, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
@@ -599,6 +601,16 @@ namespace {
     {
         eval = ss->staticEval = evaluate(pos);
         TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->staticEval);
+    }
+
+    if (   !pos.captured_piece_type()
+        &&  ss->staticEval != VALUE_NONE
+        && (ss-1)->staticEval != VALUE_NONE
+        && (move = (ss-1)->currentMove) != MOVE_NULL
+        &&  type_of(move) == NORMAL)
+    {
+        Square to = to_sq(move);
+        Gains.update(pos.piece_on(to), to, -(ss-1)->staticEval - ss->staticEval);
     }
 
     // Step 6. Razoring (skipped when in check)
@@ -847,12 +859,13 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
           }
 
-          Depth predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
+          predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
 
           // Futility pruning: parent node
           if (predictedDepth < 7 * ONE_PLY)
           {
-              Value futilityValue = ss->staticEval + futility_margin(predictedDepth) + Value(128);
+              futilityValue = ss->staticEval + futility_margin(predictedDepth)
+                            + Value(128) + Gains[pos.moved_piece(move)][to_sq(move)];
 
               if (futilityValue <= alpha)
               {
@@ -869,8 +882,7 @@ moves_loop: // When in check and at SpNode search starts from here
           }
 
           // Prune moves with negative SEE at low depths
-          if (   predictedDepth < 4 * ONE_PLY
-              && pos.see_sign(move) < 0)
+          if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < 0)
           {
               if (SpNode)
                   splitPoint->mutex.lock();
@@ -883,7 +895,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // Check for legality only before to do the move
       if (!RootNode && !SpNode && !pos.legal(move, ci.pinned))
       {
-          --moveCount;
+          moveCount--;
           continue;
       }
 
