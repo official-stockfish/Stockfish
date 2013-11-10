@@ -227,8 +227,8 @@ void Bitboards::init() {
               for (Square s = s1 + delta; s != s2; s += delta)
                   BetweenBB[s1][s2] |= s;
 
-              PieceType pc = (PseudoAttacks[BISHOP][s1] & s2) ? BISHOP : ROOK;
-              LineBB[s1][s2] = (PseudoAttacks[pc][s1] & PseudoAttacks[pc][s2]) | s1 | s2;
+              PieceType pt = (PseudoAttacks[BISHOP][s1] & s2) ? BISHOP : ROOK;
+              LineBB[s1][s2] = (PseudoAttacks[pt][s1] & PseudoAttacks[pt][s2]) | s1 | s2;
           }
 }
 

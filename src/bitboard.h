@@ -227,8 +227,7 @@ inline Bitboard squares_of_color(Square s) {
 /// either on a straight or on a diagonal line.
 
 inline bool squares_aligned(Square s1, Square s2, Square s3) {
-  return  (BetweenBB[s1][s2] | BetweenBB[s1][s3] | BetweenBB[s2][s3])
-        & (     SquareBB[s1] |      SquareBB[s2] |      SquareBB[s3]);
+  return LineBB[s1][s2] & s3;
 }
 
 
