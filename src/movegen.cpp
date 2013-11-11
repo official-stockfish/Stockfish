@@ -56,7 +56,7 @@ namespace {
     // Because we generate only legal castling moves we need to verify that
     // when moving the castling rook we do not discover some hidden checker.
     // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-    if (Chess960 && (pos.attackers_to(kto, pos.pieces() ^ rfrom) & enemies))
+    if (Chess960 && (attacks_bb<ROOK>(kto, pos.pieces() ^ rfrom) & pos.pieces(~us, ROOK, QUEEN)))
         return mlist;
 
     (mlist++)->move = make<CASTLE>(kfrom, rfrom);
