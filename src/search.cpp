@@ -484,7 +484,6 @@ namespace {
     assert(PvNode || (alpha == beta - 1));
     assert(depth > DEPTH_ZERO);
 
-    Move quietsSearched[64];
     StateInfo st;
     const TTEntry *tte;
     SplitPoint* splitPoint;
@@ -494,7 +493,7 @@ namespace {
     Value bestValue, value, ttValue, eval, nullValue, futilityValue;
     bool inCheck, givesCheck, pvMove, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
-    int moveCount, quietCount;
+    int moveCount;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -515,7 +514,7 @@ namespace {
         goto moves_loop;
     }
 
-    moveCount = quietCount = 0;
+    moveCount = 0;
     bestValue = -VALUE_INFINITE;
     ss->currentMove = threatMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
@@ -901,8 +900,6 @@ moves_loop: // When in check and at SpNode search starts from here
 
       pvMove = PvNode && moveCount == 1;
       ss->currentMove = move;
-      if (!SpNode && !captureOrPromotion && quietCount < 64)
-          quietsSearched[quietCount++] = move;
 
       // Step 14. Make the move
       pos.do_move(move, st, ci, givesCheck);
@@ -1077,11 +1074,10 @@ moves_loop: // When in check and at SpNode search starts from here
         // played non-capture moves.
         Value bonus = Value(int(depth) * int(depth));
         History.update(pos.moved_piece(bestMove), to_sq(bestMove), bonus);
-        for (int i = 0; i < quietCount - 1; ++i)
-        {
-            Move m = quietsSearched[i];
-            History.update(pos.moved_piece(m), to_sq(m), -bonus);
-        }
+
+        if (bestMove != ttMove)
+            for (const ExtMove* em = mp.stage_moves(); em->move != bestMove; ++em)
+                History.update(pos.moved_piece(em->move), to_sq(em->move), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, bestMove);

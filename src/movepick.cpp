@@ -140,6 +140,15 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Piece
 }
 
 
+/// stage_moves() returns a pointer to the beginning of moves array. It
+/// is used to access already tried quiet moves when updating history.
+
+const ExtMove* MovePicker::stage_moves() const {
+  assert(stage == KILLERS_S1 || stage == QUIETS_1_S1 || stage == QUIETS_2_S1);
+  return stage == KILLERS_S1 ? killers : moves;
+}
+
+
 /// score() assign a numerical move ordering score to each move in a move list.
 /// The moves with highest scores will be picked first.
 template<>
