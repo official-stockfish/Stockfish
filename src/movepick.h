@@ -88,7 +88,6 @@ public:
   MovePicker(const Position&, Move, const HistoryStats&, PieceType);
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Search::Stack*);
 
-  const ExtMove* quiet_moves() const;
   template<bool SpNode> Move next_move();
 
 private:
