@@ -140,12 +140,12 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Piece
 }
 
 
-/// stage_moves() returns a pointer to the beginning of moves array. It
+/// quiet_moves() returns a pointer to the beginning of moves array. It
 /// is used to access already tried quiet moves when updating history.
 
-const ExtMove* MovePicker::stage_moves() const {
-  assert(stage == KILLERS_S1 || stage == QUIETS_1_S1 || stage == QUIETS_2_S1);
-  return stage == KILLERS_S1 ? killers : moves;
+const ExtMove* MovePicker::quiet_moves() const {
+  return  stage == KILLERS_S1 ? killers
+        : stage == QUIETS_1_S1 || stage == QUIETS_2_S1 ? moves : NULL;
 }
 
 

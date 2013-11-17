@@ -1075,9 +1075,8 @@ moves_loop: // When in check and at SpNode search starts from here
         Value bonus = Value(int(depth) * int(depth));
         History.update(pos.moved_piece(bestMove), to_sq(bestMove), bonus);
 
-        if (bestMove != ttMove)
-            for (const ExtMove* em = mp.stage_moves(); em->move != bestMove; ++em)
-                History.update(pos.moved_piece(em->move), to_sq(em->move), -bonus);
+        for (const ExtMove* em = mp.quiet_moves(); em && em->move != bestMove; ++em)
+            History.update(pos.moved_piece(em->move), to_sq(em->move), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, bestMove);
