@@ -499,7 +499,6 @@ namespace {
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
-    excludedMove = ss->excludedMove;
 
     if (SpNode)
     {
@@ -508,7 +507,7 @@ namespace {
         threatMove = splitPoint->threatMove;
         bestValue  = splitPoint->bestValue;
         tte = NULL;
-        ttMove = MOVE_NONE;
+        ttMove = excludedMove = MOVE_NONE;
         ttValue = VALUE_NONE;
 
         assert(splitPoint->bestValue > -VALUE_INFINITE && splitPoint->moveCount > 0);
@@ -548,6 +547,7 @@ namespace {
     // Step 4. Transposition table lookup
     // We don't want the score of a partial search to overwrite a previous full search
     // TT value, so we use a different position key in case of an excluded move.
+    excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey);
     ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
