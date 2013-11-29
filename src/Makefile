@@ -175,6 +175,16 @@ ifeq ($(ARCH),linux-ppc-64)
 	sse = no
 endif
 
+ifeq ($(ARCH),osx-x86-64-modern)
+	arch = x86_64
+	os = osx
+	bits = 64
+	prefetch = yes
+	bsfq = yes
+	popcnt = yes
+	sse = yes
+endif
+
 ifeq ($(ARCH),osx-x86-64)
 	arch = x86_64
 	os = osx
@@ -261,7 +271,7 @@ ifeq ($(comp),clang)
 endif
 
 ifeq ($(os),osx)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.0
+	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.6
 endif
 
 ### 3.3 General linker settings
@@ -283,7 +293,7 @@ ifneq ($(comp),mingw)
 endif
 
 ifeq ($(os),osx)
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.0
+	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.6
 endif
 
 ### 3.4 Debugging
@@ -326,8 +336,12 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),clang)
-		### -O4 requires a linker that supports LLVM's LTO
-		CXXFLAGS += -O3
+		ifeq ($(os),osx)
+			# Clang on OS X supports LTO
+			CXXFLAGS += -O4
+		else
+			CXXFLAGS += -O3
+		endif
 
 		ifeq ($(os),osx)
 			ifeq ($(arch),i386)
@@ -410,6 +424,7 @@ help:
 	@echo "linux-ppc-64            > PPC-Linux 64 bit"
 	@echo "osx-ppc-64              > PPC-Mac OS X 64 bit"
 	@echo "osx-ppc-32              > PPC-Mac OS X 32 bit"
+	@echo "osx-x86-64-modern       > x86-Mac OS X 64 bit with popcnt support"
 	@echo "osx-x86-64              > x86-Mac OS X 64 bit"
 	@echo "osx-x86-32              > x86-Mac OS X 32 bit"
 	@echo "armv7                   > ARMv7 32 bit"
