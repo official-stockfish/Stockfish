@@ -165,6 +165,16 @@ ifeq ($(ARCH),osx-ppc-32)
 	sse = no
 endif
 
+ifeq ($(ARCH),linux-ppc-64)
+	arch = ppc64
+	os = any
+	bits = 64
+	prefetch = no
+	bsfq = no
+	popcnt = no
+	sse = no
+endif
+
 ifeq ($(ARCH),osx-x86-64)
 	arch = x86_64
 	os = osx
@@ -397,6 +407,7 @@ help:
 	@echo "x86-64-modern           > x86 64-bit with popcnt support"
 	@echo "x86-32                  > x86 32-bit with SSE support"
 	@echo "x86-32-old              > x86 32-bit fall back for old hardware"
+	@echo "linux-ppc-64            > PPC-Linux 64 bit"
 	@echo "osx-ppc-64              > PPC-Mac OS X 64 bit"
 	@echo "osx-ppc-32              > PPC-Mac OS X 32 bit"
 	@echo "osx-x86-64              > x86-Mac OS X 64 bit"
