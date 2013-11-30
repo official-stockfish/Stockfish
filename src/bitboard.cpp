@@ -19,11 +19,10 @@
 
 #include <algorithm>
 #include <cstring>
-#include <iostream>
+#include <sstream>
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "misc.h"
 #include "rkiss.h"
 
 CACHE_LINE_ALIGNMENT
@@ -126,23 +125,24 @@ Square msb(Bitboard b) {
 #endif // ifndef USE_BSFQ
 
 
-/// Bitboards::print() prints a bitboard in an easily readable format to the
-/// standard output. This is sometimes useful for debugging.
+/// Bitboards::pretty() returns an ASCII representation of a bitboard to be
+/// printed to standard output. This is sometimes useful for debugging.
 
-void Bitboards::print(Bitboard b) {
+const std::string Bitboards::pretty(Bitboard b) {
 
-  sync_cout;
+  std::ostringstream ss;
 
   for (Rank rank = RANK_8; rank >= RANK_1; --rank)
   {
-      std::cout << "+---+---+---+---+---+---+---+---+" << '\n';
+      ss << "+---+---+---+---+---+---+---+---+" << '\n';
 
       for (File file = FILE_A; file <= FILE_H; ++file)
-          std::cout << "| " << (b & (file | rank) ? "X " : "  ");
+          ss << "| " << (b & (file | rank) ? "X " : "  ");
 
-      std::cout << "|\n";
+      ss << "|\n";
   }
-  std::cout << "+---+---+---+---+---+---+---+---+" << sync_endl;
+  ss << "+---+---+---+---+---+---+---+---+";
+  return ss.str();
 }
 
 

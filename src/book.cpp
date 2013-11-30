@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 
 #include "book.h"
 #include "misc.h"

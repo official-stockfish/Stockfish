@@ -21,7 +21,6 @@
 #include <cassert>
 #include <cstring>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 
 #include "bitcount.h"
@@ -34,8 +33,6 @@
 #include "tt.h"
 
 using std::string;
-using std::cout;
-using std::endl;
 
 static const string PieceToChar(" PNBRQK  pnbrqk");
 

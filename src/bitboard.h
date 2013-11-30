@@ -26,7 +26,7 @@
 namespace Bitboards {
 
 void init();
-void print(Bitboard b);
+const std::string pretty(Bitboard b);
 
 }
 
