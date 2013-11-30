@@ -254,6 +254,16 @@ inline Bitboard attacks_bb(Square s, Bitboard occ) {
   return (Pt == ROOK ? RAttacks : BAttacks)[s][magic_index<Pt>(s, occ)];
 }
 
+inline Bitboard attacks_bb(Piece p, Square s, Bitboard occ) {
+
+  switch (type_of(p))
+  {
+  case BISHOP: return attacks_bb<BISHOP>(s, occ);
+  case ROOK  : return attacks_bb<ROOK>(s, occ);
+  case QUEEN : return attacks_bb<BISHOP>(s, occ) | attacks_bb<ROOK>(s, occ);
+  default    : return StepAttacksBB[p][s];
+  }
+}
 
 /// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.

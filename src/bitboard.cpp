@@ -212,24 +212,23 @@ void Bitboards::init() {
   init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, magic_index<ROOK>);
   init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, magic_index<BISHOP>);
 
-  for (Square s = SQ_A1; s <= SQ_H8; ++s)
-  {
-      PseudoAttacks[QUEEN][s]  = PseudoAttacks[BISHOP][s] = attacks_bb<BISHOP>(s, 0);
-      PseudoAttacks[QUEEN][s] |= PseudoAttacks[  ROOK][s] = attacks_bb<  ROOK>(s, 0);
-  }
-
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+  {
+      PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
+      PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
+
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-          if (PseudoAttacks[QUEEN][s1] & s2)
-          {
-              Square delta = (s2 - s1) / square_distance(s1, s2);
+      {
+          Piece pc = (PseudoAttacks[BISHOP][s1] & s2) ? W_BISHOP :
+                     (PseudoAttacks[ROOK][s1]   & s2) ? W_ROOK   : NO_PIECE;
 
-              for (Square s = s1 + delta; s != s2; s += delta)
-                  BetweenBB[s1][s2] |= s;
+          if (pc == NO_PIECE)
+              continue;
 
-              PieceType pt = (PseudoAttacks[BISHOP][s1] & s2) ? BISHOP : ROOK;
-              LineBB[s1][s2] = (PseudoAttacks[pt][s1] & PseudoAttacks[pt][s2]) | s1 | s2;
-          }
+          LineBB[s1][s2] = (attacks_bb(pc, s1, 0) & attacks_bb(pc, s2, 0)) | s1 | s2;
+          BetweenBB[s1][s2] = attacks_bb(pc, s1, SquareBB[s2]) & attacks_bb(pc, s2, SquareBB[s1]);
+      }
+  }
 }
 
 
