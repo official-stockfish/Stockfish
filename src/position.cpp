@@ -633,14 +633,11 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   if (ci.checkSq[pt] & to)
       return true;
 
-  // Discovery check ?
-  if (unlikely(ci.dcCandidates) && (ci.dcCandidates & from))
-  {
-      // For pawn and king moves we need to verify also direction
-      if (   (pt != PAWN && pt != KING)
-          || !aligned(from, to, king_square(~sideToMove)))
-          return true;
-  }
+  // Discovered check ?
+  if (   unlikely(ci.dcCandidates)
+      && (ci.dcCandidates & from)
+      && !aligned(from, to, king_square(~sideToMove)))
+      return true;
 
   // Can we skip the ugly special cases ?
   if (type_of(m) == NORMAL)
