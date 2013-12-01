@@ -807,7 +807,7 @@ moves_loop: // When in check and at SpNode search starts from here
       givesCheck = pos.gives_check(move, ci);
       dangerous =   givesCheck
                  || pos.passed_pawn_push(move)
-                 || type_of(move) == CASTLE;
+                 || type_of(move) == CASTLING;
 
       // Step 12. Extend checks
       if (givesCheck && pos.see_sign(move) >= 0)
@@ -1332,7 +1332,7 @@ moves_loop: // When in check and at SpNode search starts from here
     assert(is_ok(first));
     assert(is_ok(second));
     assert(color_of(pos.piece_on(from_sq(second))) == ~pos.side_to_move());
-    assert(type_of(first) == CASTLE || color_of(pos.piece_on(to_sq(first))) == ~pos.side_to_move());
+    assert(type_of(first) == CASTLING || color_of(pos.piece_on(to_sq(first))) == ~pos.side_to_move());
 
     Square m1from = from_sq(first);
     Square m2from = from_sq(second);

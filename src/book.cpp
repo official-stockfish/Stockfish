@@ -49,7 +49,7 @@ namespace {
     Key PolyGlotRandoms[781];
     struct {
       Key psq[12][64];  // [piece][square]
-      Key castle[4];    // [castle right]
+      Key castling[4];  // [castling flag]
       Key enpassant[8]; // [file]
       Key turn;
     } Zobrist;
@@ -332,10 +332,10 @@ namespace {
         key ^= PG.Zobrist.psq[2 * (type_of(p) - 1) + (color_of(p) == WHITE)][s];
     }
 
-    b = pos.can_castle(ALL_CASTLES);
+    b = pos.can_castle(ANY_CASTLING);
 
     while (b)
-        key ^= PG.Zobrist.castle[pop_lsb(&b)];
+        key ^= PG.Zobrist.castling[pop_lsb(&b)];
 
     if (pos.ep_square() != SQ_NONE)
         key ^= PG.Zobrist.enpassant[file_of(pos.ep_square())];

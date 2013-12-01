@@ -569,7 +569,7 @@ Value do_evaluate(const Position& pos) {
             Square ksq = pos.king_square(Us);
 
             // Penalize rooks which are trapped inside a king. Penalize more if
-            // king has lost right to castle.
+            // king has lost castling availability.
             if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
                 && !ei.pi->semiopen_on_side(Us, file_of(ksq), file_of(ksq) < FILE_E))
