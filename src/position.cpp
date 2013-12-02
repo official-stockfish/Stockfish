@@ -56,7 +56,7 @@ Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion;}
 
 namespace {
 
-// min_attacker() is an helper function used by see() to locate the least
+// min_attacker() is a helper function used by see() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
 // from the bitboards and scan for new X-ray attacks behind it.
 
@@ -297,7 +297,7 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
 }
 
 
-/// Position::set_castling_flag() is an helper function used to set castling
+/// Position::set_castling_flag() is a helper function used to set castling
 /// flags given the corresponding color and the rook starting square.
 
 void Position::set_castling_flag(Color c, Square rfrom) {
@@ -415,9 +415,9 @@ const string Position::pretty(Move move) const {
 }
 
 
-/// Position:hidden_checkers() returns a bitboard of all pinned / discovery check
+/// Position:hidden_checkers() returns a bitboard of all pinned / discovered check
 /// pieces, according to the call parameters. Pinned pieces protect our king and
-/// discovery check pieces attack the enemy king.
+/// discovered check pieces attack the enemy king.
 
 Bitboard Position::hidden_checkers(Square ksq, Color c, Color toMove) const {
 
@@ -536,7 +536,7 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
 
       // We have already handled promotion moves, so destination
-      // cannot be on the 8/1th rank.
+      // cannot be on the 8th/1st rank.
       if (rank_of(to) == RANK_8 || rank_of(to) == RANK_1)
           return false;
 
@@ -873,7 +873,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           if (ci.checkSq[pt] & to)
               st->checkersBB |= to;
 
-          // Discovery checks
+          // Discovered checks
           if (ci.dcCandidates && (ci.dcCandidates & from))
           {
               if (pt != ROOK)

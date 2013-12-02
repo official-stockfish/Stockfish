@@ -157,7 +157,7 @@ struct TimerThread : public ThreadBase {
 struct ThreadPool : public std::vector<Thread*> {
 
   void init(); // No c'tor and d'tor, threads rely on globals that should
-  void exit(); // be initialized and valid during the whole thread lifetime.
+  void exit(); // be initialized and are valid during the whole thread lifetime.
 
   MainThread* main() { return static_cast<MainThread*>((*this)[0]); }
   void read_uci_options();

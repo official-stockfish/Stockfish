@@ -108,7 +108,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
   int minThinkingTime      = Options["Minimum Thinking Time"];
   int slowMover            = Options["Slow Mover"];
 
-  // Initialize to maximum values but unstablePVExtraTime that is reset
+  // Initialize all to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
   optimumSearchTime = maximumSearchTime = limits.time[us];
 

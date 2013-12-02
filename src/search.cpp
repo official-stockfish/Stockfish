@@ -359,7 +359,7 @@ namespace {
                     RootMoves[i].insert_pv_in_tt(pos);
 
                 // If search has been stopped break immediately. Sorting and
-                // writing PV back to TT is safe becuase RootMoves is still
+                // writing PV back to TT is safe because RootMoves is still
                 // valid, although it refers to previous iteration.
                 if (Signals.stop)
                     break;

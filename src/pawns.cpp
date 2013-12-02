@@ -188,7 +188,7 @@ namespace {
 
 namespace Pawns {
 
-/// init() initializes some tables by formula instead of hard-code their values
+/// init() initializes some tables by formula instead of hard-coding their values
 
 void init() {
 

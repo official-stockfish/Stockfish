@@ -198,9 +198,9 @@ void Bitboards::init() {
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              for (int k = 0; steps[pt][k]; ++k)
+              for (int i = 0; steps[pt][i]; ++i)
               {
-                  Square to = s + Square(c == WHITE ? steps[pt][k] : -steps[pt][k]);
+                  Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
                   if (is_ok(to) && square_distance(s, to) < 3)
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
@@ -256,7 +256,7 @@ namespace {
   Bitboard pick_random(RKISS& rk, int booster) {
 
     // Values s1 and s2 are used to rotate the candidate magic of a
-    // quantity known to be the optimal to quickly find the magics.
+    // quantity known to be optimal to quickly find the magics.
     int s1 = booster & 63, s2 = (booster >> 6) & 63;
 
     Bitboard m = rk.rand<Bitboard>();

@@ -127,8 +127,8 @@ namespace {
        S( 25, 41), S( 25, 41), S(25, 41), S(25, 41) }
   };
 
-  // Outpost[PieceType][Square] contains bonuses of knights and bishops, indexed
-  // by piece type and square (from white's point of view).
+  // Outpost[PieceType][Square] contains bonuses for knights and bishops outposts,
+  // indexed by piece type and square (from white's point of view).
   const Value Outpost[][SQUARE_NB] = {
   {
   //  A     B     C     D     E     F     G     H
@@ -445,7 +445,7 @@ Value do_evaluate(const Position& pos) {
   }
 
 
-  // evaluate_outposts() evaluates bishop and knight outposts squares
+  // evaluate_outposts() evaluates bishop and knight outpost squares
 
   template<PieceType Piece, Color Us>
   Score evaluate_outposts(const Position& pos, EvalInfo& ei, Square s) {
@@ -764,7 +764,7 @@ Value do_evaluate(const Position& pos) {
 
     // Add bonus according to type of attacked enemy piece and to the
     // type of attacking piece, from knights to queens. Kings are not
-    // considered because are already handled in king evaluation.
+    // considered because they are already handled in king evaluation.
     if (weakEnemies)
         for (PieceType pt1 = KNIGHT; pt1 < KING; ++pt1)
         {

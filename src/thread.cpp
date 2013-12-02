@@ -161,7 +161,7 @@ bool Thread::cutoff_occurred() const {
 // thread 'master' at a split point. An obvious requirement is that thread must
 // be idle. With more than two threads, this is not sufficient: If the thread is
 // the master of some split point, it is only available as a slave to the slaves
-// which are busy searching the split point at the top of slaves split point
+// which are busy searching the split point at the top of slave's split point
 // stack (the "helpful master concept" in YBWC terminology).
 
 bool Thread::available_to(const Thread* master) const {
@@ -181,7 +181,7 @@ bool Thread::available_to(const Thread* master) const {
 
 // init() is called at startup to create and launch requested threads, that will
 // go immediately to sleep due to 'sleepWhileIdle' set to true. We cannot use
-// a c'tor becuase Threads is a static object and we need a fully initialized
+// a c'tor because Threads is a static object and we need a fully initialized
 // engine at this point due to allocation of Endgames in Thread c'tor.
 
 void ThreadPool::init() {
