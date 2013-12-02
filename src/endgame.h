@@ -64,9 +64,9 @@ enum EndgameType {
 };
 
 
-/// Endgame functions can be of two types according if return a Value or a
-/// ScaleFactor. Type eg_fun<int>::type equals to either ScaleFactor or Value
-/// depending if the template parameter is 0 or 1.
+/// Endgame functions can be of two types depending on whether they return a
+/// Value or a ScaleFactor. Type eg_fun<int>::type returns either ScaleFactor
+/// or Value depending on whether the template parameter is 0 or 1.
 
 template<int> struct eg_fun { typedef Value type; };
 template<> struct eg_fun<1> { typedef ScaleFactor type; };
@@ -95,9 +95,9 @@ private:
 };
 
 
-/// Endgames class stores in two std::map the pointers to endgame evaluation
-/// and scaling base objects. Then we use polymorphism to invoke the actual
-/// endgame function calling its operator() that is virtual.
+/// The Endgames class stores the pointers to endgame evaluation and scaling
+/// base objects in two std::map typedefs. We then use polymorphism to invoke
+/// the actual endgame function by calling its virtual operator().
 
 class Endgames {
 

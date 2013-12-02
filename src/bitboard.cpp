@@ -80,8 +80,8 @@ namespace {
   }
 }
 
-/// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
-/// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.
+/// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
+/// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
 
 #ifndef USE_BSFQ
 

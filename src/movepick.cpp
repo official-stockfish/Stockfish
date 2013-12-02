@@ -35,7 +35,7 @@ namespace {
     STOP
   };
 
-  // Our insertion sort, guaranteed to be stable, as is needed
+  // Our insertion sort, which is guaranteed (and also needed) to be stable
   void insertion_sort(ExtMove* begin, ExtMove* end)
   {
     ExtMove tmp, *p, *q;
@@ -53,9 +53,9 @@ namespace {
   // ones so to sort separately the two sets, and with the second sort delayed.
   inline bool has_positive_score(const ExtMove& ms) { return ms.score > 0; }
 
-  // Picks and moves to the front the best move in the range [begin, end),
-  // it is faster than sorting all the moves in advance when moves are few, as
-  // normally are the possible captures.
+  // Picks the best move in the range (begin, end) and moves it to the front.
+  // It's faster than sorting all the moves in advance when there are few
+  // moves e.g. possible captures.
   inline ExtMove* pick_best(ExtMove* begin, ExtMove* end)
   {
       std::swap(*begin, *std::max_element(begin, end));
@@ -105,7 +105,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   {
       stage = QSEARCH_1;
 
-      // Skip TT move if is not a capture or a promotion, this avoids qsearch
+      // Skip TT move if is not a capture or a promotion. This avoids qsearch
       // tree explosion due to a possible perpetual check or similar rare cases
       // when TT table is full.
       if (ttm && !pos.capture_or_promotion(ttm))
@@ -129,7 +129,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Piece
 
   stage = PROBCUT;
 
-  // In ProbCut we generate only captures better than parent's captured piece
+  // In ProbCut we generate only captures that are better than the parent's
+  // captured piece.
   captureThreshold = PieceValue[MG][pt];
   ttMove = (ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE);
 
@@ -153,10 +154,10 @@ void MovePicker::score<CAPTURES>() {
   // where it is possible to recapture with the hanging piece). Exchanging
   // big pieces before capturing a hanging piece probably helps to reduce
   // the subtree size.
-  // In main search we want to push captures with negative SEE values to
-  // badCaptures[] array, but instead of doing it now we delay till when
-  // the move has been picked up in pick_move_from_list(), this way we save
-  // some SEE calls in case we get a cutoff (idea from Pablo Vazquez).
+  // In main search we want to push captures with negative SEE values to the
+  // badCaptures[] array, but instead of doing it now we delay until the move
+  // has been picked up in pick_move_from_list(). This way we save some SEE
+  // calls in case we get a cutoff.
   Move m;
 
   for (ExtMove* it = moves; it != end; ++it)

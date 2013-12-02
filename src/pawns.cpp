@@ -252,8 +252,9 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
 }
 
 
-/// Entry::update_safety() calculates and caches a bonus for king safety. It is
-/// called only when king square changes, about 20% of total king_safety() calls.
+/// Entry::update_safety() calculates and caches a bonus for king safety.
+/// It is called only when king square changes, which is about 20% of total
+/// king_safety() calls.
 
 template<Color Us>
 Score Entry::update_safety(const Position& pos, Square ksq) {

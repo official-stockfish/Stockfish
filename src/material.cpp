@@ -60,8 +60,8 @@ namespace {
     { 106,  101,   3,   151,  171,    0 }  // Queen
   };
 
-  // Endgame evaluation and scaling functions accessed direcly and not through
-  // the function maps because correspond to more then one material hash key.
+  // Endgame evaluation and scaling functions are accessed directly and not through
+  // the function maps because they correspond to more then one material hash key.
   Endgame<KmmKm> EvaluateKmmKm[] = { Endgame<KmmKm>(WHITE), Endgame<KmmKm>(BLACK) };
   Endgame<KXK>   EvaluateKXK[]   = { Endgame<KXK>(WHITE),   Endgame<KXK>(BLACK) };
 
@@ -93,7 +93,7 @@ namespace {
           && pos.count<PAWN>(Them) >= 1;
   }
 
-  /// imbalance() calculates imbalance comparing piece count of each
+  /// imbalance() calculates the imbalance by comparing the piece count of each
   /// piece type for both colors.
 
   template<Color Us>
@@ -147,9 +147,9 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
   e->gamePhase = game_phase(pos);
 
-  // Let's look if we have a specialized evaluation function for this
-  // particular material configuration. First we look for a fixed
-  // configuration one, then a generic one if previous search failed.
+  // Let's look if we have a specialized evaluation function for this particular
+  // material configuration. Firstly we look for a fixed configuration one, then
+  // for a generic one if the previous search failed.
   if (endgames.probe(key, e->evaluationFunction))
       return e;
 
@@ -194,7 +194,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   }
 
   // Generic scaling functions that refer to more then one material
-  // distribution. Should be probed after the specialized ones.
+  // distribution. They should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
   if (is_KBPsKs<WHITE>(pos))
       e->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
@@ -256,7 +256,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   }
 
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
-  // for the bishop pair "extended piece", this allow us to be more flexible
+  // for the bishop pair "extended piece", which allows us to be more flexible
   // in defining bishop pair bonuses.
   const int pieceCount[COLOR_NB][PIECE_TYPE_NB] = {
   { pos.count<BISHOP>(WHITE) > 1, pos.count<PAWN>(WHITE), pos.count<KNIGHT>(WHITE),

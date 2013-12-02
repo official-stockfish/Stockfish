@@ -265,8 +265,8 @@ inline Bitboard attacks_bb(Piece p, Square s, Bitboard occ) {
   }
 }
 
-/// lsb()/msb() finds the least/most significant bit in a nonzero bitboard.
-/// pop_lsb() finds and clears the least significant bit in a nonzero bitboard.
+/// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
+/// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
 
 #ifdef USE_BSFQ
 

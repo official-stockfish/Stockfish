@@ -269,9 +269,10 @@ namespace Eval {
   }
 
 
-  /// trace() is like evaluate() but instead of a value returns a string suitable
-  /// to be print on stdout with the detailed descriptions and values of each
-  /// evaluation term. Used mainly for debugging.
+  /// trace() is like evaluate(), but instead of returning a value, it returns
+  /// a string (suitable for outputting to stdout) that contains the detailed
+  /// descriptions and values of each evaluation term. It's mainly used for
+  /// debugging.
   std::string trace(const Position& pos) {
     return Tracing::do_trace(pos);
   }
@@ -316,7 +317,7 @@ Value do_evaluate(const Position& pos) {
   Thread* th = pos.this_thread();
 
   // Initialize score by reading the incrementally updated scores included
-  // in the position object (material + piece square tables) and adding
+  // in the position object (material + piece square tables) and adding a
   // Tempo bonus. Score is computed from the point of view of white.
   score = pos.psq_score() + (pos.side_to_move() == WHITE ? Tempo : -Tempo);
 
@@ -378,7 +379,8 @@ Value do_evaluate(const Position& pos) {
       && pos.opposite_bishops()
       && sf == SCALE_FACTOR_NORMAL)
   {
-      // Only the two bishops ?
+      // Ignoring any pawns, do both sides only have a single bishop and no
+      // other pieces ?
       if (   pos.non_pawn_material(WHITE) == BishopValueMg
           && pos.non_pawn_material(BLACK) == BishopValueMg)
       {
@@ -510,7 +512,7 @@ Value do_evaluate(const Position& pos) {
 
         mobility[Us] += MobilityBonus[Piece][mob];
 
-        // Decrease score if we are attacked by an enemy pawn. Remaining part
+        // Decrease score if we are attacked by an enemy pawn. The remaining part
         // of threat evaluation must be done later when we have full attack info.
         if (ei.attackedBy[Them][PAWN] & s)
             score -= ThreatenedByPawn[Piece];
@@ -568,8 +570,8 @@ Value do_evaluate(const Position& pos) {
 
             Square ksq = pos.king_square(Us);
 
-            // Penalize rooks which are trapped inside a king. Penalize more if
-            // king has lost castling availability.
+            // Penalize rooks which are trapped by a king. Penalize more if the
+            // king has lost its castling capability.
             if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
                 && !ei.pi->semiopen_on_side(Us, file_of(ksq), file_of(ksq) < FILE_E))
@@ -644,7 +646,7 @@ Value do_evaluate(const Position& pos) {
     if (   ei.kingAttackersCount[Them] >= 2
         && ei.kingAdjacentZoneAttacksCount[Them])
     {
-        // Find the attacked squares around the king which has no defenders
+        // Find the attacked squares around the king which have no defenders
         // apart from the king itself
         undefended =  ei.attackedBy[Them][ALL_PIECES]
                     & ei.attackedBy[Us][KING]
@@ -662,12 +664,13 @@ Value do_evaluate(const Position& pos) {
                      + KingExposed[relative_square(Us, ksq)]
                      - mg_value(score) / 32;
 
-        // Analyse enemy's safe queen contact checks. First find undefended
-        // squares around the king attacked by enemy queen...
+        // Analyse the enemy's safe queen contact checks. Firstly, find the
+        // undefended squares around the king that are attacked by the enemy's
+        // queen...
         b = undefended & ei.attackedBy[Them][QUEEN] & ~pos.pieces(Them);
         if (b)
         {
-            // ...then remove squares not supported by another enemy piece
+            // ...and then remove squares not supported by another enemy piece
             b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
                   | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]);
             if (b)
@@ -676,16 +679,17 @@ Value do_evaluate(const Position& pos) {
                               * (Them == pos.side_to_move() ? 2 : 1);
         }
 
-        // Analyse enemy's safe rook contact checks. First find undefended
-        // squares around the king attacked by enemy rooks...
+        // Analyse the enemy's safe rook contact checks. Firstly, find the
+        // undefended squares around the king that are attacked by the enemy's
+        // rooks...
         b = undefended & ei.attackedBy[Them][ROOK] & ~pos.pieces(Them);
 
-        // Consider only squares where the enemy rook gives check
+        // Consider only squares where the enemy's rook gives check
         b &= PseudoAttacks[ROOK][ksq];
 
         if (b)
         {
-            // ...then remove squares not supported by another enemy piece
+            // ...and then remove squares not supported by another enemy piece
             b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
                   | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][QUEEN]);
             if (b)
@@ -694,7 +698,7 @@ Value do_evaluate(const Position& pos) {
                               * (Them == pos.side_to_move() ? 2 : 1);
         }
 
-        // Analyse enemy's safe distance checks for sliders and knights
+        // Analyse the enemy's safe distance checks for sliders and knights
         safe = ~(pos.pieces(Them) | ei.attackedBy[Us][ALL_PIECES]);
 
         b1 = pos.attacks_from<ROOK>(ksq) & safe;
@@ -746,7 +750,7 @@ Value do_evaluate(const Position& pos) {
     Bitboard b, undefendedMinors, weakEnemies;
     Score score = SCORE_ZERO;
 
-    // Undefended minors get penalized even if not under attack
+    // Undefended minors get penalized even if they are not under attack
     undefendedMinors =  pos.pieces(Them, BISHOP, KNIGHT)
                       & ~ei.attackedBy[Them][ALL_PIECES];
 
@@ -807,7 +811,7 @@ Value do_evaluate(const Position& pos) {
         {
             Square blockSq = s + pawn_push(Us);
 
-            // Adjust bonus based on kings proximity
+            // Adjust bonus based on the king's proximity
             ebonus +=  Value(square_distance(pos.king_square(Them), blockSq) * 5 * rr)
                      - Value(square_distance(pos.king_square(Us  ), blockSq) * 2 * rr);
 
@@ -815,7 +819,7 @@ Value do_evaluate(const Position& pos) {
             if (relative_rank(Us, blockSq) != RANK_8)
                 ebonus -= Value(square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr);
 
-            // If the pawn is free to advance, increase bonus
+            // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
             {
                 squaresToQueen = forward_bb(Us, s);
@@ -835,12 +839,14 @@ Value do_evaluate(const Position& pos) {
                 else
                     defendedSquares = squaresToQueen & ei.attackedBy[Us][ALL_PIECES];
 
-                // If there aren't enemy attacks huge bonus, a bit smaller if at
-                // least block square is not attacked, otherwise smallest bonus.
+                // If there aren't any enemy attacks, then assign a huge bonus.
+                // The bonus will be a bit smaller if at least the block square
+                // isn't attacked, otherwise assign the smallest possible bonus.
                 int k = !unsafeSquares ? 15 : !(unsafeSquares & blockSq) ? 9 : 3;
 
-                // Big bonus if the path to queen is fully defended, a bit less
-                // if at least block square is defended.
+                // Assign a big bonus if the path to the queen is fully defended,
+                // otherwise assign a bit less of a bonus if at least the block
+                // square is defended.
                 if (defendedSquares == squaresToQueen)
                     k += 6;
 
@@ -892,7 +898,7 @@ Value do_evaluate(const Position& pos) {
 
   // evaluate_unstoppable_pawns() scores the most advanced among the passed and
   // candidate pawns. In case opponent has no pieces but pawns, this is somewhat
-  // related to the possibility pawns are unstoppable.
+  // related to the possibility that pawns are unstoppable.
 
   Score evaluate_unstoppable_pawns(const Position& pos, Color us, const EvalInfo& ei) {
 

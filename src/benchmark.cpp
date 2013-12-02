@@ -66,7 +66,7 @@ static const char* Defaults[] = {
 
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
-/// of positions for a given limit each. There are five parameters; the
+/// of positions for a given limit each. There are five parameters, the
 /// transposition table size, the number of search threads that should
 /// be used, the limit value spent for each position (optional, default is
 /// depth 12), an optional file name where to look for positions in fen
@@ -150,7 +150,7 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  elapsed = Time::now() - elapsed + 1; // Assure positive to avoid a 'divide by zero'
+  elapsed = Time::now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
   cerr << "\n==========================="
        << "\nTotal time (ms) : " << elapsed

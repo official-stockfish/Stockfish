@@ -22,7 +22,7 @@
 
 #ifdef _MSC_VER
 
-// Disable some silly and noisy warning from MSVC compiler
+// Disable some silly and noisy warnings from MSVC compiler
 #pragma warning(disable: 4127) // Conditional expression is constant
 #pragma warning(disable: 4146) // Unary minus operator applied to unsigned type
 #pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
@@ -89,14 +89,14 @@ inline int64_t system_time_to_msec() {
 #undef WIN32_LEAN_AND_MEAN
 #undef NOMINMAX
 
-// We use critical sections on Windows to support Windows XP and older versions,
-// unfortunatly cond_wait() is racy between lock_release() and WaitForSingleObject()
+// We use critical sections on Windows to support Windows XP and older versions.
+// Unfortunately, cond_wait() is racy between lock_release() and WaitForSingleObject()
 // but apart from this they have the same speed performance of SRW locks.
 typedef CRITICAL_SECTION Lock;
 typedef HANDLE WaitCondition;
 typedef HANDLE NativeHandle;
 
-// On Windows 95 and 98 parameter lpThreadId my not be null
+// On Windows 95 and 98 parameter lpThreadId may not be null
 inline DWORD* dwWin9xKludge() { static DWORD dw; return &dw; }
 
 #  define lock_init(x) InitializeCriticalSection(&(x))

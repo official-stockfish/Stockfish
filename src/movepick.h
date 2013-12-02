@@ -35,7 +35,7 @@
 /// and is used for reduction and move ordering decisions. Gains records the move's
 /// best evaluation gain from one ply to the next and is used for pruning decisions.
 /// Countermoves store the move that refute a previous one. Entries are stored
-/// according only to moving piece and destination square, hence two moves with
+/// using only the moving piece and destination square, hence two moves with
 /// different origin but same destination and piece will be considered identical.
 template<bool Gain, typename T>
 struct Stats {

@@ -126,8 +126,8 @@ const string move_to_san(Position& pos, Move m) {
       {
           san = PieceToChar[WHITE][pt]; // Upper case
 
-          // Disambiguation if we have more then one piece of type 'pt' that can
-          // reach 'to' with a legal move.
+          // A disambiguation occurs if we have more then one piece of type 'pt'
+          // that can reach 'to' with a legal move.
           others = b = (pos.attacks_from(pc, to) & pos.pieces(us, pt)) ^ from;
 
           while (b)
@@ -175,7 +175,7 @@ const string move_to_san(Position& pos, Move m) {
 
 /// pretty_pv() formats human-readable search information, typically to be
 /// appended to the search log file. It uses the two helpers below to pretty
-/// format time and score respectively.
+/// format the time and score respectively.
 
 static string time_to_string(int64_t msecs) {
 

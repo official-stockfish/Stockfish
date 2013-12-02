@@ -83,11 +83,11 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
 
 /// TranspositionTable::store() writes a new entry containing position key and
 /// valuable information of current position. The lowest order bits of position
-/// key are used to decide on which cluster the position will be placed.
-/// When a new entry is written and there are no empty entries available in cluster,
-/// it replaces the least valuable of entries. A TTEntry t1 is considered to be
-/// more valuable than a TTEntry t2 if t1 is from the current search and t2 is from
-/// a previous search, or if the depth of t1 is bigger than the depth of t2.
+/// key are used to decide in which cluster the position will be placed.
+/// When a new entry is written and there are no empty entries available in the
+/// cluster, it replaces the least valuable of the entries. A TTEntry t1 is considered
+/// to be more valuable than a TTEntry t2 if t1 is from the current search and t2
+/// is from a previous search, or if the depth of t1 is bigger than the depth of t2.
 
 void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
 

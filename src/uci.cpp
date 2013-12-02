@@ -39,8 +39,9 @@ namespace {
   // FEN string of the initial position, normal chess
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-  // Keep track of position keys along the setup moves (from start position to the
-  // position just before to start searching). Needed by repetition draw detection.
+  // Keep a track of the position keys along the setup moves (from the start position
+  // to the position just before the search starts). This is needed by the repetition
+  // draw detection code.
   Search::StateStackPtr SetupStates;
 
   void setoption(istringstream& up);
@@ -69,11 +70,11 @@ void UCI::loop(const string& args) {
 
       if (token == "quit" || token == "stop" || token == "ponderhit")
       {
-          // GUI sends 'ponderhit' to tell us to ponder on the same move the
+          // The GUI sends 'ponderhit' to tell us to ponder on the same move the
           // opponent has played. In case Signals.stopOnPonderhit is set we are
           // waiting for 'ponderhit' to stop the search (for instance because we
           // already ran out of time), otherwise we should continue searching but
-          // switching from pondering to normal search.
+          // switch from pondering to normal search.
           if (token != "ponderhit" || Search::Signals.stopOnPonderhit)
           {
               Search::Signals.stop = true;
@@ -121,7 +122,7 @@ void UCI::loop(const string& args) {
 
   } while (token != "quit" && args.empty()); // Args have one-shot behaviour
 
-  Threads.wait_for_think_finished(); // Cannot quit while search is running
+  Threads.wait_for_think_finished(); // Cannot quit whilst the search is running
 }
 
 

@@ -88,8 +88,8 @@ namespace {
             (mlist++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
         }
 
-        // Knight-promotion is the only one that can give a direct check not
-        // already included in the queen-promotion.
+        // Knight promotion is the only promotion that can give a direct check
+        // that's not already included in the queen promotion.
         if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ci->ksq))
             (mlist++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
         else
@@ -144,7 +144,7 @@ namespace {
             // Add pawn pushes which give discovered check. This is possible only
             // if the pawn is not on the same file as the enemy king, because we
             // don't generate captures. Note that a possible discovery check
-            // promotion has been already generated among captures.
+            // promotion has been already generated amongst the captures.
             if (pawnsNotOn7 & ci->dcCandidates)
             {
                 dc1 = shift_bb<Up>(pawnsNotOn7 & ci->dcCandidates) & emptySquares & ~file_bb(ci->ksq);
@@ -355,8 +355,9 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
 
   assert(pos.checkers());
 
-  // Find squares attacked by slider checkers, we will remove them from the king
-  // evasions so to skip known illegal moves avoiding useless legality check later.
+  // Find all the squares attacked by slider checkers. We will remove them from
+  // the king evasions in order to skip known illegal moves, which avoids any
+  // useless legality checks later on.
   do
   {
       ++checkersCnt;

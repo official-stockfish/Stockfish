@@ -354,7 +354,7 @@ PolyglotBook::~PolyglotBook() { if (is_open()) close(); }
 
 
 /// operator>>() reads sizeof(T) chars from the file's binary byte stream and
-/// converts them in a number of type T. A Polyglot book stores numbers in
+/// converts them into a number of type T. A Polyglot book stores numbers in
 /// big-endian format.
 
 template<typename T> PolyglotBook& PolyglotBook::operator>>(T& n) {
@@ -382,14 +382,15 @@ bool PolyglotBook::open(const char* fName) {
   ifstream::open(fName, ifstream::in | ifstream::binary);
 
   fileName = is_open() ? fName : "";
-  ifstream::clear(); // Reset any error flag to allow retry ifstream::open()
+  ifstream::clear(); // Reset any error flag to allow a retry ifstream::open()
   return !fileName.empty();
 }
 
 
 /// probe() tries to find a book move for the given position. If no move is
-/// found returns MOVE_NONE. If pickBest is true returns always the highest
-/// rated move, otherwise randomly chooses one, based on the move score.
+/// found, it returns MOVE_NONE. If pickBest is true, then it always returns
+/// the highest-rated move, otherwise it randomly chooses one based on the
+/// move score.
 
 Move PolyglotBook::probe(const Position& pos, const string& fName, bool pickBest) {
 
@@ -426,10 +427,10 @@ Move PolyglotBook::probe(const Position& pos, const string& fName, bool pickBest
   // bit  6-11: origin square (from 0 to 63)
   // bit 12-14: promotion piece (from KNIGHT == 1 to QUEEN == 4)
   //
-  // Castling moves follow "king captures rook" representation. So in case book
-  // move is a promotion we have to convert to our representation, in all the
-  // other cases we can directly compare with a Move after having masked out
-  // the special Move's flags (bit 14-15) that are not supported by PolyGlot.
+  // Castling moves follow the "king captures rook" representation. If a book
+  // move is a promotion, we have to convert it to our representation and in
+  // all other cases, we can directly compare with a Move after having masked
+  // out the special Move flags (bit 14-15) that are not supported by PolyGlot.
   int pt = (move >> 12) & 7;
   if (pt)
       move = make<PROMOTION>(from_sq(move), to_sq(move), PieceType(pt + 1));

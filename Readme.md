@@ -8,7 +8,7 @@ documentation for your GUI of choice for information about how to use
 Stockfish with it.
 
 This version of Stockfish supports up to 64 CPUs. The engine defaults
-to one search thread it is therefore recommended to inspect the value of
+to one search thread, so it is therefore recommended to inspect the value of
 the *Threads* UCI parameter, and to make sure it equals the number of CPU
 cores on your computer.
 
@@ -46,7 +46,7 @@ Stockfish has support for 32 or 64-bit CPUs, the hardware POPCNT
 instruction, big-endian machines such as Power PC, and other platforms.
 
 In general it is recommended to run `make help` to see a list of make
-targets with corresponding descriptions. When not using Makefile to
+targets with corresponding descriptions. When not using the Makefile to
 compile (for instance with Microsoft MSVC) you need to manually
 set/unset some switches in the compiler command line; see file *types.h*
 for a quick reference.

@@ -151,7 +151,7 @@ struct TimerThread : public ThreadBase {
 
 
 /// ThreadPool struct handles all the threads related stuff like init, starting,
-/// parking and, the most important, launching a slave thread at a split point.
+/// parking and, most importantly, launching a slave thread at a split point.
 /// All the access to shared thread data is done through this class.
 
 struct ThreadPool : public std::vector<Thread*> {

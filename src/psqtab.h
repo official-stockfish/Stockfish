@@ -27,7 +27,7 @@
 
 /// PSQT[PieceType][Square] contains Piece-Square scores. For each piece type on
 /// a given square a (midgame, endgame) score pair is assigned. PSQT is defined
-/// for white side, for black side the tables are symmetric.
+/// for the white side and the tables are symmetric for the black side.
 
 static const Score PSQT[][SQUARE_NB] = {
   { },

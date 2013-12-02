@@ -66,9 +66,9 @@ private:
 
 /// A TranspositionTable consists of a power of 2 number of clusters and each
 /// cluster consists of ClusterSize number of TTEntry. Each non-empty entry
-/// contains information of exactly one position. Size of a cluster shall not be
-/// bigger than a cache line size. In case it is less, it should be padded to
-/// guarantee always aligned accesses.
+/// contains information of exactly one position. The size of a cluster should
+/// not be bigger than a cache line size. In case it is less, it should be padded
+/// to guarantee always aligned accesses.
 
 class TranspositionTable {
 
@@ -106,7 +106,7 @@ inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
 
 /// TranspositionTable::refresh() updates the 'generation' value of the TTEntry
-/// to avoid aging. Normally called after a TT hit.
+/// to avoid aging. It is normally called after a TT hit.
 
 inline void TranspositionTable::refresh(const TTEntry* tte) const {
 

@@ -145,7 +145,7 @@ void Endgames::add(const string& code) {
 
 
 /// Mate with KX vs K. This function is used to evaluate positions with
-/// King and plenty of material vs a lone king. It simply gives the
+/// king and plenty of material vs a lone king. It simply gives the
 /// attacking side a bonus for driving the defending king towards the edge
 /// of the board, and for keeping the distance between the two kings small.
 template<>
@@ -187,9 +187,9 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   Square loserKSq = pos.king_square(weakSide);
   Square bishopSq = pos.list<BISHOP>(strongSide)[0];
 
-  // kbnk_mate_table() tries to drive toward corners A1 or H8,
-  // if we have a bishop that cannot reach the above squares we
-  // flip the kings so to drive enemy toward corners A8 or H1.
+  // kbnk_mate_table() tries to drive toward corners A1 or H8, if we have a
+  // bishop that cannot reach the above squares we flip the kings in order
+  // to drive the enemy toward corners A8 or H1.
   if (opposite_colors(bishopSq, SQ_A1))
   {
       winnerKSq = ~winnerKSq;
@@ -301,9 +301,10 @@ Value Endgame<KRKN>::operator()(const Position& pos) const {
 }
 
 
-/// KQ vs KP.  In general, a win for the stronger side, however, there are a few
-/// important exceptions.  Pawn on 7th rank, A,C,F or H file, with king next can
-/// be a draw, so we scale down to distance between kings only.
+/// KQ vs KP. In general, this is a win for the stronger side, but there are a
+/// few important exceptions. A pawn on 7th rank and on the A,C,F or H files
+/// with a king positioned next to it can be a draw, so in that case, we only
+/// use the distance between the kings.
 template<>
 Value Endgame<KQKP>::operator()(const Position& pos) const {
 
@@ -405,20 +406,20 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           return SCALE_FACTOR_DRAW;
   }
 
-  // All pawns on same B or G file? Then potential draw
+  // If all the pawns are on the same B or G file, then it's potentially a draw
   if (    (pawnFile == FILE_B || pawnFile == FILE_G)
       && !(pos.pieces(PAWN) & ~file_bb(pawnFile))
       && pos.non_pawn_material(weakSide) == 0
       && pos.count<PAWN>(weakSide) >= 1)
   {
-      // Get weakSide pawn that is closest to home rank
+      // Get weakSide pawn that is closest to the home rank
       Square weakPawnSq = backmost_sq(weakSide, pos.pieces(weakSide, PAWN));
 
       Square strongKingSq = pos.king_square(strongSide);
       Square weakKingSq = pos.king_square(weakSide);
       Square bishopSq = pos.list<BISHOP>(strongSide)[0];
 
-      // Potential for a draw if our pawn is blocked on the 7th rank
+      // There's potential for a draw if our pawn is blocked on the 7th rank
       // the bishop cannot attack it or they only have one pawn left
       if (   relative_rank(strongSide, weakPawnSq) == RANK_7
           && (pos.pieces(strongSide, PAWN) & (weakPawnSq + pawn_push(weakSide)))
@@ -427,7 +428,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           int strongKingDist = square_distance(weakPawnSq, strongKingSq);
           int weakKingDist = square_distance(weakPawnSq, weakKingSq);
 
-          // Draw if the weak king is on it's back two ranks, within 2
+          // It's a draw if the weak king is on its back two ranks, within 2
           // squares of the blocking pawn and the strong king is not
           // closer. (I think this rule only fails in practically
           // unreachable positions such as 5k1K/6p1/6P1/8/8/3B4/8/8 w
@@ -473,7 +474,7 @@ ScaleFactor Endgame<KQKRPs>::operator()(const Position& pos) const {
 /// probably be a good idea to add more knowledge in the future.
 ///
 /// It would also be nice to rewrite the actual code for this function,
-/// which is mostly copied from Glaurung 1.x, and not very pretty.
+/// which is mostly copied from Glaurung 1.x, and isn't very pretty.
 template<>
 ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
@@ -760,8 +761,8 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
   switch (file_distance(psq1, psq2))
   {
   case 0:
-    // Both pawns are on the same file. Easy draw if defender firmly controls
-    // some square in the frontmost pawn's path.
+    // Both pawns are on the same file. It's an easy draw if the defender firmly
+    // controls some square in the frontmost pawn's path.
     if (   file_of(ksq) == file_of(blockSq1)
         && relative_rank(strongSide, ksq) >= relative_rank(strongSide, blockSq1)
         && opposite_colors(ksq, wbsq))
@@ -770,9 +771,9 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
         return SCALE_FACTOR_NONE;
 
   case 1:
-    // Pawns on adjacent files. Draw if defender firmly controls the square
-    // in front of the frontmost pawn's path, and the square diagonally behind
-    // this square on the file of the other pawn.
+    // Pawns on adjacent files. It's a draw if the defender firmly controls the
+    // square in front of the frontmost pawn's path, and the square diagonally
+    // behind this square on the file of the other pawn.
     if (   ksq == blockSq1
         && opposite_colors(ksq, wbsq)
         && (   bbsq == blockSq2
