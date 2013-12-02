@@ -127,7 +127,7 @@ namespace {
                 ||(StepAttacksBB[KING][wksq] & (psq + DELTA_N))))
             result = WIN;
     }
-    // Immediate draw if is stalemate or king captures undefended pawn
+    // Immediate draw if it is stalemate or king captures undefended pawn
     else if (  !(StepAttacksBB[KING][bksq] & ~(StepAttacksBB[KING][wksq] | StepAttacksBB[PAWN][psq]))
              || (StepAttacksBB[KING][bksq] & psq & ~StepAttacksBB[KING][wksq]))
         result = DRAW;

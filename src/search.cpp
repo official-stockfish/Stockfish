@@ -263,7 +263,7 @@ finalize:
   sync_cout << "info nodes " << RootPos.nodes_searched()
             << " time " << Time::now() - SearchTime + 1 << sync_endl;
 
-  // When we reach max depth we arrive here even without Signals.stop is raised,
+  // When we reach max depth we arrive here even without Signals.stop being raised,
   // but if we are pondering or in infinite search, according to UCI protocol,
   // we shouldn't print the best move before the GUI sends a "stop" or "ponderhit"
   // command. We simply wait here until GUI sends one of those commands (that
@@ -323,7 +323,7 @@ namespace {
         BestMoveChanges *= 0.8;
 
         // Save last iteration's scores before first PV line is searched and all
-        // the move scores but the (new) PV are set to -VALUE_INFINITE.
+        // the move scores except the (new) PV are set to -VALUE_INFINITE.
         for (size_t i = 0; i < RootMoves.size(); ++i)
             RootMoves[i].prevScore = RootMoves[i].score;
 
@@ -396,7 +396,7 @@ namespace {
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
-        // Do we need to pick now the sub-optimal best move ?
+        // Do we now need to pick now the sub-optimal best move ?
         if (skill.enabled() && skill.time_to_pick(depth))
             skill.pick_move();
 
@@ -411,7 +411,7 @@ namespace {
                 << std::endl;
         }
 
-        // Do we have found a "mate in x"?
+        // Have we found a "mate in x"?
         if (   Limits.mate
             && bestValue >= VALUE_MATE_IN_MAX_PLY
             && VALUE_MATE - bestValue <= 2 * Limits.mate)
@@ -422,11 +422,11 @@ namespace {
         {
             bool stop = false; // Local variable, not the volatile Signals.stop
 
-            // Take in account some extra time if the best move has changed
+            // Take some extra time if the best move has changed
             if (depth > 4 && depth < 50 &&  PVSize == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
-            // Stop search if most of available time is already consumed. We
+            // Stop search if most of the available time is already consumed. We
             // probably don't have enough time to search the first move at the
             // next iteration anyway.
             if (Time::now() - SearchTime > (TimeMgr.available_time() * 62) / 100)
@@ -625,7 +625,7 @@ namespace {
         Value v = qsearch<NonPV, false>(pos, ss, rbeta-1, rbeta, DEPTH_ZERO);
         if (v < rbeta)
             // Logically we should return (v + razor_margin(depth)), but
-            // surprisingly this did slightly weaker in tests.
+            // surprisingly this performed slightly weaker in tests.
             return v;
     }
 
@@ -889,7 +889,6 @@ moves_loop: // When in check and at SpNode search starts from here
 
               continue;
           }
-
       }
 
       // Check for legality only before to do the move
@@ -953,7 +952,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
       // Only for PV nodes do a full PV search on the first move or after a fail
       // high, in the latter case search only if value < beta, otherwise let the
-      // parent node to fail low with value <= alpha and to try another move.
+      // parent node fail low with value <= alpha and to try another move.
       if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta))))
           value = newDepth < ONE_PLY ?
                           givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
