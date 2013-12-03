@@ -81,7 +81,7 @@ public:
   static void init();
 
   // Text input/output
-  void set(const std::string& fen, bool isChess960, Thread* th);
+  void set(const std::string& fenStr, bool isChess960, Thread* th);
   const std::string fen() const;
   const std::string pretty(Move m = MOVE_NONE) const;
 

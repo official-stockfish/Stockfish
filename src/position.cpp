@@ -211,7 +211,7 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
 */
 
   char col, row, token;
-  size_t p;
+  size_t idx;
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
 
@@ -227,9 +227,9 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
       else if (token == '/')
           sq -= Square(16);
 
-      else if ((p = PieceToChar.find(token)) != string::npos)
+      else if ((idx = PieceToChar.find(token)) != string::npos)
       {
-          put_piece(sq, color_of(Piece(p)), type_of(Piece(p)));
+          put_piece(sq, color_of(Piece(idx)), type_of(Piece(idx)));
           ++sq;
       }
   }
@@ -329,25 +329,21 @@ void Position::set_castling_flag(Color c, Square rfrom) {
 
 const string Position::fen() const {
 
+  int emptyCnt;
   std::ostringstream ss;
 
   for (Rank rank = RANK_8; rank >= RANK_1; --rank)
   {
       for (File file = FILE_A; file <= FILE_H; ++file)
       {
-          Square sq = file | rank;
+          for (emptyCnt = 0; file <= FILE_H && empty(file | rank); ++file)
+              ++emptyCnt;
 
-          if (empty(sq))
-          {
-              int emptyCnt = 1;
-
-              for ( ; file < FILE_H && empty(++sq); ++file)
-                  ++emptyCnt;
-
+          if (emptyCnt)
               ss << emptyCnt;
-          }
-          else
-              ss << PieceToChar[piece_on(sq)];
+
+          if (file <= FILE_H)
+              ss << PieceToChar[piece_on(file | rank)];
       }
 
       if (rank > RANK_1)
@@ -368,11 +364,11 @@ const string Position::fen() const {
   if (can_castle(BLACK_OOO))
       ss << (chess960 ? file_to_char(file_of(castling_rook_square(BLACK, QUEEN_SIDE)),  true) : 'q');
 
-  if (st->castlingFlags == NO_CASTLING)
+  if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + square_to_string(ep_square()) + " ")
-      << st->rule50 << " " << 1 + (gamePly - int(sideToMove == BLACK)) / 2;
+     << st->rule50 << " " << 1 + (gamePly - int(sideToMove == BLACK)) / 2;
 
   return ss.str();
 }
