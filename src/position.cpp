@@ -415,20 +415,21 @@ const string Position::pretty(Move move) const {
 /// pieces, according to the call parameters. Pinned pieces protect our king and
 /// discovered check pieces attack the enemy king.
 
-Bitboard Position::hidden_checkers(Square ksq, Color c, Color toMove) const {
+Bitboard Position::hidden_checkers(Color c, Color kingColor) const {
 
   Bitboard b, pinners, result = 0;
+  Square ksq = king_square(kingColor);
 
   // Pinners are sliders that give check when a pinned piece is removed
   pinners = (  (pieces(  ROOK, QUEEN) & PseudoAttacks[ROOK  ][ksq])
-             | (pieces(BISHOP, QUEEN) & PseudoAttacks[BISHOP][ksq])) & pieces(c);
+             | (pieces(BISHOP, QUEEN) & PseudoAttacks[BISHOP][ksq])) & pieces(~kingColor);
 
   while (pinners)
   {
       b = between_bb(ksq, pop_lsb(&pinners)) & pieces();
 
       if (!more_than_one(b))
-          result |= b & pieces(toMove);
+          result |= b & pieces(c);
   }
   return result;
 }
