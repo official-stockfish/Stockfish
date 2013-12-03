@@ -807,7 +807,7 @@ moves_loop: // When in check and at SpNode search starts from here
       captureOrPromotion = pos.capture_or_promotion(move);
       givesCheck = pos.gives_check(move, ci);
       dangerous =   givesCheck
-                 || pos.passed_pawn_push(move)
+                 || pos.advanced_pawn_push(move)
                  || type_of(move) == CASTLING;
 
       // Step 12. Extend checks
@@ -1207,9 +1207,8 @@ moves_loop: // When in check and at SpNode search starts from here
           && !InCheck
           && !givesCheck
           &&  move != ttMove
-          &&  type_of(move) != PROMOTION
           &&  futilityBase > -VALUE_KNOWN_WIN
-          && !pos.passed_pawn_push(move))
+          && !pos.advanced_pawn_push(move))
       {
           futilityValue =  futilityBase
                          + PieceValue[EG][pos.piece_on(to_sq(move))]
