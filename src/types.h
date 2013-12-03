@@ -255,8 +255,8 @@ inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
 inline Value mg_value(Score s) { return Value(((s + 0x8000) & ~0xffff) / 0x10000); }
 
 /// On Intel 64 bit we have a small speed regression with the standard conforming
-/// version. Therefore, in this case we use a faster code in this case that,
-/// although not 100% standard compliant it seems to work for Intel and MSVC.
+/// version. Therefore, in this case we use faster code that, although not 100%
+/// standard compliant, seems to work for Intel and MSVC.
 #if defined(IS_64BIT) && (!defined(__GNUC__) || defined(__INTEL_COMPILER))
 
 inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
