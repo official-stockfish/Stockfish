@@ -25,7 +25,7 @@
 
 namespace {
 
-  // The possible pawns squares are 24, the first 4 files and ranks from 2 to 7
+  // There are 24 possible pawn squares: the first 4 files and ranks from 2 to 7
   const unsigned IndexMax = 2*24*64*64; // stm * psq * wksq * bksq = 196608
 
   // Each uint32_t stores results of 32 positions, one per bit
@@ -90,7 +90,7 @@ void Bitbases::init_kpk() {
   for (idx = 0; idx < IndexMax; ++idx)
       db.push_back(KPKPosition(idx));
 
-  // Iterate through the positions until no more of the unknown positions can be
+  // Iterate through the positions until none of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
   while (repeat)
       for (repeat = idx = 0; idx < IndexMax; ++idx)
@@ -120,14 +120,14 @@ namespace {
 
     else if (us == WHITE)
     {
-        // Immediate win if pawn can be promoted without getting captured
+        // Immediate win if a pawn can be promoted without getting captured
         if (   rank_of(psq) == RANK_7
             && wksq != psq + DELTA_N
             && (   square_distance(bksq, psq + DELTA_N) > 1
                 ||(StepAttacksBB[KING][wksq] & (psq + DELTA_N))))
             result = WIN;
     }
-    // Immediate draw if it is stalemate or king captures undefended pawn
+    // Immediate draw if it is a stalemate or a king captures undefended pawn
     else if (  !(StepAttacksBB[KING][bksq] & ~(StepAttacksBB[KING][wksq] | StepAttacksBB[PAWN][psq]))
              || (StepAttacksBB[KING][bksq] & psq & ~StepAttacksBB[KING][wksq]))
         result = DRAW;
@@ -138,13 +138,13 @@ namespace {
 
     // White to Move: If one move leads to a position classified as WIN, the result
     // of the current position is WIN. If all moves lead to positions classified
-    // as DRAW, the current position is classified DRAW otherwise the current
+    // as DRAW, the current position is classified as DRAW, otherwise the current
     // position is classified as UNKNOWN.
     //
     // Black to Move: If one move leads to a position classified as DRAW, the result
     // of the current position is DRAW. If all moves lead to positions classified
-    // as WIN, the position is classified WIN otherwise the current position is
-    // classified UNKNOWN.
+    // as WIN, the position is classified as WIN, otherwise the current position is
+    // classified as UNKNOWN.
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 

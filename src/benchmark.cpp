@@ -66,10 +66,10 @@ static const char* Defaults[] = {
 
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
-/// of positions for a given limit each. There are five parameters, the
+/// of positions for a given limit each. There are five parameters: the
 /// transposition table size, the number of search threads that should
 /// be used, the limit value spent for each position (optional, default is
-/// depth 12), an optional file name where to look for positions in fen
+/// depth 12), an optional file name where to look for positions in FEN
 /// format (defaults are the positions defined above) and the type of the
 /// limit value: depth (default), time in secs or number of nodes.
 
