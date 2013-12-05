@@ -26,8 +26,8 @@
 
 using namespace std;
 
-/// Version number. If Version is left empty, then compile date, in the
-/// format DD-MM-YY, is shown in engine_info.
+/// Version number. If Version is left empty, then compile date in the format
+/// DD-MM-YY and show in engine_info.
 static const string Version = "";
 
 
@@ -82,7 +82,7 @@ void dbg_print() {
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
 /// can toggle the logging of std::cout and std:cin at runtime whilst preserving
-/// usual i/o functionality and without changing a single line of code!
+/// usual i/o functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
 struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout

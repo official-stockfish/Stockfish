@@ -236,10 +236,10 @@ enum Rank {
 };
 
 
-/// The Score enum stores a midgame and an endgame value in a single integer
+/// The Score enum stores a middlegame and an endgame value in a single integer
 /// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the midgame value. The compiler is
-/// free to choose the enum type as long as it can store the data, so we
+/// and the upper 16 bits are used to store the middlegame value. The compiler
+/// is free to choose the enum type as long as it can store the data, so we
 /// ensure that Score is an integer type by assigning some big int values.
 enum Score {
   SCORE_ZERO,

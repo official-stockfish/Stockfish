@@ -27,7 +27,7 @@
 namespace Pawns {
 
 /// Pawns::Entry contains various information about a pawn structure. Currently,
-/// it only includes a middle game and end game pawn structure evaluation, and a
+/// it only includes a middlegame and endgame pawn structure evaluation, and a
 /// bitboard of passed pawns. We may want to add further information in the future.
 /// A lookup to the pawn hash table (performed by calling the probe function)
 /// returns a pointer to an Entry object.

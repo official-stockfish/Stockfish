@@ -73,7 +73,7 @@ struct RootMove {
 
 /// The LimitsType struct stores information sent by GUI about available time
 /// to search the current move, maximum depth/time, if we are in analysis mode
-/// or if we have to ponder while is our opponent's side to move.
+/// or if we have to ponder while it's our opponent's turn to move.
 
 struct LimitsType {
 

@@ -515,7 +515,7 @@ bool Position::pseudo_legal(const Move m) const {
   if (promotion_type(m) - 2 != NO_PIECE_TYPE)
       return false;
 
-  // If the from square is not occupied by a piece belonging to the side to
+  // If the 'from' square is not occupied by a piece belonging to the side to
   // move, the move is obviously not legal.
   if (pc == NO_PIECE || color_of(pc) != us)
       return false;
@@ -604,8 +604,8 @@ bool Position::pseudo_legal(const Move m) const {
           if (!((between_bb(lsb(checkers()), king_square(us)) | checkers()) & to))
               return false;
       }
-      // In case of king moves under check we have to remove king so to catch
-      // as invalid moves like b1a1 when opposite queen is on c1.
+      // In case of king moves under check we have to remove king so as to catch
+      // invalid moves like b1a1 when opposite queen is on c1.
       else if (attackers_to(to, pieces() ^ from) & pieces(~us))
           return false;
   }
@@ -626,17 +626,17 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   Square to = to_sq(m);
   PieceType pt = type_of(piece_on(from));
 
-  // Is there a direct check ?
+  // Is there a direct check?
   if (ci.checkSq[pt] & to)
       return true;
 
-  // Is there a discovered check ?
+  // Is there a discovered check?
   if (   unlikely(ci.dcCandidates)
       && (ci.dcCandidates & from)
       && !aligned(from, to, king_square(~sideToMove)))
       return true;
 
-  // Can we skip the ugly special cases ?
+  // Can we skip the ugly special cases?
   if (type_of(m) == NORMAL)
       return false;
 
@@ -648,7 +648,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   case PROMOTION:
       return attacks_bb(Piece(promotion_type(m)), to, pieces() ^ from) & ksq;
 
-  // En passant capture with check ? We have already handled the case
+  // En passant capture with check? We have already handled the case
   // of direct checks and ordinary discovered check, so the only case we
   // need to handle is the unusual case of a discovered check through
   // the captured pawn.
@@ -695,9 +695,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   ++nodes;
   Key k = st->key;
 
-  // Copy some fields of old state to our new StateInfo object except the ones
-  // which are going to be recalculated from scratch anyway, then switch our state
-  // pointer to point to the new (ready to be updated) state.
+  // Copy some fields of the old state to our new StateInfo object except the
+  // ones which are going to be recalculated from scratch anyway and then switch
+  // our state pointer to point to the new (ready to be updated) state.
   std::memcpy(&newSt, st, StateCopySize64 * sizeof(uint64_t));
 
   newSt.previous = st;
@@ -706,7 +706,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Update side to move
   k ^= Zobrist::side;
 
-  // Increment ply counters.In particular rule50 will be reset to zero later on
+  // Increment ply counters. In particular, rule50 will be reset to zero later on
   // in case of a capture or a pawn move.
   ++gamePly;
   ++st->rule50;
@@ -1097,7 +1097,7 @@ int Position::see(Move m, int asymmThreshold) const {
   } while (stmAttackers);
 
   // If we are doing asymmetric SEE evaluation and the same side does the first
-  // and the last capture, he loses a tempo and gain must be at least worth
+  // and the last capture, it loses a tempo and gain must be at least worth
   // 'asymmThreshold', otherwise we replace the score with a very low value,
   // before negamaxing.
   if (asymmThreshold)
@@ -1193,9 +1193,9 @@ Key Position::compute_material_key() const {
 }
 
 
-/// Position::compute_psq_score() computes the incremental scores for the middle
-/// game and the endgame. These functions are used to initialize the incremental
-/// scores when a new position is set up, and to verify that the scores are correctly
+/// Position::compute_psq_score() computes the incremental scores for the middlegame
+/// and the endgame. These functions are used to initialize the incremental scores
+/// when a new position is set up, and to verify that the scores are correctly
 /// updated by do_move and undo_move when the program is running in debug mode.
 
 Score Position::compute_psq_score() const {
@@ -1213,10 +1213,10 @@ Score Position::compute_psq_score() const {
 }
 
 
-/// Position::compute_non_pawn_material() computes the total non-pawn middle
-/// game material value for the given side. Material values are updated
-/// incrementally during the search. This function is only used when
-/// initializing a new Position object.
+/// Position::compute_non_pawn_material() computes the total non-pawn middlegame
+/// material value for the given side. Material values are updated incrementally
+/// during the search. This function is only used when initializing a new Position
+/// object.
 
 Value Position::compute_non_pawn_material(Color c) const {
 

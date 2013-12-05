@@ -124,7 +124,7 @@ namespace {
         // Test for backward pawn.
         // If the pawn is passed, isolated, or member of a pawn chain it cannot
         // be backward. If there are friendly pawns behind on adjacent files
-        // or if can capture an enemy pawn it cannot be backward either.
+        // or if it can capture an enemy pawn it cannot be backward either.
         if (   (passed | isolated | chain)
             || (ourPawns & pawn_attack_span(Them, s))
             || (pos.attacks_from<PAWN>(s, Us) & theirPawns))
@@ -145,9 +145,9 @@ namespace {
 
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
-        // A not passed pawn is a candidate to become passed, if it is free to
+        // A not-passed pawn is a candidate to become passed, if it is free to
         // advance and if the number of friendly pawns beside or behind this
-        // pawn on adjacent files is higher or equal than the number of
+        // pawn on adjacent files is higher than or equal to the number of
         // enemy pawns in the forward direction on the adjacent files.
         candidate =   !(opposed | passed | backward | isolated)
                    && (b = pawn_attack_span(Them, s + pawn_push(Us)) & ourPawns) != 0

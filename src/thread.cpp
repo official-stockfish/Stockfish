@@ -91,7 +91,7 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
 
 
 // TimerThread::idle_loop() is where the timer thread waits msec milliseconds
-// and then calls check_time(). If msec is 0 thread sleeps until is woken up.
+// and then calls check_time(). If msec is 0 thread sleeps until it's woken up.
 extern void check_time();
 
 void TimerThread::idle_loop() {
@@ -169,7 +169,7 @@ bool Thread::available_to(const Thread* master) const {
   if (searching)
       return false;
 
-  // Make a local copy to be sure doesn't become zero under our feet while
+  // Make a local copy to be sure it doesn't become zero under our feet while
   // testing next condition and so leading to an out of bounds access.
   int size = splitPointsSize;
 

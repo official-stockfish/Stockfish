@@ -35,8 +35,8 @@ using namespace std;
 namespace {
 
   // A Polyglot book is a series of "entries" of 16 bytes. All integers are
-  // stored in big-endian format, with highest byte first (regardless of size).
-  // The entries are ordered according to the key in ascending order.
+  // stored in big-endian format, with the highest byte first (regardless of
+  // size). The entries are ordered according to the key in ascending order.
   struct Entry {
     uint64_t key;
     uint16_t move;
@@ -410,9 +410,9 @@ Move PolyglotBook::probe(const Position& pos, const string& fName, bool pickBest
       best = max(best, e.count);
       sum += e.count;
 
-      // Choose book move according to its score. If a move has a very
-      // high score it has higher probability to be choosen than a move
-      // with lower score. Note that first entry is always chosen.
+      // Choose book move according to its score. If a move has a very high
+      // score it has a higher probability of being choosen than a move with
+      // a lower score. Note that first entry is always chosen.
       if (   (!pickBest && sum && rkiss.rand<unsigned>() % sum < e.count)
           || (pickBest && e.count == best))
           move = Move(e.move);

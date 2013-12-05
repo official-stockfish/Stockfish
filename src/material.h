@@ -62,7 +62,7 @@ Phase game_phase(const Position& pos);
 /// Material::scale_factor takes a position and a color as input, and
 /// returns a scale factor for the given color. We have to provide the
 /// position in addition to the color, because the scale factor need not
-/// to be a constant: It can also be a function which should be applied to
+/// be a constant: It can also be a function which should be applied to
 /// the position. For instance, in KBP vs K endgames, a scaling function
 /// which checks for draws with rook pawns and wrong-colored bishops.
 

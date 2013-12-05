@@ -33,7 +33,7 @@ enum BitCountType {
 };
 
 /// Determine at compile time the best popcount<> specialization according to
-/// whether the platform is 32 or 64 bits, to the maximum number of non-zero
+/// whether the platform is 32 or 64 bit, the maximum number of non-zero
 /// bits to count and if the hardware popcnt instruction is available.
 const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64 : CNT_32;
 const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : CNT_32_MAX15;

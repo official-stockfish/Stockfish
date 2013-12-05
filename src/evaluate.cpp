@@ -185,8 +185,8 @@ namespace {
   // happen in Chess960 games.
   const Score TrappedBishopA1H1 = make_score(50, 50);
 
-  // The SpaceMask[Color] contains the area of the board which is considered
-  // by the space evaluation. In the middle game, each side is given a bonus
+  // SpaceMask[Color] contains the area of the board which is considered
+  // by the space evaluation. In the middlegame, each side is given a bonus
   // based on how many squares inside this area are safe and available for
   // friendly minor pieces.
   const Bitboard SpaceMask[] = {
@@ -195,9 +195,9 @@ namespace {
   };
 
   // King danger constants and variables. The king danger scores are taken
-  // from the KingDanger[]. Various little "meta-bonuses" measuring
-  // the strength of the enemy attack are added up into an integer, which
-  // is used as an index to KingDanger[].
+  // from KingDanger[]. Various little "meta-bonuses" measuring the strength
+  // of the enemy attack are added up into an integer, which is used as an
+  // index to KingDanger[].
   //
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
@@ -261,7 +261,7 @@ namespace {
 namespace Eval {
 
   /// evaluate() is the main evaluation function. It always computes two
-  /// values, an endgame score and a middle game score, and interpolates
+  /// values, an endgame score and a middlegame score, and interpolates
   /// between them based on the remaining material.
 
   Value evaluate(const Position& pos) {
@@ -362,14 +362,14 @@ Value do_evaluate(const Position& pos) {
       score +=  evaluate_unstoppable_pawns(pos, WHITE, ei)
               - evaluate_unstoppable_pawns(pos, BLACK, ei);
 
-  // Evaluate space for both sides, only in middle-game.
+  // Evaluate space for both sides, only in middlegame
   if (ei.mi->space_weight())
   {
       int s = evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei);
       score += apply_weight(s * ei.mi->space_weight(), Weights[Space]);
   }
 
-  // Scale winning side if position is more drawish that what it appears
+  // Scale winning side if position is more drawish than it appears
   ScaleFactor sf = eg_value(score) > VALUE_DRAW ? ei.mi->scale_factor(pos, WHITE)
                                                 : ei.mi->scale_factor(pos, BLACK);
 
@@ -380,7 +380,7 @@ Value do_evaluate(const Position& pos) {
       && sf == SCALE_FACTOR_NORMAL)
   {
       // Ignoring any pawns, do both sides only have a single bishop and no
-      // other pieces ?
+      // other pieces?
       if (   pos.non_pawn_material(WHITE) == BishopValueMg
           && pos.non_pawn_material(BLACK) == BishopValueMg)
       {
@@ -458,7 +458,7 @@ Value do_evaluate(const Position& pos) {
     Value bonus = Outpost[Piece == BISHOP][relative_square(Us, s)];
 
     // Increase bonus if supported by pawn, especially if the opponent has
-    // no minor piece which can exchange the outpost piece.
+    // no minor piece which can trade with the outpost piece.
     if (bonus && (ei.attackedBy[Us][PAWN] & s))
     {
         if (   !pos.pieces(Them, KNIGHT)
@@ -891,7 +891,7 @@ Value do_evaluate(const Position& pos) {
     if (Trace)
         Tracing::scores[Us][PASSED] = apply_weight(score, Weights[PassedPawns]);
 
-    // Add the scores to the middle game and endgame eval
+    // Add the scores to the middlegame and endgame eval
     return apply_weight(score, Weights[PassedPawns]);
   }
 
@@ -943,7 +943,7 @@ Value do_evaluate(const Position& pos) {
   }
 
 
-  // interpolate() interpolates between a middle game and an endgame score,
+  // interpolate() interpolates between a middlegame and an endgame score,
   // based on game phase. It also scales the return value by a ScaleFactor array.
 
   Value interpolate(const Score& v, Phase ph, ScaleFactor sf) {

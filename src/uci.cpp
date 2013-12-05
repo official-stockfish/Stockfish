@@ -129,7 +129,7 @@ void UCI::loop(const string& args) {
 namespace {
 
   // position() is called when engine receives the "position" UCI command.
-  // The function sets up the position described in the given fen string ("fen")
+  // The function sets up the position described in the given FEN string ("fen")
   // or the starting position ("startpos") and then makes the moves given in the
   // following move list ("moves").
 

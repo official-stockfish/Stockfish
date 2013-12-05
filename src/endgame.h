@@ -49,12 +49,12 @@ enum EndgameType {
   // Scaling functions
   SCALE_FUNS,
 
-  KBPsK,   // KB+pawns vs K
-  KQKRPs,  // KQ vs KR+pawns
+  KBPsK,   // KB and pawns vs K
+  KQKRPs,  // KQ vs KR and pawns
   KRPKR,   // KRP vs KR
   KRPKB,   // KRP vs KB
   KRPPKRP, // KRPP vs KRP
-  KPsK,    // King and pawns vs king
+  KPsK,    // K and pawns vs K
   KBPKB,   // KBP vs KB
   KBPPKB,  // KBPP vs KB
   KBPKN,   // KBP vs KN
