@@ -151,12 +151,11 @@ const std::string Bitboards::pretty(Bitboard b) {
 
 void Bitboards::init() {
 
-  for (int k = 0, i = 0; i < 8; ++i)
-      while (k < (2 << i))
-          MS1BTable[k++] = i;
-
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
       BSFTable[bsf_index(SquareBB[s] = 1ULL << s)] = s;
+
+  for (Bitboard b = 1; b < 256; ++b)
+      MS1BTable[b] = more_than_one(b) ? MS1BTable[b - 1] : lsb(b);
 
   FileBB[FILE_A] = FileABB;
   RankBB[RANK_1] = Rank1BB;
