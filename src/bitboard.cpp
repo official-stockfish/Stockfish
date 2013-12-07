@@ -119,7 +119,7 @@ Square msb(Bitboard b) {
       result += 8;
   }
 
-  return (Square)(result + MS1BTable[b32]);
+  return Square(result + MS1BTable[b32]);
 }
 
 #endif // ifndef USE_BSFQ
@@ -146,8 +146,8 @@ const std::string Bitboards::pretty(Bitboard b) {
 }
 
 
-/// Bitboards::init() initializes various bitboard arrays. It is called during
-/// program initialization.
+/// Bitboards::init() initializes various bitboard tables. It is called at
+/// startup and relies on global objects to be already zero-initialized.
 
 void Bitboards::init() {
 
@@ -157,14 +157,11 @@ void Bitboards::init() {
   for (Bitboard b = 1; b < 256; ++b)
       MS1BTable[b] = more_than_one(b) ? MS1BTable[b - 1] : lsb(b);
 
-  FileBB[FILE_A] = FileABB;
-  RankBB[RANK_1] = Rank1BB;
+  for (File f = FILE_A; f <= FILE_H; ++f)
+      FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
 
-  for (int i = 1; i < 8; ++i)
-  {
-      FileBB[i] = FileBB[i - 1] << 1;
-      RankBB[i] = RankBB[i - 1] << 8;
-  }
+  for (Rank r = RANK_1; r <= RANK_8; ++r)
+      RankBB[r] = r > RANK_1 ? RankBB[r - 1] << 8 : Rank1BB;
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       AdjacentFilesBB[f] = (f > FILE_A ? FileBB[f - 1] : 0) | (f < FILE_H ? FileBB[f + 1] : 0);
@@ -182,11 +179,11 @@ void Bitboards::init() {
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-      {
-          SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
           if (s1 != s2)
-             DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
-      }
+          {
+              SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
+              DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+          }
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
