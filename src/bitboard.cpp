@@ -155,11 +155,8 @@ void Bitboards::init() {
       while (k < (2 << i))
           MS1BTable[k++] = i;
 
-  for (int i = 0; i < 64; ++i)
-      BSFTable[bsf_index(1ULL << i)] = Square(i);
-
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = 1ULL << s;
+      BSFTable[bsf_index(SquareBB[s] = 1ULL << s)] = s;
 
   FileBB[FILE_A] = FileABB;
   RankBB[RANK_1] = Rank1BB;
