@@ -569,6 +569,7 @@ namespace {
         TT.refresh(tte);
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
+        // Update killers, history, and counter move on TT hit
         if (    ttValue >= beta
             &&  ttMove
             && !pos.capture_or_promotion(ttMove)
@@ -576,6 +577,15 @@ namespace {
         {
             ss->killers[1] = ss->killers[0];
             ss->killers[0] = ttMove;
+
+            Value bonus = Value(int(depth) * int(depth));
+            History.update(pos.moved_piece(ttMove), to_sq(ttMove), bonus);
+
+            if (is_ok((ss-1)->currentMove))
+            {
+                Square prevMoveSq = to_sq((ss-1)->currentMove);
+                Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, ttMove);
+            }
         }
         return ttValue;
     }
