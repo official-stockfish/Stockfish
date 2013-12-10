@@ -573,10 +573,13 @@ namespace {
         if (    ttValue >= beta
             &&  ttMove
             && !pos.capture_or_promotion(ttMove)
-            &&  ttMove != ss->killers[0])
+            && !inCheck)
         {
-            ss->killers[1] = ss->killers[0];
-            ss->killers[0] = ttMove;
+            if (ss->killers[0] != ttMove)
+            {
+                ss->killers[1] = ss->killers[0];
+                ss->killers[0] = ttMove;
+            }
 
             Value bonus = Value(int(depth) * int(depth));
             History.update(pos.moved_piece(ttMove), to_sq(ttMove), bonus);
