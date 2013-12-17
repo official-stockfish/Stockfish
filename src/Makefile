@@ -170,28 +170,37 @@ endif
 ### ==========================================================================
 
 ### 3.1 Selecting compiler (default = gcc)
+
+CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+LDFLAGS += $(EXTRALDFLAGS)
+
 ifeq ($(COMP),)
 	COMP=gcc
-endif
-
-ifeq ($(COMP),mingw)
-	comp=mingw
-	CXX=g++
 endif
 
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
+	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
+endif
+
+ifeq ($(COMP),mingw)
+	comp=mingw
+	CXX=g++
+	CXXFLAGS += -Wextra -Wshadow
+	LDFLAGS += -static-libstdc++ -static-libgcc
 endif
 
 ifeq ($(COMP),icc)
 	comp=icc
 	CXX=icpc
+	CXXFLAGS += -diag-disable 1476,10120 -Wcheck -Wabi -Wdeprecated -strict-ansi
 endif
 
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
+	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
 endif
 
 ifeq ($(comp),icc)
@@ -204,27 +213,6 @@ else
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
 	profile_clean = gcc-profile-clean
-endif
-
-### 3.2 General compiler and linker settings
-CXXFLAGS = -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
-LDFLAGS += $(EXTRALDFLAGS)
-
-ifeq ($(comp),gcc)
-	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
-endif
-
-ifeq ($(comp),mingw)
-	CXXFLAGS += -Wextra -Wshadow
-	LDFLAGS += -static-libstdc++ -static-libgcc
-endif
-
-ifeq ($(comp),icc)
-	CXXFLAGS += -diag-disable 1476,10120 -Wcheck -Wabi -Wdeprecated -strict-ansi
-endif
-
-ifeq ($(comp),clang)
-	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
 endif
 
 ifeq ($(os),osx)
