@@ -65,47 +65,45 @@ OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
 # or modifying existing flags, you have to make sure there are no extra spaces
 # at the end of the line for flag values.
 
-### 2.1. General
+### 2.1. General and architecture defaults
 debug = no
 optimize = yes
 
+arch = any
+os = any
+bits = 32
+prefetch = no
+bsfq = no
+popcnt = no
+sse = no
+
 ### 2.2 Architecture specific
 
-# General-section
-ifeq ($(ARCH),general-64)
-	arch = any
-	os = any
-	bits = 64
-	prefetch = no
-	bsfq = no
-	popcnt = no
-	sse = no
+ifeq ($(ARCH),x86-32-old)
+	arch = i386
 endif
 
-ifeq ($(ARCH),general-32)
-	arch = any
-	os = any
+ifeq ($(ARCH),x86-32)
+	arch = i386
 	bits = 32
-	prefetch = no
-	bsfq = no
-	popcnt = no
-	sse = no
+	prefetch = yes
+	sse = yes
 endif
 
-# x86-section
+ifeq ($(ARCH),general-64)
+	bits = 64
+endif
+
 ifeq ($(ARCH),x86-64)
 	arch = x86_64
-	os = any
 	bits = 64
 	prefetch = yes
 	bsfq = yes
-	popcnt = no
 	sse = yes
 endif
 
 ifeq ($(ARCH),x86-64-modern)
 	arch = x86_64
-	os = any
 	bits = 64
 	prefetch = yes
 	bsfq = yes
@@ -113,66 +111,37 @@ ifeq ($(ARCH),x86-64-modern)
 	sse = yes
 endif
 
-ifeq ($(ARCH),x86-32)
-	arch = i386
-	os = any
-	bits = 32
-	prefetch = yes
-	bsfq = no
-	popcnt = no
-	sse = yes
-endif
-
-ifeq ($(ARCH),x86-32-old)
-	arch = i386
-	os = any
-	bits = 32
-	prefetch = no
-	bsfq = no
-	popcnt = no
-	sse = no
-endif
-
-#arm section
 ifeq ($(ARCH),armv7)
 	arch = armv7
-	os = any
 	bits = 32
 	prefetch = yes
 	bsfq = yes
-	popcnt = no
-	sse = no
-endif
-
-# osx-section
-ifeq ($(ARCH),osx-ppc-64)
-	arch = ppc64
-	os = osx
-	bits = 64
-	prefetch = no
-	bsfq = no
-	popcnt = no
-	sse = no
 endif
 
 ifeq ($(ARCH),osx-ppc-32)
 	arch = ppc
 	os = osx
 	bits = 32
-	prefetch = no
-	bsfq = no
-	popcnt = no
-	sse = no
+endif
+
+ifeq ($(ARCH),osx-ppc-64)
+	arch = ppc64
+	os = osx
+	bits = 64
 endif
 
 ifeq ($(ARCH),linux-ppc-64)
 	arch = ppc64
-	os = any
 	bits = 64
-	prefetch = no
-	bsfq = no
-	popcnt = no
-	sse = no
+endif
+
+ifeq ($(ARCH),osx-x86-64)
+	arch = x86_64
+	os = osx
+	bits = 64
+	prefetch = yes
+	bsfq = yes
+	sse = yes
 endif
 
 ifeq ($(ARCH),osx-x86-64-modern)
@@ -182,16 +151,6 @@ ifeq ($(ARCH),osx-x86-64-modern)
 	prefetch = yes
 	bsfq = yes
 	popcnt = yes
-	sse = yes
-endif
-
-ifeq ($(ARCH),osx-x86-64)
-	arch = x86_64
-	os = osx
-	bits = 64
-	prefetch = yes
-	bsfq = yes
-	popcnt = no
 	sse = yes
 endif
 
@@ -218,41 +177,38 @@ endif
 ifeq ($(COMP),mingw)
 	comp=mingw
 	CXX=g++
-	profile_prepare = gcc-profile-prepare
-	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
-	profile_clean = gcc-profile-clean
 endif
 
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	profile_prepare = gcc-profile-prepare
-	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
-	profile_clean = gcc-profile-clean
 endif
 
 ifeq ($(COMP),icc)
 	comp=icc
 	CXX=icpc
-	profile_prepare = icc-profile-prepare
-	profile_make = icc-profile-make
-	profile_use = icc-profile-use
-	profile_clean = icc-profile-clean
 endif
 
 ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
+endif
+
+ifeq ($(comp),icc)
+	profile_prepare = icc-profile-prepare
+	profile_make = icc-profile-make
+	profile_use = icc-profile-use
+	profile_clean = icc-profile-clean
+else
 	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
 	profile_use = gcc-profile-use
 	profile_clean = gcc-profile-clean
 endif
 
-### 3.2 General compiler settings
+### 3.2 General compiler and linker settings
 CXXFLAGS = -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(comp),gcc)
 	CXXFLAGS += -ansi -pedantic -Wno-long-long -Wextra -Wshadow
@@ -260,6 +216,7 @@ endif
 
 ifeq ($(comp),mingw)
 	CXXFLAGS += -Wextra -Wshadow
+	LDFLAGS += -static-libstdc++ -static-libgcc
 endif
 
 ifeq ($(comp),icc)
@@ -272,13 +229,7 @@ endif
 
 ifeq ($(os),osx)
 	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.6
-endif
-
-### 3.3 General linker settings
-LDFLAGS = $(EXTRALDFLAGS)
-
-ifeq ($(comp),mingw)
-	LDFLAGS += -static-libstdc++ -static-libgcc
+	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.6
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
@@ -290,10 +241,6 @@ ifneq ($(comp),mingw)
 			LDFLAGS += -lpthread
 		endif
 	endif
-endif
-
-ifeq ($(os),osx)
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.6
 endif
 
 ### 3.4 Debugging
