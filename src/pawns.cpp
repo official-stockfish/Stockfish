@@ -188,7 +188,7 @@ namespace {
     // to file distance between left and right outermost pawns.
     if (pos.count<PAWN>(Us) > 1)
     {
-        b = ~e->semiopenFiles[Us] & 0xFF;
+        b = e->semiopenFiles[Us] ^ 0xFF;
         value += PawnsFileSpan * int(msb(b) - lsb(b));
     }
 
