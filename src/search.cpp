@@ -1220,10 +1220,7 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
           }
 
-          // Prune moves with negative or equal SEE and also moves with positive
-          // SEE where capturing piece loses a tempo and SEE < beta - futilityBase.
-          if (   futilityBase < beta
-              && pos.see(move, beta - futilityBase) <= 0)
+          if (futilityBase < beta && pos.see(move) <= 0)
           {
               bestValue = std::max(bestValue, futilityBase);
               continue;

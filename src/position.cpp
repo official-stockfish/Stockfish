@@ -1029,7 +1029,7 @@ int Position::see_sign(Move m) const {
   return see(m);
 }
 
-int Position::see(Move m, int asymmThreshold) const {
+int Position::see(Move m) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
@@ -1095,15 +1095,6 @@ int Position::see(Move m, int asymmThreshold) const {
       }
 
   } while (stmAttackers);
-
-  // If we are doing asymmetric SEE evaluation and the same side does the first
-  // and the last capture, it loses a tempo and gain must be at least worth
-  // 'asymmThreshold', otherwise we replace the score with a very low value,
-  // before negamaxing.
-  if (asymmThreshold)
-      for (int i = 0; i < slIndex; i += 2)
-          if (swapList[i] < asymmThreshold)
-              swapList[i] = - QueenValueMg * 16;
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
