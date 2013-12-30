@@ -1011,10 +1011,7 @@ void Position::undo_null_move() {
 
 
 /// Position::see() is a static exchange evaluator: It tries to estimate the
-/// material gain or loss resulting from a move. Parameter 'asymmThreshold' takes
-/// tempi into account. If the side who initiated the capturing sequence does the
-/// last capture, he loses a tempo and if the result is below 'asymmThreshold'
-/// the capturing sequence is considered bad.
+/// material gain or loss resulting from a move.
 
 int Position::see_sign(Move m) const {
 
