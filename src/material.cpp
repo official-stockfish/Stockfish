@@ -246,6 +246,16 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       (npm_w == npm_b || npm_b < RookValueMg ? 0 : NoPawnsSF[std::min(pos.count<BISHOP>(BLACK), 2)]);
   }
 
+  if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
+  {
+      e->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;
+  }
+
+  if (pos.count<PAWN>(BLACK) == 1 && npm_b - npm_w <= BishopValueMg)
+  {
+      e->factor[BLACK] = (uint8_t) SCALE_FACTOR_ONEPAWN;
+  }
+
   // Compute the space weight
   if (npm_w + npm_b >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
   {
