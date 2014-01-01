@@ -44,7 +44,7 @@ namespace {
 
   double move_importance(int ply) {
 
-    return 1 / pow((1 + exp((ply - xshift) / xscale)), skewfactor) + 1e-3; // Ensure non-zero
+    return 1 / pow((1 + exp((ply - xshift) / xscale)), skewfactor);
   }
 
 
