@@ -18,6 +18,7 @@
 */
 
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 
 #include "search.h"
@@ -44,7 +45,7 @@ namespace {
 
   double move_importance(int ply) {
 
-    return pow((1 + exp((ply - xshift) / xscale)), -skewfactor);
+    return pow((1 + exp((ply - xshift) / xscale)), -skewfactor) + DBL_MIN; // Ensure non-zero
   }
 
 
