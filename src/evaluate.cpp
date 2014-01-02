@@ -87,9 +87,6 @@ namespace {
     Bitboard pinnedPieces[COLOR_NB];
   };
 
-  // Evaluation grain size, must be a power of 2
-  const int GrainSize = 4;
-
   // Evaluation weights, initialized from UCI options
   enum { Mobility, PawnStructure, PassedPawns, Space, KingDangerUs, KingDangerThem };
   Score Weights[6];
@@ -926,8 +923,7 @@ Value do_evaluate(const Position& pos) {
     assert(ph >= PHASE_ENDGAME && ph <= PHASE_MIDGAME);
 
     int e = (eg_value(v) * int(sf)) / SCALE_FACTOR_NORMAL;
-    int r = (mg_value(v) * int(ph) + e * int(PHASE_MIDGAME - ph)) / PHASE_MIDGAME;
-    return Value((r / GrainSize) * GrainSize); // Sign independent
+    return Value((mg_value(v) * int(ph) + e * int(PHASE_MIDGAME - ph)) / PHASE_MIDGAME);
   }
 
   // apply_weight() weights score v by score w trying to prevent overflow
