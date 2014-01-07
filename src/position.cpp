@@ -633,20 +633,17 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   // Is there a discovered check?
   if (   unlikely(ci.dcCandidates)
       && (ci.dcCandidates & from)
-      && !aligned(from, to, king_square(~sideToMove)))
+      && !aligned(from, to, ci.ksq))
       return true;
 
   // Can we skip the ugly special cases?
   if (type_of(m) == NORMAL)
       return false;
 
-  Color us = sideToMove;
-  Square ksq = king_square(~us);
-
   switch (type_of(m))
   {
   case PROMOTION:
-      return attacks_bb(Piece(promotion_type(m)), to, pieces() ^ from) & ksq;
+      return attacks_bb(Piece(promotion_type(m)), to, pieces() ^ from) & ci.ksq;
 
   // En passant capture with check? We have already handled the case
   // of direct checks and ordinary discovered check, so the only case we
@@ -657,18 +654,18 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       Square capsq = file_of(to) | rank_of(from);
       Bitboard b = (pieces() ^ from ^ capsq) | to;
 
-      return  (attacks_bb<  ROOK>(ksq, b) & pieces(us, QUEEN, ROOK))
-            | (attacks_bb<BISHOP>(ksq, b) & pieces(us, QUEEN, BISHOP));
+      return  (attacks_bb<  ROOK>(ci.ksq, b) & pieces(sideToMove, QUEEN, ROOK))
+            | (attacks_bb<BISHOP>(ci.ksq, b) & pieces(sideToMove, QUEEN, BISHOP));
   }
   case CASTLING:
   {
       Square kfrom = from;
       Square rfrom = to; // Castling is encoded as 'King captures the rook'
-      Square kto = relative_square(us, rfrom > kfrom ? SQ_G1 : SQ_C1);
-      Square rto = relative_square(us, rfrom > kfrom ? SQ_F1 : SQ_D1);
+      Square kto = relative_square(sideToMove, rfrom > kfrom ? SQ_G1 : SQ_C1);
+      Square rto = relative_square(sideToMove, rfrom > kfrom ? SQ_F1 : SQ_D1);
 
-      return   (PseudoAttacks[ROOK][rto] & ksq)
-            && (attacks_bb<ROOK>(rto, (pieces() ^ kfrom ^ rfrom) | rto | kto) & ksq);
+      return   (PseudoAttacks[ROOK][rto] & ci.ksq)
+            && (attacks_bb<ROOK>(rto, (pieces() ^ kfrom ^ rfrom) | rto | kto) & ci.ksq);
   }
   default:
       assert(false);
