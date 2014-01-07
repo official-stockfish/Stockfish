@@ -177,7 +177,7 @@ inline Bitboard in_front_bb(Color c, Rank r) {
 
 /// between_bb() returns a bitboard representing all squares between two squares.
 /// For instance, between_bb(SQ_C4, SQ_F7) returns a bitboard with the bits for
-/// square d5 and e6 set.  If s1 and s2 are not on the same line, file or diagonal,
+/// square d5 and e6 set.  If s1 and s2 are not on the same rank, file or diagonal,
 /// 0 is returned.
 
 inline Bitboard between_bb(Square s1, Square s2) {

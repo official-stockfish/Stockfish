@@ -614,7 +614,7 @@ bool Position::pseudo_legal(const Move m) const {
 }
 
 
-/// Position::move_gives_check() tests whether a pseudo-legal move gives a check
+/// Position::gives_check() tests whether a pseudo-legal move gives a check
 
 bool Position::gives_check(Move m, const CheckInfo& ci) const {
 

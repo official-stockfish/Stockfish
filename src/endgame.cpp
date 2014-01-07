@@ -817,7 +817,7 @@ ScaleFactor Endgame<KBPKN>::operator()(const Position& pos) const {
 
 
 /// KNP vs K. There is a single rule: if the pawn is a rook pawn on the 7th rank
-/// and the defending king prevents the pawn from advancing the position is drawn.
+/// and the defending king prevents the pawn from advancing, the position is drawn.
 template<>
 ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
 

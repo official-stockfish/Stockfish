@@ -113,7 +113,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 }
 
 
-/// Option c'tors and conversion operators
+/// Option class constructors and conversion operators
 
 Option::Option(const char* v, Fn* f) : type("string"), min(0), max(0), idx(Options.size()), on_change(f)
 { defaultValue = currentValue = v; }

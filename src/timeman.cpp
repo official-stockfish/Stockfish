@@ -66,7 +66,7 @@ void TimeManager::pv_instability(double bestMoveChanges) {
 
 void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color us)
 {
-  /* We support four different kind of time controls:
+  /* We support four different kinds of time controls:
 
       increment == 0 && movesToGo == 0 means: x basetime  [sudden death!]
       increment == 0 && movesToGo != 0 means: x moves in y minutes

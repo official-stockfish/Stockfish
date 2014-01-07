@@ -372,7 +372,7 @@ template<> PolyglotBook& PolyglotBook::operator>>(Entry& e) {
 
 
 /// open() tries to open a book file with the given name after closing any
-/// exsisting one.
+/// existing one.
 
 bool PolyglotBook::open(const char* fName) {
 
