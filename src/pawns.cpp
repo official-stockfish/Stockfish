@@ -240,6 +240,7 @@ template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
+  static const Bitboard MiddleEdges = (FileABB | FileHBB) & (Rank2BB | Rank3BB);
 
   Value safety = MaxSafetyBonus;
   Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
@@ -252,11 +253,17 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   {
       b = ourPawns & file_bb(f);
       rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
-      safety -= ShelterWeakness[rkUs];
 
       b  = theirPawns & file_bb(f);
       rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
-      safety -= StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];
+
+      if (   (MiddleEdges & (f | rkThem))
+          && file_of(ksq) == f
+          && relative_rank(Us, ksq) == rkThem - 1)
+          safety += Value(200);
+      else
+          safety -= ShelterWeakness[rkUs]
+                  + StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];
   }
 
   return safety;
