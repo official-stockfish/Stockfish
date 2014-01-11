@@ -411,11 +411,14 @@ const string Position::pretty(Move move) const {
 }
 
 
-/// Position:hidden_checkers() returns a bitboard of all pinned / discovered check
-/// pieces, according to the call parameters. Pinned pieces protect our king and
-/// discovered check pieces attack the enemy king.
+/// Position::check_blockers() returns a bitboard of all the pieces with color
+/// 'c' that are blocking check on the king with color 'kingColor'. A piece
+/// blocks a check if removing that piece from the board would result in a
+/// position where the king is in check. A check blocking piece can be either a
+/// pinned or a discovered check piece, according if its color 'c' is the same
+/// or the opposite of 'kingColor'.
 
-Bitboard Position::hidden_checkers(Color c, Color kingColor) const {
+Bitboard Position::check_blockers(Color c, Color kingColor) const {
 
   Bitboard b, pinners, result = 0;
   Square ksq = king_square(kingColor);
