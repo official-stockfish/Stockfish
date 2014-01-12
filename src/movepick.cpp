@@ -71,13 +71,14 @@ namespace {
 /// ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       Move* cm, Search::Stack* s) : pos(p), history(h), depth(d) {
+                       Move* cm, Move* fm, Search::Stack* s) : pos(p), history(h), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
   cur = end = moves;
   endBadCaptures = moves + MAX_MOVES - 1;
   countermoves = cm;
+  followupmoves = fm;
   ss = s;
 
   if (p.checkers())
@@ -230,14 +231,27 @@ void MovePicker::generate_next() {
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
       killers[2].move = killers[3].move = MOVE_NONE;
+      killers[4].move = killers[5].move = MOVE_NONE;
 
       // Be sure countermoves are different from killers
       for (int i = 0; i < 2; ++i)
-          if (countermoves[i] != cur->move && countermoves[i] != (cur+1)->move)
+          if (   countermoves[i] != (cur+0)->move
+              && countermoves[i] != (cur+1)->move)
               (end++)->move = countermoves[i];
 
       if (countermoves[1] && countermoves[1] == countermoves[0]) // Due to SMP races
           killers[3].move = MOVE_NONE;
+
+      // Be sure followupmoves are different from killers and countermoves
+      for (int i = 0; i < 2; ++i)
+          if (   followupmoves[i] != (cur+0)->move
+              && followupmoves[i] != (cur+1)->move
+              && followupmoves[i] != (cur+2)->move
+              && followupmoves[i] != (cur+3)->move)
+              (end++)->move = followupmoves[i];
+
+      if (followupmoves[1] && followupmoves[1] == followupmoves[0]) // Due to SMP races
+          (--end)->move = MOVE_NONE;
 
       return;
 
@@ -330,7 +344,9 @@ Move MovePicker::next_move<false>() {
               && move != killers[0].move
               && move != killers[1].move
               && move != killers[2].move
-              && move != killers[3].move)
+              && move != killers[3].move
+              && move != killers[4].move
+              && move != killers[5].move)
               return move;
           break;
 

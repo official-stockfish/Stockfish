@@ -83,7 +83,7 @@ namespace {
   Value DrawValue[COLOR_NB];
   HistoryStats History;
   GainsStats Gains;
-  CountermovesStats Countermoves;
+  MovesStats Countermoves, Followupmoves;
 
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
@@ -304,6 +304,7 @@ namespace {
     History.clear();
     Gains.clear();
     Countermoves.clear();
+    Followupmoves.clear();
 
     PVSize = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
@@ -499,7 +500,7 @@ namespace {
 
     moveCount = quietCount = 0;
     bestValue = -VALUE_INFINITE;
-    ss->currentMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
+    ss->currentMove = ss->ttMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
@@ -532,7 +533,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey);
-    ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
+    ss->ttMove = ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
     ttValue = tte ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
     // At PV nodes we check for exact scores, whilst at non-PV nodes we check for
@@ -550,7 +551,7 @@ namespace {
         TT.refresh(tte);
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
-        // If ttMove is quiet, update killers, history, and counter move on TT hit
+        // If ttMove is quiet, update killers, history, counter move and followup move on TT hit
         if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove) && !inCheck)
             update_stats(pos, ss, ttMove, depth, NULL, 0);
 
@@ -712,7 +713,11 @@ moves_loop: // When in check and at SpNode search starts from here
     Move countermoves[] = { Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq].first,
                             Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq].second };
 
-    MovePicker mp(pos, ttMove, depth, History, countermoves, ss);
+    Square prevOwnMoveSq = to_sq((ss-2)->currentMove);
+    Move followupmoves[] = { Followupmoves[pos.piece_on(prevOwnMoveSq)][prevOwnMoveSq].first,
+                             Followupmoves[pos.piece_on(prevOwnMoveSq)][prevOwnMoveSq].second };
+
+    MovePicker mp(pos, ttMove, depth, History, countermoves, followupmoves, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -1029,7 +1034,7 @@ moves_loop: // When in check and at SpNode search starts from here
              PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
              depth, bestMove, ss->staticEval);
 
-    // Quiet best move: update killers, history and countermoves
+    // Quiet best move: update killers, history, countermoves and followupmoves
     if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
 
@@ -1264,7 +1269,7 @@ moves_loop: // When in check and at SpNode search starts from here
   }
 
 
-  // update_stats() updates killers, history and countermoves stats after a fail-high
+  // update_stats() updates killers, history, countermoves and followupmoves stats after a fail-high
   // of a quiet move.
 
   void update_stats(Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt) {
@@ -1289,6 +1294,12 @@ moves_loop: // When in check and at SpNode search starts from here
     {
         Square prevMoveSq = to_sq((ss-1)->currentMove);
         Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, move);
+    }
+
+    if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove)
+    {
+        Square prevOwnMoveSq = to_sq((ss-2)->currentMove);
+        Followupmoves.update(pos.piece_on(prevOwnMoveSq), prevOwnMoveSq, move);
     }
   }
 

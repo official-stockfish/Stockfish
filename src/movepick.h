@@ -69,7 +69,7 @@ private:
 
 typedef Stats< true, Value> GainsStats;
 typedef Stats<false, Value> HistoryStats;
-typedef Stats<false, std::pair<Move, Move> > CountermovesStats;
+typedef Stats<false, std::pair<Move, Move> > MovesStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -86,7 +86,7 @@ class MovePicker {
 public:
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, PieceType);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Move*, Search::Stack*);
 
   template<bool SpNode> Move next_move();
 
@@ -98,9 +98,10 @@ private:
   const HistoryStats& history;
   Search::Stack* ss;
   Move* countermoves;
+  Move* followupmoves;
   Depth depth;
   Move ttMove;
-  ExtMove killers[4];
+  ExtMove killers[6];
   Square recaptureSquare;
   int captureThreshold, stage;
   ExtMove *cur, *end, *endQuiets, *endBadCaptures;
