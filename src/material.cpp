@@ -31,9 +31,6 @@ namespace {
   const Value MidgameLimit = Value(15581);
   const Value EndgameLimit = Value(3998);
 
-  // Scale factors used when one side has no more pawns
-  const int NoPawnsSF[4] = { 6, 12, 32 };
-
   // Polynomial material balance parameters
 
   //                                  pair  pawn knight bishop rook queen
@@ -62,7 +59,6 @@ namespace {
 
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.
-  Endgame<KmmKm> EvaluateKmmKm[] = { Endgame<KmmKm>(WHITE), Endgame<KmmKm>(BLACK) };
   Endgame<KXK>   EvaluateKXK[]   = { Endgame<KXK>(WHITE),   Endgame<KXK>(BLACK) };
 
   Endgame<KBPsK>  ScaleKBPsK[]  = { Endgame<KBPsK>(WHITE),  Endgame<KBPsK>(BLACK) };
@@ -165,21 +161,6 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       return e;
   }
 
-  if (!pos.pieces(PAWN) && !pos.pieces(ROOK) && !pos.pieces(QUEEN))
-  {
-      // Minor piece endgame with at least one minor piece per side and
-      // no pawns. Note that the case KmmK is already handled by KXK.
-      assert((pos.pieces(WHITE, KNIGHT) | pos.pieces(WHITE, BISHOP)));
-      assert((pos.pieces(BLACK, KNIGHT) | pos.pieces(BLACK, BISHOP)));
-
-      if (   pos.count<BISHOP>(WHITE) + pos.count<KNIGHT>(WHITE) <= 2
-          && pos.count<BISHOP>(BLACK) + pos.count<KNIGHT>(BLACK) <= 2)
-      {
-          e->evaluationFunction = &EvaluateKmmKm[pos.side_to_move()];
-          return e;
-      }
-  }
-
   // OK, we didn't find any special evaluation function for the current
   // material configuration. Is there a suitable scaling function?
   //
@@ -233,17 +214,16 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   }
 
   // No pawns makes it difficult to win, even with a material advantage. This
-  // catches some trivial draws like KK, KBK and KNK
+  // catches some trivial draws like KK, KBK and KNK and gives a very drawish
+  // scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
   {
-      e->factor[WHITE] = (uint8_t)
-      (npm_w == npm_b || npm_w < RookValueMg ? 0 : NoPawnsSF[std::min(pos.count<BISHOP>(WHITE), 2)]);
+      e->factor[WHITE] = npm_w < RookValueMg ? 0 : npm_b <= BishopValueMg ? 4 : 12;
   }
 
   if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
   {
-      e->factor[BLACK] = (uint8_t)
-      (npm_w == npm_b || npm_b < RookValueMg ? 0 : NoPawnsSF[std::min(pos.count<BISHOP>(BLACK), 2)]);
+      e->factor[BLACK] = npm_b < RookValueMg ? 0 : npm_w <= BishopValueMg ? 4 : 12;
   }
 
   if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
