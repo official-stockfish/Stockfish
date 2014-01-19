@@ -92,7 +92,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
 
   // Initialize all to maximum values but unstablePVExtraTime that is reset
   unstablePVExtraTime = 0;
-  optimumSearchTime = maximumSearchTime = limits.time[us];
+  optimumSearchTime = maximumSearchTime = std::max(limits.time[us], minThinkingTime);
 
   // We calculate optimum time usage for different hypothetical "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
