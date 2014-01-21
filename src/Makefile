@@ -69,7 +69,6 @@ OBJS = benchmark.o bitbase.o bitboard.o book.o endgame.o evaluate.o main.o \
 debug = no
 optimize = yes
 
-arch = any
 os = any
 bits = 32
 prefetch = no
@@ -79,18 +78,22 @@ sse = no
 
 ### 2.2 Architecture specific
 
+ifeq ($(ARCH),general-32)
+	arch = any
+endif
+
 ifeq ($(ARCH),x86-32-old)
 	arch = i386
 endif
 
 ifeq ($(ARCH),x86-32)
 	arch = i386
-	bits = 32
 	prefetch = yes
 	sse = yes
 endif
 
 ifeq ($(ARCH),general-64)
+	arch = any
 	bits = 64
 endif
 
@@ -113,7 +116,6 @@ endif
 
 ifeq ($(ARCH),armv7)
 	arch = armv7
-	bits = 32
 	prefetch = yes
 	bsfq = yes
 endif
@@ -121,7 +123,6 @@ endif
 ifeq ($(ARCH),osx-ppc-32)
 	arch = ppc
 	os = osx
-	bits = 32
 endif
 
 ifeq ($(ARCH),osx-ppc-64)
@@ -157,7 +158,6 @@ endif
 ifeq ($(ARCH),osx-x86-32)
 	arch = i386
 	os = osx
-	bits = 32
 	prefetch = yes
 	bsfq = no
 	popcnt = no
