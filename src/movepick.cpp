@@ -300,7 +300,7 @@ void MovePicker::generate_next() {
 /// next_move() is the most important method of the MovePicker class. It returns
 /// a new pseudo legal move every time it is called, until there are no more moves
 /// left. It picks the move with the biggest score from a list of generated moves
-/// taking care not returning the ttMove if it has already been searched previously.
+/// taking care not to return the ttMove if it has already been searched.
 template<>
 Move MovePicker::next_move<false>() {
 
