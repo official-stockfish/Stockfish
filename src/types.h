@@ -155,7 +155,7 @@ enum Bound {
 enum Value {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
-  VALUE_KNOWN_WIN = 15000,
+  VALUE_KNOWN_WIN = 10000,
   VALUE_MATE      = 30000,
   VALUE_INFINITE  = 30001,
   VALUE_NONE      = 30002,
