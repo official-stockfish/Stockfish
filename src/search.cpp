@@ -635,8 +635,8 @@ namespace {
 
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
-        nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
-                                      : - search<NonPV>(pos, ss+1, -beta, -alpha, depth-R, !cutNode);
+        nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1, DEPTH_ZERO)
+                                      : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode);
         (ss+1)->skipNullMove = false;
         pos.undo_null_move();
 
@@ -651,8 +651,8 @@ namespace {
 
             // Do verification search at high depths
             ss->skipNullMove = true;
-            Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, alpha, beta, DEPTH_ZERO)
-                                        :  search<NonPV>(pos, ss, alpha, beta, depth-R, false);
+            Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta, DEPTH_ZERO)
+                                        :  search<NonPV>(pos, ss, beta-1, beta, depth-R, false);
             ss->skipNullMove = false;
 
             if (v >= beta)
