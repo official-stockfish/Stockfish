@@ -233,14 +233,14 @@ void MovePicker::generate_next() {
       killers[2].move = killers[3].move = MOVE_NONE;
       killers[4].move = killers[5].move = MOVE_NONE;
 
+      // Please note that following code is racy and could yield to rare (less
+      // than 1 out of a million) duplicated entries in SMP case. This is harmless.
+
       // Be sure countermoves are different from killers
       for (int i = 0; i < 2; ++i)
           if (   countermoves[i] != (cur+0)->move
               && countermoves[i] != (cur+1)->move)
               (end++)->move = countermoves[i];
-
-      if (countermoves[1] && countermoves[1] == countermoves[0]) // Due to SMP races
-          killers[3].move = MOVE_NONE;
 
       // Be sure followupmoves are different from killers and countermoves
       for (int i = 0; i < 2; ++i)
@@ -249,10 +249,6 @@ void MovePicker::generate_next() {
               && followupmoves[i] != (cur+2)->move
               && followupmoves[i] != (cur+3)->move)
               (end++)->move = followupmoves[i];
-
-      if (followupmoves[1] && followupmoves[1] == followupmoves[0]) // Due to SMP races
-          (--end)->move = MOVE_NONE;
-
       return;
 
   case QUIETS_1_S1:
