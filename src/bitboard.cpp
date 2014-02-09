@@ -325,11 +325,11 @@ namespace {
                 if (attack && attack != reference[i])
                     break;
 
-                assert(reference[i] != 0);
+                assert(reference[i]);
 
                 attack = reference[i];
             }
-        } while (i != size);
+        } while (i < size);
     }
   }
 }

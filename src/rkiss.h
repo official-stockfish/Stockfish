@@ -45,15 +45,15 @@ class RKISS {
 
   uint64_t a, b, c, d;
 
-  uint64_t rotate(uint64_t x, uint64_t k) const {
+  uint64_t rotate_L(uint64_t x, unsigned k) const {
     return (x << k) | (x >> (64 - k));
   }
 
   uint64_t rand64() {
 
-    const uint64_t e = a - rotate(b,  7);
-    a = b ^ rotate(c, 13);
-    b = c + rotate(d, 37);
+    const uint64_t e = a - rotate_L(b,  7);
+    a = b ^ rotate_L(c, 13);
+    b = c + rotate_L(d, 37);
     c = d + e;
     return d = e + a;
   }

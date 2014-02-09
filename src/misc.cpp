@@ -144,10 +144,10 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
   static Mutex m;
 
-  if (sc == io_lock)
+  if (sc == IO_LOCK)
       m.lock();
 
-  if (sc == io_unlock)
+  if (sc == IO_UNLOCK)
       m.unlock();
 
   return os;

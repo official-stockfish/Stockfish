@@ -159,8 +159,8 @@ public:
   int game_ply() const;
   bool is_chess960() const;
   Thread* this_thread() const;
-  int64_t nodes_searched() const;
-  void set_nodes_searched(int64_t n);
+  uint64_t nodes_searched() const;
+  void set_nodes_searched(uint64_t n);
   bool is_draw() const;
 
   // Position consistency check, for debugging
@@ -201,7 +201,7 @@ private:
   Square castlingRookSquare[COLOR_NB][CASTLING_SIDE_NB];
   Bitboard castlingPath[COLOR_NB][CASTLING_SIDE_NB];
   StateInfo startState;
-  int64_t nodes;
+  uint64_t nodes;
   int gamePly;
   Color sideToMove;
   Thread* thisThread;
@@ -209,11 +209,11 @@ private:
   int chess960;
 };
 
-inline int64_t Position::nodes_searched() const {
+inline uint64_t Position::nodes_searched() const {
   return nodes;
 }
 
-inline void Position::set_nodes_searched(int64_t n) {
+inline void Position::set_nodes_searched(uint64_t n) {
   nodes = n;
 }
 

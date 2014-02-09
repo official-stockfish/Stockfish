@@ -81,6 +81,7 @@ struct LimitsType {
   LimitsType() { std::memset(this, 0, sizeof(LimitsType)); }
   bool use_time_management() const { return !(mate | movetime | depth | nodes | infinite); }
 
+  std::vector<Move> searchmoves;
   int time[COLOR_NB], inc[COLOR_NB], movestogo, depth, nodes, movetime, mate, infinite, ponder;
 };
 
@@ -89,7 +90,7 @@ struct LimitsType {
 /// typically in an async fashion e.g. to stop the search by the GUI.
 
 struct SignalsType {
-  bool stopOnPonderhit, firstRootMove, stop, failedLowAtRoot;
+  bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot;
 };
 
 typedef std::auto_ptr<std::stack<StateInfo> > StateStackPtr;
@@ -103,7 +104,7 @@ extern Time::point SearchTime, IterationTime;
 extern StateStackPtr SetupStates;
 
 extern void init();
-extern size_t perft(Position& pos, Depth depth);
+extern uint64_t perft(Position& pos, Depth depth);
 extern void think();
 
 } // namespace Search
