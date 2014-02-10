@@ -212,10 +212,10 @@ static string score_to_string(Value v) {
   return s.str();
 }
 
-string pretty_pv(Position& pos, int depth, Value value, int64_t msecs, Move pv[]) {
+string pretty_pv(Position& pos, int depth, Value value, uint64_t msecs, Move pv[]) {
 
-  const int64_t K = 1000;
-  const int64_t M = 1000000;
+  const uint64_t K = 1000;
+  const uint64_t M = 1000000;
 
   std::stack<StateInfo> st;
   Move* m = pv;
