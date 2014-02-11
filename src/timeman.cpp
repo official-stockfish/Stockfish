@@ -60,7 +60,7 @@ namespace {
 
 void TimeManager::pv_instability(double bestMoveChanges) {
 
-  unstablePVExtraTime = int(bestMoveChanges * optimumSearchTime / 1.4);
+  unstablePvFactor = 1 + bestMoveChanges;
 }
 
 
@@ -90,8 +90,8 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
   int minThinkingTime      = Options["Minimum Thinking Time"];
   int slowMover            = Options["Slow Mover"];
 
-  // Initialize all to maximum values but unstablePVExtraTime that is reset
-  unstablePVExtraTime = 0;
+  // Initialize unstablePvFactor to 1 and search times to maximum values
+  unstablePvFactor = 1;
   optimumSearchTime = maximumSearchTime = std::max(limits.time[us], minThinkingTime);
 
   // We calculate optimum time usage for different hypothetical "moves to go"-values and choose the
