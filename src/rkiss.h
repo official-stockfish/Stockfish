@@ -68,6 +68,14 @@ public:
   }
 
   template<typename T> T rand() { return T(rand64()); }
+
+  /// Special generator used to fast init magic numbers. Here the
+  /// trick is to rotate the randoms of a given quantity 's' known
+  /// to be optimal to quickly find a good magic candidate.
+  template<typename T> T magic_rand(int s) {
+    return rotate_L(rotate_L(rand<T>(), (s >> 0) & 0x3F) & rand<T>()
+                                      , (s >> 6) & 0x3F) & rand<T>();
+  }
 };
 
 #endif // #ifndef RKISS_H_INCLUDED
