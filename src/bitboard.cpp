@@ -255,7 +255,7 @@ namespace {
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
     int MagicBoosters[][8] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
-                               { 3101,  552, 3555,  926,  834, 4122, 2131, 1117 } };
+                               { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
 
     RKISS rk;
     Bitboard occupancy[4096], reference[4096], edges, b;
