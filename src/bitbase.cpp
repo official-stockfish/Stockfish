@@ -26,10 +26,10 @@
 namespace {
 
   // There are 24 possible pawn squares: the first 4 files and ranks from 2 to 7
-  const unsigned IndexMax = 2*24*64*64; // stm * psq * wksq * bksq = 196608
+  const unsigned MAX_INDEX = 2*24*64*64; // stm * psq * wksq * bksq = 196608
 
   // Each uint32_t stores results of 32 positions, one per bit
-  uint32_t KPKBitbase[IndexMax / 32];
+  uint32_t KPKBitbase[MAX_INDEX / 32];
 
   // A KPK bitbase index is an integer in [0, IndexMax] range
   //
@@ -84,20 +84,20 @@ void Bitbases::init_kpk() {
 
   unsigned idx, repeat = 1;
   std::vector<KPKPosition> db;
-  db.reserve(IndexMax);
+  db.reserve(MAX_INDEX);
 
   // Initialize db with known win / draw positions
-  for (idx = 0; idx < IndexMax; ++idx)
+  for (idx = 0; idx < MAX_INDEX; ++idx)
       db.push_back(KPKPosition(idx));
 
   // Iterate through the positions until none of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
   while (repeat)
-      for (repeat = idx = 0; idx < IndexMax; ++idx)
+      for (repeat = idx = 0; idx < MAX_INDEX; ++idx)
           repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
 
   // Map 32 results into one KPKBitbase[] entry
-  for (idx = 0; idx < IndexMax; ++idx)
+  for (idx = 0; idx < MAX_INDEX; ++idx)
       if (db[idx] == WIN)
           KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
 }

@@ -210,10 +210,10 @@ void MovePicker::score<EVASIONS>() {
 }
 
 
-/// generate_next() generates, scores and sorts the next bunch of moves, when
-/// there are no more moves to try for the current phase.
+/// generate_next_stage() generates, scores and sorts the next bunch of moves,
+/// when there are no more moves to try for the current stage.
 
-void MovePicker::generate_next() {
+void MovePicker::generate_next_stage() {
 
   cur = moves;
 
@@ -305,7 +305,7 @@ Move MovePicker::next_move<false>() {
   while (true)
   {
       while (cur == end)
-          generate_next();
+          generate_next_stage();
 
       switch (stage) {
 

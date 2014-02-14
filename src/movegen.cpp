@@ -46,10 +46,10 @@ namespace {
 
     assert(!pos.checkers());
 
-    const int K = Chess960 ? kto > kfrom ? -1 : 1
-                           : Side == KING_SIDE ? -1 : 1;
+    const Square K = Chess960 ? kto > kfrom       ? DELTA_W : DELTA_E
+                              : Side == KING_SIDE ? DELTA_W : DELTA_E;
 
-    for (Square s = kto; s != kfrom; s += (Square)K)
+    for (Square s = kto; s != kfrom; s += K)
         if (pos.attackers_to(s) & enemies)
             return mlist;
 

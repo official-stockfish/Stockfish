@@ -98,6 +98,7 @@ const int MAX_PLY_PLUS_6 = MAX_PLY + 6;
 /// bit  6-11: origin square (from 0 to 63)
 /// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
 /// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
+/// NOTE: EN-PASSANT bit is set only when a pawn can be captured
 ///
 /// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in because in
 /// any normal move destination square is always different from origin square
@@ -260,12 +261,12 @@ inline Value mg_value(Score s) { return Value(((s + 0x8000) & ~0xffff) / 0x10000
 /// standard compliant, seems to work for Intel and MSVC.
 #if defined(IS_64BIT) && (!defined(__GNUC__) || defined(__INTEL_COMPILER))
 
-inline Value eg_value(Score s) { return Value(int16_t(s & 0xffff)); }
+inline Value eg_value(Score s) { return Value(int16_t(s & 0xFFFF)); }
 
 #else
 
 inline Value eg_value(Score s) {
-  return Value((int)(unsigned(s) & 0x7fffu) - (int)(unsigned(s) & 0x8000u));
+  return Value((int)(unsigned(s) & 0x7FFFU) - (int)(unsigned(s) & 0x8000U));
 }
 
 #endif
@@ -295,7 +296,7 @@ ENABLE_OPERATORS_ON(Square)
 ENABLE_OPERATORS_ON(File)
 ENABLE_OPERATORS_ON(Rank)
 
-/// Added operators for adding integers to a Value
+/// Additional operators to add integers to a Value
 inline Value operator+(Value v, int i) { return Value(int(v) + i); }
 inline Value operator-(Value v, int i) { return Value(int(v) - i); }
 

@@ -51,11 +51,11 @@ namespace Time {
 
 template<class Entry, int Size>
 struct HashTable {
-  HashTable() : e(Size, Entry()) {}
-  Entry* operator[](Key k) { return &e[(uint32_t)k & (Size - 1)]; }
+  HashTable() : table(Size, Entry()) {}
+  Entry* operator[](Key k) { return &table[(uint32_t)k & (Size - 1)]; }
 
 private:
-  std::vector<Entry> e;
+  std::vector<Entry> table;
 };
 
 

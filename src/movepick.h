@@ -92,7 +92,7 @@ public:
 
 private:
   template<GenType> void score();
-  void generate_next();
+  void generate_next_stage();
 
   const Position& pos;
   const HistoryStats& history;
