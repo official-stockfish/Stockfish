@@ -77,7 +77,7 @@ namespace {
     return (Depth) Reductions[PvNode][i][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
-  size_t PVSize, PVIdx;
+  size_t MultiPV, PVIdx;
   TimeManager TimeMgr;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
@@ -127,7 +127,7 @@ void Search::init() {
   // Init reductions array
   for (hd = 1; hd < 64; ++hd) for (mc = 1; mc < 64; ++mc)
   {
-      double    pvRed = log(double(hd)) * log(double(mc)) / 3.0;
+      double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
       Reductions[1][1][hd][mc] = (int8_t) (   pvRed >= 1.0 ? floor(   pvRed * int(ONE_PLY)) : 0);
       Reductions[0][1][hd][mc] = (int8_t) (nonPVRed >= 1.0 ? floor(nonPVRed * int(ONE_PLY)) : 0);
@@ -145,8 +145,8 @@ void Search::init() {
   // Init futility move count array
   for (d = 0; d < 32; ++d)
   {
-      FutilityMoveCounts[0][d] = int(2.4 + 0.222 * pow(d +  0.0, 1.8));
-      FutilityMoveCounts[1][d] = int(3.0 +   0.3 * pow(d + 0.98, 1.8));
+      FutilityMoveCounts[0][d] = int(2.4 + 0.222 * pow(d + 0.00, 1.8));
+      FutilityMoveCounts[1][d] = int(3.0 + 0.300 * pow(d + 0.98, 1.8));
   }
 }
 
@@ -306,15 +306,15 @@ namespace {
     Countermoves.clear();
     Followupmoves.clear();
 
-    PVSize = Options["MultiPV"];
+    MultiPV = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
 
     // Do we have to play with skill handicap? In this case enable MultiPV search
     // that we will use behind the scenes to retrieve a set of possible moves.
-    if (skill.enabled() && PVSize < 4)
-        PVSize = 4;
+    if (skill.enabled() && MultiPV < 4)
+        MultiPV = 4;
 
-    PVSize = std::min(PVSize, RootMoves.size());
+    MultiPV = std::min(MultiPV, RootMoves.size());
 
     // Iterative deepening loop until requested to stop or target depth reached
     while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
@@ -328,7 +328,7 @@ namespace {
             RootMoves[i].prevScore = RootMoves[i].score;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (PVIdx = 0; PVIdx < PVSize && !Signals.stop; ++PVIdx)
+        for (PVIdx = 0; PVIdx < MultiPV && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
             if (depth >= 5)
@@ -393,7 +393,7 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (PVIdx + 1 == PVSize || Time::now() - SearchTime > 3000)
+            if (PVIdx + 1 == MultiPV || Time::now() - SearchTime > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
@@ -426,7 +426,7 @@ namespace {
             bool stop = false; // Local variable, not the volatile Signals.stop
 
             // Take some extra time if the best move has changed
-            if (depth > 4 && depth < 50 &&  PVSize == 1)
+            if (depth > 4 && depth < 50 &&  MultiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
             // Stop the search if only one legal move is available or all
@@ -463,7 +463,7 @@ namespace {
     const bool SpNode   = (NT == SplitPointPV || NT == SplitPointNonPV || NT == SplitPointRoot);
     const bool RootNode = (NT == Root || NT == SplitPointRoot);
 
-    assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
+    assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(depth > DEPTH_ZERO);
 
@@ -659,7 +659,7 @@ namespace {
         }
     }
 
-    // Step 9. ProbCut (skipped when in check)
+    // Step 9. Multi-Cut (skipped when in check)
     // If we have a very good capture (i.e. SEE > seeValues[captured_piece_type])
     // and a reduced search returns a value much above beta, we can (almost) safely
     // prune the previous move.
@@ -691,8 +691,8 @@ namespace {
     }
 
     // Step 10. Internal iterative deepening (skipped when in check)
-    if (   depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY)
-        && ttMove == MOVE_NONE
+    if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY)
+        && !ttMove
         && (PvNode || ss->staticEval + Value(256) >= beta))
     {
         Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth / 4);
@@ -1320,7 +1320,7 @@ moves_loop: // When in check and at SpNode search starts from here
         rk.rand<unsigned>();
 
     // RootMoves are already sorted by score in descending order
-    int variance = std::min(RootMoves[0].score - RootMoves[PVSize - 1].score, PawnValueMg);
+    int variance = std::min(RootMoves[0].score - RootMoves[MultiPV - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
     int max_s = -VALUE_INFINITE;
     best = MOVE_NONE;
@@ -1328,7 +1328,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // Choose best move. For each move score we add two terms both dependent on
     // weakness. One deterministic and bigger for weaker moves, and one random,
     // then we choose the move with the resulting highest score.
-    for (size_t i = 0; i < PVSize; ++i)
+    for (size_t i = 0; i < MultiPV; ++i)
     {
         int s = RootMoves[i].score;
 
