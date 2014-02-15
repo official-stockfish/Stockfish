@@ -30,7 +30,7 @@ namespace {
     EVASION,     EVASIONS_S2,
     QSEARCH_0,   CAPTURES_S3, QUIET_CHECKS_S3,
     QSEARCH_1,   CAPTURES_S4,
-    MULTICUT,    CAPTURES_S5,
+    PROBCUT,     CAPTURES_S5,
     RECAPTURE,   CAPTURES_S6,
     STOP
   };
@@ -128,9 +128,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, Piece
 
   assert(!pos.checkers());
 
-  stage = MULTICUT;
+  stage = PROBCUT;
 
-  // In MultiCut we generate only captures that are better than the parent's
+  // In ProbCut we generate only captures that are better than the parent's
   // captured piece.
   captureThreshold = PieceValue[MG][pt];
   ttMove = (ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE);
@@ -281,7 +281,7 @@ void MovePicker::generate_next_stage() {
       end = generate<QUIET_CHECKS>(pos, moves);
       return;
 
-  case EVASION: case QSEARCH_0: case QSEARCH_1: case MULTICUT: case RECAPTURE:
+  case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT: case RECAPTURE:
       stage = STOP;
   case STOP:
       end = cur + 1; // Avoid another next_phase() call
@@ -309,7 +309,7 @@ Move MovePicker::next_move<false>() {
 
       switch (stage) {
 
-      case MAIN_SEARCH: case EVASION: case QSEARCH_0: case QSEARCH_1: case MULTICUT:
+      case MAIN_SEARCH: case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT:
           ++cur;
           return ttMove;
 

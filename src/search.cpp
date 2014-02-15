@@ -659,7 +659,7 @@ namespace {
         }
     }
 
-    // Step 9. Multi-Cut (skipped when in check)
+    // Step 9. ProbCut (skipped when in check)
     // If we have a very good capture (i.e. SEE > seeValues[captured_piece_type])
     // and a reduced search returns a value much above beta, we can (almost) safely
     // prune the previous move.
