@@ -1013,7 +1013,7 @@ void Position::undo_null_move() {
 /// Position::see() is a static exchange evaluator: It tries to estimate the
 /// material gain or loss resulting from a move.
 
-int Position::see_sign(Move m) const {
+Value Position::see_sign(Move m) const {
 
   assert(is_ok(m));
 
@@ -1021,16 +1021,17 @@ int Position::see_sign(Move m) const {
   // is not less then capturing one. Note that king moves always return
   // here because king midgame value is set to 0.
   if (PieceValue[MG][moved_piece(m)] <= PieceValue[MG][piece_on(to_sq(m))])
-      return 1;
+      return VALUE_KNOWN_WIN;
 
   return see(m);
 }
 
-int Position::see(Move m) const {
+Value Position::see(Move m) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
-  int swapList[32], slIndex = 1;
+  Value swapList[32];
+  int slIndex = 1;
   PieceType captured;
   Color stm;
 
@@ -1046,7 +1047,7 @@ int Position::see(Move m) const {
   // handled correctly. Simply return 0 that is always the correct value
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
-      return 0;
+      return VALUE_ZERO;
 
   if (type_of(m) == ENPASSANT)
   {

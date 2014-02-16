@@ -193,12 +193,12 @@ void MovePicker::score<EVASIONS>() {
   // is not under attack, ordered by history value, then bad-captures and quiet
   // moves with a negative SEE. This last group is ordered by the SEE score.
   Move m;
-  int seeScore;
+  Value seeScore;
 
   for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
-      if ((seeScore = pos.see_sign(m)) < 0)
+      if ((seeScore = pos.see_sign(m)) < VALUE_ZERO)
           it->score = seeScore - HistoryStats::Max; // At the bottom
 
       else if (pos.capture(m))
@@ -317,7 +317,7 @@ Move MovePicker::next_move<false>() {
           move = pick_best(cur++, end)->move;
           if (move != ttMove)
           {
-              if (pos.see_sign(move) >= 0)
+              if (pos.see_sign(move) >= VALUE_ZERO)
                   return move;
 
               // Losing capture, move it to the tail of the array

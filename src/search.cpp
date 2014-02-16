@@ -779,7 +779,7 @@ moves_loop: // When in check and at SpNode search starts from here
                  || pos.advanced_pawn_push(move);
 
       // Step 12. Extend checks
-      if (givesCheck && pos.see_sign(move) >= 0)
+      if (givesCheck && pos.see_sign(move) >= VALUE_ZERO)
           ext = ONE_PLY;
 
       // Singular extension search. If all moves but one fail low on a search of
@@ -850,7 +850,7 @@ moves_loop: // When in check and at SpNode search starts from here
           }
 
           // Prune moves with negative SEE at low depths
-          if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < 0)
+          if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
           {
               if (SpNode)
                   splitPoint->mutex.lock();
@@ -1175,7 +1175,7 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
           }
 
-          if (futilityBase < beta && pos.see(move) <= 0)
+          if (futilityBase < beta && pos.see(move) <= VALUE_ZERO)
           {
               bestValue = std::max(bestValue, futilityBase);
               continue;
@@ -1193,7 +1193,7 @@ moves_loop: // When in check and at SpNode search starts from here
           && (!InCheck || evasionPrunable)
           &&  move != ttMove
           &&  type_of(move) != PROMOTION
-          &&  pos.see_sign(move) < 0)
+          &&  pos.see_sign(move) < VALUE_ZERO)
           continue;
 
       // Check for legality just before making the move
