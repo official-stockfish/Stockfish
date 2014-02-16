@@ -1176,7 +1176,7 @@ Key Position::compute_material_key() const {
   Key k = 0;
 
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = PAWN; pt <= QUEEN; ++pt)
+      for (PieceType pt = PAWN; pt <= KING; ++pt)
           for (int cnt = 0; cnt < pieceCount[c][pt]; ++cnt)
               k ^= Zobrist::psq[c][pt][cnt];
 

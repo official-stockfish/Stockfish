@@ -192,7 +192,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   Value npm_w = pos.non_pawn_material(WHITE);
   Value npm_b = pos.non_pawn_material(BLACK);
 
-  if (npm_w + npm_b == VALUE_ZERO)
+  if (npm_w + npm_b == VALUE_ZERO && pos.pieces(PAWN))
   {
       if (!pos.count<PAWN>(BLACK))
       {
