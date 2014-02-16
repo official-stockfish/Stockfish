@@ -89,7 +89,7 @@ typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
 const int MAX_MOVES      = 256;
-const int MAX_PLY        = 100;
+const int MAX_PLY        = 120;
 const int MAX_PLY_PLUS_6 = MAX_PLY + 6;
 
 /// A move needs 16 bits to be stored
