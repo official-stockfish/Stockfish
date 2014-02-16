@@ -217,24 +217,16 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   // catches some trivial draws like KK, KBK and KNK and gives a very drawish
   // scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
-  {
-      e->factor[WHITE] = npm_w < RookValueMg ? 0 : npm_b <= BishopValueMg ? 4 : 12;
-  }
+      e->factor[WHITE] = npm_w < RookValueMg ? SCALE_FACTOR_DRAW : npm_b <= BishopValueMg ? 4 : 12;
 
   if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
-  {
-      e->factor[BLACK] = npm_b < RookValueMg ? 0 : npm_w <= BishopValueMg ? 4 : 12;
-  }
+      e->factor[BLACK] = npm_b < RookValueMg ? SCALE_FACTOR_DRAW : npm_w <= BishopValueMg ? 4 : 12;
 
   if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
-  {
       e->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;
-  }
 
   if (pos.count<PAWN>(BLACK) == 1 && npm_b - npm_w <= BishopValueMg)
-  {
       e->factor[BLACK] = (uint8_t) SCALE_FACTOR_ONEPAWN;
-  }
 
   // Compute the space weight
   if (npm_w + npm_b >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
