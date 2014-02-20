@@ -43,7 +43,7 @@ namespace Search {
   std::vector<RootMove> RootMoves;
   Position RootPos;
   Color RootColor;
-  Time::point SearchTime, IterationTime;
+  Time::point SearchTime;
   StateStackPtr SetupStates;
 }
 
@@ -397,7 +397,7 @@ namespace {
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
-        IterationTime = Time::now() - SearchTime;
+        Time::point iterationTime = Time::now() - SearchTime;
 
         // If skill levels are enabled and time is up, pick a sub-optimal best move
         if (skill.enabled() && skill.time_to_pick(depth))
@@ -432,7 +432,7 @@ namespace {
             // Stop the search if only one legal move is available or all
             // of the available time has been used.
             if (   RootMoves.size() == 1
-                || IterationTime > TimeMgr.available_time() )
+                || iterationTime > TimeMgr.available_time() )
                 stop = true;
 
             if (stop)
@@ -1627,8 +1627,7 @@ void check_time() {
   Time::point elapsed = Time::now() - SearchTime;
   bool stillAtFirstMove =    Signals.firstRootMove
                          && !Signals.failedLowAtRoot
-                         &&  elapsed > TimeMgr.available_time()
-                         &&  elapsed > IterationTime * 1.4;
+                         &&  elapsed > TimeMgr.available_time() * 75 / 100;
 
   bool noMoreTime =   elapsed > TimeMgr.maximum_time() - 2 * TimerThread::Resolution
                    || stillAtFirstMove;
