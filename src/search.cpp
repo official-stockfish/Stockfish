@@ -668,7 +668,7 @@ namespace {
         && !ss->skipNullMove
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
-        Value rbeta = beta + 200;
+        Value rbeta = std::min(beta + 200, VALUE_INFINITE);
         Depth rdepth = depth - ONE_PLY - 3 * ONE_PLY;
 
         assert(rdepth >= ONE_PLY);
