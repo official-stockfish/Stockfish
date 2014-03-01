@@ -353,21 +353,21 @@ const string Position::fen() const {
   ss << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      ss << (chess960 ? file_to_char(file_of(castling_rook_square(WHITE,  KING_SIDE)), false) : 'K');
+      ss << (chess960 ? to_char(file_of(castling_rook_square(WHITE,  KING_SIDE)), false) : 'K');
 
   if (can_castle(WHITE_OOO))
-      ss << (chess960 ? file_to_char(file_of(castling_rook_square(WHITE, QUEEN_SIDE)), false) : 'Q');
+      ss << (chess960 ? to_char(file_of(castling_rook_square(WHITE, QUEEN_SIDE)), false) : 'Q');
 
   if (can_castle(BLACK_OO))
-      ss << (chess960 ? file_to_char(file_of(castling_rook_square(BLACK,  KING_SIDE)),  true) : 'k');
+      ss << (chess960 ? to_char(file_of(castling_rook_square(BLACK,  KING_SIDE)),  true) : 'k');
 
   if (can_castle(BLACK_OOO))
-      ss << (chess960 ? file_to_char(file_of(castling_rook_square(BLACK, QUEEN_SIDE)),  true) : 'q');
+      ss << (chess960 ? to_char(file_of(castling_rook_square(BLACK, QUEEN_SIDE)),  true) : 'q');
 
   if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
 
-  ss << (ep_square() == SQ_NONE ? " - " : " " + square_to_string(ep_square()) + " ")
+  ss << (ep_square() == SQ_NONE ? " - " : " " + to_string(ep_square()) + " ")
      << st->rule50 << " " << 1 + (gamePly - int(sideToMove == BLACK)) / 2;
 
   return ss.str();
@@ -401,7 +401,7 @@ const string Position::pretty(Move move) const {
      << std::setfill('0') << std::setw(16) << st->key << "\nCheckers: ";
 
   for (Bitboard b = checkers(); b; )
-      ss << square_to_string(pop_lsb(&b)) << " ";
+      ss << to_string(pop_lsb(&b)) << " ";
 
   ss << "\nLegal moves: ";
   for (MoveList<LEGAL> it(*this); *it; ++it)

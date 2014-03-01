@@ -72,7 +72,7 @@ const string move_to_uci(Move m, bool chess960) {
   if (type_of(m) == CASTLING && !chess960)
       to = (to > from ? FILE_G : FILE_C) | rank_of(from);
 
-  string move = square_to_string(from) + square_to_string(to);
+  string move = to_string(from) + to_string(to);
 
   if (type_of(m) == PROMOTION)
       move += PieceToChar[BLACK][promotion_type(m)]; // Lower case
@@ -140,22 +140,22 @@ const string move_to_san(Position& pos, Move m) {
           if (others)
           {
               if (!(others & file_bb(from)))
-                  san += file_to_char(file_of(from));
+                  san += to_char(file_of(from));
 
               else if (!(others & rank_bb(from)))
-                  san += rank_to_char(rank_of(from));
+                  san += to_char(rank_of(from));
 
               else
-                  san += square_to_string(from);
+                  san += to_string(from);
           }
       }
       else if (pos.capture(m))
-          san = file_to_char(file_of(from));
+          san = to_char(file_of(from));
 
       if (pos.capture(m))
           san += 'x';
 
-      san += square_to_string(to);
+      san += to_string(to);
 
       if (type_of(m) == PROMOTION)
           san += string("=") + PieceToChar[WHITE][promotion_type(m)];

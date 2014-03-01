@@ -391,11 +391,11 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline char file_to_char(File f, bool tolower = true) {
+inline char to_char(File f, bool tolower = true) {
   return char(f - FILE_A + (tolower ? 'a' : 'A'));
 }
 
-inline char rank_to_char(Rank r) {
+inline char to_char(Rank r) {
   return char(r - RANK_1 + '1');
 }
 
@@ -434,8 +434,8 @@ inline bool is_ok(Move m) {
 
 #include <string>
 
-inline const std::string square_to_string(Square s) {
-  char ch[] = { file_to_char(file_of(s)), rank_to_char(rank_of(s)), 0 };
+inline const std::string to_string(Square s) {
+  char ch[] = { to_char(file_of(s)), to_char(rank_of(s)), 0 };
   return ch;
 }
 
