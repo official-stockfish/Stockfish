@@ -18,8 +18,7 @@
 */
 
 #include <algorithm>
-#include <cstring>
-#include <sstream>
+#include <cstring> // For memset
 
 #include "bitboard.h"
 #include "bitcount.h"
@@ -130,19 +129,17 @@ Square msb(Bitboard b) {
 
 const std::string Bitboards::pretty(Bitboard b) {
 
-  std::ostringstream ss;
+  std::string s = "+---+---+---+---+---+---+---+---+\n";
 
   for (Rank rank = RANK_8; rank >= RANK_1; --rank)
   {
-      ss << "+---+---+---+---+---+---+---+---+" << '\n';
-
       for (File file = FILE_A; file <= FILE_H; ++file)
-          ss << "| " << (b & (file | rank) ? "X " : "  ");
+          s.append(b & (file | rank) ? "| X " : "|   ");
 
-      ss << "|\n";
+      s.append("|\n+---+---+---+---+---+---+---+---+\n");
   }
-  ss << "+---+---+---+---+---+---+---+---+";
-  return ss.str();
+
+  return s;
 }
 
 
