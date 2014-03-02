@@ -100,10 +100,10 @@ public:
   template<PieceType Pt> const Square* list(Color c) const;
 
   // Castling
-  int can_castle(CastlingFlag f) const;
   int can_castle(Color c) const;
-  bool castling_impeded(Color c, CastlingSide s) const;
-  Square castling_rook_square(Color c, CastlingSide s) const;
+  int can_castle(CastlingFlag f) const;
+  bool castling_impeded(CastlingFlag f) const;
+  Square castling_rook_square(CastlingFlag f) const;
 
   // Checking
   Bitboard checkers() const;
@@ -198,8 +198,8 @@ private:
 
   // Other info
   int castlingFlagsMask[SQUARE_NB];
-  Square castlingRookSquare[COLOR_NB][CASTLING_SIDE_NB];
-  Bitboard castlingPath[COLOR_NB][CASTLING_SIDE_NB];
+  Square castlingRookSquare[CASTLING_FLAG_NB];
+  Bitboard castlingPath[CASTLING_FLAG_NB];
   StateInfo startState;
   uint64_t nodes;
   int gamePly;
@@ -281,12 +281,12 @@ inline int Position::can_castle(Color c) const {
   return st->castlingFlags & ((WHITE_OO | WHITE_OOO) << (2 * c));
 }
 
-inline bool Position::castling_impeded(Color c, CastlingSide s) const {
-  return byTypeBB[ALL_PIECES] & castlingPath[c][s];
+inline bool Position::castling_impeded(CastlingFlag f) const {
+  return byTypeBB[ALL_PIECES] & castlingPath[f];
 }
 
-inline Square Position::castling_rook_square(Color c, CastlingSide s) const {
-  return castlingRookSquare[c][s];
+inline Square Position::castling_rook_square(CastlingFlag f) const {
+  return castlingRookSquare[f];
 }
 
 template<PieceType Pt>

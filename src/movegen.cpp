@@ -31,23 +31,25 @@
                                          (mlist++)->move = make_move(to - (d), to); }
 namespace {
 
-  template<CastlingSide Side, bool Checks, bool Chess960>
+  template<CastlingFlag Cf, bool Checks, bool Chess960>
   ExtMove* generate_castling(const Position& pos, ExtMove* mlist, Color us, const CheckInfo* ci) {
 
-    if (pos.castling_impeded(us, Side) || !pos.can_castle(make_castling_flag(us, Side)))
+    static const bool KingSide = (Cf == WHITE_OO || Cf == BLACK_OO);
+
+    if (pos.castling_impeded(Cf) || !pos.can_castle(Cf))
         return mlist;
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
     Square kfrom = pos.king_square(us);
-    Square rfrom = pos.castling_rook_square(us, Side);
-    Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
+    Square rfrom = pos.castling_rook_square(Cf);
+    Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.checkers());
 
-    const Square K = Chess960 ? kto > kfrom       ? DELTA_W : DELTA_E
-                              : Side == KING_SIDE ? DELTA_W : DELTA_E;
+    const Square K = Chess960 ? kto > kfrom ? DELTA_W : DELTA_E
+                              : KingSide    ? DELTA_W : DELTA_E;
 
     for (Square s = kto; s != kfrom; s += K)
         if (pos.attackers_to(s) & enemies)
@@ -262,13 +264,13 @@ namespace {
     {
         if (pos.is_chess960())
         {
-            mlist = generate_castling< KING_SIDE, Checks, true>(pos, mlist, Us, ci);
-            mlist = generate_castling<QUEEN_SIDE, Checks, true>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::flag, Checks, true>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::flag, Checks, true>(pos, mlist, Us, ci);
         }
         else
         {
-            mlist = generate_castling< KING_SIDE, Checks, false>(pos, mlist, Us, ci);
-            mlist = generate_castling<QUEEN_SIDE, Checks, false>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::flag, Checks, false>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::flag, Checks, false>(pos, mlist, Us, ci);
         }
     }
 
