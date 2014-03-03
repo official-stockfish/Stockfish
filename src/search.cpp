@@ -391,8 +391,6 @@ namespace {
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
-        Time::point iterationTime = Time::now() - SearchTime;
-
         // If skill levels are enabled and time is up, pick a sub-optimal best move
         if (skill.enabled() && skill.time_to_pick(depth))
             skill.pick_move();
@@ -417,8 +415,6 @@ namespace {
         // Do we have time for the next iteration? Can we stop searching now?
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
-            bool stop = false; // Local variable, not the volatile Signals.stop
-
             // Take some extra time if the best move has changed
             if (depth > 4 && depth < 50 &&  MultiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
@@ -426,10 +422,7 @@ namespace {
             // Stop the search if only one legal move is available or all
             // of the available time has been used.
             if (   RootMoves.size() == 1
-                || iterationTime > TimeMgr.available_time() )
-                stop = true;
-
-            if (stop)
+                || Time::now() - SearchTime > TimeMgr.available_time())
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -663,7 +656,7 @@ namespace {
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = std::min(beta + 200, VALUE_INFINITE);
-        Depth rdepth = depth - ONE_PLY - 3 * ONE_PLY;
+        Depth rdepth = depth - 4 * ONE_PLY;
 
         assert(rdepth >= ONE_PLY);
         assert((ss-1)->currentMove != MOVE_NONE);
@@ -1016,7 +1009,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // case of Signals.stop or thread.cutoff_occurred() are set, but this is
     // harmless because return value is discarded anyhow in the parent nodes.
     // If we are in a singular extension search then return a fail low score.
-    // A split node has at least one move - the one tried before to be splitted.
+    // A split node has at least one move - the one tried before to be split.
     if (!moveCount)
         return  excludedMove ? alpha
               : inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];

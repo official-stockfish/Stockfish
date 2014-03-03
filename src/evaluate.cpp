@@ -494,16 +494,16 @@ Value do_evaluate(const Position& pos) {
         if (ei.attackedBy[Them][PAWN] & s)
             score -= ThreatenedByPawn[Pt];
 
-        // Penalty for bishop with same coloured pawns
-        if (Pt == BISHOP)
-            score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
-
-        // Penalty for knight when there are few enemy pawns
-        if (Pt == KNIGHT)
-            score -= KnightPawns * std::max(5 - pos.count<PAWN>(Them), 0);
-
         if (Pt == BISHOP || Pt == KNIGHT)
         {
+            // Penalty for bishop with same colored pawns
+            if (Pt == BISHOP)
+                score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
+
+            // Penalty for knight when there are few enemy pawns
+            if (Pt == KNIGHT)
+                score -= KnightPawns * std::max(5 - pos.count<PAWN>(Them), 0);
+
             // Bishop and knight outposts squares
             if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
                 score += evaluate_outposts<Pt, Us>(pos, ei, s);
