@@ -185,8 +185,7 @@ void Search::think() {
   RootColor = RootPos.side_to_move();
   TimeMgr.init(Limits, RootPos.game_ply(), RootColor);
 
-  // Dynamic draw value: try to avoid repetition draws at early midgame
-  int cf = std::max(70 - RootPos.game_ply(), 0);
+  int cf = Options["Contempt Factor"] * PawnValueMg / 100; // From centipawns
   DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
   DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
 
