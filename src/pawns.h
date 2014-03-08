@@ -48,7 +48,7 @@ struct Entry {
   template<Color Us>
   Score king_safety(const Position& pos, Square ksq)  {
 
-    return kingSquares[Us] == ksq && castlingFlags[Us] == pos.can_castle(Us)
+    return kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
          ? kingSafety[Us] : update_safety<Us>(pos, ksq);
   }
 
@@ -64,7 +64,7 @@ struct Entry {
   Bitboard pawnAttacks[COLOR_NB];
   Square kingSquares[COLOR_NB];
   int minKPdistance[COLOR_NB];
-  int castlingFlags[COLOR_NB];
+  int castlingRights[COLOR_NB];
   Score value;
   int semiopenFiles[COLOR_NB];
   Score kingSafety[COLOR_NB];

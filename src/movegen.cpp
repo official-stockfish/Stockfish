@@ -31,18 +31,18 @@
                                          (mlist++)->move = make_move(to - (d), to); }
 namespace {
 
-  template<CastlingFlag Cf, bool Checks, bool Chess960>
+  template<CastlingRight Cr, bool Checks, bool Chess960>
   ExtMove* generate_castling(const Position& pos, ExtMove* mlist, Color us, const CheckInfo* ci) {
 
-    static const bool KingSide = (Cf == WHITE_OO || Cf == BLACK_OO);
+    static const bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
 
-    if (pos.castling_impeded(Cf) || !pos.can_castle(Cf))
+    if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
         return mlist;
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
     Square kfrom = pos.king_square(us);
-    Square rfrom = pos.castling_rook_square(Cf);
+    Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
 
@@ -264,13 +264,13 @@ namespace {
     {
         if (pos.is_chess960())
         {
-            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::flag, Checks, true>(pos, mlist, Us, ci);
-            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::flag, Checks, true>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, true>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, true>(pos, mlist, Us, ci);
         }
         else
         {
-            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::flag, Checks, false>(pos, mlist, Us, ci);
-            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::flag, Checks, false>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, false>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, false>(pos, mlist, Us, ci);
         }
     }
 

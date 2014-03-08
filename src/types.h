@@ -124,20 +124,20 @@ enum CastlingSide {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
 };
 
-enum CastlingFlag {  // Defined as in PolyGlot book hash key
+enum CastlingRight {  // Defined as in PolyGlot book hash key
   NO_CASTLING,
   WHITE_OO,
   WHITE_OOO   = WHITE_OO << 1,
   BLACK_OO    = WHITE_OO << 2,
   BLACK_OOO   = WHITE_OO << 3,
   ANY_CASTLING = WHITE_OO | WHITE_OOO | BLACK_OO | BLACK_OOO,
-  CASTLING_FLAG_NB = 16
+  CASTLING_RIGHT_NB = 16
 };
 
 template<Color C, CastlingSide S> struct MakeCastling {
-  static const CastlingFlag
-  flag = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
-                    : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
+  static const CastlingRight
+  right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
+                     : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
 
 enum Phase {
@@ -341,8 +341,8 @@ inline Square operator|(File f, Rank r) {
   return Square((r << 3) | f);
 }
 
-inline CastlingFlag operator|(Color c, CastlingSide s) {
-  return CastlingFlag(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
+inline CastlingRight operator|(Color c, CastlingSide s) {
+  return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
 inline Value mate_in(int ply) {

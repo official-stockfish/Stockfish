@@ -278,7 +278,7 @@ template<Color Us>
 Score Entry::update_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;
-  castlingFlags[Us] = pos.can_castle(Us);
+  castlingRights[Us] = pos.can_castle(Us);
   minKPdistance[Us] = 0;
 
   Bitboard pawns = pos.pieces(Us, PAWN);
@@ -291,10 +291,10 @@ Score Entry::update_safety(const Position& pos, Square ksq) {
   Value bonus = shelter_storm<Us>(pos, ksq);
 
   // If we can castle use the bonus after the castling if it is bigger
-  if (pos.can_castle(MakeCastling<Us, KING_SIDE>::flag))
+  if (pos.can_castle(MakeCastling<Us, KING_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_G1)));
 
-  if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::flag))
+  if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
   return kingSafety[Us] = make_score(bonus, -16 * minKPdistance[Us]);
