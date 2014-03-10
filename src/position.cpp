@@ -38,10 +38,11 @@ static const string PieceToChar(" PNBRQK  pnbrqk");
 
 CACHE_LINE_ALIGNMENT
 
-Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 Value PieceValue[PHASE_NB][PIECE_NB] = {
 { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg },
 { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg } };
+
+static Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 
 namespace Zobrist {
 
@@ -530,71 +531,27 @@ bool Position::pseudo_legal(const Move m) const {
   // Handle the special case of a pawn move
   if (type_of(pc) == PAWN)
   {
-      // Move direction must be compatible with pawn color
-      int direction = to - from;
-      if ((us == WHITE) != (direction > 0))
-          return false;
-
       // We have already handled promotion moves, so destination
       // cannot be on the 8th/1st rank.
-      if (rank_of(to) == RANK_8 || rank_of(to) == RANK_1)
+      if (rank_of(to) == relative_rank(us, RANK_8))
           return false;
 
-      // Proceed according to the square delta between the origin and
-      // destination squares.
-      switch (direction)
-      {
-      case DELTA_NW:
-      case DELTA_NE:
-      case DELTA_SW:
-      case DELTA_SE:
-      // Capture. The destination square must be occupied by an enemy
-      // piece (en passant captures was handled earlier).
-      if (piece_on(to) == NO_PIECE || color_of(piece_on(to)) != ~us)
-          return false;
+      if (   !(attacks_from<PAWN>(from, us) & pieces(~us) & to) // Not a capture
 
-      // From and to files must be one file apart, avoids a7h5
-      if (abs(file_of(from) - file_of(to)) != 1)
-          return false;
-      break;
+          && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
 
-      case DELTA_N:
-      case DELTA_S:
-      // Pawn push. The destination square must be empty.
-      if (!empty(to))
+          && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
+               && (rank_of(from) == relative_rank(us, RANK_2))
+               && empty(to)
+               && empty(to - pawn_push(us))))
           return false;
-      break;
-
-      case DELTA_NN:
-      // Double white pawn push. The destination square must be on the fourth
-      // rank, and both the destination square and the square between the
-      // source and destination squares must be empty.
-      if (    rank_of(to) != RANK_4
-          || !empty(to)
-          || !empty(from + DELTA_N))
-          return false;
-      break;
-
-      case DELTA_SS:
-      // Double black pawn push. The destination square must be on the fifth
-      // rank, and both the destination square and the square between the
-      // source and destination squares must be empty.
-      if (    rank_of(to) != RANK_5
-          || !empty(to)
-          || !empty(from + DELTA_S))
-          return false;
-      break;
-
-      default:
-          return false;
-      }
   }
   else if (!(attacks_from(pc, from) & to))
       return false;
 
   // Evasions generator already takes care to avoid some kind of illegal moves
-  // and pl_move_is_legal() relies on this. We therefore have to take care that
-  // the same kind of moves are filtered out here.
+  // and legal() relies on this. We therefore have to take care that the same
+  // kind of moves are filtered out here.
   if (checkers())
   {
       if (type_of(pc) != KING)
