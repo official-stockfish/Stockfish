@@ -596,12 +596,11 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       && !aligned(from, to, ci.ksq))
       return true;
 
-  // Can we skip the ugly special cases?
-  if (type_of(m) == NORMAL)
-      return false;
-
   switch (type_of(m))
   {
+  case NORMAL:
+      return false;
+
   case PROMOTION:
       return attacks_bb(Piece(promotion_type(m)), to, pieces() ^ from) & ci.ksq;
 
