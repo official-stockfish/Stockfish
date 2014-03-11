@@ -1263,9 +1263,7 @@ bool Position::pos_is_ok(int* failedStep) const {
   const bool debugPieceList       = all || false;
   const bool debugCastlingSquares = all || false;
 
-  *step = 1;
-
-  if (sideToMove != WHITE && sideToMove != BLACK)
+  if (*step = 1, sideToMove != WHITE && sideToMove != BLACK)
       return false;
 
   if ((*step)++, piece_on(king_square(WHITE)) != W_KING)
@@ -1275,16 +1273,9 @@ bool Position::pos_is_ok(int* failedStep) const {
       return false;
 
   if ((*step)++, debugKingCount)
-  {
-      int kingCount[COLOR_NB] = {};
-
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
-          if (type_of(piece_on(s)) == KING)
-              ++kingCount[color_of(piece_on(s))];
-
-      if (kingCount[0] != 1 || kingCount[1] != 1)
+      if (   std::count(board, board + SQUARE_NB, W_KING) != 1
+          || std::count(board, board + SQUARE_NB, B_KING) != 1)
           return false;
-  }
 
   if ((*step)++, debugKingCapture)
       if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
