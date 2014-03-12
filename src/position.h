@@ -171,9 +171,7 @@ private:
   // Initialization helpers (used while setting up a position)
   void clear();
   void set_castling_right(Color c, Square rfrom);
-  void compute_keys(StateInfo* si) const;
-  void compute_non_pawn_material(StateInfo* si) const;
-  Score compute_psq_score() const;
+  void set_state(StateInfo* si) const;
 
   // Helper functions
   void do_castling(Square kfrom, Square kto, Square rfrom, Square rto);

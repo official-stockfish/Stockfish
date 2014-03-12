@@ -172,6 +172,21 @@ Position& Position::operator=(const Position& pos) {
 }
 
 
+/// Position::clear() erases the position object to a pristine state, with an
+/// empty board, white to move, and no castling rights.
+
+void Position::clear() {
+
+  std::memset(this, 0, sizeof(Position));
+  startState.epSquare = SQ_NONE;
+  st = &startState;
+
+  for (int i = 0; i < PIECE_TYPE_NB; ++i)
+      for (int j = 0; j < 16; ++j)
+          pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
+}
+
+
 /// Position::set() initializes the position object with the given FEN string.
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
@@ -284,12 +299,9 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   // handle also common incorrect FEN with fullmove = 0.
   gamePly = std::max(2 * (gamePly - 1), 0) + int(sideToMove == BLACK);
 
-  compute_keys(st);
-  compute_non_pawn_material(st);
-  st->psq = compute_psq_score();
-  st->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
   chess960 = isChess960;
   thisThread = th;
+  set_state(st);
 
   assert(pos_is_ok());
 }
@@ -319,6 +331,52 @@ void Position::set_castling_right(Color c, Square rfrom) {
   for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); ++s)
       if (s != kfrom && s != rfrom)
           castlingPath[cr] |= s;
+}
+
+
+/// Position::set_state() computes the hash keys of the position, and other
+/// data that once computed is updated incrementally as moves are made.
+/// The function is only used when a new position is set up, and to verify
+/// the correctness of the StateInfo data when running in debug mode.
+
+void Position::set_state(StateInfo* si) const {
+
+  si->key = si->pawnKey = si->materialKey = 0;
+  si->npMaterial[WHITE] = si->npMaterial[BLACK] = VALUE_ZERO;
+  si->psq = SCORE_ZERO;
+
+  si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+
+  for (Bitboard b = pieces(); b; )
+  {
+      Square s = pop_lsb(&b);
+      Piece pc = piece_on(s);
+      si->key ^= Zobrist::psq[color_of(pc)][type_of(pc)][s];
+      si->psq += psq[color_of(pc)][type_of(pc)][s];
+  }
+
+  if (ep_square() != SQ_NONE)
+      si->key ^= Zobrist::enpassant[file_of(ep_square())];
+
+  if (sideToMove == BLACK)
+      si->key ^= Zobrist::side;
+
+  si->key ^= Zobrist::castling[st->castlingRights];
+
+  for (Bitboard b = pieces(PAWN); b; )
+  {
+      Square s = pop_lsb(&b);
+      si->pawnKey ^= Zobrist::psq[color_of(piece_on(s))][PAWN][s];
+  }
+
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt = PAWN; pt <= KING; ++pt)
+          for (int cnt = 0; cnt < pieceCount[c][pt]; ++cnt)
+              si->materialKey ^= Zobrist::psq[c][pt][cnt];
+
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
+          si->npMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
 }
 
 
@@ -1059,91 +1117,6 @@ Value Position::see(Move m) const {
 }
 
 
-/// Position::clear() erases the position object to a pristine state, with an
-/// empty board, white to move, and no castling rights.
-
-void Position::clear() {
-
-  std::memset(this, 0, sizeof(Position));
-  startState.epSquare = SQ_NONE;
-  st = &startState;
-
-  for (int i = 0; i < PIECE_TYPE_NB; ++i)
-      for (int j = 0; j < 16; ++j)
-          pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
-}
-
-
-/// Position::compute_keys() computes the hash keys of the position, pawns and
-/// material configuration. The hash keys are usually updated incrementally as
-/// moves are made and unmade. The function is only used when a new position is
-/// set up, and to verify the correctness of the keys when running in debug mode.
-
-void Position::compute_keys(StateInfo* si) const {
-
-  si->key = si->pawnKey = si->materialKey = 0;
-
-  for (Bitboard b = pieces(); b; )
-  {
-      Square s = pop_lsb(&b);
-      si->key ^= Zobrist::psq[color_of(piece_on(s))][type_of(piece_on(s))][s];
-  }
-
-  if (ep_square() != SQ_NONE)
-      si->key ^= Zobrist::enpassant[file_of(ep_square())];
-
-  if (sideToMove == BLACK)
-      si->key ^= Zobrist::side;
-
-  si->key ^= Zobrist::castling[st->castlingRights];
-
-  for (Bitboard b = pieces(PAWN); b; )
-  {
-      Square s = pop_lsb(&b);
-      si->pawnKey ^= Zobrist::psq[color_of(piece_on(s))][PAWN][s];
-  }
-
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = PAWN; pt <= KING; ++pt)
-          for (int cnt = 0; cnt < pieceCount[c][pt]; ++cnt)
-              si->materialKey ^= Zobrist::psq[c][pt][cnt];
-}
-
-
-/// Position::compute_non_pawn_material() computes the total non-pawn middlegame
-/// material value for each side. Material values are updated incrementally during
-/// the search. This function is only used when initializing a new Position object.
-
-void Position::compute_non_pawn_material(StateInfo* si) const {
-
-  si->npMaterial[WHITE] = si->npMaterial[BLACK] = VALUE_ZERO;
-
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
-          si->npMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
-}
-
-
-/// Position::compute_psq_score() computes the incremental scores for the middlegame
-/// and the endgame. These functions are used to initialize the incremental scores
-/// when a new position is set up, and to verify that the scores are correctly
-/// updated by do_move and undo_move when the program is running in debug mode.
-
-Score Position::compute_psq_score() const {
-
-  Score score = SCORE_ZERO;
-
-  for (Bitboard b = pieces(); b; )
-  {
-      Square s = pop_lsb(&b);
-      Piece pc = piece_on(s);
-      score += psq[color_of(pc)][type_of(pc)][s];
-  }
-
-  return score;
-}
-
-
 /// Position::is_draw() tests whether the position is drawn by material, 50 moves
 /// rule or repetition. It does not detect stalemates.
 
@@ -1220,10 +1193,8 @@ bool Position::pos_is_ok(int* failedStep) const {
   const bool testBitboards       = all || false;
   const bool testKingCount       = all || false;
   const bool testKingCapture     = all || false;
+  const bool testState           = all || false;
   const bool testCheckerCount    = all || false;
-  const bool testKeys            = all || false;
-  const bool testIncrementalEval = all || false;
-  const bool testNonPawnMaterial = all || false;
   const bool testPieceCounts     = all || false;
   const bool testPieceList       = all || false;
   const bool testCastlingSquares = all || false;
@@ -1237,6 +1208,9 @@ bool Position::pos_is_ok(int* failedStep) const {
   if ((*step)++, piece_on(king_square(BLACK)) != B_KING)
       return false;
 
+  if ((*step)++, ep_square() != SQ_NONE && relative_rank(sideToMove, ep_square()) != RANK_6)
+      return false;
+
   if ((*step)++, testKingCount)
       if (   std::count(board, board + SQUARE_NB, W_KING) != 1
           || std::count(board, board + SQUARE_NB, B_KING) != 1)
@@ -1245,9 +1219,6 @@ bool Position::pos_is_ok(int* failedStep) const {
   if ((*step)++, testKingCapture)
       if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
           return false;
-
-  if ((*step)++, testCheckerCount && popcount<Full>(st->checkersBB) > 2)
-      return false;
 
   if ((*step)++, testBitboards)
   {
@@ -1267,27 +1238,20 @@ bool Position::pos_is_ok(int* failedStep) const {
                   return false;
   }
 
-  if ((*step)++, ep_square() != SQ_NONE && relative_rank(sideToMove, ep_square()) != RANK_6)
-      return false;
-
-  if ((*step)++, testKeys)
+  if ((*step)++, testState)
   {
       StateInfo si;
-      compute_keys(&si);
-      if (st->key != si.key || st->pawnKey != si.pawnKey || st->materialKey != si.materialKey)
+      set_state(&si);
+      if (   st->key != si.key
+          || st->pawnKey != si.pawnKey
+          || st->materialKey != si.materialKey
+          || st->npMaterial[WHITE] != si.npMaterial[WHITE]
+          || st->npMaterial[BLACK] != si.npMaterial[BLACK]
+          || st->psq != si.psq)
           return false;
   }
 
-  if ((*step)++, testNonPawnMaterial)
-  {
-      StateInfo si;
-      compute_non_pawn_material(&si);
-      if (   st->npMaterial[WHITE] != si.npMaterial[WHITE]
-          || st->npMaterial[BLACK] != si.npMaterial[BLACK])
-          return false;
-  }
-
-  if ((*step)++, testIncrementalEval && st->psq != compute_psq_score())
+  if ((*step)++, testCheckerCount && popcount<Full>(st->checkersBB) > 2)
       return false;
 
   if ((*step)++, testPieceCounts)
