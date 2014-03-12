@@ -171,6 +171,9 @@ private:
   // Initialization helpers (used while setting up a position)
   void clear();
   void set_castling_right(Color c, Square rfrom);
+  void compute_keys(StateInfo* si) const;
+  void compute_non_pawn_material(StateInfo* si) const;
+  Score compute_psq_score() const;
 
   // Helper functions
   void do_castling(Square kfrom, Square kto, Square rfrom, Square rto);
@@ -178,15 +181,6 @@ private:
   void put_piece(Square s, Color c, PieceType pt);
   void remove_piece(Square s, Color c, PieceType pt);
   void move_piece(Square from, Square to, Color c, PieceType pt);
-
-  // Computing hash keys from scratch (for initialization and debugging)
-  Key compute_key() const;
-  Key compute_pawn_key() const;
-  Key compute_material_key() const;
-
-  // Computing incremental evaluation scores and material counts
-  Score compute_psq_score() const;
-  Value compute_non_pawn_material(Color c) const;
 
   // Board and pieces
   Piece board[SQUARE_NB];
