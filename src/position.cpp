@@ -739,14 +739,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   {
       assert(pc == make_piece(us, KING));
 
-      bool kingSide = to > from;
-      Square rfrom = to; // Castling is encoded as "king captures friendly rook"
-      Square rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
-      to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+      Square rfrom, rto;
+      do_castling<true>(from, to, rfrom, rto);
+
       captured = NO_PIECE_TYPE;
-
-      do_castling(from, to, rfrom, rto);
-
       st->psq += psq[us][ROOK][rto] - psq[us][ROOK][rfrom];
       k ^= Zobrist::psq[us][ROOK][rfrom] ^ Zobrist::psq[us][ROOK][rto];
   }
@@ -933,13 +929,11 @@ void Position::undo_move(Move m) {
 
   if (type_of(m) == CASTLING)
   {
-      bool kingSide = to > from;
-      Square rfrom = to; // Castling is encoded as "king captures friendly rook"
-      Square rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
-      to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
+      Square rfrom, rto;
+      do_castling<false>(from, to, rfrom, rto);
+
       captured = NO_PIECE_TYPE;
       pt = KING;
-      do_castling(to, from, rto, rfrom);
   }
   else
       move_piece(to, from, us, pt); // Put the piece back at the source square
@@ -971,15 +965,20 @@ void Position::undo_move(Move m) {
 
 /// Position::do_castling() is a helper used to do/undo a castling move. This
 /// is a bit tricky, especially in Chess960.
+template<bool Do>
+void Position::do_castling(Square from, Square& to, Square& rfrom, Square& rto) {
 
-void Position::do_castling(Square kfrom, Square kto, Square rfrom, Square rto) {
+  bool kingSide = to > from;
+  rfrom = to; // Castling is encoded as "king captures friendly rook"
+  rto = relative_square(sideToMove, kingSide ? SQ_F1 : SQ_D1);
+  to  = relative_square(sideToMove, kingSide ? SQ_G1 : SQ_C1);
 
   // Remove both pieces first since squares could overlap in Chess960
-  remove_piece(kfrom, sideToMove, KING);
-  remove_piece(rfrom, sideToMove, ROOK);
-  board[kfrom] = board[rfrom] = NO_PIECE; // Since remove_piece doesn't do it for us
-  put_piece(kto, sideToMove, KING);
-  put_piece(rto, sideToMove, ROOK);
+  remove_piece(Do ?  from :  to, sideToMove, KING);
+  remove_piece(Do ? rfrom : rto, sideToMove, ROOK);
+  board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // Since remove_piece doesn't do it for us
+  put_piece(Do ?  to :  from, sideToMove, KING);
+  put_piece(Do ? rto : rfrom, sideToMove, ROOK);
 }
 
 

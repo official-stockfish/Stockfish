@@ -174,11 +174,12 @@ private:
   void set_state(StateInfo* si) const;
 
   // Helper functions
-  void do_castling(Square kfrom, Square kto, Square rfrom, Square rto);
   Bitboard check_blockers(Color c, Color kingColor) const;
   void put_piece(Square s, Color c, PieceType pt);
   void remove_piece(Square s, Color c, PieceType pt);
   void move_piece(Square from, Square to, Color c, PieceType pt);
+  template<bool Do>
+  void do_castling(Square from, Square& to, Square& rfrom, Square& rto);
 
   // Board and pieces
   Piece board[SQUARE_NB];
