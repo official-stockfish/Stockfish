@@ -271,14 +271,10 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),clang)
-		ifeq ($(os),osx)
-			# Clang on OS X supports LTO
-			CXXFLAGS += -O4
-		else
-			CXXFLAGS += -O3
-		endif
+		CXXFLAGS += -O3
 
 		ifeq ($(os),osx)
+			CXXFLAGS += -flto
 			ifeq ($(arch),i386)
 				CXXFLAGS += -mdynamic-no-pic
 			endif
