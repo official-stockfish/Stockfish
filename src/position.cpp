@@ -526,19 +526,18 @@ bool Position::legal(Move m, Bitboard pinned) const {
   // the move is made.
   if (type_of(m) == ENPASSANT)
   {
-      Color them = ~us;
-      Square to = to_sq(m);
-      Square capsq = to + pawn_push(them);
       Square ksq = king_square(us);
-      Bitboard b = (pieces() ^ from ^ capsq) | to;
+      Square to = to_sq(m);
+      Square capsq = to - pawn_push(us);
+      Bitboard occ = (pieces() ^ from ^ capsq) | to;
 
       assert(to == ep_square());
       assert(moved_piece(m) == make_piece(us, PAWN));
-      assert(piece_on(capsq) == make_piece(them, PAWN));
+      assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-      return   !(attacks_bb<  ROOK>(ksq, b) & pieces(them, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, b) & pieces(them, QUEEN, BISHOP));
+      return   !(attacks_bb<  ROOK>(ksq, occ) & pieces(~us, QUEEN, ROOK))
+            && !(attacks_bb<BISHOP>(ksq, occ) & pieces(~us, QUEEN, BISHOP));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -1186,14 +1185,13 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   int dummy, *step = failedStep ? failedStep : &dummy;
 
-  // What features of the position should be verified?
+  // Which parts of the position should be verified?
   const bool all = false;
 
   const bool testBitboards       = all || false;
+  const bool testState           = all || false;
   const bool testKingCount       = all || false;
   const bool testKingCapture     = all || false;
-  const bool testState           = all || false;
-  const bool testCheckerCount    = all || false;
   const bool testPieceCounts     = all || false;
   const bool testPieceList       = all || false;
   const bool testCastlingSquares = all || false;
@@ -1209,15 +1207,6 @@ bool Position::pos_is_ok(int* failedStep) const {
 
   if ((*step)++, ep_square() != SQ_NONE && relative_rank(sideToMove, ep_square()) != RANK_6)
       return false;
-
-  if ((*step)++, testKingCount)
-      if (   std::count(board, board + SQUARE_NB, W_KING) != 1
-          || std::count(board, board + SQUARE_NB, B_KING) != 1)
-          return false;
-
-  if ((*step)++, testKingCapture)
-      if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
-          return false;
 
   if ((*step)++, testBitboards)
   {
@@ -1246,12 +1235,19 @@ bool Position::pos_is_ok(int* failedStep) const {
           || st->materialKey != si.materialKey
           || st->npMaterial[WHITE] != si.npMaterial[WHITE]
           || st->npMaterial[BLACK] != si.npMaterial[BLACK]
-          || st->psq != si.psq)
+          || st->psq != si.psq
+          || st->checkersBB != si.checkersBB)
           return false;
   }
 
-  if ((*step)++, testCheckerCount && popcount<Full>(st->checkersBB) > 2)
-      return false;
+  if ((*step)++, testKingCount)
+      if (   std::count(board, board + SQUARE_NB, W_KING) != 1
+          || std::count(board, board + SQUARE_NB, B_KING) != 1)
+          return false;
+
+  if ((*step)++, testKingCapture)
+      if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
+          return false;
 
   if ((*step)++, testPieceCounts)
       for (Color c = WHITE; c <= BLACK; ++c)
