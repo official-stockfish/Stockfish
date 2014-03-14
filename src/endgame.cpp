@@ -82,8 +82,7 @@ namespace {
 
   // Get the material key of Position out of the given endgame key code
   // like "KBPKN". The trick here is to first forge an ad-hoc FEN string
-  // and then let a Position object do the work for us. Note that the
-  // FEN string could correspond to an illegal position.
+  // and then let a Position object do the work for us.
   Key key(const string& code, Color c) {
 
     assert(code.length() > 0 && code.length() < 8);
@@ -94,8 +93,8 @@ namespace {
 
     std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-    string fen =  sides[0] + char('0' + int(8 - code.length()))
-                + sides[1] + "/8/8/8/8/8/8/8 w - - 0 10";
+    string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+                + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
     return Position(fen, false, NULL).material_key();
   }
