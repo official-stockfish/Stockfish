@@ -296,41 +296,35 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   activeSplitPoint = &sp;
   activePosition = NULL;
 
-  int slavesCnt = 1; // This thread is always included
-  Thread* slave;
-
-  while (!Fake && (slave = Threads.available_slave(this)) != NULL)
-  {
-      ++slavesCnt;
-      sp.slavesMask |= 1ULL << slave->idx;
-      slave->activeSplitPoint = &sp;
-      slave->searching = true; // Slave leaves idle_loop()
-      slave->notify_one(); // Could be sleeping
-  }
+  if (!Fake)
+      for (Thread* slave; (slave = Threads.available_slave(this)) != NULL; )
+      {
+          sp.slavesMask |= 1ULL << slave->idx;
+          slave->activeSplitPoint = &sp;
+          slave->searching = true; // Slave leaves idle_loop()
+          slave->notify_one(); // Could be sleeping
+      }
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  if (slavesCnt > 1 || Fake)
-  {
-      sp.mutex.unlock();
-      Threads.mutex.unlock();
+  sp.mutex.unlock();
+  Threads.mutex.unlock();
 
-      Thread::idle_loop(); // Force a call to base class idle_loop()
+  Thread::idle_loop(); // Force a call to base class idle_loop()
 
-      // In the helpful master concept, a master can help only a sub-tree of its
-      // split point and because everything is finished here, it's not possible
-      // for the master to be booked.
-      assert(!searching);
-      assert(!activePosition);
+  // In the helpful master concept, a master can help only a sub-tree of its
+  // split point and because everything is finished here, it's not possible
+  // for the master to be booked.
+  assert(!searching);
+  assert(!activePosition);
 
-      // We have returned from the idle loop, which means that all threads are
-      // finished. Note that setting 'searching' and decreasing splitPointsSize is
-      // done under lock protection to avoid a race with Thread::available_to().
-      Threads.mutex.lock();
-      sp.mutex.lock();
-  }
+  // We have returned from the idle loop, which means that all threads are
+  // finished. Note that setting 'searching' and decreasing splitPointsSize is
+  // done under lock protection to avoid a race with Thread::available_to().
+  Threads.mutex.lock();
+  sp.mutex.lock();
 
   searching = true;
   --splitPointsSize;
