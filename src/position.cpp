@@ -863,7 +863,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Update the key with the final value
   st->key = k;
 
-  // Update checkers bitboard: piece must be already moved
+  // Update checkers bitboard: piece must be already moved due to attacks_from()
   st->checkersBB = 0;
 
   if (moveIsCheck)
@@ -877,7 +877,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
               st->checkersBB |= to;
 
           // Discovered checks
-          if (ci.dcCandidates && (ci.dcCandidates & from))
+          if (unlikely(ci.dcCandidates) && (ci.dcCandidates & from))
           {
               if (pt != ROOK)
                   st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(us, QUEEN, ROOK);
@@ -904,24 +904,20 @@ void Position::undo_move(Move m) {
   sideToMove = ~sideToMove;
 
   Color us = sideToMove;
-  Color them = ~us;
   Square from = from_sq(m);
   Square to = to_sq(m);
   PieceType pt = type_of(piece_on(to));
-  PieceType captured = st->capturedType;
 
   assert(empty(from) || type_of(m) == CASTLING);
-  assert(captured != KING);
+  assert(st->capturedType != KING);
 
   if (type_of(m) == PROMOTION)
   {
-      PieceType promotion = promotion_type(m);
-
-      assert(promotion == pt);
+      assert(pt == promotion_type(m));
       assert(relative_rank(us, to) == RANK_8);
-      assert(promotion >= KNIGHT && promotion <= QUEEN);
+      assert(promotion_type(m) >= KNIGHT && promotion_type(m) <= QUEEN);
 
-      remove_piece(to, us, promotion);
+      remove_piece(to, us, promotion_type(m));
       put_piece(to, us, PAWN);
       pt = PAWN;
   }
@@ -930,28 +926,27 @@ void Position::undo_move(Move m) {
   {
       Square rfrom, rto;
       do_castling<false>(from, to, rfrom, rto);
-
-      captured = NO_PIECE_TYPE;
-      pt = KING;
   }
   else
+  {
       move_piece(to, from, us, pt); // Put the piece back at the source square
 
-  if (captured)
-  {
-      Square capsq = to;
-
-      if (type_of(m) == ENPASSANT)
+      if (st->capturedType)
       {
-          capsq -= pawn_push(us);
+          Square capsq = to;
 
-          assert(pt == PAWN);
-          assert(to == st->previous->epSquare);
-          assert(relative_rank(us, to) == RANK_6);
-          assert(piece_on(capsq) == NO_PIECE);
+          if (type_of(m) == ENPASSANT)
+          {
+              capsq -= pawn_push(us);
+
+              assert(pt == PAWN);
+              assert(to == st->previous->epSquare);
+              assert(relative_rank(us, to) == RANK_6);
+              assert(piece_on(capsq) == NO_PIECE);
+          }
+
+          put_piece(capsq, ~us, st->capturedType); // Restore the captured piece
       }
-
-      put_piece(capsq, them, captured); // Restore the captured piece
   }
 
   // Finally point our state pointer back to the previous state
