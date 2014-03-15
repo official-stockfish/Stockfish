@@ -88,7 +88,7 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
   maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
   activePosition = NULL;
-  idx = Threads.size();
+  idx = Threads.size(); // Starts from 0
 }
 
 
@@ -213,9 +213,8 @@ void ThreadPool::exit() {
 
 void ThreadPool::read_uci_options() {
 
-  maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
-  minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
-  size_t requested        = Options["Threads"];
+  minimumSplitDepth = Options["Min Split Depth"] * ONE_PLY;
+  size_t requested  = Options["Threads"];
 
   assert(requested > 0);
 
@@ -297,12 +296,12 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   activeSplitPoint = &sp;
   activePosition = NULL;
 
-  size_t slavesCnt = 1; // This thread is always included
+  int slavesCnt = 1; // This thread is always included
   Thread* slave;
 
-  while (    (slave = Threads.available_slave(this)) != NULL
-         && ++slavesCnt <= Threads.maxThreadsPerSplitPoint && !Fake)
+  while (!Fake && (slave = Threads.available_slave(this)) != NULL)
   {
+      ++slavesCnt;
       sp.slavesMask |= 1ULL << slave->idx;
       slave->activeSplitPoint = &sp;
       slave->searching = true; // Slave leaves idle_loop()

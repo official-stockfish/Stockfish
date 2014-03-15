@@ -166,7 +166,6 @@ struct ThreadPool : public std::vector<Thread*> {
 
   bool sleepWhileIdle;
   Depth minimumSplitDepth;
-  size_t maxThreadsPerSplitPoint;
   Mutex mutex;
   ConditionVariable sleepCondition;
   TimerThread* timer;
