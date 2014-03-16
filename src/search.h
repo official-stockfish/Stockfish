@@ -20,7 +20,6 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
-#include <cstring>
 #include <memory>
 #include <stack>
 #include <vector>
@@ -78,7 +77,10 @@ struct RootMove {
 
 struct LimitsType {
 
-  LimitsType() { std::memset(this, 0, sizeof(LimitsType)); }
+  LimitsType() { // Using memset on a std::vector is undefined behavior
+    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = movestogo =
+    depth = nodes = movetime = mate = infinite = ponder = 0;
+  }
   bool use_time_management() const { return !(mate | movetime | depth | nodes | infinite); }
 
   std::vector<Move> searchmoves;
