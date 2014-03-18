@@ -174,7 +174,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       return e;
   }
 
-  // Generic scaling functions that refer to more then one material
+  // Generic scaling functions that refer to more than one material
   // distribution. They should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
   if (is_KBPsKs<WHITE>(pos))
