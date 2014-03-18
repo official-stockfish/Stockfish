@@ -1470,7 +1470,7 @@ void Thread::idle_loop() {
           mutex.lock();
 
           // If we are master and all slaves have finished then exit idle_loop
-          if (this_sp && !this_sp->slavesMask)
+          if (this_sp && this_sp->slavesMask.none())
           {
               mutex.unlock();
               break;
@@ -1529,14 +1529,14 @@ void Thread::idle_loop() {
 
           searching = false;
           activePosition = NULL;
-          sp->slavesMask &= ~(1ULL << idx);
+          sp->slavesMask.reset(idx);
           sp->nodes += pos.nodes_searched();
 
           // Wake up the master thread so to allow it to return from the idle
           // loop in case we are the last slave of the split point.
           if (    Threads.sleepWhileIdle
               &&  this != sp->masterThread
-              && !sp->slavesMask)
+              &&  sp->slavesMask.none())
           {
               assert(!sp->masterThread->searching);
               sp->masterThread->notify_one();
@@ -1551,10 +1551,10 @@ void Thread::idle_loop() {
 
       // If this thread is the master of a split point and all slaves have finished
       // their work at this split point, return from the idle loop.
-      if (this_sp && !this_sp->slavesMask)
+      if (this_sp && this_sp->slavesMask.none())
       {
           this_sp->mutex.lock();
-          bool finished = !this_sp->slavesMask; // Retest under lock protection
+          bool finished = this_sp->slavesMask.none(); // Retest under lock protection
           this_sp->mutex.unlock();
           if (finished)
               return;
@@ -1597,13 +1597,10 @@ void check_time() {
               sp.mutex.lock();
 
               nodes += sp.nodes;
-              Bitboard sm = sp.slavesMask;
-              while (sm)
-              {
-                  Position* pos = Threads[pop_lsb(&sm)]->activePosition;
-                  if (pos)
-                      nodes += pos->nodes_searched();
-              }
+
+              for (size_t idx = 0; idx < Threads.size(); ++idx)
+                  if (sp.slavesMask.test(idx) && Threads[idx]->activePosition)
+                      nodes += Threads[idx]->activePosition->nodes_searched();
 
               sp.mutex.unlock();
           }

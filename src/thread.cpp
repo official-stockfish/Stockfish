@@ -123,7 +123,7 @@ bool Thread::available_to(const Thread* master) const {
 
   // No split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !size || (splitPoints[size - 1].slavesMask & (1ULL << master->idx));
+  return !size || splitPoints[size - 1].slavesMask.test(master->idx);
 }
 
 
@@ -271,7 +271,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
 
   sp.masterThread = this;
   sp.parentSplitPoint = activeSplitPoint;
-  sp.slavesMask = 1ULL << idx;
+  sp.slavesMask = 0, sp.slavesMask.set(idx);
   sp.depth = depth;
   sp.bestValue = *bestValue;
   sp.bestMove = *bestMove;
@@ -299,7 +299,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   if (!Fake)
       for (Thread* slave; (slave = Threads.available_slave(this)) != NULL; )
       {
-          sp.slavesMask |= 1ULL << slave->idx;
+          sp.slavesMask.set(slave->idx);
           slave->activeSplitPoint = &sp;
           slave->searching = true; // Slave leaves idle_loop()
           slave->notify_one(); // Could be sleeping

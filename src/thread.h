@@ -20,6 +20,7 @@
 #ifndef THREAD_H_INCLUDED
 #define THREAD_H_INCLUDED
 
+#include <bitset>
 #include <vector>
 
 #include "material.h"
@@ -28,7 +29,7 @@
 #include "position.h"
 #include "search.h"
 
-const int MAX_THREADS = 64; // Because SplitPoint::slavesMask is a uint64_t
+const int MAX_THREADS = 128;
 const int MAX_SPLITPOINTS_PER_THREAD = 8;
 
 struct Mutex {
@@ -75,7 +76,7 @@ struct SplitPoint {
 
   // Shared data
   Mutex mutex;
-  volatile uint64_t slavesMask;
+  std::bitset<MAX_THREADS> slavesMask;
   volatile uint64_t nodes;
   volatile Value alpha;
   volatile Value bestValue;
