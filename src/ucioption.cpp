@@ -54,36 +54,36 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 
 void init(OptionsMap& o) {
 
-  o["Write Debug Log"]             = Option(false, on_logger);
-  o["Write Search Log"]            = Option(false);
-  o["Search Log Filename"]         = Option("SearchLog.txt");
-  o["Book File"]                   = Option("book.bin");
-  o["Best Book Move"]              = Option(false);
-  o["Contempt Factor"]             = Option(0, -50,  50);
-  o["Mobility (Midgame)"]          = Option(100, 0, 200, on_eval);
-  o["Mobility (Endgame)"]          = Option(100, 0, 200, on_eval);
-  o["Pawn Structure (Midgame)"]    = Option(100, 0, 200, on_eval);
-  o["Pawn Structure (Endgame)"]    = Option(100, 0, 200, on_eval);
-  o["Passed Pawns (Midgame)"]      = Option(100, 0, 200, on_eval);
-  o["Passed Pawns (Endgame)"]      = Option(100, 0, 200, on_eval);
-  o["Space"]                       = Option(100, 0, 200, on_eval);
-  o["Aggressiveness"]              = Option(100, 0, 200, on_eval);
-  o["Cowardice"]                   = Option(100, 0, 200, on_eval);
-  o["Min Split Depth"]             = Option(0, 0, 12, on_threads);
-  o["Threads"]                     = Option(1, 1, MAX_THREADS, on_threads);
-  o["Idle Threads Sleep"]          = Option(true);
-  o["Hash"]                        = Option(32, 1, 16384, on_hash_size);
-  o["Clear Hash"]                  = Option(on_clear_hash);
-  o["Ponder"]                      = Option(true);
-  o["OwnBook"]                     = Option(false);
-  o["MultiPV"]                     = Option(1, 1, 500);
-  o["Skill Level"]                 = Option(20, 0, 20);
-  o["Emergency Move Horizon"]      = Option(40, 0, 50);
-  o["Emergency Base Time"]         = Option(60, 0, 30000);
-  o["Emergency Move Time"]         = Option(30, 0, 5000);
-  o["Minimum Thinking Time"]       = Option(20, 0, 5000);
-  o["Slow Mover"]                  = Option(80, 10, 1000);
-  o["UCI_Chess960"]                = Option(false);
+  o["Write Debug Log"]          = Option(false, on_logger);
+  o["Write Search Log"]         = Option(false);
+  o["Search Log Filename"]      = Option("SearchLog.txt");
+  o["Book File"]                = Option("book.bin");
+  o["Best Book Move"]           = Option(false);
+  o["Contempt Factor"]          = Option(0, -50,  50);
+  o["Mobility (Midgame)"]       = Option(100, 0, 200, on_eval);
+  o["Mobility (Endgame)"]       = Option(100, 0, 200, on_eval);
+  o["Pawn Structure (Midgame)"] = Option(100, 0, 200, on_eval);
+  o["Pawn Structure (Endgame)"] = Option(100, 0, 200, on_eval);
+  o["Passed Pawns (Midgame)"]   = Option(100, 0, 200, on_eval);
+  o["Passed Pawns (Endgame)"]   = Option(100, 0, 200, on_eval);
+  o["Space"]                    = Option(100, 0, 200, on_eval);
+  o["Aggressiveness"]           = Option(100, 0, 200, on_eval);
+  o["Cowardice"]                = Option(100, 0, 200, on_eval);
+  o["Min Split Depth"]          = Option(0, 0, 12, on_threads);
+  o["Threads"]                  = Option(1, 1, MAX_THREADS, on_threads);
+  o["Idle Threads Sleep"]       = Option(true);
+  o["Hash"]                     = Option(32, 1, 16384, on_hash_size);
+  o["Clear Hash"]               = Option(on_clear_hash);
+  o["Ponder"]                   = Option(true);
+  o["OwnBook"]                  = Option(false);
+  o["MultiPV"]                  = Option(1, 1, 500);
+  o["Skill Level"]              = Option(20, 0, 20);
+  o["Emergency Move Horizon"]   = Option(40, 0, 50);
+  o["Emergency Base Time"]      = Option(60, 0, 30000);
+  o["Emergency Move Time"]      = Option(30, 0, 5000);
+  o["Minimum Thinking Time"]    = Option(20, 0, 5000);
+  o["Slow Mover"]               = Option(80, 10, 1000);
+  o["UCI_Chess960"]             = Option(false);
 }
 
 
