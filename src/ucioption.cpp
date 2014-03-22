@@ -92,7 +92,7 @@ void init(OptionsMap& o) {
 
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
-  for (size_t idx = 0; idx < om.size(); ++idx)
+  for (size_t idx = 0; idx < om.size() + 1; ++idx) // idx could start from 1
       for (OptionsMap::const_iterator it = om.begin(); it != om.end(); ++it)
           if (it->second.idx == idx)
           {
