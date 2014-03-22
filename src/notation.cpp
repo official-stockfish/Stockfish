@@ -70,7 +70,7 @@ const string move_to_uci(Move m, bool chess960) {
       return "0000";
 
   if (type_of(m) == CASTLING && !chess960)
-      to = (to > from ? FILE_G : FILE_C) | rank_of(from);
+      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
   string move = to_string(from) + to_string(to);
 
