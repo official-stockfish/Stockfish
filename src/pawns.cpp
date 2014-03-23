@@ -60,6 +60,9 @@ namespace {
   // Bonus for file distance of the two outermost pawns
   const Score PawnsFileSpan = S(0, 15);
 
+  // Unsupported pawn penalty
+  const Score UnsupportedPawnPenalty = S(20, 10);
+
   // Weakness of our pawn shelter in front of the king indexed by [rank]
   const Value ShelterWeakness[RANK_NB] =
   { V(100), V(0), V(27), V(73), V(92), V(101), V(101) };
@@ -86,10 +89,10 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b;
+    Bitboard b, p;
     Square s;
     File f;
-    bool passed, isolated, doubled, opposed, connected, backward, candidate;
+    bool passed, isolated, doubled, opposed, connected, backward, candidate, unsupported;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
 
@@ -113,16 +116,20 @@ namespace {
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
 
-        // Our rank plus previous one
-        b = rank_bb(s) | rank_bb(s - pawn_push(Us));
+        // Previous rank
+        p = rank_bb(s - pawn_push(Us));
 
-        // Flag the pawn as passed, isolated, doubled or
-        // connected (but not the backward one).
-        connected =   ourPawns   & adjacent_files_bb(f) & b;
-        isolated  = !(ourPawns   & adjacent_files_bb(f));
-        doubled   =   ourPawns   & forward_bb(Us, s);
-        opposed   =   theirPawns & forward_bb(Us, s);
-        passed    = !(theirPawns & passed_pawn_mask(Us, s));
+        // Our rank plus previous one
+        b = rank_bb(s) | p;
+
+        // Flag the pawn as passed, isolated, doubled,
+        // unsupported or connected (but not the backward one).
+        connected   =   ourPawns   & adjacent_files_bb(f) & b;
+        unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
+        isolated    = !(ourPawns   & adjacent_files_bb(f));
+        doubled     =   ourPawns   & forward_bb(Us, s);
+        opposed     =   theirPawns & forward_bb(Us, s);
+        passed      = !(theirPawns & passed_pawn_mask(Us, s));
 
         // Test for backward pawn.
         // If the pawn is passed, isolated, or connected it cannot be
@@ -165,6 +172,9 @@ namespace {
         // Score this pawn
         if (isolated)
             value -= Isolated[opposed][f];
+
+        if (unsupported && !isolated)
+            value -= UnsupportedPawnPenalty;
 
         if (doubled)
             value -= Doubled[f];
