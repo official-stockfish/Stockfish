@@ -54,7 +54,7 @@ struct TTEntry {
   Value eval_value() const { return (Value)evalValue; }
 
 private:
-  friend struct TranspositionTable;
+  friend class TranspositionTable;
 
   uint32_t key32;
   uint16_t move16;
