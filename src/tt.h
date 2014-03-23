@@ -37,25 +37,25 @@ struct TTEntry {
 
   void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value ev) {
 
-    key32        = (uint32_t)k;
-    move16       = (uint16_t)m;
-    bound8       = (uint8_t)b;
-    generation8  = (uint8_t)g;
-    value16      = (int16_t)v;
-    depth16      = (int16_t)d;
-    evalValue    = (int16_t)ev;
+    key32       = (uint32_t)k;
+    move16      = (uint16_t)m;
+    bound8      = (uint8_t)b;
+    generation8 = (uint8_t)g;
+    value16     = (int16_t)v;
+    depth16     = (int16_t)d;
+    evalValue   = (int16_t)ev;
   }
-  void set_generation(uint8_t g) { generation8 = g; }
 
-  uint32_t key() const      { return key32; }
-  Depth depth() const       { return (Depth)depth16; }
-  Move move() const         { return (Move)move16; }
-  Value value() const       { return (Value)value16; }
-  Bound bound() const       { return (Bound)bound8; }
-  int generation() const    { return (int)generation8; }
-  Value eval_value() const  { return (Value)evalValue; }
+  uint32_t key() const     { return key32; }
+  Move move() const        { return (Move)move16; }
+  Bound bound() const      { return (Bound)bound8; }
+  Value value() const      { return (Value)value16; }
+  Depth depth() const      { return (Depth)depth16; }
+  Value eval_value() const { return (Value)evalValue; }
 
 private:
+  friend struct TranspositionTable;
+
   uint32_t key32;
   uint16_t move16;
   uint8_t bound8, generation8;
@@ -79,7 +79,6 @@ public:
 
   const TTEntry* probe(const Key key) const;
   TTEntry* first_entry(const Key key) const;
-  void refresh(const TTEntry* tte) const;
   void resize(uint64_t mbSize);
   void clear();
   void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV);
@@ -101,15 +100,6 @@ extern TranspositionTable TT;
 inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
   return table + ((uint32_t)key & hashMask);
-}
-
-
-/// TranspositionTable::refresh() updates the 'generation' value of the TTEntry
-/// to avoid aging. It is normally called after a TT hit.
-
-inline void TranspositionTable::refresh(const TTEntry* tte) const {
-
-  const_cast<TTEntry*>(tte)->set_generation(generation);
 }
 
 #endif // #ifndef TT_H_INCLUDED
