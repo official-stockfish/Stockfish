@@ -961,8 +961,8 @@ Value do_evaluate(const Position& pos) {
     switch (idx) {
     case PST: case IMBALANCE: case PAWN: case TOTAL:
         ss << std::setw(20) << name << " |   ---   --- |   ---   --- | "
-           << std::setw(6)  << to_cp(mg_value(wScore)) << " "
-           << std::setw(6)  << to_cp(eg_value(wScore)) << " \n";
+           << std::setw(6)  << to_cp(mg_value(wScore - bScore)) << " "
+           << std::setw(6)  << to_cp(eg_value(wScore - bScore)) << " \n";
         break;
     default:
         ss << std::setw(20) << name << " | " << std::noshowpos
