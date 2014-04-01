@@ -47,6 +47,7 @@ public:
   Option(int v, int min, int max, OnChange = NULL);
 
   Option& operator=(const std::string& v);
+  Option& operator<<(const Option& o);
   operator int() const;
   operator std::string() const;
 
