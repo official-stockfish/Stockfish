@@ -204,8 +204,6 @@ namespace {
   const int BishopCheck       = 2;
   const int KnightCheck       = 3;
 
-  const int UnsupportedPinnedPiece = 2;
-
   // KingDanger[Color][attackUnits] contains the actual king danger weighted
   // scores, indexed by color and by a calculated integer number.
   Score KingDanger[COLOR_NB][128];
@@ -631,6 +629,7 @@ Value do_evaluate(const Position& pos) {
         // the pawn shelter (current 'score' value).
         attackUnits =  std::min(20, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
+                     + 2 * (ei.pinnedPieces[Us] != 0)
                      - mg_value(score) / 32;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
@@ -694,10 +693,6 @@ Value do_evaluate(const Position& pos) {
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
             attackUnits += KnightCheck * popcount<Max15>(b);
-
-        // Penalty for pinned pieces not defended by a pawn
-        if (ei.pinnedPieces[Us] & ~ei.attackedBy[Us][PAWN])
-            attackUnits += UnsupportedPinnedPiece;
 
         // To index KingDanger[] attackUnits must be in [0, 99] range
         attackUnits = std::min(99, std::max(0, attackUnits));
