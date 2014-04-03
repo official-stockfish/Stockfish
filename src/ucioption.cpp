@@ -139,13 +139,12 @@ Option::operator std::string() const {
 
 /// operator<<() inits options and assigns idx in the correct printing order
 
-Option& Option::operator<<(const Option& o) {
+void Option::operator<<(const Option& o) {
 
   static size_t index = 0;
 
   *this = o;
   idx = index++;
-  return *this;
 }
 
 
