@@ -91,7 +91,7 @@ namespace {
 
   // Evaluation weights, initialized from UCI options
   enum { Mobility, PawnStructure, PassedPawns, Space, KingDangerUs, KingDangerThem };
-  Score Weights[6];
+  struct Weight { int mg, eg; } Weights[6];
 
   typedef Value V;
   #define S(mg, eg) make_score(mg, eg)
@@ -233,8 +233,8 @@ namespace {
   Score evaluate_unstoppable_pawns(const Position& pos, Color us, const EvalInfo& ei);
 
   Value interpolate(const Score& v, Phase ph, ScaleFactor sf);
-  Score apply_weight(Score v, Score w);
-  Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
+  Score apply_weight(Score v, const Weight& w);
+  Weight weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight);
 }
 
 
@@ -925,22 +925,19 @@ Value do_evaluate(const Position& pos) {
   }
 
   // apply_weight() weights score v by score w trying to prevent overflow
-  Score apply_weight(Score v, Score w) {
+  Score apply_weight(Score v, const Weight& w) {
 
-    return make_score((int(mg_value(v)) * mg_value(w)) / 0x100,
-                      (int(eg_value(v)) * eg_value(w)) / 0x100);
+    return make_score(mg_value(v) * w.mg / 256, eg_value(v) * w.eg / 256);
   }
 
   // weight_option() computes the value of an evaluation weight, by combining
   // two UCI-configurable weights (midgame and endgame) with an internal weight.
 
-  Score weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight) {
+  Weight weight_option(const std::string& mgOpt, const std::string& egOpt, Score internalWeight) {
 
-    // Scale option value from 100 to 256
-    int mg = Options[mgOpt] * 256 / 100;
-    int eg = Options[egOpt] * 256 / 100;
-
-    return apply_weight(make_score(mg, eg), internalWeight);
+    Weight w = { Options[mgOpt] * mg_value(internalWeight) / 100,
+                 Options[egOpt] * eg_value(internalWeight) / 100 };
+    return w;
   }
 
 
