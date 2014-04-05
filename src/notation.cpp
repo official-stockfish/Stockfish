@@ -132,22 +132,22 @@ const string move_to_san(Position& pos, Move m) {
 
           while (b)
           {
-              Move move = make_move(pop_lsb(&b), to);
-              if (!pos.legal(move, pos.pinned_pieces(pos.side_to_move())))
-                  others ^= from_sq(move);
+              Square sq = pop_lsb(&b);
+              if (!pos.legal(make_move(sq, to), pos.pinned_pieces(us)))
+                  others ^= sq;
           }
 
-          if (others)
-          {
-              if (!(others & file_bb(from)))
-                  san += to_char(file_of(from));
+          if (!others)
+          { /* disambiguation is not needed */ }
 
-              else if (!(others & rank_bb(from)))
-                  san += to_char(rank_of(from));
+          else if (!(others & file_bb(from)))
+              san += to_char(file_of(from));
 
-              else
-                  san += to_string(from);
-          }
+          else if (!(others & rank_bb(from)))
+              san += to_char(rank_of(from));
+
+          else
+              san += to_string(from);
       }
       else if (pos.capture(m))
           san = to_char(file_of(from));
