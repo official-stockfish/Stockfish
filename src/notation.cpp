@@ -40,16 +40,16 @@ static const char* PieceToChar[COLOR_NB] = { " PNBRQK", " pnbrqk" };
 
 string score_to_uci(Value v, Value alpha, Value beta) {
 
-  stringstream s;
+  stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      s << "cp " << v * 100 / int(PawnValueMg);
+      ss << "cp " << v * 100 / int(PawnValueMg);
   else
-      s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+      ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
-  s << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
+  ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
-  return s.str();
+  return ss.str();
 }
 
 
@@ -177,7 +177,7 @@ const string move_to_san(Position& pos, Move m) {
 /// appended to the search log file. It uses the two helpers below to pretty
 /// format the time and score respectively.
 
-static string time_to_string(int64_t msecs) {
+static string format(int64_t msecs) {
 
   const int MSecMinute = 1000 * 60;
   const int MSecHour   = 1000 * 60 * 60;
@@ -186,71 +186,64 @@ static string time_to_string(int64_t msecs) {
   int64_t minutes =  (msecs % MSecHour) / MSecMinute;
   int64_t seconds = ((msecs % MSecHour) % MSecMinute) / 1000;
 
-  stringstream s;
+  stringstream ss;
 
   if (hours)
-      s << hours << ':';
+      ss << hours << ':';
 
-  s << setfill('0') << setw(2) << minutes << ':' << setw(2) << seconds;
+  ss << setfill('0') << setw(2) << minutes << ':' << setw(2) << seconds;
 
-  return s.str();
+  return ss.str();
 }
 
-static string score_to_string(Value v) {
+static string format(Value v) {
 
-  stringstream s;
+  stringstream ss;
 
   if (v >= VALUE_MATE_IN_MAX_PLY)
-      s << "#" << (VALUE_MATE - v + 1) / 2;
+      ss << "#" << (VALUE_MATE - v + 1) / 2;
 
   else if (v <= VALUE_MATED_IN_MAX_PLY)
-      s << "-#" << (VALUE_MATE + v) / 2;
+      ss << "-#" << (VALUE_MATE + v) / 2;
 
   else
-      s << setprecision(2) << fixed << showpos << double(v) / PawnValueMg;
+      ss << setprecision(2) << fixed << showpos << double(v) / PawnValueMg;
 
-  return s.str();
+  return ss.str();
 }
 
-string pretty_pv(Position& pos, int depth, Value value, uint64_t msecs, Move pv[]) {
+string pretty_pv(Position& pos, int depth, Value value, int64_t msecs, Move pv[]) {
 
   const uint64_t K = 1000;
   const uint64_t M = 1000000;
 
   std::stack<StateInfo> st;
   Move* m = pv;
-  string san, padding;
-  size_t length;
-  stringstream s;
+  string san, str, padding;
+  stringstream ss;
 
-  s << setw(2) << depth
-    << setw(8) << score_to_string(value)
-    << setw(8) << time_to_string(msecs);
+  ss << setw(2) << depth << setw(8) << format(value) << setw(8) << format(msecs);
 
   if (pos.nodes_searched() < M)
-      s << setw(8) << pos.nodes_searched() / 1 << "  ";
+      ss << setw(8) << pos.nodes_searched() / 1 << "  ";
 
   else if (pos.nodes_searched() < K * M)
-      s << setw(7) << pos.nodes_searched() / K << "K  ";
+      ss << setw(7) << pos.nodes_searched() / K << "K  ";
 
   else
-      s << setw(7) << pos.nodes_searched() / M << "M  ";
+      ss << setw(7) << pos.nodes_searched() / M << "M  ";
 
-  padding = string(s.str().length(), ' ');
-  length = padding.length();
+  str = ss.str();
+  padding = string(str.length(), ' ');
 
   while (*m != MOVE_NONE)
   {
-      san = move_to_san(pos, *m);
+      san = move_to_san(pos, *m) + ' ';
 
-      if (length + san.length() > 80)
-      {
-          s << "\n" + padding;
-          length = padding.length();
-      }
+      if ((str.length() + san.length()) % 80 <= san.length()) // Exceed 80 cols
+          str += "\n" + padding;
 
-      s << san << ' ';
-      length += san.length() + 1;
+      str += san;
 
       st.push(StateInfo());
       pos.do_move(*m++, st.top());
@@ -259,5 +252,5 @@ string pretty_pv(Position& pos, int depth, Value value, uint64_t msecs, Move pv[
   while (m != pv)
       pos.undo_move(*--m);
 
-  return s.str();
+  return str;
 }

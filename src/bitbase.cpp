@@ -114,7 +114,9 @@ namespace {
     result  = UNKNOWN;
 
     // Check if two pieces are on the same square or if a king can be captured
-    if (   square_distance(wksq, bksq) <= 1 || wksq == psq || bksq == psq
+    if (   square_distance(wksq, bksq) <= 1
+        || wksq == psq
+        || bksq == psq
         || (us == WHITE && (StepAttacksBB[PAWN][psq] & bksq)))
         result = INVALID;
 
