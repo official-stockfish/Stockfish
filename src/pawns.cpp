@@ -72,7 +72,7 @@ namespace {
   const Value StormDanger[3][RANK_NB] = {
   { V( 0),  V(64), V(128), V(51), V(26) },
   { V(26),  V(32), V( 96), V(38), V(20) },
-  { V( 0),  V( 0), V( 64), V(25), V(13) } };
+  { V( 0),  V( 0), V(160), V(25), V(13) } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
