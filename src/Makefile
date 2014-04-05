@@ -35,7 +35,7 @@ endif
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds and signature
-PGOBENCH = ./$(EXE) bench 32 1 10 default depth
+PGOBENCH = ./$(EXE) bench 32 1 1 default time
 SIGNBENCH = ./$(EXE) bench
 
 ### Object files
