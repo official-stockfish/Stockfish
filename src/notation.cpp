@@ -132,9 +132,9 @@ const string move_to_san(Position& pos, Move m) {
 
           while (b)
           {
-              Square sq = pop_lsb(&b);
-              if (!pos.legal(make_move(sq, to), pos.pinned_pieces(us)))
-                  others ^= sq;
+              Square s = pop_lsb(&b);
+              if (!pos.legal(make_move(s, to), pos.pinned_pieces(us)))
+                  others ^= s;
           }
 
           if (!others)

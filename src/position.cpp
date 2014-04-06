@@ -388,21 +388,21 @@ const string Position::fen() const {
   int emptyCnt;
   std::ostringstream ss;
 
-  for (Rank rank = RANK_8; rank >= RANK_1; --rank)
+  for (Rank r = RANK_8; r >= RANK_1; --r)
   {
-      for (File file = FILE_A; file <= FILE_H; ++file)
+      for (File f = FILE_A; f <= FILE_H; ++f)
       {
-          for (emptyCnt = 0; file <= FILE_H && empty(make_square(file, rank)); ++file)
+          for (emptyCnt = 0; f <= FILE_H && empty(make_square(f, r)); ++f)
               ++emptyCnt;
 
           if (emptyCnt)
               ss << emptyCnt;
 
-          if (file <= FILE_H)
-              ss << PieceToChar[piece_on(make_square(file, rank))];
+          if (f <= FILE_H)
+              ss << PieceToChar[piece_on(make_square(f, r))];
       }
 
-      if (rank > RANK_1)
+      if (r > RANK_1)
           ss << '/';
   }
 
@@ -433,7 +433,7 @@ const string Position::fen() const {
 /// Position::pretty() returns an ASCII representation of the position to be
 /// printed to the standard output together with the move's san notation.
 
-const string Position::pretty(Move move) const {
+const string Position::pretty(Move m) const {
 
   const string dottedLine =            "\n+---+---+---+---+---+---+---+---+";
   const string twoRows =  dottedLine + "\n|   | . |   | . |   | . |   | . |"
@@ -449,9 +449,9 @@ const string Position::pretty(Move move) const {
 
   std::ostringstream ss;
 
-  if (move)
+  if (m)
       ss << "\nMove: " << (sideToMove == BLACK ? ".." : "")
-         << move_to_san(*const_cast<Position*>(this), move);
+         << move_to_san(*const_cast<Position*>(this), m);
 
   ss << brd << "\nFen: " << fen() << "\nKey: " << std::hex << std::uppercase
      << std::setfill('0') << std::setw(16) << st->key << "\nCheckers: ";
@@ -1147,9 +1147,9 @@ void Position::flip() {
   string f, token;
   std::stringstream ss(fen());
 
-  for (Rank rank = RANK_8; rank >= RANK_1; --rank) // Piece placement
+  for (Rank r = RANK_8; r >= RANK_1; --r) // Piece placement
   {
-      std::getline(ss, token, rank > RANK_1 ? '/' : ' ');
+      std::getline(ss, token, r > RANK_1 ? '/' : ' ');
       f.insert(0, token + (f.empty() ? " " : "/"));
   }
 

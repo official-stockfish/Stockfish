@@ -357,13 +357,13 @@ inline Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) | pt);
 }
 
-inline PieceType type_of(Piece p)  {
-  return PieceType(p & 7);
+inline PieceType type_of(Piece pc)  {
+  return PieceType(pc & 7);
 }
 
-inline Color color_of(Piece p) {
-  assert(p != NO_PIECE);
-  return Color(p >> 3);
+inline Color color_of(Piece pc) {
+  assert(pc != NO_PIECE);
+  return Color(pc >> 3);
 }
 
 inline bool is_ok(Square s) {

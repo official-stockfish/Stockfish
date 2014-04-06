@@ -131,10 +131,10 @@ const std::string Bitboards::pretty(Bitboard b) {
 
   std::string s = "+---+---+---+---+---+---+---+---+\n";
 
-  for (Rank rank = RANK_8; rank >= RANK_1; --rank)
+  for (Rank r = RANK_8; r >= RANK_1; --r)
   {
-      for (File file = FILE_A; file <= FILE_H; ++file)
-          s.append(b & make_square(file, rank) ? "| X " : "|   ");
+      for (File f = FILE_A; f <= FILE_H; ++f)
+          s.append(b & make_square(f, r) ? "| X " : "|   ");
 
       s.append("|\n+---+---+---+---+---+---+---+---+\n");
   }

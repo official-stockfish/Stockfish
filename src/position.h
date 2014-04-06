@@ -75,7 +75,7 @@ const size_t StateCopySize64 = offsetof(StateInfo, key) / sizeof(uint64_t) + 1;
 class Position {
 public:
   Position() {}
-  Position(const Position& p, Thread* t) { *this = p; thisThread = t; }
+  Position(const Position& pos, Thread* t) { *this = pos; thisThread = t; }
   Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
   Position& operator=(const Position&);
   static void init();
@@ -113,7 +113,7 @@ public:
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
   Bitboard attackers_to(Square s, Bitboard occ) const;
-  Bitboard attacks_from(Piece p, Square s) const;
+  Bitboard attacks_from(Piece pc, Square s) const;
   template<PieceType> Bitboard attacks_from(Square s) const;
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
 
@@ -295,8 +295,8 @@ inline Bitboard Position::attacks_from<PAWN>(Square s, Color c) const {
   return StepAttacksBB[make_piece(c, PAWN)][s];
 }
 
-inline Bitboard Position::attacks_from(Piece p, Square s) const {
-  return attacks_bb(p, s, byTypeBB[ALL_PIECES]);
+inline Bitboard Position::attacks_from(Piece pc, Square s) const {
+  return attacks_bb(pc, s, byTypeBB[ALL_PIECES]);
 }
 
 inline Bitboard Position::attackers_to(Square s) const {

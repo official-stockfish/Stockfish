@@ -81,7 +81,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   followupmoves = fm;
   ss = s;
 
-  if (p.checkers())
+  if (pos.checkers())
       stage = EVASION;
 
   else
@@ -92,11 +92,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
 }
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
-                       Square sq) : pos(p), history(h), cur(moves), end(moves) {
+                       Square s) : pos(p), history(h), cur(moves), end(moves) {
 
   assert(d <= DEPTH_ZERO);
 
-  if (p.checkers())
+  if (pos.checkers())
       stage = EVASION;
 
   else if (d > DEPTH_QS_NO_CHECKS)
@@ -115,7 +115,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   else
   {
       stage = RECAPTURE;
-      recaptureSquare = sq;
+      recaptureSquare = s;
       ttm = MOVE_NONE;
   }
 

@@ -141,10 +141,10 @@ Option::operator std::string() const {
 
 void Option::operator<<(const Option& o) {
 
-  static size_t index = 0;
+  static size_t insert_order = 0;
 
   *this = o;
-  idx = index++;
+  idx = insert_order++;
 }
 
 

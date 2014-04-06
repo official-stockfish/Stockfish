@@ -42,7 +42,7 @@ struct Entry {
   Score space_weight() const { return spaceWeight; }
   Phase game_phase() const { return gamePhase; }
   bool specialized_eval_exists() const { return evaluationFunction != NULL; }
-  Value evaluate(const Position& p) const { return (*evaluationFunction)(p); }
+  Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
   ScaleFactor scale_factor(const Position& pos, Color c) const;
 
   Key key;
