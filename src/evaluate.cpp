@@ -939,7 +939,7 @@ Value do_evaluate(const Position& pos) {
 
   // Tracing function definitions
 
-  double Tracing::to_cp(Value v) { return double(v) / PawnValueMg; }
+  double Tracing::to_cp(Value v) { return double(v) / PawnValueEg; }
 
   void Tracing::add_term(int idx, Score wScore, Score bScore) {
 

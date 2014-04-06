@@ -43,7 +43,7 @@ string score_to_uci(Value v, Value alpha, Value beta) {
   stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      ss << "cp " << v * 100 / int(PawnValueMg);
+      ss << "cp " << v * 100 / int(PawnValueEg);
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
@@ -207,7 +207,7 @@ static string format(Value v) {
       ss << "-#" << (VALUE_MATE + v) / 2;
 
   else
-      ss << setprecision(2) << fixed << showpos << double(v) / PawnValueMg;
+      ss << setprecision(2) << fixed << showpos << double(v) / PawnValueEg;
 
   return ss.str();
 }
