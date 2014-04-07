@@ -79,6 +79,23 @@ namespace {
   }
 }
 
+
+/// Intel PEXT (parallel extraction) software implementation
+Bitboard pext(Bitboard b, Bitboard mask) {
+
+  Bitboard res = 0;
+
+  for (Bitboard bb = 1; mask; bb += bb)
+  {
+      if (b & mask & -mask)
+          res |= bb;
+
+      mask &= mask - 1;
+  }
+  return res;
+}
+
+
 /// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
 

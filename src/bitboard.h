@@ -23,6 +23,8 @@
 
 #include "types.h"
 
+extern Bitboard pext(Bitboard b, Bitboard mask);
+
 namespace Bitboards {
 
 void init();
