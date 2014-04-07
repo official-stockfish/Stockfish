@@ -23,8 +23,6 @@
 
 #include "types.h"
 
-extern Bitboard pext(Bitboard b, Bitboard mask);
-
 namespace Bitboards {
 
 void init();
@@ -244,7 +242,7 @@ FORCE_INLINE unsigned magic_index(Square s, Bitboard occ) {
   unsigned* const Shifts = Pt == ROOK ? RShifts : BShifts;
 
   if (HasPext)
-      return unsigned(pext(occ, Masks[s]));
+      return unsigned(_pext_u64(occ, Masks[s]));
 
   if (Is64Bit)
       return unsigned(((occ & Masks[s]) * Magics[s]) >> Shifts[s]);

@@ -79,23 +79,6 @@ namespace {
   }
 }
 
-
-/// Intel PEXT (parallel extraction) software implementation
-Bitboard pext(Bitboard b, Bitboard mask) {
-
-  Bitboard res = 0;
-
-  for (Bitboard bb = 1; mask; bb += bb)
-  {
-      if (b & mask & -mask)
-          res |= bb;
-
-      mask &= mask - 1;
-  }
-  return res;
-}
-
-
 /// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
 
@@ -299,7 +282,7 @@ namespace {
             reference[size] = sliding_attack(deltas, s, b);
 
             if (HasPext)
-                attacks[s][pext(occupancy[size], masks[s])] = reference[size];
+                attacks[s][_pext_u64(b, masks[s])] = reference[size];
 
             size++;
             b = (b - masks[s]) & masks[s];
