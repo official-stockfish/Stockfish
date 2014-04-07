@@ -243,6 +243,9 @@ FORCE_INLINE unsigned magic_index(Square s, Bitboard occ) {
   Bitboard* const Magics = Pt == ROOK ? RMagics : BMagics;
   unsigned* const Shifts = Pt == ROOK ? RShifts : BShifts;
 
+  if (HasPext)
+      return unsigned(pext(occ, Masks[s]));
+
   if (Is64Bit)
       return unsigned(((occ & Masks[s]) * Magics[s]) >> Shifts[s]);
 

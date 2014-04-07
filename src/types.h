@@ -79,6 +79,12 @@ const bool HasPopCnt = true;
 const bool HasPopCnt = false;
 #endif
 
+#ifdef USE_PEXT
+const bool HasPext = true;
+#else
+const bool HasPext = false;
+#endif
+
 #ifdef IS_64BIT
 const bool Is64Bit = true;
 #else
