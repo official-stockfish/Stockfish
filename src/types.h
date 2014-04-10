@@ -55,7 +55,7 @@
 #endif
 
 #if defined(USE_PEXT)
-#  include <x86intrin.h> // Gcc header for _pext_u64() intrinsic
+#  include <immintrin.h> // Header for _pext_u64() intrinsic
 #else
 #  define _pext_u64(b, m) (0)
 #endif
