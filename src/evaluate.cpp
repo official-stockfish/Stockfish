@@ -216,8 +216,8 @@ namespace {
   template<Color Us>
   void init_eval_info(const Position& pos, EvalInfo& ei);
 
-  template<bool Trace>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility);
+  template<PieceType Pt, Color Us, bool Trace>
+  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility, Bitboard* mobilityArea);
 
   template<Color Us, bool Trace>
   Score evaluate_king(const Position& pos, const EvalInfo& ei);
@@ -319,8 +319,21 @@ Value do_evaluate(const Position& pos) {
   init_eval_info<WHITE>(pos, ei);
   init_eval_info<BLACK>(pos, ei);
 
+  // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
+  Bitboard mobilityArea[] = { ~(ei.attackedBy[BLACK][PAWN] | pos.pieces(WHITE, PAWN, KING)),
+                              ~(ei.attackedBy[WHITE][PAWN] | pos.pieces(BLACK, PAWN, KING)) };
+
   // Evaluate pieces and mobility
-  score += evaluate_pieces<Trace>(pos, ei, mobility);
+  score += evaluate_pieces<KNIGHT, WHITE, Trace>(pos, ei, mobility, mobilityArea);
+
+  // Sum up all attacked squares (updated in evaluate_pieces)
+  ei.attackedBy[WHITE][ALL_PIECES] =  ei.attackedBy[WHITE][PAWN]   | ei.attackedBy[WHITE][KNIGHT]
+                                    | ei.attackedBy[WHITE][BISHOP] | ei.attackedBy[WHITE][ROOK]
+                                    | ei.attackedBy[WHITE][QUEEN]  | ei.attackedBy[WHITE][KING];
+
+  ei.attackedBy[BLACK][ALL_PIECES] =  ei.attackedBy[BLACK][PAWN]   | ei.attackedBy[BLACK][KNIGHT]
+                                    | ei.attackedBy[BLACK][BISHOP] | ei.attackedBy[BLACK][ROOK]
+                                    | ei.attackedBy[BLACK][QUEEN]  | ei.attackedBy[BLACK][KING];
 
   score += apply_weight(mobility[WHITE] - mobility[BLACK], Weights[Mobility]);
 
@@ -383,6 +396,8 @@ Value do_evaluate(const Position& pos) {
       Tracing::add_term(Tracing::PST, pos.psq_score());
       Tracing::add_term(Tracing::IMBALANCE, ei.mi->material_value());
       Tracing::add_term(PAWN, ei.pi->pawns_value());
+      Tracing::add_term(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
+                                         , apply_weight(mobility[BLACK], Weights[Mobility]));
       Score w = ei.mi->space_weight() * evaluate_space<WHITE>(pos, ei);
       Score b = ei.mi->space_weight() * evaluate_space<BLACK>(pos, ei);
       Tracing::add_term(Tracing::SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
@@ -452,7 +467,7 @@ Value do_evaluate(const Position& pos) {
   // evaluate_pieces() assigns bonuses and penalties to the pieces of a given color
 
   template<PieceType Pt, Color Us, bool Trace>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility, Bitboard mobilityArea) {
+  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility, Bitboard* mobilityArea) {
 
     Bitboard b;
     Square s;
@@ -489,8 +504,8 @@ Value do_evaluate(const Position& pos) {
                    | ei.attackedBy[Them][BISHOP]
                    | ei.attackedBy[Them][ROOK]);
 
-        int mob = Pt != QUEEN ? popcount<Max15>(b & mobilityArea)
-                              : popcount<Full >(b & mobilityArea);
+        int mob = Pt != QUEEN ? popcount<Max15>(b & mobilityArea[Us])
+                              : popcount<Full >(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt][mob];
 
@@ -572,46 +587,15 @@ Value do_evaluate(const Position& pos) {
     if (Trace)
         Tracing::terms[Us][Pt] = score;
 
-    return score;
+    const PieceType NextPt = (Us == WHITE ? Pt : PieceType(Pt + 1));
+
+    return score - evaluate_pieces<NextPt, Them, Trace>(pos, ei, mobility, mobilityArea);
   }
 
-
-  // evaluate_pieces() assigns bonuses and penalties to all the pieces of both colors
-
-  template<bool Trace>
-  Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility) {
-
-    // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
-    const Bitboard whiteMobilityArea = ~(ei.attackedBy[BLACK][PAWN] | pos.pieces(WHITE, PAWN, KING));
-    const Bitboard blackMobilityArea = ~(ei.attackedBy[WHITE][PAWN] | pos.pieces(BLACK, PAWN, KING));
-
-    Score score;
-
-    score  =  evaluate_pieces<KNIGHT, WHITE, Trace>(pos, ei, mobility, whiteMobilityArea)
-            - evaluate_pieces<KNIGHT, BLACK, Trace>(pos, ei, mobility, blackMobilityArea);
-    score +=  evaluate_pieces<BISHOP, WHITE, Trace>(pos, ei, mobility, whiteMobilityArea)
-            - evaluate_pieces<BISHOP, BLACK, Trace>(pos, ei, mobility, blackMobilityArea);
-    score +=  evaluate_pieces<  ROOK, WHITE, Trace>(pos, ei, mobility, whiteMobilityArea)
-            - evaluate_pieces<  ROOK, BLACK, Trace>(pos, ei, mobility, blackMobilityArea);
-    score +=  evaluate_pieces< QUEEN, WHITE, Trace>(pos, ei, mobility, whiteMobilityArea)
-            - evaluate_pieces< QUEEN, BLACK, Trace>(pos, ei, mobility, blackMobilityArea);
-
-    // Sum up all attacked squares (updated in evaluate_pieces)
-    ei.attackedBy[WHITE][ALL_PIECES] =  ei.attackedBy[WHITE][PAWN]   | ei.attackedBy[WHITE][KNIGHT]
-                                      | ei.attackedBy[WHITE][BISHOP] | ei.attackedBy[WHITE][ROOK]
-                                      | ei.attackedBy[WHITE][QUEEN]  | ei.attackedBy[WHITE][KING];
-
-    ei.attackedBy[BLACK][ALL_PIECES] =  ei.attackedBy[BLACK][PAWN]   | ei.attackedBy[BLACK][KNIGHT]
-                                      | ei.attackedBy[BLACK][BISHOP] | ei.attackedBy[BLACK][ROOK]
-                                      | ei.attackedBy[BLACK][QUEEN]  | ei.attackedBy[BLACK][KING];
-    if (Trace)
-    {
-        Tracing::terms[WHITE][Tracing::MOBILITY] = apply_weight(mobility[WHITE], Weights[Mobility]);
-        Tracing::terms[BLACK][Tracing::MOBILITY] = apply_weight(mobility[BLACK], Weights[Mobility]);
-    }
-
-    return score;
-  }
+  template<>
+  Score evaluate_pieces<KING, WHITE, false>(const Position&, EvalInfo&, Score*, Bitboard*) { return SCORE_ZERO; }
+  template<>
+  Score evaluate_pieces<KING, WHITE,  true>(const Position&, EvalInfo&, Score*, Bitboard*) { return SCORE_ZERO; }
 
 
   // evaluate_king() assigns bonuses and penalties to a king of a given color
