@@ -89,10 +89,10 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p;
+    Bitboard b, p, doubled;
     Square s;
     File f;
-    bool passed, isolated, doubled, opposed, connected, backward, candidate, unsupported;
+    bool passed, isolated, opposed, connected, backward, candidate, unsupported;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
 
@@ -177,7 +177,7 @@ namespace {
             value -= UnsupportedPawnPenalty;
 
         if (doubled)
-            value -= Doubled[f];
+            value -= Doubled[f] / rank_distance(s, lsb(doubled));
 
         if (backward)
             value -= Backward[opposed][f];
