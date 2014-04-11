@@ -111,15 +111,15 @@ namespace {
   // friendly pieces.
   const Score MobilityBonus[][32] = {
     {}, {},
-    { S(-35,-30), S(-22,-20), S(-9,-10), S( 3,  0), S(15, 10), S(27, 20), // Knights
+    { S(-65,-50), S(-42,-30), S(-9,-10), S( 3,  0), S(15, 10), S(27, 20), // Knights
       S( 37, 28), S( 42, 31), S(44, 33) },
-    { S(-22,-27), S( -8,-13), S( 6,  1), S(20, 15), S(34, 29), S(48, 43), // Bishops
+    { S(-52,-47), S(-28,-23), S( 6,  1), S(20, 15), S(34, 29), S(48, 43), // Bishops
       S( 60, 55), S( 68, 63), S(74, 68), S(77, 72), S(80, 75), S(82, 77),
       S( 84, 79), S( 86, 81) },
-    { S(-17,-33), S(-11,-16), S(-5,  0), S( 1, 16), S( 7, 32), S(13, 48), // Rooks
+    { S(-47,-53), S(-31,-26), S(-5,  0), S( 1, 16), S( 7, 32), S(13, 48), // Rooks
       S( 18, 64), S( 22, 80), S(26, 96), S(29,109), S(31,115), S(33,119),
       S( 35,122), S( 36,123), S(37,124) },
-    { S(-12,-20), S( -8,-13), S(-5, -7), S( 0,  0), S( 6, 10), S(11, 19), // Queens
+    { S(-42,-40), S(-28,-23), S(-5, -7), S( 0,  0), S( 6, 10), S(11, 19), // Queens
       S( 13, 29), S( 18, 38), S(20, 40), S(21, 41), S(22, 41), S(22, 41),
       S( 22, 41), S( 23, 41), S(24, 41), S(25, 41), S(25, 41), S(25, 41),
       S( 25, 41), S( 25, 41), S(25, 41), S(25, 41), S(25, 41), S(25, 41),
@@ -171,7 +171,6 @@ namespace {
   const Score UndefendedMinor  = make_score(25, 10);
   const Score TrappedRook      = make_score(90,  0);
   const Score Unstoppable      = make_score( 0, 20);
-  const Score LowMobPenalty    = make_score(40, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -186,8 +185,6 @@ namespace {
     (FileCBB | FileDBB | FileEBB | FileFBB) & (Rank2BB | Rank3BB | Rank4BB),
     (FileCBB | FileDBB | FileEBB | FileFBB) & (Rank7BB | Rank6BB | Rank5BB)
   };
-
-  const Bitboard EdgeBB = Rank1BB | Rank8BB | FileABB | FileHBB;
 
   // King danger constants and variables. The king danger scores are taken
   // from KingDanger[]. Various little "meta-bonuses" measuring the strength
@@ -501,9 +498,6 @@ Value do_evaluate(const Position& pos) {
                               : popcount<Full >(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt][mob];
-
-        if (mob <= 1 && (EdgeBB & s))
-            score -= LowMobPenalty;
 
         // Decrease score if we are attacked by an enemy pawn. The remaining part
         // of threat evaluation must be done later when we have full attack info.
