@@ -319,22 +319,15 @@ Value do_evaluate(const Position& pos) {
   init_eval_info<WHITE>(pos, ei);
   init_eval_info<BLACK>(pos, ei);
 
+  ei.attackedBy[WHITE][ALL_PIECES] |= ei.attackedBy[WHITE][KING];
+  ei.attackedBy[BLACK][ALL_PIECES] |= ei.attackedBy[BLACK][KING];
+
   // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
   Bitboard mobilityArea[] = { ~(ei.attackedBy[BLACK][PAWN] | pos.pieces(WHITE, PAWN, KING)),
                               ~(ei.attackedBy[WHITE][PAWN] | pos.pieces(BLACK, PAWN, KING)) };
 
   // Evaluate pieces and mobility
   score += evaluate_pieces<KNIGHT, WHITE, Trace>(pos, ei, mobility, mobilityArea);
-
-  // Sum up all attacked squares (updated in evaluate_pieces)
-  ei.attackedBy[WHITE][ALL_PIECES] =  ei.attackedBy[WHITE][PAWN]   | ei.attackedBy[WHITE][KNIGHT]
-                                    | ei.attackedBy[WHITE][BISHOP] | ei.attackedBy[WHITE][ROOK]
-                                    | ei.attackedBy[WHITE][QUEEN]  | ei.attackedBy[WHITE][KING];
-
-  ei.attackedBy[BLACK][ALL_PIECES] =  ei.attackedBy[BLACK][PAWN]   | ei.attackedBy[BLACK][KNIGHT]
-                                    | ei.attackedBy[BLACK][BISHOP] | ei.attackedBy[BLACK][ROOK]
-                                    | ei.attackedBy[BLACK][QUEEN]  | ei.attackedBy[BLACK][KING];
-
   score += apply_weight(mobility[WHITE] - mobility[BLACK], Weights[Mobility]);
 
   // Evaluate kings after all other pieces because we need complete attack
@@ -422,7 +415,7 @@ Value do_evaluate(const Position& pos) {
     ei.pinnedPieces[Us] = pos.pinned_pieces(Us);
 
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
-    ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
+    ei.attackedBy[Us][ALL_PIECES] = ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
 
     // Init king safety tables only if we are going to use them
     if (pos.count<QUEEN>(Us) && pos.non_pawn_material(Us) > QueenValueMg + PawnValueMg)
@@ -488,7 +481,7 @@ Value do_evaluate(const Position& pos) {
         if (ei.pinnedPieces[Us] & s)
             b &= LineBB[pos.king_square(Us)][s];
 
-        ei.attackedBy[Us][Pt] |= b;
+        ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][Pt] |= b;
 
         if (b & ei.kingRing[Them])
         {
