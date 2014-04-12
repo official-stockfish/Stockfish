@@ -18,7 +18,6 @@
 */
 
 #include <iostream>
-#include <string>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -42,12 +41,7 @@ int main(int argc, char* argv[]) {
   Threads.init();
   TT.resize(Options["Hash"]);
 
-  std::string args;
-
-  for (int i = 1; i < argc; ++i)
-      args += std::string(argv[i]) + " ";
-
-  UCI::loop(args);
+  UCI::loop(argc, argv);
 
   Threads.exit();
 }

@@ -143,13 +143,16 @@ namespace {
 /// that we exit gracefully if the GUI dies unexpectedly. In addition to the UCI
 /// commands, the function also supports a few debug commands.
 
-void UCI::loop(const string& args) {
+void UCI::loop(int argc, char* argv[]) {
 
   Position pos(StartFEN, false, Threads.main()); // The root position
-  string token, cmd = args;
+  string token, cmd;
+
+  for (int i = 1; i < argc; ++i)
+      cmd += std::string(argv[i]) + " ";
 
   do {
-      if (args.empty() && !getline(cin, cmd)) // Block here waiting for input
+      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input
           cmd = "quit";
 
       istringstream is(cmd);
@@ -208,7 +211,7 @@ void UCI::loop(const string& args) {
       else
           sync_cout << "Unknown command: " << cmd << sync_endl;
 
-  } while (token != "quit" && args.empty()); // Args have one-shot behaviour
+  } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
   Threads.wait_for_think_finished(); // Cannot quit whilst the search is running
 }
