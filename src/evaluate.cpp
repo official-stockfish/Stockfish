@@ -207,7 +207,7 @@ namespace {
   Score KingDanger[COLOR_NB][128];
 
 
-  // apply_weight() weights score v by score w trying to prevent overflow
+  // apply_weight() weighs score 'v' by weight 'w' trying to prevent overflow
   Score apply_weight(Score v, const Weight& w) {
     return make_score(mg_value(v) * w.mg / 256, eg_value(v) * w.eg / 256);
   }
@@ -924,9 +924,8 @@ namespace {
 
 namespace Eval {
 
-  /// evaluate() is the main evaluation function. It always computes two
-  /// values, an endgame score and a middlegame score, and interpolates
-  /// between them based on the remaining material.
+  /// evaluate() is the main evaluation function. It returns a static evaluation
+  /// of the position always from the point of view of the side to move.
 
   Value evaluate(const Position& pos) {
     return do_evaluate<false>(pos);
