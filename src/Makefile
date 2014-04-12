@@ -358,9 +358,7 @@ help:
 	@echo "Supported targets:"
 	@echo ""
 	@echo "build                   > Standard build"
-	@echo "signature-build         > Standard build with embedded signature"
 	@echo "profile-build           > PGO build"
-	@echo "signature-profile-build > PGO build with embedded signature"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
@@ -399,7 +397,7 @@ help:
 	@echo "make build ARCH=x86-32    (This is for 32-bit systems)"
 	@echo ""
 
-.PHONY: build profile-build embed-signature
+.PHONY: build profile-build
 build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
@@ -423,18 +421,6 @@ profile-build:
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_clean)
-
-embed-signature:
-	@echo "Running benchmark for getting the signature ..."
-	@$(SIGNBENCH) 2>&1 | sed -n 's/Nodes searched  : \(.*\)/\/string Version\/s\/"\\(.*\\)"\/"sig-\1"\//p' > sign.txt
-	@sed -f sign.txt misc.cpp > misc2.cpp
-	@mv misc2.cpp misc.cpp
-	@rm sign.txt
-
-signature-build: build embed-signature
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
-
-signature-profile-build: build embed-signature profile-build
 
 strip:
 	strip $(EXE)
