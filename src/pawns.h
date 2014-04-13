@@ -26,11 +26,9 @@
 
 namespace Pawns {
 
-/// Pawns::Entry contains various information about a pawn structure. Currently,
-/// it only includes a middlegame and endgame pawn structure evaluation, and a
-/// bitboard of passed pawns. We may want to add further information in the future.
-/// A lookup to the pawn hash table (performed by calling the probe function)
-/// returns a pointer to an Entry object.
+/// Pawns::Entry contains various information about a pawn structure. A lookup
+/// to the pawn hash table (performed by calling the probe function) returns a
+/// pointer to an Entry object.
 
 struct Entry {
 
@@ -38,37 +36,42 @@ struct Entry {
   Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
   Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
   Bitboard candidate_pawns(Color c) const { return candidatePawns[c]; }
-  int pawns_on_same_color_squares(Color c, Square s) const { return pawnsOnSquares[c][!!(DarkSquares & s)]; }
-  int semiopen(Color c, File f) const { return semiopenFiles[c] & (1 << int(f)); }
-  int semiopen_on_side(Color c, File f, bool left) const {
 
-    return semiopenFiles[c] & (left ? ((1 << int(f)) - 1) : ~((1 << int(f+1)) - 1));
+  int semiopen_file(Color c, File f) const {
+    return semiopenFiles[c] & (1 << f);
+  }
+
+  int semiopen_side(Color c, File f, bool leftSide) const {
+    return semiopenFiles[c] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
+  }
+
+  int pawns_on_same_color_squares(Color c, Square s) const {
+    return pawnsOnSquares[c][!!(DarkSquares & s)];
   }
 
   template<Color Us>
   Score king_safety(const Position& pos, Square ksq)  {
-
-    return kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
-         ? kingSafety[Us] : update_safety<Us>(pos, ksq);
+    return  kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
+          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos, ksq));
   }
 
   template<Color Us>
-  Score update_safety(const Position& pos, Square ksq);
+  Score do_king_safety(const Position& pos, Square ksq);
 
   template<Color Us>
   Value shelter_storm(const Position& pos, Square ksq);
 
   Key key;
+  Score value;
   Bitboard passedPawns[COLOR_NB];
   Bitboard candidatePawns[COLOR_NB];
   Bitboard pawnAttacks[COLOR_NB];
   Square kingSquares[COLOR_NB];
+  Score kingSafety[COLOR_NB];
   int minKPdistance[COLOR_NB];
   int castlingRights[COLOR_NB];
-  Score value;
   int semiopenFiles[COLOR_NB];
-  Score kingSafety[COLOR_NB];
-  int pawnsOnSquares[COLOR_NB][COLOR_NB];
+  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
 };
 
 typedef HashTable<Entry, 16384> Table;
@@ -76,6 +79,6 @@ typedef HashTable<Entry, 16384> Table;
 void init();
 Entry* probe(const Position& pos, Table& entries);
 
-}
+} // namespace Pawns
 
 #endif // #ifndef PAWNS_H_INCLUDED

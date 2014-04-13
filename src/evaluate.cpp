@@ -379,10 +379,10 @@ namespace {
             }
 
             // Give a bonus for a rook on a open or semi-open file
-            if (ei.pi->semiopen(Us, file_of(s)))
-                score += ei.pi->semiopen(Them, file_of(s)) ? RookOpenFile : RookSemiopenFile;
+            if (ei.pi->semiopen_file(Us, file_of(s)))
+                score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOpenFile : RookSemiopenFile;
 
-            if (mob > 3 || ei.pi->semiopen(Us, file_of(s)))
+            if (mob > 3 || ei.pi->semiopen_file(Us, file_of(s)))
                 continue;
 
             Square ksq = pos.king_square(Us);
@@ -391,8 +391,8 @@ namespace {
             // king has lost its castling capability.
             if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
-                && !ei.pi->semiopen_on_side(Us, file_of(ksq), file_of(ksq) < FILE_E))
-                score -= (TrappedRook - make_score(mob * 8, 0)) * (pos.can_castle(Us) ? 1 : 2);
+                && !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
+                score -= (TrappedRook - make_score(mob * 8, 0)) * (1 + !pos.can_castle(Us));
         }
 
         // An important Chess960 pattern: A cornered bishop blocked by a friendly
