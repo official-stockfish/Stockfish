@@ -160,17 +160,17 @@ namespace {
 
   #undef S
 
-  const Score Tempo            = make_score(24, 11);
-  const Score RookOn7th        = make_score(11, 20);
-  const Score RookOnPawn       = make_score(10, 28);
-  const Score RookOpenFile     = make_score(43, 21);
-  const Score RookSemiopenFile = make_score(19, 10);
-  const Score BishopPawns      = make_score( 8, 12);
-  const Score KnightPawns      = make_score( 8,  4);
-  const Score MinorBehindPawn  = make_score(16,  0);
-  const Score UndefendedMinor  = make_score(25, 10);
-  const Score TrappedRook      = make_score(161,89);
-  const Score Unstoppable      = make_score( 0, 20);
+  const Score Tempo            = make_score( 24, 11);
+  const Score RookOn7th        = make_score( 11, 20);
+  const Score RookOnPawn       = make_score( 10, 28);
+  const Score RookOpenFile     = make_score( 43, 21);
+  const Score RookSemiopenFile = make_score( 19, 10);
+  const Score BishopPawns      = make_score(  8, 12);
+  const Score KnightPawns      = make_score(  8,  4);
+  const Score MinorBehindPawn  = make_score( 16,  0);
+  const Score UndefendedMinor  = make_score( 25, 10);
+  const Score TrappedRook      = make_score(111, 27);
+  const Score Unstoppable      = make_score(  0, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
