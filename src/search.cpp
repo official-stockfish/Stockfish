@@ -45,6 +45,7 @@ namespace Search {
   Color RootColor;
   Time::point SearchTime;
   StateStackPtr SetupStates;
+  Value Contempt[2]; // [bestValue > VALUE_DRAW]
 }
 
 using std::string;
@@ -185,9 +186,8 @@ void Search::think() {
   RootColor = RootPos.side_to_move();
   TimeMgr.init(Limits, RootPos.game_ply(), RootColor);
 
-  int cf = Options["Contempt Factor"] * PawnValueEg / 100; // From centipawns
-  DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
-  DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
+  Contempt[0] =  Options["Contempt Factor"] * PawnValueEg / 100; // From centipawns
+  Contempt[1] = (Options["Contempt Factor"] + 12) * PawnValueEg / 100;
 
   if (RootMoves.empty())
   {
@@ -338,6 +338,9 @@ namespace {
             while (true)
             {
                 bestValue = search<Root>(pos, ss, alpha, beta, depth * ONE_PLY, false);
+
+                DrawValue[ RootColor] = VALUE_DRAW - Contempt[bestValue > VALUE_DRAW];
+                DrawValue[~RootColor] = VALUE_DRAW + Contempt[bestValue > VALUE_DRAW];
 
                 // Bring the best move to the front. It is critical that sorting
                 // is done with a stable algorithm because all the values but the
