@@ -633,19 +633,17 @@ namespace {
                 else
                     defendedSquares = squaresToQueen & ei.attackedBy[Us][ALL_PIECES];
 
-                // If there aren't any enemy attacks, then assign a huge bonus.
-                // The bonus will be a bit smaller if at least the block square
-                // isn't attacked, otherwise assign the smallest possible bonus.
-                int k = !unsafeSquares ? 15 : !(unsafeSquares & blockSq) ? 9 : 3;
+                // If there aren't any enemy attacks, assign a big bonus. Otherwise
+                // assign a smaller bonus if the block square isn't attacked.
+                int k = !unsafeSquares ? 15 : !(unsafeSquares & blockSq) ? 9 : 0;
 
-                // Assign a big bonus if the path to the queen is fully defended,
-                // otherwise assign a bit less of a bonus if at least the block
-                // square is defended.
+                // If the path to queen is fully defended, assign a big bonus.
+                // Otherwise assign a smaller bonus if the block square is defended.
                 if (defendedSquares == squaresToQueen)
                     k += 6;
 
                 else if (defendedSquares & blockSq)
-                    k += (unsafeSquares & defendedSquares) == unsafeSquares ? 4 : 2;
+                    k += 4;
 
                 mbonus += Value(k * rr), ebonus += Value(k * rr);
             }
