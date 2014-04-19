@@ -34,7 +34,7 @@ namespace {
   // Polynomial material balance parameters
 
   //                                  pair  pawn knight bishop rook queen
-  const int LinearCoefficients[6] = { 1852, -162, -1122, -183,  249, -52 };
+  const int LinearCoefficients[6] = { 1852, -162, -1122, -183,  249, -157 };
 
   const int QuadraticCoefficientsSameColor[][PIECE_TYPE_NB] = {
     // pair pawn knight bishop rook queen
@@ -43,7 +43,7 @@ namespace {
     {  35,  271,  -4                    }, // Knight
     {   0,  105,   4,    0              }, // Bishop
     { -27,   -2,  46,   100,  -141      }, // Rook
-    {  58,   29,  83,   148,  -163,   0 }  // Queen
+    {-161,   30, 126,   144,  -127,   0 }  // Queen
   };
 
   const int QuadraticCoefficientsOppositeColor[][PIECE_TYPE_NB] = {
@@ -54,7 +54,7 @@ namespace {
     {  10,   62,   0                    }, // Knight      OUR PIECES
     {  57,   64,  39,     0             }, // Bishop
     {  50,   40,  23,   -22,    0       }, // Rook
-    { 106,  101,   3,   151,  171,    0 }  // Queen
+    { 103,   90, -40,   142,  268,    0 }  // Queen
   };
 
   // Endgame evaluation and scaling functions are accessed directly and not through
@@ -114,16 +114,6 @@ namespace {
                 + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
 
         value += pc * v;
-    }
-
-    // Queen vs. 3 minors slightly favours the minors
-    if (pieceCount[Us][QUEEN] == 1 && pieceCount[Them][QUEEN] == 0)
-    {
-        int n = pieceCount[Them][KNIGHT] - pieceCount[Us][KNIGHT];
-        int b = pieceCount[Them][BISHOP] - pieceCount[Us][BISHOP];
-
-        if ((n == 2 && b == 1) || (n == 1 && b == 2))
-            value -= 66 * 16;
     }
 
     return value;
