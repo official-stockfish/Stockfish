@@ -161,7 +161,6 @@ namespace {
   #undef S
 
   const Score Tempo            = make_score(24, 11);
-  const Score RookOn7th        = make_score(11, 20);
   const Score RookOnPawn       = make_score(10, 28);
   const Score RookOpenFile     = make_score(43, 21);
   const Score RookSemiopenFile = make_score(19, 10);
@@ -360,11 +359,6 @@ namespace {
 
         if (Pt == ROOK)
         {
-            // Rook on 7th rank and enemy king trapped on 8th
-            if (   relative_rank(Us, s) == RANK_7
-                && relative_rank(Us, pos.king_square(Them)) == RANK_8)
-                score += RookOn7th;
-
             // Rook piece attacking enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
             {
