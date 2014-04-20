@@ -7,7 +7,7 @@ Partner or Fritz) in order to be used comfortably. Read the
 documentation for your GUI of choice for information about how to use
 Stockfish with it.
 
-This version of Stockfish supports up to 64 CPUs. The engine defaults
+This version of Stockfish supports up to 128 CPUs. The engine defaults
 to one search thread, so it is therefore recommended to inspect the value of
 the *Threads* UCI parameter, and to make sure it equals the number of CPU
 cores on your computer.

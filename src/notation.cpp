@@ -40,16 +40,16 @@ static const char* PieceToChar[COLOR_NB] = { " PNBRQK", " pnbrqk" };
 
 string score_to_uci(Value v, Value alpha, Value beta) {
 
-  stringstream s;
+  stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      s << "cp " << v * 100 / int(PawnValueMg);
+      ss << "cp " << v * 100 / int(PawnValueEg);
   else
-      s << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
+      ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
-  s << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
+  ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
-  return s.str();
+  return ss.str();
 }
 
 
@@ -70,9 +70,9 @@ const string move_to_uci(Move m, bool chess960) {
       return "0000";
 
   if (type_of(m) == CASTLING && !chess960)
-      to = (to > from ? FILE_G : FILE_C) | rank_of(from);
+      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
-  string move = square_to_string(from) + square_to_string(to);
+  string move = to_string(from) + to_string(to);
 
   if (type_of(m) == PROMOTION)
       move += PieceToChar[BLACK][promotion_type(m)]; // Lower case
@@ -132,30 +132,30 @@ const string move_to_san(Position& pos, Move m) {
 
           while (b)
           {
-              Move move = make_move(pop_lsb(&b), to);
-              if (!pos.legal(move, pos.pinned_pieces(pos.side_to_move())))
-                  others ^= from_sq(move);
+              Square s = pop_lsb(&b);
+              if (!pos.legal(make_move(s, to), pos.pinned_pieces(us)))
+                  others ^= s;
           }
 
-          if (others)
-          {
-              if (!(others & file_bb(from)))
-                  san += file_to_char(file_of(from));
+          if (!others)
+          { /* disambiguation is not needed */ }
 
-              else if (!(others & rank_bb(from)))
-                  san += rank_to_char(rank_of(from));
+          else if (!(others & file_bb(from)))
+              san += to_char(file_of(from));
 
-              else
-                  san += square_to_string(from);
-          }
+          else if (!(others & rank_bb(from)))
+              san += to_char(rank_of(from));
+
+          else
+              san += to_string(from);
       }
       else if (pos.capture(m))
-          san = file_to_char(file_of(from));
+          san = to_char(file_of(from));
 
       if (pos.capture(m))
           san += 'x';
 
-      san += square_to_string(to);
+      san += to_string(to);
 
       if (type_of(m) == PROMOTION)
           san += string("=") + PieceToChar[WHITE][promotion_type(m)];
@@ -177,7 +177,7 @@ const string move_to_san(Position& pos, Move m) {
 /// appended to the search log file. It uses the two helpers below to pretty
 /// format the time and score respectively.
 
-static string time_to_string(int64_t msecs) {
+static string format(int64_t msecs) {
 
   const int MSecMinute = 1000 * 60;
   const int MSecHour   = 1000 * 60 * 60;
@@ -186,71 +186,64 @@ static string time_to_string(int64_t msecs) {
   int64_t minutes =  (msecs % MSecHour) / MSecMinute;
   int64_t seconds = ((msecs % MSecHour) % MSecMinute) / 1000;
 
-  stringstream s;
+  stringstream ss;
 
   if (hours)
-      s << hours << ':';
+      ss << hours << ':';
 
-  s << setfill('0') << setw(2) << minutes << ':' << setw(2) << seconds;
+  ss << setfill('0') << setw(2) << minutes << ':' << setw(2) << seconds;
 
-  return s.str();
+  return ss.str();
 }
 
-static string score_to_string(Value v) {
+static string format(Value v) {
 
-  stringstream s;
+  stringstream ss;
 
   if (v >= VALUE_MATE_IN_MAX_PLY)
-      s << "#" << (VALUE_MATE - v + 1) / 2;
+      ss << "#" << (VALUE_MATE - v + 1) / 2;
 
   else if (v <= VALUE_MATED_IN_MAX_PLY)
-      s << "-#" << (VALUE_MATE + v) / 2;
+      ss << "-#" << (VALUE_MATE + v) / 2;
 
   else
-      s << setprecision(2) << fixed << showpos << double(v) / PawnValueMg;
+      ss << setprecision(2) << fixed << showpos << double(v) / PawnValueEg;
 
-  return s.str();
+  return ss.str();
 }
 
-string pretty_pv(Position& pos, int depth, Value value, uint64_t msecs, Move pv[]) {
+string pretty_pv(Position& pos, int depth, Value value, int64_t msecs, Move pv[]) {
 
   const uint64_t K = 1000;
   const uint64_t M = 1000000;
 
   std::stack<StateInfo> st;
   Move* m = pv;
-  string san, padding;
-  size_t length;
-  stringstream s;
+  string san, str, padding;
+  stringstream ss;
 
-  s << setw(2) << depth
-    << setw(8) << score_to_string(value)
-    << setw(8) << time_to_string(msecs);
+  ss << setw(2) << depth << setw(8) << format(value) << setw(8) << format(msecs);
 
   if (pos.nodes_searched() < M)
-      s << setw(8) << pos.nodes_searched() / 1 << "  ";
+      ss << setw(8) << pos.nodes_searched() / 1 << "  ";
 
   else if (pos.nodes_searched() < K * M)
-      s << setw(7) << pos.nodes_searched() / K << "K  ";
+      ss << setw(7) << pos.nodes_searched() / K << "K  ";
 
   else
-      s << setw(7) << pos.nodes_searched() / M << "M  ";
+      ss << setw(7) << pos.nodes_searched() / M << "M  ";
 
-  padding = string(s.str().length(), ' ');
-  length = padding.length();
+  str = ss.str();
+  padding = string(str.length(), ' ');
 
   while (*m != MOVE_NONE)
   {
-      san = move_to_san(pos, *m);
+      san = move_to_san(pos, *m) + ' ';
 
-      if (length + san.length() > 80)
-      {
-          s << "\n" + padding;
-          length = padding.length();
-      }
+      if ((str.length() + san.length()) % 80 <= san.length()) // Exceed 80 cols
+          str += "\n" + padding;
 
-      s << san << ' ';
-      length += san.length() + 1;
+      str += san;
 
       st.push(StateInfo());
       pos.do_move(*m++, st.top());
@@ -259,5 +252,5 @@ string pretty_pv(Position& pos, int depth, Value value, uint64_t msecs, Move pv[
   while (m != pv)
       pos.undo_move(*--m);
 
-  return s.str();
+  return str;
 }

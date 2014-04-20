@@ -241,6 +241,9 @@ FORCE_INLINE unsigned magic_index(Square s, Bitboard occ) {
   Bitboard* const Magics = Pt == ROOK ? RMagics : BMagics;
   unsigned* const Shifts = Pt == ROOK ? RShifts : BShifts;
 
+  if (HasPext)
+      return unsigned(_pext_u64(occ, Masks[s]));
+
   if (Is64Bit)
       return unsigned(((occ & Masks[s]) * Magics[s]) >> Shifts[s]);
 
@@ -254,14 +257,14 @@ inline Bitboard attacks_bb(Square s, Bitboard occ) {
   return (Pt == ROOK ? RAttacks : BAttacks)[s][magic_index<Pt>(s, occ)];
 }
 
-inline Bitboard attacks_bb(Piece p, Square s, Bitboard occ) {
+inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occ) {
 
-  switch (type_of(p))
+  switch (type_of(pc))
   {
   case BISHOP: return attacks_bb<BISHOP>(s, occ);
   case ROOK  : return attacks_bb<ROOK>(s, occ);
   case QUEEN : return attacks_bb<BISHOP>(s, occ) | attacks_bb<ROOK>(s, occ);
-  default    : return StepAttacksBB[p][s];
+  default    : return StepAttacksBB[pc][s];
   }
 }
 
@@ -273,15 +276,15 @@ inline Bitboard attacks_bb(Piece p, Square s, Bitboard occ) {
 #  if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 
 FORCE_INLINE Square lsb(Bitboard b) {
-  unsigned long index;
-  _BitScanForward64(&index, b);
-  return (Square) index;
+  unsigned long idx;
+  _BitScanForward64(&idx, b);
+  return (Square) idx;
 }
 
 FORCE_INLINE Square msb(Bitboard b) {
-  unsigned long index;
-  _BitScanReverse64(&index, b);
-  return (Square) index;
+  unsigned long idx;
+  _BitScanReverse64(&idx, b);
+  return (Square) idx;
 }
 
 #  elif defined(__arm__)
@@ -302,15 +305,15 @@ FORCE_INLINE Square lsb(Bitboard b) {
 #  else
 
 FORCE_INLINE Square lsb(Bitboard b) { // Assembly code by Heinz van Saanen
-  Bitboard index;
-  __asm__("bsfq %1, %0": "=r"(index): "rm"(b) );
-  return (Square) index;
+  Bitboard idx;
+  __asm__("bsfq %1, %0": "=r"(idx): "rm"(b) );
+  return (Square) idx;
 }
 
 FORCE_INLINE Square msb(Bitboard b) {
-  Bitboard index;
-  __asm__("bsrq %1, %0": "=r"(index): "rm"(b) );
-  return (Square) index;
+  Bitboard idx;
+  __asm__("bsrq %1, %0": "=r"(idx): "rm"(b) );
+  return (Square) idx;
 }
 
 #  endif

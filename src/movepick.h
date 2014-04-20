@@ -42,25 +42,25 @@ struct Stats {
 
   static const Value Max = Value(2000);
 
-  const T* operator[](Piece p) const { return table[p]; }
+  const T* operator[](Piece pc) const { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
-  void update(Piece p, Square to, Move m) {
+  void update(Piece pc, Square to, Move m) {
 
-    if (m == table[p][to].first)
+    if (m == table[pc][to].first)
         return;
 
-    table[p][to].second = table[p][to].first;
-    table[p][to].first = m;
+    table[pc][to].second = table[pc][to].first;
+    table[pc][to].first = m;
   }
 
-  void update(Piece p, Square to, Value v) {
+  void update(Piece pc, Square to, Value v) {
 
     if (Gain)
-        table[p][to] = std::max(v, table[p][to] - 1);
+        table[pc][to] = std::max(v, table[pc][to] - 1);
 
-    else if (abs(table[p][to] + v) < Max)
-        table[p][to] +=  v;
+    else if (abs(table[pc][to] + v) < Max)
+        table[pc][to] +=  v;
   }
 
 private:

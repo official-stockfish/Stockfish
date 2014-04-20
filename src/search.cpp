@@ -185,6 +185,10 @@ void Search::think() {
   RootColor = RootPos.side_to_move();
   TimeMgr.init(Limits, RootPos.game_ply(), RootColor);
 
+  int cf = Options["Contempt Factor"] * PawnValueEg / 100; // From centipawns
+  DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
+  DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
+
   if (RootMoves.empty())
   {
       RootMoves.push_back(MOVE_NONE);
@@ -206,16 +210,6 @@ void Search::think() {
       }
   }
 
-  if (Options["Contempt Factor"] && !Options["UCI_AnalyseMode"])
-  {
-      int cf = Options["Contempt Factor"] * PawnValueMg / 100; // From centipawns
-      cf = cf * Material::game_phase(RootPos) / PHASE_MIDGAME; // Scale down with phase
-      DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
-      DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
-  }
-  else
-      DrawValue[WHITE] = DrawValue[BLACK] = VALUE_DRAW;
-
   if (Options["Write Search Log"])
   {
       Log log(Options["Search Log Filename"]);
@@ -225,7 +219,7 @@ void Search::think() {
           << " time: "        << Limits.time[RootColor]
           << " increment: "   << Limits.inc[RootColor]
           << " moves to go: " << Limits.movestogo
-          << std::endl;
+          << "\n" << std::endl;
   }
 
   // Reset the threads, still sleeping: will wake up at split time
@@ -397,8 +391,6 @@ namespace {
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
-        Time::point iterationTime = Time::now() - SearchTime;
-
         // If skill levels are enabled and time is up, pick a sub-optimal best move
         if (skill.enabled() && skill.time_to_pick(depth))
             skill.pick_move();
@@ -423,8 +415,6 @@ namespace {
         // Do we have time for the next iteration? Can we stop searching now?
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
-            bool stop = false; // Local variable, not the volatile Signals.stop
-
             // Take some extra time if the best move has changed
             if (depth > 4 && depth < 50 &&  MultiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
@@ -432,10 +422,7 @@ namespace {
             // Stop the search if only one legal move is available or all
             // of the available time has been used.
             if (   RootMoves.size() == 1
-                || iterationTime > TimeMgr.available_time() )
-                stop = true;
-
-            if (stop)
+                || Time::now() - SearchTime > TimeMgr.available_time())
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -547,7 +534,6 @@ namespace {
             : ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
                               : (tte->bound() &  BOUND_UPPER)))
     {
-        TT.refresh(tte);
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
         // If ttMove is quiet, update killers, history, counter move and followup move on TT hit
@@ -669,7 +655,7 @@ namespace {
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = std::min(beta + 200, VALUE_INFINITE);
-        Depth rdepth = depth - ONE_PLY - 3 * ONE_PLY;
+        Depth rdepth = depth - 4 * ONE_PLY;
 
         assert(rdepth >= ONE_PLY);
         assert((ss-1)->currentMove != MOVE_NONE);
@@ -1022,7 +1008,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // case of Signals.stop or thread.cutoff_occurred() are set, but this is
     // harmless because return value is discarded anyhow in the parent nodes.
     // If we are in a singular extension search then return a fail low score.
-    // A split node has at least one move - the one tried before to be splitted.
+    // A split node has at least one move - the one tried before to be split.
     if (!moveCount)
         return  excludedMove ? alpha
               : inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
@@ -1356,7 +1342,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta) {
 
-    std::stringstream s;
+    std::stringstream ss;
     Time::point elapsed = Time::now() - SearchTime + 1;
     size_t uciPVSize = std::min((size_t)Options["MultiPV"], RootMoves.size());
     int selDepth = 0;
@@ -1375,23 +1361,23 @@ moves_loop: // When in check and at SpNode search starts from here
         int d   = updated ? depth : depth - 1;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
-        if (s.rdbuf()->in_avail()) // Not at first line
-            s << "\n";
+        if (ss.rdbuf()->in_avail()) // Not at first line
+            ss << "\n";
 
-        s << "info depth " << d
-          << " seldepth "  << selDepth
-          << " score "     << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
-          << " nodes "     << pos.nodes_searched()
-          << " nps "       << pos.nodes_searched() * 1000 / elapsed
-          << " time "      << elapsed
-          << " multipv "   << i + 1
-          << " pv";
+        ss << "info depth " << d
+           << " seldepth "  << selDepth
+           << " score "     << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
+           << " nodes "     << pos.nodes_searched()
+           << " nps "       << pos.nodes_searched() * 1000 / elapsed
+           << " time "      << elapsed
+           << " multipv "   << i + 1
+           << " pv";
 
         for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; ++j)
-            s <<  " " << move_to_uci(RootMoves[i].pv[j], pos.is_chess960());
+            ss << " " << move_to_uci(RootMoves[i].pv[j], pos.is_chess960());
     }
 
-    return s.str();
+    return ss.str();
   }
 
 } // namespace
@@ -1483,7 +1469,7 @@ void Thread::idle_loop() {
           mutex.lock();
 
           // If we are master and all slaves have finished then exit idle_loop
-          if (this_sp && !this_sp->slavesMask)
+          if (this_sp && this_sp->slavesMask.none())
           {
               mutex.unlock();
               break;
@@ -1542,14 +1528,14 @@ void Thread::idle_loop() {
 
           searching = false;
           activePosition = NULL;
-          sp->slavesMask &= ~(1ULL << idx);
+          sp->slavesMask.reset(idx);
           sp->nodes += pos.nodes_searched();
 
           // Wake up the master thread so to allow it to return from the idle
           // loop in case we are the last slave of the split point.
           if (    Threads.sleepWhileIdle
               &&  this != sp->masterThread
-              && !sp->slavesMask)
+              &&  sp->slavesMask.none())
           {
               assert(!sp->masterThread->searching);
               sp->masterThread->notify_one();
@@ -1564,10 +1550,10 @@ void Thread::idle_loop() {
 
       // If this thread is the master of a split point and all slaves have finished
       // their work at this split point, return from the idle loop.
-      if (this_sp && !this_sp->slavesMask)
+      if (this_sp && this_sp->slavesMask.none())
       {
           this_sp->mutex.lock();
-          bool finished = !this_sp->slavesMask; // Retest under lock protection
+          bool finished = this_sp->slavesMask.none(); // Retest under lock protection
           this_sp->mutex.unlock();
           if (finished)
               return;
@@ -1610,13 +1596,10 @@ void check_time() {
               sp.mutex.lock();
 
               nodes += sp.nodes;
-              Bitboard sm = sp.slavesMask;
-              while (sm)
-              {
-                  Position* pos = Threads[pop_lsb(&sm)]->activePosition;
-                  if (pos)
-                      nodes += pos->nodes_searched();
-              }
+
+              for (size_t idx = 0; idx < Threads.size(); ++idx)
+                  if (sp.slavesMask.test(idx) && Threads[idx]->activePosition)
+                      nodes += Threads[idx]->activePosition->nodes_searched();
 
               sp.mutex.unlock();
           }

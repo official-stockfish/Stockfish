@@ -54,6 +54,12 @@
 #  include <nmmintrin.h> // Intel header for _mm_popcnt_u64() intrinsic
 #endif
 
+#if defined(USE_PEXT)
+#  include <immintrin.h> // Header for _pext_u64() intrinsic
+#else
+#  define _pext_u64(b, m) (0)
+#endif
+
 #  if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
 #   include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
 #  endif
@@ -77,6 +83,12 @@
 const bool HasPopCnt = true;
 #else
 const bool HasPopCnt = false;
+#endif
+
+#ifdef USE_PEXT
+const bool HasPext = true;
+#else
+const bool HasPext = false;
 #endif
 
 #ifdef IS_64BIT
@@ -116,20 +128,28 @@ enum MoveType {
   CASTLING  = 3 << 14
 };
 
-enum CastlingFlag {  // Defined as in PolyGlot book hash key
+enum Color {
+  WHITE, BLACK, NO_COLOR, COLOR_NB = 2
+};
+
+enum CastlingSide {
+  KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
+};
+
+enum CastlingRight {  // Defined as in PolyGlot book hash key
   NO_CASTLING,
   WHITE_OO,
   WHITE_OOO   = WHITE_OO << 1,
   BLACK_OO    = WHITE_OO << 2,
   BLACK_OOO   = WHITE_OO << 3,
   ANY_CASTLING = WHITE_OO | WHITE_OOO | BLACK_OO | BLACK_OOO,
-  CASTLING_FLAG_NB = 16
+  CASTLING_RIGHT_NB = 16
 };
 
-enum CastlingSide {
-  KING_SIDE,
-  QUEEN_SIDE,
-  CASTLING_SIDE_NB = 2
+template<Color C, CastlingSide S> struct MakeCastling {
+  static const CastlingRight
+  right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
+                     : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
 
 enum Phase {
@@ -157,9 +177,9 @@ enum Value {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
-  VALUE_MATE      = 30000,
-  VALUE_INFINITE  = 30001,
-  VALUE_NONE      = 30002,
+  VALUE_MATE      = 32000,
+  VALUE_INFINITE  = 32001,
+  VALUE_NONE      = 32002,
 
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + MAX_PLY,
@@ -185,10 +205,6 @@ enum Piece {
   W_PAWN = 1, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
   B_PAWN = 9, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
   PIECE_NB = 16
-};
-
-enum Color {
-  WHITE, BLACK, NO_COLOR, COLOR_NB = 2
 };
 
 enum Depth {
@@ -318,11 +334,11 @@ extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 struct ExtMove {
   Move move;
-  int score;
+  Value value;
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) {
-  return f.score < s.score;
+  return f.value < s.value;
 }
 
 inline Color operator~(Color c) {
@@ -333,8 +349,8 @@ inline Square operator~(Square s) {
   return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-inline Square operator|(File f, Rank r) {
-  return Square((r << 3) | f);
+inline CastlingRight operator|(Color c, CastlingSide s) {
+  return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
 }
 
 inline Value mate_in(int ply) {
@@ -345,21 +361,21 @@ inline Value mated_in(int ply) {
   return -VALUE_MATE + ply;
 }
 
+inline Square make_square(File f, Rank r) {
+  return Square((r << 3) | f);
+}
+
 inline Piece make_piece(Color c, PieceType pt) {
   return Piece((c << 3) | pt);
 }
 
-inline CastlingFlag make_castling_flag(Color c, CastlingSide s) {
-  return CastlingFlag(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
+inline PieceType type_of(Piece pc)  {
+  return PieceType(pc & 7);
 }
 
-inline PieceType type_of(Piece p)  {
-  return PieceType(p & 7);
-}
-
-inline Color color_of(Piece p) {
-  assert(p != NO_PIECE);
-  return Color(p >> 3);
+inline Color color_of(Piece pc) {
+  assert(pc != NO_PIECE);
+  return Color(pc >> 3);
 }
 
 inline bool is_ok(Square s) {
@@ -391,11 +407,11 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline char file_to_char(File f, bool tolower = true) {
+inline char to_char(File f, bool tolower = true) {
   return char(f - FILE_A + (tolower ? 'a' : 'A'));
 }
 
-inline char rank_to_char(Rank r) {
+inline char to_char(Rank r) {
   return char(r - RANK_1 + '1');
 }
 
@@ -434,8 +450,8 @@ inline bool is_ok(Move m) {
 
 #include <string>
 
-inline const std::string square_to_string(Square s) {
-  char ch[] = { file_to_char(file_of(s)), rank_to_char(rank_of(s)), 0 };
+inline const std::string to_string(Square s) {
+  char ch[] = { to_char(file_of(s)), to_char(rank_of(s)), 0 };
   return ch;
 }
 

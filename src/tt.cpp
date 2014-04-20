@@ -70,12 +70,15 @@ void TranspositionTable::clear() {
 
 const TTEntry* TranspositionTable::probe(const Key key) const {
 
-  const TTEntry* tte = first_entry(key);
+  TTEntry* tte = first_entry(key);
   uint32_t key32 = key >> 32;
 
   for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
-      if (tte->key() == key32)
+      if (tte->key32 == key32)
+      {
+          tte->generation8 = generation; // Refresh
           return tte;
+      }
 
   return NULL;
 }
@@ -91,7 +94,6 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
 
 void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
 
-  int c1, c2, c3;
   TTEntry *tte, *replace;
   uint32_t key32 = key >> 32; // Use the high 32 bits as key inside the cluster
 
@@ -99,7 +101,7 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
 
   for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
   {
-      if (!tte->key() || tte->key() == key32) // Empty or overwrite old
+      if (!tte->key32 || tte->key32 == key32) // Empty or overwrite old
       {
           if (!m)
               m = tte->move(); // Preserve any existing ttMove
@@ -109,11 +111,9 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
       }
 
       // Implement replace strategy
-      c1 = (replace->generation() == generation ?  2 : 0);
-      c2 = (tte->generation() == generation || tte->bound() == BOUND_EXACT ? -2 : 0);
-      c3 = (tte->depth() < replace->depth() ?  1 : 0);
-
-      if (c1 + c2 + c3 > 0)
+      if (  (    tte->generation8 == generation || tte->bound() == BOUND_EXACT)
+          - (replace->generation8 == generation)
+          - (tte->depth16 < replace->depth16) < 0)
           replace = tte;
   }
 

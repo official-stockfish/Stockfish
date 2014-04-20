@@ -40,28 +40,28 @@ const string engine_info(bool to_uci) {
 
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
-  stringstream s, date(__DATE__); // From compiler, format is "Sep 21 2008"
+  stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
 
-  s << "Stockfish " << Version << setfill('0');
+  ss << "Stockfish " << Version << setfill('0');
 
   if (Version.empty())
   {
       date >> month >> day >> year;
-      s << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
+      ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
-  s << (Is64Bit ? " 64" : "")
-    << (HasPopCnt ? " SSE4.2" : "")
-    << (to_uci ? "\nid author ": " by ")
-    << "Tord Romstad, Marco Costalba and Joona Kiiski";
+  ss << (Is64Bit ? " 64" : "")
+     << (HasPext ? " BMI2" : (HasPopCnt ? " SSE4.2" : ""))
+     << (to_uci  ? "\nid author ": " by ")
+     << "Tord Romstad, Marco Costalba and Joona Kiiski";
 
-  return s.str();
+  return ss.str();
 }
 
 
 /// Debug functions used mainly to collect run-time statistics
 
-static uint64_t hits[2], means[2];
+static int64_t hits[2], means[2];
 
 void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
 void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }

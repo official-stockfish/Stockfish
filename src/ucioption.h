@@ -47,6 +47,7 @@ public:
   Option(int v, int min, int max, OnChange = NULL);
 
   Option& operator=(const std::string& v);
+  void operator<<(const Option& o);
   operator int() const;
   operator std::string() const;
 
@@ -60,7 +61,7 @@ private:
 };
 
 void init(OptionsMap&);
-void loop(const std::string&);
+void loop(int argc, char* argv[]);
 
 } // namespace UCI
 

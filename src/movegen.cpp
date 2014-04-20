@@ -22,32 +22,27 @@
 #include "movegen.h"
 #include "position.h"
 
-/// Simple macro to wrap a very common while loop, no fancy, no flexibility,
-/// hardcoded names 'mlist' and 'from'.
-#define SERIALIZE(b) while (b) (mlist++)->move = make_move(from, pop_lsb(&b))
-
-/// Version used for pawns, where the 'from' square is given as a delta from the 'to' square
-#define SERIALIZE_PAWNS(b, d) while (b) { Square to = pop_lsb(&b); \
-                                         (mlist++)->move = make_move(to - (d), to); }
 namespace {
 
-  template<CastlingSide Side, bool Checks, bool Chess960>
+  template<CastlingRight Cr, bool Checks, bool Chess960>
   ExtMove* generate_castling(const Position& pos, ExtMove* mlist, Color us, const CheckInfo* ci) {
 
-    if (pos.castling_impeded(us, Side) || !pos.can_castle(make_castling_flag(us, Side)))
+    static const bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
+
+    if (pos.castling_impeded(Cr) || !pos.can_castle(Cr))
         return mlist;
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
     Square kfrom = pos.king_square(us);
-    Square rfrom = pos.castling_rook_square(us, Side);
-    Square kto = relative_square(us, Side == KING_SIDE ? SQ_G1 : SQ_C1);
+    Square rfrom = pos.castling_rook_square(Cr);
+    Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.checkers());
 
-    const Square K = Chess960 ? kto > kfrom       ? DELTA_W : DELTA_E
-                              : Side == KING_SIDE ? DELTA_W : DELTA_E;
+    const Square K = Chess960 ? kto > kfrom ? DELTA_W : DELTA_E
+                              : KingSide    ? DELTA_W : DELTA_E;
 
     for (Square s = kto; s != kfrom; s += K)
         if (pos.attackers_to(s) & enemies)
@@ -157,8 +152,17 @@ namespace {
             }
         }
 
-        SERIALIZE_PAWNS(b1, Up);
-        SERIALIZE_PAWNS(b2, Up + Up);
+        while (b1)
+        {
+            Square to = pop_lsb(&b1);
+            (mlist++)->move = make_move(to - Up, to);
+        }
+
+        while (b2)
+        {
+            Square to = pop_lsb(&b2);
+            (mlist++)->move = make_move(to - Up - Up, to);
+        }
     }
 
     // Promotions and underpromotions
@@ -181,8 +185,17 @@ namespace {
         b1 = shift_bb<Right>(pawnsNotOn7) & enemies;
         b2 = shift_bb<Left >(pawnsNotOn7) & enemies;
 
-        SERIALIZE_PAWNS(b1, Right);
-        SERIALIZE_PAWNS(b2, Left);
+        while (b1)
+        {
+            Square to = pop_lsb(&b1);
+            (mlist++)->move = make_move(to - Right, to);
+        }
+
+        while (b2)
+        {
+            Square to = pop_lsb(&b2);
+            (mlist++)->move = make_move(to - Left, to);
+        }
 
         if (pos.ep_square() != SQ_NONE)
         {
@@ -232,7 +245,8 @@ namespace {
         if (Checks)
             b &= ci->checkSq[Pt];
 
-        SERIALIZE(b);
+        while (b)
+            (mlist++)->move = make_move(from, pop_lsb(&b));
     }
 
     return mlist;
@@ -253,22 +267,23 @@ namespace {
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
     {
-        Square from = pos.king_square(Us);
-        Bitboard b = pos.attacks_from<KING>(from) & target;
-        SERIALIZE(b);
+        Square ksq = pos.king_square(Us);
+        Bitboard b = pos.attacks_from<KING>(ksq) & target;
+        while (b)
+            (mlist++)->move = make_move(ksq, pop_lsb(&b));
     }
 
     if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(Us))
     {
         if (pos.is_chess960())
         {
-            mlist = generate_castling< KING_SIDE, Checks, true>(pos, mlist, Us, ci);
-            mlist = generate_castling<QUEEN_SIDE, Checks, true>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, true>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, true>(pos, mlist, Us, ci);
         }
         else
         {
-            mlist = generate_castling< KING_SIDE, Checks, false>(pos, mlist, Us, ci);
-            mlist = generate_castling<QUEEN_SIDE, Checks, false>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, false>(pos, mlist, Us, ci);
+            mlist = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, false>(pos, mlist, Us, ci);
         }
     }
 
@@ -334,7 +349,8 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* mlist) {
      if (pt == KING)
          b &= ~PseudoAttacks[QUEEN][ci.ksq];
 
-     SERIALIZE(b);
+     while (b)
+         (mlist++)->move = make_move(from, pop_lsb(&b));
   }
 
   return us == WHITE ? generate_all<WHITE, QUIET_CHECKS>(pos, mlist, ~pos.pieces(), &ci)
@@ -349,37 +365,30 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
 
   assert(pos.checkers());
 
-  int checkersCnt = 0;
   Color us = pos.side_to_move();
-  Square ksq = pos.king_square(us), from = ksq /* For SERIALIZE */, checksq;
+  Square ksq = pos.king_square(us);
   Bitboard sliderAttacks = 0;
-  Bitboard b = pos.checkers();
-
-  assert(pos.checkers());
+  Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT) & ~pos.pieces(PAWN);
 
   // Find all the squares attacked by slider checkers. We will remove them from
   // the king evasions in order to skip known illegal moves, which avoids any
   // useless legality checks later on.
-  do
+  while (sliders)
   {
-      ++checkersCnt;
-      checksq = pop_lsb(&b);
-
-      assert(color_of(pos.piece_on(checksq)) == ~us);
-
-      if (type_of(pos.piece_on(checksq)) > KNIGHT) // A slider
-          sliderAttacks |= LineBB[checksq][ksq] ^ checksq;
-
-  } while (b);
+      Square checksq = pop_lsb(&sliders);
+      sliderAttacks |= LineBB[checksq][ksq] ^ checksq;
+  }
 
   // Generate evasions for king, capture and non capture moves
-  b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
-  SERIALIZE(b);
+  Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
+  while (b)
+      (mlist++)->move = make_move(ksq, pop_lsb(&b));
 
-  if (checkersCnt > 1)
+  if (more_than_one(pos.checkers()))
       return mlist; // Double check, only a king move can save the day
 
   // Generate blocking evasions or captures of the checking piece
+  Square checksq = lsb(pos.checkers());
   Bitboard target = between_bb(checksq, ksq) | checksq;
 
   return us == WHITE ? generate_all<WHITE, EVASIONS>(pos, mlist, target)

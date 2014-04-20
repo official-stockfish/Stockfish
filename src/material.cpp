@@ -115,6 +115,17 @@ namespace {
 
         value += pc * v;
     }
+
+    // Queen vs. 3 minors slightly favours the minors
+    if (pieceCount[Us][QUEEN] == 1 && pieceCount[Them][QUEEN] == 0)
+    {
+        int n = pieceCount[Them][KNIGHT] - pieceCount[Us][KNIGHT];
+        int b = pieceCount[Them][BISHOP] - pieceCount[Us][BISHOP];
+
+        if ((n == 2 && b == 1) || (n == 1 && b == 2))
+            value -= 66 * 16;
+    }
+
     return value;
   }
 
@@ -174,7 +185,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       return e;
   }
 
-  // Generic scaling functions that refer to more then one material
+  // Generic scaling functions that refer to more than one material
   // distribution. They should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
   if (is_KBPsKs<WHITE>(pos))

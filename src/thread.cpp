@@ -59,7 +59,7 @@ namespace {
 }
 
 
-// ThreadBase::notify_one() wakes up the thread when there is some work to do
+// notify_one() wakes up the thread when there is some work to do
 
 void ThreadBase::notify_one() {
 
@@ -69,7 +69,7 @@ void ThreadBase::notify_one() {
 }
 
 
-// ThreadBase::wait_for() set the thread to sleep until condition 'b' turns true
+// wait_for() set the thread to sleep until condition 'b' turns true
 
 void ThreadBase::wait_for(volatile const bool& b) {
 
@@ -88,11 +88,11 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
   maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
   activePosition = NULL;
-  idx = Threads.size();
+  idx = Threads.size(); // Starts from 0
 }
 
 
-// Thread::cutoff_occurred() checks whether a beta cutoff has occurred in the
+// cutoff_occurred() checks whether a beta cutoff has occurred in the
 // current active split point, or in some ancestor of the split point.
 
 bool Thread::cutoff_occurred() const {
@@ -123,7 +123,7 @@ bool Thread::available_to(const Thread* master) const {
 
   // No split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !size || (splitPoints[size - 1].slavesMask & (1ULL << master->idx));
+  return !size || splitPoints[size - 1].slavesMask.test(master->idx);
 }
 
 
@@ -213,18 +213,14 @@ void ThreadPool::exit() {
 
 void ThreadPool::read_uci_options() {
 
-  maxThreadsPerSplitPoint = Options["Max Threads per Split Point"];
-  minimumSplitDepth       = Options["Min Split Depth"] * ONE_PLY;
-  size_t requested        = Options["Threads"];
+  minimumSplitDepth = Options["Min Split Depth"] * ONE_PLY;
+  size_t requested  = Options["Threads"];
 
   assert(requested > 0);
 
-  // Value 0 has a special meaning: We determine the optimal minimum split depth
-  // automatically. Anyhow the minimumSplitDepth should never be under 4 plies.
+  // If zero (default) then set best minimum split depth automatically
   if (!minimumSplitDepth)
-      minimumSplitDepth = (requested < 8 ? 4 : 7) * ONE_PLY;
-  else
-      minimumSplitDepth = std::max(4 * ONE_PLY, minimumSplitDepth);
+      minimumSplitDepth = requested < 8 ? 4 * ONE_PLY : 7 * ONE_PLY;
 
   while (size() < requested)
       push_back(new_thread<Thread>());
@@ -237,7 +233,7 @@ void ThreadPool::read_uci_options() {
 }
 
 
-// slave_available() tries to find an idle thread which is available as a slave
+// available_slave() tries to find an idle thread which is available as a slave
 // for the thread 'master'.
 
 Thread* ThreadPool::available_slave(const Thread* master) const {
@@ -275,7 +271,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
 
   sp.masterThread = this;
   sp.parentSplitPoint = activeSplitPoint;
-  sp.slavesMask = 1ULL << idx;
+  sp.slavesMask = 0, sp.slavesMask.set(idx);
   sp.depth = depth;
   sp.bestValue = *bestValue;
   sp.bestMove = *bestMove;
@@ -300,41 +296,35 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   activeSplitPoint = &sp;
   activePosition = NULL;
 
-  size_t slavesCnt = 1; // This thread is always included
-  Thread* slave;
-
-  while (    (slave = Threads.available_slave(this)) != NULL
-         && ++slavesCnt <= Threads.maxThreadsPerSplitPoint && !Fake)
-  {
-      sp.slavesMask |= 1ULL << slave->idx;
-      slave->activeSplitPoint = &sp;
-      slave->searching = true; // Slave leaves idle_loop()
-      slave->notify_one(); // Could be sleeping
-  }
+  if (!Fake)
+      for (Thread* slave; (slave = Threads.available_slave(this)) != NULL; )
+      {
+          sp.slavesMask.set(slave->idx);
+          slave->activeSplitPoint = &sp;
+          slave->searching = true; // Slave leaves idle_loop()
+          slave->notify_one(); // Could be sleeping
+      }
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  if (slavesCnt > 1 || Fake)
-  {
-      sp.mutex.unlock();
-      Threads.mutex.unlock();
+  sp.mutex.unlock();
+  Threads.mutex.unlock();
 
-      Thread::idle_loop(); // Force a call to base class idle_loop()
+  Thread::idle_loop(); // Force a call to base class idle_loop()
 
-      // In the helpful master concept, a master can help only a sub-tree of its
-      // split point and because everything is finished here, it's not possible
-      // for the master to be booked.
-      assert(!searching);
-      assert(!activePosition);
+  // In the helpful master concept, a master can help only a sub-tree of its
+  // split point and because everything is finished here, it's not possible
+  // for the master to be booked.
+  assert(!searching);
+  assert(!activePosition);
 
-      // We have returned from the idle loop, which means that all threads are
-      // finished. Note that setting 'searching' and decreasing splitPointsSize is
-      // done under lock protection to avoid a race with Thread::available_to().
-      Threads.mutex.lock();
-      sp.mutex.lock();
-  }
+  // We have returned from the idle loop, which means that all threads are
+  // finished. Note that setting 'searching' and decreasing splitPointsSize is
+  // done under lock protection to avoid a race with Thread::available_to().
+  Threads.mutex.lock();
+  sp.mutex.lock();
 
   searching = true;
   --splitPointsSize;

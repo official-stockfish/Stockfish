@@ -152,6 +152,8 @@ void benchmark(const Position& current, istream& is) {
 
   elapsed = Time::now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
+  dbg_print(); // Just before to exit
+
   cerr << "\n==========================="
        << "\nTotal time (ms) : " << elapsed
        << "\nNodes searched  : " << nodes

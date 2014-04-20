@@ -82,8 +82,7 @@ namespace {
 
   // Get the material key of Position out of the given endgame key code
   // like "KBPKN". The trick here is to first forge an ad-hoc FEN string
-  // and then let a Position object do the work for us. Note that the
-  // FEN string could correspond to an illegal position.
+  // and then let a Position object do the work for us.
   Key key(const string& code, Color c) {
 
     assert(code.length() > 0 && code.length() < 8);
@@ -94,8 +93,8 @@ namespace {
 
     std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-    string fen =  sides[0] + char('0' + int(8 - code.length()))
-                + sides[1] + "/8/8/8/8/8/8/8 w - - 0 10";
+    string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
+                + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
     return Position(fen, false, NULL).material_key();
   }
@@ -241,7 +240,7 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
   Square rsq  = relative_square(strongSide, pos.list<ROOK>(strongSide)[0]);
   Square psq  = relative_square(strongSide, pos.list<PAWN>(weakSide)[0]);
 
-  Square queeningSq = file_of(psq) | RANK_1;
+  Square queeningSq = make_square(file_of(psq), RANK_1);
   Value result;
 
   // If the stronger side's king is in front of the pawn, it's a win
@@ -372,7 +371,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       && !(pawns & ~file_bb(pawnFile)))
   {
       Square bishopSq = pos.list<BISHOP>(strongSide)[0];
-      Square queeningSq = relative_square(strongSide, pawnFile | RANK_8);
+      Square queeningSq = relative_square(strongSide, make_square(pawnFile, RANK_8));
       Square kingSq = pos.king_square(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
@@ -464,7 +463,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
 
   File f = file_of(wpsq);
   Rank r = rank_of(wpsq);
-  Square queeningSq = f | RANK_8;
+  Square queeningSq = make_square(f, RANK_8);
   int tempo = (pos.side_to_move() == strongSide);
 
   // If the pawn is not too far advanced and the defending king defends the
@@ -722,12 +721,12 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
   if (relative_rank(strongSide, psq1) > relative_rank(strongSide, psq2))
   {
       blockSq1 = psq1 + pawn_push(strongSide);
-      blockSq2 = file_of(psq2) | rank_of(psq1);
+      blockSq2 = make_square(file_of(psq2), rank_of(psq1));
   }
   else
   {
       blockSq1 = psq2 + pawn_push(strongSide);
-      blockSq2 = file_of(psq1) | rank_of(psq2);
+      blockSq2 = make_square(file_of(psq1), rank_of(psq2));
   }
 
   switch (file_distance(psq1, psq2))
