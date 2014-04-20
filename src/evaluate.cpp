@@ -638,21 +638,6 @@ namespace {
             }
         } // rr != 0
 
-        // Rook pawns are a special case: They are sometimes worse, and
-        // sometimes better than other passed pawns. It is difficult to find
-        // good rules for determining whether they are good or bad. For now,
-        // we try the following: Increase the value for rook pawns if the
-        // other side has no pieces apart from a knight, and decrease the
-        // value if the other side has a rook or queen.
-        if (file_of(s) == FILE_A || file_of(s) == FILE_H)
-        {
-            if (pos.non_pawn_material(Them) <= KnightValueMg)
-                ebonus += ebonus / 4;
-
-            else if (pos.pieces(Them, ROOK, QUEEN))
-                ebonus -= ebonus / 4;
-        }
-
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
             ebonus += ebonus / 4;
 
