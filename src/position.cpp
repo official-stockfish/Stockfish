@@ -435,25 +435,23 @@ const string Position::fen() const {
 
 const string Position::pretty(Move m) const {
 
-  const string dottedLine =            "\n+---+---+---+---+---+---+---+---+";
-  const string twoRows =  dottedLine + "\n|   | . |   | . |   | . |   | . |"
-                        + dottedLine + "\n| . |   | . |   | . |   | . |   |";
-
-  string brd = twoRows + twoRows + twoRows + twoRows + dottedLine;
-
-  for (Bitboard b = pieces(); b; )
-  {
-      Square s = pop_lsb(&b);
-      brd[513 - 68 * rank_of(s) + 4 * file_of(s)] = PieceToChar[piece_on(s)];
-  }
-
   std::ostringstream ss;
 
   if (m)
       ss << "\nMove: " << (sideToMove == BLACK ? ".." : "")
          << move_to_san(*const_cast<Position*>(this), m);
 
-  ss << brd << "\nFen: " << fen() << "\nKey: " << std::hex << std::uppercase
+  ss << "\n +---+---+---+---+---+---+---+---+\n";
+
+  for (Rank r = RANK_8; r >= RANK_1; --r)
+  {
+      for (File f = FILE_A; f <= FILE_H; ++f)
+          ss << " | " << PieceToChar[piece_on(make_square(f, r))];
+
+      ss << " |\n +---+---+---+---+---+---+---+---+\n";
+  }
+
+  ss << "\nFen: " << fen() << "\nKey: " << std::hex << std::uppercase
      << std::setfill('0') << std::setw(16) << st->key << "\nCheckers: ";
 
   for (Bitboard b = checkers(); b; )
