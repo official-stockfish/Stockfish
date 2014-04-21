@@ -702,9 +702,7 @@ namespace {
   template<Color Us>
   int evaluate_space(const Position& pos, const EvalInfo& ei) {
 
-    const Color  Them     = (Us == WHITE ? BLACK    : WHITE);
-    const Square Down     = (Us == WHITE ? DELTA_S  : DELTA_N);
-    const Square DownDown = (Us == WHITE ? DELTA_SS : DELTA_NN);
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
 
     // Find the safe squares for our pieces inside the area defined by
     // SpaceMask[]. A square is unsafe if it is attacked by an enemy
@@ -716,8 +714,8 @@ namespace {
 
     // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behind = pos.pieces(Us, PAWN);
-    behind |= shift_bb<    Down>(behind);
-    behind |= shift_bb<DownDown>(behind);
+    behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
+    behind |= (Us == WHITE ? behind >> 16 : behind << 16);
 
     // Since SpaceMask[Us] is fully on our half of the board
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
