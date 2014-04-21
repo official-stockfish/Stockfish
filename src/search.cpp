@@ -186,6 +186,7 @@ void Search::think() {
   RootColor = RootPos.side_to_move();
   TimeMgr.init(Limits, RootPos.game_ply(), RootColor);
 
+  DrawValue[0] = DrawValue[1] = VALUE_DRAW;
   Contempt[0] =  Options["Contempt Factor"] * PawnValueEg / 100; // From centipawns
   Contempt[1] = (Options["Contempt Factor"] + 12) * PawnValueEg / 100;
 
