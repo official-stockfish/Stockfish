@@ -328,8 +328,8 @@ Move MovePicker::next_move<false>() {
       case KILLERS_S1:
           move = (cur++)->move;
           if (    move != MOVE_NONE
-              &&  pos.pseudo_legal(move)
               &&  move != ttMove
+              &&  pos.pseudo_legal(move)
               && !pos.capture(move))
               return move;
           break;
