@@ -821,7 +821,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
-      if (type_of(m) == PROMOTION)
+      else if (type_of(m) == PROMOTION)
       {
           PieceType promotion = promotion_type(m);
 
