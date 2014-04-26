@@ -158,6 +158,9 @@ namespace {
     S(0, 0), S(0, 0), S(56, 70), S(56, 70), S(76, 99), S(86, 118)
   };
 
+  // Hanging[side to move] contains a bonus for each enemy hanging piece
+  const Score Hanging[2] = { S(23, 20) , S(35, 45) };
+
   #undef S
 
   const Score Tempo            = make_score(24, 11);
@@ -527,7 +530,7 @@ namespace {
     if (undefendedMinors)
         score += UndefendedMinor;
 
-    // Enemy pieces not defended by a pawn and under our attack
+    // Enemies not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
                  & ~ei.attackedBy[Them][PAWN]
                  & ei.attackedBy[Us][ALL_PIECES];
@@ -535,13 +538,18 @@ namespace {
     // Add a bonus according if the attacking pieces are minor or major
     if (weakEnemies)
     {
-        b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+        b = weakEnemies & (ei.attackedBy[Us][PAWN] | ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
             score += Threat[0][type_of(pos.piece_on(lsb(b)))];
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
             score += Threat[1][type_of(pos.piece_on(lsb(b)))];
+
+        b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
+        if (b)
+            score += more_than_one(b) ? Hanging[Us != pos.side_to_move()] * popcount<Max15>(b)
+                                      : Hanging[Us == pos.side_to_move()];
     }
 
     if (Trace)
