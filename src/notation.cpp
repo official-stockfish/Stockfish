@@ -138,7 +138,7 @@ const string move_to_san(Position& pos, Move m) {
           }
 
           if (!others)
-          { /* disambiguation is not needed */ }
+          { /* Disambiguation is not needed */ }
 
           else if (!(others & file_bb(from)))
               san += to_char(file_of(from));
