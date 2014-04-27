@@ -915,12 +915,12 @@ namespace Eval {
     Weights[KingDangerUs]   = weight_option("Cowardice", "Cowardice", WeightsInternal[KingDangerUs]);
     Weights[KingDangerThem] = weight_option("Aggressiveness", "Aggressiveness", WeightsInternal[KingDangerThem]);
 
-    const int MaxSlope = 30;
-    const int Peak = 1280;
+    const double MaxSlope = 30;
+    const double Peak = 1280;
 
     for (int t = 0, i = 1; i < 100; ++i)
     {
-        t = std::min(Peak, std::min(int(0.4 * i * i), t + MaxSlope));
+        t = std::min(Peak, std::min(0.4 * i * i, t + MaxSlope));
 
         KingDanger[1][i] = apply_weight(make_score(t, 0), Weights[KingDangerUs]);
         KingDanger[0][i] = apply_weight(make_score(t, 0), Weights[KingDangerThem]);
