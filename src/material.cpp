@@ -27,10 +27,6 @@ using namespace std;
 
 namespace {
 
-  // Values modified by Joona Kiiski
-  const Value MidgameLimit = Value(15581);
-  const Value EndgameLimit = Value(3998);
-
   // Polynomial material balance parameters
 
   //                                  pair  pawn knight bishop rook queen

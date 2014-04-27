@@ -191,7 +191,9 @@ enum Value {
   KnightValueMg = 817,   KnightValueEg = 846,
   BishopValueMg = 836,   BishopValueEg = 857,
   RookValueMg   = 1270,  RookValueEg   = 1278,
-  QueenValueMg  = 2521,  QueenValueEg  = 2558
+  QueenValueMg  = 2521,  QueenValueEg  = 2558,
+
+  MidgameLimit  = 15581, EndgameLimit  = 3998
 };
 
 enum PieceType {
