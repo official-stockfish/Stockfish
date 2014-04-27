@@ -43,7 +43,7 @@ string score_to_uci(Value v, Value alpha, Value beta) {
   stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      ss << "cp " << v * 100 / int(PawnValueEg);
+      ss << "cp " << v * 100 / PawnValueEg;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
@@ -138,7 +138,7 @@ const string move_to_san(Position& pos, Move m) {
           }
 
           if (!others)
-          { /* disambiguation is not needed */ }
+          { /* Disambiguation is not needed */ }
 
           else if (!(others & file_bb(from)))
               san += to_char(file_of(from));

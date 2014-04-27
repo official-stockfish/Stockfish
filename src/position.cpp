@@ -297,7 +297,7 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
 
   // Convert from fullmove starting from 1 to ply starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
-  gamePly = std::max(2 * (gamePly - 1), 0) + int(sideToMove == BLACK);
+  gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
   thisThread = th;
@@ -424,7 +424,7 @@ const string Position::fen() const {
       ss << '-';
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + to_string(ep_square()) + " ")
-     << st->rule50 << " " << 1 + (gamePly - int(sideToMove == BLACK)) / 2;
+     << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
   return ss.str();
 }
@@ -435,25 +435,23 @@ const string Position::fen() const {
 
 const string Position::pretty(Move m) const {
 
-  const string dottedLine =            "\n+---+---+---+---+---+---+---+---+";
-  const string twoRows =  dottedLine + "\n|   | . |   | . |   | . |   | . |"
-                        + dottedLine + "\n| . |   | . |   | . |   | . |   |";
-
-  string brd = twoRows + twoRows + twoRows + twoRows + dottedLine;
-
-  for (Bitboard b = pieces(); b; )
-  {
-      Square s = pop_lsb(&b);
-      brd[513 - 68 * rank_of(s) + 4 * file_of(s)] = PieceToChar[piece_on(s)];
-  }
-
   std::ostringstream ss;
 
   if (m)
       ss << "\nMove: " << (sideToMove == BLACK ? ".." : "")
          << move_to_san(*const_cast<Position*>(this), m);
 
-  ss << brd << "\nFen: " << fen() << "\nKey: " << std::hex << std::uppercase
+  ss << "\n +---+---+---+---+---+---+---+---+\n";
+
+  for (Rank r = RANK_8; r >= RANK_1; --r)
+  {
+      for (File f = FILE_A; f <= FILE_H; ++f)
+          ss << " | " << PieceToChar[piece_on(make_square(f, r))];
+
+      ss << " |\n +---+---+---+---+---+---+---+---+\n";
+  }
+
+  ss << "\nFen: " << fen() << "\nKey: " << std::hex << std::uppercase
      << std::setfill('0') << std::setw(16) << st->key << "\nCheckers: ";
 
   for (Bitboard b = checkers(); b; )
@@ -823,7 +821,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
-      if (type_of(m) == PROMOTION)
+      else if (type_of(m) == PROMOTION)
       {
           PieceType promotion = promotion_type(m);
 

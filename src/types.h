@@ -191,7 +191,9 @@ enum Value {
   KnightValueMg = 817,   KnightValueEg = 846,
   BishopValueMg = 836,   BishopValueEg = 857,
   RookValueMg   = 1270,  RookValueEg   = 1278,
-  QueenValueMg  = 2521,  QueenValueEg  = 2558
+  QueenValueMg  = 2521,  QueenValueEg  = 2558,
+
+  MidgameLimit  = 15581, EndgameLimit  = 3998
 };
 
 enum PieceType {
@@ -287,7 +289,7 @@ inline Value eg_value(Score s) {
 
 #endif
 
-#define ENABLE_SAFE_OPERATORS_ON(T)                                         \
+#define ENABLE_BASE_OPERATORS_ON(T)                                         \
 inline T operator+(const T d1, const T d2) { return T(int(d1) + int(d2)); } \
 inline T operator-(const T d1, const T d2) { return T(int(d1) - int(d2)); } \
 inline T operator*(int i, const T d) { return T(i * int(d)); }              \
@@ -297,26 +299,32 @@ inline T& operator+=(T& d1, const T d2) { return d1 = d1 + d2; }            \
 inline T& operator-=(T& d1, const T d2) { return d1 = d1 - d2; }            \
 inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }
 
-#define ENABLE_OPERATORS_ON(T) ENABLE_SAFE_OPERATORS_ON(T)                  \
+ENABLE_BASE_OPERATORS_ON(Score)
+
+#define ENABLE_FULL_OPERATORS_ON(T)                                         \
+ENABLE_BASE_OPERATORS_ON(T)                                                 \
 inline T& operator++(T& d) { return d = T(int(d) + 1); }                    \
 inline T& operator--(T& d) { return d = T(int(d) - 1); }                    \
 inline T operator/(const T d, int i) { return T(int(d) / i); }              \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
-ENABLE_OPERATORS_ON(Value)
-ENABLE_OPERATORS_ON(PieceType)
-ENABLE_OPERATORS_ON(Piece)
-ENABLE_OPERATORS_ON(Color)
-ENABLE_OPERATORS_ON(Depth)
-ENABLE_OPERATORS_ON(Square)
-ENABLE_OPERATORS_ON(File)
-ENABLE_OPERATORS_ON(Rank)
+ENABLE_FULL_OPERATORS_ON(Value)
+ENABLE_FULL_OPERATORS_ON(PieceType)
+ENABLE_FULL_OPERATORS_ON(Piece)
+ENABLE_FULL_OPERATORS_ON(Color)
+ENABLE_FULL_OPERATORS_ON(Depth)
+ENABLE_FULL_OPERATORS_ON(Square)
+ENABLE_FULL_OPERATORS_ON(File)
+ENABLE_FULL_OPERATORS_ON(Rank)
+
+#undef ENABLE_FULL_OPERATORS_ON
+#undef ENABLE_BASE_OPERATORS_ON
 
 /// Additional operators to add integers to a Value
 inline Value operator+(Value v, int i) { return Value(int(v) + i); }
 inline Value operator-(Value v, int i) { return Value(int(v) - i); }
-
-ENABLE_SAFE_OPERATORS_ON(Score)
+inline Value& operator+=(Value& v, int i) { return v = v + i; }
+inline Value& operator-=(Value& v, int i) { return v = v - i; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
@@ -326,9 +334,6 @@ inline Score operator*(Score s1, Score s2);
 inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
-
-#undef ENABLE_OPERATORS_ON
-#undef ENABLE_SAFE_OPERATORS_ON
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 

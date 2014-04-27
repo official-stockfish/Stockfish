@@ -91,7 +91,7 @@ struct SplitPoint {
 
 struct ThreadBase {
 
-  ThreadBase() : exit(false) {}
+  ThreadBase() : handle(NativeHandle()), exit(false) {}
   virtual ~ThreadBase() {}
   virtual void idle_loop() = 0;
   void notify_one();
