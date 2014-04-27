@@ -583,8 +583,8 @@ namespace {
 
         assert(pos.pawn_passed(Us, s));
 
-        Rank r = relative_rank(Us, s) - RANK_2;
-        Rank rr = r * (r - 1);
+        int r = relative_rank(Us, s) - RANK_2;
+        int rr = r * (r - 1);
 
         // Base bonus based on rank
         Value mbonus = Value(17 * rr), ebonus = Value(7 * (rr + r + 1));
@@ -599,7 +599,7 @@ namespace {
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_8)
-                ebonus -= rr * square_distance(pos.king_square(Us), blockSq + pawn_push(Us));
+                ebonus -= square_distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr;
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -920,7 +920,7 @@ namespace Eval {
 
     for (int t = 0, i = 1; i < 100; ++i)
     {
-        t = std::min(Peak, std::min(0.4 * i * i, t + MaxSlope));
+        t = int(std::min(Peak, std::min(0.4 * i * i, t + MaxSlope)));
 
         KingDanger[1][i] = apply_weight(make_score(t, 0), Weights[KingDangerUs]);
         KingDanger[0][i] = apply_weight(make_score(t, 0), Weights[KingDangerThem]);
