@@ -63,7 +63,7 @@ namespace {
     double ratio1 = (TMaxRatio * thisMoveImportance) / (TMaxRatio * thisMoveImportance + otherMovesImportance);
     double ratio2 = (thisMoveImportance + TStealRatio * otherMovesImportance) / (thisMoveImportance + otherMovesImportance);
 
-    return int(floor(myTime * std::min(ratio1, ratio2)));
+    return int(myTime * std::min(ratio1, ratio2));
   }
 
 } // namespace
