@@ -270,7 +270,7 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       if (   (MiddleEdges & make_square(f, rkThem))
           && file_of(ksq) == f
           && relative_rank(Us, ksq) == rkThem - 1)
-          safety += Value(200);
+          safety += 200;
       else
           safety -= ShelterWeakness[rkUs]
                   + StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];

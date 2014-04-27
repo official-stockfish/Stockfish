@@ -583,24 +583,23 @@ namespace {
 
         assert(pos.pawn_passed(Us, s));
 
-        int r = int(relative_rank(Us, s) - RANK_2);
-        int rr = r * (r - 1);
+        Rank r = relative_rank(Us, s) - RANK_2;
+        Rank rr = r * (r - 1);
 
         // Base bonus based on rank
-        Value mbonus = Value(17 * rr);
-        Value ebonus = Value(7 * (rr + r + 1));
+        Value mbonus = Value(17 * rr), ebonus = Value(7 * (rr + r + 1));
 
         if (rr)
         {
             Square blockSq = s + pawn_push(Us);
 
             // Adjust bonus based on the king's proximity
-            ebonus +=  Value(square_distance(pos.king_square(Them), blockSq) * 5 * rr)
-                     - Value(square_distance(pos.king_square(Us  ), blockSq) * 2 * rr);
+            ebonus +=  square_distance(pos.king_square(Them), blockSq) * 5 * rr
+                     - square_distance(pos.king_square(Us  ), blockSq) * 2 * rr;
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_8)
-                ebonus -= Value(rr * square_distance(pos.king_square(Us), blockSq + pawn_push(Us)));
+                ebonus -= rr * square_distance(pos.king_square(Us), blockSq + pawn_push(Us));
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -634,7 +633,7 @@ namespace {
                 else if (defendedSquares & blockSq)
                     k += 4;
 
-                mbonus += Value(k * rr), ebonus += Value(k * rr);
+                mbonus += k * rr, ebonus += k * rr;
             }
         } // rr != 0
 

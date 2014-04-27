@@ -61,13 +61,13 @@ namespace {
   enum NodeType { Root, PV, NonPV, SplitPointRoot, SplitPointPV, SplitPointNonPV };
 
   // Dynamic razoring margin based on depth
-  inline Value razor_margin(Depth d) { return Value(512 + 16 * int(d)); }
+  inline Value razor_margin(Depth d) { return Value(512 + 16 * d); }
 
   // Futility lookup tables (initialized at startup) and their access functions
   int FutilityMoveCounts[2][32]; // [improving][depth]
 
   inline Value futility_margin(Depth d) {
-    return Value(100 * int(d));
+    return Value(100 * d);
   }
 
   // Reduction lookup tables (initialized at startup) and their access function
@@ -683,7 +683,7 @@ namespace {
     // Step 10. Internal iterative deepening (skipped when in check)
     if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY)
         && !ttMove
-        && (PvNode || ss->staticEval + Value(256) >= beta))
+        && (PvNode || ss->staticEval + 256 >= beta))
     {
         Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth / 4);
 
@@ -823,7 +823,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (predictedDepth < 7 * ONE_PLY)
           {
               futilityValue = ss->staticEval + futility_margin(predictedDepth)
-                            + Value(128) + Gains[pos.moved_piece(move)][to_sq(move)];
+                            + 128 + Gains[pos.moved_piece(move)][to_sq(move)];
 
               if (futilityValue <= alpha)
               {
@@ -1128,7 +1128,7 @@ moves_loop: // When in check and at SpNode search starts from here
         if (PvNode && bestValue > alpha)
             alpha = bestValue;
 
-        futilityBase = bestValue + Value(128);
+        futilityBase = bestValue + 128;
     }
 
     // Initialize a MovePicker object for the current position, and prepare

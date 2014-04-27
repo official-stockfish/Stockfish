@@ -245,13 +245,13 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   // If the stronger side's king is in front of the pawn, it's a win
   if (wksq < psq && file_of(wksq) == file_of(psq))
-      result = RookValueEg - Value(square_distance(wksq, psq));
+      result = RookValueEg - square_distance(wksq, psq);
 
   // If the weaker side's king is too far from the pawn and the rook,
   // it's a win.
   else if (   square_distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide)
            && square_distance(bksq, rsq) >= 3)
-      result = RookValueEg - Value(square_distance(wksq, psq));
+      result = RookValueEg - square_distance(wksq, psq);
 
   // If the pawn is far advanced and supported by the defending king,
   // the position is drawish
@@ -259,13 +259,12 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
            && square_distance(bksq, psq) == 1
            && rank_of(wksq) >= RANK_4
            && square_distance(wksq, psq) > 2 + (pos.side_to_move() == strongSide))
-      result = Value(80 - square_distance(wksq, psq) * 8);
+      result = Value(80) - 8 * square_distance(wksq, psq);
 
   else
-      result =  Value(200)
-              - Value(square_distance(wksq, psq + DELTA_S) * 8)
-              + Value(square_distance(bksq, psq + DELTA_S) * 8)
-              + Value(square_distance(psq, queeningSq) * 8);
+      result =  Value(200) - 8 * (  square_distance(wksq, psq + DELTA_S)
+                                  - square_distance(bksq, psq + DELTA_S)
+                                  - square_distance(psq, queeningSq));
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
