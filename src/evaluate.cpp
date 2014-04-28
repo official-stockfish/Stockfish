@@ -222,20 +222,6 @@ namespace {
   }
 
 
-  // interpolate() interpolates between a middlegame and an endgame score,
-  // based on game phase. It also scales the return value by a ScaleFactor array.
-
-  Value interpolate(const Score& v, Phase ph, ScaleFactor sf) {
-
-    assert(-VALUE_INFINITE < mg_value(v) && mg_value(v) < VALUE_INFINITE);
-    assert(-VALUE_INFINITE < eg_value(v) && eg_value(v) < VALUE_INFINITE);
-    assert(PHASE_ENDGAME <= ph && ph <= PHASE_MIDGAME);
-
-    int eg = (eg_value(v) * int(sf)) / SCALE_FACTOR_NORMAL;
-    return Value((mg_value(v) * int(ph) + eg * int(PHASE_MIDGAME - ph)) / PHASE_MIDGAME);
-  }
-
-
   // init_eval_info() initializes king bitboards for given color adding
   // pawn attacks. To be done at the beginning of the evaluation.
 
@@ -734,7 +720,7 @@ namespace {
     ei.attackedBy[WHITE][ALL_PIECES] |= ei.attackedBy[WHITE][KING];
     ei.attackedBy[BLACK][ALL_PIECES] |= ei.attackedBy[BLACK][KING];
 
-    // Do not include in mobility squares protected by enemy pawns or occupied by our pieces
+    // Do not include in mobility squares protected by enemy pawns or occupied by our pawns or king
     Bitboard mobilityArea[] = { ~(ei.attackedBy[BLACK][PAWN] | pos.pieces(WHITE, PAWN, KING)),
                                 ~(ei.attackedBy[WHITE][PAWN] | pos.pieces(BLACK, PAWN, KING)) };
 
@@ -793,7 +779,11 @@ namespace {
              sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
     }
 
-    Value v = interpolate(score, ei.mi->game_phase(), sf);
+    // Interpolate between a middlegame and an endgame score, scaling by 'sf'
+    Value v =  mg_value(score) * int(ei.mi->game_phase())
+             + eg_value(score) * int(sf) / SCALE_FACTOR_NORMAL * int(PHASE_MIDGAME - ei.mi->game_phase());
+
+    v /= PHASE_MIDGAME;
 
     // In case of tracing add all single evaluation contributions for both white and black
     if (Trace)

@@ -368,7 +368,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* mlist) {
   Color us = pos.side_to_move();
   Square ksq = pos.king_square(us);
   Bitboard sliderAttacks = 0;
-  Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT) & ~pos.pieces(PAWN);
+  Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
 
   // Find all the squares attacked by slider checkers. We will remove them from
   // the king evasions in order to skip known illegal moves, which avoids any
