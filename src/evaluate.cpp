@@ -791,7 +791,7 @@ namespace {
     Value v =  mg_value(score) * int(ei.mi->game_phase())
              + eg_value(score) * int(PHASE_MIDGAME - ei.mi->game_phase()) * sf / SCALE_FACTOR_NORMAL;
 
-    v /= PHASE_MIDGAME;
+    v /= int(PHASE_MIDGAME);
 
     // In case of tracing add all single evaluation contributions for both white and black
     if (Trace)
