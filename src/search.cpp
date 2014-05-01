@@ -936,12 +936,11 @@ moves_loop: // When in check and at SpNode search starts from here
           alpha = splitPoint->alpha;
       }
 
-      // Finished searching the move. If Signals.stop is true, the search
-      // was aborted because the user interrupted the search or because we
-      // ran out of time. In this case, the return value of the search cannot
-      // be trusted, and we don't update the best move and/or PV.
+      // Finished searching the move. If a stop or a cutoff occurred, the return
+      // value of the search cannot be trusted, and we return immediately without
+      // updating best move, PV and TT.
       if (Signals.stop || thisThread->cutoff_occurred())
-          return value; // To avoid returning VALUE_INFINITE
+          return VALUE_DRAW;
 
       if (RootNode)
       {
@@ -994,7 +993,7 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  Threads.available_slave(thisThread)
           &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
       {
-          assert(bestValue < beta);
+          assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
           thisThread->split<FakeSplit>(pos, ss, alpha, beta, &bestValue, &bestMove,
                                        depth, moveCount, &mp, NT, cutNode);
@@ -1006,13 +1005,18 @@ moves_loop: // When in check and at SpNode search starts from here
     if (SpNode)
         return bestValue;
 
+    // Following condition would detect a stop or a cutoff set only after move
+    // loop has been completed. But in this case bestValue is valid because we
+    // have fully searched our subtree, and we can anyhow save the result in TT.
+    /*
+       if (Signals.stop || thisThread->cutoff_occurred())
+        return VALUE_DRAW;
+    */
+
     // Step 20. Check for mate and stalemate
     // All legal moves have been searched and if there are no legal moves, it
-    // must be mate or stalemate. Note that we can have a false positive in
-    // case of Signals.stop or thread.cutoff_occurred() are set, but this is
-    // harmless because return value is discarded anyhow in the parent nodes.
-    // If we are in a singular extension search then return a fail low score.
-    // A split node has at least one move - the one tried before to be split.
+    // must be mate or stalemate. If we are in a singular extension search then
+    // return a fail low score.
     if (!moveCount)
         return  excludedMove ? alpha
               : inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
