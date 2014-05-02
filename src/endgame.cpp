@@ -363,52 +363,27 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
   // be detected even when the weaker side has some pawns.
 
   Bitboard pawns = pos.pieces(strongSide, PAWN);
-  File pawnFile = file_of(pos.list<PAWN>(strongSide)[0]);
+  File pawnsFile = file_of(lsb(pawns));
 
   // All pawns are on a single rook file ?
-  if (    (pawnFile == FILE_A || pawnFile == FILE_H)
-      && !(pawns & ~file_bb(pawnFile)))
+  if (    (pawnsFile == FILE_A || pawnsFile == FILE_H)
+      && !(pawns & ~file_bb(pawnsFile)))
   {
       Square bishopSq = pos.list<BISHOP>(strongSide)[0];
-      Square queeningSq = relative_square(strongSide, make_square(pawnFile, RANK_8));
+      Square queeningSq = relative_square(strongSide, make_square(pawnsFile, RANK_8));
       Square kingSq = pos.king_square(weakSide);
 
+      // If the bishop has the wrong color, and the defending king is on the file
+      // of the pawn(s) or the neighboring file, then it's potentially a draw.
       if (   opposite_colors(queeningSq, bishopSq)
-          && square_distance(queeningSq, kingSq) <= 1)
-          return SCALE_FACTOR_DRAW;
-  }
-
-  // If all the pawns are on the same B or G file, then it's potentially a draw
-  if (    (pawnFile == FILE_B || pawnFile == FILE_G)
-      && !(pos.pieces(PAWN) & ~file_bb(pawnFile))
-      && pos.non_pawn_material(weakSide) == 0
-      && pos.count<PAWN>(weakSide) >= 1)
-  {
-      // Get weakSide pawn that is closest to the home rank
-      Square weakPawnSq = backmost_sq(weakSide, pos.pieces(weakSide, PAWN));
-
-      Square strongKingSq = pos.king_square(strongSide);
-      Square weakKingSq = pos.king_square(weakSide);
-      Square bishopSq = pos.list<BISHOP>(strongSide)[0];
-
-      // There's potential for a draw if our pawn is blocked on the 7th rank,
-      // the bishop cannot attack it or they only have one pawn left
-      if (   relative_rank(strongSide, weakPawnSq) == RANK_7
-          && (pos.pieces(strongSide, PAWN) & (weakPawnSq + pawn_push(weakSide)))
-          && (opposite_colors(bishopSq, weakPawnSq) || pos.count<PAWN>(strongSide) == 1))
+          && file_distance(kingSq, lsb(pawns)) <= 1)
       {
-          int strongKingDist = square_distance(weakPawnSq, strongKingSq);
-          int weakKingDist = square_distance(weakPawnSq, weakKingSq);
+          // If the defending king has distance <= 1 to the promotion square or
+          // is placed somewhere in front of the frontmost pawn, it's a draw.
+          Rank rank = relative_rank(strongSide, (frontmost_sq(strongSide, pawns)));
 
-          // It's a draw if the weak king is on its back two ranks, within 2
-          // squares of the blocking pawn and the strong king is not
-          // closer. (I think this rule only fails in practically
-          // unreachable positions such as 5k1K/6p1/6P1/8/8/3B4/8/8 w
-          // and positions where qsearch will immediately correct the
-          // problem such as 8/4k1p1/6P1/1K6/3B4/8/8/8 w)
-          if (   relative_rank(strongSide, weakKingSq) >= RANK_7
-              && weakKingDist <= 2
-              && weakKingDist <= strongKingDist)
+          if (   square_distance(kingSq, queeningSq) <= 1
+              || relative_rank(strongSide, kingSq) >= rank)
               return SCALE_FACTOR_DRAW;
       }
   }
