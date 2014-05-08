@@ -194,7 +194,8 @@ void ThreadPool::init() {
 }
 
 
-// exit() cleanly terminates the threads before the program exits
+// exit() cleanly terminates the threads before the program exits. Cannot be done in
+// d'tor because we have to terminate the threads before to free ThreadPool object.
 
 void ThreadPool::exit() {
 
