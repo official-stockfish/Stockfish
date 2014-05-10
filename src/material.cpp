@@ -32,17 +32,18 @@ namespace {
   //                                  pair  pawn knight bishop rook queen
   const int LinearCoefficients[6] = { 1852, -162, -1122, -183,  249, -154 };
 
-  const int QuadraticCoefficientsSameColor[][PIECE_TYPE_NB] = {
+  const int QuadraticCoefficientsSameSide[][PIECE_TYPE_NB] = {
+    //            OUR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
     {  39,    2                         }, // Pawn
-    {  35,  271,  -4                    }, // Knight
+    {  35,  271,  -4                    }, // knight      OUR PIECES
     {   0,  105,   4,    0              }, // Bishop
     { -27,   -2,  46,   100,  -141      }, // Rook
     {-177,   25, 129,   142,  -137,   0 }  // Queen
   };
 
-  const int QuadraticCoefficientsOppositeColor[][PIECE_TYPE_NB] = {
+  const int QuadraticCoefficientsOppositeSide[][PIECE_TYPE_NB] = {
     //           THEIR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
@@ -106,8 +107,8 @@ namespace {
         v = LinearCoefficients[pt1];
 
         for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
-            v +=  QuadraticCoefficientsSameColor[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticCoefficientsOppositeColor[pt1][pt2] * pieceCount[Them][pt2];
+            v +=  QuadraticCoefficientsSameSide[pt1][pt2] * pieceCount[Us][pt2]
+                + QuadraticCoefficientsOppositeSide[pt1][pt2] * pieceCount[Them][pt2];
 
         value += pc * v;
     }
