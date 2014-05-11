@@ -226,14 +226,12 @@ void Search::think() {
   for (size_t i = 0; i < Threads.size(); ++i)
       Threads[i]->maxPly = 0;
 
-  Threads.sleepWhileIdle = Options["Idle Threads Sleep"];
   Threads.timer->run = true;
   Threads.timer->notify_one(); // Wake up the recurring timer
 
   id_loop(RootPos); // Let's start searching !
 
   Threads.timer->run = false; // Stop the timer
-  Threads.sleepWhileIdle = true; // Send idle threads to sleep
 
   if (Options["Write Search Log"])
   {
@@ -1462,7 +1460,7 @@ void Thread::idle_loop() {
   {
       // If we are not searching, wait for a condition to be signaled instead of
       // wasting CPU time polling for work.
-      while ((!searching && Threads.sleepWhileIdle) || exit)
+      while (!searching || exit)
       {
           if (exit)
           {
@@ -1537,8 +1535,7 @@ void Thread::idle_loop() {
 
           // Wake up the master thread so to allow it to return from the idle
           // loop in case we are the last slave of the split point.
-          if (    Threads.sleepWhileIdle
-              &&  this != sp->masterThread
+          if (    this != sp->masterThread
               &&  sp->slavesMask.none())
           {
               assert(!sp->masterThread->searching);

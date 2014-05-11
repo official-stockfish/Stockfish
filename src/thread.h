@@ -166,7 +166,6 @@ struct ThreadPool : public std::vector<Thread*> {
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
-  bool sleepWhileIdle;
   Depth minimumSplitDepth;
   Mutex mutex;
   ConditionVariable sleepCondition;
