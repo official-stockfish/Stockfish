@@ -1017,17 +1017,17 @@ moves_loop: // When in check and at SpNode search starts from here
     // must be mate or stalemate. If we are in a singular extension search then
     // return a fail low score.
     if (!moveCount)
-        return  excludedMove ? alpha
-              : inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
+        bestValue = excludedMove ? alpha
+                   :     inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
+
+    // Quiet best move: update killers, history, countermoves and followupmoves
+    else if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
+        update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              bestValue >= beta  ? BOUND_LOWER :
              PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
              depth, bestMove, ss->staticEval);
-
-    // Quiet best move: update killers, history, countermoves and followupmoves
-    if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
-        update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
