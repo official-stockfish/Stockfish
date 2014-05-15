@@ -77,6 +77,7 @@ struct SplitPoint {
   // Shared data
   Mutex mutex;
   std::bitset<MAX_THREADS> slavesMask;
+  volatile bool allSlavesSearching;
   volatile uint64_t nodes;
   volatile Value alpha;
   volatile Value bestValue;
@@ -91,7 +92,7 @@ struct SplitPoint {
 
 struct ThreadBase {
 
-  ThreadBase() : exit(false) {}
+  ThreadBase() : handle(NativeHandle()), exit(false) {}
   virtual ~ThreadBase() {}
   virtual void idle_loop() = 0;
   void notify_one();
@@ -165,7 +166,6 @@ struct ThreadPool : public std::vector<Thread*> {
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
-  bool sleepWhileIdle;
   Depth minimumSplitDepth;
   Mutex mutex;
   ConditionVariable sleepCondition;

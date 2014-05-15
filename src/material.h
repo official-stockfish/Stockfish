@@ -43,7 +43,18 @@ struct Entry {
   Phase game_phase() const { return gamePhase; }
   bool specialized_eval_exists() const { return evaluationFunction != NULL; }
   Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
-  ScaleFactor scale_factor(const Position& pos, Color c) const;
+
+  // scale_factor takes a position and a color as input, and returns a scale factor
+  // for the given color. We have to provide the position in addition to the color,
+  // because the scale factor need not be a constant: It can also be a function
+  // which should be applied to the position. For instance, in KBP vs K endgames,
+  // a scaling function for draws with rook pawns and wrong-colored bishops.
+
+  ScaleFactor scale_factor(const Position& pos, Color c) const {
+
+    return !scalingFunction[c] || (*scalingFunction[c])(pos) == SCALE_FACTOR_NONE
+          ? ScaleFactor(factor[c]) : (*scalingFunction[c])(pos);
+  }
 
   Key key;
   int16_t value;
@@ -59,19 +70,6 @@ typedef HashTable<Entry, 8192> Table;
 Entry* probe(const Position& pos, Table& entries, Endgames& endgames);
 Phase game_phase(const Position& pos);
 
-/// Material::scale_factor takes a position and a color as input, and
-/// returns a scale factor for the given color. We have to provide the
-/// position in addition to the color, because the scale factor need not
-/// be a constant: It can also be a function which should be applied to
-/// the position. For instance, in KBP vs K endgames, a scaling function
-/// which checks for draws with rook pawns and wrong-colored bishops.
-
-inline ScaleFactor Entry::scale_factor(const Position& pos, Color c) const {
-
-  return !scalingFunction[c] || (*scalingFunction[c])(pos) == SCALE_FACTOR_NONE
-        ? ScaleFactor(factor[c]) : (*scalingFunction[c])(pos);
-}
-
-}
+} // namespace Material
 
 #endif // #ifndef MATERIAL_H_INCLUDED
