@@ -169,7 +169,7 @@ namespace {
   const Score RookSemiopenFile = make_score( 19, 10);
   const Score BishopPawns      = make_score(  8, 12);
   const Score MinorBehindPawn  = make_score( 16,  0);
-  const Score TrappedRook      = make_score(111, 27);
+  const Score TrappedRook      = make_score(217,208);
   const Score Unstoppable      = make_score(  0, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
