@@ -1399,8 +1399,8 @@ void RootMove::extract_pv_from_tt(Position& pos) {
 
   StateInfo state[MAX_PLY_PLUS_6], *st = state;
   const TTEntry* tte;
-  int ply = 0;
-  Move m = pv[0];
+  int ply = 1;    // At root ply is 1...
+  Move m = pv[0]; // ...instead pv[] array starts from 0
   Value expectedScore = score;
 
   pv.clear();
@@ -1408,9 +1408,9 @@ void RootMove::extract_pv_from_tt(Position& pos) {
   do {
       pv.push_back(m);
 
-      assert(MoveList<LEGAL>(pos).contains(pv[ply]));
+      assert(MoveList<LEGAL>(pos).contains(pv[ply - 1]));
 
-      pos.do_move(pv[ply++], *st++);
+      pos.do_move(pv[ply++ - 1], *st++);
       tte = TT.probe(pos.key());
       expectedScore = -expectedScore;
 
@@ -1419,11 +1419,11 @@ void RootMove::extract_pv_from_tt(Position& pos) {
            && pos.pseudo_legal(m = tte->move()) // Local copy, TT could change
            && pos.legal(m, pos.pinned_pieces(pos.side_to_move()))
            && ply < MAX_PLY
-           && (!pos.is_draw() || ply < 2));
+           && (!pos.is_draw() || ply <= 2));
 
   pv.push_back(MOVE_NONE); // Must be zero-terminating
 
-  while (ply) pos.undo_move(pv[--ply]);
+  while (--ply) pos.undo_move(pv[ply - 1]);
 }
 
 
@@ -1435,21 +1435,21 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
   StateInfo state[MAX_PLY_PLUS_6], *st = state;
   const TTEntry* tte;
-  int ply = 0;
+  int idx = 0; // Ply starts from 1, we need to start from 0
 
   do {
       tte = TT.probe(pos.key());
 
-      if (!tte || tte->move() != pv[ply]) // Don't overwrite correct entries
-          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[ply], VALUE_NONE);
+      if (!tte || tte->move() != pv[idx]) // Don't overwrite correct entries
+          TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[idx], VALUE_NONE);
 
-      assert(MoveList<LEGAL>(pos).contains(pv[ply]));
+      assert(MoveList<LEGAL>(pos).contains(pv[idx]));
 
-      pos.do_move(pv[ply++], *st++);
+      pos.do_move(pv[idx++], *st++);
 
-  } while (pv[ply] != MOVE_NONE);
+  } while (pv[idx] != MOVE_NONE);
 
-  while (ply) pos.undo_move(pv[--ply]);
+  while (idx) pos.undo_move(pv[--idx]);
 }
 
 
