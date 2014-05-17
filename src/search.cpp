@@ -1401,6 +1401,7 @@ void RootMove::extract_pv_from_tt(Position& pos) {
   const TTEntry* tte;
   int ply = 0;
   Move m = pv[0];
+  Value expectedScore = score;
 
   pv.clear();
 
@@ -1411,8 +1412,10 @@ void RootMove::extract_pv_from_tt(Position& pos) {
 
       pos.do_move(pv[ply++], *st++);
       tte = TT.probe(pos.key());
+      expectedScore = -expectedScore;
 
   } while (   tte
+           && expectedScore == value_from_tt(tte->value(), ply)
            && pos.pseudo_legal(m = tte->move()) // Local copy, TT could change
            && pos.legal(m, pos.pinned_pieces(pos.side_to_move()))
            && ply < MAX_PLY
