@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "misc.h"
+#include "notation.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
@@ -136,7 +137,17 @@ void benchmark(const Position& current, istream& is) {
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
-      if (limitType == "perft")
+      if (limitType == "divide")
+          for (MoveList<LEGAL> it(pos); *it; ++it)
+          {
+              StateInfo si;
+              pos.do_move(*it, si);
+              uint64_t cnt = limits.depth > 1 ? Search::perft(pos, (limits.depth - 1) * ONE_PLY) : 1;
+              pos.undo_move(*it);
+              cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
+              nodes += cnt;
+          }
+      else if (limitType == "perft")
       {
           uint64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
           cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
