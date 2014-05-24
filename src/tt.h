@@ -23,19 +23,28 @@
 #include "misc.h"
 #include "types.h"
 
-/// The TTEntry is the 128 bit transposition table entry, defined as below:
+/// The TTEntry is the 14 bytes transposition table entry, defined as below:
 ///
-/// key: 32 bit
-/// move: 16 bit
-/// bound type: 8 bit
-/// generation: 8 bit
-/// value: 16 bit
-/// depth: 16 bit
-/// static value: 16 bit
+/// key        32 bit
+/// move       16 bit
+/// bound type  8 bit
+/// generation  8 bit
+/// value      16 bit
+/// depth      16 bit
+/// eval value 16 bit
 
 struct TTEntry {
 
-  void save(uint32_t k, Value v, Bound b, Depth d, Move m, int g, Value ev) {
+  Move  move()  const      { return (Move )move16; }
+  Bound bound() const      { return (Bound)bound8; }
+  Value value() const      { return (Value)value16; }
+  Depth depth() const      { return (Depth)depth16; }
+  Value eval_value() const { return (Value)evalValue; }
+
+private:
+  friend class TranspositionTable;
+
+  void save(uint32_t k, Value v, Bound b, Depth d, Move m, uint8_t g, Value ev) {
 
     key32       = (uint32_t)k;
     move16      = (uint16_t)m;
@@ -45,16 +54,6 @@ struct TTEntry {
     depth16     = (int16_t)d;
     evalValue   = (int16_t)ev;
   }
-
-  uint32_t key() const     { return key32; }
-  Move move() const        { return (Move)move16; }
-  Bound bound() const      { return (Bound)bound8; }
-  Value value() const      { return (Value)value16; }
-  Depth depth() const      { return (Depth)depth16; }
-  Value eval_value() const { return (Value)evalValue; }
-
-private:
-  friend class TranspositionTable;
 
   uint32_t key32;
   uint16_t move16;
@@ -71,7 +70,7 @@ private:
 
 class TranspositionTable {
 
-  static const unsigned ClusterSize = 4; // A cluster is 64 Bytes
+  static const unsigned ClusterSize = 4;
 
 public:
  ~TranspositionTable() { free(mem); }
