@@ -42,6 +42,7 @@ namespace Search {
   LimitsType Limits;
   std::vector<RootMove> RootMoves;
   Position RootPos;
+  Color RootColor;
   Time::point SearchTime;
   StateStackPtr SetupStates;
 }
@@ -181,11 +182,12 @@ void Search::think() {
 
   static PolyglotBook book; // Defined static to initialize the PRNG only once
 
-  TimeMgr.init(Limits, RootPos.game_ply(), RootPos.side_to_move());
+  RootColor = RootPos.side_to_move();
+  TimeMgr.init(Limits, RootPos.game_ply(), RootColor);
 
   int cf = Options["Contempt Factor"] * PawnValueEg / 100; // From centipawns
-  DrawValue[ RootPos.side_to_move()] = VALUE_DRAW - Value(cf);
-  DrawValue[~RootPos.side_to_move()] = VALUE_DRAW + Value(cf);
+  DrawValue[ RootColor] = VALUE_DRAW - Value(cf);
+  DrawValue[~RootColor] = VALUE_DRAW + Value(cf);
 
   if (RootMoves.empty())
   {
@@ -214,8 +216,8 @@ void Search::think() {
       log << "\nSearching: "  << RootPos.fen()
           << "\ninfinite: "   << Limits.infinite
           << " ponder: "      << Limits.ponder
-          << " time: "        << Limits.time[RootPos.side_to_move()]
-          << " increment: "   << Limits.inc[RootPos.side_to_move()]
+          << " time: "        << Limits.time[RootColor]
+          << " increment: "   << Limits.inc[RootColor]
           << " moves to go: " << Limits.movestogo
           << "\n" << std::endl;
   }
