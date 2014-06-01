@@ -57,15 +57,12 @@ void init(OptionsMap& o) {
   o["Write Debug Log"]          << Option(false, on_logger);
   o["Write Search Log"]         << Option(false);
   o["Search Log Filename"]      << Option("SearchLog.txt");
-  o["Book File"]                << Option("book.bin");
-  o["Best Book Move"]           << Option(false);
   o["Contempt Factor"]          << Option(0, -50,  50);
   o["Min Split Depth"]          << Option(0, 0, 12, on_threads);
   o["Threads"]                  << Option(1, 1, MAX_THREADS, on_threads);
   o["Hash"]                     << Option(32, 1, 16384, on_hash_size);
   o["Clear Hash"]               << Option(on_clear_hash);
   o["Ponder"]                   << Option(true);
-  o["OwnBook"]                  << Option(false);
   o["MultiPV"]                  << Option(1, 1, 500);
   o["Skill Level"]              << Option(20, 0, 20);
   o["Emergency Move Horizon"]   << Option(40, 0, 50);
