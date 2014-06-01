@@ -60,15 +60,6 @@ void init(OptionsMap& o) {
   o["Book File"]                << Option("book.bin");
   o["Best Book Move"]           << Option(false);
   o["Contempt Factor"]          << Option(0, -50,  50);
-  o["Mobility (Midgame)"]       << Option(100, 0, 200, on_eval);
-  o["Mobility (Endgame)"]       << Option(100, 0, 200, on_eval);
-  o["Pawn Structure (Midgame)"] << Option(100, 0, 200, on_eval);
-  o["Pawn Structure (Endgame)"] << Option(100, 0, 200, on_eval);
-  o["Passed Pawns (Midgame)"]   << Option(100, 0, 200, on_eval);
-  o["Passed Pawns (Endgame)"]   << Option(100, 0, 200, on_eval);
-  o["Space"]                    << Option(100, 0, 200, on_eval);
-  o["Aggressiveness"]           << Option(100, 0, 200, on_eval);
-  o["Cowardice"]                << Option(100, 0, 200, on_eval);
   o["Min Split Depth"]          << Option(0, 0, 12, on_threads);
   o["Threads"]                  << Option(1, 1, MAX_THREADS, on_threads);
   o["Hash"]                     << Option(32, 1, 16384, on_hash_size);
