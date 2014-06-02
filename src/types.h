@@ -136,7 +136,7 @@ enum CastlingSide {
   KING_SIDE, QUEEN_SIDE, CASTLING_SIDE_NB = 2
 };
 
-enum CastlingRight {  // Defined as in PolyGlot book hash key
+enum CastlingRight {
   NO_CASTLING,
   WHITE_OO,
   WHITE_OOO   = WHITE_OO << 1,
@@ -274,7 +274,7 @@ typedef union {
 
 inline Score make_score(int mg, int eg) {
   ScoreView v;
-  v.half.mg = (int16_t)mg - (uint16_t(eg) >> 15);
+  v.half.mg = (int16_t)(mg - (uint16_t(eg) >> 15));
   v.half.eg = (int16_t)eg;
   return Score(v.full);
 }

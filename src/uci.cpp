@@ -174,12 +174,14 @@ void UCI::loop(int argc, char* argv[]) {
           else
               Search::Limits.ponder = false;
       }
-      else if (token == "perft" && (is >> token)) // Read perft depth
+      else if (token == "perft" || token == "divide")
       {
+          int depth;
           stringstream ss;
 
+          is >> depth;
           ss << Options["Hash"]    << " "
-             << Options["Threads"] << " " << token << " current perft";
+             << Options["Threads"] << " " << depth << " current " << token;
 
           benchmark(pos, ss);
       }
