@@ -1552,7 +1552,7 @@ void Thread::idle_loop() {
           if (Threads.size() > 2)
               for (size_t i = 0; i < Threads.size(); ++i)
               {
-                  int size = Threads[i]->splitPointsSize; // Local copy
+                  const int size = Threads[i]->splitPointsSize; // Local copy
                   sp = size ? &Threads[i]->splitPoints[size - 1] : NULL;
 
                   if (   sp
