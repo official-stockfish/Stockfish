@@ -337,6 +337,8 @@ inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
+CACHE_LINE_ALIGNMENT
+
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 struct ExtMove {
