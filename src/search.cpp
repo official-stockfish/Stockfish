@@ -469,7 +469,7 @@ namespace {
     bestValue = -VALUE_INFINITE;
     ss->currentMove = ss->ttMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
-    (ss+1)->skipNullMove = (ss+1)->nullChild = false; (ss+1)->reduction = DEPTH_ZERO;
+    (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
     // Used to send selDepth info to GUI
@@ -544,7 +544,9 @@ namespace {
     }
     else
     {
-        eval = ss->staticEval = ss->nullChild ? -(ss-1)->staticEval + 2 * Eval::Tempo : evaluate(pos);
+        eval = ss->staticEval =
+        (ss-1)->currentMove != MOVE_NULL ? evaluate(pos) : -(ss-1)->staticEval + 2 * Eval::Tempo;
+
         TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->staticEval);
     }
 
@@ -605,10 +607,10 @@ namespace {
                  + int(eval - beta) / PawnValueMg * ONE_PLY;
 
         pos.do_null_move(st);
-        (ss+1)->skipNullMove = (ss+1)->nullChild = true;
+        (ss+1)->skipNullMove = true;
         nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1, DEPTH_ZERO)
                                       : - search<NonPV, false>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode);
-        (ss+1)->skipNullMove = (ss+1)->nullChild = false;
+        (ss+1)->skipNullMove = false;
         pos.undo_null_move();
 
         if (nullValue >= beta)
@@ -1108,7 +1110,8 @@ moves_loop: // When in check and at SpNode search starts from here
                     bestValue = ttValue;
         }
         else
-            ss->staticEval = bestValue = ss->nullChild ? -(ss-1)->staticEval + 2 * Eval::Tempo : evaluate(pos);
+            ss->staticEval = bestValue =
+            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos) : -(ss-1)->staticEval + 2 * Eval::Tempo;
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
