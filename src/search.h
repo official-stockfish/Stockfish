@@ -46,7 +46,6 @@ struct Stack {
   Depth reduction;
   Value staticEval;
   bool skipNullMove;
-  bool nullChild;
 };
 
 
