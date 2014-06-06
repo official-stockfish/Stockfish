@@ -270,7 +270,6 @@ namespace {
     Value bestValue, alpha, beta, delta;
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
-    (ss-1)->currentMove = MOVE_NULL; // Hack to skip update gains
 
     depth = 0;
     BestMoveChanges = 0;
@@ -553,6 +552,7 @@ namespace {
         &&  ss->staticEval != VALUE_NONE
         && (ss-1)->staticEval != VALUE_NONE
         && (move = (ss-1)->currentMove) != MOVE_NULL
+        &&  move != MOVE_NONE
         &&  type_of(move) == NORMAL)
     {
         Square to = to_sq(move);
