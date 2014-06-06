@@ -855,7 +855,7 @@ namespace Eval {
   /// of the position always from the point of view of the side to move.
 
   Value evaluate(const Position& pos) {
-    return do_evaluate<false>(pos);
+    return do_evaluate<false>(pos) + Tempo;
   }
 
 
