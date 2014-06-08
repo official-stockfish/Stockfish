@@ -76,7 +76,7 @@ namespace {
   namespace Tracing {
 
     enum Terms { // First 8 entries are for PieceType
-      PST = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERMS_NB
+      MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERMS_NB
     };
 
     Score terms[COLOR_NB][TERMS_NB];
@@ -763,7 +763,7 @@ namespace {
     // In case of tracing add all single evaluation contributions for both white and black
     if (Trace)
     {
-        Tracing::add_term(Tracing::PST, pos.psq_score());
+        Tracing::add_term(Tracing::MATERIAL, pos.psq_score());
         Tracing::add_term(Tracing::IMBALANCE, ei.mi->material_value());
         Tracing::add_term(PAWN, ei.pi->pawns_value());
         Tracing::add_term(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
@@ -796,13 +796,13 @@ namespace {
     Score bScore = terms[BLACK][idx];
 
     switch (idx) {
-    case PST: case IMBALANCE: case PAWN: case TOTAL:
-        ss << std::setw(20) << name << " |   ---   --- |   ---   --- | "
+    case MATERIAL: case IMBALANCE: case PAWN: case TOTAL:
+        ss << std::setw(15) << name << " |   ---   --- |   ---   --- | "
            << std::setw(5)  << to_cp(mg_value(wScore - bScore)) << " "
            << std::setw(5)  << to_cp(eg_value(wScore - bScore)) << " \n";
         break;
     default:
-        ss << std::setw(20) << name << " | " << std::noshowpos
+        ss << std::setw(15) << name << " | " << std::noshowpos
            << std::setw(5)  << to_cp(mg_value(wScore)) << " "
            << std::setw(5)  << to_cp(eg_value(wScore)) << " | "
            << std::setw(5)  << to_cp(mg_value(bScore)) << " "
@@ -821,12 +821,12 @@ namespace {
 
     std::stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2)
-       << "           Eval term |    White    |    Black    |    Total    \n"
-       << "                     |   MG    EG  |   MG    EG  |   MG    EG  \n"
-       << "---------------------+-------------+-------------+-------------\n";
+       << "      Eval term |    White    |    Black    |    Total    \n"
+       << "                |   MG    EG  |   MG    EG  |   MG    EG  \n"
+       << "----------------+-------------+-------------+-------------\n";
 
-    format_row(ss, "Material, PST", PST);
-    format_row(ss, "Material imbalance", IMBALANCE);
+    format_row(ss, "Material", MATERIAL);
+    format_row(ss, "Imbalance", IMBALANCE);
     format_row(ss, "Pawns", PAWN);
     format_row(ss, "Knights", KNIGHT);
     format_row(ss, "Bishops", BISHOP);
@@ -838,7 +838,7 @@ namespace {
     format_row(ss, "Passed pawns", PASSED);
     format_row(ss, "Space", SPACE);
 
-    ss << "---------------------+-------------+-------------+-------------\n";
+    ss << "----------------+-------------+-------------+-------------\n";
     format_row(ss, "Total", TOTAL);
 
     ss << "\nTotal Evaluation: " << to_cp(v) << " (white side)\n";

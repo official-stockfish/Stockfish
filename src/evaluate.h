@@ -26,7 +26,7 @@ class Position;
 
 namespace Eval {
 
-const int Tempo = 17; // Must be visible to search
+const Value Tempo = Value(17); // Must be visible to search
 
 extern void init();
 extern Value evaluate(const Position& pos);
