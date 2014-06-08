@@ -980,8 +980,8 @@ moves_loop: // When in check and at SpNode search starts from here
 
       // Step 19. Check for splitting the search
       if (   !SpNode
-          &&  Threads.size() >= 2
           &&  depth >= Threads.minimumSplitDepth
+          &&  Threads.available_slave(thisThread)
           &&  (   !thisThread->activeSplitPoint
                || !thisThread->activeSplitPoint->allSlavesSearching)
           &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
