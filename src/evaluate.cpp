@@ -231,10 +231,10 @@ namespace {
   }
 
 
-  // evaluate_outposts() evaluates bishop and knight outpost squares
+  // evaluate_outpost() evaluates bishop and knight outpost squares
 
   template<PieceType Pt, Color Us>
-  Score evaluate_outposts(const Position& pos, EvalInfo& ei, Square s) {
+  Score evaluate_outpost(const Position& pos, const EvalInfo& ei, Square s) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -315,9 +315,9 @@ namespace {
             if (Pt == BISHOP)
                 score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
 
-            // Bishop and knight outposts squares
+            // Bishop and knight outpost square
             if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
-                score += evaluate_outposts<Pt, Us>(pos, ei, s);
+                score += evaluate_outpost<Pt, Us>(pos, ei, s);
 
             // Bishop or knight behind a pawn
             if (    relative_rank(Us, s) < RANK_5
