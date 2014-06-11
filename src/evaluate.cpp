@@ -147,7 +147,7 @@ namespace {
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
   // type is attacked by an enemy pawn.
   const Score ThreatenedByPawn[] = {
-    S(0, 0), S(0, 0), S(56, 70), S(56, 70), S(76, 99), S(86, 118)
+    S(0, 0), S(0, 0), S(80, 119), S(80, 119), S(117, 199), S(127, 218)
   };
 
   // Hanging contains a bonus for each enemy hanging piece
@@ -506,7 +506,7 @@ namespace {
     // Add a bonus according if the attacking pieces are minor or major
     if (weakEnemies)
     {
-        b = weakEnemies & (ei.attackedBy[Us][PAWN] | ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+        b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
             score += Threat[0][type_of(pos.piece_on(lsb(b)))];
 
