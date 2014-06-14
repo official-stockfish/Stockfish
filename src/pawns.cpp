@@ -93,7 +93,6 @@ namespace {
     const Square Up    = (Us == WHITE ? DELTA_N  : DELTA_S);
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
-    const Piece pc     = make_piece(Us, PAWN);
 
     Bitboard b, p, doubled;
     Square s;
@@ -101,6 +100,7 @@ namespace {
     bool passed, isolated, opposed, connected, backward, candidate, unsupported, lever;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
+    const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
     Bitboard ourPawns = pos.pieces(Us, PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
@@ -136,7 +136,7 @@ namespace {
         doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
         passed      = !(theirPawns & passed_pawn_mask(Us, s));
-        lever       =   theirPawns & StepAttacksBB[pc][s];
+        lever       =   theirPawns & pawnAttacksBB[s];
 
         // Test for backward pawn.
         // If the pawn is passed, isolated, or connected it cannot be
@@ -192,6 +192,9 @@ namespace {
         if (connected)
             value += Connected[f][relative_rank(Us, s)];
 
+        if (lever)
+           value += Lever[relative_rank(Us, s)];
+
         if (candidate)
         {
             value += CandidatePassed[relative_rank(Us, s)];
@@ -199,9 +202,6 @@ namespace {
             if (!doubled)
                 e->candidatePawns[Us] |= s;
         }
-
-        if (lever)
-           value += Lever[relative_rank(Us, s)];
     }
 
     // In endgame it's better to have pawns on both wings. So give a bonus according
