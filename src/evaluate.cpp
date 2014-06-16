@@ -596,6 +596,8 @@ namespace {
 
                 mbonus += k * rr, ebonus += k * rr;
             }
+			else if(color_of(pos.piece_on(s)) == Us)
+				mbonus++, ebonus++;
         } // rr != 0
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
