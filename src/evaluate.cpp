@@ -613,17 +613,14 @@ namespace {
 
 
   // evaluate_unstoppable_pawns() scores the most advanced among the passed and
-  // candidate pawns. In case opponent has no pieces but pawns, this is somewhat
-  // related to the possibility that pawns are unstoppable.
+  // candidate pawns. In case both players have no pieces but pawns, this is
+  // somewhat related to the possibility that pawns are unstoppable.
 
-  Score evaluate_unstoppable_pawns(const Position& pos, Color us, const EvalInfo& ei) {
+  Score evaluate_unstoppable_pawns(Color us, const EvalInfo& ei) {
 
     Bitboard b = ei.pi->passed_pawns(us) | ei.pi->candidate_pawns(us);
 
-    if (!b || pos.non_pawn_material(~us))
-        return SCORE_ZERO;
-
-    return Unstoppable * int(relative_rank(us, frontmost_sq(us, b)));
+    return b ? Unstoppable * int(relative_rank(us, frontmost_sq(us, b))) : SCORE_ZERO;
   }
 
 
@@ -716,10 +713,10 @@ namespace {
     score +=  evaluate_passed_pawns<WHITE, Trace>(pos, ei)
             - evaluate_passed_pawns<BLACK, Trace>(pos, ei);
 
-    // If one side has only a king, score for potential unstoppable pawns
-    if (!pos.non_pawn_material(WHITE) || !pos.non_pawn_material(BLACK))
-        score +=  evaluate_unstoppable_pawns(pos, WHITE, ei)
-                - evaluate_unstoppable_pawns(pos, BLACK, ei);
+    // If both sides have only pawns, score for potential unstoppable pawns
+    if (!pos.non_pawn_material(WHITE) && !pos.non_pawn_material(BLACK))
+        score +=  evaluate_unstoppable_pawns(WHITE, ei)
+                - evaluate_unstoppable_pawns(BLACK, ei);
 
     // Evaluate space for both sides, only in middlegame
     if (ei.mi->space_weight())
