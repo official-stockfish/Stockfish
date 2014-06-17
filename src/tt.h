@@ -23,44 +23,26 @@
 #include "misc.h"
 #include "types.h"
 
-/// The TTEntry is the 14 bytes transposition table entry, defined as below:
-///
-/// key        32 bit
-/// move       16 bit
-/// bound type  8 bit
-/// generation  8 bit
-/// value      16 bit
-/// depth      16 bit
-/// eval value 16 bit
-
 struct TTEntry {
 
   Move  move()  const      { return (Move )move16; }
-  Bound bound() const      { return (Bound)bound8; }
+  Bound bound() const      { return (Bound)(genBound & 0x3); }
   Value value() const      { return (Value)value16; }
-  Depth depth() const      { return (Depth)depth16; }
+  Depth depth() const      { return (Depth)(depth8 + DEPTH_NONE); }
   Value eval_value() const { return (Value)evalValue; }
 
 private:
   friend class TranspositionTable;
 
-  void save(uint32_t k, Value v, Bound b, Depth d, Move m, uint8_t g, Value ev) {
+  uint8_t gen() const      { return genBound & 0xfc; }
 
-    key32       = (uint32_t)k;
-    move16      = (uint16_t)m;
-    bound8      = (uint8_t)b;
-    generation8 = (uint8_t)g;
-    value16     = (int16_t)v;
-    depth16     = (int16_t)d;
-    evalValue   = (int16_t)ev;
-  }
-
-  uint32_t key32;
+  uint16_t key;
   uint16_t move16;
-  uint8_t bound8, generation8;
-  int16_t value16, depth16, evalValue;
+  int16_t value16;
+  int16_t evalValue;
+  uint8_t depth8;
+  uint8_t genBound;
 };
-
 
 /// A TranspositionTable consists of a power of 2 number of clusters and each
 /// cluster consists of ClusterSize number of TTEntry. Each non-empty entry
@@ -70,11 +52,11 @@ private:
 
 class TranspositionTable {
 
-  static const unsigned ClusterSize = 4;
+  static const unsigned ClusterSize = 3;
 
 public:
  ~TranspositionTable() { free(mem); }
-  void new_search() { ++generation; }
+  void new_search() { generation += 4; }
 
   const TTEntry* probe(const Key key) const;
   TTEntry* first_entry(const Key key) const;
@@ -83,10 +65,16 @@ public:
   void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV);
 
 private:
-  uint32_t hashMask;
+  uint64_t hashMask;
   TTEntry* table;
   void* mem;
-  uint8_t generation; // Size must be not bigger than TTEntry::generation8
+  uint32_t clusters;
+  uint8_t generation;
+
+  struct Cluster {
+      TTEntry entry[ClusterSize];
+      char pad[2];
+  };
 };
 
 extern TranspositionTable TT;
@@ -98,7 +86,7 @@ extern TranspositionTable TT;
 
 inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
-  return table + ((uint32_t)key & hashMask);
+  return (TTEntry*)((char*)table + (key & hashMask));
 }
 
 #endif // #ifndef TT_H_INCLUDED
