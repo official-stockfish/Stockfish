@@ -596,8 +596,8 @@ namespace {
 
                 mbonus += k * rr, ebonus += k * rr;
             }
-			else if(color_of(pos.piece_on(s)) == Us)
-				mbonus += rr * 2, ebonus += rr * 2;
+			else if(pos.pieces(Us) & blockSq)
+				mbonus += rr, ebonus += rr;
         } // rr != 0
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
