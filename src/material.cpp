@@ -66,8 +66,7 @@ namespace {
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return  !pos.count<PAWN>(Them)
-          && pos.non_pawn_material(Them) == VALUE_ZERO
+    return  !more_than_one(pos.pieces(Them))
           && pos.non_pawn_material(Us) >= RookValueMg;
   }
 
