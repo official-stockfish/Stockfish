@@ -465,6 +465,18 @@ const string Position::pretty(Move m) const {
 }
 
 
+/// Position::game_phase() calculates the game phase of the position
+
+Phase Position::game_phase() const {
+
+  Value npm = st->npMaterial[WHITE] + st->npMaterial[BLACK];
+
+  return  npm >= MidgameLimit ? PHASE_MIDGAME
+        : npm <= EndgameLimit ? PHASE_ENDGAME
+        : Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
+}
+
+
 /// Position::check_blockers() returns a bitboard of all the pieces with color
 /// 'c' that are blocking check on the king with color 'kingColor'. A piece
 /// blocks a check if removing that piece from the board would result in a

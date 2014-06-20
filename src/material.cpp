@@ -136,7 +136,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   std::memset(e, 0, sizeof(Entry));
   e->key = key;
   e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-  e->gamePhase = game_phase(pos);
+  e->gamePhase = pos.game_phase();
 
   // Let's look if we have a specialized evaluation function for this particular
   // material configuration. Firstly we look for a fixed configuration one, then
@@ -243,20 +243,6 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
 
   e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
   return e;
-}
-
-
-/// Material::game_phase() calculates the phase given the current
-/// position. Because the phase is strictly a function of the material, it
-/// is stored in MaterialEntry.
-
-Phase game_phase(const Position& pos) {
-
-  Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
-
-  return  npm >= MidgameLimit ? PHASE_MIDGAME
-        : npm <= EndgameLimit ? PHASE_ENDGAME
-        : Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
 
 } // namespace Material
