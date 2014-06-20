@@ -465,15 +465,16 @@ const string Position::pretty(Move m) const {
 }
 
 
-/// Position::game_phase() calculates the game phase of the position
+/// Position::game_phase() calculates the game phase interpolating total non-pawn
+/// material between endgame and midgame limits.
 
 Phase Position::game_phase() const {
 
   Value npm = st->npMaterial[WHITE] + st->npMaterial[BLACK];
 
-  return  npm >= MidgameLimit ? PHASE_MIDGAME
-        : npm <= EndgameLimit ? PHASE_ENDGAME
-        : Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
+  npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
+
+  return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
 
 
