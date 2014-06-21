@@ -57,7 +57,7 @@ namespace {
     S( 0, 0), S( 6, 13), S(6,13), S(14,29),
     S(34,68), S(83,166), S(0, 0), S( 0, 0) };
 
-    // Levers bonus by rank
+  // Levers bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
     S(20,20), S(40,40), S(0, 0), S(0, 0) };
@@ -74,7 +74,7 @@ namespace {
 
   // Danger of enemy pawns moving toward our king indexed by
   // [no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
-  const Value StormDanger[3][RANK_NB] = {
+  const Value StormDanger[][RANK_NB] = {
   { V( 0),  V(64), V(128), V(51), V(26) },
   { V(26),  V(32), V( 96), V(38), V(20) },
   { V( 0),  V( 0), V(160), V(25), V(13) } };
@@ -223,20 +223,19 @@ namespace Pawns {
 
 void init() {
 
-  const int bonusesByFile[8] = { 1, 3, 3, 4, 4, 3, 3, 1 };
-  int bonus;
+  const int bonusByFile[] = { 1, 3, 3, 4, 4, 3, 3, 1 };
 
   for (Rank r = RANK_1; r < RANK_8; ++r)
       for (File f = FILE_A; f <= FILE_H; ++f)
       {
-          bonus = r * (r-1) * (r-2) + bonusesByFile[f] * (r/2 + 1);
+          int bonus = r * (r - 1) * (r - 2) + bonusByFile[f] * (r / 2 + 1);
           Connected[f][r] = make_score(bonus, bonus);
       }
 }
 
 
-/// probe() takes a position object as input, computes a Entry object, and returns
-/// a pointer to it. The result is also stored in a hash table, so we don't have
+/// probe() takes a position as input, computes a Entry object, and returns a
+/// pointer to it. The result is also stored in a hash table, so we don't have
 /// to recompute everything when the same pawn structure occurs again.
 
 Entry* probe(const Position& pos, Table& entries) {
@@ -260,30 +259,30 @@ template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
-  static const Bitboard MiddleEdges = (FileABB | FileHBB) & (Rank2BB | Rank3BB);
+  const Bitboard Edges = (FileABB | FileHBB) & (Rank2BB | Rank3BB);
 
-  Value safety = MaxSafetyBonus;
   Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
-  Rank rkUs, rkThem;
+  Value safety = MaxSafetyBonus;
   File kf = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
   for (File f = kf - File(1); f <= kf + File(1); ++f)
   {
       b = ourPawns & file_bb(f);
-      rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
+      Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
 
       b  = theirPawns & file_bb(f);
-      rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
+      Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-      if (   (MiddleEdges & make_square(f, rkThem))
+      if (   (Edges & make_square(f, rkThem))
           && file_of(ksq) == f
           && relative_rank(Us, ksq) == rkThem - 1)
           safety += 200;
       else
-          safety -= ShelterWeakness[rkUs]
-                  + StormDanger[rkUs == RANK_1 ? 0 : rkThem == rkUs + 1 ? 2 : 1][rkThem];
+          safety -=  ShelterWeakness[rkUs]
+                   + StormDanger[rkUs   == RANK_1   ? 0 :
+                                 rkThem != rkUs + 1 ? 1 : 2][rkThem];
   }
 
   return safety;
