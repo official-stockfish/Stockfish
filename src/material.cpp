@@ -29,10 +29,10 @@ namespace {
 
   // Polynomial material balance parameters
 
-  //                                  pair  pawn knight bishop rook queen
-  const int LinearCoefficients[6] = { 1852, -162, -1122, -183,  249, -154 };
+  //                      pair  pawn knight bishop rook queen
+  const int Linear[6] = { 1852, -162, -1122, -183,  249, -154 };
 
-  const int QuadraticCoefficientsSameSide[][PIECE_TYPE_NB] = {
+  const int QuadraticSameSide[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
@@ -43,7 +43,7 @@ namespace {
     {-177,   25, 129,   142,  -137,   0 }  // Queen
   };
 
-  const int QuadraticCoefficientsOppositeSide[][PIECE_TYPE_NB] = {
+  const int QuadraticOppositeSide[][PIECE_TYPE_NB] = {
     //           THEIR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
@@ -66,8 +66,7 @@ namespace {
   // Helper templates used to detect a given material distribution
   template<Color Us> bool is_KXK(const Position& pos) {
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return  !pos.count<PAWN>(Them)
-          && pos.non_pawn_material(Them) == VALUE_ZERO
+    return  !more_than_one(pos.pieces(Them))
           && pos.non_pawn_material(Us) >= RookValueMg;
   }
 
@@ -94,26 +93,24 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    int pt1, pt2, pc, v;
-    int value = 0;
+    int bonus = 0;
 
     // Second-degree polynomial material imbalance by Tord Romstad
-    for (pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
+    for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
     {
-        pc = pieceCount[Us][pt1];
-        if (!pc)
+        if (!pieceCount[Us][pt1])
             continue;
 
-        v = LinearCoefficients[pt1];
+        int v = Linear[pt1];
 
-        for (pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
-            v +=  QuadraticCoefficientsSameSide[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticCoefficientsOppositeSide[pt1][pt2] * pieceCount[Them][pt2];
+        for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
+            v +=  QuadraticSameSide[pt1][pt2] * pieceCount[Us][pt2]
+                + QuadraticOppositeSide[pt1][pt2] * pieceCount[Them][pt2];
 
-        value += pc * v;
+        bonus += pieceCount[Us][pt1] * v;
     }
 
-    return value;
+    return bonus;
   }
 
 } // namespace
@@ -139,7 +136,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   std::memset(e, 0, sizeof(Entry));
   e->key = key;
   e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-  e->gamePhase = game_phase(pos);
+  e->gamePhase = pos.game_phase();
 
   // Let's look if we have a specialized evaluation function for this particular
   // material configuration. Firstly we look for a fixed configuration one, then
@@ -246,20 +243,6 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
 
   e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
   return e;
-}
-
-
-/// Material::game_phase() calculates the phase given the current
-/// position. Because the phase is strictly a function of the material, it
-/// is stored in MaterialEntry.
-
-Phase game_phase(const Position& pos) {
-
-  Value npm = pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK);
-
-  return  npm >= MidgameLimit ? PHASE_MIDGAME
-        : npm <= EndgameLimit ? PHASE_ENDGAME
-        : Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
 
 } // namespace Material

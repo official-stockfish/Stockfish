@@ -68,7 +68,6 @@ struct Entry {
 typedef HashTable<Entry, 8192> Table;
 
 Entry* probe(const Position& pos, Table& entries, Endgames& endgames);
-Phase game_phase(const Position& pos);
 
 } // namespace Material
 
