@@ -24,8 +24,8 @@
 #include <cstddef>
 
 #include "bitboard.h"
+#include "bitcount.h"
 #include "types.h"
-
 
 /// The checkInfo struct is initialized at c'tor time and keeps info used
 /// to detect if a move gives check.
@@ -98,6 +98,7 @@ public:
   bool empty(Square s) const;
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> const Square* list(Color c) const;
+  int total_piece_count() const;
 
   // Castling
   int can_castle(Color c) const;
@@ -163,6 +164,7 @@ public:
   uint64_t nodes_searched() const;
   void set_nodes_searched(uint64_t n);
   bool is_draw() const;
+  int rule50_count() const;
 
   // Position consistency check, for debugging
   bool pos_is_ok(int* step = NULL) const;
@@ -349,6 +351,14 @@ inline int Position::game_ply() const {
   return gamePly;
 }
 
+inline int Position::rule50_count() const {
+  return st->rule50;
+}
+
+inline int Position::total_piece_count() const {
+  return HasPopCnt ? popcount<Full>(pieces()) : pieceCount[WHITE][ALL_PIECES];
+}
+
 inline bool Position::opposite_bishops() const {
 
   return   pieceCount[WHITE][BISHOP] == 1
@@ -399,6 +409,8 @@ inline void Position::put_piece(Square s, Color c, PieceType pt) {
   byColorBB[c] |= s;
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
+  if (!HasPopCnt)
+      pieceCount[WHITE][ALL_PIECES]++;
 }
 
 inline void Position::move_piece(Square from, Square to, Color c, PieceType pt) {
@@ -429,6 +441,8 @@ inline void Position::remove_piece(Square s, Color c, PieceType pt) {
   index[lastSquare] = index[s];
   pieceList[c][pt][index[lastSquare]] = lastSquare;
   pieceList[c][pt][pieceCount[c][pt]] = SQ_NONE;
+  if (!HasPopCnt)
+      pieceCount[WHITE][ALL_PIECES]--;
 }
 
 #endif // #ifndef POSITION_H_INCLUDED

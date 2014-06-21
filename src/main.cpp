@@ -23,6 +23,7 @@
 #include "evaluate.h"
 #include "position.h"
 #include "search.h"
+#include "tbprobe.h"
 #include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
@@ -40,6 +41,7 @@ int main(int argc, char* argv[]) {
   Eval::init();
   Threads.init();
   TT.resize(Options["Hash"]);
+  Tablebases::init(Options["SyzygyPath"]);
 
   UCI::loop(argc, argv);
 
