@@ -465,6 +465,19 @@ const string Position::pretty(Move m) const {
 }
 
 
+/// Position::game_phase() calculates the game phase interpolating total non-pawn
+/// material between endgame and midgame limits.
+
+Phase Position::game_phase() const {
+
+  Value npm = st->npMaterial[WHITE] + st->npMaterial[BLACK];
+
+  npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
+
+  return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
+}
+
+
 /// Position::check_blockers() returns a bitboard of all the pieces with color
 /// 'c' that are blocking check on the king with color 'kingColor'. A piece
 /// blocks a check if removing that piece from the board would result in a
