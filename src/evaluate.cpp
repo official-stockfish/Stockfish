@@ -596,7 +596,7 @@ namespace {
 
                 mbonus += k * rr, ebonus += k * rr;
             }
-			else if(pos.pieces(Us) & ~ei.pinnedPieces & blockSq)
+			else if(pos.pieces(Us) & ~ei.pinnedPieces[Us] & blockSq)
 				mbonus += rr, ebonus += rr * 4;
         } // rr != 0
 
