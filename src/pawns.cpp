@@ -204,13 +204,16 @@ namespace {
         }
     }
 
+    int pawnspan = 0;
+    b = e->semiopenFiles[Us] ^ 0xFF;
+    if (b) {
+        pawnspan = int(msb(b) - lsb(b));
+    }
+    e->pawnSpan[Us] = pawnspan;
+
     // In endgame it's better to have pawns on both wings. So give a bonus according
     // to file distance between left and right outermost pawns.
-    if (pos.count<PAWN>(Us) > 1)
-    {
-        b = e->semiopenFiles[Us] ^ 0xFF;
-        value += PawnsFileSpan * int(msb(b) - lsb(b));
-    }
+    value += PawnsFileSpan * pawnspan;
 
     return value;
   }

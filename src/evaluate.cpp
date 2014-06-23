@@ -193,6 +193,8 @@ namespace {
   const int BishopCheck       = 2;
   const int KnightCheck       = 3;
 
+  const int ScalePawnSpan[2] = { 38, 56 };
+
   // KingDanger[attackUnits] contains the actual king danger weighted
   // scores, indexed by a calculated integer number.
   Score KingDanger[128];
@@ -726,8 +728,8 @@ namespace {
     }
 
     // Scale winning side if position is more drawish than it appears
-    ScaleFactor sf = eg_value(score) > VALUE_DRAW ? ei.mi->scale_factor(pos, WHITE)
-                                                  : ei.mi->scale_factor(pos, BLACK);
+    Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
+    ScaleFactor sf = ei.mi->scale_factor(pos, strongSide);
 
     // If we don't already have an unusual scale factor, check for opposite
     // colored bishop endgames, and use a lower scale for those.
@@ -750,6 +752,12 @@ namespace {
             // a bit drawish, but not as drawish as with only the two bishops.
              sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
     }
+    else if (   (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN)
+             && ei.mi->game_phase() < PHASE_MIDGAME
+             && abs(eg_value(score)) <= BishopValueEg
+             && ei.pi->pawn_span(strongSide) <= 1
+             && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide)))
+        sf = ScaleFactor(ScalePawnSpan[ei.pi->pawn_span(strongSide)]);
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     Value v =  mg_value(score) * int(ei.mi->game_phase())
