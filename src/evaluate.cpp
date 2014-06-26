@@ -750,9 +750,10 @@ namespace {
                 // Endgame with opposite-colored bishops, but also other pieces. Still
                 // a bit drawish, but not as drawish as with only the two bishops.
                  sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
-        } else if ( abs(eg_value(score)) <= BishopValueEg &&
-                    ei.pi->pawn_span(strongSide) <= 1 &&
-                   !pos.pawn_passed(~strongSide, pos.king_square(~strongSide))) {
+        } else if (    abs(eg_value(score)) <= BishopValueEg
+                   &&  ei.pi->pawn_span(strongSide) <= 1
+                   && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide))) {
+            // Endings where weaker side can be place his king in front of the opponent's pawns are drawish.
             sf = ScaleFactor(ScalePawnSpan[ei.pi->pawn_span(strongSide)]);
         }
     }
