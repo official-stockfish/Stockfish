@@ -32,16 +32,15 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::resize(uint64_t mbSize) {
 
-  assert(msb((mbSize << 20) / sizeof(TTEntry)) < 32);
+  uint32_t newClusters = 1 << msb((mbSize << 20) / sizeof(Cluster));
 
-  uint32_t size = ClusterSize << msb((mbSize << 20) / sizeof(TTEntry[ClusterSize]));
-
-  if (hashMask == size - ClusterSize)
+  if (newClusters == clusters)
       return;
+  clusters = newClusters;
 
-  hashMask = size - ClusterSize;
+  hashMask = (clusters - 1) * sizeof(Cluster);
   free(mem);
-  mem = calloc(size * sizeof(TTEntry) + CACHE_LINE_SIZE - 1, 1);
+  mem = calloc(clusters * sizeof(Cluster) + CACHE_LINE_SIZE - 1, 1);
 
   if (!mem)
   {
@@ -60,7 +59,7 @@ void TranspositionTable::resize(uint64_t mbSize) {
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, (hashMask + ClusterSize) * sizeof(TTEntry));
+  std::memset(table, 0, clusters * sizeof(Cluster));
 }
 
 
@@ -71,16 +70,12 @@ void TranspositionTable::clear() {
 const TTEntry* TranspositionTable::probe(const Key key) const {
 
   TTEntry* tte = first_entry(key);
-  uint32_t key32 = key >> 32;
+  const uint16_t key16 = key >> 48;
 
-  for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
-      if (tte->key32 == key32)
-      {
-          tte->generation8 = generation; // Refresh
-          return tte;
-      }
-
-  return NULL;
+  if (tte->key != key16 && (++tte)->key != key16 && (++tte)->key != key16)
+      return NULL;
+  tte->genBound = generation | tte->genBound & 0x3; // Refresh
+  return tte;
 }
 
 
@@ -94,28 +89,49 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
 
 void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
 
-  TTEntry *tte, *replace;
-  uint32_t key32 = key >> 32; // Use the high 32 bits as key inside the cluster
+  TTEntry* tte = first_entry(key);
+  const TTEntry* last = tte + ClusterSize - 1;
+  TTEntry* replace = tte;
+  uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
 
-  tte = replace = first_entry(key);
-
-  for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
+  for (;;)
   {
-      if (!tte->key32 || tte->key32 == key32) // Empty or overwrite old
-      {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
 
-          replace = tte;
+      // Empty entry?
+      if (!tte->key)
+      {
+          tte->key = key16;
+          tte->move16 = (uint16_t)m;
           break;
       }
 
-      // Implement replace strategy
-      if (  (    tte->generation8 == generation || tte->bound() == BOUND_EXACT)
-          - (replace->generation8 == generation)
-          - (tte->depth16 < replace->depth16) < 0)
+      // Overwrite old?
+      if (tte->key == key16)
+      {
+          if (m)
+              // Only store move if there is one
+              tte->move16 = (uint16_t)m;
+          break;
+      }
+
+      if (tte == last)
+      {
+          tte = replace;
+          tte->key = key16;
+          tte->move16 = (uint16_t)m;
+          break;
+      }
+
+      ++tte;
+      // Is the next entry a better candidate for replacement?
+      if ((tte->gen() == generation || tte->bound() == BOUND_EXACT)
+          - (replace->gen() == generation)
+          - (tte->depth8 < replace->depth8) < 0)
           replace = tte;
   }
 
-  replace->save(key32, v, b, d, m, generation, statV);
+  tte->value16 = (int16_t)v;
+  tte->evalValue = (int16_t)statV;
+  tte->depth8 = (uint8_t)(d - DEPTH_NONE);
+  tte->genBound = generation | (uint8_t)b;
 }
