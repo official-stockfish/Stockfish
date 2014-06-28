@@ -496,8 +496,15 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b, weakEnemies;
+    Bitboard b, weakEnemies, protectedEnemies;
     Score score = SCORE_ZERO;
+    // Protected enemies
+    protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
+                 & ei.attackedBy[Them][PAWN]
+                 & (ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][KNIGHT]);
+
+    if(protectedEnemies)
+      score += Threat[0][type_of(pos.piece_on(lsb(protectedEnemies)))];
 
     // Enemies not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
