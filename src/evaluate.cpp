@@ -43,6 +43,7 @@ namespace {
     // attacked by a given color and piece type, attackedBy[color][ALL_PIECES]
     // contains all squares attacked by the given color.
     Bitboard attackedBy[COLOR_NB][PIECE_TYPE_NB];
+    Bitboard attackedByMinors[COLOR_NB];
 
     // kingRing[color] is the zone around the king which is considered
     // by the king safety evaluation. This consists of the squares directly
@@ -401,8 +402,8 @@ namespace {
         // apart from the king itself
         undefended =  ei.attackedBy[Them][ALL_PIECES]
                     & ei.attackedBy[Us][KING]
-                    & ~(  ei.attackedBy[Us][PAWN]   | ei.attackedBy[Us][KNIGHT]
-                        | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
+                    & ~(  ei.attackedBy[Us][PAWN]
+                        | ei.attackedByMinors[Us] | ei.attackedBy[Us][ROOK]
                         | ei.attackedBy[Us][QUEEN]);
 
         // Initialize the 'attackUnits' variable, which is used later on as an
@@ -422,8 +423,8 @@ namespace {
         if (b)
         {
             // ...and then remove squares not supported by another enemy piece
-            b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
-                  | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK]);
+            b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedByMinors[Them]
+                   | ei.attackedBy[Them][ROOK]);
 
             if (b)
                 attackUnits +=  QueenContactCheck * popcount<Max15>(b);
@@ -440,8 +441,8 @@ namespace {
         if (b)
         {
             // ...and then remove squares not supported by another enemy piece
-            b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
-                  | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][QUEEN]);
+            b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedByMinors[Them]
+                   | ei.attackedBy[Them][QUEEN]);
 
             if (b)
                 attackUnits +=  RookContactCheck * popcount<Max15>(b);
@@ -498,6 +499,13 @@ namespace {
 
     Bitboard b, weakEnemies, protectedEnemies;
     Score score = SCORE_ZERO;
+    // Protected enemies
+    protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
+                 & ei.attackedBy[Them][PAWN]
+                 & ei.attackedByMinors[Us];
+
+    if(protectedEnemies)
+      score += Threat[0][type_of(pos.piece_on(lsb(protectedEnemies)))];
 
     // Protected enemies
     protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
@@ -515,7 +523,7 @@ namespace {
     // Add a bonus according if the attacking pieces are minor or major
     if (weakEnemies)
     {
-        b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+        b = weakEnemies & ei.attackedByMinors[Us];
         if (b)
             score += Threat[0][type_of(pos.piece_on(lsb(b)))];
 
@@ -708,6 +716,9 @@ namespace {
     // Evaluate pieces and mobility
     score += evaluate_pieces<KNIGHT, WHITE, Trace>(pos, ei, mobility, mobilityArea);
     score += apply_weight(mobility[WHITE] - mobility[BLACK], Weights[Mobility]);
+
+    ei.attackedByMinors[WHITE] = ei.attackedBy[WHITE][KNIGHT] | ei.attackedBy[WHITE][BISHOP];
+    ei.attackedByMinors[BLACK] = ei.attackedBy[BLACK][KNIGHT] | ei.attackedBy[BLACK][BISHOP];
 
     // Evaluate kings after all other pieces because we need complete attack
     // information when computing the king safety evaluation.
