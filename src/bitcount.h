@@ -96,8 +96,7 @@ inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
 
 #else
 
-  __asm__("popcnt %1, %0" : "=r" (b) : "r" (b));
-  return b;
+  return __builtin_popcountll(b);
 
 #endif
 }
