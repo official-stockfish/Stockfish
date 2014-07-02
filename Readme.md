@@ -7,7 +7,7 @@ Partner or Fritz) in order to be used comfortably. Read the
 documentation for your GUI of choice for information about how to use
 Stockfish with it.
 
-This version of Stockfish supports up to 128 CPUs. The engine defaults
+This version of Stockfish supports up to 128 cores. The engine defaults
 to one search thread, so it is therefore recommended to inspect the value of
 the *Threads* UCI parameter, and to make sure it equals the number of CPU
 cores on your computer.
@@ -22,19 +22,7 @@ This distribution of Stockfish consists of the following files:
   * Copying.txt, a text file containing the GNU General Public License.
 
   * src, a subdirectory containing the full source code, including a Makefile
-    that can be used to compile Stockfish on Unix-like systems. For further
-    information about how to compile Stockfish yourself read section below.
-
-  * polyglot.ini, for using Stockfish with Fabien Letouzey's PolyGlot
-    adapter.
-
-
-### Opening books
-
-This version of Stockfish has support for PolyGlot opening books. For
-information about how to create such books, consult the PolyGlot
-documentation. The book file can be selected by setting the *Book File*
-UCI parameter.
+    that can be used to compile Stockfish on Unix-like systems.
 
 
 ### Compiling it yourself

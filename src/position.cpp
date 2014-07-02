@@ -226,7 +226,7 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
       incremented after Black's move.
 */
 
-  char col, row, token;
+  unsigned char col, row, token;
   size_t idx;
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
@@ -462,6 +462,19 @@ const string Position::pretty(Move m) const {
       ss << move_to_san(*const_cast<Position*>(this), *it) << " ";
 
   return ss.str();
+}
+
+
+/// Position::game_phase() calculates the game phase interpolating total non-pawn
+/// material between endgame and midgame limits.
+
+Phase Position::game_phase() const {
+
+  Value npm = st->npMaterial[WHITE] + st->npMaterial[BLACK];
+
+  npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
+
+  return Phase(((npm - EndgameLimit) * 128) / (MidgameLimit - EndgameLimit));
 }
 
 

@@ -107,11 +107,11 @@ namespace {
 
   KPKPosition::KPKPosition(unsigned idx) {
 
-    wksq = Square((idx >>  0) & 0x3F);
-    bksq = Square((idx >>  6) & 0x3F);
-    us   = Color ((idx >> 12) & 0x01);
-    psq  = make_square(File((idx >> 13) & 0x03), Rank(RANK_7 - (idx >> 15)));
-    result  = UNKNOWN;
+    wksq   = Square((idx >>  0) & 0x3F);
+    bksq   = Square((idx >>  6) & 0x3F);
+    us     = Color ((idx >> 12) & 0x01);
+    psq    = make_square(File((idx >> 13) & 0x3), RANK_7 - Rank((idx >> 15) & 0x7));
+    result = UNKNOWN;
 
     // Check if two pieces are on the same square or if a king can be captured
     if (   square_distance(wksq, bksq) <= 1
