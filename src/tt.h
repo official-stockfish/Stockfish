@@ -44,15 +44,7 @@ struct TTEntry {
 private:
   friend class TranspositionTable;
 
-  void save(uint16_t k, Value v, Bound b, Depth d, Move m, uint8_t g, Value ev) {
-
-    key16     = (uint16_t)k;
-    move16    = (uint16_t)m;
-    value16   = (int16_t)v;
-    evalValue = (int16_t)ev;
-    depth8    = (uint8_t)(d - DEPTH_NONE);
-    genBound8 = g | (uint8_t)b;
-  }
+  uint8_t gen() const      { return genBound8 & 0xfc; }
 
   uint16_t key16;
   uint16_t move16;

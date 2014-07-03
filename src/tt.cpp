@@ -72,14 +72,10 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
   TTEntry* tte = first_entry(key);
   uint16_t key16 = key >> 48;
 
-  for (unsigned i = 0; i < TTClusterSize; ++i, ++tte)
-      if (tte->key16 == key16)
-      {
-          tte->genBound8 = generation | tte->bound(); // Refresh
-          return tte;
-      }
-
-  return NULL;
+  if (tte->key16 != key16 && (++tte)->key16 != key16 && (++tte)->key16 != key16)
+      return NULL;
+  tte->genBound8 = generation | tte->bound(); // Refresh
+  return tte;
 }
 
 
@@ -97,24 +93,38 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
   uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
 
   tte = replace = first_entry(key);
+  const TTEntry* last = tte + TTClusterSize - 1;
 
-  for (unsigned i = 0; i < TTClusterSize; ++i, ++tte)
+  for (;;)
   {
-      if (!tte->key16 || tte->key16 == key16) // Empty or overwrite old
+      // Empty entry or already existing in the cache?
+      if (!tte->key16 || tte->key16 == key16)
       {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
-
-          replace = tte;
+          if (m)
+              // Only store move if there is one
+              tte->move16 = (uint16_t)m;
           break;
       }
 
-      // Implement replace strategy
-      if (  ((    tte->genBound8 & 0xFC) == generation || tte->bound() == BOUND_EXACT)
-          - ((replace->genBound8 & 0xFC) == generation)
+      // Not in the cache?
+      if (tte == last)
+      {
+          tte = replace;
+          tte->move16 = (uint16_t)m;
+          break;
+      }
+
+      ++tte;
+      // Is the next entry a better candidate for replacement?
+      if ((tte->gen() == generation || tte->bound() == BOUND_EXACT)
+          - (tte->gen() == generation)
           - (tte->depth8 < replace->depth8) < 0)
           replace = tte;
   }
 
-  replace->save(key16, v, b, d, m, generation, statV);
+  tte->key16 = key16;
+  tte->value16 = (int16_t)v;
+  tte->evalValue = (int16_t)statV;
+  tte->genBound8 = generation | b;
+  tte->depth8 = (uint8_t)(d - DEPTH_NONE);
 }
