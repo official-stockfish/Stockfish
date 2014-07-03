@@ -109,7 +109,7 @@ extern TranspositionTable TT;
 
 inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
-  return &table[(uint32_t)key & (clusterCount - 1)].entry[0];
+  return &table[(size_t)key & (clusterCount - 1)].entry[0];
 }
 
 #endif // #ifndef TT_H_INCLUDED
