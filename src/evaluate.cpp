@@ -160,7 +160,7 @@ namespace {
   const Score RookSemiopenFile = make_score(19, 10);
   const Score BishopPawns      = make_score( 8, 12);
   const Score MinorBehindPawn  = make_score(16,  0);
-  const Score TrappedRook      = make_score(90,  0);
+  const Score TrappedRook      = make_score(92,  0);
   const Score Unstoppable      = make_score( 0, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
@@ -350,7 +350,7 @@ namespace {
             if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
                 && !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
-                score -= (TrappedRook - make_score(mob * 8, 0)) * (1 + !pos.can_castle(Us));
+                score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
         }
 
         // An important Chess960 pattern: A cornered bishop blocked by a friendly
