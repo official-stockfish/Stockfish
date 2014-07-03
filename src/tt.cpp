@@ -117,7 +117,7 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
       ++tte;
       // Is the next entry a better candidate for replacement?
       if ((tte->gen() == generation || tte->bound() == BOUND_EXACT)
-          - (tte->gen() == generation)
+          - (replace->gen() == generation)
           - (tte->depth8 < replace->depth8) < 0)
           replace = tte;
   }
