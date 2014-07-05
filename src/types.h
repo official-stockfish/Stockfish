@@ -47,7 +47,6 @@
 #if defined(_WIN64) && !defined(IS_64BIT)
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
-#  define USE_BSFQ
 #endif
 
 #if defined(USE_POPCNT) && defined(_MSC_VER) && defined(__INTEL_COMPILER)
