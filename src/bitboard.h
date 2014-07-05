@@ -271,7 +271,7 @@ inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occ) {
 /// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
 
-#ifdef USE_BSFQ
+
 
 #  if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 
@@ -304,16 +304,12 @@ FORCE_INLINE Square lsb(Bitboard b) {
 
 #  else
 
-FORCE_INLINE Square lsb(Bitboard b) { // Assembly code by Heinz van Saanen
-  Bitboard idx;
-  __asm__("bsfq %1, %0": "=r"(idx): "rm"(b) );
-  return (Square) idx;
+FORCE_INLINE Square lsb(Bitboard b) {
+  return (Square) (__builtin_ffsll(b) - 1);
 }
 
 FORCE_INLINE Square msb(Bitboard b) {
-  Bitboard idx;
-  __asm__("bsrq %1, %0": "=r"(idx): "rm"(b) );
-  return (Square) idx;
+  return (Square) (63 - __builtin_clzll(b));
 }
 
 #  endif
@@ -324,13 +320,6 @@ FORCE_INLINE Square pop_lsb(Bitboard* b) {
   return s;
 }
 
-#else // if defined(USE_BSFQ)
-
-extern Square msb(Bitboard b);
-extern Square lsb(Bitboard b);
-extern Square pop_lsb(Bitboard* b);
-
-#endif
 
 /// frontmost_sq() and backmost_sq() find the square corresponding to the
 /// most/least advanced bit relative to the given color.

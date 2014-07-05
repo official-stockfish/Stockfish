@@ -60,8 +60,6 @@ namespace {
 
   CACHE_LINE_ALIGNMENT
 
-  int MS1BTable[256];
-  Square BSFTable[SQUARE_NB];
   Bitboard RTable[0x19000]; // Storage space for rook attacks
   Bitboard BTable[0x1480];  // Storage space for bishop attacks
 
@@ -78,50 +76,6 @@ namespace {
                    : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
   }
 }
-
-/// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
-/// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
-
-#ifndef USE_BSFQ
-
-Square lsb(Bitboard b) { return BSFTable[bsf_index(b)]; }
-
-Square pop_lsb(Bitboard* b) {
-
-  Bitboard bb = *b;
-  *b = bb & (bb - 1);
-  return BSFTable[bsf_index(bb)];
-}
-
-Square msb(Bitboard b) {
-
-  unsigned b32;
-  int result = 0;
-
-  if (b > 0xFFFFFFFF)
-  {
-      b >>= 32;
-      result = 32;
-  }
-
-  b32 = unsigned(b);
-
-  if (b32 > 0xFFFF)
-  {
-      b32 >>= 16;
-      result += 16;
-  }
-
-  if (b32 > 0xFF)
-  {
-      b32 >>= 8;
-      result += 8;
-  }
-
-  return Square(result + MS1BTable[b32]);
-}
-
-#endif // ifndef USE_BSFQ
 
 
 /// Bitboards::pretty() returns an ASCII representation of a bitboard to be
@@ -149,10 +103,7 @@ const std::string Bitboards::pretty(Bitboard b) {
 void Bitboards::init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      BSFTable[bsf_index(SquareBB[s] = 1ULL << s)] = s;
-
-  for (Bitboard b = 1; b < 256; ++b)
-      MS1BTable[b] = more_than_one(b) ? MS1BTable[b - 1] : lsb(b);
+      SquareBB[s] = 1ULL << s;
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;

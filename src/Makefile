@@ -55,8 +55,6 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 # os = (name)         ---                  --- Target operating system
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
 # prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch x86 asm-instruction
-# bsfq = yes/no       --- -DUSE_BSFQ       --- Use bsfq x86_64 asm-instruction (only
-#                                              with GCC and ICC 64-bit)
 # popcnt = yes/no     --- -DUSE_POPCNT     --- Use popcnt x86_64 asm-instruction
 # sse = yes/no        --- -msse            --- Use Intel Streaming SIMD Extensions
 # pext = yes/no       --- -DUSE_PEXT       --- Use pext x86_64 asm-instruction
@@ -71,7 +69,6 @@ debug = no
 os = any
 bits = 32
 prefetch = no
-bsfq = no
 popcnt = no
 sse = no
 pext = no
@@ -101,7 +98,6 @@ ifeq ($(ARCH),x86-64)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
-	bsfq = yes
 	sse = yes
 endif
 
@@ -109,7 +105,6 @@ ifeq ($(ARCH),x86-64-modern)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
-	bsfq = yes
 	popcnt = yes
 	sse = yes
 endif
@@ -118,7 +113,6 @@ ifeq ($(ARCH),x86-64-bmi2)
 	arch = x86_64
 	bits = 64
 	prefetch = yes
-	bsfq = yes
 	popcnt = yes
 	sse = yes
 	pext = yes
@@ -127,7 +121,6 @@ endif
 ifeq ($(ARCH),armv7)
 	arch = armv7
 	prefetch = yes
-	bsfq = yes
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -278,17 +271,12 @@ else
 	CXXFLAGS += -DNO_PREFETCH
 endif
 
-### 3.8 bsfq
-ifeq ($(bsfq),yes)
-	CXXFLAGS += -DUSE_BSFQ
-endif
-
-### 3.9 popcnt
+### 3.8 popcnt
 ifeq ($(popcnt),yes)
 	CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
 endif
 
-### 3.10 pext
+### 3.9 pext
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw))
@@ -414,7 +402,6 @@ config-sanity:
 	@echo "os: '$(os)'"
 	@echo "bits: '$(bits)'"
 	@echo "prefetch: '$(prefetch)'"
-	@echo "bsfq: '$(bsfq)'"
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
@@ -433,7 +420,6 @@ config-sanity:
 	@test "$(os)" = "any"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
-	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
