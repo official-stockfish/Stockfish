@@ -117,7 +117,6 @@ struct Thread : public ThreadBase {
   bool cutoff_occurred() const;
   bool available_to(const Thread* master) const;
 
-  template <bool Fake>
   void split(Position& pos, const Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
 
