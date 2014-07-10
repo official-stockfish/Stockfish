@@ -135,7 +135,7 @@ void benchmark(const Position& current, istream& is) {
   {
       Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
 
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
+      cout << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
       if (limitType == "divide")
           for (MoveList<LEGAL> it(pos); *it; ++it)
@@ -144,13 +144,13 @@ void benchmark(const Position& current, istream& is) {
               pos.do_move(*it, si);
               uint64_t cnt = limits.depth > 1 ? Search::perft(pos, (limits.depth - 1) * ONE_PLY) : 1;
               pos.undo_move(*it);
-              cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
+              cout << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
               nodes += cnt;
           }
       else if (limitType == "perft")
       {
           uint64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
-          cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
+          cout << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
           nodes += cnt;
       }
       else
@@ -165,7 +165,7 @@ void benchmark(const Position& current, istream& is) {
 
   dbg_print(); // Just before to exit
 
-  cerr << "\n==========================="
+  cout << "\n==========================="
        << "\nTotal time (ms) : " << elapsed
        << "\nNodes searched  : " << nodes
        << "\nNodes/second    : " << 1000 * nodes / elapsed << endl;
