@@ -395,7 +395,7 @@ namespace {
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
             // Take some extra time if the best move has changed
-            if (depth > 4 && depth < 50 &&  MultiPV == 1)
+            if (depth > 4 && MultiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
             // Stop the search if only one legal move is available or all
