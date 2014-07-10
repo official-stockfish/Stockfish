@@ -73,7 +73,7 @@ namespace {
     return (Depth) Reductions[PvNode][i][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
-  size_t MultiPV, PVIdx;
+  size_t PVIdx;
   TimeManager TimeMgr;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
@@ -94,18 +94,21 @@ namespace {
   string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
 
   struct Skill {
-    Skill(int l) : level(l), best(MOVE_NONE) {}
+    Skill(int l, int rootSize) : level(l),
+                                 candidates(l < 20 ? std::min(4, rootSize) : 0),
+                                 best(MOVE_NONE) {}
    ~Skill() {
-      if (enabled()) // Swap best PV line with the sub-optimal one
+      if (candidates) // Swap best PV line with the sub-optimal one
           std::swap(RootMoves[0], *std::find(RootMoves.begin(),
                     RootMoves.end(), best ? best : pick_move()));
     }
 
-    bool enabled() const { return level < 20; }
+    size_t candidates_size() const { return candidates; }
     bool time_to_pick(int depth) const { return depth == 1 + level; }
     Move pick_move();
 
     int level;
+    size_t candidates;
     Move best;
   };
 
@@ -279,15 +282,12 @@ namespace {
     Countermoves.clear();
     Followupmoves.clear();
 
-    MultiPV = Options["MultiPV"];
-    Skill skill(Options["Skill Level"]);
+    size_t multiPV = Options["MultiPV"];
+    Skill skill(Options["Skill Level"], RootMoves.size());
 
     // Do we have to play with skill handicap? In this case enable MultiPV search
     // that we will use behind the scenes to retrieve a set of possible moves.
-    if (skill.enabled() && MultiPV < 4)
-        MultiPV = 4;
-
-    MultiPV = std::min(MultiPV, RootMoves.size());
+    multiPV = std::max(multiPV, skill.candidates_size());
 
     // Iterative deepening loop until requested to stop or target depth reached
     while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
@@ -301,7 +301,7 @@ namespace {
             RootMoves[i].prevScore = RootMoves[i].score;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (PVIdx = 0; PVIdx < MultiPV && !Signals.stop; ++PVIdx)
+        for (PVIdx = 0; PVIdx < multiPV && PVIdx < RootMoves.size() && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
             if (depth >= 5)
@@ -366,12 +366,12 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (PVIdx + 1 == MultiPV || Time::now() - SearchTime > 3000)
+            if (PVIdx + 1 == multiPV || Time::now() - SearchTime > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
         // If skill levels are enabled and time is up, pick a sub-optimal best move
-        if (skill.enabled() && skill.time_to_pick(depth))
+        if (skill.candidates_size() && skill.time_to_pick(depth))
             skill.pick_move();
 
         if (Options["Write Search Log"])
@@ -395,7 +395,7 @@ namespace {
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
             // Take some extra time if the best move has changed
-            if (depth > 4 && MultiPV == 1)
+            if (depth > 4 && multiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
             // Stop the search if only one legal move is available or all
@@ -1292,8 +1292,8 @@ moves_loop: // When in check and at SpNode search starts from here
   }
 
 
-  // When playing with a strength handicap, choose best move among the MultiPV
-  // set using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
+  // When playing with a strength handicap, choose best move among the first 'candidates'
+  // RootMoves using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
 
   Move Skill::pick_move() {
 
@@ -1304,7 +1304,7 @@ moves_loop: // When in check and at SpNode search starts from here
         rk.rand<unsigned>();
 
     // RootMoves are already sorted by score in descending order
-    int variance = std::min(RootMoves[0].score - RootMoves[MultiPV - 1].score, PawnValueMg);
+    int variance = std::min(RootMoves[0].score - RootMoves[candidates - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
     int max_s = -VALUE_INFINITE;
     best = MOVE_NONE;
@@ -1312,12 +1312,12 @@ moves_loop: // When in check and at SpNode search starts from here
     // Choose best move. For each move score we add two terms both dependent on
     // weakness. One deterministic and bigger for weaker moves, and one random,
     // then we choose the move with the resulting highest score.
-    for (size_t i = 0; i < MultiPV; ++i)
+    for (size_t i = 0; i < candidates; ++i)
     {
         int s = RootMoves[i].score;
 
         // Don't allow crazy blunders even at very low skills
-        if (i > 0 && RootMoves[i-1].score > s + 2 * PawnValueMg)
+        if (i > 0 && RootMoves[i - 1].score > s + 2 * PawnValueMg)
             break;
 
         // This is our magic formula
