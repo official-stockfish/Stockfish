@@ -160,7 +160,7 @@ namespace {
   const Score RookSemiopenFile = make_score(19, 10);
   const Score BishopPawns      = make_score( 8, 12);
   const Score MinorBehindPawn  = make_score(16,  0);
-  const Score TrappedRook      = make_score(90,  0);
+  const Score TrappedRook      = make_score(92,  0);
   const Score Unstoppable      = make_score( 0, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
@@ -197,6 +197,7 @@ namespace {
   // scores, indexed by a calculated integer number.
   Score KingDanger[128];
 
+  const int ScalePawnSpan[2] = { 38, 56 };
 
   // apply_weight() weighs score 'v' by weight 'w' trying to prevent overflow
   Score apply_weight(Score v, const Weight& w) {
@@ -349,7 +350,7 @@ namespace {
             if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
                 && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
                 && !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
-                score -= (TrappedRook - make_score(mob * 8, 0)) * (1 + !pos.can_castle(Us));
+                score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
         }
 
         // An important Chess960 pattern: A cornered bishop blocked by a friendly
@@ -495,8 +496,16 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b, weakEnemies;
+    Bitboard b, weakEnemies, protectedEnemies;
     Score score = SCORE_ZERO;
+
+    // Protected enemies
+    protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
+                      & ei.attackedBy[Them][PAWN]
+                      & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+
+    if(protectedEnemies)
+        score += Threat[0][type_of(pos.piece_on(lsb(protectedEnemies)))];
 
     // Enemies not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
@@ -728,29 +737,35 @@ namespace {
     }
 
     // Scale winning side if position is more drawish than it appears
-    ScaleFactor sf = eg_value(score) > VALUE_DRAW ? ei.mi->scale_factor(pos, WHITE)
-                                                  : ei.mi->scale_factor(pos, BLACK);
+    Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
+    ScaleFactor sf = ei.mi->scale_factor(pos, strongSide);
 
-    // If we don't already have an unusual scale factor, check for opposite
-    // colored bishop endgames, and use a lower scale for those.
+    // If we don't already have an unusual scale factor, check for certain
+    // types of endgames, and use a lower scale for those.
     if (    ei.mi->game_phase() < PHASE_MIDGAME
-        &&  pos.opposite_bishops()
         && (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN))
     {
-        // Ignoring any pawns, do both sides only have a single bishop and no
-        // other pieces?
-        if (   pos.non_pawn_material(WHITE) == BishopValueMg
-            && pos.non_pawn_material(BLACK) == BishopValueMg)
-        {
-            // Check for KBP vs KB with only a single pawn that is almost
-            // certainly a draw or at least two pawns.
-            bool one_pawn = (pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK) == 1);
-            sf = one_pawn ? ScaleFactor(8) : ScaleFactor(32);
+        if (pos.opposite_bishops()) {
+            // Ignoring any pawns, do both sides only have a single bishop and no
+            // other pieces?
+            if (   pos.non_pawn_material(WHITE) == BishopValueMg
+                && pos.non_pawn_material(BLACK) == BishopValueMg)
+            {
+                // Check for KBP vs KB with only a single pawn that is almost
+                // certainly a draw or at least two pawns.
+                bool one_pawn = (pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK) == 1);
+                sf = one_pawn ? ScaleFactor(8) : ScaleFactor(32);
+            }
+            else
+                // Endgame with opposite-colored bishops, but also other pieces. Still
+                // a bit drawish, but not as drawish as with only the two bishops.
+                 sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
+        } else if (    abs(eg_value(score)) <= BishopValueEg
+                   &&  ei.pi->pawn_span(strongSide) <= 1
+                   && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide))) {
+            // Endings where weaker side can be place his king in front of the opponent's pawns are drawish.
+            sf = ScaleFactor(ScalePawnSpan[ei.pi->pawn_span(strongSide)]);
         }
-        else
-            // Endgame with opposite-colored bishops, but also other pieces. Still
-            // a bit drawish, but not as drawish as with only the two bishops.
-             sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
     }
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score

@@ -218,7 +218,7 @@ enum Depth {
   DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
   DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
 
-  DEPTH_NONE = -127 * ONE_PLY
+  DEPTH_NONE = -6 * ONE_PLY
 };
 
 enum Square {

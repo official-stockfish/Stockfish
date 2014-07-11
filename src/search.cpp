@@ -52,9 +52,6 @@ using namespace Search;
 
 namespace {
 
-  // Set to true to force running with one thread. Used for debugging
-  const bool FakeSplit = false;
-
   // Different node types, used as template parameter
   enum NodeType { Root, PV, NonPV };
 
@@ -398,7 +395,7 @@ namespace {
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
             // Take some extra time if the best move has changed
-            if (depth > 4 && depth < 50 &&  MultiPV == 1)
+            if (depth > 4 && MultiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
             // Stop the search if only one legal move is available or all
@@ -700,7 +697,8 @@ moves_loop: // When in check and at SpNode search starts from here
                            &&  depth >= 8 * ONE_PLY
                            &&  abs(beta) < VALUE_KNOWN_WIN
                            &&  ttMove != MOVE_NONE
-                           &&  ttValue != VALUE_NONE
+                       /*  &&  ttValue != VALUE_NONE Already implicit in the next condition */
+                           &&  abs(ttValue) < VALUE_KNOWN_WIN
                            && !excludedMove // Recursive singular search is not allowed
                            && (tte->bound() & BOUND_LOWER)
                            &&  tte->depth() >= depth - 3 * ONE_PLY;
@@ -978,16 +976,16 @@ moves_loop: // When in check and at SpNode search starts from here
 
       // Step 19. Check for splitting the search
       if (   !SpNode
+          &&  Threads.size() >= 2
           &&  depth >= Threads.minimumSplitDepth
-          &&  Threads.available_slave(thisThread)
           &&  (   !thisThread->activeSplitPoint
                || !thisThread->activeSplitPoint->allSlavesSearching)
           &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
-          thisThread->split<FakeSplit>(pos, ss, alpha, beta, &bestValue, &bestMove,
-                                       depth, moveCount, &mp, NT, cutNode);
+          thisThread->split(pos, ss, alpha, beta, &bestValue, &bestMove,
+                            depth, moveCount, &mp, NT, cutNode);
 
           if (Signals.stop || thisThread->cutoff_occurred())
               return VALUE_ZERO;
