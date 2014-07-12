@@ -624,12 +624,12 @@ namespace {
   // evaluate_unstoppable_pawns() scores the most advanced among the passed and
   // candidate pawns. In case both players have no pieces but pawns, this is
   // somewhat related to the possibility that pawns are unstoppable.
+  template<Color Us>
+  Score evaluate_unstoppable_pawns(const EvalInfo& ei) {
 
-  Score evaluate_unstoppable_pawns(Color us, const EvalInfo& ei) {
+    Bitboard b = ei.pi->passed_pawns(Us) | ei.pi->candidate_pawns(Us);
 
-    Bitboard b = ei.pi->passed_pawns(us) | ei.pi->candidate_pawns(us);
-
-    return b ? Unstoppable * int(relative_rank(us, frontmost_sq(us, b))) : SCORE_ZERO;
+    return b ? Unstoppable * int(relative_rank(Us, frontmost_sq(Us, b))) : SCORE_ZERO;
   }
 
 
@@ -724,8 +724,8 @@ namespace {
 
     // If both sides have only pawns, score for potential unstoppable pawns
     if (!pos.non_pawn_material(WHITE) && !pos.non_pawn_material(BLACK))
-        score +=  evaluate_unstoppable_pawns(WHITE, ei)
-                - evaluate_unstoppable_pawns(BLACK, ei);
+        score +=  evaluate_unstoppable_pawns<WHITE>(ei)
+                - evaluate_unstoppable_pawns<BLACK>(ei);
 
     // Evaluate space for both sides, only in middlegame
     if (ei.mi->space_weight())
