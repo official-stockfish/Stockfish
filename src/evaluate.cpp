@@ -574,22 +574,18 @@ namespace {
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
             {
-                squaresToQueen = forward_bb(Us, s);
+                // If there is a rook or queen attacking/defending the pawn from behind,
+                // consider all the squaresToQueen. Otherwise consider only the squares
+                // in the pawn's path attacked or occupied by the enemy.
+                defendedSquares = unsafeSquares = squaresToQueen = forward_bb(Us, s);
 
-                // If there is an enemy rook or queen attacking the pawn from behind,
-                // add all X-ray attacks by the rook or queen. Otherwise consider only
-                // the squares in the pawn's path attacked or occupied by the enemy.
-                if (    unlikely(forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN))
-                    && (forward_bb(Them, s) & pos.pieces(Them, ROOK, QUEEN) & pos.attacks_from<ROOK>(s)))
-                    unsafeSquares = squaresToQueen;
-                else
-                    unsafeSquares = squaresToQueen & (ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them));
+                Bitboard bb = forward_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
 
-                if (    unlikely(forward_bb(Them, s) & pos.pieces(Us, ROOK, QUEEN))
-                    && (forward_bb(Them, s) & pos.pieces(Us, ROOK, QUEEN) & pos.attacks_from<ROOK>(s)))
-                    defendedSquares = squaresToQueen;
-                else
-                    defendedSquares = squaresToQueen & ei.attackedBy[Us][ALL_PIECES];
+                if (!(pos.pieces(Us) & bb))
+                    defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
+
+                if (!(pos.pieces(Them) & bb))
+                    unsafeSquares &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
