@@ -86,7 +86,9 @@ inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
   assert(false);
   return b != 0; // Avoid 'b not used' warning
 
-#elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
+#else
+#ifdef IS_64BIT
+#if defined(_MSC_VER) && defined(__INTEL_COMPILER)
 
   return _mm_popcnt_u64(b);
 
@@ -99,6 +101,30 @@ inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
   return __builtin_popcountll(b);
 
 #endif
+
+#else
+
+  typedef union { uint64_t u64; uint32_t u32[2]; } U64; //for POPCNT32_UINT64 macros. Avoid 'dereferencing type-punned pointer will break strict-aliasing rules' warning.
+
+#define POPCNT32_UINT64(a,b) a(((U64*)&(b))->u32[0]) + a(((U64*)&(b))->u32[1])
+
+#if defined(_MSC_VER) && defined(__INTEL_COMPILER)
+
+  return POPCNT32_UINT64(_mm_popcnt_u32, b);
+
+#elif defined(_MSC_VER)
+
+  return POPCNT32_UINT64(__popcnt, b);
+
+#else
+
+  return POPCNT32_UINT64(__builtin_popcountl, b);
+
+#endif
+
+#endif // #ifdef IS_64BIT
+
+#endif // #ifndef USE_POPCNT
 }
 
 #endif // #ifndef BITCOUNT_H_INCLUDED
