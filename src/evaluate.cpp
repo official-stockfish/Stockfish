@@ -889,7 +889,7 @@ namespace Eval {
     for (int t = 0, i = 0; i < 100; ++i)
     {
         t = int(std::min(Peak, std::min(0.4 * i * i, t + MaxSlope)));
-        if (i > 80 - MaxSlope && i < 80) t = int(Peak - 0.5 * (80 - i) * (80 - i));
+        if (i > 76 - MaxSlope && i < 76) t = int(Peak - 0.5 * (229.24/3 - i) * (229.24/3 - i));
         KingDanger[i] = apply_weight(make_score(t, 0), Weights[KingSafety]);
     }
   }
