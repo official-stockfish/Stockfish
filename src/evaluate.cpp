@@ -468,7 +468,7 @@ namespace {
         
         // Compute the king danger score and subtract from evaluation.
         const int mbonus = attackUnits <= 0   ? 0
-                         : attackUnits <= 370  ? attackUnits * attackUnits / 250
+                         : attackUnits <= 370 ? attackUnits * attackUnits / 250
                          : attackUnits <= 614 ? 547 + 3 * (attackUnits - 370)
                                               : 1280;
 
