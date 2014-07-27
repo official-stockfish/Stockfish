@@ -620,8 +620,8 @@ namespace {
 
             // Do verification search at high depths
             ss->skipNullMove = true;
-            Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta, DEPTH_ZERO)
-                                        :  search<NonPV, false>(pos, ss, beta-1, beta, depth-R, false);
+            Value v = depth-5*ONE_PLY < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta, DEPTH_ZERO)
+                                                :  search<NonPV, false>(pos, ss, beta-1, beta, depth-5*ONE_PLY, false);
             ss->skipNullMove = false;
 
             if (v >= beta)
