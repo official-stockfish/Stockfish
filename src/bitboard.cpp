@@ -254,9 +254,8 @@ namespace {
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
-    int MagicBoosters[][8] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
-                               { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
-
+    int MagicBoosters[][RANK_NB] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
+                                     { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
     RKISS rk;
     Bitboard occupancy[4096], reference[4096], edges, b;
     int i, size, booster;
