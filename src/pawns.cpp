@@ -102,7 +102,7 @@ namespace {
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
-    Bitboard ourPawns = pos.pieces(Us, PAWN);
+    Bitboard ourPawns   = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
     e->passedPawns[Us] = e->candidatePawns[Us] = 0;
@@ -193,7 +193,7 @@ namespace {
             value += Connected[f][relative_rank(Us, s)];
 
         if (lever)
-           value += Lever[relative_rank(Us, s)];
+            value += Lever[relative_rank(Us, s)];
 
         if (candidate)
         {
