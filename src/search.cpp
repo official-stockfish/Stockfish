@@ -358,7 +358,7 @@ namespace {
                 else
                     break;
 
-                delta += delta / 2;
+                delta += 3 * delta / 8;
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
