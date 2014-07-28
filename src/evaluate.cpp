@@ -181,15 +181,15 @@ namespace {
   // measuring the strength of the enemy attack are added up into an integer
   //
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[] = { 0, 0, 10, 10, 15, 25 };
+  const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
 
   // Bonuses for enemy's safe checks
-  const int QueenContactCheck = 240;
-  const int RookContactCheck  = 160;
-  const int QueenCheck        = 120;
-  const int RookCheck         = 80;
-  const int BishopCheck       = 20;
-  const int KnightCheck       = 30;
+  const int QueenContactCheck = 24;
+  const int RookContactCheck  = 16;
+  const int QueenCheck        = 12;
+  const int RookCheck         = 8;
+  const int BishopCheck       = 2;
+  const int KnightCheck       = 3;
 
   const int ScalePawnSpan[2] = { 38, 56 };
 
@@ -403,10 +403,10 @@ namespace {
         // on the number and types of the enemy's attacking pieces, the number
         // of attacked and undefended squares around our king and the quality
         // of the pawn shelter (current 'score' value).
-        attackUnits =  std::min(200, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
-                     + 30 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
-                     + 20 * (ei.pinnedPieces[Us] != 0)
-                     - 5 * mg_value(score) / 16;
+        attackUnits =  std::min(20, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
+                     + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
+                     + 2 * (ei.pinnedPieces[Us] != 0)
+                     - mg_value(score) / 32;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
         // undefended squares around the king that are attacked by the enemy's
@@ -468,8 +468,8 @@ namespace {
         
         // Compute the king danger score and subtract from evaluation.
         const int mbonus = attackUnits <= 0   ? 0
-                         : attackUnits <= 370 ? attackUnits * attackUnits / 250
-                         : attackUnits <= 614 ? 547 + 3 * (attackUnits - 370)
+                         : attackUnits <= 37 ? attackUnits * attackUnits * 2 / 5
+                         : attackUnits <= 61 ? 547 + 30 * (attackUnits - 37)
                                               : 1280;
 
         score -= apply_weight(make_score(Value(mbonus), 0), Weights[KingSafety]);
