@@ -467,10 +467,10 @@ namespace {
             attackUnits += KnightCheck * popcount<Max15>(b);
         
         // Compute the king danger score and subtract from evaluation.
-        const int mbonus = attackUnits <= 0   ? 0
-                         : attackUnits <= 37  ? attackUnits * attackUnits * 2 / 5
-                         : attackUnits <= 61  ? 547 + 30 * (attackUnits - 37)
-                                              : 1280;
+        const int mbonus = attackUnits <= 0  ? 0
+                         : attackUnits <= 37 ? attackUnits * attackUnits * 2 / 5
+                         : attackUnits <= 61 ? 547 + 30 * (attackUnits - 37)
+                                             : 1280;
 
         score -= apply_weight(make_score(Value(mbonus), 0), Weights[KingSafety]);
     }
