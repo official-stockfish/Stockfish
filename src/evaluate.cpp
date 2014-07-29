@@ -177,10 +177,8 @@ namespace {
     (FileCBB | FileDBB | FileEBB | FileFBB) & (Rank7BB | Rank6BB | Rank5BB)
   };
 
-  // King danger constants and variables. The king danger scores are taken
-  // from KingDanger[]. Various little "meta-bonuses" measuring the strength
-  // of the enemy attack are added up into an integer, which is used as an
-  // index to KingDanger[].
+  // King danger constants and variables. Various little "meta-bonuses"
+  // measuring the strength of the enemy attack are added up into an integer
   //
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
@@ -192,10 +190,6 @@ namespace {
   const int RookCheck         = 8;
   const int BishopCheck       = 2;
   const int KnightCheck       = 3;
-
-  // KingDanger[attackUnits] contains the actual king danger weighted
-  // scores, indexed by a calculated integer number.
-  Score KingDanger[128];
 
   const int ScalePawnSpan[2] = { 38, 56 };
 
@@ -405,11 +399,10 @@ namespace {
                         | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]
                         | ei.attackedBy[Us][QUEEN]);
 
-        // Initialize the 'attackUnits' variable, which is used later on as an
-        // index to the KingDanger[] array. The initial value is based on the
-        // number and types of the enemy's attacking pieces, the number of
-        // attacked and undefended squares around our king and the quality of
-        // the pawn shelter (current 'score' value).
+        // Initialize the 'attackUnits' variable.  The initial value is based
+        // on the number and types of the enemy's attacking pieces, the number
+        // of attacked and undefended squares around our king and the quality
+        // of the pawn shelter (current 'score' value).
         attackUnits =  std::min(20, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
                      + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
                      + 2 * (ei.pinnedPieces[Us] != 0)
@@ -472,13 +465,14 @@ namespace {
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
             attackUnits += KnightCheck * popcount<Max15>(b);
+        
+        // Compute the king danger score and subtract from evaluation.
+        const int mbonus = attackUnits <= 0  ? 0
+                         : attackUnits <= 37 ? attackUnits * attackUnits * 2 / 5
+                         : attackUnits <= 61 ? 547 + 30 * (attackUnits - 37)
+                                             : 1280;
 
-        // To index KingDanger[] attackUnits must be in [0, 99] range
-        attackUnits = std::min(99, std::max(0, attackUnits));
-
-        // Finally, extract the king danger score from the KingDanger[]
-        // array and subtract the score from evaluation.
-        score -= KingDanger[attackUnits];
+        score -= apply_weight(make_score(Value(mbonus), 0), Weights[KingSafety]);
     }
 
     if (Trace)
@@ -876,22 +870,6 @@ namespace Eval {
   /// debugging.
   std::string trace(const Position& pos) {
     return Tracing::do_trace(pos);
-  }
-
-
-  /// init() computes evaluation weights from the corresponding UCI parameters
-  /// and setup king tables.
-
-  void init() {
-
-    const double MaxSlope = 30;
-    const double Peak = 1280;
-
-    for (int t = 0, i = 1; i < 100; ++i)
-    {
-        t = int(std::min(Peak, std::min(0.4 * i * i, t + MaxSlope)));
-        KingDanger[i] = apply_weight(make_score(t, 0), Weights[KingSafety]);
-    }
   }
 
 } // namespace Eval
