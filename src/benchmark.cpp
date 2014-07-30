@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm> // For std::max
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -161,7 +162,7 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  elapsed = Time::now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+  elapsed = std::max(Time::now() - elapsed, Time::point(1)); // Ensure positivity to avoid a 'divide by zero'
 
   dbg_print(); // Just before to exit
 
