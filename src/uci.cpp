@@ -68,7 +68,11 @@ namespace {
     else
         return;
 
+#ifdef KOTH
+    pos.set(fen, Options["UCI_Chess960"], Options["UCI_VariantKOTH"], Threads.main());
+#else
     pos.set(fen, Options["UCI_Chess960"], Threads.main());
+#endif
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
 
     // Parse move list (if any)
@@ -145,7 +149,11 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
+#ifdef KOTH
+  Position pos(StartFEN, Threads.main()); // The root position
+#else
   Position pos(StartFEN, false, Threads.main()); // The root position
+#endif
   string token, cmd;
 
   for (int i = 1; i < argc; ++i)

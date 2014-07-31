@@ -133,7 +133,11 @@ void benchmark(const Position& current, istream& is) {
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
+#ifdef KOTH
+      Position pos(fens[i], Options["UCI_Chess960"], Options["UCI_VariantKOTH"], Threads.main());
+#else
       Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
+#endif
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 

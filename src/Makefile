@@ -207,6 +207,7 @@ ifneq ($(comp),mingw)
 endif
 
 ### 3.4 Debugging
+CXXFLAGS += -DKOTH
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else

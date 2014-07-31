@@ -153,6 +153,15 @@ namespace {
   // Hanging contains a bonus for each enemy hanging piece
   const Score Hanging = S(23, 20);
 
+#ifdef KOTH
+  const Score KOTHDistanceBonus[4] = {
+    S(9*PawnValueMg + PawnValueMg/2, 9*PawnValueEg),
+    S(4*PawnValueMg + PawnValueMg/2, 4*PawnValueEg),
+    S(2*PawnValueMg + PawnValueMg/2, 2*PawnValueEg),
+    S(0, 0)
+  };
+#endif
+
   #undef S
 
   const Score RookOnPawn       = make_score(10, 28);
@@ -393,6 +402,15 @@ namespace {
 
     // King shelter and enemy pawns storm
     Score score = ei.pi->king_safety<Us>(pos, ksq);
+
+#ifdef KOTH
+    if (pos.is_koth())
+    {
+        // Initial attempt to adjust score based on KOTH distance
+        score += KOTHDistanceBonus[pos.koth_distance(Us)];
+        score -= KOTHDistanceBonus[pos.koth_distance(Them)];
+    }
+#endif
 
     // Main king safety evaluation
     if (ei.kingAttackersCount[Them])
@@ -679,6 +697,17 @@ namespace {
     // in the position object (material + piece square tables).
     // Score is computed from the point of view of white.
     score = pos.psq_score();
+
+#ifdef KOTH
+    if (pos.is_koth())
+    {
+        // TODO: Do we need or want both conditions here?
+        if (pos.is_koth_win())
+            return VALUE_MATE;
+        if (pos.is_koth_loss())
+            return -VALUE_MATE;
+    }
+#endif
 
     // Probe the material hash table
     ei.mi = Material::probe(pos, thisThread->materialTable, thisThread->endgames);
