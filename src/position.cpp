@@ -191,7 +191,11 @@ void Position::clear() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
+#ifdef KOTH
+void Position::set(const string& fenStr, bool isChess960, bool isKOTH, Thread* th) {
+#else
 void Position::set(const string& fenStr, bool isChess960, Thread* th) {
+#endif
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -300,6 +304,9 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
+#ifdef KOTH
+  koth = isKOTH;
+#endif
   thisThread = th;
   set_state(st);
 
@@ -712,6 +719,10 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   assert(is_ok(m));
   assert(&newSt != st);
+#ifdef KOTH
+  assert(!is_koth_win());
+  assert(!is_koth_loss());
+#endif
 
   ++nodes;
   Key k = st->key;
@@ -1178,7 +1189,11 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
+#ifdef KOTH
+  set(f, is_chess960(), is_koth(), this_thread());
+#else
   set(f, is_chess960(), this_thread());
+#endif
 
   assert(pos_is_ok());
 }

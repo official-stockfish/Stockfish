@@ -76,12 +76,21 @@ class Position {
 public:
   Position() {}
   Position(const Position& pos, Thread* t) { *this = pos; thisThread = t; }
+#ifdef KOTH
+  Position(const std::string& f, Thread* t) { set(f, false, false, t); }
+  Position(const std::string& f, bool c960, bool isKOTH, Thread* t) { set(f, c960, isKOTH, t); }
+#else
   Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
+#endif
   Position& operator=(const Position&);
   static void init();
 
   // Text input/output
+#ifdef KOTH
+  void set(const std::string& fenStr, bool isChess960, bool isKOTH, Thread* th);
+#else
   void set(const std::string& fenStr, bool isChess960, Thread* th);
+#endif
   const std::string fen() const;
   const std::string pretty(Move m = MOVE_NONE) const;
 
@@ -159,6 +168,12 @@ public:
   Phase game_phase() const;
   int game_ply() const;
   bool is_chess960() const;
+#ifdef KOTH
+  bool is_koth() const;
+  bool is_koth_win() const;
+  bool is_koth_loss() const;
+  int koth_distance(Color c) const;
+#endif
   Thread* this_thread() const;
   uint64_t nodes_searched() const;
   void set_nodes_searched(uint64_t n);
@@ -201,6 +216,9 @@ private:
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
+#ifdef KOTH
+  bool koth;
+#endif
 };
 
 inline uint64_t Position::nodes_searched() const {
@@ -365,6 +383,32 @@ inline bool Position::bishop_pair(Color c) const {
 inline bool Position::pawn_on_7th(Color c) const {
   return pieces(c, PAWN) & rank_bb(relative_rank(c, RANK_7));
 }
+
+#ifdef KOTH
+inline bool Position::is_koth() const {
+  return koth;
+}
+
+// Win if king is in the center (KOTH)
+inline bool Position::is_koth_win() const {
+  return koth_distance(side_to_move()) == 0;
+}
+
+// Loss if king is in the center (KOTH)
+inline bool Position::is_koth_loss() const {
+  return koth_distance(~side_to_move()) == 0;
+}
+
+inline int Position::koth_distance(Color c) const {
+  Square ksq = king_square(c);
+  return std::min(
+    std::min(square_distance(ksq, SQ_D4),
+             square_distance(ksq, SQ_E4)),
+    std::min(square_distance(ksq, SQ_D5),
+             square_distance(ksq, SQ_E5))
+  );
+}
+#endif
 
 inline bool Position::is_chess960() const {
   return chess960;

@@ -96,7 +96,11 @@ namespace {
     string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
+#ifdef KOTH
+    return Position(fen, NULL).material_key();
+#else
     return Position(fen, false, NULL).material_key();
+#endif
   }
 
   template<typename M>

@@ -250,6 +250,12 @@ finalize:
       RootPos.this_thread()->wait_for(Signals.stop);
   }
 
+#ifdef KOTH
+  // Best move can only be MOVE_NONE when searching on a lost KOTH position
+  if (RootPos.is_koth() && RootPos.is_koth_loss())
+      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
+  else
+#endif
   // Best move could be MOVE_NONE when searching on a stalemate position
   sync_cout << "bestmove " << move_to_uci(RootMoves[0].pv[0], RootPos.is_chess960())
             << " ponder "  << move_to_uci(RootMoves[0].pv[1], RootPos.is_chess960())
