@@ -72,7 +72,7 @@ void init(OptionsMap& o) {
   o["Slow Mover"]               << Option(80, 10, 1000);
   o["UCI_Chess960"]             << Option(false);
 #ifdef KOTH
-  o["UCI_VariantKOTH"]          << Option(false);
+  o["UCI_KingOfTheHill"]        << Option(false);
 #endif
 }
 

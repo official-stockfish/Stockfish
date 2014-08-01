@@ -69,7 +69,7 @@ namespace {
         return;
 
 #ifdef KOTH
-    pos.set(fen, Options["UCI_Chess960"], Options["UCI_VariantKOTH"], Threads.main());
+    pos.set(fen, Options["UCI_Chess960"], Options["UCI_KingOfTheHill"], Threads.main());
 #else
     pos.set(fen, Options["UCI_Chess960"], Threads.main());
 #endif
