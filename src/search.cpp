@@ -301,7 +301,7 @@ namespace {
             RootMoves[i].prevScore = RootMoves[i].score;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (PVIdx = 0; PVIdx < multiPV && PVIdx < RootMoves.size() && !Signals.stop; ++PVIdx)
+        for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
             if (depth >= 5)
@@ -366,7 +366,7 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (PVIdx + 1 == multiPV || Time::now() - SearchTime > 3000)
+            if (PVIdx + 1 == std::min(multiPV, RootMoves.size()) || Time::now() - SearchTime > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
