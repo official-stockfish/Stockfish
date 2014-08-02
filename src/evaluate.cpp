@@ -498,7 +498,7 @@ namespace {
 
     Bitboard b, weakEnemies, protectedEnemies;
     Score score = SCORE_ZERO;
-    enum { Major, Minor };
+    enum { Minor, Major };
 
     // Protected enemies
     protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
@@ -506,7 +506,7 @@ namespace {
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
 
     if(protectedEnemies)
-        score += Threat[Major][type_of(pos.piece_on(lsb(protectedEnemies)))];
+        score += Threat[Minor][type_of(pos.piece_on(lsb(protectedEnemies)))];
 
     // Enemies not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
@@ -518,11 +518,11 @@ namespace {
     {
         b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
-            score += Threat[Major][type_of(pos.piece_on(lsb(b)))];
+            score += Threat[Minor][type_of(pos.piece_on(lsb(b)))];
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
-            score += Threat[Minor][type_of(pos.piece_on(lsb(b)))];
+            score += Threat[Major][type_of(pos.piece_on(lsb(b)))];
 
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
