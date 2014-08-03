@@ -1127,7 +1127,8 @@ Value Position::see(Move m) const {
 bool Position::is_draw() const {
 
   if (   !pieces(PAWN)
-      && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMg))
+      &&  non_pawn_material(WHITE) <= 2 * KnightValueMg
+      &&  non_pawn_material(BLACK) <= 2 * KnightValueMg)
       return true;
 
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
