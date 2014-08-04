@@ -97,82 +97,6 @@ Move move_from_uci(const Position& pos, string& str) {
 }
 
 
-/// move_to_san() takes a position and a legal Move as input and returns its
-/// short algebraic notation representation.
-
-const string move_to_san(Position& pos, Move m) {
-
-  if (m == MOVE_NONE)
-      return "(none)";
-
-  if (m == MOVE_NULL)
-      return "(null)";
-
-  assert(MoveList<LEGAL>(pos).contains(m));
-
-  Bitboard others, b;
-  string san;
-  Color us = pos.side_to_move();
-  Square from = from_sq(m);
-  Square to = to_sq(m);
-  Piece pc = pos.piece_on(from);
-  PieceType pt = type_of(pc);
-
-  if (type_of(m) == CASTLING)
-      san = to > from ? "O-O" : "O-O-O";
-  else
-  {
-      if (pt != PAWN)
-      {
-          san = PieceToChar[WHITE][pt]; // Upper case
-
-          // A disambiguation occurs if we have more then one piece of type 'pt'
-          // that can reach 'to' with a legal move.
-          others = b = (pos.attacks_from(pc, to) & pos.pieces(us, pt)) ^ from;
-
-          while (b)
-          {
-              Square s = pop_lsb(&b);
-              if (!pos.legal(make_move(s, to), pos.pinned_pieces(us)))
-                  others ^= s;
-          }
-
-          if (!others)
-          { /* Disambiguation is not needed */ }
-
-          else if (!(others & file_bb(from)))
-              san += to_char(file_of(from));
-
-          else if (!(others & rank_bb(from)))
-              san += to_char(rank_of(from));
-
-          else
-              san += to_string(from);
-      }
-      else if (pos.capture(m))
-          san = to_char(file_of(from));
-
-      if (pos.capture(m))
-          san += 'x';
-
-      san += to_string(to);
-
-      if (type_of(m) == PROMOTION)
-          san += string("=") + PieceToChar[WHITE][promotion_type(m)];
-  }
-
-  if (pos.gives_check(m, CheckInfo(pos)))
-  {
-      StateInfo st;
-      pos.do_move(m, st);
-      san += MoveList<LEGAL>(pos).size() ? "+" : "#";
-      pos.undo_move(m);
-  }
-
-  return san;
-}
-
-
 /// pretty_pv() formats human-readable search information, typically to be
 /// appended to the search log file. It uses the two helpers below to pretty
 /// format the time and score respectively.
@@ -212,16 +136,12 @@ static string format(Value v) {
   return ss.str();
 }
 
-string pretty_pv(Position& pos, int depth, Value value, int64_t msecs, Move pv[]) {
+string pretty_pv(const Position& pos, int depth, Value value, int64_t msecs, Move pv[]) {
 
   const uint64_t K = 1000;
   const uint64_t M = 1000000;
 
-  std::stack<StateInfo> st;
-  Move* m = pv;
-  string san, str, padding;
   stringstream ss;
-
   ss << setw(2) << depth << setw(8) << format(value) << setw(8) << format(msecs);
 
   if (pos.nodes_searched() < M)
@@ -233,24 +153,10 @@ string pretty_pv(Position& pos, int depth, Value value, int64_t msecs, Move pv[]
   else
       ss << setw(7) << pos.nodes_searched() / M << "M  ";
 
-  str = ss.str();
-  padding = string(str.length(), ' ');
+  string str = ss.str();
 
-  while (*m != MOVE_NONE)
-  {
-      san = move_to_san(pos, *m) + ' ';
-
-      if ((str.length() + san.length()) % 80 <= san.length()) // Exceed 80 cols
-          str += "\n" + padding;
-
-      str += san;
-
-      st.push(StateInfo());
-      pos.do_move(*m++, st.top());
-  }
-
-  while (m != pv)
-      pos.undo_move(*--m);
+  for (Move *m = pv; *m != MOVE_NONE; m++)
+      str += move_to_uci(*m, pos.is_chess960()) + ' ';
 
   return str;
 }
