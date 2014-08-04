@@ -302,14 +302,6 @@ void MovePicker::generate_next_stage() {
 template<>
 Move MovePicker::next_move<false>() {
 
-#ifdef KOTH
-  assert(!pos.is_koth_win());
-
-  // Best move can only be MOVE_NONE when searching on a lost KOTH position
-  if (pos.is_koth_loss())
-      return MOVE_NONE;
-#endif
-
   Move move;
 
   while (true)

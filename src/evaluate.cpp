@@ -699,9 +699,9 @@ namespace {
     score = pos.psq_score();
 
 #ifdef KOTH
+    // Possibly redundant static evaluator
     if (pos.is_koth())
     {
-        // TODO: Do we need or want both conditions here?
         if (pos.is_koth_win())
             return VALUE_MATE;
         if (pos.is_koth_loss())

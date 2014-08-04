@@ -481,6 +481,17 @@ namespace {
 
     if (!RootNode)
     {
+#ifdef KOTH
+        // Check for an instant win (King of the Hill)
+        if (pos.is_koth())
+        {
+            if (pos.is_koth_win())
+                return mate_in(ss->ply+1);
+            if (pos.is_koth_loss())
+                return mated_in(ss->ply);
+        }
+#endif
+
         // Step 2. Check for aborted search and immediate draw
         if (Signals.stop || pos.is_draw() || ss->ply > MAX_PLY)
             return ss->ply > MAX_PLY && !inCheck ? evaluate(pos) : DrawValue[pos.side_to_move()];
@@ -1064,6 +1075,17 @@ moves_loop: // When in check and at SpNode search starts from here
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
+
+#ifdef KOTH
+    // Check for an instant win or loss (King of the Hill)
+    if (pos.is_koth())
+    {
+        if (pos.is_koth_win())
+            return mate_in(ss->ply+1);
+        if (pos.is_koth_loss())
+            return mated_in(ss->ply);
+    }
+#endif
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply > MAX_PLY)

@@ -539,6 +539,12 @@ bool Position::legal(Move m, Bitboard pinned) const {
   assert(color_of(moved_piece(m)) == us);
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 
+#ifdef KOTH
+  // If the game is already won or lost, further moves are illegal
+  if (is_koth() && (is_koth_win() || is_koth_loss()))
+      return false;
+#endif
+
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
   // the move is made.
@@ -582,6 +588,12 @@ bool Position::pseudo_legal(const Move m) const {
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = moved_piece(m);
+
+#ifdef KOTH
+  // If the game is already won or lost, further moves are illegal
+  if (is_koth() && (is_koth_win() || is_koth_loss()))
+      return false;
+#endif
 
   // Use a slower but simpler function for uncommon cases
   if (type_of(m) != NORMAL)
@@ -719,10 +731,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
 
   assert(is_ok(m));
   assert(&newSt != st);
-#ifdef KOTH
-  assert(!is_koth_win());
-  assert(!is_koth_loss());
-#endif
 
   ++nodes;
   Key k = st->key;
@@ -1138,6 +1146,9 @@ Value Position::see(Move m) const {
 bool Position::is_draw() const {
 
   if (   !pieces(PAWN)
+#ifdef KOTH
+      && !is_koth()
+#endif
       && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMg))
       return true;
 
