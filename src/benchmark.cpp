@@ -138,7 +138,7 @@ void benchmark(const Position& current, istream& is) {
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
-      if (limitType == "divide")
+      if (limitType == "perft")
           for (MoveList<LEGAL> it(pos); *it; ++it)
           {
               StateInfo si;
@@ -148,12 +148,6 @@ void benchmark(const Position& current, istream& is) {
               cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
               nodes += cnt;
           }
-      else if (limitType == "perft")
-      {
-          uint64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
-          cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
-          nodes += cnt;
-      }
       else
       {
           Threads.start_thinking(pos, limits, st);

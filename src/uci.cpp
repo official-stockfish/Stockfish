@@ -174,7 +174,7 @@ void UCI::loop(int argc, char* argv[]) {
           else
               Search::Limits.ponder = false;
       }
-      else if (token == "perft" || token == "divide")
+      else if (token == "perft")
       {
           int depth;
           stringstream ss;
