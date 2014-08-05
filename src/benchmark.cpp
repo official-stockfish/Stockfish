@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -141,7 +142,7 @@ void benchmark(const Position& current, istream& is) {
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
-      if (limitType == "divide")
+      if (limitType == "perft")
           for (MoveList<LEGAL> it(pos); *it; ++it)
           {
               StateInfo si;
@@ -151,12 +152,6 @@ void benchmark(const Position& current, istream& is) {
               cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
               nodes += cnt;
           }
-      else if (limitType == "perft")
-      {
-          uint64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
-          cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
-          nodes += cnt;
-      }
       else
       {
           Threads.start_thinking(pos, limits, st);
@@ -165,7 +160,7 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  elapsed = Time::now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+  elapsed = std::max(Time::now() - elapsed, Time::point(1)); // Avoid a 'divide by zero'
 
   dbg_print(); // Just before to exit
 
