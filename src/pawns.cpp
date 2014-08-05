@@ -313,9 +313,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   {
       // Initial attempt to adjust score based on KOTH distance
       // TODO: account for attacked and blocked squares
-      const Color Them = (Us == WHITE ? BLACK : WHITE);
-      kothBonus += KOTHDistanceBonus[pos.koth_distance(Us)];
-      kothBonus -= KOTHDistanceBonus[pos.koth_distance(Them)];
+      kothBonus = KOTHDistanceBonus[pos.koth_distance(Us)];
   }
 #endif
 
