@@ -401,12 +401,13 @@ inline bool Position::is_koth_loss() const {
 
 inline int Position::koth_distance(Color c) const {
   Square ksq = king_square(c);
-  return std::min(
-    std::min(square_distance(ksq, SQ_D4),
-             square_distance(ksq, SQ_E4)),
-    std::min(square_distance(ksq, SQ_D5),
-             square_distance(ksq, SQ_E5))
-  );
+  int distance =
+    square_distance(ksq, SQ_D4) +
+    square_distance(ksq, SQ_E4) +
+    square_distance(ksq, SQ_D5) +
+    square_distance(ksq, SQ_E5);
+  // Return 0 if in the center, weighted average distance otherwise
+  return distance < 4 ? 0 : (distance + 1) / 4;
 }
 #endif
 
