@@ -145,7 +145,7 @@ void benchmark(const Position& current, istream& is) {
               pos.do_move(*it, si);
               uint64_t cnt = limits.depth > 1 ? Search::perft(pos, (limits.depth - 1) * ONE_PLY) : 1;
               pos.undo_move(*it);
-              cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
+              cout << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
               nodes += cnt;
           }
       else
