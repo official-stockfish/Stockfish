@@ -85,9 +85,9 @@ namespace {
 
 #ifdef KOTH_DISTANCE_BONUS
   const Score KOTHDistanceBonus[4] = {
-    S(3*PawnValueMg + PawnValueMg/2, 9*PawnValueEg),
-    S(1*PawnValueMg + PawnValueMg/2, 4*PawnValueEg),
-    S(0*PawnValueMg + PawnValueMg/2, 2*PawnValueEg),
+    S(1*PawnValueMg + PawnValueMg/2, 5*PawnValueEg),
+    S(1*PawnValueMg                , 3*PawnValueEg),
+    S(                PawnValueMg/2, 1*PawnValueEg),
     S(0, 0)
   };
 #endif
