@@ -32,4 +32,17 @@ const std::string move_to_uci(Move m, bool chess960);
 const std::string move_to_san(Position& pos, Move m);
 std::string pretty_pv(Position& pos, int depth, Value score, int64_t msecs, Move pv[]);
 
+inline char to_char(File f, bool tolower = true) {
+  return char(f - FILE_A + (tolower ? 'a' : 'A'));
+}
+
+inline char to_char(Rank r) {
+  return char(r - RANK_1 + '1');
+}
+
+inline const std::string to_string(Square s) {
+  char ch[] = { to_char(file_of(s)), to_char(rank_of(s)), 0 };
+  return ch;
+}
+
 #endif // #ifndef NOTATION_H_INCLUDED
