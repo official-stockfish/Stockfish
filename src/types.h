@@ -405,14 +405,6 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline char to_char(File f, bool tolower = true) {
-  return char(f - FILE_A + (tolower ? 'a' : 'A'));
-}
-
-inline char to_char(Rank r) {
-  return char(r - RANK_1 + '1');
-}
-
 inline Square pawn_push(Color c) {
   return c == WHITE ? DELTA_N : DELTA_S;
 }
@@ -444,13 +436,6 @@ inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
 
 inline bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catches also MOVE_NULL and MOVE_NONE
-}
-
-#include <string>
-
-inline const std::string to_string(Square s) {
-  char ch[] = { to_char(file_of(s)), to_char(rank_of(s)), 0 };
-  return ch;
 }
 
 #endif // #ifndef TYPES_H_INCLUDED
