@@ -82,7 +82,7 @@ void benchmark(const Position& current, istream& is) {
   vector<string> fens;
 
   // Assign default values to missing arguments
-  string ttSize    = (is >> token) ? token : "32";
+  string ttSize    = (is >> token) ? token : "16";
   string threads   = (is >> token) ? token : "1";
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
@@ -143,15 +143,8 @@ void benchmark(const Position& current, istream& is) {
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
       if (limitType == "perft")
-          for (MoveList<LEGAL> it(pos); *it; ++it)
-          {
-              StateInfo si;
-              pos.do_move(*it, si);
-              uint64_t cnt = limits.depth > 1 ? Search::perft(pos, (limits.depth - 1) * ONE_PLY) : 1;
-              pos.undo_move(*it);
-              cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
-              nodes += cnt;
-          }
+          nodes += Search::perft<true>(pos, limits.depth * ONE_PLY);
+
       else
       {
           Threads.start_thinking(pos, limits, st);

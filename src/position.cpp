@@ -25,12 +25,12 @@
 
 #include "bitcount.h"
 #include "movegen.h"
-#include "notation.h"
 #include "position.h"
 #include "psqtab.h"
 #include "rkiss.h"
 #include "thread.h"
 #include "tt.h"
+#include "notation.h"
 
 using std::string;
 
@@ -437,16 +437,11 @@ const string Position::fen() const {
 }
 
 
-/// Position::pretty() returns an ASCII representation of the position to be
-/// printed to the standard output together with the move's san notation.
+/// Position::pretty() returns an ASCII representation of the position
 
-const string Position::pretty(Move m) const {
+const string Position::pretty() const {
 
   std::ostringstream ss;
-
-  if (m)
-      ss << "\nMove: " << (sideToMove == BLACK ? ".." : "")
-         << move_to_san(*const_cast<Position*>(this), m);
 
   ss << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -463,10 +458,6 @@ const string Position::pretty(Move m) const {
 
   for (Bitboard b = checkers(); b; )
       ss << to_string(pop_lsb(&b)) << " ";
-
-  ss << "\nLegal moves: ";
-  for (MoveList<LEGAL> it(*this); *it; ++it)
-      ss << move_to_san(*const_cast<Position*>(this), *it) << " ";
 
   return ss.str();
 }
@@ -1144,13 +1135,6 @@ Value Position::see(Move m) const {
 /// rule or repetition. It does not detect stalemates.
 
 bool Position::is_draw() const {
-
-  if (   !pieces(PAWN)
-#ifdef KOTH
-      && !is_koth()
-#endif
-      && (non_pawn_material(WHITE) + non_pawn_material(BLACK) <= BishopValueMg))
-      return true;
 
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
