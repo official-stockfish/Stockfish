@@ -189,7 +189,11 @@ void Search::think() {
   {
       RootMoves.push_back(MOVE_NONE);
       sync_cout << "info depth 0 score "
+#ifdef KOTH
+                << score_to_uci(RootPos.checkers() || (RootPos.is_koth() && RootPos.is_koth_loss()) ? -VALUE_MATE : VALUE_DRAW)
+#else
                 << score_to_uci(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+#endif
                 << sync_endl;
 
       goto finalize;
