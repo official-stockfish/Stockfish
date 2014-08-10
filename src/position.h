@@ -92,7 +92,7 @@ public:
   void set(const std::string& fenStr, bool isChess960, Thread* th);
 #endif
   const std::string fen() const;
-  const std::string pretty(Move m = MOVE_NONE) const;
+  const std::string pretty() const;
 
   // Position representation
   Bitboard pieces() const;
