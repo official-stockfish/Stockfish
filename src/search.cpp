@@ -42,6 +42,7 @@ namespace Search {
   LimitsType Limits;
   std::vector<RootMove> RootMoves;
   Position RootPos;
+  int RootPly;
   Time::point SearchTime;
   StateStackPtr SetupStates;
 }
@@ -186,7 +187,7 @@ template uint64_t Search::perft<true>(Position& pos, Depth depth);
 
 void Search::think() {
 
-  TimeMgr.init(Limits, RootPos.game_ply(), RootPos.side_to_move());
+  TimeMgr.init(Limits, RootPly = RootPos.game_ply(), RootPos.side_to_move());
 
   int cf = Options["Contempt Factor"] * PawnValueEg / 100; // From centipawns
   DrawValue[ RootPos.side_to_move()] = VALUE_DRAW - Value(cf);

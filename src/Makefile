@@ -208,7 +208,7 @@ endif
 
 ### 3.4 Debugging
 CXXFLAGS += -DKOTH
-CXXFLAGS += -DKOTH_DISTANCE_BONUS
+#CXXFLAGS += -DKOTH_DISTANCE_BONUS
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
