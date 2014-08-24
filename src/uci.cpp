@@ -36,8 +36,14 @@ extern void benchmark(const Position& pos, istream& is);
 
 namespace {
 
+#ifdef HORDE
+  // FEN string of the initial position, horde chess
+  //const char* StartFEN = "pppppppp/pppppppp/pppppppp/pppppppp/1pp2pp1/8/PPPPPPPP/RNBQKBNR w KQ - 0 1";
+  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+#else
   // FEN string of the initial position, normal chess
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+#endif
 
   // Keep a track of the position keys along the setup moves (from the start position
   // to the position just before the search starts). This is needed by the repetition
@@ -68,10 +74,14 @@ namespace {
     else
         return;
 
+#ifdef HORDE
+    pos.set(fen, Options["UCI_Chess960"], Options["UCI_Horde"], Threads.main());
+#else
 #ifdef KOTH
     pos.set(fen, Options["UCI_Chess960"], Options["UCI_KingOfTheHill"], Threads.main());
 #else
     pos.set(fen, Options["UCI_Chess960"], Threads.main());
+#endif
 #endif
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
 
@@ -149,10 +159,14 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
+#ifdef HORDE
+  Position pos(StartFEN, Threads.main()); // The root position
+#else
 #ifdef KOTH
   Position pos(StartFEN, Threads.main()); // The root position
 #else
   Position pos(StartFEN, false, Threads.main()); // The root position
+#endif
 #endif
   string token, cmd;
 

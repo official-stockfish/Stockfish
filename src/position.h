@@ -76,20 +76,29 @@ class Position {
 public:
   Position() {}
   Position(const Position& pos, Thread* t) { *this = pos; thisThread = t; }
+#ifdef HORDE
+  Position(const std::string& f, Thread* t) { set(f, false, true, t); }
+  Position(const std::string& f, bool c960, bool cHorde, Thread* t) { set(f, c960, cHorde, t); }
+#else
 #ifdef KOTH
   Position(const std::string& f, Thread* t) { set(f, false, false, t); }
-  Position(const std::string& f, bool c960, bool isKOTH, Thread* t) { set(f, c960, isKOTH, t); }
+  Position(const std::string& f, bool c960, bool cKOTH, Thread* t) { set(f, c960, cKOTH, t); }
 #else
   Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
+#endif
 #endif
   Position& operator=(const Position&);
   static void init();
 
   // Text input/output
+#ifdef HORDE
+  void set(const std::string& fenStr, bool isChess960, bool isChessHorde, Thread* th);
+#else
 #ifdef KOTH
   void set(const std::string& fenStr, bool isChess960, bool isKOTH, Thread* th);
 #else
   void set(const std::string& fenStr, bool isChess960, Thread* th);
+#endif
 #endif
   const std::string fen() const;
   const std::string pretty() const;
@@ -168,6 +177,10 @@ public:
   Phase game_phase() const;
   int game_ply() const;
   bool is_chess960() const;
+#ifdef HORDE
+  bool is_horde() const;
+  bool is_horde_loss() const;
+#endif
 #ifdef KOTH
   bool is_koth() const;
   bool is_koth_win() const;
@@ -202,7 +215,11 @@ private:
   Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byColorBB[COLOR_NB];
   int pieceCount[COLOR_NB][PIECE_TYPE_NB];
+#ifdef HORDE
+  Square pieceList[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+#else
   Square pieceList[COLOR_NB][PIECE_TYPE_NB][16];
+#endif
   int index[SQUARE_NB];
 
   // Other info
@@ -216,6 +233,9 @@ private:
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
+#ifdef HORDE
+  bool horde;
+#endif
 #ifdef KOTH
   bool koth;
 #endif
@@ -282,6 +302,9 @@ inline Square Position::ep_square() const {
 }
 
 inline Square Position::king_square(Color c) const {
+#ifdef HORDE
+  return is_horde() && c == BLACK ? SQ_NONE : pieceList[c][KING][0];
+#endif
   return pieceList[c][KING][0];
 }
 
@@ -383,6 +406,17 @@ inline bool Position::bishop_pair(Color c) const {
 inline bool Position::pawn_on_7th(Color c) const {
   return pieces(c, PAWN) & rank_bb(relative_rank(c, RANK_7));
 }
+
+#ifdef HORDE
+inline bool Position::is_horde() const {
+  return horde;
+}
+
+// Loss if horde is captured (Horde)
+inline bool Position::is_horde_loss() const {
+  return pieces(BLACK) == 0;
+}
+#endif
 
 #ifdef KOTH
 inline bool Position::is_koth() const {

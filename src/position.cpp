@@ -96,6 +96,19 @@ CheckInfo::CheckInfo(const Position& pos) {
   Color them = ~pos.side_to_move();
   ksq = pos.king_square(them);
 
+#ifdef HORDE
+  if (pos.is_horde() && ksq == SQ_NONE) {
+  pinned = pos.pinned_pieces(pos.side_to_move());
+  dcCandidates = pos.discovered_check_candidates();
+
+  checkSq[PAWN]   = 0;
+  checkSq[KNIGHT] = 0;
+  checkSq[BISHOP] = 0;
+  checkSq[ROOK]   = 0;
+  checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
+  checkSq[KING]   = 0;
+  } else {
+#endif
   pinned = pos.pinned_pieces(pos.side_to_move());
   dcCandidates = pos.discovered_check_candidates();
 
@@ -105,6 +118,9 @@ CheckInfo::CheckInfo(const Position& pos) {
   checkSq[ROOK]   = pos.attacks_from<ROOK>(ksq);
   checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
   checkSq[KING]   = 0;
+#ifdef HORDE
+  }
+#endif
 }
 
 
@@ -181,9 +197,15 @@ void Position::clear() {
   startState.epSquare = SQ_NONE;
   st = &startState;
 
+#ifdef HORDE
+  for (int i = 0; i < PIECE_TYPE_NB; ++i)
+      for (int j = 0; j < SQUARE_NB; ++j)
+          pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
+#else
   for (int i = 0; i < PIECE_TYPE_NB; ++i)
       for (int j = 0; j < 16; ++j)
           pieceList[WHITE][i][j] = pieceList[BLACK][i][j] = SQ_NONE;
+#endif
 }
 
 
@@ -191,10 +213,14 @@ void Position::clear() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
+#ifdef HORDE
+void Position::set(const string& fenStr, bool isChess960, bool isHorde, Thread* th) {
+#else
 #ifdef KOTH
 void Position::set(const string& fenStr, bool isChess960, bool isKOTH, Thread* th) {
 #else
 void Position::set(const string& fenStr, bool isChess960, Thread* th) {
+#endif
 #endif
 /*
    A FEN string defines a particular position using only the ASCII character set.
@@ -304,6 +330,11 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
   chess960 = isChess960;
+#ifdef HORDE
+// TODO: Fix
+//isHorde = true;
+  horde = isHorde;
+#endif
 #ifdef KOTH
   koth = isKOTH;
 #endif
@@ -352,7 +383,12 @@ void Position::set_state(StateInfo* si) const {
   si->npMaterial[WHITE] = si->npMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
 
+#ifdef HORDE
+  Square ksq = king_square(sideToMove);
+  si->checkersBB = ksq == SQ_NONE ? 0 : attackers_to(ksq) & pieces(~sideToMove);
+#else
   si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+#endif
 
   for (Bitboard b = pieces(); b; )
   {
@@ -487,6 +523,9 @@ Bitboard Position::check_blockers(Color c, Color kingColor) const {
 
   Bitboard b, pinners, result = 0;
   Square ksq = king_square(kingColor);
+#ifdef HORDE
+  if (ksq == SQ_NONE) return result;
+#endif
 
   // Pinners are sliders that give check when a pinned piece is removed
   pinners = (  (pieces(  ROOK, QUEEN) & PseudoAttacks[ROOK  ][ksq])
@@ -528,8 +567,17 @@ bool Position::legal(Move m, Bitboard pinned) const {
   Square from = from_sq(m);
 
   assert(color_of(moved_piece(m)) == us);
+#ifdef HORDE
+  assert(is_horde() && us == BLACK ? king_square(us) == SQ_NONE : piece_on(king_square(us)) == make_piece(us, KING));
+#else
   assert(piece_on(king_square(us)) == make_piece(us, KING));
+#endif
 
+#ifdef HORDE
+  // If the game is already won or lost, further moves are illegal
+  if (is_horde() && is_horde_loss())
+      return false;
+#endif
 #ifdef KOTH
   // If the game is already won or lost, further moves are illegal
   if (is_koth() && (is_koth_win() || is_koth_loss()))
@@ -551,6 +599,9 @@ bool Position::legal(Move m, Bitboard pinned) const {
       assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
+#ifdef HORDE
+      if (is_horde() && ksq != SQ_NONE)
+#endif
       return   !(attacks_bb<  ROOK>(ksq, occ) & pieces(~us, QUEEN, ROOK))
             && !(attacks_bb<BISHOP>(ksq, occ) & pieces(~us, QUEEN, BISHOP));
   }
@@ -561,6 +612,10 @@ bool Position::legal(Move m, Bitboard pinned) const {
   if (type_of(piece_on(from)) == KING)
       return type_of(m) == CASTLING || !(attackers_to(to_sq(m)) & pieces(~us));
 
+#ifdef HORDE
+   if (is_horde() && king_square(us) == SQ_NONE)
+      return true;
+#endif
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return   !pinned
@@ -580,6 +635,11 @@ bool Position::pseudo_legal(const Move m) const {
   Square to = to_sq(m);
   Piece pc = moved_piece(m);
 
+#ifdef HORDE
+  // If the game is already won or lost, further moves are illegal
+  if (is_horde() && is_horde_loss())
+      return false;
+#endif
 #ifdef KOTH
   // If the game is already won or lost, further moves are illegal
   if (is_koth() && (is_koth_win() || is_koth_loss()))
@@ -661,6 +721,10 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   Square to = to_sq(m);
   PieceType pt = type_of(piece_on(from));
 
+#ifdef HORDE
+  if (is_horde() && king_square(~sideToMove) == SQ_NONE)
+      return false;
+#endif
   // Is there a direct check?
   if (ci.checkSq[pt] & to)
       return true;
@@ -1184,10 +1248,14 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
+#ifdef HORDE
+  set(f, is_chess960(), is_horde(), this_thread());
+#else
 #ifdef KOTH
   set(f, is_chess960(), is_koth(), this_thread());
 #else
   set(f, is_chess960(), this_thread());
+#endif
 #endif
 
   assert(pos_is_ok());
@@ -1215,7 +1283,11 @@ bool Position::pos_is_ok(int* step) const {
 
   if (   (sideToMove != WHITE && sideToMove != BLACK)
       || piece_on(king_square(WHITE)) != W_KING
+#ifdef HORDE
+      || is_horde() ? king_square(BLACK) != SQ_NONE : piece_on(king_square(BLACK)) != B_KING
+#else
       || piece_on(king_square(BLACK)) != B_KING
+#endif
       || (   ep_square() != SQ_NONE
           && relative_rank(sideToMove, ep_square()) != RANK_6))
       return false;
@@ -1253,12 +1325,21 @@ bool Position::pos_is_ok(int* step) const {
   }
 
   if (step && ++*step, testKingCount)
+#ifdef HORDE
+      if (   std::count(board, board + SQUARE_NB, W_KING) != 1
+          || std::count(board, board + SQUARE_NB, B_KING) != (is_horde() ? 0 : 1))
+#else
       if (   std::count(board, board + SQUARE_NB, W_KING) != 1
           || std::count(board, board + SQUARE_NB, B_KING) != 1)
+#endif
           return false;
 
   if (step && ++*step, testKingCapture)
+#ifdef HORDE
+      if (is_horde() && king_square(~sideToMove) != SQ_NONE && attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
+#else
       if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
+#endif
           return false;
 
   if (step && ++*step, testPieceCounts)

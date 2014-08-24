@@ -134,10 +134,14 @@ void benchmark(const Position& current, istream& is) {
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
+#ifdef HORDE
+      Position pos(fens[i], Options["UCI_Chess960"], Options["UCI_Horde"], Threads.main());
+#else
 #ifdef KOTH
       Position pos(fens[i], Options["UCI_Chess960"], Options["UCI_KingOfTheHill"], Threads.main());
 #else
       Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
+#endif
 #endif
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;

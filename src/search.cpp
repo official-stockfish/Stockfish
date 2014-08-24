@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cfloat>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -207,18 +206,6 @@ void Search::think() {
       goto finalize;
   }
 
-  if (Options["Write Search Log"])
-  {
-      Log log(Options["Search Log Filename"]);
-      log << "\nSearching: "  << RootPos.fen()
-          << "\ninfinite: "   << Limits.infinite
-          << " ponder: "      << Limits.ponder
-          << " time: "        << Limits.time[RootPos.side_to_move()]
-          << " increment: "   << Limits.inc[RootPos.side_to_move()]
-          << " moves to go: " << Limits.movestogo
-          << "\n" << std::endl;
-  }
-
   // Reset the threads, still sleeping: will wake up at split time
   for (size_t i = 0; i < Threads.size(); ++i)
       Threads[i]->maxPly = 0;
@@ -229,18 +216,6 @@ void Search::think() {
   id_loop(RootPos); // Let's start searching !
 
   Threads.timer->run = false; // Stop the timer
-
-  if (Options["Write Search Log"])
-  {
-      Time::point elapsed = Time::now() - SearchTime + 1;
-
-      Log log(Options["Search Log Filename"]);
-      log << "Nodes: "          << RootPos.nodes_searched()
-          << "\nNodes/second: " << RootPos.nodes_searched() * 1000 / elapsed
-          << "\nBest move: "    << move_to_uci(RootMoves[0].pv[0], RootPos.is_chess960())
-          << "\nPonder move: "  << move_to_uci(RootMoves[0].pv[1], RootPos.is_chess960())
-          << std::endl;
-  }
 
 finalize:
 
@@ -388,17 +363,6 @@ namespace {
         // If skill levels are enabled and time is up, pick a sub-optimal best move
         if (skill.candidates_size() && skill.time_to_pick(depth))
             skill.pick_move();
-
-        if (Options["Write Search Log"])
-        {
-            RootMove& rm = RootMoves[0];
-            if (skill.best != MOVE_NONE)
-                rm = *std::find(RootMoves.begin(), RootMoves.end(), skill.best);
-
-            Log log(Options["Search Log Filename"]);
-            log << pretty_pv(pos, depth, rm.score, Time::now() - SearchTime, &rm.pv[0])
-                << std::endl;
-        }
 
         // Have we found a "mate in x"?
         if (   Limits.mate
