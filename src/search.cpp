@@ -1422,46 +1422,13 @@ void Thread::idle_loop() {
 
   assert(!this_sp || (this_sp->masterThread == this && searching));
 
-  while (true)
+  while (!exit)
   {
-      // If we are not searching, wait for a condition to be signaled instead of
-      // wasting CPU time polling for work.
-      while (!searching || exit)
-      {
-          if (exit)
-          {
-              assert(!this_sp);
-              return;
-          }
-
-          // Grab the lock to avoid races with Thread::notify_one()
-          mutex.lock();
-
-          // If we are master and all slaves have finished then exit idle_loop
-          if (this_sp && this_sp->slavesMask.none())
-          {
-              mutex.unlock();
-              break;
-          }
-
-          // Do sleep after retesting sleep conditions under lock protection. In
-          // particular we need to avoid a deadlock in case a master thread has,
-          // in the meanwhile, allocated us and sent the notify_one() call before
-          // we had the chance to grab the lock.
-          if (!searching && !exit)
-              sleepCondition.wait(mutex);
-
-          mutex.unlock();
-      }
-
       // If this thread has been assigned work, launch a search
       if (searching)
       {
-          assert(!exit);
-
           Threads.mutex.lock();
 
-          assert(searching);
           assert(activeSplitPoint);
           SplitPoint* sp = activeSplitPoint;
 
@@ -1545,16 +1512,23 @@ void Thread::idle_loop() {
               }
       }
 
-      // If this thread is the master of a split point and all slaves have finished
-      // their work at this split point, return from the idle loop.
+      // Grab the lock to avoid races with Thread::notify_one()
+      mutex.lock();
+
+      // If we are master and all slaves have finished then exit idle_loop
       if (this_sp && this_sp->slavesMask.none())
       {
-          this_sp->mutex.lock();
-          bool finished = this_sp->slavesMask.none(); // Retest under lock protection
-          this_sp->mutex.unlock();
-          if (finished)
-              return;
+          assert(!searching);
+          mutex.unlock();
+          break;
       }
+
+      // If we are not searching, wait for a condition to be signaled instead of
+      // wasting CPU time polling for work.
+      if (!searching && !exit)
+          sleepCondition.wait(mutex);
+
+      mutex.unlock();
   }
 }
 
