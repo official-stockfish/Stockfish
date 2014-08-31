@@ -1084,7 +1084,7 @@ moves_loop: // When in check and at SpNode search starts from here
             return bestValue;
         }
 
-        if (PvNode && bestValue > alpha)
+        if (bestValue > alpha)
             alpha = bestValue;
 
         futilityBase = bestValue + 128;
@@ -1164,7 +1164,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (value > alpha)
           {
-              if (PvNode && value < beta) // Update alpha here! Always alpha < beta
+              if (value < beta) // Update alpha here! Always alpha < beta
               {
                   alpha = value;
                   bestMove = move;
