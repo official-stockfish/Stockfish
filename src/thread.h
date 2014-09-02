@@ -126,7 +126,6 @@ struct Thread : public ThreadBase {
   Pawns::Table pawnsTable;
   Position* activePosition;
   size_t idx;
-  int maxPly;
   SplitPoint* volatile activeSplitPoint;
   volatile int splitPointsSize;
   volatile bool searching;
