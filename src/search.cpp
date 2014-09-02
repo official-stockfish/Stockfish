@@ -51,9 +51,6 @@ using namespace Search;
 
 namespace {
 
-  // Different node types, used as template parameter
-  enum NodeType { Root, PV, NonPV };
-
   // Dynamic razoring margin based on depth
   inline Value razor_margin(Depth d) { return Value(512 + 16 * d); }
 
@@ -67,7 +64,7 @@ namespace {
   // Reduction lookup tables (initialized at startup) and their access function
   int8_t Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
 
-  template <bool PvNode> inline Depth reduction(bool i, Depth d, int mn) {
+  inline Depth reduction(bool PvNode, bool i, Depth d, int mn) {
 
     return (Depth) Reductions[PvNode][i][std::min(int(d) / ONE_PLY, 63)][std::min(mn, 63)];
   }
@@ -80,7 +77,7 @@ namespace {
   GainsStats Gains;
   MovesStats Countermoves, Followupmoves;
 
-  template <NodeType NT, bool SpNode>
+  template <bool RootNode, bool SpNode>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
 
   template <bool InCheck>
@@ -295,7 +292,7 @@ namespace {
             // high/low anymore.
             while (true)
             {
-                bestValue = search<Root, false>(pos, ss, alpha, beta, depth * ONE_PLY, false);
+                bestValue = search<true, false>(pos, ss, alpha, beta, depth * ONE_PLY, false);
 
                 // Bring the best move to the front. It is critical that sorting
                 // is done with a stable algorithm because all the values but the
@@ -390,14 +387,12 @@ namespace {
   // repeat all this work again. We also don't need to store anything to the hash
   // table here: This is taken care of after we return from the split point.
 
-  template <NodeType NT, bool SpNode>
+  template <bool RootNode, bool SpNode>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
 
-    const bool RootNode = NT == Root;
-    const bool PvNode   = NT == PV || NT == Root;
+    const bool PvNode = alpha < beta - 1;
 
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
-    assert(PvNode || (alpha == beta - 1));
     assert(depth > DEPTH_ZERO);
 
     Move quietsSearched[64];
@@ -573,7 +568,7 @@ namespace {
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
         nullValue = depth-R < ONE_PLY ? -qsearch<false>(pos, ss+1, -beta, -beta+1, DEPTH_ZERO)
-                                      : - search<NonPV, false>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode);
+                                      : - search<false, false>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode);
         (ss+1)->skipNullMove = false;
         pos.undo_null_move();
 
@@ -589,7 +584,7 @@ namespace {
             // Do verification search at high depths
             ss->skipNullMove = true;
             Value v = depth-R < ONE_PLY ? qsearch<false>(pos, ss, beta-1, beta, DEPTH_ZERO)
-                                        :  search<NonPV, false>(pos, ss, beta-1, beta, depth-R, false);
+                                        :  search<false, false>(pos, ss, beta-1, beta, depth-R, false);
             ss->skipNullMove = false;
 
             if (v >= beta)
@@ -621,7 +616,7 @@ namespace {
             {
                 ss->currentMove = move;
                 pos.do_move(move, st, ci, pos.gives_check(move, ci));
-                value = -search<NonPV, false>(pos, ss+1, -rbeta, -rbeta+1, rdepth, !cutNode);
+                value = -search<false, false>(pos, ss+1, -rbeta, -rbeta+1, rdepth, !cutNode);
                 pos.undo_move(move);
                 if (value >= rbeta)
                     return value;
@@ -636,7 +631,7 @@ namespace {
         Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth / 4);
 
         ss->skipNullMove = true;
-        search<PvNode ? PV : NonPV, false>(pos, ss, alpha, beta, d, true);
+        search<false, false>(pos, ss, alpha, beta, d, true);
         ss->skipNullMove = false;
 
         tte = TT.probe(posKey);
@@ -736,7 +731,7 @@ moves_loop: // When in check and at SpNode search starts from here
           Value rBeta = ttValue - int(depth);
           ss->excludedMove = move;
           ss->skipNullMove = true;
-          value = search<NonPV, false>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode);
+          value = search<false, false>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode);
           ss->skipNullMove = false;
           ss->excludedMove = MOVE_NONE;
 
@@ -765,7 +760,7 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
           }
 
-          predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
+          predictedDepth = newDepth - reduction(PvNode, improving, depth, moveCount);
 
           // Futility pruning: parent node
           if (predictedDepth < 7 * ONE_PLY)
@@ -821,7 +816,7 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  move != ss->killers[0]
           &&  move != ss->killers[1])
       {
-          ss->reduction = reduction<PvNode>(improving, depth, moveCount);
+          ss->reduction = reduction(PvNode, improving, depth, moveCount);
 
           if (!PvNode && cutNode)
               ss->reduction += ONE_PLY;
@@ -843,13 +838,13 @@ moves_loop: // When in check and at SpNode search starts from here
           if (SpNode)
               alpha = splitPoint->alpha;
 
-          value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d, true);
+          value = -search<false, false>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
           // Re-search at intermediate depth if reduction is very high
           if (value > alpha && ss->reduction >= 4 * ONE_PLY)
           {
               Depth d2 = std::max(newDepth - 2 * ONE_PLY, ONE_PLY);
-              value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d2, true);
+              value = -search<false, false>(pos, ss+1, -(alpha+1), -alpha, d2, true);
           }
 
           doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
@@ -867,7 +862,7 @@ moves_loop: // When in check and at SpNode search starts from here
           value = newDepth < ONE_PLY ?
                           givesCheck ? -qsearch<true>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
                                      : -qsearch<false>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
-                                     : - search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode);
+                                     : -search<false, false>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode);
       }
 
       // For PV nodes only, do a full PV search on the first move or after a fail
@@ -877,7 +872,7 @@ moves_loop: // When in check and at SpNode search starts from here
           value = newDepth < ONE_PLY ?
                           givesCheck ? -qsearch<true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                      : -qsearch<false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
-                                     : - search<PV, false>(pos, ss+1, -beta, -alpha, newDepth, false);
+                                     : -search<false, false>(pos, ss+1, -beta, -alpha, newDepth, false);
       // Step 17. Undo move
       pos.undo_move(move);
 
@@ -953,7 +948,7 @@ moves_loop: // When in check and at SpNode search starts from here
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
           thisThread->split(pos, ss, alpha, beta, &bestValue, &bestMove,
-                            depth, moveCount, &mp, NT, cutNode);
+                            depth, moveCount, &mp, RootNode, cutNode);
 
           if (Signals.stop || thisThread->cutoff_occurred())
               return VALUE_ZERO;
@@ -1441,17 +1436,10 @@ void Thread::idle_loop() {
 
           activePosition = &pos;
 
-          if (sp->nodeType == NonPV)
-              search<NonPV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
-
-          else if (sp->nodeType == PV)
-              search<PV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
-
-          else if (sp->nodeType == Root)
-              search<Root, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
-
+          if (sp->rootNode)
+              search<true, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
           else
-              assert(false);
+              search<false, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
 
           assert(searching);
 
