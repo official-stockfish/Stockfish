@@ -202,9 +202,6 @@ void Search::think() {
   }
 
   // Reset the threads, still sleeping: will wake up at split time
-  for (size_t i = 0; i < Threads.size(); ++i)
-      Threads[i]->maxPly = 0;
-
   Threads.timer->run = true;
   Threads.timer->notify_one(); // Wake up the recurring timer
 
@@ -436,10 +433,6 @@ namespace {
     ss->ply = (ss-1)->ply + 1;
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
-
-    // Used to send selDepth info to GUI
-    if (PvNode && thisThread->maxPly < ss->ply)
-        thisThread->maxPly = ss->ply;
 
     if (!RootNode)
     {
@@ -1311,11 +1304,6 @@ moves_loop: // When in check and at SpNode search starts from here
     std::stringstream ss;
     Time::point elapsed = Time::now() - SearchTime + 1;
     size_t uciPVSize = std::min((size_t)Options["MultiPV"], RootMoves.size());
-    int selDepth = 0;
-
-    for (size_t i = 0; i < Threads.size(); ++i)
-        if (Threads[i]->maxPly > selDepth)
-            selDepth = Threads[i]->maxPly;
 
     for (size_t i = 0; i < uciPVSize; ++i)
     {
@@ -1331,7 +1319,6 @@ moves_loop: // When in check and at SpNode search starts from here
             ss << "\n";
 
         ss << "info depth " << d
-           << " seldepth "  << selDepth
            << " score "     << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
            << " nodes "     << pos.nodes_searched()
            << " nps "       << pos.nodes_searched() * 1000 / elapsed
