@@ -257,7 +257,7 @@ Thread* ThreadPool::available_slave(const Thread* master) const {
 
 void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Value* bestValue,
                    Move* bestMove, Depth depth, int moveCount,
-                   MovePicker* movePicker, bool rootNode, bool cutNode) {
+                   MovePicker* movePicker, int nodeType, bool cutNode) {
 
   assert(pos.pos_is_ok());
   assert(-VALUE_INFINITE < *bestValue && *bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
@@ -276,7 +276,7 @@ void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Valu
   sp.bestMove = *bestMove;
   sp.alpha = alpha;
   sp.beta = beta;
-  sp.rootNode = rootNode;
+  sp.nodeType = nodeType;
   sp.cutNode = cutNode;
   sp.movePicker = movePicker;
   sp.moveCount = moveCount;
