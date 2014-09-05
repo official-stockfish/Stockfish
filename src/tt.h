@@ -95,6 +95,7 @@ public:
 
 private:
   size_t clusterCount;
+  size_t clusterMask;
   TTCluster* table;
   void* mem;
   uint8_t generation; // Size must be not bigger than TTEntry::genBound8
@@ -109,7 +110,7 @@ extern TranspositionTable TT;
 
 inline TTEntry* TranspositionTable::first_entry(const Key key) const {
 
-  return &table[(size_t)key & (clusterCount - 1)].entry[0];
+  return &table[(size_t)key & clusterMask].entry[0];
 }
 
 #endif // #ifndef TT_H_INCLUDED
