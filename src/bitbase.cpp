@@ -98,7 +98,7 @@ void Bitbases::init_kpk() {
 
   // Map 32 results into one KPKBitbase[] entry
   for (idx = 0; idx < MAX_INDEX; ++idx)
-      if (db[idx] == WIN)
+      if (db[idx] == WIN) // TODO optimize
           KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
 }
 

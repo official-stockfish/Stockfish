@@ -242,7 +242,7 @@ namespace {
 
         Bitboard b = pos.attacks_from<Pt>(from) & target;
 
-        if (Checks)
+        if (Checks) // TODO optimize
             b &= ci->checkSq[Pt];
 
         while (b)

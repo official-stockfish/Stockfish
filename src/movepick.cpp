@@ -167,10 +167,10 @@ void MovePicker::score<CAPTURES>() {
       it->value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                  - Value(type_of(pos.moved_piece(m)));
 
-      if (type_of(m) == ENPASSANT)
+      if (type_of(m) == ENPASSANT) // TODO optimize
           it->value += PieceValue[MG][PAWN];
 
-      else if (type_of(m) == PROMOTION)
+      else if (type_of(m) == PROMOTION) // TODO optimize
           it->value += PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
   }
 }
@@ -198,13 +198,13 @@ void MovePicker::score<EVASIONS>() {
   for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
-      if ((see = pos.see_sign(m)) < VALUE_ZERO)
+      if ((see = pos.see_sign(m)) < VALUE_ZERO) // TODO optimize
           it->value = see - HistoryStats::Max; // At the bottom
 
-      else if (pos.capture(m))
+      else if (pos.capture(m)) // TODO optimize
           it->value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                      - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
-      else
+      else // TODO optimize
           it->value = history[pos.moved_piece(m)][to_sq(m)];
   }
 }
@@ -239,7 +239,7 @@ void MovePicker::generate_next_stage() {
       // Be sure countermoves are different from killers
       for (int i = 0; i < 2; ++i)
           if (   countermoves[i] != (cur+0)->move
-              && countermoves[i] != (cur+1)->move)
+              && countermoves[i] != (cur+1)->move) // TODO optimize
               (end++)->move = countermoves[i];
 
       // Be sure followupmoves are different from killers and countermoves
@@ -247,7 +247,7 @@ void MovePicker::generate_next_stage() {
           if (   followupmoves[i] != (cur+0)->move
               && followupmoves[i] != (cur+1)->move
               && followupmoves[i] != (cur+2)->move
-              && followupmoves[i] != (cur+3)->move)
+              && followupmoves[i] != (cur+3)->move) // TODO optimize
               (end++)->move = followupmoves[i];
       return;
 

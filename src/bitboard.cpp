@@ -179,7 +179,7 @@ void Bitboards::init() {
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-          if (s1 != s2)
+          if (s1 != s2) // TODO optimize
           {
               SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
               DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
@@ -195,7 +195,7 @@ void Bitboards::init() {
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                  if (is_ok(to) && square_distance(s, to) < 3)
+                  if (is_ok(to) && square_distance(s, to) < 3) // TODO optimize
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
@@ -283,7 +283,7 @@ namespace {
             occupancy[size] = b;
             reference[size] = sliding_attack(deltas, s, b);
 
-            if (HasPext)
+            if (HasPext) // TODO optimize
                 attacks[s][_pext_u64(b, masks[s])] = reference[size];
 
             size++;
@@ -292,7 +292,7 @@ namespace {
 
         // Set the offset for the table of the next square. We have individual
         // table sizes for each square with "Fancy Magic Bitboards".
-        if (s < SQ_H8)
+        if (s < SQ_H8) // TODO optimize
             attacks[s + 1] = attacks[s] + size;
 
         if (HasPext)

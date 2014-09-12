@@ -325,11 +325,11 @@ void Position::set_castling_right(Color c, Square rfrom) {
   Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
   for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s)
-      if (s != kfrom && s != rfrom)
+      if (s != kfrom && s != rfrom) // TODO optimize
           castlingPath[cr] |= s;
 
   for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); ++s)
-      if (s != kfrom && s != rfrom)
+      if (s != kfrom && s != rfrom) // TODO optimize
           castlingPath[cr] |= s;
 }
 
@@ -395,10 +395,10 @@ const string Position::fen() const {
           for (emptyCnt = 0; f <= FILE_H && empty(make_square(f, r)); ++f)
               ++emptyCnt;
 
-          if (emptyCnt)
+          if (emptyCnt) // TODO optimize
               ss << emptyCnt;
 
-          if (f <= FILE_H)
+          if (f <= FILE_H) // TODO optimize
               ss << PieceToChar[piece_on(make_square(f, r))];
       }
 

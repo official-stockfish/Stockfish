@@ -133,10 +133,10 @@ void Search::init() {
       Reductions[1][0][hd][mc] = Reductions[1][1][hd][mc];
       Reductions[0][0][hd][mc] = Reductions[0][1][hd][mc];
 
-      if (Reductions[0][0][hd][mc] > 2 * ONE_PLY)
+      if (Reductions[0][0][hd][mc] > 2 * ONE_PLY) // TODO optimize
           Reductions[0][0][hd][mc] += ONE_PLY;
 
-      else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY)
+      else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY) // TODO optimize
           Reductions[0][0][hd][mc] += ONE_PLY / 2;
   }
 
@@ -161,12 +161,12 @@ uint64_t Search::perft(Position& pos, Depth depth) {
 
   for (MoveList<LEGAL> it(pos); *it; ++it)
   {
-      if (Root && depth <= ONE_PLY)
+      if (Root && depth <= ONE_PLY) // TODO optimize
           cnt = 1, nodes++;
-      else
+      else // TODO optimize
       {
           pos.do_move(*it, st, ci, pos.gives_check(*it, ci));
-          cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
+          cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY); // TODO optimize
           nodes += cnt;
           pos.undo_move(*it);
       }
@@ -283,7 +283,7 @@ namespace {
         for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
-            if (depth >= 5)
+            if (depth >= 5) // TODO optimize
             {
                 delta = Value(16);
                 alpha = std::max(RootMoves[PVIdx].prevScore - delta,-VALUE_INFINITE);
@@ -1292,7 +1292,7 @@ moves_loop: // When in check and at SpNode search starts from here
         s += (  weakness * int(RootMoves[0].score - s)
               + variance * (rk.rand<unsigned>() % weakness)) / 128;
 
-        if (s > max_s)
+        if (s > max_s) // TODO optimize
         {
             max_s = s;
             best = RootMoves[i].pv[0];
@@ -1314,7 +1314,7 @@ moves_loop: // When in check and at SpNode search starts from here
     int selDepth = 0;
 
     for (size_t i = 0; i < Threads.size(); ++i)
-        if (Threads[i]->maxPly > selDepth)
+        if (Threads[i]->maxPly > selDepth) // TODO optimize
             selDepth = Threads[i]->maxPly;
 
     for (size_t i = 0; i < uciPVSize; ++i)
@@ -1595,7 +1595,7 @@ void check_time() {
               nodes += sp.nodes;
 
               for (size_t idx = 0; idx < Threads.size(); ++idx)
-                  if (sp.slavesMask.test(idx) && Threads[idx]->activePosition)
+                  if (sp.slavesMask.test(idx) && Threads[idx]->activePosition) // TODO optimize
                       nodes += Threads[idx]->activePosition->nodes_searched();
 
               sp.mutex.unlock();
