@@ -123,7 +123,10 @@ void Search::init() {
   int mc; // moveCount
 
   // Init reductions array
-  for (hd = 1; hd < 64; ++hd) for (mc = 1; mc < 64; ++mc)
+  static size_t addfirst[] = {0,ONE_PLY};
+  static size_t addsecond[] = {0,ONE_PLY>>1};
+  for (hd = 1; hd < 64; ++hd)
+  for (mc = 1; mc < 64; ++mc)
   {
       double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
@@ -133,11 +136,9 @@ void Search::init() {
       Reductions[1][0][hd][mc] = Reductions[1][1][hd][mc];
       Reductions[0][0][hd][mc] = Reductions[0][1][hd][mc];
 
-      if (Reductions[0][0][hd][mc] > 2 * ONE_PLY)
-          Reductions[0][0][hd][mc] += ONE_PLY;
+      Reductions[0][0][hd][mc] += addfirst[Reductions[0][0][hd][mc] > 2 * ONE_PLY];
 
-      else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY)
-          Reductions[0][0][hd][mc] += ONE_PLY / 2;
+      Reductions[0][0][hd][mc] += addsecond[Reductions[0][0][hd][mc] > 1 * ONE_PLY];
   }
 
   // Init futility move count array

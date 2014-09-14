@@ -324,13 +324,18 @@ void Position::set_castling_right(Color c, Square rfrom) {
   Square kto = relative_square(c, cs == KING_SIDE ? SQ_G1 : SQ_C1);
   Square rto = relative_square(c, cs == KING_SIDE ? SQ_F1 : SQ_D1);
 
-  for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s)
-      if (s != kfrom && s != rfrom)
-          castlingPath[cr] |= s;
+  static Bitboard squares[] = {0,1/*to be set within loops*/};
 
-  for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); ++s)
-      if (s != kfrom && s != rfrom)
-          castlingPath[cr] |= s;
+  for (Square s = std::min(rfrom, rto); s <= std::max(rfrom, rto); ++s){
+    squares[1] = s;
+    castlingPath[cr] |= squares[s != kfrom && s != rfrom];
+  }
+
+  for (Square s = std::min(kfrom, kto); s <= std::max(kfrom, kto); ++s){
+    squares[1] = s;
+    castlingPath[cr] |= squares[s != kfrom && s != rfrom]; 
+  }
+
 }
 
 

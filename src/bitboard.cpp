@@ -177,16 +177,31 @@ void Bitboards::init() {
           PassedPawnMask[c][s] = ForwardBB[c][s] | PawnAttackSpan[c][s];
       }
 
+  // to be set inside the loops. Cheap computations, could exploit
+  // multithreading here probably
+  static int squareDistances[] = {0,0};
+  static int distanceRings[] = {0,0};
+
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-          if (s1 != s2)
-          {
-              SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
-              DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
-          }
+      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2){
+
+          // If s1 == s2
+          squareDistances[0] = SquareDistance[s1][s2];
+          distanceRings[0] = DistanceRingsBB[s1][SquareDistance[s1][s2] - 1];
+
+          // If s1 != s2
+          distanceRings[1] = s2;
+          squareDistances[1] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
+
+          SquareDistance[s1][s2] = squareDistances[s1 != s2];
+          DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= distanceRings[s1 != s2];
+
+      }
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
+
+  static Bitboard stepAttacksBBOptions[] = {0,0};
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
@@ -195,8 +210,10 @@ void Bitboards::init() {
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                  if (is_ok(to) && square_distance(s, to) < 3)
-                      StepAttacksBB[make_piece(c, pt)][s] |= to;
+                  stepAttacksBBOptions[1] = to;
+
+                  StepAttacksBB[make_piece(c, pt)][s] |= stepAttacksBBOptions[is_ok(to) && square_distance(s, to) < 3];
+
               }
 
   Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };

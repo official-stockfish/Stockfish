@@ -161,17 +161,19 @@ void MovePicker::score<CAPTURES>() {
   // calls in case we get a cutoff.
   Move m;
 
+  static Value addValue[] = {VALUE_ZERO,VALUE_ZERO}; // initialize to dummy values
+
   for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
       it->value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                  - Value(type_of(pos.moved_piece(m)));
 
-      if (type_of(m) == ENPASSANT)
-          it->value += PieceValue[MG][PAWN];
+      addValue[1] = PieceValue[MG][PAWN];
+      it->value += addValue[type_of(m) == ENPASSANT];
 
-      else if (type_of(m) == PROMOTION)
-          it->value += PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
+      addValue[1] = PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
+      it->value += addValue[type_of(m) == PROMOTION];
   }
 }
 
@@ -195,17 +197,28 @@ void MovePicker::score<EVASIONS>() {
   Move m;
   Value see;
 
+  static Value newValue[] = {VALUE_ZERO,VALUE_ZERO/*dummy values*/};
+
   for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
-      if ((see = pos.see_sign(m)) < VALUE_ZERO)
-          it->value = see - HistoryStats::Max; // At the bottom
+      see = pos.see_sign(m);
 
-      else if (pos.capture(m))
-          it->value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                     - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
-      else
-          it->value = history[pos.moved_piece(m)][to_sq(m)];
+      newValue[0] = it->value;
+      newValue[1] = see - HistoryStats::Max;
+
+      it->value = newValue[see < VALUE_ZERO];
+
+      newValue[1] = PieceValue[MG][pos.piece_on(to_sq(m))]
+                   - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max; 
+
+      it->value = newValue[pos.capture(m)];
+
+      newValue[0] = it->value;
+      newValue[1] = history[pos.moved_piece(m)][to_sq(m)];      
+
+      it->value = newValue[(see = pos.see_sign(m)) >= VALUE_ZERO && !(pos.capture(m))];
+
   }
 }
 
