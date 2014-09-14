@@ -201,6 +201,8 @@ void Bitboards::init() {
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
 
+  static Bitboard stepAttacksBBOptions = {0,0};
+
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
@@ -208,8 +210,10 @@ void Bitboards::init() {
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                  if (is_ok(to) && square_distance(s, to) < 3) // TODO optimize
-                      StepAttacksBB[make_piece(c, pt)][s] |= to;
+                  stepAttacksBBOptions[1] = to;
+
+                  StepAttacksBB[make_piece(c, pt)][s] |= stepAttacksBBOptions[is_ok(to) && square_distance(s, to) < 3];
+
               }
 
   Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
