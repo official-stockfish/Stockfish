@@ -123,7 +123,10 @@ void Search::init() {
   int mc; // moveCount
 
   // Init reductions array
-  for (hd = 1; hd < 64; ++hd) for (mc = 1; mc < 64; ++mc)
+  static size_t addfirst[] = {0,ONE_PLY};
+  static size_t addsecond[] = {0,ONE_PLY>>1};
+  for (hd = 1; hd < 64; ++hd)
+  for (mc = 1; mc < 64; ++mc)
   {
       double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
@@ -133,11 +136,9 @@ void Search::init() {
       Reductions[1][0][hd][mc] = Reductions[1][1][hd][mc];
       Reductions[0][0][hd][mc] = Reductions[0][1][hd][mc];
 
-      if (Reductions[0][0][hd][mc] > 2 * ONE_PLY) // TODO optimize
-          Reductions[0][0][hd][mc] += ONE_PLY;
+      Reductions[0][0][hd][mc] += addfirst[Reductions[0][0][hd][mc] > 2 * ONE_PLY];
 
-      else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY) // TODO optimize
-          Reductions[0][0][hd][mc] += ONE_PLY / 2;
+      Reductions[0][0][hd][mc] += addsecond[Reductions[0][0][hd][mc] > 1 * ONE_PLY];
   }
 
   // Init futility move count array
@@ -161,12 +162,12 @@ uint64_t Search::perft(Position& pos, Depth depth) {
 
   for (MoveList<LEGAL> it(pos); *it; ++it)
   {
-      if (Root && depth <= ONE_PLY) // TODO optimize
+      if (Root && depth <= ONE_PLY)
           cnt = 1, nodes++;
-      else // TODO optimize
+      else
       {
           pos.do_move(*it, st, ci, pos.gives_check(*it, ci));
-          cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY); // TODO optimize
+          cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
           nodes += cnt;
           pos.undo_move(*it);
       }
@@ -283,7 +284,7 @@ namespace {
         for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
-            if (depth >= 5) // TODO optimize
+            if (depth >= 5)
             {
                 delta = Value(16);
                 alpha = std::max(RootMoves[PVIdx].prevScore - delta,-VALUE_INFINITE);
@@ -1292,7 +1293,7 @@ moves_loop: // When in check and at SpNode search starts from here
         s += (  weakness * int(RootMoves[0].score - s)
               + variance * (rk.rand<unsigned>() % weakness)) / 128;
 
-        if (s > max_s) // TODO optimize
+        if (s > max_s)
         {
             max_s = s;
             best = RootMoves[i].pv[0];
@@ -1314,7 +1315,7 @@ moves_loop: // When in check and at SpNode search starts from here
     int selDepth = 0;
 
     for (size_t i = 0; i < Threads.size(); ++i)
-        if (Threads[i]->maxPly > selDepth) // TODO optimize
+        if (Threads[i]->maxPly > selDepth)
             selDepth = Threads[i]->maxPly;
 
     for (size_t i = 0; i < uciPVSize; ++i)
@@ -1595,7 +1596,7 @@ void check_time() {
               nodes += sp.nodes;
 
               for (size_t idx = 0; idx < Threads.size(); ++idx)
-                  if (sp.slavesMask.test(idx) && Threads[idx]->activePosition) // TODO optimize
+                  if (sp.slavesMask.test(idx) && Threads[idx]->activePosition)
                       nodes += Threads[idx]->activePosition->nodes_searched();
 
               sp.mutex.unlock();
