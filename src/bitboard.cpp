@@ -300,7 +300,7 @@ namespace {
             occupancy[size] = b;
             reference[size] = sliding_attack(deltas, s, b);
 
-            if (HasPext) // TODO optimize
+            if (HasPext)
                 attacks[s][_pext_u64(b, masks[s])] = reference[size];
 
             size++;
@@ -309,7 +309,7 @@ namespace {
 
         // Set the offset for the table of the next square. We have individual
         // table sizes for each square with "Fancy Magic Bitboards".
-        if (s < SQ_H8) // TODO optimize
+        if (s < SQ_H8)
             attacks[s + 1] = attacks[s] + size;
 
         if (HasPext)
