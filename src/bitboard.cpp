@@ -201,7 +201,7 @@ void Bitboards::init() {
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
                      {}, {}, {}, { 9, 7, -7, -9, 8, 1, -1, -8 } };
 
-  static Bitboard stepAttacksBBOptions = {0,0};
+  static Bitboard stepAttacksBBOptions[] = {0,0};
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
