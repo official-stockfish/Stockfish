@@ -197,17 +197,28 @@ void MovePicker::score<EVASIONS>() {
   Move m;
   Value see;
 
+  static Value newValue[] = {VALUE_ZERO,VALUE_ZERO/*dummy values*/};
+
   for (ExtMove* it = moves; it != end; ++it)
   {
       m = it->move;
-      if ((see = pos.see_sign(m)) < VALUE_ZERO) // TODO optimize
-          it->value = see - HistoryStats::Max; // At the bottom
+      see = pos.see_sign(m);
 
-      else if (pos.capture(m)) // TODO optimize
-          it->value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                     - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max;
-      else // TODO optimize
-          it->value = history[pos.moved_piece(m)][to_sq(m)];
+      newValue[0] = it->value;
+      newValue[1] = see - HistoryStats::Max;
+
+      it->value = newValue[see < VALUE_ZERO];
+
+      newValue[1] = PieceValue[MG][pos.piece_on(to_sq(m))]
+                   - Value(type_of(pos.moved_piece(m))) + HistoryStats::Max; 
+
+      it->value = newValue[pos.capture(m)];
+
+      newValue[0] = it->value;
+      newValue[1] = history[pos.moved_piece(m)][to_sq(m)];      
+
+      it->value = newValue[(see = pos.see_sign(m)) >= VALUE_ZERO && !(pos.capture(m))];
+
   }
 }
 
