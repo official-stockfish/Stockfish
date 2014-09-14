@@ -1,0 +1,43 @@
+benchmark.o: benchmark.cpp misc.h types.h platform.h notation.h \
+ position.h bitboard.h search.h thread.h material.h endgame.h movepick.h \
+ movegen.h pawns.h tt.h ucioption.h
+bitbase.o: bitbase.cpp bitboard.h types.h platform.h
+bitboard.o: bitboard.cpp bitboard.h types.h platform.h bitcount.h rkiss.h
+endgame.o: endgame.cpp bitboard.h types.h platform.h bitcount.h endgame.h \
+ position.h movegen.h
+evaluate.o: evaluate.cpp bitcount.h types.h platform.h evaluate.h \
+ material.h endgame.h position.h bitboard.h misc.h pawns.h thread.h \
+ movepick.h movegen.h search.h ucioption.h
+main.o: main.cpp bitboard.h types.h platform.h evaluate.h position.h \
+ search.h misc.h thread.h material.h endgame.h movepick.h movegen.h \
+ pawns.h tt.h ucioption.h
+material.o: material.cpp material.h endgame.h position.h bitboard.h \
+ types.h platform.h misc.h
+misc.o: misc.cpp misc.h types.h platform.h thread.h material.h endgame.h \
+ position.h bitboard.h movepick.h movegen.h search.h pawns.h
+movegen.o: movegen.cpp movegen.h types.h platform.h position.h bitboard.h
+movepick.o: movepick.cpp movepick.h movegen.h types.h platform.h \
+ position.h bitboard.h search.h misc.h thread.h material.h endgame.h \
+ pawns.h
+notation.o: notation.cpp movegen.h types.h platform.h notation.h \
+ position.h bitboard.h
+pawns.o: pawns.cpp bitboard.h types.h platform.h bitcount.h pawns.h \
+ misc.h position.h
+position.o: position.cpp bitcount.h types.h platform.h movegen.h \
+ position.h bitboard.h psqtab.h rkiss.h thread.h material.h endgame.h \
+ misc.h movepick.h search.h pawns.h tt.h notation.h
+search.o: search.cpp evaluate.h types.h platform.h movegen.h movepick.h \
+ position.h bitboard.h search.h misc.h notation.h rkiss.h timeman.h \
+ thread.h material.h endgame.h pawns.h tt.h ucioption.h
+thread.o: thread.cpp movegen.h types.h platform.h search.h misc.h \
+ position.h bitboard.h thread.h material.h endgame.h movepick.h pawns.h \
+ ucioption.h
+timeman.o: timeman.cpp search.h misc.h types.h platform.h position.h \
+ bitboard.h timeman.h ucioption.h
+tt.o: tt.cpp bitboard.h types.h platform.h tt.h misc.h
+uci.o: uci.cpp evaluate.h types.h platform.h notation.h position.h \
+ bitboard.h search.h misc.h thread.h material.h endgame.h movepick.h \
+ movegen.h pawns.h tt.h ucioption.h
+ucioption.o: ucioption.cpp evaluate.h types.h platform.h misc.h thread.h \
+ material.h endgame.h position.h bitboard.h movepick.h movegen.h search.h \
+ pawns.h tt.h ucioption.h

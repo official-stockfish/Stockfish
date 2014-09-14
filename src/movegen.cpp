@@ -228,6 +228,8 @@ namespace {
 
     const Square* pl = pos.list<Pt>(us);
 
+    static Bitboard additionalCheckSquares[] = {Bitboard(~0), 1 /*to be set inside loop*/};
+
     for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {
         if (Checks)
@@ -242,8 +244,8 @@ namespace {
 
         Bitboard b = pos.attacks_from<Pt>(from) & target;
 
-        if (Checks) // TODO optimize
-            b &= ci->checkSq[Pt];
+        additionalCheckSquares[1] = ci->checkSq[Pt];
+        b &= additionalCheckSquares[Checks];
 
         while (b)
             (mlist++)->move = make_move(from, pop_lsb(&b));
