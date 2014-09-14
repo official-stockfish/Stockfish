@@ -252,7 +252,7 @@ void MovePicker::generate_next_stage() {
       // Be sure countermoves are different from killers
       for (int i = 0; i < 2; ++i)
           if (   countermoves[i] != (cur+0)->move
-              && countermoves[i] != (cur+1)->move) // TODO optimize
+              && countermoves[i] != (cur+1)->move)
               (end++)->move = countermoves[i];
 
       // Be sure followupmoves are different from killers and countermoves
@@ -260,7 +260,7 @@ void MovePicker::generate_next_stage() {
           if (   followupmoves[i] != (cur+0)->move
               && followupmoves[i] != (cur+1)->move
               && followupmoves[i] != (cur+2)->move
-              && followupmoves[i] != (cur+3)->move) // TODO optimize
+              && followupmoves[i] != (cur+3)->move)
               (end++)->move = followupmoves[i];
       return;
 

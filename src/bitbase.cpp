@@ -97,9 +97,11 @@ void Bitbases::init_kpk() {
           repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
 
   // Map 32 results into one KPKBitbase[] entry
-  for (idx = 0; idx < MAX_INDEX; ++idx)
-      if (db[idx] == WIN) // TODO optimize
-          KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
+  static uint32_t shifts[] = {0,0/*dummy value*/};
+  for (idx = 0; idx < MAX_INDEX; ++idx){
+    shifts[1] = 1 << (idx & 0x1F);
+    KPKBitbase[idx/32] |= shifts[db[idx==WIN]];
+  }
 }
 
 
