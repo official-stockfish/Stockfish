@@ -20,7 +20,7 @@
 #ifndef MISC_H_INCLUDED
 #define MISC_H_INCLUDED
 
-#include <fstream>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -35,12 +35,6 @@ extern void dbg_hit_on(bool b);
 extern void dbg_hit_on_c(bool c, bool b);
 extern void dbg_mean_of(int v);
 extern void dbg_print();
-
-
-struct Log : public std::ofstream {
-  Log(const std::string& f = "log.txt") : std::ofstream(f.c_str(), std::ios::out | std::ios::app) {}
- ~Log() { if (is_open()) close(); }
-};
 
 
 namespace Time {
