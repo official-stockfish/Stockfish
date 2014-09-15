@@ -78,7 +78,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
       increment >  0 && movesToGo == 0 means: x basetime + z increment
       increment >  0 && movesToGo != 0 means: x moves in y minutes + z increment
 
-    Time management is adjusted by following UCI parameters:
+    Time management is adjusted by following parameters:
 
       emergencyMoveHorizon: Be prepared to always play at least this many moves
       emergencyBaseTime   : Always attempt to keep at least this much time (in ms) at clock
@@ -89,9 +89,9 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
   int hypMTG, hypMyTime, t1, t2;
 
   // Read uci parameters
-  int emergencyMoveHorizon = Options["Emergency Move Horizon"];
-  int emergencyBaseTime    = Options["Emergency Base Time"];
-  int emergencyMoveTime    = Options["Emergency Move Time"];
+  int emergencyMoveHorizon = 40;
+  int emergencyBaseTime    = Options["Move Overhead"] * 2;
+  int emergencyMoveTime    = Options["Move Overhead"];
   int minThinkingTime      = Options["Minimum Thinking Time"];
   int slowMover            = Options["Slow Mover"];
 
