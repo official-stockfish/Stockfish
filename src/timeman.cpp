@@ -89,11 +89,9 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
   int hypMTG, hypMyTime, t1, t2;
 
   // Read uci parameters
-  int emergencyMoveHorizon = 40;
-  int emergencyBaseTime    = Options["Move Overhead"] * 2;
-  int emergencyMoveTime    = Options["Move Overhead"];
-  int minThinkingTime      = Options["Minimum Thinking Time"];
-  int slowMover            = Options["Slow Mover"];
+  int moveOverhead    = Options["Move Overhead"];
+  int minThinkingTime = Options["Minimum Thinking Time"];
+  int slowMover       = Options["Slow Mover"];
 
   // Initialize unstablePvFactor to 1 and search times to maximum values
   unstablePvFactor = 1;
@@ -106,8 +104,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
       // Calculate thinking time for hypothetical "moves to go"-value
       hypMyTime =  limits.time[us]
                  + limits.inc[us] * (hypMTG - 1)
-                 - emergencyBaseTime
-                 - emergencyMoveTime * std::min(hypMTG, emergencyMoveHorizon);
+                 - moveOverhead * (2 + std::min(hypMTG, 40));
 
       hypMyTime = std::max(hypMyTime, 0);
 
