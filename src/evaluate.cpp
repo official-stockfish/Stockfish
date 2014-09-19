@@ -152,6 +152,8 @@ namespace {
 
   // Hanging contains a bonus for each enemy hanging piece
   const Score Hanging = S(23, 20);
+  const Score KingPawnThreatOne  = S(0, 64);
+  const Score KingPawnThreatMany = S(0, 128);
 
   #undef S
 
@@ -527,7 +529,11 @@ namespace {
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
             score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
-    }
+
+        b = weakEnemies & pos.pieces(Them, PAWN) & ei.attackedBy[Us][KING];
+        if (b)
+            score += more_than_one(b) ? KingPawnThreatMany : KingPawnThreatOne;
+	}
 
     if (Trace)
         Tracing::terms[Us][Tracing::THREAT] = score;
