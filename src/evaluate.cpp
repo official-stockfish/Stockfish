@@ -532,7 +532,7 @@ namespace {
         b = weakEnemies & pos.pieces(Them, PAWN) & ei.attackedBy[Us][KING];
         if (b)
             score += more_than_one(b) ? KingOnPawnMany : KingOnPawnOne;
-	}
+    }
 
     if (Trace)
         Tracing::terms[Us][Tracing::THREAT] = score;
