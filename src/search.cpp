@@ -548,8 +548,7 @@ namespace {
         && !ss->skipNullMove
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth) >= beta
-        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
-        &&  abs(eval) < VALUE_KNOWN_WIN
+        &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
         &&  pos.non_pawn_material(pos.side_to_move()))
         return eval - futility_margin(depth);
 
@@ -579,11 +578,11 @@ namespace {
 
         if (nullValue >= beta)
         {
-            // Do not return unproven mate scores
-            if (nullValue >= VALUE_MATE_IN_MAX_PLY)
+            // Do not return unproven wins
+            if (nullValue >= VALUE_KNOWN_WIN)
                 nullValue = beta;
 
-            if (depth < 12 * ONE_PLY && abs(beta) < VALUE_KNOWN_WIN)
+            if (depth < 12 * ONE_PLY)
                 return nullValue;
 
             // Do verification search at high depths
@@ -663,7 +662,6 @@ moves_loop: // When in check and at SpNode search starts from here
     singularExtensionNode =   !RootNode
                            && !SpNode
                            &&  depth >= 8 * ONE_PLY
-                           &&  abs(beta) < VALUE_KNOWN_WIN
                            &&  ttMove != MOVE_NONE
                        /*  &&  ttValue != VALUE_NONE Already implicit in the next condition */
                            &&  abs(ttValue) < VALUE_KNOWN_WIN
@@ -773,7 +771,7 @@ moves_loop: // When in check and at SpNode search starts from here
               futilityValue = ss->staticEval + futility_margin(predictedDepth)
                             + 128 + Gains[pos.moved_piece(move)][to_sq(move)];
 
-              if (futilityValue <= alpha)
+              if (futilityValue <= alpha && futilityValue > -VALUE_KNOWN_WIN)
               {
                   bestValue = std::max(bestValue, futilityValue);
 
