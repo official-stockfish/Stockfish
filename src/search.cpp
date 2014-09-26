@@ -127,17 +127,17 @@ void Search::init() {
   {
       double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
-      Reductions[1][1][hd][mc] = int8_t(   pvRed >= 1.0 ?    pvRed * int(ONE_PLY) : 0);
-      Reductions[0][1][hd][mc] = int8_t(nonPVRed >= 1.0 ? nonPVRed * int(ONE_PLY) : 0);
+      Reductions[1][1][hd][mc] = int8_t(   pvRed >= 1.0 ?    pvRed+0.5: 0)*int(ONE_PLY);
+      Reductions[0][1][hd][mc] = int8_t(nonPVRed >= 1.0 ? nonPVRed+0.5: 0)*int(ONE_PLY);
 
       Reductions[1][0][hd][mc] = Reductions[1][1][hd][mc];
       Reductions[0][0][hd][mc] = Reductions[0][1][hd][mc];
 
-      if (Reductions[0][0][hd][mc] > 2 * ONE_PLY)
+      if (Reductions[0][0][hd][mc] >= 2 * ONE_PLY)
           Reductions[0][0][hd][mc] += ONE_PLY;
 
-      else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY)
-          Reductions[0][0][hd][mc] += ONE_PLY / 2;
+  //    else if (Reductions[0][0][hd][mc] > 1 * ONE_PLY)
+  //        Reductions[0][0][hd][mc] += ONE_PLY / 2;
   }
 
   // Init futility move count array
@@ -411,7 +411,6 @@ namespace {
     bool inCheck, givesCheck, pvMove, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
-
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
@@ -631,8 +630,9 @@ namespace {
         && !ttMove
         && (PvNode || ss->staticEval + 256 >= beta))
     {
-        Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth / 4);
-
+        Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth /4);
+		if (d&1)
+			d=d-ONE_PLY/2;
         ss->skipNullMove = true;
         search<PvNode ? PV : NonPV, false>(pos, ss, alpha, beta, d, true);
         ss->skipNullMove = false;
@@ -734,7 +734,7 @@ moves_loop: // When in check and at SpNode search starts from here
           Value rBeta = ttValue - int(depth);
           ss->excludedMove = move;
           ss->skipNullMove = true;
-          value = search<NonPV, false>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode);
+          value = search<NonPV, false>(pos, ss, rBeta - 1, rBeta, (depth / 4)*2, cutNode);
           ss->skipNullMove = false;
           ss->excludedMove = MOVE_NONE;
 
