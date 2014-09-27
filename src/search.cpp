@@ -557,7 +557,7 @@ namespace {
         && !ss->skipNullMove
         &&  depth >= 2 * ONE_PLY
         &&  eval >= beta
-        &&  beta < VALUE_KNOWN_WIN
+        &&  alpha < VALUE_KNOWN_WIN  // Make sure null search does not return unproven win scores, due to alpha floor
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
