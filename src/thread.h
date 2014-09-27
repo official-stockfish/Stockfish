@@ -118,7 +118,7 @@ struct Thread : public ThreadBase {
   bool available_to(const Thread* master) const;
 
   void split(Position& pos, const Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
-             Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
+             int depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Material::Table materialTable;
@@ -165,7 +165,7 @@ struct ThreadPool : public std::vector<Thread*> {
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
-  Depth minimumSplitDepth;
+  int minimumSplitDepth;
   Mutex mutex;
   ConditionVariable sleepCondition;
   TimerThread* timer;

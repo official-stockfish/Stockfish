@@ -213,14 +213,14 @@ void ThreadPool::exit() {
 
 void ThreadPool::read_uci_options() {
 
-  minimumSplitDepth = Options["Min Split Depth"] * ONE_PLY;
+  minimumSplitDepth = Options["Min Split Depth"];
   size_t requested  = Options["Threads"];
 
   assert(requested > 0);
 
   // If zero (default) then set best minimum split depth automatically
   if (!minimumSplitDepth)
-      minimumSplitDepth = requested < 8 ? 4 * ONE_PLY : 7 * ONE_PLY;
+      minimumSplitDepth = requested < 8 ? 4 : 7;
 
   while (size() < requested)
       push_back(new_thread<Thread>());
@@ -256,22 +256,21 @@ Thread* ThreadPool::available_slave(const Thread* master) const {
 // search() then split() returns.
 
 void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Value* bestValue,
-                   Move* bestMove, Depth depth, int moveCount,
+                   Move* bestMove, int depthx, int moveCount,
                    MovePicker* movePicker, int nodeType, bool cutNode) {
-
   assert(pos.pos_is_ok());
   assert(-VALUE_INFINITE < *bestValue && *bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
-  assert(depth >= Threads.minimumSplitDepth);
+  assert(depthx >= Threads.minimumSplitDepth);
   assert(searching);
   assert(splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
-
+  
   // Pick the next available split point from the split point stack
   SplitPoint& sp = splitPoints[splitPointsSize];
 
   sp.masterThread = this;
   sp.parentSplitPoint = activeSplitPoint;
   sp.slavesMask = 0, sp.slavesMask.set(idx);
-  sp.depth = depth;
+  sp.depth = depthx*ONE_PLY;
   sp.bestValue = *bestValue;
   sp.bestMove = *bestMove;
   sp.alpha = alpha;

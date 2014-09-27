@@ -139,7 +139,7 @@ void benchmark(const Position& current, istream& is) {
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
       if (limitType == "perft")
-          nodes += Search::perft<true>(pos, limits.depth * ONE_PLY);
+          nodes += Search::perft<true>(pos, limits.depth);
 
       else
       {

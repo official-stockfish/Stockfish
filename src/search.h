@@ -43,7 +43,7 @@ struct Stack {
   Move ttMove;
   Move excludedMove;
   Move killers[2];
-  Depth reduction;
+  int reduction;
   Value staticEval;
   bool skipNullMove;
 };
@@ -106,7 +106,7 @@ extern StateStackPtr SetupStates;
 
 extern void init();
 extern void think();
-template<bool Root> uint64_t perft(Position& pos, Depth depth);
+template<bool Root> uint64_t perft(Position& pos, int depth);
 
 } // namespace Search
 
