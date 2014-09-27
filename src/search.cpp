@@ -567,8 +567,7 @@ namespace {
         // Null move dynamic reduction based on depth and value
         Depth R =  3 * ONE_PLY
                  + depth / 4
-                 + (abs(beta) < VALUE_KNOWN_WIN ? int(eval - beta) / PawnValueMg * ONE_PLY
-                                                : DEPTH_ZERO);
+                 + std::min(int(eval - beta) / PawnValueMg, 3) * ONE_PLY;
 
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
@@ -822,11 +821,9 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           ss->reduction = reduction<PvNode>(improving, depth, moveCount);
 
-          if (!PvNode && cutNode)
+          if (   (!PvNode && cutNode)
+              ||  History[pos.piece_on(to_sq(move))][to_sq(move)] < 0)
               ss->reduction += ONE_PLY;
-
-          else if (History[pos.piece_on(to_sq(move))][to_sq(move)] < 0)
-              ss->reduction += ONE_PLY / 2;
 
           if (move == countermoves[0] || move == countermoves[1])
               ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
