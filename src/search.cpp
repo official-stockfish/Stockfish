@@ -554,7 +554,6 @@ namespace {
         && !ss->skipNullMove
         &&  depth >= 2 * ONE_PLY
         &&  eval >= beta
-        &&  alpha < VALUE_KNOWN_WIN  // Make sure null search does not return unproven win scores, due to alpha floor
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
@@ -574,8 +573,8 @@ namespace {
 
         if (nullValue >= beta)
         {
-            // Do not return unproven wins
-            if (nullValue >= VALUE_KNOWN_WIN)
+            // Do not return unproven mate scores
+            if (nullValue >= VALUE_MATE_IN_MAX_PLY)
                 nullValue = beta;
 
             if (depth < 12 * ONE_PLY)
@@ -767,7 +766,7 @@ moves_loop: // When in check and at SpNode search starts from here
               futilityValue = ss->staticEval + futility_margin(predictedDepth)
                             + 128 + Gains[pos.moved_piece(move)][to_sq(move)];
 
-              if (futilityValue <= alpha && futilityValue > -VALUE_KNOWN_WIN)
+              if (futilityValue <= alpha)
               {
                   bestValue = std::max(bestValue, futilityValue);
 
