@@ -545,8 +545,7 @@ namespace {
         && !ss->skipNullMove
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth) >= beta
-        &&  abs(beta) < VALUE_MATE_IN_MAX_PLY
-        &&  abs(eval) < VALUE_KNOWN_WIN
+        &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
         &&  pos.non_pawn_material(pos.side_to_move()))
         return eval - futility_margin(depth);
 
@@ -658,7 +657,6 @@ moves_loop: // When in check and at SpNode search starts from here
     singularExtensionNode =   !RootNode
                            && !SpNode
                            &&  depth >= 8 * ONE_PLY
-                           &&  abs(beta) < VALUE_KNOWN_WIN
                            &&  ttMove != MOVE_NONE
                        /*  &&  ttValue != VALUE_NONE Already implicit in the next condition */
                            &&  abs(ttValue) < VALUE_KNOWN_WIN
