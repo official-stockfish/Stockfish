@@ -50,8 +50,8 @@ private:
     move16    = (uint16_t)m;
     value16   = (int16_t)v;
     evalValue = (int16_t)ev;
+    genBound8 = (uint8_t)(g | b);
     depth8    = (uint8_t)(d - DEPTH_NONE);
-    genBound8 = g | (uint8_t)b;
   }
 
   uint16_t key16;
@@ -70,7 +70,6 @@ private:
 const unsigned TTClusterSize = 3;
 
 struct TTCluster {
-
   TTEntry entry[TTClusterSize];
   char padding[2];
 };
