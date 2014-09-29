@@ -507,7 +507,7 @@ namespace {
                       & ei.attackedBy[Them][PAWN]
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
 
-    if(protectedEnemies)
+    if (protectedEnemies)
         score += Threat[Minor][type_of(pos.piece_on(lsb(protectedEnemies)))];
 
     // Enemies not defended by a pawn and under our attack
@@ -516,24 +516,24 @@ namespace {
                  & ei.attackedBy[Us][ALL_PIECES];
 
     // Add a bonus according if the attacking pieces are minor or major
-    if (weakEnemies)
-    {
-        b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
-        if (b)
-            score += Threat[Minor][type_of(pos.piece_on(lsb(b)))];
+    if (!weakEnemies)
+        return score;
 
-        b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
-        if (b)
-            score += Threat[Major][type_of(pos.piece_on(lsb(b)))];
+    b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+    if (b)
+        score += Threat[Minor][type_of(pos.piece_on(lsb(b)))];
 
-        b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
-        if (b)
-            score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
+    b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
+    if (b)
+        score += Threat[Major][type_of(pos.piece_on(lsb(b)))];
 
-        b = weakEnemies & pos.pieces(Them, PAWN) & ei.attackedBy[Us][KING];
-        if (b)
-            score += more_than_one(b) ? KingOnPawnMany : KingOnPawnOne;
-    }
+    b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
+    if (b)
+        score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
+
+    b = weakEnemies & pos.pieces(Them, PAWN) & ei.attackedBy[Us][KING];
+    if (b)
+        score += more_than_one(b) ? KingOnPawnMany : KingOnPawnOne;
 
     if (Trace)
         Tracing::terms[Us][Tracing::THREAT] = score;
@@ -608,8 +608,9 @@ namespace {
 
                 mbonus += k * rr, ebonus += k * rr;
             }
-            else if(pos.pieces(Us) & blockSq)
+            else if (pos.pieces(Us) & blockSq)
                 mbonus += rr * 3 + r * 2 + 3, ebonus += rr + r * 2;
+
         } // rr != 0
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
