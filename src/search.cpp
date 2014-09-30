@@ -792,6 +792,7 @@ moves_loop: // When in check and at SpNode search starts from here
           }
       }
 
+      // Speculative prefetch by Peter Österlund
       prefetch((char*)TT.first_entry(pos.hash_after_move(move)));
 
       // Check for legality just before making the move
@@ -1143,6 +1144,7 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  pos.see_sign(move) < VALUE_ZERO)
           continue;
 
+      // Speculative prefetch by Peter Österlund
       prefetch((char*)TT.first_entry(pos.hash_after_move(move)));
 
       // Check for legality just before making the move
