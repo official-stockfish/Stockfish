@@ -55,7 +55,7 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 void init(OptionsMap& o) {
 
   o["Write Debug Log"]       << Option(false, on_logger);
-  o["Contempt"]              << Option(0, -100,  100);
+  o["Contempt"]              << Option(0, -100, 100);
   o["Min Split Depth"]       << Option(0, 0, 12, on_threads);
   o["Threads"]               << Option(1, 1, MAX_THREADS, on_threads);
   o["Hash"]                  << Option(16, 1, 1024 * 1024, on_hash_size);

@@ -25,12 +25,12 @@
 
 #include "bitcount.h"
 #include "movegen.h"
+#include "notation.h"
 #include "position.h"
 #include "psqtab.h"
 #include "rkiss.h"
 #include "thread.h"
 #include "tt.h"
-#include "notation.h"
 
 using std::string;
 
