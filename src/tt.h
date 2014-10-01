@@ -38,7 +38,7 @@ struct TTEntry {
   Move  move()  const      { return (Move )move16; }
   Value value() const      { return (Value)value16; }
   Value eval_value() const { return (Value)evalValue; }
-  Depth depth() const      { return (Depth)(depth8) + DEPTH_NONE; }
+  Depth depth() const      { return (Depth)depth8; }
   Bound bound() const      { return (Bound)(genBound8 & 0x3); }
 
 private:
@@ -51,7 +51,7 @@ private:
     value16   = (int16_t)v;
     evalValue = (int16_t)ev;
     genBound8 = (uint8_t)(g | b);
-    depth8    = (uint8_t)(d - DEPTH_NONE);
+    depth8    = (int8_t)d;
   }
 
   uint16_t key16;
@@ -59,7 +59,7 @@ private:
   int16_t  value16;
   int16_t  evalValue;
   uint8_t  genBound8;
-  uint8_t  depth8;
+  int8_t   depth8;
 };
 
 /// TTCluster is a 32 bytes cluster of TT entries consisting of:
