@@ -1267,3 +1267,19 @@ bool Position::pos_is_ok(int* step) const {
 
   return true;
 }
+
+// Position::hash_after_move() updates the hash key needed for the speculative prefetch.
+// It doesn't recognize special moves like castling, en-passant and promotions.
+Key Position::hash_after_move(Move m) const {
+
+  int from = from_sq(m);
+  int to = to_sq(m);
+  Piece p = board[from];
+  Piece capP = board[to];
+  Key ret = st->key ^ Zobrist::side;
+  if (capP != NO_PIECE)
+      ret ^= Zobrist::psq[color_of(capP)][type_of(capP)][to];
+  ret ^= Zobrist::psq[color_of(p)][type_of(p)][to];
+  ret ^= Zobrist::psq[color_of(p)][type_of(p)][from];
+  return ret;
+}

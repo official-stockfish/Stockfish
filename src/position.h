@@ -139,6 +139,7 @@ public:
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
+  Key hash_after_move(Move m) const;
 
   // Static exchange evaluation
   Value see(Move m) const;
