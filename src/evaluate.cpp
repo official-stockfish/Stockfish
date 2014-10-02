@@ -159,7 +159,7 @@ namespace {
   const Score BishopPawns      = S( 8, 12);
   const Score MinorBehindPawn  = S(16,  0);
   const Score TrappedRook      = S(92,  0);
-  const Score Unstoppable      = S( 0, 20);
+  const Score Unstoppable      = S( 0, 30);
   const Score Hanging          = S(23, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
