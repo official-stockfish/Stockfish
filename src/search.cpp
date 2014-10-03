@@ -126,6 +126,7 @@ void Search::init() {
   {
       double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
       double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
+
       Reductions[1][1][hd][mc] = int8_t(   pvRed >= 1.0 ?    pvRed + 0.5: 0);
       Reductions[0][1][hd][mc] = int8_t(nonPVRed >= 1.0 ? nonPVRed + 0.5: 0);
 
@@ -787,6 +788,9 @@ moves_loop: // When in check and at SpNode search starts from here
           }
       }
 
+      // Speculative prefetch
+      prefetch((char*)TT.first_entry(pos.hash_after_move(move)));
+
       // Check for legality just before making the move
       if (!RootNode && !SpNode && !pos.legal(move, ci.pinned))
       {
@@ -1135,6 +1139,9 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  type_of(move) != PROMOTION
           &&  pos.see_sign(move) < VALUE_ZERO)
           continue;
+
+      // Speculative prefetch
+      prefetch((char*)TT.first_entry(pos.hash_after_move(move)));
 
       // Check for legality just before making the move
       if (!pos.legal(move, ci.pinned))

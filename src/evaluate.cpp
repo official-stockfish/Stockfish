@@ -507,7 +507,7 @@ namespace {
                       & ei.attackedBy[Them][PAWN]
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
 
-    if(protectedEnemies)
+    if (protectedEnemies)
         score += Threat[Minor][type_of(pos.piece_on(lsb(protectedEnemies)))];
 
     // Enemies not defended by a pawn and under our attack
@@ -608,7 +608,7 @@ namespace {
 
                 mbonus += k * rr, ebonus += k * rr;
             }
-            else if(pos.pieces(Us) & blockSq)
+            else if (pos.pieces(Us) & blockSq)
                 mbonus += rr * 3 + r * 2 + 3, ebonus += rr + r * 2;
         } // rr != 0
 
