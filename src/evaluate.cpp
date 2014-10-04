@@ -151,8 +151,8 @@ namespace {
   };
 
   // Assorted bonuses and penalties used by evaluation
-  const Score KingOnPawnOne    = S(0 , 64);
-  const Score KingOnPawnMany   = S(0 ,128);
+  const Score KingOnOne        = S(2 , 58);
+  const Score KingOnMany       = S(6 ,125);
   const Score RookOnPawn       = S(10, 28);
   const Score RookOpenFile     = S(43, 21);
   const Score RookSemiOpenFile = S(19, 10);
@@ -530,9 +530,9 @@ namespace {
         if (b)
             score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
 
-        b = weakEnemies & pos.pieces(Them, PAWN) & ei.attackedBy[Us][KING];
+        b = weakEnemies & ei.attackedBy[Us][KING];
         if (b)
-            score += more_than_one(b) ? KingOnPawnMany : KingOnPawnOne;
+            score += more_than_one(b) ? KingOnMany : KingOnOne;
     }
 
     if (Trace)
