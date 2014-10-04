@@ -174,10 +174,10 @@ namespace {
             value -= Backward[opposed][f];
 
         if (connected) {
-            int bonus = 2 << (int)relative_rank(Us, s);
+            int bonus = 2 << relative_rank(Us, s);
             if (ourPawns & adjacent_files_bb(f) & rank_bb(r))
                 bonus += bonus / 2;
-            value += make_score(bonus / 2, bonus);
+            value += make_score(bonus / 2, bonus >> opposed);
         }
 
         if (lever)
