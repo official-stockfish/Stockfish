@@ -49,6 +49,9 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
+  // Connected bonus by rank
+  const int Connected[RANK_NB] = {0, 6, 15, 10, 57, 75, 135, 258};
+
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
@@ -108,8 +111,8 @@ namespace {
     {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
+        Rank r = rank_of(s), rr = relative_rank(Us, s);
         File f = file_of(s);
-        Rank r = rank_of(s);
 
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
@@ -174,14 +177,14 @@ namespace {
             value -= Backward[opposed][f];
 
         if (connected) {
-            int bonus = 2 << relative_rank(Us, s);
+            int bonus = Connected[rr];
             if (ourPawns & adjacent_files_bb(f) & rank_bb(r))
-                bonus += bonus / 2;
+                bonus += (Connected[rr+1] - Connected[rr]) / 2;
             value += make_score(bonus / 2, bonus >> opposed);
         }
 
         if (lever)
-            value += Lever[relative_rank(Us, s)];
+            value += Lever[rr];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
