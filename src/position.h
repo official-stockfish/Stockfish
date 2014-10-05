@@ -139,7 +139,6 @@ public:
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
-  Key hash_after_move(Move m) const;
 
   // Static exchange evaluation
   Value see(Move m) const;
@@ -147,6 +146,7 @@ public:
 
   // Accessing hash keys
   Key key() const;
+  Key key_after(Move m) const;
   Key exclusion_key() const;
   Key pawn_key() const;
   Key material_key() const;
