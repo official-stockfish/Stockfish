@@ -285,7 +285,11 @@ endif
 
 ### 3.9 popcnt
 ifeq ($(popcnt),yes)
-	CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
+	ifeq ($(comp),icc)
+		CXXFLAGS += -msse3 -DUSE_POPCNT
+	else
+		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
+	endif
 endif
 
 ### 3.10 pext
