@@ -49,13 +49,8 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected pawn bonus by file and rank (initialized by formula)
-  Score Connected[FILE_NB][RANK_NB];
-
-  // Candidate passed pawn bonus by rank
-  const Score CandidatePassed[RANK_NB] = {
-    S( 0, 0), S( 6, 13), S(6,13), S(14,29),
-    S(34,68), S(83,166), S(0, 0), S( 0, 0) };
+  // Connected bonus by rank
+  const int Connected[RANK_NB] = {0, 6, 15, 10, 57, 75, 135, 258};
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
@@ -96,8 +91,7 @@ namespace {
 
     Bitboard b, p, doubled;
     Square s;
-    File f;
-    bool passed, isolated, opposed, connected, backward, candidate, unsupported, lever;
+    bool passed, isolated, opposed, connected, backward, unsupported, lever;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -105,7 +99,7 @@ namespace {
     Bitboard ourPawns   = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
-    e->passedPawns[Us] = e->candidatePawns[Us] = 0;
+    e->passedPawns[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
@@ -117,7 +111,8 @@ namespace {
     {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
-        f = file_of(s);
+        Rank r = rank_of(s), rr = relative_rank(Us, s);
+        File f = file_of(s);
 
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
@@ -162,14 +157,6 @@ namespace {
 
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
-        // A not-passed pawn is a candidate to become passed, if it is free to
-        // advance and if the number of friendly pawns beside or behind this
-        // pawn on adjacent files is higher than or equal to the number of
-        // enemy pawns in the forward direction on the adjacent files.
-        candidate =   !(opposed | passed | backward | isolated)
-                   && (b = pawn_attack_span(Them, s + pawn_push(Us)) & ourPawns) != 0
-                   &&  popcount<Max15>(b) >= popcount<Max15>(pawn_attack_span(Us, s) & theirPawns);
-
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate passed pawns. Only the frontmost passed
         // pawn on each file is considered a true passed pawn.
@@ -189,19 +176,15 @@ namespace {
         if (backward)
             value -= Backward[opposed][f];
 
-        if (connected)
-            value += Connected[f][relative_rank(Us, s)];
+        if (connected) {
+            int bonus = Connected[rr];
+            if (ourPawns & adjacent_files_bb(f) & rank_bb(r))
+                bonus += (Connected[rr+1] - Connected[rr]) / 2;
+            value += make_score(bonus / 2, bonus >> opposed);
+        }
 
         if (lever)
-            value += Lever[relative_rank(Us, s)];
-
-        if (candidate)
-        {
-            value += CandidatePassed[relative_rank(Us, s)];
-
-            if (!doubled)
-                e->candidatePawns[Us] |= s;
-        }
+            value += Lever[rr];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
@@ -217,21 +200,6 @@ namespace {
 } // namespace
 
 namespace Pawns {
-
-/// init() initializes some tables by formula instead of hard-coding their values
-
-void init() {
-
-  const int bonusByFile[] = { 1, 3, 3, 4, 4, 3, 3, 1 };
-
-  for (Rank r = RANK_1; r < RANK_8; ++r)
-      for (File f = FILE_A; f <= FILE_H; ++f)
-      {
-          int bonus = r * (r - 1) * (r - 2) + bonusByFile[f] * (r / 2 + 1);
-          Connected[f][r] = make_score(bonus, bonus);
-      }
-}
-
 
 /// probe() takes a position as input, computes a Entry object, and returns a
 /// pointer to it. The result is also stored in a hash table, so we don't have
