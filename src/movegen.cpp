@@ -404,11 +404,12 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* mlist) {
   ExtMove *end, *cur = mlist;
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
   Square ksq = pos.king_square(pos.side_to_move());
+  Bitboard problemSquares = pinned | ksq;
 
   end = pos.checkers() ? generate<EVASIONS>(pos, mlist)
                        : generate<NON_EVASIONS>(pos, mlist);
   while (cur != end)
-      if (   (pinned || from_sq(cur->move) == ksq || type_of(cur->move) == ENPASSANT)
+      if (   (problemSquares & from_sq(cur->move) || type_of(cur->move) == ENPASSANT)
           && !pos.legal(cur->move, pinned))
           cur->move = (--end)->move;
       else
