@@ -140,8 +140,8 @@ void Search::init() {
   // Init futility move count array
   for (d = 0; d < 32; ++d)
   {
-      FutilityMoveCounts[0][d] = int(2.4 + 0.222 * pow(d * 2 + 0.00, 1.8));
-      FutilityMoveCounts[1][d] = int(3.0 + 0.300 * pow(d * 2 + 0.98, 1.8));
+      FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
+      FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
   }
 }
 
@@ -788,8 +788,8 @@ moves_loop: // When in check and at SpNode search starts from here
           }
       }
 
-      // Speculative prefetch
-      prefetch((char*)TT.first_entry(pos.hash_after_move(move)));
+      // Speculative prefetch as early as possible
+      prefetch((char*)TT.first_entry(pos.key_after(move)));
 
       // Check for legality just before making the move
       if (!RootNode && !SpNode && !pos.legal(move, ci.pinned))
@@ -1140,8 +1140,8 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  pos.see_sign(move) < VALUE_ZERO)
           continue;
 
-      // Speculative prefetch
-      prefetch((char*)TT.first_entry(pos.hash_after_move(move)));
+      // Speculative prefetch as early as possible
+      prefetch((char*)TT.first_entry(pos.key_after(move)));
 
       // Check for legality just before making the move
       if (!pos.legal(move, ci.pinned))
