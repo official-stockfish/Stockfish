@@ -807,9 +807,6 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       st->castlingRights &= ~cr;
   }
 
-  // Prefetch TT access as soon as we know the new hash key
-  prefetch((char*)TT.first_entry(k));
-
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
       move_piece(from, to, us, pt);
