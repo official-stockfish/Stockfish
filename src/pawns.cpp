@@ -49,8 +49,10 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected bonus by rank
-  const int Connected[RANK_NB] = {0, 6, 15, 10, 57, 75, 135, 258};
+  // Connected pawn bonus by phalanx flag and rank
+  const int Connected[2][RANK_NB] = {
+  { 0,  6, 15, 10, 57,  75, 135, 258 },
+  { 3, 10, 13, 33, 66, 105, 196, 258 } };
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
@@ -89,9 +91,9 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled;
+    Bitboard b, p, doubled, connected;
     Square s;
-    bool passed, isolated, opposed, connected, backward, unsupported, lever;
+    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -111,7 +113,6 @@ namespace {
     {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
-        Rank r = rank_of(s), rr = relative_rank(Us, s);
         File f = file_of(s);
 
         // This file cannot be semi-open
@@ -120,12 +121,10 @@ namespace {
         // Previous rank
         p = rank_bb(s - pawn_push(Us));
 
-        // Our rank plus previous one
-        b = rank_bb(s) | p;
-
         // Flag the pawn as passed, isolated, doubled,
         // unsupported or connected (but not the backward one).
-        connected   =   ourPawns   & adjacent_files_bb(f) & b;
+        connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
+        phalanx     =   connected  & rank_bb(s);
         unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
         isolated    = !(ourPawns   & adjacent_files_bb(f));
         doubled     =   ourPawns   & forward_bb(Us, s);
@@ -176,15 +175,14 @@ namespace {
         if (backward)
             value -= Backward[opposed][f];
 
-        if (connected) {
-            int bonus = Connected[rr];
-            if (ourPawns & adjacent_files_bb(f) & rank_bb(r))
-                bonus += (Connected[rr+1] - Connected[rr]) / 2;
-            value += make_score(bonus / 2, bonus >> opposed);
+        if (connected)
+        {
+            int bonus = Connected[phalanx][relative_rank(Us, s)];
+            value += make_score(bonus / 2, opposed ? bonus / 2 : bonus);
         }
 
         if (lever)
-            value += Lever[rr];
+            value += Lever[relative_rank(Us, s)];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
