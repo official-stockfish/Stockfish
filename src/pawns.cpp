@@ -49,10 +49,12 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected pawn bonus by phalanx flag and rank
-  const int Connected[2][RANK_NB] = {
-  { 0,  6, 15, 10, 57,  75, 135, 258 },
-  { 3, 10, 13, 33, 66, 105, 196, 258 } };
+  // Connected pawn bonus by opposed, phalanx flags and rank
+  const Score Connected[2][2][RANK_NB] = {
+  { { S(0,0), S(3, 6), S(7,15), S( 5,10), S(28,57), S(37, 75), S(67,135), S(129,258) },
+    { S(1,3), S(5,10), S(6,13), S(16,33), S(33,66), S(52,105), S(98,196), S(129,258) } },
+  { { S(0,0), S(3, 3), S(7, 7), S( 5, 5), S(28,28), S(37, 37), S(67, 67), S(129,129) },
+    { S(1,1), S(5, 5), S(6, 6), S(16,16), S(33,33), S(52, 52), S(98, 98), S(129,129) } } };
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
@@ -176,10 +178,7 @@ namespace {
             value -= Backward[opposed][f];
 
         if (connected)
-        {
-            int bonus = Connected[phalanx][relative_rank(Us, s)];
-            value += make_score(bonus / 2, opposed ? bonus / 2 : bonus);
-        }
+            value += Connected[opposed][phalanx][relative_rank(Us, s)];
 
         if (lever)
             value += Lever[relative_rank(Us, s)];
