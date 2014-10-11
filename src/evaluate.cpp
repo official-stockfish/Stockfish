@@ -693,7 +693,7 @@ namespace {
     // If we have a specialized evaluation function for the current material
     // configuration, call it and return.
     if (ei.mi->specialized_eval_exists())
-        return ei.mi->evaluate(pos);
+        return ei.mi->evaluate(pos) + Eval::Tempo;
 
     // Probe the pawn hash table
     ei.pi = Pawns::probe(pos, thisThread->pawnsTable);
@@ -793,7 +793,7 @@ namespace {
         Tracing::sf = sf;
     }
 
-    return pos.side_to_move() == WHITE ? v : -v;
+    return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo;
   }
 
 
@@ -872,7 +872,7 @@ namespace Eval {
   /// of the position always from the point of view of the side to move.
 
   Value evaluate(const Position& pos) {
-    return do_evaluate<false>(pos) + Tempo;
+    return do_evaluate<false>(pos);
   }
 
 
