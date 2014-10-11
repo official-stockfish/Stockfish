@@ -79,13 +79,14 @@ namespace {
       MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERMS_NB
     };
 
-    Score terms[COLOR_NB][TERMS_NB];
+    Score scores[COLOR_NB][TERMS_NB];
     EvalInfo ei;
     ScaleFactor sf;
 
     double to_cp(Value v);
-    void add_term(int idx, Score term_w, Score term_b = SCORE_ZERO);
-    void format_row(std::stringstream& ss, const char* name, int idx);
+    void write(int idx, Color c, Score s);
+    void write(int idx, Score w, Score b = SCORE_ZERO);
+    void print(std::stringstream& ss, const char* name, int idx);
     std::string do_trace(const Position& pos);
   }
 
@@ -370,7 +371,7 @@ namespace {
     }
 
     if (Trace)
-        Tracing::terms[Us][Pt] = score;
+        Tracing::write(Pt, Us, score);
 
     return score - evaluate_pieces<NextPt, Them, Trace>(pos, ei, mobility, mobilityArea);
   }
@@ -484,7 +485,7 @@ namespace {
     }
 
     if (Trace)
-        Tracing::terms[Us][KING] = score;
+        Tracing::write(KING, Us, score);
 
     return score;
   }
@@ -536,7 +537,7 @@ namespace {
     }
 
     if (Trace)
-        Tracing::terms[Us][Tracing::THREAT] = score;
+        Tracing::write(Tracing::THREAT, Us, score);
 
     return score;
   }
@@ -619,7 +620,7 @@ namespace {
     }
 
     if (Trace)
-        Tracing::terms[Us][Tracing::PASSED] = apply_weight(score, Weights[PassedPawns]);
+        Tracing::write(Tracing::PASSED, Us, apply_weight(score, Weights[PassedPawns]));
 
     // Add the scores to the middlegame and endgame eval
     return apply_weight(score, Weights[PassedPawns]);
@@ -780,15 +781,15 @@ namespace {
     // In case of tracing add all single evaluation contributions for both white and black
     if (Trace)
     {
-        Tracing::add_term(Tracing::MATERIAL, pos.psq_score());
-        Tracing::add_term(Tracing::IMBALANCE, ei.mi->material_value());
-        Tracing::add_term(PAWN, ei.pi->pawns_value());
-        Tracing::add_term(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
-                                           , apply_weight(mobility[BLACK], Weights[Mobility]));
+        Tracing::write(Tracing::MATERIAL, pos.psq_score());
+        Tracing::write(Tracing::IMBALANCE, ei.mi->material_value());
+        Tracing::write(PAWN, ei.pi->pawns_value());
+        Tracing::write(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
+                                        , apply_weight(mobility[BLACK], Weights[Mobility]));
         Score w = ei.mi->space_weight() * evaluate_space<WHITE>(pos, ei);
         Score b = ei.mi->space_weight() * evaluate_space<BLACK>(pos, ei);
-        Tracing::add_term(Tracing::SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
-        Tracing::add_term(Tracing::TOTAL, score);
+        Tracing::write(Tracing::SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
+        Tracing::write(Tracing::TOTAL, score);
         Tracing::ei = ei;
         Tracing::sf = sf;
     }
@@ -801,16 +802,18 @@ namespace {
 
   double Tracing::to_cp(Value v) { return double(v) / PawnValueEg; }
 
-  void Tracing::add_term(int idx, Score wScore, Score bScore) {
+  void Tracing::write(int idx, Color c, Score s) { scores[c][idx] = s; }
 
-    terms[WHITE][idx] = wScore;
-    terms[BLACK][idx] = bScore;
+  void Tracing::write(int idx, Score w, Score b) {
+
+    write(idx, WHITE, w);
+    write(idx, BLACK, b);
   }
 
-  void Tracing::format_row(std::stringstream& ss, const char* name, int idx) {
+  void Tracing::print(std::stringstream& ss, const char* name, int idx) {
 
-    Score wScore = terms[WHITE][idx];
-    Score bScore = terms[BLACK][idx];
+    Score wScore = scores[WHITE][idx];
+    Score bScore = scores[BLACK][idx];
 
     switch (idx) {
     case MATERIAL: case IMBALANCE: case PAWN: case TOTAL:
@@ -831,7 +834,7 @@ namespace {
 
   std::string Tracing::do_trace(const Position& pos) {
 
-    std::memset(terms, 0, sizeof(terms));
+    std::memset(scores, 0, sizeof(scores));
 
     Value v = do_evaluate<true>(pos);
     v = pos.side_to_move() == WHITE ? v : -v; // White's point of view
@@ -842,21 +845,21 @@ namespace {
        << "                |   MG    EG  |   MG    EG  |   MG    EG  \n"
        << "----------------+-------------+-------------+-------------\n";
 
-    format_row(ss, "Material", MATERIAL);
-    format_row(ss, "Imbalance", IMBALANCE);
-    format_row(ss, "Pawns", PAWN);
-    format_row(ss, "Knights", KNIGHT);
-    format_row(ss, "Bishops", BISHOP);
-    format_row(ss, "Rooks", ROOK);
-    format_row(ss, "Queens", QUEEN);
-    format_row(ss, "Mobility", MOBILITY);
-    format_row(ss, "King safety", KING);
-    format_row(ss, "Threats", THREAT);
-    format_row(ss, "Passed pawns", PASSED);
-    format_row(ss, "Space", SPACE);
+    print(ss, "Material", MATERIAL);
+    print(ss, "Imbalance", IMBALANCE);
+    print(ss, "Pawns", PAWN);
+    print(ss, "Knights", KNIGHT);
+    print(ss, "Bishops", BISHOP);
+    print(ss, "Rooks", ROOK);
+    print(ss, "Queens", QUEEN);
+    print(ss, "Mobility", MOBILITY);
+    print(ss, "King safety", KING);
+    print(ss, "Threats", THREAT);
+    print(ss, "Passed pawns", PASSED);
+    print(ss, "Space", SPACE);
 
     ss << "----------------+-------------+-------------+-------------\n";
-    format_row(ss, "Total", TOTAL);
+    print(ss, "Total", TOTAL);
 
     ss << "\nTotal Evaluation: " << to_cp(v) << " (white side)\n";
 
