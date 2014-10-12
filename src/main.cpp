@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
   Bitbases::init_kpk();
   Search::init();
   Eval::init();
+  Pawns::init();
   Threads.init();
   TT.resize(Options["Hash"]);
 

@@ -49,8 +49,8 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected bonus by rank
-  const int Connected[RANK_NB] = {0, 6, 15, 10, 57, 75, 135, 258};
+  // Connected pawn bonus by opposed, phalanx flags and rank
+  Score Connected[2][2][RANK_NB];
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
@@ -89,9 +89,9 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled;
+    Bitboard b, p, doubled, connected;
     Square s;
-    bool passed, isolated, opposed, connected, backward, unsupported, lever;
+    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
     Score value = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -111,7 +111,6 @@ namespace {
     {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
-        Rank r = rank_of(s), rr = relative_rank(Us, s);
         File f = file_of(s);
 
         // This file cannot be semi-open
@@ -120,12 +119,10 @@ namespace {
         // Previous rank
         p = rank_bb(s - pawn_push(Us));
 
-        // Our rank plus previous one
-        b = rank_bb(s) | p;
-
         // Flag the pawn as passed, isolated, doubled,
         // unsupported or connected (but not the backward one).
-        connected   =   ourPawns   & adjacent_files_bb(f) & b;
+        connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
+        phalanx     =   connected  & rank_bb(s);
         unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
         isolated    = !(ourPawns   & adjacent_files_bb(f));
         doubled     =   ourPawns   & forward_bb(Us, s);
@@ -176,15 +173,11 @@ namespace {
         if (backward)
             value -= Backward[opposed][f];
 
-        if (connected) {
-            int bonus = Connected[rr];
-            if (ourPawns & adjacent_files_bb(f) & rank_bb(r))
-                bonus += (Connected[rr+1] - Connected[rr]) / 2;
-            value += make_score(bonus / 2, bonus >> opposed);
-        }
+        if (connected)
+            value += Connected[opposed][phalanx][relative_rank(Us, s)];
 
         if (lever)
-            value += Lever[rr];
+            value += Lever[relative_rank(Us, s)];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
@@ -200,6 +193,19 @@ namespace {
 } // namespace
 
 namespace Pawns {
+
+void init()
+{
+  const int c[RANK_NB] = {0, 6, 15, 10, 57, 75, 135, 258};
+
+  for (Rank r = RANK_2; r <= RANK_7; ++r)
+      for (int opposed = false; opposed <= true; ++opposed)
+          for (int phalanx = false; phalanx <= true; ++phalanx)
+          {
+              int bonus = c[r] + (phalanx ? (c[r + 1] - c[r]) / 2 : 0);
+              Connected[opposed][phalanx][r] = make_score(bonus / 2, bonus >> opposed);
+          }
+}
 
 /// probe() takes a position as input, computes a Entry object, and returns a
 /// pointer to it. The result is also stored in a hash table, so we don't have
