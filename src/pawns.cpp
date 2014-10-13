@@ -194,18 +194,23 @@ namespace {
 
 namespace Pawns {
 
+/// init() initializes some tables used by evaluation. Instead of hard-coded
+/// tables, when makes sense, we prefer to calculate them with a formula to
+/// reduce independent parameters and to allow easier tuning and better insight.
+
 void init()
 {
-  const int c[RANK_NB] = {0, 6, 15, 10, 57, 75, 135, 258};
+  static const int Seed[RANK_NB] = { 0, 6, 15, 10, 57, 75, 135, 258 };
 
-  for (Rank r = RANK_2; r <= RANK_7; ++r)
-      for (int opposed = false; opposed <= true; ++opposed)
-          for (int phalanx = false; phalanx <= true; ++phalanx)
+  for (int opposed = 0; opposed <= 1; ++opposed)
+      for (int phalanx = 0; phalanx <= 1; ++phalanx)
+          for (Rank r = RANK_2; r < RANK_8; ++r)
           {
-              int bonus = c[r] + (phalanx ? (c[r + 1] - c[r]) / 2 : 0);
+              int bonus = Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0);
               Connected[opposed][phalanx][r] = make_score(bonus / 2, bonus >> opposed);
           }
 }
+
 
 /// probe() takes a position as input, computes a Entry object, and returns a
 /// pointer to it. The result is also stored in a hash table, so we don't have
