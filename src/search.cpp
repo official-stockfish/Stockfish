@@ -1541,7 +1541,7 @@ void Thread::idle_loop() {
 void check_time() {
 
   static Time::point lastInfoTime = Time::now();
-  int64_t nodes = 0; // Workaround silly 'uninitialized' gcc warning
+  Time::point elapsed = Time::now() - SearchTime;
 
   if (Time::now() - lastInfoTime >= 1000)
   {
@@ -1549,14 +1549,24 @@ void check_time() {
       dbg_print();
   }
 
-  if (Limits.ponder)
-      return;
+  if (Limits.use_time_management() && !Limits.ponder)
+  {
+      bool stillAtFirstMove =    Signals.firstRootMove
+                             && !Signals.failedLowAtRoot
+                             &&  elapsed > TimeMgr.available_time() * 75 / 100;
 
-  if (Limits.nodes)
+      if (   stillAtFirstMove
+          || elapsed > TimeMgr.maximum_time() - 2 * TimerThread::Resolution)
+          Signals.stop = true;
+  }
+  else if (Limits.movetime && elapsed >= Limits.movetime)
+      Signals.stop = true;
+
+  else if (Limits.nodes)
   {
       Threads.mutex.lock();
 
-      nodes = RootPos.nodes_searched();
+      int nodes = RootPos.nodes_searched();
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
@@ -1577,18 +1587,8 @@ void check_time() {
           }
 
       Threads.mutex.unlock();
+
+      if (nodes >= Limits.nodes)
+          Signals.stop = true;
   }
-
-  Time::point elapsed = Time::now() - SearchTime;
-  bool stillAtFirstMove =    Signals.firstRootMove
-                         && !Signals.failedLowAtRoot
-                         &&  elapsed > TimeMgr.available_time() * 75 / 100;
-
-  bool noMoreTime =   elapsed > TimeMgr.maximum_time() - 2 * TimerThread::Resolution
-                   || stillAtFirstMove;
-
-  if (   (Limits.use_time_management() && noMoreTime)
-      || (Limits.movetime && elapsed >= Limits.movetime)
-      || (Limits.nodes && nodes >= Limits.nodes))
-      Signals.stop = true;
 }
