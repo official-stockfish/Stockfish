@@ -490,19 +490,20 @@ namespace {
     return score;
   }
 
-  // maximum_threat() calculates the score of a set of threats.
-  // The threat targets are in the "target" parameter, and the function uses 
-  // the ordered values in the "threat_values" array to score the threats.
+  // maximum_threats() calculates the global score of a set of threats.
+  // The threat set is in the "targets" parameter, and we use the ordered values
+  // in the "threat_values" array to score the threats : we give a weight of 1 to 
+  // the maximal threat, 1/4 to the second threat, 1/16 to the third, etc.
 
   template<Color Us>
-  Score maximum_threat(const Bitboard targets, const Position& pos, const Score threat_values[PIECE_TYPE_NB]) {
+  Score maximum_threats(const Bitboard targets, const Position& pos, const Score threat_values[PIECE_TYPE_NB]) {
   
     const Color Them = (Us == WHITE ? BLACK : WHITE);
     Score threat = SCORE_ZERO;
     
     for (PieceType pt = PAWN; pt <= QUEEN; ++pt)
         if (targets & pos.pieces(Them, pt))
-            threat = threat_values[pt];
+            threat = threat / 4 + threat_values[pt];
             
     return threat;
   }
@@ -525,7 +526,7 @@ namespace {
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
                       
     if (protectedEnemies)
-       score += maximum_threat<Us>(protectedEnemies, pos, Threat[Minor]);
+       score += maximum_threats<Us>(protectedEnemies, pos, Threat[Minor]);
 
 
     // Enemies not defended by a pawn and under our attack
@@ -538,11 +539,11 @@ namespace {
     {
         b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
-           score += maximum_threat<Us>(b, pos, Threat[Minor]);
+           score += maximum_threats<Us>(b, pos, Threat[Minor]);
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
-           score += maximum_threat<Us>(b, pos, Threat[Major]);
+           score += maximum_threats<Us>(b, pos, Threat[Major]);
     
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
