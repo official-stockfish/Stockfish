@@ -490,6 +490,22 @@ namespace {
     return score;
   }
 
+  // maximum_threat() calculates the score of a set of threats.
+  // The threat targets are in the "target" parameter, and the function uses 
+  // the ordered values in the "threat_values" array to score the threats.
+
+  template<Color Us>
+  Score maximum_threat(const Bitboard targets, const Position& pos, const Score threat_values[PIECE_TYPE_NB]) {
+  
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    Score threat = SCORE_ZERO;
+    
+    for (PieceType pt = PAWN; pt <= QUEEN; ++pt)
+        if (targets & pos.pieces(Them, pt))
+            threat = threat_values[pt];
+            
+    return threat;
+  }
 
   // evaluate_threats() assigns bonuses according to the type of attacking piece
   // and the type of attacked one.
@@ -501,22 +517,15 @@ namespace {
 
     Bitboard b, weakEnemies, protectedEnemies;
     Score score = SCORE_ZERO;
-    Score threat;
     enum { Minor, Major };
 
     // Protected enemies
     protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
                       & ei.attackedBy[Them][PAWN]
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
-
+                      
     if (protectedEnemies)
-    {
-        threat = SCORE_ZERO;
-        for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
-            if (protectedEnemies & pos.pieces(Them, pt))   
-            	threat = Threat[Minor][pt];
-        score += threat;
-    }
+       score += maximum_threat<Us>(protectedEnemies, pos, Threat[Minor]);
 
 
     // Enemies not defended by a pawn and under our attack
@@ -529,24 +538,12 @@ namespace {
     {
         b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
-        {
-        	threat = SCORE_ZERO;
-            for (PieceType pt = PAWN; pt <= QUEEN; ++pt)
-            	if (b & pos.pieces(Them, pt))   
-            	    threat = Threat[Minor][pt];
-            score += threat;
-        }
+           score += maximum_threat<Us>(b, pos, Threat[Minor]);
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
-        {
-        	threat = SCORE_ZERO;
-            for (PieceType pt = PAWN; pt <= QUEEN; ++pt)
-            	if (b & pos.pieces(Them, pt))   
-            	    threat = Threat[Major][pt];
-            score += threat;
-        }
-
+           score += maximum_threat<Us>(b, pos, Threat[Major]);
+    
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
             score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
