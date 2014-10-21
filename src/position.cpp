@@ -1137,18 +1137,19 @@ bool Position::is_draw() const {
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 
-  bool repeated = false;
   StateInfo* stp = st;
+  bool check3fold = (st->previous == &startState); // Check for 3-fold for root move
+
   for (int i = 2, e = std::min(st->rule50, st->pliesFromNull); i <= e; i += 2)
   {
       stp = stp->previous->previous;
 
       if (stp->key == st->key)
       {
-          if (st->previous != &startState || repeated)
-              return true; // Draw at first repetition except for first move
+          if (!check3fold)
+              return true; // Draw at first repetition
           else
-              repeated = true; // For first move, check for actual 3-fold
+              check3fold = false;
       }
   }
 
