@@ -978,6 +978,10 @@ moves_loop: // When in check and at SpNode search starts from here
                   ss->pv[0] = move;
                   ss->pvLength = (ss+1)->pvLength + 1;
                   memcpy(&ss->pv[1], (ss+1)->pv, (ss+1)->pvLength * sizeof(Move));
+                  if (SpNode) {
+                      memcpy(splitPoint->ss->pv, ss->pv, ss->pvLength * sizeof(Move));
+                      splitPoint->ss->pvLength = ss->pvLength;
+                  }
               }
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
@@ -1004,7 +1008,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
-          thisThread->split(pos, ss, alpha, beta, &bestValue, &bestMove,
+          thisThread->split(pos, ss, alpha, beta, &bestValue, &bestMove, ss->pv, &ss->pvLength,
                             depth, moveCount, &mp, NT, cutNode);
 
           if (Signals.stop || thisThread->cutoff_occurred())
