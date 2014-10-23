@@ -141,8 +141,8 @@ namespace {
   // Threat[attacking][attacked] contains bonuses according to which piece
   // type attacks which one.
   const Score Threat[][PIECE_TYPE_NB] = {
-    { S(0, 0), S( 7, 39), S(24, 49), S(24, 49), S(41,100), S(41,100) }, // Minor
-    { S(0, 0), S(15, 39), S(15, 45), S(15, 45), S(15, 45), S(24, 49) }  // Major
+    { S(0, 0), S(0, 38), S(32, 45), S(32, 45), S(41,100), S(35,104) }, // Minor
+    { S(0, 0), S(7, 28), S(20, 49), S(20, 49), S(8 , 42), S(23, 44) }  // Major
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
@@ -490,6 +490,23 @@ namespace {
     return score;
   }
 
+  // max_threat() is a helper function to calculate the score of a set of threats.
+  // The set of threatened pieces is in the "targets" parameter, and we return
+  // the value of the threat on the biggest piece.
+
+  template<Color Us> FORCE_INLINE
+  Score max_threat(const Bitboard targets, const Position& pos, const Score threat_values[]) {
+
+    const Color Them = (Us == WHITE ? BLACK : WHITE);
+
+    PieceType threat = PAWN;
+    if (targets & pos.pieces(Them, KNIGHT))  threat = KNIGHT;
+    if (targets & pos.pieces(Them, BISHOP))  threat = BISHOP;
+    if (targets & pos.pieces(Them, ROOK))    threat = ROOK;
+    if (targets & pos.pieces(Them, QUEEN))   threat = QUEEN;
+    
+    return threat_values[threat];
+  }
 
   // evaluate_threats() assigns bonuses according to the type of attacking piece
   // and the type of attacked one.
@@ -509,7 +526,8 @@ namespace {
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
 
     if (protectedEnemies)
-        score += Threat[Minor][type_of(pos.piece_on(lsb(protectedEnemies)))];
+        score += max_threat<Us>(protectedEnemies, pos, Threat[Minor]);
+
 
     // Enemies not defended by a pawn and under our attack
     weakEnemies =  pos.pieces(Them)
@@ -521,11 +539,11 @@ namespace {
     {
         b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
-            score += Threat[Minor][type_of(pos.piece_on(lsb(b)))];
+            score += max_threat<Us>(b, pos, Threat[Minor]);
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
-            score += Threat[Major][type_of(pos.piece_on(lsb(b)))];
+            score += max_threat<Us>(b, pos, Threat[Major]);
 
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
