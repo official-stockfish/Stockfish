@@ -438,8 +438,7 @@ namespace {
     if (PvNode && thisThread->maxPly < ss->ply)
         thisThread->maxPly = ss->ply;
 
-    if (PvNode)
-        ss->pvLength = (ss+1)->pvLength = 0;
+    ss->pvLength = 0;
 
     if (!RootNode)
     {
@@ -1023,14 +1022,12 @@ moves_loop: // When in check and at SpNode search starts from here
     Depth ttDepth;
 
     // To flag BOUND_EXACT a node with eval above alpha and no available moves
-    if (PvNode)
+    if (PvNode) 
         oldAlpha = alpha;
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
-
-    if (PvNode)
-        ss->pvLength = (ss+1)->pvLength = 0;
+    ss->pvLength = 0;
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply > MAX_PLY)
