@@ -332,8 +332,10 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
   *bestValue = sp.bestValue;
-  memcpy(pv, sp.ss->pv, sizeof(Move) * sp.ss->pvLength);
-  *pvLength = sp.ss->pvLength;
+  if (pv) {
+      memcpy(pv, sp.ss->pv, sizeof(Move) * sp.ss->pvLength);
+      *pvLength = sp.ss->pvLength;
+  }
 
   sp.mutex.unlock();
   Threads.mutex.unlock();
