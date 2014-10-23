@@ -439,7 +439,7 @@ namespace {
         thisThread->maxPly = ss->ply;
 
     if (PvNode)
-        ss->pvLength = 0;
+        ss->pvLength = (ss+1)->pvLength = 0;
 
     if (!RootNode)
     {
@@ -901,7 +901,6 @@ moves_loop: // When in check and at SpNode search starts from here
           {
               rm.score = value;
               rm.pv.resize((ss+1)->pvLength + 1);
-              rm.pv[0] = move;
               memcpy(&rm.pv[1], (ss+1)->pv, (ss+1)->pvLength * sizeof(Move));
 
               // We record how often the best move has been changed in each
@@ -1031,7 +1030,7 @@ moves_loop: // When in check and at SpNode search starts from here
     ss->ply = (ss-1)->ply + 1;
 
     if (PvNode)
-        ss->pvLength = 0;
+        ss->pvLength = (ss+1)->pvLength = 0;
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply > MAX_PLY)
@@ -1180,6 +1179,7 @@ moves_loop: // When in check and at SpNode search starts from here
           {
               if (PvNode) {
                   ss->pv[0] = move;
+                  ss->pvLength = (ss+1)->pvLength + 1;
                   memcpy(&ss->pv[1], (ss+1)->pv, (ss+1)->pvLength*sizeof(Move));
               }
 
@@ -1353,7 +1353,7 @@ moves_loop: // When in check and at SpNode search starts from here
            << " multipv "   << i + 1
            << " pv";
 
-        for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; ++j)
+        for (size_t j = 0; j < RootMoves[i].pv.size(); ++j)
             ss << " " << move_to_uci(RootMoves[i].pv[j], pos.is_chess960());
     }
 
@@ -1371,9 +1371,9 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
   StateInfo state[MAX_PLY_PLUS_6], *st = state;
   const TTEntry* tte;
-  int idx = 0; // Ply starts from 1, we need to start from 0
+  int idx = 0;
 
-  do {
+  for (; idx < int(pv.size()); ++idx) {
       tte = TT.probe(pos.key());
 
       if (!tte || tte->move() != pv[idx]) // Don't overwrite correct entries
@@ -1381,9 +1381,8 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
       assert(MoveList<LEGAL>(pos).contains(pv[idx]));
 
-      pos.do_move(pv[idx++], *st++);
-
-  } while (pv[idx] != MOVE_NONE);
+      pos.do_move(pv[idx], *st++);
+  }
 
   while (idx) pos.undo_move(pv[--idx]);
 }
