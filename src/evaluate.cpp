@@ -21,7 +21,6 @@
 #include <cassert>
 #include <iomanip>
 #include <sstream>
-#include <iostream>  // SPSA debug
 
 #include "bitcount.h"
 #include "evaluate.h"
@@ -141,13 +140,10 @@ namespace {
 
   // Threat[attacking][attacked] contains bonuses according to which piece
   // type attacks which one.
-  /*
   const Score Threat[][PIECE_TYPE_NB] = {
-    { S(0, 0), S( 7, 39), S(24, 49), S(24, 49), S(41,100), S(41,100) }, // Minor
-    { S(0, 0), S(15, 39), S(15, 45), S(15, 45), S(15, 45), S(24, 49) }  // Major
+    { S(0, 0), S(0, 38), S(32, 45), S(32, 45), S(41,100), S(35,104) }, // Minor
+    { S(0, 0), S(7, 28), S(20, 49), S(20, 49), S(8, 42), S(23, 44) }  // Major
   };
-  */
-  Score Threat[2][PIECE_TYPE_NB]; // for SPSA
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
   // type is attacked by an enemy pawn.
@@ -923,57 +919,6 @@ namespace Eval {
         t = int(std::min(Peak, std::min(0.4 * i * i, t + MaxSlope)));
         KingDanger[i] = apply_weight(make_score(t, 0), Weights[KingSafety]);
     }
-    
-    // SPSA tuning of threats
-    enum { Minor, Major };
-    
-    int minor_a_m = Options["minor_a_m"];
-    int minor_a_e = Options["minor_a_e"];
-    int minor_b_m = Options["minor_b_m"];
-    int minor_b_e = Options["minor_b_e"];
-    int minor_c_m = Options["minor_c_m"];
-    int minor_c_e = Options["minor_c_e"];
-    int minor_d_m = Options["minor_d_m"];
-    int minor_d_e = Options["minor_d_e"];
-    
-    Threat[Minor][0]      = make_score(0,0);
-    Threat[Minor][PAWN]   = make_score(minor_a_m, minor_a_e);
-    Threat[Minor][KNIGHT] = make_score(minor_b_m, minor_b_e);
-    Threat[Minor][BISHOP] = make_score(minor_b_m, minor_b_e);
-    Threat[Minor][ROOK]   = make_score(minor_c_m, minor_c_e);
-    Threat[Minor][QUEEN]  = make_score(minor_d_m, minor_d_e);
-    
-    
-    int major_a_m = Options["major_a_m"];
-    int major_a_e = Options["major_a_e"];
-    int major_b_m = Options["major_b_m"];
-    int major_b_e = Options["major_b_e"];
-    int major_c_m = Options["major_c_m"];
-    int major_c_e = Options["major_c_e"];
-    int major_d_m = Options["major_d_m"];
-    int major_d_e = Options["major_d_e"];
-    
-    Threat[Major][0]      = make_score(0,0);
-    Threat[Major][PAWN]   = make_score(major_a_m, major_a_e);
-    Threat[Major][KNIGHT] = make_score(major_b_m, major_b_e);
-    Threat[Major][BISHOP] = make_score(major_b_m, major_b_e);
-    Threat[Major][ROOK]   = make_score(major_c_m, major_c_e);
-    Threat[Major][QUEEN]  = make_score(major_d_m, major_d_e);
-    
-    
-  }
-  
-  void debug() {
-  
-    std::cerr << "Minor \n";
-    for (PieceType pt = PAWN ; pt <= QUEEN ; ++pt)
-       std::cerr << mg_value(Threat[0][pt]) << "," << eg_value(Threat[0][pt]) << "\n";
-       
-    std::cerr << "Major \n";
-    for (PieceType pt = PAWN ; pt <= QUEEN ; ++pt)
-       std::cerr << mg_value(Threat[1][pt]) << "," << eg_value(Threat[1][pt]) << "\n";
-    
-    
   }
 
 } // namespace Eval

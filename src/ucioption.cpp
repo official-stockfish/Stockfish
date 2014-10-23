@@ -67,25 +67,6 @@ void init(OptionsMap& o) {
   o["Minimum Thinking Time"] << Option(20, 0, 5000);
   o["Slow Mover"]            << Option(80, 10, 1000);
   o["UCI_Chess960"]          << Option(false);
-  
-  // SPSA
-  o["minor_a_m"]                   << Option(7  , 0, 200, on_eval);
-  o["minor_a_e"]                   << Option(39 , 0, 200, on_eval);
-  o["minor_b_m"]                   << Option(24 , 0, 200, on_eval);
-  o["minor_b_e"]                   << Option(49 , 0, 200, on_eval);
-  o["minor_c_m"]                   << Option(41 , 0, 200, on_eval);
-  o["minor_c_e"]                   << Option(100, 0, 200, on_eval);
-  o["minor_d_m"]                   << Option(41 , 0, 200, on_eval);
-  o["minor_d_e"]                   << Option(100, 0, 200, on_eval);
-  
-  o["major_a_m"]                   << Option(15 , 0, 200, on_eval);
-  o["major_a_e"]                   << Option(39 , 0, 200, on_eval);
-  o["major_b_m"]                   << Option(15 , 0, 200, on_eval);
-  o["major_b_e"]                   << Option(45 , 0, 200, on_eval);
-  o["major_c_m"]                   << Option(15 , 0, 200, on_eval);
-  o["major_c_e"]                   << Option(45 , 0, 200, on_eval);
-  o["major_d_m"]                   << Option(24 , 0, 200, on_eval);
-  o["major_d_e"]                   << Option(49 , 0, 200, on_eval);
 }
 
 

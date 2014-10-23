@@ -30,7 +30,6 @@
 #include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
-#include "evaluate.h"  // SPSA debug
 
 using namespace std;
 
@@ -81,9 +80,6 @@ void benchmark(const Position& current, istream& is) {
   string token;
   Search::LimitsType limits;
   vector<string> fens;
-  
-  // SPSA : debug values
-  // Eval::debug();
 
   // Assign default values to missing arguments
   string ttSize    = (is >> token) ? token : "16";
