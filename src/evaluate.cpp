@@ -142,7 +142,7 @@ namespace {
   // type attacks which one.
   const Score Threat[][PIECE_TYPE_NB] = {
     { S(0, 0), S(0, 38), S(32, 45), S(32, 45), S(41,100), S(35,104) }, // Minor
-    { S(0, 0), S(7, 28), S(20, 49), S(20, 49), S(8, 42), S(23, 44) }  // Major
+    { S(0, 0), S(7, 28), S(20, 49), S(20, 49), S(8 , 42), S(23, 44) }  // Major
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
@@ -491,8 +491,8 @@ namespace {
   }
 
   // max_threat() is a helper function to calculate the score of a set of threats.
-  // The set of threatened pieces is in the "targets" parameter, and we use the 
-  // ordered values in the "threat_values" array to get the maximum threat.
+  // The set of threatened pieces is in the "targets" parameter, and we return
+  // the value of the threat on the biggest piece.
 
   template<Color Us> FORCE_INLINE
   Score max_threat(const Bitboard targets, const Position& pos, const Score threat_values[]) {
@@ -526,7 +526,7 @@ namespace {
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
 
     if (protectedEnemies)
-       score += max_threat<Us>(protectedEnemies, pos, Threat[Minor]);
+        score += max_threat<Us>(protectedEnemies, pos, Threat[Minor]);
 
 
     // Enemies not defended by a pawn and under our attack
@@ -539,15 +539,15 @@ namespace {
     {
         b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
-           score += max_threat<Us>(b, pos, Threat[Minor]);
+            score += max_threat<Us>(b, pos, Threat[Minor]);
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
-           score += max_threat<Us>(b, pos, Threat[Major]);
+            score += max_threat<Us>(b, pos, Threat[Major]);
 
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
-           score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
+            score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
 
         b = weakEnemies & ei.attackedBy[Us][KING];
         if (b)
