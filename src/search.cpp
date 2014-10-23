@@ -438,6 +438,9 @@ namespace {
     if (PvNode && thisThread->maxPly < ss->ply)
         thisThread->maxPly = ss->ply;
 
+    if (PvNode)
+        ss->pvLength = 0;
+
     if (!RootNode)
     {
         // Step 2. Check for aborted search and immediate draw
@@ -897,7 +900,9 @@ moves_loop: // When in check and at SpNode search starts from here
           if (pvMove || value > alpha)
           {
               rm.score = value;
-              rm.extract_pv_from_tt(pos);
+              rm.pv.resize((ss+1)->pvLength + 1);
+              rm.pv[0] = move;
+              memcpy(&rm.pv[1], (ss+1)->pv, (ss+1)->pvLength * sizeof(Move));
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
@@ -919,6 +924,12 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               bestMove = SpNode ? splitPoint->bestMove = move : move;
+
+              if (PvNode) {
+                  ss->pv[0] = move;
+                  ss->pvLength = (ss+1)->pvLength + 1;
+                  memcpy(&ss->pv[1], (ss+1)->pv, (ss+1)->pvLength * sizeof(Move));
+              }
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
                   alpha = SpNode ? splitPoint->alpha = value : value;
@@ -1018,6 +1029,9 @@ moves_loop: // When in check and at SpNode search starts from here
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
+
+    if (PvNode)
+        ss->pvLength = 0;
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply > MAX_PLY)
@@ -1164,6 +1178,11 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (value > alpha)
           {
+              if (PvNode) {
+                  ss->pv[0] = move;
+                  memcpy(&ss->pv[1], (ss+1)->pv, (ss+1)->pvLength*sizeof(Move));
+              }
+
               if (PvNode && value < beta) // Update alpha here! Always alpha < beta
               {
                   alpha = value;
@@ -1342,43 +1361,6 @@ moves_loop: // When in check and at SpNode search starts from here
   }
 
 } // namespace
-
-
-/// RootMove::extract_pv_from_tt() builds a PV by adding moves from the TT table.
-/// We also consider both failing high nodes and BOUND_EXACT nodes here to
-/// ensure that we have a ponder move even when we fail high at root. This
-/// results in a long PV to print that is important for position analysis.
-
-void RootMove::extract_pv_from_tt(Position& pos) {
-
-  StateInfo state[MAX_PLY_PLUS_6], *st = state;
-  const TTEntry* tte;
-  int ply = 1;    // At root ply is 1...
-  Move m = pv[0]; // ...instead pv[] array starts from 0
-  Value expectedScore = score;
-
-  pv.clear();
-
-  do {
-      pv.push_back(m);
-
-      assert(MoveList<LEGAL>(pos).contains(pv[ply - 1]));
-
-      pos.do_move(pv[ply++ - 1], *st++);
-      tte = TT.probe(pos.key());
-      expectedScore = -expectedScore;
-
-  } while (   tte
-           && expectedScore == value_from_tt(tte->value(), ply)
-           && pos.pseudo_legal(m = tte->move()) // Local copy, TT could change
-           && pos.legal(m, pos.pinned_pieces(pos.side_to_move()))
-           && ply < MAX_PLY
-           && (!pos.is_draw() || ply <= 2));
-
-  pv.push_back(MOVE_NONE); // Must be zero-terminating
-
-  while (--ply) pos.undo_move(pv[ply - 1]);
-}
 
 
 /// RootMove::insert_pv_in_tt() is called at the end of a search iteration, and

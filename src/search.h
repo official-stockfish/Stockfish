@@ -46,6 +46,8 @@ struct Stack {
   Depth reduction;
   Value staticEval;
   bool skipNullMove;
+  Move pv[MAX_PLY];
+  int pvLength;
 };
 
 
