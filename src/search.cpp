@@ -1433,6 +1433,12 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
       assert(MoveList<LEGAL>(pos).contains(pv[idx]));
 
+      if (!pos.pseudo_legal(pv[idx]) ||
+          !pos.legal(pv[idx], pos.pinned_pieces(pos.side_to_move()))) {
+          pv.resize(idx);
+          break;
+      }
+
       pos.do_move(pv[idx], *st++);
   }
 
