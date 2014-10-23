@@ -235,6 +235,48 @@ finalize:
 
 namespace {
 
+  struct PVCache {
+    struct Entry {
+      Key key;
+      Move pv[MAX_PLY];
+      int pvLength;
+      int age;
+    };
+
+    static const int size = 1 << 12;
+    Entry table[size];
+    int age;
+
+    void new_search() { ++age; }
+
+    Entry* probe(Key key) {
+      Entry* e = &table[key & (size - 17)];
+      for (int i = 0; i < 16; ++i, ++e) {
+        if (e->key == key) {
+          return e;
+        } 
+      }
+      return 0;
+    }
+
+    void store(Key key, Move* pv, int pvLength) {
+      Entry* e = &table[key & (size - 17)];
+      Entry* best = e;
+      for (int i = 0; i < 16; ++i, ++e) {
+        if (e->age != age) {
+          best = e;
+          break;
+        }
+      }
+      best->key = key;
+      memcpy(best->pv, pv, sizeof(Move) * pvLength);
+      best->pvLength = pvLength;
+      best->age = age;
+    }
+  };
+
+  PVCache PVTT;
+
   // id_loop() is the main iterative deepening loop. It calls search() repeatedly
   // with increasing depth until the allocated thinking time has been consumed,
   // user stops the search, or the maximum search depth is reached.
@@ -268,6 +310,8 @@ namespace {
     // Iterative deepening loop until requested to stop or target depth reached
     while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
     {
+        PVTT.new_search();
+
         // Age out PV variability metric
         BestMoveChanges *= 0.5;
 
@@ -379,7 +423,6 @@ namespace {
     }
   }
 
-
   // search<>() is the main search function for both PV and non-PV nodes and for
   // normal and SplitPoint nodes. When called just after a split point the search
   // is simpler because we have already probed the hash table, done a null move
@@ -484,6 +527,14 @@ namespace {
         // If ttMove is quiet, update killers, history, counter move and followup move on TT hit
         if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove) && !inCheck)
             update_stats(pos, ss, ttMove, depth, NULL, 0);
+
+        if (PvNode) {
+            PVCache::Entry* pvtt = PVTT.probe(posKey);
+            if (pvtt) {
+                ss->pvLength = pvtt->pvLength;
+                memcpy(ss->pv, pvtt->pv, sizeof(Move) * pvtt->pvLength);
+            }
+        }
 
         return ttValue;
     }
@@ -986,6 +1037,10 @@ moves_loop: // When in check and at SpNode search starts from here
     // Quiet best move: update killers, history, countermoves and followupmoves
     else if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
+
+    if (PvNode) {
+        PVTT.store(posKey, ss->pv, ss->pvLength);
+    }
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              bestValue >= beta  ? BOUND_LOWER :
