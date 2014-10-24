@@ -342,7 +342,9 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (PVIdx + 1 == std::min(multiPV, RootMoves.size()) || Time::now() - SearchTime > 3000)
+            if (   !Signals.stop
+                && (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
+                    || Time::now() - SearchTime > 3000))
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
