@@ -1327,11 +1327,11 @@ moves_loop: // When in check and at SpNode search starts from here
 
         ss << "info depth " << d
            << " seldepth "  << selDepth
+           << " multipv "   << i + 1
            << " score "     << (i == PVIdx ? score_to_uci(v, alpha, beta) : score_to_uci(v))
            << " nodes "     << pos.nodes_searched()
            << " nps "       << pos.nodes_searched() * 1000 / elapsed
            << " time "      << elapsed
-           << " multipv "   << i + 1
            << " pv";
 
         for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; ++j)
