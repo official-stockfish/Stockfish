@@ -490,23 +490,20 @@ namespace {
     return score;
   }
 
-  // max_threat() is a helper function to calculate the score of a set of threats.
-  // The set of threatened pieces is in the "targets" parameter, and we return
-  // the value of the threat on the biggest piece.
 
-  template<Color Us> FORCE_INLINE
-  Score max_threat(const Bitboard targets, const Position& pos, const Score threat_values[]) {
+  // max_piece_type() is a helper function used by evaluate_threats() to get
+  // the value of the biggest PieceType of color C in 'target' bitboard.
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+  template<Color C>
+  inline PieceType max_piece_type(const Position& pos, const Bitboard target) {
 
-    PieceType threat = PAWN;
-    if (targets & pos.pieces(Them, KNIGHT))  threat = KNIGHT;
-    if (targets & pos.pieces(Them, BISHOP))  threat = BISHOP;
-    if (targets & pos.pieces(Them, ROOK))    threat = ROOK;
-    if (targets & pos.pieces(Them, QUEEN))   threat = QUEEN;
-    
-    return threat_values[threat];
+    assert(target & (pos.pieces(C) ^ pos.pieces(C, KING)));
+
+    PieceType pt;
+    for (pt = QUEEN; !(target & pos.pieces(C, pt)); --pt) {}
+    return pt;
   }
+
 
   // evaluate_threats() assigns bonuses according to the type of attacking piece
   // and the type of attacked one.
@@ -516,34 +513,34 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b, weakEnemies, protectedEnemies;
-    Score score = SCORE_ZERO;
     enum { Minor, Major };
 
-    // Protected enemies
-    protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them,PAWN))
-                      & ei.attackedBy[Them][PAWN]
+    Bitboard b, weakEnemies, protectedEnemies;
+    Score score = SCORE_ZERO;
+
+    // Enemies defended by a pawn and under our attack by a minor piece
+    protectedEnemies =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
+                      &  ei.attackedBy[Them][PAWN]
                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
 
     if (protectedEnemies)
-        score += max_threat<Us>(protectedEnemies, pos, Threat[Minor]);
-
+        score += Threat[Minor][max_piece_type<Them>(pos, protectedEnemies)];
 
     // Enemies not defended by a pawn and under our attack
-    weakEnemies =  pos.pieces(Them)
+    weakEnemies =   pos.pieces(Them)
                  & ~ei.attackedBy[Them][PAWN]
-                 & ei.attackedBy[Us][ALL_PIECES];
+                 &  ei.attackedBy[Us][ALL_PIECES];
 
     // Add a bonus according if the attacking pieces are minor or major
     if (weakEnemies)
     {
         b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         if (b)
-            score += max_threat<Us>(b, pos, Threat[Minor]);
+            score += Threat[Minor][max_piece_type<Them>(pos, b)];
 
         b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         if (b)
-            score += max_threat<Us>(b, pos, Threat[Major]);
+            score += Threat[Major][max_piece_type<Them>(pos, b)];
 
         b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
