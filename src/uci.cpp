@@ -23,7 +23,6 @@
 #include <string>
 
 #include "evaluate.h"
-#include "notation.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
@@ -72,7 +71,7 @@ namespace {
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
 
     // Parse move list (if any)
-    while (is >> token && (m = move_from_uci(pos, token)) != MOVE_NONE)
+    while (is >> token && (m = UCI::move_from_uci(pos, token)) != MOVE_NONE)
     {
         SetupStates->push(StateInfo());
         pos.do_move(m, SetupStates->top());
@@ -117,7 +116,7 @@ namespace {
     {
         if (token == "searchmoves")
             while (is >> token)
-                limits.searchmoves.push_back(move_from_uci(pos, token));
+                limits.searchmoves.push_back(UCI::move_from_uci(pos, token));
 
         else if (token == "wtime")     is >> limits.time[WHITE];
         else if (token == "btime")     is >> limits.time[BLACK];

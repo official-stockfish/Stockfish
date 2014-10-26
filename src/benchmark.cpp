@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "misc.h"
-#include "notation.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
