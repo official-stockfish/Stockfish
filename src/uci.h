@@ -67,14 +67,10 @@ private:
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
 
-std::string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
-Move move_from_uci(const Position& pos, std::string& str);
-const std::string move_to_uci(Move m, bool chess960);
-
-inline const std::string to_string(Square s) {
-  char ch[] = { 'a' + file_of(s), '1' + rank_of(s), 0 };
-  return ch;
-}
+Move to_move(const Position& pos, std::string& str);
+std::string format_move(Move m, bool chess960);
+std::string format_value(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
+std::string format_square(Square s);
 
 } // namespace UCI
 

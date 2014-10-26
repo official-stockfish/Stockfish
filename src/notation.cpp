@@ -29,14 +29,14 @@ using namespace std;
 static const char* PieceToChar[COLOR_NB] = { " PNBRQK", " pnbrqk" };
 
 
-/// score_to_uci() converts a value to a string suitable for use with the UCI
+/// score_to_uci() converts a Value to a string suitable for use with the UCI
 /// protocol specifications:
 ///
 /// cp <x>     The score from the engine's point of view in centipawns.
 /// mate <y>   Mate in y moves, not plies. If the engine is getting mated
 ///            use negative values for y.
 
-string UCI::score_to_uci(Value v, Value alpha, Value beta) {
+string UCI::format_value(Value v, Value alpha, Value beta) {
 
   stringstream ss;
 
@@ -51,12 +51,20 @@ string UCI::score_to_uci(Value v, Value alpha, Value beta) {
 }
 
 
-/// move_to_uci() converts a move to a string in coordinate notation
+/// format_square() converts a Square to a string (g1, a7, etc.)
+
+std::string UCI::format_square(Square s) {
+  char ch[] = { 'a' + file_of(s), '1' + rank_of(s), 0 };
+  return ch;
+}
+
+
+/// format_move() converts a Move to a string in coordinate notation
 /// (g1f3, a7a8q, etc.). The only special case is castling moves, where we print
 /// in the e1g1 notation in normal chess mode, and in e1h1 notation in chess960
 /// mode. Internally castling moves are always encoded as "king captures rook".
 
-const string UCI::move_to_uci(Move m, bool chess960) {
+string UCI::format_move(Move m, bool chess960) {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
@@ -70,7 +78,7 @@ const string UCI::move_to_uci(Move m, bool chess960) {
   if (type_of(m) == CASTLING && !chess960)
       to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
-  string move = to_string(from) + to_string(to);
+  string move = format_square(from) + format_square(to);
 
   if (type_of(m) == PROMOTION)
       move += PieceToChar[BLACK][promotion_type(m)]; // Lower case
@@ -79,16 +87,16 @@ const string UCI::move_to_uci(Move m, bool chess960) {
 }
 
 
-/// move_from_uci() takes a position and a string representing a move in
+/// to_move() takes a position and a string representing a move in
 /// simple coordinate notation and returns an equivalent legal Move if any.
 
-Move UCI::move_from_uci(const Position& pos, string& str) {
+Move UCI::to_move(const Position& pos, string& str) {
 
   if (str.length() == 5) // Junior could send promotion piece in uppercase
       str[4] = char(tolower(str[4]));
 
   for (MoveList<LEGAL> it(pos); *it; ++it)
-      if (str == move_to_uci(*it, pos.is_chess960()))
+      if (str == format_move(*it, pos.is_chess960()))
           return *it;
 
   return MOVE_NONE;
