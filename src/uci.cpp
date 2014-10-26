@@ -241,7 +241,8 @@ string UCI::format_value(Value v, Value alpha, Value beta) {
 
 std::string UCI::format_square(Square s) {
 
-  char ch[] = { 'a' + file_of(s), '1' + rank_of(s), 0 }; // Zero-terminating
+  char ch[] = { char('a' + file_of(s)),
+                char('1' + rank_of(s)), 0 }; // Zero-terminating
   return ch;
 }
 
