@@ -30,16 +30,8 @@ std::string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VA
 Move move_from_uci(const Position& pos, std::string& str);
 const std::string move_to_uci(Move m, bool chess960);
 
-inline char to_char(File f, bool tolower = true) {
-  return char(f - FILE_A + (tolower ? 'a' : 'A'));
-}
-
-inline char to_char(Rank r) {
-  return char(r - RANK_1 + '1');
-}
-
 inline const std::string to_string(Square s) {
-  char ch[] = { to_char(file_of(s)), to_char(rank_of(s)), 0 };
+  char ch[] = { 'a' + file_of(s), '1' + rank_of(s), 0 };
   return ch;
 }
 
