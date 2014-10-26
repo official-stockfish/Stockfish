@@ -21,8 +21,8 @@
 #include <sstream>
 
 #include "movegen.h"
-#include "notation.h"
 #include "position.h"
+#include "uci.h"
 
 using namespace std;
 
@@ -36,7 +36,7 @@ static const char* PieceToChar[COLOR_NB] = { " PNBRQK", " pnbrqk" };
 /// mate <y>   Mate in y moves, not plies. If the engine is getting mated
 ///            use negative values for y.
 
-string score_to_uci(Value v, Value alpha, Value beta) {
+string UCI::score_to_uci(Value v, Value alpha, Value beta) {
 
   stringstream ss;
 
@@ -56,7 +56,7 @@ string score_to_uci(Value v, Value alpha, Value beta) {
 /// in the e1g1 notation in normal chess mode, and in e1h1 notation in chess960
 /// mode. Internally castling moves are always encoded as "king captures rook".
 
-const string move_to_uci(Move m, bool chess960) {
+const string UCI::move_to_uci(Move m, bool chess960) {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
@@ -82,7 +82,7 @@ const string move_to_uci(Move m, bool chess960) {
 /// move_from_uci() takes a position and a string representing a move in
 /// simple coordinate notation and returns an equivalent legal Move if any.
 
-Move move_from_uci(const Position& pos, string& str) {
+Move UCI::move_from_uci(const Position& pos, string& str) {
 
   if (str.length() == 5) // Junior could send promotion piece in uppercase
       str[4] = char(tolower(str[4]));

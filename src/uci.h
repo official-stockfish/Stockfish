@@ -23,6 +23,10 @@
 #include <map>
 #include <string>
 
+#include "types.h"
+
+class Position;
+
 namespace UCI {
 
 class Option;
@@ -62,6 +66,15 @@ private:
 
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
+
+std::string score_to_uci(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
+Move move_from_uci(const Position& pos, std::string& str);
+const std::string move_to_uci(Move m, bool chess960);
+
+inline const std::string to_string(Square s) {
+  char ch[] = { 'a' + file_of(s), '1' + rank_of(s), 0 };
+  return ch;
+}
 
 } // namespace UCI
 

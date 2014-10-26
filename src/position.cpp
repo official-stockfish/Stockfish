@@ -25,12 +25,12 @@
 
 #include "bitcount.h"
 #include "movegen.h"
-#include "notation.h"
 #include "position.h"
 #include "psqtab.h"
 #include "rkiss.h"
 #include "thread.h"
 #include "tt.h"
+#include "uci.h"
 
 using std::string;
 
@@ -423,7 +423,7 @@ const string Position::fen() const {
   if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
 
-  ss << (ep_square() == SQ_NONE ? " - " : " " + to_string(ep_square()) + " ")
+  ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::to_string(ep_square()) + " ")
      << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
   return ss.str();
@@ -450,7 +450,7 @@ const string Position::pretty() const {
      << std::setfill('0') << std::setw(16) << st->key << "\nCheckers: ";
 
   for (Bitboard b = checkers(); b; )
-      ss << to_string(pop_lsb(&b)) << " ";
+      ss << UCI::to_string(pop_lsb(&b)) << " ";
 
   return ss.str();
 }
