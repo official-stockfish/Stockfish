@@ -27,7 +27,7 @@
 #include "material.h"
 #include "pawns.h"
 #include "thread.h"
-#include "ucioption.h"
+#include "uci.h"
 
 namespace {
 

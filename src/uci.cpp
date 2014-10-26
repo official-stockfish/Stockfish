@@ -28,7 +28,7 @@
 #include "search.h"
 #include "thread.h"
 #include "tt.h"
-#include "ucioption.h"
+#include "uci.h"
 
 using namespace std;
 
