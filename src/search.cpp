@@ -341,7 +341,9 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (PVIdx + 1 == std::min(multiPV, RootMoves.size()) || Time::now() - SearchTime > 3000)
+            if (   !Signals.stop
+                && (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
+                    || Time::now() - SearchTime > 3000))
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
@@ -1326,11 +1328,11 @@ moves_loop: // When in check and at SpNode search starts from here
 
         ss << "info depth " << d
            << " seldepth "  << selDepth
+           << " multipv "   << i + 1
            << " score "     << (i == PVIdx ? UCI::format_value(v, alpha, beta) : UCI::format_value(v))
            << " nodes "     << pos.nodes_searched()
            << " nps "       << pos.nodes_searched() * 1000 / elapsed
            << " time "      << elapsed
-           << " multipv "   << i + 1
            << " pv";
 
         for (size_t j = 0; RootMoves[i].pv[j] != MOVE_NONE; ++j)
