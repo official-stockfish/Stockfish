@@ -1138,12 +1138,19 @@ bool Position::is_draw() const {
       return true;
 
   StateInfo* stp = st;
+  bool check3fold = (st->previous == &startState); // Check for 3-fold for root move
+
   for (int i = 2, e = std::min(st->rule50, st->pliesFromNull); i <= e; i += 2)
   {
       stp = stp->previous->previous;
 
       if (stp->key == st->key)
-          return true; // Draw at first repetition
+      {
+          if (!check3fold)
+              return true; // Draw at first repetition
+          else
+              check3fold = false;
+      }
   }
 
   return false;
