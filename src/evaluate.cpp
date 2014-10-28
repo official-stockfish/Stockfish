@@ -499,12 +499,11 @@ namespace {
 
     assert(target & (pos.pieces(C) ^ pos.pieces(C, KING)));
 
-    PieceType pt;
-    for (pt = QUEEN; pt > PAWN; --pt)
+    for (PieceType pt = QUEEN; pt > PAWN; --pt)
         if (target & pos.pieces(C, pt))
             return pt;
 
-    return pt;
+    return PAWN;
   }
 
 
