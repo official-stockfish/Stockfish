@@ -23,7 +23,7 @@
 #include "movegen.h"
 #include "search.h"
 #include "thread.h"
-#include "ucioption.h"
+#include "uci.h"
 
 using namespace Search;
 

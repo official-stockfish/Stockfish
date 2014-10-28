@@ -23,6 +23,10 @@
 #include <map>
 #include <string>
 
+#include "types.h"
+
+class Position;
+
 namespace UCI {
 
 class Option;
@@ -62,6 +66,11 @@ private:
 
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
+
+std::string format_value(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
+std::string format_square(Square s);
+std::string format_move(Move m, bool chess960);
+Move to_move(const Position& pos, std::string& str);
 
 } // namespace UCI
 

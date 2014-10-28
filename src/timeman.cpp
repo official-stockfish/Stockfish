@@ -23,7 +23,7 @@
 
 #include "search.h"
 #include "timeman.h"
-#include "ucioption.h"
+#include "uci.h"
 
 namespace {
 

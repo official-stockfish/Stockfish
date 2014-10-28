@@ -26,7 +26,7 @@
 #include "misc.h"
 #include "thread.h"
 #include "tt.h"
-#include "ucioption.h"
+#include "uci.h"
 
 using std::string;
 
