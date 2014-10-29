@@ -262,7 +262,7 @@ namespace {
       Entry* e = &table[key & (size - 17)];
       Entry* best = e;
       for (int i = 0; i < 16; ++i, ++e) {
-        if (e->age != age) {
+        if (e->age != age || e->key == key) {
           best = e;
           break;
         }
@@ -1009,7 +1009,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
-          thisThread->split(pos, ss, alpha, beta, &bestValue, &bestMove, PvNode ? ss->pv : 0, &ss->pvLength,
+          thisThread->split(pos, ss, alpha, beta, &bestValue, &bestMove,
                             depth, moveCount, &mp, NT, cutNode);
 
           if (Signals.stop || thisThread->cutoff_occurred())
@@ -1043,9 +1043,8 @@ moves_loop: // When in check and at SpNode search starts from here
     else if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
 
-    if (PvNode) {
+    if (PvNode)
         PVTT.store(posKey, ss->pv, ss->pvLength);
-    }
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              bestValue >= beta  ? BOUND_LOWER :
@@ -1105,12 +1104,12 @@ moves_loop: // When in check and at SpNode search starts from here
     ttMove = tte ? tte->move() : MOVE_NONE;
     ttValue = tte ? value_from_tt(tte->value(),ss->ply) : VALUE_NONE;
 
-    if (   tte
+    if (  !PvNode
+        && tte
         && tte->depth() >= ttDepth
         && ttValue != VALUE_NONE // Only in case of TT access race
-        && (           PvNode ?  tte->bound() == BOUND_EXACT
-            : ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
-                              : (tte->bound() &  BOUND_UPPER)))
+        && (ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
+                            : (tte->bound() &  BOUND_UPPER)))
     {
         ss->currentMove = ttMove; // Can be MOVE_NONE
         return ttValue;
