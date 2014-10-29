@@ -236,9 +236,8 @@ namespace {
 
   struct PVCache {
     struct Entry {
+      PVEntry pv;
       Key key;
-      Move pv[MAX_PLY];
-      int pvLength;
       int age;
     };
 
@@ -258,7 +257,7 @@ namespace {
       return 0;
     }
 
-    void store(Key key, Move* pv, int pvLength) {
+    void store(Key key, const PVEntry & pv) {
       Entry* e = &table[key & (size - 17)];
       Entry* best = e;
       for (int i = 0; i < 16; ++i, ++e) {
@@ -267,9 +266,8 @@ namespace {
           break;
         }
       }
+      best->pv = pv;
       best->key = key;
-      memcpy(best->pv, pv, sizeof(Move) * pvLength);
-      best->pvLength = pvLength;
       best->age = age;
     }
   };
@@ -441,6 +439,7 @@ namespace {
     assert(PvNode || (alpha == beta - 1));
     assert(depth > DEPTH_ZERO);
 
+    PVEntry pv;
     Move quietsSearched[64];
     StateInfo st;
     const TTEntry *tte;
@@ -478,11 +477,12 @@ namespace {
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
+    if (NT == PV)
+       ss->pv->pv[0] = MOVE_NONE;
+
     // Used to send selDepth info to GUI
     if (PvNode && thisThread->maxPly < ss->ply)
         thisThread->maxPly = ss->ply;
-
-    ss->pvLength = 0;
 
     if (!RootNode)
     {
@@ -531,10 +531,8 @@ namespace {
 
         if (PvNode) {
             PVCache::Entry* pvtt = PVTT.probe(posKey);
-            if (pvtt) {
-                ss->pvLength = pvtt->pvLength;
-                memcpy(ss->pv, pvtt->pv, sizeof(Move) * pvtt->pvLength);
-            }
+            if (pvtt)
+                *ss->pv = pvtt->pv;
         }
 
         return ttValue;
@@ -919,11 +917,13 @@ moves_loop: // When in check and at SpNode search starts from here
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
       // parent node fail low with value <= alpha and to try another move.
-      if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta))))
+      if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta)))) {
+          (ss+1)->pv = &pv;
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : - search<PV, false>(pos, ss+1, -beta, -alpha, newDepth, false);
+      }
       // Step 17. Undo move
       pos.undo_move(move);
 
@@ -951,8 +951,9 @@ moves_loop: // When in check and at SpNode search starts from here
           if (pvMove || value > alpha)
           {
               rm.score = value;
-              rm.pv.resize((ss+1)->pvLength + 1);
-              memcpy(&rm.pv[1], (ss+1)->pv, (ss+1)->pvLength * sizeof(Move));
+              rm.pv.resize(1);
+              for (int i = 0; (ss+1)->pv && (ss+1)->pv->pv[i] != MOVE_NONE; ++i)
+                  rm.pv.push_back((ss+1)->pv->pv[i]);
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
@@ -975,14 +976,10 @@ moves_loop: // When in check and at SpNode search starts from here
           {
               bestMove = SpNode ? splitPoint->bestMove = move : move;
 
-              if (PvNode) {
-                  ss->pv[0] = move;
-                  ss->pvLength = (ss+1)->pvLength + 1;
-                  memcpy(&ss->pv[1], (ss+1)->pv, (ss+1)->pvLength * sizeof(Move));
-                  if (SpNode) {
-                      memcpy(splitPoint->ss->pv, ss->pv, ss->pvLength * sizeof(Move));
-                      splitPoint->ss->pvLength = ss->pvLength;
-                  }
+              if (NT == PV) {
+                  ss->pv->update(move, (ss+1)->pv);
+                  if (SpNode)
+                      *splitPoint->ss->pv = *ss->pv;
               }
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
@@ -1043,8 +1040,8 @@ moves_loop: // When in check and at SpNode search starts from here
     else if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
 
-    if (PvNode)
-        PVTT.store(posKey, ss->pv, ss->pvLength);
+    if (NT == PV)
+        PVTT.store(posKey, *ss->pv);
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              bestValue >= beta  ? BOUND_LOWER :
@@ -1072,6 +1069,7 @@ moves_loop: // When in check and at SpNode search starts from here
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= DEPTH_ZERO);
 
+    PVEntry pv;
     StateInfo st;
     const TTEntry* tte;
     Key posKey;
@@ -1081,12 +1079,14 @@ moves_loop: // When in check and at SpNode search starts from here
     Depth ttDepth;
 
     // To flag BOUND_EXACT a node with eval above alpha and no available moves
-    if (PvNode) 
+    if (PvNode)
         oldAlpha = alpha;
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
-    ss->pvLength = 0;
+    (ss+1)->pv = PvNode ? &pv : 0;
+    if (PvNode)
+        ss->pv->pv[0] = MOVE_NONE;
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply > MAX_PLY)
@@ -1233,11 +1233,8 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (value > alpha)
           {
-              if (PvNode) {
-                  ss->pv[0] = move;
-                  ss->pvLength = (ss+1)->pvLength + 1;
-                  memcpy(&ss->pv[1], (ss+1)->pv, (ss+1)->pvLength*sizeof(Move));
-              }
+              if (PvNode)
+                  ss->pv->update(move, (ss+1)->pv);
 
               if (PvNode && value < beta) // Update alpha here! Always alpha < beta
               {
