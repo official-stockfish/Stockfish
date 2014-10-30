@@ -1566,7 +1566,7 @@ void check_time() {
   {
       Threads.mutex.lock();
 
-      int nodes = RootPos.nodes_searched();
+      int64_t nodes = RootPos.nodes_searched();
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
