@@ -766,27 +766,25 @@ namespace {
     if (    ei.mi->game_phase() < PHASE_MIDGAME
         && (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN))
     {
-        if (pos.opposite_bishops()) {
-            // Ignoring any pawns, do both sides only have a single bishop and no
-            // other pieces?
+        if (pos.opposite_bishops())
+        {
+            // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
+            // is almost a draw, in case of KBP vs KB is even more a draw.
             if (   pos.non_pawn_material(WHITE) == BishopValueMg
                 && pos.non_pawn_material(BLACK) == BishopValueMg)
-            {
-                // Check for KBP vs KB with only a single pawn that is almost
-                // certainly a draw or at least two pawns.
-                bool one_pawn = (pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK) == 1);
-                sf = one_pawn ? ScaleFactor(8) : ScaleFactor(32);
-            }
+                sf = more_than_one(pos.pieces(PAWN)) ? ScaleFactor(32) : ScaleFactor(8);
+
+            // Endgame with opposite-colored bishops, but also other pieces. Still
+            // a bit drawish, but not as drawish as with only the two bishops.
             else
-                // Endgame with opposite-colored bishops, but also other pieces. Still
-                // a bit drawish, but not as drawish as with only the two bishops.
                  sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
-        } else if (    abs(eg_value(score)) <= BishopValueEg
-                   &&  ei.pi->pawn_span(strongSide) <= 1
-                   && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide))) {
-            // Endings where weaker side can be place his king in front of the opponent's pawns are drawish.
-            sf = ScaleFactor(ScalePawnSpan[ei.pi->pawn_span(strongSide)]);
         }
+        // Endings where weaker side can place his king in front of the opponent's
+        // pawns are drawish.
+        else if (    abs(eg_value(score)) <= BishopValueEg
+                 &&  ei.pi->pawn_span(strongSide) <= 1
+                 && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide)))
+                 sf = ScaleFactor(ScalePawnSpan[ei.pi->pawn_span(strongSide)]);
     }
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
