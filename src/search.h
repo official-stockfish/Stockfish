@@ -35,14 +35,6 @@ namespace Search {
 struct PVEntry {
   Move pv[MAX_PLY];
 
-  PVEntry & operator=(const PVEntry & other) {
-      int i;
-      for (i = 0; other.pv[i] != MOVE_NONE; ++i)
-          pv[i] = other.pv[i];
-      pv[i] = MOVE_NONE;
-      return *this;
-  }
-
   void update(Move move, PVEntry* child) {
       pv[0] = move;
 
