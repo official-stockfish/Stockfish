@@ -234,46 +234,6 @@ finalize:
 
 namespace {
 
-  struct PVCache {
-    struct Entry {
-      PVEntry pv;
-      Key key;
-      int age;
-    };
-
-    static const int size = 1 << 12;
-    Entry table[size];
-    int age;
-
-    void new_search() { ++age; }
-
-    Entry* probe(Key key) {
-      Entry* e = &table[key & (size - 17)];
-      for (int i = 0; i < 16; ++i, ++e) {
-        if (e->key == key) {
-          return e;
-        } 
-      }
-      return 0;
-    }
-
-    void store(Key key, const PVEntry & pv) {
-      Entry* e = &table[key & (size - 17)];
-      Entry* best = e;
-      for (int i = 0; i < 16; ++i, ++e) {
-        if (e->age != age || e->key == key) {
-          best = e;
-          break;
-        }
-      }
-      best->pv = pv;
-      best->key = key;
-      best->age = age;
-    }
-  };
-
-  PVCache PVTT;
-
   // id_loop() is the main iterative deepening loop. It calls search() repeatedly
   // with increasing depth until the allocated thinking time has been consumed,
   // user stops the search, or the maximum search depth is reached.
@@ -307,8 +267,6 @@ namespace {
     // Iterative deepening loop until requested to stop or target depth reached
     while (++depth <= MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
     {
-        PVTT.new_search();
-
         // Age out PV variability metric
         BestMoveChanges *= 0.5;
 
@@ -527,12 +485,6 @@ namespace {
         // If ttMove is quiet, update killers, history, counter move and followup move on TT hit
         if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove) && !inCheck)
             update_stats(pos, ss, ttMove, depth, NULL, 0);
-
-        if (PvNode) {
-            PVCache::Entry* pvtt = PVTT.probe(posKey);
-            if (pvtt)
-                *ss->pv = pvtt->pv;
-        }
 
         return ttValue;
     }
@@ -1038,9 +990,6 @@ moves_loop: // When in check and at SpNode search starts from here
     // Quiet best move: update killers, history, countermoves and followupmoves
     else if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
-
-    if (NT == PV)
-        PVTT.store(posKey, *ss->pv);
 
     TT.store(posKey, value_to_tt(bestValue, ss->ply),
              bestValue >= beta  ? BOUND_LOWER :
