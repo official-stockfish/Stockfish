@@ -27,58 +27,14 @@
 
 using namespace std;
 
+namespace {
+
 /// Version number. If Version is left empty, then compile date in the format
 /// DD-MM-YY and show in engine_info.
-static const string Version = "";
+const string Version = "";
 
-
-/// engine_info() returns the full name of the current Stockfish version. This
-/// will be either "Stockfish <Tag> DD-MM-YY" (where DD-MM-YY is the date when
-/// the program was compiled) or "Stockfish <Version>", depending on whether
-/// Version is empty.
-
-const string engine_info(bool to_uci) {
-
-  const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-  string month, day, year;
-  stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
-
-  ss << "Stockfish " << Version << setfill('0');
-
-  if (Version.empty())
-  {
-      date >> month >> day >> year;
-      ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
-  }
-
-  ss << (Is64Bit ? " 64" : "")
-     << (HasPext ? " BMI2" : (HasPopCnt ? " SSE4.2" : ""))
-     << (to_uci  ? "\nid author ": " by ")
-     << "Tord Romstad, Marco Costalba and Joona Kiiski";
-
-  return ss.str();
-}
-
-
-/// Debug functions used mainly to collect run-time statistics
-
-static int64_t hits[2], means[2];
-
-void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }
-void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
-
-void dbg_print() {
-
-  if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
-
-  if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
-}
-
+/// Debug counters
+int64_t hits[2], means[2];
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -136,6 +92,53 @@ public:
     }
   }
 };
+
+} // namespace
+
+/// engine_info() returns the full name of the current Stockfish version. This
+/// will be either "Stockfish <Tag> DD-MM-YY" (where DD-MM-YY is the date when
+/// the program was compiled) or "Stockfish <Version>", depending on whether
+/// Version is empty.
+
+const string engine_info(bool to_uci) {
+
+  const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
+  string month, day, year;
+  stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
+
+  ss << "Stockfish " << Version << setfill('0');
+
+  if (Version.empty())
+  {
+      date >> month >> day >> year;
+      ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
+  }
+
+  ss << (Is64Bit ? " 64" : "")
+     << (HasPext ? " BMI2" : (HasPopCnt ? " SSE4.2" : ""))
+     << (to_uci  ? "\nid author ": " by ")
+     << "Tord Romstad, Marco Costalba and Joona Kiiski";
+
+  return ss.str();
+}
+
+
+/// Debug functions used mainly to collect run-time statistics
+
+void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
+void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }
+void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
+
+void dbg_print() {
+
+  if (hits[0])
+      cerr << "Total " << hits[0] << " Hits " << hits[1]
+           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+
+  if (means[0])
+      cerr << "Total " << means[0] << " Mean "
+           << (double)means[1] / means[0] << endl;
+}
 
 
 /// Used to serialize access to std::cout to avoid multiple threads writing at
