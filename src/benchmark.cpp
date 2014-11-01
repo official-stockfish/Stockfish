@@ -67,7 +67,7 @@ const char* Defaults[] = {
   "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1"
 };
 
-}	// namespace
+} // namespace
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
 /// of positions for a given limit each. There are five parameters: the
