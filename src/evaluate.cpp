@@ -27,7 +27,6 @@
 #include "material.h"
 #include "pawns.h"
 #include "thread.h"
-#include "uci.h"
 
 namespace {
 
@@ -903,8 +902,7 @@ namespace Eval {
   }
 
 
-  /// init() computes evaluation weights from the corresponding UCI parameters
-  /// and setup king tables.
+  /// init() computes evaluation weights.
 
   void init() {
 
