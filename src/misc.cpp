@@ -93,7 +93,7 @@ public:
   }
 };
 
-}  // namespace
+} // namespace
 
 /// engine_info() returns the full name of the current Stockfish version. This
 /// will be either "Stockfish <Tag> DD-MM-YY" (where DD-MM-YY is the date when
