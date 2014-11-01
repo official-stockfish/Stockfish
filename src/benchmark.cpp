@@ -32,7 +32,9 @@
 
 using namespace std;
 
-static const char* Defaults[] = {
+namespace {
+
+const char* Defaults[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
@@ -65,6 +67,7 @@ static const char* Defaults[] = {
   "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1"
 };
 
+} // namespace
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
 /// of positions for a given limit each. There are five parameters: the

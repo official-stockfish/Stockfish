@@ -61,7 +61,7 @@ namespace {
       std::swap(*begin, *std::max_element(begin, end));
       return begin;
   }
-}
+} // namespace
 
 
 /// Constructors of the MovePicker class. As arguments we pass information
