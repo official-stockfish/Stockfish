@@ -39,7 +39,7 @@ struct PVEntry {
       pv[0] = move;
 
       int i = 1;
-      for (; child && child->pv[i - 1] != MOVE_NONE; ++i)
+      for (; child && i < MAX_PLY && child->pv[i - 1] != MOVE_NONE; ++i)
           pv[i] = child->pv[i - 1];
       pv[i] = MOVE_NONE;
   } 
