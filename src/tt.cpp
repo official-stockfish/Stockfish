@@ -69,14 +69,14 @@ void TranspositionTable::clear() {
 
 const TTEntry* TranspositionTable::probe(const Key key) const {
 
-  TTEntry* tte = first_entry(key);
-  uint16_t key16 = key >> 48;
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48;
 
-  for (unsigned i = 0; i < TTClusterSize; ++i, ++tte)
-      if (tte->key16 == key16)
+  for (unsigned i = 0; i < TTClusterSize; ++i)
+      if (tte[i].key16 == key16)
       {
-          tte->genBound8 = uint8_t(generation | tte->bound()); // Refresh
-          return tte;
+          tte[i].genBound8 = generation | (uint8_t)tte[i].bound(); // Refresh
+          return &tte[i];
       }
 
   return NULL;
@@ -93,27 +93,27 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
 
 void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
 
-  TTEntry *tte, *replace;
-  uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
 
-  tte = replace = first_entry(key);
-
-  for (unsigned i = 0; i < TTClusterSize; ++i, ++tte)
+  for (unsigned i = 0; i < TTClusterSize; ++i)
   {
-      if (!tte->key16 || tte->key16 == key16) // Empty or overwrite old
+      if (!tte[i].key16 || tte[i].key16 == key16) // Empty or overwrite old
       {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
-
-          replace = tte;
-          break;
+          // Save preserving any existing ttMove
+          tte[i].save(key16, v, b, d, m ? m : tte[i].move(), generation, statV);
+          return;
       }
+  }
 
-      // Implement replace strategy
-      if (  ((    tte->genBound8 & 0xFC) == generation || tte->bound() == BOUND_EXACT)
+  // Implement replace strategy
+  TTEntry* replace = tte;
+  for (unsigned i = 1; i < TTClusterSize; ++i)
+  {
+      if (  ((  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT)
           - ((replace->genBound8 & 0xFC) == generation)
-          - (tte->depth8 < replace->depth8) < 0)
-          replace = tte;
+          - (tte[i].depth8 < replace->depth8) < 0)
+          replace = &tte[i];
   }
 
   replace->save(key16, v, b, d, m, generation, statV);
