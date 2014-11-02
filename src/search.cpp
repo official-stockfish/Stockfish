@@ -1382,6 +1382,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
       if (!tte || tte->move() != pv[idx]) // Don't overwrite correct entries
           TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[idx], VALUE_NONE);
 
+      // Guard against incorrect moves in the PV
       if (!pos.pseudo_legal(pv[idx]) ||
           !pos.legal(pv[idx], pos.pinned_pieces(pos.side_to_move()))) {
           pv.resize(idx);
