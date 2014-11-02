@@ -231,6 +231,7 @@ finalize:
             << sync_endl;
 }
 
+
 namespace {
 
   // id_loop() is the main iterative deepening loop. It calls search() repeatedly
@@ -378,6 +379,7 @@ namespace {
         }
     }
   }
+
 
   // search<>() is the main search function for both PV and non-PV nodes and for
   // normal and SplitPoint nodes. When called just after a split point the search
