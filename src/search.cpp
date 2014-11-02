@@ -700,6 +700,9 @@ moves_loop: // When in check and at SpNode search starts from here
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
+      if (PvNode)
+          (ss+1)->pv = 0;
+
       ext = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
 
@@ -867,6 +870,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // high (in the latter case search only if value < beta), otherwise let the
       // parent node fail low with value <= alpha and to try another move.
       if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta)))) {
+          pv.pv[0] = MOVE_NONE;
           (ss+1)->pv = &pv;
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
