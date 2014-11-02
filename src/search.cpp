@@ -435,9 +435,6 @@ namespace {
     (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
-    if (NT == PV)
-       ss->pv->pv[0] = MOVE_NONE;
-
     // Used to send selDepth info to GUI
     if (PvNode && thisThread->maxPly < ss->ply)
         thisThread->maxPly = ss->ply;
@@ -702,6 +699,9 @@ moves_loop: // When in check and at SpNode search starts from here
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
+      if (PvNode)
+          (ss+1)->pv = 0;
+
       ext = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
 
@@ -870,6 +870,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // parent node fail low with value <= alpha and to try another move.
       if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta)))) {
           (ss+1)->pv = &pv;
+          pv.pv[0] = MOVE_NONE;
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
@@ -930,7 +931,7 @@ moves_loop: // When in check and at SpNode search starts from here
               if (NT == PV) {
                   ss->pv->update(move, (ss+1)->pv);
                   if (SpNode)
-                      *splitPoint->ss->pv = *ss->pv;
+                      splitPoint->ss->pv->update(move, (ss+1)->pv);
               }
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
@@ -1026,15 +1027,16 @@ moves_loop: // When in check and at SpNode search starts from here
     bool givesCheck, evasionPrunable;
     Depth ttDepth;
 
-    // To flag BOUND_EXACT a node with eval above alpha and no available moves
-    if (PvNode)
+    if (PvNode) {
+        // To flag BOUND_EXACT a node with eval above alpha and no available moves
         oldAlpha = alpha;
+
+        (ss+1)->pv = &pv;
+        ss->pv->pv[0] = MOVE_NONE;
+    }
 
     ss->currentMove = bestMove = MOVE_NONE;
     ss->ply = (ss-1)->ply + 1;
-    (ss+1)->pv = PvNode ? &pv : 0;
-    if (PvNode)
-        ss->pv->pv[0] = MOVE_NONE;
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply > MAX_PLY)
@@ -1078,7 +1080,7 @@ moves_loop: // When in check and at SpNode search starts from here
                 ss->staticEval = bestValue = evaluate(pos);
 
             // Can ttValue be used as a better position evaluation?
-            if (ttValue != VALUE_NONE)
+            if (!PvNode && ttValue != VALUE_NONE)
                 if (tte->bound() & (ttValue > bestValue ? BOUND_LOWER : BOUND_UPPER))
                     bestValue = ttValue;
         }
@@ -1182,7 +1184,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               if (PvNode)
-                  ss->pv->update(move, (ss+1)->pv);
+                  ss->pv->update(move, &pv);
 
               if (PvNode && value < beta) // Update alpha here! Always alpha < beta
               {

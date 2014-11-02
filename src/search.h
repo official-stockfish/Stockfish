@@ -33,7 +33,7 @@ struct SplitPoint;
 namespace Search {
 
 struct PVEntry {
-  Move pv[MAX_PLY];
+  Move pv[MAX_PLY+1];
 
   void update(Move move, PVEntry* child) {
       pv[0] = move;
@@ -76,7 +76,6 @@ struct RootMove {
   bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
   bool operator==(const Move& m) const { return pv[0] == m; }
 
-  void extract_pv_from_tt(Position& pos);
   void insert_pv_in_tt(Position& pos);
 
   Value score;
