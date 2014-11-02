@@ -105,8 +105,8 @@ extern Position RootPos;
 extern Time::point SearchTime;
 extern StateStackPtr SetupStates;
 
-extern void init();
-extern void think();
+void init();
+void think();
 template<bool Root> uint64_t perft(Position& pos, Depth depth);
 
 } // namespace Search
