@@ -73,6 +73,9 @@ const size_t StateCopySize64 = offsetof(StateInfo, key) / sizeof(uint64_t) + 1;
 /// when traversing the search tree.
 
 class Position {
+
+  friend std::ostream& operator<<(std::ostream&, const Position&);
+
 public:
   Position() {}
   Position(const Position& pos, Thread* t) { *this = pos; thisThread = t; }
@@ -80,10 +83,9 @@ public:
   Position& operator=(const Position&);
   static void init();
 
-  // Text input/output
+  // FEN string input/output
   void set(const std::string& fenStr, bool isChess960, Thread* th);
   const std::string fen() const;
-  const std::string pretty() const;
 
   // Position representation
   Bitboard pieces() const;

@@ -198,8 +198,6 @@ namespace {
   // scores, indexed by a calculated integer number.
   Score KingDanger[128];
 
-  const int ScalePawnSpan[2] = { 38, 56 };
-
   // apply_weight() weighs score 'v' by weight 'w' trying to prevent overflow
   Score apply_weight(Score v, const Weight& w) {
     return make_score(mg_value(v) * w.mg / 256, eg_value(v) * w.eg / 256);
@@ -783,7 +781,7 @@ namespace {
         else if (    abs(eg_value(score)) <= BishopValueEg
                  &&  ei.pi->pawn_span(strongSide) <= 1
                  && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide)))
-                 sf = ScaleFactor(ScalePawnSpan[ei.pi->pawn_span(strongSide)]);
+                 sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(56) : ScaleFactor(38);
     }
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
