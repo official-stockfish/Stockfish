@@ -231,7 +231,6 @@ finalize:
             << sync_endl;
 }
 
-
 namespace {
 
   // id_loop() is the main iterative deepening loop. It calls search() repeatedly
@@ -699,9 +698,6 @@ moves_loop: // When in check and at SpNode search starts from here
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
-      if (PvNode)
-          (ss+1)->pv = 0;
-
       ext = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
 
@@ -870,7 +866,6 @@ moves_loop: // When in check and at SpNode search starts from here
       // parent node fail low with value <= alpha and to try another move.
       if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta)))) {
           (ss+1)->pv = &pv;
-          pv.pv[0] = MOVE_NONE;
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
