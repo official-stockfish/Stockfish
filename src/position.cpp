@@ -122,7 +122,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   }
 
   os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase
-     << std::setfill('0') << std::setw(16) << pos.st->key << "\nCheckers: ";
+     << std::setfill('0') << std::setw(16) << pos.st->key << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
       os << UCI::format_square(pop_lsb(&b)) << " ";
