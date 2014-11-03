@@ -119,11 +119,11 @@ inline int square_distance(Square s1, Square s2) {
 }
 
 inline int file_distance(Square s1, Square s2) {
-  return abs(file_of(s1) - file_of(s2));
+  return dist(file_of(s1), file_of(s2));
 }
 
 inline int rank_distance(Square s1, Square s2) {
-  return abs(rank_of(s1) - rank_of(s2));
+  return dist(rank_of(s1), rank_of(s2));
 }
 
 
