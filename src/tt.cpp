@@ -102,14 +102,16 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
   {
       if (!tte->key16 || tte->key16 == key16) // Empty or overwrite old
       {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
-
-          replace = tte;
-          break;
+          // Preserve any existing ttMove
+          tte->save(key16, v, b, d, m ? m : tte->move(), generation, statV);
+          return;
       }
+  }
 
-      // Implement replace strategy
+  // Implement replace strategy
+  tte = replace + 1;
+  for (unsigned i = 1; i < TTClusterSize; ++i, ++tte)
+  {
       if (  ((    tte->genBound8 & 0xFC) == generation || tte->bound() == BOUND_EXACT)
           - ((replace->genBound8 & 0xFC) == generation)
           - (tte->depth8 < replace->depth8) < 0)
