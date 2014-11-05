@@ -195,7 +195,7 @@ void Bitboards::init() {
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                  if (is_ok(to) && square_distance(s, to) < 3)
+                  if (is_ok(to) && dist(s, to) < 3)
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
@@ -233,7 +233,7 @@ namespace {
 
     for (int i = 0; i < 4; ++i)
         for (Square s = sq + deltas[i];
-             is_ok(s) && square_distance(s, s - deltas[i]) == 1;
+             is_ok(s) && dist(s, s - deltas[i]) == 1;
              s += deltas[i])
         {
             attack |= s;
