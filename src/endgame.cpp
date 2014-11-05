@@ -579,7 +579,7 @@ ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
       if (   rk == RANK_6
           && dist(psq + 2 * push, ksq) <= 1
           && (PseudoAttacks[BISHOP][bsq] & (psq + push))
-          && file_distance(bsq, psq) >= 2)
+          && dist(file_of(bsq), file_of(psq)) >= 2)
           return ScaleFactor(8);
   }
 
@@ -604,8 +604,8 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
 
   Rank r = std::max(relative_rank(strongSide, wpsq1), relative_rank(strongSide, wpsq2));
 
-  if (   file_distance(bksq, wpsq1) <= 1
-      && file_distance(bksq, wpsq2) <= 1
+  if (   dist(file_of(bksq), file_of(wpsq1)) <= 1
+      && dist(file_of(bksq), file_of(wpsq2)) <= 1
       && relative_rank(strongSide, bksq) > r)
   {
       switch (r) {
@@ -638,7 +638,7 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
   // the king is within one file of the pawns, it's a draw.
   if (   !(pawns & ~in_front_bb(weakSide, rank_of(ksq)))
       && !((pawns & ~FileABB) && (pawns & ~FileHBB))
-      && file_distance(ksq, psq) <= 1)
+      && dist(file_of(ksq), file_of(psq)) <= 1)
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;
@@ -729,7 +729,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
       blockSq2 = make_square(file_of(psq1), rank_of(psq2));
   }
 
-  switch (file_distance(psq1, psq2))
+  switch (dist(file_of(psq1), file_of(psq2)))
   {
   case 0:
     // Both pawns are on the same file. It's an easy draw if the defender firmly
