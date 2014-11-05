@@ -181,7 +181,7 @@ void Bitboards::init() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           if (s1 != s2)
           {
-              SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
+              SquareDistance[s1][s2] = std::max((int)dist(file_of(s1), file_of(s2)), (int)dist(rank_of(s1), rank_of(s2)));
               DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 

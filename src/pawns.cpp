@@ -109,6 +109,7 @@ namespace {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
         File f = file_of(s);
+        Rank r = rank_of(s), rr = relative_rank(Us, r);
 
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
@@ -165,16 +166,16 @@ namespace {
             value -= UnsupportedPawnPenalty;
 
         if (doubled)
-            value -= Doubled[f] / rank_distance(s, lsb(doubled));
+            value -= Doubled[f] / dist(r, rank_of(lsb(doubled)));
 
         if (backward)
             value -= Backward[opposed][f];
 
         if (connected)
-            value += Connected[opposed][phalanx][relative_rank(Us, s)];
+            value += Connected[opposed][phalanx][rr];
 
         if (lever)
-            value += Lever[relative_rank(Us, s)];
+            value += Lever[rr];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;

@@ -122,10 +122,6 @@ inline int file_distance(Square s1, Square s2) {
   return dist(file_of(s1), file_of(s2));
 }
 
-inline int rank_distance(Square s1, Square s2) {
-  return dist(rank_of(s1), rank_of(s2));
-}
-
 
 /// shift_bb() moves bitboard one step along direction Delta. Mainly for pawns.
 
