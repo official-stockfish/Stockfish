@@ -100,9 +100,8 @@ const bool Is64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES      = 256;
-const int MAX_PLY        = 120;
-const int MAX_PLY_PLUS_6 = MAX_PLY + 6;
+const int MAX_MOVES = 256;
+const int MAX_PLY   = 128;
 
 /// A move needs 16 bits to be stored
 ///
@@ -255,6 +254,7 @@ enum Rank {
   RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB
 };
 
+template <typename T> inline T dist(T x, T y) { return x < y ? y - x : x - y; }
 
 /// The Score enum stores a middlegame and an endgame value in a single integer
 /// (enum). The least significant 16 bits are used to store the endgame value

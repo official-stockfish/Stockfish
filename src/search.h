@@ -91,13 +91,14 @@ struct RootMove {
 struct LimitsType {
 
   LimitsType() { // Using memset on a std::vector is undefined behavior
-    time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = movestogo =
-    depth = nodes = movetime = mate = infinite = ponder = 0;
+    nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = movestogo =
+    depth = movetime = mate = infinite = ponder = 0;
   }
   bool use_time_management() const { return !(mate | movetime | depth | nodes | infinite); }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], movestogo, depth, nodes, movetime, mate, infinite, ponder;
+  int time[COLOR_NB], inc[COLOR_NB], movestogo, depth, movetime, mate, infinite, ponder;
+  int64_t nodes;
 };
 
 
@@ -117,8 +118,8 @@ extern Position RootPos;
 extern Time::point SearchTime;
 extern StateStackPtr SetupStates;
 
-extern void init();
-extern void think();
+void init();
+void think();
 template<bool Root> uint64_t perft(Position& pos, Depth depth);
 
 } // namespace Search
