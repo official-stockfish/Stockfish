@@ -241,12 +241,10 @@ namespace {
   void id_loop(Position& pos) {
 
     Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
-    int depth;
     Value bestValue, alpha, beta, delta;
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
 
-    depth = 0;
     BestMoveChanges = 0;
     bestValue = delta = alpha = -VALUE_INFINITE;
     beta = VALUE_INFINITE;
@@ -265,7 +263,8 @@ namespace {
     multiPV = std::max(multiPV, skill.candidates_size());
 
     // Iterative deepening loop until requested to stop or target depth reached
-    while (++depth < MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
+    for (Depth depth = ONE_PLY; depth < MAX_PLY * ONE_PLY
+        && !Signals.stop && (!Limits.depth || depth <= Limits.depth); ++depth)
     {
         // Age out PV variability metric
         BestMoveChanges *= 0.5;
@@ -279,7 +278,7 @@ namespace {
         for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
-            if (depth >= 5)
+            if (depth >= 5 * ONE_PLY)
             {
                 delta = Value(16);
                 alpha = std::max(RootMoves[PVIdx].prevScore - delta,-VALUE_INFINITE);
@@ -291,7 +290,7 @@ namespace {
             // high/low anymore.
             while (true)
             {
-                bestValue = search<Root, false>(pos, ss, alpha, beta, depth * ONE_PLY, false);
+                bestValue = search<Root, false>(pos, ss, alpha, beta, depth, false);
 
                 // Bring the best move to the front. It is critical that sorting
                 // is done with a stable algorithm because all the values but the
@@ -316,7 +315,7 @@ namespace {
                 // the UI) before a re-search.
                 if (  (bestValue <= alpha || bestValue >= beta)
                     && Time::now() - SearchTime > 3000)
-                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+                    sync_cout << uci_pv(pos, int(depth), alpha, beta) << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
                 // re-search, otherwise exit the loop.
@@ -344,11 +343,11 @@ namespace {
             if (   !Signals.stop
                 && (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
                     || Time::now() - SearchTime > 3000))
-                sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+                sync_cout << uci_pv(pos, int(depth), alpha, beta) << sync_endl;
         }
 
         // If skill levels are enabled and time is up, pick a sub-optimal best move
-        if (skill.candidates_size() && skill.time_to_pick(depth))
+        if (skill.candidates_size() && skill.time_to_pick(int(depth)))
             skill.pick_move();
 
         // Have we found a "mate in x"?
@@ -361,7 +360,7 @@ namespace {
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
             // Take some extra time if the best move has changed
-            if (depth > 4 && multiPV == 1)
+            if (depth > 4 * ONE_PLY && multiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
             // Stop the search if only one legal move is available or all
