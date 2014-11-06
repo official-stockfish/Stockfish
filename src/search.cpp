@@ -101,7 +101,7 @@ namespace {
     }
 
     size_t candidates_size() const { return candidates; }
-    bool time_to_pick(int depth) const { return depth == 1 + level; }
+    bool time_to_pick(Depth depth) const { return int(depth) == 1 + level; }
     Move pick_move();
 
     int level;
@@ -347,7 +347,7 @@ namespace {
         }
 
         // If skill levels are enabled and time is up, pick a sub-optimal best move
-        if (skill.candidates_size() && skill.time_to_pick(int(depth)))
+        if (skill.candidates_size() && skill.time_to_pick(depth))
             skill.pick_move();
 
         // Have we found a "mate in x"?
