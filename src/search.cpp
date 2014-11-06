@@ -88,7 +88,7 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
-  string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
+  string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta);
 
   struct Skill {
     Skill(int l, size_t rootSize) : level(l),
@@ -315,7 +315,7 @@ namespace {
                 // the UI) before a re-search.
                 if (  (bestValue <= alpha || bestValue >= beta)
                     && Time::now() - SearchTime > 3000)
-                    sync_cout << uci_pv(pos, int(depth), alpha, beta) << sync_endl;
+                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
                 // re-search, otherwise exit the loop.
@@ -343,7 +343,7 @@ namespace {
             if (   !Signals.stop
                 && (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
                     || Time::now() - SearchTime > 3000))
-                sync_cout << uci_pv(pos, int(depth), alpha, beta) << sync_endl;
+                sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
         // If skill levels are enabled and time is up, pick a sub-optimal best move
@@ -1306,7 +1306,7 @@ moves_loop: // When in check and at SpNode search starts from here
   // requires that all (if any) unsearched PV lines are sent using a previous
   // search score.
 
-  string uci_pv(const Position& pos, int depth, Value alpha, Value beta) {
+  string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
     std::stringstream ss;
     Time::point elapsed = Time::now() - SearchTime + 1;
@@ -1321,16 +1321,15 @@ moves_loop: // When in check and at SpNode search starts from here
     {
         bool updated = (i <= PVIdx);
 
-        if (depth == 1 && !updated)
+        if (depth == ONE_PLY && !updated)
             continue;
 
-        int d   = updated ? depth : depth - 1;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
 
-        ss << "info depth " << d
+        ss << "info depth " << int(updated ? depth : depth - ONE_PLY)
            << " seldepth "  << selDepth
            << " multipv "   << i + 1
            << " score "     << (i == PVIdx ? UCI::format_value(v, alpha, beta) : UCI::format_value(v))
