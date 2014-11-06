@@ -114,8 +114,8 @@ inline bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
-inline Square dist(Square s1, Square s2) {
-  return (Square)SquareDistance[s1][s2];
+inline int dist(Square s1, Square s2) {
+  return SquareDistance[s1][s2];
 }
 
 
