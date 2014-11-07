@@ -24,8 +24,6 @@
 #include "bitcount.h"
 #include "rkiss.h"
 
-CACHE_LINE_ALIGNMENT
-
 Bitboard RMasks[SQUARE_NB];
 Bitboard RMagics[SQUARE_NB];
 Bitboard* RAttacks[SQUARE_NB];
@@ -57,8 +55,6 @@ namespace {
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
   const uint64_t DeBruijn_64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn_32 = 0x783A9B23;
-
-  CACHE_LINE_ALIGNMENT
 
   int MS1BTable[256];
   Square BSFTable[SQUARE_NB];
