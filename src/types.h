@@ -65,11 +65,6 @@
 #  endif
 
 #define CACHE_LINE_SIZE 64
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#  define CACHE_LINE_ALIGNMENT __declspec(align(CACHE_LINE_SIZE))
-#else
-#  define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(CACHE_LINE_SIZE)))
-#endif
 
 #ifdef _MSC_VER
 #  define FORCE_INLINE  __forceinline
@@ -325,8 +320,6 @@ inline Score operator*(Score s1, Score s2);
 inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
-
-CACHE_LINE_ALIGNMENT
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 

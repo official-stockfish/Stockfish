@@ -57,8 +57,6 @@ const Bitboard Rank6BB = Rank1BB << (8 * 5);
 const Bitboard Rank7BB = Rank1BB << (8 * 6);
 const Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-CACHE_LINE_ALIGNMENT
-
 extern Bitboard RMasks[SQUARE_NB];
 extern Bitboard RMagics[SQUARE_NB];
 extern Bitboard* RAttacks[SQUARE_NB];
