@@ -407,7 +407,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove;
     Depth ext, newDepth, predictedDepth;
     Value bestValue, value, ttValue, eval, nullValue, futilityValue;
-    bool inCheck, givesCheck, pvMove, singularExtensionNode, improving;
+    bool inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
 
@@ -802,7 +802,6 @@ moves_loop: // When in check and at SpNode search starts from here
           continue;
       }
 
-      pvMove = PvNode && moveCount == 1;
       ss->currentMove = move;
       if (!SpNode && !captureOrPromotion && quietCount < 64)
           quietsSearched[quietCount++] = move;
@@ -851,7 +850,7 @@ moves_loop: // When in check and at SpNode search starts from here
           ss->reduction = DEPTH_ZERO;
       }
       else
-          doFullDepthSearch = !pvMove;
+          doFullDepthSearch = !PvNode || moveCount > 1;
 
       // Step 16. Full depth search, when LMR is skipped or fails high
       if (doFullDepthSearch)
@@ -868,7 +867,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
       // parent node fail low with value <= alpha and to try another move.
-      if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta))))
+      if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta))))
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
@@ -897,7 +896,7 @@ moves_loop: // When in check and at SpNode search starts from here
           RootMove& rm = *std::find(RootMoves.begin(), RootMoves.end(), move);
 
           // PV move or new best move ?
-          if (pvMove || value > alpha)
+          if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
               rm.extract_pv_from_tt(pos);
@@ -905,7 +904,7 @@ moves_loop: // When in check and at SpNode search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (!pvMove)
+              if (moveCount > 1)
                   ++BestMoveChanges;
           }
           else
