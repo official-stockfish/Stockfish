@@ -112,17 +112,12 @@ inline bool more_than_one(Bitboard b) {
   return b & (b - 1);
 }
 
-inline int square_distance(Square s1, Square s2) {
-  return SquareDistance[s1][s2];
-}
+template<typename T> inline int distance(T x, T y) { return x < y ? y - x : x - y; }
+template<> inline int distance<Square>(Square x, Square y) { return SquareDistance[x][y]; }
 
-inline int file_distance(Square s1, Square s2) {
-  return dist(file_of(s1), file_of(s2));
-}
-
-inline int rank_distance(Square s1, Square s2) {
-  return dist(rank_of(s1), rank_of(s2));
-}
+template<typename T1, typename T2> inline int distance(T2 x, T2 y);
+template<> inline int distance<File>(Square x, Square y) { return distance(file_of(x), file_of(y)); }
+template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_of(x), rank_of(y)); }
 
 
 /// shift_bb() moves bitboard one step along direction Delta. Mainly for pawns.
