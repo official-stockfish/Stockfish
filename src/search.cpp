@@ -116,28 +116,26 @@ namespace {
 
 void Search::init() {
 
-  int d;  // depth (ONE_PLY == 2)
-  int hd; // half depth (ONE_PLY == 1)
-  int mc; // moveCount
-
   // Init reductions array
-  for (hd = 1; hd < 64; ++hd) for (mc = 1; mc < 64; ++mc)
-  {
-      double    pvRed = 0.00 + log(double(hd)) * log(double(mc)) / 3.00;
-      double nonPVRed = 0.33 + log(double(hd)) * log(double(mc)) / 2.25;
+  for (int d = 1; d < 64; ++d)
+      for (int mc = 1; mc < 64; ++mc)
+      {
+          double    pvRed = 0.00 + log(double(d)) * log(double(mc)) / 3.00;
+          double nonPVRed = 0.33 + log(double(d)) * log(double(mc)) / 2.25;
 
-      Reductions[1][1][hd][mc] = int8_t(   pvRed >= 1.0 ?    pvRed + 0.5: 0);
-      Reductions[0][1][hd][mc] = int8_t(nonPVRed >= 1.0 ? nonPVRed + 0.5: 0);
+          Reductions[1][1][d][mc] = int8_t(   pvRed >= 1.0 ?    pvRed + 0.5: 0);
+          Reductions[0][1][d][mc] = int8_t(nonPVRed >= 1.0 ? nonPVRed + 0.5: 0);
 
-      Reductions[1][0][hd][mc] = Reductions[1][1][hd][mc];
-      Reductions[0][0][hd][mc] = Reductions[0][1][hd][mc];
+          Reductions[1][0][d][mc] = Reductions[1][1][d][mc];
+          Reductions[0][0][d][mc] = Reductions[0][1][d][mc];
 
-      if (Reductions[0][0][hd][mc] >= 2)
-          Reductions[0][0][hd][mc] += 1;
-  }
+          // Increase reduction when eval is not improving
+          if (Reductions[0][0][d][mc] >= 2)
+              Reductions[0][0][d][mc] += 1;
+      }
 
   // Init futility move count array
-  for (d = 0; d < 32; ++d)
+  for (int d = 0; d < 32; ++d)
   {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
@@ -322,18 +320,22 @@ namespace {
                 // re-search, otherwise exit the loop.
                 if (bestValue <= alpha)
                 {
+                    beta = (alpha + beta) / 2;
                     alpha = std::max(bestValue - delta, -VALUE_INFINITE);
 
                     Signals.failedLowAtRoot = true;
                     Signals.stopOnPonderhit = false;
                 }
                 else if (bestValue >= beta)
+                {
+                    alpha = (alpha + beta) / 2;
                     beta = std::min(bestValue + delta, VALUE_INFINITE);
+                }
 
                 else
                     break;
 
-                delta += 3 * delta / 8;
+                delta += delta / 2;
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
@@ -750,7 +752,6 @@ moves_loop: // When in check and at SpNode search starts from here
           && !captureOrPromotion
           && !inCheck
           && !dangerous
-       /* &&  move != ttMove Already implicit in the next condition */
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Move count based pruning
@@ -816,9 +817,8 @@ moves_loop: // When in check and at SpNode search starts from here
       // Step 15. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
       if (    depth >= 3 * ONE_PLY
-          && !pvMove
+          &&  moveCount > 1
           && !captureOrPromotion
-          &&  move != ttMove
           &&  move != ss->killers[0]
           &&  move != ss->killers[1])
       {
@@ -1130,7 +1130,6 @@ moves_loop: // When in check and at SpNode search starts from here
       if (   !PvNode
           && !InCheck
           && !givesCheck
-          &&  move != ttMove
           &&  futilityBase > -VALUE_KNOWN_WIN
           && !pos.advanced_pawn_push(move))
       {
@@ -1160,7 +1159,6 @@ moves_loop: // When in check and at SpNode search starts from here
       // Don't search moves with negative SEE values
       if (   !PvNode
           && (!InCheck || evasionPrunable)
-          &&  move != ttMove
           &&  type_of(move) != PROMOTION
           &&  pos.see_sign(move) < VALUE_ZERO)
           continue;
