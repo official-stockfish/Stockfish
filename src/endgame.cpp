@@ -479,7 +479,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   if (   r == RANK_6
       && distance(bksq, queeningSq) <= 1
       && rank_of(wksq) + tempo <= RANK_6
-      && (rank_of(brsq) == RANK_1 || (!tempo && dist(file_of(brsq), f) >= 3)))
+      && (rank_of(brsq) == RANK_1 || (!tempo && distance(file_of(brsq), f) >= 3)))
       return SCALE_FACTOR_DRAW;
 
   if (   r >= RANK_6
@@ -535,7 +535,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   {
       if (file_of(bksq) == file_of(wpsq))
           return ScaleFactor(10);
-      if (   dist(file_of(bksq), file_of(wpsq)) == 1
+      if (   distance<File>(bksq, wpsq) == 1
           && distance(wksq, bksq) > 2)
           return ScaleFactor(24 - 2 * distance(wksq, bksq));
   }
@@ -749,7 +749,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
         && opposite_colors(ksq, wbsq)
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(weakSide, BISHOP))
-            || dist(r1, r2) >= 2))
+            || distance(r1, r2) >= 2))
         return SCALE_FACTOR_DRAW;
 
     else if (   ksq == blockSq2
