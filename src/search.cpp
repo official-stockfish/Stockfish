@@ -895,7 +895,7 @@ moves_loop: // When in check and at SpNode search starts from here
           RootMove& rm = *std::find(RootMoves.begin(), RootMoves.end(), move);
 
           // PV move or new best move ?
-          if ((PvNode && moveCount == 1) || value > alpha)
+          if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
               rm.extract_pv_from_tt(pos);
@@ -903,7 +903,7 @@ moves_loop: // When in check and at SpNode search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (!PvNode || moveCount > 1)
+              if (moveCount > 1)
                   ++BestMoveChanges;
           }
           else
