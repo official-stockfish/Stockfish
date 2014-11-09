@@ -64,7 +64,7 @@ If the engine is given a position to search that is in the tablebases, it
 will use the tablebases at the beginning of the search to preselect all
 good moves, i.e. all moves that preserve the win or preserve the draw while
 taking into account the 50-move rule.
-It wil then perform a search only on those moves. **The engine will not move
+It will then perform a search only on those moves. **The engine will not move
 immediately**, unless there is only a single good move. **The engine likely
 will not report a mate score even if the position is known to be won.**
 
