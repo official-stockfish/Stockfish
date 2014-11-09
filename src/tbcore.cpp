@@ -1539,17 +1539,17 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
   ubyte *sympat = d->sympat;
   while (symlen[sym] != 0) {
-    int w = *(int *)(sympat + 3 * sym);
-    int s1 = w & 0x0fff;
+    ubyte* w = sympat + (3 * sym);
+    int s1 = ((w[1] & 0xf) << 8) | w[0];
     if (litidx < (int)symlen[s1] + 1)
       sym = s1;
     else {
       litidx -= (int)symlen[s1] + 1;
-      sym = (w >> 12) & 0x0fff;
+      sym = (w[2] << 4) | (w[1] >> 4);
     }
   }
 
-  return *(sympat + 3 * sym);
+  return sympat[3 * sym];
 }
 
 void load_dtz_table(char *str, uint64 key1, uint64 key2)
