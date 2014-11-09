@@ -205,7 +205,7 @@ void Search::think() {
       goto finalize;
   }
 
-<<<<<<< HEAD
+/*
   if (Options["Write Search Log"])
   {
       Log log(Options["Search Log Filename"]);
@@ -217,6 +217,7 @@ void Search::think() {
           << " moves to go: " << Limits.movestogo
           << "\n" << std::endl;
   }
+*/
 
   piecesCnt = RootPos.total_piece_count();
   TBCardinality = Options["SyzygyProbeLimit"];
@@ -283,21 +284,6 @@ void Search::think() {
   if (RootInTB)
   {
       // If we mangled the hash key, unmangle it here
-  }
-
-  if (Options["Write Search Log"])
-  {
-      Time::point elapsed = Time::now() - SearchTime + 1;
-
-      Log log(Options["Search Log Filename"]);
-      log << "Nodes: "          << RootPos.nodes_searched()
-          << "\nNodes/second: " << RootPos.nodes_searched() * 1000 / elapsed
-          << "\nBest move: "    << move_to_san(RootPos, RootMoves[0].pv[0]);
-
-      StateInfo st;
-      RootPos.do_move(RootMoves[0].pv[0], st);
-      log << "\nPonder move: " << move_to_san(RootPos, RootMoves[0].pv[1]) << std::endl;
-      RootPos.undo_move(RootMoves[0].pv[0]);
   }
 
 finalize:
