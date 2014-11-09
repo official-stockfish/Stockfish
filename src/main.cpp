@@ -26,7 +26,7 @@
 #include "tbprobe.h"
 #include "thread.h"
 #include "tt.h"
-#include "ucioption.h"
+#include "uci.h"
 
 int main(int argc, char* argv[]) {
 
@@ -37,8 +37,8 @@ int main(int argc, char* argv[]) {
   Position::init();
   Bitbases::init_kpk();
   Search::init();
-  Pawns::init();
   Eval::init();
+  Pawns::init();
   Threads.init();
   TT.resize(Options["Hash"]);
   Tablebases::init(Options["SyzygyPath"]);

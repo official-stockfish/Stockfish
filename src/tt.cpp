@@ -28,20 +28,19 @@ TranspositionTable TT; // Our global transposition table
 
 /// TranspositionTable::resize() sets the size of the transposition table,
 /// measured in megabytes. Transposition table consists of a power of 2 number
-/// of clusters and each cluster consists of ClusterSize number of TTEntry.
+/// of clusters and each cluster consists of TTClusterSize number of TTEntry.
 
-void TranspositionTable::resize(uint64_t mbSize) {
+void TranspositionTable::resize(size_t mbSize) {
 
-  assert(msb((mbSize << 20) / sizeof(TTEntry)) < 32);
+  size_t newClusterCount = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(TTCluster));
 
-  uint32_t size = ClusterSize << msb((mbSize << 20) / sizeof(TTEntry[ClusterSize]));
-
-  if (hashMask == size - ClusterSize)
+  if (newClusterCount == clusterCount)
       return;
 
-  hashMask = size - ClusterSize;
+  clusterCount = newClusterCount;
+
   free(mem);
-  mem = calloc(size * sizeof(TTEntry) + CACHE_LINE_SIZE - 1, 1);
+  mem = calloc(clusterCount * sizeof(TTCluster) + CACHE_LINE_SIZE - 1, 1);
 
   if (!mem)
   {
@@ -50,7 +49,7 @@ void TranspositionTable::resize(uint64_t mbSize) {
       exit(EXIT_FAILURE);
   }
 
-  table = (TTEntry*)((uintptr_t(mem) + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1));
+  table = (TTCluster*)((uintptr_t(mem) + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1));
 }
 
 
@@ -60,7 +59,7 @@ void TranspositionTable::resize(uint64_t mbSize) {
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, (hashMask + ClusterSize) * sizeof(TTEntry));
+  std::memset(table, 0, clusterCount * sizeof(TTCluster));
 }
 
 
@@ -70,14 +69,14 @@ void TranspositionTable::clear() {
 
 const TTEntry* TranspositionTable::probe(const Key key) const {
 
-  TTEntry* tte = first_entry(key);
-  uint32_t key32 = key >> 32;
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48;
 
-  for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
-      if (tte->key32 == key32)
+  for (unsigned i = 0; i < TTClusterSize; ++i)
+      if (tte[i].key16 == key16)
       {
-          tte->generation8 = generation; // Refresh
-          return tte;
+          tte[i].genBound8 = generation | (uint8_t)tte[i].bound(); // Refresh
+          return &tte[i];
       }
 
   return NULL;
@@ -94,28 +93,24 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
 
 void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
 
-  TTEntry *tte, *replace;
-  uint32_t key32 = key >> 32; // Use the high 32 bits as key inside the cluster
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
 
-  tte = replace = first_entry(key);
-
-  for (unsigned i = 0; i < ClusterSize; ++i, ++tte)
-  {
-      if (!tte->key32 || tte->key32 == key32) // Empty or overwrite old
+  for (unsigned i = 0; i < TTClusterSize; ++i)
+      if (!tte[i].key16 || tte[i].key16 == key16) // Empty or overwrite old
       {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
-
-          replace = tte;
-          break;
+          // Save preserving any existing ttMove
+          tte[i].save(key16, v, b, d, m ? m : tte[i].move(), generation, statV);
+          return;
       }
 
-      // Implement replace strategy
-      if (  (    tte->generation8 == generation || tte->bound() == BOUND_EXACT)
-          - (replace->generation8 == generation)
-          - (tte->depth16 < replace->depth16) < 0)
-          replace = tte;
-  }
+  // Implement replace strategy
+  TTEntry* replace = tte;
+  for (unsigned i = 1; i < TTClusterSize; ++i)
+      if (  ((  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT)
+          - ((replace->genBound8 & 0xFC) == generation)
+          - (tte[i].depth8 < replace->depth8) < 0)
+          replace = &tte[i];
 
-  replace->save(key32, v, b, d, m, generation, statV);
+  replace->save(key16, v, b, d, m, generation, statV);
 }

@@ -17,22 +17,24 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <istream>
 #include <vector>
 
 #include "misc.h"
-#include "notation.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
 #include "tt.h"
-#include "ucioption.h"
+#include "uci.h"
 
 using namespace std;
 
-static const char* Defaults[] = {
+namespace {
+
+const char* Defaults[] = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
@@ -65,6 +67,7 @@ static const char* Defaults[] = {
   "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1"
 };
 
+} // namespace
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
 /// of positions for a given limit each. There are five parameters: the
@@ -81,7 +84,7 @@ void benchmark(const Position& current, istream& is) {
   vector<string> fens;
 
   // Assign default values to missing arguments
-  string ttSize    = (is >> token) ? token : "32";
+  string ttSize    = (is >> token) ? token : "16";
   string threads   = (is >> token) ? token : "1";
   string limit     = (is >> token) ? token : "13";
   string fenFile   = (is >> token) ? token : "default";
@@ -137,22 +140,9 @@ void benchmark(const Position& current, istream& is) {
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
-      if (limitType == "divide")
-          for (MoveList<LEGAL> it(pos); *it; ++it)
-          {
-              StateInfo si;
-              pos.do_move(*it, si);
-              uint64_t cnt = limits.depth > 1 ? Search::perft(pos, (limits.depth - 1) * ONE_PLY) : 1;
-              pos.undo_move(*it);
-              cerr << move_to_uci(*it, pos.is_chess960()) << ": " << cnt << endl;
-              nodes += cnt;
-          }
-      else if (limitType == "perft")
-      {
-          uint64_t cnt = Search::perft(pos, limits.depth * ONE_PLY);
-          cerr << "\nPerft " << limits.depth  << " leaf nodes: " << cnt << endl;
-          nodes += cnt;
-      }
+      if (limitType == "perft")
+          nodes += Search::perft<true>(pos, limits.depth * ONE_PLY);
+
       else
       {
           Threads.start_thinking(pos, limits, st);
@@ -161,7 +151,7 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  elapsed = Time::now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+  elapsed = std::max(Time::now() - elapsed, Time::point(1)); // Avoid a 'divide by zero'
 
   dbg_print(); // Just before to exit
 

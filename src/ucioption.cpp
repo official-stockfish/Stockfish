@@ -22,12 +22,15 @@
 #include <cstdlib>
 #include <sstream>
 
-#include "evaluate.h"
 #include "misc.h"
 #include "thread.h"
 #include "tt.h"
+<<<<<<< HEAD
 #include "ucioption.h"
 #include "tbprobe.h"
+=======
+#include "uci.h"
+>>>>>>> master
 
 using std::string;
 
@@ -37,7 +40,6 @@ namespace UCI {
 
 /// 'On change' actions, triggered by an option's value change
 void on_logger(const Option& o) { start_logger(o); }
-void on_eval(const Option&) { Eval::init(); }
 void on_threads(const Option&) { Threads.read_uci_options(); }
 void on_hash_size(const Option& o) { TT.resize(o); }
 void on_clear_hash(const Option&) { TT.clear(); }
@@ -56,6 +58,7 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 
 void init(OptionsMap& o) {
 
+<<<<<<< HEAD
   o["Write Debug Log"]          << Option(false, on_logger);
   o["Write Search Log"]         << Option(false);
   o["Search Log Filename"]      << Option("SearchLog.txt");
@@ -77,6 +80,21 @@ void init(OptionsMap& o) {
   o["SyzygyProbeDepth"]         << Option(1, 1, 100);
   o["Syzygy50MoveRule"]         << Option(true);
   o["SyzygyProbeLimit"]         << Option(6, 0, 6);
+=======
+  o["Write Debug Log"]       << Option(false, on_logger);
+  o["Contempt"]              << Option(0, -100, 100);
+  o["Min Split Depth"]       << Option(0, 0, 12, on_threads);
+  o["Threads"]               << Option(1, 1, MAX_THREADS, on_threads);
+  o["Hash"]                  << Option(16, 1, 1024 * 1024, on_hash_size);
+  o["Clear Hash"]            << Option(on_clear_hash);
+  o["Ponder"]                << Option(true);
+  o["MultiPV"]               << Option(1, 1, 500);
+  o["Skill Level"]           << Option(20, 0, 20);
+  o["Move Overhead"]         << Option(30, 0, 5000);
+  o["Minimum Thinking Time"] << Option(20, 0, 5000);
+  o["Slow Mover"]            << Option(80, 10, 1000);
+  o["UCI_Chess960"]          << Option(false);
+>>>>>>> master
 }
 
 

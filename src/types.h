@@ -65,11 +65,6 @@
 #  endif
 
 #define CACHE_LINE_SIZE 64
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#  define CACHE_LINE_ALIGNMENT __declspec(align(CACHE_LINE_SIZE))
-#else
-#  define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(CACHE_LINE_SIZE)))
-#endif
 
 #ifdef _MSC_VER
 #  define FORCE_INLINE  __forceinline
@@ -100,9 +95,8 @@ const bool Is64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES      = 256;
-const int MAX_PLY        = 120;
-const int MAX_PLY_PLUS_6 = MAX_PLY + 6;
+const int MAX_MOVES = 256;
+const int MAX_PLY   = 128;
 
 /// A move needs 16 bits to be stored
 ///
@@ -211,14 +205,14 @@ enum Piece {
 
 enum Depth {
 
-  ONE_PLY = 2,
+  ONE_PLY = 1,
 
-  DEPTH_ZERO          =  0 * ONE_PLY,
-  DEPTH_QS_CHECKS     =  0 * ONE_PLY,
-  DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
-  DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
+  DEPTH_ZERO          =  0,
+  DEPTH_QS_CHECKS     =  0,
+  DEPTH_QS_NO_CHECKS  = -1,
+  DEPTH_QS_RECAPTURES = -5,
 
-  DEPTH_NONE = -127 * ONE_PLY
+  DEPTH_NONE = -6
 };
 
 enum Square {
@@ -326,8 +320,6 @@ inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
-CACHE_LINE_ALIGNMENT
-
 extern Value PieceValue[PHASE_NB][PIECE_NB];
 
 struct ExtMove {
@@ -405,14 +397,6 @@ inline bool opposite_colors(Square s1, Square s2) {
   return ((s >> 3) ^ s) & 1;
 }
 
-inline char to_char(File f, bool tolower = true) {
-  return char(f - FILE_A + (tolower ? 'a' : 'A'));
-}
-
-inline char to_char(Rank r) {
-  return char(r - RANK_1 + '1');
-}
-
 inline Square pawn_push(Color c) {
   return c == WHITE ? DELTA_N : DELTA_S;
 }
@@ -443,14 +427,7 @@ inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
 }
 
 inline bool is_ok(Move m) {
-  return from_sq(m) != to_sq(m); // Catches also MOVE_NULL and MOVE_NONE
-}
-
-#include <string>
-
-inline const std::string to_string(Square s) {
-  char ch[] = { to_char(file_of(s)), to_char(rank_of(s)), 0 };
-  return ch;
+  return from_sq(m) != to_sq(m); // Catch also MOVE_NULL and MOVE_NONE
 }
 
 #endif // #ifndef TYPES_H_INCLUDED

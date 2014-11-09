@@ -30,7 +30,7 @@ EXE = stockfish
 PREFIX = /usr/local
 # Haiku has a non-standard filesystem layout
 ifeq ($(UNAME),Haiku)
-	PREFIX=/boot/common
+	PREFIX=/boot/system/non-packaged
 endif
 BINDIR = $(PREFIX)/bin
 
@@ -39,8 +39,8 @@ PGOBENCH = ./$(EXE) bench 32 1 1 default time
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
-	material.o misc.o movegen.o movepick.o notation.o pawns.o \
-	position.o search.o tbprobe.o thread.o timeman.o tt.o uci.o ucioption.o
+	material.o misc.o movegen.o movepick.o pawns.o position.o \
+	search.o tbprobe.o thread.o timeman.o tt.o uci.o ucioption.o
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -285,7 +285,11 @@ endif
 
 ### 3.9 popcnt
 ifeq ($(popcnt),yes)
-	CXXFLAGS += -msse3 -DUSE_POPCNT
+	ifeq ($(comp),icc)
+		CXXFLAGS += -msse3 -DUSE_POPCNT
+	else
+		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
+	endif
 endif
 
 ### 3.10 pext

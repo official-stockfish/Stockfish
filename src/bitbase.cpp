@@ -114,7 +114,7 @@ namespace {
     result = UNKNOWN;
 
     // Check if two pieces are on the same square or if a king can be captured
-    if (   square_distance(wksq, bksq) <= 1
+    if (   distance(wksq, bksq) <= 1
         || wksq == psq
         || bksq == psq
         || (us == WHITE && (StepAttacksBB[PAWN][psq] & bksq)))
@@ -125,7 +125,7 @@ namespace {
         // Immediate win if a pawn can be promoted without getting captured
         if (   rank_of(psq) == RANK_7
             && wksq != psq + DELTA_N
-            && (   square_distance(bksq, psq + DELTA_N) > 1
+            && (   distance(bksq, psq + DELTA_N) > 1
                 ||(StepAttacksBB[KING][wksq] & (psq + DELTA_N))))
             result = WIN;
     }

@@ -24,8 +24,6 @@
 #include "bitcount.h"
 #include "rkiss.h"
 
-CACHE_LINE_ALIGNMENT
-
 Bitboard RMasks[SQUARE_NB];
 Bitboard RMagics[SQUARE_NB];
 Bitboard* RAttacks[SQUARE_NB];
@@ -57,8 +55,6 @@ namespace {
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
   const uint64_t DeBruijn_64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn_32 = 0x783A9B23;
-
-  CACHE_LINE_ALIGNMENT
 
   int MS1BTable[256];
   Square BSFTable[SQUARE_NB];
@@ -149,7 +145,10 @@ const std::string Bitboards::pretty(Bitboard b) {
 void Bitboards::init() {
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      BSFTable[bsf_index(SquareBB[s] = 1ULL << s)] = s;
+  {
+      SquareBB[s] = 1ULL << s;
+      BSFTable[bsf_index(SquareBB[s])] = s;
+  }
 
   for (Bitboard b = 1; b < 256; ++b)
       MS1BTable[b] = more_than_one(b) ? MS1BTable[b - 1] : lsb(b);
@@ -178,7 +177,7 @@ void Bitboards::init() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           if (s1 != s2)
           {
-              SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
+              SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
               DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 
@@ -192,7 +191,7 @@ void Bitboards::init() {
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                  if (is_ok(to) && square_distance(s, to) < 3)
+                  if (is_ok(to) && distance(s, to) < 3)
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
@@ -230,7 +229,7 @@ namespace {
 
     for (int i = 0; i < 4; ++i)
         for (Square s = sq + deltas[i];
-             is_ok(s) && square_distance(s, s - deltas[i]) == 1;
+             is_ok(s) && distance(s, s - deltas[i]) == 1;
              s += deltas[i])
         {
             attack |= s;
@@ -251,9 +250,8 @@ namespace {
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
-    int MagicBoosters[][8] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
-                               { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
-
+    int MagicBoosters[][RANK_NB] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
+                                     { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
     RKISS rk;
     Bitboard occupancy[4096], reference[4096], edges, b;
     int i, size, booster;
@@ -301,7 +299,8 @@ namespace {
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
         do {
-            do magics[s] = rk.magic_rand<Bitboard>(booster);
+            do
+                magics[s] = rk.magic_rand<Bitboard>(booster);
             while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
             std::memset(attacks[s], 0, size * sizeof(Bitboard));
