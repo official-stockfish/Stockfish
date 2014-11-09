@@ -57,7 +57,7 @@ namespace {
   inline Value razor_margin(Depth d) { return Value(512 + 32 * d); }
 
   // Futility lookup tables (initialized at startup) and their access functions
-  int FutilityMoveCounts[2][32]; // [improving][depth]
+  int FutilityMoveCounts[2][16]; // [improving][depth]
 
   inline Value futility_margin(Depth d) {
     return Value(200 * d);
@@ -135,7 +135,7 @@ void Search::init() {
       }
 
   // Init futility move count array
-  for (int d = 0; d < 32; ++d)
+  for (int d = 0; d < 16; ++d)
   {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
