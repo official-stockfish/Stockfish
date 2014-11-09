@@ -97,24 +97,20 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
   const uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
 
   for (unsigned i = 0; i < TTClusterSize; ++i)
-  {
       if (!tte[i].key16 || tte[i].key16 == key16) // Empty or overwrite old
       {
           // Save preserving any existing ttMove
           tte[i].save(key16, v, b, d, m ? m : tte[i].move(), generation, statV);
           return;
       }
-  }
 
   // Implement replace strategy
   TTEntry* replace = tte;
   for (unsigned i = 1; i < TTClusterSize; ++i)
-  {
       if (  ((  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT)
           - ((replace->genBound8 & 0xFC) == generation)
           - (tte[i].depth8 < replace->depth8) < 0)
           replace = &tte[i];
-  }
 
   replace->save(key16, v, b, d, m, generation, statV);
 }
