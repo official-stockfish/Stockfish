@@ -137,13 +137,13 @@ namespace {
     V(0), V(5), V(8), V(8), V(8), V(8), V(5), V(0) }
   };
 
-  // Threat[attacking][attacked] contains bonuses according to which piece
-  // type attacks which one.
-  const Score Threat[][PIECE_TYPE_NB] = {
-    { S(0, 0), S( 0, 0), S(19, 37), S(24, 37), S(44, 97), S(35,106) }, // Protected Minor attacks
-    { S(0, 0), S( 0, 0), S( 9, 14), S( 9, 14), S( 7, 14), S(24, 48) }, // Protected Major attacks
-    { S(0, 0), S( 0,32), S(33, 41), S(31, 50), S(41,100), S(35,104) }, // Weak Minor attacks
-    { S(0, 0), S( 0,27), S(26, 57), S(26, 57), S(0 , 43), S(23, 51) }  // Weak Major attacks
+  // Threat[defended/weak][minor/major attacking][attacked PieceType] contains
+  // bonuses according to which piece type attacks which one.
+  const Score Threat[][2][PIECE_TYPE_NB] = {
+  { { S(0, 0), S( 0, 0), S(19, 37), S(24, 37), S(44, 97), S(35,106) },   // Defended Minor
+    { S(0, 0), S( 0, 0), S( 9, 14), S( 9, 14), S( 7, 14), S(24, 48) } }, // Defended Major
+  { { S(0, 0), S( 0,32), S(33, 41), S(31, 50), S(41,100), S(35,104) },   // Weak Minor
+    { S(0, 0), S( 0,27), S(26, 57), S(26, 57), S(0 , 43), S(23, 51) } }  // Weak Major
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
@@ -153,9 +153,9 @@ namespace {
   };
 
   // Assorted bonuses and penalties used by evaluation
-  const Score KingOnOne        = S(2 , 58);
-  const Score KingOnMany       = S(6 ,125);
-  const Score RookOnPawn       = S(7 , 27);
+  const Score KingOnOne        = S( 2, 58);
+  const Score KingOnMany       = S( 6,125);
+  const Score RookOnPawn       = S( 7, 27);
   const Score RookOpenFile     = S(43, 21);
   const Score RookSemiOpenFile = S(19, 10);
   const Score BishopPawns      = S( 8, 12);
@@ -490,8 +490,6 @@ namespace {
   }
 
 
-
-
   // evaluate_threats() assigns bonuses according to the type of attacking piece
   // and the type of attacked one.
 
@@ -500,49 +498,50 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    enum { Protected_Minor, Protected_Major, Minor, Major };
-    Bitboard b, weakEnemies, protectedEnemies;
+    enum { Defended, Weak };
+    enum { Minor, Major };
+
+    Bitboard b, weak, defended;
     Score score = SCORE_ZERO;
 
-    // Enemies defended by a pawn and under our attack
-    protectedEnemies = (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
-                       & ei.attackedBy[Them][PAWN]
-                       & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]);
+    // Non-pawn enemies defended by a pawn and under our attack
+    defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
+              &  ei.attackedBy[Them][PAWN]
+              & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]);
 
-    if (protectedEnemies)
+    // Add a bonus according to the kind of attacking pieces
+    if (defended)
     {
-        // Enemies defended by a pawn and under our attack by a minor piece
-        b = protectedEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+        b = defended & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         while (b)
-            score += Threat[Protected_Minor][type_of(pos.piece_on(pop_lsb(&b)))];
+            score += Threat[Defended][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        // Enemies defended by a pawn and under our attack by a ROOK
-        b = protectedEnemies & (ei.attackedBy[Us][ROOK]);
+        b = defended & (ei.attackedBy[Us][ROOK]);
         while (b)
-            score += Threat[Protected_Major][type_of(pos.piece_on(pop_lsb(&b)))];
+            score += Threat[Defended][Major][type_of(pos.piece_on(pop_lsb(&b)))];
     }
 
     // Enemies not defended by a pawn and under our attack
-    weakEnemies =   pos.pieces(Them)
-                 & ~ei.attackedBy[Them][PAWN]
-                 &  ei.attackedBy[Us][ALL_PIECES];
+    weak =   pos.pieces(Them)
+          & ~ei.attackedBy[Them][PAWN]
+          &  ei.attackedBy[Us][ALL_PIECES];
 
-    // Add a bonus according if the attacking pieces are minor or major
-    if (weakEnemies)
+    // Add a bonus according to the kind of attacking pieces
+    if (weak)
     {
-        b = weakEnemies & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+        b = weak & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         while (b)
-            score += Threat[Minor][type_of(pos.piece_on(pop_lsb(&b)))];
+            score += Threat[Weak][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = weakEnemies & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
+        b = weak & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
         while (b)
-            score += Threat[Major][type_of(pos.piece_on(pop_lsb(&b)))];
+            score += Threat[Weak][Major][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = weakEnemies & ~ei.attackedBy[Them][ALL_PIECES];
+        b = weak & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
             score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
 
-        b = weakEnemies & ei.attackedBy[Us][KING];
+        b = weak & ei.attackedBy[Us][KING];
         if (b)
             score += more_than_one(b) ? KingOnMany : KingOnOne;
     }
