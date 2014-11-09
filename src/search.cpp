@@ -205,20 +205,6 @@ void Search::think() {
       goto finalize;
   }
 
-/*
-  if (Options["Write Search Log"])
-  {
-      Log log(Options["Search Log Filename"]);
-      log << "\nSearching: "  << RootPos.fen()
-          << "\ninfinite: "   << Limits.infinite
-          << " ponder: "      << Limits.ponder
-          << " time: "        << Limits.time[RootPos.side_to_move()]
-          << " increment: "   << Limits.inc[RootPos.side_to_move()]
-          << " moves to go: " << Limits.movestogo
-          << "\n" << std::endl;
-  }
-*/
-
   piecesCnt = RootPos.total_piece_count();
   TBCardinality = Options["SyzygyProbeLimit"];
   TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
