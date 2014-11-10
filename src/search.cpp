@@ -57,7 +57,7 @@ namespace {
   inline Value razor_margin(Depth d) { return Value(512 + 32 * d); }
 
   // Futility lookup tables (initialized at startup) and their access functions
-  int FutilityMoveCounts[2][32]; // [improving][depth]
+  int FutilityMoveCounts[2][16]; // [improving][depth]
 
   inline Value futility_margin(Depth d) {
     return Value(200 * d);
@@ -135,7 +135,7 @@ void Search::init() {
       }
 
   // Init futility move count array
-  for (int d = 0; d < 32; ++d)
+  for (int d = 0; d < 16; ++d)
   {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
@@ -331,7 +331,6 @@ namespace {
                     alpha = (alpha + beta) / 2;
                     beta = std::min(bestValue + delta, VALUE_INFINITE);
                 }
-
                 else
                     break;
 
@@ -409,7 +408,7 @@ namespace {
     Move ttMove, move, excludedMove, bestMove;
     Depth ext, newDepth, predictedDepth;
     Value bestValue, value, ttValue, eval, nullValue, futilityValue;
-    bool inCheck, givesCheck, pvMove, singularExtensionNode, improving;
+    bool inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
 
@@ -806,7 +805,6 @@ moves_loop: // When in check and at SpNode search starts from here
           continue;
       }
 
-      pvMove = PvNode && moveCount == 1;
       ss->currentMove = move;
       if (!SpNode && !captureOrPromotion && quietCount < 64)
           quietsSearched[quietCount++] = move;
@@ -855,7 +853,7 @@ moves_loop: // When in check and at SpNode search starts from here
           ss->reduction = DEPTH_ZERO;
       }
       else
-          doFullDepthSearch = !pvMove;
+          doFullDepthSearch = !PvNode || moveCount > 1;
 
       // Step 16. Full depth search, when LMR is skipped or fails high
       if (doFullDepthSearch)
@@ -872,7 +870,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
       // parent node fail low with value <= alpha and to try another move.
-      if (PvNode && (pvMove || (value > alpha && (RootNode || value < beta)))) {
+      if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta)))) {
           pv.pv[0] = MOVE_NONE;
           (ss+1)->pv = &pv;
           value = newDepth <   ONE_PLY ?
@@ -904,7 +902,7 @@ moves_loop: // When in check and at SpNode search starts from here
           RootMove& rm = *std::find(RootMoves.begin(), RootMoves.end(), move);
 
           // PV move or new best move ?
-          if (pvMove || value > alpha)
+          if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
               rm.pv.resize(1);
@@ -914,7 +912,7 @@ moves_loop: // When in check and at SpNode search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (!pvMove)
+              if (moveCount > 1)
                   ++BestMoveChanges;
           }
           else
