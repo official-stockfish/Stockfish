@@ -191,26 +191,19 @@ void Search::think() {
       sync_cout << "info depth 0 score "
                 << UCI::format_value(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
                 << sync_endl;
-
-      goto finalize;
   }
+  else
+  {
+      for (size_t i = 0; i < Threads.size(); ++i)
+          Threads[i]->maxPly = 0;
 
-  // Reset the threads, still sleeping: will wake up at split time
-  for (size_t i = 0; i < Threads.size(); ++i)
-      Threads[i]->maxPly = 0;
+      Threads.timer->run = true;
+      Threads.timer->notify_one(); // Wake up the recurring timer
 
-  Threads.timer->run = true;
-  Threads.timer->notify_one(); // Wake up the recurring timer
+      id_loop(RootPos); // Let's start searching !
 
-  id_loop(RootPos); // Let's start searching !
-
-  Threads.timer->run = false; // Stop the timer
-
-finalize:
-
-  // When search is stopped this info is not printed
-  sync_cout << "info nodes " << RootPos.nodes_searched()
-            << " time " << Time::now() - SearchTime + 1 << sync_endl;
+      Threads.timer->run = false;
+  }
 
   // When we reach the maximum depth, we can arrive here without a raise of
   // Signals.stop. However, if we are pondering or in an infinite search,
@@ -223,7 +216,6 @@ finalize:
       RootPos.this_thread()->wait_for(Signals.stop);
   }
 
-  // Best move could be MOVE_NONE when searching on a stalemate position
   sync_cout << "bestmove " << UCI::format_move(RootMoves[0].pv[0], RootPos.is_chess960())
             << " ponder "  << UCI::format_move(RootMoves[0].pv[1], RootPos.is_chess960())
             << sync_endl;
@@ -342,9 +334,12 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (   !Signals.stop
-                && (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
-                    || Time::now() - SearchTime > 3000))
+            if (Signals.stop)
+                sync_cout << "info nodes " << RootPos.nodes_searched()
+                          << " time " << Time::now() - SearchTime << sync_endl;
+
+            else if (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
+                     || Time::now() - SearchTime > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
