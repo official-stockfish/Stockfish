@@ -88,7 +88,7 @@ namespace {
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
-  string uci_pv(const Position& pos, int depth, Value alpha, Value beta);
+  string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta);
 
   struct Skill {
     Skill(int l, size_t rootSize) : level(l),
@@ -101,7 +101,7 @@ namespace {
     }
 
     size_t candidates_size() const { return candidates; }
-    bool time_to_pick(int depth) const { return depth == 1 + level; }
+    bool time_to_pick(Depth depth) const { return depth == 1 + level; }
     Move pick_move();
 
     int level;
@@ -239,12 +239,12 @@ namespace {
   void id_loop(Position& pos) {
 
     Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
-    int depth;
+    Depth depth;
     Value bestValue, alpha, beta, delta;
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
 
-    depth = 0;
+    depth = DEPTH_ZERO;
     BestMoveChanges = 0;
     bestValue = delta = alpha = -VALUE_INFINITE;
     beta = VALUE_INFINITE;
@@ -277,7 +277,7 @@ namespace {
         for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
         {
             // Reset aspiration window starting size
-            if (depth >= 5)
+            if (depth >= 5 * ONE_PLY)
             {
                 delta = Value(16);
                 alpha = std::max(RootMoves[PVIdx].prevScore - delta,-VALUE_INFINITE);
@@ -289,7 +289,7 @@ namespace {
             // high/low anymore.
             while (true)
             {
-                bestValue = search<Root, false>(pos, ss, alpha, beta, depth * ONE_PLY, false);
+                bestValue = search<Root, false>(pos, ss, alpha, beta, depth, false);
 
                 // Bring the best move to the front. It is critical that sorting
                 // is done with a stable algorithm because all the values but the
@@ -362,7 +362,7 @@ namespace {
         if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
         {
             // Take some extra time if the best move has changed
-            if (depth > 4 && multiPV == 1)
+            if (depth > 4 * ONE_PLY && multiPV == 1)
                 TimeMgr.pv_instability(BestMoveChanges);
 
             // Stop the search if only one legal move is available or all
@@ -1303,7 +1303,7 @@ moves_loop: // When in check and at SpNode search starts from here
   // requires that all (if any) unsearched PV lines are sent using a previous
   // search score.
 
-  string uci_pv(const Position& pos, int depth, Value alpha, Value beta) {
+  string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
     std::stringstream ss;
     Time::point elapsed = Time::now() - SearchTime + 1;
@@ -1321,13 +1321,13 @@ moves_loop: // When in check and at SpNode search starts from here
         if (depth == 1 && !updated)
             continue;
 
-        int d   = updated ? depth : depth - 1;
+        Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
 
-        ss << "info depth " << d
+        ss << "info depth " << d / ONE_PLY
            << " seldepth "  << selDepth
            << " multipv "   << i + 1
            << " score "     << (i == PVIdx ? UCI::format_value(v, alpha, beta) : UCI::format_value(v))
