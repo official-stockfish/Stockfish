@@ -204,9 +204,6 @@ void Search::think() {
   }
   else
   {
-      for (size_t i = 0; i < Threads.size(); ++i)
-          Threads[i]->maxPly = 0;
-
       // Check Tablebases at root
       piecesCnt = RootPos.total_piece_count();
       TBCardinality = Options["SyzygyProbeLimit"];
@@ -258,6 +255,9 @@ void Search::think() {
                       : TBScore;
           }
       }
+
+      for (size_t i = 0; i < Threads.size(); ++i)
+          Threads[i]->maxPly = 0;
 
       Threads.timer->run = true;
       Threads.timer->notify_one(); // Wake up the recurring timer
