@@ -255,7 +255,7 @@ Thread* ThreadPool::available_slave(const Thread* master) const {
 // leave their idle loops and call search(). When all threads have returned from
 // search() then split() returns.
 
-void Thread::split(Position& pos, const Stack* ss, Value alpha, Value beta, Value* bestValue,
+void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bestValue,
                    Move* bestMove, Depth depth, int moveCount,
                    MovePicker* movePicker, int nodeType, bool cutNode) {
 
