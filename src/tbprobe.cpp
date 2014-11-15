@@ -124,10 +124,10 @@ static int probe_wdl_table(Position& pos, int *success)
       char str[16];
       prt_str(pos, str, ptr->key != key);
       if (!init_table_wdl(ptr, str)) {
-	ptr2[i].key = 0ULL;
-	*success = 0;
-	UNLOCK(TB_mutex);
-	return 0;
+        ptr2[i].key = 0ULL;
+        *success = 0;
+        UNLOCK(TB_mutex);
+        return 0;
       }
       // Memory barrier to ensure ptr->ready = 1 is not reordered.
       __asm__ __volatile__ ("" ::: "memory");
@@ -160,9 +160,9 @@ static int probe_wdl_table(Position& pos, int *success)
     ubyte *pc = entry->pieces[bside];
     for (i = 0; i < entry->num;) {
       Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-				      (PieceType)(pc[i] & 0x07));
+                                      (PieceType)(pc[i] & 0x07));
       do {
-	p[i++] = pop_lsb(&bb);
+        p[i++] = pop_lsb(&bb);
       } while (bb);
     }
     idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
@@ -179,9 +179,9 @@ static int probe_wdl_table(Position& pos, int *success)
     ubyte *pc = entry->file[f].pieces[bside];
     for (; i < entry->num;) {
       bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-				    (PieceType)(pc[i] & 0x07));
+                                    (PieceType)(pc[i] & 0x07));
       do {
-	p[i++] = pop_lsb(&bb) ^ mirror;
+        p[i++] = pop_lsb(&bb) ^ mirror;
       } while (bb);
     }
     idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
@@ -207,24 +207,24 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
     if (i < DTZ_ENTRIES) {
       struct DTZTableEntry table_entry = DTZ_table[i];
       for (; i > 0; i--)
-	DTZ_table[i] = DTZ_table[i - 1];
+        DTZ_table[i] = DTZ_table[i - 1];
       DTZ_table[0] = table_entry;
     } else {
       struct TBHashEntry *ptr2 = TB_hash[key >> (64 - TBHASHBITS)];
       for (i = 0; i < HSHMAX; i++)
-	if (ptr2[i].key == key) break;
+        if (ptr2[i].key == key) break;
       if (i == HSHMAX) {
-	*success = 0;
-	return 0;
+        *success = 0;
+        return 0;
       }
       ptr = ptr2[i].ptr;
       char str[16];
       int mirror = (ptr->key != key);
       prt_str(pos, str, mirror);
       if (DTZ_table[DTZ_ENTRIES - 1].entry)
-	free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
+        free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
       for (i = DTZ_ENTRIES - 1; i > 0; i--)
-	DTZ_table[i] = DTZ_table[i - 1];
+        DTZ_table[i] = DTZ_table[i - 1];
       load_dtz_table(str, calc_key(pos, mirror), calc_key(pos, !mirror));
     }
   }
@@ -260,9 +260,9 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
     ubyte *pc = entry->pieces;
     for (i = 0; i < entry->num;) {
       Bitboard bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-				    (PieceType)(pc[i] & 0x07));
+                                    (PieceType)(pc[i] & 0x07));
       do {
-	p[i++] = pop_lsb(&bb);
+        p[i++] = pop_lsb(&bb);
       } while (bb);
     }
     idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
@@ -289,9 +289,9 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
     ubyte *pc = entry->file[f].pieces;
     for (; i < entry->num;) {
       bb = pos.pieces((Color)((pc[i] ^ cmirror) >> 3),
-			    (PieceType)(pc[i] & 0x07));
+                            (PieceType)(pc[i] & 0x07));
       do {
-	p[i++] = pop_lsb(&bb) ^ mirror;
+        p[i++] = pop_lsb(&bb) ^ mirror;
       } while (bb);
     }
     idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
@@ -345,7 +345,7 @@ static int probe_ab(Position& pos, int alpha, int beta, int *success)
   for (moves = stack; moves < end; moves++) {
     Move capture = moves->move;
     if (!pos.capture(capture) || type_of(capture) == ENPASSANT
-			|| !pos.legal(capture, ci.pinned))
+                        || !pos.legal(capture, ci.pinned))
       continue;
     pos.do_move(capture, st, ci, pos.gives_check(capture, ci));
     v = -probe_ab(pos, -beta, -alpha, success);
@@ -354,7 +354,7 @@ static int probe_ab(Position& pos, int alpha, int beta, int *success)
     if (v > alpha) {
       if (v >= beta) {
         *success = 2;
-	return v;
+        return v;
       }
       alpha = v;
     }
@@ -408,7 +408,7 @@ int Tablebases::probe_wdl(Position& pos, int *success)
   for (moves = stack; moves < end; moves++) {
     Move capture = moves->move;
     if (type_of(capture) != ENPASSANT
-	  || !pos.legal(capture, ci.pinned))
+          || !pos.legal(capture, ci.pinned))
       continue;
     pos.do_move(capture, st, ci, pos.gives_check(capture, ci));
     int v0 = -probe_ab(pos, -2, 2, success);
@@ -421,21 +421,21 @@ int Tablebases::probe_wdl(Position& pos, int *success)
     else if (v == 0) {
       // Check whether there is at least one legal non-ep move.
       for (moves = stack; moves < end; moves++) {
-	Move capture = moves->move;
-	if (type_of(capture) == ENPASSANT) continue;
-	if (pos.legal(capture, ci.pinned)) break;
+        Move capture = moves->move;
+        if (type_of(capture) == ENPASSANT) continue;
+        if (pos.legal(capture, ci.pinned)) break;
       }
       if (moves == end && !pos.checkers()) {
-	end = generate<QUIETS>(pos, end);
-	for (; moves < end; moves++) {
-	  Move move = moves->move;
-	  if (pos.legal(move, ci.pinned))
-	    break;
-	}
+        end = generate<QUIETS>(pos, end);
+        for (; moves < end; moves++) {
+          Move move = moves->move;
+          if (pos.legal(move, ci.pinned))
+            break;
+        }
       }
       // If not, then we are forced to play the losing ep capture.
       if (moves == end)
-	v = v1;
+        v = v1;
     }
   }
 
@@ -471,14 +471,14 @@ static int probe_dtz_no_ep(Position& pos, int *success)
     for (moves = stack; moves < end; moves++) {
       Move move = moves->move;
       if (type_of(pos.moved_piece(move)) != PAWN || pos.capture(move)
-		|| !pos.legal(move, ci.pinned))
-	continue;
+                || !pos.legal(move, ci.pinned))
+        continue;
       pos.do_move(move, st, ci, pos.gives_check(move, ci));
       int v = -probe_ab(pos, -2, -wdl + 1, success);
       pos.undo_move(move);
       if (*success == 0) return 0;
       if (v == wdl)
-	return v == 2 ? 1 : 101;
+        return v == 2 ? 1 : 101;
     }
   }
 
@@ -493,14 +493,14 @@ static int probe_dtz_no_ep(Position& pos, int *success)
     for (moves = stack; moves < end; moves++) {
       Move move = moves->move;
       if (pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN
-		|| !pos.legal(move, ci.pinned))
-	continue;
+                || !pos.legal(move, ci.pinned))
+        continue;
       pos.do_move(move, st, ci, pos.gives_check(move, ci));
       int v = -Tablebases::probe_dtz(pos, success);
       pos.undo_move(move);
       if (*success == 0) return 0;
       if (v > 0 && v + 1 < best)
-	best = v + 1;
+        best = v + 1;
     }
     return best;
   } else {
@@ -513,21 +513,21 @@ static int probe_dtz_no_ep(Position& pos, int *success)
       int v;
       Move move = moves->move;
       if (!pos.legal(move, ci.pinned))
-	continue;
+        continue;
       pos.do_move(move, st, ci, pos.gives_check(move, ci));
       if (st.rule50 == 0) {
-	if (wdl == -2) v = -1;
-	else {
-	  v = probe_ab(pos, 1, 2, success);
-	  v = (v == 2) ? 0 : -101;
-	}
+        if (wdl == -2) v = -1;
+        else {
+          v = probe_ab(pos, 1, 2, success);
+          v = (v == 2) ? 0 : -101;
+        }
       } else {
-	v = -Tablebases::probe_dtz(pos, success) - 1;
+        v = -Tablebases::probe_dtz(pos, success) - 1;
       }
       pos.undo_move(move);
       if (*success == 0) return 0;
       if (v < best)
-	best = v;
+        best = v;
     }
     return best;
   }
@@ -542,7 +542,7 @@ static int wdl_to_dtz[] = {
 // The return value is from the point of view of the side to move:
 //         n < -100 : loss, but draw under 50-move rule
 // -100 <= n < -1   : loss in n ply (assuming 50-move counter == 0)
-//         0	    : draw
+//         0        : draw
 //     1 < n <= 100 : win in n ply (assuming 50-move counter == 0)
 //   100 < n        : win, but draw under 50-move rule
 //
@@ -588,7 +588,7 @@ int Tablebases::probe_dtz(Position& pos, int *success)
   for (moves = stack; moves < end; moves++) {
     Move capture = moves->move;
     if (type_of(capture) != ENPASSANT
-		|| !pos.legal(capture, ci.pinned))
+                || !pos.legal(capture, ci.pinned))
       continue;
     pos.do_move(capture, st, ci, pos.gives_check(capture, ci));
     int v0 = -probe_ab(pos, -2, 2, success);
@@ -600,34 +600,34 @@ int Tablebases::probe_dtz(Position& pos, int *success)
     v1 = wdl_to_dtz[v1 + 2];
     if (v < -100) {
       if (v1 >= 0)
-	v = v1;
+        v = v1;
     } else if (v < 0) {
       if (v1 >= 0 || v1 < 100)
-	v = v1;
+        v = v1;
     } else if (v > 100) {
       if (v1 > 0)
-	v = v1;
+        v = v1;
     } else if (v > 0) {
       if (v1 == 1)
-	v = v1;
+        v = v1;
     } else if (v1 >= 0) {
       v = v1;
     } else {
       for (moves = stack; moves < end; moves++) {
-	Move move = moves->move;
-	if (type_of(move) == ENPASSANT) continue;
-	if (pos.legal(move, ci.pinned)) break;
+        Move move = moves->move;
+        if (type_of(move) == ENPASSANT) continue;
+        if (pos.legal(move, ci.pinned)) break;
       }
       if (moves == end && !pos.checkers()) {
-	end = generate<QUIETS>(pos, end);
-	for (; moves < end; moves++) {
-	  Move move = moves->move;
-	  if (pos.legal(move, ci.pinned))
-	    break;
-	}
+        end = generate<QUIETS>(pos, end);
+        for (; moves < end; moves++) {
+          Move move = moves->move;
+          if (pos.legal(move, ci.pinned))
+            break;
+        }
       }
       if (moves == end)
-	v = v1;
+        v = v1;
     }
   }
 
@@ -646,7 +646,7 @@ static int has_repeated(StateInfo *st)
     do {
       stp = stp->previous->previous;
       if (stp->key == st->key)
-	return 1;
+        return 1;
       i += 2;
     } while (i <= e);
     st = st->previous;
@@ -685,16 +685,16 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
     if (pos.checkers() && dtz > 0) {
       ExtMove s[192];
       if (generate<LEGAL>(pos, s) == s)
-	v = 1;
+        v = 1;
     }
     if (!v) {
       if (st.rule50 != 0) {
-	v = -Tablebases::probe_dtz(pos, &success);
-	if (v > 0) v++;
-	else if (v < 0) v--;
+        v = -Tablebases::probe_dtz(pos, &success);
+        if (v > 0) v++;
+        else if (v < 0) v--;
       } else {
-	v = -Tablebases::probe_wdl(pos, &success);
-	v = wdl_to_dtz[v + 2];
+        v = -Tablebases::probe_wdl(pos, &success);
+        v = wdl_to_dtz[v + 2];
       }
     }
     pos.undo_move(move);
@@ -731,7 +731,7 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
     for (size_t i = 0; i < Search::RootMoves.size(); i++) {
       int v = Search::RootMoves[i].score;
       if (v > 0 && v < best)
-	best = v;
+        best = v;
     }
     int max = best;
     // If the current phase has not seen repetitions, then try all moves
@@ -741,27 +741,27 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
     for (size_t i = 0; i < Search::RootMoves.size(); i++) {
       int v = Search::RootMoves[i].score;
       if (v > 0 && v <= max)
-	Search::RootMoves[j++] = Search::RootMoves[i];
+        Search::RootMoves[j++] = Search::RootMoves[i];
     }
   } else if (dtz < 0) { // losing (or 50-move rule draw)
     int best = 0;
     for (size_t i = 0; i < Search::RootMoves.size(); i++) {
       int v = Search::RootMoves[i].score;
       if (v < best)
-	best = v;
+        best = v;
     }
     // Try all moves, unless we approach or have a 50-move rule draw.
     if (-best * 2 + cnt50 < 100)
       return true;
     for (size_t i = 0; i < Search::RootMoves.size(); i++) {
       if (Search::RootMoves[i].score == best)
-	Search::RootMoves[j++] = Search::RootMoves[i];
+        Search::RootMoves[j++] = Search::RootMoves[i];
     }
   } else { // drawing
     // Try all moves that preserve the draw.
     for (size_t i = 0; i < Search::RootMoves.size(); i++) {
       if (Search::RootMoves[i].score == 0)
-	Search::RootMoves[j++] = Search::RootMoves[i];
+        Search::RootMoves[j++] = Search::RootMoves[i];
     }
   }
   Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
