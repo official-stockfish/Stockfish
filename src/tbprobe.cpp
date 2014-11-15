@@ -9,13 +9,6 @@
 
 // The probing code currently expects a little-endian architecture (e.g. x86).
 
-// Define DECOMP64 when compiling for a 64-bit platform.
-// 32-bit is only supported for 5-piece tables, because tables are mmap()ed
-// into memory.
-#ifdef IS_64BIT
-#define DECOMP64
-#endif
-
 #include "position.h"
 #include "movegen.h"
 #include "bitboard.h"
