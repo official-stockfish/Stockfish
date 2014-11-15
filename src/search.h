@@ -36,13 +36,11 @@ struct PVEntry {
   Move pv[MAX_PLY+1];
 
   void update(Move move, PVEntry* child) {
-      pv[0] = move;
-
-      int i = 1;
-      for (; child && i < MAX_PLY && child->pv[i - 1] != MOVE_NONE; ++i)
-          pv[i] = child->pv[i - 1];
-      pv[i] = MOVE_NONE;
-  } 
+    int i = 1;
+    for (pv[0] = move; child && i < MAX_PLY && child->pv[i - 1] != MOVE_NONE; ++i)
+        pv[i] = child->pv[i - 1];
+    pv[i] = MOVE_NONE;
+  }
 };
 
 /// The Stack struct keeps track of the information we need to remember from

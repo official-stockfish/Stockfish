@@ -466,11 +466,8 @@ namespace {
     ss->ttMove = ttMove = RootNode ? RootMoves[PVIdx].pv[0] : tte ? tte->move() : MOVE_NONE;
     ttValue = tte ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
-    // At PV nodes we check for exact scores, whilst at non-PV nodes we check for
-    // a fail high/low. The biggest advantage to probing at PV nodes is to have a
-    // smooth experience in analysis mode. We don't probe at Root nodes otherwise
-    // we should also update RootMoveList to avoid bogus output.
-    if (   !PvNode
+    // At non-PV nodes we check for a fail high/low. We don't probe at PV nodes
+    if (  !PvNode
         && tte
         && tte->depth() >= depth
         && ttValue != VALUE_NONE // Only in case of TT access race
@@ -865,7 +862,8 @@ moves_loop: // When in check and at SpNode search starts from here
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
       // parent node fail low with value <= alpha and to try another move.
-      if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta)))) {
+      if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta))))
+      {
           pv.pv[0] = MOVE_NONE;
           (ss+1)->pv = &pv;
           value = newDepth <   ONE_PLY ?
@@ -873,6 +871,7 @@ moves_loop: // When in check and at SpNode search starts from here
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : - search<PV, false>(pos, ss+1, -beta, -alpha, newDepth, false);
       }
+
       // Step 17. Undo move
       pos.undo_move(move);
 
@@ -925,7 +924,8 @@ moves_loop: // When in check and at SpNode search starts from here
           {
               bestMove = SpNode ? splitPoint->bestMove = move : move;
 
-              if (NT == PV) {
+              if (PvNode && !RootNode)
+              {
                   ss->pv->update(move, (ss+1)->pv);
                   if (SpNode)
                       splitPoint->ss->pv->update(move, (ss+1)->pv);
@@ -1024,10 +1024,9 @@ moves_loop: // When in check and at SpNode search starts from here
     bool givesCheck, evasionPrunable;
     Depth ttDepth;
 
-    if (PvNode) {
-        // To flag BOUND_EXACT a node with eval above alpha and no available moves
-        oldAlpha = alpha;
-
+    if (PvNode)
+    {
+        oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
         (ss+1)->pv = &pv;
         ss->pv->pv[0] = MOVE_NONE;
     }
@@ -1053,7 +1052,7 @@ moves_loop: // When in check and at SpNode search starts from here
     ttMove = tte ? tte->move() : MOVE_NONE;
     ttValue = tte ? value_from_tt(tte->value(),ss->ply) : VALUE_NONE;
 
-    if (  !PvNode 
+    if (  !PvNode
         && tte
         && tte->depth() >= ttDepth
         && ttValue != VALUE_NONE // Only in case of TT access race
@@ -1371,15 +1370,17 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
   StateInfo state[MAX_PLY], *st = state;
   const TTEntry* tte;
-  int idx = 0;
+  size_t idx = 0;
 
-  for (; idx < int(pv.size()); ++idx) {
+  for ( ; idx < pv.size(); ++idx)
+  {
       tte = TT.probe(pos.key());
 
       if (!tte || tte->move() != pv[idx]) // Don't overwrite correct entries
           TT.store(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[idx], VALUE_NONE);
 
       assert(MoveList<LEGAL>(pos).contains(pv[idx]));
+
       pos.do_move(pv[idx], *st++);
   }
 
