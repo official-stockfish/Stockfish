@@ -87,6 +87,7 @@ namespace {
   void id_loop(Position& pos);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
+  void update_pv(Move move, Move* pv, Move* child);
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
   string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta);
 
@@ -394,8 +395,7 @@ namespace {
     assert(PvNode || (alpha == beta - 1));
     assert(depth > DEPTH_ZERO);
 
-    PVEntry pv;
-    Move quietsSearched[64];
+    Move pv[MAX_PLY+1], quietsSearched[64];
     StateInfo st;
     const TTEntry *tte;
     SplitPoint* splitPoint;
@@ -864,8 +864,8 @@ moves_loop: // When in check and at SpNode search starts from here
       // parent node fail low with value <= alpha and to try another move.
       if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta))))
       {
-          pv.pv[0] = MOVE_NONE;
-          (ss+1)->pv = &pv;
+          pv[0] = MOVE_NONE;
+          (ss+1)->pv = &pv[0];
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
@@ -900,8 +900,8 @@ moves_loop: // When in check and at SpNode search starts from here
           {
               rm.score = value;
               rm.pv.resize(1);
-              for (int i = 0; (ss+1)->pv && (ss+1)->pv->pv[i] != MOVE_NONE; ++i)
-                  rm.pv.push_back((ss+1)->pv->pv[i]);
+              for (int i = 0; (ss+1)->pv && (ss+1)->pv[i] != MOVE_NONE; ++i)
+                  rm.pv.push_back((ss+1)->pv[i]);
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
@@ -926,9 +926,9 @@ moves_loop: // When in check and at SpNode search starts from here
 
               if (PvNode && !RootNode)
               {
-                  ss->pv->update(move, (ss+1)->pv);
+                  update_pv(move, ss->pv, (ss+1)->pv);
                   if (SpNode)
-                      splitPoint->ss->pv->update(move, (ss+1)->pv);
+                      update_pv(move, splitPoint->ss->pv, (ss+1)->pv);
               }
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
@@ -1015,7 +1015,7 @@ moves_loop: // When in check and at SpNode search starts from here
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= DEPTH_ZERO);
 
-    PVEntry pv;
+    Move pv[MAX_PLY+1];
     StateInfo st;
     const TTEntry* tte;
     Key posKey;
@@ -1027,8 +1027,8 @@ moves_loop: // When in check and at SpNode search starts from here
     if (PvNode)
     {
         oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
-        (ss+1)->pv = &pv;
-        ss->pv->pv[0] = MOVE_NONE;
+        (ss+1)->pv = &pv[0];
+        ss->pv[0] = MOVE_NONE;
     }
 
     ss->currentMove = bestMove = MOVE_NONE;
@@ -1180,7 +1180,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               if (PvNode)
-                  ss->pv->update(move, &pv);
+                  update_pv(move, ss->pv, &pv[0]);
 
               if (PvNode && value < beta) // Update alpha here! Always alpha < beta
               {
@@ -1237,6 +1237,15 @@ moves_loop: // When in check and at SpNode search starts from here
           : v <= VALUE_MATED_IN_MAX_PLY ? v + ply : v;
   }
 
+
+  // update_pv() copies child node pv[] adding current move
+
+  void update_pv(Move move, Move* pv, Move* child) {
+
+    for (*pv++ = move; child && *child != MOVE_NONE; )
+        *pv++ = *child++;
+    *pv = MOVE_NONE;
+  }
 
   // update_stats() updates killers, history, countermoves and followupmoves stats after a fail-high
   // of a quiet move.
