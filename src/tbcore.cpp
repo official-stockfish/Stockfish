@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <endian.h>
 #ifndef __WIN32__
 #include <sys/mman.h>
 #endif
@@ -1471,8 +1472,8 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
   uint32 mainidx = idx >> d->idxbits;
   int litidx = (idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
-  uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
-  litidx += *(ushort *)(d->indextable + 6 * mainidx + 4);
+  uint32 block = le32toh(*(uint32 *)(d->indextable + 6 * mainidx));
+  litidx += le16toh(*(ushort *)(d->indextable + 6 * mainidx + 4));
   if (litidx < 0) {
     do {
       litidx += d->sizetable[--block] + 1;
@@ -1490,7 +1491,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   ubyte *symlen = d->symlen;
   int sym, bitcnt;
 
-  uint64 code = __builtin_bswap64(*((uint64 *)ptr));
+  uint64 code = be64toh(*((uint64 *)ptr));
   ptr += 2;
   bitcnt = 0; // number of "empty bits" in code
   for (;;) {
@@ -1503,7 +1504,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
     bitcnt += l;
     if (bitcnt >= 32) {
       bitcnt -= 32;
-      code |= ((uint64)(__builtin_bswap32(*ptr++))) << bitcnt;
+      code |= ((uint64)(be32toh(*ptr++))) << bitcnt;
     }
   }
 
