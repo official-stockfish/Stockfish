@@ -900,7 +900,7 @@ moves_loop: // When in check and at SpNode search starts from here
           {
               rm.score = value;
               rm.pv.resize(1);
-              for (int i = 0; (ss+1)->pv && i < MAX_PLY && (ss+1)->pv->pv[i] != MOVE_NONE; ++i)
+              for (int i = 0; (ss+1)->pv && (ss+1)->pv->pv[i] != MOVE_NONE; ++i)
                   rm.pv.push_back((ss+1)->pv->pv[i]);
 
               // We record how often the best move has been changed in each

@@ -37,7 +37,7 @@ struct PVEntry {
 
   void update(Move move, PVEntry* child) {
     int i = 1;
-    for (pv[0] = move; child && i < MAX_PLY && child->pv[i - 1] != MOVE_NONE; ++i)
+    for (pv[0] = move; child && child->pv[i - 1] != MOVE_NONE; ++i)
         pv[i] = child->pv[i - 1];
     pv[i] = MOVE_NONE;
   }
