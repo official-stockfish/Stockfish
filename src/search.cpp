@@ -317,7 +317,7 @@ namespace {
     multiPV = std::max(multiPV, skill.candidates_size());
 
     // Iterative deepening loop until requested to stop or target depth reached
-    while (++depth < MAX_PLY && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
+    while (++depth < DEPTH_MAX && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
     {
         // Age out PV variability metric
         BestMoveChanges *= 0.5;
@@ -1345,7 +1345,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     // Increase history value of the cut-off move and decrease all the other
     // played quiet moves.
-    Value bonus = Value(4 * int(depth) * int(depth));
+    Value bonus = Value(int(depth) * int(depth));
     History.update(pos.moved_piece(move), to_sq(move), bonus);
     for (int i = 0; i < quietsCnt; ++i)
     {
