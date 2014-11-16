@@ -75,7 +75,7 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
   for (unsigned i = 0; i < TTClusterSize; ++i)
       if (tte[i].key16 == key16)
       {
-          tte[i].genBound8 = generation | (uint8_t)tte[i].bound(); // Refresh
+          tte[i].genBound8 = uint8_t(generation | tte[i].bound()); // Refresh
           return &tte[i];
       }
 
