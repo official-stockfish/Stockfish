@@ -14,7 +14,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <endian.h>
 #ifndef __WIN32__
 #include <sys/mman.h>
 #endif
@@ -995,8 +994,6 @@ static uint64 encode_pawn(struct TBEntry_pawn *ptr, ubyte *norm, int *pos, int *
   return idx;
 }
 
-static ubyte decompress_pairs(struct PairsData *d, uint64 index);
-
 // place k like pieces on n squares
 static int subfactor(int k, int n)
 {
@@ -1465,6 +1462,7 @@ static int init_table_dtz(struct TBEntry *entry)
   return 1;
 }
 
+template<bool LittleEndian>
 static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 {
   if (!d->idxbits)
@@ -1472,8 +1470,15 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
   uint32 mainidx = idx >> d->idxbits;
   int litidx = (idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
-  uint32 block = le32toh(*(uint32 *)(d->indextable + 6 * mainidx));
-  litidx += le16toh(*(ushort *)(d->indextable + 6 * mainidx + 4));
+  uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
+  if (!LittleEndian)
+    block = __builtin_bswap32(block);
+
+  ushort idxOffset = *(ushort *)(d->indextable + 6 * mainidx + 4);
+  if (!LittleEndian)
+    idxOffset = (idxOffset << 8) | (idxOffset >> 8);
+  litidx += idxOffset;
+
   if (litidx < 0) {
     do {
       litidx += d->sizetable[--block] + 1;
@@ -1491,7 +1496,10 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   ubyte *symlen = d->symlen;
   int sym, bitcnt;
 
-  uint64 code = be64toh(*((uint64 *)ptr));
+  uint64 code = *((uint64 *)ptr);
+  if (LittleEndian)
+    code = __builtin_bswap64(code);
+
   ptr += 2;
   bitcnt = 0; // number of "empty bits" in code
   for (;;) {
@@ -1504,9 +1512,12 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
     bitcnt += l;
     if (bitcnt >= 32) {
       bitcnt -= 32;
-      code |= ((uint64)(be32toh(*ptr++))) << bitcnt;
-    }
-  }
+      uint32 tmp = *ptr++;
+      if (LittleEndian)
+        tmp = __builtin_bswap32(tmp);
+      code |= ((uint64)tmp) << bitcnt;
+     }
+   }
 
   ubyte *sympat = d->sympat;
   while (symlen[sym] != 0) {

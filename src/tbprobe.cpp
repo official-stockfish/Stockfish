@@ -91,9 +91,20 @@ static uint64 calc_key_from_pcs(int *pcs, int mirror)
   return key;
 }
 
+bool is_little_endian() {
+  union {
+    int i;
+    char c[sizeof(int)];
+  } x;
+  x.i = 1;
+  return x.c[0] == 1;
+}
+
 // probe_wdl_table and probe_dtz_table require similar adaptations.
 static int probe_wdl_table(Position& pos, int *success)
 {
+  static const bool isLittleEndian = is_little_endian();
+
   struct TBEntry *ptr;
   struct TBHashEntry *ptr2;
   uint64 idx;
@@ -166,7 +177,8 @@ static int probe_wdl_table(Position& pos, int *success)
       } while (bb);
     }
     idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
-    res = decompress_pairs(entry->precomp[bside], idx);
+    res = isLittleEndian ? decompress_pairs<true >(entry->precomp[bside], idx)
+                         : decompress_pairs<false>(entry->precomp[bside], idx);
   } else {
     struct TBEntry_pawn *entry = (struct TBEntry_pawn *)ptr;
     int k = entry->file[0].pieces[0][0] ^ cmirror;
@@ -185,7 +197,8 @@ static int probe_wdl_table(Position& pos, int *success)
       } while (bb);
     }
     idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
-    res = decompress_pairs(entry->file[f].precomp[bside], idx);
+    res = isLittleEndian ? decompress_pairs<true >(entry->file[f].precomp[bside], idx)
+                         : decompress_pairs<false>(entry->file[f].precomp[bside], idx);
   }
 
   return ((int)res) - 2;
@@ -193,6 +206,8 @@ static int probe_wdl_table(Position& pos, int *success)
 
 static int probe_dtz_table(Position& pos, int wdl, int *success)
 {
+  static const bool isLittleEndian = is_little_endian();
+
   struct TBEntry *ptr;
   uint64 idx;
   int i, res;
@@ -266,7 +281,8 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
       } while (bb);
     }
     idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
-    res = decompress_pairs(entry->precomp, idx);
+    res = isLittleEndian ? decompress_pairs<true >(entry->precomp, idx)
+                         : decompress_pairs<false>(entry->precomp, idx);
 
     if (entry->flags & 2)
       res = entry->map[entry->map_idx[wdl_to_map[wdl + 2]] + res];
@@ -295,7 +311,8 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
       } while (bb);
     }
     idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
-    res = decompress_pairs(entry->file[f].precomp, idx);
+    res = isLittleEndian ? decompress_pairs<true >(entry->file[f].precomp, idx)
+                         : decompress_pairs<false>(entry->file[f].precomp, idx);
 
     if (entry->flags[f] & 2)
       res = entry->map[entry->map_idx[f][wdl_to_map[wdl + 2]] + res];
