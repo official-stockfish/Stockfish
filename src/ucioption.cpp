@@ -67,7 +67,7 @@ void init(OptionsMap& o) {
   o["Minimum Thinking Time"] << Option(20, 0, 5000);
   o["Slow Mover"]            << Option(80, 10, 1000);
   o["UCI_Chess960"]          << Option(false);
-  o["SyzygyPath"]               << Option("../../tb/tbs", on_tb_path);
+  o["SyzygyPath"]               << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]         << Option(1, 1, 100);
   o["Syzygy50MoveRule"]         << Option(true);
   o["SyzygyProbeLimit"]         << Option(6, 0, 6);
