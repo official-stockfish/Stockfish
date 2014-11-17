@@ -87,7 +87,7 @@ namespace {
   void id_loop(Position& pos);
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
-  void update_pv(Move move, Move* pv, Move* child);
+  void update_pv(Move* pv, Move move, Move* child);
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
   string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta);
 
@@ -865,7 +865,7 @@ moves_loop: // When in check and at SpNode search starts from here
       if (PvNode && (moveCount == 1 || (value > alpha && (RootNode || value < beta))))
       {
           pv[0] = MOVE_NONE;
-          (ss+1)->pv = &pv[0];
+          (ss+1)->pv = pv;
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha, DEPTH_ZERO)
@@ -926,9 +926,9 @@ moves_loop: // When in check and at SpNode search starts from here
 
               if (PvNode && !RootNode)
               {
-                  update_pv(move, ss->pv, (ss+1)->pv);
+                  update_pv(ss->pv, move, (ss+1)->pv);
                   if (SpNode)
-                      update_pv(move, splitPoint->ss->pv, (ss+1)->pv);
+                      update_pv(splitPoint->ss->pv, move, (ss+1)->pv);
               }
 
               if (PvNode && value < beta) // Update alpha! Always alpha < beta
@@ -1027,7 +1027,7 @@ moves_loop: // When in check and at SpNode search starts from here
     if (PvNode)
     {
         oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
-        (ss+1)->pv = &pv[0];
+        (ss+1)->pv = pv;
         ss->pv[0] = MOVE_NONE;
     }
 
@@ -1180,7 +1180,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               if (PvNode)
-                  update_pv(move, ss->pv, &pv[0]);
+                  update_pv(ss->pv, move, (ss+1)->pv);
 
               if (PvNode && value < beta) // Update alpha here! Always alpha < beta
               {
@@ -1240,7 +1240,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
   // update_pv() copies child node pv[] adding current move
 
-  void update_pv(Move move, Move* pv, Move* child) {
+  void update_pv(Move* pv, Move move, Move* child) {
 
     for (*pv++ = move; child && *child != MOVE_NONE; )
         *pv++ = *child++;
