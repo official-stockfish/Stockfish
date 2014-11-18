@@ -899,9 +899,16 @@ moves_loop: // When in check and at SpNode search starts from here
           if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
-              rm.pv.resize(1);
-              for (int i = 0; (ss+1)->pv && (ss+1)->pv[i] != MOVE_NONE; ++i)
-                  rm.pv.push_back((ss+1)->pv[i]);
+
+              // Only update the PV at the root if it's valid, or if the root move of the PV
+              // has changed.
+              Move* m = (ss+1)->pv;
+              if (   (value > alpha && value < beta)
+                  || (m && m[0] != MOVE_NONE && (rm.pv.size() < 2 || m[0] != rm.pv[1]))) {
+                  rm.pv.resize(1);
+                  for (; m && *m != MOVE_NONE; ++m)
+                      rm.pv.push_back(*m);
+              }
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
