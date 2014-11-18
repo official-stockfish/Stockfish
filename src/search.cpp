@@ -904,7 +904,7 @@ moves_loop: // When in check and at SpNode search starts from here
               // has changed.
               Move* m = (ss+1)->pv;
               if (   (value > alpha && value < beta)
-                  || (m && m[0] != MOVE_NONE && (rm.pv.size() < 2 || m[0] != rm.pv[1]))) {
+                  || (m && *m != MOVE_NONE && (rm.pv.size() < 2 || *m != rm.pv[1]))) {
                   rm.pv.resize(1);
                   for (; m && *m != MOVE_NONE; ++m)
                       rm.pv.push_back(*m);

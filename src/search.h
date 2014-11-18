@@ -57,7 +57,7 @@ struct Stack {
 struct RootMove {
 
   RootMove(Move m) : score(-VALUE_INFINITE), prevScore(-VALUE_INFINITE) {
-    pv.push_back(m); pv.push_back(MOVE_NONE);
+    pv.push_back(m);
   }
 
   bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
