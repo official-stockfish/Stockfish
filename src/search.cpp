@@ -188,7 +188,6 @@ template uint64_t Search::perft<true>(Position& pos, Depth depth);
 void Search::think() {
 
   TimeMgr.init(Limits, RootPos.game_ply(), RootPos.side_to_move());
-  int piecesCnt;
   TBHits = TBCardinality = 0;
   RootInTB = false;
 
@@ -205,8 +204,9 @@ void Search::think() {
   }
   else
   {
+#ifdef SYZYGY
       // Check Tablebases at root
-      piecesCnt = RootPos.total_piece_count();
+      int piecesCnt = RootPos.total_piece_count();
       TBCardinality = Options["SyzygyProbeLimit"];
       TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
       if (TBCardinality > Tablebases::TBLargest)
@@ -256,6 +256,7 @@ void Search::think() {
                       : TBScore;
           }
       }
+#endif
 
       for (size_t i = 0; i < Threads.size(); ++i)
           Threads[i]->maxPly = 0;
@@ -545,6 +546,7 @@ namespace {
         return ttValue;
     }
 
+#ifdef SYZYGY
     // Step 4a. Tablebase probe
     if (   !RootNode
         && pos.total_piece_count() <= TBCardinality
@@ -575,6 +577,7 @@ namespace {
             return value;
         }
     }
+#endif
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
     if (inCheck)
@@ -1442,10 +1445,10 @@ moves_loop: // When in check and at SpNode search starts from here
         Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
-	bool tb = RootInTB;
+        bool tb = RootInTB;
         if (tb)
         {
-	    if (abs(v) >= VALUE_MATE - MAX_PLY)
+            if (abs(v) >= VALUE_MATE - MAX_PLY)
                 tb = false;
             else
                 v = TBScore;
