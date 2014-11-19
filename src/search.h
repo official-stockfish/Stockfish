@@ -32,26 +32,13 @@ struct SplitPoint;
 
 namespace Search {
 
-struct PVEntry {
-  Move pv[MAX_PLY+1];
-
-  void update(Move move, PVEntry* child) {
-      pv[0] = move;
-
-      int i = 1;
-      for (; child && i < MAX_PLY && child->pv[i - 1] != MOVE_NONE; ++i)
-          pv[i] = child->pv[i - 1];
-      pv[i] = MOVE_NONE;
-  } 
-};
-
 /// The Stack struct keeps track of the information we need to remember from
 /// nodes shallower and deeper in the tree during the search. Each search thread
 /// has its own array of Stack objects, indexed by the current ply.
 
 struct Stack {
   SplitPoint* splitPoint;
-  PVEntry* pv;
+  Move* pv;
   int ply;
   Move currentMove;
   Move ttMove;

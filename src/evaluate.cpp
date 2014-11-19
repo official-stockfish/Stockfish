@@ -57,9 +57,8 @@ namespace {
 
     // kingAttackersWeight[color] is the sum of the "weight" of the pieces of the
     // given color which attack a square in the kingRing of the enemy king. The
-    // weights of the individual piece types are given by the variables
-    // QueenAttackWeight, RookAttackWeight, BishopAttackWeight and
-    // KnightAttackWeight in evaluate.cpp
+    // weights of the individual piece types are given by the elements in the
+    // KingAttackWeights array.
     int kingAttackersWeight[COLOR_NB];
 
     // kingAdjacentZoneAttacksCount[color] is the number of attacks to squares
