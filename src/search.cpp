@@ -102,7 +102,7 @@ namespace {
     }
 
     size_t candidates_size() const { return candidates; }
-    bool time_to_pick(Depth depth) const { return depth == 1 + level; }
+    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
     Move pick_move();
 
     int level;
@@ -558,7 +558,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
-        Depth R = (3 + depth / 4 + std::min(int(eval - beta) / PawnValueMg, 3)) * ONE_PLY;
+        Depth R = (3 + depth / 4 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
 
         pos.do_null_move(st);
         (ss+1)->skipNullMove = true;
@@ -691,7 +691,7 @@ moves_loop: // When in check and at SpNode search starts from here
           Signals.firstRootMove = (moveCount == 1);
 
           if (thisThread == Threads.main() && Time::now() - SearchTime > 3000)
-              sync_cout << "info depth " << depth
+              sync_cout << "info depth " << depth / ONE_PLY
                         << " currmove " << UCI::format_move(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
@@ -1343,7 +1343,7 @@ moves_loop: // When in check and at SpNode search starts from here
     {
         bool updated = (i <= PVIdx);
 
-        if (depth == 1 && !updated)
+        if (depth == ONE_PLY && !updated)
             continue;
 
         Depth d = updated ? depth : depth - ONE_PLY;
