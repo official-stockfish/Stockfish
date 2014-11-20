@@ -294,8 +294,9 @@ namespace {
 
                 // Write PV back to transposition table in case the relevant
                 // entries have been overwritten during the search.
-                for (size_t i = 0; i <= PVIdx; ++i)
-                    RootMoves[i].insert_pv_in_tt(pos);
+                if (bestValue > alpha && bestValue < beta)
+                    for (size_t i = 0; i <= PVIdx; ++i)
+                        RootMoves[i].insert_pv_in_tt(pos);
 
                 // If search has been stopped break immediately. Sorting and
                 // writing PV back to TT is safe because RootMoves is still
