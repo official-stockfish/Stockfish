@@ -335,12 +335,14 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
+            Time::point elapsed = Time::now() - SearchTime + 1;
             if (Signals.stop)
                 sync_cout << "info nodes " << RootPos.nodes_searched()
-                          << " time " << Time::now() - SearchTime << sync_endl;
+                          << " nps " << RootPos.nodes_searched() * 1000 / elapsed
+                          << " time " << elapsed << sync_endl;
 
             else if (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
-                     || Time::now() - SearchTime > 3000)
+                     || elapsed > 3000)
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
         }
 
