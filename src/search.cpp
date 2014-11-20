@@ -200,9 +200,9 @@ void Search::think() {
 
       Threads.timer->run = true;
       Threads.timer->notify_one(); // Wake up the recurring timer
-      
+
       id_loop(RootPos); // Let's start searching !
-      
+
       Threads.timer->run = false;
   }
 
@@ -471,8 +471,8 @@ namespace {
         && tte
         && tte->depth() >= depth
         && ttValue != VALUE_NONE // Only in case of TT access race
-        && (ttValue >= beta ? (tte->bound() &  BOUND_LOWER)
-                            : (tte->bound() &  BOUND_UPPER)))
+        && (ttValue >= beta ? (tte->bound() & BOUND_LOWER)
+                            : (tte->bound() & BOUND_UPPER)))
     {
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
@@ -695,10 +695,10 @@ moves_loop: // When in check and at SpNode search starts from here
                         << " currmove " << UCI::format_move(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + PVIndex << sync_endl;
       }
-      
+
       if (PvNode)
           (ss+1)->pv = NULL;
-      
+
       extension = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
 
@@ -923,7 +923,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               bestMove = SpNode ? splitPoint->bestMove = move : move;
-              
+
               if (PvNode && !RootNode)
               {
                   update_pv(ss->pv, move, (ss+1)->pv);

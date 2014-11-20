@@ -268,13 +268,13 @@ namespace {
     Square square;
     Score score = SCORE_ZERO;
 
-    const PieceType NextPieceType = (Us == WHITE ? Pt : PieceType(Pt + 1));
+    const PieceType NextPt = (Us == WHITE ? Pt : PieceType(Pt + 1));
     const Color Them = (Us == WHITE ? BLACK : WHITE);
-    const Square* positionList = pos.list<Pt>(Us);
+    const Square* pieceList = pos.list<Pt>(Us);
 
     evalInfo.attackedBy[Us][Pt] = 0;
 
-    while ((square = *positionList++) != SQ_NONE)
+    while ((square = *pieceList++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
         bitboard = Pt == BISHOP ? attacks_bb<BISHOP>(square, pos.pieces() ^ pos.pieces(Us, QUEEN))
@@ -364,14 +364,14 @@ namespace {
             if (pos.piece_on(square + square2) == make_piece(Us, PAWN))
                 score -= !pos.empty(square + square2 + pawn_push(Us))                      ? TrappedBishopA1H1 * 4
                         : pos.piece_on(square + square2 + square2) == make_piece(Us, PAWN) ? TrappedBishopA1H1 * 2
-                                                                                                : TrappedBishopA1H1;
+                                                                                           : TrappedBishopA1H1;
         }
     }
 
     if (Trace)
         Tracing::write(Pt, Us, score);
 
-    return score - evaluate_pieces<NextPieceType, Them, Trace>(pos, evalInfo, mobility, mobilityArea);
+    return score - evaluate_pieces<NextPt, Them, Trace>(pos, evalInfo, mobility, mobilityArea);
   }
 
   template<>
@@ -424,7 +424,7 @@ namespace {
         {
             // ...and then remove squares not supported by another enemy piece
             bitboard &= (  evalInfo.attackedBy[Them][PAWN]   | evalInfo.attackedBy[Them][KNIGHT]
-                  | evalInfo.attackedBy[Them][BISHOP] | evalInfo.attackedBy[Them][ROOK]);
+                         | evalInfo.attackedBy[Them][BISHOP] | evalInfo.attackedBy[Them][ROOK]);
 
             if (bitboard)
                 attackUnits +=  QueenContactCheck * popcount<Max15>(bitboard);

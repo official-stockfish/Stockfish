@@ -226,9 +226,9 @@ namespace {
 
     assert(Pt != KING && Pt != PAWN);
 
-    const Square* positionList = pos.list<Pt>(us);
+    const Square* pieceList = pos.list<Pt>(us);
 
-    for (Square from = *positionList; from != SQ_NONE; from = *++positionList)
+    for (Square from = *pieceList; from != SQ_NONE; from = *++pieceList)
     {
         if (Checks)
         {

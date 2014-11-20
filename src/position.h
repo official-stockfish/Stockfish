@@ -27,7 +27,7 @@
 #include "types.h"
 
 
-/// The checkInfo struct is initialized at color'tor time and keeps info used
+/// The checkInfo struct is initialized at c'tor time and keeps info used
 /// to detect if a move gives check.
 class Position;
 struct Thread;
@@ -116,8 +116,8 @@ public:
   Bitboard attackers_to(Square square) const;
   Bitboard attackers_to(Square square, Bitboard occupied) const;
   Bitboard attacks_from(Piece piece, Square square) const;
-  template<PieceType Pt> Bitboard attacks_from(Square square) const;
-  template<PieceType Pt> Bitboard attacks_from(Square square, Color color) const;
+  template<PieceType> Bitboard attacks_from(Square square) const;
+  template<PieceType> Bitboard attacks_from(Square square, Color color) const;
 
   // Properties of moves
   bool legal(Move move, Bitboard pinned) const;

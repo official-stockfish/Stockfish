@@ -107,10 +107,10 @@ namespace {
 
   KPKPosition::KPKPosition(unsigned index) {
 
-    whiteKingSquare   = Square((index >>  0) & 0x3F);
-    blackKingSquare   = Square((index >>  6) & 0x3F);
-    us                = Color ((index >> 12) & 0x01);
-    pawnSquare        = make_square(File((index >> 13) & 0x3), RANK_7 - Rank((index >> 15) & 0x7));
+    whiteKingSquare = Square((index >>  0) & 0x3F);
+    blackKingSquare = Square((index >>  6) & 0x3F);
+    us              = Color ((index >> 12) & 0x01);
+    pawnSquare      = make_square(File((index >> 13) & 0x3), RANK_7 - Rank((index >> 15) & 0x7));
     result = UNKNOWN;
 
     // Check if two pieces are on the same square or if a king can be captured

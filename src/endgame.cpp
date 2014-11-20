@@ -835,7 +835,7 @@ ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
 template<>
 ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
-  assert(verify_material(positionposition, strongSide, VALUE_ZERO, 1));
+  assert(verify_material(pos, strongSide, VALUE_ZERO, 1));
   assert(verify_material(pos, weakSide,   VALUE_ZERO, 1));
 
   // Assume strongSide is white and the pawn is on files A-D

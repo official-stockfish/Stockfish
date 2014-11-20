@@ -90,7 +90,7 @@ namespace {
     Square square;
     bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
     Score value = SCORE_ZERO;
-    const Square* positionList = pos.list<PAWN>(Us);
+    const Square* pieceList = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
     Bitboard ourPawns   = pos.pieces(Us  , PAWN);
@@ -104,7 +104,7 @@ namespace {
     entry->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - entry->pawnsOnSquares[Us][BLACK];
 
     // Loop through all pawns of the current color and score each pawn
-    while ((square = *positionList++) != SQ_NONE)
+    while ((square = *pieceList++) != SQ_NONE)
     {
         assert(pos.piece_on(square) == make_piece(Us, PAWN));
 
