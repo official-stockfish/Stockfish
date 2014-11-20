@@ -335,13 +335,19 @@ namespace {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(RootMoves.begin(), RootMoves.begin() + PVIdx + 1);
 
-            if (Signals.stop)
-                sync_cout << "info nodes " << RootPos.nodes_searched()
-                          << " time " << Time::now() - SearchTime << sync_endl;
-
-            else if (   PVIdx + 1 == std::min(multiPV, RootMoves.size())
-                     || Time::now() - SearchTime > 3000)
+            // Print the PV lines, unless a multi-PV search has been interrupted
+            // (which may cause invalid scores to appear)
+            Time::point elapsed = Time::now() - SearchTime + 1;
+            if (   (!Signals.stop || multiPV == 1)
+                && (PVIdx + 1 == std::min(multiPV, RootMoves.size()) || elapsed > 3000))
                 sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+
+            // If search has been interrupted, and we are not printing the PV lines,
+            // we should at least print the final statistics.
+            else if (Signals.stop)
+                sync_cout << "info nodes " << RootPos.nodes_searched()
+                          << " nps " << RootPos.nodes_searched() * 1000 / elapsed
+                          << " time " << elapsed << sync_endl;
         }
 
         // If skill levels are enabled and time is up, pick a sub-optimal best move
