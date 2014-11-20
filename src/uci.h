@@ -46,12 +46,12 @@ class Option {
 
 public:
   Option(OnChange = NULL);
-  Option(bool v, OnChange = NULL);
-  Option(const char* v, OnChange = NULL);
-  Option(int v, int min, int max, OnChange = NULL);
+  Option(bool value, OnChange = NULL);
+  Option(const char* value, OnChange = NULL);
+  Option(int value, int min, int max, OnChange = NULL);
 
-  Option& operator=(const std::string& v);
-  void operator<<(const Option& o);
+  Option& operator=(const std::string& value);
+  void operator<<(const Option& option);
   operator int() const;
   operator std::string() const;
 
@@ -60,16 +60,16 @@ private:
 
   std::string defaultValue, currentValue, type;
   int min, max;
-  size_t idx;
+  size_t index;
   OnChange on_change;
 };
 
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
 
-std::string format_value(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
-std::string format_square(Square s);
-std::string format_move(Move m, bool chess960);
+std::string format_value(Value value, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
+std::string format_square(Square square);
+std::string format_move(Move move, bool chess960);
 Move to_move(const Position& pos, std::string& str);
 
 } // namespace UCI

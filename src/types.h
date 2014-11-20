@@ -213,7 +213,7 @@ enum Depth {
   DEPTH_QS_RECAPTURES = -5,
 
   DEPTH_NONE = -6,
-  DEPTH_MAX  = MAX_PLY
+  DEPTH_MAX = MAX_PLY
 };
 
 enum Square {
@@ -267,12 +267,12 @@ inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
-inline Value mg_value(Score s) {
-  return Value(((s + 0x8000) & ~0xffff) / 0x10000);
+inline Value mg_value(Score score) {
+  return Value(((score + 0x8000) & ~0xffff) / 0x10000);
 }
 
-inline Value eg_value(Score s) {
-  return Value((int)(unsigned(s) & 0x7FFFU) - (int)(unsigned(s) & 0x8000U));
+inline Value eg_value(Score score) {
+  return Value((int)(unsigned(score) & 0x7FFFU) - (int)(unsigned(score) & 0x8000U));
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                                         \
@@ -307,18 +307,18 @@ ENABLE_FULL_OPERATORS_ON(Rank)
 #undef ENABLE_BASE_OPERATORS_ON
 
 /// Additional operators to add integers to a Value
-inline Value operator+(Value v, int i) { return Value(int(v) + i); }
-inline Value operator-(Value v, int i) { return Value(int(v) - i); }
-inline Value& operator+=(Value& v, int i) { return v = v + i; }
-inline Value& operator-=(Value& v, int i) { return v = v - i; }
+inline Value operator+(Value value, int i) { return Value(int(value) + i); }
+inline Value operator-(Value value, int i) { return Value(int(value) - i); }
+inline Value& operator+=(Value& value, int i) { return value = value + i; }
+inline Value& operator-=(Value& value, int i) { return value = value - i; }
 
 /// Only declared but not defined. We don't want to multiply two scores due to
 /// a very high risk of overflow. So user should explicitly convert to integer.
-inline Score operator*(Score s1, Score s2);
+inline Score operator*(Score score1, Score score2);
 
 /// Division of a Score must be handled separately for each term
-inline Score operator/(Score s, int i) {
-  return make_score(mg_value(s) / i, eg_value(s) / i);
+inline Score operator/(Score score, int i) {
+  return make_score(mg_value(score) / i, eg_value(score) / i);
 }
 
 extern Value PieceValue[PHASE_NB][PIECE_NB];
@@ -328,20 +328,20 @@ struct ExtMove {
   Value value;
 };
 
-inline bool operator<(const ExtMove& f, const ExtMove& s) {
-  return f.value < s.value;
+inline bool operator<(const ExtMove& first, const ExtMove& second) {
+  return first.value < second.value;
 }
 
-inline Color operator~(Color c) {
-  return Color(c ^ BLACK);
+inline Color operator~(Color color) {
+  return Color(color ^ BLACK);
 }
 
-inline Square operator~(Square s) {
-  return Square(s ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
+inline Square operator~(Square square) {
+  return Square(square ^ SQ_A8); // Vertical flip SQ_A1 -> SQ_A8
 }
 
-inline CastlingRight operator|(Color c, CastlingSide s) {
-  return CastlingRight(WHITE_OO << ((s == QUEEN_SIDE) + 2 * c));
+inline CastlingRight operator|(Color color, CastlingSide castlingSide) {
+  return CastlingRight(WHITE_OO << ((castlingSide == QUEEN_SIDE) + 2 * color));
 }
 
 inline Value mate_in(int ply) {
@@ -352,70 +352,70 @@ inline Value mated_in(int ply) {
   return -VALUE_MATE + ply;
 }
 
-inline Square make_square(File f, Rank r) {
-  return Square((r << 3) | f);
+inline Square make_square(File file, Rank rank) {
+  return Square((rank << 3) | file);
 }
 
-inline Piece make_piece(Color c, PieceType pt) {
-  return Piece((c << 3) | pt);
+inline Piece make_piece(Color color, PieceType pieceType) {
+  return Piece((color << 3) | pieceType);
 }
 
-inline PieceType type_of(Piece pc)  {
-  return PieceType(pc & 7);
+inline PieceType type_of(Piece piece)  {
+  return PieceType(piece & 7);
 }
 
-inline Color color_of(Piece pc) {
-  assert(pc != NO_PIECE);
-  return Color(pc >> 3);
+inline Color color_of(Piece piece) {
+  assert(piece != NO_PIECE);
+  return Color(piece >> 3);
 }
 
-inline bool is_ok(Square s) {
-  return s >= SQ_A1 && s <= SQ_H8;
+inline bool is_ok(Square square) {
+  return square >= SQ_A1 && square <= SQ_H8;
 }
 
-inline File file_of(Square s) {
-  return File(s & 7);
+inline File file_of(Square square) {
+  return File(square & 7);
 }
 
-inline Rank rank_of(Square s) {
-  return Rank(s >> 3);
+inline Rank rank_of(Square square) {
+  return Rank(square >> 3);
 }
 
-inline Square relative_square(Color c, Square s) {
-  return Square(s ^ (c * 56));
+inline Square relative_square(Color color, Square square) {
+  return Square(square ^ (color * 56));
 }
 
-inline Rank relative_rank(Color c, Rank r) {
-  return Rank(r ^ (c * 7));
+inline Rank relative_rank(Color color, Rank rank) {
+  return Rank(rank ^ (color * 7));
 }
 
-inline Rank relative_rank(Color c, Square s) {
-  return relative_rank(c, rank_of(s));
+inline Rank relative_rank(Color color, Square square) {
+  return relative_rank(color, rank_of(square));
 }
 
-inline bool opposite_colors(Square s1, Square s2) {
-  int s = int(s1) ^ int(s2);
+inline bool opposite_colors(Square square1, Square square2) {
+  int s = int(square1) ^ int(square2);
   return ((s >> 3) ^ s) & 1;
 }
 
-inline Square pawn_push(Color c) {
-  return c == WHITE ? DELTA_N : DELTA_S;
+inline Square pawn_push(Color color) {
+  return color == WHITE ? DELTA_N : DELTA_S;
 }
 
-inline Square from_sq(Move m) {
-  return Square((m >> 6) & 0x3F);
+inline Square from_sq(Move move) {
+  return Square((move >> 6) & 0x3F);
 }
 
-inline Square to_sq(Move m) {
-  return Square(m & 0x3F);
+inline Square to_sq(Move move) {
+  return Square(move & 0x3F);
 }
 
-inline MoveType type_of(Move m) {
-  return MoveType(m & (3 << 14));
+inline MoveType type_of(Move move) {
+  return MoveType(move & (3 << 14));
 }
 
-inline PieceType promotion_type(Move m) {
-  return PieceType(((m >> 12) & 3) + 2);
+inline PieceType promotion_type(Move move) {
+  return PieceType(((move >> 12) & 3) + 2);
 }
 
 inline Move make_move(Square from, Square to) {
@@ -423,12 +423,12 @@ inline Move make_move(Square from, Square to) {
 }
 
 template<MoveType T>
-inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  return Move(to | (from << 6) | T | ((pt - KNIGHT) << 12));
+inline Move make(Square from, Square to, PieceType pieceType = KNIGHT) {
+  return Move(to | (from << 6) | T | ((pieceType - KNIGHT) << 12));
 }
 
-inline bool is_ok(Move m) {
-  return from_sq(m) != to_sq(m); // Catch also MOVE_NULL and MOVE_NONE
+inline bool is_ok(Move move) {
+  return from_sq(move) != to_sq(move); // Catch also MOVE_NULL and MOVE_NONE
 }
 
 #endif // #ifndef TYPES_H_INCLUDED

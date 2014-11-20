@@ -42,25 +42,25 @@ struct Stats {
 
   static const Value Max = Value(250);
 
-  const T* operator[](Piece pc) const { return table[pc]; }
+  const T* operator[](Piece piece) const { return table[piece]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
-  void update(Piece pc, Square to, Move m) {
+  void update(Piece piece, Square to, Move move) {
 
-    if (m == table[pc][to].first)
+    if (move == table[piece][to].first)
         return;
 
-    table[pc][to].second = table[pc][to].first;
-    table[pc][to].first = m;
+    table[piece][to].second = table[piece][to].first;
+    table[piece][to].first = move;
   }
 
-  void update(Piece pc, Square to, Value v) {
+  void update(Piece piece, Square to, Value value) {
 
     if (Gain)
-        table[pc][to] = std::max(v, table[pc][to] - 1);
+        table[piece][to] = std::max(value, table[piece][to] - 1);
 
-    else if (abs(table[pc][to] + v) < Max)
-        table[pc][to] +=  v;
+    else if (abs(table[piece][to] + value) < Max)
+        table[piece][to] +=  value;
   }
 
 private:
@@ -105,7 +105,7 @@ private:
   Square recaptureSquare;
   Value captureThreshold;
   int stage;
-  ExtMove *cur, *end, *endQuiets, *endBadCaptures;
+  ExtMove *current, *end, *endQuiets, *endBadCaptures;
   ExtMove moves[MAX_MOVES];
 };
 

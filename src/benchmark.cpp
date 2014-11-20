@@ -81,7 +81,7 @@ void benchmark(const Position& current, istream& is) {
 
   string token;
   Search::LimitsType limits;
-  vector<string> fens;
+  vector<string> fenStrings;
 
   // Assign default values to missing arguments
   string ttSize    = (is >> token) ? token : "16";
@@ -95,7 +95,7 @@ void benchmark(const Position& current, istream& is) {
   TT.clear();
 
   if (limitType == "time")
-      limits.movetime = 1000 * atoi(limit.c_str()); // movetime is in ms
+      limits.moveTime = 1000 * atoi(limit.c_str()); // movetime is in ms
 
   else if (limitType == "nodes")
       limits.nodes = atoi(limit.c_str());
@@ -107,14 +107,14 @@ void benchmark(const Position& current, istream& is) {
       limits.depth = atoi(limit.c_str());
 
   if (fenFile == "default")
-      fens.assign(Defaults, Defaults + 30);
+      fenStrings.assign(Defaults, Defaults + 30);
 
   else if (fenFile == "current")
-      fens.push_back(current.fen());
+      fenStrings.push_back(current.fen());
 
   else
   {
-      string fen;
+      string fenString;
       ifstream file(fenFile.c_str());
 
       if (!file.is_open())
@@ -123,29 +123,29 @@ void benchmark(const Position& current, istream& is) {
           return;
       }
 
-      while (getline(file, fen))
-          if (!fen.empty())
-              fens.push_back(fen);
+      while (getline(file, fenString))
+          if (!fenString.empty())
+              fenStrings.push_back(fenString);
 
       file.close();
   }
 
   uint64_t nodes = 0;
-  Search::StateStackPtr st;
+  Search::StateStackPtr state;
   Time::point elapsed = Time::now();
 
-  for (size_t i = 0; i < fens.size(); ++i)
+  for (size_t i = 0; i < fenStrings.size(); ++i)
   {
-      Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
+      Position pos(fenStrings[i], Options["UCI_Chess960"], Threads.main());
 
-      cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
+      cerr << "\nPosition: " << i + 1 << '/' << fenStrings.size() << endl;
 
       if (limitType == "perft")
           nodes += Search::perft<true>(pos, limits.depth * ONE_PLY);
 
       else
       {
-          Threads.start_thinking(pos, limits, st);
+          Threads.start_thinking(pos, limits, state);
           Threads.wait_for_think_finished();
           nodes += Search::RootPos.nodes_searched();
       }
