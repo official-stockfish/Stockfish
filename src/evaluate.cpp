@@ -503,7 +503,7 @@ namespace {
     Bitboard b, weak, defended;
     Score score = SCORE_ZERO;
 
-    // Non-pawn enemies defended by a pawn and under our attack
+    // Non-pawn enemies defended by a pawn
     defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
               &  ei.attackedBy[Them][PAWN];
 
