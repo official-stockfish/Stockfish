@@ -96,18 +96,18 @@ namespace {
     int bonus = 0;
 
     // Second-degree polynomial material imbalance by Tord Romstad
-    for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
+    for (int pieceType1 = NO_PIECE_TYPE; pieceType1 <= QUEEN; ++pieceType1)
     {
-        if (!pieceCount[Us][pt1])
+        if (!pieceCount[Us][pieceType1])
             continue;
 
-        int v = Linear[pt1];
+        int value = Linear[pieceType1];
 
-        for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
-            v +=  QuadraticSameSide[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticOppositeSide[pt1][pt2] * pieceCount[Them][pt2];
+        for (int pieceType2 = NO_PIECE_TYPE; pieceType2 <= pieceType1; ++pieceType2)
+            value +=  QuadraticSameSide[pieceType1][pieceType2] * pieceCount[Us][pieceType2]
+                    + QuadraticOppositeSide[pieceType1][pieceType2] * pieceCount[Them][pieceType2];
 
-        bonus += pieceCount[Us][pt1] * v;
+        bonus += pieceCount[Us][pieceType1] * value;
     }
 
     return bonus;
@@ -125,35 +125,35 @@ namespace Material {
 Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
 
   Key key = pos.material_key();
-  Entry* e = entries[key];
+  Entry* entry = entries[key];
 
-  // If e->key matches the position's material hash key, it means that we
+  // If entry->key matches the position's material hash key, it means that we
   // have analysed this material configuration before, and we can simply
   // return the information we found the last time instead of recomputing it.
-  if (e->key == key)
-      return e;
+  if (entry->key == key)
+      return entry;
 
-  std::memset(e, 0, sizeof(Entry));
-  e->key = key;
-  e->factor[WHITE] = e->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
-  e->gamePhase = pos.game_phase();
+  std::memset(entry, 0, sizeof(Entry));
+  entry->key = key;
+  entry->factor[WHITE] = entry->factor[BLACK] = (uint8_t)SCALE_FACTOR_NORMAL;
+  entry->gamePhase = pos.game_phase();
 
   // Let's look if we have a specialized evaluation function for this particular
   // material configuration. Firstly we look for a fixed configuration one, then
   // for a generic one if the previous search failed.
-  if (endgames.probe(key, e->evaluationFunction))
-      return e;
+  if (endgames.probe(key, entry->evaluationFunction))
+      return entry;
 
   if (is_KXK<WHITE>(pos))
   {
-      e->evaluationFunction = &EvaluateKXK[WHITE];
-      return e;
+      entry->evaluationFunction = &EvaluateKXK[WHITE];
+      return entry;
   }
 
   if (is_KXK<BLACK>(pos))
   {
-      e->evaluationFunction = &EvaluateKXK[BLACK];
-      return e;
+      entry->evaluationFunction = &EvaluateKXK[BLACK];
+      return entry;
   }
 
   // OK, we didn't find any special evaluation function for the current
@@ -161,75 +161,75 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   //
   // We face problems when there are several conflicting applicable
   // scaling functions and we need to decide which one to use.
-  EndgameBase<ScaleFactor>* sf;
+  EndgameBase<ScaleFactor>* scaleFactor;
 
-  if (endgames.probe(key, sf))
+  if (endgames.probe(key, scaleFactor))
   {
-      e->scalingFunction[sf->color()] = sf;
-      return e;
+      entry->scalingFunction[scaleFactor->color()] = scaleFactor;
+      return entry;
   }
 
   // Generic scaling functions that refer to more than one material
   // distribution. They should be probed after the specialized ones.
   // Note that these ones don't return after setting the function.
   if (is_KBPsKs<WHITE>(pos))
-      e->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
+      entry->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
 
   if (is_KBPsKs<BLACK>(pos))
-      e->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
+      entry->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
 
   if (is_KQKRPs<WHITE>(pos))
-      e->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
+      entry->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
 
   else if (is_KQKRPs<BLACK>(pos))
-      e->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
+      entry->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
 
-  Value npm_w = pos.non_pawn_material(WHITE);
-  Value npm_b = pos.non_pawn_material(BLACK);
+  Value nonPawnMaterialWhite = pos.non_pawn_material(WHITE);
+  Value nonPawnMaterialBlack = pos.non_pawn_material(BLACK);
 
-  if (npm_w + npm_b == VALUE_ZERO && pos.pieces(PAWN))
+  if (nonPawnMaterialWhite + nonPawnMaterialBlack == VALUE_ZERO && pos.pieces(PAWN))
   {
       if (!pos.count<PAWN>(BLACK))
       {
           assert(pos.count<PAWN>(WHITE) >= 2);
-          e->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
+          entry->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
       }
       else if (!pos.count<PAWN>(WHITE))
       {
           assert(pos.count<PAWN>(BLACK) >= 2);
-          e->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
+          entry->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
       }
       else if (pos.count<PAWN>(WHITE) == 1 && pos.count<PAWN>(BLACK) == 1)
       {
           // This is a special case because we set scaling functions
           // for both colors instead of only one.
-          e->scalingFunction[WHITE] = &ScaleKPKP[WHITE];
-          e->scalingFunction[BLACK] = &ScaleKPKP[BLACK];
+          entry->scalingFunction[WHITE] = &ScaleKPKP[WHITE];
+          entry->scalingFunction[BLACK] = &ScaleKPKP[BLACK];
       }
   }
 
   // No pawns makes it difficult to win, even with a material advantage. This
   // catches some trivial draws like KK, KBK and KNK and gives a very drawish
   // scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
-  if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
-      e->factor[WHITE] = uint8_t(npm_w < RookValueMg ? SCALE_FACTOR_DRAW : npm_b <= BishopValueMg ? 4 : 12);
+  if (!pos.count<PAWN>(WHITE) && nonPawnMaterialWhite - nonPawnMaterialBlack <= BishopValueMg)
+      entry->factor[WHITE] = uint8_t(nonPawnMaterialWhite < RookValueMg ? SCALE_FACTOR_DRAW : nonPawnMaterialBlack <= BishopValueMg ? 4 : 12);
 
-  if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
-      e->factor[BLACK] = uint8_t(npm_b < RookValueMg ? SCALE_FACTOR_DRAW : npm_w <= BishopValueMg ? 4 : 12);
+  if (!pos.count<PAWN>(BLACK) && nonPawnMaterialBlack - nonPawnMaterialWhite <= BishopValueMg)
+      entry->factor[BLACK] = uint8_t(nonPawnMaterialBlack < RookValueMg ? SCALE_FACTOR_DRAW : nonPawnMaterialWhite <= BishopValueMg ? 4 : 12);
 
-  if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
-      e->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;
+  if (pos.count<PAWN>(WHITE) == 1 && nonPawnMaterialWhite - nonPawnMaterialBlack <= BishopValueMg)
+      entry->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;
 
-  if (pos.count<PAWN>(BLACK) == 1 && npm_b - npm_w <= BishopValueMg)
-      e->factor[BLACK] = (uint8_t) SCALE_FACTOR_ONEPAWN;
+  if (pos.count<PAWN>(BLACK) == 1 && nonPawnMaterialBlack - nonPawnMaterialWhite <= BishopValueMg)
+      entry->factor[BLACK] = (uint8_t) SCALE_FACTOR_ONEPAWN;
 
   // Compute the space weight
-  if (npm_w + npm_b >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
+  if (nonPawnMaterialWhite + nonPawnMaterialBlack >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
   {
       int minorPieceCount =  pos.count<KNIGHT>(WHITE) + pos.count<BISHOP>(WHITE)
                            + pos.count<KNIGHT>(BLACK) + pos.count<BISHOP>(BLACK);
 
-      e->spaceWeight = make_score(minorPieceCount * minorPieceCount, 0);
+      entry->spaceWeight = make_score(minorPieceCount * minorPieceCount, 0);
   }
 
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
@@ -241,8 +241,8 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
     pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
-  e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
-  return e;
+  entry->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  return entry;
 }
 
 } // namespace Material

@@ -36,7 +36,7 @@ namespace {
  // start_routine() is the C function which is called when a new thread
  // is launched. It is a wrapper to the virtual function idle_loop().
 
- extern "C" { long start_routine(ThreadBase* th) { th->idle_loop(); return 0; } }
+ extern "C" { long start_routine(ThreadBase* thread) { thread->idle_loop(); return 0; } }
 
 
  // Helpers to launch a thread after creation and joining before delete. Must be
@@ -44,16 +44,16 @@ namespace {
  // when start_routine (and hence virtual idle_loop) is called and when joining.
 
  template<typename T> T* new_thread() {
-   T* th = new T();
-   thread_create(th->handle, start_routine, th); // Will go to sleep
-   return th;
+   T* thread = new T();
+   thread_create(thread->handle, start_routine, thread); // Will go to sleep
+   return thread;
  }
 
- void delete_thread(ThreadBase* th) {
-   th->exit = true; // Search must be already finished
-   th->notify_one();
-   thread_join(th->handle); // Wait for thread termination
-   delete th;
+ void delete_thread(ThreadBase* thread) {
+   thread->exit = true; // Search must be already finished
+   thread->notify_one();
+   thread_join(thread->handle); // Wait for thread termination
+   delete thread;
  }
 
 }
@@ -69,12 +69,12 @@ void ThreadBase::notify_one() {
 }
 
 
-// wait_for() set the thread to sleep until condition 'b' turns true
+// wait_for() set the thread to sleep until condition 'condition' turns true
 
-void ThreadBase::wait_for(volatile const bool& b) {
+void ThreadBase::wait_for(volatile const bool& condition) {
 
   mutex.lock();
-  while (!b) sleepCondition.wait(mutex);
+  while (!condition) sleepCondition.wait(mutex);
   mutex.unlock();
 }
 
@@ -88,7 +88,7 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
   maxPly = splitPointsSize = 0;
   activeSplitPoint = NULL;
   activePosition = NULL;
-  idx = Threads.size(); // Starts from 0
+  index = Threads.size(); // Starts from 0
 }
 
 
@@ -97,8 +97,8 @@ Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
 
 bool Thread::cutoff_occurred() const {
 
-  for (SplitPoint* sp = activeSplitPoint; sp; sp = sp->parentSplitPoint)
-      if (sp->cutoff)
+  for (SplitPoint* splitPoint = activeSplitPoint; splitPoint; splitPoint = splitPoint->parentSplitPoint)
+      if (splitPoint->cutoff)
           return true;
 
   return false;
@@ -123,7 +123,7 @@ bool Thread::available_to(const Thread* master) const {
 
   // No split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !size || splitPoints[size - 1].slavesMask.test(master->idx);
+  return !size || splitPoints[size - 1].slavesMask.test(master->index);
 }
 
 
@@ -266,40 +266,40 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   assert(splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
 
   // Pick the next available split point from the split point stack
-  SplitPoint& sp = splitPoints[splitPointsSize];
+  SplitPoint& splitPoint = splitPoints[splitPointsSize];
 
-  sp.masterThread = this;
-  sp.parentSplitPoint = activeSplitPoint;
-  sp.slavesMask = 0, sp.slavesMask.set(idx);
-  sp.depth = depth;
-  sp.bestValue = *bestValue;
-  sp.bestMove = *bestMove;
-  sp.alpha = alpha;
-  sp.beta = beta;
-  sp.nodeType = nodeType;
-  sp.cutNode = cutNode;
-  sp.movePicker = movePicker;
-  sp.moveCount = moveCount;
-  sp.pos = &pos;
-  sp.nodes = 0;
-  sp.cutoff = false;
-  sp.ss = ss;
+  splitPoint.masterThread = this;
+  splitPoint.parentSplitPoint = activeSplitPoint;
+  splitPoint.slavesMask = 0, splitPoint.slavesMask.set(index);
+  splitPoint.depth = depth;
+  splitPoint.bestValue = *bestValue;
+  splitPoint.bestMove = *bestMove;
+  splitPoint.alpha = alpha;
+  splitPoint.beta = beta;
+  splitPoint.nodeType = nodeType;
+  splitPoint.cutNode = cutNode;
+  splitPoint.movePicker = movePicker;
+  splitPoint.moveCount = moveCount;
+  splitPoint.pos = &pos;
+  splitPoint.nodes = 0;
+  splitPoint.cutoff = false;
+  splitPoint.ss = ss;
 
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
   Threads.mutex.lock();
-  sp.mutex.lock();
+  splitPoint.mutex.lock();
 
-  sp.allSlavesSearching = true; // Must be set under lock protection
+  splitPoint.allSlavesSearching = true; // Must be set under lock protection
   ++splitPointsSize;
-  activeSplitPoint = &sp;
+  activeSplitPoint = &splitPoint;
   activePosition = NULL;
 
   for (Thread* slave; (slave = Threads.available_slave(this)) != NULL; )
   {
-      sp.slavesMask.set(slave->idx);
-      slave->activeSplitPoint = &sp;
+      splitPoint.slavesMask.set(slave->index);
+      slave->activeSplitPoint = &splitPoint;
       slave->searching = true; // Slave leaves idle_loop()
       slave->notify_one(); // Could be sleeping
   }
@@ -308,7 +308,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  sp.mutex.unlock();
+  splitPoint.mutex.unlock();
   Threads.mutex.unlock();
 
   Thread::idle_loop(); // Force a call to base class idle_loop()
@@ -323,17 +323,17 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // finished. Note that setting 'searching' and decreasing splitPointsSize is
   // done under lock protection to avoid a race with Thread::available_to().
   Threads.mutex.lock();
-  sp.mutex.lock();
+  splitPoint.mutex.lock();
 
   searching = true;
   --splitPointsSize;
-  activeSplitPoint = sp.parentSplitPoint;
+  activeSplitPoint = splitPoint.parentSplitPoint;
   activePosition = &pos;
-  pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
-  *bestMove = sp.bestMove;
-  *bestValue = sp.bestValue;
+  pos.set_nodes_searched(pos.nodes_searched() + splitPoint.nodes);
+  *bestMove = splitPoint.bestMove;
+  *bestValue = splitPoint.bestValue;
 
-  sp.mutex.unlock();
+  splitPoint.mutex.unlock();
   Threads.mutex.unlock();
 }
 
@@ -341,10 +341,10 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 
 void ThreadPool::wait_for_think_finished() {
 
-  MainThread* t = main();
-  t->mutex.lock();
-  while (t->thinking) sleepCondition.wait(t->mutex);
-  t->mutex.unlock();
+  MainThread* thread = main();
+  thread->mutex.lock();
+  while (thread->thinking) sleepCondition.wait(thread->mutex);
+  thread->mutex.unlock();
 }
 
 

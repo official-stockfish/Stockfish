@@ -44,12 +44,12 @@ struct TTEntry {
 private:
   friend class TranspositionTable;
 
-  void save(uint16_t k, Value v, Bound b, Depth d, Move m, uint8_t g, Value ev) {
+  void save(uint16_t key, Value v, Bound b, Depth d, Move m, uint8_t g, Value evaluationValue) {
 
-    key16     = (uint16_t)k;
+    key16     = (uint16_t)key;
     move16    = (uint16_t)m;
     value16   = (int16_t)v;
-    evalValue = (int16_t)ev;
+    evalValue = (int16_t)evaluationValue;
     genBound8 = (uint8_t)(g | b);
     depth8    = (int8_t)d;
   }
@@ -90,7 +90,7 @@ public:
   TTEntry* first_entry(const Key key) const;
   void resize(size_t mbSize);
   void clear();
-  void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV);
+  void store(const Key key, Value value, Bound type, Depth depth, Move move, Value evaluationValue);
 
 private:
   size_t clusterCount;
