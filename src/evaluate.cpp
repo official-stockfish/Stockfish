@@ -505,8 +505,7 @@ namespace {
 
     // Non-pawn enemies defended by a pawn and under our attack
     defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
-              &  ei.attackedBy[Them][PAWN]
-              & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP] | ei.attackedBy[Us][ROOK]);
+              &  ei.attackedBy[Them][PAWN];
 
     // Add a bonus according to the kind of attacking pieces
     if (defended)
