@@ -29,11 +29,14 @@
 #include "movepick.h"
 #include "rkiss.h"
 #include "search.h"
-#include "tbprobe.h"
 #include "timeman.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+
+#ifdef SYZYGY
+#include "syzygy/tbprobe.h"
+#endif
 
 namespace Search {
 

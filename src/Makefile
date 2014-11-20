@@ -78,7 +78,7 @@ pext = no
 syzygy = yes
 
 ifeq ($(syzygy),yes)
-	OBJS += ../syzygy/tbprobe.o
+	OBJS += ./syzygy/tbprobe.o
 	CXXFLAGS += -I.
 	CXXFLAGS += -DSYZYGY
 endif
@@ -405,7 +405,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ../syzygy/*.o
+	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o
 
 default:
 	help

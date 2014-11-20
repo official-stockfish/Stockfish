@@ -26,7 +26,10 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-#include "tbprobe.h"
+
+#ifdef SYZYGY
+#include "syzygy/tbprobe.h"
+#endif
 
 using std::string;
 

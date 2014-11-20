@@ -23,10 +23,13 @@
 #include "evaluate.h"
 #include "position.h"
 #include "search.h"
-#include "tbprobe.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+
+#ifdef SYZYGY
+#include "syzygy/tbprobe.h"
+#endif
 
 int main(int argc, char* argv[]) {
 
