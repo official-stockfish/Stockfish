@@ -217,9 +217,9 @@ void Search::think() {
       RootPos.this_thread()->wait_for(Signals.stop);
   }
 
+  std::string ponder = RootMoves[0].pv.size() < 2 ? "" : " ponder " + UCI::format_move(RootMoves[0].pv[1], RootPos.is_chess960());
   sync_cout << "bestmove " << UCI::format_move(RootMoves[0].pv[0], RootPos.is_chess960())
-            << " ponder "  << UCI::format_move(RootMoves[0].pv[1], RootPos.is_chess960())
-            << sync_endl;
+            << ponder << sync_endl;
 }
 
 
