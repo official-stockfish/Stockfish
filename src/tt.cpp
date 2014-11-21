@@ -107,8 +107,8 @@ void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m,
   // Implement replace strategy
   TTEntry* replace = tte;
   for (unsigned i = 1; i < TTClusterSize; ++i)
-      if (  ((  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT)
-          - ((replace->genBound8 & 0xFC) == generation)
+      if (  (  tte[i].generation() == generation || tte[i].bound() == BOUND_EXACT)
+          - (replace->generation() == generation)
           - (tte[i].depth8 < replace->depth8) < 0)
           replace = &tte[i];
 

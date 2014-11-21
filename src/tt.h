@@ -35,11 +35,12 @@
 
 struct TTEntry {
 
-  Move  move()  const      { return (Move )move16; }
-  Value value() const      { return (Value)value16; }
-  Value eval_value() const { return (Value)evalValue; }
-  Depth depth() const      { return (Depth)depth8; }
-  Bound bound() const      { return (Bound)(genBound8 & 0x3); }
+  Move    move()  const      { return (Move )move16; }
+  Value   value() const      { return (Value)value16; }
+  Value   eval_value() const { return (Value)evalValue; }
+  Depth   depth() const      { return (Depth)depth8; }
+  Bound   bound() const      { return (Bound)(genBound8 & 0x3); }
+  uint8_t generation() const { return genBound8 & ~0x3; }
 
 private:
   friend class TranspositionTable;
