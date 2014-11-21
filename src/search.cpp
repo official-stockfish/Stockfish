@@ -67,7 +67,7 @@ namespace {
   int8_t Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
 
   template <bool PvNode> inline Depth reduction(bool i, Depth d, int mn) {
-    return (Depth) Reductions[PvNode][i][std::min(int(d), 63)][std::min(mn, 63)];
+    return (Depth) Reductions[PvNode][i][std::min(d / ONE_PLY, 63)][std::min(mn, 63)];
   }
 
   size_t PVIdx;
@@ -724,7 +724,7 @@ moves_loop: // When in check and at SpNode search starts from here
           && !ext
           &&  pos.legal(move, ci.pinned))
       {
-          Value rBeta = ttValue - int(2 * depth);
+          Value rBeta = ttValue - (2 * depth) / ONE_PLY;
           ss->excludedMove = move;
           ss->skipNullMove = true;
           value = search<NonPV, false>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode);
@@ -1260,7 +1260,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     // Increase history value of the cut-off move and decrease all the other
     // played quiet moves.
-    Value bonus = Value(int(depth) * int(depth));
+    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
     History.update(pos.moved_piece(move), to_sq(move), bonus);
     for (int i = 0; i < quietsCnt; ++i)
     {
