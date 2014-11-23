@@ -1180,12 +1180,12 @@ static void calc_symlen(struct PairsData *d, int s, char *tmp)
 {
   int s1, s2;
 
-  int w = *(int *)(d->sympat + 3 * s);
-  s2 = (w >> 12) & 0x0fff;
+  ubyte* w = d->sympat + 3 * s;
+  s2 = (w[2] << 4) | (w[1] >> 4);
   if (s2 == 0x0fff)
     d->symlen[s] = 0;
   else {
-    s1 = w & 0x0fff;
+    s1 = ((w[1] & 0xf) << 8) | w[0];
     if (!tmp[s1]) calc_symlen(d, s1, tmp);
     if (!tmp[s2]) calc_symlen(d, s2, tmp);
     d->symlen[s] = d->symlen[s1] + d->symlen[s2] + 1;
