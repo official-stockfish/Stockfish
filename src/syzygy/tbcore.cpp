@@ -1193,6 +1193,14 @@ static void calc_symlen(struct PairsData *d, int s, char *tmp)
   tmp[s] = 1;
 }
 
+ushort ReadUshort(ubyte* d) {
+  return d[0] | (d[1] << 8);
+}
+
+uint32 ReadUint32(ubyte* d) {
+  return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
+}
+
 static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64 *size, unsigned char **next, ubyte *flags, int wdl)
 {
   struct PairsData *d;
@@ -1213,16 +1221,16 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
 
   int blocksize = data[1];
   int idxbits = data[2];
-  int real_num_blocks = *(uint32 *)(&data[4]);
+  int real_num_blocks = ReadUint32(&data[4]);
   int num_blocks = real_num_blocks + *(ubyte *)(&data[3]);
   int max_len = data[8];
   int min_len = data[9];
   int h = max_len - min_len + 1;
-  int num_syms = *(ushort *)(&data[10 + 2 * h]);
+  int num_syms = ReadUshort(&data[10 + 2 * h]);
   d = (struct PairsData *)malloc(sizeof(struct PairsData) + (h - 1) * sizeof(base_t) + num_syms);
   d->blocksize = blocksize;
   d->idxbits = idxbits;
-  d->offset = (ushort *)(&data[10]);
+  d->offset = (ushort*)(&data[10]);
   d->symlen = ((ubyte *)d) + sizeof(struct PairsData) + (h - 1) * sizeof(base_t);
   d->sympat = &data[12 + 2 * h];
   d->min_len = min_len;
@@ -1243,7 +1251,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
 
   d->base[h - 1] = 0;
   for (i = h - 2; i >= 0; i--)
-    d->base[i] = (d->base[i + 1] + d->offset[i] - d->offset[i + 1]) / 2;
+    d->base[i] = (d->base[i + 1] + ReadUshort((ubyte*)(d->offset + i)) - ReadUshort((ubyte*)(d->offset + i + 1))) / 2;
   for (i = 0; i < h; i++)
     d->base[i] <<= 64 - (min_len + i);
 
@@ -1511,7 +1519,10 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   for (;;) {
     int l = m;
     while (code < base[l]) l++;
-    sym = offset[l] + ((code - base[l]) >> (64 - l));
+    sym = offset[l];
+    if (!LittleEndian)
+      sym = ((sym & 0xff) << 8) | (sym >> 8);
+    sym += ((code - base[l]) >> (64 - l));
     if (litidx < (int)symlen[sym] + 1) break;
     litidx -= (int)symlen[sym] + 1;
     code <<= l;
