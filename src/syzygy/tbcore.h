@@ -35,15 +35,15 @@
 #define DTZDIR "RTBZDIR"
 #define TBPIECES 6
 
-#define WDL_MAGIC 0x5d23e871
-#define DTZ_MAGIC 0xa50c66d7
-
-#define TBHASHBITS 10
-
 typedef unsigned long long uint64;
 typedef unsigned int uint32;
 typedef unsigned char ubyte;
 typedef unsigned short ushort;
+
+const ubyte WDL_MAGIC[4] = { 0x71, 0xe8, 0x23, 0x5d };
+const ubyte DTZ_MAGIC[4] = { 0xd7, 0x66, 0x0c, 0xa5 };
+
+#define TBHASHBITS 10
 
 struct TBHashEntry;
 

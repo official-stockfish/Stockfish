@@ -1269,7 +1269,10 @@ static int init_table_wdl(struct TBEntry *entry, char *str)
   }
 
   ubyte *data = (ubyte *)entry->data;
-  if (((uint32 *)data)[0] != WDL_MAGIC) {
+  if (data[0] != WDL_MAGIC[0] ||
+      data[1] != WDL_MAGIC[1] ||
+      data[2] != WDL_MAGIC[2] ||
+      data[3] != WDL_MAGIC[3]) {
     printf("Corrupted table.\n");
     unmap_file(entry->data, entry->mapping);
     entry->data = 0;
@@ -1379,7 +1382,10 @@ static int init_table_dtz(struct TBEntry *entry)
   if (!data)
     return 0;
 
-  if (((uint32 *)data)[0] != DTZ_MAGIC) {
+  if (data[0] != DTZ_MAGIC[0] ||
+      data[1] != DTZ_MAGIC[1] ||
+      data[2] != DTZ_MAGIC[2] ||
+      data[3] != DTZ_MAGIC[3]) {
     printf("Corrupted table.\n");
     return 0;
   }
