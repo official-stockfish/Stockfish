@@ -1533,7 +1533,11 @@ void check_time() {
       dbg_print();
   }
 
-  if (Limits.use_time_management() && !Limits.ponder)
+  // An engine may not stop pondering until told so by the GUI
+  if (Limits.ponder)
+      return;
+
+  if (Limits.use_time_management())
   {
       bool stillAtFirstMove =    Signals.firstRootMove
                              && !Signals.failedLowAtRoot
