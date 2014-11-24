@@ -56,7 +56,7 @@ struct Stack {
 /// all non-pv moves.
 struct RootMove {
 
-  RootMove(Move m) : score(-VALUE_INFINITE), prevScore(-VALUE_INFINITE), pv(1, m) {}
+  RootMove(Move m) : score(-VALUE_INFINITE), previousScore(-VALUE_INFINITE), pv(1, m) {}
 
   bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
   bool operator==(const Move& m) const { return pv[0] == m; }
@@ -64,7 +64,7 @@ struct RootMove {
   void insert_pv_in_tt(Position& pos);
 
   Value score;
-  Value prevScore;
+  Value previousScore;
   std::vector<Move> pv;
 };
 
