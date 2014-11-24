@@ -46,15 +46,15 @@ private:
 };
 
 struct ConditionVariable {
-  ConditionVariable() { cond_init(condition); }
- ~ConditionVariable() { cond_destroy(condition); }
+  ConditionVariable() { cond_init(c); }
+ ~ConditionVariable() { cond_destroy(c); }
 
-  void wait(Mutex& m) { cond_wait(condition, m.l); }
-  void wait_for(Mutex& m, int ms) { timed_wait(condition, m.l, ms); }
-  void notify_one() { cond_signal(condition); }
+  void wait(Mutex& m) { cond_wait(c, m.l); }
+  void wait_for(Mutex& m, int ms) { timed_wait(c, m.l, ms); }
+  void notify_one() { cond_signal(c); }
 
 private:
-  WaitCondition condition;
+  WaitCondition c;
 };
 
 struct Thread;
@@ -96,7 +96,7 @@ struct ThreadBase {
   virtual ~ThreadBase() {}
   virtual void idle_loop() = 0;
   void notify_one();
-  void wait_for(volatile const bool& condition);
+  void wait_for(volatile const bool& b);
 
   Mutex mutex;
   ConditionVariable sleepCondition;
@@ -125,7 +125,7 @@ struct Thread : public ThreadBase {
   Endgames endgames;
   Pawns::Table pawnsTable;
   Position* activePosition;
-  size_t index;
+  size_t idx;
   int maxPly;
   SplitPoint* volatile activeSplitPoint;
   volatile int splitPointsSize;

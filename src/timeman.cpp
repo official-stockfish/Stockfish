@@ -86,7 +86,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
       minThinkingTime     : No matter what, use at least this much thinking before doing the move
   */
 
-  int hypMTG, hypMyTime, time1, time2;
+  int hypMTG, hypMyTime, t1, t2;
 
   // Read uci parameters
   int moveOverhead    = Options["Move Overhead"];
@@ -99,7 +99,7 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
 
   // We calculate optimum time usage for different hypothetical "moves to go"-values and choose the
   // minimum of calculated search time values. Usually the greatest hypMTG gives the minimum values.
-  for (hypMTG = 1; hypMTG <= (limits.movesToGo ? std::min(limits.movesToGo, MoveHorizon) : MoveHorizon); ++hypMTG)
+  for (hypMTG = 1; hypMTG <= (limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon); ++hypMTG)
   {
       // Calculate thinking time for hypothetical "moves to go"-value
       hypMyTime =  limits.time[us]
@@ -108,11 +108,11 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
 
       hypMyTime = std::max(hypMyTime, 0);
 
-      time1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly, slowMover);
-      time2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly, slowMover);
+      t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, currentPly, slowMover);
+      t2 = minThinkingTime + remaining<MaxTime>(hypMyTime, hypMTG, currentPly, slowMover);
 
-      optimumSearchTime = std::min(optimumSearchTime, time1);
-      maximumSearchTime = std::min(maximumSearchTime, time2);
+      optimumSearchTime = std::min(optimumSearchTime, t1);
+      maximumSearchTime = std::min(maximumSearchTime, t2);
   }
 
   if (Options["Ponder"])

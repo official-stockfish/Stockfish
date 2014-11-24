@@ -45,7 +45,7 @@ struct Stack {
   Move excludedMove;
   Move killers[2];
   Depth reduction;
-  Value staticEvaluation;
+  Value staticEval;
   bool skipNullMove;
 };
 
@@ -56,12 +56,10 @@ struct Stack {
 /// all non-pv moves.
 struct RootMove {
 
-  RootMove(Move move) : score(-VALUE_INFINITE), previousScore(-VALUE_INFINITE) {
-    pv.push_back(move); pv.push_back(MOVE_NONE);
-  }
+  RootMove(Move m) : score(-VALUE_INFINITE), previousScore(-VALUE_INFINITE), pv(1, m) {}
 
-  bool operator<(const RootMove& rootMove) const { return score > rootMove.score; } // Ascending sort
-  bool operator==(const Move& move) const { return pv[0] == move; }
+  bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
+  bool operator==(const Move& m) const { return pv[0] == m; }
 
   void insert_pv_in_tt(Position& pos);
 
@@ -78,13 +76,13 @@ struct RootMove {
 struct LimitsType {
 
   LimitsType() { // Using memset on a std::vector is undefined behavior
-    nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = movesToGo =
-    depth = moveTime = mate = infinite = ponder = 0;
+    nodes = time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = movestogo =
+    depth = movetime = mate = infinite = ponder = 0;
   }
-  bool use_time_management() const { return !(mate | moveTime | depth | nodes | infinite); }
+  bool use_time_management() const { return !(mate | movetime | depth | nodes | infinite); }
 
   std::vector<Move> searchmoves;
-  int time[COLOR_NB], inc[COLOR_NB], movesToGo, depth, moveTime, mate, infinite, ponder;
+  int time[COLOR_NB], inc[COLOR_NB], movestogo, depth, movetime, mate, infinite, ponder;
   int64_t nodes;
 };
 

@@ -91,7 +91,7 @@ const TTEntry* TranspositionTable::probe(const Key key) const {
 /// to be more valuable than a TTEntry t2 if t1 is from the current search and t2
 /// is from a previous search, or if the depth of t1 is bigger than the depth of t2.
 
-void TranspositionTable::store(const Key key, Value value, Bound bound, Depth depth, Move move, Value evaluationValue) {
+void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
 
   TTEntry* const tte = first_entry(key);
   const uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
@@ -100,7 +100,7 @@ void TranspositionTable::store(const Key key, Value value, Bound bound, Depth de
       if (!tte[i].key16 || tte[i].key16 == key16) // Empty or overwrite old
       {
           // Save preserving any existing ttMove
-          tte[i].save(key16, value, bound, depth, move ? move : tte[i].move(), generation, evaluationValue);
+          tte[i].save(key16, v, b, d, m ? m : tte[i].move(), generation, statV);
           return;
       }
 
@@ -112,5 +112,5 @@ void TranspositionTable::store(const Key key, Value value, Bound bound, Depth de
           - (tte[i].depth8 < replace->depth8) < 0)
           replace = &tte[i];
 
-  replace->save(key16, value, bound, depth, move, generation, evaluationValue);
+  replace->save(key16, v, b, d, m, generation, statV);
 }

@@ -33,36 +33,36 @@ namespace Pawns {
 struct Entry {
 
   Score pawns_value() const { return value; }
-  Bitboard pawn_attacks(Color color) const { return pawnAttacks[color]; }
-  Bitboard passed_pawns(Color color) const { return passedPawns[color]; }
+  Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
+  Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
 
-  int semiopen_file(Color color, File file) const {
-    return semiopenFiles[color] & (1 << file);
+  int semiopen_file(Color c, File f) const {
+    return semiopenFiles[c] & (1 << f);
   }
 
-  int semiopen_side(Color color, File file, bool leftSide) const {
-    return semiopenFiles[color] & (leftSide ? (1 << file) - 1 : ~((1 << (file + 1)) - 1));
+  int semiopen_side(Color c, File f, bool leftSide) const {
+    return semiopenFiles[c] & (leftSide ? (1 << f) - 1 : ~((1 << (f + 1)) - 1));
   }
 
-  int pawn_span(Color color) const {
-    return pawnSpan[color];
+  int pawn_span(Color c) const {
+    return pawnSpan[c];
   }
 
-  int pawns_on_same_color_squares(Color color, Square square) const {
-    return pawnsOnSquares[color][!!(DarkSquares & square)];
-  }
-
-  template<Color Us>
-  Score king_safety(const Position& pos, Square kingSquare)  {
-    return  kingSquares[Us] == kingSquare && castlingRights[Us] == pos.can_castle(Us)
-          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos, kingSquare));
+  int pawns_on_same_color_squares(Color c, Square s) const {
+    return pawnsOnSquares[c][!!(DarkSquares & s)];
   }
 
   template<Color Us>
-  Score do_king_safety(const Position& pos, Square kingSquare);
+  Score king_safety(const Position& pos, Square ksq)  {
+    return  kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
+          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos, ksq));
+  }
 
   template<Color Us>
-  Value shelter_storm(const Position& pos, Square kingSquare);
+  Score do_king_safety(const Position& pos, Square ksq);
+
+  template<Color Us>
+  Value shelter_storm(const Position& pos, Square ksq);
 
   Key key;
   Score value;

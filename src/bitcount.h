@@ -43,23 +43,23 @@ const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : 
 template<BitCountType> inline int popcount(Bitboard);
 
 template<>
-inline int popcount<CNT_64>(Bitboard bitboard) {
-  bitboard -=  (bitboard >> 1) & 0x5555555555555555ULL;
-  bitboard  = ((bitboard >> 2) & 0x3333333333333333ULL) + (bitboard & 0x3333333333333333ULL);
-  bitboard  = ((bitboard >> 4) + bitboard) & 0x0F0F0F0F0F0F0F0FULL;
-  return (bitboard * 0x0101010101010101ULL) >> 56;
+inline int popcount<CNT_64>(Bitboard b) {
+  b -=  (b >> 1) & 0x5555555555555555ULL;
+  b  = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+  b  = ((b >> 4) + b) & 0x0F0F0F0F0F0F0F0FULL;
+  return (b * 0x0101010101010101ULL) >> 56;
 }
 
 template<>
-inline int popcount<CNT_64_MAX15>(Bitboard bitboard) {
-  bitboard -=  (bitboard >> 1) & 0x5555555555555555ULL;
-  bitboard  = ((bitboard >> 2) & 0x3333333333333333ULL) + (bitboard & 0x3333333333333333ULL);
-  return (bitboard * 0x1111111111111111ULL) >> 60;
+inline int popcount<CNT_64_MAX15>(Bitboard b) {
+  b -=  (b >> 1) & 0x5555555555555555ULL;
+  b  = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+  return (b * 0x1111111111111111ULL) >> 60;
 }
 
 template<>
-inline int popcount<CNT_32>(Bitboard bitboard) {
-  unsigned w = unsigned(bitboard >> 32), v = unsigned(bitboard);
+inline int popcount<CNT_32>(Bitboard b) {
+  unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -=  (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -=  (w >> 1) & 0x55555555;
   v  = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
@@ -69,8 +69,8 @@ inline int popcount<CNT_32>(Bitboard bitboard) {
 }
 
 template<>
-inline int popcount<CNT_32_MAX15>(Bitboard bitboard) {
-  unsigned w = unsigned(bitboard >> 32), v = unsigned(bitboard);
+inline int popcount<CNT_32_MAX15>(Bitboard b) {
+  unsigned w = unsigned(b >> 32), v = unsigned(b);
   v -=  (v >> 1) & 0x55555555; // 0-2 in 2 bits
   w -=  (w >> 1) & 0x55555555;
   v  = ((v >> 2) & 0x33333333) + (v & 0x33333333); // 0-4 in 4 bits
@@ -79,24 +79,24 @@ inline int popcount<CNT_32_MAX15>(Bitboard bitboard) {
 }
 
 template<>
-inline int popcount<CNT_HW_POPCNT>(Bitboard bitboard) {
+inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
 
 #ifndef USE_POPCNT
 
   assert(false);
-  return bitboard != 0; // Avoid 'bitboard not used' warning
+  return b != 0; // Avoid 'b not used' warning
 
 #elif defined(_MSC_VER) && defined(__INTEL_COMPILER)
 
-  return _mm_popcnt_u64(bitboard);
+  return _mm_popcnt_u64(b);
 
 #elif defined(_MSC_VER)
 
-  return (int)__popcnt64(bitboard);
+  return (int)__popcnt64(b);
 
 #else
 
-  return __builtin_popcountll(bitboard);
+  return __builtin_popcountll(b);
 
 #endif
 }

@@ -52,30 +52,30 @@ namespace {
 
   void position(Position& pos, istringstream& is) {
 
-    Move move;
-    string token, fenString;
+    Move m;
+    string token, fen;
 
     is >> token;
 
     if (token == "startpos")
     {
-        fenString = StartFEN;
+        fen = StartFEN;
         is >> token; // Consume "moves" token if any
     }
     else if (token == "fen")
         while (is >> token && token != "moves")
-            fenString += token + " ";
+            fen += token + " ";
     else
         return;
 
-    pos.set(fenString, Options["UCI_Chess960"], Threads.main());
+    pos.set(fen, Options["UCI_Chess960"], Threads.main());
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
 
     // Parse move list (if any)
-    while (is >> token && (move = UCI::to_move(pos, token)) != MOVE_NONE)
+    while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
     {
         SetupStates->push(StateInfo());
-        pos.do_move(move, SetupStates->top());
+        pos.do_move(m, SetupStates->top());
     }
   }
 
@@ -123,10 +123,10 @@ namespace {
         else if (token == "btime")     is >> limits.time[BLACK];
         else if (token == "winc")      is >> limits.inc[WHITE];
         else if (token == "binc")      is >> limits.inc[BLACK];
-        else if (token == "movestogo") is >> limits.movesToGo;
+        else if (token == "movestogo") is >> limits.movestogo;
         else if (token == "depth")     is >> limits.depth;
         else if (token == "nodes")     is >> limits.nodes;
-        else if (token == "movetime")  is >> limits.moveTime;
+        else if (token == "movetime")  is >> limits.movetime;
         else if (token == "mate")      is >> limits.mate;
         else if (token == "infinite")  limits.infinite = true;
         else if (token == "ponder")    limits.ponder = true;
@@ -146,16 +146,16 @@ namespace {
 void UCI::loop(int argc, char* argv[]) {
 
   Position pos(StartFEN, false, Threads.main()); // The root position
-  string token, command;
+  string token, cmd;
 
   for (int i = 1; i < argc; ++i)
-      command += std::string(argv[i]) + " ";
+      cmd += std::string(argv[i]) + " ";
 
   do {
-      if (argc == 1 && !getline(cin, command)) // Block here waiting for input
-          command = "quit";
+      if (argc == 1 && !getline(cin, cmd)) // Block here waiting for input
+          cmd = "quit";
 
-      istringstream is(command);
+      istringstream is(cmd);
 
       token.clear(); // getline() could return empty or blank line
       is >> skipws >> token;
@@ -208,7 +208,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "eval")       sync_cout << Eval::trace(pos) << sync_endl;
       else
-          sync_cout << "Unknown command: " << command << sync_endl;
+          sync_cout << "Unknown command: " << cmd << sync_endl;
 
   } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
@@ -223,16 +223,16 @@ void UCI::loop(int argc, char* argv[]) {
 /// mate <y>   Mate in y moves, not plies. If the engine is getting mated
 ///            use negative values for y.
 
-string UCI::format_value(Value value, Value alpha, Value beta) {
+string UCI::format_value(Value v, Value alpha, Value beta) {
 
   stringstream ss;
 
-  if (abs(value) < VALUE_MATE_IN_MAX_PLY)
-      ss << "cp " << value * 100 / PawnValueEg;
+  if (abs(v) < VALUE_MATE_IN_MAX_PLY)
+      ss << "cp " << v * 100 / PawnValueEg;
   else
-      ss << "mate " << (value > 0 ? VALUE_MATE - value + 1 : -VALUE_MATE - value) / 2;
+      ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 
-  ss << (value >= beta ? " lowerbound" : value <= alpha ? " upperbound" : "");
+  ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
   return ss.str();
 }
@@ -240,10 +240,10 @@ string UCI::format_value(Value value, Value alpha, Value beta) {
 
 /// format_square() converts a Square to a string (g1, a7, etc.)
 
-std::string UCI::format_square(Square square) {
+std::string UCI::format_square(Square s) {
 
-  char ch[] = { char('a' + file_of(square)),
-                char('1' + rank_of(square)), 0 }; // Zero-terminating
+  char ch[] = { char('a' + file_of(s)),
+                char('1' + rank_of(s)), 0 }; // Zero-terminating
   return ch;
 }
 
@@ -253,26 +253,26 @@ std::string UCI::format_square(Square square) {
 /// in the e1g1 notation in normal chess mode, and in e1h1 notation in chess960
 /// mode. Internally castling moves are always encoded as "king captures rook".
 
-string UCI::format_move(Move move, bool chess960) {
+string UCI::format_move(Move m, bool chess960) {
 
-  Square from = from_sq(move);
-  Square to = to_sq(move);
+  Square from = from_sq(m);
+  Square to = to_sq(m);
 
-  if (move == MOVE_NONE)
+  if (m == MOVE_NONE)
       return "(none)";
 
-  if (move == MOVE_NULL)
+  if (m == MOVE_NULL)
       return "0000";
 
-  if (type_of(move) == CASTLING && !chess960)
+  if (type_of(m) == CASTLING && !chess960)
       to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
-  string moveString = format_square(from) + format_square(to);
+  string move = format_square(from) + format_square(to);
 
-  if (type_of(move) == PROMOTION)
-      moveString += " pnbrqk"[promotion_type(move)];
+  if (type_of(m) == PROMOTION)
+      move += " pnbrqk"[promotion_type(m)];
 
-  return moveString;
+  return move;
 }
 
 

@@ -41,18 +41,18 @@ ExtMove* generate(const Position& pos, ExtMove* moveList);
 template<GenType T>
 struct MoveList {
 
-  explicit MoveList(const Position& pos) : current(moveList), last(generate<T>(pos, moveList)) { last->move = MOVE_NONE; }
-  void operator++() { ++current; }
-  Move operator*() const { return current->move; }
+  explicit MoveList(const Position& pos) : cur(moveList), last(generate<T>(pos, moveList)) { last->move = MOVE_NONE; }
+  void operator++() { ++cur; }
+  Move operator*() const { return cur->move; }
   size_t size() const { return last - moveList; }
-  bool contains(Move move) const {
-    for (const ExtMove* it(moveList); it != last; ++it) if (it->move == move) return true;
+  bool contains(Move m) const {
+    for (const ExtMove* it(moveList); it != last; ++it) if (it->move == m) return true;
     return false;
   }
 
 private:
   ExtMove moveList[MAX_MOVES];
-  ExtMove *current, *last;
+  ExtMove *cur, *last;
 };
 
 #endif // #ifndef MOVEGEN_H_INCLUDED

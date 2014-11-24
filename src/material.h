@@ -50,10 +50,10 @@ struct Entry {
   // which should be applied to the position. For instance, in KBP vs K endgames,
   // a scaling function for draws with rook pawns and wrong-colored bishops.
 
-  ScaleFactor scale_factor(const Position& pos, Color color) const {
+  ScaleFactor scale_factor(const Position& pos, Color c) const {
 
-    return !scalingFunction[color] || (*scalingFunction[color])(pos) == SCALE_FACTOR_NONE
-          ? ScaleFactor(factor[color]) : (*scalingFunction[color])(pos);
+    return !scalingFunction[c] || (*scalingFunction[c])(pos) == SCALE_FACTOR_NONE
+          ? ScaleFactor(factor[c]) : (*scalingFunction[c])(pos);
   }
 
   Key key;
