@@ -78,8 +78,7 @@ pext = no
 syzygy = yes
 
 ifeq ($(syzygy),yes)
-	OBJS += ./syzygy/tbprobe.o
-	CXXFLAGS += -I.
+	OBJS += syzygy/tbprobe.o
 	CXXFLAGS += -DSYZYGY
 endif
 

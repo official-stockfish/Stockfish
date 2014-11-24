@@ -7,11 +7,11 @@
   this code to other chess engines.
 */
 
-#include "position.h"
-#include "movegen.h"
-#include "bitboard.h"
-#include "search.h"
-#include "bitcount.h"
+#include "../position.h"
+#include "../movegen.h"
+#include "../bitboard.h"
+#include "../search.h"
+#include "../bitcount.h"
 
 #include "tbprobe.h"
 #include "tbcore.h"
