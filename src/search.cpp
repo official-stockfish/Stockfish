@@ -217,9 +217,12 @@ void Search::think() {
       RootPos.this_thread()->wait_for(Signals.stop);
   }
 
-  sync_cout << "bestmove " << UCI::format_move(RootMoves[0].pv[0], RootPos.is_chess960())
-            << " ponder "  << UCI::format_move(RootMoves[0].pv[1], RootPos.is_chess960())
-            << sync_endl;
+  sync_cout << "bestmove " << UCI::format_move(RootMoves[0].pv[0], RootPos.is_chess960());
+
+  if (RootMoves[0].pv.size() > 1)
+      std::cout << " ponder " << UCI::format_move(RootMoves[0].pv[1], RootPos.is_chess960());
+
+  std::cout << sync_endl;
 }
 
 
