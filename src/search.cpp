@@ -575,7 +575,7 @@ namespace {
             }
 
             TT.store(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                     depth + 6 * ONE_PLY, MOVE_NONE, VALUE_NONE);
+                     std::min(Depth(MAX_PLY), depth + 6 * ONE_PLY), MOVE_NONE, VALUE_NONE);
 
             return value;
         }
