@@ -69,7 +69,7 @@ void ThreadBase::notify_one() {
 }
 
 
-// wait_for() set the thread to sleep until condition 'condition' turns true
+// wait_for() set the thread to sleep until 'condition' turns true
 
 void ThreadBase::wait_for(volatile const bool& condition) {
 
