@@ -507,42 +507,34 @@ namespace {
     defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
               &  ei.attackedBy[Them][PAWN];
 
-    // Add a bonus according to the kind of attacking pieces
-    if (defended)
-    {
-        b = defended & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
-        while (b)
-            score += Threat[Defended][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
+    b = defended & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+    while (b)
+        score += Threat[Defended][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = defended & (ei.attackedBy[Us][ROOK]);
-        while (b)
-            score += Threat[Defended][Major][type_of(pos.piece_on(pop_lsb(&b)))];
-    }
+    b = defended & (ei.attackedBy[Us][ROOK]);
+    while (b)
+        score += Threat[Defended][Major][type_of(pos.piece_on(pop_lsb(&b)))];
 
     // Enemies not defended by a pawn and under our attack
     weak =   pos.pieces(Them)
           & ~ei.attackedBy[Them][PAWN]
           &  ei.attackedBy[Us][ALL_PIECES];
 
-    // Add a bonus according to the kind of attacking pieces
-    if (weak)
-    {
-        b = weak & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
-        while (b)
-            score += Threat[Weak][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
+    b = weak & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+    while (b)
+        score += Threat[Weak][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = weak & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
-        while (b)
-            score += Threat[Weak][Major][type_of(pos.piece_on(pop_lsb(&b)))];
+    b = weak & (ei.attackedBy[Us][ROOK] | ei.attackedBy[Us][QUEEN]);
+    while (b)
+        score += Threat[Weak][Major][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = weak & ~ei.attackedBy[Them][ALL_PIECES];
-        if (b)
-            score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
+    b = weak & ~ei.attackedBy[Them][ALL_PIECES];
+    if (b)
+        score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
 
-        b = weak & ei.attackedBy[Us][KING];
-        if (b)
-            score += more_than_one(b) ? KingOnMany : KingOnOne;
-    }
+    b = weak & ei.attackedBy[Us][KING];
+    if (b)
+        score += more_than_one(b) ? KingOnMany : KingOnOne;
 
     if (Trace)
         Tracing::write(Tracing::THREAT, Us, score);
