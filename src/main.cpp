@@ -27,6 +27,10 @@
 #include "tt.h"
 #include "uci.h"
 
+#ifdef SYZYGY
+#include "syzygy/tbprobe.h"
+#endif
+
 int main(int argc, char* argv[]) {
 
   std::cout << engine_info() << std::endl;
@@ -40,6 +44,9 @@ int main(int argc, char* argv[]) {
   Pawns::init();
   Threads.init();
   TT.resize(Options["Hash"]);
+#ifdef SYZYGY
+  Tablebases::init(Options["SyzygyPath"]);
+#endif
 
   UCI::loop(argc, argv);
 

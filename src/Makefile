@@ -75,6 +75,12 @@ bsfq = no
 popcnt = no
 sse = no
 pext = no
+syzygy = yes
+
+ifeq ($(syzygy),yes)
+	OBJS += syzygy/tbprobe.o
+	CXXFLAGS += -DSYZYGY
+endif
 
 ### 2.2 Architecture specific
 
@@ -398,7 +404,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda
+	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o
 
 default:
 	help
