@@ -1444,14 +1444,8 @@ moves_loop: // When in check and at SpNode search starts from here
         Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
-        bool tb = RootInTB;
-        if (tb)
-        {
-            if (abs(v) >= VALUE_MATE - MAX_PLY)
-                tb = false;
-            else
-                v = TBScore;
-        }
+        bool tb = RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
+        v = tb ? TBScore : v;
 
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
