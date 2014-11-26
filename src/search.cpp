@@ -209,7 +209,7 @@ void Search::think() {
   {
 #ifdef SYZYGY
       // Check Tablebases at root
-      int piecesCnt = RootPos.total_piece_count();
+      int piecesCnt = RootPos.count<ALL_PIECES>(WHITE) + RootPos.count<ALL_PIECES>(BLACK);
       TBCardinality = Options["SyzygyProbeLimit"];
       TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
       if (TBCardinality > Tablebases::TBLargest)
@@ -554,10 +554,12 @@ namespace {
 
 #ifdef SYZYGY
     // Step 4a. Tablebase probe
+    int piecesCnt = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+
     if (   !RootNode
-        && pos.total_piece_count() <= TBCardinality
-        && ( pos.total_piece_count() < TBCardinality || depth >= TBProbeDepth )
-        && pos.rule50_count() == 0)
+        &&  piecesCnt <= TBCardinality
+        && (piecesCnt < TBCardinality || depth >= TBProbeDepth)
+        &&  pos.rule50_count() == 0)
     {
         int found, v = Tablebases::probe_wdl(pos, &found);
 
