@@ -26,8 +26,46 @@ This distribution of Stockfish consists of the following files:
   * src, a subdirectory containing the full source code, including a Makefile
     that can be used to compile Stockfish on Unix-like systems.
 
+### Lomonosov Tablebases
+
+Lomonosov TB can be enabled by compilation with LOMONOSOV=yes.
+Stockfish will use API from lomonosov_tb.dll.
+
+You can download LomonosovTB API:
+https://github.com/vpike/LomonosovTB
+
+**Configuration**
+
+Lomonosov tables are configured using the UCI options "Lomonosov Using",
+"Lomonosov Path", "Lomonosov Cache" and "Lomonosov Order".
+
+The option "Lomonosov Using" is the checkbox of the use of tables. It's true by default.
+
+The option "Lomonosov Path" is the directories with tables. Multiple directories should be
+separated by ";". For example, "C:\wl345;C:\pl345".
+
+The option "Lomonosov Cache" is the maximal size of cache (in MB) used by lomonosov_tb.dll.
+The default value is 2048 MB.
+
+The option "Lomonosov Order" sets the priority of probing different types of tables. There are 4 types: "WL" - ternary tables (*.wlw and *.wlb),
+"PL" - tablebases in Distance-To-Mate metric (*.plw and *.plb), "WL50" - ternary tables considering the 50-move rule (*.zwlw and *.zwlb),
+"PL50" - tablebases in Distance-To-Zero metric considering the 50-moves rule (*.zplw and *.zplb).
+
+There are two additional options related to Lomonosov TB. The checkbox "Lomonosov Stat" specifies the printing of statistics
+in the end of engine working (to file "full_tb_statistics.txt"), it's true by default. The checkbox "Lomonosov Logging" specifies
+the printing of statistics of the use of tables while engine is working, it's false by default.
+
+**Tables**
+
+You can download some tables:
+https://github.com/vpike/WDL50
+https://github.com/vpike/DTZ50
+
+You can download 
 
 ### Syzygybases
+
+Syzygy TB can be enabled by compilation with SYZYGY=yes.
 
 **Configuration**
 

@@ -92,6 +92,11 @@ const bool Is64Bit = true;
 const bool Is64Bit = false;
 #endif
 
+#ifdef LOMONOSOV_TB
+#define KING_INDEX 30 // index of king place in piece array
+#define  C_PIECES  6    /* Maximum # of pieces of one color OTB */
+#endif
+
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 

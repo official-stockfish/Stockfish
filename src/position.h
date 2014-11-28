@@ -86,6 +86,9 @@ public:
   // FEN string input/output
   void set(const std::string& fenStr, bool isChess960, Thread* th);
   const std::string fen() const;
+#ifdef LOMONOSOV_TB
+  void lomonosov_position(int *side, unsigned int *psqW, unsigned int *psqB, int *piCount, int *sqEnP);
+#endif
 
   // Position representation
   Bitboard pieces() const;

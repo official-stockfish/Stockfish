@@ -450,6 +450,32 @@ const string Position::fen() const {
   return ss.str();
 }
 
+#ifdef LOMONOSOV_TB
+/// Returns position in Lomonosov format. Side = 0, if white to move, and side = 1 else.
+/// psqW, psqB = positions of pieces in 0..63 format.
+/// poCount = counts of pieces.
+/// sqEnP = square of enpass.
+void Position::lomonosov_position(int *side, unsigned int *psqW, unsigned int *psqB, int *piCount, int *sqEnP) {
+	*side = sideToMove;
+	unsigned int *psq_tmp;
+	for (int i = 0; i < 10; i++) {
+		Color color = (Color)(i / 5);
+		PieceType pcType = (PieceType)((i % 5) + 1);
+		piCount[i] = pieceCount[color][pcType];
+		if (i < 5)
+			psq_tmp = psqW;
+		else
+			psq_tmp = psqB;
+		for (int j = 0; j < piCount[i]; j++) {
+			psq_tmp[(i % 5)*C_PIECES + j] = pieceList[color][pcType][j];
+		}
+	}
+	psqW[KING_INDEX] = pieceList[WHITE][KING][0];
+	psqB[KING_INDEX] = pieceList[BLACK][KING][0];
+	*sqEnP = ep_square();
+}
+#endif
+
 
 /// Position::game_phase() calculates the game phase interpolating total non-pawn
 /// material between endgame and midgame limits.

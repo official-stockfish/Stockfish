@@ -21,14 +21,19 @@
 #include <cassert>
 #include <cstdlib>
 #include <sstream>
+#include <iostream>
 
 #include "misc.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
 
-#ifdef SYZYGY
-#include "syzygy/tbprobe.h"
+#ifdef SYZYGY_TB
+#include "tbprobe.h"
+#endif
+
+#ifdef LOMONOSOV_TB
+#include "lmtb.h"
 #endif
 
 using std::string;
@@ -37,15 +42,53 @@ UCI::OptionsMap Options; // Global object
 
 namespace UCI {
 
+#ifdef LOMONOSOV_TB
+#ifndef TB_DLL_EXPORT
+	bool tb_stat = true;
+#endif
+#endif
+
 /// 'On change' actions, triggered by an option's value change
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option&) { Threads.read_uci_options(); }
 void on_hash_size(const Option& o) { TT.resize(o); }
 void on_clear_hash(const Option&) { TT.clear(); }
-#ifdef SYZYGY
+
+#ifdef SYZYGY_TB
 void on_tb_path(const Option& o) { Tablebases::init(o); }
 #endif
-
+#ifdef LOMONOSOV_TB
+void on_tb_used(const Option& o) {
+	Search::lomonosov_tb_use_opt = int(o);
+}
+void on_lomonosov_tb_path(const Option& o) {
+	char path[MAX_PATH];
+	strcpy(path, ((std::string)o).c_str());
+	tb_set_table_path(((std::string)o).c_str());
+	Search::max_tb_pieces = tb_get_max_pieces_count_with_order();
+	sync_cout << "Lomonosov_TB: " << "max pieces count is " << Search::max_tb_pieces << sync_endl;
+}
+void on_tb_cache(const Option& o) {
+	int cache = (int)o;
+	tb_set_cache_size(cache);
+}
+void on_tb_order(const Option& o) {
+	bool result = tb_set_table_order(((std::string)o).c_str());
+	if (!result)
+		sync_cout << "Lomonosov_TB: " << "Table order\"" << (std::string)o << "\" cannot set!" << sync_endl;
+	Search::max_tb_pieces = tb_get_max_pieces_count_with_order();
+	sync_cout << "Lomonosov_TB: " << "Max pieces count is " << Search::max_tb_pieces << sync_endl;
+}
+#ifndef TB_DLL_EXPORT
+void on_tb_logging(const Option& o) {
+	bool logging = int(o);
+	tb_set_logging(logging);
+}
+void on_tb_stat(const Option& o) {
+	tb_stat = int(o);
+}
+#endif
+#endif
 
 /// Our case insensitive less() function as required by UCI protocol
 bool ci_less(char c1, char c2) { return tolower(c1) < tolower(c2); }
@@ -72,11 +115,21 @@ void init(OptionsMap& o) {
   o["Minimum Thinking Time"] << Option(20, 0, 5000);
   o["Slow Mover"]            << Option(80, 10, 1000);
   o["UCI_Chess960"]          << Option(false);
-#ifdef SYZYGY
-  o["SyzygyPath"]            << Option("<empty>", on_tb_path);
+#ifdef SYZYGY_TB
+  o["SyzygyPath"]            << Option("", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+#endif
+#ifdef LOMONOSOV_TB
+#ifndef TB_DLL_EXPORT
+  o["Lomonosov Logging"]     << Option(false, on_tb_logging);
+  o["Lomonosov Stat"]        << Option(true, on_tb_stat);
+#endif
+  o["Lomonosov Using"]       << Option(true, on_tb_used);
+  o["Lomonosov Path"]        << Option("", on_lomonosov_tb_path);
+  o["Lomonosov Cache"]       << Option(2048, 0, 32768, on_tb_cache);
+  o["Lomonosov Order"]       << Option("PL;WL", on_tb_order);
 #endif
 }
 
