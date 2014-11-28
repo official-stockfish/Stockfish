@@ -107,6 +107,14 @@ void init();
 void think();
 template<bool Root> uint64_t perft(Position& pos, Depth depth);
 
+#ifdef LOMONOSOV_TB
+// Lomonosov TB
+extern bool lomonosov_tb_loaded;
+extern bool lomonosov_tb_use_opt;
+extern bool use_tables;
+extern int max_tb_pieces;
+#endif
+
 } // namespace Search
 
 #endif // #ifndef SEARCH_H_INCLUDED

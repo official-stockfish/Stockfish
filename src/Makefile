@@ -41,6 +41,14 @@ PGOBENCH = ./$(EXE) bench 16 1 1 default time
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o \
 	search.o thread.o timeman.o tt.o uci.o ucioption.o
+	
+ifeq ($(SYZYGY),yes)
+	OBJS += tbprobe.o
+endif
+
+ifeq ($(LOMONOSOV),yes)
+	OBJS += lmtb.o lomonosov_probe.o
+endif
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -75,12 +83,6 @@ bsfq = no
 popcnt = no
 sse = no
 pext = no
-syzygy = yes
-
-ifeq ($(syzygy),yes)
-	OBJS += syzygy/tbprobe.o
-	CXXFLAGS += -DSYZYGY
-endif
 
 ### 2.2 Architecture specific
 
@@ -153,6 +155,13 @@ endif
 ### 3.1 Selecting compiler (default = gcc)
 
 CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -fno-rtti $(EXTRACXXFLAGS)
+ifeq ($(SYZYGY),yes)
+	CXXFLAGS += -DSYZYGY_TB
+endif
+ifeq ($(LOMONOSOV),yes)
+	CXXFLAGS += -DLOMONOSOV_TB
+endif
+
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
@@ -404,7 +413,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o
+	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda
 
 default:
 	help

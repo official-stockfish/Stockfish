@@ -29,6 +29,12 @@ class Position;
 
 namespace UCI {
 
+#ifdef LOMONOSOV_TB
+#ifndef TB_DLL_EXPORT
+	extern bool tb_stat;
+#endif
+#endif
+
 class Option;
 
 /// Custom comparator because UCI options should be case insensitive

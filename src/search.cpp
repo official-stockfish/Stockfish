@@ -34,8 +34,12 @@
 #include "tt.h"
 #include "uci.h"
 
-#ifdef SYZYGY
-#include "syzygy/tbprobe.h"
+#ifdef SYZYGY_TB
+#include "tbprobe.h"
+#endif
+
+#ifdef LOMONOSOV_TB
+#include "lomonosov_probe.h"
 #endif
 
 namespace Search {
@@ -46,12 +50,22 @@ namespace Search {
   Position RootPos;
   Time::point SearchTime;
   StateStackPtr SetupStates;
-  int TBCardinality;
   uint64_t TBHits;
+#ifdef SYZYGY_TB
+  int TBCardinality;
   bool RootInTB;
   bool TB50MoveRule;
   Depth TBProbeDepth;
   Value TBScore;
+#endif
+
+#ifdef LOMONOSOV_TB
+  // Lomonosov TB
+  bool lomonosov_tb_loaded = false;
+  bool lomonosov_tb_use_opt = true;
+  bool use_tables = false;
+  int max_tb_pieces = 0;
+#endif
 }
 
 using std::string;
@@ -191,8 +205,7 @@ template uint64_t Search::perft<true>(Position& pos, Depth depth);
 void Search::think() {
 
   TimeMgr.init(Limits, RootPos.game_ply(), RootPos.side_to_move());
-  TBHits = TBCardinality = 0;
-  RootInTB = false;
+  TBHits = 0;
 
   int cf = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ RootPos.side_to_move()] = VALUE_DRAW - Value(cf);
@@ -207,70 +220,110 @@ void Search::think() {
   }
   else
   {
-#ifdef SYZYGY
-      // Check Tablebases at root
-      int piecesCnt = RootPos.total_piece_count();
-      TBCardinality = Options["SyzygyProbeLimit"];
-      TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-      if (TBCardinality > Tablebases::TBLargest)
-      {
-          TBCardinality = Tablebases::TBLargest;
-          TBProbeDepth = 0 * ONE_PLY;
-      }
-      TB50MoveRule = Options["Syzygy50MoveRule"];
+#ifdef SYZYGY_TB
+	RootInTB = false;
+	TBCardinality = 0;
+	TBCardinality = Options["SyzygyProbeLimit"];
+	if (TBCardinality > Tablebases::TBLargest)
+		TBCardinality = Tablebases::TBLargest;
+	TB50MoveRule = Options["Syzygy50MoveRule"];
+	TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
 
-      if (piecesCnt <= TBCardinality)
-      {
-          TBHits = RootMoves.size();
+	if (RootPos.total_piece_count() <= TBCardinality)
+	{
+		TBHits = RootMoves.size();
 
-          // If the current root position is in the tablebases then RootMoves
-          // contains only moves that preserve the draw or win.
-          RootInTB = Tablebases::root_probe(RootPos, TBScore);
+		// If the current root position is in the tablebases then RootMoves
+		// contains only moves that preserve the draw or win.
+		RootInTB = Tablebases::root_probe(RootPos, TBScore);
 
-          if (RootInTB)
-          {
-              TBCardinality = 0; // Do not probe tablebases during the search
+		if (RootInTB)
+		{
+			TBCardinality = 0; // Do not probe tablebases during the search
 
-              // It might be a good idea to mangle the hash key (xor it
-              // with a fixed value) in order to "clear" the hash table of
-              // the results of previous probes. However, that would have to
-              // be done from within the Position class, so we skip it for now.
+			// It might be a good idea to mangle the hash key (xor it
+			// with a fixed value) in order to "clear" the hash table of
+			// the results of previous probes. However, that would have to
+			// be done from within the Position class, so we skip it for now.
 
-              // Optional: decrease target time.
-          }
-          else // If DTZ tables are missing, use WDL tables as a fallback
-          {
-              // Filter out moves that do not preserve a draw or win
-              RootInTB = Tablebases::root_probe_wdl(RootPos, TBScore);
+			// Optional: decrease target time.
+		}
+		else // If DTZ tables are missing, use WDL tables as a fallback
+		{
+			// Filter out moves that do not preserve a draw or win.
+			RootInTB = Tablebases::root_probe_wdl(RootPos, TBScore);
 
-              // Only probe during search if winning
-              if (TBScore <= VALUE_DRAW)
-                  TBCardinality = 0;
-          }
+			// Only probe during search if winning.
+			if (TBScore <= VALUE_DRAW)
+				TBCardinality = 0;
+		}
 
-          if (!RootInTB)
-          {
-              TBHits = 0;
-          }
-          else if (!TB50MoveRule)
-          {
-              TBScore = TBScore > VALUE_DRAW ? VALUE_MATE - MAX_PLY - 1
-                      : TBScore < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                      : TBScore;
-          }
-      }
+		if (!RootInTB)
+		{
+			TBHits = 0;
+		}
+		else if (!TB50MoveRule)
+		{
+			TBScore = TBScore > VALUE_DRAW ? VALUE_MATE - MAX_PLY - 1
+					: TBScore < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
+					: TBScore;
+		}
+	}
 #endif
 
-      for (size_t i = 0; i < Threads.size(); ++i)
-          Threads[i]->maxPly = 0;
+#ifdef LOMONOSOV_TB
+	if (lomonosov_tb_loaded && lomonosov_tb_use_opt)
+		use_tables = true;
+	else
+		use_tables = false;
+	if (use_tables && RootPos.total_piece_count() <= max_tb_pieces) {
+		TBHits = RootMoves.size() + 1;
+		if (lomonosov_root_probe(RootPos)) {
+			// The current root position is in the tablebases.
+			// RootMoves now contains only moves that preserve the draw or win.
+			// Do not probe tablebases during the search.
+			use_tables = false;
+		}
+	}
+#endif
+	// Reset the threads, still sleeping: will wake up at split time
+	for (size_t i = 0; i < Threads.size(); ++i)
+		Threads[i]->maxPly = 0;
 
-      Threads.timer->run = true;
-      Threads.timer->notify_one(); // Wake up the recurring timer
+	Threads.timer->run = true;
+	Threads.timer->notify_one(); // Wake up the recurring timer
 
-      id_loop(RootPos); // Let's start searching !
+	id_loop(RootPos); // Let's start searching !
 
-      Threads.timer->run = false;
+	Threads.timer->run = false; // Stop the timer
+
+#ifdef SYZYGY_TB
+	if (RootInTB)
+	{
+		// If we mangled the hash key, unmangle it here
+	}
+#endif
   }
+
+  // output speed
+  //Time::point time = Time::now() - SearchTime + 1;
+  /*FILE *f = fopen("speed.txt", "a");
+  fprintf(f, "Time = %7.3lf\n", double(time) / 1000);
+  fprintf(f, "TBHits = %I64d\n", TBHits);
+  fprintf(f, "Nps = %I64d\n", RootPos.nodes_searched() * 1000 / time);
+  fclose(f);*/
+  /*std::fstream f;
+  f.open("speed.txt", std::ios_base::app);
+  f.precision(3);
+  f << "Time = " << double(time) / 1000 << std::endl;
+  f << "TBHits = " << TBHits << std::endl;
+  f << "Nps = " << RootPos.nodes_searched() * 1000 / time << std::endl;
+  f.close();*/
+
+  // When search is stopped this info is not printed
+  sync_cout << "info nodes " << RootPos.nodes_searched()
+            << " tbhits " << TBHits
+            << " time " << Time::now() - SearchTime + 1 << sync_endl;
 
   // When we reach the maximum depth, we can arrive here without a raise of
   // Signals.stop. However, if we are pondering or in an infinite search,
@@ -457,6 +510,19 @@ namespace {
   template <NodeType NT, bool SpNode>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
 
+#if defined(SYZYGY_TB) && defined(LOMONOSOV_TB)
+	Value syzygy_value = (Value)0;
+	Value lomonosov_value = (Value)0;
+#endif
+#ifdef SYZYGY_TB
+	bool syzygy_success = false;
+	bool syzygy_probe = false;
+#endif
+#ifdef LOMONOSOV_TB
+	bool lomonosov_success = false;
+	bool lomonosov_probe = false;
+#endif
+
     const bool RootNode = NT == Root;
     const bool PvNode   = NT == PV || NT == Root;
 
@@ -552,23 +618,25 @@ namespace {
         return ttValue;
     }
 
-#ifdef SYZYGY
     // Step 4a. Tablebase probe
-    if (   !RootNode
-        && pos.total_piece_count() <= TBCardinality
-        && ( pos.total_piece_count() < TBCardinality || depth >= TBProbeDepth )
-        && pos.rule50_count() == 0)
+#ifdef SYZYGY_TB
+	syzygy_probe = (   !RootNode
+        //&& depth >= TBProbeDepth
+        //&& pos.rule50_count() == 0
+        && pos.total_piece_count() <= TBCardinality);
+    if (syzygy_probe)
     {
-        int found, v = Tablebases::probe_wdl(pos, &found);
+		Position pos_tmp = pos;
+        int found, v = Tablebases::probe_wdl(pos_tmp, &found);
 
-        if (found)
+        if ((syzygy_success = found != 0))
         {
-            TBHits++;
 
             if (TB50MoveRule) {
                 value = v < -1 ? -VALUE_MATE + MAX_PLY + ss->ply
                       : v >  1 ?  VALUE_MATE - MAX_PLY - ss->ply
-                      : VALUE_DRAW + 2 * v;
+                      //: VALUE_DRAW + 2 * v; // we need in comparing with Lomonosov tables
+					  : VALUE_DRAW;
             }
             else
             {
@@ -576,13 +644,68 @@ namespace {
                       : v > 0 ?  VALUE_MATE - MAX_PLY - ss->ply
                       : VALUE_DRAW;
             }
-
+#ifdef LOMONOSOV_TB
+			syzygy_value = value;
+#else
+			TBHits++;
             TT.store(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
                      std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY), MOVE_NONE, VALUE_NONE);
-
-            return value;
+			return value;
+#endif
         }
     }
+#endif
+
+#ifdef LOMONOSOV_TB
+	lomonosov_probe = (use_tables && !RootNode
+        //&& depth >= TBProbeDepth
+		//&& pos.rule50_count() == 0
+		&& pos.total_piece_count() <= max_tb_pieces);
+	if (lomonosov_probe) {
+		int v;
+		if ((lomonosov_success = lomonosov_tbprobe(pos, ss->ply, &v, true))) {
+			value = (Value)v;
+#ifdef SYZYGY_TB
+			lomonosov_value = value;
+#else
+			TBHits++;
+			TT.store(posKey, value_to_tt(value, ss->ply), BOUND_EXACT, std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY), MOVE_NONE, VALUE_NONE);
+			return value;
+#endif
+		}
+    }
+#endif
+
+#if defined(LOMONOSOV_TB) && defined(SYZYGY_TB)
+	if (syzygy_probe != lomonosov_probe) {
+		printf("!!!!! syzygy_probe = %d, lomonosov_probe = %d\n", syzygy_probe, lomonosov_probe);
+		printf("use_tables = %d, pos.total_piece_count() = %d, max_tb_pieces = %d, TBCardinality = %d, TBProbeDepth = %d\n",
+			use_tables, pos.total_piece_count(), max_tb_pieces, TBCardinality, TBProbeDepth);
+		exit(0);
+	} else if (syzygy_probe) {
+		if (syzygy_success != lomonosov_success) {
+			printf("!!!!! syzygy_success = %d, lomonosov_success = %d\n", syzygy_success, lomonosov_success);
+			printf("fen = %s\n", pos.fen().c_str());
+			exit(1);
+		}
+		else if (syzygy_success) {
+			if (syzygy_value != lomonosov_value) {
+				Signals.stop = true;
+				printf("!!!!! syzygy_value = %d, lomonosov_value = %d\n", syzygy_value, lomonosov_value);
+				printf("fen = %s\n", pos.fen().c_str());
+				Position pos_tmp = pos;
+				int success;
+				int vs = Tablebases::probe_wdl(pos_tmp, &success), vl;
+				success = lomonosov_tbprobe(pos, 0, &vl, false);
+				printf("second: syzygy = %d, lomonosov = %d\n", vs, vl);
+				exit(2);
+			} else {
+				TBHits++;
+				TT.store(posKey, value_to_tt(value, ss->ply), BOUND_EXACT, std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY), MOVE_NONE, VALUE_NONE);
+				return value;
+			}
+		}
+	}
 #endif
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
@@ -1451,7 +1574,9 @@ moves_loop: // When in check and at SpNode search starts from here
         Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
-        bool tb = RootInTB;
+		bool tb = false;
+#ifdef SYZYGY_TB
+		tb = RootInTB;
         if (tb)
         {
             if (abs(v) >= VALUE_MATE - MAX_PLY)
@@ -1459,6 +1584,7 @@ moves_loop: // When in check and at SpNode search starts from here
             else
                 v = TBScore;
         }
+#endif
 
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
