@@ -27,7 +27,7 @@
 #include "evaluate.h"
 #include "movegen.h"
 #include "movepick.h"
-#include "rkiss.h"
+#include "prng.h"
 #include "search.h"
 #include "timeman.h"
 #include "thread.h"
@@ -1389,11 +1389,8 @@ moves_loop: // When in check and at SpNode search starts from here
 
   Move Skill::pick_move() {
 
-    static RKISS rk;
-
-    // PRNG sequence should be not deterministic
-    for (int i = Time::now() % 50; i > 0; --i)
-        rk.rand<unsigned>();
+    // PRNG sequence should be non-deterministic, so we seed it with the time at init
+    static PRNG rng(Time::now());
 
     // RootMoves are already sorted by score in descending order
     int variance = std::min(RootMoves[0].score - RootMoves[candidates - 1].score, PawnValueMg);
@@ -1414,7 +1411,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
         // This is our magic formula
         s += (  weakness * int(RootMoves[0].score - s)
-              + variance * (rk.rand<unsigned>() % weakness)) / 128;
+              + variance * (rng.rand<unsigned>() % weakness)) / 128;
 
         if (s > max_s)
         {
