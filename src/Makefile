@@ -40,7 +40,7 @@ PGOBENCH = ./$(EXE) bench 16 1 1 default time
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -75,12 +75,6 @@ bsfq = no
 popcnt = no
 sse = no
 pext = no
-syzygy = yes
-
-ifeq ($(syzygy),yes)
-	OBJS += syzygy/tbprobe.o
-	CXXFLAGS += -DSYZYGY
-endif
 
 ### 2.2 Architecture specific
 
