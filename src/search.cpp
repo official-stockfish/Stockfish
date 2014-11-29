@@ -33,10 +33,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-
-#ifdef SYZYGY
 #include "syzygy/tbprobe.h"
-#endif
 
 namespace Search {
 
@@ -207,7 +204,6 @@ void Search::think() {
   }
   else
   {
-#ifdef SYZYGY
       // Check Tablebases at root
       int piecesCnt = RootPos.total_piece_count();
       TBCardinality = Options["SyzygyProbeLimit"];
@@ -259,7 +255,6 @@ void Search::think() {
                       : TBScore;
           }
       }
-#endif
 
       for (size_t i = 0; i < Threads.size(); ++i)
           Threads[i]->maxPly = 0;
@@ -552,7 +547,6 @@ namespace {
         return ttValue;
     }
 
-#ifdef SYZYGY
     // Step 4a. Tablebase probe
     if (   !RootNode
         && pos.total_piece_count() <= TBCardinality
@@ -583,7 +577,6 @@ namespace {
             return value;
         }
     }
-#endif
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
     if (inCheck)
