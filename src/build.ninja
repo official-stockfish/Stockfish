@@ -2,13 +2,14 @@ cflags = -DSYZYGY -Wall -Wcast-qual -fno-exceptions -fno-rtti  -ansi -pedantic -
 lflags = -lpthread $cflags
 
 rule compile
-  command = c++ $cflags -c $in -o $out
+  command = c++ -MMD -MT $out -MF $out.d $cflags -c $in -o $out
+  description = Compiling $in
+  depfile = $out.d
+  deps = gcc
 
 rule link
-  command = c++ -o $out $in $lflags
-
-rule delete
-  command = rm $in
+  command = c++ -o $out $in $lflags && strip $out
+  description = Linking $out
 
 build benchmark.o: compile benchmark.cpp
 build bitbase.o: compile bitbase.cpp
