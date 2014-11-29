@@ -23,9 +23,6 @@
 #define TBMAX_PAWN 256
 #define HSHMAX 5
 
-// for variants where kings can connect and/or captured
-// #define CONNECTED_KINGS
-
 #define Swap(a,b) {int tmp=a;a=b;b=tmp;}
 
 #define TB_PAWN 1
@@ -477,7 +474,6 @@ static const ubyte file_to_file[] = {
   0, 1, 2, 3, 3, 2, 1, 0
 };
 
-#ifndef CONNECTED_KINGS
 static const short KK_idx[10][64] = {
   { -1, -1, -1,  0,  1,  2,  3,  4,
     -1, -1, -1,  5,  6,  7,  8,  9,
@@ -560,120 +556,10 @@ static const short KK_idx[10][64] = {
     -1, -1, -1, -1, -1, -1,460,440,
     -1, -1, -1, -1, -1, -1, -1,461 }
 };
-#else
-static const short PP_idx[10][64] = {
-  {  0, -1,  1,  2,  3,  4,  5,  6,
-     7,  8,  9, 10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22,
-    23, 24, 25, 26, 27, 28, 29, 30,
-    31, 32, 33, 34, 35, 36, 37, 38,
-    39, 40, 41, 42, 43, 44, 45, 46,
-    -1, 47, 48, 49, 50, 51, 52, 53,
-    54, 55, 56, 57, 58, 59, 60, 61 },
-  { 62, -1, -1, 63, 64, 65, -1, 66,
-    -1, 67, 68, 69, 70, 71, 72, -1,
-    73, 74, 75, 76, 77, 78, 79, 80,
-    81, 82, 83, 84, 85, 86, 87, 88,
-    89, 90, 91, 92, 93, 94, 95, 96,
-    -1, 97, 98, 99,100,101,102,103,
-    -1,104,105,106,107,108,109, -1,
-   110, -1,111,112,113,114, -1,115 },
-  {116, -1, -1, -1,117, -1, -1,118,
-    -1,119,120,121,122,123,124, -1,
-    -1,125,126,127,128,129,130, -1,
-   131,132,133,134,135,136,137,138,
-    -1,139,140,141,142,143,144,145,
-    -1,146,147,148,149,150,151, -1,
-    -1,152,153,154,155,156,157, -1,
-   158, -1, -1,159,160, -1, -1,161 },
-  {162, -1, -1, -1, -1, -1, -1,163,
-    -1,164, -1,165,166,167,168, -1,
-    -1,169,170,171,172,173,174, -1,
-    -1,175,176,177,178,179,180, -1,
-    -1,181,182,183,184,185,186, -1,
-    -1, -1,187,188,189,190,191, -1,
-    -1,192,193,194,195,196,197, -1,
-   198, -1, -1, -1, -1, -1, -1,199 },
-  {200, -1, -1, -1, -1, -1, -1,201,
-    -1,202, -1, -1,203, -1,204, -1,
-    -1, -1,205,206,207,208, -1, -1,
-    -1,209,210,211,212,213,214, -1,
-    -1, -1,215,216,217,218,219, -1,
-    -1, -1,220,221,222,223, -1, -1,
-    -1,224, -1,225,226, -1,227, -1,
-   228, -1, -1, -1, -1, -1, -1,229 },
-  {230, -1, -1, -1, -1, -1, -1,231,
-    -1,232, -1, -1, -1, -1,233, -1,
-    -1, -1,234, -1,235,236, -1, -1,
-    -1, -1,237,238,239,240, -1, -1,
-    -1, -1, -1,241,242,243, -1, -1,
-    -1, -1,244,245,246,247, -1, -1,
-    -1,248, -1, -1, -1, -1,249, -1,
-   250, -1, -1, -1, -1, -1, -1,251 },
-  { -1, -1, -1, -1, -1, -1, -1,259,
-    -1,252, -1, -1, -1, -1,260, -1,
-    -1, -1,253, -1, -1,261, -1, -1,
-    -1, -1, -1,254,262, -1, -1, -1,
-    -1, -1, -1, -1,255, -1, -1, -1,
-    -1, -1, -1, -1, -1,256, -1, -1,
-    -1, -1, -1, -1, -1, -1,257, -1,
-    -1, -1, -1, -1, -1, -1, -1,258 },
-  { -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1,268, -1,
-    -1, -1,263, -1, -1,269, -1, -1,
-    -1, -1, -1,264,270, -1, -1, -1,
-    -1, -1, -1, -1,265, -1, -1, -1,
-    -1, -1, -1, -1, -1,266, -1, -1,
-    -1, -1, -1, -1, -1, -1,267, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1 },
-  { -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1,274, -1, -1,
-    -1, -1, -1,271,275, -1, -1, -1,
-    -1, -1, -1, -1,272, -1, -1, -1,
-    -1, -1, -1, -1, -1,273, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1 },
-  { -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1,277, -1, -1, -1,
-    -1, -1, -1, -1,276, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1 }
-};
-
-static const ubyte test45[] = {
-  0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0,
-  1, 1, 1, 0, 0, 0, 0, 0,
-  1, 1, 0, 0, 0, 0, 0, 0,
-  1, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0
-};
-
-static const ubyte mtwist[] = {
-  15, 63, 55, 47, 40, 48, 56, 12,
-  62, 11, 39, 31, 24, 32,  8, 57,
-  54, 38,  7, 23, 16,  4, 33, 49,
-  46, 30, 22,  3,  0, 17, 25, 41,
-  45, 29, 21,  2,  1, 18, 26, 42,
-  53, 37,  6, 20, 19,  5, 34, 50,
-  61, 10, 36, 28, 27, 35,  9, 58,
-  14, 60, 52, 44, 43, 51, 59, 13
-};
-#endif
 
 static int binomial[5][64];
 static int pawnidx[5][24];
 static int pfactor[5][4];
-#ifdef CONNECTED_KINGS
-static int multidx[5][10];
-static int mfactor[5];
-#endif
 
 static void init_indices(void)
 {
@@ -717,20 +603,8 @@ static void init_indices(void)
     }
     pfactor[i][3] = s;
   }
-
-#ifdef CONNECTED_KINGS
-  for (i = 0; i < 5; i++) {
-    int s = 0;
-    for (j = 0; j < 10; j++) {
-      multidx[i][j] = s;
-      s += (i == 0) ? 1 : binomial[i - 1][mtwist[invtriangle[j]]];
-    }
-    mfactor[i] = s;
-  }
-#endif
 }
 
-#ifndef CONNECTED_KINGS
 static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int *factor)
 {
   uint64 idx;
@@ -808,121 +682,6 @@ static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int
 
   return idx;
 }
-#else
-static uint64 encode_piece(struct TBEntry_piece *ptr, ubyte *norm, int *pos, int *factor)
-{
-  uint64 idx;
-  int i, j, k, m, l, p;
-  int n = ptr->num;
-
-  if (ptr->enc_type < 3) {
-    if (pos[0] & 0x04) {
-      for (i = 0; i < n; i++)
-        pos[i] ^= 0x07;
-    }
-    if (pos[0] & 0x20) {
-      for (i = 0; i < n; i++)
-        pos[i] ^= 0x38;
-    }
-
-    for (i = 0; i < n; i++)
-      if (offdiag[pos[i]]) break;
-    if (i < (ptr->enc_type == 0 ? 3 : 2) && offdiag[pos[i]] > 0)
-      for (i = 0; i < n; i++)
-        pos[i] = flipdiag[pos[i]];
-
-    switch (ptr->enc_type) {
-
-    case 0: /* 111 */
-      i = (pos[1] > pos[0]);
-      j = (pos[2] > pos[0]) + (pos[2] > pos[1]);
-
-      if (offdiag[pos[0]])
-        idx = triangle[pos[0]] * 63*62 + (pos[1] - i) * 62 + (pos[2] - j);
-      else if (offdiag[pos[1]])
-        idx = 6*63*62 + diag[pos[0]] * 28*62 + lower[pos[1]] * 62 + pos[2] - j;
-      else if (offdiag[pos[2]])
-        idx = 6*63*62 + 4*28*62 + (diag[pos[0]]) * 7*28 + (diag[pos[1]] - i) * 28 + lower[pos[2]];
-      else
-        idx = 6*63*62 + 4*28*62 + 4*7*28 + (diag[pos[0]] * 7*6) + (diag[pos[1]] - i) * 6 + (diag[pos[2]] - j);
-      i = 3;
-      break;
-
-    case 2: /* 11 */
-      i = (pos[1] > pos[0]);
-
-      if (offdiag[pos[0]])
-        idx = triangle[pos[0]] * 63 + (pos[1] - i);
-      else if (offdiag[pos[1]])
-        idx = 6*63 + diag[pos[0]] * 28 + lower[pos[1]];
-      else
-        idx = 6*63 + 4*28 + (diag[pos[0]]) * 7 + (diag[pos[1]] - i);
-      i = 2;
-      break;
-
-    }
-  } else if (ptr->enc_type == 3) { /* 2, e.g. KKvK */
-    if (triangle[pos[0]] > triangle[pos[1]])
-      Swap(pos[0], pos[1]);
-    if (pos[0] & 0x04)
-      for (i = 0; i < n; i++)
-        pos[i] ^= 0x07;
-    if (pos[0] & 0x20)
-      for (i = 0; i < n; i++)
-        pos[i] ^= 0x38;
-    if (offdiag[pos[0]] > 0 || (offdiag[pos[0]] == 0 && offdiag[pos[1]] > 0))
-      for (i = 0; i < n; i++)
-        pos[i] = flipdiag[pos[i]];
-    if (test45[pos[1]] && triangle[pos[0]] == triangle[pos[1]]) {
-      Swap(pos[0], pos[1]);
-      for (i = 0; i < n; i++)
-        pos[i] = flipdiag[pos[i] ^ 0x38];
-    }
-    idx = PP_idx[triangle[pos[0]]][pos[1]];
-    i = 2;
-  } else { /* 3 and higher, e.g. KKKvK and KKKKvK */
-    for (i = 1; i < norm[0]; i++)
-      if (triangle[pos[0]] > triangle[pos[i]])
-        Swap(pos[0], pos[i]);
-    if (pos[0] & 0x04)
-      for (i = 0; i < n; i++)
-        pos[i] ^= 0x07;
-    if (pos[0] & 0x20)
-      for (i = 0; i < n; i++)
-        pos[i] ^= 0x38;
-    if (offdiag[pos[0]] > 0)
-      for (i = 0; i < n; i++)
-        pos[i] = flipdiag[pos[i]];
-    for (i = 1; i < norm[0]; i++)
-      for (j = i + 1; j < norm[0]; j++)
-        if (mtwist[pos[i]] > mtwist[pos[j]])
-          Swap(pos[i], pos[j]);
-
-    idx = multidx[norm[0] - 1][triangle[pos[0]]];
-    for (i = 1; i < norm[0]; i++)
-      idx += binomial[i - 1][mtwist[pos[i]]];
-  }
-  idx *= factor[0];
-
-  for (; i < n;) {
-    int t = norm[i];
-    for (j = i; j < i + t; j++)
-      for (k = j + 1; k < i + t; k++)
-        if (pos[j] > pos[k]) Swap(pos[j], pos[k]);
-    int s = 0;
-    for (m = i; m < i + t; m++) {
-      p = pos[m];
-      for (l = 0, j = 0; l < i; l++)
-        j += (p > pos[l]);
-      s += binomial[m - i][p - j];
-    }
-    idx += ((uint64)s) * ((uint64)factor[i]);
-    i += t;
-  }
-
-  return idx;
-}
-#endif
 
 // determine file of leftmost pawn and sort pawns
 static int pawn_file(struct TBEntry_pawn *ptr, int *pos)
@@ -1013,11 +772,7 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
 {
   int i, k, n;
   uint64 f;
-#ifndef CONNECTED_KINGS
   static int pivfac[] = { 31332, 28056, 462 };
-#else
-  static int pivfac[] = { 31332, 0, 518, 278 };
-#endif
 
   n = 64 - norm[0];
 
@@ -1025,14 +780,7 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
   for (i = norm[0], k = 0; i < num || k == order; k++) {
     if (k == order) {
       factor[0] = f;
-#ifndef CONNECTED_KINGS
       f *= pivfac[enc_type];
-#else
-      if (enc_type < 4)
-        f *= pivfac[enc_type];
-      else
-        f *= mfactor[enc_type - 2];
-#endif
     } else {
       factor[i] = f;
       f *= subfactor(norm[i], n);
