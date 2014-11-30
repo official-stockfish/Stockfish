@@ -1,7 +1,6 @@
 #!/usr/bin/python
 """Script that generates the build.ninja for Stockfish"""
-from optparse import OptionParser
-import sys
+import argparse, sys
 import ninja_syntax
 
 # Files to compile
@@ -10,33 +9,37 @@ object_files = ['src/benchmark.o', 'src/bitbase.o', 'src/bitboard.o', 'src/endga
     'src/movepick.o', 'src/pawns.o', 'src/position.o', 'src/search.o', 'src/thread.o',
     'src/timeman.o','src/tt.o','src/uci.o','src/ucioption.o','src/syzygy/tbprobe.o']
 
+# Auto-detect features
+bits = 64 if sys.maxsize > 2**32 else 32
+
 # Command line options
-compilers = {'gcc': 'g++','clang': 'clang++'}
-parser = OptionParser()
-parser.add_option('-c', '--compiler', choices = compilers.keys(), default = 'gcc',
-    help = 'compiler (' + '/'.join(compilers.keys()) + ')')
-parser.add_option('-f', '--file', help = 'output ninja file (default=build.ninja)')
-parser.add_option('-d', '--debug', action = 'store_true', help = 'build a debug compile')
-(options, args) = parser.parse_args()
-if args:
-    print('ERROR: unknown argument(s):', args)
-    sys.exit(1)
+compilers = {'cc': 'c++', 'gcc': 'g++', 'clang': 'clang++'}
+parser = argparse.ArgumentParser(description = 'Generates a Ninja build script for Stockfish.')
+parser.add_argument('--compiler', type = str, choices = compilers.keys(), default = 'cc', help = 'compiler (default = cc)')
+parser.add_argument('--bits', type = int, choices = [32, 64], default = bits, help = 'bits: default = ' + str(bits))
+parser.add_argument('--debug', action = 'store_true', help = 'debug compile')
+parser.add_argument('--no-optimize', action = 'store_false', dest = 'optimize', help = 'disable compiler optimizations')
+parser.add_argument('--file', type = str, default = 'build.ninja', help = 'output file (default = build.ninja)')
+args = parser.parse_args()
 
 # Open .ninja file
-n = ninja_syntax.Writer(open(options.file, 'w'))
+n = ninja_syntax.Writer(open(args.file, 'w'))
 n.variable('ninja_required_version', '1.2')
 n.newline()
 
 # Compiler and flags
-cxx = compilers[options.compiler]
+cxx = compilers[args.compiler]
 n.variable('cxx', cxx)
-cflags = ['-DSYZYGY', '-Wall', '-Wcast-qual', '-fno-exceptions', '-fno-rtti', '-pedantic',
-    '-Wno-long-long', '-Wextra', '-Wshadow', '-O3', '-DIS_64BIT', '-msse', '-DUSE_BSFQ',
-    '-msse3', '-mpopcnt', '-DUSE_POPCNT']
+cflags = ['-DSYZYGY', '-Wall', '-Wcast-qual', '-fno-exceptions', '-fno-rtti', '-std=c++03', '-pedantic',
+    '-Wno-long-long', '-Wextra', '-Wshadow', '-DUSE_BSFQ', '-msse3', '-mpopcnt', '-DUSE_POPCNT']
 if cxx == 'g++':
     cflags.append('-flto')
-if not options.debug:
+if args.bits == 64:
+    cflags.append('-DIS_64BIT')
+if not args.debug:
     cflags.append('-DNDEBUG')
+if args.optimize:
+    cflags.append('-O3')
 n.variable('cflags', ' '.join(cflags))
 n.variable('lflags', '-lpthread $cflags')
 n.newline()
