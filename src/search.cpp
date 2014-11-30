@@ -205,7 +205,7 @@ void Search::think() {
   else
   {
       // Check Tablebases at root
-      int piecesCnt = RootPos.total_piece_count();
+      int piecesCnt = RootPos.count<ALL_PIECES>(WHITE) + RootPos.count<ALL_PIECES>(BLACK);
       TBCardinality = Options["SyzygyProbeLimit"];
       TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
       if (TBCardinality > Tablebases::TBLargest)
@@ -470,6 +470,7 @@ namespace {
     bool inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
+    int piecesCnt;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -548,10 +549,12 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
+    piecesCnt = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+
     if (   !RootNode
-        && pos.total_piece_count() <= TBCardinality
-        && ( pos.total_piece_count() < TBCardinality || depth >= TBProbeDepth )
-        && pos.rule50_count() == 0)
+        &&  piecesCnt <= TBCardinality
+        && (piecesCnt < TBCardinality || depth >= TBProbeDepth)
+        &&  pos.rule50_count() == 0)
     {
         int found, v = Tablebases::probe_wdl(pos, &found);
 
