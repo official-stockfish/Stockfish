@@ -39,7 +39,7 @@ namespace Search {
 
   volatile SignalsType Signals;
   LimitsType Limits;
-  std::vector<RootMove> RootMoves;
+  RootMoveVector RootMoves;
   Position RootPos;
   Time::point SearchTime;
   StateStackPtr SetupStates;
@@ -206,9 +206,9 @@ void Search::think() {
   TB::Cardinality = Options["SyzygyProbeLimit"];
 
   // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
-  if (TB::Cardinality > TB::TBLargest)
+  if (TB::Cardinality > TB::MaxCardinality)
   {
-      TB::Cardinality = TB::TBLargest;
+      TB::Cardinality = TB::MaxCardinality;
       TB::ProbeDepth = DEPTH_ZERO;
   }
 
@@ -226,7 +226,7 @@ void Search::think() {
       {
           // If the current root position is in the tablebases then RootMoves
           // contains only moves that preserve the draw or win.
-          TB::RootInTB = Tablebases::root_probe(RootPos, TB::Score);
+          TB::RootInTB = Tablebases::root_probe(RootPos, RootMoves, TB::Score);
 
           if (TB::RootInTB)
               TB::Cardinality = 0; // Do not probe tablebases during the search
@@ -234,7 +234,7 @@ void Search::think() {
           else // If DTZ tables are missing, use WDL tables as a fallback
           {
               // Filter out moves that do not preserve a draw or win
-              TB::RootInTB = Tablebases::root_probe_wdl(RootPos, TB::Score);
+              TB::RootInTB = Tablebases::root_probe_wdl(RootPos, RootMoves, TB::Score);
 
               // Only probe during search if winning
               if (TB::Score <= VALUE_DRAW)
