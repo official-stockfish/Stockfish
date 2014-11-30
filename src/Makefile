@@ -354,10 +354,6 @@ help:
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
 	@echo ""
-	@echo "Non-standard targets:"
-	@echo ""
-	@echo "make hpux               >  Compile for HP-UX. Compiler = aCC"
-	@echo ""
 	@echo "Examples. If you don't know what to do, you likely want to run: "
 	@echo ""
 	@echo "make build ARCH=x86-64    (This is for 64-bit systems)"
@@ -485,16 +481,4 @@ icc-profile-clean:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
 -include .depend
-
-
-### ==========================================================================
-### Section 6. Non-standard targets
-### ==========================================================================
-
-hpux:
-	$(MAKE) \
-	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -mt +O3 -DNDEBUG -DNO_PREFETCH' \
-	CXXFLAGS="" \
-	LDFLAGS="" \
-	all
 
