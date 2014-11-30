@@ -28,10 +28,6 @@ EXE = stockfish
 
 ### Installation dir definitions
 PREFIX = /usr/local
-# Haiku has a non-standard filesystem layout
-ifeq ($(UNAME),Haiku)
-	PREFIX=/boot/system/non-packaged
-endif
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
