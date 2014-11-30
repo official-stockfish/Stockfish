@@ -68,6 +68,7 @@ struct RootMove {
   std::vector<Move> pv;
 };
 
+typedef std::vector<RootMove> RootMoveVector;
 
 /// The LimitsType struct stores information sent by GUI about available time
 /// to search the current move, maximum depth/time, if we are in analysis mode
@@ -98,7 +99,7 @@ typedef std::auto_ptr<std::stack<StateInfo> > StateStackPtr;
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
-extern std::vector<RootMove> RootMoves;
+extern RootMoveVector RootMoves;
 extern Position RootPos;
 extern Time::point SearchTime;
 extern StateStackPtr SetupStates;

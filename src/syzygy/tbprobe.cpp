@@ -22,7 +22,7 @@ namespace Zobrist {
   extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 }
 
-int Tablebases::TBLargest = 0;
+int Tablebases::MaxCardinality = 0;
 
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
@@ -32,7 +32,7 @@ static void prt_str(Position& pos, char *str, int mirror)
   Color color;
   PieceType pt;
   int i;
-  
+
   color = !mirror ? WHITE : BLACK;
   for (pt = KING; pt >= PAWN; --pt)
     for (i = popcount<Max15>(pos.pieces(color, pt)); i > 0; i--)
@@ -681,7 +681,7 @@ static Value wdl_to_Value[5] = {
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Value& TBScore)
+bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
 {
   int success;
 
@@ -692,8 +692,8 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
   CheckInfo ci(pos);
 
   // Probe each move.
-  for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-    Move move = Search::RootMoves[i].pv[0];
+  for (size_t i = 0; i < rootMoves.size(); i++) {
+    Move move = rootMoves[i].pv[0];
     pos.do_move(move, st, ci, pos.gives_check(move, ci));
     int v = 0;
     if (pos.checkers() && dtz > 0) {
@@ -713,7 +713,7 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
     }
     pos.undo_move(move);
     if (!success) return false;
-    Search::RootMoves[i].score = (Value)v;
+    rootMoves[i].score = (Value)v;
   }
 
   // Obtain 50-move counter for the root position.
@@ -729,21 +729,21 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
     wdl = (-dtz + cnt50 <= 100) ? -2 : -1;
 
   // Determine the score to report to the user.
-  TBScore = wdl_to_Value[wdl + 2];
+  score = wdl_to_Value[wdl + 2];
   // If the position is winning or losing, but too few moves left, adjust the
   // score to show how close it is to winning or losing.
   // NOTE: int(PawnValueEg) is used as scaling factor in score_to_uci().
   if (wdl == 1 && dtz <= 100)
-    TBScore = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
+    score = (Value)(((200 - dtz - cnt50) * int(PawnValueEg)) / 200);
   else if (wdl == -1 && dtz >= -100)
-    TBScore = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
+    score = -(Value)(((200 + dtz - cnt50) * int(PawnValueEg)) / 200);
 
   // Now be a bit smart about filtering out moves.
   size_t j = 0;
   if (dtz > 0) { // winning (or 50-move rule draw)
     int best = 0xffff;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      int v = Search::RootMoves[i].score;
+    for (size_t i = 0; i < rootMoves.size(); i++) {
+      int v = rootMoves[i].score;
       if (v > 0 && v < best)
         best = v;
     }
@@ -752,33 +752,33 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
     // that stay safely within the 50-move budget, if there are any.
     if (!has_repeated(st.previous) && best + cnt50 <= 99)
       max = 99 - cnt50;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      int v = Search::RootMoves[i].score;
+    for (size_t i = 0; i < rootMoves.size(); i++) {
+      int v = rootMoves[i].score;
       if (v > 0 && v <= max)
-        Search::RootMoves[j++] = Search::RootMoves[i];
+        rootMoves[j++] = rootMoves[i];
     }
   } else if (dtz < 0) { // losing (or 50-move rule draw)
     int best = 0;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      int v = Search::RootMoves[i].score;
+    for (size_t i = 0; i < rootMoves.size(); i++) {
+      int v = rootMoves[i].score;
       if (v < best)
         best = v;
     }
     // Try all moves, unless we approach or have a 50-move rule draw.
     if (-best * 2 + cnt50 < 100)
       return true;
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      if (Search::RootMoves[i].score == best)
-        Search::RootMoves[j++] = Search::RootMoves[i];
+    for (size_t i = 0; i < rootMoves.size(); i++) {
+      if (rootMoves[i].score == best)
+        rootMoves[j++] = rootMoves[i];
     }
   } else { // drawing
     // Try all moves that preserve the draw.
-    for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-      if (Search::RootMoves[i].score == 0)
-        Search::RootMoves[j++] = Search::RootMoves[i];
+    for (size_t i = 0; i < rootMoves.size(); i++) {
+      if (rootMoves[i].score == 0)
+        rootMoves[j++] = rootMoves[i];
     }
   }
-  Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
+  rootMoves.resize(j, Search::RootMove(MOVE_NONE));
 
   return true;
 }
@@ -788,13 +788,13 @@ bool Tablebases::root_probe(Position& pos, Value& TBScore)
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Value& TBScore)
+bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
 {
   int success;
 
   int wdl = Tablebases::probe_wdl(pos, &success);
   if (!success) return false;
-  TBScore = wdl_to_Value[wdl + 2];
+  score = wdl_to_Value[wdl + 2];
 
   StateInfo st;
   CheckInfo ci(pos);
@@ -802,23 +802,23 @@ bool Tablebases::root_probe_wdl(Position& pos, Value& TBScore)
   int best = -2;
 
   // Probe each move.
-  for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-    Move move = Search::RootMoves[i].pv[0];
+  for (size_t i = 0; i < rootMoves.size(); i++) {
+    Move move = rootMoves[i].pv[0];
     pos.do_move(move, st, ci, pos.gives_check(move, ci));
     int v = -Tablebases::probe_wdl(pos, &success);
     pos.undo_move(move);
     if (!success) return false;
-    Search::RootMoves[i].score = (Value)v;
+    rootMoves[i].score = (Value)v;
     if (v > best)
       best = v;
   }
 
   size_t j = 0;
-  for (size_t i = 0; i < Search::RootMoves.size(); i++) {
-    if (Search::RootMoves[i].score == best)
-      Search::RootMoves[j++] = Search::RootMoves[i];
+  for (size_t i = 0; i < rootMoves.size(); i++) {
+    if (rootMoves[i].score == best)
+      rootMoves[j++] = rootMoves[i];
   }
-  Search::RootMoves.resize(j, Search::RootMove(MOVE_NONE));
+  rootMoves.resize(j, Search::RootMove(MOVE_NONE));
 
   return true;
 }
