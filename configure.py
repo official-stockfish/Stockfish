@@ -13,9 +13,9 @@ object_files = ['src/benchmark.o', 'src/bitbase.o', 'src/bitboard.o', 'src/endga
 bits = 64 if sys.maxsize > 2**32 else 32
 
 # Command line options
-compilers = {'cc': 'c++', 'gcc': 'g++', 'clang': 'clang++'}
+compilers = {'gcc': 'g++', 'clang': 'clang++'}
 parser = argparse.ArgumentParser(description = 'Generates a Ninja build script for Stockfish.')
-parser.add_argument('--compiler', type = str, choices = compilers.keys(), default = 'cc', help = 'compiler (default = cc)')
+parser.add_argument('--compiler', type = str, choices = compilers.keys(), default = 'gcc', help = 'compiler (default = gcc)')
 parser.add_argument('--bits', type = int, choices = [32, 64], default = bits, help = 'bits: default = ' + str(bits))
 parser.add_argument('--debug', action = 'store_true', help = 'debug compile')
 parser.add_argument('--no-optimize', action = 'store_false', dest = 'optimize', help = 'disable compiler optimizations')
