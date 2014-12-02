@@ -33,10 +33,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-
-#ifdef SYZYGY
 #include "syzygy/tbprobe.h"
-#endif
 
 namespace Search {
 
@@ -207,9 +204,8 @@ void Search::think() {
   }
   else
   {
-#ifdef SYZYGY
       // Check Tablebases at root
-      int piecesCnt = RootPos.total_piece_count();
+      int piecesCnt = RootPos.count<ALL_PIECES>(WHITE) + RootPos.count<ALL_PIECES>(BLACK);
       TBCardinality = Options["SyzygyProbeLimit"];
       TBProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
       if (TBCardinality > Tablebases::TBLargest)
@@ -259,7 +255,6 @@ void Search::think() {
                       : TBScore;
           }
       }
-#endif
 
       for (size_t i = 0; i < Threads.size(); ++i)
           Threads[i]->maxPly = 0;
@@ -475,6 +470,7 @@ namespace {
     bool inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
     int moveCount, quietCount;
+    int piecesCnt;
 
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
@@ -552,12 +548,13 @@ namespace {
         return ttValue;
     }
 
-#ifdef SYZYGY
     // Step 4a. Tablebase probe
+    piecesCnt = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
+
     if (   !RootNode
-        && pos.total_piece_count() <= TBCardinality
-        && ( pos.total_piece_count() < TBCardinality || depth >= TBProbeDepth )
-        && pos.rule50_count() == 0)
+        &&  piecesCnt <= TBCardinality
+        && (piecesCnt < TBCardinality || depth >= TBProbeDepth)
+        &&  pos.rule50_count() == 0)
     {
         int found, v = Tablebases::probe_wdl(pos, &found);
 
@@ -583,7 +580,6 @@ namespace {
             return value;
         }
     }
-#endif
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
     if (inCheck)
@@ -1451,14 +1447,8 @@ moves_loop: // When in check and at SpNode search starts from here
         Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
 
-        bool tb = RootInTB;
-        if (tb)
-        {
-            if (abs(v) >= VALUE_MATE - MAX_PLY)
-                tb = false;
-            else
-                v = TBScore;
-        }
+        bool tb = RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
+        v = tb ? TBScore : v;
 
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
