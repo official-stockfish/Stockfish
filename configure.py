@@ -30,17 +30,17 @@ n.newline()
 # Compiler and flags
 cxx = compilers[args.compiler]
 n.variable('cxx', cxx)
-cflags = ['-DSYZYGY', '-Wall', '-Wcast-qual', '-fno-exceptions', '-fno-rtti', '-std=c++03', '-pedantic',
-    '-Wno-long-long', '-Wextra', '-Wshadow', '-DUSE_BSFQ', '-msse3', '-mpopcnt', '-DUSE_POPCNT']
+warnings = '-Wall -Wextra -pedantic -Wcast-qual -std=c++03 -Wno-long-long -Wshadow'
+cflags = warnings + ' -DSYZYGY -fno-exceptions -fno-rtti -DUSE_BSFQ -msse3 -mpopcnt -DUSE_POPCNT'
 if cxx == 'g++':
-    cflags.append('-flto')
+    cflags += ' -flto'
 if args.bits == 64:
-    cflags.append('-DIS_64BIT')
+    cflags += ' -DIS_64BIT'
 if not args.debug:
-    cflags.append('-DNDEBUG')
+    cflags += ' -DNDEBUG'
 if args.optimize:
-    cflags.append('-O3')
-n.variable('cflags', ' '.join(cflags))
+    cflags += ' -O3'
+n.variable('cflags', cflags)
 n.variable('lflags', '-lpthread $cflags')
 n.newline()
 
@@ -55,10 +55,8 @@ n.newline()
 
 # Targets
 for obj in object_files:
-    n.build(obj, 'compile', obj.replace('.o', '.cpp'))
+    n.build([obj], 'compile', [obj.replace('.o', '.cpp')])
 n.newline()
-n.build('stockfish', 'link', object_files)
+n.build(['stockfish'], 'link', object_files)
 n.newline()
-n.default('stockfish')
-
-n.close()
+n.default(['stockfish'])
