@@ -137,7 +137,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
 void Position::init() {
 
-  PRNG rng(1234567);
+  PRNG rng(1070372);
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)

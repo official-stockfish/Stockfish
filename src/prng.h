@@ -16,10 +16,9 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-  This file is based on original code by Heinz van Saanen and is
-  available under the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+  This file is based on original code written and dedicated to
+  the public domain by Sebastiano Vigna (2014).
+    <http://xorshift.di.unimi.it/xorshift64star.c>
 */
 
 #ifndef PRNG_H_INCLUDED
@@ -27,9 +26,16 @@
 
 #include "types.h"
 
-/// xorshift64* pseudo-random number generator
-/// Designed and placed into the public domain by Sebastiano Vigna
-/// For analysis see http://vigna.di.unimi.it/ftp/papers/xorshift.pdf
+/// xorshift64star Pseudo-Random Number Generator
+/// This generator has the following characteristics:
+///  -  It outputs 64-bit numbers
+///  -  Passes Dieharder and SmallCrush test batteries
+///  -  Does not require warm-up, no zeroland to escape
+///  -  Internal state is a single 64-bit integer
+///  -  Period is 2^64 - 1
+///  -  Speed: 1.60 ns/call (Core i7 @3.40GHz)
+/// For further analysis see
+///   <http://vigna.di.unimi.it/ftp/papers/xorshift.pdf>
 
 class PRNG {
 
