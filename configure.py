@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """Script that generates the build.ninja for Stockfish"""
-import argparse, sys
+import argparse, sys, os
 import ninja_syntax
 
 # Files to compile
@@ -11,6 +11,8 @@ object_files = ['src/benchmark.o', 'src/bitbase.o', 'src/bitboard.o', 'src/endga
 
 # Auto-detect features
 bits = 64 if sys.maxsize > 2**32 else 32
+cpu_features = os.popen("grep flags /proc/cpuinfo | head -1 | cut -d\: -f2").read().split()
+print cpu_features
 
 # Command line options
 compilers = {'gcc': 'g++', 'clang': 'clang++'}
