@@ -1,12 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Python module for generating .ninja files."""
 import textwrap
 
-def escape_path(word):
-    return word.replace('$ ', '$$ ').replace(' ', '$ ').replace(':', '$:')
-
 class Writer(object):
-    def __init__(self, output, width=78):
+    def __init__(self, output, width=80):
         self.output = output
         self.width = width
 
@@ -30,10 +27,7 @@ class Writer(object):
             self.variable('deps', deps, indent=1)
 
     def build(self, outputs, rule, inputs=None):
-        out_outputs = [escape_path(x) for x in outputs]
-        all_inputs = [escape_path(x) for x in inputs]
-        self._line('build %s: %s' % (' '.join(out_outputs), ' '.join([rule] + all_inputs)))
-        return outputs
+        self._line('build %s: %s' % (' '.join(outputs), ' '.join([rule] + inputs)))
 
     def default(self, paths):
         self._line('default %s' % ' '.join(paths))
