@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Script that generates the build.ninja for Stockfish"""
-import argparse, sys, os
+import argparse, sys, subprocess
 import ninja_syntax
 
 # Files to compile
@@ -12,7 +12,8 @@ exe = 'stockfish'
 
 # Auto-detect features
 bits = 64 if sys.maxsize > 2**32 else 32
-features = os.popen("grep flags /proc/cpuinfo | head -1 | cut -d\: -f2").read().split()
+features = subprocess.check_output("grep flags /proc/cpuinfo | head -1 | cut -d\: -f2", shell=True).split()
+print(features)
 
 # Command line options
 compilers = {'gcc': 'g++', 'clang': 'clang++'}
