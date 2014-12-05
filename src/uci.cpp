@@ -32,7 +32,7 @@
 
 using namespace std;
 
-extern void benchmark(const Position& pos, istream& is);
+extern void benchmark(const Position& pos, istream& is, bool useTbFens=false);
 
 namespace {
 
@@ -204,6 +204,7 @@ void UCI::loop(int argc, char* argv[]) {
       else if (token == "setoption")  setoption(is);
       else if (token == "flip")       pos.flip();
       else if (token == "bench")      benchmark(pos, is);
+      else if (token == "tb_bench")   benchmark(pos, is, true);
       else if (token == "d")          sync_cout << pos << sync_endl;
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
       else if (token == "eval")       sync_cout << Eval::trace(pos) << sync_endl;
