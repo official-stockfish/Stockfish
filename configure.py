@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Script that generates the build.ninja for Stockfish"""
-import argparse, sys, subprocess
+import argparse, sys, subprocess, string
 import ninja_syntax
 
 # Files to compile
@@ -8,12 +8,16 @@ objs = ['benchmark.o', 'bitbase.o', 'bitboard.o', 'endgame.o',
     'evaluate.o', 'main.o', 'material.o', 'misc.o', 'movegen.o',
     'movepick.o', 'pawns.o', 'position.o', 'search.o', 'thread.o',
     'timeman.o','tt.o','uci.o','ucioption.o','syzygy/tbprobe.o']
+objs = ['src/' + o for o in objs]
 exe = 'stockfish'
 
 # Auto-detect features
 bits = 64 if sys.maxsize > 2**32 else 32
-features = subprocess.check_output("grep flags /proc/cpuinfo | head -1 | cut -d\: -f2", shell=True).split()
-print(features)
+mac_osx = sys.platform.startswith('darwin')
+cmd = 'sysctl -a | grep machdep\.cpu\.features' if mac_osx else 'grep flags /proc/cpuinfo'
+features = subprocess.check_output(cmd + ' | head -1 | cut -d\: -f2', shell=True).split()
+if mac_osx:
+    features = map(string.lowercase, features)
 
 # Command line options
 compilers = {'gcc': 'g++', 'clang': 'clang++'}
@@ -39,15 +43,15 @@ n.variable('ninja_required_version', '1.2')
 cxx = compilers[args.compiler]
 n.variable('cxx', cxx)
 warnings = '-Wall -Wextra -pedantic -Wcast-qual -std=c++03 -Wno-long-long -Wshadow '
-cflags = warnings + '-fno-exceptions -fno-rtti -DUSE_BSFQ '
-if cxx == 'g++':
+cflags = warnings + '-fno-exceptions -fno-rtti '
+if cxx == 'g++' or mac_osx: # Clang can't use LTO out of the box on Linux
     cflags += '-flto '
 if not args.debug:
     cflags += '-DNDEBUG '
 if args.optimize:
     cflags += '-O3 '
 if args.bits == 64:
-    cflags += '-DIS_64BIT '
+    cflags += '-DIS_64BIT -DUSE_BSFQ '
 if args.popcnt == 'True':
     cflags += '-msse3 -mpopcnt -DUSE_POPCNT '
 else:
@@ -66,7 +70,7 @@ n.newline()
 
 # Targets
 for obj in objs:
-    n.build(['src/' + obj], 'compile', ['src/' + obj.replace('.o', '.cpp')])
+    n.build([obj], 'compile', [obj.replace('.o', '.cpp')])
 n.build([exe], 'link', objs)
 n.newline()
 n.default([exe])

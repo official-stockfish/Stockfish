@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Python module for generating .ninja files."""
 import textwrap
 
