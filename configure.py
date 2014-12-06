@@ -27,7 +27,7 @@ parser.add_argument('--compiler', type=str, choices=compilers.keys(), default='g
 parser.add_argument('--bits', type=int, choices=[32, 64], default=bits,
     help='bits: default = ' + str(bits))
 parser.add_argument('--popcnt', type=str, choices=['True', 'False'],
-    default=str('popcnt' in features), help='popcnt: default = ' + str('popcnt' in features))
+    default=str(b'popcnt' in features), help='popcnt: default = ' + str(b'popcnt' in features))
 parser.add_argument('--debug', action='store_true', help='debug compile')
 parser.add_argument('--no-optimize', action='store_false', dest='optimize',
     help='disable compiler optimizations')
