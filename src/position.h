@@ -50,7 +50,7 @@ struct CheckInfo {
 
 struct StateInfo {
   Key pawnKey, materialKey;
-  Value npMaterial[COLOR_NB];
+  Value nonPawnMaterial[COLOR_NB];
   int castlingRights, rule50, pliesFromNull;
   Score psq;
   Square epSquare;
@@ -78,8 +78,8 @@ class Position {
 
 public:
   Position() {}
-  Position(const Position& pos, Thread* t) { *this = pos; thisThread = t; }
-  Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
+  Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
+  Position(const std::string& f, bool c960, Thread* th) { set(f, c960, th); }
   Position& operator=(const Position&);
   static void init();
 
@@ -114,7 +114,7 @@ public:
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
-  Bitboard attackers_to(Square s, Bitboard occ) const;
+  Bitboard attackers_to(Square s, Bitboard occupied) const;
   Bitboard attacks_from(Piece pc, Square s) const;
   template<PieceType> Bitboard attacks_from(Square s) const;
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
@@ -346,7 +346,7 @@ inline Score Position::psq_score() const {
 }
 
 inline Value Position::non_pawn_material(Color c) const {
-  return st->npMaterial[c];
+  return st->nonPawnMaterial[c];
 }
 
 inline int Position::game_ply() const {

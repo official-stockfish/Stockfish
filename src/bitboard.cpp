@@ -24,15 +24,15 @@
 #include "bitcount.h"
 #include "rkiss.h"
 
-Bitboard RMasks[SQUARE_NB];
-Bitboard RMagics[SQUARE_NB];
-Bitboard* RAttacks[SQUARE_NB];
-unsigned RShifts[SQUARE_NB];
+Bitboard RookMasks[SQUARE_NB];
+Bitboard RookMagics[SQUARE_NB];
+Bitboard* RookAttacks[SQUARE_NB];
+unsigned RookShifts[SQUARE_NB];
 
-Bitboard BMasks[SQUARE_NB];
-Bitboard BMagics[SQUARE_NB];
-Bitboard* BAttacks[SQUARE_NB];
-unsigned BShifts[SQUARE_NB];
+Bitboard BishopMasks[SQUARE_NB];
+Bitboard BishopMagics[SQUARE_NB];
+Bitboard* BishopAttacks[SQUARE_NB];
+unsigned BishopShifts[SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
@@ -58,8 +58,8 @@ namespace {
 
   int MS1BTable[256];
   Square BSFTable[SQUARE_NB];
-  Bitboard RTable[0x19000]; // Storage space for rook attacks
-  Bitboard BTable[0x1480];  // Storage space for bishop attacks
+  Bitboard RookTable[0x19000];  // Storage space for rook attacks
+  Bitboard BishopTable[0x1480]; // Storage space for bishop attacks
 
   typedef unsigned (Fn)(Square, Bitboard);
 
@@ -195,11 +195,11 @@ void Bitboards::init() {
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
-  Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
+  Square RookDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
+  Square BishopDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, magic_index<ROOK>);
-  init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, magic_index<BISHOP>);
+  init_magics(RookTable, RookAttacks, RookMagics, RookMasks, RookShifts, RookDeltas, magic_index<ROOK>);
+  init_magics(BishopTable, BishopAttacks, BishopMagics, BishopMasks, BishopShifts, BishopDeltas, magic_index<BISHOP>);
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {

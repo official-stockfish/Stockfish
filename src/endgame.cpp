@@ -60,8 +60,8 @@ namespace {
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
 #ifndef NDEBUG
-  bool verify_material(const Position& pos, Color c, Value npm, int num_pawns) {
-    return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == num_pawns;
+  bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
+    return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
   }
 #endif
 
