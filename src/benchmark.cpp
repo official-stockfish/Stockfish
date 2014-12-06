@@ -64,10 +64,8 @@ const char* Defaults[] = {
   "6k1/6p1/P6p/r1N5/5p2/7P/1b3PP1/4R1K1 w - - 0 1",
   "1r3k2/4q3/2Pp3b/3Bp3/2Q2p2/1p1P2P1/1P2KP2/3N4 w - - 0 1",
   "6k1/4pp1p/3p2p1/P1pPb3/R7/1r2P1PP/3B1P2/6K1 w - - 0 1",
-  "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1"
-};
+  "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1",
 
-const char* TBDefaults[] = {
   // 5-man positions
   "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1", // Kc2 - mate
   "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1", // Na2 - mate
@@ -90,7 +88,7 @@ const char* TBDefaults[] = {
 /// format (defaults are the positions defined above) and the type of the
 /// limit value: depth (default), time in secs or number of nodes.
 
-void benchmark(const Position& current, istream& is, bool useTbFens) {
+void benchmark(const Position& current, istream& is) {
 
   string token;
   Search::LimitsType limits;
@@ -120,12 +118,8 @@ void benchmark(const Position& current, istream& is, bool useTbFens) {
       limits.depth = atoi(limit.c_str());
 
   if (fenFile == "default")
-  {
-      if (!useTbFens)
-          fens.assign(Defaults, Defaults + 30);
-      else
-          fens.assign(TBDefaults, TBDefaults + 7);
-  }
+      fens.assign(Defaults, Defaults + 37);
+
   else if (fenFile == "current")
       fens.push_back(current.fen());
 
