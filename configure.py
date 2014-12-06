@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Script that generates the build.ninja for Stockfish"""
-import argparse, sys, subprocess, string
+import argparse, sys, subprocess
 import ninja_syntax
 
 # Files to compile
@@ -15,9 +15,7 @@ exe = 'stockfish'
 bits = 64 if sys.maxsize > 2**32 else 32
 mac_osx = sys.platform.startswith('darwin')
 cmd = 'sysctl -a | grep machdep\.cpu\.features' if mac_osx else 'grep flags /proc/cpuinfo'
-features = subprocess.check_output(cmd + ' | head -1 | cut -d\: -f2', shell=True).split()
-if mac_osx:
-    features = map(string.lowercase, features)
+features = subprocess.check_output(cmd + ' | head -1 | cut -d\: -f2', shell=True).lower().split()
 
 # Command line options
 compilers = {'gcc': 'g++', 'clang': 'clang++'}
