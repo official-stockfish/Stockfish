@@ -366,14 +366,14 @@ profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_prepare)
 	@echo ""
 	@echo "Step 1/4. Building executable for benchmark ..."
-	@touch *.cpp *.h
+	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	@$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building final executable ..."
-	@touch *.cpp
+	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
