@@ -69,12 +69,12 @@ void ThreadBase::notify_one() {
 }
 
 
-// wait_for() set the thread to sleep until condition 'b' turns true
+// wait_for() set the thread to sleep until 'condition' turns true
 
-void ThreadBase::wait_for(volatile const bool& b) {
+void ThreadBase::wait_for(volatile const bool& condition) {
 
   mutex.lock();
-  while (!b) sleepCondition.wait(mutex);
+  while (!condition) sleepCondition.wait(mutex);
   mutex.unlock();
 }
 
@@ -341,10 +341,10 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 
 void ThreadPool::wait_for_think_finished() {
 
-  MainThread* t = main();
-  t->mutex.lock();
-  while (t->thinking) sleepCondition.wait(t->mutex);
-  t->mutex.unlock();
+  MainThread* th = main();
+  th->mutex.lock();
+  while (th->thinking) sleepCondition.wait(th->mutex);
+  th->mutex.unlock();
 }
 
 

@@ -195,9 +195,9 @@ void Search::think() {
 
   TimeMgr.init(Limits, RootPos.game_ply(), RootPos.side_to_move());
 
-  int cf = Options["Contempt"] * PawnValueEg / 100; // From centipawns
-  DrawValue[ RootPos.side_to_move()] = VALUE_DRAW - Value(cf);
-  DrawValue[~RootPos.side_to_move()] = VALUE_DRAW + Value(cf);
+  int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
+  DrawValue[ RootPos.side_to_move()] = VALUE_DRAW - Value(contempt);
+  DrawValue[~RootPos.side_to_move()] = VALUE_DRAW + Value(contempt);
 
   TB::Hits = 0;
   TB::RootInTB = false;
@@ -324,7 +324,7 @@ namespace {
         // Save the last iteration's scores before first PV line is searched and
         // all the move scores except the (new) PV are set to -VALUE_INFINITE.
         for (size_t i = 0; i < RootMoves.size(); ++i)
-            RootMoves[i].prevScore = RootMoves[i].score;
+            RootMoves[i].previousScore = RootMoves[i].score;
 
         // MultiPV loop. We perform a full root search for each PV line
         for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
@@ -333,8 +333,8 @@ namespace {
             if (depth >= 5 * ONE_PLY)
             {
                 delta = Value(16);
-                alpha = std::max(RootMoves[PVIdx].prevScore - delta,-VALUE_INFINITE);
-                beta  = std::min(RootMoves[PVIdx].prevScore + delta, VALUE_INFINITE);
+                alpha = std::max(RootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
+                beta  = std::min(RootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
             }
 
             // Start with a small aspiration window and, in the case of a fail
@@ -461,7 +461,7 @@ namespace {
     SplitPoint* splitPoint;
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
-    Depth ext, newDepth, predictedDepth;
+    Depth extension, newDepth, predictedDepth;
     Value bestValue, value, ttValue, eval, nullValue, futilityValue;
     bool inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, dangerous, doFullDepthSearch;
@@ -789,7 +789,7 @@ moves_loop: // When in check and at SpNode search starts from here
       if (PvNode)
           (ss+1)->pv = NULL;
 
-      ext = DEPTH_ZERO;
+      extension = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
 
       givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
@@ -802,7 +802,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
       // Step 12. Extend checks
       if (givesCheck && pos.see_sign(move) >= VALUE_ZERO)
-          ext = ONE_PLY;
+          extension = ONE_PLY;
 
       // Singular extension search. If all moves but one fail low on a search of
       // (alpha-s, beta-s), and just one fails high on (alpha, beta), then that move
@@ -811,7 +811,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // ttValue minus a margin then we extend the ttMove.
       if (    singularExtensionNode
           &&  move == ttMove
-          && !ext
+          && !extension
           &&  pos.legal(move, ci.pinned))
       {
           Value rBeta = ttValue - 2 * depth / ONE_PLY;
@@ -822,11 +822,11 @@ moves_loop: // When in check and at SpNode search starts from here
           ss->excludedMove = MOVE_NONE;
 
           if (value < rBeta)
-              ext = ONE_PLY;
+              extension = ONE_PLY;
       }
 
       // Update the current move (this must be done after singular extension search)
-      newDepth = depth - ONE_PLY + ext;
+      newDepth = depth - ONE_PLY + extension;
 
       // Step 13. Pruning at shallow depth (exclude PV nodes)
       if (   !PvNode
@@ -1386,7 +1386,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // RootMoves are already sorted by score in descending order
     int variance = std::min(RootMoves[0].score - RootMoves[candidates - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
-    int max_s = -VALUE_INFINITE;
+    int maxScore = -VALUE_INFINITE;
     best = MOVE_NONE;
 
     // Choose best move. For each move score we add two terms both dependent on
@@ -1394,19 +1394,19 @@ moves_loop: // When in check and at SpNode search starts from here
     // then we choose the move with the resulting highest score.
     for (size_t i = 0; i < candidates; ++i)
     {
-        int s = RootMoves[i].score;
+        int score = RootMoves[i].score;
 
         // Don't allow crazy blunders even at very low skills
-        if (i > 0 && RootMoves[i - 1].score > s + 2 * PawnValueMg)
+        if (i > 0 && RootMoves[i - 1].score > score + 2 * PawnValueMg)
             break;
 
         // This is our magic formula
-        s += (  weakness * int(RootMoves[0].score - s)
-              + variance * (rk.rand<unsigned>() % weakness)) / 128;
+        score += (  weakness * int(RootMoves[0].score - score)
+                  + variance * (rk.rand<unsigned>() % weakness)) / 128;
 
-        if (s > max_s)
+        if (score > maxScore)
         {
-            max_s = s;
+            maxScore = score;
             best = RootMoves[i].pv[0];
         }
     }
@@ -1437,7 +1437,7 @@ moves_loop: // When in check and at SpNode search starts from here
             continue;
 
         Depth d = updated ? depth : depth - ONE_PLY;
-        Value v = updated ? RootMoves[i].score : RootMoves[i].prevScore;
+        Value v = updated ? RootMoves[i].score : RootMoves[i].previousScore;
 
         bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
         v = tb ? TB::Score : v;
