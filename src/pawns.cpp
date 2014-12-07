@@ -100,8 +100,8 @@ namespace {
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
-    e->pawnsOnSquares[Us][BLACK] = popcount<Max15>(ourPawns & DarkSquares);
-    e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
+    e->pawnsNumOnSquares[Us][BLACK] = popcount<Max15>(ourPawns & DarkSquares);
+    e->pawnsNumOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsNumOnSquares[Us][BLACK];
 
     // Loop through all pawns of the current color and score each pawn
     while ((s = *pl++) != SQ_NONE)
@@ -176,9 +176,6 @@ namespace {
         if (lever)
             value += Lever[relative_rank(Us, s)];
     }
-
-    b = e->semiopenFiles[Us] ^ 0xFF;
-    e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
     return value;
   }
