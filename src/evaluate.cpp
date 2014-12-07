@@ -314,7 +314,7 @@ namespace {
         {
             // Penalty for bishop with same colored pawns
             if (Pt == BISHOP)
-                score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
+                score -= BishopPawns * ei.pi->pawns_num_on_same_color_squares(Us, s);
 
             // Bishop and knight outpost square
             if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))

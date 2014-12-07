@@ -45,11 +45,12 @@ struct Entry {
   }
 
   int pawn_span(Color c) const {
-    return pawnSpan[c];
+    return semiopenFiles[c] ^ 0xFF ? int(  msb(semiopenFiles[c] ^ 0xFF)
+                                         - lsb(semiopenFiles[c] ^ 0xFF)) : 0;
   }
 
-  int pawns_on_same_color_squares(Color c, Square s) const {
-    return pawnsOnSquares[c][!!(DarkSquares & s)];
+  int pawns_num_on_same_color_squares(Color c, Square s) const {
+    return pawnsNumOnSquares[c][!!(DarkSquares & s)];
   }
 
   template<Color Us>
@@ -73,8 +74,7 @@ struct Entry {
   int minKPdistance[COLOR_NB];
   int castlingRights[COLOR_NB];
   int semiopenFiles[COLOR_NB];
-  int pawnSpan[COLOR_NB];
-  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
+  int pawnsNumOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
 };
 
 typedef HashTable<Entry, 16384> Table;
