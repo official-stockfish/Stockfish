@@ -223,8 +223,8 @@ static void init_tb(char *str)
     entry->num += pcs[i];
   entry->symmetric = (key == key2);
   entry->has_pawns = (pcs[TB_WPAWN] + pcs[TB_BPAWN] > 0);
-  if (entry->num > Tablebases::TBLargest)
-    Tablebases::TBLargest = entry->num;
+  if (entry->num > Tablebases::MaxCardinality)
+    Tablebases::MaxCardinality = entry->num;
 
   if (entry->has_pawns) {
     struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
@@ -301,7 +301,7 @@ void Tablebases::init(const std::string& path)
   LOCK_INIT(TB_mutex);
 
   TBnum_piece = TBnum_pawn = 0;
-  TBLargest = 0;
+  MaxCardinality = 0;
 
   for (i = 0; i < (1 << TBHASHBITS); i++)
     for (j = 0; j < HSHMAX; j++) {
