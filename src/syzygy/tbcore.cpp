@@ -8,13 +8,13 @@
 */
 
 #include <stdio.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#ifndef __WIN32__
+#ifndef _WIN32
+#include <unistd.h>
 #include <sys/mman.h>
 #endif
 #include "tbcore.h"
@@ -68,7 +68,7 @@ static FD open_tb(const char *str, const char *suffix)
     strcat(file, "/");
     strcat(file, str);
     strcat(file, suffix);
-#ifndef __WIN32__
+#ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
     fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
@@ -81,7 +81,7 @@ static FD open_tb(const char *str, const char *suffix)
 
 static void close_tb(FD fd)
 {
-#ifndef __WIN32__
+#ifndef _WIN32
   close(fd);
 #else
   CloseHandle(fd);
@@ -93,7 +93,7 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
   FD fd = open_tb(name, suffix);
   if (fd == FD_ERR)
     return NULL;
-#ifndef __WIN32__
+#ifndef _WIN32
   struct stat statbuf;
   fstat(fd, &statbuf);
   *mapping = statbuf.st_size;
@@ -124,7 +124,7 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
   return data;
 }
 
-#ifndef __WIN32__
+#ifndef _WIN32
 static void unmap_file(char *data, uint64 size)
 {
   if (!data) return;
@@ -1234,7 +1234,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   int litidx = (idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
   uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
   if (!LittleEndian)
-    block = __builtin_bswap32(block);
+    block = BSWAP32(block);
 
   ushort idxOffset = *(ushort *)(d->indextable + 6 * mainidx + 4);
   if (!LittleEndian)
@@ -1260,7 +1260,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
   uint64 code = *((uint64 *)ptr);
   if (LittleEndian)
-    code = __builtin_bswap64(code);
+    code = BSWAP64(code);
 
   ptr += 2;
   bitcnt = 0; // number of "empty bits" in code
@@ -1279,7 +1279,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
       bitcnt -= 32;
       uint32 tmp = *ptr++;
       if (LittleEndian)
-        tmp = __builtin_bswap32(tmp);
+        tmp = BSWAP32(tmp);
       code |= ((uint64)tmp) << bitcnt;
      }
    }
