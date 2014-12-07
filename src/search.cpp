@@ -27,7 +27,7 @@
 #include "evaluate.h"
 #include "movegen.h"
 #include "movepick.h"
-#include "prng.h"
+#include "misc.h"
 #include "search.h"
 #include "timeman.h"
 #include "thread.h"

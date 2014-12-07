@@ -22,7 +22,7 @@
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "prng.h"
+#include "misc.h"
 
 Bitboard RMasks[SQUARE_NB];
 Bitboard RMagics[SQUARE_NB];

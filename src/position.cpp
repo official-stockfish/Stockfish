@@ -27,7 +27,7 @@
 #include "movegen.h"
 #include "position.h"
 #include "psqtab.h"
-#include "prng.h"
+#include "misc.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
