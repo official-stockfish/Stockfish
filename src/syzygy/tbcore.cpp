@@ -779,10 +779,10 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
   f = 1;
   for (i = norm[0], k = 0; i < num || k == order; k++) {
     if (k == order) {
-      factor[0] = f;
+      factor[0] = static_cast<int>(f);
       f *= pivfac[enc_type];
     } else {
-      factor[i] = f;
+      factor[i] = static_cast<int>(f);
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -804,13 +804,13 @@ static uint64 calc_factors_pawn(int *factor, int num, int order, int order2, uby
   f = 1;
   for (k = 0; i < num || k == order || k == order2; k++) {
     if (k == order) {
-      factor[0] = f;
+      factor[0] = static_cast<int>(f);
       f *= pfactor[norm[0] - 1][file];
     } else if (k == order2) {
-      factor[norm[0]] = f;
+      factor[norm[0]] = static_cast<int>(f);
       f *= subfactor(norm[norm[0]], 48 - norm[0]);
     } else {
-      factor[i] = f;
+      factor[i] = static_cast<int>(f);
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -984,7 +984,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
   d->min_len = min_len;
   *next = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)];
 
-  int num_indices = (tb_size + (1ULL << idxbits) - 1) >> idxbits;
+  uint64 num_indices = (tb_size + (1ULL << idxbits) - 1) >> idxbits;
   size[0] = 6ULL * num_indices;
   size[1] = 2ULL * num_blocks;
   size[2] = (1ULL << blocksize) * real_num_blocks;
@@ -1230,8 +1230,8 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   if (!d->idxbits)
     return d->min_len;
 
-  uint32 mainidx = idx >> d->idxbits;
-  int litidx = (idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
+  uint32 mainidx = static_cast<uint32>(idx >> d->idxbits);
+  int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
   uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
   if (!LittleEndian)
     block = BSWAP32(block);
@@ -1270,7 +1270,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
     sym = offset[l];
     if (!LittleEndian)
       sym = ((sym & 0xff) << 8) | (sym >> 8);
-    sym += ((code - base[l]) >> (64 - l));
+    sym += static_cast<int>((code - base[l]) >> (64 - l));
     if (litidx < (int)symlen[sym] + 1) break;
     litidx -= (int)symlen[sym] + 1;
     code <<= l;
