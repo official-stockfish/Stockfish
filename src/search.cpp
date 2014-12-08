@@ -514,7 +514,7 @@ namespace {
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
     ss->currentMove = ss->ttMove = (ss+1)->excludedMove = bestMove = MOVE_NONE;
-    (ss+1)->skipNullMove = false; (ss+1)->reduction = DEPTH_ZERO;
+    (ss+1)->skipEarlyPruning = false; (ss+1)->reduction = DEPTH_ZERO;
     (ss+2)->killers[0] = (ss+2)->killers[1] = MOVE_NONE;
 
     // Step 4. Transposition table lookup
@@ -599,6 +599,9 @@ namespace {
         TT.store(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE, ss->staticEval);
     }
 
+    if (ss->skipEarlyPruning)
+        goto moves_loop;
+
     if (   !pos.captured_piece_type()
         &&  ss->staticEval != VALUE_NONE
         && (ss-1)->staticEval != VALUE_NONE
@@ -629,7 +632,6 @@ namespace {
 
     // Step 7. Futility pruning: child node (skipped when in check)
     if (   !PvNode
-        && !ss->skipNullMove
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth) >= beta
         &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
@@ -638,7 +640,6 @@ namespace {
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
     if (   !PvNode
-        && !ss->skipNullMove
         &&  depth >= 2 * ONE_PLY
         &&  eval >= beta
         &&  pos.non_pawn_material(pos.side_to_move()))
@@ -651,10 +652,10 @@ namespace {
         Depth R = (3 + depth / 4 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
 
         pos.do_null_move(st);
-        (ss+1)->skipNullMove = true;
+        (ss+1)->skipEarlyPruning = true;
         nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1, DEPTH_ZERO)
                                       : - search<NonPV, false>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode);
-        (ss+1)->skipNullMove = false;
+        (ss+1)->skipEarlyPruning = false;
         pos.undo_null_move();
 
         if (nullValue >= beta)
@@ -667,10 +668,10 @@ namespace {
                 return nullValue;
 
             // Do verification search at high depths
-            ss->skipNullMove = true;
+            ss->skipEarlyPruning = true;
             Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta, DEPTH_ZERO)
                                         :  search<NonPV, false>(pos, ss, beta-1, beta, depth-R, false);
-            ss->skipNullMove = false;
+            ss->skipEarlyPruning = false;
 
             if (v >= beta)
                 return nullValue;
@@ -683,7 +684,6 @@ namespace {
     // prune the previous move.
     if (   !PvNode
         &&  depth >= 5 * ONE_PLY
-        && !ss->skipNullMove
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = std::min(beta + 200, VALUE_INFINITE);
@@ -714,9 +714,9 @@ namespace {
         && (PvNode || ss->staticEval + 256 >= beta))
     {
         Depth d = 2 * (depth - 2 * ONE_PLY) - (PvNode ? DEPTH_ZERO : depth / 2);
-        ss->skipNullMove = true;
+        ss->skipEarlyPruning = true;
         search<PvNode ? PV : NonPV, false>(pos, ss, alpha, beta, d / 2, true);
-        ss->skipNullMove = false;
+        ss->skipEarlyPruning = false;
 
         tte = TT.probe(posKey);
         ttMove = tte ? tte->move() : MOVE_NONE;
@@ -816,9 +816,9 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           Value rBeta = ttValue - 2 * depth / ONE_PLY;
           ss->excludedMove = move;
-          ss->skipNullMove = true;
+          ss->skipEarlyPruning = true;
           value = search<NonPV, false>(pos, ss, rBeta - 1, rBeta, depth / 2, cutNode);
-          ss->skipNullMove = false;
+          ss->skipEarlyPruning = false;
           ss->excludedMove = MOVE_NONE;
 
           if (value < rBeta)
