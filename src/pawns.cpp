@@ -255,10 +255,10 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                    + StormDanger[rkUs   == RANK_1   ? 0 :
                                  rkThem != rkUs + 1 ? 1 : 2][rkThem];
 
-      if (  (f == FILE_A || f == FILE_B || f == FILE_G || f == FILE_H)
+      if (  (f == FILE_A || f == FILE_H)
           && rkUs != RANK_1
           && rkThem == rkUs + 1)
-          safety += StormDanger[2][rkThem] / 3;
+          safety += StormDanger[2][rkThem] / 2;
   }
 
   return safety;
