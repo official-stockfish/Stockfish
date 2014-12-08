@@ -70,7 +70,7 @@ struct Entry {
   Bitboard pawnAttacks[COLOR_NB];
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
-  int minKPdistance[COLOR_NB];
+  int minKingPawnDistance[COLOR_NB];
   int castlingRights[COLOR_NB];
   int semiopenFiles[COLOR_NB];
   int pawnSpan[COLOR_NB];
