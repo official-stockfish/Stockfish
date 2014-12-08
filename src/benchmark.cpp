@@ -67,13 +67,15 @@ const char* Defaults[] = {
   "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1",
 
   // 5-man positions
-  "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1", // Kc2 - mate
-  "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1", // Na2 - mate
-  "8/3k4/8/8/8/4B3/4KB2/2B5 w - - 0 1", // draw
+  "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1",     // Kc2 - mate
+  "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1",      // Na2 - mate
+  "8/3k4/8/8/8/4B3/4KB2/2B5 w - - 0 1",    // draw
+
   // 6-man positions
-  "8/8/1P6/5pr1/8/4R3/7k/2K5 w - - 0 1", // Re5 - mate
-  "8/2p4P/8/kr6/6R1/8/8/1K6 w - - 0 1", // Ka2 - mate
-  "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1", // Nd2 - draw
+  "8/8/1P6/5pr1/8/4R3/7k/2K5 w - - 0 1",   // Re5 - mate
+  "8/2p4P/8/kr6/6R1/8/8/1K6 w - - 0 1",    // Ka2 - mate
+  "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1",  // Nd2 - draw
+
   // 7-man positions
   "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124", // Draw
 };
