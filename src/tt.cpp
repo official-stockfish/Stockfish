@@ -65,7 +65,7 @@ void TranspositionTable::clear() {
 
 /// TranspositionTable::probe() looks up the current position in the
 /// transposition table. It returns true and a pointer to the TTEntry if
-/// the position is found. It returns false and a pointer to an empty or
+/// the position is found. Otherwise, it returns false and a pointer to an empty or
 /// least valuable TTEntry to be replaced later. A TTEntry t1 is considered
 /// to be more valuable than a TTEntry t2 if t1 is from the current search and t2
 /// is from a previous search, or if the depth of t1 is bigger than the depth of t2.
