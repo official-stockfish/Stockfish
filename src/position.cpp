@@ -27,7 +27,7 @@
 #include "movegen.h"
 #include "position.h"
 #include "psqtab.h"
-#include "rkiss.h"
+#include "misc.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -137,15 +137,15 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
 void Position::init() {
 
-  RKISS rk;
+  PRNG rng(1070372);
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              Zobrist::psq[c][pt][s] = rk.rand<Key>();
+              Zobrist::psq[c][pt][s] = rng.rand<Key>();
 
   for (File f = FILE_A; f <= FILE_H; ++f)
-      Zobrist::enpassant[f] = rk.rand<Key>();
+      Zobrist::enpassant[f] = rng.rand<Key>();
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
   {
@@ -153,12 +153,12 @@ void Position::init() {
       while (b)
       {
           Key k = Zobrist::castling[1ULL << pop_lsb(&b)];
-          Zobrist::castling[cr] ^= k ? k : rk.rand<Key>();
+          Zobrist::castling[cr] ^= k ? k : rng.rand<Key>();
       }
   }
 
-  Zobrist::side = rk.rand<Key>();
-  Zobrist::exclusion  = rk.rand<Key>();
+  Zobrist::side = rng.rand<Key>();
+  Zobrist::exclusion  = rng.rand<Key>();
 
   for (PieceType pt = PAWN; pt <= KING; ++pt)
   {

@@ -22,7 +22,7 @@
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "rkiss.h"
+#include "misc.h"
 
 Bitboard RookMasks[SQUARE_NB];
 Bitboard RookMagics[SQUARE_NB];
@@ -250,11 +250,10 @@ namespace {
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
-    int MagicBoosters[][RANK_NB] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
-                                     { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
-    RKISS rk;
+    int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
+                             {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int i, size, booster;
+    int i, size;
 
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
@@ -294,13 +293,13 @@ namespace {
         if (HasPext)
             continue;
 
-        booster = MagicBoosters[Is64Bit][rank_of(s)];
+        PRNG rng(seeds[Is64Bit][rank_of(s)]);
 
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
         do {
             do
-                magics[s] = rk.magic_rand<Bitboard>(booster);
+                magics[s] = rng.sparse_rand<Bitboard>();
             while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
             std::memset(attacks[s], 0, size * sizeof(Bitboard));
