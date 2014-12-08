@@ -1163,7 +1163,7 @@ static int init_table_dtz(struct TBEntry *entry)
     if (ptr->flags & 2) {
       int i;
       for (i = 0; i < 4; i++) {
-        ptr->map_idx[i] = (data + 1 - ptr->map);
+        ptr->map_idx[i] = static_cast<ushort>(data + 1 - ptr->map);
         data += 1 + data[0];
       }
       data += ((uintptr_t)data) & 0x01;
@@ -1197,7 +1197,7 @@ static int init_table_dtz(struct TBEntry *entry)
       if (ptr->flags[f] & 2) {
         int i;
         for (i = 0; i < 4; i++) {
-          ptr->map_idx[f][i] = (data + 1 - ptr->map);
+          ptr->map_idx[f][i] = static_cast<ushort>(data + 1 - ptr->map);
           data += 1 + data[0];
         }
       }
