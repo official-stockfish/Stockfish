@@ -24,10 +24,10 @@
 #include <sstream>
 
 #include "bitcount.h"
+#include "misc.h"
 #include "movegen.h"
 #include "position.h"
 #include "psqtab.h"
-#include "misc.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
