@@ -77,13 +77,13 @@ bool TranspositionTable::probe(const Key key, TTEntry* &tteOut) const {
 
     for (unsigned i = 0; i < TTClusterSize; ++i)
     {
-        const bool isEempty = !tte[i].key16;
-        if (isEempty || tte[i].key16 == key16)
+        const bool isEmpty = !tte[i].key16;
+        if (isEmpty || tte[i].key16 == key16)
         {
-            if (!isEempty)
+            if (!isEmpty)
                 tte[i].genBound8 = uint8_t(generation | tte[i].bound()); // Refresh
             tteOut = &tte[i];
-            return !isEempty;
+            return !isEmpty;
         }
     }
 
