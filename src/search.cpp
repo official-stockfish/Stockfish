@@ -524,7 +524,7 @@ namespace {
     // TT value, so we use a different position key in case of an excluded move.
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
-    ttHit = TT.probe(posKey, tte);
+    tte = TT.probe(posKey, ttHit);
     ss->ttMove = ttMove = RootNode ? RootMoves[PVIdx].pv[0] : ttHit ? tte->move() : MOVE_NONE;
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
@@ -720,7 +720,7 @@ namespace {
         search<PvNode ? PV : NonPV, false>(pos, ss, alpha, beta, d / 2, true);
         ss->skipEarlyPruning = false;
 
-        ttHit = TT.probe(posKey, tte);
+        tte = TT.probe(posKey, ttHit);
         ttMove = ttHit ? tte->move() : MOVE_NONE;
     }
 
@@ -1141,7 +1141,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     // Transposition table lookup
     posKey = pos.key();
-    ttHit = TT.probe(posKey, tte);
+    tte = TT.probe(posKey, ttHit);
     ttMove = ttHit ? tte->move() : MOVE_NONE;
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
@@ -1476,8 +1476,8 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 
   for ( ; idx < pv.size(); ++idx)
   {
-      TTEntry* tte;
-      const bool ttHit = TT.probe(pos.key(), tte);
+      bool ttHit;
+      TTEntry* tte = TT.probe(pos.key(), ttHit);
 
       if (!ttHit || tte->move() != pv[idx]) // Don't overwrite correct entries
           tte->save(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[idx], VALUE_NONE, TT.get_generation());

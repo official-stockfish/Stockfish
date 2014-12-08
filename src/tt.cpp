@@ -70,20 +70,20 @@ void TranspositionTable::clear() {
 /// to be more valuable than a TTEntry t2 if t1 is from the current search and t2
 /// is from a previous search, or if the depth of t1 is bigger than the depth of t2.
 
-bool TranspositionTable::probe(const Key key, TTEntry* &tteOut) const {
+TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
     TTEntry* const tte = first_entry(key);
     const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
 
     for (unsigned i = 0; i < TTClusterSize; ++i)
     {
-        const bool isEmpty = !tte[i].key16;
-        if (isEmpty || tte[i].key16 == key16)
+        if (!tte[i].key16 || tte[i].key16 == key16)
         {
-            if (!isEmpty)
+            if (!!tte[i].key16)
                 tte[i].genBound8 = uint8_t(generation | tte[i].bound()); // Refresh
-            tteOut = &tte[i];
-            return !isEmpty;
+
+            found = !!tte[i].key16;
+            return &tte[i];
         }
     }
 
@@ -95,6 +95,6 @@ bool TranspositionTable::probe(const Key key, TTEntry* &tteOut) const {
           - (tte[i].depth8 < replace->depth8) < 0)
           replace = &tte[i];
 
-    tteOut = replace;
-    return false;
+    found = false;
+    return replace;
 }
