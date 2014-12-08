@@ -7,6 +7,8 @@
   this code to other chess engines.
 */
 
+#include <algorithm>
+
 #include "../position.h"
 #include "../movegen.h"
 #include "../bitboard.h"
