@@ -79,10 +79,10 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
     {
         if (!tte[i].key16 || tte[i].key16 == key16)
         {
-            if (!!tte[i].key16)
+            if (tte[i].key16)
                 tte[i].genBound8 = uint8_t(generation | tte[i].bound()); // Refresh
 
-            found = !!tte[i].key16;
+            found = (bool)tte[i].key16;
             return &tte[i];
         }
     }
