@@ -65,11 +65,14 @@ namespace {
   { V(100), V(0), V(27), V(73), V(92), V(101), V(101) };
 
   // Danger of enemy pawns moving toward our king indexed by
-  // [no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
-  const Value StormDanger[][RANK_NB] = {
-  { V( 0),  V(64), V(128), V(51), V(26) },
-  { V(26),  V(32), V( 96), V(38), V(20) },
-  { V( 0),  V( 0), V(160), V(25), V(13) } };
+  // [edge files][no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
+  const Value StormDanger[][3][RANK_NB] = {
+  { { V( 0),  V(64), V(128), V(51), V(26) },
+    { V(26),  V(32), V( 96), V(38), V(20) },
+    { V( 0),  V( 0), V(160), V(25), V(13) } },
+  { { V( 0),  V(64), V(128), V(51), V(26) },
+    { V(26),  V(32), V( 96), V(38), V(20) },
+    { V( 0),  V( 0), V( 80), V(13), V( 7) } } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
@@ -252,7 +255,8 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
           safety += 200;
       else
           safety -=  ShelterWeakness[rkUs]
-                   + StormDanger[rkUs   == RANK_1   ? 0 :
+                   + StormDanger[f == FILE_A || f == FILE_H]
+                                [rkUs   == RANK_1   ? 0 :
                                  rkThem != rkUs + 1 ? 1 : 2][rkThem];
   }
 
