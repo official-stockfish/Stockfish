@@ -8,13 +8,13 @@
 */
 
 #include <stdio.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#ifndef __WIN32__
+#ifndef _WIN32
+#include <unistd.h>
 #include <sys/mman.h>
 #endif
 #include "tbcore.h"
@@ -68,7 +68,7 @@ static FD open_tb(const char *str, const char *suffix)
     strcat(file, "/");
     strcat(file, str);
     strcat(file, suffix);
-#ifndef __WIN32__
+#ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
     fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
@@ -81,7 +81,7 @@ static FD open_tb(const char *str, const char *suffix)
 
 static void close_tb(FD fd)
 {
-#ifndef __WIN32__
+#ifndef _WIN32
   close(fd);
 #else
   CloseHandle(fd);
@@ -93,7 +93,7 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
   FD fd = open_tb(name, suffix);
   if (fd == FD_ERR)
     return NULL;
-#ifndef __WIN32__
+#ifndef _WIN32
   struct stat statbuf;
   fstat(fd, &statbuf);
   *mapping = statbuf.st_size;
@@ -124,7 +124,7 @@ static char *map_file(const char *name, const char *suffix, uint64 *mapping)
   return data;
 }
 
-#ifndef __WIN32__
+#ifndef _WIN32
 static void unmap_file(char *data, uint64 size)
 {
   if (!data) return;
@@ -779,10 +779,10 @@ static uint64 calc_factors_piece(int *factor, int num, int order, ubyte *norm, u
   f = 1;
   for (i = norm[0], k = 0; i < num || k == order; k++) {
     if (k == order) {
-      factor[0] = f;
+      factor[0] = static_cast<int>(f);
       f *= pivfac[enc_type];
     } else {
-      factor[i] = f;
+      factor[i] = static_cast<int>(f);
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -804,13 +804,13 @@ static uint64 calc_factors_pawn(int *factor, int num, int order, int order2, uby
   f = 1;
   for (k = 0; i < num || k == order || k == order2; k++) {
     if (k == order) {
-      factor[0] = f;
+      factor[0] = static_cast<int>(f);
       f *= pfactor[norm[0] - 1][file];
     } else if (k == order2) {
-      factor[norm[0]] = f;
+      factor[norm[0]] = static_cast<int>(f);
       f *= subfactor(norm[norm[0]], 48 - norm[0]);
     } else {
-      factor[i] = f;
+      factor[i] = static_cast<int>(f);
       f *= subfactor(norm[i], n);
       n -= norm[i];
       i += norm[i];
@@ -984,7 +984,7 @@ static struct PairsData *setup_pairs(unsigned char *data, uint64 tb_size, uint64
   d->min_len = min_len;
   *next = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)];
 
-  int num_indices = (tb_size + (1ULL << idxbits) - 1) >> idxbits;
+  uint64 num_indices = (tb_size + (1ULL << idxbits) - 1) >> idxbits;
   size[0] = 6ULL * num_indices;
   size[1] = 2ULL * num_blocks;
   size[2] = (1ULL << blocksize) * real_num_blocks;
@@ -1163,7 +1163,7 @@ static int init_table_dtz(struct TBEntry *entry)
     if (ptr->flags & 2) {
       int i;
       for (i = 0; i < 4; i++) {
-        ptr->map_idx[i] = (data + 1 - ptr->map);
+        ptr->map_idx[i] = static_cast<ushort>(data + 1 - ptr->map);
         data += 1 + data[0];
       }
       data += ((uintptr_t)data) & 0x01;
@@ -1197,7 +1197,7 @@ static int init_table_dtz(struct TBEntry *entry)
       if (ptr->flags[f] & 2) {
         int i;
         for (i = 0; i < 4; i++) {
-          ptr->map_idx[f][i] = (data + 1 - ptr->map);
+          ptr->map_idx[f][i] = static_cast<ushort>(data + 1 - ptr->map);
           data += 1 + data[0];
         }
       }
@@ -1230,11 +1230,11 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
   if (!d->idxbits)
     return d->min_len;
 
-  uint32 mainidx = idx >> d->idxbits;
-  int litidx = (idx & ((1 << d->idxbits) - 1)) - (1 << (d->idxbits - 1));
+  uint32 mainidx = static_cast<uint32>(idx >> d->idxbits);
+  int litidx = (idx & ((1ULL << d->idxbits) - 1)) - (1ULL << (d->idxbits - 1));
   uint32 block = *(uint32 *)(d->indextable + 6 * mainidx);
   if (!LittleEndian)
-    block = __builtin_bswap32(block);
+    block = BSWAP32(block);
 
   ushort idxOffset = *(ushort *)(d->indextable + 6 * mainidx + 4);
   if (!LittleEndian)
@@ -1260,7 +1260,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
 
   uint64 code = *((uint64 *)ptr);
   if (LittleEndian)
-    code = __builtin_bswap64(code);
+    code = BSWAP64(code);
 
   ptr += 2;
   bitcnt = 0; // number of "empty bits" in code
@@ -1270,7 +1270,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
     sym = offset[l];
     if (!LittleEndian)
       sym = ((sym & 0xff) << 8) | (sym >> 8);
-    sym += ((code - base[l]) >> (64 - l));
+    sym += static_cast<int>((code - base[l]) >> (64 - l));
     if (litidx < (int)symlen[sym] + 1) break;
     litidx -= (int)symlen[sym] + 1;
     code <<= l;
@@ -1279,7 +1279,7 @@ static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
       bitcnt -= 32;
       uint32 tmp = *ptr++;
       if (LittleEndian)
-        tmp = __builtin_bswap32(tmp);
+        tmp = BSWAP32(tmp);
       code |= ((uint64)tmp) << bitcnt;
      }
    }

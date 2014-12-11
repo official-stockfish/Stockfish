@@ -7,6 +7,8 @@
   this code to other chess engines.
 */
 
+#include <algorithm>
+
 #include "../position.h"
 #include "../movegen.h"
 #include "../bitboard.h"
@@ -144,7 +146,11 @@ static int probe_wdl_table(Position& pos, int *success)
         return 0;
       }
       // Memory barrier to ensure ptr->ready = 1 is not reordered.
+#ifdef _WIN32
+	  _ReadWriteBarrier();
+#else
       __asm__ __volatile__ ("" ::: "memory");
+#endif
       ptr->ready = 1;
     }
     UNLOCK(TB_mutex);
