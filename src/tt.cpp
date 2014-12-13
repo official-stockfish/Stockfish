@@ -72,29 +72,27 @@ void TranspositionTable::clear() {
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
-    TTEntry* const tte = first_entry(key);
-    const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
 
-    for (unsigned i = 0; i < TTClusterSize; ++i)
-    {
-        if (!tte[i].key16 || tte[i].key16 == key16)
-        {
-            if (tte[i].key16)
-                tte[i].genBound8 = uint8_t(generation | tte[i].bound()); // Refresh
+  for (unsigned i = 0; i < TTClusterSize; ++i)
+      if (!tte[i].key16 || tte[i].key16 == key16)
+      {
+          if (tte[i].key16)
+              tte[i].genBound8 = uint8_t(generation | tte[i].bound()); // Refresh
 
-            found = (bool)tte[i].key16;
-            return &tte[i];
-        }
-    }
+          found = (bool)tte[i].key16;
+          return &tte[i];
+      }
 
-    // Find an entry to be replaced according to the replacement strategy
-    TTEntry* replace = tte;
-    for (unsigned i = 1; i < TTClusterSize; ++i)
+  // Find an entry to be replaced according to the replacement strategy
+  TTEntry* replace = tte;
+  for (unsigned i = 1; i < TTClusterSize; ++i)
       if (  ((  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT)
           - ((replace->genBound8 & 0xFC) == generation)
           - (tte[i].depth8 < replace->depth8) < 0)
           replace = &tte[i];
 
-    found = false;
-    return replace;
+  found = false;
+  return replace;
 }
