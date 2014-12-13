@@ -41,18 +41,20 @@ struct TTEntry {
   Depth depth() const      { return (Depth)depth8; }
   Bound bound() const      { return (Bound)(genBound8 & 0x3); }
 
+  void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
+
+    k >>= 48;
+    if (m || k != key16) // preserve any existing ttMove
+        move16 = (uint16_t)m;
+    key16      = (uint16_t)k;
+    value16    = (int16_t)v;
+    evalValue  = (int16_t)ev;
+    genBound8  = (uint8_t)(g | b);
+    depth8     = (int8_t)d;
+  }
+
 private:
   friend class TranspositionTable;
-
-  void save(uint16_t k, Value v, Bound b, Depth d, Move m, uint8_t g, Value ev) {
-
-    key16     = (uint16_t)k;
-    move16    = (uint16_t)m;
-    value16   = (int16_t)v;
-    evalValue = (int16_t)ev;
-    genBound8 = (uint8_t)(g | b);
-    depth8    = (int8_t)d;
-  }
 
   uint16_t key16;
   uint16_t move16;
@@ -67,7 +69,7 @@ private:
 /// 3 x TTEntry (3 x 10 bytes)
 /// padding     (2 bytes)
 
-const unsigned TTClusterSize = 3;
+static const unsigned TTClusterSize = 3;
 
 struct TTCluster {
   TTEntry entry[TTClusterSize];
@@ -85,12 +87,11 @@ class TranspositionTable {
 public:
  ~TranspositionTable() { free(mem); }
   void new_search() { generation += 4; } // Lower 2 bits are used by Bound
-
-  const TTEntry* probe(const Key key) const;
+  uint8_t get_generation() const { return generation; }
+  TTEntry* probe(const Key key, bool& found) const;
   TTEntry* first_entry(const Key key) const;
   void resize(size_t mbSize);
   void clear();
-  void store(const Key key, Value v, Bound type, Depth d, Move m, Value statV);
 
 private:
   size_t clusterCount;
