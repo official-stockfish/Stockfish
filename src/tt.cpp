@@ -88,10 +88,14 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   // Find an entry to be replaced according to the replacement strategy
   TTEntry* replace = tte;
   for (unsigned i = 1; i < TTClusterSize; ++i)
-      if (  ((  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT)
-          - ((replace->genBound8 & 0xFC) == generation)
-          - (tte[i].depth8 < replace->depth8) < 0)
+  {
+      const bool A = (  tte[i].genBound8 & 0xFC) == generation || tte[i].bound() == BOUND_EXACT;
+      const bool B = (replace->genBound8 & 0xFC) == generation;
+      const bool C = tte[i].depth8 < replace->depth8;
+
+      if ((!A && (B || C)) || (B && C))
           replace = &tte[i];
+  }
 
   found = false;
   return replace;
