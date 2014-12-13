@@ -43,10 +43,10 @@ struct TTEntry {
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
 
-    k >>= 48;
-    if (m || k != key16) // preserve any existing ttMove
+    if (m || (k >> 48) != key16) // Preserve any existing move for the same position
         move16 = (uint16_t)m;
-    key16      = (uint16_t)k;
+
+    key16      = (uint16_t)(k >> 48);
     value16    = (int16_t)v;
     evalValue  = (int16_t)ev;
     genBound8  = (uint8_t)(g | b);
@@ -86,8 +86,8 @@ class TranspositionTable {
 
 public:
  ~TranspositionTable() { free(mem); }
-  void new_search() { generation += 4; } // Lower 2 bits are used by Bound
-  uint8_t get_generation() const { return generation; }
+  void new_search() { generation8 += 4; } // Lower 2 bits are used by Bound
+  uint8_t generation() const { return generation8; }
   TTEntry* probe(const Key key, bool& found) const;
   TTEntry* first_entry(const Key key) const;
   void resize(size_t mbSize);
@@ -97,7 +97,7 @@ private:
   size_t clusterCount;
   TTCluster* table;
   void* mem;
-  uint8_t generation; // Size must be not bigger than TTEntry::genBound8
+  uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
 };
 
 extern TranspositionTable TT;
