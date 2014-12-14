@@ -123,7 +123,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
      << std::setfill('0') << std::setw(16) << pos.st->key << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
-      os << UCI::format_square(pop_lsb(&b)) << " ";
+      os << UCI::square(pop_lsb(&b)) << " ";
 
   return os;
 }
@@ -444,7 +444,7 @@ const string Position::fen() const {
   if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
 
-  ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::format_square(ep_square()) + " ")
+  ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
      << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
   return ss.str();

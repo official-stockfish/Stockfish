@@ -179,7 +179,7 @@ uint64_t Search::perft(Position& pos, Depth depth) {
           pos.undo_move(*it);
       }
       if (Root)
-          sync_cout << UCI::format_move(*it, pos.is_chess960()) << ": " << cnt << sync_endl;
+          sync_cout << UCI::move(*it, pos.is_chess960()) << ": " << cnt << sync_endl;
   }
   return nodes;
 }
@@ -216,7 +216,7 @@ void Search::think() {
   {
       RootMoves.push_back(MOVE_NONE);
       sync_cout << "info depth 0 score "
-                << UCI::format_value(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+                << UCI::value(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
                 << sync_endl;
   }
   else
@@ -274,10 +274,10 @@ void Search::think() {
       RootPos.this_thread()->wait_for(Signals.stop);
   }
 
-  sync_cout << "bestmove " << UCI::format_move(RootMoves[0].pv[0], RootPos.is_chess960());
+  sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0], RootPos.is_chess960());
 
   if (RootMoves[0].pv.size() > 1)
-      std::cout << " ponder " << UCI::format_move(RootMoves[0].pv[1], RootPos.is_chess960());
+      std::cout << " ponder " << UCI::move(RootMoves[0].pv[1], RootPos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -783,7 +783,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (thisThread == Threads.main() && Time::now() - SearchTime > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
-                        << " currmove " << UCI::format_move(move, pos.is_chess960())
+                        << " currmove " << UCI::move(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
@@ -1446,7 +1446,7 @@ moves_loop: // When in check and at SpNode search starts from here
         ss << "info depth " << d / ONE_PLY
            << " seldepth "  << selDepth
            << " multipv "   << i + 1
-           << " score "     << ((!tb && i == PVIdx) ? UCI::format_value(v, alpha, beta) : UCI::format_value(v))
+           << " score "     << ((!tb && i == PVIdx) ? UCI::value(v, alpha, beta) : UCI::value(v))
            << " nodes "     << pos.nodes_searched()
            << " nps "       << pos.nodes_searched() * 1000 / elapsed
            << " tbhits "    << TB::Hits
@@ -1454,7 +1454,7 @@ moves_loop: // When in check and at SpNode search starts from here
            << " pv";
 
         for (size_t j = 0; j < RootMoves[i].pv.size(); ++j)
-            ss << " " << UCI::format_move(RootMoves[i].pv[j], pos.is_chess960());
+            ss << " " << UCI::move(RootMoves[i].pv[j], pos.is_chess960());
     }
 
     return ss.str();

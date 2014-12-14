@@ -67,9 +67,9 @@ private:
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
 
-std::string format_value(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
-std::string format_square(Square s);
-std::string format_move(Move m, bool chess960);
+std::string value(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
+std::string square(Square s);
+std::string move(Move m, bool chess960);
 Move to_move(const Position& pos, std::string& str);
 
 } // namespace UCI

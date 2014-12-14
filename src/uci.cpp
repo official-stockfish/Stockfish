@@ -216,14 +216,14 @@ void UCI::loop(int argc, char* argv[]) {
 }
 
 
-/// format_value() converts a Value to a string suitable for use with the UCI
-/// protocol specifications:
+/// Convert a Value to a string suitable for use with the UCI protocol
+/// specifications:
 ///
 /// cp <x>     The score from the engine's point of view in centipawns.
 /// mate <y>   Mate in y moves, not plies. If the engine is getting mated
 ///            use negative values for y.
 
-string UCI::format_value(Value v, Value alpha, Value beta) {
+string UCI::value(Value v, Value alpha, Value beta) {
 
   stringstream ss;
 
@@ -238,22 +238,21 @@ string UCI::format_value(Value v, Value alpha, Value beta) {
 }
 
 
-/// format_square() converts a Square to a string (g1, a7, etc.)
+/// Convert a Square to a string in algebraic notation (g1, a7, etc.)
 
-std::string UCI::format_square(Square s) {
+std::string UCI::square(Square s) {
 
-  char ch[] = { char('a' + file_of(s)),
-                char('1' + rank_of(s)), 0 }; // Zero-terminating
-  return ch;
+  char sq[] = { char('a' + file_of(s)), char('1' + rank_of(s)), 0 };
+  return sq;
 }
 
 
-/// format_move() converts a Move to a string in coordinate notation
-/// (g1f3, a7a8q, etc.). The only special case is castling moves, where we print
-/// in the e1g1 notation in normal chess mode, and in e1h1 notation in chess960
-/// mode. Internally castling moves are always encoded as "king captures rook".
+/// Convert a Move to a string in pure coordinate notation (g1f3, a7a8q). The
+/// only special case is castling moves, where we print in the e1g1 notation in
+/// normal chess mode, and in e1h1 notation in chess960 mode. Internally
+/// castling moves are always encoded as "king captures rook".
 
-string UCI::format_move(Move m, bool chess960) {
+string UCI::move(Move m, bool chess960) {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
@@ -267,7 +266,7 @@ string UCI::format_move(Move m, bool chess960) {
   if (type_of(m) == CASTLING && !chess960)
       to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
-  string move = format_square(from) + format_square(to);
+  string move = UCI::square(from) + UCI::square(to);
 
   if (type_of(m) == PROMOTION)
       move += " pnbrqk"[promotion_type(m)];
@@ -276,8 +275,8 @@ string UCI::format_move(Move m, bool chess960) {
 }
 
 
-/// to_move() takes a position and a string representing a move in
-/// simple coordinate notation and returns an equivalent legal Move if any.
+/// Convert a string representing a move in pure coordinate notation to the
+/// corresponding legal Move, if any.
 
 Move UCI::to_move(const Position& pos, string& str) {
 
@@ -285,7 +284,7 @@ Move UCI::to_move(const Position& pos, string& str) {
       str[4] = char(tolower(str[4]));
 
   for (MoveList<LEGAL> it(pos); *it; ++it)
-      if (str == format_move(*it, pos.is_chess960()))
+      if (str == UCI::move(*it, pos.is_chess960()))
           return *it;
 
   return MOVE_NONE;
