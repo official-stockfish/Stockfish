@@ -22,15 +22,17 @@
 #define LOCK_INIT(x) pthread_mutex_init(&(x), NULL)
 #define LOCK(x) pthread_mutex_lock(&(x))
 #define UNLOCK(x) pthread_mutex_unlock(&(x))
-
-#define BSWAP32(v) __builtin_bswap32(v)
-#define BSWAP64(v) __builtin_bswap64(v)
 #else
 #define LOCK_T HANDLE
 #define LOCK_INIT(x) do { x = CreateMutex(NULL, FALSE, NULL); } while (0)
 #define LOCK(x) WaitForSingleObject(x, INFINITE)
 #define UNLOCK(x) ReleaseMutex(x)
+#endif
 
+#ifndef _MSC_VER
+#define BSWAP32(v) __builtin_bswap32(v)
+#define BSWAP64(v) __builtin_bswap64(v)
+#else
 #define BSWAP32(v) _byteswap_ulong(v)
 #define BSWAP64(v) _byteswap_uint64(v)
 #endif
