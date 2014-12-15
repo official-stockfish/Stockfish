@@ -373,6 +373,8 @@ profile-build:
 	@$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building final executable ..."
+# Deleting corrupt ucioption.gc* profile files is necessary to avoid an 
+# "internal compiler error" for gcc versions 4.7.x
 	@rm ucioption.gc*
 	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
