@@ -702,7 +702,7 @@ namespace {
     // If we have a specialized evaluation function for the current material
     // configuration, call it and return.
     if (ei.mi->specialized_eval_exists())
-        return ei.mi->evaluate(pos) + Eval::Tempo;
+        return ei.mi->evaluate(pos);
 
     // Probe the pawn hash table
     ei.pi = Pawns::probe(pos, thisThread->pawnsTable);
