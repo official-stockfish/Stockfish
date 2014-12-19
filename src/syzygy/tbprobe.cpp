@@ -183,7 +183,7 @@ static int probe_wdl_table(Position& pos, int *success)
                                       (PieceType)(pc[i] & 0x07));
       do {
         p[i++] = pop_lsb(&bb);
-      } while (bb);
+      } while (bb && i < TBPIECES);
     }
     idx = encode_piece(entry, entry->norm[bside], p, entry->factor[bside]);
     res = decompress_pairs(entry->precomp[bside], idx);
@@ -194,7 +194,7 @@ static int probe_wdl_table(Position& pos, int *success)
     i = 0;
     do {
       p[i++] = pop_lsb(&bb) ^ mirror;
-    } while (bb);
+    } while (bb && i < TBPIECES);
     int f = pawn_file(entry, p);
     ubyte *pc = entry->file[f].pieces[bside];
     for (; i < entry->num;) {
@@ -202,7 +202,7 @@ static int probe_wdl_table(Position& pos, int *success)
                                     (PieceType)(pc[i] & 0x07));
       do {
         p[i++] = pop_lsb(&bb) ^ mirror;
-      } while (bb);
+      } while (bb && i < TBPIECES);
     }
     idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
     res = decompress_pairs(entry->file[f].precomp[bside], idx);
@@ -283,7 +283,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
                                     (PieceType)(pc[i] & 0x07));
       do {
         p[i++] = pop_lsb(&bb);
-      } while (bb);
+      } while (bb && i < TBPIECES);
     }
     idx = encode_piece((struct TBEntry_piece *)entry, entry->norm, p, entry->factor);
     res = decompress_pairs(entry->precomp, idx);
@@ -300,7 +300,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
     i = 0;
     do {
       p[i++] = pop_lsb(&bb) ^ mirror;
-    } while (bb);
+    } while (bb && i < TBPIECES);
     int f = pawn_file((struct TBEntry_pawn *)entry, p);
     if ((entry->flags[f] & 1) != bside) {
       *success = -1;
@@ -312,7 +312,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
                             (PieceType)(pc[i] & 0x07));
       do {
         p[i++] = pop_lsb(&bb) ^ mirror;
-      } while (bb);
+      } while (bb && i < TBPIECES);
     }
     idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
     res = decompress_pairs(entry->file[f].precomp, idx);
