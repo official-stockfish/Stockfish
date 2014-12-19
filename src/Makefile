@@ -31,7 +31,8 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench 16 1 1 default time
+PGOBENCH = ( echo setoption value SyzygyPath value "$(SYZYGY-PATH)" ; \
+             echo bench 32 1 1 default time ) | ./$(EXE) 
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
@@ -318,7 +319,7 @@ help:
 	@echo ""
 	@echo "To compile stockfish, type: "
 	@echo ""
-	@echo "make target ARCH=arch [COMP=comp]"
+	@echo "make target ARCH=arch [COMP=comp] [SYZYGY-PATH=\"Path(s) to Syzygybases for PGO build\"]"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
@@ -414,6 +415,9 @@ config-sanity:
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
+	@echo ""
+	@echo "Syzygybases:"
+	@echo "SYZYGY-PATH: $(SYZYGY-PATH)"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
