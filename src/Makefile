@@ -375,7 +375,7 @@ profile-build:
 	@echo "Step 3/4. Building final executable ..."
 # Deleting corrupt ucioption.gc* profile files is necessary to avoid an 
 # "internal compiler error" for gcc versions 4.7.x
-	@rm ucioption.gc*
+	@rm -f ucioption.gc*
 	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
