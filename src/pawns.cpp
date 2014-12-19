@@ -202,8 +202,8 @@ void init()
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
           for (Rank r = RANK_2; r < RANK_8; ++r)
           {
-              int bonus = Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0);
-              Connected[opposed][phalanx][r] = make_score(bonus / 2, bonus >> opposed);
+              int bonus = Seed[r] + (phalanx ? (Seed[r + 2] - Seed[r]) / 3 : 0);
+              Connected[opposed][phalanx][r] = make_score(bonus / 3, bonus >> opposed);
           }
 }
 
