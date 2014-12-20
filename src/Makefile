@@ -172,16 +172,23 @@ ifeq ($(COMP),clang)
 	CXXFLAGS += -pedantic -Wno-long-long -Wextra -Wshadow
 endif
 
+profile_prepare = gcc-profile-prepare
+profile_make = gcc-profile-make
+profile_use = gcc-profile-use
+profile_clean = gcc-profile-clean
+
 ifeq ($(comp),icc)
 	profile_prepare = icc-profile-prepare
 	profile_make = icc-profile-make
 	profile_use = icc-profile-use
 	profile_clean = icc-profile-clean
-else
-	profile_prepare = gcc-profile-prepare
-	profile_make = gcc-profile-make
-	profile_use = gcc-profile-use
-	profile_clean = gcc-profile-clean
+endif
+
+ifeq ($(comp),clang)
+	profile_prepare = clang-profile-prepare
+	profile_make = clang-profile-make
+	profile_use = clang-profile-use
+	profile_clean = clang-profile-clean
 endif
 
 ifeq ($(UNAME),Darwin)
@@ -388,7 +395,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o ./syzygy/*.gcda
+	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o ./syzygy/*.gcda default.profdata default.profraw
 
 default:
 	help
@@ -454,6 +461,24 @@ gcc-profile-use:
 
 gcc-profile-clean:
 	@rm -rf *.gcda *.gcno syzygy/*.gcda syzygy/*.gcno bench.txt
+
+clang-profile-prepare:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) clang-profile-clean
+
+clang-profile-make:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-instr-generate' \
+	EXTRALDFLAGS='-fprofile-instr-generate' \
+	all
+
+clang-profile-use:
+	@llvm-profdata merge -output=default.profdata default.profraw
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-instr-use=default.profdata' \
+	all
+
+clang-profile-clean:
+	@rm -f default.profdata default.profraw bench.txt
 
 icc-profile-prepare:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
