@@ -60,23 +60,36 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
-  // Weakness of our pawn shelter in front of the king indexed by [rank]
-  const Value ShelterWeakness[RANK_NB] =
-  { V(100), V(0), V(27), V(73), V(92), V(101), V(101) };
+  // Weakness of our pawn shelter in front of the king indexed by [file pairs (a/h,b/g,c/f,d/e)][rank]
+  const Value ShelterWeakness[][RANK_NB] = {
+  { V(101), V(10), V(24), V(68), V(90), V( 95), V(102) },
+  { V(105), V( 1), V(30), V(76), V(95), V(100), V(105) },
+  { V( 99), V( 0), V(32), V(72), V(92), V(101), V(100) },
+  { V( 94), V( 1), V(31), V(68), V(89), V( 98), V(106) } };
 
   // Danger of enemy pawns moving toward our king indexed by
-  // [edge files][no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
-  const Value StormDanger[][3][RANK_NB] = {
-  { { V( 0),  V(64), V(128), V(51), V(26) },
-    { V(26),  V(32), V( 96), V(38), V(20) },
-    { V( 0),  V( 0), V(160), V(25), V(13) } },
-  { { V( 0),  V(64), V(128), V(51), V(26) },
-    { V(26),  V(32), V( 96), V(38), V(20) },
-    { V( 0),  V( 0), V( 80), V(13), V( 7) } } };
+  // [file pairs (a/h,b/g,c/f,d/e)][no friendly pawn | pawn unblocked | pawn blocked by pawn| pawn blocked by king][rank of enemy pawn]
+  const Value StormDanger[][4][RANK_NB] = {
+  { { V( 0),  V(  61), V( 128), V(47), V(27) },
+    { V(25),  V(  33), V(  95), V(39), V(21) },
+    { V( 0),  V(   0), V(  80), V(14), V( 8) },
+    { V( 0),  V(-300), V(-300), V(54), V(23) } },
+  { { V( 0),  V(  66), V( 131), V(49), V(27) },
+    { V(24),  V(  33), V(  97), V(42), V(22) },
+    { V( 0),  V(   0), V( 163), V(28), V(12) },
+    { V( 0),  V(  67), V( 128), V(46), V(24) }	},
+  { { V( 0),  V(  62), V( 126), V(52), V(23) },
+    { V(24),  V(  33), V(  93), V(35), V(23) },
+    { V( 0),  V(   0), V( 163), V(25), V(15) },
+    { V( 0),  V(  64), V( 130), V(50), V(29) }	},
+  { { V( 0),  V(  63), V( 128), V(52), V(26) },
+    { V(26),  V(  27), V(  96), V(37), V(22) },
+    { V( 0),  V(   0), V( 161), V(24), V(14) },
+    { V( 0),  V(  63), V( 127), V(51), V(24) }	} };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  const Value MaxSafetyBonus = V(263);
+  const Value MaxSafetyBonus = V(261);
 
   #undef S
   #undef V
@@ -233,7 +246,6 @@ template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
-  const Bitboard Edges = (FileABB | FileHBB) & (Rank2BB | Rank3BB);
 
   Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
@@ -249,15 +261,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b  = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-      if (   (Edges & make_square(f, rkThem))
-          && file_of(ksq) == f
-          && relative_rank(Us, ksq) == rkThem - 1)
-          safety += 200;
-      else
-          safety -=  ShelterWeakness[rkUs]
-                   + StormDanger[f == FILE_A || f == FILE_H]
-                                [rkUs   == RANK_1   ? 0 :
-                                 rkThem != rkUs + 1 ? 1 : 2][rkThem];
+      safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs]
+               + StormDanger[std::min(f, FILE_H - f)]
+                            [file_of(ksq) == f && relative_rank(Us, ksq) == rkThem - 1 ? 3 :
+                             rkUs   == RANK_1                                          ? 0 :
+                             rkThem != rkUs + 1                                        ? 1 : 
+                             /* pawn blocked by pawn */                                  2 ]
+                            [rkThem];
   }
 
   return safety;
