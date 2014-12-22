@@ -80,9 +80,9 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
 
     Time management is adjusted by following parameters:
 
-      moveOverhead   : Always attempt to keep at least this much time (in ms) at clock, and for
-                       each remaining emergency move
-      minThinkingTime: No matter what, use at least this much thinking time before doing the move
+      moveOverhead   : Always attempt to keep at least this much time (in ms) at the clock
+      minThinkingTime: No matter what, use at least this much thinking time (in ms) before doing the move
+      slowMover      : Increasing this value leads to longer thinking times for each move
   */
 
   int hypMTG, hypMyTime, t1, t2;
