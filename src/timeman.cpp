@@ -80,10 +80,9 @@ void TimeManager::init(const Search::LimitsType& limits, int currentPly, Color u
 
     Time management is adjusted by following parameters:
 
-      emergencyMoveHorizon: Be prepared to always play at least this many moves
-      emergencyBaseTime   : Always attempt to keep at least this much time (in ms) at clock
-      emergencyMoveTime   : Plus attempt to keep at least this much time for each remaining emergency move
-      minThinkingTime     : No matter what, use at least this much thinking before doing the move
+      moveOverhead   : Always attempt to keep at least this much time (in ms) at clock, and for
+                       each remaining emergency move
+      minThinkingTime: No matter what, use at least this much thinking time before doing the move
   */
 
   int hypMTG, hypMyTime, t1, t2;
