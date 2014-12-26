@@ -151,6 +151,18 @@ namespace {
     S(0, 0), S(0, 0), S(87, 118), S(84, 122), S(114, 203), S(121, 217)
   };
 
+  // Passed[relative rank] contains the base bonus for passed pawn. It will be
+  // further adjusted in passed pawn evaluation.
+  const Score Passed[] = {
+    S(0, 0), S(0, 7), S(0, 14), S(34, 35), S(102, 70), S(204, 119), S(340, 182)
+  };
+
+  const Score PassedDoubled[] = {
+    S(0, 0), S(3, 0), S(5, 2), S(13, 6), S(27, 12), S(47, 20), S(73, 30)
+  };
+
+  const Weight PawnMinority = {256, 320};
+
   // Assorted bonuses and penalties used by evaluation
   const Score KingOnOne          = S( 2, 58);
   const Score KingOnMany         = S( 6,125);
@@ -162,6 +174,10 @@ namespace {
   const Score TrappedRook        = S(92,  0);
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
+  const Score AllSafe          = S(15, 15);
+  const Score BlockSafe        = S( 9,  9);
+  const Score AllDefended      = S( 6,  6);
+  const Score BlockDefended    = S( 4,  4);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -555,8 +571,8 @@ namespace {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
-    Bitboard b, squaresToQueen, defendedSquares, unsafeSquares;
-    Score score = SCORE_ZERO;
+    Bitboard b, squaresToQueen, defended, unsafe;
+    Score totalScore = SCORE_ZERO;
 
     b = ei.pi->passed_pawns(Us);
 
@@ -566,23 +582,22 @@ namespace {
 
         assert(pos.pawn_passed(Us, s));
 
-        int r = relative_rank(Us, s) - RANK_2;
-        int rr = r * (r - 1);
+        int rr = relative_rank(Us, s);
+        Score score = Passed[rr];
 
-        // Base bonus based on rank
-        Value mbonus = Value(17 * rr), ebonus = Value(7 * (rr + r + 1));
-
-        if (rr)
+        if (rr > RANK_3)
         {
+            int k = (rr - RANK_2) * (rr - RANK_3); // Quadratic with rank
+
             Square blockSq = s + pawn_push(Us);
 
             // Adjust bonus based on the king's proximity
-            ebonus +=  distance(pos.king_square(Them), blockSq) * 5 * rr
-                     - distance(pos.king_square(Us  ), blockSq) * 2 * rr;
+            score += k * make_score(0,  distance(pos.king_square(Them), blockSq) * 5
+                                      - distance(pos.king_square(Us  ), blockSq) * 2);
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_8)
-                ebonus -= distance(pos.king_square(Us), blockSq + pawn_push(Us)) * rr;
+                score -= k * make_score(0, distance(pos.king_square(Us), blockSq + pawn_push(Us)));
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -590,45 +605,40 @@ namespace {
                 // If there is a rook or queen attacking/defending the pawn from behind,
                 // consider all the squaresToQueen. Otherwise consider only the squares
                 // in the pawn's path attacked or occupied by the enemy.
-                defendedSquares = unsafeSquares = squaresToQueen = forward_bb(Us, s);
+                defended = unsafe = squaresToQueen = forward_bb(Us, s);
 
                 Bitboard bb = forward_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
 
                 if (!(pos.pieces(Us) & bb))
-                    defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
+                    defended &= ei.attackedBy[Us][ALL_PIECES];
 
                 if (!(pos.pieces(Them) & bb))
-                    unsafeSquares &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
+                    unsafe &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 15 : !(unsafeSquares & blockSq) ? 9 : 0;
-
-                // If the path to queen is fully defended, assign a big bonus.
-                // Otherwise assign a smaller bonus if the block square is defended.
-                if (defendedSquares == squaresToQueen)
-                    k += 6;
-
-                else if (defendedSquares & blockSq)
-                    k += 4;
-
-                mbonus += k * rr, ebonus += k * rr;
+                // If the path to queen is fully defended, add a big bonus.
+                // Otherwise add a smaller bonus if the block square is defended.
+                score += k * ( (! unsafe                   ? AllSafe       :
+                                !(unsafe & blockSq)        ? BlockSafe     : SCORE_ZERO)
+                             + (defended == squaresToQueen ? AllDefended   :
+                                defended & blockSq         ? BlockDefended : SCORE_ZERO));
             }
             else if (pos.pieces(Us) & blockSq)
-                mbonus += rr * 3 + r * 2 + 3, ebonus += rr + r * 2;
-        } // rr != 0
+                score += PassedDoubled[rr];
+        }
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
-            ebonus += ebonus / 4;
+            score = apply_weight(score, PawnMinority);
 
-        score += make_score(mbonus, ebonus);
+        totalScore += score;
     }
 
     if (Trace)
-        Tracing::write(Tracing::PASSED, Us, apply_weight(score, Weights[PassedPawns]));
+        Tracing::write(Tracing::PASSED, Us, apply_weight(totalScore, Weights[PassedPawns]));
 
     // Add the scores to the middlegame and endgame eval
-    return apply_weight(score, Weights[PassedPawns]);
+    return apply_weight(totalScore, Weights[PassedPawns]);
   }
 
 
