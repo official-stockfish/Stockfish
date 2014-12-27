@@ -27,7 +27,7 @@ using namespace std;
 
 namespace {
 
-  // Polynomial material balance parameters
+  // Polynomial material imbalance parameters
 
   //                      pair  pawn knight bishop rook queen
   const int Linear[6] = { 1852, -162, -1122, -183,  249, -154 };
