@@ -104,7 +104,7 @@ namespace {
     Bitboard b, p, doubled, connected;
     Square s;
     bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
-    Score value = SCORE_ZERO;
+    Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
@@ -174,28 +174,28 @@ namespace {
 
         // Score this pawn
         if (isolated)
-            value -= Isolated[opposed][f];
+            score -= Isolated[opposed][f];
 
         if (unsupported && !isolated)
-            value -= UnsupportedPawnPenalty;
+            score -= UnsupportedPawnPenalty;
 
         if (doubled)
-            value -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
+            score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
 
         if (backward)
-            value -= Backward[opposed][f];
+            score -= Backward[opposed][f];
 
         if (connected)
-            value += Connected[opposed][phalanx][relative_rank(Us, s)];
+            score += Connected[opposed][phalanx][relative_rank(Us, s)];
 
         if (lever)
-            value += Lever[relative_rank(Us, s)];
+            score += Lever[relative_rank(Us, s)];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-    return value;
+    return score;
   }
 
 } // namespace
@@ -233,7 +233,7 @@ Entry* probe(const Position& pos, Table& entries) {
       return e;
 
   e->key = key;
-  e->value = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
+  e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
   return e;
 }
 
