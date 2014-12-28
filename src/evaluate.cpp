@@ -154,7 +154,7 @@ namespace {
   // Passed[relative rank] contains the base bonus for passed pawn. It will be
   // further adjusted in passed pawn evaluation.
   const Score Passed[] = {
-    S(0, 0), S(0, 7), S(0, 14), S(34, 35), S(102, 70), S(204, 119), S(340, 182)
+    S(0, 0), S(0, 13), S(0, 13), S(31, 32), S(94, 64), S(207, 127), S(335, 182)
   };
 
   const Score PassedDoubled[] = {
