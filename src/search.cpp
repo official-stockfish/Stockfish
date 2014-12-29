@@ -839,7 +839,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
-              && ss->distanceToPv > 1
+              && ss->distanceToPv > 2
               && moveCount >= FutilityMoveCounts[improving][depth])
           {
               if (SpNode)
