@@ -839,8 +839,12 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
-              && ss->distanceToPv > 2
-              && moveCount >= FutilityMoveCounts[improving][depth])
+              && moveCount >= FutilityMoveCounts[improving][depth]
+              && (   ss->distanceToPv > 1
+                  || (   move != ss->killers[0] && move != ss->killers[1]
+                      && move != countermoves[0] && move != countermoves[1]
+                      && move != followupmoves[0] && move != followupmoves[1]
+                     )))
           {
               if (SpNode)
                   splitPoint->mutex.lock();
