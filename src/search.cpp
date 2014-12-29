@@ -489,6 +489,7 @@ namespace {
     moveCount = quietCount = 0;
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
+    ss->distanceToPv = PvNode ? 0 : (ss-1)->distanceToPv + 1;
 
     // Used to send selDepth info to GUI
     if (PvNode && thisThread->maxPly < ss->ply)
@@ -838,6 +839,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
+              && ss->distanceToPv > 1
               && moveCount >= FutilityMoveCounts[improving][depth])
           {
               if (SpNode)
