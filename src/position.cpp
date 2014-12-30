@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>
+#include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
 

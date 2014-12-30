@@ -17,11 +17,12 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>  // For std::min
+#include <algorithm> // For std::min
 #include <cassert>
-#include <cstring>
+#include <cstring>   // For std::memset
 
 #include "material.h"
+#include "thread.h"
 
 using namespace std;
 
@@ -32,7 +33,7 @@ namespace {
   //                      pair  pawn knight bishop rook queen
   const int Linear[6] = { 1852, -162, -1122, -183,  249, -154 };
 
-  const int QuadraticSameSide[][PIECE_TYPE_NB] = {
+  const int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
@@ -43,7 +44,7 @@ namespace {
     {-177,   25, 129,   142,  -137,   0 }  // Queen
   };
 
-  const int QuadraticOppositeSide[][PIECE_TYPE_NB] = {
+  const int QuadraticTheirs[][PIECE_TYPE_NB] = {
     //           THEIR PIECES
     // pair pawn knight bishop rook queen
     {   0                               }, // Bishop pair
@@ -56,7 +57,7 @@ namespace {
 
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.
-  Endgame<KXK>   EvaluateKXK[]   = { Endgame<KXK>(WHITE),   Endgame<KXK>(BLACK) };
+  Endgame<KXK>    EvaluateKXK[] = { Endgame<KXK>(WHITE),    Endgame<KXK>(BLACK) };
 
   Endgame<KBPsK>  ScaleKBPsK[]  = { Endgame<KBPsK>(WHITE),  Endgame<KBPsK>(BLACK) };
   Endgame<KQKRPs> ScaleKQKRPs[] = { Endgame<KQKRPs>(WHITE), Endgame<KQKRPs>(BLACK) };
@@ -104,8 +105,8 @@ namespace {
         int v = Linear[pt1];
 
         for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
-            v +=  QuadraticSameSide[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticOppositeSide[pt1][pt2] * pieceCount[Them][pt2];
+            v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
+                + QuadraticTheirs[pt1][pt2] * pieceCount[Them][pt2];
 
         bonus += pieceCount[Us][pt1] * v;
     }
@@ -117,19 +118,16 @@ namespace {
 
 namespace Material {
 
-/// Material::probe() takes a position object as input, looks up a MaterialEntry
-/// object, and returns a pointer to it. If the material configuration is not
-/// already present in the table, it is computed and stored there, so we don't
-/// have to recompute everything when the same material configuration occurs again.
+/// Material::probe() looks up the current position's material configuration in
+/// the material hash table. It returns a pointer to the Entry if the position
+/// is found. Otherwise a new Entry is computed and stored there, so we don't
+/// have to recompute all when the same material configuration occurs again.
 
-Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
+Entry* probe(const Position& pos) {
 
   Key key = pos.material_key();
-  Entry* e = entries[key];
+  Entry* e = pos.this_thread()->materialTable[key];
 
-  // If e->key matches the position's material hash key, it means that we
-  // have analysed this material configuration before, and we can simply
-  // return the information we found the last time instead of recomputing it.
   if (e->key == key)
       return e;
 
@@ -141,7 +139,7 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   // Let's look if we have a specialized evaluation function for this particular
   // material configuration. Firstly we look for a fixed configuration one, then
   // for a generic one if the previous search failed.
-  if (endgames.probe(key, e->evaluationFunction))
+  if (pos.this_thread()->endgames.probe(key, e->evaluationFunction))
       return e;
 
   if (is_KXK<WHITE>(pos))
@@ -156,22 +154,19 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       return e;
   }
 
-  // OK, we didn't find any special evaluation function for the current
-  // material configuration. Is there a suitable scaling function?
-  //
-  // We face problems when there are several conflicting applicable
-  // scaling functions and we need to decide which one to use.
+  // OK, we didn't find any special evaluation function for the current material
+  // configuration. Is there a suitable specialized scaling function?
   EndgameBase<ScaleFactor>* sf;
 
-  if (endgames.probe(key, sf))
+  if (pos.this_thread()->endgames.probe(key, sf))
   {
-      e->scalingFunction[sf->color()] = sf;
+      e->scalingFunction[sf->strong_side()] = sf; // Only strong color assigned
       return e;
   }
 
-  // Generic scaling functions that refer to more than one material
-  // distribution. They should be probed after the specialized ones.
-  // Note that these ones don't return after setting the function.
+  // We didn't find any specialized scaling function, so fall back on generic
+  // ones that refer to more than one material distribution. Note that in this
+  // case we don't return after setting the function.
   if (is_KBPsKs<WHITE>(pos))
       e->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
 
@@ -187,16 +182,18 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   Value npm_w = pos.non_pawn_material(WHITE);
   Value npm_b = pos.non_pawn_material(BLACK);
 
-  if (npm_w + npm_b == VALUE_ZERO && pos.pieces(PAWN))
+  if (npm_w + npm_b == VALUE_ZERO && pos.pieces(PAWN)) // Only pawns on the board
   {
       if (!pos.count<PAWN>(BLACK))
       {
           assert(pos.count<PAWN>(WHITE) >= 2);
+
           e->scalingFunction[WHITE] = &ScaleKPsK[WHITE];
       }
       else if (!pos.count<PAWN>(WHITE))
       {
           assert(pos.count<PAWN>(BLACK) >= 2);
+
           e->scalingFunction[BLACK] = &ScaleKPsK[BLACK];
       }
       else if (pos.count<PAWN>(WHITE) == 1 && pos.count<PAWN>(BLACK) == 1)
@@ -208,14 +205,16 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
       }
   }
 
-  // No pawns makes it difficult to win, even with a material advantage. This
-  // catches some trivial draws like KK, KBK and KNK and gives a very drawish
-  // scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
+  // Zero or just one pawn makes it difficult to win, even with a small material
+  // advantage. This catches some trivial draws like KK, KBK and KNK and gives a
+  // drawish scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
-      e->factor[WHITE] = uint8_t(npm_w < RookValueMg ? SCALE_FACTOR_DRAW : npm_b <= BishopValueMg ? 4 : 12);
+      e->factor[WHITE] = uint8_t(npm_w <  RookValueMg   ? SCALE_FACTOR_DRAW :
+                                 npm_b <= BishopValueMg ? 4 : 12);
 
   if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
-      e->factor[BLACK] = uint8_t(npm_b < RookValueMg ? SCALE_FACTOR_DRAW : npm_w <= BishopValueMg ? 4 : 12);
+      e->factor[BLACK] = uint8_t(npm_b <  RookValueMg   ? SCALE_FACTOR_DRAW :
+                                 npm_w <= BishopValueMg ? 4 : 12);
 
   if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
       e->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;
@@ -226,13 +225,13 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
   // for the bishop pair "extended piece", which allows us to be more flexible
   // in defining bishop pair bonuses.
-  const int pieceCount[COLOR_NB][PIECE_TYPE_NB] = {
+  const int PieceCount[COLOR_NB][PIECE_TYPE_NB] = {
   { pos.count<BISHOP>(WHITE) > 1, pos.count<PAWN>(WHITE), pos.count<KNIGHT>(WHITE),
     pos.count<BISHOP>(WHITE)    , pos.count<ROOK>(WHITE), pos.count<QUEEN >(WHITE) },
   { pos.count<BISHOP>(BLACK) > 1, pos.count<PAWN>(BLACK), pos.count<KNIGHT>(BLACK),
     pos.count<BISHOP>(BLACK)    , pos.count<ROOK>(BLACK), pos.count<QUEEN >(BLACK) } };
 
-  e->value = (int16_t)((imbalance<WHITE>(pieceCount) - imbalance<BLACK>(pieceCount)) / 16);
+  e->value = int16_t((imbalance<WHITE>(PieceCount) - imbalance<BLACK>(PieceCount)) / 16);
   return e;
 }
 
