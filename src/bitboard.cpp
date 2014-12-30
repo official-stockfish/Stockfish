@@ -18,7 +18,7 @@
 */
 
 #include <algorithm>
-#include <cstring> // For memset
+#include <cstring>   // For std::memset
 
 #include "bitboard.h"
 #include "bitcount.h"

@@ -76,7 +76,7 @@ template<typename T>
 struct EndgameBase {
 
   virtual ~EndgameBase() {}
-  virtual Color color() const = 0;
+  virtual Color strong_side() const = 0;
   virtual T operator()(const Position&) const = 0;
 };
 
@@ -85,7 +85,7 @@ template<EndgameType E, typename T = typename eg_fun<(E > SCALE_FUNS)>::type>
 struct Endgame : public EndgameBase<T> {
 
   explicit Endgame(Color c) : strongSide(c), weakSide(~c) {}
-  Color color() const { return strongSide; }
+  Color strong_side() const { return strongSide; }
   T operator()(const Position&) const;
 
 private:
