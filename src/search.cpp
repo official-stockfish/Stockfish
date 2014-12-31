@@ -618,6 +618,7 @@ namespace {
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
+        &&  ss->distanceToPv > 1
         &&  eval + razor_margin(depth) <= alpha
         &&  ttMove == MOVE_NONE
         && !pos.pawn_on_7th(pos.side_to_move()))
@@ -839,12 +840,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
-              && moveCount >= FutilityMoveCounts[improving][depth]
-              && (   ss->distanceToPv > 1
-                  || (   move != ss->killers[0] && move != ss->killers[1]
-                      && move != countermoves[0] && move != countermoves[1]
-                      && move != followupmoves[0] && move != followupmoves[1]
-                     )))
+              && moveCount >= FutilityMoveCounts[improving][depth])
           {
               if (SpNode)
                   splitPoint->mutex.lock();
