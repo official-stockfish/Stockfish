@@ -223,15 +223,6 @@ Entry* probe(const Position& pos, Table& entries, Endgames& endgames) {
   if (pos.count<PAWN>(BLACK) == 1 && npm_b - npm_w <= BishopValueMg)
       e->factor[BLACK] = (uint8_t) SCALE_FACTOR_ONEPAWN;
 
-  // Compute the space weight
-  if (npm_w + npm_b >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
-  {
-      int minorPieceCount =  pos.count<KNIGHT>(WHITE) + pos.count<BISHOP>(WHITE)
-                           + pos.count<KNIGHT>(BLACK) + pos.count<BISHOP>(BLACK);
-
-      e->spaceWeight = make_score(minorPieceCount * minorPieceCount, 0);
-  }
-
   // Evaluate the material imbalance. We use PIECE_TYPE_NONE as a place holder
   // for the bishop pair "extended piece", which allows us to be more flexible
   // in defining bishop pair bonuses.

@@ -39,7 +39,6 @@ namespace Material {
 struct Entry {
 
   Score imbalance() const { return make_score(value, value); }
-  Score space_weight() const { return spaceWeight; }
   Phase game_phase() const { return gamePhase; }
   bool specialized_eval_exists() const { return evaluationFunction != NULL; }
   Value evaluate(const Position& pos) const { return (*evaluationFunction)(pos); }
@@ -61,7 +60,6 @@ struct Entry {
   uint8_t factor[COLOR_NB];
   EndgameBase<Value>* evaluationFunction;
   EndgameBase<ScaleFactor>* scalingFunction[COLOR_NB];
-  Score spaceWeight;
   Phase gamePhase;
 };
 

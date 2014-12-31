@@ -635,10 +635,10 @@ namespace {
   // space evaluation is a simple bonus based on the number of safe squares
   // available for minor pieces on the central four files on ranks 2--4. Safe
   // squares one, two or three squares behind a friendly pawn are counted
-  // twice. Finally, the space bonus is scaled by a weight taken from the
-  // material hash table. The aim is to improve play on game opening.
+  // twice. Finally, the space bonus is multiplied by a weight. The aim is to
+  // improve play on game opening.
   template<Color Us>
-  Score evaluate_space(const Position& pos, const EvalInfo& ei, Score weight) {
+  Score evaluate_space(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -659,7 +659,11 @@ namespace {
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
 
     // Count safe + (behind & safe) with a single popcount
-    return popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe)) * weight;
+    int bonus = popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
+    int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
+                + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
+
+    return make_score(bonus * weight * weight, 0);
   }
 
 
@@ -731,12 +735,10 @@ namespace {
             score -= int(relative_rank(BLACK, frontmost_sq(BLACK, b))) * Unstoppable;
     }
 
-    // Evaluate space for both sides, only in middlegame
-    if (ei.mi->space_weight())
+    // Evaluate space for both sides, only during opening
+    if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
     {
-        Score s =  evaluate_space<WHITE>(pos, ei, ei.mi->space_weight())
-                 - evaluate_space<BLACK>(pos, ei, ei.mi->space_weight());
-
+        Score s = evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei);
         score += apply_weight(s, Weights[Space]);
     }
 
@@ -784,9 +786,8 @@ namespace {
         Tracing::write(PAWN, ei.pi->pawns_score());
         Tracing::write(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
                                         , apply_weight(mobility[BLACK], Weights[Mobility]));
-        Score w = evaluate_space<WHITE>(pos, ei, ei.mi->space_weight());
-        Score b = evaluate_space<BLACK>(pos, ei, ei.mi->space_weight());
-        Tracing::write(Tracing::SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
+        Tracing::write(Tracing::SPACE, apply_weight(evaluate_space<WHITE>(pos, ei), Weights[Space])
+                                     , apply_weight(evaluate_space<BLACK>(pos, ei), Weights[Space]));
         Tracing::write(Tracing::TOTAL, score);
         Tracing::ei = ei;
         Tracing::sf = sf;
