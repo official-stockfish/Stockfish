@@ -174,10 +174,10 @@ namespace {
   const Score TrappedRook        = S(92,  0);
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
-  const Score AllSafe          = S(15, 15);
-  const Score BlockSafe        = S( 9,  9);
-  const Score AllDefended      = S( 6,  6);
-  const Score BlockDefended    = S( 4,  4);
+  const Score AllSafe            = S(15, 20);
+  const Score BlockSafe          = S( 5,  7);
+  const Score AllDefended        = S( 5, 10);
+  const Score BlockDefended      = S( 1,  4);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
