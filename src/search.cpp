@@ -63,6 +63,9 @@ using namespace Search;
 
 namespace {
 
+  int A = 768;
+  int B = 64;
+
   // Different node types, used as template parameter
   enum NodeType { Root, PV, NonPV };
 
@@ -154,6 +157,9 @@ void Search::init() {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
   }
+
+  A = Options["A"];
+  B = Options["B"];
 }
 
 
@@ -650,7 +656,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth and value
-        Depth R = (3 + depth / 4 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
+        Depth R = ((A + B * depth) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
 
         pos.do_null_move(st);
         (ss+1)->skipEarlyPruning = true;
