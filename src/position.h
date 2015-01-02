@@ -76,6 +76,11 @@ class Position {
 
   friend std::ostream& operator<<(std::ostream&, const Position&);
 
+  // Disable the default copy constructor
+  // Copying Position would require making a copy of *st (for example, by using
+  // the assignment operator)
+  Position(const Position&);
+
 public:
   Position() {}
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
