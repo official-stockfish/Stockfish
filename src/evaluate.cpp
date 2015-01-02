@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
 
@@ -26,7 +27,6 @@
 #include "evaluate.h"
 #include "material.h"
 #include "pawns.h"
-#include "thread.h"
 
 namespace {
 
@@ -91,7 +91,7 @@ namespace {
   // Evaluation weights, indexed by evaluation term
   enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
   const struct Weight { int mg, eg; } Weights[] = {
-    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {318, 0}
+    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {321, 0}
   };
 
   #define V(v) Value(v)
@@ -186,15 +186,15 @@ namespace {
   // index to KingDanger[].
   //
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[] = { 0, 0, 2, 2, 3, 5 };
+  const int KingAttackWeights[] = { 0, 0, 6, 2, 5, 5 };
 
   // Bonuses for enemy's safe checks
-  const int QueenContactCheck = 24;
-  const int RookContactCheck  = 16;
-  const int QueenCheck        = 12;
-  const int RookCheck         = 8;
-  const int BishopCheck       = 2;
-  const int KnightCheck       = 3;
+  const int QueenContactCheck = 92;
+  const int RookContactCheck  = 68;
+  const int QueenCheck        = 50;
+  const int RookCheck         = 36;
+  const int BishopCheck       = 7;
+  const int KnightCheck       = 14;
 
   // KingDanger[attackUnits] contains the actual king danger weighted
   // scores, indexed by a calculated integer number.
@@ -411,11 +411,12 @@ namespace {
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        attackUnits =  std::min(20, (ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them]) / 2)
-                     + 3 * (ei.kingAdjacentZoneAttacksCount[Them] + popcount<Max15>(undefended))
-                     + 2 * (ei.pinnedPieces[Us] != 0)
-                     - mg_value(score) / 32
-                     - !pos.count<QUEEN>(Them) * 15;
+        attackUnits =  std::min(77, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+                     + 10 * ei.kingAdjacentZoneAttacksCount[Them]
+                     + 19 * popcount<Max15>(undefended)
+                     +  9 * (ei.pinnedPieces[Us] != 0)
+                     - mg_value(score) * 63 / 512
+                     - !pos.count<QUEEN>(Them) * 60;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
         // undefended squares around the king reachable by the enemy queen...
@@ -475,7 +476,7 @@ namespace {
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from evaluation.
-        score -= KingDanger[std::max(std::min(attackUnits, 99), 0)];
+        score -= KingDanger[std::max(std::min(attackUnits / 4, 99), 0)];
     }
 
     if (Trace)
@@ -635,10 +636,10 @@ namespace {
   // space evaluation is a simple bonus based on the number of safe squares
   // available for minor pieces on the central four files on ranks 2--4. Safe
   // squares one, two or three squares behind a friendly pawn are counted
-  // twice. Finally, the space bonus is scaled by a weight taken from the
-  // material hash table. The aim is to improve play on game opening.
+  // twice. Finally, the space bonus is multiplied by a weight. The aim is to
+  // improve play on game opening.
   template<Color Us>
-  Score evaluate_space(const Position& pos, const EvalInfo& ei, Score weight) {
+  Score evaluate_space(const Position& pos, const EvalInfo& ei) {
 
     const Color Them = (Us == WHITE ? BLACK : WHITE);
 
@@ -659,7 +660,11 @@ namespace {
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
 
     // Count safe + (behind & safe) with a single popcount
-    return popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe)) * weight;
+    int bonus = popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
+    int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
+                + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
+
+    return make_score(bonus * weight * weight, 0);
   }
 
 
@@ -672,7 +677,6 @@ namespace {
 
     EvalInfo ei;
     Score score, mobility[2] = { SCORE_ZERO, SCORE_ZERO };
-    Thread* thisThread = pos.this_thread();
 
     // Initialize score by reading the incrementally updated scores included
     // in the position object (material + piece square tables).
@@ -680,7 +684,7 @@ namespace {
     score = pos.psq_score();
 
     // Probe the material hash table
-    ei.mi = Material::probe(pos, thisThread->materialTable, thisThread->endgames);
+    ei.mi = Material::probe(pos);
     score += ei.mi->imbalance();
 
     // If we have a specialized evaluation function for the current material
@@ -689,7 +693,7 @@ namespace {
         return ei.mi->evaluate(pos);
 
     // Probe the pawn hash table
-    ei.pi = Pawns::probe(pos, thisThread->pawnsTable);
+    ei.pi = Pawns::probe(pos);
     score += apply_weight(ei.pi->pawns_score(), Weights[PawnStructure]);
 
     // Initialize attack and king safety bitboards
@@ -731,12 +735,10 @@ namespace {
             score -= int(relative_rank(BLACK, frontmost_sq(BLACK, b))) * Unstoppable;
     }
 
-    // Evaluate space for both sides, only in middlegame
-    if (ei.mi->space_weight())
+    // Evaluate space for both sides, only during opening
+    if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
     {
-        Score s =  evaluate_space<WHITE>(pos, ei, ei.mi->space_weight())
-                 - evaluate_space<BLACK>(pos, ei, ei.mi->space_weight());
-
+        Score s = evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei);
         score += apply_weight(s, Weights[Space]);
     }
 
@@ -784,9 +786,8 @@ namespace {
         Tracing::write(PAWN, ei.pi->pawns_score());
         Tracing::write(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
                                         , apply_weight(mobility[BLACK], Weights[Mobility]));
-        Score w = evaluate_space<WHITE>(pos, ei, ei.mi->space_weight());
-        Score b = evaluate_space<BLACK>(pos, ei, ei.mi->space_weight());
-        Tracing::write(Tracing::SPACE, apply_weight(w, Weights[Space]), apply_weight(b, Weights[Space]));
+        Tracing::write(Tracing::SPACE, apply_weight(evaluate_space<WHITE>(pos, ei), Weights[Space])
+                                     , apply_weight(evaluate_space<BLACK>(pos, ei), Weights[Space]));
         Tracing::write(Tracing::TOTAL, score);
         Tracing::ei = ei;
         Tracing::sf = sf;
