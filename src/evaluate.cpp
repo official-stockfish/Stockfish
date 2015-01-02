@@ -176,6 +176,9 @@ namespace {
   const Score AllDefended        = S( 40, 80);
   const Score BlockDefended      = S(  8, 32);
   const Score BlockedByFriend    = S( 32, 16);
+  const Score KingDistanceUs     = S(  0, 16);
+  const Score KingDistanceUs2    = S(  0,  8);
+  const Score KingDistanceThem   = S(  0, 40);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -581,7 +584,7 @@ namespace {
         assert(pos.pawn_passed(Us, s));
 
         int rr = relative_rank(Us, s);
-        Score score = Passed[rr];
+        Score score = 8 * Passed[rr];
 
         if (rr > RANK_3)
         {
@@ -590,12 +593,12 @@ namespace {
             Square blockSq = s + pawn_push(Us);
 
             // Adjust bonus based on the king's proximity
-            score += k * make_score(0,  distance(pos.king_square(Them), blockSq) * 5
-                                      - distance(pos.king_square(Us  ), blockSq) * 2);
+            score += k * (  distance(pos.king_square(Them), blockSq) * KingDistanceThem
+                          - distance(pos.king_square(Us  ), blockSq) * KingDistanceUs);
 
             // If blockSq is not the queening square then consider also a second push
             if (relative_rank(Us, blockSq) != RANK_8)
-                score -= k * make_score(0, distance(pos.king_square(Us), blockSq + pawn_push(Us)));
+                score -= k * distance(pos.king_square(Us), blockSq + pawn_push(Us))* KingDistanceUs2;
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
@@ -620,16 +623,16 @@ namespace {
                 score += k * ( (! unsafe                   ? AllSafe       :
                                 !(unsafe & blockSq)        ? BlockSafe     : SCORE_ZERO)
                              + (defended == squaresToQueen ? AllDefended   :
-                                defended & blockSq         ? BlockDefended : SCORE_ZERO)) / 8;
+                                defended & blockSq         ? BlockDefended : SCORE_ZERO));
             }
             else if (pos.pieces(Us) & blockSq)
-                score += k * BlockedByFriend / 8;
+                score += k * BlockedByFriend;
         }
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
             score = apply_weight(score, PawnMinority);
 
-        totalScore += score;
+        totalScore += score / 8;
     }
 
     if (Trace)
