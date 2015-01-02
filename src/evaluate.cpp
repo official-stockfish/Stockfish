@@ -157,10 +157,6 @@ namespace {
     S(0, 0), S(0, 7), S(0, 14), S(34, 35), S(98, 67), S(205, 123), S(337, 182)
   };
 
-  const Score PassedDoubled[] = {
-    S(0, 0), S(3, 0), S(5, 2), S(13, 6), S(27, 12), S(47, 20), S(73, 30)
-  };
-
   const Weight PawnMinority = {256, 320};
 
   // Assorted bonuses and penalties used by evaluation
@@ -178,6 +174,7 @@ namespace {
   const Score BlockSafe          = S( 5,  7);
   const Score AllDefended        = S( 5, 10);
   const Score BlockDefended      = S( 1,  4);
+  const Score BlockedByFriend    = S( 4,  2);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -625,7 +622,7 @@ namespace {
                                 defended & blockSq         ? BlockDefended : SCORE_ZERO));
             }
             else if (pos.pieces(Us) & blockSq)
-                score += PassedDoubled[rr];
+                score += k * BlockedByFriend;
         }
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
