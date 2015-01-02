@@ -170,11 +170,12 @@ namespace {
   const Score TrappedRook        = S(92,  0);
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
-  const Score AllSafe            = S(15, 20);
-  const Score BlockSafe          = S( 5,  7);
-  const Score AllDefended        = S( 5, 10);
-  const Score BlockDefended      = S( 1,  4);
-  const Score BlockedByFriend    = S( 4,  2);
+
+  const Score AllSafe            = S(120,160);
+  const Score BlockSafe          = S( 40, 56);
+  const Score AllDefended        = S( 40, 80);
+  const Score BlockDefended      = S(  8, 32);
+  const Score BlockedByFriend    = S( 32, 16);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -619,10 +620,10 @@ namespace {
                 score += k * ( (! unsafe                   ? AllSafe       :
                                 !(unsafe & blockSq)        ? BlockSafe     : SCORE_ZERO)
                              + (defended == squaresToQueen ? AllDefended   :
-                                defended & blockSq         ? BlockDefended : SCORE_ZERO));
+                                defended & blockSq         ? BlockDefended : SCORE_ZERO)) / 8;
             }
             else if (pos.pieces(Us) & blockSq)
-                score += k * BlockedByFriend;
+                score += k * BlockedByFriend / 8;
         }
 
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
