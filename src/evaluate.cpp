@@ -157,7 +157,7 @@ namespace {
     S(0, 0), S(0, 7), S(0, 14), S(34, 35), S(98, 67), S(205, 123), S(337, 182)
   };
 
-  const Weight PawnMinority = {256, 320};
+  const Weight PawnMinority = {256, 303};
 
   // Assorted bonuses and penalties used by evaluation
   const Score KingOnOne          = S( 2, 58);
@@ -171,14 +171,13 @@ namespace {
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
 
-  const Score AllSafe            = S(120,160);
-  const Score BlockSafe          = S( 40, 56);
-  const Score AllDefended        = S( 40, 80);
-  const Score BlockDefended      = S(  8, 32);
-  const Score BlockedByFriend    = S( 32, 16);
-  const Score KingDistanceUs     = S(  0, 16);
-  const Score KingDistanceUs2    = S(  0,  8);
-  const Score KingDistanceThem   = S(  0, 40);
+  const Score AllSafe            = S(124,155);
+  const Score BlockSafe          = S( 50, 54);
+  const Score AllDefended        = S( 44, 84);
+  const Score BlockDefended      = S(  8, 45);
+  const Score BlockedByFriend    = S( 32, 24);
+  const Score KingDistanceUs     = S(  0,  7);
+  const Score KingDistanceThem   = S(  0, 27);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -595,10 +594,6 @@ namespace {
             // Adjust bonus based on the king's proximity
             score += k * (  distance(pos.king_square(Them), blockSq) * KingDistanceThem
                           - distance(pos.king_square(Us  ), blockSq) * KingDistanceUs);
-
-            // If blockSq is not the queening square then consider also a second push
-            if (relative_rank(Us, blockSq) != RANK_8)
-                score -= k * distance(pos.king_square(Us), blockSq + pawn_push(Us))* KingDistanceUs2;
 
             // If the pawn is free to advance, then increase the bonus
             if (pos.empty(blockSq))
