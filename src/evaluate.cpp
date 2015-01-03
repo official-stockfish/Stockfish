@@ -534,7 +534,7 @@ namespace {
 
         b = weak & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
-            score += more_than_one(b) ? Hanging * popcount<Max15>(b) : Hanging;
+            score += Hanging * popcount<Max15>(b);
 
         b = weak & ei.attackedBy[Us][KING];
         if (b)
