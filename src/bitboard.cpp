@@ -24,15 +24,17 @@
 #include "bitcount.h"
 #include "misc.h"
 
-Bitboard RookMasks[SQUARE_NB];
-Bitboard RookMagics[SQUARE_NB];
-Bitboard* RookAttacks[SQUARE_NB];
-unsigned RookShifts[SQUARE_NB];
+int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-Bitboard BishopMasks[SQUARE_NB];
-Bitboard BishopMagics[SQUARE_NB];
+Bitboard  RookMasks  [SQUARE_NB];
+Bitboard  RookMagics [SQUARE_NB];
+Bitboard* RookAttacks[SQUARE_NB];
+unsigned  RookShifts [SQUARE_NB];
+
+Bitboard  BishopMasks  [SQUARE_NB];
+Bitboard  BishopMagics [SQUARE_NB];
 Bitboard* BishopAttacks[SQUARE_NB];
-unsigned BishopShifts[SQUARE_NB];
+unsigned  BishopShifts [SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
@@ -42,51 +44,44 @@ Bitboard InFrontBB[COLOR_NB][RANK_NB];
 Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-Bitboard DistanceRingsBB[SQUARE_NB][8];
+Bitboard DistanceRingBB[SQUARE_NB][8];
 Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
 Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
-int SquareDistance[SQUARE_NB][SQUARE_NB];
-
 namespace {
 
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
-  const uint64_t DeBruijn_64 = 0x3F79D71B4CB0A89ULL;
-  const uint32_t DeBruijn_32 = 0x783A9B23;
+  const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
+  const uint32_t DeBruijn32 = 0x783A9B23;
 
-  int MS1BTable[256];
-  Square BSFTable[SQUARE_NB];
-  Bitboard RookTable[0x19000];  // Storage space for rook attacks
-  Bitboard BishopTable[0x1480]; // Storage space for bishop attacks
+  int MS1BTable[256];           // To implement software msb()
+  Square BSFTable[SQUARE_NB];   // To implement software bitscan
+  Bitboard RookTable[0x19000];  // To store rook attacks
+  Bitboard BishopTable[0x1480]; // To store bishop attacks
 
   typedef unsigned (Fn)(Square, Bitboard);
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index);
 
-  FORCE_INLINE unsigned bsf_index(Bitboard b) {
+  // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
+  // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
 
-    // Matt Taylor's folding for 32 bit systems, extended to 64 bits by Kim Walisch
-    b ^= (b - 1);
-    return Is64Bit ? (b * DeBruijn_64) >> 58
-                   : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
+  FORCE_INLINE unsigned bsf_index(Bitboard b) {
+    b ^= b - 1;
+    return Is64Bit ? (b * DeBruijn64) >> 58
+                   : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn32) >> 26;
   }
 }
 
-/// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
-/// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
-
 #ifndef USE_BSFQ
 
-Square lsb(Bitboard b) { return BSFTable[bsf_index(b)]; }
+/// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
-Square pop_lsb(Bitboard* b) {
-
-  Bitboard bb = *b;
-  *b = bb & (bb - 1);
-  return BSFTable[bsf_index(bb)];
+Square lsb(Bitboard b) {
+  return BSFTable[bsf_index(b)];
 }
 
 Square msb(Bitboard b) {
@@ -120,8 +115,8 @@ Square msb(Bitboard b) {
 #endif // ifndef USE_BSFQ
 
 
-/// Bitboards::pretty() returns an ASCII representation of a bitboard to be
-/// printed to standard output. This is sometimes useful for debugging.
+/// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
+/// to be printed to standard output. Useful for debugging.
 
 const std::string Bitboards::pretty(Bitboard b) {
 
@@ -178,7 +173,7 @@ void Bitboards::init() {
           if (s1 != s2)
           {
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-              DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+              DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },

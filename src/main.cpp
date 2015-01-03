@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
   UCI::init(Options);
   Bitboards::init();
   Position::init();
-  Bitbases::init_kpk();
+  Bitbases::init();
   Search::init();
   Eval::init();
   Pawns::init();

@@ -71,7 +71,7 @@ namespace {
 } // namespace
 
 
-bool Bitbases::probe_kpk(Square wksq, Square wpsq, Square bksq, Color us) {
+bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 
   assert(file_of(wpsq) <= FILE_D);
 
@@ -80,7 +80,7 @@ bool Bitbases::probe_kpk(Square wksq, Square wpsq, Square bksq, Color us) {
 }
 
 
-void Bitbases::init_kpk() {
+void Bitbases::init() {
 
   unsigned idx, repeat = 1;
   std::vector<KPKPosition> db;
