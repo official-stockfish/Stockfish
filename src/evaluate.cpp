@@ -198,7 +198,7 @@ namespace {
 
   // KingDanger[attackUnits] contains the actual king danger weighted
   // scores, indexed by a calculated integer number.
-  Score KingDanger[128];
+  Score KingDanger[512];
 
   // apply_weight() weighs score 's' by weight 'w' trying to prevent overflow
   Score apply_weight(Score s, const Weight& w) {
@@ -476,7 +476,7 @@ namespace {
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from evaluation.
-        score -= KingDanger[std::max(std::min(attackUnits / 4, 99), 0)];
+        score -= KingDanger[std::max(std::min(attackUnits, 399), 0)];
     }
 
     if (Trace)
@@ -891,13 +891,14 @@ namespace Eval {
 
   void init() {
 
-    const double MaxSlope = 30;
+    const double MaxSlope = 7.5;
     const double Peak = 1280;
+    double t = 0.0;
 
-    for (int t = 0, i = 1; i < 100; ++i)
+    for (int i = 1; i < 400; ++i)
     {
-        t = int(std::min(Peak, std::min(0.4 * i * i, t + MaxSlope)));
-        KingDanger[i] = apply_weight(make_score(t, 0), Weights[KingSafety]);
+        t = std::min(Peak, std::min(0.025 * i * i, t + MaxSlope));
+        KingDanger[i] = apply_weight(make_score(int(t), 0), Weights[KingSafety]);
     }
   }
 
