@@ -63,7 +63,7 @@ namespace {
     double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
     double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
 
-    return myTime * std::min(ratio1, ratio2);
+    return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks an explicit cast
   }
 
 } // namespace
