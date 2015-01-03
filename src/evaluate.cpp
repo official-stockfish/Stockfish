@@ -21,7 +21,6 @@
 #include <cassert>
 #include <iomanip>
 #include <sstream>
-#include <iostream>
 
 #include "bitcount.h"
 #include "evaluate.h"
