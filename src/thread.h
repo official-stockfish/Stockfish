@@ -63,7 +63,7 @@ struct SplitPoint {
 
   // Const data after split point has been setup
   const Position* pos;
-  const Search::Stack* ss;
+  Search::Stack* ss;
   Thread* masterThread;
   Depth depth;
   Value beta;
@@ -117,7 +117,7 @@ struct Thread : public ThreadBase {
   bool cutoff_occurred() const;
   bool available_to(const Thread* master) const;
 
-  void split(Position& pos, const Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
+  void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];

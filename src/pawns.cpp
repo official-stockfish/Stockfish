@@ -24,6 +24,7 @@
 #include "bitcount.h"
 #include "pawns.h"
 #include "position.h"
+#include "thread.h"
 
 namespace {
 
@@ -49,39 +50,46 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected pawn bonus by file and rank (initialized by formula)
-  Score Connected[FILE_NB][RANK_NB];
-
-  // Candidate passed pawn bonus by rank
-  const Score CandidatePassed[RANK_NB] = {
-    S( 0, 0), S( 6, 13), S(6,13), S(14,29),
-    S(34,68), S(83,166), S(0, 0), S( 0, 0) };
+  // Connected pawn bonus by opposed, phalanx flags and rank
+  Score Connected[2][2][RANK_NB];
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
     S( 0, 0), S( 0, 0), S(0, 0), S(0, 0),
     S(20,20), S(40,40), S(0, 0), S(0, 0) };
 
-  // Bonus for file distance of the two outermost pawns
-  const Score PawnsFileSpan = S(0, 15);
-
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
-  // Weakness of our pawn shelter in front of the king indexed by [rank]
-  const Value ShelterWeakness[RANK_NB] =
-  { V(100), V(0), V(27), V(73), V(92), V(101), V(101) };
+  // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
+  const Value ShelterWeakness[][RANK_NB] = {
+  { V(100), V(13), V(24), V(64), V(89), V( 93), V(104) },
+  { V(110), V( 1), V(29), V(75), V(96), V(102), V(107) },
+  { V(102), V( 0), V(39), V(74), V(88), V(101), V( 98) },
+  { V( 88), V( 4), V(33), V(67), V(92), V( 94), V(107) } };
 
-  // Danger of enemy pawns moving toward our king indexed by
-  // [no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
-  const Value StormDanger[][RANK_NB] = {
-  { V( 0),  V(64), V(128), V(51), V(26) },
-  { V(26),  V(32), V( 96), V(38), V(20) },
-  { V( 0),  V( 0), V(160), V(25), V(13) } };
+  // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
+  const Value StormDanger[][4][RANK_NB] = {
+  { { V( 0),  V(  63), V( 128), V(43), V(27) },
+    { V( 0),  V(  62), V( 131), V(44), V(26) },
+    { V( 0),  V(  59), V( 121), V(50), V(28) },
+    { V( 0),  V(  62), V( 127), V(54), V(28) } },
+  { { V(24),  V(  40), V(  93), V(42), V(22) },
+    { V(24),  V(  28), V( 101), V(38), V(20) },
+    { V(24),  V(  32), V(  95), V(36), V(23) },
+    { V(27),  V(  24), V(  99), V(36), V(24) } },
+  { { V( 0),  V(   0), V(  81), V(16), V( 6) },
+    { V( 0),  V(   0), V( 165), V(29), V( 9) },
+    { V( 0),  V(   0), V( 163), V(23), V(12) },
+    { V( 0),  V(   0), V( 161), V(28), V(13) } },
+  { { V( 0),  V(-296), V(-299), V(55), V(25) },
+    { V( 0),  V(  67), V( 131), V(46), V(21) },
+    { V( 0),  V(  65), V( 135), V(50), V(31) },
+    { V( 0),  V(  62), V( 128), V(51), V(24) } } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  const Value MaxSafetyBonus = V(263);
+  const Value MaxSafetyBonus = V(257);
 
   #undef S
   #undef V
@@ -94,18 +102,17 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled;
+    Bitboard b, p, doubled, connected;
     Square s;
-    File f;
-    bool passed, isolated, opposed, connected, backward, candidate, unsupported, lever;
-    Score value = SCORE_ZERO;
+    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
+    Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
-    Bitboard ourPawns = pos.pieces(Us, PAWN);
+    Bitboard ourPawns   = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
-    e->passedPawns[Us] = e->candidatePawns[Us] = 0;
+    e->passedPawns[Us] = 0;
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
@@ -117,7 +124,7 @@ namespace {
     {
         assert(pos.piece_on(s) == make_piece(Us, PAWN));
 
-        f = file_of(s);
+        File f = file_of(s);
 
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
@@ -125,12 +132,10 @@ namespace {
         // Previous rank
         p = rank_bb(s - pawn_push(Us));
 
-        // Our rank plus previous one
-        b = rank_bb(s) | p;
-
         // Flag the pawn as passed, isolated, doubled,
         // unsupported or connected (but not the backward one).
-        connected   =   ourPawns   & adjacent_files_bb(f) & b;
+        connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
+        phalanx     =   connected  & rank_bb(s);
         unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
         isolated    = !(ourPawns   & adjacent_files_bb(f));
         doubled     =   ourPawns   & forward_bb(Us, s);
@@ -162,14 +167,6 @@ namespace {
 
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
-        // A not-passed pawn is a candidate to become passed, if it is free to
-        // advance and if the number of friendly pawns beside or behind this
-        // pawn on adjacent files is higher than or equal to the number of
-        // enemy pawns in the forward direction on the adjacent files.
-        candidate =   !(opposed | passed | backward | isolated)
-                   && (b = pawn_attack_span(Them, s + pawn_push(Us)) & ourPawns) != 0
-                   &&  popcount<Max15>(b) >= popcount<Max15>(pawn_attack_span(Us, s) & theirPawns);
-
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate passed pawns. Only the frontmost passed
         // pawn on each file is considered a true passed pawn.
@@ -178,75 +175,67 @@ namespace {
 
         // Score this pawn
         if (isolated)
-            value -= Isolated[opposed][f];
+            score -= Isolated[opposed][f];
 
         if (unsupported && !isolated)
-            value -= UnsupportedPawnPenalty;
+            score -= UnsupportedPawnPenalty;
 
         if (doubled)
-            value -= Doubled[f] / rank_distance(s, lsb(doubled));
+            score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
 
         if (backward)
-            value -= Backward[opposed][f];
+            score -= Backward[opposed][f];
 
         if (connected)
-            value += Connected[f][relative_rank(Us, s)];
+            score += Connected[opposed][phalanx][relative_rank(Us, s)];
 
         if (lever)
-           value += Lever[relative_rank(Us, s)];
-
-        if (candidate)
-        {
-            value += CandidatePassed[relative_rank(Us, s)];
-
-            if (!doubled)
-                e->candidatePawns[Us] |= s;
-        }
+            score += Lever[relative_rank(Us, s)];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-    // In endgame it's better to have pawns on both wings. So give a bonus according
-    // to file distance between left and right outermost pawns.
-    value += PawnsFileSpan * e->pawnSpan[Us];
-
-    return value;
+    return score;
   }
 
 } // namespace
 
 namespace Pawns {
 
-/// init() initializes some tables by formula instead of hard-coding their values
+/// Pawns::init() initializes some tables needed by evaluation. Instead of using
+/// hard-coded tables, when makes sense, we prefer to calculate them with a formula
+/// to reduce independent parameters and to allow easier tuning and better insight.
 
-void init() {
+void init()
+{
+  static const int Seed[RANK_NB] = { 0, 6, 15, 10, 57, 75, 135, 258 };
 
-  const int bonusByFile[] = { 1, 3, 3, 4, 4, 3, 3, 1 };
-
-  for (Rank r = RANK_1; r < RANK_8; ++r)
-      for (File f = FILE_A; f <= FILE_H; ++f)
-      {
-          int bonus = r * (r - 1) * (r - 2) + bonusByFile[f] * (r / 2 + 1);
-          Connected[f][r] = make_score(bonus, bonus);
-      }
+  for (int opposed = 0; opposed <= 1; ++opposed)
+      for (int phalanx = 0; phalanx <= 1; ++phalanx)
+          for (Rank r = RANK_2; r < RANK_8; ++r)
+          {
+              int bonus = Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0);
+              Connected[opposed][phalanx][r] = make_score(bonus / 2, bonus >> opposed);
+          }
 }
 
 
-/// probe() takes a position as input, computes a Entry object, and returns a
-/// pointer to it. The result is also stored in a hash table, so we don't have
-/// to recompute everything when the same pawn structure occurs again.
+/// Pawns::probe() looks up the current position's pawns configuration in
+/// the pawns hash table. It returns a pointer to the Entry if the position
+/// is found. Otherwise a new Entry is computed and stored there, so we don't
+/// have to recompute all when the same pawns configuration occurs again.
 
-Entry* probe(const Position& pos, Table& entries) {
+Entry* probe(const Position& pos) {
 
   Key key = pos.pawn_key();
-  Entry* e = entries[key];
+  Entry* e = pos.this_thread()->pawnsTable[key];
 
   if (e->key == key)
       return e;
 
   e->key = key;
-  e->value = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
+  e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
   return e;
 }
 
@@ -258,15 +247,16 @@ template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
-  const Bitboard Edges = (FileABB | FileHBB) & (Rank2BB | Rank3BB);
+
+  enum { NoFriendlyPawn, Unblocked, BlockedByPawn, BlockedByKing };
 
   Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
   Value safety = MaxSafetyBonus;
-  File kf = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
+  File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
-  for (File f = kf - File(1); f <= kf + File(1); ++f)
+  for (File f = center - File(1); f <= center + File(1); ++f)
   {
       b = ourPawns & file_bb(f);
       Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
@@ -274,14 +264,12 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b  = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-      if (   (Edges & make_square(f, rkThem))
-          && file_of(ksq) == f
-          && relative_rank(Us, ksq) == rkThem - 1)
-          safety += 200;
-      else
-          safety -=  ShelterWeakness[rkUs]
-                   + StormDanger[rkUs   == RANK_1   ? 0 :
-                                 rkThem != rkUs + 1 ? 1 : 2][rkThem];
+      safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs]
+               + StormDanger
+                 [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
+                  rkUs   == RANK_1                                          ? NoFriendlyPawn :
+                  rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
+                 [std::min(f, FILE_H - f)][rkThem];
   }
 
   return safety;
@@ -296,14 +284,14 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.can_castle(Us);
-  minKPdistance[Us] = 0;
+  minKingPawnDistance[Us] = 0;
 
   Bitboard pawns = pos.pieces(Us, PAWN);
   if (pawns)
-      while (!(DistanceRingsBB[ksq][minKPdistance[Us]++] & pawns)) {}
+      while (!(DistanceRingsBB[ksq][minKingPawnDistance[Us]++] & pawns)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
-      return make_score(0, -16 * minKPdistance[Us]);
+      return make_score(0, -16 * minKingPawnDistance[Us]);
 
   Value bonus = shelter_storm<Us>(pos, ksq);
 
@@ -314,7 +302,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
-  return make_score(bonus, -16 * minKPdistance[Us]);
+  return make_score(bonus, -16 * minKingPawnDistance[Us]);
 }
 
 // Explicit template instantiation

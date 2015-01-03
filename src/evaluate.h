@@ -28,9 +28,9 @@ namespace Eval {
 
 const Value Tempo = Value(17); // Must be visible to search
 
-extern void init();
-extern Value evaluate(const Position& pos);
-extern std::string trace(const Position& pos);
+void init();
+Value evaluate(const Position& pos);
+std::string trace(const Position& pos);
 
 }
 

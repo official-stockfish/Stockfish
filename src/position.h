@@ -50,7 +50,7 @@ struct CheckInfo {
 
 struct StateInfo {
   Key pawnKey, materialKey;
-  Value npMaterial[COLOR_NB];
+  Value nonPawnMaterial[COLOR_NB];
   int castlingRights, rule50, pliesFromNull;
   Score psq;
   Square epSquare;
@@ -73,17 +73,22 @@ const size_t StateCopySize64 = offsetof(StateInfo, key) / sizeof(uint64_t) + 1;
 /// when traversing the search tree.
 
 class Position {
+
+  friend std::ostream& operator<<(std::ostream&, const Position&);
+
+  // Disable the default copy constructor
+  Position(const Position&); 
+
 public:
   Position() {}
-  Position(const Position& pos, Thread* t) { *this = pos; thisThread = t; }
-  Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
+  Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
+  Position(const std::string& f, bool c960, Thread* th) { set(f, c960, th); }
   Position& operator=(const Position&);
   static void init();
 
-  // Text input/output
+  // FEN string input/output
   void set(const std::string& fenStr, bool isChess960, Thread* th);
   const std::string fen() const;
-  const std::string pretty(Move m = MOVE_NONE) const;
 
   // Position representation
   Bitboard pieces() const;
@@ -112,7 +117,7 @@ public:
 
   // Attacks to/from a given square
   Bitboard attackers_to(Square s) const;
-  Bitboard attackers_to(Square s, Bitboard occ) const;
+  Bitboard attackers_to(Square s, Bitboard occupied) const;
   Bitboard attacks_from(Piece pc, Square s) const;
   template<PieceType> Bitboard attacks_from(Square s) const;
   template<PieceType> Bitboard attacks_from(Square s, Color c) const;
@@ -146,6 +151,7 @@ public:
 
   // Accessing hash keys
   Key key() const;
+  Key key_after(Move m) const;
   Key exclusion_key() const;
   Key pawn_key() const;
   Key material_key() const;
@@ -163,6 +169,7 @@ public:
   uint64_t nodes_searched() const;
   void set_nodes_searched(uint64_t n);
   bool is_draw() const;
+  int rule50_count() const;
 
   // Position consistency check, for debugging
   bool pos_is_ok(int* step = NULL) const;
@@ -342,11 +349,15 @@ inline Score Position::psq_score() const {
 }
 
 inline Value Position::non_pawn_material(Color c) const {
-  return st->npMaterial[c];
+  return st->nonPawnMaterial[c];
 }
 
 inline int Position::game_ply() const {
   return gamePly;
+}
+
+inline int Position::rule50_count() const {
+  return st->rule50;
 }
 
 inline bool Position::opposite_bishops() const {
@@ -399,6 +410,7 @@ inline void Position::put_piece(Square s, Color c, PieceType pt) {
   byColorBB[c] |= s;
   index[s] = pieceCount[c][pt]++;
   pieceList[c][pt][index[s]] = s;
+  pieceCount[c][ALL_PIECES]++;
 }
 
 inline void Position::move_piece(Square from, Square to, Color c, PieceType pt) {
@@ -429,6 +441,7 @@ inline void Position::remove_piece(Square s, Color c, PieceType pt) {
   index[lastSquare] = index[s];
   pieceList[c][pt][index[lastSquare]] = lastSquare;
   pieceList[c][pt][pieceCount[c][pt]] = SQ_NONE;
+  pieceCount[c][ALL_PIECES]--;
 }
 
 #endif // #ifndef POSITION_H_INCLUDED

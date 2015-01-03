@@ -18,23 +18,21 @@
 */
 
 #include <algorithm>
-#include <cstring> // For memset
+#include <cstring>   // For std::memset
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "rkiss.h"
+#include "misc.h"
 
-CACHE_LINE_ALIGNMENT
+Bitboard RookMasks[SQUARE_NB];
+Bitboard RookMagics[SQUARE_NB];
+Bitboard* RookAttacks[SQUARE_NB];
+unsigned RookShifts[SQUARE_NB];
 
-Bitboard RMasks[SQUARE_NB];
-Bitboard RMagics[SQUARE_NB];
-Bitboard* RAttacks[SQUARE_NB];
-unsigned RShifts[SQUARE_NB];
-
-Bitboard BMasks[SQUARE_NB];
-Bitboard BMagics[SQUARE_NB];
-Bitboard* BAttacks[SQUARE_NB];
-unsigned BShifts[SQUARE_NB];
+Bitboard BishopMasks[SQUARE_NB];
+Bitboard BishopMagics[SQUARE_NB];
+Bitboard* BishopAttacks[SQUARE_NB];
+unsigned BishopShifts[SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
@@ -58,12 +56,10 @@ namespace {
   const uint64_t DeBruijn_64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn_32 = 0x783A9B23;
 
-  CACHE_LINE_ALIGNMENT
-
   int MS1BTable[256];
   Square BSFTable[SQUARE_NB];
-  Bitboard RTable[0x19000]; // Storage space for rook attacks
-  Bitboard BTable[0x1480];  // Storage space for bishop attacks
+  Bitboard RookTable[0x19000];  // Storage space for rook attacks
+  Bitboard BishopTable[0x1480]; // Storage space for bishop attacks
 
   typedef unsigned (Fn)(Square, Bitboard);
 
@@ -181,7 +177,7 @@ void Bitboards::init() {
       for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
           if (s1 != s2)
           {
-              SquareDistance[s1][s2] = std::max(file_distance(s1, s2), rank_distance(s1, s2));
+              SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
               DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 
@@ -195,15 +191,15 @@ void Bitboards::init() {
               {
                   Square to = s + Square(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-                  if (is_ok(to) && square_distance(s, to) < 3)
+                  if (is_ok(to) && distance(s, to) < 3)
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
-  Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
+  Square RookDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
+  Square BishopDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, magic_index<ROOK>);
-  init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, magic_index<BISHOP>);
+  init_magics(RookTable, RookAttacks, RookMagics, RookMasks, RookShifts, RookDeltas, magic_index<ROOK>);
+  init_magics(BishopTable, BishopAttacks, BishopMagics, BishopMasks, BishopShifts, BishopDeltas, magic_index<BISHOP>);
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
@@ -233,7 +229,7 @@ namespace {
 
     for (int i = 0; i < 4; ++i)
         for (Square s = sq + deltas[i];
-             is_ok(s) && square_distance(s, s - deltas[i]) == 1;
+             is_ok(s) && distance(s, s - deltas[i]) == 1;
              s += deltas[i])
         {
             attack |= s;
@@ -254,12 +250,11 @@ namespace {
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
-    int MagicBoosters[][8] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
-                               { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
+    int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
+                             {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
-    RKISS rk;
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int i, size, booster;
+    int i, size;
 
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
@@ -299,13 +294,13 @@ namespace {
         if (HasPext)
             continue;
 
-        booster = MagicBoosters[Is64Bit][rank_of(s)];
+        PRNG rng(seeds[Is64Bit][rank_of(s)]);
 
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
         do {
             do
-                magics[s] = rk.magic_rand<Bitboard>(booster);
+                magics[s] = rng.sparse_rand<Bitboard>();
             while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
             std::memset(attacks[s], 0, size * sizeof(Bitboard));

@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstring>
+#include <cstring>   // For std::memset
 #include <iostream>
 
 #include "bitboard.h"
@@ -54,7 +54,7 @@ void TranspositionTable::resize(size_t mbSize) {
 
 
 /// TranspositionTable::clear() overwrites the entire transposition table
-/// with zeroes. It is called whenever the table is resized, or when the
+/// with zeros. It is called whenever the table is resized, or when the
 /// user asks the program to clear the table (from the UCI interface).
 
 void TranspositionTable::clear() {
@@ -63,58 +63,34 @@ void TranspositionTable::clear() {
 }
 
 
-/// TranspositionTable::probe() looks up the current position in the
-/// transposition table. Returns a pointer to the TTEntry or NULL if
-/// position is not found.
+/// TranspositionTable::probe() looks up the current position in the transposition
+/// table. It returns true and a pointer to the TTEntry if the position is found.
+/// Otherwise, it returns false and a pointer to an empty or least valuable TTEntry
+/// to be replaced later. A TTEntry t1 is considered to be more valuable than a
+/// TTEntry t2 if t1 is from the current search and t2 is from a previous search,
+/// or if the depth of t1 is bigger than the depth of t2.
 
-const TTEntry* TranspositionTable::probe(const Key key) const {
+TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
-  TTEntry* tte = first_entry(key);
-  uint16_t key16 = key >> 48;
+  TTEntry* const tte = first_entry(key);
+  const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
 
-  for (unsigned i = 0; i < TTClusterSize; ++i, ++tte)
-      if (tte->key16 == key16)
+  for (unsigned i = 0; i < TTClusterSize; ++i)
+      if (!tte[i].key16 || tte[i].key16 == key16)
       {
-          tte->genBound8 = generation | tte->bound(); // Refresh
-          return tte;
+          if (tte[i].key16)
+              tte[i].genBound8 = uint8_t(generation8 | tte[i].bound()); // Refresh
+
+          return found = (bool)tte[i].key16, &tte[i];
       }
 
-  return NULL;
-}
+  // Find an entry to be replaced according to the replacement strategy
+  TTEntry* replace = tte;
+  for (unsigned i = 1; i < TTClusterSize; ++i)
+      if (  ((  tte[i].genBound8 & 0xFC) == generation8 || tte[i].bound() == BOUND_EXACT)
+          - ((replace->genBound8 & 0xFC) == generation8)
+          - (tte[i].depth8 < replace->depth8) < 0)
+          replace = &tte[i];
 
-
-/// TranspositionTable::store() writes a new entry containing position key and
-/// valuable information of current position. The lowest order bits of position
-/// key are used to decide in which cluster the position will be placed.
-/// When a new entry is written and there are no empty entries available in the
-/// cluster, it replaces the least valuable of the entries. A TTEntry t1 is considered
-/// to be more valuable than a TTEntry t2 if t1 is from the current search and t2
-/// is from a previous search, or if the depth of t1 is bigger than the depth of t2.
-
-void TranspositionTable::store(const Key key, Value v, Bound b, Depth d, Move m, Value statV) {
-
-  TTEntry *tte, *replace;
-  uint16_t key16 = key >> 48; // Use the high 16 bits as key inside the cluster
-
-  tte = replace = first_entry(key);
-
-  for (unsigned i = 0; i < TTClusterSize; ++i, ++tte)
-  {
-      if (!tte->key16 || tte->key16 == key16) // Empty or overwrite old
-      {
-          if (!m)
-              m = tte->move(); // Preserve any existing ttMove
-
-          replace = tte;
-          break;
-      }
-
-      // Implement replace strategy
-      if (  ((    tte->genBound8 & 0xFC) == generation || tte->bound() == BOUND_EXACT)
-          - ((replace->genBound8 & 0xFC) == generation)
-          - (tte->depth8 < replace->depth8) < 0)
-          replace = tte;
-  }
-
-  replace->save(key16, v, b, d, m, generation, statV);
+  return found = false, replace;
 }
