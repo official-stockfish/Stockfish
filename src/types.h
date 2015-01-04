@@ -80,6 +80,18 @@ const bool HasPopCnt = true;
 const bool HasPopCnt = false;
 #endif
 
+#ifdef USE_AVX
+const bool HasAVX = true;
+#else
+const bool HasAVX = false;
+#endif
+
+#ifdef USE_AVX2
+const bool HasAVX2 = true;
+#else
+const bool HasAVX2 = false;
+#endif
+
 #ifdef USE_PEXT
 const bool HasPext = true;
 #else
