@@ -1446,8 +1446,12 @@ moves_loop: // When in check and at SpNode search starts from here
         ss << "info depth " << d / ONE_PLY
            << " seldepth "  << selDepth
            << " multipv "   << i + 1
-           << " score "     << ((!tb && i == PVIdx) ? UCI::value(v, alpha, beta) : UCI::value(v))
-           << " nodes "     << pos.nodes_searched()
+           << " score "     << UCI::value(v);
+
+        if (!tb && i == PVIdx)
+              ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
+
+        ss << " nodes "     << pos.nodes_searched()
            << " nps "       << pos.nodes_searched() * 1000 / elapsed
            << " tbhits "    << TB::Hits
            << " time "      << elapsed

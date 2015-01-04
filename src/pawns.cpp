@@ -288,7 +288,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   Bitboard pawns = pos.pieces(Us, PAWN);
   if (pawns)
-      while (!(DistanceRingsBB[ksq][minKingPawnDistance[Us]++] & pawns)) {}
+      while (!(DistanceRingBB[ksq][minKingPawnDistance[Us]++] & pawns)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
       return make_score(0, -16 * minKingPawnDistance[Us]);

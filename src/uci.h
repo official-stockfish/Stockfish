@@ -67,7 +67,7 @@ private:
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
 
-std::string value(Value v, Value alpha = -VALUE_INFINITE, Value beta = VALUE_INFINITE);
+std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);
 Move to_move(const Position& pos, std::string& str);
