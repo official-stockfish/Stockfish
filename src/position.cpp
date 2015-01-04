@@ -129,21 +129,6 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-/// Position c'tor creates a copy of 'pos' but detaching the state pointer from
-/// the source to be self-consistent and not depending on any external data.
-
-Position::Position(const Position& pos, Thread* th) {
-
-  std::memcpy(this, &pos, sizeof(Position));
-  startState = *st;
-  st = &startState;
-  nodes = 0;
-  thisThread = th;
-
-  assert(pos_is_ok());
-}
-
-
 /// Position::init() initializes at startup the various arrays used to compute
 /// hash keys and the piece square tables. The latter is a two-step operation:
 /// Firstly, the white halves of the tables are copied from PSQT[] tables.
@@ -188,6 +173,22 @@ void Position::init() {
          psq[BLACK][pt][~s] = -(v + PSQT[pt][s]);
       }
   }
+}
+
+
+/// Position::operator=() creates a copy of 'pos' but detaching the state pointer
+/// from the source to be self-consistent and not depending on any external data.
+
+Position& Position::operator=(const Position& pos) {
+
+  std::memcpy(this, &pos, sizeof(Position));
+  startState = *st;
+  st = &startState;
+  nodes = 0;
+
+  assert(pos_is_ok());
+
+  return *this;
 }
 
 

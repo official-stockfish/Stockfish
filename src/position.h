@@ -87,8 +87,9 @@ public:
   static void init();
 
   Position() {} // To define the global object RootPos
-  Position(const Position& pos, Thread* th);
+  Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
   Position(const std::string& f, bool c960, Thread* th) { set(f, c960, th); }
+  Position& operator=(const Position&); // To assign RootPos from UCI
 
   // FEN string input/output
   void set(const std::string& fenStr, bool isChess960, Thread* th);
