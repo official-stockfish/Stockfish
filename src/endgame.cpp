@@ -167,7 +167,8 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   if (   pos.count<QUEEN>(strongSide)
       || pos.count<ROOK>(strongSide)
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
-      || pos.bishop_pair(strongSide))
+      ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(pos.list<BISHOP>(strongSide)[0],
+                                                              pos.list<BISHOP>(strongSide)[1])))
       result += VALUE_KNOWN_WIN;
 
   return strongSide == pos.side_to_move() ? result : -result;
