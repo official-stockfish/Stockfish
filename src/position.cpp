@@ -176,9 +176,8 @@ void Position::init() {
 }
 
 
-/// Position::operator=() creates a copy of 'pos'. We want the new born Position
-/// object to not depend on any external data so we detach state pointer from
-/// the source one.
+/// Position::operator=() creates a copy of 'pos' but detaching the state pointer
+/// from the source to be self-consistent and not depending on any external data.
 
 Position& Position::operator=(const Position& pos) {
 
