@@ -45,7 +45,7 @@ enum EndgameType {
 
 
   // Scaling functions
-  SCALE_FUNS,
+  SCALING_FUNCTIONS,
 
   KBPsK,   // KB and pawns vs K
   KQKRPs,  // KQ vs KR and pawns
@@ -81,7 +81,7 @@ struct EndgameBase {
 };
 
 
-template<EndgameType E, typename T = typename eg_fun<(E > SCALE_FUNS)>::type>
+template<EndgameType E, typename T = typename eg_fun<(E > SCALING_FUNCTIONS)>::type>
 struct Endgame : public EndgameBase<T> {
 
   explicit Endgame(Color c) : strongSide(c), weakSide(~c) {}
@@ -94,8 +94,8 @@ private:
 
 
 /// The Endgames class stores the pointers to endgame evaluation and scaling
-/// base objects in two std::map typedefs. We then use polymorphism to invoke
-/// the actual endgame function by calling its virtual operator().
+/// base objects in two std::map. We use polymorphism to invoke the actual
+/// endgame function by calling its virtual operator().
 
 class Endgames {
 
@@ -114,8 +114,9 @@ public:
   Endgames();
  ~Endgames();
 
-  template<typename T> T probe(Key key, T& eg)
-  { return eg = map(eg).count(key) ? map(eg)[key] : NULL; }
+  template<typename T> T probe(Key key, T& eg) {
+    return eg = map(eg).count(key) ? map(eg)[key] : NULL;
+  }
 };
 
 #endif // #ifndef ENDGAME_H_INCLUDED

@@ -237,7 +237,7 @@ namespace {
                 && !(PseudoAttacks[Pt][from] & target & ci->checkSq[Pt]))
                 continue;
 
-            if (unlikely(ci->dcCandidates) && (ci->dcCandidates & from))
+            if (ci->dcCandidates && (ci->dcCandidates & from))
                 continue;
         }
 

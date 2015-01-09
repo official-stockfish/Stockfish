@@ -86,7 +86,7 @@ void ThreadBase::wait_for(volatile const bool& condition) {
 // Thread c'tor makes some init but does not launch any execution thread that
 // will be started only when c'tor returns.
 
-Thread::Thread() /* : splitPoints() */ { // Value-initialization bug in MSVC
+Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in MSVC
 
   searching = false;
   maxPly = splitPointsSize = 0;

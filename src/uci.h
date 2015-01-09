@@ -50,8 +50,8 @@ public:
   Option(const char* v, OnChange = NULL);
   Option(int v, int min, int max, OnChange = NULL);
 
-  Option& operator=(const std::string& v);
-  void operator<<(const Option& o);
+  Option& operator=(const std::string&);
+  void operator<<(const Option&);
   operator int() const;
   operator std::string() const;
 
@@ -66,7 +66,6 @@ private:
 
 void init(OptionsMap&);
 void loop(int argc, char* argv[]);
-
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);

@@ -23,7 +23,7 @@
 #include "misc.h"
 #include "types.h"
 
-/// The TTEntry is the 10 bytes transposition table entry, defined as below:
+/// TTEntry struct is the 10 bytes transposition table entry, defined as below:
 ///
 /// key        16 bit
 /// move       16 bit
@@ -35,22 +35,22 @@
 
 struct TTEntry {
 
-  Move  move()  const      { return (Move )move16; }
-  Value value() const      { return (Value)value16; }
-  Value eval_value() const { return (Value)evalValue; }
-  Depth depth() const      { return (Depth)depth8; }
-  Bound bound() const      { return (Bound)(genBound8 & 0x3); }
+  Move  move()  const { return (Move )move16; }
+  Value value() const { return (Value)value16; }
+  Value eval()  const { return (Value)eval16; }
+  Depth depth() const { return (Depth)depth8; }
+  Bound bound() const { return (Bound)(genBound8 & 0x3); }
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
 
     if (m || (k >> 48) != key16) // Preserve any existing move for the same position
         move16 = (uint16_t)m;
 
-    key16      = (uint16_t)(k >> 48);
-    value16    = (int16_t)v;
-    evalValue  = (int16_t)ev;
-    genBound8  = (uint8_t)(g | b);
-    depth8     = (int8_t)d;
+    key16     = (uint16_t)(k >> 48);
+    value16   = (int16_t)v;
+    eval16    = (int16_t)ev;
+    genBound8 = (uint8_t)(g | b);
+    depth8    = (int8_t)d;
   }
 
 private:
@@ -59,22 +59,11 @@ private:
   uint16_t key16;
   uint16_t move16;
   int16_t  value16;
-  int16_t  evalValue;
+  int16_t  eval16;
   uint8_t  genBound8;
   int8_t   depth8;
 };
 
-/// TTCluster is a 32 bytes cluster of TT entries consisting of:
-///
-/// 3 x TTEntry (3 x 10 bytes)
-/// padding     (2 bytes)
-
-static const unsigned TTClusterSize = 3;
-
-struct TTCluster {
-  TTEntry entry[TTClusterSize];
-  char padding[2];
-};
 
 /// A TranspositionTable consists of a power of 2 number of clusters and each
 /// cluster consists of TTClusterSize number of TTEntry. Each non-empty entry
@@ -84,14 +73,26 @@ struct TTCluster {
 
 class TranspositionTable {
 
+  static const int CacheLineSize = 64;
+  static const int TTClusterSize = 3;
+
+  struct TTCluster {
+    TTEntry entry[TTClusterSize];
+    char padding[2]; // Align to the cache line size
+  };
+
 public:
  ~TranspositionTable() { free(mem); }
   void new_search() { generation8 += 4; } // Lower 2 bits are used by Bound
   uint8_t generation() const { return generation8; }
   TTEntry* probe(const Key key, bool& found) const;
-  TTEntry* first_entry(const Key key) const;
   void resize(size_t mbSize);
   void clear();
+
+  // The lowest order bits of the key are used to get the index of the cluster
+  TTEntry* first_entry(const Key key) const {
+    return &table[(size_t)key & (clusterCount - 1)].entry[0];
+  }
 
 private:
   size_t clusterCount;
@@ -101,15 +102,5 @@ private:
 };
 
 extern TranspositionTable TT;
-
-
-/// TranspositionTable::first_entry() returns a pointer to the first entry of
-/// a cluster given a position. The lowest order bits of the key are used to
-/// get the index of the cluster inside the table.
-
-inline TTEntry* TranspositionTable::first_entry(const Key key) const {
-
-  return &table[(size_t)key & (clusterCount - 1)].entry[0];
-}
 
 #endif // #ifndef TT_H_INCLUDED

@@ -641,7 +641,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       return true;
 
   // Is there a discovered check?
-  if (   unlikely(ci.dcCandidates)
+  if (    ci.dcCandidates
       && (ci.dcCandidates & from)
       && !aligned(from, to, ci.ksq))
       return true;
@@ -870,7 +870,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
               st->checkersBB |= to;
 
           // Discovered checks
-          if (unlikely(ci.dcCandidates) && (ci.dcCandidates & from))
+          if (ci.dcCandidates && (ci.dcCandidates & from))
           {
               if (pt != ROOK)
                   st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(us, QUEEN, ROOK);

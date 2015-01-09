@@ -20,6 +20,8 @@
 #ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
+#include <string>
+
 #include "types.h"
 
 class Position;

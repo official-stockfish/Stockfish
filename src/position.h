@@ -22,6 +22,7 @@
 
 #include <cassert>
 #include <cstddef>  // For offsetof()
+#include <string>
 
 #include "bitboard.h"
 #include "types.h"

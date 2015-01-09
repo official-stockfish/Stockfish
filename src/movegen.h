@@ -22,6 +22,8 @@
 
 #include "types.h"
 
+class Position;
+
 enum GenType {
   CAPTURES,
   QUIETS,
@@ -31,7 +33,14 @@ enum GenType {
   LEGAL
 };
 
-class Position;
+struct ExtMove {
+  Move move;
+  Value value;
+};
+
+inline bool operator<(const ExtMove& f, const ExtMove& s) {
+  return f.value < s.value;
+}
 
 template<GenType>
 ExtMove* generate(const Position& pos, ExtMove* moveList);
