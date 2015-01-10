@@ -310,6 +310,14 @@ ifeq ($(comp),gcc)
 	endif
 endif
 
+### 3.12 Android 5 can only run position independent executables. Note that this
+### breaks Android 4.0 and earlier.
+ifeq ($(arch),armv7)
+	CXXFLAGS += -fPIE
+	LDFLAGS += -fPIE -pie
+endif
+
+
 ### ==========================================================================
 ### Section 4. Public targets
 ### ==========================================================================
