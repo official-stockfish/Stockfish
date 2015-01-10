@@ -108,7 +108,7 @@ void benchmark(const Position& current, istream& is) {
   TT.clear();
 
   if (limitType == "time")
-      limits.movetime = 1000 * atoi(limit.c_str()); // movetime is in ms
+      limits.movetime = atoi(limit.c_str()); // movetime is in ms
 
   else if (limitType == "nodes")
       limits.nodes = atoi(limit.c_str());
