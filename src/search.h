@@ -40,7 +40,6 @@ struct Stack {
   SplitPoint* splitPoint;
   Move* pv;
   int ply;
-  int distanceToPv;
   Move currentMove;
   Move ttMove;
   Move excludedMove;

@@ -489,7 +489,6 @@ namespace {
     moveCount = quietCount = 0;
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
-    ss->distanceToPv = PvNode ? 0 : (ss-1)->distanceToPv + 1;
 
     // Used to send selDepth info to GUI
     if (PvNode && thisThread->maxPly < ss->ply)
@@ -618,7 +617,6 @@ namespace {
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
-        &&  ss->distanceToPv > 1
         &&  eval + razor_margin(depth) <= alpha
         &&  ttMove == MOVE_NONE
         && !pos.pawn_on_7th(pos.side_to_move()))
@@ -831,9 +829,8 @@ moves_loop: // When in check and at SpNode search starts from here
       // Update the current move (this must be done after singular extension search)
       newDepth = depth - ONE_PLY + extension;
 
-      // Step 13. Pruning at shallow depth (exclude PV nodes)
-      if (   !PvNode
-          && !captureOrPromotion
+      // Step 13. Pruning at shallow depth
+      if (   !captureOrPromotion
           && !inCheck
           && !dangerous
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
