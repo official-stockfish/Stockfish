@@ -26,7 +26,7 @@ class Position;
 
 namespace Eval {
 
-const Value Tempo = Value(17); // Must be visible to search
+const Value Tempo = Value(34); // Must be visible to search
 
 void init();
 Value evaluate(const Position& pos);
