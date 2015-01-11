@@ -223,8 +223,8 @@ static void init_tb(char *str)
     entry->num += pcs[i];
   entry->symmetric = (key == key2);
   entry->has_pawns = (pcs[TB_WPAWN] + pcs[TB_BPAWN] > 0);
-  if (entry->num > Tablebases::MaxCardinality)
-    Tablebases::MaxCardinality = entry->num;
+  if (entry->num > TB::MaxCardinality)
+    TB::MaxCardinality = entry->num;
 
   if (entry->has_pawns) {
     struct TBEntry_pawn *ptr = (struct TBEntry_pawn *)entry;
@@ -253,7 +253,7 @@ static void init_tb(char *str)
   if (key2 != key) add_to_hash(entry, key2);
 }
 
-void Tablebases::init(const std::string& path)
+void TB::init(const std::string& path)
 {
   char str[16];
   int i, j, k, l;

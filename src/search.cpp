@@ -45,7 +45,7 @@ namespace Search {
   StateStackPtr SetupStates;
 }
 
-namespace Tablebases {
+namespace TB {
 
   int Cardinality;
   uint64_t Hits;
@@ -54,8 +54,6 @@ namespace Tablebases {
   Depth ProbeDepth;
   Value Score;
 }
-
-namespace TB = Tablebases;
 
 using std::string;
 using Eval::evaluate;

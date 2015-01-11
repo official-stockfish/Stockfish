@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
   Eval::init();
   Pawns::init();
   Threads.init();
-  Tablebases::init(Options["SyzygyPath"]);
+  TB::init(Options["SyzygyPath"]);
   TT.resize(Options["Hash"]);
 
   UCI::loop(argc, argv);

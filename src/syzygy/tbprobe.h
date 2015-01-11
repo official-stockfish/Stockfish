@@ -3,7 +3,7 @@
 
 #include "../search.h"
 
-namespace Tablebases {
+namespace TB {
 
 extern int MaxCardinality;
 
