@@ -45,7 +45,7 @@ namespace Search {
   StateStackPtr SetupStates;
 }
 
-namespace Tablebases {
+namespace TB {
 
   int Cardinality;
   uint64_t Hits;
@@ -54,8 +54,6 @@ namespace Tablebases {
   Depth ProbeDepth;
   Value Score;
 }
-
-namespace TB = Tablebases;
 
 using std::string;
 using Eval::evaluate;
@@ -226,7 +224,7 @@ void Search::think() {
       {
           // If the current root position is in the tablebases then RootMoves
           // contains only moves that preserve the draw or win.
-          TB::RootInTB = Tablebases::root_probe(RootPos, RootMoves, TB::Score);
+          TB::RootInTB = TB::root_probe(RootPos, RootMoves, TB::Score);
 
           if (TB::RootInTB)
               TB::Cardinality = 0; // Do not probe tablebases during the search
@@ -234,7 +232,7 @@ void Search::think() {
           else // If DTZ tables are missing, use WDL tables as a fallback
           {
               // Filter out moves that do not preserve a draw or win
-              TB::RootInTB = Tablebases::root_probe_wdl(RootPos, RootMoves, TB::Score);
+              TB::RootInTB = TB::root_probe_wdl(RootPos, RootMoves, TB::Score);
 
               // Only probe during search if winning
               if (TB::Score <= VALUE_DRAW)
@@ -527,7 +525,7 @@ namespace {
     ss->ttMove = ttMove = RootNode ? RootMoves[PVIdx].pv[0] : ttHit ? tte->move() : MOVE_NONE;
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
-    // At non-PV nodes we check for a fail high/low. We don't probe at PV nodes
+    // At non-PV nodes we check for a fail high/low. We don't prune at PV nodes
     if (  !PvNode
         && ttHit
         && tte->depth() >= depth
@@ -553,7 +551,7 @@ namespace {
             && (piecesCnt <  TB::Cardinality || depth >= TB::ProbeDepth)
             &&  pos.rule50_count() == 0)
         {
-            int found, v = Tablebases::probe_wdl(pos, &found);
+            int found, v = TB::probe_wdl(pos, &found);
 
             if (found)
             {

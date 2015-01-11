@@ -24,7 +24,7 @@ namespace Zobrist {
   extern Key psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 }
 
-int Tablebases::MaxCardinality = 0;
+int TB::MaxCardinality = 0;
 
 // Given a position with 6 or fewer pieces, produce a text string
 // of the form KQPvKRP, where "KQP" represents the white pieces if
@@ -399,7 +399,7 @@ static int probe_ab(Position& pos, int alpha, int beta, int *success)
 //  0 : draw
 //  1 : win, but draw under 50-move rule
 //  2 : win
-int Tablebases::probe_wdl(Position& pos, int *success)
+int TB::probe_wdl(Position& pos, int *success)
 {
   int v;
 
@@ -516,7 +516,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
                 || !pos.legal(move, ci.pinned))
         continue;
       pos.do_move(move, st, ci, pos.gives_check(move, ci));
-      int v = -Tablebases::probe_dtz(pos, success);
+      int v = -TB::probe_dtz(pos, success);
       pos.undo_move(move);
       if (*success == 0) return 0;
       if (v > 0 && v + 1 < best)
@@ -542,7 +542,7 @@ static int probe_dtz_no_ep(Position& pos, int *success)
           v = (v == 2) ? 0 : -101;
         }
       } else {
-        v = -Tablebases::probe_dtz(pos, success) - 1;
+        v = -TB::probe_dtz(pos, success) - 1;
       }
       pos.undo_move(move);
       if (*success == 0) return 0;
@@ -583,7 +583,7 @@ static int wdl_to_dtz[] = {
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 //
-int Tablebases::probe_dtz(Position& pos, int *success)
+int TB::probe_dtz(Position& pos, int *success)
 {
   *success = 1;
   int v = probe_dtz_no_ep(pos, success);
@@ -687,7 +687,7 @@ static Value wdl_to_Value[5] = {
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
+bool TB::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
 {
   int success;
 
@@ -709,11 +709,11 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
     }
     if (!v) {
       if (st.rule50 != 0) {
-        v = -Tablebases::probe_dtz(pos, &success);
+        v = -TB::probe_dtz(pos, &success);
         if (v > 0) v++;
         else if (v < 0) v--;
       } else {
-        v = -Tablebases::probe_wdl(pos, &success);
+        v = -TB::probe_wdl(pos, &success);
         v = wdl_to_dtz[v + 2];
       }
     }
@@ -794,11 +794,11 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
 //
 // A return value false indicates that not all probes were successful and that
 // no moves were filtered out.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
+bool TB::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
 {
   int success;
 
-  int wdl = Tablebases::probe_wdl(pos, &success);
+  int wdl = TB::probe_wdl(pos, &success);
   if (!success) return false;
   score = wdl_to_Value[wdl + 2];
 
@@ -811,7 +811,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves
   for (size_t i = 0; i < rootMoves.size(); i++) {
     Move move = rootMoves[i].pv[0];
     pos.do_move(move, st, ci, pos.gives_check(move, ci));
-    int v = -Tablebases::probe_wdl(pos, &success);
+    int v = -TB::probe_wdl(pos, &success);
     pos.undo_move(move);
     if (!success) return false;
     rootMoves[i].score = (Value)v;
