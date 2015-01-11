@@ -88,7 +88,7 @@ const char* Defaults[] = {
 /// be used, the limit value spent for each position (optional, default is
 /// depth 13), an optional file name where to look for positions in FEN
 /// format (defaults are the positions defined above) and the type of the
-/// limit value: depth (default), time in secs or number of nodes.
+/// limit value: depth (default), time in millisecs or number of nodes.
 
 void benchmark(const Position& current, istream& is) {
 
@@ -108,7 +108,7 @@ void benchmark(const Position& current, istream& is) {
   TT.clear();
 
   if (limitType == "time")
-      limits.movetime = 1000 * atoi(limit.c_str()); // movetime is in ms
+      limits.movetime = atoi(limit.c_str()); // movetime is in ms
 
   else if (limitType == "nodes")
       limits.nodes = atoi(limit.c_str());
