@@ -32,9 +32,9 @@ This distribution of Stockfish consists of the following files:
 **Configuration**
 
 Syzygybases are configured using the UCI options "SyzygyPath",
-"SyzygyProbeDepth", "Syzygy50MoveRule" and "SyzygyProbeLimit".
+"Syzygy Probe Depth", "Syzygy 50 Move Rule" and "Syzygy Probe Limit".
 
-The option "SyzygyPath" should be set to the directory or directories that
+The option "Syzygy Path" should be set to the directory or directories that
 contain the .rtbw and .rtbz files. Multiple directories should be
 separated by ";" on Windows and by ":" on Unix-based operating systems.
 **Do not use spaces around the ";" or ":".**
@@ -44,15 +44,15 @@ Example: `C:\tablebases\wdl345;C:\tablebases\wdl6;D:\tablebases\dtz345;D:\tableb
 It is recommended to store .rtbw files on an SSD. There is no loss in
 storing the .rtbz files on a regular HD.
 
-Increasing the "SyzygyProbeDepth" option lets the engine probe less
+Increasing the "Syzygy Probe Depth" option lets the engine probe less
 aggressively. Set this option to a higher value if you experience too much
 slowdown (in terms of nps) due to TB probing.
 
-Set the "Syzygy50MoveRule" option to false if you want tablebase positions
+Set the "Syzygy 50 Move Rule" option to false if you want tablebase positions
 that are drawn by the 50-move rule to count as win or loss. This may be useful
 for correspondence games (because of tablebase adjudication).
 
-The "SyzygyProbeLimit" option should normally be left at its default value.
+The "Syzygy Probe Limit" option should normally be left at its default value.
 
 **What to expect**  
 If the engine is searching a position that is not in the tablebases (e.g.
