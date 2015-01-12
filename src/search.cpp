@@ -1222,12 +1222,14 @@ moves_loop: // When in check and at SpNode search starts from here
           if (futilityValue <= alpha)
           {
               bestValue = std::max(bestValue, futilityValue);
+              alpha = std::max(alpha, bestValue);
               continue;
           }
 
           if (futilityBase <= alpha && pos.see(move) <= VALUE_ZERO)
           {
               bestValue = std::max(bestValue, futilityBase);
+              alpha = std::max(alpha, bestValue);
               continue;
           }
       }
