@@ -201,9 +201,9 @@ void Search::think() {
 
   TB::Hits = 0;
   TB::RootInTB = false;
-  TB::UseRule50 = Options["Syzygy50MoveRule"];
-  TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-  TB::Cardinality = Options["SyzygyProbeLimit"];
+  TB::UseRule50 = Options["Syzygy 50 Move Rule"];
+  TB::ProbeDepth = Options["Syzygy Probe Depth"] * ONE_PLY;
+  TB::Cardinality = Options["Syzygy Probe Limit"];
 
   // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
   if (TB::Cardinality > TB::MaxCardinality)
