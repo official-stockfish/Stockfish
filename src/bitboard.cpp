@@ -248,8 +248,7 @@ namespace {
     int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
-    Bitboard occupancy[4096], reference[4096], edges, b;
-    int i, size;
+    Bitboard occupancy[4096], reference[4096];
 
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
@@ -257,7 +256,7 @@ namespace {
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
         // Board edges are not considered in the relevant occupancies
-        edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
+        Bitboard edges = ((Rank1BB | Rank8BB) & ~rank_bb(s)) | ((FileABB | FileHBB) & ~file_bb(s));
 
         // Given a square 's', the mask is the bitboard of sliding attacks from
         // 's' computed on an empty board. The index must be big enough to contain
@@ -269,7 +268,8 @@ namespace {
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attack bitboard in reference[].
-        b = size = 0;
+        Bitboard b = 0;
+        int i, size = 0;
         do {
             occupancy[size] = b;
             reference[size] = sliding_attack(deltas, s, b);

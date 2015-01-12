@@ -152,11 +152,10 @@ void MovePicker::score<CAPTURES>() {
   // badCaptures[] array, but instead of doing it now we delay until the move
   // has been picked up in pick_move_from_list(). This way we save some SEE
   // calls in case we get a cutoff.
-  Move m;
 
   for (ExtMove* it = moves; it != end; ++it)
   {
-      m = it->move;
+      Move m = it->move;
       it->value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                  - Value(type_of(pos.moved_piece(m)));
 
@@ -171,11 +170,9 @@ void MovePicker::score<CAPTURES>() {
 template<>
 void MovePicker::score<QUIETS>() {
 
-  Move m;
-
   for (ExtMove* it = moves; it != end; ++it)
   {
-      m = it->move;
+      Move m = it->move;
       it->value = history[pos.moved_piece(m)][to_sq(m)];
   }
 }
@@ -185,13 +182,12 @@ void MovePicker::score<EVASIONS>() {
   // Try good captures ordered by MVV/LVA, then non-captures if destination square
   // is not under attack, ordered by history value, then bad-captures and quiet
   // moves with a negative SEE. This last group is ordered by the SEE value.
-  Move m;
-  Value see;
 
   for (ExtMove* it = moves; it != end; ++it)
   {
-      m = it->move;
-      if ((see = pos.see_sign(m)) < VALUE_ZERO)
+      Move m = it->move;
+      Value see = pos.see_sign(m);
+      if (see < VALUE_ZERO)
           it->value = see - HistoryStats::Max; // At the bottom
 
       else if (pos.capture(m))

@@ -472,7 +472,7 @@ Phase Position::game_phase() const {
 
 Bitboard Position::check_blockers(Color c, Color kingColor) const {
 
-  Bitboard b, pinners, result = 0;
+  Bitboard pinners, result = 0;
   Square ksq = king_square(kingColor);
 
   // Pinners are sliders that give check when a pinned piece is removed
@@ -481,7 +481,7 @@ Bitboard Position::check_blockers(Color c, Color kingColor) const {
 
   while (pinners)
   {
-      b = between_bb(ksq, pop_lsb(&pinners)) & pieces();
+      Bitboard b = between_bb(ksq, pop_lsb(&pinners)) & pieces();
 
       if (!more_than_one(b))
           result |= b & pieces(c);
