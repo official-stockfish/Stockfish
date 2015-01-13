@@ -51,7 +51,7 @@ namespace {
 
   // Unary predicate used by std::partition to split positive values from remaining
   // ones so as to sort the two sets separately, with the second sort delayed.
-  inline bool has_positive_value(const ExtMove& move) { return move.value > 0; }
+  inline bool has_positive_value(const ExtMove& move) { return move.value > VALUE_ZERO; }
 
   // Picks the best move in the range (begin, end) and moves it to the front.
   // It's faster than sorting all the moves in advance when there are few
