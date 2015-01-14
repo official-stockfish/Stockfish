@@ -277,7 +277,7 @@ inline Value mg_value(Score s) {
 }
 
 inline Value eg_value(Score s) {
-  return Value(int16_t(uint16_t(uint32_t(s) & 0xFFFFU)));
+  return Value(int16_t(uint16_t(uint32_t(s))));
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                             \
