@@ -273,11 +273,11 @@ inline Score make_score(int mg, int eg) {
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
 inline Value mg_value(Score s) {
-  return Value(((s + 0x8000) & ~0xFFFF) / 0x10000);
+  return Value(int16_t(uint16_t(unsigned(s + 0x8000) >> 16)));
 }
 
 inline Value eg_value(Score s) {
-  return Value(int16_t(uint16_t(uint32_t(s))));
+  return Value(int16_t(uint16_t(unsigned(s))));
 }
 
 #define ENABLE_BASE_OPERATORS_ON(T)                             \
