@@ -1,0 +1,76 @@
+0. Instructions
+===============
+
+After test has been completed, replace "TODO" in "Test Data" section with "PASS (Tester name)".
+Tester needs to be someone known by community.
+
+1. SF6-rc1:
+===========
+
+Bench Signature: TODO
+Fishtest Regression Test 60+0.05 (1 Threads): TODO
+Fishtest Regression Test 60+0.05 (3 Threads): TODO
+
+2.Test Definitions:
+===================
+
+2.1. Benchmark test:
+====================
+
+"./stockfish bench" returns expected result
+
+2.2. Syzygy Analysis test:
+==========================
+
+Manual test (using a GUI of your choice) to verify that syzygybases are probed and return expected result.
+FIXME: test positions
+
+2.3. Games test:
+================
+
+At minimum 5000 games at minimum 15+0.05 time control. SF6-rc1 vs. SF5
+
+
+3. Test Data:
+=============
+
+3.1. Compilers (Benchmark test):
+===============================
+
+gcc 4.7, 64-bit: TODO
+gcc 4.8, 64-bit: TODO
+gcc 4.9, 64-bit: TODO
+gcc ???, 32-bit: TODO
+icc 14.0, 64-bit, Linux: TODO
+MSVC 2013 64-bit: TODO
+MSVC 2013 32-bit: TODO
+mingw ??? 64-bit: TODO
+mingw ??? 32-bit: TODO
+
+3.2 OSes/Architectures (Benchmark test, assume gcc):
+====================================================
+
+Mac OSX: TODO
+Android: TODO
+PPC (or other big-endian): TODO
+
+3.3. OSes/Architectures (Syzygy analysis test, assume gcc/mingw):
+=================================================================
+
+Windows 64-bit: TODO
+Windows 32-bit: TODO
+Linux 64-bit: TODO
+Linux 32-bit: TODO
+Mac OSX: TODO
+Android: TODO
+PPC: TODO
+
+3.4 Other (Games Testing):
+==========================
+
+* Ponder On: TODO
+* Chess960: TODO
+* Syzygy 5-men: TODO
+* Syzygy 6-men: TODO
+
+
