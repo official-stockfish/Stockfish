@@ -273,12 +273,12 @@ inline Score make_score(int mg, int eg) {
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
 inline Value mg_value(Score s) {
-  const union us16 { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s + 0x8000) >> 16) };
+  const union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s + 0x8000) >> 16) };
   return Value(mg.s);
 }
 
 inline Value eg_value(Score s) {
-  const union us16 { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s)) };
+  const union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s)) };
   return Value(eg.s);
 }
 
