@@ -66,7 +66,7 @@ private:
 
 
 /// A TranspositionTable consists of a power of 2 number of clusters and each
-/// cluster consists of TTClusterSize number of TTEntry. Each non-empty entry
+/// cluster consists of ClusterSize number of TTEntry. Each non-empty entry
 /// contains information of exactly one position. The size of a cluster should
 /// not be bigger than a cache line size. In case it is less, it should be padded
 /// to guarantee always aligned accesses.
@@ -74,10 +74,10 @@ private:
 class TranspositionTable {
 
   static const int CacheLineSize = 64;
-  static const int TTClusterSize = 3;
+  static const int ClusterSize = 3;
 
   struct Cluster {
-    TTEntry entry[TTClusterSize];
+    TTEntry entry[ClusterSize];
     char padding[2]; // Align to the cache line size
   };
 

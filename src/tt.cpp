@@ -28,7 +28,7 @@ TranspositionTable TT; // Our global transposition table
 
 /// TranspositionTable::resize() sets the size of the transposition table,
 /// measured in megabytes. Transposition table consists of a power of 2 number
-/// of clusters and each cluster consists of TTClusterSize number of TTEntry.
+/// of clusters and each cluster consists of ClusterSize number of TTEntry.
 
 void TranspositionTable::resize(size_t mbSize) {
 
@@ -77,7 +77,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   TTEntry* const tte = first_entry(key);
   const uint16_t key16 = key >> 48;  // Use the high 16 bits as key inside the cluster
 
-  for (int i = 0; i < TTClusterSize; ++i)
+  for (int i = 0; i < ClusterSize; ++i)
       if (!tte[i].key16 || tte[i].key16 == key16)
       {
           if (tte[i].key16)
@@ -88,7 +88,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   // Find an entry to be replaced according to the replacement strategy
   TTEntry* replace = tte;
-  for (int i = 1; i < TTClusterSize; ++i)
+  for (int i = 1; i < ClusterSize; ++i)
       if (  ((  tte[i].genBound8 & 0xFC) == generation8 || tte[i].bound() == BOUND_EXACT)
           - ((replace->genBound8 & 0xFC) == generation8)
           - (tte[i].depth8 < replace->depth8) < 0)
