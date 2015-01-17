@@ -1004,12 +1004,12 @@ moves_loop: // When in check and at SpNode search starts from here
               if ((value > alpha && value < beta) || moves.size() > rm.pv.size()) {
                   rm.pv = moves;
               } else {
-                for (size_t i = 0; i < std::min(rm.pv.size(), moves.size()); ++i) {
-                    if (rm.pv[i] != moves[i]) {
-                        rm.pv = moves;
-                        break;
-                    }
-                }
+                  for (size_t i = 0; i < std::min(rm.pv.size(), moves.size()); ++i) {
+                      if (rm.pv[i] != moves[i]) {
+                          rm.pv = moves;
+                          break;
+                      }
+                  }
               }
 
               // We record how often the best move has been changed in each
