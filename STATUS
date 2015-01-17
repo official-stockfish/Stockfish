@@ -44,8 +44,9 @@ gcc ???, 32-bit: TODO
 icc 14.0, 64-bit, Linux: TODO
 MSVC 2013 64-bit: TODO
 MSVC 2013 32-bit: TODO
-mingw ??? 64-bit: TODO
-mingw ??? 32-bit: TODO
+mingw 4.8.3 64-bit: (make build debug=yes ARCH=x86-64-modern COMP=mingw)  ->  OK
+mingw 4.8.3 64-bit: (make build debug=yes ARCH=x86-64 COMP=mingw)         ->  OK
+mingw 4.8.3 32-bit: (make build debug=yes ARCH=x86-32 COMP=mingw)         ->  OK
 
 3.2 OSes/Architectures (Benchmark test, assume gcc):
 ====================================================
