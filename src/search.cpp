@@ -623,7 +623,7 @@ namespace {
     {
         if (   depth <= ONE_PLY
             && eval + razor_margin(3 * ONE_PLY) <= alpha)
-            return qsearch<NonPV, false>(pos, ss, alpha, beta, DEPTH_ZERO);
+            return qsearch<NonPV, false>(pos, ss, alpha, alpha+1, DEPTH_ZERO);
 
         Value ralpha = alpha - razor_margin(depth);
         Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha+1, DEPTH_ZERO);
@@ -1525,7 +1525,7 @@ void Thread::idle_loop() {
           activePosition = &pos;
 
           if (sp->nodeType == NonPV)
-              search<NonPV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
+              search<NonPV, true>(pos, ss, sp->alpha, sp->alpha+1, sp->depth, sp->cutNode);
 
           else if (sp->nodeType == PV)
               search<PV, true>(pos, ss, sp->alpha, sp->beta, sp->depth, sp->cutNode);
