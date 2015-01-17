@@ -32,9 +32,9 @@ TranspositionTable TT; // Our global transposition table
 
 void TranspositionTable::resize(size_t mbSize) {
 
-  assert(sizeof(TTCluster) == CacheLineSize / 2);
+  assert(sizeof(Cluster) == CacheLineSize / 2);
 
-  size_t newClusterCount = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(TTCluster));
+  size_t newClusterCount = size_t(1) << msb((mbSize * 1024 * 1024) / sizeof(Cluster));
 
   if (newClusterCount == clusterCount)
       return;
@@ -42,7 +42,7 @@ void TranspositionTable::resize(size_t mbSize) {
   clusterCount = newClusterCount;
 
   free(mem);
-  mem = calloc(clusterCount * sizeof(TTCluster) + CacheLineSize - 1, 1);
+  mem = calloc(clusterCount * sizeof(Cluster) + CacheLineSize - 1, 1);
 
   if (!mem)
   {
@@ -51,7 +51,7 @@ void TranspositionTable::resize(size_t mbSize) {
       exit(EXIT_FAILURE);
   }
 
-  table = (TTCluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
+  table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
 }
 
 
@@ -61,7 +61,7 @@ void TranspositionTable::resize(size_t mbSize) {
 
 void TranspositionTable::clear() {
 
-  std::memset(table, 0, clusterCount * sizeof(TTCluster));
+  std::memset(table, 0, clusterCount * sizeof(Cluster));
 }
 
 

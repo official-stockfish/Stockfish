@@ -76,7 +76,7 @@ class TranspositionTable {
   static const int CacheLineSize = 64;
   static const int TTClusterSize = 3;
 
-  struct TTCluster {
+  struct Cluster {
     TTEntry entry[TTClusterSize];
     char padding[2]; // Align to the cache line size
   };
@@ -96,7 +96,7 @@ public:
 
 private:
   size_t clusterCount;
-  TTCluster* table;
+  Cluster* table;
   void* mem;
   uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
 };
