@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -60,8 +60,8 @@ namespace {
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
 #ifndef NDEBUG
-  bool verify_material(const Position& pos, Color c, Value npm, int num_pawns) {
-    return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == num_pawns;
+  bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
+    return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
   }
 #endif
 
@@ -167,7 +167,8 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   if (   pos.count<QUEEN>(strongSide)
       || pos.count<ROOK>(strongSide)
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
-      || pos.bishop_pair(strongSide))
+      ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(pos.list<BISHOP>(strongSide)[0],
+                                                              pos.list<BISHOP>(strongSide)[1])))
       result += VALUE_KNOWN_WIN;
 
   return strongSide == pos.side_to_move() ? result : -result;
@@ -217,7 +218,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
 
   Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
-  if (!Bitbases::probe_kpk(wksq, psq, bksq, us))
+  if (!Bitbases::probe(wksq, psq, bksq, us))
       return VALUE_DRAW;
 
   Value result = VALUE_KNOWN_WIN + PawnValueEg + Value(rank_of(psq));
@@ -852,5 +853,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
   // it's probably at least a draw even with the pawn.
-  return Bitbases::probe_kpk(wksq, psq, bksq, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
+  return Bitbases::probe(wksq, psq, bksq, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }

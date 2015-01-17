@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,21 +18,23 @@
 */
 
 #include <algorithm>
-#include <cstring> // For memset
+#include <cstring>   // For std::memset
 
 #include "bitboard.h"
 #include "bitcount.h"
-#include "rkiss.h"
+#include "misc.h"
 
-Bitboard RMasks[SQUARE_NB];
-Bitboard RMagics[SQUARE_NB];
-Bitboard* RAttacks[SQUARE_NB];
-unsigned RShifts[SQUARE_NB];
+int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-Bitboard BMasks[SQUARE_NB];
-Bitboard BMagics[SQUARE_NB];
-Bitboard* BAttacks[SQUARE_NB];
-unsigned BShifts[SQUARE_NB];
+Bitboard  RookMasks  [SQUARE_NB];
+Bitboard  RookMagics [SQUARE_NB];
+Bitboard* RookAttacks[SQUARE_NB];
+unsigned  RookShifts [SQUARE_NB];
+
+Bitboard  BishopMasks  [SQUARE_NB];
+Bitboard  BishopMagics [SQUARE_NB];
+Bitboard* BishopAttacks[SQUARE_NB];
+unsigned  BishopShifts [SQUARE_NB];
 
 Bitboard SquareBB[SQUARE_NB];
 Bitboard FileBB[FILE_NB];
@@ -42,51 +44,44 @@ Bitboard InFrontBB[COLOR_NB][RANK_NB];
 Bitboard StepAttacksBB[PIECE_NB][SQUARE_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-Bitboard DistanceRingsBB[SQUARE_NB][8];
+Bitboard DistanceRingBB[SQUARE_NB][8];
 Bitboard ForwardBB[COLOR_NB][SQUARE_NB];
 Bitboard PassedPawnMask[COLOR_NB][SQUARE_NB];
 Bitboard PawnAttackSpan[COLOR_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
-int SquareDistance[SQUARE_NB][SQUARE_NB];
-
 namespace {
 
   // De Bruijn sequences. See chessprogramming.wikispaces.com/BitScan
-  const uint64_t DeBruijn_64 = 0x3F79D71B4CB0A89ULL;
-  const uint32_t DeBruijn_32 = 0x783A9B23;
+  const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
+  const uint32_t DeBruijn32 = 0x783A9B23;
 
-  int MS1BTable[256];
-  Square BSFTable[SQUARE_NB];
-  Bitboard RTable[0x19000]; // Storage space for rook attacks
-  Bitboard BTable[0x1480];  // Storage space for bishop attacks
+  int MS1BTable[256];           // To implement software msb()
+  Square BSFTable[SQUARE_NB];   // To implement software bitscan
+  Bitboard RookTable[0x19000];  // To store rook attacks
+  Bitboard BishopTable[0x1480]; // To store bishop attacks
 
   typedef unsigned (Fn)(Square, Bitboard);
 
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index);
 
-  FORCE_INLINE unsigned bsf_index(Bitboard b) {
+  // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
+  // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
 
-    // Matt Taylor's folding for 32 bit systems, extended to 64 bits by Kim Walisch
-    b ^= (b - 1);
-    return Is64Bit ? (b * DeBruijn_64) >> 58
-                   : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn_32) >> 26;
+  FORCE_INLINE unsigned bsf_index(Bitboard b) {
+    b ^= b - 1;
+    return Is64Bit ? (b * DeBruijn64) >> 58
+                   : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn32) >> 26;
   }
 }
 
-/// lsb()/msb() finds the least/most significant bit in a non-zero bitboard.
-/// pop_lsb() finds and clears the least significant bit in a non-zero bitboard.
-
 #ifndef USE_BSFQ
 
-Square lsb(Bitboard b) { return BSFTable[bsf_index(b)]; }
+/// Software fall-back of lsb() and msb() for CPU lacking hardware support
 
-Square pop_lsb(Bitboard* b) {
-
-  Bitboard bb = *b;
-  *b = bb & (bb - 1);
-  return BSFTable[bsf_index(bb)];
+Square lsb(Bitboard b) {
+  return BSFTable[bsf_index(b)];
 }
 
 Square msb(Bitboard b) {
@@ -120,8 +115,8 @@ Square msb(Bitboard b) {
 #endif // ifndef USE_BSFQ
 
 
-/// Bitboards::pretty() returns an ASCII representation of a bitboard to be
-/// printed to standard output. This is sometimes useful for debugging.
+/// Bitboards::pretty() returns an ASCII representation of a bitboard suitable
+/// to be printed to standard output. Useful for debugging.
 
 const std::string Bitboards::pretty(Bitboard b) {
 
@@ -178,7 +173,7 @@ void Bitboards::init() {
           if (s1 != s2)
           {
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-              DistanceRingsBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+              DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 
   int steps[][9] = { {}, { 7, 9 }, { 17, 15, 10, 6, -6, -10, -15, -17 },
@@ -195,11 +190,11 @@ void Bitboards::init() {
                       StepAttacksBB[make_piece(c, pt)][s] |= to;
               }
 
-  Square RDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
-  Square BDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
+  Square RookDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
+  Square BishopDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
-  init_magics(RTable, RAttacks, RMagics, RMasks, RShifts, RDeltas, magic_index<ROOK>);
-  init_magics(BTable, BAttacks, BMagics, BMasks, BShifts, BDeltas, magic_index<BISHOP>);
+  init_magics(RookTable, RookAttacks, RookMagics, RookMasks, RookShifts, RookDeltas, magic_index<ROOK>);
+  init_magics(BishopTable, BishopAttacks, BishopMagics, BishopMasks, BishopShifts, BishopDeltas, magic_index<BISHOP>);
 
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
@@ -250,11 +245,11 @@ namespace {
   void init_magics(Bitboard table[], Bitboard* attacks[], Bitboard magics[],
                    Bitboard masks[], unsigned shifts[], Square deltas[], Fn index) {
 
-    int MagicBoosters[][RANK_NB] = { {  969, 1976, 2850,  542, 2069, 2852, 1708,  164 },
-                                     { 3101,  552, 3555,  926,  834,   26, 2131, 1117 } };
-    RKISS rk;
+    int seeds[][RANK_NB] = { { 8977, 44560, 54343, 38998,  5731, 95205, 104912, 17020 },
+                             {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
+
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int i, size, booster;
+    int i, size;
 
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
@@ -294,13 +289,13 @@ namespace {
         if (HasPext)
             continue;
 
-        booster = MagicBoosters[Is64Bit][rank_of(s)];
+        PRNG rng(seeds[Is64Bit][rank_of(s)]);
 
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
         do {
             do
-                magics[s] = rk.magic_rand<Bitboard>(booster);
+                magics[s] = rng.sparse_rand<Bitboard>();
             while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
             std::memset(attacks[s], 0, size * sizeof(Bitboard));

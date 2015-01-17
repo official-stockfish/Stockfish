@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ enum EndgameType {
 
 
   // Scaling functions
-  SCALE_FUNS,
+  SCALING_FUNCTIONS,
 
   KBPsK,   // KB and pawns vs K
   KQKRPs,  // KQ vs KR and pawns
@@ -76,16 +76,16 @@ template<typename T>
 struct EndgameBase {
 
   virtual ~EndgameBase() {}
-  virtual Color color() const = 0;
+  virtual Color strong_side() const = 0;
   virtual T operator()(const Position&) const = 0;
 };
 
 
-template<EndgameType E, typename T = typename eg_fun<(E > SCALE_FUNS)>::type>
+template<EndgameType E, typename T = typename eg_fun<(E > SCALING_FUNCTIONS)>::type>
 struct Endgame : public EndgameBase<T> {
 
   explicit Endgame(Color c) : strongSide(c), weakSide(~c) {}
-  Color color() const { return strongSide; }
+  Color strong_side() const { return strongSide; }
   T operator()(const Position&) const;
 
 private:
@@ -94,8 +94,8 @@ private:
 
 
 /// The Endgames class stores the pointers to endgame evaluation and scaling
-/// base objects in two std::map typedefs. We then use polymorphism to invoke
-/// the actual endgame function by calling its virtual operator().
+/// base objects in two std::map. We use polymorphism to invoke the actual
+/// endgame function by calling its virtual operator().
 
 class Endgames {
 
@@ -114,8 +114,9 @@ public:
   Endgames();
  ~Endgames();
 
-  template<typename T> T probe(Key key, T& eg)
-  { return eg = map(eg).count(key) ? map(eg)[key] : NULL; }
+  template<typename T> T probe(Key key, T& eg) {
+    return eg = map(eg).count(key) ? map(eg)[key] : NULL;
+  }
 };
 
 #endif // #ifndef ENDGAME_H_INCLUDED

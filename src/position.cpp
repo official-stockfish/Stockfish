@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,15 +19,15 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>
+#include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
 
 #include "bitcount.h"
+#include "misc.h"
 #include "movegen.h"
 #include "position.h"
 #include "psqtab.h"
-#include "rkiss.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -123,7 +123,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
      << std::setfill('0') << std::setw(16) << pos.st->key << std::dec << "\nCheckers: ";
 
   for (Bitboard b = pos.checkers(); b; )
-      os << UCI::format_square(pop_lsb(&b)) << " ";
+      os << UCI::square(pop_lsb(&b)) << " ";
 
   return os;
 }
@@ -137,28 +137,28 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
 void Position::init() {
 
-  RKISS rk;
+  PRNG rng(1070372);
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = PAWN; pt <= KING; ++pt)
           for (Square s = SQ_A1; s <= SQ_H8; ++s)
-              Zobrist::psq[c][pt][s] = rk.rand<Key>();
+              Zobrist::psq[c][pt][s] = rng.rand<Key>();
 
   for (File f = FILE_A; f <= FILE_H; ++f)
-      Zobrist::enpassant[f] = rk.rand<Key>();
+      Zobrist::enpassant[f] = rng.rand<Key>();
 
-  for (int cf = NO_CASTLING; cf <= ANY_CASTLING; ++cf)
+  for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
   {
-      Bitboard b = cf;
+      Bitboard b = cr;
       while (b)
       {
           Key k = Zobrist::castling[1ULL << pop_lsb(&b)];
-          Zobrist::castling[cf] ^= k ? k : rk.rand<Key>();
+          Zobrist::castling[cr] ^= k ? k : rng.rand<Key>();
       }
   }
 
-  Zobrist::side = rk.rand<Key>();
-  Zobrist::exclusion  = rk.rand<Key>();
+  Zobrist::side = rng.rand<Key>();
+  Zobrist::exclusion  = rng.rand<Key>();
 
   for (PieceType pt = PAWN; pt <= KING; ++pt)
   {
@@ -176,9 +176,8 @@ void Position::init() {
 }
 
 
-/// Position::operator=() creates a copy of 'pos'. We want the new born Position
-/// object to not depend on any external data so we detach state pointer from
-/// the source one.
+/// Position::operator=() creates a copy of 'pos' but detaching the state pointer
+/// from the source to be self-consistent and not depending on any external data.
 
 Position& Position::operator=(const Position& pos) {
 
@@ -363,7 +362,7 @@ void Position::set_castling_right(Color c, Square rfrom) {
 void Position::set_state(StateInfo* si) const {
 
   si->key = si->pawnKey = si->materialKey = 0;
-  si->npMaterial[WHITE] = si->npMaterial[BLACK] = VALUE_ZERO;
+  si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
 
   si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
@@ -397,7 +396,7 @@ void Position::set_state(StateInfo* si) const {
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
-          si->npMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
+          si->nonPawnMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
 }
 
 
@@ -444,7 +443,7 @@ const string Position::fen() const {
   if (!can_castle(WHITE) && !can_castle(BLACK))
       ss << '-';
 
-  ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::format_square(ep_square()) + " ")
+  ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
      << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
   return ss.str();
@@ -456,7 +455,7 @@ const string Position::fen() const {
 
 Phase Position::game_phase() const {
 
-  Value npm = st->npMaterial[WHITE] + st->npMaterial[BLACK];
+  Value npm = st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
 
   npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
 
@@ -492,16 +491,16 @@ Bitboard Position::check_blockers(Color c, Color kingColor) const {
 
 
 /// Position::attackers_to() computes a bitboard of all pieces which attack a
-/// given square. Slider attacks use the occ bitboard to indicate occupancy.
+/// given square. Slider attacks use the occupied bitboard to indicate occupancy.
 
-Bitboard Position::attackers_to(Square s, Bitboard occ) const {
+Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
-  return  (attacks_from<PAWN>(s, BLACK) & pieces(WHITE, PAWN))
-        | (attacks_from<PAWN>(s, WHITE) & pieces(BLACK, PAWN))
-        | (attacks_from<KNIGHT>(s)      & pieces(KNIGHT))
-        | (attacks_bb<ROOK>(s, occ)     & pieces(ROOK, QUEEN))
-        | (attacks_bb<BISHOP>(s, occ)   & pieces(BISHOP, QUEEN))
-        | (attacks_from<KING>(s)        & pieces(KING));
+  return  (attacks_from<PAWN>(s, BLACK)    & pieces(WHITE, PAWN))
+        | (attacks_from<PAWN>(s, WHITE)    & pieces(BLACK, PAWN))
+        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT))
+        | (attacks_bb<ROOK>(s, occupied)   & pieces(ROOK, QUEEN))
+        | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
+        | (attacks_from<KING>(s)           & pieces(KING));
 }
 
 
@@ -526,15 +525,15 @@ bool Position::legal(Move m, Bitboard pinned) const {
       Square ksq = king_square(us);
       Square to = to_sq(m);
       Square capsq = to - pawn_push(us);
-      Bitboard occ = (pieces() ^ from ^ capsq) | to;
+      Bitboard occupied = (pieces() ^ from ^ capsq) | to;
 
       assert(to == ep_square());
       assert(moved_piece(m) == make_piece(us, PAWN));
       assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-      return   !(attacks_bb<  ROOK>(ksq, occ) & pieces(~us, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, occ) & pieces(~us, QUEEN, BISHOP));
+      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
+            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -642,7 +641,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       return true;
 
   // Is there a discovered check?
-  if (   unlikely(ci.dcCandidates)
+  if (    ci.dcCandidates
       && (ci.dcCandidates & from)
       && !aligned(from, to, ci.ksq))
       return true;
@@ -767,7 +766,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->pawnKey ^= Zobrist::psq[them][PAWN][capsq];
       }
       else
-          st->npMaterial[them] -= PieceValue[MG][captured];
+          st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
       // Update board and piece lists
       remove_piece(capsq, them, captured);
@@ -837,7 +836,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           st->psq += psq[us][promotion][to] - psq[us][PAWN][to];
 
           // Update material
-          st->npMaterial[us] += PieceValue[MG][promotion];
+          st->nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
 
       // Update pawn hash key and prefetch access to pawnsTable
@@ -871,7 +870,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
               st->checkersBB |= to;
 
           // Discovered checks
-          if (unlikely(ci.dcCandidates) && (ci.dcCandidates & from))
+          if (ci.dcCandidates && (ci.dcCandidates & from))
           {
               if (pt != ROOK)
                   st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(us, QUEEN, ROOK);
@@ -1234,8 +1233,8 @@ bool Position::pos_is_ok(int* step) const {
       if (   st->key != si.key
           || st->pawnKey != si.pawnKey
           || st->materialKey != si.materialKey
-          || st->npMaterial[WHITE] != si.npMaterial[WHITE]
-          || st->npMaterial[BLACK] != si.npMaterial[BLACK]
+          || st->nonPawnMaterial[WHITE] != si.nonPawnMaterial[WHITE]
+          || st->nonPawnMaterial[BLACK] != si.nonPawnMaterial[BLACK]
           || st->psq != si.psq
           || st->checkersBB != si.checkersBB)
           return false;

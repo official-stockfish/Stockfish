@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "bitcount.h"
 #include "pawns.h"
 #include "position.h"
+#include "thread.h"
 
 namespace {
 
@@ -60,20 +61,35 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
-  // Weakness of our pawn shelter in front of the king indexed by [rank]
-  const Value ShelterWeakness[RANK_NB] =
-  { V(100), V(0), V(27), V(73), V(92), V(101), V(101) };
+  // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
+  const Value ShelterWeakness[][RANK_NB] = {
+  { V(100), V(13), V(24), V(64), V(89), V( 93), V(104) },
+  { V(110), V( 1), V(29), V(75), V(96), V(102), V(107) },
+  { V(102), V( 0), V(39), V(74), V(88), V(101), V( 98) },
+  { V( 88), V( 4), V(33), V(67), V(92), V( 94), V(107) } };
 
-  // Danger of enemy pawns moving toward our king indexed by
-  // [no friendly pawn | pawn unblocked | pawn blocked][rank of enemy pawn]
-  const Value StormDanger[][RANK_NB] = {
-  { V( 0),  V(64), V(128), V(51), V(26) },
-  { V(26),  V(32), V( 96), V(38), V(20) },
-  { V( 0),  V( 0), V(160), V(25), V(13) } };
+  // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
+  const Value StormDanger[][4][RANK_NB] = {
+  { { V( 0),  V(  63), V( 128), V(43), V(27) },
+    { V( 0),  V(  62), V( 131), V(44), V(26) },
+    { V( 0),  V(  59), V( 121), V(50), V(28) },
+    { V( 0),  V(  62), V( 127), V(54), V(28) } },
+  { { V(24),  V(  40), V(  93), V(42), V(22) },
+    { V(24),  V(  28), V( 101), V(38), V(20) },
+    { V(24),  V(  32), V(  95), V(36), V(23) },
+    { V(27),  V(  24), V(  99), V(36), V(24) } },
+  { { V( 0),  V(   0), V(  81), V(16), V( 6) },
+    { V( 0),  V(   0), V( 165), V(29), V( 9) },
+    { V( 0),  V(   0), V( 163), V(23), V(12) },
+    { V( 0),  V(   0), V( 161), V(28), V(13) } },
+  { { V( 0),  V(-296), V(-299), V(55), V(25) },
+    { V( 0),  V(  67), V( 131), V(46), V(21) },
+    { V( 0),  V(  65), V( 135), V(50), V(31) },
+    { V( 0),  V(  62), V( 128), V(51), V(24) } } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  const Value MaxSafetyBonus = V(263);
+  const Value MaxSafetyBonus = V(257);
 
   #undef S
   #undef V
@@ -89,7 +105,7 @@ namespace {
     Bitboard b, p, doubled, connected;
     Square s;
     bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
-    Score value = SCORE_ZERO;
+    Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
@@ -159,37 +175,37 @@ namespace {
 
         // Score this pawn
         if (isolated)
-            value -= Isolated[opposed][f];
+            score -= Isolated[opposed][f];
 
         if (unsupported && !isolated)
-            value -= UnsupportedPawnPenalty;
+            score -= UnsupportedPawnPenalty;
 
         if (doubled)
-            value -= Doubled[f] / distance<Rank>(s, Square(lsb(doubled)));
+            score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
 
         if (backward)
-            value -= Backward[opposed][f];
+            score -= Backward[opposed][f];
 
         if (connected)
-            value += Connected[opposed][phalanx][relative_rank(Us, s)];
+            score += Connected[opposed][phalanx][relative_rank(Us, s)];
 
         if (lever)
-            value += Lever[relative_rank(Us, s)];
+            score += Lever[relative_rank(Us, s)];
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-    return value;
+    return score;
   }
 
 } // namespace
 
 namespace Pawns {
 
-/// init() initializes some tables used by evaluation. Instead of hard-coded
-/// tables, when makes sense, we prefer to calculate them with a formula to
-/// reduce independent parameters and to allow easier tuning and better insight.
+/// Pawns::init() initializes some tables needed by evaluation. Instead of using
+/// hard-coded tables, when makes sense, we prefer to calculate them with a formula
+/// to reduce independent parameters and to allow easier tuning and better insight.
 
 void init()
 {
@@ -205,20 +221,21 @@ void init()
 }
 
 
-/// probe() takes a position as input, computes a Entry object, and returns a
-/// pointer to it. The result is also stored in a hash table, so we don't have
-/// to recompute everything when the same pawn structure occurs again.
+/// Pawns::probe() looks up the current position's pawns configuration in
+/// the pawns hash table. It returns a pointer to the Entry if the position
+/// is found. Otherwise a new Entry is computed and stored there, so we don't
+/// have to recompute all when the same pawns configuration occurs again.
 
-Entry* probe(const Position& pos, Table& entries) {
+Entry* probe(const Position& pos) {
 
   Key key = pos.pawn_key();
-  Entry* e = entries[key];
+  Entry* e = pos.this_thread()->pawnsTable[key];
 
   if (e->key == key)
       return e;
 
   e->key = key;
-  e->value = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
+  e->score = evaluate<WHITE>(pos, e) - evaluate<BLACK>(pos, e);
   return e;
 }
 
@@ -230,15 +247,16 @@ template<Color Us>
 Value Entry::shelter_storm(const Position& pos, Square ksq) {
 
   const Color Them = (Us == WHITE ? BLACK : WHITE);
-  const Bitboard Edges = (FileABB | FileHBB) & (Rank2BB | Rank3BB);
+
+  enum { NoFriendlyPawn, Unblocked, BlockedByPawn, BlockedByKing };
 
   Bitboard b = pos.pieces(PAWN) & (in_front_bb(Us, rank_of(ksq)) | rank_bb(ksq));
   Bitboard ourPawns = b & pos.pieces(Us);
   Bitboard theirPawns = b & pos.pieces(Them);
   Value safety = MaxSafetyBonus;
-  File kf = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
+  File center = std::max(FILE_B, std::min(FILE_G, file_of(ksq)));
 
-  for (File f = kf - File(1); f <= kf + File(1); ++f)
+  for (File f = center - File(1); f <= center + File(1); ++f)
   {
       b = ourPawns & file_bb(f);
       Rank rkUs = b ? relative_rank(Us, backmost_sq(Us, b)) : RANK_1;
@@ -246,14 +264,12 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b  = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-      if (   (Edges & make_square(f, rkThem))
-          && file_of(ksq) == f
-          && relative_rank(Us, ksq) == rkThem - 1)
-          safety += 200;
-      else
-          safety -=  ShelterWeakness[rkUs]
-                   + StormDanger[rkUs   == RANK_1   ? 0 :
-                                 rkThem != rkUs + 1 ? 1 : 2][rkThem];
+      safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs]
+               + StormDanger
+                 [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
+                  rkUs   == RANK_1                                          ? NoFriendlyPawn :
+                  rkThem == rkUs + 1                                        ? BlockedByPawn  : Unblocked]
+                 [std::min(f, FILE_H - f)][rkThem];
   }
 
   return safety;
@@ -268,14 +284,14 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.can_castle(Us);
-  minKPdistance[Us] = 0;
+  minKingPawnDistance[Us] = 0;
 
   Bitboard pawns = pos.pieces(Us, PAWN);
   if (pawns)
-      while (!(DistanceRingsBB[ksq][minKPdistance[Us]++] & pawns)) {}
+      while (!(DistanceRingBB[ksq][minKingPawnDistance[Us]++] & pawns)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
-      return make_score(0, -16 * minKPdistance[Us]);
+      return make_score(0, -16 * minKingPawnDistance[Us]);
 
   Value bonus = shelter_storm<Us>(pos, ksq);
 
@@ -286,7 +302,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
-  return make_score(bonus, -16 * minKPdistance[Us]);
+  return make_score(bonus, -16 * minKingPawnDistance[Us]);
 }
 
 // Explicit template instantiation

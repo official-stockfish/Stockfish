@@ -1,6 +1,6 @@
 # Stockfish, a UCI chess playing engine derived from Glaurung 2.1
 # Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-# Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+# Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 #
 # Stockfish is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,19 +28,15 @@ EXE = stockfish
 
 ### Installation dir definitions
 PREFIX = /usr/local
-# Haiku has a non-standard filesystem layout
-ifeq ($(UNAME),Haiku)
-	PREFIX=/boot/system/non-packaged
-endif
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = ./$(EXE) bench 16 1 1 default time
+PGOBENCH = ./$(EXE) bench 16 1 1000 default time
 
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -52,7 +48,6 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 # debug = yes/no      --- -DNDEBUG         --- Enable/Disable debug mode
 # optimize = yes/no   --- (-O3/-fast etc.) --- Enable/Disable optimizations
 # arch = (name)       --- (-arch)          --- Target architecture
-# os = (name)         ---                  --- Target operating system
 # bits = 64/32        --- -DIS_64BIT       --- 64-/32-bit operating system
 # prefetch = yes/no   --- -DUSE_PREFETCH   --- Use prefetch x86 asm-instruction
 # bsfq = yes/no       --- -DUSE_BSFQ       --- Use bsfq x86_64 asm-instruction (only
@@ -68,7 +63,6 @@ OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 ### 2.1. General and architecture defaults
 optimize = yes
 debug = no
-os = any
 bits = 32
 prefetch = no
 bsfq = no
@@ -316,6 +310,14 @@ ifeq ($(comp),gcc)
 	endif
 endif
 
+### 3.12 Android 5 can only run position independent executables. Note that this
+### breaks Android 4.0 and earlier.
+ifeq ($(arch),armv7)
+	CXXFLAGS += -fPIE
+	LDFLAGS += -fPIE -pie
+endif
+
+
 ### ==========================================================================
 ### Section 4. Public targets
 ### ==========================================================================
@@ -354,10 +356,6 @@ help:
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icc                     > Intel compiler"
 	@echo ""
-	@echo "Non-standard targets:"
-	@echo ""
-	@echo "make hpux               >  Compile for HP-UX. Compiler = aCC"
-	@echo ""
 	@echo "Examples. If you don't know what to do, you likely want to run: "
 	@echo ""
 	@echo "make build ARCH=x86-64    (This is for 64-bit systems)"
@@ -376,14 +374,14 @@ profile-build:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_prepare)
 	@echo ""
 	@echo "Step 1/4. Building executable for benchmark ..."
-	@touch *.cpp *.h
+	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
 	@$(PGOBENCH) > /dev/null
 	@echo ""
 	@echo "Step 3/4. Building final executable ..."
-	@touch *.cpp
+	@touch *.cpp *.h syzygy/*.cpp syzygy/*.h
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_use)
 	@echo ""
 	@echo "Step 4/4. Deleting profile data ..."
@@ -398,7 +396,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 clean:
-	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda
+	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o ./syzygy/*.gcda
 
 default:
 	help
@@ -415,7 +413,6 @@ config-sanity:
 	@echo "debug: '$(debug)'"
 	@echo "optimize: '$(optimize)'"
 	@echo "arch: '$(arch)'"
-	@echo "os: '$(os)'"
 	@echo "bits: '$(bits)'"
 	@echo "prefetch: '$(prefetch)'"
 	@echo "bsfq: '$(bsfq)'"
@@ -434,7 +431,6 @@ config-sanity:
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "armv7"
-	@test "$(os)" = "any"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(bsfq)" = "yes" || test "$(bsfq)" = "no"
@@ -451,18 +447,21 @@ gcc-profile-prepare:
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate' \
+	EXTRACXXFLAGS='-fprofile-arcs' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
+# Deleting corrupt ucioption.gc* profile files is necessary to avoid an 
+# "internal compiler error" for gcc versions 4.7.x
+	@rm -f ucioption.gc*
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use' \
+	EXTRACXXFLAGS='-fbranch-probabilities' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-clean:
-	@rm -rf *.gcda *.gcno bench.txt
+	@rm -rf *.gcda *.gcno syzygy/*.gcda syzygy/*.gcno bench.txt
 
 icc-profile-prepare:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
@@ -485,16 +484,4 @@ icc-profile-clean:
 	-@$(CXX) $(DEPENDFLAGS) -MM $(OBJS:.o=.cpp) > $@ 2> /dev/null
 
 -include .depend
-
-
-### ==========================================================================
-### Section 6. Non-standard targets
-### ==========================================================================
-
-hpux:
-	$(MAKE) \
-	CXX='/opt/aCC/bin/aCC -AA +hpxstd98 -mt +O3 -DNDEBUG -DNO_PREFETCH' \
-	CXXFLAGS="" \
-	LDFLAGS="" \
-	all
 

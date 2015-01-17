@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,8 +29,13 @@
 #include "position.h"
 #include "search.h"
 
+struct Thread;
+
 const int MAX_THREADS = 128;
 const int MAX_SPLITPOINTS_PER_THREAD = 8;
+
+/// Mutex and ConditionVariable struct are wrappers of the low level locking
+/// machinery and are modeled after the corresponding C++11 classes.
 
 struct Mutex {
   Mutex() { lock_init(l); }
@@ -57,7 +62,9 @@ private:
   WaitCondition c;
 };
 
-struct Thread;
+
+/// SplitPoint struct stores information shared by the threads searching in
+/// parallel below the same split point. It is populated at splitting time.
 
 struct SplitPoint {
 
@@ -74,7 +81,7 @@ struct SplitPoint {
   MovePicker* movePicker;
   SplitPoint* parentSplitPoint;
 
-  // Shared data
+  // Shared variable data
   Mutex mutex;
   std::bitset<MAX_THREADS> slavesMask;
   volatile bool allSlavesSearching;
@@ -121,9 +128,9 @@ struct Thread : public ThreadBase {
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
+  Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
-  Pawns::Table pawnsTable;
   Position* activePosition;
   size_t idx;
   int maxPly;
@@ -143,10 +150,13 @@ struct MainThread : public Thread {
 };
 
 struct TimerThread : public ThreadBase {
+
+  static const int Resolution = 5; // Millisec between two check_time() calls
+
   TimerThread() : run(false) {}
   virtual void idle_loop();
+
   bool run;
-  static const int Resolution = 5; // msec between two check_time() calls
 };
 
 
@@ -156,10 +166,10 @@ struct TimerThread : public ThreadBase {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void init(); // No c'tor and d'tor, threads rely on globals that should
-  void exit(); // be initialized and are valid during the whole thread lifetime.
+  void init(); // No c'tor and d'tor, threads rely on globals that should be
+  void exit(); // initialized and are valid during the whole thread lifetime.
 
-  MainThread* main() { return static_cast<MainThread*>((*this)[0]); }
+  MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void read_uci_options();
   Thread* available_slave(const Thread* master) const;
   void wait_for_think_finished();
