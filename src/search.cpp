@@ -1001,10 +1001,10 @@ moves_loop: // When in check and at SpNode search starts from here
               // or longer, then always use it.  Otherwise, check that the moves in the new PV match
               // the stored PV, and if they do, just keep the old full PV for display purposes.
               rm.validPvLength = moves.size();
-              if ((value > alpha && value < beta) || moves.size() > rm.pv.size()) {
+              if ((value > alpha && value < beta) || moves.size() >= rm.pv.size()) {
                   rm.pv = moves;
               } else {
-                  for (size_t i = 0; i < std::min(rm.pv.size(), moves.size()); ++i) {
+                  for (size_t i = 0; i < moves.size(); ++i) {
                       if (rm.pv[i] != moves[i]) {
                           rm.pv = moves;
                           break;
