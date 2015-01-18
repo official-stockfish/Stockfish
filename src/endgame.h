@@ -113,8 +113,8 @@ class Endgames {
 public:
   Endgames();
 
-  template<typename T> T* probe(Key key, T** eg)
-  { return *eg = map<T>().count(key) ? map<T>()[key].get() : nullptr; }
+  template<typename T, typename E = EndgameBase<T>> E* probe(Key key)
+  { return map<E>().count(key) ? map<E>()[key].get() : nullptr; }
 };
 
 #endif // #ifndef ENDGAME_H_INCLUDED
