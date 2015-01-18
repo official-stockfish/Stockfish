@@ -447,7 +447,7 @@ gcc-profile-prepare:
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-arcs' \
+	EXTRACXXFLAGS='-fprofile-generate' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
@@ -456,7 +456,7 @@ gcc-profile-use:
 # "internal compiler error" for gcc versions 4.7.x
 	@rm -f ucioption.gc*
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fbranch-probabilities' \
+	EXTRACXXFLAGS='-fprofile-use' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
