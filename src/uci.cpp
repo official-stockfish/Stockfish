@@ -232,9 +232,7 @@ string UCI::value(Value v) {
 /// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
 
 std::string UCI::square(Square s) {
-
-  char sq[] = { char('a' + file_of(s)), char('1' + rank_of(s)), 0 }; // NULL terminated
-  return sq;
+  return std::string{ char('a' + file_of(s)), char('1' + rank_of(s)) };
 }
 
 
