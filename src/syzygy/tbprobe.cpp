@@ -7,6 +7,8 @@
   this code to other chess engines.
 */
 
+#define NOMINMAX
+
 #include <algorithm>
 
 #include "../position.h"
