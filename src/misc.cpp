@@ -17,6 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -26,6 +27,7 @@
 #include "thread.h"
 
 using namespace std;
+using namespace std::chrono;
 
 namespace {
 
@@ -123,6 +125,13 @@ const string engine_info(bool to_uci) {
 }
 
 
+/// Convert system time to milliseconds. That's all we need.
+
+Time::point Time::now() {
+  return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+}
+
+
 /// Debug functions used mainly to collect run-time statistics
 
 void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
@@ -146,7 +155,7 @@ void dbg_print() {
 
 std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
-  static Mutex m;
+  static std::mutex m;
 
   if (sc == IO_LOCK)
       m.lock();
@@ -160,25 +169,6 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 
 /// Trampoline helper to avoid moving Logger to misc.h
 void start_logger(bool b) { Logger::start(b); }
-
-
-/// timed_wait() waits for msec milliseconds. It is mainly a helper to wrap
-/// the conversion from milliseconds to struct timespec, as used by pthreads.
-
-void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
-
-#ifdef _WIN32
-  int tm = msec;
-#else
-  timespec ts, *tm = &ts;
-  uint64_t ms = Time::now() + msec;
-
-  ts.tv_sec = ms / 1000;
-  ts.tv_nsec = (ms % 1000) * 1000000LL;
-#endif
-
-  cond_timedwait(sleepCond, sleepLock, tm);
-}
 
 
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking

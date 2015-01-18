@@ -21,6 +21,9 @@
 #define THREAD_H_INCLUDED
 
 #include <bitset>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #include "material.h"
@@ -34,34 +37,7 @@ struct Thread;
 const int MAX_THREADS = 128;
 const int MAX_SPLITPOINTS_PER_THREAD = 8;
 
-/// Mutex and ConditionVariable struct are wrappers of the low level locking
-/// machinery and are modeled after the corresponding C++11 classes.
-
-struct Mutex {
-  Mutex() { lock_init(l); }
- ~Mutex() { lock_destroy(l); }
-
-  void lock() { lock_grab(l); }
-  void unlock() { lock_release(l); }
-
-private:
-  friend struct ConditionVariable;
-
-  Lock l;
-};
-
-struct ConditionVariable {
-  ConditionVariable() { cond_init(c); }
- ~ConditionVariable() { cond_destroy(c); }
-
-  void wait(Mutex& m) { cond_wait(c, m.l); }
-  void wait_for(Mutex& m, int ms) { timed_wait(c, m.l, ms); }
-  void notify_one() { cond_signal(c); }
-
-private:
-  WaitCondition c;
-};
-
+struct Thread;
 
 /// SplitPoint struct stores information shared by the threads searching in
 /// parallel below the same split point. It is populated at splitting time.
@@ -82,7 +58,7 @@ struct SplitPoint {
   SplitPoint* parentSplitPoint;
 
   // Shared variable data
-  Mutex mutex;
+  std::mutex mutex;
   std::bitset<MAX_THREADS> slavesMask;
   volatile bool allSlavesSearching;
   volatile uint64_t nodes;
@@ -99,15 +75,15 @@ struct SplitPoint {
 
 struct ThreadBase {
 
-  ThreadBase() : handle(NativeHandle()), exit(false) {}
+  ThreadBase() : exit(false) {}
   virtual ~ThreadBase() {}
   virtual void idle_loop() = 0;
   void notify_one();
   void wait_for(volatile const bool& b);
 
-  Mutex mutex;
-  ConditionVariable sleepCondition;
-  NativeHandle handle;
+  std::thread nativeThread;
+  std::mutex mutex;
+  std::condition_variable sleepCondition;
   volatile bool exit;
 };
 
@@ -176,8 +152,8 @@ struct ThreadPool : public std::vector<Thread*> {
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  Mutex mutex;
-  ConditionVariable sleepCondition;
+  std::mutex mutex;
+  std::condition_variable sleepCondition;
   TimerThread* timer;
 };
 

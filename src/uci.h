@@ -45,10 +45,10 @@ class Option {
   typedef void (*OnChange)(const Option&);
 
 public:
-  Option(OnChange = NULL);
-  Option(bool v, OnChange = NULL);
-  Option(const char* v, OnChange = NULL);
-  Option(int v, int min, int max, OnChange = NULL);
+  Option(OnChange = nullptr);
+  Option(bool v, OnChange = nullptr);
+  Option(const char* v, OnChange = nullptr);
+  Option(int v, int min, int max, OnChange = nullptr);
 
   Option& operator=(const std::string&);
   void operator<<(const Option&);

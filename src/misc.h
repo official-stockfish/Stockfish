@@ -28,7 +28,6 @@
 #include "types.h"
 
 const std::string engine_info(bool to_uci = false);
-void timed_wait(WaitCondition&, Lock&, int);
 void prefetch(char* addr);
 void start_logger(bool b);
 
@@ -40,7 +39,7 @@ void dbg_print();
 
 namespace Time {
   typedef int64_t point;
-  inline point now() { return system_time_to_msec(); }
+  point now();
 }
 
 

@@ -33,7 +33,6 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
-#include "syzygy/tbprobe.h"
 
 namespace Search {
 
@@ -44,18 +43,6 @@ namespace Search {
   Time::point SearchTime;
   StateStackPtr SetupStates;
 }
-
-namespace Tablebases {
-
-  int Cardinality;
-  uint64_t Hits;
-  bool RootInTB;
-  bool UseRule50;
-  Depth ProbeDepth;
-  Value Score;
-}
-
-namespace TB = Tablebases;
 
 using std::string;
 using Eval::evaluate;
@@ -167,19 +154,19 @@ uint64_t Search::perft(Position& pos, Depth depth) {
   CheckInfo ci(pos);
   const bool leaf = (depth == 2 * ONE_PLY);
 
-  for (MoveList<LEGAL> it(pos); *it; ++it)
+  for (const ExtMove& ms : MoveList<LEGAL>(pos))
   {
       if (Root && depth <= ONE_PLY)
           cnt = 1, nodes++;
       else
       {
-          pos.do_move(*it, st, ci, pos.gives_check(*it, ci));
+          pos.do_move(ms.move, st, ci, pos.gives_check(ms.move, ci));
           cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
           nodes += cnt;
-          pos.undo_move(*it);
+          pos.undo_move(ms.move);
       }
       if (Root)
-          sync_cout << UCI::move(*it, pos.is_chess960()) << ": " << cnt << sync_endl;
+          sync_cout << UCI::move(ms.move, pos.is_chess960()) << ": " << cnt << sync_endl;
   }
   return nodes;
 }
@@ -199,19 +186,6 @@ void Search::think() {
   DrawValue[ RootPos.side_to_move()] = VALUE_DRAW - Value(contempt);
   DrawValue[~RootPos.side_to_move()] = VALUE_DRAW + Value(contempt);
 
-  TB::Hits = 0;
-  TB::RootInTB = false;
-  TB::UseRule50 = Options["Syzygy50MoveRule"];
-  TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
-  TB::Cardinality = Options["SyzygyProbeLimit"];
-
-  // Skip TB probing when no TB found: !TBLargest -> !TB::Cardinality
-  if (TB::Cardinality > TB::MaxCardinality)
-  {
-      TB::Cardinality = TB::MaxCardinality;
-      TB::ProbeDepth = DEPTH_ZERO;
-  }
-
   if (RootMoves.empty())
   {
       RootMoves.push_back(MOVE_NONE);
@@ -221,39 +195,8 @@ void Search::think() {
   }
   else
   {
-      if (TB::Cardinality >=  RootPos.count<ALL_PIECES>(WHITE)
-                            + RootPos.count<ALL_PIECES>(BLACK))
-      {
-          // If the current root position is in the tablebases then RootMoves
-          // contains only moves that preserve the draw or win.
-          TB::RootInTB = Tablebases::root_probe(RootPos, RootMoves, TB::Score);
-
-          if (TB::RootInTB)
-              TB::Cardinality = 0; // Do not probe tablebases during the search
-
-          else // If DTZ tables are missing, use WDL tables as a fallback
-          {
-              // Filter out moves that do not preserve a draw or win
-              TB::RootInTB = Tablebases::root_probe_wdl(RootPos, RootMoves, TB::Score);
-
-              // Only probe during search if winning
-              if (TB::Score <= VALUE_DRAW)
-                  TB::Cardinality = 0;
-          }
-
-          if (TB::RootInTB)
-          {
-              TB::Hits = RootMoves.size();
-
-              if (!TB::UseRule50)
-                  TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                             : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                                      :  VALUE_DRAW;
-          }
-      }
-
-      for (size_t i = 0; i < Threads.size(); ++i)
-          Threads[i]->maxPly = 0;
+      for (Thread* th : Threads)
+          th->maxPly = 0;
 
       Threads.timer->run = true;
       Threads.timer->notify_one(); // Wake up the recurring timer
@@ -323,8 +266,8 @@ namespace {
 
         // Save the last iteration's scores before first PV line is searched and
         // all the move scores except the (new) PV are set to -VALUE_INFINITE.
-        for (size_t i = 0; i < RootMoves.size(); ++i)
-            RootMoves[i].previousScore = RootMoves[i].score;
+        for (RootMove& rm : RootMoves)
+            rm.previousScore = rm.score;
 
         // MultiPV loop. We perform a full root search for each PV line
         for (PVIdx = 0; PVIdx < std::min(multiPV, RootMoves.size()) && !Signals.stop; ++PVIdx)
@@ -476,7 +419,7 @@ namespace {
         splitPoint = ss->splitPoint;
         bestMove   = splitPoint->bestMove;
         bestValue  = splitPoint->bestValue;
-        tte = NULL;
+        tte = nullptr;
         ttHit = false;
         ttMove = excludedMove = MOVE_NONE;
         ttValue = VALUE_NONE;
@@ -539,39 +482,9 @@ namespace {
 
         // If ttMove is quiet, update killers, history, counter move and followup move on TT hit
         if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove) && !inCheck)
-            update_stats(pos, ss, ttMove, depth, NULL, 0);
+            update_stats(pos, ss, ttMove, depth, nullptr, 0);
 
         return ttValue;
-    }
-
-    // Step 4a. Tablebase probe
-    if (!RootNode && TB::Cardinality)
-    {
-        int piecesCnt = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
-
-        if (    piecesCnt <= TB::Cardinality
-            && (piecesCnt <  TB::Cardinality || depth >= TB::ProbeDepth)
-            &&  pos.rule50_count() == 0)
-        {
-            int found, v = Tablebases::probe_wdl(pos, &found);
-
-            if (found)
-            {
-                TB::Hits++;
-
-                int drawScore = TB::UseRule50 ? 1 : 0;
-
-                value =  v < -drawScore ? -VALUE_MATE + MAX_PLY + ss->ply
-                       : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
-                                        :  VALUE_DRAW + 2 * v * drawScore;
-
-                tte->save(posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
-                          std::min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
-                          MOVE_NONE, VALUE_NONE, TT.generation());
-
-                return value;
-            }
-        }
     }
 
     // Step 5. Evaluate the position statically and update parent's gain statistics
@@ -788,7 +701,7 @@ moves_loop: // When in check and at SpNode search starts from here
       }
 
       if (PvNode)
-          (ss+1)->pv = NULL;
+          (ss+1)->pv = nullptr;
 
       extension = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
@@ -1420,9 +1333,9 @@ moves_loop: // When in check and at SpNode search starts from here
     size_t uciPVSize = std::min((size_t)Options["MultiPV"], RootMoves.size());
     int selDepth = 0;
 
-    for (size_t i = 0; i < Threads.size(); ++i)
-        if (Threads[i]->maxPly > selDepth)
-            selDepth = Threads[i]->maxPly;
+    for (Thread* th : Threads)
+        if (th->maxPly > selDepth)
+            selDepth = th->maxPly;
 
     for (size_t i = 0; i < uciPVSize; ++i)
     {
@@ -1434,9 +1347,6 @@ moves_loop: // When in check and at SpNode search starts from here
         Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].previousScore;
 
-        bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-        v = tb ? TB::Score : v;
-
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
 
@@ -1445,12 +1355,11 @@ moves_loop: // When in check and at SpNode search starts from here
            << " multipv "   << i + 1
            << " score "     << UCI::value(v);
 
-        if (!tb && i == PVIdx)
+        if (i == PVIdx)
               ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
         ss << " nodes "     << pos.nodes_searched()
            << " nps "       << pos.nodes_searched() * 1000 / elapsed
-           << " tbhits "    << TB::Hits
            << " time "      << elapsed
            << " pv";
 
@@ -1496,7 +1405,7 @@ void Thread::idle_loop() {
 
   // Pointer 'this_sp' is not null only if we are called from split(), and not
   // at the thread creation. This means we are the split point's master.
-  SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : NULL;
+  SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : nullptr;
 
   assert(!this_sp || (this_sp->masterThread == this && searching));
 
@@ -1520,7 +1429,7 @@ void Thread::idle_loop() {
 
           sp->mutex.lock();
 
-          assert(activePosition == NULL);
+          assert(activePosition == nullptr);
 
           activePosition = &pos;
 
@@ -1539,7 +1448,7 @@ void Thread::idle_loop() {
           assert(searching);
 
           searching = false;
-          activePosition = NULL;
+          activePosition = nullptr;
           sp->slavesMask.reset(idx);
           sp->allSlavesSearching = false;
           sp->nodes += pos.nodes_searched();
@@ -1564,7 +1473,7 @@ void Thread::idle_loop() {
               for (size_t i = 0; i < Threads.size(); ++i)
               {
                   const int size = Threads[i]->splitPointsSize; // Local copy
-                  sp = size ? &Threads[i]->splitPoints[size - 1] : NULL;
+                  sp = size ? &Threads[i]->splitPoints[size - 1] : nullptr;
 
                   if (   sp
                       && sp->allSlavesSearching
@@ -1591,22 +1500,19 @@ void Thread::idle_loop() {
       }
 
       // Grab the lock to avoid races with Thread::notify_one()
-      mutex.lock();
+      std::unique_lock<std::mutex> lk(mutex);
 
       // If we are master and all slaves have finished then exit idle_loop
       if (this_sp && this_sp->slavesMask.none())
       {
           assert(!searching);
-          mutex.unlock();
           break;
       }
 
       // If we are not searching, wait for a condition to be signaled instead of
       // wasting CPU time polling for work.
       if (!searching && !exit)
-          sleepCondition.wait(mutex);
-
-      mutex.unlock();
+          sleepCondition.wait(lk);
   }
 }
 
@@ -1651,10 +1557,10 @@ void check_time() {
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
-      for (size_t i = 0; i < Threads.size(); ++i)
-          for (int j = 0; j < Threads[i]->splitPointsSize; ++j)
+      for (Thread* th : Threads)
+          for (int i = 0; i < th->splitPointsSize; ++i)
           {
-              SplitPoint& sp = Threads[i]->splitPoints[j];
+              SplitPoint& sp = th->splitPoints[i];
 
               sp.mutex.lock();
 

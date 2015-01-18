@@ -37,9 +37,15 @@
 #include <cassert>
 #include <cctype>
 #include <climits>
+#include <cstdint>
 #include <cstdlib>
 
-#include "platform.h"
+#if defined(_MSC_VER)
+// Disable some silly and noisy warning from MSVC compiler
+#pragma warning(disable: 4127) // Conditional expression is constant
+#pragma warning(disable: 4146) // Unary minus operator applied to unsigned type
+#pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
+#endif
 
 /// Predefined macros hell:
 ///
@@ -170,7 +176,7 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum Value {
+enum Value : int {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
@@ -178,11 +184,8 @@ enum Value {
   VALUE_INFINITE  = 32001,
   VALUE_NONE      = 32002,
 
-  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
-  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
-
-  VALUE_ENSURE_INTEGER_SIZE_P = INT_MAX,
-  VALUE_ENSURE_INTEGER_SIZE_N = INT_MIN,
+  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY,
+  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + MAX_PLY,
 
   PawnValueMg   = 198,   PawnValueEg   = 258,
   KnightValueMg = 817,   KnightValueEg = 846,
@@ -254,16 +257,10 @@ enum Rank {
 };
 
 
-/// Score enum stores a middlegame and an endgame value in a single integer.
-/// The least significant 16 bits are used to store the endgame value and
-/// the upper 16 bits are used to store the middlegame value. The compiler
-/// is free to choose the enum type as long as it can store the data, so we
-/// ensure that Score is an integer type by assigning some big int values.
-enum Score {
-  SCORE_ZERO,
-  SCORE_ENSURE_INTEGER_SIZE_P = INT_MAX,
-  SCORE_ENSURE_INTEGER_SIZE_N = INT_MIN
-};
+/// Score enum stores a middlegame and an endgame value in a single integer
+/// (enum). The least significant 16 bits are used to store the endgame value
+/// and the upper 16 bits are used to store the middlegame value.
+enum Score : int { SCORE_ZERO };
 
 inline Score make_score(int mg, int eg) {
   return Score((mg << 16) + eg);

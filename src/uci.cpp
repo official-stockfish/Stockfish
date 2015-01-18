@@ -220,7 +220,7 @@ string UCI::value(Value v) {
 
   stringstream ss;
 
-  if (abs(v) < VALUE_MATE - MAX_PLY)
+  if (abs(v) < VALUE_MATE_IN_MAX_PLY)
       ss << "cp " << v * 100 / PawnValueEg;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
@@ -274,9 +274,9 @@ Move UCI::to_move(const Position& pos, string& str) {
   if (str.length() == 5) // Junior could send promotion piece in uppercase
       str[4] = char(tolower(str[4]));
 
-  for (MoveList<LEGAL> it(pos); *it; ++it)
-      if (str == UCI::move(*it, pos.is_chess960()))
-          return *it;
+  for (const ExtMove& ms : MoveList<LEGAL>(pos))
+      if (str == UCI::move(ms.move, pos.is_chess960()))
+          return ms.move;
 
   return MOVE_NONE;
 }
