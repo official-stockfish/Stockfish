@@ -64,6 +64,7 @@ struct RootMove {
   Value score;
   Value previousScore;
   std::vector<Move> pv;
+  size_t validPvLength;
 };
 
 typedef std::vector<RootMove> RootMoveVector;

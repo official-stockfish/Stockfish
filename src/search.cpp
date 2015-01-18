@@ -990,12 +990,27 @@ moves_loop: // When in check and at SpNode search starts from here
           if (moveCount == 1 || value > alpha)
           {
               rm.score = value;
-              rm.pv.resize(1);
 
               assert((ss+1)->pv);
-
+              std::vector<Move> moves;
+              moves.push_back(rm.pv[0]);
               for (Move* m = (ss+1)->pv; *m != MOVE_NONE; ++m)
-                  rm.pv.push_back(*m);
+                  moves.push_back(*m);
+
+              // Try hard to maintain a long PV for analysis.  If the new PV is valid (alpha < v < beta),
+              // or longer, then always use it.  Otherwise, check that the moves in the new PV match
+              // the stored PV, and if they do, just keep the old full PV for display purposes.
+              rm.validPvLength = moves.size();
+              if ((value > alpha && value < beta) || moves.size() >= rm.pv.size()) {
+                  rm.pv = moves;
+              } else {
+                  for (size_t i = 0; i < moves.size(); ++i) {
+                      if (rm.pv[i] != moves[i]) {
+                          rm.pv = moves;
+                          break;
+                      }
+                  }
+              }
 
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
@@ -1473,7 +1488,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
   StateInfo state[MAX_PLY], *st = state;
   size_t idx = 0;
 
-  for ( ; idx < pv.size(); ++idx)
+  for ( ; idx < std::min(validPvLength, pv.size()); ++idx)
   {
       bool ttHit;
       TTEntry* tte = TT.probe(pos.key(), ttHit);
