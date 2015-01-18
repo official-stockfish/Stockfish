@@ -45,8 +45,8 @@ clang 3.5, 64-bit,  Ubuntu 14.04.1: PASS (Marco Costalba)
 clang 3.5, 32-bit,  Ubuntu 14.04.1: PASS (Marco Costalba)
 icc 14.0.1, 64-bit, Ubuntu 14.04.1: PASS (Marco Costalba)
 icc 14.0.1, 32-bit, Ubuntu 14.04.1: PASS (Marco Costalba)
-MSVC 2013 64-bit: TODO
-MSVC 2013 32-bit: TODO
+MSVC 2013 64-bit: PASS (Marco Costalba)
+MSVC 2013 32-bit: PASS (Marco Costalba)
 MSVC 2010 64-bit: PASS (Marco Costalba)
 MSVC 2010 32-bit: PASS (Marco Costalba)
 mingw 4.8.3 64-bit: (make build debug=yes ARCH=x86-64-modern COMP=mingw): PASS (Marco Costalba)
