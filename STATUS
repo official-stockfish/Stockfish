@@ -7,7 +7,7 @@ Tester needs to be someone known by community.
 1. SF6-rc1:
 ===========
 
-Bench Signature: TODO
+Bench Signature: 8080602
 Fishtest Regression Test 60+0.05 (1 Threads): TODO
 Fishtest Regression Test 60+0.05 (3 Threads): TODO
 
@@ -79,4 +79,7 @@ PPC: TODO
 * Syzygy 5-men: TODO
 * Syzygy 6-men: TODO
 
+3.5 Perft:
+==========
 
+perft7 (starting pos): TODO
