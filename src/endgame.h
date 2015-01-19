@@ -89,7 +89,7 @@ struct Endgame : public EndgameBase<T> {
   T operator()(const Position&) const;
 
 private:
-  const Color strongSide, weakSide;
+  Color strongSide, weakSide;
 };
 
 
