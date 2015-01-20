@@ -8,8 +8,8 @@ Tester needs to be someone known by community.
 ===========
 
 Bench Signature: 8080602
-Fishtest Regression Test 60+0.05 (1 Threads): TODO
-Fishtest Regression Test 60+0.05 (3 Threads): TODO
+Fishtest Regression Test 60+0.05 (1 Threads): +51.79 (Joona Kiiski)
+Fishtest Regression Test 60+0.05 (3 Threads): +48.10 (Joona Kiiski)
 
 2.Test Definitions:
 ===================
@@ -56,7 +56,7 @@ mingw 4.8.3 32-bit: (make build debug=yes ARCH=x86-32 COMP=mingw): PASS (Marco C
 3.2 OSes/Architectures (Benchmark test, assume gcc):
 ====================================================
 
-Mac OSX: TODO
+Mac OSX: Mac OS X 10.10.1 with clang (Daylen Yang)
 Android: TODO
 PPC (or other big-endian): TODO
 Armv8: TODO
@@ -70,14 +70,14 @@ Linux 64-bit: TODO
 Linux 32-bit: TODO
 Mac OSX: TODO
 Android: TODO
-Armv8: TODO
+Armv8: PASS (Student T)
 PPC: TODO
 
 3.4 Other (Games Testing):
 ==========================
 
 * Ponder On: TODO
-* Chess960: TODO
+* Chess960: SF 6-RC1 vs SF 5: 641 - 349 - 1010 +51 ELO No time losses, no crashes: PASS (Jörg Oster)
 * Syzygy 5-men: TODO
 * Syzygy 6-men: TODO
 
