@@ -59,7 +59,7 @@ mingw 4.8.3 32-bit: (make build debug=yes ARCH=x86-32 COMP=mingw): PASS (Marco C
 Mac OSX: Mac OS X 10.10.1 with clang (Daylen Yang)
 Android: TODO
 PPC (or other big-endian): TODO
-Armv8: TODO
+Armv8: iOS (Ted Wong)
 
 3.3. OSes/Architectures (Syzygy analysis test, assume gcc/mingw):
 =================================================================
@@ -70,7 +70,7 @@ Linux 64-bit: TODO
 Linux 32-bit: TODO
 Mac OSX: TODO
 Android: TODO
-Armv8: PASS (Ted Wong)
+Armv8: TODO 
 PPC: TODO
 
 3.4 Other (Games Testing):
