@@ -65,8 +65,9 @@
 
 #if defined(USE_PEXT)
 #  include <immintrin.h> // Header for _pext_u64() intrinsic
+#  define pext(b, m) _pext_u64(b, m)
 #else
-#  define _pext_u64(b, m) (0)
+#  define pext(b, m) (0)
 #endif
 
 #ifdef _MSC_VER
