@@ -276,7 +276,7 @@ void Search::think() {
 
   sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0], RootPos.is_chess960());
 
-  if (RootMoves[0].pv.size() > 1)
+  if (RootMoves[0].pv.size() > 1 || RootMoves[0].extract_ponder_from_tt(RootPos))
       std::cout << " ponder " << UCI::move(RootMoves[0].pv[1], RootPos.is_chess960());
 
   std::cout << sync_endl;
@@ -1488,6 +1488,30 @@ void RootMove::insert_pv_in_tt(Position& pos) {
   }
 
   while (idx) pos.undo_move(pv[--idx]);
+}
+
+
+/// RootMove::extract_ponder_from_tt() is called in case we have no ponder move before
+/// exiting the search, for instance in case we stop the search during a fail high at
+/// root. We try hard to have a ponder move to return to the GUI, otherwise in case of
+/// 'ponder on' we have nothing to think on.
+
+Move RootMove::extract_ponder_from_tt(Position& pos)
+{
+    StateInfo st;
+    bool found;
+
+    assert(pv.size() == 1);
+
+    pos.do_move(pv[0], st);
+    TTEntry* tte = TT.probe(pos.key(), found);
+    Move m = found ? tte->move() : MOVE_NONE;
+    if (!MoveList<LEGAL>(pos).contains(m))
+        m = MOVE_NONE;
+
+    pos.undo_move(pv[0]);
+    pv.push_back(m);
+    return m;
 }
 
 
