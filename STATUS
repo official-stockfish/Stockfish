@@ -8,7 +8,7 @@ Tester needs to be someone known by community.
 ===========
 
 Bench Signature: 8080602
-Fishtest Regression Test 60+0.05 (1 Threads): +51.79 (Joona Kiiski)
+Fishtest Regression Test 60+0.05 (1 Threads): +51.71 (Joona Kiiski)
 Fishtest Regression Test 60+0.05 (3 Threads): +48.10 (Joona Kiiski)
 
 2.Test Definitions:
