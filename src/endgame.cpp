@@ -128,9 +128,8 @@ Endgames::Endgames() {
 
 template<EndgameType E, typename T>
 void Endgames::add(const string& code) {
-
-  map<T>()[key(code, WHITE)] = std::unique_ptr<T>(new Endgame<E>(WHITE));
-  map<T>()[key(code, BLACK)] = std::unique_ptr<T>(new Endgame<E>(BLACK));
+  map<T>()[key(code, WHITE)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
+  map<T>()[key(code, BLACK)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
 }
 
 
