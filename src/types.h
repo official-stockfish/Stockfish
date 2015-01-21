@@ -33,6 +33,9 @@
 ///
 /// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
 ///               | only in 64-bit mode and requires hardware with popcnt support.
+///
+/// -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
+///               | only in 64-bit mode and requires hardware with pext support.
 
 #include <cassert>
 #include <cctype>
