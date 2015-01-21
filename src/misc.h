@@ -45,11 +45,10 @@ namespace Time {
 
 template<class Entry, int Size>
 struct HashTable {
-  HashTable() : table(Size, Entry()) {}
   Entry* operator[](Key key) { return &table[(uint32_t)key & (Size - 1)]; }
 
 private:
-  std::vector<Entry> table;
+  std::vector<Entry> table = std::vector<Entry>(Size);
 };
 
 

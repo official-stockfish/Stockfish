@@ -73,8 +73,7 @@ struct SplitPoint {
 
 struct ThreadBase {
 
-  ThreadBase() : exit(false) {}
-  virtual ~ThreadBase() {}
+  virtual ~ThreadBase() = default;
   virtual void idle_loop() = 0;
   void notify_one();
   void wait_for(volatile const bool& b);
@@ -82,7 +81,7 @@ struct ThreadBase {
   std::thread nativeThread;
   std::mutex mutex;
   std::condition_variable sleepCondition;
-  volatile bool exit;
+  volatile bool exit = false;
 };
 
 
@@ -118,19 +117,17 @@ struct Thread : public ThreadBase {
 /// special threads: the main one and the recurring timer.
 
 struct MainThread : public Thread {
-  MainThread() : thinking(true) {} // Avoid a race with start_thinking()
   virtual void idle_loop();
-  volatile bool thinking;
+  volatile bool thinking = true; // Avoid a race with start_thinking()
 };
 
 struct TimerThread : public ThreadBase {
 
   static const int Resolution = 5; // Millisec between two check_time() calls
 
-  TimerThread() : run(false) {}
   virtual void idle_loop();
 
-  bool run;
+  bool run = false;
 };
 
 

@@ -82,12 +82,11 @@ class Position {
 
   friend std::ostream& operator<<(std::ostream&, const Position&);
 
-  Position(const Position&); // Disable the default copy constructor
-
 public:
   static void init();
 
-  Position() {} // To define the global object RootPos
+  Position() = default; // To define the global object RootPos
+  Position(const Position&) = delete;
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
   Position(const std::string& f, bool c960, Thread* th) { set(f, c960, th); }
   Position& operator=(const Position&); // To assign RootPos from UCI
