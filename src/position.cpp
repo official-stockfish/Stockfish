@@ -1147,10 +1147,6 @@ bool Position::is_draw() const {
 /// Position::flip() flips position with the white and black sides reversed. This
 /// is only useful for debugging e.g. for finding evaluation symmetry bugs.
 
-static char toggle_case(char c) {
-  return char(islower(c) ? toupper(c) : tolower(c));
-}
-
 void Position::flip() {
 
   string f, token;
@@ -1168,7 +1164,8 @@ void Position::flip() {
   ss >> token; // Castling availability
   f += token + " ";
 
-  std::transform(f.begin(), f.end(), f.begin(), toggle_case);
+  std::transform(f.begin(), f.end(), f.begin(),
+                 [](char c) { return char(islower(c) ? toupper(c) : tolower(c)); });
 
   ss >> token; // En passant square
   f += (token == "-" ? token : token.replace(1, 1, token[1] == '3' ? "6" : "3"));

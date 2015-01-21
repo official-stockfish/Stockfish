@@ -49,10 +49,6 @@ namespace {
     }
   }
 
-  // Unary predicate used by std::partition to split positive values from remaining
-  // ones so as to sort the two sets separately, with the second sort delayed.
-  inline bool has_positive_value(const ExtMove& move) { return move.value > VALUE_ZERO; }
-
   // Picks the best move in the range (begin, end) and moves it to the front.
   // It's faster than sorting all the moves in advance when there are few
   // moves e.g. possible captures.
@@ -247,7 +243,7 @@ void MovePicker::generate_next_stage() {
   case QUIETS_1_S1:
       endQuiets = end = generate<QUIETS>(pos, moves);
       score<QUIETS>();
-      end = std::partition(cur, end, has_positive_value);
+      end = std::partition(cur, end, [](const ExtMove& m) { return m.value > VALUE_ZERO; });
       insertion_sort(cur, end);
       return;
 
