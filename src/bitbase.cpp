@@ -17,7 +17,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cassert>
+#include <numeric>
 #include <vector>
 
 #include "bitboard.h"
@@ -54,15 +56,15 @@ namespace {
   inline Result& operator|=(Result& r, Result v) { return r = Result(r | v); }
 
   struct KPKPosition {
-
+    KPKPosition() = default;
     KPKPosition(unsigned idx);
     operator Result() const { return result; }
     Result classify(const std::vector<KPKPosition>& db)
     { return us == WHITE ? classify<WHITE>(db) : classify<BLACK>(db); }
 
-  private:
     template<Color Us> Result classify(const std::vector<KPKPosition>& db);
 
+    unsigned id;
     Color us;
     Square bksq, wksq, psq;
     Result result;
@@ -82,24 +84,20 @@ bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 
 void Bitbases::init() {
 
-  unsigned idx, repeat = 1;
-  std::vector<KPKPosition> db;
-  db.reserve(MAX_INDEX);
+  std::vector<KPKPosition> db(MAX_INDEX);
 
   // Initialize db with known win / draw positions
-  for (idx = 0; idx < MAX_INDEX; ++idx)
-      db.push_back(KPKPosition(idx));
+  std::generate(db.begin(), db.end(), [](){ static unsigned id; return KPKPosition(id++); });
 
   // Iterate through the positions until none of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
-  while (repeat)
-      for (repeat = idx = 0; idx < MAX_INDEX; ++idx)
-          repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
+  while (std::accumulate(db.begin(), db.end(), false, [&](bool repeat, KPKPosition& pos)
+  { return (pos == UNKNOWN && pos.classify(db) != UNKNOWN) || repeat; }));
 
   // Map 32 results into one KPKBitbase[] entry
-  for (idx = 0; idx < MAX_INDEX; ++idx)
-      if (db[idx] == WIN)
-          KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
+  for (auto& pos : db)
+      if (pos == WIN)
+          KPKBitbase[pos.id / 32] |= 1 << (pos.id & 0x1F);
 }
 
 
@@ -107,6 +105,7 @@ namespace {
 
   KPKPosition::KPKPosition(unsigned idx) {
 
+    id     = idx;
     wksq   = Square((idx >>  0) & 0x3F);
     bksq   = Square((idx >>  6) & 0x3F);
     us     = Color ((idx >> 12) & 0x01);
@@ -148,7 +147,9 @@ namespace {
     // as WIN, the position is classified as WIN, otherwise the current position is
     // classified as UNKNOWN.
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Color  Them = (Us == WHITE ? BLACK : WHITE);
+    const Result Good = (Us == WHITE ? WIN   : DRAW);
+    const Result Bad  = (Us == WHITE ? DRAW  : WIN);
 
     Result r = INVALID;
     Bitboard b = StepAttacksBB[KING][Us == WHITE ? wksq : bksq];
@@ -166,10 +167,7 @@ namespace {
             r |= db[index(BLACK, bksq, wksq, s + DELTA_N)]; // Double push
     }
 
-    if (Us == WHITE)
-        return result = r & WIN  ? WIN  : r & UNKNOWN ? UNKNOWN : DRAW;
-    else
-        return result = r & DRAW ? DRAW : r & UNKNOWN ? UNKNOWN : WIN;
+    return result = r & Good  ? Good  : r & UNKNOWN ? UNKNOWN : Bad;
   }
 
 } // namespace
