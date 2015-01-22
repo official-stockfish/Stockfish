@@ -28,7 +28,15 @@ FIXME: test positions
 2.3. Games test:
 ================
 
-At minimum 5000 games at minimum 15+0.05 time control. SF6-rc1 vs. SF5
+At minimum 5000 games at minimum 15+0.05 time control. SF6-rc1 vs. SF5:
+
+Games Completed = 5000 of 5000 (Avg game length = 53.020 sec)
+Settings = Gauntlet/64MB/30000ms+30ms/M 2000cp for 500 moves, D 500 moves/EPD:C:\Little Blitzer2\LittleBlitzer-2.74\double-o.txt(716)
+Time = 34893 sec elapsed, 0 sec remaining
+ 1.  Stockfish 5                  2094.5/5000    578-1389-3033      (L: m=1389 t=0 i=0 a=0)   (D: r=2305 i=510 f=173 s=45 a=0)    (tpm=377.1 d=20.32 nps=1893491)
+ 2.  Stockfish 6 rc1              2905.5/5000    1389-578-3033      (L: m=578 t=0 i=0 a=0)    (D: r=2305 i=510 f=173 s=45 a=0)    (tpm=379.5 d=19.73 nps=2140936)
+ 
+ PASS (Mindbreaker)
 
 
 3. Test Data:
@@ -77,9 +85,16 @@ PPC: TODO
 ==========================
 
 * Ponder On: TODO
+
 * Chess960: SF 6-RC1 vs SF 5: 641 - 349 - 1010 +51 ELO No time losses, no crashes: PASS (Jörg Oster)
-* Syzygy 5-men: TODO
+
+* Syzygy 5-men: PASS (Dariusz Orzechowski)
+No crashes, no time losses. TC 60+0.05, book 2moves_v1, no adjudication rules, x64-modern compile.
+Stockfish 6 RC1 SYZ 5 -  Stockfish 6 RC1  1589.5/3100    580-501-2019  
+
 * Syzygy 6-men: TODO
+
+
 
 3.5 Perft:
 ==========
