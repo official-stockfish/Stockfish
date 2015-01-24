@@ -831,7 +831,8 @@ moves_loop: // When in check and at SpNode search starts from here
       newDepth = depth - ONE_PLY + extension;
 
       // Step 13. Pruning at shallow depth
-      if (   !captureOrPromotion
+      if (   !RootNode
+          && !captureOrPromotion
           && !inCheck
           && !dangerous
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
