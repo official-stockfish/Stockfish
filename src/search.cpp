@@ -1393,10 +1393,6 @@ moves_loop: // When in check and at SpNode search starts from here
     {
         int score = RootMoves[i].score;
 
-        // Don't allow crazy blunders even at very low skills
-        if (i > 0 && RootMoves[i - 1].score > score + 2 * PawnValueMg)
-            break;
-
         // This is our magic formula
         score += (  weakness * int(RootMoves[0].score - score)
                   + variance * (rng.rand<unsigned>() % weakness)) / 128;
