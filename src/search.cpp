@@ -84,6 +84,7 @@ namespace {
   }
 
   size_t PVIdx;
+  size_t multiPV;
   TimeManager TimeMgr;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
@@ -308,7 +309,7 @@ namespace {
     Countermoves.clear();
     Followupmoves.clear();
 
-    size_t multiPV = Options["MultiPV"];
+    multiPV = Options["MultiPV"];
     Skill skill(Options["Skill Level"], RootMoves.size());
 
     // Do we have to play with skill handicap? In this case enable MultiPV search
@@ -831,7 +832,7 @@ moves_loop: // When in check and at SpNode search starts from here
       newDepth = depth - ONE_PLY + extension;
 
       // Step 13. Pruning at shallow depth
-      if (   !RootNode
+      if (  (!RootNode || multiPV == 1) // Don't prune at root while in multipv mode
           && !captureOrPromotion
           && !inCheck
           && !dangerous
