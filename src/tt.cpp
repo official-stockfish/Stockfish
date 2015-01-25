@@ -96,3 +96,20 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   return found = false, replace;
 }
+
+
+/// Returns an approximation of the hashtable occupation during a search. The
+/// hash is x permill full, as per UCI protocol.
+
+int TranspositionTable::hashfull() const
+{
+  int cnt = 0;
+  for (int i = 0; i < 1000 / ClusterSize; i++)
+  {
+      const TTEntry* tte = &table[i].entry[0];
+      for (int j = 0; j < ClusterSize; j++)
+          if ((tte[j].genBound8 & 0xFC) == generation8)
+              cnt++;
+  }
+  return cnt;
+}

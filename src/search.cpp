@@ -1447,8 +1447,12 @@ moves_loop: // When in check and at SpNode search starts from here
               ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
         ss << " nodes "     << pos.nodes_searched()
-           << " nps "       << pos.nodes_searched() * 1000 / elapsed
-           << " tbhits "    << TB::Hits
+           << " nps "       << pos.nodes_searched() * 1000 / elapsed;
+
+        if (elapsed > 1000) // Earlier makes little sense
+           ss << " hashfull "  << TT.hashfull();
+
+        ss << " tbhits "    << TB::Hits
            << " time "      << elapsed
            << " pv";
 
