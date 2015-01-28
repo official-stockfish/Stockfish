@@ -91,7 +91,7 @@ namespace {
   // Evaluation weights, indexed by evaluation term
   enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
   const struct Weight { int mg, eg; } Weights[] = {
-    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {321, 0}
+    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {324, 0}
   };
 
   #define V(v) Value(v)
@@ -186,15 +186,15 @@ namespace {
   // index to KingDanger[].
   //
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[] = { 0, 0, 6, 2, 5, 5 };
+  const int KingAttackWeights[] = { 0, 0, 8, 4, 4, 1 };
 
   // Bonuses for enemy's safe checks
-  const int QueenContactCheck = 92;
-  const int RookContactCheck  = 68;
-  const int QueenCheck        = 50;
-  const int RookCheck         = 36;
-  const int BishopCheck       = 7;
-  const int KnightCheck       = 14;
+  const int QueenContactCheck = 89;
+  const int RookContactCheck  = 72;
+  const int QueenCheck        = 51;
+  const int RookCheck         = 38;
+  const int BishopCheck       = 5;
+  const int KnightCheck       = 16;
 
   // KingDanger[attackUnits] contains the actual king danger weighted
   // scores, indexed by a calculated integer number.
@@ -411,11 +411,11 @@ namespace {
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        attackUnits =  std::min(77, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
-                     + 10 * ei.kingAdjacentZoneAttacksCount[Them]
-                     + 19 * popcount<Max15>(undefended)
-                     +  9 * (ei.pinnedPieces[Us] != 0)
-                     - mg_value(score) * 63 / 512
+        attackUnits =  std::min(74, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+                     + 9 * ei.kingAdjacentZoneAttacksCount[Them]
+                     + 25 * popcount<Max15>(undefended)
+                     +  10 * (ei.pinnedPieces[Us] != 0)
+                     - mg_value(score) / 8
                      - !pos.count<QUEEN>(Them) * 60;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
@@ -891,13 +891,13 @@ namespace Eval {
 
   void init() {
 
-    const double MaxSlope = 7.5;
+    const double MaxSlope = 8.5;
     const double Peak = 1280;
     double t = 0.0;
 
     for (int i = 1; i < 400; ++i)
     {
-        t = std::min(Peak, std::min(0.025 * i * i, t + MaxSlope));
+        t = std::min(Peak, std::min(0.027 * i * i, t + MaxSlope));
         KingDanger[i] = apply_weight(make_score(int(t), 0), Weights[KingSafety]);
     }
   }
