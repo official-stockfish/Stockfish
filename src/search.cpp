@@ -106,7 +106,7 @@ namespace {
 
   struct Skill {
     Skill(int l, size_t rootSize) : level(l),
-                                    candidates(l < 40 ? std::min(4, (int)rootSize) : 0),
+                                    candidates(l < 20 ? std::min(4, (int)rootSize) : 0),
                                     best(MOVE_NONE) {}
    ~Skill() {
       if (candidates) // Swap best PV line with the sub-optimal one
@@ -115,7 +115,7 @@ namespace {
     }
 
     size_t candidates_size() const { return candidates; }
-    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level / 2; }
+    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
     Move pick_move();
 
     int level;
@@ -1382,7 +1382,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     // RootMoves are already sorted by score in descending order
     int variance = std::min(RootMoves[0].score - RootMoves[candidates - 1].score, PawnValueMg);
-    int weakness = 120 - level;
+    int weakness = 120 - 2 * level;
     int maxScore = -VALUE_INFINITE;
     best = MOVE_NONE;
 
