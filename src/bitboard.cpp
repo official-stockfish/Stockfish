@@ -275,7 +275,7 @@ namespace {
             reference[size] = sliding_attack(deltas, s, b);
 
             if (HasPext)
-                attacks[s][_pext_u64(b, masks[s])] = reference[size];
+                attacks[s][pext(b, masks[s])] = reference[size];
 
             size++;
             b = (b - masks[s]) & masks[s];
