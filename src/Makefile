@@ -177,6 +177,11 @@ ifeq ($(comp),icc)
 	profile_make = icc-profile-make
 	profile_use = icc-profile-use
 	profile_clean = icc-profile-clean
+else ifeq ($(comp),clang)
+	profile_prepare = gcc-profile-prepare
+	profile_make = gcc-profile-make
+	profile_use = clang-profile-use
+	profile_clean = gcc-profile-clean
 else
 	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
@@ -447,21 +452,24 @@ gcc-profile-prepare:
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-arcs' \
+	EXTRACXXFLAGS='-fprofile-generate' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
-# Deleting corrupt ucioption.gc* profile files is necessary to avoid an 
-# "internal compiler error" for gcc versions 4.7.x
-	@rm -f ucioption.gc*
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fbranch-probabilities' \
+	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-clean:
 	@rm -rf *.gcda *.gcno syzygy/*.gcda syzygy/*.gcno bench.txt
+
+clang-profile-use:
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
+	EXTRACXXFLAGS='-fprofile-use' \
+	EXTRALDFLAGS='-lgcov' \
+	all
 
 icc-profile-prepare:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
