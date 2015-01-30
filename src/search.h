@@ -60,6 +60,7 @@ struct RootMove {
   bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
   bool operator==(const Move& m) const { return pv[0] == m; }
   void insert_pv_in_tt(Position& pos);
+  Move extract_ponder_from_tt(Position& pos);
 
   Value score;
   Value previousScore;

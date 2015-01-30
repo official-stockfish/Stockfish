@@ -268,7 +268,7 @@ void Search::think() {
 
   sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0], RootPos.is_chess960());
 
-  if (RootMoves[0].pv.size() > 1)
+  if (RootMoves[0].pv.size() > 1 || RootMoves[0].extract_ponder_from_tt(RootPos))
       std::cout << " ponder " << UCI::move(RootMoves[0].pv[1], RootPos.is_chess960());
 
   std::cout << sync_endl;
@@ -360,7 +360,8 @@ namespace {
 
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
-                if (  (bestValue <= alpha || bestValue >= beta)
+                if (   multiPV == 1
+                    && (bestValue <= alpha || bestValue >= beta)
                     && Time::now() - SearchTime > 3000)
                     sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
 
@@ -829,7 +830,8 @@ moves_loop: // When in check and at SpNode search starts from here
       newDepth = depth - ONE_PLY + extension;
 
       // Step 13. Pruning at shallow depth
-      if (   !captureOrPromotion
+      if (   !RootNode
+          && !captureOrPromotion
           && !inCheck
           && !dangerous
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
@@ -1389,10 +1391,6 @@ moves_loop: // When in check and at SpNode search starts from here
     {
         int score = RootMoves[i].score;
 
-        // Don't allow crazy blunders even at very low skills
-        if (i > 0 && RootMoves[i - 1].score > score + 2 * PawnValueMg)
-            break;
-
         // This is our magic formula
         score += (  weakness * int(RootMoves[0].score - score)
                   + variance * (rng.rand<unsigned>() % weakness)) / 128;
@@ -1485,6 +1483,30 @@ void RootMove::insert_pv_in_tt(Position& pos) {
   }
 
   while (idx) pos.undo_move(pv[--idx]);
+}
+
+
+/// RootMove::extract_ponder_from_tt() is called in case we have no ponder move before
+/// exiting the search, for instance in case we stop the search during a fail high at
+/// root. We try hard to have a ponder move to return to the GUI, otherwise in case of
+/// 'ponder on' we have nothing to think on.
+
+Move RootMove::extract_ponder_from_tt(Position& pos)
+{
+    StateInfo st;
+    bool found;
+
+    assert(pv.size() == 1);
+
+    pos.do_move(pv[0], st);
+    TTEntry* tte = TT.probe(pos.key(), found);
+    Move m = found ? tte->move() : MOVE_NONE;
+    if (!MoveList<LEGAL>(pos).contains(m))
+        m = MOVE_NONE;
+
+    pos.undo_move(pv[0]);
+    pv.push_back(m);
+    return m;
 }
 
 
