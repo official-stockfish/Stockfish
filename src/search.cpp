@@ -794,9 +794,10 @@ moves_loop: // When in check and at SpNode search starts from here
       extension = DEPTH_ZERO;
       captureOrPromotion = pos.capture_or_promotion(move);
 
-      givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
-                  ? ci.checkSq[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
-                  : pos.gives_check(move, ci);
+	  if (type_of(move) == NORMAL && !ci.dcCandidates)
+		   givesCheck = ci.checkSq[type_of(pos.piece_on(from_sq(move)))] & to_sq(move);
+	  else 
+		   givesCheck = pos.gives_check(move, ci);
 
       dangerous =   givesCheck
                  || type_of(move) != NORMAL
