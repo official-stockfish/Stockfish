@@ -199,7 +199,7 @@ void Search::think() {
 
   if (RootMoves.empty())
   {
-      RootMoves.push_back(MOVE_NONE);
+      RootMoves.push_back(RootMove(MOVE_NONE));
       sync_cout << "info depth 0 score "
                 << UCI::value(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
                 << sync_endl;
@@ -1383,15 +1383,13 @@ moves_loop: // When in check and at SpNode search starts from here
     // then we choose the move with the resulting highest score.
     for (size_t i = 0; i < multiPV; ++i)
     {
-        int score = RootMoves[i].score;
-
         // This is our magic formula
-        score += (  weakness * int(RootMoves[0].score - score)
-                  + variance * (rng.rand<unsigned>() % weakness)) / 128;
+        int push = (  weakness * int(RootMoves[0].score - RootMoves[i].score)
+                    + variance * (rng.rand<unsigned>() % weakness)) / 128;
 
-        if (score > maxScore)
+        if (RootMoves[i].score + push > maxScore)
         {
-            maxScore = score;
+            maxScore = RootMoves[i].score + push;
             best = RootMoves[i].pv[0];
         }
     }
@@ -1444,7 +1442,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " nps "      << pos.nodes_searched() * 1000 / elapsed;
 
       if (elapsed > 1000) // Earlier makes little sense
-          ss << " hashfull "  << TT.hashfull();
+          ss << " hashfull " << TT.hashfull();
 
       ss << " tbhits "   << TB::Hits
          << " time "     << elapsed
