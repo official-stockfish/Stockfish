@@ -249,11 +249,7 @@ namespace {
     // no minor piece which can trade with the outpost piece.
     if (bonus && (ei.attackedBy[Us][PAWN] & s))
     {
-        if (   !pos.pieces(Them, KNIGHT)
-            && !(squares_of_color(s) & pos.pieces(Them, BISHOP)))
-            bonus += bonus + bonus / 2;
-        else
-            bonus += bonus / 2;
+        bonus += (!pos.pieces(Them, KNIGHT) && !(squares_of_color(s) & pos.pieces(Them, BISHOP))) ? bonus + bonus / 2 : bonus / 2;
     }
 
     return make_score(bonus * 2, bonus / 2);
