@@ -93,6 +93,8 @@ public:
 private:
   template<GenType> void score();
   void generate_next_stage();
+  ExtMove* begin() { return moves; }
+  ExtMove* end() { return endMoves; }
 
   const Position& pos;
   const HistoryStats& history;
@@ -105,8 +107,8 @@ private:
   Square recaptureSquare;
   Value captureThreshold;
   int stage;
-  ExtMove *cur, *end, *endQuiets, *endBadCaptures;
-  ExtMove moves[MAX_MOVES];
+  ExtMove *endQuiets, *endBadCaptures;
+  ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED
