@@ -81,7 +81,7 @@ void init(OptionsMap& o) {
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
 
   for (size_t idx = 0; idx < om.size(); ++idx)
-      for (auto& it : om)
+      for (const auto& it : om)
           if (it.second.idx == idx)
           {
               const Option& o = it.second;

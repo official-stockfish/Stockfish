@@ -365,10 +365,10 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
       assert(!states.get());
   }
 
-  for (const ExtMove& ms : MoveList<LEGAL>(pos))
+  for (const auto& m : MoveList<LEGAL>(pos))
       if (   limits.searchmoves.empty()
-          || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), ms.move))
-          RootMoves.push_back(RootMove(ms.move));
+          || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
+          RootMoves.push_back(RootMove(m));
 
   main()->thinking = true;
   main()->notify_one(); // Starts main thread

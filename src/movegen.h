@@ -36,6 +36,8 @@ enum GenType {
 struct ExtMove {
   Move move;
   Value value;
+
+  operator Move() const { return move; }
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) {
@@ -54,8 +56,8 @@ struct MoveList {
   const ExtMove* begin() const { return moveList; }
   const ExtMove* end() const { return last; }
   size_t size() const { return last - moveList; }
-  bool contains(Move m) const {
-    for (const ExtMove& ms : *this) if (ms.move == m) return true;
+  bool contains(Move move) const {
+    for (const auto& m : *this) if (m == move) return true;
     return false;
   }
 

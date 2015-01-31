@@ -152,19 +152,19 @@ uint64_t Search::perft(Position& pos, Depth depth) {
   CheckInfo ci(pos);
   const bool leaf = (depth == 2 * ONE_PLY);
 
-  for (const ExtMove& ms : MoveList<LEGAL>(pos))
+  for (const auto& m : MoveList<LEGAL>(pos))
   {
       if (Root && depth <= ONE_PLY)
           cnt = 1, nodes++;
       else
       {
-          pos.do_move(ms.move, st, ci, pos.gives_check(ms.move, ci));
+          pos.do_move(m, st, ci, pos.gives_check(m, ci));
           cnt = leaf ? MoveList<LEGAL>(pos).size() : perft<false>(pos, depth - ONE_PLY);
           nodes += cnt;
-          pos.undo_move(ms.move);
+          pos.undo_move(m);
       }
       if (Root)
-          sync_cout << UCI::move(ms.move, pos.is_chess960()) << ": " << cnt << sync_endl;
+          sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
   }
   return nodes;
 }
