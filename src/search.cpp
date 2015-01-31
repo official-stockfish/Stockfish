@@ -109,7 +109,6 @@ namespace {
   Value value_from_tt(Value v, int ply);
   void update_pv(Move* pv, Move move, Move* childPv);
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
-  string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta);
 
 } // namespace
 
@@ -357,7 +356,7 @@ namespace {
                 if (   multiPV == 1
                     && (bestValue <= alpha || bestValue >= beta)
                     && Time::now() - SearchTime > 3000)
-                    sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+                    sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
                 // re-search, otherwise exit the loop.
@@ -390,7 +389,7 @@ namespace {
                           << " time " << Time::now() - SearchTime << sync_endl;
 
             else if (PVIdx + 1 == multiPV || Time::now() - SearchTime > 3000)
-                sync_cout << uci_pv(pos, depth, alpha, beta) << sync_endl;
+                sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
         }
 
         // If skill level is enabled and time is up, pick a sub-optimal best move
@@ -1399,60 +1398,60 @@ moves_loop: // When in check and at SpNode search starts from here
     return best;
   }
 
+} // namespace
 
-  // uci_pv() formats PV information according to the UCI protocol. UCI
-  // requires that all (if any) unsearched PV lines are sent using a previous
-  // search score.
 
-  string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta) {
+/// UCI::pv() formats PV information according to the UCI protocol. UCI requires
+/// that all (if any) unsearched PV lines are sent using a previous search score.
 
-    std::stringstream ss;
-    Time::point elapsed = Time::now() - SearchTime + 1;
-    size_t uciPVSize = std::min((size_t)Options["MultiPV"], RootMoves.size());
-    int selDepth = 0;
+string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
-    for (Thread* th : Threads)
-        if (th->maxPly > selDepth)
-            selDepth = th->maxPly;
+  std::stringstream ss;
+  Time::point elapsed = Time::now() - SearchTime + 1;
+  size_t multiPV = std::min((size_t)Options["MultiPV"], RootMoves.size());
+  int selDepth = 0;
 
-    for (size_t i = 0; i < uciPVSize; ++i)
-    {
-        bool updated = (i <= PVIdx);
+  for (Thread* th : Threads)
+      if (th->maxPly > selDepth)
+          selDepth = th->maxPly;
 
-        if (depth == ONE_PLY && !updated)
-            continue;
+  for (size_t i = 0; i < multiPV; ++i)
+  {
+      bool updated = (i <= PVIdx);
 
-        Depth d = updated ? depth : depth - ONE_PLY;
-        Value v = updated ? RootMoves[i].score : RootMoves[i].previousScore;
+      if (depth == ONE_PLY && !updated)
+          continue;
 
-        bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-        v = tb ? TB::Score : v;
+      Depth d = updated ? depth : depth - ONE_PLY;
+      Value v = updated ? RootMoves[i].score : RootMoves[i].previousScore;
 
-        if (ss.rdbuf()->in_avail()) // Not at first line
-            ss << "\n";
+      bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
+      v = tb ? TB::Score : v;
 
-        ss << "info depth " << d / ONE_PLY
-           << " seldepth "  << selDepth
-           << " multipv "   << i + 1
-           << " score "     << UCI::value(v);
+      if (ss.rdbuf()->in_avail()) // Not at first line
+          ss << "\n";
 
-        if (!tb && i == PVIdx)
-              ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
+      ss << "info"
+         << " depth "    << d / ONE_PLY
+         << " seldepth " << selDepth
+         << " multipv "  << i + 1
+         << " score "    << UCI::value(v);
 
-        ss << " nodes "     << pos.nodes_searched()
-           << " nps "       << pos.nodes_searched() * 1000 / elapsed
-           << " tbhits "    << TB::Hits
-           << " time "      << elapsed
-           << " pv";
+      if (!tb && i == PVIdx)
+          ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
-        for (size_t j = 0; j < RootMoves[i].pv.size(); ++j)
-            ss << " " << UCI::move(RootMoves[i].pv[j], pos.is_chess960());
-    }
+      ss << " nodes "    << pos.nodes_searched()
+         << " nps "      << pos.nodes_searched() * 1000 / elapsed
+         << " tbhits "   << TB::Hits
+         << " time "     << elapsed
+         << " pv";
 
-    return ss.str();
+      for (Move m : RootMoves[i].pv)
+          ss << " " << UCI::move(m, pos.is_chess960());
   }
 
-} // namespace
+  return ss.str();
+}
 
 
 /// RootMove::insert_pv_in_tt() is called at the end of a search iteration, and
