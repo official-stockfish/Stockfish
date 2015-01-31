@@ -66,22 +66,29 @@ namespace {
   // Different node types, used as template parameter
   enum NodeType { Root, PV, NonPV };
 
-  // Dynamic razoring margin based on depth
+  // Razoring and futility margin based on depth
   inline Value razor_margin(Depth d) { return Value(512 + 32 * d); }
+  inline Value futility_margin(Depth d) { return Value(200 * d); }
 
-  // Futility lookup tables (initialized at startup) and their access functions
-  int FutilityMoveCounts[2][16]; // [improving][depth]
-
-  inline Value futility_margin(Depth d) {
-    return Value(200 * d);
-  }
-
-  // Reduction lookup tables (initialized at startup) and their access function
-  int8_t Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
+  // Futility and reductions lookup tables, initialized at startup
+  int FutilityMoveCounts[2][16];  // [improving][depth]
+  Depth Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
 
   template <bool PvNode> inline Depth reduction(bool i, Depth d, int mn) {
-    return (Depth) Reductions[PvNode][i][std::min(int(d), 63)][std::min(mn, 63)];
+    return Reductions[PvNode][i][std::min(d, 63 * ONE_PLY)][std::min(mn, 63)];
   }
+
+  // Skill struct is used to implement strength limiting
+  struct Skill {
+    Skill(int l) : level(l) {}
+    bool enabled() const { return level < 20; }
+    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
+    Move best_move(size_t multiPV) { return best ? best : pick_best(multiPV); }
+    Move pick_best(size_t multiPV);
+
+    int level;
+    Move best = MOVE_NONE;
+  };
 
   size_t PVIdx;
   TimeManager TimeMgr;
@@ -104,17 +111,6 @@ namespace {
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt);
   string uci_pv(const Position& pos, Depth depth, Value alpha, Value beta);
 
-  struct Skill {
-    Skill(int l) : level(l) {}
-    bool enabled() const { return level < 20; }
-    bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
-    Move best_move(size_t multiPV) { return best ? best : pick_best(multiPV); }
-    Move pick_best(size_t multiPV);
-
-    int level;
-    Move best = MOVE_NONE;
-  };
-
 } // namespace
 
 
@@ -122,25 +118,23 @@ namespace {
 
 void Search::init() {
 
-  // Init reductions array
-  for (int d = 1; d < 64; ++d)
-      for (int mc = 1; mc < 64; ++mc)
-      {
-          double    pvRed = 0.00 + log(double(d)) * log(double(mc)) / 3.00;
-          double nonPVRed = 0.33 + log(double(d)) * log(double(mc)) / 2.25;
+  const double K[][2] = {{ 0.83, 2.25 }, { 0.50, 3.00 }};
 
-          Reductions[1][1][d][mc] = int8_t(   pvRed >= 1.0 ?    pvRed + 0.5: 0);
-          Reductions[0][1][d][mc] = int8_t(nonPVRed >= 1.0 ? nonPVRed + 0.5: 0);
+  for (int pv = 0; pv <= 1; ++pv)
+      for (int imp = 0; imp <= 1; ++imp)
+          for (int d = 1; d < 64; ++d)
+              for (int mc = 1; mc < 64; ++mc)
+              {
+                  double r = K[pv][0] + log(d) * log(mc) / K[pv][1];
 
-          Reductions[1][0][d][mc] = Reductions[1][1][d][mc];
-          Reductions[0][0][d][mc] = Reductions[0][1][d][mc];
+                  if (r >= 1.5)
+                      Reductions[pv][imp][d][mc] = int(r) * ONE_PLY;
 
-          // Increase reduction when eval is not improving
-          if (Reductions[0][0][d][mc] >= 2)
-              Reductions[0][0][d][mc] += 1;
-      }
+                  // Increase reduction when eval is not improving
+                  if (!pv && !imp && Reductions[pv][imp][d][mc] >= 2 * ONE_PLY)
+                      Reductions[pv][imp][d][mc] += ONE_PLY;
+              }
 
-  // Init futility move count array
   for (int d = 0; d < 16; ++d)
   {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
@@ -1351,6 +1345,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // played quiet moves.
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
     History.update(pos.moved_piece(move), to_sq(move), bonus);
+
     for (int i = 0; i < quietsCnt; ++i)
     {
         Move m = quiets[i];
