@@ -1461,22 +1461,22 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 void RootMove::insert_pv_in_tt(Position& pos) {
 
   StateInfo state[MAX_PLY], *st = state;
-  size_t idx = 0;
+  bool ttHit;
 
-  for ( ; idx < pv.size(); ++idx)
+  for (Move m : pv)
   {
-      bool ttHit;
+      assert(MoveList<LEGAL>(pos).contains(m));
+
       TTEntry* tte = TT.probe(pos.key(), ttHit);
 
-      if (!ttHit || tte->move() != pv[idx]) // Don't overwrite correct entries
-          tte->save(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, pv[idx], VALUE_NONE, TT.generation());
+      if (!ttHit || tte->move() != m) // Don't overwrite correct entries
+          tte->save(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, m, VALUE_NONE, TT.generation());
 
-      assert(MoveList<LEGAL>(pos).contains(pv[idx]));
-
-      pos.do_move(pv[idx], *st++);
+      pos.do_move(m, *st++);
   }
 
-  while (idx) pos.undo_move(pv[--idx]);
+  for (size_t i = pv.size(); i > 0; )
+      pos.undo_move(pv[--i]);
 }
 
 
@@ -1485,22 +1485,25 @@ void RootMove::insert_pv_in_tt(Position& pos) {
 /// root. We try hard to have a ponder move to return to the GUI, otherwise in case of
 /// 'ponder on' we have nothing to think on.
 
-Move RootMove::extract_ponder_from_tt(Position& pos)
+bool RootMove::extract_ponder_from_tt(Position& pos)
 {
     StateInfo st;
-    bool found;
+    bool ttHit;
 
     assert(pv.size() == 1);
 
     pos.do_move(pv[0], st);
-    TTEntry* tte = TT.probe(pos.key(), found);
-    Move m = found ? tte->move() : MOVE_NONE;
-    if (!MoveList<LEGAL>(pos).contains(m))
-        m = MOVE_NONE;
-
+    TTEntry* tte = TT.probe(pos.key(), ttHit);
     pos.undo_move(pv[0]);
-    pv.push_back(m);
-    return m;
+
+    if (ttHit)
+    {
+        Move m = tte->move(); // Local copy to be SMP safe
+        if (MoveList<LEGAL>(pos).contains(m))
+           return pv.push_back(m), true;
+    }
+
+    return false;
 }
 
 
