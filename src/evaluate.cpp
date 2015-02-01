@@ -493,11 +493,12 @@ namespace {
   template<Color Us, bool Trace>
   Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
 
-    const Color Them      = (Us == WHITE ? BLACK    : WHITE);
-    const Square Up       = (Us == WHITE ? DELTA_N  : DELTA_S);
-    const Square Left     = (Us == WHITE ? DELTA_NW : DELTA_SE);
-    const Square Right    = (Us == WHITE ? DELTA_NE : DELTA_SW);
-    const Rank SecondRank = (Us == WHITE ? RANK_2   : RANK_7);
+    const Color Them        = (Us == WHITE ? BLACK    : WHITE);
+    const Square Up         = (Us == WHITE ? DELTA_N  : DELTA_S);
+    const Square Left       = (Us == WHITE ? DELTA_NW : DELTA_SE);
+    const Square Right      = (Us == WHITE ? DELTA_NE : DELTA_SW);
+    const Bitboard TRank2BB = (Us == WHITE ? Rank2BB  : Rank7BB);
+    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
 
     enum { Defended, Weak };
     enum { Minor, Major };
@@ -547,12 +548,17 @@ namespace {
     }
 
     // Add bonus for safe pawn pushes which attacks an enemy piece
-    b = shift_bb<Up>(   pos.pieces(Us, PAWN)
-                    | (~pos.pieces() & shift_bb<Up>(pos.pieces(Us, PAWN) & rank_bb(SecondRank))))
-        & ~pos.pieces()
+    b = pos.pieces(Us, PAWN) & ~TRank7BB;
+    b = shift_bb<Up>(b | (shift_bb<Up>(b & TRank2BB) & ~pos.pieces()));
+
+    b &=  ~pos.pieces()
         & ~ei.attackedBy[Them][PAWN]
         & (ei.attackedBy[Us][PAWN] | ~ei.attackedBy[Them][ALL_PIECES]);
-    b = pos.pieces(Them) & (shift_bb<Left>(b) | shift_bb<Right>(b)) & ~ei.attackedBy[Us][PAWN];
+
+    b =  (shift_bb<Left>(b) | shift_bb<Right>(b))
+       &  pos.pieces(Them)
+       & ~ei.attackedBy[Us][PAWN];
+
     if(b)
         score += popcount<Max15>(b) * PawnAttackThreat;
 
