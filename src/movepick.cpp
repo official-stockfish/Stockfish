@@ -35,7 +35,7 @@ namespace {
     STOP
   };
 
-  // Our insertion sort, which is guaranteed (and also needed) to be stable
+  // Our insertion sort, which is guaranteed to be stable, as it should be
   void insertion_sort(ExtMove* begin, ExtMove* end)
   {
     ExtMove tmp, *p, *q;
@@ -49,14 +49,15 @@ namespace {
     }
   }
 
-  // Picks the best move in the range (begin, end) and moves it to the front.
-  // It's faster than sorting all the moves in advance when there are few
-  // moves e.g. possible captures.
-  inline ExtMove* pick_best(ExtMove* begin, ExtMove* end)
+  // pick_best() finds the best move in the range (begin, end) and moves it to
+  // the front. It's faster than sorting all the moves in advance when there
+  // are few moves e.g. the possible captures.
+  inline Move pick_best(ExtMove* begin, ExtMove* end)
   {
       std::swap(*begin, *std::max_element(begin, end));
-      return begin;
+      return begin->move;
   }
+
 } // namespace
 
 
@@ -196,7 +197,7 @@ void MovePicker::generate_next_stage() {
   case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
       endMoves = generate<CAPTURES>(pos, moves);
       score<CAPTURES>();
-      return;
+      break;
 
   case KILLERS_S1:
       cur = killers;
@@ -207,53 +208,52 @@ void MovePicker::generate_next_stage() {
       killers[2].move = killers[3].move = MOVE_NONE;
       killers[4].move = killers[5].move = MOVE_NONE;
 
-      // Please note that following code is racy and could yield to rare (less
-      // than 1 out of a million) duplicated entries in SMP case. This is harmless.
+      // In SMP case countermoves[] and followupmoves[] could have duplicated entries
+      // in rare cases (less than 1 out of a million). This is harmless.
 
-      // Be sure countermoves are different from killers
+      // Be sure countermoves and followupmoves are different from killers
       for (int i = 0; i < 2; ++i)
-          if (   countermoves[i] != (cur+0)->move
-              && countermoves[i] != (cur+1)->move)
+          if (   countermoves[i] != killers[0].move
+              && countermoves[i] != killers[1].move)
               (endMoves++)->move = countermoves[i];
 
-      // Be sure followupmoves are different from killers and countermoves
       for (int i = 0; i < 2; ++i)
-          if (   followupmoves[i] != (cur+0)->move
-              && followupmoves[i] != (cur+1)->move
-              && followupmoves[i] != (cur+2)->move
-              && followupmoves[i] != (cur+3)->move)
+          if (   followupmoves[i] != killers[0].move
+              && followupmoves[i] != killers[1].move
+              && followupmoves[i] != killers[2].move
+              && followupmoves[i] != killers[3].move)
               (endMoves++)->move = followupmoves[i];
-      return;
+      break;
 
   case QUIETS_1_S1:
       endQuiets = endMoves = generate<QUIETS>(pos, moves);
       score<QUIETS>();
       endMoves = std::partition(cur, endMoves, [](const ExtMove& m) { return m.value > VALUE_ZERO; });
       insertion_sort(cur, endMoves);
-      return;
+      break;
 
   case QUIETS_2_S1:
       cur = endMoves;
       endMoves = endQuiets;
       if (depth >= 3 * ONE_PLY)
           insertion_sort(cur, endMoves);
-      return;
+      break;
 
   case BAD_CAPTURES_S1:
       // Just pick them in reverse order to get MVV/LVA ordering
       cur = moves + MAX_MOVES - 1;
       endMoves = endBadCaptures;
-      return;
+      break;
 
   case EVASIONS_S2:
       endMoves = generate<EVASIONS>(pos, moves);
-      if (endMoves > moves + 1)
+      if (endMoves - moves > 1)
           score<EVASIONS>();
-      return;
+      break;
 
   case QUIET_CHECKS_S3:
       endMoves = generate<QUIET_CHECKS>(pos, moves);
-      return;
+      break;
 
   case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT: case RECAPTURE:
       stage = STOP;
@@ -261,7 +261,7 @@ void MovePicker::generate_next_stage() {
 
   case STOP:
       endMoves = cur + 1; // Avoid another next_phase() call
-      return;
+      break;
 
   default:
       assert(false);
@@ -290,7 +290,7 @@ Move MovePicker::next_move<false>() {
           return ttMove;
 
       case CAPTURES_S1:
-          move = pick_best(cur++, endMoves)->move;
+          move = pick_best(cur++, endMoves);
           if (move != ttMove)
           {
               if (pos.see_sign(move) >= VALUE_ZERO)
@@ -302,7 +302,7 @@ Move MovePicker::next_move<false>() {
           break;
 
       case KILLERS_S1:
-          move = (cur++)->move;
+          move = *cur++;
           if (    move != MOVE_NONE
               &&  move != ttMove
               &&  pos.pseudo_legal(move)
@@ -311,7 +311,7 @@ Move MovePicker::next_move<false>() {
           break;
 
       case QUIETS_1_S1: case QUIETS_2_S1:
-          move = (cur++)->move;
+          move = *cur++;
           if (   move != ttMove
               && move != killers[0].move
               && move != killers[1].move
@@ -323,28 +323,28 @@ Move MovePicker::next_move<false>() {
           break;
 
       case BAD_CAPTURES_S1:
-          return (cur--)->move;
+          return *cur--;
 
       case EVASIONS_S2: case CAPTURES_S3: case CAPTURES_S4:
-          move = pick_best(cur++, endMoves)->move;
+          move = pick_best(cur++, endMoves);
           if (move != ttMove)
               return move;
           break;
 
       case CAPTURES_S5:
-           move = pick_best(cur++, endMoves)->move;
+           move = pick_best(cur++, endMoves);
            if (move != ttMove && pos.see(move) > captureThreshold)
                return move;
            break;
 
       case CAPTURES_S6:
-          move = pick_best(cur++, endMoves)->move;
+          move = pick_best(cur++, endMoves);
           if (to_sq(move) == recaptureSquare)
               return move;
           break;
 
       case QUIET_CHECKS_S3:
-          move = (cur++)->move;
+          move = *cur++;
           if (move != ttMove)
               return move;
           break;
