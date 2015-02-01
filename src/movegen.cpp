@@ -61,7 +61,7 @@ namespace {
 
     (moveList++)->move = m;
 
-    return moveList;
+    return (void)ci, moveList; // Silence a warning under MSVC
   }
 
 
@@ -82,10 +82,8 @@ namespace {
     // that's not already included in the queen promotion.
     if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ci->ksq))
         (moveList++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
-    else
-        (void)ci; // Silence a warning under MSVC
 
-    return moveList;
+    return (void)ci, moveList; // Silence a warning under MSVC
   }
 
 
