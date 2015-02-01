@@ -245,7 +245,7 @@ void MovePicker::generate_next_stage() {
       /* Fall through */
 
   case STOP:
-      endMoves = cur + 1; // Avoid another next_phase() call
+      endMoves = cur + 1; // Avoid another generate_next_stage() call
       break;
 
   default:
