@@ -201,28 +201,13 @@ void MovePicker::generate_next_stage() {
 
   case KILLERS_S1:
       cur = killers;
-      endMoves = cur + 2;
-
+      endMoves = cur + 6;
       killers[0].move = ss->killers[0];
       killers[1].move = ss->killers[1];
-      killers[2].move = killers[3].move = MOVE_NONE;
-      killers[4].move = killers[5].move = MOVE_NONE;
-
-      // In SMP case countermoves[] and followupmoves[] could have duplicated entries
-      // in rare cases (less than 1 out of a million). This is harmless.
-
-      // Be sure countermoves and followupmoves are different from killers
-      for (int i = 0; i < 2; ++i)
-          if (   countermoves[i] != killers[0].move
-              && countermoves[i] != killers[1].move)
-              (endMoves++)->move = countermoves[i];
-
-      for (int i = 0; i < 2; ++i)
-          if (   followupmoves[i] != killers[0].move
-              && followupmoves[i] != killers[1].move
-              && followupmoves[i] != killers[2].move
-              && followupmoves[i] != killers[3].move)
-              (endMoves++)->move = followupmoves[i];
+      killers[2].move = countermoves[0];
+      killers[3].move = countermoves[1];
+      killers[4].move = followupmoves[0];
+      killers[5].move = followupmoves[1];
       break;
 
   case QUIETS_1_S1:
@@ -307,18 +292,25 @@ Move MovePicker::next_move<false>() {
               &&  move != ttMove
               &&  pos.pseudo_legal(move)
               && !pos.capture(move))
+          {
+              // Check for duplicated entries
+              for (int i = 0; i < cur - 1 - killers; i++)
+                  if (move == killers[i])
+                      goto skip;
               return move;
+          }
+      skip:
           break;
 
       case QUIETS_1_S1: case QUIETS_2_S1:
           move = *cur++;
           if (   move != ttMove
-              && move != killers[0].move
-              && move != killers[1].move
-              && move != killers[2].move
-              && move != killers[3].move
-              && move != killers[4].move
-              && move != killers[5].move)
+              && move != killers[0]
+              && move != killers[1]
+              && move != killers[2]
+              && move != killers[3]
+              && move != killers[4]
+              && move != killers[5])
               return move;
           break;
 
