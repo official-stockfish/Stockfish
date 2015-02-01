@@ -38,6 +38,7 @@ struct ExtMove {
   Value value;
 
   operator Move() const { return move; }
+  void operator=(Move m) { move = m; }
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) {

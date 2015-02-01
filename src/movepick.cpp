@@ -55,7 +55,7 @@ namespace {
   inline Move pick_best(ExtMove* begin, ExtMove* end)
   {
       std::swap(*begin, *std::max_element(begin, end));
-      return begin->move;
+      return *begin;
   }
 
 } // namespace
@@ -202,12 +202,12 @@ void MovePicker::generate_next_stage() {
   case KILLERS_S1:
       cur = killers;
       endMoves = cur + 6;
-      killers[0].move = ss->killers[0];
-      killers[1].move = ss->killers[1];
-      killers[2].move = countermoves[0];
-      killers[3].move = countermoves[1];
-      killers[4].move = followupmoves[0];
-      killers[5].move = followupmoves[1];
+      killers[0] = ss->killers[0];
+      killers[1] = ss->killers[1];
+      killers[2] = countermoves[0];
+      killers[3] = countermoves[1];
+      killers[4] = followupmoves[0];
+      killers[5] = followupmoves[1];
       break;
 
   case QUIETS_1_S1:
@@ -282,7 +282,7 @@ Move MovePicker::next_move<false>() {
                   return move;
 
               // Losing capture, move it to the tail of the array
-              (endBadCaptures--)->move = move;
+              *endBadCaptures-- = move;
           }
           break;
 
@@ -293,8 +293,7 @@ Move MovePicker::next_move<false>() {
               &&  pos.pseudo_legal(move)
               && !pos.capture(move))
           {
-              // Check for duplicated entries
-              for (int i = 0; i < cur - 1 - killers; i++)
+              for (int i = 0; i < cur - 1 - killers; i++) // Skip duplicated
                   if (move == killers[i])
                       goto skip;
               return move;
