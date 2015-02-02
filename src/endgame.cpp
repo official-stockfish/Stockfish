@@ -428,16 +428,84 @@ ScaleFactor Endgame<KQKRPs>::operator()(const Position& pos) const {
   assert(pos.count<ROOK>(weakSide) == 1);
   assert(pos.count<PAWN>(weakSide) >= 1);
 
-  Square kingSq = pos.king_square(weakSide);
+  Square WeakKingSq = pos.king_square(weakSide);
+  Square StrongKingSq = pos.king_square(strongSide);
   Square rsq = pos.list<ROOK>(weakSide)[0];
 
-  if (    relative_rank(weakSide, kingSq) <= RANK_2
-      &&  relative_rank(weakSide, pos.king_square(strongSide)) >= RANK_4
-      &&  relative_rank(weakSide, rsq) == RANK_3
-      && (  pos.pieces(weakSide, PAWN)
-          & pos.attacks_from<KING>(kingSq)
-          & pos.attacks_from<PAWN>(rsq, strongSide)))
-          return SCALE_FACTOR_DRAW;
+  Bitboard rank2_pawns, safe_rank, b_file_pawns, g_file_pawns;
+
+  safe_rank = weakSide == WHITE ? Rank2BB : Rank7BB;
+
+  b_file_pawns = pos.pieces(weakSide, PAWN) & pos.attacks_from<KING>(WeakKingSq) & FileBBB;
+  g_file_pawns = pos.pieces(weakSide, PAWN) & pos.attacks_from<KING>(WeakKingSq) & FileGBB;
+
+  rank2_pawns = pos.pieces(weakSide, PAWN) & pos.attacks_from<KING>(WeakKingSq) & safe_rank & ~(FileABB | FileHBB);
+
+  // Handles pawns on original rank, largely a superset of the orginal code except for
+  // A and H file pawns, which now have their own special case.
+  // Test FEN: 5rk1/6p1/Qp2p3/3nP1PK/8/P7/8/8 w - - 1 49  	Old code fails high on g6 at depth 29, correct eval: Draw
+  // Test FEN: 6k1/6p1/8/r7/4Q3/8/6K1/8 w - - 0 1		Correct eval: Draw
+  if (   rank2_pawns
+      && relative_rank(weakSide, WeakKingSq) < RANK_3
+      && relative_rank(weakSide, StrongKingSq) > RANK_2)
+      return SCALE_FACTOR_DRAW;
+
+  // Special cases for B or G file pawns
+  // Test FEN: 8/8/2R5/KPk5/8/8/5q2/8 b - - 0 1		Correct eval: Draw
+  // Test FEN: 8/8/2R5/KP6/2k5/8/5q2/8 b - - 0 1		Correct eval: Black Win
+  else if (    b_file_pawns
+           && !(file_of(StrongKingSq) <= FILE_C && (relative_rank(weakSide, StrongKingSq) < relative_rank(weakSide, WeakKingSq))))
+           return SCALE_FACTOR_DRAW;
+
+  else if (    g_file_pawns
+           && !(file_of(StrongKingSq) >= FILE_F && (relative_rank(weakSide, StrongKingSq) < relative_rank(weakSide, WeakKingSq))))
+           return SCALE_FACTOR_DRAW;
+
+  // Special case for a rook pawn on the 3rd (relative) rank.
+  // As long as the weak king can stay on the two adjacent files and behind the 3rd rank or on
+  // the 3rd closest file and not on the back rank with the strong king not allowed to an adjacent file
+  // of the pawn, a draw is very likely.  If the strong king is allowed onto an adjacent file, a loss
+  // is almost certain.
+  // Test FEN 1: 8/8/8/1q1k4/8/P1R5/K7/8 w - - 0 1   Correct Result: Draw
+  // Test FEN 2: 8/k7/8/1q6/8/P1R5/K7/8 w - - 0 1    Correct Result: Black Win
+  else if (relative_rank(weakSide, WeakKingSq) <= RANK_3)
+  {
+    Bitboard a_file_pawns, h_file_pawns;
+    a_file_pawns = pos.pieces(weakSide, PAWN) & (FileABB) & (weakSide == WHITE ? Rank3BB : Rank6BB);
+    h_file_pawns = pos.pieces(weakSide, PAWN) & (FileHBB) & (weakSide == WHITE ? Rank3BB : Rank6BB);
+
+    bool king_ab_file = file_of(WeakKingSq) == FILE_A || file_of(WeakKingSq) == FILE_B;
+    bool king_c27 = WeakKingSq == (weakSide == WHITE ? SQ_C2 : SQ_C7) && (pos.attacks_from<KING>(WeakKingSq) & pos.pieces(weakSide, ROOK));
+    bool king_f27 = WeakKingSq == (weakSide == WHITE ? SQ_F2 : SQ_F7) && (pos.attacks_from<KING>(WeakKingSq) & pos.pieces(weakSide, ROOK));
+    bool king_gh_file = file_of(WeakKingSq) == FILE_G || file_of(WeakKingSq) == FILE_H;
+
+    if ((king_ab_file || king_c27) && a_file_pawns && file_of(StrongKingSq) > FILE_B)
+         return SCALE_FACTOR_DRAW;
+
+    else if ((king_gh_file || king_f27) && h_file_pawns && file_of(StrongKingSq) < FILE_G)
+         return SCALE_FACTOR_DRAW;
+  }
+
+  // Similar to the case for a rook pawn on the 3rd rank, rook pawns on the 6th and 7th ranks
+  // also offer good drawing chances provided that the strong king is not allowed onto an adjacent
+  // file of the pawn.
+  // Test FEN 1: 8/KR6/P1k5/3q4/8/8/8/8 w - - 0 1   Correct Result: Draw
+  // Test FEN 2: 8/KR6/P7/3q4/8/k7/8/8 w - - 0 1    Correct Result: Black Win
+  else if (relative_rank(weakSide, WeakKingSq) >= RANK_6)
+  {
+    Bitboard a_file_pawns, h_file_pawns;
+    a_file_pawns = pos.pieces(weakSide, PAWN) & (FileABB) & (weakSide == WHITE ? (Rank6BB | Rank7BB) : (Rank3BB | Rank2BB));
+    h_file_pawns = pos.pieces(weakSide, PAWN) & (FileHBB) & (weakSide == WHITE ? (Rank6BB | Rank7BB) : (Rank3BB | Rank2BB));
+
+    bool king_ab_file = file_of(WeakKingSq) == FILE_A || file_of(WeakKingSq) == FILE_B;
+    bool king_gh_file = file_of(WeakKingSq) == FILE_G || file_of(WeakKingSq) == FILE_H;
+
+    if (king_ab_file && a_file_pawns && file_of(rsq) == FILE_B && file_of(StrongKingSq) > FILE_B)
+        return SCALE_FACTOR_DRAW;
+
+    else if (king_gh_file && h_file_pawns && file_of(rsq) == FILE_G && file_of(StrongKingSq) < FILE_G)
+        return SCALE_FACTOR_DRAW;
+  }
 
   return SCALE_FACTOR_NONE;
 }
