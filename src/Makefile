@@ -177,11 +177,6 @@ ifeq ($(comp),icc)
 	profile_make = icc-profile-make
 	profile_use = icc-profile-use
 	profile_clean = icc-profile-clean
-else ifeq ($(comp),clang)
-	profile_prepare = gcc-profile-prepare
-	profile_make = gcc-profile-make
-	profile_use = clang-profile-use
-	profile_clean = gcc-profile-clean
 else
 	profile_prepare = gcc-profile-prepare
 	profile_make = gcc-profile-make
@@ -464,12 +459,6 @@ gcc-profile-use:
 
 gcc-profile-clean:
 	@rm -rf *.gcda *.gcno syzygy/*.gcda syzygy/*.gcno bench.txt
-
-clang-profile-use:
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use' \
-	EXTRALDFLAGS='-lgcov' \
-	all
 
 icc-profile-prepare:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) icc-profile-clean
