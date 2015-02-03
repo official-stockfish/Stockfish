@@ -162,6 +162,7 @@ namespace {
   const Score TrappedRook        = S(92,  0);
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
+  const Score PawnAttackThreat   = S(20, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -492,7 +493,12 @@ namespace {
   template<Color Us, bool Trace>
   Score evaluate_threats(const Position& pos, const EvalInfo& ei) {
 
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+    const Color Them        = (Us == WHITE ? BLACK    : WHITE);
+    const Square Up         = (Us == WHITE ? DELTA_N  : DELTA_S);
+    const Square Left       = (Us == WHITE ? DELTA_NW : DELTA_SE);
+    const Square Right      = (Us == WHITE ? DELTA_NE : DELTA_SW);
+    const Bitboard TRank2BB = (Us == WHITE ? Rank2BB  : Rank7BB);
+    const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
 
     enum { Defended, Weak };
     enum { Minor, Major };
@@ -540,6 +546,21 @@ namespace {
         if (b)
             score += more_than_one(b) ? KingOnMany : KingOnOne;
     }
+
+    // Add bonus for safe pawn pushes which attacks an enemy piece
+    b = pos.pieces(Us, PAWN) & ~TRank7BB;
+    b = shift_bb<Up>(b | (shift_bb<Up>(b & TRank2BB) & ~pos.pieces()));
+
+    b &=  ~pos.pieces()
+        & ~ei.attackedBy[Them][PAWN]
+        & (ei.attackedBy[Us][PAWN] | ~ei.attackedBy[Them][ALL_PIECES]);
+
+    b =  (shift_bb<Left>(b) | shift_bb<Right>(b))
+       &  pos.pieces(Them)
+       & ~ei.attackedBy[Us][PAWN];
+
+    if(b)
+        score += popcount<Max15>(b) * PawnAttackThreat;
 
     if (Trace)
         Tracing::write(Tracing::THREAT, Us, score);
