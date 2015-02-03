@@ -447,16 +447,13 @@ gcc-profile-prepare:
 
 gcc-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-arcs' \
+	EXTRACXXFLAGS='-fprofile-generate' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
-# Deleting corrupt ucioption.gc* profile files is necessary to avoid an 
-# "internal compiler error" for gcc versions 4.7.x
-	@rm -f ucioption.gc*
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fbranch-probabilities' \
+	EXTRACXXFLAGS='-fprofile-use -fno-peel-loops -fno-tracer' \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
