@@ -65,45 +65,45 @@ namespace {
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
   // Helper used to detect a given material distribution
-  bool is_KXK(const Position& pos, Color Us) {
-    return  !more_than_one(pos.pieces(~Us))
-          && pos.non_pawn_material(Us) >= RookValueMg;
+  bool is_KXK(const Position& pos, Color us) {
+    return  !more_than_one(pos.pieces(~us))
+          && pos.non_pawn_material(us) >= RookValueMg;
   }
 
-  bool is_KBPsKs(const Position& pos, Color Us) {
-    return   pos.non_pawn_material(Us) == BishopValueMg
-          && pos.count<BISHOP>(Us) == 1
-          && pos.count<PAWN  >(Us) >= 1;
+  bool is_KBPsKs(const Position& pos, Color us) {
+    return   pos.non_pawn_material(us) == BishopValueMg
+          && pos.count<BISHOP>(us) == 1
+          && pos.count<PAWN  >(us) >= 1;
   }
 
-  bool is_KQKRPs(const Position& pos, Color Us) {
-    return  !pos.count<PAWN>(Us)
-          && pos.non_pawn_material(Us) == QueenValueMg
-          && pos.count<QUEEN>(Us)  == 1
-          && pos.count<ROOK>(~Us) == 1
-          && pos.count<PAWN>(~Us) >= 1;
+  bool is_KQKRPs(const Position& pos, Color us) {
+    return  !pos.count<PAWN>(us)
+          && pos.non_pawn_material(us) == QueenValueMg
+          && pos.count<QUEEN>(us)  == 1
+          && pos.count<ROOK>(~us) == 1
+          && pos.count<PAWN>(~us) >= 1;
   }
 
   /// imbalance() calculates the imbalance by comparing the piece count of each
   /// piece type for both colors.
 
-  int imbalance(Color Us, const int pieceCount[][PIECE_TYPE_NB]) {
+  int imbalance(Color us, const int pieceCount[][PIECE_TYPE_NB]) {
 
     int bonus = 0;
 
     // Second-degree polynomial material imbalance by Tord Romstad
     for (int pt1 = NO_PIECE_TYPE; pt1 <= QUEEN; ++pt1)
     {
-        if (!pieceCount[Us][pt1])
+        if (!pieceCount[us][pt1])
             continue;
 
         int v = Linear[pt1];
 
         for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
-            v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticTheirs[pt1][pt2] * pieceCount[~Us][pt2];
+            v +=  QuadraticOurs[pt1][pt2] * pieceCount[us][pt2]
+                + QuadraticTheirs[pt1][pt2] * pieceCount[~us][pt2];
 
-        bonus += pieceCount[Us][pt1] * v;
+        bonus += pieceCount[us][pt1] * v;
     }
 
     return bonus;
