@@ -89,7 +89,6 @@ namespace {
 
   int imbalance(Color Us, const int pieceCount[][PIECE_TYPE_NB]) {
 
-    const Color Them = ~Us;
     int bonus = 0;
 
     // Second-degree polynomial material imbalance by Tord Romstad
@@ -102,7 +101,7 @@ namespace {
 
         for (int pt2 = NO_PIECE_TYPE; pt2 <= pt1; ++pt2)
             v +=  QuadraticOurs[pt1][pt2] * pieceCount[Us][pt2]
-                + QuadraticTheirs[pt1][pt2] * pieceCount[Them][pt2];
+                + QuadraticTheirs[pt1][pt2] * pieceCount[~Us][pt2];
 
         bonus += pieceCount[Us][pt1] * v;
     }
