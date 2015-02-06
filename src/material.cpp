@@ -65,20 +65,20 @@ namespace {
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
   // Helper templates used to detect a given material distribution
-  template<Color Us> bool is_KXK(const Position& pos) {
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+  bool is_KXK(const Position& pos, Color Us) {
+    const Color Them = ~Us;
     return  !more_than_one(pos.pieces(Them))
           && pos.non_pawn_material(Us) >= RookValueMg;
   }
 
-  template<Color Us> bool is_KBPsKs(const Position& pos) {
+  bool is_KBPsKs(const Position& pos, Color Us) {
     return   pos.non_pawn_material(Us) == BishopValueMg
           && pos.count<BISHOP>(Us) == 1
           && pos.count<PAWN  >(Us) >= 1;
   }
 
-  template<Color Us> bool is_KQKRPs(const Position& pos) {
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
+  bool is_KQKRPs(const Position& pos, Color Us) {
+    const Color Them = ~Us;
     return  !pos.count<PAWN>(Us)
           && pos.non_pawn_material(Us) == QueenValueMg
           && pos.count<QUEEN>(Us)  == 1
@@ -142,17 +142,12 @@ Entry* probe(const Position& pos) {
   if (pos.this_thread()->endgames.probe(key, e->evaluationFunction))
       return e;
 
-  if (is_KXK<WHITE>(pos))
-  {
-      e->evaluationFunction = &EvaluateKXK[WHITE];
-      return e;
-  }
-
-  if (is_KXK<BLACK>(pos))
-  {
-      e->evaluationFunction = &EvaluateKXK[BLACK];
-      return e;
-  }
+  for (Color c = WHITE; c <= BLACK; ++c)
+      if (is_KXK(pos, c))
+      {
+          e->evaluationFunction = &EvaluateKXK[c];
+          return e;
+      }
 
   // OK, we didn't find any special evaluation function for the current material
   // configuration. Is there a suitable specialized scaling function?
@@ -167,17 +162,14 @@ Entry* probe(const Position& pos) {
   // We didn't find any specialized scaling function, so fall back on generic
   // ones that refer to more than one material distribution. Note that in this
   // case we don't return after setting the function.
-  if (is_KBPsKs<WHITE>(pos))
-      e->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
+  for (Color c = WHITE; c <= BLACK; ++c)
+  {
+    if (is_KBPsKs(pos, c))
+        e->scalingFunction[c] = &ScaleKBPsK[c];
 
-  if (is_KBPsKs<BLACK>(pos))
-      e->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
-
-  if (is_KQKRPs<WHITE>(pos))
-      e->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
-
-  else if (is_KQKRPs<BLACK>(pos))
-      e->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
+    else if (is_KQKRPs(pos, c))
+        e->scalingFunction[c] = &ScaleKQKRPs[c];
+  }
 
   Value npm_w = pos.non_pawn_material(WHITE);
   Value npm_b = pos.non_pawn_material(BLACK);
@@ -207,7 +199,7 @@ Entry* probe(const Position& pos) {
 
   // Zero or just one pawn makes it difficult to win, even with a small material
   // advantage. This catches some trivial draws like KK, KBK and KNK and gives a
-  // drawish scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
+  // drawish scale factor for cases such as KRKBP and KmmKm.
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
       e->factor[WHITE] = uint8_t(npm_w <  RookValueMg   ? SCALE_FACTOR_DRAW :
                                  npm_b <= BishopValueMg ? 4 : 12);
