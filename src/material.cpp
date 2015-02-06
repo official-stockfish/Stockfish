@@ -64,7 +64,7 @@ namespace {
   Endgame<KPsK>   ScaleKPsK[]   = { Endgame<KPsK>(WHITE),   Endgame<KPsK>(BLACK) };
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
-  // Helper templates used to detect a given material distribution
+  // Helper used to detect a given material distribution
   bool is_KXK(const Position& pos, Color Us) {
     return  !more_than_one(pos.pieces(~Us))
           && pos.non_pawn_material(Us) >= RookValueMg;
