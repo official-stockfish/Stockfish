@@ -47,7 +47,7 @@ namespace Zobrist {
   Key exclusion;
 }
 
-Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion;}
+Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion; }
 
 namespace {
 
@@ -1060,8 +1060,8 @@ Value Position::see(Move m) const {
   stm = color_of(piece_on(from));
   occupied = pieces() ^ from;
 
-  // Castling moves are implemented as king capturing the rook so cannot be
-  // handled correctly. Simply return 0 that is always the correct value
+  // Castling moves are implemented as king capturing the rook so cannot
+  // be handled correctly. Simply return VALUE_ZERO that is always correct
   // unless in the rare case the rook ends up under attack.
   if (type_of(m) == CASTLING)
       return VALUE_ZERO;
