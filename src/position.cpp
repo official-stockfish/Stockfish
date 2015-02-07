@@ -1172,96 +1172,81 @@ void Position::flip() {
 /// Position::pos_is_ok() performs some consistency checks for the position object.
 /// This is meant to be helpful when debugging.
 
-bool Position::pos_is_ok(int* step) const {
+bool Position::pos_is_ok(bool fast, int* failedStep) const {
 
-  // Which parts of the position should be verified?
-  const bool all = false;
+  enum { Default, King, Bitboards, State, Lists, Castling };
 
-  const bool testBitboards       = all || false;
-  const bool testState           = all || false;
-  const bool testKingCount       = all || false;
-  const bool testKingCapture     = all || false;
-  const bool testPieceCounts     = all || false;
-  const bool testPieceList       = all || false;
-  const bool testCastlingSquares = all || false;
-
-  if (step)
-      *step = 1;
-
-  if (   (sideToMove != WHITE && sideToMove != BLACK)
-      || piece_on(king_square(WHITE)) != W_KING
-      || piece_on(king_square(BLACK)) != B_KING
-      || (   ep_square() != SQ_NONE
-          && relative_rank(sideToMove, ep_square()) != RANK_6))
-      return false;
-
-  if (step && ++*step, testBitboards)
+  for (int step = Default; step <= (fast ? Default : Castling); step++)
   {
-      // The intersection of the white and black pieces must be empty
-      if (pieces(WHITE) & pieces(BLACK))
-          return false;
+      if (failedStep)
+          *failedStep = step;
 
-      // The union of the white and black pieces must be equal to all
-      // occupied squares
-      if ((pieces(WHITE) | pieces(BLACK)) != pieces())
-          return false;
+      if (step == Default)
+          if (   (sideToMove != WHITE && sideToMove != BLACK)
+              || piece_on(king_square(WHITE)) != W_KING
+              || piece_on(king_square(BLACK)) != B_KING
+              || (   ep_square() != SQ_NONE
+                  && relative_rank(sideToMove, ep_square()) != RANK_6))
+              return false;
 
-      // Separate piece type bitboards must have empty intersections
-      for (PieceType p1 = PAWN; p1 <= KING; ++p1)
-          for (PieceType p2 = PAWN; p2 <= KING; ++p2)
-              if (p1 != p2 && (pieces(p1) & pieces(p2)))
-                  return false;
-  }
+      if (step == King)
+          if (   std::count(board, board + SQUARE_NB, W_KING) != 1
+              || std::count(board, board + SQUARE_NB, B_KING) != 1
+              || attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
+              return false;
 
-  if (step && ++*step, testState)
-  {
-      StateInfo si;
-      set_state(&si);
-      if (   st->key != si.key
-          || st->pawnKey != si.pawnKey
-          || st->materialKey != si.materialKey
-          || st->nonPawnMaterial[WHITE] != si.nonPawnMaterial[WHITE]
-          || st->nonPawnMaterial[BLACK] != si.nonPawnMaterial[BLACK]
-          || st->psq != si.psq
-          || st->checkersBB != si.checkersBB)
-          return false;
-  }
+      if (step == Bitboards)
+      {
+          if (  (pieces(WHITE) & pieces(BLACK))
+              ||(pieces(WHITE) | pieces(BLACK)) != pieces())
+              return false;
 
-  if (step && ++*step, testKingCount)
-      if (   std::count(board, board + SQUARE_NB, W_KING) != 1
-          || std::count(board, board + SQUARE_NB, B_KING) != 1)
-          return false;
+          for (PieceType p1 = PAWN; p1 <= KING; ++p1)
+              for (PieceType p2 = PAWN; p2 <= KING; ++p2)
+                  if (p1 != p2 && (pieces(p1) & pieces(p2)))
+                      return false;
+      }
 
-  if (step && ++*step, testKingCapture)
-      if (attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
-          return false;
+      if (step == State)
+      {
+          StateInfo si;
+          set_state(&si);
+          if (   st->key != si.key
+              || st->pawnKey != si.pawnKey
+              || st->materialKey != si.materialKey
+              || st->nonPawnMaterial[WHITE] != si.nonPawnMaterial[WHITE]
+              || st->nonPawnMaterial[BLACK] != si.nonPawnMaterial[BLACK]
+              || st->psq != si.psq
+              || st->checkersBB != si.checkersBB)
+              return false;
+      }
 
-  if (step && ++*step, testPieceCounts)
-      for (Color c = WHITE; c <= BLACK; ++c)
-          for (PieceType pt = PAWN; pt <= KING; ++pt)
-              if (pieceCount[c][pt] != popcount<Full>(pieces(c, pt)))
-                  return false;
-
-  if (step && ++*step, testPieceList)
-      for (Color c = WHITE; c <= BLACK; ++c)
-          for (PieceType pt = PAWN; pt <= KING; ++pt)
-              for (int i = 0; i < pieceCount[c][pt];  ++i)
-                  if (   board[pieceList[c][pt][i]] != make_piece(c, pt)
-                      || index[pieceList[c][pt][i]] != i)
+      if (step == Lists)
+          for (Color c = WHITE; c <= BLACK; ++c)
+              for (PieceType pt = PAWN; pt <= KING; ++pt)
+              {
+                  if (pieceCount[c][pt] != popcount<Full>(pieces(c, pt)))
                       return false;
 
-  if (step && ++*step, testCastlingSquares)
-      for (Color c = WHITE; c <= BLACK; ++c)
-          for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
-          {
-              if (!can_castle(c | s))
-                  continue;
+                  for (int i = 0; i < pieceCount[c][pt];  ++i)
+                      if (   board[pieceList[c][pt][i]] != make_piece(c, pt)
+                          || index[pieceList[c][pt][i]] != i)
+                          return false;
+              }
 
-              if (  (castlingRightsMask[king_square(c)] & (c | s)) != (c | s)
-                  || piece_on(castlingRookSquare[c | s]) != make_piece(c, ROOK)
-                  || castlingRightsMask[castlingRookSquare[c | s]] != (c | s))
-                  return false;
-          }
+      if (step == Castling)
+          for (Color c = WHITE; c <= BLACK; ++c)
+              for (CastlingSide s = KING_SIDE; s <= QUEEN_SIDE; s = CastlingSide(s + 1))
+              {
+                  if (!can_castle(c | s))
+                      continue;
+
+                  if (   piece_on(castlingRookSquare[c | s]) != make_piece(c, ROOK)
+                      || castlingRightsMask[castlingRookSquare[c | s]] != (c | s)
+                      ||(castlingRightsMask[king_square(c)] & (c | s)) != (c | s))
+                      return false;
+              }
+  }
 
   return true;
 }

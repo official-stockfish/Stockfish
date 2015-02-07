@@ -174,7 +174,7 @@ public:
   Value non_pawn_material(Color c) const;
 
   // Position consistency check, for debugging
-  bool pos_is_ok(int* step = nullptr) const;
+  bool pos_is_ok(bool fast = true, int* failedStep = nullptr) const;
   void flip();
 
 private:
