@@ -1098,21 +1098,11 @@ Value Position::see(Move m) const {
 
       // Locate and remove the next least valuable attacker
       captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
-
-      // Stop before processing a king capture
-      if (captured == KING)
-      {
-          if (stmAttackers == attackers)
-              ++slIndex;
-
-          break;
-      }
-
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
       ++slIndex;
 
-  } while (stmAttackers);
+  } while (stmAttackers && (captured != KING || (--slIndex, false))); // Stop before a king capture
 
   // Having built the swap list, we negamax through it to find the best
   // achievable score from the point of view of the side to move.
