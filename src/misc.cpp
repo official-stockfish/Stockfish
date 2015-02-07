@@ -126,7 +126,7 @@ const string engine_info(bool to_uci) {
 /// Debug functions used mainly to collect run-time statistics
 
 void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }
+void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
 void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 
 void dbg_print() {

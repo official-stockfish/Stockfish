@@ -559,7 +559,7 @@ namespace {
        &  pos.pieces(Them)
        & ~ei.attackedBy[Us][PAWN];
 
-    if(b)
+    if (b)
         score += popcount<Max15>(b) * PawnAttackThreat;
 
     if (Trace)

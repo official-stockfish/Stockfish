@@ -33,7 +33,7 @@ void prefetch(char* addr);
 void start_logger(bool b);
 
 void dbg_hit_on(bool b);
-void dbg_hit_on_c(bool c, bool b);
+void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
 void dbg_print();
 
