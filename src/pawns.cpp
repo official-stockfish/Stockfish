@@ -61,6 +61,14 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
+  // Double Attack Bonus 
+  const Bitboard DoubleAttackMask[] = {
+    (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB),
+    (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB)
+  };
+
+  const Score DoubleAttackBonus = S(16, 0);
+
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
   { V( 99), V(20), V(26), V(54), V(85), V( 92), V(108) },
@@ -116,6 +124,7 @@ namespace {
     e->kingSquares[Us] = SQ_NONE;
     e->semiopenFiles[Us] = 0xFF;
     e->pawnAttacks[Us] = shift_bb<Right>(ourPawns) | shift_bb<Left>(ourPawns);
+    e->pawnDoubleAttacks[Us] = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns);
     e->pawnsOnSquares[Us][BLACK] = popcount<Max15>(ourPawns & DarkSquares);
     e->pawnsOnSquares[Us][WHITE] = pos.count<PAWN>(Us) - e->pawnsOnSquares[Us][BLACK];
 
@@ -194,6 +203,9 @@ namespace {
 
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
+
+    // Bonus for double attack controlling central squares
+    score += popcount<Max15>(e->pawnDoubleAttacks[Us] & DoubleAttackMask[Us]) * DoubleAttackBonus;
 
     return score;
   }
