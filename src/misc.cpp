@@ -176,11 +176,11 @@ void start_logger(bool b) { Logger::start(b); }
 /// which can be quite slow.
 #ifdef NO_PREFETCH
 
-void prefetch(char*) {}
+void prefetch(void*) {}
 
 #else
 
-void prefetch(char* addr) {
+void prefetch(void* addr) {
 
 #  if defined(__INTEL_COMPILER)
    // This hack prevents prefetches from being optimized away by
@@ -189,7 +189,7 @@ void prefetch(char* addr) {
 #  endif
 
 #  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-  _mm_prefetch(addr, _MM_HINT_T0);
+  _mm_prefetch((char*)addr, _MM_HINT_T0);
 #  else
   __builtin_prefetch(addr);
 #  endif

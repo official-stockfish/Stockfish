@@ -28,7 +28,7 @@
 #include "types.h"
 
 const std::string engine_info(bool to_uci = false);
-void prefetch(char* addr);
+void prefetch(void* addr);
 void start_logger(bool b);
 
 void dbg_hit_on(bool b);
