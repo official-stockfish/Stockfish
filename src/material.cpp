@@ -64,31 +64,28 @@ namespace {
   Endgame<KPsK>   ScaleKPsK[]   = { Endgame<KPsK>(WHITE),   Endgame<KPsK>(BLACK) };
   Endgame<KPKP>   ScaleKPKP[]   = { Endgame<KPKP>(WHITE),   Endgame<KPKP>(BLACK) };
 
-  // Helper templates used to detect a given material distribution
-  template<Color Us> bool is_KXK(const Position& pos) {
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return  !more_than_one(pos.pieces(Them))
-          && pos.non_pawn_material(Us) >= RookValueMg;
+  // Helper used to detect a given material distribution
+  bool is_KXK(const Position& pos, Color us) {
+    return  !more_than_one(pos.pieces(~us))
+          && pos.non_pawn_material(us) >= RookValueMg;
   }
 
-  template<Color Us> bool is_KBPsKs(const Position& pos) {
-    return   pos.non_pawn_material(Us) == BishopValueMg
-          && pos.count<BISHOP>(Us) == 1
-          && pos.count<PAWN  >(Us) >= 1;
+  bool is_KBPsKs(const Position& pos, Color us) {
+    return   pos.non_pawn_material(us) == BishopValueMg
+          && pos.count<BISHOP>(us) == 1
+          && pos.count<PAWN  >(us) >= 1;
   }
 
-  template<Color Us> bool is_KQKRPs(const Position& pos) {
-    const Color Them = (Us == WHITE ? BLACK : WHITE);
-    return  !pos.count<PAWN>(Us)
-          && pos.non_pawn_material(Us) == QueenValueMg
-          && pos.count<QUEEN>(Us)  == 1
-          && pos.count<ROOK>(Them) == 1
-          && pos.count<PAWN>(Them) >= 1;
+  bool is_KQKRPs(const Position& pos, Color us) {
+    return  !pos.count<PAWN>(us)
+          && pos.non_pawn_material(us) == QueenValueMg
+          && pos.count<QUEEN>(us)  == 1
+          && pos.count<ROOK>(~us) == 1
+          && pos.count<PAWN>(~us) >= 1;
   }
 
   /// imbalance() calculates the imbalance by comparing the piece count of each
   /// piece type for both colors.
-
   template<Color Us>
   int imbalance(const int pieceCount[][PIECE_TYPE_NB]) {
 
@@ -142,17 +139,12 @@ Entry* probe(const Position& pos) {
   if (pos.this_thread()->endgames.probe(key, e->evaluationFunction))
       return e;
 
-  if (is_KXK<WHITE>(pos))
-  {
-      e->evaluationFunction = &EvaluateKXK[WHITE];
-      return e;
-  }
-
-  if (is_KXK<BLACK>(pos))
-  {
-      e->evaluationFunction = &EvaluateKXK[BLACK];
-      return e;
-  }
+  for (Color c = WHITE; c <= BLACK; ++c)
+      if (is_KXK(pos, c))
+      {
+          e->evaluationFunction = &EvaluateKXK[c];
+          return e;
+      }
 
   // OK, we didn't find any special evaluation function for the current material
   // configuration. Is there a suitable specialized scaling function?
@@ -167,17 +159,14 @@ Entry* probe(const Position& pos) {
   // We didn't find any specialized scaling function, so fall back on generic
   // ones that refer to more than one material distribution. Note that in this
   // case we don't return after setting the function.
-  if (is_KBPsKs<WHITE>(pos))
-      e->scalingFunction[WHITE] = &ScaleKBPsK[WHITE];
+  for (Color c = WHITE; c <= BLACK; ++c)
+  {
+    if (is_KBPsKs(pos, c))
+        e->scalingFunction[c] = &ScaleKBPsK[c];
 
-  if (is_KBPsKs<BLACK>(pos))
-      e->scalingFunction[BLACK] = &ScaleKBPsK[BLACK];
-
-  if (is_KQKRPs<WHITE>(pos))
-      e->scalingFunction[WHITE] = &ScaleKQKRPs[WHITE];
-
-  else if (is_KQKRPs<BLACK>(pos))
-      e->scalingFunction[BLACK] = &ScaleKQKRPs[BLACK];
+    else if (is_KQKRPs(pos, c))
+        e->scalingFunction[c] = &ScaleKQKRPs[c];
+  }
 
   Value npm_w = pos.non_pawn_material(WHITE);
   Value npm_b = pos.non_pawn_material(BLACK);
