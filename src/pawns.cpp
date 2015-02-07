@@ -63,33 +63,33 @@ namespace {
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
-  { V( 99), V(23), V(24), V(54), V(85), V( 93), V(107) },
-  { V(119), V( 2), V(28), V(72), V(96), V(104), V(114) },
-  { V(103), V( 6), V(47), V(74), V(84), V(103), V( 94) },
-  { V( 78), V(10), V(41), V(64), V(88), V( 92), V(115) } };
+  { V( 99), V(20), V(26), V(54), V(85), V( 92), V(108) },
+  { V(117), V( 1), V(27), V(71), V(94), V(104), V(118) },
+  { V(104), V( 4), V(51), V(76), V(82), V(102), V( 97) },
+  { V( 80), V(12), V(43), V(65), V(88), V( 91), V(115) } };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
   const Value StormDanger[][4][RANK_NB] = {
-  { { V( 0),  V(  65), V( 125), V(37), V(30) },
-    { V( 0),  V(  57), V( 136), V(39), V(24) },
-    { V( 0),  V(  50), V( 114), V(45), V(29) },
-    { V( 0),  V(  58), V( 129), V(56), V(34) } },
-  { { V(20),  V(  45), V(  91), V(47), V(20) },
-    { V(25),  V(  23), V( 105), V(38), V(14) },
-    { V(21),  V(  37), V(  99), V(35), V(21) },
-    { V(30),  V(  18), V( 105), V(38), V(28) } },
-  { { V( 0),  V(   0), V(  81), V(13), V( 4) },
-    { V( 0),  V(   0), V( 169), V(30), V( 4) },
-    { V( 0),  V(   0), V( 166), V(24), V( 6) },
-    { V( 0),  V(   0), V( 164), V(24), V(11) } },
-  { { V( 0),  V(-289), V(-297), V(57), V(29) },
-    { V( 0),  V(  66), V( 136), V(43), V(16) },
-    { V( 0),  V(  66), V( 141), V(50), V(31) },
-    { V( 0),  V(  63), V( 126), V(52), V(23) } } };
+  { { V( 0),  V(  65), V( 126), V(36), V(30) },
+    { V( 0),  V(  55), V( 135), V(36), V(23) },
+    { V( 0),  V(  47), V( 116), V(45), V(26) },
+    { V( 0),  V(  62), V( 127), V(57), V(34) } },
+  { { V(21),  V(  45), V(  93), V(50), V(19) },
+    { V(23),  V(  24), V( 105), V(41), V(13) },
+    { V(23),  V(  36), V( 101), V(38), V(20) },
+    { V(30),  V(  19), V( 110), V(41), V(27) } },
+  { { V( 0),  V(   0), V(  81), V(14), V( 4) },
+    { V( 0),  V(   0), V( 169), V(30), V( 3) },
+    { V( 0),  V(   0), V( 168), V(24), V( 5) },
+    { V( 0),  V(   0), V( 162), V(26), V(10) } },
+  { { V( 0),  V(-283), V(-298), V(57), V(29) },
+    { V( 0),  V(  63), V( 137), V(42), V(18) },
+    { V( 0),  V(  67), V( 145), V(49), V(33) },
+    { V( 0),  V(  62), V( 126), V(53), V(21) } } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
-  const Value MaxSafetyBonus = V(252);
+  const Value MaxSafetyBonus = V(258);
 
   #undef S
   #undef V
@@ -147,7 +147,7 @@ namespace {
         // If the pawn is passed, isolated, connected or a lever it cannot be
         // backward. If there are friendly pawns behind on adjacent files
         // it cannot be backward either.
-        if (   (passed | isolated | connected | lever)
+        if (   (passed | isolated | lever | connected)
             || (ourPawns & pawn_attack_span(Them, s)))
             backward = false;
         else
