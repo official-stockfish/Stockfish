@@ -417,7 +417,7 @@ inline MoveType type_of(Move m) {
 }
 
 inline PieceType promotion_type(Move m) {
-  return PieceType(((m >> 12) & 3) + 2);
+  return PieceType(((m >> 12) & 3) + KNIGHT);
 }
 
 inline Move make_move(Square from, Square to) {

@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>   // For std::memset
+#include <cstring>   // For std::memset, std::memcmp
 #include <iomanip>
 #include <sstream>
 
@@ -381,7 +381,7 @@ void Position::set_state(StateInfo* si) const {
   if (sideToMove == BLACK)
       si->key ^= Zobrist::side;
 
-  si->key ^= Zobrist::castling[st->castlingRights];
+  si->key ^= Zobrist::castling[si->castlingRights];
 
   for (Bitboard b = pieces(PAWN); b; )
   {
@@ -693,24 +693,20 @@ void Position::do_move(Move m, StateInfo& newSt) {
   do_move(m, newSt, ci, gives_check(m, ci));
 }
 
-void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveIsCheck) {
+void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool givesCheck) {
 
   assert(is_ok(m));
   assert(&newSt != st);
 
   ++nodes;
-  Key k = st->key;
+  Key k = st->key ^ Zobrist::side;
 
   // Copy some fields of the old state to our new StateInfo object except the
   // ones which are going to be recalculated from scratch anyway and then switch
   // our state pointer to point to the new (ready to be updated) state.
-  std::memcpy(&newSt, st, StateCopySize64 * sizeof(uint64_t));
-
+  std::memcpy(&newSt, st, offsetof(StateInfo, key));
   newSt.previous = st;
   st = &newSt;
-
-  // Update side to move
-  k ^= Zobrist::side;
 
   // Increment ply counters. In particular, rule50 will be reset to zero later on
   // in case of a capture or a pawn move.
@@ -722,17 +718,16 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   Color them = ~us;
   Square from = from_sq(m);
   Square to = to_sq(m);
-  Piece pc = piece_on(from);
-  PieceType pt = type_of(pc);
+  PieceType pt = type_of(piece_on(from));
   PieceType captured = type_of(m) == ENPASSANT ? PAWN : type_of(piece_on(to));
 
-  assert(color_of(pc) == us);
-  assert(piece_on(to) == NO_PIECE || color_of(piece_on(to)) == them || type_of(m) == CASTLING);
+  assert(color_of(piece_on(from)) == us);
+  assert(piece_on(to) == NO_PIECE || color_of(piece_on(to)) == (type_of(m) != CASTLING ? them : us));
   assert(captured != KING);
 
   if (type_of(m) == CASTLING)
   {
-      assert(pc == make_piece(us, KING));
+      assert(pt == KING);
 
       Square rfrom, rto;
       do_castling<true>(from, to, rfrom, rto);
@@ -752,7 +747,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
       {
           if (type_of(m) == ENPASSANT)
           {
-              capsq += pawn_push(them);
+              capsq -= pawn_push(us);
 
               assert(pt == PAWN);
               assert(to == st->epSquare);
@@ -760,7 +755,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
               assert(piece_on(to) == NO_PIECE);
               assert(piece_on(capsq) == make_piece(them, PAWN));
 
-              board[capsq] = NO_PIECE;
+              board[capsq] = NO_PIECE; // Not done by remove_piece()
           }
 
           st->pawnKey ^= Zobrist::psq[them][PAWN][capsq];
@@ -810,9 +805,9 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   {
       // Set en-passant square if the moved pawn can be captured
       if (   (int(to) ^ int(from)) == 16
-          && (attacks_from<PAWN>(from + pawn_push(us), us) & pieces(them, PAWN)))
+          && (attacks_from<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
       {
-          st->epSquare = Square((from + to) / 2);
+          st->epSquare = (from + to) / 2;
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
@@ -859,7 +854,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
   // Update checkers bitboard: piece must be already moved due to attacks_from()
   st->checkersBB = 0;
 
-  if (moveIsCheck)
+  if (givesCheck)
   {
       if (type_of(m) != NORMAL)
           st->checkersBB = attackers_to(king_square(them)) & pieces(us);
@@ -872,6 +867,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool moveI
           // Discovered checks
           if (ci.dcCandidates && (ci.dcCandidates & from))
           {
+              assert(pt != QUEEN);
+
               if (pt != ROOK)
                   st->checkersBB |= attacks_from<ROOK>(king_square(them)) & pieces(us, QUEEN, ROOK);
 
@@ -906,11 +903,11 @@ void Position::undo_move(Move m) {
 
   if (type_of(m) == PROMOTION)
   {
-      assert(pt == promotion_type(m));
       assert(relative_rank(us, to) == RANK_8);
-      assert(promotion_type(m) >= KNIGHT && promotion_type(m) <= QUEEN);
+      assert(pt == promotion_type(m));
+      assert(pt >= KNIGHT && pt <= QUEEN);
 
-      remove_piece(to, us, promotion_type(m));
+      remove_piece(to, us, pt);
       put_piece(to, us, PAWN);
       pt = PAWN;
   }
@@ -936,6 +933,7 @@ void Position::undo_move(Move m) {
               assert(to == st->previous->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(capsq) == NO_PIECE);
+              assert(st->capturedType == PAWN);
           }
 
           put_piece(capsq, ~us, st->capturedType); // Restore the captured piece
@@ -975,9 +973,9 @@ void Position::do_castling(Square from, Square& to, Square& rfrom, Square& rto) 
 void Position::do_null_move(StateInfo& newSt) {
 
   assert(!checkers());
+  assert(&newSt != st);
 
-  std::memcpy(&newSt, st, sizeof(StateInfo)); // Fully copy here
-
+  std::memcpy(&newSt, st, sizeof(StateInfo));
   newSt.previous = st;
   st = &newSt;
 
@@ -1172,11 +1170,13 @@ void Position::flip() {
 /// Position::pos_is_ok() performs some consistency checks for the position object.
 /// This is meant to be helpful when debugging.
 
-bool Position::pos_is_ok(bool fast, int* failedStep) const {
+bool Position::pos_is_ok(int* failedStep) const {
+
+  const bool Fast = true; // Quick (default) or full check?
 
   enum { Default, King, Bitboards, State, Lists, Castling };
 
-  for (int step = Default; step <= (fast ? Default : Castling); step++)
+  for (int step = Default; step <= (Fast ? Default : Castling); step++)
   {
       if (failedStep)
           *failedStep = step;
@@ -1209,15 +1209,9 @@ bool Position::pos_is_ok(bool fast, int* failedStep) const {
 
       if (step == State)
       {
-          StateInfo si;
+          StateInfo si = *st;
           set_state(&si);
-          if (   st->key != si.key
-              || st->pawnKey != si.pawnKey
-              || st->materialKey != si.materialKey
-              || st->nonPawnMaterial[WHITE] != si.nonPawnMaterial[WHITE]
-              || st->nonPawnMaterial[BLACK] != si.nonPawnMaterial[BLACK]
-              || st->psq != si.psq
-              || st->checkersBB != si.checkersBB)
+          if (std::memcmp(&si, st, sizeof(StateInfo)))
               return false;
       }
 

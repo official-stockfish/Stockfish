@@ -68,11 +68,6 @@ struct StateInfo {
 };
 
 
-/// When making a move the current StateInfo up to 'key' excluded is copied to
-/// the new one. Here we calculate the quad words (64 bit) needed to be copied.
-const size_t StateCopySize64 = offsetof(StateInfo, key) / sizeof(uint64_t) + 1;
-
-
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
@@ -144,7 +139,7 @@ public:
 
   // Doing and undoing moves
   void do_move(Move m, StateInfo& st);
-  void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool moveIsCheck);
+  void do_move(Move m, StateInfo& st, const CheckInfo& ci, bool givesCheck);
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
@@ -174,7 +169,7 @@ public:
   Value non_pawn_material(Color c) const;
 
   // Position consistency check, for debugging
-  bool pos_is_ok(bool fast = true, int* failedStep = nullptr) const;
+  bool pos_is_ok(int* failedStep = nullptr) const;
   void flip();
 
 private:
