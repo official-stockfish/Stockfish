@@ -61,7 +61,7 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
-  // Center Pincer Attack Bonus: Two pawns attacking the same central square
+  // Center Pincer Attack Bonus: Two pawns controlling the same central square
   const Bitboard CenterPincerAttackMask[] = {
     (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB),
     (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB)
@@ -203,7 +203,7 @@ namespace {
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
 
-    // Bonus for double attack controlling central squares
+    // Bonus for pincer attacks: Two pawns controlling the same central square
     const Bitboard pawnPincerAttacks = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns);
     score += popcount<Max15>(pawnPincerAttacks & CenterPincerAttackMask[Us]) * CenterPincerAttackBonus;
 
