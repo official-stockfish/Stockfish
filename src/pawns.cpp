@@ -61,6 +61,14 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
+  // Center bind bonus: Two pawns controlling the same central square
+  const Bitboard CenterBindMask[COLOR_NB] = {
+    (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB),
+    (FileDBB | FileEBB) & (Rank4BB | Rank3BB | Rank2BB)
+  };
+
+  const Score CenterBind = S(16, 0);
+
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
   { V( 99), V(20), V(26), V(54), V(85), V( 92), V(108) },
@@ -194,6 +202,10 @@ namespace {
 
     b = e->semiopenFiles[Us] ^ 0xFF;
     e->pawnSpan[Us] = b ? int(msb(b) - lsb(b)) : 0;
+
+    // Center binds: Two pawns controlling the same central square
+    b = shift_bb<Right>(ourPawns) & shift_bb<Left>(ourPawns) & CenterBindMask[Us];
+    score += popcount<Max15>(b) * CenterBind;
 
     return score;
   }
