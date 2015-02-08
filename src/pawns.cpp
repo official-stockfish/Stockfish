@@ -117,7 +117,8 @@ namespace {
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
-    Bitboard ourPawns   = pos.pieces(Us  , PAWN);
+    Bitboard ourPawns   = e->pawnsAr[Us] 
+                        = pos.pieces(Us  , PAWN);
     Bitboard theirPawns = pos.pieces(Them, PAWN);
 
     e->passedPawns[Us] = 0;
@@ -295,11 +296,11 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.can_castle(Us);
-  minKingPawnDistance[Us] = 0;
 
-  Bitboard pawns = pos.pieces(Us, PAWN);
-  if (pawns)
-      while (!(DistanceRingBB[ksq][minKingPawnDistance[Us]++] & pawns)) {}
+  minKingPawnDistance[Us] = 0;
+  Bitboard b = pawnsAr[Us];
+  if (b)
+      while (!(DistanceRingBB[ksq][minKingPawnDistance[Us]++] & b)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
       return make_score(0, -16 * minKingPawnDistance[Us]);

@@ -219,7 +219,7 @@ namespace {
     ei.pinnedPieces[Us] = pos.pinned_pieces(Us);
 
     Bitboard b = ei.attackedBy[Them][KING] = pos.attacks_from<KING>(pos.king_square(Them));
-    ei.attackedBy[Us][ALL_PIECES] = ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
+    ei.attackedBy[Us][PAWN] = ei.pi->pawn_attacks(Us);
 
     // Init king safety tables only if we are going to use them
     if (pos.non_pawn_material(Us) >= QueenValueMg)
@@ -315,7 +315,7 @@ namespace {
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus for outpost square
-            if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
+            if (!(ei.pi->pawns(Them) & pawn_attack_span(Us, s)))
                 score += evaluate_outpost<Pt, Us>(pos, ei, s);
 
             // Bonus when behind a pawn
@@ -347,7 +347,7 @@ namespace {
             // Bonus for aligning with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
             {
-                Bitboard alignedPawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
+                Bitboard alignedPawns = ei.pi->pawns(Them) & PseudoAttacks[ROOK][s];
                 if (alignedPawns)
                     score += popcount<Max15>(alignedPawns) * RookOnPawn;
             }
@@ -507,7 +507,7 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies defended by a pawn
-    defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
+    defended =  (pos.pieces(Them) ^ ei.pi->pawns(Them))
               &  ei.attackedBy[Them][PAWN];
 
     // Add a bonus according to the kind of attacking pieces
@@ -668,12 +668,12 @@ namespace {
     // SpaceMask[]. A square is unsafe if it is attacked by an enemy
     // pawn, or if it is undefended and attacked by an enemy piece.
     Bitboard safe =   SpaceMask[Us]
-                   & ~pos.pieces(Us, PAWN)
+                   & ~ei.pi->pawns(Us)
                    & ~ei.attackedBy[Them][PAWN]
                    & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
 
     // Find all squares which are at most three squares behind some friendly pawn
-    Bitboard behind = pos.pieces(Us, PAWN);
+    Bitboard behind = ei.pi->pawns(Us);
     behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
     behind |= (Us == WHITE ? behind >> 16 : behind << 16);
 
@@ -721,8 +721,8 @@ namespace {
     init_eval_info<WHITE>(pos, ei);
     init_eval_info<BLACK>(pos, ei);
 
-    ei.attackedBy[WHITE][ALL_PIECES] |= ei.attackedBy[WHITE][KING];
-    ei.attackedBy[BLACK][ALL_PIECES] |= ei.attackedBy[BLACK][KING];
+    ei.attackedBy[WHITE][ALL_PIECES] = ei.attackedBy[WHITE][KING] | ei.attackedBy[WHITE][PAWN];
+    ei.attackedBy[BLACK][ALL_PIECES] = ei.attackedBy[BLACK][KING] | ei.attackedBy[BLACK][PAWN];
 
     // Do not include in mobility squares protected by enemy pawns or occupied by our pawns or king
     Bitboard mobilityArea[] = { ~(ei.attackedBy[BLACK][PAWN] | pos.pieces(WHITE, PAWN, KING)),
