@@ -182,7 +182,7 @@ void Position::init() {
 Position& Position::operator=(const Position& pos) {
 
   std::memcpy(this, &pos, sizeof(Position));
-  startState = *st;
+  std::memcpy(&startState, st, sizeof(StateInfo));
   st = &startState;
   nodes = 0;
 
@@ -265,7 +265,7 @@ void Position::set(const string& fenStr, bool isChess960, Thread* th) {
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
-          put_piece(sq, color_of(Piece(idx)), type_of(Piece(idx)));
+          put_piece(color_of(Piece(idx)), type_of(Piece(idx)), sq);
           ++sq;
       }
   }
@@ -375,8 +375,8 @@ void Position::set_state(StateInfo* si) const {
       si->psq += psq[color_of(pc)][type_of(pc)][s];
   }
 
-  if (ep_square() != SQ_NONE)
-      si->key ^= Zobrist::enpassant[file_of(ep_square())];
+  if (si->epSquare != SQ_NONE)
+      si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
 
   if (sideToMove == BLACK)
       si->key ^= Zobrist::side;
@@ -498,7 +498,7 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
   return  (attacks_from<PAWN>(s, BLACK)    & pieces(WHITE, PAWN))
         | (attacks_from<PAWN>(s, WHITE)    & pieces(BLACK, PAWN))
         | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT))
-        | (attacks_bb<ROOK>(s, occupied)   & pieces(ROOK, QUEEN))
+        | (attacks_bb<ROOK  >(s, occupied) & pieces(ROOK,   QUEEN))
         | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
         | (attacks_from<KING>(s)           & pieces(KING));
 }
@@ -566,7 +566,7 @@ bool Position::pseudo_legal(const Move m) const {
       return MoveList<LEGAL>(*this).contains(m);
 
   // Is not a promotion, so promotion piece must be empty
-  if (promotion_type(m) - 2 != NO_PIECE_TYPE)
+  if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -587,9 +587,7 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
 
       if (   !(attacks_from<PAWN>(from, us) & pieces(~us) & to) // Not a capture
-
           && !((from + pawn_push(us) == to) && empty(to))       // Not a single push
-
           && !(   (from + 2 * pawn_push(us) == to)              // Not a double push
                && (rank_of(from) == relative_rank(us, RANK_2))
                && empty(to)
@@ -634,10 +632,9 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
-  PieceType pt = type_of(piece_on(from));
 
   // Is there a direct check?
-  if (ci.checkSq[pt] & to)
+  if (ci.checkSq[type_of(piece_on(from))] & to)
       return true;
 
   // Is there a discovered check?
@@ -730,7 +727,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool gives
       assert(pt == KING);
 
       Square rfrom, rto;
-      do_castling<true>(from, to, rfrom, rto);
+      do_castling<true>(us, from, to, rfrom, rto);
 
       captured = NO_PIECE_TYPE;
       st->psq += psq[us][ROOK][rto] - psq[us][ROOK][rfrom];
@@ -764,7 +761,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool gives
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
 
       // Update board and piece lists
-      remove_piece(capsq, them, captured);
+      remove_piece(them, captured, capsq);
 
       // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[them][captured][capsq];
@@ -798,7 +795,7 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool gives
 
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
-      move_piece(from, to, us, pt);
+      move_piece(us, pt, from, to);
 
   // If the moving piece is a pawn do some special extra work
   if (pt == PAWN)
@@ -818,8 +815,8 @@ void Position::do_move(Move m, StateInfo& newSt, const CheckInfo& ci, bool gives
           assert(relative_rank(us, to) == RANK_8);
           assert(promotion >= KNIGHT && promotion <= QUEEN);
 
-          remove_piece(to, us, PAWN);
-          put_piece(to, us, promotion);
+          remove_piece(us, PAWN, to);
+          put_piece(us, promotion, to);
 
           // Update hash keys
           k ^= Zobrist::psq[us][PAWN][to] ^ Zobrist::psq[us][promotion][to];
@@ -907,19 +904,19 @@ void Position::undo_move(Move m) {
       assert(pt == promotion_type(m));
       assert(pt >= KNIGHT && pt <= QUEEN);
 
-      remove_piece(to, us, pt);
-      put_piece(to, us, PAWN);
+      remove_piece(us, pt, to);
+      put_piece(us, PAWN, to);
       pt = PAWN;
   }
 
   if (type_of(m) == CASTLING)
   {
       Square rfrom, rto;
-      do_castling<false>(from, to, rfrom, rto);
+      do_castling<false>(us, from, to, rfrom, rto);
   }
   else
   {
-      move_piece(to, from, us, pt); // Put the piece back at the source square
+      move_piece(us, pt, to, from); // Put the piece back at the source square
 
       if (st->capturedType)
       {
@@ -936,7 +933,7 @@ void Position::undo_move(Move m) {
               assert(st->capturedType == PAWN);
           }
 
-          put_piece(capsq, ~us, st->capturedType); // Restore the captured piece
+          put_piece(~us, st->capturedType, capsq); // Restore the captured piece
       }
   }
 
@@ -951,19 +948,19 @@ void Position::undo_move(Move m) {
 /// Position::do_castling() is a helper used to do/undo a castling move. This
 /// is a bit tricky, especially in Chess960.
 template<bool Do>
-void Position::do_castling(Square from, Square& to, Square& rfrom, Square& rto) {
+void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto) {
 
   bool kingSide = to > from;
   rfrom = to; // Castling is encoded as "king captures friendly rook"
-  rto = relative_square(sideToMove, kingSide ? SQ_F1 : SQ_D1);
-  to  = relative_square(sideToMove, kingSide ? SQ_G1 : SQ_C1);
+  rto = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
+  to = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
   // Remove both pieces first since squares could overlap in Chess960
-  remove_piece(Do ?  from :  to, sideToMove, KING);
-  remove_piece(Do ? rfrom : rto, sideToMove, ROOK);
+  remove_piece(us, KING, Do ? from : to);
+  remove_piece(us, ROOK, Do ? rfrom : rto);
   board[Do ? from : to] = board[Do ? rfrom : rto] = NO_PIECE; // Since remove_piece doesn't do it for us
-  put_piece(Do ?  to :  from, sideToMove, KING);
-  put_piece(Do ? rto : rfrom, sideToMove, ROOK);
+  put_piece(us, KING, Do ? to : from);
+  put_piece(us, ROOK, Do ? rto : rfrom);
 }
 
 
