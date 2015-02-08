@@ -49,8 +49,6 @@ struct Entry {
     return pawnsOnSquares[c][!!(DarkSquares & s)];
   }
 
-  Bitboard pawn_double_attacks(Color c) const { return pawnDoubleAttacks[c]; }
-
   template<Color Us>
   Score king_safety(const Position& pos, Square ksq)  {
     return  kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
@@ -67,7 +65,6 @@ struct Entry {
   Score score;
   Bitboard passedPawns[COLOR_NB];
   Bitboard pawnAttacks[COLOR_NB];
-  Bitboard pawnDoubleAttacks[COLOR_NB];
   Square kingSquares[COLOR_NB];
   Score kingSafety[COLOR_NB];
   int minKingPawnDistance[COLOR_NB];
