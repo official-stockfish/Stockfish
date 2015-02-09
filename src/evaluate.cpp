@@ -912,14 +912,14 @@ namespace Eval {
 
   void init() {
 
-    const double MaxSlope = 8.7;
-    const double Peak = 1280;
-    double t = 0.0;
+    const int MaxSlope = 87;
+    const int Peak = 12800;
+    int t = 0;
 
-    for (int i = 1; i < 400; ++i)
+    for (int i = 0; i < 400; ++i)
     {
-        t = std::min(Peak, std::min(0.027 * i * i, t + MaxSlope));
-        KingDanger[i] = apply_weight(make_score(int(t), 0), Weights[KingSafety]);
+        t = std::min(Peak, std::min(i * i * 27 / 100, t + MaxSlope));
+        KingDanger[i] = apply_weight(make_score(t / 10, 0), Weights[KingSafety]);
     }
   }
 
