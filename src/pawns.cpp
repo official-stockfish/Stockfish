@@ -61,6 +61,9 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
+  // En Passant bonus
+  const Score EnPassantBonus = S(7, 5);
+
   // Center bind bonus: Two pawns controlling the same central square
   const Bitboard CenterBindMask[COLOR_NB] = {
     (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB),
@@ -170,6 +173,13 @@ namespace {
             // If we have an enemy pawn in the same or next rank, the pawn is
             // backward because it cannot advance without being captured.
             backward = (b | shift_bb<Up>(b)) & theirPawns;
+        }
+
+        if (!backward && relative_rank(Us, s) == 4)
+        {
+            if (pawn_attack_span(Us, s + pawn_push(Us)) & theirPawns)
+                score += EnPassantBonus;
+
         }
 
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
