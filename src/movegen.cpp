@@ -24,8 +24,8 @@
 
 namespace {
 
-  template<CastlingRight Cr, bool Checks, bool Chess960>
-  ExtMove* generate_castling(const Position& pos, ExtMove* moveList, Color us, const CheckInfo* ci) {
+  template<CastlingRight Cr, bool Checks>
+  ExtMove* generate_castling(const Position& pos, ExtMove* moveList, Color us, const CheckInfo* ci, bool Chess960) {
 
     static const bool KingSide = (Cr == WHITE_OO || Cr == BLACK_OO);
 
@@ -221,7 +221,7 @@ namespace {
   }
 
 
-  template<PieceType Pt, bool Checks> FORCE_INLINE
+  template<PieceType Pt, bool Checks>
   ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Color us,
                           Bitboard target, const CheckInfo* ci) {
 
@@ -254,7 +254,7 @@ namespace {
   }
 
 
-  template<Color Us, GenType Type> FORCE_INLINE
+  template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target,
                         const CheckInfo* ci = NULL) {
 
@@ -276,16 +276,8 @@ namespace {
 
     if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(Us))
     {
-        if (pos.is_chess960())
-        {
-            moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, true>(pos, moveList, Us, ci);
-            moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, true>(pos, moveList, Us, ci);
-        }
-        else
-        {
-            moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks, false>(pos, moveList, Us, ci);
-            moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks, false>(pos, moveList, Us, ci);
-        }
+        moveList = generate_castling<MakeCastling<Us,  KING_SIDE>::right, Checks>(pos, moveList, Us, ci, pos.is_chess960());
+        moveList = generate_castling<MakeCastling<Us, QUEEN_SIDE>::right, Checks>(pos, moveList, Us, ci, pos.is_chess960());
     }
 
     return moveList;
