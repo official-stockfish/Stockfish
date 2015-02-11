@@ -557,7 +557,7 @@ namespace {
         & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
     
     if (b)
-        score += popcount<Max15>(b) * PawnSafePush;
+        score += popcount<Full>(b) * PawnSafePush;
 
     // Add another bonus if the pawn push attacks an enemy piece
     b =  (shift_bb<Left>(b) | shift_bb<Right>(b))
