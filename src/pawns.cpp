@@ -175,7 +175,7 @@ namespace {
             backward = (b | shift_bb<Up>(b)) & theirPawns;
         }
 
-        if (!backward && relative_rank(Us, s) == 4)
+        if (!backward && relative_rank(Us, s) == RANK_5)
         {
             if (pawn_attack_span(Us, s + pawn_push(Us)) & theirPawns)
                 score += EnPassantBonus;
