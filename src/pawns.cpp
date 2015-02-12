@@ -62,7 +62,7 @@ namespace {
   const Score UnsupportedPawnPenalty = S(20, 10);
 
   // En Passant bonus
-  const Score EnPassantBonus = S(7, 5);
+  const Score EnPassantBonus = S(15, 10);
 
   // Center bind bonus: Two pawns controlling the same central square
   const Bitboard CenterBindMask[COLOR_NB] = {
