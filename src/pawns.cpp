@@ -175,13 +175,6 @@ namespace {
             backward = (b | shift_bb<Up>(b)) & theirPawns;
         }
 
-        if (!backward && relative_rank(Us, s) == RANK_5)
-        {
-            if (pawn_attack_span(Us, s + pawn_push(Us)) & theirPawns)
-                score += EnPassantBonus;
-
-        }
-
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
 
         // Passed pawns will be properly scored in evaluation because we need
@@ -208,6 +201,10 @@ namespace {
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
+
+        if (!backward && (relative_rank(Us, s) == RANK_5) && (pawn_attack_span(Us, s + pawn_push(Us)) & theirPawns))
+            score += EnPassantBonus;
+
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
