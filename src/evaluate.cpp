@@ -91,7 +91,7 @@ namespace {
   // Evaluation weights, indexed by evaluation term
   enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
   const struct Weight { int mg, eg; } Weights[] = {
-    {289, 344}, {233, 201}, {221, 273}, {46, 0}, {322, 0}
+    {73984, 88064}, {59648, 51456}, {56576, 69888}, {11776, 0}, {82432, 0}
   };
 
   #define V(v) Value(v)
@@ -203,7 +203,7 @@ namespace {
 
   // apply_weight() weighs score 's' by weight 'w' trying to prevent overflow
   Score apply_weight(Score s, const Weight& w) {
-    return make_score(mg_value(s) * w.mg / 256, eg_value(s) * w.eg / 256);
+    return make_score(mg_value(s) * w.mg / 65536, eg_value(s) * w.eg / 65536);
   }
 
 
