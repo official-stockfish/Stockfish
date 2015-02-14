@@ -555,7 +555,7 @@ namespace {
     b &=  ~pos.pieces()
         & ~ei.attackedBy[Them][PAWN]
         & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
-    
+
     if (b)
         score += popcount<Full>(b) * PawnSafePush;
 
@@ -917,14 +917,14 @@ namespace Eval {
 
   void init() {
 
-    const int MaxSlope = 87;
-    const int Peak = 12800;
+    const int MaxSlope = 8700;
+    const int Peak = 1280000;
     int t = 0;
 
     for (int i = 0; i < 400; ++i)
     {
-        t = std::min(Peak, std::min(i * i * 27 / 100, t + MaxSlope));
-        KingDanger[i] = apply_weight(make_score(t / 10, 0), Weights[KingSafety]);
+        t = std::min(Peak, std::min(i * i * 27, t + MaxSlope));
+        KingDanger[i] = apply_weight(make_score(t / 1000, 0), Weights[KingSafety]);
     }
   }
 
