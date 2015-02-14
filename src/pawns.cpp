@@ -112,10 +112,11 @@ namespace {
     const Square Up    = (Us == WHITE ? DELTA_N  : DELTA_S);
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
+    const Bitboard TRank7BB = Rank2BB | Rank7BB;
 
     Bitboard b, p, doubled, connected;
     Square s;
-    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
+    bool passed, isolated, opposed, phalanx, backward, unsupported, lever, enpassant;
     Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -153,6 +154,7 @@ namespace {
         opposed     =   theirPawns & forward_bb(Us, s);
         passed      = !(theirPawns & passed_pawn_mask(Us, s));
         lever       =   theirPawns & pawnAttacksBB[s];
+        enpassant   =   theirPawns & pawnAttacksBB[s + pawn_push(Us)] & TRank7BB;
 
         // Test for backward pawn.
         // If the pawn is passed, isolated, connected or a lever it cannot be
@@ -202,7 +204,7 @@ namespace {
         if (lever)
             score += Lever[relative_rank(Us, s)];
 
-        if (!backward && (relative_rank(Us, s) == RANK_5) && (pawn_attack_span(Us, s + pawn_push(Us)) & theirPawns))
+        if (enpassant && !backward)
             score += EnPassantBonus;
 
     }
