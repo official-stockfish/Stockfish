@@ -74,7 +74,7 @@ namespace {
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
     {
         SetupStates->push(StateInfo());
-        pos.do_move(m, SetupStates->top());
+        pos.do_move(m, SetupStates->top(), pos.gives_check(m, CheckInfo(pos)));
     }
   }
 

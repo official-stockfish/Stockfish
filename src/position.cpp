@@ -684,12 +684,6 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
 /// to a StateInfo object. The move is assumed to be legal. Pseudo-legal
 /// moves should be filtered out before this function is called.
 
-void Position::do_move(Move m, StateInfo& newSt) {
-
-  CheckInfo ci(*this);
-  do_move(m, newSt, gives_check(m, ci));
-}
-
 void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   assert(is_ok(m));
@@ -848,7 +842,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Update the key with the final value
   st->key = k;
 
-  // Calculate checkers bitboard (if move is check)
+  // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(king_square(them)) & pieces(us) : 0;
 
   sideToMove = ~sideToMove;

@@ -1474,7 +1474,7 @@ void RootMove::insert_pv_in_tt(Position& pos) {
       if (!ttHit || tte->move() != m) // Don't overwrite correct entries
           tte->save(pos.key(), VALUE_NONE, BOUND_NONE, DEPTH_NONE, m, VALUE_NONE, TT.generation());
 
-      pos.do_move(m, *st++);
+      pos.do_move(m, *st++, pos.gives_check(m, CheckInfo(pos)));
   }
 
   for (size_t i = pv.size(); i > 0; )
@@ -1494,7 +1494,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos)
 
     assert(pv.size() == 1);
 
-    pos.do_move(pv[0], st);
+    pos.do_move(pv[0], st, pos.gives_check(pv[0], CheckInfo(pos)));
     TTEntry* tte = TT.probe(pos.key(), ttHit);
     pos.undo_move(pv[0]);
 
