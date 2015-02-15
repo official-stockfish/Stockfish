@@ -201,13 +201,28 @@ void MovePicker::generate_next_stage() {
 
   case KILLERS_S1:
       cur = killers;
-      endMoves = cur + 6;
+      endMoves = cur + 2;
+
       killers[0] = ss->killers[0];
       killers[1] = ss->killers[1];
-      killers[2] = countermoves[0];
-      killers[3] = countermoves[1];
-      killers[4] = followupmoves[0];
-      killers[5] = followupmoves[1];
+      killers[2].move = killers[3].move = MOVE_NONE;
+      killers[4].move = killers[5].move = MOVE_NONE;
+
+      // In SMP case countermoves[] and followupmoves[] could have duplicated entries
+      // in rare cases (less than 1 out of a million). This is harmless.
+
+      // Be sure countermoves and followupmoves are different from killers
+      for (int i = 0; i < 2; ++i)
+          if (   countermoves[i] != killers[0]
+              && countermoves[i] != killers[1])
+              *endMoves++ = countermoves[i];
+
+      for (int i = 0; i < 2; ++i)
+          if (   followupmoves[i] != killers[0]
+              && followupmoves[i] != killers[1]
+              && followupmoves[i] != killers[2]
+              && followupmoves[i] != killers[3])
+              *endMoves++ = followupmoves[i];
       break;
 
   case QUIETS_1_S1:
@@ -292,13 +307,7 @@ Move MovePicker::next_move<false>() {
               &&  move != ttMove
               &&  pos.pseudo_legal(move)
               && !pos.capture(move))
-          {
-              for (int i = 0; i < cur - 1 - killers; i++) // Skip duplicated
-                  if (move == killers[i])
-                      goto skip;
               return move;
-          }
-      skip:
           break;
 
       case QUIETS_1_S1: case QUIETS_2_S1:
