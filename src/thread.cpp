@@ -154,7 +154,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 
   sp.masterThread = this;
   sp.parentSplitPoint = activeSplitPoint;
-  sp.spLevel = activeSplitPoint ? activeSplitPoint->spLevel + 1 : 0;
   sp.slavesMask = 0, sp.slavesMask.set(idx);
   sp.slavesCount = 1;
   sp.depth = depth;
@@ -184,7 +183,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 
   Thread* slave;
 
-  while (    sp.slavesCount < MAX_SLAVES_PER_SPLITPOINT 
+  while (    sp.slavesCount < MAX_SLAVES_PER_SPLITPOINT
          && (slave = Threads.available_slave(this)) != NULL)
   {
       sp.slavesMask.set(slave->idx);

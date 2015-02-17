@@ -1604,7 +1604,12 @@ void Thread::idle_loop() {
                       && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
                       && available_to(Threads[i]))
                   {
-                      int score = sp->spLevel * 256 * 256 + sp->slavesCount * 256 - sp->depth * 1;
+                      // Compute the recursive split points chain size
+                      int level = -1;
+                      for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
+                          level++;
+
+                      int score = level * 256 * 256 + sp->slavesCount * 256 - sp->depth * 1;
 
                       if (score < bestScore)
                       {
@@ -1618,7 +1623,7 @@ void Thread::idle_loop() {
               if (bestSp)
               {
                   sp = bestSp;
- 
+
                   // Recheck the conditions under lock protection
                   Threads.mutex.lock();
                   sp->mutex.lock();

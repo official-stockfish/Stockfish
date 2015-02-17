@@ -73,7 +73,6 @@ struct SplitPoint {
   const Position* pos;
   Search::Stack* ss;
   Thread* masterThread;
-  int spLevel;
   Depth depth;
   Value beta;
   int nodeType;
