@@ -61,6 +61,9 @@ namespace {
   // Unsupported pawn penalty
   const Score UnsupportedPawnPenalty = S(20, 10);
 
+  // En Passant bonus
+  const Score EnPassantBonus = S(11, 6);
+
   // Center bind bonus: Two pawns controlling the same central square
   const Bitboard CenterBindMask[COLOR_NB] = {
     (FileDBB | FileEBB) & (Rank5BB | Rank6BB | Rank7BB),
@@ -112,7 +115,7 @@ namespace {
 
     Bitboard b, p, doubled, connected;
     Square s;
-    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
+    bool passed, isolated, opposed, phalanx, backward, unsupported, lever, enpassant;
     Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -150,6 +153,7 @@ namespace {
         opposed     =   theirPawns & forward_bb(Us, s);
         passed      = !(theirPawns & passed_pawn_mask(Us, s));
         lever       =   theirPawns & pawnAttacksBB[s];
+        enpassant   =   theirPawns & pawnAttacksBB[s + pawn_push(Us)] & (Rank2BB | Rank7BB);
 
         // Test for backward pawn.
         // If the pawn is passed, isolated, connected or a lever it cannot be
@@ -198,6 +202,10 @@ namespace {
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
+
+        if (enpassant && !backward)
+            score += EnPassantBonus;
+
     }
 
     b = e->semiopenFiles[Us] ^ 0xFF;
