@@ -1604,8 +1604,10 @@ void Thread::idle_loop() {
               {
                   assert(this != Threads[i]);
                   assert(!(this_sp && this_sp->slavesMask.none()));
+                  assert(Threads.size() > 2);
 
-                  // Compute the recursive split points chain size
+                  // Prefer to join to SP with few parents to reduce the probability
+                  // that a cut-off occurs above us, and hence we waste our work.
                   int level = -1;
                   for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
                       level++;
