@@ -1589,7 +1589,7 @@ void Thread::idle_loop() {
           // Try to late join to another split point if none of its slaves has
           // already finished.
           SplitPoint* bestSp = NULL;
-          int bestThread = 0;
+          Thread* bestThread = NULL;
           int bestScore = INT_MAX;
 
           for (size_t i = 0; i < Threads.size(); ++i)
@@ -1615,7 +1615,7 @@ void Thread::idle_loop() {
                   if (score < bestScore)
                   {
                       bestSp = sp;
-                      bestThread = i;
+                      bestThread = Threads[i];
                       bestScore = score;
                   }
               }
@@ -1631,7 +1631,7 @@ void Thread::idle_loop() {
 
               if (   sp->allSlavesSearching
                   && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(Threads[bestThread]))
+                  && available_to(bestThread))
               {
                   sp->slavesMask.set(idx);
                   sp->slavesCount++;
