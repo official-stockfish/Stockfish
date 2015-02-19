@@ -1602,6 +1602,9 @@ void Thread::idle_loop() {
                   && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
                   && available_to(Threads[i]))
               {
+                  assert(this != Threads[i]);
+                  assert(!(this_sp && this_sp->slavesMask.none()));
+
                   // Compute the recursive split points chain size
                   int level = -1;
                   for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
