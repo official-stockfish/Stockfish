@@ -1043,8 +1043,8 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  depth >= Threads.minimumSplitDepth
           &&  (   !thisThread->activeSplitPoint
                || !thisThread->activeSplitPoint->allSlavesSearching
-               || (   int(Threads.size()) > MAX_SLAVES_PER_SPLITPOINT
-                   && thisThread->activeSplitPoint->slavesCount == MAX_SLAVES_PER_SPLITPOINT))
+               || (   Threads.size() > MAX_SLAVES_PER_SPLITPOINT
+                   && thisThread->activeSplitPoint->slavesMask.count() == MAX_SLAVES_PER_SPLITPOINT))
           &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
@@ -1599,7 +1599,7 @@ void Thread::idle_loop() {
 
               if (   sp
                   && sp->allSlavesSearching
-                  && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
                   && available_to(Threads[i]))
               {
                   assert(this != Threads[i]);
@@ -1610,7 +1610,7 @@ void Thread::idle_loop() {
                   for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
                       level++;
 
-                  int score = level * 256 * 256 + sp->slavesCount * 256 - sp->depth * 1;
+                  int score = level * 256 * 256 + (int)sp->slavesMask.count() * 256 - sp->depth * 1;
 
                   if (score < bestScore)
                   {
@@ -1630,11 +1630,10 @@ void Thread::idle_loop() {
               sp->mutex.lock();
 
               if (   sp->allSlavesSearching
-                  && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
                   && available_to(bestThread))
               {
                   sp->slavesMask.set(idx);
-                  sp->slavesCount++;
                   activeSplitPoint = sp;
                   searching = true;
               }
