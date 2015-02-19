@@ -1594,7 +1594,7 @@ void Thread::idle_loop() {
 
           for (size_t i = 0; i < Threads.size(); ++i)
           {
-              const int size = Threads[i]->splitPointsSize; // Local copy
+              const size_t size = Threads[i]->splitPointsSize; // Local copy
               sp = size ? &Threads[i]->splitPoints[size - 1] : NULL;
 
               if (   sp
@@ -1705,7 +1705,7 @@ void check_time() {
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
       for (size_t i = 0; i < Threads.size(); ++i)
-          for (int j = 0; j < Threads[i]->splitPointsSize; ++j)
+          for (size_t j = 0; j < Threads[i]->splitPointsSize; ++j)
           {
               SplitPoint& sp = Threads[i]->splitPoints[j];
 

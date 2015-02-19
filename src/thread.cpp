@@ -89,7 +89,8 @@ void ThreadBase::wait_for(volatile const bool& condition) {
 Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in MSVC
 
   searching = false;
-  maxPly = splitPointsSize = 0;
+  maxPly = 0;
+  splitPointsSize = 0;
   activeSplitPoint = NULL;
   activePosition = NULL;
   idx = Threads.size(); // Starts from 0
@@ -123,7 +124,7 @@ bool Thread::available_to(const Thread* master) const {
 
   // Make a local copy to be sure it doesn't become zero under our feet while
   // testing next condition and so leading to an out of bounds access.
-  const int size = splitPointsSize;
+  const size_t size = splitPointsSize;
 
   // No split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
