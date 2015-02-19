@@ -1588,59 +1588,56 @@ void Thread::idle_loop() {
 
           // Try to late join to another split point if none of its slaves has
           // already finished.
-          if (Threads.size() > 2)
+          SplitPoint* bestSp = NULL;
+          int bestThread = 0;
+          int bestScore = INT_MAX;
+
+          for (size_t i = 0; i < Threads.size(); ++i)
           {
-              SplitPoint *bestSp = NULL;
-              int bestThread = 0;
-              int bestScore = INT_MAX;
+              const int size = Threads[i]->splitPointsSize; // Local copy
+              sp = size ? &Threads[i]->splitPoints[size - 1] : NULL;
 
-              for (size_t i = 0; i < Threads.size(); ++i)
+              if (   sp
+                  && sp->allSlavesSearching
+                  && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
+                  && available_to(Threads[i]))
               {
-                  const int size = Threads[i]->splitPointsSize; // Local copy
-                  sp = size ? &Threads[i]->splitPoints[size - 1] : NULL;
+                  // Compute the recursive split points chain size
+                  int level = -1;
+                  for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
+                      level++;
 
-                  if (   sp
-                      && sp->allSlavesSearching
-                      && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
-                      && available_to(Threads[i]))
+                  int score = level * 256 * 256 + sp->slavesCount * 256 - sp->depth * 1;
+
+                  if (score < bestScore)
                   {
-                      // Compute the recursive split points chain size
-                      int level = -1;
-                      for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
-                          level++;
-
-                      int score = level * 256 * 256 + sp->slavesCount * 256 - sp->depth * 1;
-
-                      if (score < bestScore)
-                      {
-                           bestSp = sp;
-                           bestThread = i;
-                           bestScore = score;
-                      }
+                      bestSp = sp;
+                      bestThread = i;
+                      bestScore = score;
                   }
               }
+          }
 
-              if (bestSp)
+          if (bestSp)
+          {
+              sp = bestSp;
+
+              // Recheck the conditions under lock protection
+              Threads.mutex.lock();
+              sp->mutex.lock();
+
+              if (   sp->allSlavesSearching
+                  && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
+                  && available_to(Threads[bestThread]))
               {
-                  sp = bestSp;
-
-                  // Recheck the conditions under lock protection
-                  Threads.mutex.lock();
-                  sp->mutex.lock();
-
-                  if (   sp->allSlavesSearching
-                      && sp->slavesCount < MAX_SLAVES_PER_SPLITPOINT
-                      && available_to(Threads[bestThread]))
-                  {
-                      sp->slavesMask.set(idx);
-                      sp->slavesCount++;
-                      activeSplitPoint = sp;
-                      searching = true;
-                  }
-
-                  sp->mutex.unlock();
-                  Threads.mutex.unlock();
+                  sp->slavesMask.set(idx);
+                  sp->slavesCount++;
+                  activeSplitPoint = sp;
+                  searching = true;
               }
+
+              sp->mutex.unlock();
+              Threads.mutex.unlock();
           }
       }
 
