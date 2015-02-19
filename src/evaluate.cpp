@@ -61,11 +61,11 @@ namespace {
     // KingAttackWeights array.
     int kingAttackersWeight[COLOR_NB];
 
-    // kingAdjacentZoneAttacksCount[color] is the number of attacks to squares
-    // directly adjacent to the king of the given color. Pieces which attack
-    // more than one square are counted multiple times. For instance, if black's
-    // king is on g8 and there's a white knight on g5, this knight adds
-    // 2 to kingAdjacentZoneAttacksCount[BLACK].
+    // kingAdjacentZoneAttacksCount[color] is the number of attacks by the given
+    // color to squares directly adjacent to the enemy king. Pieces which attack
+    // more than one square are counted multiple times. For instance, if there is
+    // a white knight on g5 and black's king is on g8, this white knight adds 2
+    // to kingAdjacentZoneAttacksCount[WHITE].
     int kingAdjacentZoneAttacksCount[COLOR_NB];
 
     Bitboard pinnedPieces[COLOR_NB];
