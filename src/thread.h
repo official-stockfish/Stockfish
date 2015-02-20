@@ -46,7 +46,7 @@ struct SplitPoint {
   // Const data after split point has been setup
   const Position* pos;
   Search::Stack* ss;
-  Thread* masterThread;
+  Thread* master;
   Depth depth;
   Value beta;
   int nodeType;
