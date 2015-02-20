@@ -1585,24 +1585,24 @@ void Thread::idle_loop() {
           Thread* bestThread = NULL;
           int bestScore = INT_MAX;
 
-          for (size_t i = 0; i < Threads.size(); ++i)
+          for (Thread* th : Threads)
           {
-              const size_t size = Threads[i]->splitPointsSize; // Local copy
-              sp = size ? &Threads[i]->splitPoints[size - 1] : nullptr;
+              const size_t size = th->splitPointsSize; // Local copy
+              sp = size ? &th->splitPoints[size - 1] : nullptr;
 
               if (   sp
                   && sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(Threads[i]))
+                  && available_to(th))
               {
-                  assert(this != Threads[i]);
+                  assert(this != th);
                   assert(!(this_sp && this_sp->slavesMask.none()));
                   assert(Threads.size() > 2);
 
                   // Prefer to join to SP with few parents to reduce the probability
                   // that a cut-off occurs above us, and hence we waste our work.
                   int level = -1;
-                  for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
+                  for (SplitPoint* spp = th->activeSplitPoint; spp; spp = spp->parentSplitPoint)
                       level++;
 
                   int score = level * 256 * 256 + (int)sp->slavesMask.count() * 256 - sp->depth * 1;
@@ -1610,7 +1610,7 @@ void Thread::idle_loop() {
                   if (score < bestScore)
                   {
                       bestSp = sp;
-                      bestThread = Threads[i];
+                      bestThread = th;
                       bestScore = score;
                   }
               }
