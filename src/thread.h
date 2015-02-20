@@ -34,8 +34,9 @@
 
 struct Thread;
 
-const int MAX_THREADS = 128;
-const int MAX_SPLITPOINTS_PER_THREAD = 8;
+const size_t MAX_THREADS = 128;
+const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
+const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
 
 /// SplitPoint struct stores information shared by the threads searching in
 /// parallel below the same split point. It is populated at splitting time.
@@ -108,7 +109,7 @@ struct Thread : public ThreadBase {
   size_t idx;
   int maxPly;
   SplitPoint* volatile activeSplitPoint;
-  volatile int splitPointsSize;
+  volatile size_t splitPointsSize;
   volatile bool searching;
 };
 

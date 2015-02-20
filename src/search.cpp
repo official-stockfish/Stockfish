@@ -1034,7 +1034,9 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  Threads.size() >= 2
           &&  depth >= Threads.minimumSplitDepth
           &&  (   !thisThread->activeSplitPoint
-               || !thisThread->activeSplitPoint->allSlavesSearching)
+               || !thisThread->activeSplitPoint->allSlavesSearching
+               || (   Threads.size() > MAX_SLAVES_PER_SPLITPOINT
+                   && thisThread->activeSplitPoint->slavesMask.count() == MAX_SLAVES_PER_SPLITPOINT))
           &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
@@ -1579,34 +1581,61 @@ void Thread::idle_loop() {
 
           // Try to late join to another split point if none of its slaves has
           // already finished.
-          if (Threads.size() > 2)
-              for (size_t i = 0; i < Threads.size(); ++i)
+          SplitPoint* bestSp = NULL;
+          Thread* bestThread = NULL;
+          int bestScore = INT_MAX;
+
+          for (size_t i = 0; i < Threads.size(); ++i)
+          {
+              const size_t size = Threads[i]->splitPointsSize; // Local copy
+              sp = size ? &Threads[i]->splitPoints[size - 1] : nullptr;
+
+              if (   sp
+                  && sp->allSlavesSearching
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
+                  && available_to(Threads[i]))
               {
-                  const int size = Threads[i]->splitPointsSize; // Local copy
-                  sp = size ? &Threads[i]->splitPoints[size - 1] : nullptr;
+                  assert(this != Threads[i]);
+                  assert(!(this_sp && this_sp->slavesMask.none()));
+                  assert(Threads.size() > 2);
 
-                  if (   sp
-                      && sp->allSlavesSearching
-                      && available_to(Threads[i]))
+                  // Prefer to join to SP with few parents to reduce the probability
+                  // that a cut-off occurs above us, and hence we waste our work.
+                  int level = -1;
+                  for (SplitPoint* spp = Threads[i]->activeSplitPoint; spp; spp = spp->parentSplitPoint)
+                      level++;
+
+                  int score = level * 256 * 256 + (int)sp->slavesMask.count() * 256 - sp->depth * 1;
+
+                  if (score < bestScore)
                   {
-                      // Recheck the conditions under lock protection
-                      Threads.mutex.lock();
-                      sp->mutex.lock();
-
-                      if (   sp->allSlavesSearching
-                          && available_to(Threads[i]))
-                      {
-                           sp->slavesMask.set(idx);
-                           activeSplitPoint = sp;
-                           searching = true;
-                      }
-
-                      sp->mutex.unlock();
-                      Threads.mutex.unlock();
-
-                      break; // Just a single attempt
+                      bestSp = sp;
+                      bestThread = Threads[i];
+                      bestScore = score;
                   }
               }
+          }
+
+          if (bestSp)
+          {
+              sp = bestSp;
+
+              // Recheck the conditions under lock protection
+              Threads.mutex.lock();
+              sp->mutex.lock();
+
+              if (   sp->allSlavesSearching
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
+                  && available_to(bestThread))
+              {
+                  sp->slavesMask.set(idx);
+                  activeSplitPoint = sp;
+                  searching = true;
+              }
+
+              sp->mutex.unlock();
+              Threads.mutex.unlock();
+          }
       }
 
       // Grab the lock to avoid races with Thread::notify_one()
@@ -1668,7 +1697,7 @@ void check_time() {
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
       for (Thread* th : Threads)
-          for (int i = 0; i < th->splitPointsSize; ++i)
+          for (size_t i = 0; i < th->splitPointsSize; ++i)
           {
               SplitPoint& sp = th->splitPoints[i];
 
