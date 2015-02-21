@@ -153,7 +153,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // Pick and init the next available split point
   SplitPoint& sp = splitPoints[splitPointsSize];
 
-  sp.masterThread = this;
+  sp.master = this;
   sp.parentSplitPoint = activeSplitPoint;
   sp.slavesMask = 0, sp.slavesMask.set(idx);
   sp.depth = depth;

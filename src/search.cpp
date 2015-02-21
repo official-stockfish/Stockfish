@@ -1524,9 +1524,9 @@ void Thread::idle_loop() {
 
   // Pointer 'this_sp' is not null only if we are called from split(), and not
   // at the thread creation. This means we are the split point's master.
-  SplitPoint* this_sp = splitPointsSize ? activeSplitPoint : NULL;
+  SplitPoint* this_sp = activeSplitPoint;
 
-  assert(!this_sp || (this_sp->masterThread == this && searching));
+  assert(!this_sp || (this_sp->master == this && searching));
 
   while (!exit)
   {
@@ -1536,6 +1536,7 @@ void Thread::idle_loop() {
           Threads.mutex.lock();
 
           assert(activeSplitPoint);
+
           SplitPoint* sp = activeSplitPoint;
 
           Threads.mutex.unlock();
@@ -1574,11 +1575,11 @@ void Thread::idle_loop() {
 
           // Wake up the master thread so to allow it to return from the idle
           // loop in case we are the last slave of the split point.
-          if (    this != sp->masterThread
-              &&  sp->slavesMask.none())
+          if (this != sp->master && sp->slavesMask.none())
           {
-              assert(!sp->masterThread->searching);
-              sp->masterThread->notify_one();
+              assert(!sp->master->searching);
+
+              sp->master->notify_one();
           }
 
           // After releasing the lock we can't access any SplitPoint related data
@@ -1589,7 +1590,6 @@ void Thread::idle_loop() {
           // Try to late join to another split point if none of its slaves has
           // already finished.
           SplitPoint* bestSp = NULL;
-          Thread* bestThread = NULL;
           int bestScore = INT_MAX;
 
           for (size_t i = 0; i < Threads.size(); ++i)
@@ -1617,7 +1617,6 @@ void Thread::idle_loop() {
                   if (score < bestScore)
                   {
                       bestSp = sp;
-                      bestThread = Threads[i];
                       bestScore = score;
                   }
               }
@@ -1633,7 +1632,7 @@ void Thread::idle_loop() {
 
               if (   sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(bestThread))
+                  && available_to(sp->master))
               {
                   sp->slavesMask.set(idx);
                   activeSplitPoint = sp;
@@ -1645,7 +1644,7 @@ void Thread::idle_loop() {
           }
       }
 
-      // Grab the lock to avoid races with Thread::notify_one()
+      // Avoid races with notify_one() fired from last slave of the split point
       mutex.lock();
 
       // If we are master and all slaves have finished then exit idle_loop
