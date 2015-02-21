@@ -34,7 +34,9 @@ namespace {
 const string Version = "";
 
 /// Debug counters
-int64_t hits[2], means[2];
+const int MAX_DEBUG = 256;
+int64_t hits[MAX_DEBUG][2]  = {{ 0 }};
+int64_t means[MAX_DEBUG][2] = {{ 0 }};
 
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
@@ -125,19 +127,25 @@ const string engine_info(bool to_uci) {
 
 /// Debug functions used mainly to collect run-time statistics
 
-void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
-void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
+void dbg_hit_on(int n, bool b)         { ++hits[n][0]; if (b) ++hits[n][1]; }
+void dbg_hit_on(int n, bool c, bool b) { if (c) dbg_hit_on(n, b); }
+void dbg_mean_of(int n, int v)         { ++means[n][0]; means[n][1] += v; }
+
+void dbg_hit_on(bool b)         { dbg_hit_on(0, b); }
+void dbg_hit_on(bool c, bool b) { dbg_hit_on(0, c, b); }
+void dbg_mean_of(int v)         { dbg_mean_of(0, v); }
 
 void dbg_print() {
 
-  if (hits[0])
-      cerr << "Total " << hits[0] << " Hits " << hits[1]
-           << " hit rate (%) " << 100 * hits[1] / hits[0] << endl;
+  for (int n = 0 ; n < MAX_DEBUG ; ++n)
+  	 if (hits[n][0])
+        cerr << "Total[" << n << "]: " << hits[n][0] << " Hits " << hits[n][1]
+             << "  hit rate (%) " << 100 * hits[n][1] / hits[n][0] << endl;
 
-  if (means[0])
-      cerr << "Total " << means[0] << " Mean "
-           << (double)means[1] / means[0] << endl;
+  for (int n = 0 ; n < MAX_DEBUG ; ++n)
+     if (means[n][0])
+        cerr << "Total[" << n << "]: " << means[n][0] << "  Mean "
+             << (double)means[n][1] / means[n][0] << endl;
 }
 
 
