@@ -110,9 +110,9 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled, connected;
+    Bitboard b, doubled, friends, supported;
     Square s;
-    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
+    bool passed, opposed, phalanx, backward, lever;
     Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -137,15 +137,14 @@ namespace {
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
 
-        // Previous rank
-        p = rank_bb(s - pawn_push(Us));
+        // Pawns on adjacent files
+        friends     = ourPawns & adjacent_files_bb(f);
 
-        // Flag the pawn as passed, isolated, doubled,
-        // unsupported or connected (but not the backward one).
-        connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
-        phalanx     =   connected  & rank_bb(s);
-        unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
-        isolated    = !(ourPawns   & adjacent_files_bb(f));
+        // Flag the pawn
+        phalanx     = friends & rank_bb(s);
+        supported   = friends & rank_bb(s - Up);
+        //connected   = phalanx | supported;
+        //isolated    = !friends
         doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
         passed      = !(theirPawns & passed_pawn_mask(Us, s));
@@ -155,8 +154,8 @@ namespace {
         // If the pawn is passed, isolated, connected or a lever it cannot be
         // backward. If there are friendly pawns behind on adjacent files
         // it cannot be backward either.
-        if (   (passed | isolated | lever | connected)
-            || (ourPawns & pawn_attack_span(Them, s)))
+        if (   (passed | !friends | lever | phalanx)
+            || (friends & pawn_attack_span(Them, s)))
             backward = false;
         else
         {
@@ -181,10 +180,9 @@ namespace {
             e->passedPawns[Us] |= s;
 
         // Score this pawn
-        if (isolated)
+        if (!friends)
             score -= Isolated[opposed][f];
-
-        if (unsupported && !isolated)
+        else if (!supported)
             score -= UnsupportedPawnPenalty;
 
         if (doubled)
@@ -193,7 +191,7 @@ namespace {
         if (backward)
             score -= Backward[opposed][f];
 
-        if (connected)
+        if (phalanx | supported)
             score += Connected[opposed][phalanx][relative_rank(Us, s)];
 
         if (lever)
