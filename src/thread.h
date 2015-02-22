@@ -20,6 +20,7 @@
 #ifndef THREAD_H_INCLUDED
 #define THREAD_H_INCLUDED
 
+#include <atomic>
 #include <bitset>
 #include <condition_variable>
 #include <mutex>
@@ -66,6 +67,19 @@ struct SplitPoint {
   volatile Move bestMove;
   volatile int moveCount;
   volatile bool cutoff;
+};
+
+
+/// Spinlock class wraps low level atomic operations to provide spin lock functionality
+
+class Spinlock {
+
+  std::atomic_flag lock;
+
+public:
+  Spinlock() { std::atomic_flag_clear(&lock); }
+  void acquire() { while (lock.test_and_set(std::memory_order_acquire)) {} }
+  void release() { lock.clear(std::memory_order_release); }
 };
 
 
