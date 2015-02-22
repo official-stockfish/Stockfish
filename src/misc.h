@@ -32,6 +32,9 @@ void timed_wait(WaitCondition&, Lock&, int);
 void prefetch(char* addr);
 void start_logger(bool b);
 
+void dbg_hit_on(int n, bool b);
+void dbg_hit_on(int n, bool c, bool b);
+void dbg_mean_of(int n, int v);
 void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
