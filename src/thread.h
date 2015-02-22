@@ -39,6 +39,19 @@ const size_t MAX_THREADS = 128;
 const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
 const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
 
+/// Spinlock class wraps low level atomic operations to provide spin lock functionality
+
+class Spinlock {
+
+  std::atomic_flag lock;
+
+public:
+  Spinlock() { std::atomic_flag_clear(&lock); }
+  void acquire() { while (lock.test_and_set(std::memory_order_acquire)) {} }
+  void release() { lock.clear(std::memory_order_release); }
+};
+
+
 /// SplitPoint struct stores information shared by the threads searching in
 /// parallel below the same split point. It is populated at splitting time.
 
@@ -58,7 +71,7 @@ struct SplitPoint {
   SplitPoint* parentSplitPoint;
 
   // Shared variable data
-  std::mutex mutex;
+  Spinlock spinlock;
   std::bitset<MAX_THREADS> slavesMask;
   volatile bool allSlavesSearching;
   volatile uint64_t nodes;
@@ -67,19 +80,6 @@ struct SplitPoint {
   volatile Move bestMove;
   volatile int moveCount;
   volatile bool cutoff;
-};
-
-
-/// Spinlock class wraps low level atomic operations to provide spin lock functionality
-
-class Spinlock {
-
-  std::atomic_flag lock;
-
-public:
-  Spinlock() { std::atomic_flag_clear(&lock); }
-  void acquire() { while (lock.test_and_set(std::memory_order_acquire)) {} }
-  void release() { lock.clear(std::memory_order_release); }
 };
 
 
@@ -162,7 +162,7 @@ struct ThreadPool : public std::vector<Thread*> {
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  std::mutex mutex;
+  Spinlock spinlock;
   std::condition_variable sleepCondition;
   TimerThread* timer;
 };
