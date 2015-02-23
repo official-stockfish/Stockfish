@@ -198,7 +198,7 @@ namespace {
             if (more_than_one(supported))
                 //a connected pawn is either a phalanx and/or a supported pawn
                 //apex bonus: when s is supported twice (so phalanx is certainly false)
-                score += Connected[opposed][phalanx][relative_rank(Us, s)] / 2;
+                score += 5 * Connected[opposed][phalanx][relative_rank(Us, s)] / 8;
         }
 
         if (lever)
