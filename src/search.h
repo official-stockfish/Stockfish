@@ -102,7 +102,7 @@ extern volatile SignalsType Signals;
 extern LimitsType Limits;
 extern RootMoveVector RootMoves;
 extern Position RootPos;
-extern Time::point SearchTime;
+extern TimePoint SearchTime;
 extern StateStackPtr SetupStates;
 
 void init();

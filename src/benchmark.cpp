@@ -144,7 +144,7 @@ void benchmark(const Position& current, istream& is) {
 
   uint64_t nodes = 0;
   Search::StateStackPtr st;
-  Time::point elapsed = Time::now();
+  TimePoint elapsed = now();
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
@@ -163,7 +163,7 @@ void benchmark(const Position& current, istream& is) {
       }
   }
 
-  elapsed = Time::now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
+  elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
   dbg_print(); // Just before to exit
 

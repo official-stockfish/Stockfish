@@ -17,7 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -27,7 +26,6 @@
 #include "thread.h"
 
 using namespace std;
-using namespace std::chrono;
 
 namespace {
 
@@ -122,13 +120,6 @@ const string engine_info(bool to_uci) {
      << "Tord Romstad, Marco Costalba and Joona Kiiski";
 
   return ss.str();
-}
-
-
-/// Convert system time to milliseconds. That's all we need.
-
-Time::point Time::now() {
-  return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
 

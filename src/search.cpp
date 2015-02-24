@@ -41,7 +41,7 @@ namespace Search {
   LimitsType Limits;
   RootMoveVector RootMoves;
   Position RootPos;
-  Time::point SearchTime;
+  TimePoint SearchTime;
   StateStackPtr SetupStates;
 }
 
@@ -355,7 +355,7 @@ namespace {
                 // the UI) before a re-search.
                 if (   multiPV == 1
                     && (bestValue <= alpha || bestValue >= beta)
-                    && Time::now() - SearchTime > 3000)
+                    && now() - SearchTime > 3000)
                     sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
@@ -386,9 +386,9 @@ namespace {
 
             if (Signals.stop)
                 sync_cout << "info nodes " << RootPos.nodes_searched()
-                          << " time " << Time::now() - SearchTime << sync_endl;
+                          << " time " << now() - SearchTime << sync_endl;
 
-            else if (PVIdx + 1 == multiPV || Time::now() - SearchTime > 3000)
+            else if (PVIdx + 1 == multiPV || now() - SearchTime > 3000)
                 sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
         }
 
@@ -412,7 +412,7 @@ namespace {
             // Stop the search if only one legal move is available or all
             // of the available time has been used.
             if (   RootMoves.size() == 1
-                || Time::now() - SearchTime > TimeMgr.available_time())
+                || now() - SearchTime > TimeMgr.available_time())
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -774,7 +774,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           Signals.firstRootMove = (moveCount == 1);
 
-          if (thisThread == Threads.main() && Time::now() - SearchTime > 3000)
+          if (thisThread == Threads.main() && now() - SearchTime > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
                         << " currmove " << UCI::move(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
@@ -1373,7 +1373,7 @@ moves_loop: // When in check and at SpNode search starts from here
   Move Skill::pick_best(size_t multiPV) {
 
     // PRNG sequence should be non-deterministic, so we seed it with the time at init
-    static PRNG rng(Time::now());
+    static PRNG rng(now());
 
     // RootMoves are already sorted by score in descending order
     int variance = std::min(RootMoves[0].score - RootMoves[multiPV - 1].score, PawnValueMg);
@@ -1407,7 +1407,7 @@ moves_loop: // When in check and at SpNode search starts from here
 string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   std::stringstream ss;
-  Time::point elapsed = Time::now() - SearchTime + 1;
+  TimePoint elapsed = now() - SearchTime + 1;
   size_t multiPV = std::min((size_t)Options["MultiPV"], RootMoves.size());
   int selDepth = 0;
 
@@ -1659,12 +1659,12 @@ void Thread::idle_loop() {
 
 void check_time() {
 
-  static Time::point lastInfoTime = Time::now();
-  Time::point elapsed = Time::now() - SearchTime;
+  static TimePoint lastInfoTime = now();
+  TimePoint elapsed = now() - SearchTime;
 
-  if (Time::now() - lastInfoTime >= 1000)
+  if (now() - lastInfoTime >= 1000)
   {
-      lastInfoTime = Time::now();
+      lastInfoTime = now();
       dbg_print();
   }
 
