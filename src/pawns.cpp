@@ -138,13 +138,12 @@ namespace {
         e->semiopenFiles[Us] &= ~(1 << f);
 
         // Previous rank
-        p = rank_bb(s - pawn_push(Us));
+        p = rank_bb(s - Up);
 
-        // Flag the pawn as passed, isolated, doubled,
-        // unsupported or connected (but not the backward one).
+        // Flag the pawn
         connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
         phalanx     =   connected  & rank_bb(s);
-        unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
+        unsupported = !(connected  & p);
         isolated    = !(ourPawns   & adjacent_files_bb(f));
         doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
@@ -152,7 +151,7 @@ namespace {
         lever       =   theirPawns & pawnAttacksBB[s];
 
         // Test for backward pawn.
-        // If the pawn is passed, isolated, connected or a lever it cannot be
+        // If the pawn is passed, isolated, lever or connected it cannot be
         // backward. If there are friendly pawns behind on adjacent files
         // it cannot be backward either.
         if (   (passed | isolated | lever | connected)
@@ -160,7 +159,7 @@ namespace {
             backward = false;
         else
         {
-            // We now know that there are no friendly pawns beside or behind this
+            // We now know there are no friendly pawns beside or behind this
             // pawn on adjacent files. We now check whether the pawn is
             // backward by looking in the forward direction on the adjacent
             // files, and picking the closest pawn there.
@@ -226,9 +225,8 @@ void init()
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
           for (Rank r = RANK_2; r < RANK_8; ++r)
           {
-              int bonus = Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0);
-              bonus >>= opposed;
-              Connected[opposed][phalanx][r] = make_score( 3 * bonus / 2, bonus);
+              int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
+              Connected[opposed][phalanx][r] = make_score( 3 * v / 2, v);
           }
 }
 
