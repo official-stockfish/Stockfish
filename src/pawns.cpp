@@ -110,9 +110,9 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled, connected;
+    Bitboard b, p, doubled, connected, supported;
     Square s;
-    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
+    bool passed, isolated, opposed, phalanx, backward, lever;
     Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -138,13 +138,12 @@ namespace {
         e->semiopenFiles[Us] &= ~(1 << f);
 
         // Previous rank
-        p = rank_bb(s - pawn_push(Us));
+        p = rank_bb(s - Up);
 
-        // Flag the pawn as passed, isolated, doubled,
-        // unsupported or connected (but not the backward one).
+        // Flag the pawn
         connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
         phalanx     =   connected  & rank_bb(s);
-        unsupported = !(ourPawns   & adjacent_files_bb(f) & p);
+        supported   =   connected  & p;
         isolated    = !(ourPawns   & adjacent_files_bb(f));
         doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
@@ -160,7 +159,7 @@ namespace {
             backward = false;
         else
         {
-            // We now know that there are no friendly pawns beside or behind this
+            // We now know there are no friendly pawns beside or behind this
             // pawn on adjacent files. We now check whether the pawn is
             // backward by looking in the forward direction on the adjacent
             // files, and picking the closest pawn there.
@@ -184,7 +183,7 @@ namespace {
         if (isolated)
             score -= Isolated[opposed][f];
 
-        if (unsupported && !isolated)
+        if (!supported && !isolated)
             score -= UnsupportedPawnPenalty;
 
         if (doubled)
@@ -193,8 +192,13 @@ namespace {
         if (backward)
             score -= Backward[opposed][f];
 
-        if (connected)
+        if (connected) {
             score += Connected[opposed][phalanx][relative_rank(Us, s)];
+            if (more_than_one(supported)) {
+                //apex bonus: pawn on s is supported twice
+                score += Connected[opposed][phalanx][relative_rank(Us, s)] / 2;
+            }
+        }
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
