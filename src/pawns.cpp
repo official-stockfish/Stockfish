@@ -50,8 +50,8 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected pawn bonus by opposed, phalanx flags and rank
-  Score Connected[2][2][RANK_NB];
+  // Connected pawn bonus by opposed, phalanx, twice supported and rank
+  Score Connected[2][2][2][RANK_NB];
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
@@ -192,13 +192,8 @@ namespace {
         if (backward)
             score -= Backward[opposed][f];
 
-        if (connected) {
-            score += Connected[opposed][phalanx][relative_rank(Us, s)];
-            if (more_than_one(supported)) {
-                //apex bonus: pawn on s is supported twice
-                score += Connected[opposed][phalanx][relative_rank(Us, s)] / 2;
-            }
-        }
+        if (connected)
+            score += Connected[opposed][phalanx][more_than_one(supported)][relative_rank(Us, s)];
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
@@ -228,12 +223,13 @@ void init()
 
   for (int opposed = 0; opposed <= 1; ++opposed)
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
-          for (Rank r = RANK_2; r < RANK_8; ++r)
-          {
-              int bonus = Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0);
-              bonus >>= opposed;
-              Connected[opposed][phalanx][r] = make_score( 3 * bonus / 2, bonus);
-          }
+          for (int apex = 0; apex <= 1; ++apex)
+              for (Rank r = RANK_2; r < RANK_8; ++r)
+  {
+      int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
+      v += (apex ? v / 2 : 0);
+      Connected[opposed][phalanx][apex][r] = make_score(3 * v / 2, v);
+  }
 }
 
 
