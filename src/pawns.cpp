@@ -50,8 +50,8 @@ namespace {
   { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
     S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
 
-  // Connected pawn bonus by opposed, phalanx flags and rank
-  Score Connected[2][2][RANK_NB];
+  // Connected pawn bonus by opposed, phalanx, twice supported and rank
+  Score Connected[2][2][2][RANK_NB];
 
   // Levers bonus by rank
   const Score Lever[RANK_NB] = {
@@ -110,9 +110,9 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled, connected;
+    Bitboard b, p, doubled, connected, supported;
     Square s;
-    bool passed, isolated, opposed, phalanx, backward, unsupported, lever;
+    bool passed, isolated, opposed, phalanx, backward, lever;
     Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -143,7 +143,7 @@ namespace {
         // Flag the pawn
         connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
         phalanx     =   connected  & rank_bb(s);
-        unsupported = !(connected  & p);
+        supported   =   connected  & p;
         isolated    = !(ourPawns   & adjacent_files_bb(f));
         doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
@@ -183,7 +183,7 @@ namespace {
         if (isolated)
             score -= Isolated[opposed][f];
 
-        if (unsupported && !isolated)
+        if (!supported && !isolated)
             score -= UnsupportedPawnPenalty;
 
         if (doubled)
@@ -193,7 +193,7 @@ namespace {
             score -= Backward[opposed][f];
 
         if (connected)
-            score += Connected[opposed][phalanx][relative_rank(Us, s)];
+            score += Connected[opposed][phalanx][more_than_one(supported)][relative_rank(Us, s)];
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
@@ -223,11 +223,13 @@ void init()
 
   for (int opposed = 0; opposed <= 1; ++opposed)
       for (int phalanx = 0; phalanx <= 1; ++phalanx)
-          for (Rank r = RANK_2; r < RANK_8; ++r)
-          {
-              int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
-              Connected[opposed][phalanx][r] = make_score( 3 * v / 2, v);
-          }
+          for (int apex = 0; apex <= 1; ++apex)
+              for (Rank r = RANK_2; r < RANK_8; ++r)
+  {
+      int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
+      v += (apex ? v / 2 : 0);
+      Connected[opposed][phalanx][apex][r] = make_score(3 * v / 2, v);
+  }
 }
 
 
