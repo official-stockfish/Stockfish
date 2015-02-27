@@ -30,6 +30,23 @@
 
 namespace {
 
+  namespace Tracing {
+
+    enum Term { // First 8 entries are for PieceType
+      MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
+    };
+
+    Score scores[COLOR_NB][TERM_NB];
+
+    std::ostream& operator<<(std::ostream& os, Term idx);
+
+    double to_cp(Value v);
+    void write(int idx, Color c, Score s);
+    void write(int idx, Score w, Score b = SCORE_ZERO);
+    std::string do_trace(const Position& pos);
+  }
+
+
   // Struct EvalInfo contains various information computed and collected
   // by the evaluation functions.
   struct EvalInfo {
@@ -71,27 +88,18 @@ namespace {
     Bitboard pinnedPieces[COLOR_NB];
   };
 
-  namespace Tracing {
 
-    enum Term { // First 8 entries are for PieceType
-      MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERMS_NB
-    };
-
-    Score scores[COLOR_NB][TERMS_NB];
-
-    std::ostream& operator<<(std::ostream& os, Term idx);
-
-    double to_cp(Value v);
-    void write(int idx, Color c, Score s);
-    void write(int idx, Score w, Score b = SCORE_ZERO);
-    std::string do_trace(const Position& pos);
-  }
-
-  // Evaluation weights, indexed by evaluation term
+  // Evaluation weights, indexed by the corresponding evaluation term
   enum { Mobility, PawnStructure, PassedPawns, Space, KingSafety };
+
   const struct Weight { int mg, eg; } Weights[] = {
     {289, 344}, {233, 201}, {221, 273}, {46, 0}, {322, 0}
   };
+
+  Score operator*(Score s, const Weight& w) {
+    return make_score(mg_value(s) * w.mg / 256, eg_value(s) * w.eg / 256);
+  }
+
 
   #define V(v) Value(v)
   #define S(mg, eg) make_score(mg, eg)
@@ -185,26 +193,18 @@ namespace {
   // in KingDanger[]. Various little "meta-bonuses" measuring the strength
   // of the enemy attack are added up into an integer, which is used as an
   // index to KingDanger[].
-  //
+  Score KingDanger[512];
+
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 7, 5, 4, 1 };
 
-  // Bonuses for enemy's safe checks
+  // Penalties for enemy's safe checks
   const int QueenContactCheck = 89;
   const int RookContactCheck  = 71;
   const int QueenCheck        = 50;
   const int RookCheck         = 37;
   const int BishopCheck       = 6;
   const int KnightCheck       = 14;
-
-  // KingDanger[attackUnits] contains the actual king danger weighted
-  // scores, indexed by a calculated integer number.
-  Score KingDanger[512];
-
-  // apply_weight() weighs score 's' by weight 'w' trying to prevent overflow
-  Score apply_weight(Score s, const Weight& w) {
-    return make_score(mg_value(s) * w.mg / 256, eg_value(s) * w.eg / 256);
-  }
 
 
   // init_eval_info() initializes king bitboards for given color adding
@@ -301,8 +301,7 @@ namespace {
                    | ei.attackedBy[Them][BISHOP]
                    | ei.attackedBy[Them][ROOK]);
 
-        int mob = Pt != QUEEN ? popcount<Max15>(b & mobilityArea[Us])
-                              : popcount<Full >(b & mobilityArea[Us]);
+        int mob = popcount<Pt == QUEEN ? Full : Max15>(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt][mob];
 
@@ -506,8 +505,7 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies defended by a pawn
-    defended =  (pos.pieces(Them) ^ pos.pieces(Them, PAWN))
-              &  ei.attackedBy[Them][PAWN];
+    defended = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Them][PAWN];
 
     // Add a bonus according to the kind of attacking pieces
     if (defended)
@@ -649,10 +647,10 @@ namespace {
     }
 
     if (Trace)
-        Tracing::write(Tracing::PASSED, Us, apply_weight(score, Weights[PassedPawns]));
+        Tracing::write(Tracing::PASSED, Us, score * Weights[PassedPawns]);
 
     // Add the scores to the middlegame and endgame eval
-    return apply_weight(score, Weights[PassedPawns]);
+    return score * Weights[PassedPawns];
   }
 
 
@@ -718,7 +716,7 @@ namespace {
 
     // Probe the pawn hash table
     ei.pi = Pawns::probe(pos);
-    score += apply_weight(ei.pi->pawns_score(), Weights[PawnStructure]);
+    score += ei.pi->pawns_score() * Weights[PawnStructure];
 
     // Initialize attack and king safety bitboards
     init_eval_info<WHITE>(pos, ei);
@@ -733,7 +731,7 @@ namespace {
 
     // Evaluate pieces and mobility
     score += evaluate_pieces<KNIGHT, WHITE, Trace>(pos, ei, mobility, mobilityArea);
-    score += apply_weight(mobility[WHITE] - mobility[BLACK], Weights[Mobility]);
+    score += (mobility[WHITE] - mobility[BLACK]) * Weights[Mobility];
 
     // Evaluate kings after all other pieces because we need complete attack
     // information when computing the king safety evaluation.
@@ -760,11 +758,8 @@ namespace {
     }
 
     // Evaluate space for both sides, only during opening
-    if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
-    {
-        Score s = evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei);
-        score += apply_weight(s, Weights[Space]);
-    }
+    if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 11756)
+        score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
 
     // Scale winning side if position is more drawish than it appears
     Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
@@ -808,14 +803,14 @@ namespace {
         Tracing::write(Tracing::MATERIAL, pos.psq_score());
         Tracing::write(Tracing::IMBALANCE, ei.mi->imbalance());
         Tracing::write(PAWN, ei.pi->pawns_score());
-        Tracing::write(Tracing::MOBILITY, apply_weight(mobility[WHITE], Weights[Mobility])
-                                        , apply_weight(mobility[BLACK], Weights[Mobility]));
-        Tracing::write(Tracing::SPACE, apply_weight(evaluate_space<WHITE>(pos, ei), Weights[Space])
-                                     , apply_weight(evaluate_space<BLACK>(pos, ei), Weights[Space]));
+        Tracing::write(Tracing::MOBILITY, mobility[WHITE] * Weights[Mobility]
+                                        , mobility[BLACK] * Weights[Mobility]);
+        Tracing::write(Tracing::SPACE, evaluate_space<WHITE>(pos, ei) * Weights[Space]
+                                     , evaluate_space<BLACK>(pos, ei) * Weights[Space]);
         Tracing::write(Tracing::TOTAL, score);
     }
 
-    return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo;
+    return (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
   }
 
 
@@ -911,7 +906,7 @@ namespace Eval {
     for (int i = 0; i < 400; ++i)
     {
         t = std::min(Peak, std::min(i * i * 27, t + MaxSlope));
-        KingDanger[i] = apply_weight(make_score(t / 1000, 0), Weights[KingSafety]);
+        KingDanger[i] = make_score(t / 1000, 0) * Weights[KingSafety];
     }
   }
 
