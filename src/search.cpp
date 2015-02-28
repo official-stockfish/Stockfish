@@ -49,7 +49,6 @@ namespace Tablebases {
 
   int Cardinality;
   uint64_t Hits;
-  bool RootInTB;
   bool UseRule50;
   Depth ProbeDepth;
   Value Score;
@@ -200,7 +199,6 @@ void Search::think() {
   DrawValue[~RootPos.side_to_move()] = VALUE_DRAW + Value(contempt);
 
   TB::Hits = 0;
-  TB::RootInTB = false;
   TB::UseRule50 = Options["Syzygy50MoveRule"];
   TB::ProbeDepth = Options["SyzygyProbeDepth"] * ONE_PLY;
   TB::Cardinality = Options["SyzygyProbeLimit"];
@@ -221,37 +219,6 @@ void Search::think() {
   }
   else
   {
-      if (TB::Cardinality >=  RootPos.count<ALL_PIECES>(WHITE)
-                            + RootPos.count<ALL_PIECES>(BLACK))
-      {
-          // If the current root position is in the tablebases then RootMoves
-          // contains only moves that preserve the draw or win.
-          TB::RootInTB = Tablebases::root_probe(RootPos, RootMoves, TB::Score);
-
-          if (TB::RootInTB)
-              TB::Cardinality = 0; // Do not probe tablebases during the search
-
-          else // If DTZ tables are missing, use WDL tables as a fallback
-          {
-              // Filter out moves that do not preserve a draw or win
-              TB::RootInTB = Tablebases::root_probe_wdl(RootPos, RootMoves, TB::Score);
-
-              // Only probe during search if winning
-              if (TB::Score <= VALUE_DRAW)
-                  TB::Cardinality = 0;
-          }
-
-          if (TB::RootInTB)
-          {
-              TB::Hits = RootMoves.size();
-
-              if (!TB::UseRule50)
-                  TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
-                             : TB::Score < VALUE_DRAW ? -VALUE_MATE + MAX_PLY + 1
-                                                      :  VALUE_DRAW;
-          }
-      }
-
       for (size_t i = 0; i < Threads.size(); ++i)
           Threads[i]->maxPly = 0;
 
@@ -1434,9 +1401,6 @@ moves_loop: // When in check and at SpNode search starts from here
         Depth d = updated ? depth : depth - ONE_PLY;
         Value v = updated ? RootMoves[i].score : RootMoves[i].previousScore;
 
-        bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
-        v = tb ? TB::Score : v;
-
         if (ss.rdbuf()->in_avail()) // Not at first line
             ss << "\n";
 
@@ -1445,7 +1409,7 @@ moves_loop: // When in check and at SpNode search starts from here
            << " multipv "   << i + 1
            << " score "     << UCI::value(v);
 
-        if (!tb && i == PVIdx)
+        if (i == PVIdx)
               ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
         ss << " nodes "     << pos.nodes_searched()
