@@ -110,9 +110,9 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, p, doubled, connected, supported;
+    Bitboard b, neighbours, doubled, connected, supported, phalanx;
     Square s;
-    bool passed, isolated, opposed, phalanx, backward, lever;
+    bool passed, isolated, opposed, backward, lever;
     Score score = SCORE_ZERO;
     const Square* pl = pos.list<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
@@ -137,18 +137,16 @@ namespace {
         // This file cannot be semi-open
         e->semiopenFiles[Us] &= ~(1 << f);
 
-        // Previous rank
-        p = rank_bb(s - Up);
-
         // Flag the pawn
-        connected   =   ourPawns   & adjacent_files_bb(f) & (rank_bb(s) | p);
-        phalanx     =   connected  & rank_bb(s);
-        supported   =   connected  & p;
-        isolated    = !(ourPawns   & adjacent_files_bb(f));
+        neighbours  =   ourPawns   & adjacent_files_bb(f);
         doubled     =   ourPawns   & forward_bb(Us, s);
         opposed     =   theirPawns & forward_bb(Us, s);
         passed      = !(theirPawns & passed_pawn_mask(Us, s));
         lever       =   theirPawns & pawnAttacksBB[s];
+        phalanx     =   neighbours & rank_bb(s);
+        supported   =   neighbours & rank_bb(s - Up);
+        connected   =   supported | phalanx;
+        isolated    =  !neighbours;
 
         // Test for backward pawn.
         // If the pawn is passed, isolated, connected or a lever it cannot be
@@ -193,7 +191,7 @@ namespace {
             score -= Backward[opposed][f];
 
         if (connected)
-            score += Connected[opposed][phalanx][more_than_one(supported)][relative_rank(Us, s)];
+            score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
 
         if (lever)
             score += Lever[relative_rank(Us, s)];
