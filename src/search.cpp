@@ -1593,7 +1593,7 @@ void Thread::idle_loop() {
               if (   sp
                   && sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(sp->master))
+                  && can_join(sp))
               {
                   assert(this != th);
                   assert(!(this_sp && this_sp->slavesMask.none()));
@@ -1623,7 +1623,7 @@ void Thread::idle_loop() {
 
               if (   sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(sp->master))
+                  && can_join(sp))
               {
                   sp->slavesMask.set(idx);
                   activeSplitPoint = sp;

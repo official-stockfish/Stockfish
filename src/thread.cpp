@@ -102,14 +102,13 @@ bool Thread::cutoff_occurred() const {
 }
 
 
-// Thread::available_to() checks whether the thread is available to help the
-// thread 'master' at a split point. An obvious requirement is that thread must
-// be idle. With more than two threads, this is not sufficient: If the thread is
-// the master of some split point, it is only available as a slave to the slaves
-// which are busy searching the split point at the top of slave's split point
-// stack (the "helpful master concept" in YBWC terminology).
+// Thread::can_join() checks whether the thread is available to join the split
+// point 'sp'. An obvious requirement is that thread must be idle. With more than
+// two threads, this is not sufficient: If the thread is the master of some split
+// point, it is only available as a slave for the split points below his active
+// one (the "helpful master" concept in YBWC terminology).
 
-bool Thread::available_to(const Thread* master) const {
+bool Thread::can_join(const SplitPoint* sp) const {
 
   if (searching)
       return false;
@@ -120,7 +119,7 @@ bool Thread::available_to(const Thread* master) const {
 
   // No split points means that the thread is available as a slave for any
   // other thread otherwise apply the "helpful master" concept if possible.
-  return !size || splitPoints[size - 1].slavesMask.test(master->idx);
+  return !size || splitPoints[size - 1].slavesMask.test(sp->master->idx);
 }
 
 
@@ -176,10 +175,10 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   Thread* slave;
 
   while (    sp.slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-         && (slave = Threads.available_slave(this)) != nullptr)
+         && (slave = Threads.available_slave(activeSplitPoint)) != nullptr)
   {
       sp.slavesMask.set(slave->idx);
-      slave->activeSplitPoint = &sp;
+      slave->activeSplitPoint = activeSplitPoint;
       slave->searching = true; // Slave leaves idle_loop()
       slave->notify_one(); // Could be sleeping
   }
@@ -325,12 +324,12 @@ void ThreadPool::read_uci_options() {
 
 
 // ThreadPool::available_slave() tries to find an idle thread which is available
-// as a slave for the thread 'master'.
+// to join SplitPoint 'sp'.
 
-Thread* ThreadPool::available_slave(const Thread* master) const {
+Thread* ThreadPool::available_slave(const SplitPoint* sp) const {
 
   for (Thread* th : *this)
-      if (th->available_to(master))
+      if (th->can_join(sp))
           return th;
 
   return nullptr;
