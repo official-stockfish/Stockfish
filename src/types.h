@@ -31,6 +31,9 @@
 /// -DNO_PREFETCH | Disable use of prefetch asm-instruction. You may need this to
 ///               | run on some very old machines.
 ///
+/// -DNO_SPINLOCK | Use mutex instead of spinlocks. This is much slower, so you
+///               | really don't want to do this in general case.
+///
 /// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
 ///               | only in 64-bit mode and requires hardware with popcnt support.
 ///
