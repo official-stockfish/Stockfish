@@ -88,7 +88,7 @@ void ThreadBase::wait_for(volatile const bool& condition) {
 
 Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in MSVC
 
-  searching = false;
+  allocated = false;
   maxPly = 0;
   splitPointsSize = 0;
   activeSplitPoint = NULL;
@@ -119,7 +119,7 @@ bool Thread::cutoff_occurred() const {
 
 bool Thread::available_to(const SplitPoint* sp) const {
 
-  if (searching)
+  if (is_searching())
       return false;
 
   // Make a local copy to be sure it doesn't become zero under our feet while
@@ -153,6 +153,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // Pick and init the next available split point
   SplitPoint& sp = splitPoints[splitPointsSize];
 
+  sp.mutex.lock();
+
   sp.master = this;
   sp.parentSplitPoint = activeSplitPoint;
   sp.slavesMask = 0, sp.slavesMask.set(idx);
@@ -169,27 +171,20 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.nodes = 0;
   sp.cutoff = false;
   sp.ss = ss;
-
-  // Try to allocate available threads and ask them to start searching setting
-  // 'searching' flag. This must be done under lock protection to avoid concurrent
-  // allocation of the same slave by another master.
-  Threads.mutex.lock();
-  sp.mutex.lock();
-
   sp.allSlavesSearching = true; // Must be set under lock protection
+
   ++splitPointsSize;
   activeSplitPoint = &sp;
   activePosition = NULL;
 
+  // Try to allocate available threads.
   Thread* slave;
 
   while (    sp.slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
          && (slave = Threads.available_slave(&sp)) != NULL)
   {
-      sp.slavesMask.set(slave->idx);
-      slave->activeSplitPoint = &sp;
-      slave->searching = true; // Slave leaves idle_loop()
-      slave->notify_one(); // Could be sleeping
+      if (slave->alloc_thread_to_sp(&sp))
+          slave->notify_one(); // Could be sleeping
   }
 
   // Everything is set up. The master thread enters the idle loop, from which
@@ -197,23 +192,22 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
   sp.mutex.unlock();
-  Threads.mutex.unlock();
 
   Thread::idle_loop(); // Force a call to base class idle_loop()
 
   // In the helpful master concept, a master can help only a sub-tree of its
   // split point and because everything is finished here, it's not possible
   // for the master to be booked.
-  assert(!searching);
+  assert(!is_searching());
   assert(!activePosition);
 
+  alloc_thread();
+
   // We have returned from the idle loop, which means that all threads are
-  // finished. Note that setting 'searching' and decreasing splitPointsSize must
+  // finished. Note that decreasing splitPointsSize must
   // be done under lock protection to avoid a race with Thread::available_to().
-  Threads.mutex.lock();
   sp.mutex.lock();
 
-  searching = true;
   --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
   activePosition = &pos;
@@ -222,7 +216,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   *bestValue = sp.bestValue;
 
   sp.mutex.unlock();
-  Threads.mutex.unlock();
 }
 
 
@@ -267,13 +260,13 @@ void MainThread::idle_loop() {
 
       if (!exit)
       {
-          searching = true;
+          alloc_thread();
 
           Search::think();
 
           assert(searching);
 
-          searching = false;
+          free_thread();
       }
   }
 }

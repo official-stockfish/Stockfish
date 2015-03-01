@@ -137,7 +137,56 @@ struct Thread : public ThreadBase {
   int maxPly;
   SplitPoint* volatile activeSplitPoint;
   volatile size_t splitPointsSize;
-  volatile bool searching;
+
+private:
+  Mutex allocMutex;
+  volatile bool allocated;
+
+public:
+
+  // The split point must be locked when this function is called
+  bool alloc_thread_to_sp(SplitPoint *sp)
+  {
+      bool success = false;
+
+      allocMutex.lock();
+
+      if (!allocated && available_to(sp))
+      {
+          sp->slavesMask.set(idx);
+          activeSplitPoint = sp;
+          allocated = true;
+
+          success = true;
+      }
+
+      allocMutex.unlock();
+
+      return success;
+  }   
+
+  void alloc_thread()
+  {
+      allocated = true;
+  }
+
+  void free_thread()
+  {
+      assert(allocated);
+      allocated = false;
+  }
+
+  bool is_searching() const
+  {
+      return allocated;
+  }
+
+  void sync()
+  {
+      allocMutex.lock();
+      allocMutex.unlock();
+  }
+
 };
 
 
@@ -177,7 +226,6 @@ struct ThreadPool : public std::vector<Thread*> {
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  Mutex mutex;
   ConditionVariable sleepCondition;
   TimerThread* timer;
 };
