@@ -39,7 +39,7 @@ const size_t MAX_THREADS = 128;
 const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
 const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
 
-#if !defined(NO_SPINLOCK)
+#if 0
 /// Spinlock class wraps low level atomic operations to provide a spin lock
 
 class Spinlock {
