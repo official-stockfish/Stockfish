@@ -818,7 +818,6 @@ namespace {
   }
 
 
-
   // Tracing functions
 
   double Tracing::to_cp(Value v) { return double(v) / PawnValueEg; }
