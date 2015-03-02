@@ -734,8 +734,8 @@ namespace {
     score += (mobility[WHITE] - mobility[BLACK]) * Weights[Mobility];
 
     // Evaluate kings after all other pieces because we need complete attack
-    // information when computing the king safety evaluation.
-    // Evaluate tactical threats and passed pawns, we need full attack information
+    // information when computing the king safety evaluation. Evaluate tactical
+    // threats and passed pawns, we need full attack information.
     score +=  evaluate_king<WHITE, Trace>(pos, ei)
             + evaluate_threats<WHITE, Trace>(pos, ei)
             + evaluate_passed_pawns<WHITE, Trace>(pos, ei);
@@ -796,7 +796,7 @@ namespace {
 
         // Interpolate between a middlegame and a (scaled by 'sf') endgame score
         v =  mg_value(score) * int(ei.mi->game_phase())
-                 + eg_value(score) * int(PHASE_MIDGAME - ei.mi->game_phase()) * sf / SCALE_FACTOR_NORMAL;
+           + eg_value(score) * int(PHASE_MIDGAME - ei.mi->game_phase()) * sf / SCALE_FACTOR_NORMAL;
 
         v /= int(PHASE_MIDGAME);
     }
@@ -886,7 +886,7 @@ namespace Eval {
   /// evaluate() is the main evaluation function. It returns a static evaluation
   /// of the position always from the point of view of the side to move.
 
-  Value evaluate(const Position& pos) {    
+  Value evaluate(const Position& pos) {
     return do_evaluate<false>(pos);
   }
 
