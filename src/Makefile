@@ -151,7 +151,11 @@ ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
 	CXXFLAGS += -pedantic -Wno-long-long -Wextra -Wshadow
-	LDFLAGS += -Wl,--no-as-needed
+	ifneq ($(UNAME),Darwin)
+	   LDFLAGS += -Wl,--no-as-needed
+	else
+	   LDFLAGS += -Wl
+	endif
 endif
 
 ifeq ($(COMP),mingw)
@@ -189,8 +193,8 @@ else
 endif
 
 ifeq ($(UNAME),Darwin)
-	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.10
-	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.10
+	CXXFLAGS += -arch $(arch) -mmacosx-version-min=10.9
+	LDFLAGS += -arch $(arch) -mmacosx-version-min=10.9
 endif
 
 ### On mingw use Windows threads, otherwise POSIX
