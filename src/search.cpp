@@ -1628,10 +1628,9 @@ void Thread::idle_loop() {
               sp->mutex.lock();
 
               if (   sp->allSlavesSearching
-                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(sp))
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT)
               {
-                  alloc_thread_to_sp(sp); // May succeed or fail...
+                  alloc_thread_to_sp(sp); // May succeed or fail
               }
 
               sp->mutex.unlock();
@@ -1645,7 +1644,7 @@ void Thread::idle_loop() {
       // If we are master and all slaves have finished then exit idle_loop
       if (this_sp && this_sp->slavesMask.none())
       {
-          assert(!is_searching());
+          assert(!searching);
           mutex.unlock();
           break;
       }
