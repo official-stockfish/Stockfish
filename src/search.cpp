@@ -1531,7 +1531,7 @@ void Thread::idle_loop() {
   while (!exit)
   {
       // If this thread has been assigned work, launch a search
-      while (is_searching())
+      while (searching)
       {
           // Poor man's memory fence.
           // Guarantees that everything is ready for the thread to start searching.
@@ -1584,7 +1584,7 @@ void Thread::idle_loop() {
           // in a safe way because it could have been released under our feet by
           // the sp master.
           sp->mutex.unlock();
-          free_thread();
+          searching = false;
 
           // Try to late join to another split point if none of its slaves has
           // already finished.
@@ -1651,7 +1651,7 @@ void Thread::idle_loop() {
 
       // If we are not searching, wait for a condition to be signaled instead of
       // wasting CPU time polling for work.
-      if (!is_searching() && !exit)
+      if (!searching && !exit)
           sleepCondition.wait(mutex);
 
       mutex.unlock();

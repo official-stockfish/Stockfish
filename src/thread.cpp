@@ -88,7 +88,7 @@ void ThreadBase::wait_for(volatile const bool& condition) {
 
 Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in MSVC
 
-  allocated = false;
+  searching = false;
   maxPly = 0;
   splitPointsSize = 0;
   activeSplitPoint = NULL;
@@ -119,7 +119,7 @@ bool Thread::cutoff_occurred() const {
 
 bool Thread::available_to(const SplitPoint* sp) const {
 
-  if (is_searching())
+  if (searching)
       return false;
 
   // Make a local copy to be sure it doesn't become zero under our feet while
@@ -201,7 +201,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   assert(!is_searching());
   assert(!activePosition);
 
-  alloc_thread();
+  searching = true;
 
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that decreasing splitPointsSize must
@@ -260,13 +260,13 @@ void MainThread::idle_loop() {
 
       if (!exit)
       {
-          alloc_thread();
+          searching = true;
 
           Search::think();
 
           assert(searching);
 
-          free_thread();
+          searching = false;
       }
   }
 }

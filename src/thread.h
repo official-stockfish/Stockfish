@@ -137,10 +137,10 @@ struct Thread : public ThreadBase {
   int maxPly;
   SplitPoint* volatile activeSplitPoint;
   volatile size_t splitPointsSize;
+  volatile bool searching;
 
 private:
   Mutex allocMutex;
-  volatile bool allocated;
 
 public:
 
@@ -151,11 +151,11 @@ public:
 
       allocMutex.lock();
 
-      if (!allocated && available_to(sp))
+      if (!searching && available_to(sp))
       {
           sp->slavesMask.set(idx);
           activeSplitPoint = sp;
-          allocated = true;
+          searching = true;
 
           success = true;
       }
@@ -164,22 +164,6 @@ public:
 
       return success;
   }   
-
-  void alloc_thread()
-  {
-      allocated = true;
-  }
-
-  void free_thread()
-  {
-      assert(allocated);
-      allocated = false;
-  }
-
-  bool is_searching() const
-  {
-      return allocated;
-  }
 
   void sync()
   {
