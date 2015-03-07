@@ -55,15 +55,15 @@ struct Stack {
 
 struct RootMove {
 
-  explicit RootMove(Move m) : pv(1, m) {}
+  RootMove(Move m) : score(-VALUE_INFINITE), previousScore(-VALUE_INFINITE), pv(1, m) {}
 
   bool operator<(const RootMove& m) const { return score > m.score; } // Ascending sort
   bool operator==(const Move& m) const { return pv[0] == m; }
   void insert_pv_in_tt(Position& pos);
-  bool extract_ponder_from_tt(Position& pos);
+  Move extract_ponder_from_tt(Position& pos);
 
-  Value score = -VALUE_INFINITE;
-  Value previousScore = -VALUE_INFINITE;
+  Value score;
+  Value previousScore;
   std::vector<Move> pv;
 };
 
@@ -96,13 +96,13 @@ struct SignalsType {
   bool stop, stopOnPonderhit, firstRootMove, failedLowAtRoot;
 };
 
-typedef std::unique_ptr<std::stack<StateInfo>> StateStackPtr;
+typedef std::auto_ptr<std::stack<StateInfo> > StateStackPtr;
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
 extern RootMoveVector RootMoves;
 extern Position RootPos;
-extern TimePoint SearchTime;
+extern Time::point SearchTime;
 extern StateStackPtr SetupStates;
 
 void init();

@@ -21,10 +21,7 @@
 #define ENDGAME_H_INCLUDED
 
 #include <map>
-#include <memory>
 #include <string>
-#include <type_traits>
-#include <utility>
 
 #include "position.h"
 #include "types.h"
@@ -66,9 +63,11 @@ enum EndgameType {
 
 
 /// Endgame functions can be of two types depending on whether they return a
-/// Value or a ScaleFactor.
-template<EndgameType E> using
-eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), Value, ScaleFactor>::type;
+/// Value or a ScaleFactor. Type eg_fun<int>::type returns either ScaleFactor
+/// or Value depending on whether the template parameter is 0 or 1.
+
+template<int> struct eg_fun { typedef Value type; };
+template<> struct eg_fun<1> { typedef ScaleFactor type; };
 
 
 /// Base and derived templates for endgame evaluation and scaling functions
@@ -82,7 +81,7 @@ struct EndgameBase {
 };
 
 
-template<EndgameType E, typename T = eg_type<E>>
+template<EndgameType E, typename T = typename eg_fun<(E > SCALING_FUNCTIONS)>::type>
 struct Endgame : public EndgameBase<T> {
 
   explicit Endgame(Color c) : strongSide(c), weakSide(~c) {}
@@ -100,24 +99,23 @@ private:
 
 class Endgames {
 
-  template<typename T> using Map = std::map<Key, std::unique_ptr<EndgameBase<T>>>;
+  typedef std::map<Key, EndgameBase<eg_fun<0>::type>*> M1;
+  typedef std::map<Key, EndgameBase<eg_fun<1>::type>*> M2;
 
-  template<EndgameType E, typename T = eg_type<E>>
-  void add(const std::string& code);
+  M1 m1;
+  M2 m2;
 
-  template<typename T>
-  Map<T>& map() {
-    return std::get<std::is_same<T, ScaleFactor>::value>(maps);
-  }
+  M1& map(M1::mapped_type) { return m1; }
+  M2& map(M2::mapped_type) { return m2; }
 
-  std::pair<Map<Value>, Map<ScaleFactor>> maps;
+  template<EndgameType E> void add(const std::string& code);
 
 public:
   Endgames();
+ ~Endgames();
 
-  template<typename T>
-  EndgameBase<T>* probe(Key key) {
-    return map<T>().count(key) ? map<T>()[key].get() : nullptr;
+  template<typename T> T probe(Key key, T& eg) {
+    return eg = map(eg).count(key) ? map(eg)[key] : NULL;
   }
 };
 
