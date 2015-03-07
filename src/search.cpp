@@ -1535,7 +1535,8 @@ void Thread::idle_loop() {
       {
           // Poor man's memory fence.
           // Guarantees that everything is ready for the thread to start searching.
-          sync();
+          allocMutex.lock();
+          allocMutex.unlock();
 
           assert(activeSplitPoint);
           SplitPoint* sp = activeSplitPoint;

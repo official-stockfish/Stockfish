@@ -127,6 +127,7 @@ struct Thread : public ThreadBase {
 
   void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
+  bool alloc_thread_to_sp(SplitPoint *sp);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Pawns::Table pawnsTable;
@@ -138,39 +139,7 @@ struct Thread : public ThreadBase {
   SplitPoint* volatile activeSplitPoint;
   volatile size_t splitPointsSize;
   volatile bool searching;
-
-private:
   Mutex allocMutex;
-
-public:
-
-  // The split point must be locked when this function is called
-  bool alloc_thread_to_sp(SplitPoint *sp)
-  {
-      bool success = false;
-
-      allocMutex.lock();
-
-      if (!searching && available_to(sp))
-      {
-          sp->slavesMask.set(idx);
-          activeSplitPoint = sp;
-          searching = true;
-
-          success = true;
-      }
-
-      allocMutex.unlock();
-
-      return success;
-  }   
-
-  void sync()
-  {
-      allocMutex.lock();
-      allocMutex.unlock();
-  }
-
 };
 
 

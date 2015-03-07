@@ -198,7 +198,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // In the helpful master concept, a master can help only a sub-tree of its
   // split point and because everything is finished here, it's not possible
   // for the master to be booked.
-  assert(!is_searching());
+  assert(!searching());
   assert(!activePosition);
 
   searching = true;
@@ -218,6 +218,26 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.mutex.unlock();
 }
 
+// Allocates thread to work on a split point
+// The split point must be locked when this function is called
+bool Thread::alloc_thread_to_sp(SplitPoint *sp)
+{
+  bool success = false;
+
+  allocMutex.lock();
+
+  if (!searching && available_to(sp))
+  {
+      sp->slavesMask.set(idx);
+      activeSplitPoint = sp;
+      searching = true;
+      success = true;
+  }
+
+  allocMutex.unlock();
+
+  return success;
+}   
 
 // TimerThread::idle_loop() is where the timer thread waits Resolution milliseconds
 // and then calls check_time(). When not searching, thread sleeps until it's woken up.
