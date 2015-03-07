@@ -738,28 +738,14 @@ namespace {
     score += apply_weight(mobility[WHITE] - mobility[BLACK], Weights[Mobility]);
 
     // Evaluate kings after all other pieces because we need complete attack
-    // information when computing the king safety evaluation.
+    // information when computing the king safety evaluation. Evaluate tactical
+    // threats and passed pawns, we need full attack information.
     score +=  evaluate_king<WHITE, Trace>(pos, ei)
-            - evaluate_king<BLACK, Trace>(pos, ei);
-
-    // Evaluate tactical threats, we need full attack information including king
-    score +=  evaluate_threats<WHITE, Trace>(pos, ei)
-            - evaluate_threats<BLACK, Trace>(pos, ei);
-
-    // Evaluate passed pawns, we need full attack information including king
-    score +=  evaluate_passed_pawns<WHITE, Trace>(pos, ei)
-            - evaluate_passed_pawns<BLACK, Trace>(pos, ei);
-
-    // If both sides have only pawns, score for potential unstoppable pawns
-    if (!pos.non_pawn_material(WHITE) && !pos.non_pawn_material(BLACK))
-    {
-        Bitboard b;
-        if ((b = ei.pi->passed_pawns(WHITE)) != 0)
-            score += int(relative_rank(WHITE, frontmost_sq(WHITE, b))) * Unstoppable;
-
-        if ((b = ei.pi->passed_pawns(BLACK)) != 0)
-            score -= int(relative_rank(BLACK, frontmost_sq(BLACK, b))) * Unstoppable;
-    }
+            + evaluate_threats<WHITE, Trace>(pos, ei)
+            + evaluate_passed_pawns<WHITE, Trace>(pos, ei);
+    score -=  evaluate_king<BLACK, Trace>(pos, ei)
+            + evaluate_threats<BLACK, Trace>(pos, ei)
+            + evaluate_passed_pawns<BLACK, Trace>(pos, ei);
 
     // Evaluate space for both sides, only during opening
     if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 2 * QueenValueMg + 4 * RookValueMg + 2 * KnightValueMg)
@@ -768,41 +754,59 @@ namespace {
         score += apply_weight(s, Weights[Space]);
     }
 
-    // Scale winning side if position is more drawish than it appears
-    Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
-    ScaleFactor sf = ei.mi->scale_factor(pos, strongSide);
-
-    // If we don't already have an unusual scale factor, check for certain
-    // types of endgames, and use a lower scale for those.
-    if (    ei.mi->game_phase() < PHASE_MIDGAME
-        && (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN))
+    Value v;
+    if (ei.mi->game_phase() == PHASE_MIDGAME)
     {
-        if (pos.opposite_bishops())
-        {
-            // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
-            // is almost a draw, in case of KBP vs KB is even more a draw.
-            if (   pos.non_pawn_material(WHITE) == BishopValueMg
-                && pos.non_pawn_material(BLACK) == BishopValueMg)
-                sf = more_than_one(pos.pieces(PAWN)) ? ScaleFactor(32) : ScaleFactor(8);
-
-            // Endgame with opposite-colored bishops, but also other pieces. Still
-            // a bit drawish, but not as drawish as with only the two bishops.
-            else
-                 sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
-        }
-        // Endings where weaker side can place his king in front of the opponent's
-        // pawns are drawish.
-        else if (    abs(eg_value(score)) <= BishopValueEg
-                 &&  ei.pi->pawn_span(strongSide) <= 1
-                 && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide)))
-                 sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(56) : ScaleFactor(38);
+        v = mg_value(score);
     }
+    else
+    {
+        // If both sides have only pawns, score for potential unstoppable pawns
+        if (!pos.non_pawn_material(WHITE) && !pos.non_pawn_material(BLACK))
+        {
+            Bitboard b;
+            if ((b = ei.pi->passed_pawns(WHITE)) != 0)
+                score += int(relative_rank(WHITE, frontmost_sq(WHITE, b))) * Unstoppable;
 
-    // Interpolate between a middlegame and a (scaled by 'sf') endgame score
-    Value v =  mg_value(score) * int(ei.mi->game_phase())
-             + eg_value(score) * int(PHASE_MIDGAME - ei.mi->game_phase()) * sf / SCALE_FACTOR_NORMAL;
+            if ((b = ei.pi->passed_pawns(BLACK)) != 0)
+                score -= int(relative_rank(BLACK, frontmost_sq(BLACK, b))) * Unstoppable;
+        }    
+        
+        // Scale winning side if position is more drawish than it appears
+        Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
+        ScaleFactor sf = ei.mi->scale_factor(pos, strongSide);
 
-    v /= int(PHASE_MIDGAME);
+        // If we don't already have an unusual scale factor, check for certain
+        // types of endgames, and use a lower scale for those.
+        if (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN)
+        {
+            if (pos.opposite_bishops())
+            {
+                // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
+                // is almost a draw, in case of KBP vs KB is even more a draw.
+                if (   pos.non_pawn_material(WHITE) == BishopValueMg
+                    && pos.non_pawn_material(BLACK) == BishopValueMg)
+                    sf = more_than_one(pos.pieces(PAWN)) ? ScaleFactor(32) : ScaleFactor(8);
+
+                // Endgame with opposite-colored bishops, but also other pieces. Still
+                // a bit drawish, but not as drawish as with only the two bishops.
+                else
+                     sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
+            }
+            // Endings where weaker side can place his king in front of the opponent's
+            // pawns are drawish.
+            else if (    abs(eg_value(score)) <= BishopValueEg
+                     &&  ei.pi->pawn_span(strongSide) <= 1
+                     && !pos.pawn_passed(~strongSide, pos.king_square(~strongSide)))
+                     sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(56) : ScaleFactor(38);
+        }
+
+        // Interpolate between a middlegame and a (scaled by 'sf') endgame score
+        v =  mg_value(score) * int(ei.mi->game_phase())
+           + eg_value(score) * int(PHASE_MIDGAME - ei.mi->game_phase()) * sf / SCALE_FACTOR_NORMAL;
+
+        v /= int(PHASE_MIDGAME);
+    }
 
     // In case of tracing add all single evaluation contributions for both white and black
     if (Trace)
