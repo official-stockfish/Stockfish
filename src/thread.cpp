@@ -200,12 +200,13 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   assert(!searching());
   assert(!activePosition);
 
+  searching = true;
+
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that decreasing splitPointsSize must
   // be done under lock protection to avoid a race with Thread::available_to().
   sp.mutex.lock();
 
-  searching = true;
   --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
   activePosition = &pos;
