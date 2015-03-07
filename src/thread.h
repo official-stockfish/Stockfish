@@ -39,7 +39,7 @@ const size_t MAX_THREADS = 128;
 const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
 const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
 
-#if !defined(NO_SPINLOCK)
+
 /// Spinlock class wraps low level atomic operations to provide a spin lock
 
 class Spinlock {
@@ -55,18 +55,6 @@ public:
   void release() { lock.store(1, std::memory_order_release); }
 };
 
-#else
-
-class Spinlock {
-
-  std::mutex mutex;
-
-public:
-  void acquire() { mutex.lock(); }
-  void release() { mutex.unlock(); }
-};
-
-#endif
 
 /// SplitPoint struct stores information shared by the threads searching in
 /// parallel below the same split point. It is populated at splitting time.
