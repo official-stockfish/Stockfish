@@ -172,7 +172,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.cutoff = false;
   sp.ss = ss;
   sp.allSlavesSearching = true; // Must be set under lock protection
-
   ++splitPointsSize;
   activeSplitPoint = &sp;
   activePosition = NULL;
@@ -201,13 +200,12 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   assert(!searching());
   assert(!activePosition);
 
-  searching = true;
-
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that decreasing splitPointsSize must
   // be done under lock protection to avoid a race with Thread::available_to().
   sp.mutex.lock();
 
+  searching = true;
   --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
   activePosition = &pos;
@@ -218,8 +216,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   sp.mutex.unlock();
 }
 
-// Allocates thread to work on a split point
-// The split point must be locked when this function is called
+// Allocates thread to work on a split point.
+// The split point must be locked when this function is called.
 bool Thread::alloc_thread_to_sp(SplitPoint *sp)
 {
   bool success = false;

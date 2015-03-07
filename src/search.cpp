@@ -1533,13 +1533,12 @@ void Thread::idle_loop() {
       // If this thread has been assigned work, launch a search
       while (searching)
       {
-          // Poor man's memory fence.
-          // Guarantees that everything is ready for the thread to start searching.
           mutex.lock();
-          mutex.unlock();
 
           assert(activeSplitPoint);
           SplitPoint* sp = activeSplitPoint;
+
+          mutex.unlock();
 
           Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
           Position pos(*sp->pos, this);
