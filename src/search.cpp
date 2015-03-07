@@ -1567,6 +1567,7 @@ void Thread::idle_loop() {
 
           assert(searching);
 
+          searching = false;
           activePosition = NULL;
           sp->slavesMask.reset(idx);
           sp->allSlavesSearching = false;
@@ -1585,7 +1586,6 @@ void Thread::idle_loop() {
           // in a safe way because it could have been released under our feet by
           // the sp master.
           sp->mutex.unlock();
-          searching = false;
 
           // Try to late join to another split point if none of its slaves has
           // already finished.
