@@ -1697,7 +1697,7 @@ void check_time() {
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
 
-      // FIXME: Racy?!?!
+      // FIXME: Racy...
       for (size_t i = 0; i < Threads.size(); ++i)
           for (size_t j = 0; j < Threads[i]->splitPointsSize; ++j)
           {
