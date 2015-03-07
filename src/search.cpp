@@ -1533,13 +1533,12 @@ void Thread::idle_loop() {
       // If this thread has been assigned work, launch a search
       while (searching)
       {
-          Threads.mutex.lock();
+          mutex.lock();
 
           assert(activeSplitPoint);
-
           SplitPoint* sp = activeSplitPoint;
 
-          Threads.mutex.unlock();
+          mutex.unlock();
 
           Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
           Position pos(*sp->pos, this);
@@ -1600,7 +1599,7 @@ void Thread::idle_loop() {
               if (   sp
                   && sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(Threads[i]))
+                  && available_to(sp))
               {
                   assert(this != Threads[i]);
                   assert(!(this_sp && this_sp->slavesMask.none()));
@@ -1625,21 +1624,17 @@ void Thread::idle_loop() {
               sp = bestSp;
 
               // Recheck the conditions under lock protection
-              Threads.mutex.lock();
               sp->mutex.lock();
 
               if (   sp->allSlavesSearching
-                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && available_to(sp->master))
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT)
               {
-                  sp->slavesMask.set(idx);
-                  activeSplitPoint = sp;
-                  searching = true;
+                  alloc_thread_to_sp(sp); // May succeed or fail
               }
 
               sp->mutex.unlock();
-              Threads.mutex.unlock();
           }
+
       }
 
       // Avoid races with notify_one() fired from last slave of the split point
@@ -1697,12 +1692,12 @@ void check_time() {
 
   else if (Limits.nodes)
   {
-      Threads.mutex.lock();
-
       int64_t nodes = RootPos.nodes_searched();
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
+
+      // FIXME: Racy...
       for (size_t i = 0; i < Threads.size(); ++i)
           for (size_t j = 0; j < Threads[i]->splitPointsSize; ++j)
           {
@@ -1718,8 +1713,6 @@ void check_time() {
 
               sp.mutex.unlock();
           }
-
-      Threads.mutex.unlock();
 
       if (nodes >= Limits.nodes)
           Signals.stop = true;

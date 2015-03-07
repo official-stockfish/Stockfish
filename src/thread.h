@@ -123,10 +123,11 @@ struct Thread : public ThreadBase {
   Thread();
   virtual void idle_loop();
   bool cutoff_occurred() const;
-  bool available_to(const Thread* master) const;
+  bool available_to(const SplitPoint* sp) const;
 
   void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
+  bool alloc_thread_to_sp(SplitPoint *sp);
 
   SplitPoint splitPoints[MAX_SPLITPOINTS_PER_THREAD];
   Pawns::Table pawnsTable;
@@ -172,12 +173,11 @@ struct ThreadPool : public std::vector<Thread*> {
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void read_uci_options();
-  Thread* available_slave(const Thread* master) const;
+  Thread* available_slave(const SplitPoint* sp) const;
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  Mutex mutex;
   ConditionVariable sleepCondition;
   TimerThread* timer;
 };
