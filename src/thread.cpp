@@ -224,7 +224,7 @@ bool Thread::alloc_thread_to_sp(SplitPoint *sp)
 {
   bool success = false;
 
-  allocMutex.lock();
+  mutex.lock();
 
   if (!searching && available_to(sp))
   {
@@ -234,10 +234,10 @@ bool Thread::alloc_thread_to_sp(SplitPoint *sp)
       success = true;
   }
 
-  allocMutex.unlock();
+  mutex.unlock();
 
   return success;
-}   
+}
 
 // TimerThread::idle_loop() is where the timer thread waits Resolution milliseconds
 // and then calls check_time(). When not searching, thread sleeps until it's woken up.

@@ -139,7 +139,6 @@ struct Thread : public ThreadBase {
   SplitPoint* volatile activeSplitPoint;
   volatile size_t splitPointsSize;
   volatile bool searching;
-  Mutex allocMutex;
 };
 
 
