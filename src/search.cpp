@@ -91,6 +91,9 @@ namespace {
   GainsStats Gains;
   MovesStats Countermoves, Followupmoves;
 
+  Key FMposKey(0);
+  Move FMpv[3] = { MOVE_NONE, MOVE_NONE, MOVE_NONE };
+
   template <NodeType NT, bool SpNode>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
 
@@ -295,6 +298,12 @@ namespace {
     Depth depth;
     Value bestValue, alpha, beta, delta;
 
+    // Init FastMove if we got the predicted position
+    const Move fastMove = (FMposKey == pos.key() && !Limits.ponder) ? FMpv[2] : MOVE_NONE;
+    int stableFMCnt = 0;
+    FMposKey = 0;
+    FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
+
     std::memset(ss-2, 0, 5 * sizeof(Stack));
 
     depth = DEPTH_ZERO;
@@ -416,26 +425,61 @@ namespace {
             Signals.stop = true;
 
         // Do we have time for the next iteration? Can we stop searching now?
-        if (Limits.use_time_management() && !Signals.stop && !Signals.stopOnPonderhit)
+        if (Limits.use_time_management())
         {
-            // Take some extra time if the best move has changed
-            if (depth > 4 * ONE_PLY && multiPV == 1)
-                TimeMgr.pv_instability(BestMoveChanges);
-
-            // Stop the search if only one legal move is available or all
-            // of the available time has been used.
-            if (   RootMoves.size() == 1
-                || Time::now() - SearchTime > TimeMgr.available_time())
+            if (!Signals.stop && !Signals.stopOnPonderhit)
             {
-                // If we are allowed to ponder do not stop the search now but
-                // keep pondering until the GUI sends "ponderhit" or "stop".
-                if (Limits.ponder)
-                    Signals.stopOnPonderhit = true;
-                else
-                    Signals.stop = true;
+                // Take some extra time if the best move has changed
+                if (depth > 4 * ONE_PLY && multiPV == 1)
+                    TimeMgr.pv_instability(BestMoveChanges);
+
+                // Stop the search if only one legal move is available or all
+                // of the available time has been used or we matched a FastMove
+                // from the previous search and just did a fast verification.
+                if (   RootMoves.size() == 1
+                    || Time::now() - SearchTime > TimeMgr.available_time()
+                    || (fastMove == RootMoves[0].pv[0]
+                    && BestMoveChanges < 0.03
+                    && 10 * (Time::now() - SearchTime) > TimeMgr.available_time()))
+                {
+                    // If we are allowed to ponder do not stop the search now but
+                    // keep pondering until the GUI sends "ponderhit" or "stop".
+                    if (Limits.ponder)
+                        Signals.stopOnPonderhit = true;
+                    else
+                        Signals.stop = true;
+                }
             }
+
+            // Keep track if the PV is stable 3 ply deep
+            if (RootMoves[0].pv.size() >= 3)
+            {
+                if (FMpv[2] == RootMoves[0].pv[2])
+                    stableFMCnt++;
+                else
+                    stableFMCnt = 0, FMpv[2] = RootMoves[0].pv[2];
+
+                if (!FMposKey || FMpv[0] != RootMoves[0].pv[0] || FMpv[1] != RootMoves[0].pv[1])
+                {
+                    FMpv[0] = RootMoves[0].pv[0], FMpv[1] = RootMoves[0].pv[1];
+                    StateInfo st[2];
+                    pos.do_move(RootMoves[0].pv[0], st[0]);
+                    pos.do_move(RootMoves[0].pv[1], st[1]);
+                    FMposKey = pos.key();
+                    pos.undo_move(RootMoves[0].pv[1]);
+                    pos.undo_move(RootMoves[0].pv[0]);
+                }
+            }
+            else
+                stableFMCnt = 0, FMposKey = 0, FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
         }
     }
+
+    // Clear any candidate fast move that wasn't completely stable for at least
+    // the 6 final search iterations. (Independent of actual depth and thus TC.)
+    // Time condition prevents consecutive fast moves.
+    if (stableFMCnt < 6 || Time::now() - SearchTime < TimeMgr.available_time())
+        FMposKey = 0, FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
   }
 
 
@@ -1018,6 +1062,10 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (value > alpha)
           {
+              // Clear fast move if unstable
+              if (PvNode && pos.key() == FMposKey && (move != FMpv[2] || moveCount > 1))
+                  FMposKey = 0, FMpv[2] = MOVE_NONE;
+
               bestMove = SpNode ? splitPoint->bestMove = move : move;
 
               if (PvNode && !RootNode) // Update pv even in fail-high case
