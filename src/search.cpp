@@ -298,8 +298,8 @@ namespace {
     Depth depth;
     Value bestValue, alpha, beta, delta;
 
-    // Init FastMove if we got the predicted position
-    const Move fastMove = (FMposKey == pos.key() && !Limits.ponder) ? FMpv[2] : MOVE_NONE;
+    // Init FastMove if the previous search generated one and we now got the predicted position.
+    const Move fastMove = (FMposKey == pos.key()) ? FMpv[2] : MOVE_NONE;
     int stableFMCnt = 0;
     FMposKey = 0;
     FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
