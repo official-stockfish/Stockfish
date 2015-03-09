@@ -67,8 +67,8 @@ namespace {
 /// search captures, promotions and some checks) and how important good move
 /// ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const DoubleHistoryStats& dh,
-                       Move* cm, Move* fm, Search::Stack* s) : pos(p), history(h), double_history(dh), depth(d) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const CounterMovesHistoryStats& cmh,
+                       Move* cm, Move* fm, Search::Stack* s) : pos(p), history(h), counterMovesHistory(cmh), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
@@ -87,8 +87,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const DoubleHistoryStats& dh,
-                       Square s) : pos(p), history(h), double_history(dh) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const CounterMovesHistoryStats& cmh,
+                       Square s) : pos(p), history(h), counterMovesHistory(cmh) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -112,8 +112,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, const DoubleHistoryStats& dh, PieceType pt)
-                       : pos(p), history(h), double_history(dh) {
+MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, const CounterMovesHistoryStats& cmh, PieceType pt)
+                       : pos(p), history(h), counterMovesHistory(cmh) {
 
   assert(!pos.checkers());
 
@@ -164,10 +164,11 @@ template<>
 void MovePicker::score<QUIETS>() {
   Square prevMoveSq = to_sq((ss-1)->currentMove);
   Piece prevMovePiece = pos.piece_on(prevMoveSq);
+  const HistoryStats &cmh = counterMovesHistory[prevMovePiece][prevMoveSq];
 
   for (auto& m : *this)
       m.value =  history[pos.moved_piece(m)][to_sq(m)]
-               + double_history[prevMovePiece][prevMoveSq][pos.moved_piece(m)][to_sq(m)];
+               + cmh[pos.moved_piece(m)][to_sq(m)];
 }
 
 template<>

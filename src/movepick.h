@@ -43,6 +43,7 @@ struct Stats {
   static const Value Max = Value(250);
 
   const T* operator[](Piece pc) const { return table[pc]; }
+  T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
   void update(Piece pc, Square to, Move m) {
@@ -70,39 +71,7 @@ private:
 typedef Stats< true, Value> GainsStats;
 typedef Stats<false, Value> HistoryStats;
 typedef Stats<false, std::pair<Move, Move> > MovesStats;
-
-template<bool Gain, typename T>
-struct DoubleStats {
-
-  static const Value Max = Value(250);
-  typedef T Table[SQUARE_NB][PIECE_NB][SQUARE_NB];
-
-  const Table& operator[](Piece pc) const { return (table[pc]); }
-  void clear() { std::memset(table, 0, sizeof(table)); }
-
-  void update(Piece pc1, Square to1, Piece pc2, Square to2, Move m) {
-
-    if (m == table[pc1][to1][pc2][to2].first)
-        return;
-
-    table[pc1][to1][pc2][to2].second = table[pc1][to1][pc2][to2].first;
-    table[pc1][to1][pc2][to2].first = m;
-  }
-
-  void update(Piece pc1, Square to1, Piece pc2, Square to2, Value v) {
-
-    if (Gain)
-        table[pc1][to1][pc2][to2] = std::max(v, table[pc1][to1][pc2][to2] - 1);
-
-    else if (abs(table[pc1][to1][pc2][to2] + v) < Max)
-        table[pc1][to1][pc2][to2] +=  v;
-  }
-
-private:
-  T table[PIECE_NB][SQUARE_NB][PIECE_NB][SQUARE_NB];
-};
-
-typedef DoubleStats<false, Value> DoubleHistoryStats;
+typedef Stats<false, HistoryStats> CounterMovesHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -117,9 +86,9 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const DoubleHistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, const DoubleHistoryStats&, PieceType);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const DoubleHistoryStats&, Move*, Move*, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
+  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move*, Move*, Search::Stack*);
 
   template<bool SpNode> Move next_move();
 
@@ -131,7 +100,7 @@ private:
 
   const Position& pos;
   const HistoryStats& history;
-  const DoubleHistoryStats& double_history;
+  const CounterMovesHistoryStats& counterMovesHistory;
   Search::Stack* ss;
   Move* countermoves;
   Move* followupmoves;
