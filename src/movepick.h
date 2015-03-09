@@ -75,7 +75,7 @@ template<bool Gain, typename T>
 struct DoubleStats {
 
   static const Value Max = Value(250);
-  typedef T (Table)[SQUARE_NB][PIECE_NB][SQUARE_NB];
+  typedef T Table[SQUARE_NB][PIECE_NB][SQUARE_NB];
 
   const Table& operator[](Piece pc) const { return (table[pc]); }
   void clear() { std::memset(table, 0, sizeof(table)); }
