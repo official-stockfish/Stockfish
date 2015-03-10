@@ -164,8 +164,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // Try to allocate available threads and ask them to start searching setting
   // 'searching' flag. This must be done under lock protection to avoid concurrent
   // allocation of the same slave by another master.
-  Threads.spinlock.acquire();
-  sp.spinlock.acquire();
+  Threads.mutex.lock();
+  sp.mutex.lock();
 
   sp.allSlavesSearching = true; // Must be set under lock protection
   ++splitPointsSize;
@@ -187,8 +187,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  sp.spinlock.release();
-  Threads.spinlock.release();
+  sp.mutex.unlock();
+  Threads.mutex.unlock();
 
   Thread::idle_loop(); // Force a call to base class idle_loop()
 
@@ -201,8 +201,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that setting 'searching' and decreasing splitPointsSize must
   // be done under lock protection to avoid a race with Thread::available_to().
-  Threads.spinlock.acquire();
-  sp.spinlock.acquire();
+  Threads.mutex.lock();
+  sp.mutex.lock();
 
   searching = true;
   --splitPointsSize;
@@ -212,8 +212,8 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   *bestMove = sp.bestMove;
   *bestValue = sp.bestValue;
 
-  sp.spinlock.release();
-  Threads.spinlock.release();
+  sp.mutex.unlock();
+  Threads.mutex.unlock();
 }
 
 
