@@ -127,7 +127,7 @@ namespace {
     FastMove() { clear(); }
 
     void clear() {
-      posKey = 0;
+      expectedPosKey = 0;
       pv3[0] = pv3[1] = pv3[2] = MOVE_NONE;
       stableCnt = 0;
     }
@@ -141,13 +141,13 @@ namespace {
           else
               stableCnt = 0, pv3[2] = RootMoves[0].pv[2];
 
-          if (!posKey || pv3[0] != RootMoves[0].pv[0] || pv3[1] != RootMoves[0].pv[1])
+          if (!expectedPosKey || pv3[0] != RootMoves[0].pv[0] || pv3[1] != RootMoves[0].pv[1])
           {
               pv3[0] = RootMoves[0].pv[0], pv3[1] = RootMoves[0].pv[1];
               StateInfo st[2];
               pos.do_move(RootMoves[0].pv[0], st[0]);
               pos.do_move(RootMoves[0].pv[1], st[1]);
-              posKey = pos.key();
+              expectedPosKey = pos.key();
               pos.undo_move(RootMoves[0].pv[1]);
               pos.undo_move(RootMoves[0].pv[0]);
           }
@@ -156,7 +156,7 @@ namespace {
         clear();
     }
 
-    Key posKey;
+    Key expectedPosKey;
     Move pv3[3];
     int stableCnt;
   } FM;
@@ -334,7 +334,7 @@ namespace {
     Value bestValue, alpha, beta, delta;
 
     // Init FastMove if the previous search generated one and we now got the predicted position.
-    const Move fastMove = (FM.posKey == pos.key()) ? FM.pv3[2] : MOVE_NONE;
+    const Move fastMove = (FM.expectedPosKey == pos.key()) ? FM.pv3[2] : MOVE_NONE;
     FM.clear();
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
@@ -1077,7 +1077,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               // Clear fast move if unstable
-              if (PvNode && pos.key() == FM.posKey && (move != FM.pv3[2] || moveCount > 1))
+              if (PvNode && pos.key() == FM.expectedPosKey && (move != FM.pv3[2] || moveCount > 1))
                   FM.clear();
 
               bestMove = SpNode ? splitPoint->bestMove = move : move;
