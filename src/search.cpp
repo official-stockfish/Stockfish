@@ -91,9 +91,6 @@ namespace {
   GainsStats Gains;
   MovesStats Countermoves, Followupmoves;
 
-  Key FMposKey(0);
-  Move FMpv[3] = { MOVE_NONE, MOVE_NONE, MOVE_NONE };
-
   template <NodeType NT, bool SpNode>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
 
@@ -125,6 +122,44 @@ namespace {
     size_t candidates;
     Move best;
   };
+
+  struct FastMove {
+    FastMove() { clear(); }
+
+    void clear() {
+      posKey = 0;
+      pv3[0] = pv3[1] = pv3[2] = MOVE_NONE;
+      stableCnt = 0;
+    }
+
+    void update(Position& pos) {
+      // Keep track how many times in a row the PV stays stable 3 ply deep.
+      if (RootMoves[0].pv.size() >= 3)
+      {
+          if (pv3[2] == RootMoves[0].pv[2])
+              stableCnt++;
+          else
+              stableCnt = 0, pv3[2] = RootMoves[0].pv[2];
+
+          if (!posKey || pv3[0] != RootMoves[0].pv[0] || pv3[1] != RootMoves[0].pv[1])
+          {
+              pv3[0] = RootMoves[0].pv[0], pv3[1] = RootMoves[0].pv[1];
+              StateInfo st[2];
+              pos.do_move(RootMoves[0].pv[0], st[0]);
+              pos.do_move(RootMoves[0].pv[1], st[1]);
+              posKey = pos.key();
+              pos.undo_move(RootMoves[0].pv[1]);
+              pos.undo_move(RootMoves[0].pv[0]);
+          }
+      }
+      else
+        clear();
+    }
+
+    Key posKey;
+    Move pv3[3];
+    int stableCnt;
+  } FM;
 
 } // namespace
 
@@ -299,10 +334,8 @@ namespace {
     Value bestValue, alpha, beta, delta;
 
     // Init FastMove if the previous search generated one and we now got the predicted position.
-    const Move fastMove = (FMposKey == pos.key()) ? FMpv[2] : MOVE_NONE;
-    int stableFMCnt = 0;
-    FMposKey = 0;
-    FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
+    const Move fastMove = (FM.posKey == pos.key()) ? FM.pv3[2] : MOVE_NONE;
+    FM.clear();
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
 
@@ -451,35 +484,16 @@ namespace {
                 }
             }
 
-            // Keep track if the PV is stable 3 ply deep
-            if (RootMoves[0].pv.size() >= 3)
-            {
-                if (FMpv[2] == RootMoves[0].pv[2])
-                    stableFMCnt++;
-                else
-                    stableFMCnt = 0, FMpv[2] = RootMoves[0].pv[2];
-
-                if (!FMposKey || FMpv[0] != RootMoves[0].pv[0] || FMpv[1] != RootMoves[0].pv[1])
-                {
-                    FMpv[0] = RootMoves[0].pv[0], FMpv[1] = RootMoves[0].pv[1];
-                    StateInfo st[2];
-                    pos.do_move(RootMoves[0].pv[0], st[0]);
-                    pos.do_move(RootMoves[0].pv[1], st[1]);
-                    FMposKey = pos.key();
-                    pos.undo_move(RootMoves[0].pv[1]);
-                    pos.undo_move(RootMoves[0].pv[0]);
-                }
-            }
-            else
-                stableFMCnt = 0, FMposKey = 0, FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
+            // Update fast move stats
+            FM.update(pos);
         }
     }
 
     // Clear any candidate fast move that wasn't completely stable for at least
     // the 6 final search iterations. (Independent of actual depth and thus TC.)
     // Time condition prevents consecutive fast moves.
-    if (stableFMCnt < 6 || Time::now() - SearchTime < TimeMgr.available_time())
-        FMposKey = 0, FMpv[0] = FMpv[1] = FMpv[2] = MOVE_NONE;
+    if (FM.stableCnt < 6 || Time::now() - SearchTime < TimeMgr.available_time())
+        FM.clear();
   }
 
 
@@ -1063,8 +1077,8 @@ moves_loop: // When in check and at SpNode search starts from here
           if (value > alpha)
           {
               // Clear fast move if unstable
-              if (PvNode && pos.key() == FMposKey && (move != FMpv[2] || moveCount > 1))
-                  FMposKey = 0, FMpv[2] = MOVE_NONE;
+              if (PvNode && pos.key() == FM.posKey && (move != FM.pv3[2] || moveCount > 1))
+                  FM.clear();
 
               bestMove = SpNode ? splitPoint->bestMove = move : move;
 
