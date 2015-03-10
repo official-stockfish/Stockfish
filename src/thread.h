@@ -41,18 +41,6 @@ const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
 const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
 
 
-/// Spinlock class wraps low level atomic operations to provide a spin lock
-
-class Spinlock {
-
-  Mutex m; // WARNING: Diasabled spinlocks to test on fishtest
-
-public:
-  void acquire() { m.lock(); }
-  void release() { m.unlock(); }
-};
-
-
 /// SplitPoint struct stores information shared by the threads searching in
 /// parallel below the same split point. It is populated at splitting time.
 
@@ -72,7 +60,7 @@ struct SplitPoint {
   SplitPoint* parentSplitPoint;
 
   // Shared variable data
-  Spinlock spinlock;
+  Mutex mutex;
   std::bitset<MAX_THREADS> slavesMask;
   volatile bool allSlavesSearching;
   volatile uint64_t nodes;
@@ -163,7 +151,7 @@ struct ThreadPool : public std::vector<Thread*> {
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  Spinlock spinlock;
+  Mutex mutex;
   ConditionVariable sleepCondition;
   TimerThread* timer;
 };
