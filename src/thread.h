@@ -45,15 +45,11 @@ const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
 
 class Spinlock {
 
-  std::atomic_int lock;
+  Mutex m; // WARNING: Diasabled spinlocks to test on fishtest
 
 public:
-  Spinlock() { lock = 1; } // Init here to workaround a bug with MSVC 2013
-  void acquire() {
-    while (lock.fetch_sub(1, std::memory_order_acquire) != 1)
-        while (lock.load(std::memory_order_relaxed) <= 0) {}
-  }
-  void release() { lock.store(1, std::memory_order_release); }
+  void acquire() { m.lock(); }
+  void release() { m.unlock(); }
 };
 
 
