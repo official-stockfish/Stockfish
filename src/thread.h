@@ -32,6 +32,7 @@
 #include "pawns.h"
 #include "position.h"
 #include "search.h"
+#include "thread_win32.h"
 
 struct Thread;
 
@@ -98,8 +99,8 @@ struct ThreadBase {
   void wait_for(volatile const bool& b);
 
   std::thread nativeThread;
-  std::mutex mutex;
-  std::condition_variable sleepCondition;
+  Mutex mutex;
+  ConditionVariable sleepCondition;
   volatile bool exit = false;
 };
 
@@ -167,7 +168,7 @@ struct ThreadPool : public std::vector<Thread*> {
 
   Depth minimumSplitDepth;
   Spinlock spinlock;
-  std::condition_variable sleepCondition;
+  ConditionVariable sleepCondition;
   TimerThread* timer;
 };
 

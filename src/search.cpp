@@ -1636,7 +1636,7 @@ void Thread::idle_loop() {
       }
 
       // Avoid races with notify_one() fired from last slave of the split point
-      std::unique_lock<std::mutex> lk(mutex);
+      std::unique_lock<Mutex> lk(mutex);
 
       // If we are master and all slaves have finished then exit idle_loop
       if (this_sp && this_sp->slavesMask.none())
