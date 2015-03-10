@@ -20,15 +20,23 @@
 #ifndef THREAD_WIN32_H_INCLUDED
 #define THREAD_WIN32_H_INCLUDED
 
-/// STL thread library uded by gcc and mingw compilers is implemented above
-/// POSIX pthread. Unfortunatly this yields to a much slower speed (about 30%)
-/// than the native Win32 calls. So use our own implementation that relies on
-/// the Windows specific low level calls.
+/// STL thread library used by mingw and gcc when cross compiling for Windows
+/// relies on libwinpthread. Currently libwinpthread implements mutexes directly
+/// on top of Windows semaphores. Semaphores, being kernel objects, require kernel
+/// mode transition in order to lock or unlock, which is very slow compared to
+/// interlocked operations (about 30% slower on bench test). To workaround this
+/// issue, we define our wrappers to the low level Win32 calls. We use critical
+/// sections to support Windows XP and older versions. Unfortunately, cond_wait()
+/// is racy between unlock() and WaitForSingleObject() but they have the same
+/// speed performance of SRW locks.
+
+#include <condition_variable>
+#include <mutex>
 
 #if defined(_WIN32) && !defined(_MSC_VER)
 
 #ifndef NOMINMAX
-#  define NOMINMAX // disable macros min() and max()
+#  define NOMINMAX // Disable macros min() and max()
 #endif
 
 #define WIN32_LEAN_AND_MEAN
@@ -36,58 +44,41 @@
 #undef WIN32_LEAN_AND_MEAN
 #undef NOMINMAX
 
-// We use critical sections on Windows to support Windows XP and older versions.
-// Unfortunately, cond_wait() is racy between lock_release() and WaitForSingleObject()
-// but apart from this they have the same speed performance of SRW locks.
-typedef CRITICAL_SECTION Lock;
-typedef HANDLE WaitCondition;
-typedef HANDLE NativeHandle;
-
-// On Windows 95 and 98 parameter lpThreadId may not be null
-inline DWORD* dwWin9xKludge() { static DWORD dw; return &dw; }
-
-#  define lock_init(x) InitializeCriticalSection(&(x))
-#  define lock_grab(x) EnterCriticalSection(&(x))
-#  define lock_release(x) LeaveCriticalSection(&(x))
-#  define lock_destroy(x) DeleteCriticalSection(&(x))
-#  define cond_init(x) { x = CreateEvent(0, FALSE, FALSE, 0); }
-#  define cond_destroy(x) CloseHandle(x)
-#  define cond_signal(x) SetEvent(x)
-#  define cond_wait(x,y) { lock_release(y); WaitForSingleObject(x, INFINITE); lock_grab(y); }
-#  define cond_timedwait(x,y,z) { lock_release(y); WaitForSingleObject(x,z); lock_grab(y); }
-
 /// Mutex and ConditionVariable struct are wrappers of the low level locking
 /// machinery and are modeled after the corresponding C++11 classes.
 
 struct Mutex {
-  Mutex() { lock_init(l); }
- ~Mutex() { lock_destroy(l); }
-
-  void lock() { lock_grab(l); }
-  void unlock() { lock_release(l); }
+  Mutex() { InitializeCriticalSection(&cs); }
+ ~Mutex() { DeleteCriticalSection(&cs); }
+  void lock() { EnterCriticalSection(&cs); }
+  void unlock() { LeaveCriticalSection(&cs); }
 
 private:
-  friend struct ConditionVariable;
-
-  Lock l;
+  CRITICAL_SECTION cs;
 };
 
 struct ConditionVariable {
-  ConditionVariable() { cond_init(c); }
- ~ConditionVariable() { cond_destroy(c); }
+  ConditionVariable() { hn = CreateEvent(0, FALSE, FALSE, 0); }
+ ~ConditionVariable() { CloseHandle(hn); }
+  void notify_one() { SetEvent(hn); }
 
-  void notify_one() { cond_signal(c); }
-  void wait(std::unique_lock<Mutex>& lk) { cond_wait(c, lk.mutex()->l); }
+  void wait(std::unique_lock<Mutex>& lk) {
+    lk.unlock();
+    WaitForSingleObject(hn, INFINITE);
+    lk.lock();
+  }
+
+  void wait_for(std::unique_lock<Mutex>& lk, const std::chrono::milliseconds& ms) {
+    lk.unlock();
+    WaitForSingleObject(hn, ms.count());
+    lk.lock();
+  }
 
   template<class Predicate>
   void wait(std::unique_lock<Mutex>& lk, Predicate p) { while (!p()) this->wait(lk); }
 
-  void wait_for(std::unique_lock<Mutex>& lk, const std::chrono::milliseconds& ms) {
-    cond_timedwait(c, lk.mutex()->l, ms.count());
-  }
-
 private:
-  WaitCondition c;
+  HANDLE hn;
 };
 
 #else // Default case: use STL classes
