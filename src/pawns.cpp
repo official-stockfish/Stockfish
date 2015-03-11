@@ -149,7 +149,7 @@ namespace {
         isolated    =  !neighbours;
 
         // Test for backward pawn.
-        // If the pawn is passed, isolated, connected or a lever it cannot be
+        // If the pawn is passed, isolated, lever or connected it cannot be
         // backward. If there are friendly pawns behind on adjacent files
         // it cannot be backward either.
         if (   (passed | isolated | lever | connected)

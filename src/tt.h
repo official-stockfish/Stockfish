@@ -81,6 +81,8 @@ class TranspositionTable {
     char padding[2]; // Align to the cache line size
   };
 
+  static_assert(sizeof(Cluster) == CacheLineSize / 2, "Cluster size incorrect");
+
 public:
  ~TranspositionTable() { free(mem); }
   void new_search() { generation8 += 4; } // Lower 2 bits are used by Bound

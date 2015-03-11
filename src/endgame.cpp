@@ -96,11 +96,8 @@ namespace {
     string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
-    return Position(fen, false, NULL).material_key();
+    return Position(fen, false, nullptr).material_key();
   }
-
-  template<typename M>
-  void delete_endgame(const typename M::value_type& p) { delete p.second; }
 
 } // namespace
 
@@ -128,17 +125,11 @@ Endgames::Endgames() {
   add<KRPPKRP>("KRPPKRP");
 }
 
-Endgames::~Endgames() {
 
-  for_each(m1.begin(), m1.end(), delete_endgame<M1>);
-  for_each(m2.begin(), m2.end(), delete_endgame<M2>);
-}
-
-template<EndgameType E>
+template<EndgameType E, typename T>
 void Endgames::add(const string& code) {
-
-  map((Endgame<E>*)0)[key(code, WHITE)] = new Endgame<E>(WHITE);
-  map((Endgame<E>*)0)[key(code, BLACK)] = new Endgame<E>(BLACK);
+  map<T>()[key(code, WHITE)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
+  map<T>()[key(code, BLACK)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
 }
 
 
