@@ -1526,13 +1526,12 @@ void Thread::idle_loop() {
       // If this thread has been assigned work, launch a search
       while (searching)
       {
-          Threads.mutex.lock();
+          mutex.lock();
 
           assert(activeSplitPoint);
-
           SplitPoint* sp = activeSplitPoint;
 
-          Threads.mutex.unlock();
+          mutex.unlock();
 
           Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
           Position pos(*sp->pos, this);
@@ -1618,20 +1617,24 @@ void Thread::idle_loop() {
               sp = bestSp;
 
               // Recheck the conditions under lock protection
-              Threads.mutex.lock();
               sp->mutex.lock();
 
               if (   sp->allSlavesSearching
-                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-                  && can_join(sp))
+                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT)
               {
-                  sp->slavesMask.set(idx);
-                  activeSplitPoint = sp;
-                  searching = true;
+                  mutex.lock();
+
+                  if (can_join(sp))
+                  {
+                      sp->slavesMask.set(idx);
+                      activeSplitPoint = sp;
+                      searching = true;
+                  }
+
+                  mutex.unlock();
               }
 
               sp->mutex.unlock();
-              Threads.mutex.unlock();
           }
       }
 
@@ -1687,12 +1690,11 @@ void check_time() {
 
   else if (Limits.nodes)
   {
-      Threads.mutex.lock();
-
       int64_t nodes = RootPos.nodes_searched();
 
       // Loop across all split points and sum accumulated SplitPoint nodes plus
       // all the currently active positions nodes.
+      // FIXME: Racy...
       for (Thread* th : Threads)
           for (size_t i = 0; i < th->splitPointsSize; ++i)
           {
@@ -1708,8 +1710,6 @@ void check_time() {
 
               sp.mutex.unlock();
           }
-
-      Threads.mutex.unlock();
 
       if (nodes >= Limits.nodes)
           Signals.stop = true;
