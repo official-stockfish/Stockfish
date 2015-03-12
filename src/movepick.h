@@ -80,10 +80,10 @@ typedef Stats<false, std::pair<Move, Move> > MovesStats;
 /// to get a cut-off first.
 
 class MovePicker {
-
-  MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
-
 public:
+  MovePicker(const MovePicker&) = delete;
+  MovePicker& operator=(const MovePicker&) = delete;
+
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, PieceType);
   MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Move*, Search::Stack*);
@@ -93,6 +93,8 @@ public:
 private:
   template<GenType> void score();
   void generate_next_stage();
+  ExtMove* begin() { return moves; }
+  ExtMove* end() { return endMoves; }
 
   const Position& pos;
   const HistoryStats& history;
@@ -105,8 +107,8 @@ private:
   Square recaptureSquare;
   Value captureThreshold;
   int stage;
-  ExtMove *cur, *end, *endQuiets, *endBadCaptures;
-  ExtMove moves[MAX_MOVES];
+  ExtMove *endQuiets, *endBadCaptures;
+  ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED

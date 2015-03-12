@@ -68,11 +68,6 @@ struct StateInfo {
 };
 
 
-/// When making a move the current StateInfo up to 'key' excluded is copied to
-/// the new one. Here we calculate the quad words (64 bit) needed to be copied.
-const size_t StateCopySize64 = offsetof(StateInfo, key) / sizeof(uint64_t) + 1;
-
-
 /// Position class stores information regarding the board representation as
 /// pieces, side to move, hash keys, castling info, etc. Important methods are
 /// do_move() and undo_move(), used by the search to update node info when
@@ -82,12 +77,11 @@ class Position {
 
   friend std::ostream& operator<<(std::ostream&, const Position&);
 
-  Position(const Position&); // Disable the default copy constructor
-
 public:
   static void init();
 
-  Position() {} // To define the global object RootPos
+  Position() = default; // To define the global object RootPos
+  Position(const Position&) = delete;
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
   Position(const std::string& f, bool c960, Thread* th) { set(f, c960, th); }
   Position& operator=(const Position&); // To assign RootPos from UCI
@@ -144,8 +138,7 @@ public:
   bool opposite_bishops() const;
 
   // Doing and undoing moves
-  void do_move(Move m, StateInfo& st);
-  void do_move(Move m, StateInfo& st, bool moveIsCheck);
+  void do_move(Move m, StateInfo& st, bool givesCheck);
   void undo_move(Move m);
   void do_null_move(StateInfo& st);
   void undo_null_move();
@@ -175,7 +168,7 @@ public:
   Value non_pawn_material(Color c) const;
 
   // Position consistency check, for debugging
-  bool pos_is_ok(int* step = NULL) const;
+  bool pos_is_ok(int* failedStep = nullptr) const;
   void flip();
 
 private:
@@ -186,11 +179,11 @@ private:
 
   // Other helpers
   Bitboard check_blockers(Color c, Color kingColor) const;
-  void put_piece(Square s, Color c, PieceType pt);
-  void remove_piece(Square s, Color c, PieceType pt);
-  void move_piece(Square from, Square to, Color c, PieceType pt);
+  void put_piece(Color c, PieceType pt, Square s);
+  void remove_piece(Color c, PieceType pt, Square s);
+  void move_piece(Color c, PieceType pt, Square from, Square to);
   template<bool Do>
-  void do_castling(Square from, Square& to, Square& rfrom, Square& rto);
+  void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
   // Data members
   Piece board[SQUARE_NB];
@@ -395,7 +388,7 @@ inline Thread* Position::this_thread() const {
   return thisThread;
 }
 
-inline void Position::put_piece(Square s, Color c, PieceType pt) {
+inline void Position::put_piece(Color c, PieceType pt, Square s) {
 
   board[s] = make_piece(c, pt);
   byTypeBB[ALL_PIECES] |= s;
@@ -406,21 +399,7 @@ inline void Position::put_piece(Square s, Color c, PieceType pt) {
   pieceCount[c][ALL_PIECES]++;
 }
 
-inline void Position::move_piece(Square from, Square to, Color c, PieceType pt) {
-
-  // index[from] is not updated and becomes stale. This works as long as index[]
-  // is accessed just by known occupied squares.
-  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
-  byTypeBB[ALL_PIECES] ^= from_to_bb;
-  byTypeBB[pt] ^= from_to_bb;
-  byColorBB[c] ^= from_to_bb;
-  board[from] = NO_PIECE;
-  board[to] = make_piece(c, pt);
-  index[to] = index[from];
-  pieceList[c][pt][index[to]] = to;
-}
-
-inline void Position::remove_piece(Square s, Color c, PieceType pt) {
+inline void Position::remove_piece(Color c, PieceType pt, Square s) {
 
   // WARNING: This is not a reversible operation. If we remove a piece in
   // do_move() and then replace it in undo_move() we will put it at the end of
@@ -435,6 +414,20 @@ inline void Position::remove_piece(Square s, Color c, PieceType pt) {
   pieceList[c][pt][index[lastSquare]] = lastSquare;
   pieceList[c][pt][pieceCount[c][pt]] = SQ_NONE;
   pieceCount[c][ALL_PIECES]--;
+}
+
+inline void Position::move_piece(Color c, PieceType pt, Square from, Square to) {
+
+  // index[from] is not updated and becomes stale. This works as long as index[]
+  // is accessed just by known occupied squares.
+  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
+  byTypeBB[ALL_PIECES] ^= from_to_bb;
+  byTypeBB[pt] ^= from_to_bb;
+  byColorBB[c] ^= from_to_bb;
+  board[from] = NO_PIECE;
+  board[to] = make_piece(c, pt);
+  index[to] = index[from];
+  pieceList[c][pt][index[to]] = to;
 }
 
 #endif // #ifndef POSITION_H_INCLUDED

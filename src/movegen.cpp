@@ -59,9 +59,9 @@ namespace {
     if (Checks && !pos.gives_check(m, *ci))
         return moveList;
 
-    (moveList++)->move = m;
+    *moveList++ = m;
 
-    return moveList;
+    return (void)ci, moveList; // Silence a warning under MSVC
   }
 
 
@@ -69,23 +69,21 @@ namespace {
   inline ExtMove* make_promotions(ExtMove* moveList, Square to, const CheckInfo* ci) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-        (moveList++)->move = make<PROMOTION>(to - Delta, to, QUEEN);
+        *moveList++ = make<PROMOTION>(to - Delta, to, QUEEN);
 
     if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
-        (moveList++)->move = make<PROMOTION>(to - Delta, to, ROOK);
-        (moveList++)->move = make<PROMOTION>(to - Delta, to, BISHOP);
-        (moveList++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
+        *moveList++ = make<PROMOTION>(to - Delta, to, ROOK);
+        *moveList++ = make<PROMOTION>(to - Delta, to, BISHOP);
+        *moveList++ = make<PROMOTION>(to - Delta, to, KNIGHT);
     }
 
     // Knight promotion is the only promotion that can give a direct check
     // that's not already included in the queen promotion.
     if (Type == QUIET_CHECKS && (StepAttacksBB[W_KNIGHT][to] & ci->ksq))
-        (moveList++)->move = make<PROMOTION>(to - Delta, to, KNIGHT);
-    else
-        (void)ci; // Silence a warning under MSVC
+        *moveList++ = make<PROMOTION>(to - Delta, to, KNIGHT);
 
-    return moveList;
+    return (void)ci, moveList; // Silence a warning under MSVC
   }
 
 
@@ -147,13 +145,13 @@ namespace {
         while (b1)
         {
             Square to = pop_lsb(&b1);
-            (moveList++)->move = make_move(to - Up, to);
+            *moveList++ = make_move(to - Up, to);
         }
 
         while (b2)
         {
             Square to = pop_lsb(&b2);
-            (moveList++)->move = make_move(to - Up - Up, to);
+            *moveList++ = make_move(to - Up - Up, to);
         }
     }
 
@@ -189,13 +187,13 @@ namespace {
         while (b1)
         {
             Square to = pop_lsb(&b1);
-            (moveList++)->move = make_move(to - Right, to);
+            *moveList++ = make_move(to - Right, to);
         }
 
         while (b2)
         {
             Square to = pop_lsb(&b2);
-            (moveList++)->move = make_move(to - Left, to);
+            *moveList++ = make_move(to - Left, to);
         }
 
         if (pos.ep_square() != SQ_NONE)
@@ -213,7 +211,7 @@ namespace {
             assert(b1);
 
             while (b1)
-                (moveList++)->move = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
+                *moveList++ = make<ENPASSANT>(pop_lsb(&b1), pos.ep_square());
         }
     }
 
@@ -247,7 +245,7 @@ namespace {
             b &= ci->checkSq[Pt];
 
         while (b)
-            (moveList++)->move = make_move(from, pop_lsb(&b));
+            *moveList++ = make_move(from, pop_lsb(&b));
     }
 
     return moveList;
@@ -256,7 +254,7 @@ namespace {
 
   template<Color Us, GenType Type> FORCE_INLINE
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target,
-                        const CheckInfo* ci = NULL) {
+                        const CheckInfo* ci = nullptr) {
 
     const bool Checks = Type == QUIET_CHECKS;
 
@@ -271,7 +269,7 @@ namespace {
         Square ksq = pos.king_square(Us);
         Bitboard b = pos.attacks_from<KING>(ksq) & target;
         while (b)
-            (moveList++)->move = make_move(ksq, pop_lsb(&b));
+            *moveList++ = make_move(ksq, pop_lsb(&b));
     }
 
     if (Type != CAPTURES && Type != EVASIONS && pos.can_castle(Us))
@@ -350,7 +348,7 @@ ExtMove* generate<QUIET_CHECKS>(const Position& pos, ExtMove* moveList) {
          b &= ~PseudoAttacks[QUEEN][ci.ksq];
 
      while (b)
-         (moveList++)->move = make_move(from, pop_lsb(&b));
+         *moveList++ = make_move(from, pop_lsb(&b));
   }
 
   return us == WHITE ? generate_all<WHITE, QUIET_CHECKS>(pos, moveList, ~pos.pieces(), &ci)
@@ -382,7 +380,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   // Generate evasions for king, capture and non capture moves
   Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
   while (b)
-      (moveList++)->move = make_move(ksq, pop_lsb(&b));
+      *moveList++ = make_move(ksq, pop_lsb(&b));
 
   if (more_than_one(pos.checkers()))
       return moveList; // Double check, only a king move can save the day
@@ -408,9 +406,9 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)
                             : generate<NON_EVASIONS>(pos, moveList);
   while (cur != moveList)
-      if (   (pinned || from_sq(cur->move) == ksq || type_of(cur->move) == ENPASSANT)
-          && !pos.legal(cur->move, pinned))
-          cur->move = (--moveList)->move;
+      if (   (pinned || from_sq(*cur) == ksq || type_of(*cur) == ENPASSANT)
+          && !pos.legal(*cur, pinned))
+          *cur = (--moveList)->move;
       else
           ++cur;
 

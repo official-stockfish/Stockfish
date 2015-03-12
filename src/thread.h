@@ -20,7 +20,11 @@
 #ifndef THREAD_H_INCLUDED
 #define THREAD_H_INCLUDED
 
+#include <atomic>
 #include <bitset>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #include "material.h"
@@ -28,40 +32,13 @@
 #include "pawns.h"
 #include "position.h"
 #include "search.h"
+#include "thread_win32.h"
 
 struct Thread;
 
 const size_t MAX_THREADS = 128;
 const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
 const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
-
-/// Mutex and ConditionVariable struct are wrappers of the low level locking
-/// machinery and are modeled after the corresponding C++11 classes.
-
-struct Mutex {
-  Mutex() { lock_init(l); }
- ~Mutex() { lock_destroy(l); }
-
-  void lock() { lock_grab(l); }
-  void unlock() { lock_release(l); }
-
-private:
-  friend struct ConditionVariable;
-
-  Lock l;
-};
-
-struct ConditionVariable {
-  ConditionVariable() { cond_init(c); }
- ~ConditionVariable() { cond_destroy(c); }
-
-  void wait(Mutex& m) { cond_wait(c, m.l); }
-  void wait_for(Mutex& m, int ms) { timed_wait(c, m.l, ms); }
-  void notify_one() { cond_signal(c); }
-
-private:
-  WaitCondition c;
-};
 
 
 /// SplitPoint struct stores information shared by the threads searching in
@@ -100,16 +77,15 @@ struct SplitPoint {
 
 struct ThreadBase {
 
-  ThreadBase() : handle(NativeHandle()), exit(false) {}
-  virtual ~ThreadBase() {}
+  virtual ~ThreadBase() = default;
   virtual void idle_loop() = 0;
   void notify_one();
   void wait_for(volatile const bool& b);
 
+  std::thread nativeThread;
   Mutex mutex;
   ConditionVariable sleepCondition;
-  NativeHandle handle;
-  volatile bool exit;
+  volatile bool exit = false;
 };
 
 
@@ -123,7 +99,7 @@ struct Thread : public ThreadBase {
   Thread();
   virtual void idle_loop();
   bool cutoff_occurred() const;
-  bool available_to(const Thread* master) const;
+  bool can_join(const SplitPoint* sp) const;
 
   void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
@@ -145,19 +121,17 @@ struct Thread : public ThreadBase {
 /// special threads: the main one and the recurring timer.
 
 struct MainThread : public Thread {
-  MainThread() : thinking(true) {} // Avoid a race with start_thinking()
   virtual void idle_loop();
-  volatile bool thinking;
+  volatile bool thinking = true; // Avoid a race with start_thinking()
 };
 
 struct TimerThread : public ThreadBase {
 
   static const int Resolution = 5; // Millisec between two check_time() calls
 
-  TimerThread() : run(false) {}
   virtual void idle_loop();
 
-  bool run;
+  bool run = false;
 };
 
 
@@ -172,12 +146,11 @@ struct ThreadPool : public std::vector<Thread*> {
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void read_uci_options();
-  Thread* available_slave(const Thread* master) const;
+  Thread* available_slave(const SplitPoint* sp) const;
   void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  Mutex mutex;
   ConditionVariable sleepCondition;
   TimerThread* timer;
 };

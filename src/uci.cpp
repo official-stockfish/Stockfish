@@ -74,7 +74,7 @@ namespace {
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
     {
         SetupStates->push(StateInfo());
-        pos.do_move(m, SetupStates->top());
+        pos.do_move(m, SetupStates->top(), pos.gives_check(m, CheckInfo(pos)));
     }
   }
 
@@ -232,9 +232,7 @@ string UCI::value(Value v) {
 /// UCI::square() converts a Square to a string in algebraic notation (g1, a7, etc.)
 
 std::string UCI::square(Square s) {
-
-  char sq[] = { char('a' + file_of(s)), char('1' + rank_of(s)), 0 }; // NULL terminated
-  return sq;
+  return std::string{ char('a' + file_of(s)), char('1' + rank_of(s)) };
 }
 
 
@@ -274,9 +272,9 @@ Move UCI::to_move(const Position& pos, string& str) {
   if (str.length() == 5) // Junior could send promotion piece in uppercase
       str[4] = char(tolower(str[4]));
 
-  for (MoveList<LEGAL> it(pos); *it; ++it)
-      if (str == UCI::move(*it, pos.is_chess960()))
-          return *it;
+  for (const auto& m : MoveList<LEGAL>(pos))
+      if (str == UCI::move(m, pos.is_chess960()))
+          return m;
 
   return MOVE_NONE;
 }

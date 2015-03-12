@@ -162,35 +162,16 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 void start_logger(bool b) { Logger::start(b); }
 
 
-/// timed_wait() waits for msec milliseconds. It is mainly a helper to wrap
-/// the conversion from milliseconds to struct timespec, as used by pthreads.
-
-void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
-
-#ifdef _WIN32
-  int tm = msec;
-#else
-  timespec ts, *tm = &ts;
-  uint64_t ms = Time::now() + msec;
-
-  ts.tv_sec = ms / 1000;
-  ts.tv_nsec = (ms % 1000) * 1000000LL;
-#endif
-
-  cond_timedwait(sleepCond, sleepLock, tm);
-}
-
-
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
 /// function that doesn't stall the CPU waiting for data to be loaded from memory,
 /// which can be quite slow.
 #ifdef NO_PREFETCH
 
-void prefetch(char*) {}
+void prefetch(void*) {}
 
 #else
 
-void prefetch(char* addr) {
+void prefetch(void* addr) {
 
 #  if defined(__INTEL_COMPILER)
    // This hack prevents prefetches from being optimized away by
@@ -199,7 +180,7 @@ void prefetch(char* addr) {
 #  endif
 
 #  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-  _mm_prefetch(addr, _MM_HINT_T0);
+  _mm_prefetch((char*)addr, _MM_HINT_T0);
 #  else
   __builtin_prefetch(addr);
 #  endif
