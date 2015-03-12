@@ -319,7 +319,7 @@ namespace {
     Depth depth;
     Value bestValue, alpha, beta, delta;
 
-    // Init FastMove if the previous search generated one and we now got the predicted position.
+    // Init fastMove if the previous search generated a candidate and we now got the predicted position.
     const Move fastMove = (FM.expectedPosKey == pos.key()) ? FM.pv3[2] : MOVE_NONE;
     FM.clear();
 
@@ -459,9 +459,9 @@ namespace {
                 // from the previous search and just did a fast verification.
                 if (   RootMoves.size() == 1
                     || now() - SearchTime > TimeMgr.available_time()
-                    || (fastMove == RootMoves[0].pv[0]
-                    && BestMoveChanges < 0.03
-                    && 10 * (now() - SearchTime) > TimeMgr.available_time()))
+                    || (   fastMove == RootMoves[0].pv[0]
+                        && BestMoveChanges < 0.03
+                        && 10 * (now() - SearchTime) > TimeMgr.available_time()))
                 {
                     // If we are allowed to ponder do not stop the search now but
                     // keep pondering until the GUI sends "ponderhit" or "stop".
