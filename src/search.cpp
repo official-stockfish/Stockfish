@@ -1696,7 +1696,7 @@ void Thread::idle_loop() {
               if (   sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT)
               {
-                  mutex.lock();
+                  allocMutex.lock();
 
                   if (can_join(sp))
                   {
@@ -1705,7 +1705,7 @@ void Thread::idle_loop() {
                       searching = true;
                   }
 
-                  mutex.unlock();
+                  allocMutex.unlock();
               }
 
               sp->mutex.unlock();
