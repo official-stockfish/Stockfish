@@ -174,17 +174,18 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   while (    sp.slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
          && (slave = Threads.available_slave(&sp)) != nullptr)
   {
-     slave->mutex.lock();
+     slave->allocMutex.lock();
 
       if (slave->can_join(activeSplitPoint))
       {
           activeSplitPoint->slavesMask.set(slave->idx);
           slave->activeSplitPoint = activeSplitPoint;
           slave->searching = true;
-          slave->sleepCondition.notify_one(); // Could be sleeping
       }
 
-      slave->mutex.unlock();
+      slave->allocMutex.unlock();
+
+      slave->notify_one(); // Could be sleeping
   }
 
   // Everything is set up. The master thread enters the idle loop, from which
