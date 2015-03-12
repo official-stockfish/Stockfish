@@ -88,7 +88,7 @@ public:
 
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move*, Move*, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move*, Search::Stack*);
 
   template<bool SpNode> Move next_move();
 
@@ -103,10 +103,9 @@ private:
   const CounterMovesHistoryStats& counterMovesHistory;
   Search::Stack* ss;
   Move* countermoves;
-  Move* followupmoves;
   Depth depth;
   Move ttMove;
-  ExtMove killers[6];
+  ExtMove killers[4];
   Square recaptureSquare;
   Value captureThreshold;
   int stage;
