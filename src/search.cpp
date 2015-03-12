@@ -95,6 +95,7 @@ namespace {
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   HistoryStats History;
+  CounterMovesHistoryStats CounterMovesHistory;
   GainsStats Gains;
   MovesStats Countermoves, Followupmoves;
 
@@ -289,6 +290,7 @@ namespace {
 
     TT.new_search();
     History.clear();
+    CounterMovesHistory.clear();
     Gains.clear();
     Countermoves.clear();
     Followupmoves.clear();
@@ -687,7 +689,7 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-        MovePicker mp(pos, ttMove, History, pos.captured_piece_type());
+        MovePicker mp(pos, ttMove, History, CounterMovesHistory, pos.captured_piece_type());
         CheckInfo ci(pos);
 
         while ((move = mp.next_move<false>()) != MOVE_NONE)
@@ -726,7 +728,7 @@ moves_loop: // When in check and at SpNode search starts from here
     Move followupmoves[] = { Followupmoves[pos.piece_on(prevOwnMoveSq)][prevOwnMoveSq].first,
                              Followupmoves[pos.piece_on(prevOwnMoveSq)][prevOwnMoveSq].second };
 
-    MovePicker mp(pos, ttMove, depth, History, countermoves, followupmoves, ss);
+    MovePicker mp(pos, ttMove, depth, History, CounterMovesHistory, countermoves, followupmoves, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -1192,7 +1194,7 @@ moves_loop: // When in check and at SpNode search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, History, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, History, CounterMovesHistory, to_sq((ss-1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1356,7 +1358,16 @@ moves_loop: // When in check and at SpNode search starts from here
     if (is_ok((ss-1)->currentMove))
     {
         Square prevMoveSq = to_sq((ss-1)->currentMove);
-        Countermoves.update(pos.piece_on(prevMoveSq), prevMoveSq, move);
+        Piece prevMovePiece = pos.piece_on(prevMoveSq);
+        Countermoves.update(prevMovePiece, prevMoveSq, move);
+
+        HistoryStats& cmh = CounterMovesHistory[prevMovePiece][prevMoveSq];
+        cmh.update(pos.moved_piece(move), to_sq(move), bonus);
+        for (int i = 0; i < quietsCnt; ++i)
+        {
+            Move m = quiets[i];
+            cmh.update(pos.moved_piece(m), to_sq(m), -bonus);
+        }
     }
 
     if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove)
