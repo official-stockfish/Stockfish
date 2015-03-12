@@ -308,12 +308,8 @@ endif
 ifeq ($(comp),gcc)
 	ifeq ($(optimize),yes)
 	ifeq ($(debug),no)
-		GCC_MAJOR := `$(CXX) -dumpversion | cut -f1 -d.`
-		GCC_MINOR := `$(CXX) -dumpversion | cut -f2 -d.`
-		ifeq (1,$(shell expr \( $(GCC_MAJOR) \> 4 \) \| \( $(GCC_MAJOR) \= 4 \& $(GCC_MINOR) \>= 5 \)))
-			CXXFLAGS += -flto
-			LDFLAGS += $(CXXFLAGS)
-		endif
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
 	endif
 	endif
 endif
