@@ -1409,7 +1409,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     // Increase history value of the cut-off move and decrease all the other
     // played quiet moves.
-    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
+    Value bonus = Value(depth / ONE_PLY);
     History.update(pos.moved_piece(move), to_sq(move), bonus);
 
     for (int i = 0; i < quietsCnt; ++i)
