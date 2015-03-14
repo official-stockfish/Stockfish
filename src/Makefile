@@ -177,6 +177,7 @@ ifeq ($(COMP),clang)
 	CXXFLAGS += -pedantic -Wno-long-long -Wextra -Wshadow
 	ifeq ($(UNAME),Darwin)
 		CXXFLAGS += -std=c++0x -stdlib=libc++
+		DEPENDFLAGS += -std=c++0x -stdlib=libc++
 	endif
 endif
 
