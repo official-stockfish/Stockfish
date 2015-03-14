@@ -162,7 +162,7 @@ ifeq ($(COMP),mingw)
 	comp=mingw
 	CXX=g++
 	CXXFLAGS += -Wextra -Wshadow
-	LDFLAGS += -static-libstdc++ -static-libgcc
+	LDFLAGS += -static
 endif
 
 ifeq ($(COMP),icc)
