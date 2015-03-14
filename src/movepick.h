@@ -43,6 +43,7 @@ struct Stats {
   static const Value Max = Value(250);
 
   const T* operator[](Piece pc) const { return table[pc]; }
+  T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
   void update(Piece pc, Square to, Move m) {
@@ -70,6 +71,7 @@ private:
 typedef Stats< true, Value> GainsStats;
 typedef Stats<false, Value> HistoryStats;
 typedef Stats<false, std::pair<Move, Move> > MovesStats;
+typedef Stats<false, HistoryStats> CounterMovesHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -84,9 +86,9 @@ public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
 
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, PieceType);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Move*, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
+  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move*, Move*, Search::Stack*);
 
   template<bool SpNode> Move next_move();
 
@@ -98,6 +100,7 @@ private:
 
   const Position& pos;
   const HistoryStats& history;
+  const CounterMovesHistoryStats& counterMovesHistory;
   Search::Stack* ss;
   Move* countermoves;
   Move* followupmoves;
