@@ -47,8 +47,8 @@ public:
   Spinlock() { _lock = 1; } // Init here to workaround a bug with MSVC 2013
   void lock() {
       while (_lock.fetch_sub(1, std::memory_order_acquire) != 1)
-          for (int cnt = 0; _lock.load(std::memory_order_relaxed) <= 0; ++cnt)
-              if (cnt >= 10000) std::this_thread::yield(); // Be nice to hyperthreading
+          while(_lock.load(std::memory_order_relaxed) <= 0)
+              std::this_thread::yield(); // Be nice to hyperthreading
   }
   void unlock() { _lock.store(1, std::memory_order_release); }
 };
