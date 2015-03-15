@@ -184,8 +184,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
       }
 
       slave->allocMutex.unlock();
-
-      slave->notify_one(); // Could be sleeping
   }
 
   // Everything is set up. The master thread enters the idle loop, from which
@@ -375,5 +373,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
           RootMoves.push_back(RootMove(m));
 
   main()->thinking = true;
-  main()->notify_one(); // Starts main thread
+
+  for (Thread* th : *this)
+      th->notify_one();
 }

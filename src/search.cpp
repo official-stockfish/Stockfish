@@ -1595,8 +1595,25 @@ void Thread::idle_loop() {
 
   assert(!this_sp || (this_sp->master == this && searching));
 
-  while (!exit)
+  while (   !exit
+         && !(this_sp && this_sp->slavesMask.none()))
   {
+      // If there is nothing to do, sleep.
+      while(   !exit
+            && !(this_sp && this_sp->slavesMask.none())
+            && !searching)
+      {
+          if (   !this_sp 
+              && !Threads.main()->thinking)
+          {
+              std::unique_lock<Mutex> lk(mutex);
+              while (!exit && !Threads.main()->thinking)
+                    sleepCondition.wait(lk);
+          }
+          else
+              std::this_thread::yield();
+      }
+
       // If this thread has been assigned work, launch a search
       while (searching)
       {
@@ -1638,15 +1655,6 @@ void Thread::idle_loop() {
           sp->slavesMask.reset(idx);
           sp->allSlavesSearching = false;
           sp->nodes += pos.nodes_searched();
-
-          // Wake up the master thread so to allow it to return from the idle
-          // loop in case we are the last slave of the split point.
-          if (this != sp->master && sp->slavesMask.none())
-          {
-              assert(!sp->master->searching);
-
-              sp->master->notify_one();
-          }
 
           // After releasing the lock we can't access any SplitPoint related data
           // in a safe way because it could have been released under our feet by
@@ -1711,21 +1719,6 @@ void Thread::idle_loop() {
               sp->mutex.unlock();
           }
       }
-
-      // Avoid races with notify_one() fired from last slave of the split point
-      std::unique_lock<Mutex> lk(mutex);
-
-      // If we are master and all slaves have finished then exit idle_loop
-      if (this_sp && this_sp->slavesMask.none())
-      {
-          assert(!searching);
-          break;
-      }
-
-      // If we are not searching, wait for a condition to be signaled instead of
-      // wasting CPU time polling for work.
-      if (!searching && !exit)
-          sleepCondition.wait(lk);
   }
 }
 
