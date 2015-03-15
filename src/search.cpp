@@ -1396,8 +1396,8 @@ moves_loop: // When in check and at SpNode search starts from here
     *pv = MOVE_NONE;
   }
 
-  // update_stats() updates killers, history, countermoves and followupmoves stats after a fail-high
-  // of a quiet move.
+  // update_stats() updates killers, history, countermoves and followupmoves
+  // stats after a fail-high of a quiet move.
 
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt) {
 
@@ -1407,36 +1407,32 @@ moves_loop: // When in check and at SpNode search starts from here
         ss->killers[0] = move;
     }
 
-    // Increase history value of the cut-off move and decrease all the other
-    // played quiet moves.
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
-    History.update(pos.moved_piece(move), to_sq(move), bonus);
 
-    for (int i = 0; i < quietsCnt; ++i)
-    {
-        Move m = quiets[i];
-        History.update(pos.moved_piece(m), to_sq(m), -bonus);
-    }
+    Square prevSq = to_sq((ss-1)->currentMove);
+    HistoryStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
+
+    History.update(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
-        Square prevMoveSq = to_sq((ss-1)->currentMove);
-        Piece prevMovePiece = pos.piece_on(prevMoveSq);
-        Countermoves.update(prevMovePiece, prevMoveSq, move);
-
-        HistoryStats& cmh = CounterMovesHistory[prevMovePiece][prevMoveSq];
+        Countermoves.update(pos.piece_on(prevSq), prevSq, move);
         cmh.update(pos.moved_piece(move), to_sq(move), bonus);
-        for (int i = 0; i < quietsCnt; ++i)
-        {
-            Move m = quiets[i];
-            cmh.update(pos.moved_piece(m), to_sq(m), -bonus);
-        }
+    }
+
+    // Decrease all the other played quiet moves
+    for (int i = 0; i < quietsCnt; ++i)
+    {
+        History.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+
+        if (is_ok((ss-1)->currentMove))
+            cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
 
     if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove)
     {
-        Square prevOwnMoveSq = to_sq((ss-2)->currentMove);
-        Followupmoves.update(pos.piece_on(prevOwnMoveSq), prevOwnMoveSq, move);
+        Square prevPrevSq = to_sq((ss-2)->currentMove);
+        Followupmoves.update(pos.piece_on(prevPrevSq), prevPrevSq, move);
     }
   }
 
