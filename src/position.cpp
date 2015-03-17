@@ -1078,8 +1078,8 @@ Value Position::see(Move m) const {
 }
 
 
-/// Position::is_draw() tests whether the position is drawn by material, 50 moves
-/// rule or repetition. It does not detect stalemates.
+/// Position::is_draw() tests whether the position is drawn by 50-move rule
+/// or by repetition. It does not detect stalemates.
 
 bool Position::is_draw() const {
 
