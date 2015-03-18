@@ -373,7 +373,5 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
           RootMoves.push_back(RootMove(m));
 
   main()->thinking = true;
-
-  for (Thread* th : *this)
-      th->notify_one();
+  main()->notify_one(); // Wake up main thread: 'thinking' must be already set
 }

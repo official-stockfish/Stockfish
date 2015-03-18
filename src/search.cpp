@@ -278,10 +278,13 @@ void Search::think() {
       }
 
       for (Thread* th : Threads)
+      {
           th->maxPly = 0;
+          th->notify_one(); // Wake up all the threads
+      }
 
       Threads.timer->run = true;
-      Threads.timer->notify_one(); // Wake up the recurring timer
+      Threads.timer->notify_one(); // Start the recurring timer
 
       id_loop(RootPos); // Let's start searching !
 
@@ -1591,25 +1594,8 @@ void Thread::idle_loop() {
 
   assert(!this_sp || (this_sp->master == this && searching));
 
-  while (   !exit
-         && !(this_sp && this_sp->slavesMask.none()))
+  while (!exit && !(this_sp && this_sp->slavesMask.none()))
   {
-      // If there is nothing to do, sleep.
-      while(   !exit
-            && !(this_sp && this_sp->slavesMask.none())
-            && !searching)
-      {
-          if (   !this_sp
-              && !Threads.main()->thinking)
-          {
-              std::unique_lock<Mutex> lk(mutex);
-              while (!exit && !Threads.main()->thinking)
-                    sleepCondition.wait(lk);
-          }
-          else
-              std::this_thread::yield();
-      }
-
       // If this thread has been assigned work, launch a search
       while (searching)
       {
@@ -1715,6 +1701,18 @@ void Thread::idle_loop() {
               sp->spinlock.release();
           }
       }
+
+      // If search is finished then sleep, otherwise just yield
+      if (!Threads.main()->thinking)
+      {
+          assert(!this_sp);
+
+          std::unique_lock<Mutex> lk(mutex);
+          while (!exit && !Threads.main()->thinking)
+              sleepCondition.wait(lk);
+      }
+      else
+          std::this_thread::yield(); // Wait for a new job or for our slaves to finish
   }
 }
 
