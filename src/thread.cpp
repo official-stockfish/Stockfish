@@ -144,7 +144,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // Pick and init the next available split point
   SplitPoint& sp = splitPoints[splitPointsSize];
 
-  sp.mutex.lock(); // No contention here until we don't increment splitPointsSize
+  sp.spinlock.acquire(); // No contention here until we don't increment splitPointsSize
 
   sp.master = this;
   sp.parentSplitPoint = activeSplitPoint;
@@ -174,24 +174,23 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   while (    sp.slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
          && (slave = Threads.available_slave(&sp)) != nullptr)
   {
-     slave->mutex.lock();
+     slave->spinlock.acquire();
 
       if (slave->can_join(activeSplitPoint))
       {
           activeSplitPoint->slavesMask.set(slave->idx);
           slave->activeSplitPoint = activeSplitPoint;
           slave->searching = true;
-          slave->sleepCondition.notify_one(); // Could be sleeping
       }
 
-      slave->mutex.unlock();
+      slave->spinlock.release();
   }
 
   // Everything is set up. The master thread enters the idle loop, from which
   // it will instantly launch a search, because its 'searching' flag is set.
   // The thread will return from the idle loop when all slaves have finished
   // their work at this split point.
-  sp.mutex.unlock();
+  sp.spinlock.release();
 
   Thread::idle_loop(); // Force a call to base class idle_loop()
 
@@ -206,7 +205,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that decreasing splitPointsSize must be done under lock
   // protection to avoid a race with Thread::can_join().
-  sp.mutex.lock();
+  sp.spinlock.acquire();
 
   --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
@@ -215,7 +214,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   *bestMove = sp.bestMove;
   *bestValue = sp.bestValue;
 
-  sp.mutex.unlock();
+  sp.spinlock.release();
 }
 
 
@@ -374,5 +373,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
           RootMoves.push_back(RootMove(m));
 
   main()->thinking = true;
-  main()->notify_one(); // Starts main thread
+
+  for (Thread* th : *this)
+      th->notify_one();
 }

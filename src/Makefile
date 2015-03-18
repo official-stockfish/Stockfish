@@ -141,6 +141,7 @@ endif
 ### 3.1 Selecting compiler (default = gcc)
 
 CXXFLAGS += -Wall -Wcast-qual -fno-exceptions -fno-rtti -std=c++11 $(EXTRACXXFLAGS)
+DEPENDFLAGS += -std=c++11
 LDFLAGS += $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
@@ -162,7 +163,7 @@ ifeq ($(COMP),mingw)
 	comp=mingw
 	CXX=g++
 	CXXFLAGS += -Wextra -Wshadow
-	LDFLAGS += -static-libstdc++ -static-libgcc
+	LDFLAGS += -static
 endif
 
 ifeq ($(COMP),icc)
@@ -177,6 +178,7 @@ ifeq ($(COMP),clang)
 	CXXFLAGS += -pedantic -Wno-long-long -Wextra -Wshadow
 	ifeq ($(UNAME),Darwin)
 		CXXFLAGS += -std=c++0x -stdlib=libc++
+		DEPENDFLAGS += -std=c++0x -stdlib=libc++
 	endif
 endif
 
@@ -308,12 +310,8 @@ endif
 ifeq ($(comp),gcc)
 	ifeq ($(optimize),yes)
 	ifeq ($(debug),no)
-		GCC_MAJOR := `$(CXX) -dumpversion | cut -f1 -d.`
-		GCC_MINOR := `$(CXX) -dumpversion | cut -f2 -d.`
-		ifeq (1,$(shell expr \( $(GCC_MAJOR) \> 4 \) \| \( $(GCC_MAJOR) \= 4 \& $(GCC_MINOR) \>= 5 \)))
-			CXXFLAGS += -flto
-			LDFLAGS += $(CXXFLAGS)
-		endif
+		CXXFLAGS += -flto
+		LDFLAGS += $(CXXFLAGS)
 	endif
 	endif
 endif

@@ -826,7 +826,7 @@ moves_loop: // When in check and at SpNode search starts from here
               continue;
 
           moveCount = ++splitPoint->moveCount;
-          splitPoint->mutex.unlock();
+          splitPoint->spinlock.release();
       }
       else
           ++moveCount;
@@ -895,7 +895,7 @@ moves_loop: // When in check and at SpNode search starts from here
               && moveCount >= FutilityMoveCounts[improving][depth])
           {
               if (SpNode)
-                  splitPoint->mutex.lock();
+                  splitPoint->spinlock.acquire();
 
               continue;
           }
@@ -914,7 +914,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
                   if (SpNode)
                   {
-                      splitPoint->mutex.lock();
+                      splitPoint->spinlock.acquire();
                       if (bestValue > splitPoint->bestValue)
                           splitPoint->bestValue = bestValue;
                   }
@@ -926,7 +926,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
           {
               if (SpNode)
-                  splitPoint->mutex.lock();
+                  splitPoint->spinlock.acquire();
 
               continue;
           }
@@ -1026,7 +1026,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // Step 18. Check for new best move
       if (SpNode)
       {
-          splitPoint->mutex.lock();
+          splitPoint->spinlock.acquire();
           bestValue = splitPoint->bestValue;
           alpha = splitPoint->alpha;
       }
@@ -1396,8 +1396,8 @@ moves_loop: // When in check and at SpNode search starts from here
     *pv = MOVE_NONE;
   }
 
-  // update_stats() updates killers, history, countermoves and followupmoves stats after a fail-high
-  // of a quiet move.
+  // update_stats() updates killers, history, countermoves and followupmoves
+  // stats after a fail-high of a quiet move.
 
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt) {
 
@@ -1407,36 +1407,32 @@ moves_loop: // When in check and at SpNode search starts from here
         ss->killers[0] = move;
     }
 
-    // Increase history value of the cut-off move and decrease all the other
-    // played quiet moves.
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
-    History.update(pos.moved_piece(move), to_sq(move), bonus);
 
-    for (int i = 0; i < quietsCnt; ++i)
-    {
-        Move m = quiets[i];
-        History.update(pos.moved_piece(m), to_sq(m), -bonus);
-    }
+    Square prevSq = to_sq((ss-1)->currentMove);
+    HistoryStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
+
+    History.update(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
-        Square prevMoveSq = to_sq((ss-1)->currentMove);
-        Piece prevMovePiece = pos.piece_on(prevMoveSq);
-        Countermoves.update(prevMovePiece, prevMoveSq, move);
-
-        HistoryStats& cmh = CounterMovesHistory[prevMovePiece][prevMoveSq];
+        Countermoves.update(pos.piece_on(prevSq), prevSq, move);
         cmh.update(pos.moved_piece(move), to_sq(move), bonus);
-        for (int i = 0; i < quietsCnt; ++i)
-        {
-            Move m = quiets[i];
-            cmh.update(pos.moved_piece(m), to_sq(m), -bonus);
-        }
+    }
+
+    // Decrease all the other played quiet moves
+    for (int i = 0; i < quietsCnt; ++i)
+    {
+        History.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+
+        if (is_ok((ss-1)->currentMove))
+            cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
 
     if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove)
     {
-        Square prevOwnMoveSq = to_sq((ss-2)->currentMove);
-        Followupmoves.update(pos.piece_on(prevOwnMoveSq), prevOwnMoveSq, move);
+        Square prevPrevSq = to_sq((ss-2)->currentMove);
+        Followupmoves.update(pos.piece_on(prevPrevSq), prevPrevSq, move);
     }
   }
 
@@ -1595,17 +1591,34 @@ void Thread::idle_loop() {
 
   assert(!this_sp || (this_sp->master == this && searching));
 
-  while (!exit)
+  while (   !exit
+         && !(this_sp && this_sp->slavesMask.none()))
   {
+      // If there is nothing to do, sleep.
+      while(   !exit
+            && !(this_sp && this_sp->slavesMask.none())
+            && !searching)
+      {
+          if (   !this_sp
+              && !Threads.main()->thinking)
+          {
+              std::unique_lock<Mutex> lk(mutex);
+              while (!exit && !Threads.main()->thinking)
+                    sleepCondition.wait(lk);
+          }
+          else
+              std::this_thread::yield();
+      }
+
       // If this thread has been assigned work, launch a search
       while (searching)
       {
-          mutex.lock();
+          spinlock.acquire();
 
           assert(activeSplitPoint);
           SplitPoint* sp = activeSplitPoint;
 
-          mutex.unlock();
+          spinlock.release();
 
           Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
           Position pos(*sp->pos, this);
@@ -1613,7 +1626,7 @@ void Thread::idle_loop() {
           std::memcpy(ss-2, sp->ss-2, 5 * sizeof(Stack));
           ss->splitPoint = sp;
 
-          sp->mutex.lock();
+          sp->spinlock.acquire();
 
           assert(activePosition == nullptr);
 
@@ -1639,19 +1652,10 @@ void Thread::idle_loop() {
           sp->allSlavesSearching = false;
           sp->nodes += pos.nodes_searched();
 
-          // Wake up the master thread so to allow it to return from the idle
-          // loop in case we are the last slave of the split point.
-          if (this != sp->master && sp->slavesMask.none())
-          {
-              assert(!sp->master->searching);
-
-              sp->master->notify_one();
-          }
-
           // After releasing the lock we can't access any SplitPoint related data
           // in a safe way because it could have been released under our feet by
           // the sp master.
-          sp->mutex.unlock();
+          sp->spinlock.release();
 
           // Try to late join to another split point if none of its slaves has
           // already finished.
@@ -1691,12 +1695,12 @@ void Thread::idle_loop() {
               sp = bestSp;
 
               // Recheck the conditions under lock protection
-              sp->mutex.lock();
+              sp->spinlock.acquire();
 
               if (   sp->allSlavesSearching
                   && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT)
               {
-                  mutex.lock();
+                  spinlock.acquire();
 
                   if (can_join(sp))
                   {
@@ -1705,27 +1709,12 @@ void Thread::idle_loop() {
                       searching = true;
                   }
 
-                  mutex.unlock();
+                  spinlock.release();
               }
 
-              sp->mutex.unlock();
+              sp->spinlock.release();
           }
       }
-
-      // Avoid races with notify_one() fired from last slave of the split point
-      std::unique_lock<Mutex> lk(mutex);
-
-      // If we are master and all slaves have finished then exit idle_loop
-      if (this_sp && this_sp->slavesMask.none())
-      {
-          assert(!searching);
-          break;
-      }
-
-      // If we are not searching, wait for a condition to be signaled instead of
-      // wasting CPU time polling for work.
-      if (!searching && !exit)
-          sleepCondition.wait(lk);
   }
 }
 
@@ -1774,7 +1763,7 @@ void check_time() {
           {
               SplitPoint& sp = th->splitPoints[i];
 
-              sp.mutex.lock();
+              sp.spinlock.acquire();
 
               nodes += sp.nodes;
 
@@ -1782,7 +1771,7 @@ void check_time() {
                   if (sp.slavesMask.test(idx) && Threads[idx]->activePosition)
                       nodes += Threads[idx]->activePosition->nodes_searched();
 
-              sp.mutex.unlock();
+              sp.spinlock.release();
           }
 
       if (nodes >= Limits.nodes)
