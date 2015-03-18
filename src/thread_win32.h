@@ -57,29 +57,7 @@ private:
   CRITICAL_SECTION cs;
 };
 
-struct ConditionVariable {
-  ConditionVariable() { hn = CreateEvent(0, FALSE, FALSE, 0); }
- ~ConditionVariable() { CloseHandle(hn); }
-  void notify_one() { SetEvent(hn); }
-
-  void wait(std::unique_lock<Mutex>& lk) {
-    lk.unlock();
-    WaitForSingleObject(hn, INFINITE);
-    lk.lock();
-  }
-
-  void wait_for(std::unique_lock<Mutex>& lk, const std::chrono::milliseconds& ms) {
-    lk.unlock();
-    WaitForSingleObject(hn, ms.count());
-    lk.lock();
-  }
-
-  template<class Predicate>
-  void wait(std::unique_lock<Mutex>& lk, Predicate p) { while (!p()) this->wait(lk); }
-
-private:
-  HANDLE hn;
-};
+typedef std::condition_variable_any ConditionVariable;
 
 #else // Default case: use STL classes
 
