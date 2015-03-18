@@ -90,47 +90,48 @@ namespace {
     Move best = MOVE_NONE;
   };
 
-  struct FastMove {
-    FastMove() { clear(); }
+  // EasyMoveManager struct is used to detect a so called 'easy move'; when PV is
+  // stable across multiple search iterations we can fast return the best move.
+  struct EasyMoveManager {
 
-    inline void clear() {
-      expectedPosKey = 0;
-      pv3[0] = pv3[1] = pv3[2] = MOVE_NONE;
+    void clear() {
       stableCnt = 0;
+      expectedPosKey = 0;
+      pv[0] = pv[1] = pv[2] = MOVE_NONE;
     }
 
-    void update(Position& pos) {
-      // Keep track how many times in a row the PV stays stable 3 ply deep.
-      const std::vector<Move>& RMpv = RootMoves[0].pv;
-      if (RMpv.size() >= 3)
+    Move get(Key key) const {
+      return expectedPosKey == key ? pv[2] : MOVE_NONE;
+    }
+
+    void update(Position& pos, const std::vector<Move>& newPv) {
+
+      assert(newPv.size() >= 3);
+
+      // Keep track of how many times in a row 3rd ply remains stable
+      stableCnt = (newPv[2] == pv[2]) ? stableCnt + 1 : 0;
+
+      if (!std::equal(newPv.begin(), newPv.begin() + 3, pv))
       {
-          if (pv3[2] == RMpv[2])
-              stableCnt++;
-          else
-              stableCnt = 0, pv3[2] = RMpv[2];
+          std::copy(newPv.begin(), newPv.begin() + 3, pv);
 
-          if (!expectedPosKey || pv3[0] != RMpv[0] || pv3[1] != RMpv[1])
-          {
-              pv3[0] = RMpv[0], pv3[1] = RMpv[1];
-              StateInfo st[2];
-              pos.do_move(RMpv[0], st[0], pos.gives_check(RMpv[0], CheckInfo(pos)));
-              pos.do_move(RMpv[1], st[1], pos.gives_check(RMpv[1], CheckInfo(pos)));
-              expectedPosKey = pos.key();
-              pos.undo_move(RMpv[1]);
-              pos.undo_move(RMpv[0]);
-          }
+          StateInfo st[2];
+          pos.do_move(newPv[0], st[0], pos.gives_check(newPv[0], CheckInfo(pos)));
+          pos.do_move(newPv[1], st[1], pos.gives_check(newPv[1], CheckInfo(pos)));
+          expectedPosKey = pos.key();
+          pos.undo_move(newPv[1]);
+          pos.undo_move(newPv[0]);
       }
-      else
-        clear();
     }
 
-    Key expectedPosKey;
-    Move pv3[3];
     int stableCnt;
-  } FM;
+    Key expectedPosKey;
+    Move pv[3];
+  };
 
   size_t PVIdx;
   TimeManager TimeMgr;
+  EasyMoveManager EasyMove;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
   HistoryStats History;
@@ -323,9 +324,8 @@ namespace {
     Depth depth;
     Value bestValue, alpha, beta, delta;
 
-    // Init fastMove if the previous search generated a candidate and we now got the predicted position.
-    const Move fastMove = (FM.expectedPosKey == pos.key()) ? FM.pv3[2] : MOVE_NONE;
-    FM.clear();
+    Move easyMove = EasyMove.get(pos.key());
+    EasyMove.clear();
 
     std::memset(ss-2, 0, 5 * sizeof(Stack));
 
@@ -460,13 +460,13 @@ namespace {
                     TimeMgr.pv_instability(BestMoveChanges);
 
                 // Stop the search if only one legal move is available or all
-                // of the available time has been used or we matched a fastMove
+                // of the available time has been used or we matched an easyMove
                 // from the previous search and just did a fast verification.
                 if (   RootMoves.size() == 1
                     || now() - SearchTime > TimeMgr.available_time()
-                    || (   fastMove == RootMoves[0].pv[0]
+                    || (   RootMoves[0].pv[0] == easyMove
                         && BestMoveChanges < 0.03
-                        && 10 * (now() - SearchTime) > TimeMgr.available_time()))
+                        && now() - SearchTime > TimeMgr.available_time() / 10))
                 {
                     // If we are allowed to ponder do not stop the search now but
                     // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -477,16 +477,17 @@ namespace {
                 }
             }
 
-            // Update fast move stats.
-            FM.update(pos);
+            if (RootMoves[0].pv.size() >= 3)
+                EasyMove.update(pos, RootMoves[0].pv);
+            else
+                EasyMove.clear();
         }
     }
 
-    // Clear any candidate fast move that wasn't completely stable for at least
-    // the 6 final search iterations. (Independent of actual depth and thus TC.)
-    // Time condition prevents consecutive fast moves.
-    if (FM.stableCnt < 6 || now() - SearchTime < TimeMgr.available_time())
-        FM.clear();
+    // Clear any candidate easy move that wasn't stable for the last search
+    // iterations; the second condition prevents consecutive fast moves.
+    if (EasyMove.stableCnt < 6 || now() - SearchTime < TimeMgr.available_time())
+        EasyMove.clear();
 
     // If skill level is enabled, swap best PV line with the sub-optimal one
     if (skill.enabled())
@@ -1074,9 +1075,11 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (value > alpha)
           {
-              // Clear fast move if unstable.
-              if (PvNode && pos.key() == FM.expectedPosKey && (move != FM.pv3[2] || moveCount > 1))
-                  FM.clear();
+              // If there is an easy move for this position, clear it if unstable
+              if (    PvNode
+                  &&  EasyMove.get(pos.key())
+                  && (move != EasyMove.get(pos.key()) || moveCount > 1))
+                  EasyMove.clear();
 
               bestMove = SpNode ? splitPoint->bestMove = move : move;
 
