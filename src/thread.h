@@ -137,6 +137,7 @@ struct Thread : public ThreadBase {
 
 struct MainThread : public Thread {
   virtual void idle_loop();
+  void join();
   volatile bool thinking = true; // Avoid a race with start_thinking()
 };
 
@@ -162,11 +163,9 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void read_uci_options();
   Thread* available_slave(const SplitPoint* sp) const;
-  void wait_for_think_finished();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
 
   Depth minimumSplitDepth;
-  ConditionVariable sleepCondition;
   TimerThread* timer;
 };
 

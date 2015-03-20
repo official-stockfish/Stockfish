@@ -205,7 +205,7 @@ void UCI::loop(int argc, char* argv[]) {
 
   } while (token != "quit" && argc == 1); // Passed args have one-shot behaviour
 
-  Threads.wait_for_think_finished(); // Cannot quit whilst the search is running
+  Threads.main()->join(); // Cannot quit whilst the search is running
 }
 
 

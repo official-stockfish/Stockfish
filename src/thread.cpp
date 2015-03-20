@@ -251,7 +251,7 @@ void MainThread::idle_loop() {
 
       while (!thinking && !exit)
       {
-          Threads.sleepCondition.notify_one(); // Wake up the UI thread if needed
+          sleepCondition.notify_one(); // Wake up the UI thread if needed
           sleepCondition.wait(lk);
       }
 
@@ -268,6 +268,15 @@ void MainThread::idle_loop() {
           searching = false;
       }
   }
+}
+
+
+// MainThread::join() waits for main thread to finish the search
+
+void MainThread::join() {
+
+  std::unique_lock<Mutex> lk(mutex);
+  sleepCondition.wait(lk, [&]{ return !thinking; });
 }
 
 
@@ -337,21 +346,12 @@ Thread* ThreadPool::available_slave(const SplitPoint* sp) const {
 }
 
 
-// ThreadPool::wait_for_think_finished() waits for main thread to finish the search
-
-void ThreadPool::wait_for_think_finished() {
-
-  std::unique_lock<Mutex> lk(main()->mutex);
-  sleepCondition.wait(lk, [&]{ return !main()->thinking; });
-}
-
-
 // ThreadPool::start_thinking() wakes up the main thread sleeping in
 // MainThread::idle_loop() and starts a new search, then returns immediately.
 
 void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
                                 StateStackPtr& states) {
-  wait_for_think_finished();
+  main()->join();
 
   SearchTime = now(); // As early as possible
 
