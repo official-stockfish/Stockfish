@@ -1445,7 +1445,7 @@ moves_loop: // When in check and at SpNode search starts from here
       
         
         HistoryStats& cmh2 = CounterMovesHistory[pos.piece_on(prevOwnMoveSq)][prevOwnMoveSq];
-        cmh2.update(prevMovePiece, prevMoveSq, -bonus2)
+        cmh2.update(prevMovePiece, prevMoveSq, -bonus2);
     }
   }
 
