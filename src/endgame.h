@@ -76,7 +76,7 @@ eg_type = typename std::conditional<(E < SCALING_FUNCTIONS), Value, ScaleFactor>
 template<typename T>
 struct EndgameBase {
 
-  virtual ~EndgameBase() {}
+  virtual ~EndgameBase() = default;
   virtual Color strong_side() const = 0;
   virtual T operator()(const Position&) const = 0;
 };

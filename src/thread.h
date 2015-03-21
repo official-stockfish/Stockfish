@@ -89,14 +89,13 @@ struct SplitPoint {
 /// ThreadBase struct is the base of the hierarchy from where we derive all the
 /// specialized thread classes.
 
-struct ThreadBase {
+struct ThreadBase : public std::thread {
 
   virtual ~ThreadBase() = default;
   virtual void idle_loop() = 0;
   void notify_one();
   void wait_for(volatile const bool& b);
 
-  std::thread nativeThread;
   Mutex mutex;
   Spinlock spinlock;
   ConditionVariable sleepCondition;

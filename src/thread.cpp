@@ -38,9 +38,9 @@ namespace {
  // when start_routine (and hence virtual idle_loop) is called and when joining.
 
  template<typename T> T* new_thread() {
-   T* th = new T();
-   th->nativeThread = std::thread(&ThreadBase::idle_loop, th); // Will go to sleep
-   return th;
+   std::thread* th = new T;
+   *th = std::thread(&T::idle_loop, (T*)th); // Will go to sleep
+   return (T*)th;
  }
 
  void delete_thread(ThreadBase* th) {
@@ -50,7 +50,7 @@ namespace {
    th->mutex.unlock();
 
    th->notify_one();
-   th->nativeThread.join(); // Wait for thread termination
+   th->join(); // Wait for thread termination
    delete th;
  }
 
@@ -61,7 +61,7 @@ namespace {
 
 void ThreadBase::notify_one() {
 
-  std::unique_lock<Mutex>(this->mutex);
+  std::unique_lock<Mutex> lk(mutex);
   sleepCondition.notify_one();
 }
 
