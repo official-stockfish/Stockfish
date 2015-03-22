@@ -299,9 +299,12 @@ void ThreadPool::init() {
 void ThreadPool::exit() {
 
   delete_thread(timer); // As first because check_time() accesses threads data
+  timer = nullptr;
 
   for (Thread* th : *this)
       delete_thread(th);
+
+  clear(); // Get rid of stale pointers
 }
 
 
