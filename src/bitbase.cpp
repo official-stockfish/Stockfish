@@ -85,9 +85,10 @@ bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 void Bitbases::init() {
 
   std::vector<KPKPosition> db(MAX_INDEX);
+  unsigned id = 0;
 
   // Initialize db with known win / draw positions
-  std::generate(db.begin(), db.end(), [](){ static unsigned id; return KPKPosition(id++); });
+  std::generate(db.begin(), db.end(), [&id](){ return KPKPosition(id++); });
 
   // Iterate through the positions until none of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
