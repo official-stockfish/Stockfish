@@ -249,7 +249,9 @@ namespace {
                              {  728, 10316, 55013, 32803, 12281, 15100,  16645,   255 } };
 
     Bitboard occupancy[4096], reference[4096], edges, b;
-    int i, size;
+    int age[4096], current = 0, i, size;
+
+    std::memset(age, 0, sizeof(age));
 
     // attacks[s] is a pointer to the beginning of the attacks table for square 's'
     attacks[SQ_A1] = table;
@@ -298,22 +300,21 @@ namespace {
                 magics[s] = rng.sparse_rand<Bitboard>();
             while (popcount<Max15>((magics[s] * masks[s]) >> 56) < 6);
 
-            std::memset(attacks[s], 0, size * sizeof(Bitboard));
-
             // A good magic must map every possible occupancy to an index that
             // looks up the correct sliding attack in the attacks[s] database.
             // Note that we build up the database for square 's' as a side
             // effect of verifying the magic.
-            for (i = 0; i < size; ++i)
+            for (++current, i = 0; i < size; ++i)
             {
-                Bitboard& attack = attacks[s][index(s, occupancy[i])];
+                unsigned idx = index(s, occupancy[i]);
 
-                if (attack && attack != reference[i])
+                if (age[idx] < current)
+                {
+                    age[idx] = current;
+                    attacks[s][idx] = reference[i];
+                }
+                else if (attacks[s][idx] != reference[i])
                     break;
-
-                assert(reference[i]);
-
-                attack = reference[i];
             }
         } while (i < size);
     }
