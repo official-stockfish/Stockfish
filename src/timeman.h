@@ -27,11 +27,13 @@
 
 class TimeManagement {
 public:
-  void init(const Search::LimitsType& limits, Color us, int ply, TimePoint now);
+  void init(Search::LimitsType& limits, Color us, int ply, TimePoint now);
   void pv_instability(double bestMoveChanges) { unstablePvFactor = 1 + bestMoveChanges; }
   int available() const { return int(optimumTime * unstablePvFactor * 0.76); }
   int maximum() const { return maximumTime; }
   int elapsed() const { return now() - start; }
+
+  int64_t availableNodes; // When in 'nodes as time' mode
 
 private:
   TimePoint start;
@@ -39,5 +41,7 @@ private:
   int maximumTime;
   double unstablePvFactor;
 };
+
+extern TimeManagement Time;
 
 #endif // #ifndef TIMEMAN_H_INCLUDED
