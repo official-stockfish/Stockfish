@@ -68,7 +68,7 @@ namespace {
         return;
 
     pos.set(fen, Options["UCI_Chess960"], Threads.main());
-    SetupStates = Search::StateStackPtr(new std::stack<StateInfo>());
+    SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
 
     // Parse move list (if any)
     while (is >> token && (m = UCI::to_move(pos, token)) != MOVE_NONE)
