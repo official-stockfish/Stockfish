@@ -64,7 +64,6 @@ namespace {
 
     template<Color Us> Result classify(const std::vector<KPKPosition>& db);
 
-    unsigned id;
     Color us;
     Square ksq[COLOR_NB], psq;
     Result result;
@@ -85,20 +84,22 @@ bool Bitbases::probe(Square wksq, Square wpsq, Square bksq, Color us) {
 void Bitbases::init() {
 
   std::vector<KPKPosition> db(MAX_INDEX);
-  unsigned id = 0;
+  unsigned idx, repeat = 1;
 
   // Initialize db with known win / draw positions
-  std::generate(db.begin(), db.end(), [&id](){ return KPKPosition(id++); });
+  for (idx = 0; idx < MAX_INDEX; ++idx)
+      db[idx] = KPKPosition(idx);
 
   // Iterate through the positions until none of the unknown positions can be
   // changed to either wins or draws (15 cycles needed).
-  while (std::accumulate(db.begin(), db.end(), false, [&](bool repeat, KPKPosition& pos)
-  { return (pos == UNKNOWN && pos.classify(db) != UNKNOWN) || repeat; })){}
+  while (repeat)
+      for (repeat = idx = 0; idx < MAX_INDEX; ++idx)
+          repeat |= (db[idx] == UNKNOWN && db[idx].classify(db) != UNKNOWN);
 
   // Map 32 results into one KPKBitbase[] entry
-  for (auto& pos : db)
-      if (pos == WIN)
-          KPKBitbase[pos.id / 32] |= 1 << (pos.id & 0x1F);
+  for (idx = 0; idx < MAX_INDEX; ++idx)
+      if (db[idx] == WIN)
+          KPKBitbase[idx / 32] |= 1 << (idx & 0x1F);
 }
 
 
@@ -106,7 +107,6 @@ namespace {
 
   KPKPosition::KPKPosition(unsigned idx) {
 
-    id         = idx;
     ksq[WHITE] = Square((idx >>  0) & 0x3F);
     ksq[BLACK] = Square((idx >>  6) & 0x3F);
     us         = Color ((idx >> 12) & 0x01);
