@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -60,8 +60,8 @@ namespace {
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
 #ifndef NDEBUG
-  bool verify_material(const Position& pos, Color c, Value npm, int num_pawns) {
-    return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == num_pawns;
+  bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
+    return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
   }
 #endif
 
@@ -97,18 +97,15 @@ namespace {
                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
 #ifdef HORDE
-    return Position(fen, NULL).material_key();
+    return Position(fen, nullptr).material_key();
 #else
 #ifdef KOTH
-    return Position(fen, NULL).material_key();
+    return Position(fen, nullptr).material_key();
 #else
-    return Position(fen, false, NULL).material_key();
+    return Position(fen, false, nullptr).material_key();
 #endif
 #endif
   }
-
-  template<typename M>
-  void delete_endgame(const typename M::value_type& p) { delete p.second; }
 
 } // namespace
 
@@ -136,17 +133,11 @@ Endgames::Endgames() {
   add<KRPPKRP>("KRPPKRP");
 }
 
-Endgames::~Endgames() {
 
-  for_each(m1.begin(), m1.end(), delete_endgame<M1>);
-  for_each(m2.begin(), m2.end(), delete_endgame<M2>);
-}
-
-template<EndgameType E>
+template<EndgameType E, typename T>
 void Endgames::add(const string& code) {
-
-  map((Endgame<E>*)0)[key(code, WHITE)] = new Endgame<E>(WHITE);
-  map((Endgame<E>*)0)[key(code, BLACK)] = new Endgame<E>(BLACK);
+  map<T>()[key(code, WHITE)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(WHITE));
+  map<T>()[key(code, BLACK)] = std::unique_ptr<EndgameBase<T>>(new Endgame<E>(BLACK));
 }
 
 
@@ -170,12 +161,13 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
   Value result =  pos.non_pawn_material(strongSide)
                 + pos.count<PAWN>(strongSide) * PawnValueEg
                 + PushToEdges[loserKSq]
-                + PushClose[square_distance(winnerKSq, loserKSq)];
+                + PushClose[distance(winnerKSq, loserKSq)];
 
   if (   pos.count<QUEEN>(strongSide)
       || pos.count<ROOK>(strongSide)
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
-      || pos.bishop_pair(strongSide))
+      ||(pos.count<BISHOP>(strongSide) > 1 && opposite_colors(pos.list<BISHOP>(strongSide)[0],
+                                                              pos.list<BISHOP>(strongSide)[1])))
       result += VALUE_KNOWN_WIN;
 
   return strongSide == pos.side_to_move() ? result : -result;
@@ -204,7 +196,7 @@ Value Endgame<KBNK>::operator()(const Position& pos) const {
   }
 
   Value result =  VALUE_KNOWN_WIN
-                + PushClose[square_distance(winnerKSq, loserKSq)]
+                + PushClose[distance(winnerKSq, loserKSq)]
                 + PushToCorners[loserKSq];
 
   return strongSide == pos.side_to_move() ? result : -result;
@@ -225,7 +217,7 @@ Value Endgame<KPK>::operator()(const Position& pos) const {
 
   Color us = strongSide == pos.side_to_move() ? WHITE : BLACK;
 
-  if (!Bitbases::probe_kpk(wksq, psq, bksq, us))
+  if (!Bitbases::probe(wksq, psq, bksq, us))
       return VALUE_DRAW;
 
   Value result = VALUE_KNOWN_WIN + PawnValueEg + Value(rank_of(psq));
@@ -254,26 +246,26 @@ Value Endgame<KRKP>::operator()(const Position& pos) const {
 
   // If the stronger side's king is in front of the pawn, it's a win
   if (wksq < psq && file_of(wksq) == file_of(psq))
-      result = RookValueEg - square_distance(wksq, psq);
+      result = RookValueEg - distance(wksq, psq);
 
   // If the weaker side's king is too far from the pawn and the rook,
   // it's a win.
-  else if (   square_distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide)
-           && square_distance(bksq, rsq) >= 3)
-      result = RookValueEg - square_distance(wksq, psq);
+  else if (   distance(bksq, psq) >= 3 + (pos.side_to_move() == weakSide)
+           && distance(bksq, rsq) >= 3)
+      result = RookValueEg - distance(wksq, psq);
 
   // If the pawn is far advanced and supported by the defending king,
   // the position is drawish
   else if (   rank_of(bksq) <= RANK_3
-           && square_distance(bksq, psq) == 1
+           && distance(bksq, psq) == 1
            && rank_of(wksq) >= RANK_4
-           && square_distance(wksq, psq) > 2 + (pos.side_to_move() == strongSide))
-      result = Value(80) - 8 * square_distance(wksq, psq);
+           && distance(wksq, psq) > 2 + (pos.side_to_move() == strongSide))
+      result = Value(80) - 8 * distance(wksq, psq);
 
   else
-      result =  Value(200) - 8 * (  square_distance(wksq, psq + DELTA_S)
-                                  - square_distance(bksq, psq + DELTA_S)
-                                  - square_distance(psq, queeningSq));
+      result =  Value(200) - 8 * (  distance(wksq, psq + DELTA_S)
+                                  - distance(bksq, psq + DELTA_S)
+                                  - distance(psq, queeningSq));
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -302,7 +294,7 @@ Value Endgame<KRKN>::operator()(const Position& pos) const {
 
   Square bksq = pos.king_square(weakSide);
   Square bnsq = pos.list<KNIGHT>(weakSide)[0];
-  Value result = Value(PushToEdges[bksq] + PushAway[square_distance(bksq, bnsq)]);
+  Value result = Value(PushToEdges[bksq] + PushAway[distance(bksq, bnsq)]);
   return strongSide == pos.side_to_move() ? result : -result;
 }
 
@@ -321,10 +313,10 @@ Value Endgame<KQKP>::operator()(const Position& pos) const {
   Square loserKSq = pos.king_square(weakSide);
   Square pawnSq = pos.list<PAWN>(weakSide)[0];
 
-  Value result = Value(PushClose[square_distance(winnerKSq, loserKSq)]);
+  Value result = Value(PushClose[distance(winnerKSq, loserKSq)]);
 
   if (   relative_rank(weakSide, pawnSq) != RANK_7
-      || square_distance(loserKSq, pawnSq) != 1
+      || distance(loserKSq, pawnSq) != 1
       || !((FileABB | FileCBB | FileFBB | FileHBB) & pawnSq))
       result += QueenValueEg - PawnValueEg;
 
@@ -348,7 +340,7 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
   Value result =  QueenValueEg
                 - RookValueEg
                 + PushToEdges[loserKSq]
-                + PushClose[square_distance(winnerKSq, loserKSq)];
+                + PushClose[distance(winnerKSq, loserKSq)];
 
   return strongSide == pos.side_to_move() ? result : -result;
 }
@@ -383,7 +375,7 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
       Square kingSq = pos.king_square(weakSide);
 
       if (   opposite_colors(queeningSq, bishopSq)
-          && square_distance(queeningSq, kingSq) <= 1)
+          && distance(queeningSq, kingSq) <= 1)
           return SCALE_FACTOR_DRAW;
   }
 
@@ -406,8 +398,8 @@ ScaleFactor Endgame<KBPsK>::operator()(const Position& pos) const {
           && (pos.pieces(strongSide, PAWN) & (weakPawnSq + pawn_push(weakSide)))
           && (opposite_colors(bishopSq, weakPawnSq) || pos.count<PAWN>(strongSide) == 1))
       {
-          int strongKingDist = square_distance(weakPawnSq, strongKingSq);
-          int weakKingDist = square_distance(weakPawnSq, weakKingSq);
+          int strongKingDist = distance(weakPawnSq, strongKingSq);
+          int weakKingDist = distance(weakPawnSq, weakKingSq);
 
           // It's a draw if the weak king is on its back two ranks, within 2
           // squares of the blocking pawn and the strong king is not
@@ -477,7 +469,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   // If the pawn is not too far advanced and the defending king defends the
   // queening square, use the third-rank defence.
   if (   r <= RANK_5
-      && square_distance(bksq, queeningSq) <= 1
+      && distance(bksq, queeningSq) <= 1
       && wksq <= SQ_H5
       && (rank_of(brsq) == RANK_6 || (r <= RANK_3 && rank_of(wrsq) != RANK_6)))
       return SCALE_FACTOR_DRAW;
@@ -485,15 +477,15 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   // The defending side saves a draw by checking from behind in case the pawn
   // has advanced to the 6th rank with the king behind.
   if (   r == RANK_6
-      && square_distance(bksq, queeningSq) <= 1
+      && distance(bksq, queeningSq) <= 1
       && rank_of(wksq) + tempo <= RANK_6
-      && (rank_of(brsq) == RANK_1 || (!tempo && abs(file_of(brsq) - f) >= 3)))
+      && (rank_of(brsq) == RANK_1 || (!tempo && distance(file_of(brsq), f) >= 3)))
       return SCALE_FACTOR_DRAW;
 
   if (   r >= RANK_6
       && bksq == queeningSq
       && rank_of(brsq) == RANK_1
-      && (!tempo || square_distance(wksq, wpsq) >= 2))
+      && (!tempo || distance(wksq, wpsq) >= 2))
       return SCALE_FACTOR_DRAW;
 
   // White pawn on a7 and rook on a8 is a draw if black's king is on g7 or h7
@@ -509,8 +501,8 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   // away, it's a draw.
   if (   r <= RANK_5
       && bksq == wpsq + DELTA_N
-      && square_distance(wksq, wpsq) - tempo >= 2
-      && square_distance(wksq, brsq) - tempo >= 2)
+      && distance(wksq, wpsq) - tempo >= 2
+      && distance(wksq, brsq) - tempo >= 2)
       return SCALE_FACTOR_DRAW;
 
   // Pawn on the 7th rank supported by the rook from behind usually wins if the
@@ -520,22 +512,22 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
       && f != FILE_A
       && file_of(wrsq) == f
       && wrsq != queeningSq
-      && (square_distance(wksq, queeningSq) < square_distance(bksq, queeningSq) - 2 + tempo)
-      && (square_distance(wksq, queeningSq) < square_distance(bksq, wrsq) + tempo))
-      return ScaleFactor(SCALE_FACTOR_MAX - 2 * square_distance(wksq, queeningSq));
+      && (distance(wksq, queeningSq) < distance(bksq, queeningSq) - 2 + tempo)
+      && (distance(wksq, queeningSq) < distance(bksq, wrsq) + tempo))
+      return ScaleFactor(SCALE_FACTOR_MAX - 2 * distance(wksq, queeningSq));
 
   // Similar to the above, but with the pawn further back
   if (   f != FILE_A
       && file_of(wrsq) == f
       && wrsq < wpsq
-      && (square_distance(wksq, queeningSq) < square_distance(bksq, queeningSq) - 2 + tempo)
-      && (square_distance(wksq, wpsq + DELTA_N) < square_distance(bksq, wpsq + DELTA_N) - 2 + tempo)
-      && (  square_distance(bksq, wrsq) + tempo >= 3
-          || (    square_distance(wksq, queeningSq) < square_distance(bksq, wrsq) + tempo
-              && (square_distance(wksq, wpsq + DELTA_N) < square_distance(bksq, wrsq) + tempo))))
+      && (distance(wksq, queeningSq) < distance(bksq, queeningSq) - 2 + tempo)
+      && (distance(wksq, wpsq + DELTA_N) < distance(bksq, wpsq + DELTA_N) - 2 + tempo)
+      && (  distance(bksq, wrsq) + tempo >= 3
+          || (    distance(wksq, queeningSq) < distance(bksq, wrsq) + tempo
+              && (distance(wksq, wpsq + DELTA_N) < distance(bksq, wrsq) + tempo))))
       return ScaleFactor(  SCALE_FACTOR_MAX
-                         - 8 * square_distance(wpsq, queeningSq)
-                         - 2 * square_distance(wksq, queeningSq));
+                         - 8 * distance(wpsq, queeningSq)
+                         - 2 * distance(wksq, queeningSq));
 
   // If the pawn is not far advanced and the defending king is somewhere in
   // the pawn's path, it's probably a draw.
@@ -543,9 +535,9 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   {
       if (file_of(bksq) == file_of(wpsq))
           return ScaleFactor(10);
-      if (   abs(file_of(bksq) - file_of(wpsq)) == 1
-          && square_distance(wksq, bksq) > 2)
-          return ScaleFactor(24 - 2 * square_distance(wksq, bksq));
+      if (   distance<File>(bksq, wpsq) == 1
+          && distance(wksq, bksq) > 2)
+          return ScaleFactor(24 - 2 * distance(wksq, bksq));
   }
   return SCALE_FACTOR_NONE;
 }
@@ -572,7 +564,7 @@ ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
       // corner but not trapped there.
       if (rk == RANK_5 && !opposite_colors(bsq, psq))
       {
-          int d = square_distance(psq + 3 * push, ksq);
+          int d = distance(psq + 3 * push, ksq);
 
           if (d <= 2 && !(d == 0 && ksq == pos.king_square(strongSide) + 2 * push))
               return ScaleFactor(24);
@@ -585,9 +577,9 @@ ScaleFactor Endgame<KRPKB>::operator()(const Position& pos) const {
       // pawn from a reasonable distance and the defending king is near
       // the corner
       if (   rk == RANK_6
-          && square_distance(psq + 2 * push, ksq) <= 1
+          && distance(psq + 2 * push, ksq) <= 1
           && (PseudoAttacks[BISHOP][bsq] & (psq + push))
-          && file_distance(bsq, psq) >= 2)
+          && distance<File>(bsq, psq) >= 2)
           return ScaleFactor(8);
   }
 
@@ -612,8 +604,8 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
 
   Rank r = std::max(relative_rank(strongSide, wpsq1), relative_rank(strongSide, wpsq2));
 
-  if (   file_distance(bksq, wpsq1) <= 1
-      && file_distance(bksq, wpsq2) <= 1
+  if (   distance<File>(bksq, wpsq1) <= 1
+      && distance<File>(bksq, wpsq2) <= 1
       && relative_rank(strongSide, bksq) > r)
   {
       switch (r) {
@@ -646,7 +638,7 @@ ScaleFactor Endgame<KPsK>::operator()(const Position& pos) const {
   // the king is within one file of the pawns, it's a draw.
   if (   !(pawns & ~in_front_bb(weakSide, rank_of(ksq)))
       && !((pawns & ~FileABB) && (pawns & ~FileHBB))
-      && file_distance(ksq, psq) <= 1)
+      &&  distance<File>(ksq, psq) <= 1)
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;
@@ -698,7 +690,7 @@ ScaleFactor Endgame<KBPKB>::operator()(const Position& pos) const {
               return SCALE_FACTOR_DRAW;
 
           if (  (pos.attacks_from<BISHOP>(weakBishopSq) & path)
-              && square_distance(weakBishopSq, pawnSq) >= 3)
+              && distance(weakBishopSq, pawnSq) >= 3)
               return SCALE_FACTOR_DRAW;
       }
   }
@@ -737,7 +729,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
       blockSq2 = make_square(file_of(psq1), rank_of(psq2));
   }
 
-  switch (file_distance(psq1, psq2))
+  switch (distance<File>(psq1, psq2))
   {
   case 0:
     // Both pawns are on the same file. It's an easy draw if the defender firmly
@@ -757,7 +749,7 @@ ScaleFactor Endgame<KBPPKB>::operator()(const Position& pos) const {
         && opposite_colors(ksq, wbsq)
         && (   bbsq == blockSq2
             || (pos.attacks_from<BISHOP>(blockSq2) & pos.pieces(weakSide, BISHOP))
-            || abs(r1 - r2) >= 2))
+            || distance(r1, r2) >= 2))
         return SCALE_FACTOR_DRAW;
 
     else if (   ksq == blockSq2
@@ -810,7 +802,7 @@ ScaleFactor Endgame<KNPK>::operator()(const Position& pos) const {
   Square pawnSq     = normalize(pos, strongSide, pos.list<PAWN>(strongSide)[0]);
   Square weakKingSq = normalize(pos, strongSide, pos.king_square(weakSide));
 
-  if (pawnSq == SQ_A7 && square_distance(SQ_A8, weakKingSq) <= 1)
+  if (pawnSq == SQ_A7 && distance(SQ_A8, weakKingSq) <= 1)
       return SCALE_FACTOR_DRAW;
 
   return SCALE_FACTOR_NONE;
@@ -829,7 +821,7 @@ ScaleFactor Endgame<KNPKB>::operator()(const Position& pos) const {
   // King needs to get close to promoting pawn to prevent knight from blocking.
   // Rules for this are very tricky, so just approximate.
   if (forward_bb(strongSide, pawnSq) & pos.attacks_from<BISHOP>(bishopSq))
-      return ScaleFactor(square_distance(weakKingSq, pawnSq));
+      return ScaleFactor(distance(weakKingSq, pawnSq));
 
   return SCALE_FACTOR_NONE;
 }
@@ -860,5 +852,5 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
 
   // Probe the KPK bitbase with the weakest side's pawn removed. If it's a draw,
   // it's probably at least a draw even with the pawn.
-  return Bitbases::probe_kpk(wksq, psq, bksq, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
+  return Bitbases::probe(wksq, psq, bksq, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }

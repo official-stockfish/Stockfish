@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,55 +20,63 @@
 #ifndef TYPES_H_INCLUDED
 #define TYPES_H_INCLUDED
 
-/// For Linux and OSX configuration is done automatically using Makefile. To get
-/// started type 'make help'.
+/// When compiling with provided Makefile (e.g. for Linux and OSX), configuration
+/// is done automatically. To get started type 'make help'.
 ///
-/// For Windows, part of the configuration is detected automatically, but some
-/// switches need to be set manually:
+/// When Makefile is not used (e.g. with Microsoft Visual Studio) some switches
+/// need to be set manually:
 ///
-/// -DNDEBUG      | Disable debugging mode. Always use this.
+/// -DNDEBUG      | Disable debugging mode. Always use this for release.
 ///
-/// -DNO_PREFETCH | Disable use of prefetch asm-instruction. A must if you want
-///               | the executable to run on some very old machines.
+/// -DNO_PREFETCH | Disable use of prefetch asm-instruction. You may need this to
+///               | run on some very old machines.
 ///
 /// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
-///               | only in 64-bit mode. For compiling requires hardware with
-///               | popcnt support.
+///               | only in 64-bit mode and requires hardware with popcnt support.
+///
+/// -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
+///               | only in 64-bit mode and requires hardware with pext support.
 
 #include <cassert>
 #include <cctype>
 #include <climits>
+#include <cstdint>
 #include <cstdlib>
 
-#include "platform.h"
+#if defined(_MSC_VER)
+// Disable some silly and noisy warning from MSVC compiler
+#pragma warning(disable: 4127) // Conditional expression is constant
+#pragma warning(disable: 4146) // Unary minus operator applied to unsigned type
+#pragma warning(disable: 4800) // Forcing value to bool 'true' or 'false'
+#endif
 
-#define unlikely(x) (x) // For code annotation purposes
+/// Predefined macros hell:
+///
+/// __GNUC__           Compiler is gcc, Clang or Intel on Linux
+/// __INTEL_COMPILER   Compiler is Intel
+/// _MSC_VER           Compiler is MSVC or Intel on Windows
+/// _WIN32             Building on Windows (any)
+/// _WIN64             Building on Windows 64 bit
 
-#if defined(_WIN64) && !defined(IS_64BIT)
+#if defined(_WIN64) && !defined(IS_64BIT) // Last condition means Makefile is not used
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
 #  define USE_BSFQ
 #endif
 
-#if defined(USE_POPCNT) && defined(_MSC_VER) && defined(__INTEL_COMPILER)
+#if defined(USE_POPCNT) && defined(__INTEL_COMPILER) && defined(_MSC_VER)
 #  include <nmmintrin.h> // Intel header for _mm_popcnt_u64() intrinsic
+#endif
+
+#if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
+#  include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
 #endif
 
 #if defined(USE_PEXT)
 #  include <immintrin.h> // Header for _pext_u64() intrinsic
+#  define pext(b, m) _pext_u64(b, m)
 #else
-#  define _pext_u64(b, m) (0)
-#endif
-
-#  if !defined(NO_PREFETCH) && (defined(__INTEL_COMPILER) || defined(_MSC_VER))
-#   include <xmmintrin.h> // Intel and Microsoft header for _mm_prefetch()
-#  endif
-
-#define CACHE_LINE_SIZE 64
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-#  define CACHE_LINE_ALIGNMENT __declspec(align(CACHE_LINE_SIZE))
-#else
-#  define CACHE_LINE_ALIGNMENT  __attribute__ ((aligned(CACHE_LINE_SIZE)))
+#  define pext(b, m) (0)
 #endif
 
 #ifdef _MSC_VER
@@ -100,9 +108,8 @@ const bool Is64Bit = false;
 typedef uint64_t Key;
 typedef uint64_t Bitboard;
 
-const int MAX_MOVES      = 256;
-const int MAX_PLY        = 120;
-const int MAX_PLY_PLUS_6 = MAX_PLY + 6;
+const int MAX_MOVES = 256;
+const int MAX_PLY   = 128;
 
 /// A move needs 16 bits to be stored
 ///
@@ -139,9 +146,9 @@ enum CastlingSide {
 enum CastlingRight {
   NO_CASTLING,
   WHITE_OO,
-  WHITE_OOO   = WHITE_OO << 1,
-  BLACK_OO    = WHITE_OO << 2,
-  BLACK_OOO   = WHITE_OO << 3,
+  WHITE_OOO = WHITE_OO << 1,
+  BLACK_OO  = WHITE_OO << 2,
+  BLACK_OOO = WHITE_OO << 3,
   ANY_CASTLING = WHITE_OO | WHITE_OOO | BLACK_OO | BLACK_OOO,
   CASTLING_RIGHT_NB = 16
 };
@@ -173,7 +180,7 @@ enum Bound {
   BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
 
-enum Value {
+enum Value : int {
   VALUE_ZERO      = 0,
   VALUE_DRAW      = 0,
   VALUE_KNOWN_WIN = 10000,
@@ -181,11 +188,8 @@ enum Value {
   VALUE_INFINITE  = 32001,
   VALUE_NONE      = 32002,
 
-  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY,
-  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + MAX_PLY,
-
-  VALUE_ENSURE_INTEGER_SIZE_P = INT_MAX,
-  VALUE_ENSURE_INTEGER_SIZE_N = INT_MIN,
+  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - 2 * MAX_PLY,
+  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + 2 * MAX_PLY,
 
   PawnValueMg   = 198,   PawnValueEg   = 258,
   KnightValueMg = 817,   KnightValueEg = 846,
@@ -211,14 +215,15 @@ enum Piece {
 
 enum Depth {
 
-  ONE_PLY = 2,
+  ONE_PLY = 1,
 
-  DEPTH_ZERO          =  0 * ONE_PLY,
-  DEPTH_QS_CHECKS     =  0 * ONE_PLY,
-  DEPTH_QS_NO_CHECKS  = -1 * ONE_PLY,
-  DEPTH_QS_RECAPTURES = -5 * ONE_PLY,
+  DEPTH_ZERO          =  0,
+  DEPTH_QS_CHECKS     =  0,
+  DEPTH_QS_NO_CHECKS  = -1,
+  DEPTH_QS_RECAPTURES = -5,
 
-  DEPTH_NONE = -6 * ONE_PLY
+  DEPTH_NONE = -6,
+  DEPTH_MAX  = MAX_PLY
 };
 
 enum Square {
@@ -256,47 +261,46 @@ enum Rank {
 };
 
 
-/// The Score enum stores a middlegame and an endgame value in a single integer
+/// Score enum stores a middlegame and an endgame value in a single integer
 /// (enum). The least significant 16 bits are used to store the endgame value
-/// and the upper 16 bits are used to store the middlegame value. The compiler
-/// is free to choose the enum type as long as it can store the data, so we
-/// ensure that Score is an integer type by assigning some big int values.
-enum Score {
-  SCORE_ZERO,
-  SCORE_ENSURE_INTEGER_SIZE_P = INT_MAX,
-  SCORE_ENSURE_INTEGER_SIZE_N = INT_MIN
-};
+/// and the upper 16 bits are used to store the middlegame value.
+enum Score : int { SCORE_ZERO };
 
-inline Score make_score(int mg, int eg) { return Score((mg << 16) + eg); }
+inline Score make_score(int mg, int eg) {
+  return Score((mg << 16) + eg);
+}
 
 /// Extracting the signed lower and upper 16 bits is not so trivial because
 /// according to the standard a simple cast to short is implementation defined
 /// and so is a right shift of a signed integer.
 inline Value mg_value(Score s) {
-  return Value(((s + 0x8000) & ~0xffff) / 0x10000);
+
+  union { uint16_t u; int16_t s; } mg = { uint16_t(unsigned(s + 0x8000) >> 16) };
+  return Value(mg.s);
 }
 
 inline Value eg_value(Score s) {
-  return Value((int)(unsigned(s) & 0x7FFFU) - (int)(unsigned(s) & 0x8000U));
+
+  union { uint16_t u; int16_t s; } eg = { uint16_t(unsigned(s)) };
+  return Value(eg.s);
 }
 
-#define ENABLE_BASE_OPERATORS_ON(T)                                         \
-inline T operator+(const T d1, const T d2) { return T(int(d1) + int(d2)); } \
-inline T operator-(const T d1, const T d2) { return T(int(d1) - int(d2)); } \
-inline T operator*(int i, const T d) { return T(i * int(d)); }              \
-inline T operator*(const T d, int i) { return T(int(d) * i); }              \
-inline T operator-(const T d) { return T(-int(d)); }                        \
-inline T& operator+=(T& d1, const T d2) { return d1 = d1 + d2; }            \
-inline T& operator-=(T& d1, const T d2) { return d1 = d1 - d2; }            \
+#define ENABLE_BASE_OPERATORS_ON(T)                             \
+inline T operator+(T d1, T d2) { return T(int(d1) + int(d2)); } \
+inline T operator-(T d1, T d2) { return T(int(d1) - int(d2)); } \
+inline T operator*(int i, T d) { return T(i * int(d)); }        \
+inline T operator*(T d, int i) { return T(int(d) * i); }        \
+inline T operator-(T d) { return T(-int(d)); }                  \
+inline T& operator+=(T& d1, T d2) { return d1 = d1 + d2; }      \
+inline T& operator-=(T& d1, T d2) { return d1 = d1 - d2; }      \
 inline T& operator*=(T& d, int i) { return d = T(int(d) * i); }
 
-ENABLE_BASE_OPERATORS_ON(Score)
-
-#define ENABLE_FULL_OPERATORS_ON(T)                                         \
-ENABLE_BASE_OPERATORS_ON(T)                                                 \
-inline T& operator++(T& d) { return d = T(int(d) + 1); }                    \
-inline T& operator--(T& d) { return d = T(int(d) - 1); }                    \
-inline T operator/(const T d, int i) { return T(int(d) / i); }              \
+#define ENABLE_FULL_OPERATORS_ON(T)                             \
+ENABLE_BASE_OPERATORS_ON(T)                                     \
+inline T& operator++(T& d) { return d = T(int(d) + 1); }        \
+inline T& operator--(T& d) { return d = T(int(d) - 1); }        \
+inline T operator/(T d, int i) { return T(int(d) / i); }        \
+inline int operator/(T d1, T d2) { return int(d1) / int(d2); }  \
 inline T& operator/=(T& d, int i) { return d = T(int(d) / i); }
 
 ENABLE_FULL_OPERATORS_ON(Value)
@@ -307,6 +311,8 @@ ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Square)
 ENABLE_FULL_OPERATORS_ON(File)
 ENABLE_FULL_OPERATORS_ON(Rank)
+
+ENABLE_BASE_OPERATORS_ON(Score)
 
 #undef ENABLE_FULL_OPERATORS_ON
 #undef ENABLE_BASE_OPERATORS_ON
@@ -326,18 +332,7 @@ inline Score operator/(Score s, int i) {
   return make_score(mg_value(s) / i, eg_value(s) / i);
 }
 
-CACHE_LINE_ALIGNMENT
-
 extern Value PieceValue[PHASE_NB][PIECE_NB];
-
-struct ExtMove {
-  Move move;
-  Value value;
-};
-
-inline bool operator<(const ExtMove& f, const ExtMove& s) {
-  return f.value < s.value;
-}
 
 inline Color operator~(Color c) {
   return Color(c ^ BLACK);
@@ -422,7 +417,7 @@ inline MoveType type_of(Move m) {
 }
 
 inline PieceType promotion_type(Move m) {
-  return PieceType(((m >> 12) & 3) + 2);
+  return PieceType(((m >> 12) & 3) + KNIGHT);
 }
 
 inline Move make_move(Square from, Square to) {
@@ -435,7 +430,7 @@ inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
 }
 
 inline bool is_ok(Move m) {
-  return from_sq(m) != to_sq(m); // Catches also MOVE_NULL and MOVE_NONE
+  return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE
 }
 
 #endif // #ifndef TYPES_H_INCLUDED

@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,23 +17,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <istream>
 #include <vector>
 
 #include "misc.h"
-#include "notation.h"
 #include "position.h"
 #include "search.h"
 #include "thread.h"
 #include "tt.h"
-#include "ucioption.h"
+#include "uci.h"
 
 using namespace std;
 
-static const char* Defaults[] = {
+namespace {
+
+const vector<string> Defaults = {
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
   "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",
@@ -63,9 +63,23 @@ static const char* Defaults[] = {
   "6k1/6p1/P6p/r1N5/5p2/7P/1b3PP1/4R1K1 w - - 0 1",
   "1r3k2/4q3/2Pp3b/3Bp3/2Q2p2/1p1P2P1/1P2KP2/3N4 w - - 0 1",
   "6k1/4pp1p/3p2p1/P1pPb3/R7/1r2P1PP/3B1P2/6K1 w - - 0 1",
-  "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1"
+  "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1",
+
+  // 5-man positions
+  "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1",     // Kc2 - mate
+  "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1",      // Na2 - mate
+  "8/3k4/8/8/8/4B3/4KB2/2B5 w - - 0 1",    // draw
+
+  // 6-man positions
+  "8/8/1P6/5pr1/8/4R3/7k/2K5 w - - 0 1",   // Re5 - mate
+  "8/2p4P/8/kr6/6R1/8/8/1K6 w - - 0 1",    // Ka2 - mate
+  "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1",  // Nd2 - draw
+
+  // 7-man positions
+  "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124", // Draw
 };
 
+} // namespace
 
 /// benchmark() runs a simple benchmark by letting Stockfish analyze a set
 /// of positions for a given limit each. There are five parameters: the
@@ -73,7 +87,7 @@ static const char* Defaults[] = {
 /// be used, the limit value spent for each position (optional, default is
 /// depth 13), an optional file name where to look for positions in FEN
 /// format (defaults are the positions defined above) and the type of the
-/// limit value: depth (default), time in secs or number of nodes.
+/// limit value: depth (default), time in millisecs or number of nodes.
 
 void benchmark(const Position& current, istream& is) {
 
@@ -93,19 +107,19 @@ void benchmark(const Position& current, istream& is) {
   TT.clear();
 
   if (limitType == "time")
-      limits.movetime = 1000 * atoi(limit.c_str()); // movetime is in ms
+      limits.movetime = stoi(limit); // movetime is in ms
 
   else if (limitType == "nodes")
-      limits.nodes = atoi(limit.c_str());
+      limits.nodes = stoi(limit);
 
   else if (limitType == "mate")
-      limits.mate = atoi(limit.c_str());
+      limits.mate = stoi(limit);
 
   else
-      limits.depth = atoi(limit.c_str());
+      limits.depth = stoi(limit);
 
   if (fenFile == "default")
-      fens.assign(Defaults, Defaults + 30);
+      fens = Defaults;
 
   else if (fenFile == "current")
       fens.push_back(current.fen());
@@ -113,7 +127,7 @@ void benchmark(const Position& current, istream& is) {
   else
   {
       string fen;
-      ifstream file(fenFile.c_str());
+      ifstream file(fenFile);
 
       if (!file.is_open())
       {
@@ -130,7 +144,7 @@ void benchmark(const Position& current, istream& is) {
 
   uint64_t nodes = 0;
   Search::StateStackPtr st;
-  Time::point elapsed = Time::now();
+  TimePoint elapsed = now();
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
@@ -152,12 +166,12 @@ void benchmark(const Position& current, istream& is) {
       else
       {
           Threads.start_thinking(pos, limits, st);
-          Threads.wait_for_think_finished();
+          Threads.main()->join();
           nodes += Search::RootPos.nodes_searched();
       }
   }
 
-  elapsed = std::max(Time::now() - elapsed, Time::point(1)); // Avoid a 'divide by zero'
+  elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
 
   dbg_print(); // Just before to exit
 

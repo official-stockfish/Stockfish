@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -40,9 +40,10 @@
 template<bool Gain, typename T>
 struct Stats {
 
-  static const Value Max = Value(2000);
+  static const Value Max = Value(250);
 
   const T* operator[](Piece pc) const { return table[pc]; }
+  T* operator[](Piece pc) { return table[pc]; }
   void clear() { std::memset(table, 0, sizeof(table)); }
 
   void update(Piece pc, Square to, Move m) {
@@ -70,6 +71,7 @@ private:
 typedef Stats< true, Value> GainsStats;
 typedef Stats<false, Value> HistoryStats;
 typedef Stats<false, std::pair<Move, Move> > MovesStats;
+typedef Stats<false, HistoryStats> CounterMovesHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
@@ -80,22 +82,25 @@ typedef Stats<false, std::pair<Move, Move> > MovesStats;
 /// to get a cut-off first.
 
 class MovePicker {
-
-  MovePicker& operator=(const MovePicker&); // Silence a warning under MSVC
-
 public:
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, PieceType);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, Move*, Move*, Search::Stack*);
+  MovePicker(const MovePicker&) = delete;
+  MovePicker& operator=(const MovePicker&) = delete;
+
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
+  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move*, Move*, Search::Stack*);
 
   template<bool SpNode> Move next_move();
 
 private:
   template<GenType> void score();
   void generate_next_stage();
+  ExtMove* begin() { return moves; }
+  ExtMove* end() { return endMoves; }
 
   const Position& pos;
   const HistoryStats& history;
+  const CounterMovesHistoryStats& counterMovesHistory;
   Search::Stack* ss;
   Move* countermoves;
   Move* followupmoves;
@@ -105,8 +110,8 @@ private:
   Square recaptureSquare;
   Value captureThreshold;
   int stage;
-  ExtMove *cur, *end, *endQuiets, *endBadCaptures;
-  ExtMove moves[MAX_MOVES];
+  ExtMove *endQuiets, *endBadCaptures;
+  ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
 };
 
 #endif // #ifndef MOVEPICK_H_INCLUDED
