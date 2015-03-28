@@ -45,10 +45,10 @@ namespace {
 
   // Backward pawn penalty by opposed flag and file
   const Score Backward[2][FILE_NB] = {
-  { S(30, 42), S(43, 46), S(49, 46), S(49, 46),
-    S(49, 46), S(49, 46), S(43, 46), S(30, 42) },
-  { S(20, 28), S(29, 31), S(33, 31), S(33, 31),
-    S(33, 31), S(33, 31), S(29, 31), S(20, 28) } };
+  { S(50, 52), S(63, 56), S(69, 56), S(69, 56),
+    S(69, 56), S(69, 56), S(63, 56), S(50, 52) },
+  { S(40, 38), S(49, 41), S(53, 41), S(53, 41),
+    S(53, 41), S(53, 41), S(49, 41), S(40, 38) } };
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
@@ -180,19 +180,17 @@ namespace {
         // Score this pawn
         if (isolated)
             score -= Isolated[opposed][f];
-
-        if (!supported && !isolated)
-            score -= UnsupportedPawnPenalty;
-
-        if (doubled)
-            score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
-
-        if (backward)
+        else if (backward)
             score -= Backward[opposed][f];
+        else if (!supported)
+            score -= UnsupportedPawnPenalty;
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
-
+ 
+        if (doubled)
+            score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
+                    
         if (lever)
             score += Lever[relative_rank(Us, s)];
     }
