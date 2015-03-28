@@ -1,7 +1,7 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
-  Copyright (C) 2008-2014 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #define BITCOUNT_H_INCLUDED
 
 #include <cassert>
+
 #include "types.h"
 
 enum BitCountType {
@@ -35,7 +36,7 @@ enum BitCountType {
 /// Determine at compile time the best popcount<> specialization according to
 /// whether the platform is 32 or 64 bit, the maximum number of non-zero
 /// bits to count and if the hardware popcnt instruction is available.
-const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64 : CNT_32;
+const BitCountType Full  = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64       : CNT_32;
 const BitCountType Max15 = HasPopCnt ? CNT_HW_POPCNT : Is64Bit ? CNT_64_MAX15 : CNT_32_MAX15;
 
 
@@ -94,7 +95,7 @@ inline int popcount<CNT_HW_POPCNT>(Bitboard b) {
 
   return (int)__popcnt64(b);
 
-#else
+#else // Assumed gcc or compatible compiler
 
   return __builtin_popcountll(b);
 
