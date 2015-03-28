@@ -158,6 +158,8 @@ namespace {
     S(0, 0), S(0, 0), S(107, 138), S(84, 122), S(114, 203), S(121, 217)
   };
 
+  const Score ThreatenedByHangingPawn = S(40, 60);
+
   // Assorted bonuses and penalties used by evaluation
   const Score KingOnOne          = S( 2, 58);
   const Score KingOnMany         = S( 6,125);
@@ -304,11 +306,6 @@ namespace {
         int mob = popcount<Pt == QUEEN ? Full : Max15>(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt][mob];
-
-        // Decrease score if we are attacked by an enemy pawn. The remaining part
-        // of threat evaluation must be done later when we have full attack info.
-        if (ei.attackedBy[Them][PAWN] & s)
-            score -= ThreatenedByPawn[Pt];
 
         if (Pt == BISHOP || Pt == KNIGHT)
         {
@@ -501,8 +498,25 @@ namespace {
     enum { Defended, Weak };
     enum { Minor, Major };
 
-    Bitboard b, weak, defended;
+    Bitboard b, weak, defended, safe_pawns, safe_pawn_threats, unsafe_pawn_threats;
     Score score = SCORE_ZERO;
+
+    // Pawn Threats
+    b = ei.attackedBy[Us][PAWN] & (pos.pieces(Them) ^ pos.pieces(Them, PAWN));
+    if(b)
+    {
+        safe_pawns = pos.pieces(Us, PAWN) & (~ei.attackedBy[Them][ALL_PIECES] | ei.attackedBy[Us][ALL_PIECES]);
+        safe_pawn_threats = (shift_bb<Right>(safe_pawns) | shift_bb<Left>(safe_pawns)) & (pos.pieces(Them) ^ pos.pieces(Them, PAWN));
+        unsafe_pawn_threats = b ^ safe_pawn_threats;
+	// Unsafe pawn threats
+        if(unsafe_pawn_threats)
+	  score += ThreatenedByHangingPawn;
+
+	// Evaluate safe pawn threats
+        while(safe_pawn_threats)
+	  score += ThreatenedByPawn[type_of(pos.piece_on(pop_lsb(&safe_pawn_threats)))];
+
+    }
 
     // Non-pawn enemies defended by a pawn
     defended = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Them][PAWN];
