@@ -503,19 +503,20 @@ namespace {
 
     // Pawn Threats
     b = ei.attackedBy[Us][PAWN] & (pos.pieces(Them) ^ pos.pieces(Them, PAWN));
-    if(b)
+
+    if (b)
     {
         safe_pawns = pos.pieces(Us, PAWN) & (~ei.attackedBy[Them][ALL_PIECES] | ei.attackedBy[Us][ALL_PIECES]);
         safe_pawn_threats = (shift_bb<Right>(safe_pawns) | shift_bb<Left>(safe_pawns)) & (pos.pieces(Them) ^ pos.pieces(Them, PAWN));
         unsafe_pawn_threats = b ^ safe_pawn_threats;
-	// Unsafe pawn threats
-        if(unsafe_pawn_threats)
-	  score += ThreatenedByHangingPawn;
 
-	// Evaluate safe pawn threats
-        while(safe_pawn_threats)
-	  score += ThreatenedByPawn[type_of(pos.piece_on(pop_lsb(&safe_pawn_threats)))];
+        // Unsafe pawn threats
+        if (unsafe_pawn_threats)
+            score += ThreatenedByHangingPawn;
 
+        // Evaluate safe pawn threats
+        while (safe_pawn_threats)
+            score += ThreatenedByPawn[type_of(pos.piece_on(pop_lsb(&safe_pawn_threats)))];
     }
 
     // Non-pawn enemies defended by a pawn
