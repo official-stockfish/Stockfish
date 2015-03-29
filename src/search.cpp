@@ -339,7 +339,7 @@ namespace {
     CounterMovesHistory.clear();
     Gains.clear();
     Countermoves.clear();
-    
+
     size_t multiPV = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
 
@@ -960,8 +960,9 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (   (!PvNode && cutNode)
               ||  History[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
-              ||  CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq][pos.piece_on(to_sq(move))][to_sq(move)]
-                + History[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO)
+              || (  History[pos.piece_on(to_sq(move))][to_sq(move)]
+                  + CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
+                                       [pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO))
               ss->reduction += ONE_PLY;
 
           if (move == countermoves[0] || move == countermoves[1])
@@ -1432,11 +1433,10 @@ moves_loop: // When in check and at SpNode search starts from here
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
 
+    // Extra penalty for TT move in previous ply when it gets refuted
     if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove)
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
-
-        // Extra penalty for TT move in previous ply when it gets refuted
         HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         ttMoveCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * depth / ONE_PLY - 1);
     }

@@ -498,25 +498,24 @@ namespace {
     enum { Defended, Weak };
     enum { Minor, Major };
 
-    Bitboard b, weak, defended, safe_pawns, safe_pawn_threats, unsafe_pawn_threats;
+    Bitboard b, weak, defended, safeThreats;
     Score score = SCORE_ZERO;
 
-    // Pawn Threats
-    b = ei.attackedBy[Us][PAWN] & (pos.pieces(Them) ^ pos.pieces(Them, PAWN));
+    // Non-pawn enemies attacked by a pawn
+    weak = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Us][PAWN];
 
-    if (b)
+    if (weak)
     {
-        safe_pawns = pos.pieces(Us, PAWN) & (~ei.attackedBy[Them][ALL_PIECES] | ei.attackedBy[Us][ALL_PIECES]);
-        safe_pawn_threats = (shift_bb<Right>(safe_pawns) | shift_bb<Left>(safe_pawns)) & (pos.pieces(Them) ^ pos.pieces(Them, PAWN));
-        unsafe_pawn_threats = b ^ safe_pawn_threats;
+        b = pos.pieces(Us, PAWN) & ( ~ei.attackedBy[Them][ALL_PIECES]
+                                    | ei.attackedBy[Us][ALL_PIECES]);
 
-        // Unsafe pawn threats
-        if (unsafe_pawn_threats)
+        safeThreats = (shift_bb<Right>(b) | shift_bb<Left>(b)) & weak;
+
+        if (weak ^ safeThreats)
             score += ThreatenedByHangingPawn;
 
-        // Evaluate safe pawn threats
-        while (safe_pawn_threats)
-            score += ThreatenedByPawn[type_of(pos.piece_on(pop_lsb(&safe_pawn_threats)))];
+        while (safeThreats)
+            score += ThreatenedByPawn[type_of(pos.piece_on(pop_lsb(&safeThreats)))];
     }
 
     // Non-pawn enemies defended by a pawn

@@ -180,17 +180,19 @@ namespace {
         // Score this pawn
         if (isolated)
             score -= Isolated[opposed][f];
+
         else if (backward)
             score -= Backward[opposed][f];
+
         else if (!supported)
             score -= UnsupportedPawnPenalty;
 
         if (connected)
             score += Connected[opposed][!!phalanx][more_than_one(supported)][relative_rank(Us, s)];
- 
+
         if (doubled)
             score -= Doubled[f] / distance<Rank>(s, frontmost_sq(Us, doubled));
-                    
+
         if (lever)
             score += Lever[relative_rank(Us, s)];
     }
