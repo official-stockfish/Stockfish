@@ -211,9 +211,6 @@ void MovePicker::generate_next_stage() {
       killers[1] = ss->killers[1];
       killers[2].move = MOVE_NONE;
 
-      // In SMP case countermoves[] could have duplicated entries
-      // in rare cases (less than 1 out of a million). This is harmless.
-
       // Be sure countermoves are different from killers
       if (   countermove != killers[0]
           && countermove != killers[1])
