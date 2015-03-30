@@ -48,11 +48,8 @@ struct Stats {
 
   void update(Piece pc, Square to, Move m) {
 
-    if (m == table[pc][to].first)
-        return;
-
-    table[pc][to].second = table[pc][to].first;
-    table[pc][to].first = m;
+    if (m != table[pc][to])
+        table[pc][to] = m;
   }
 
   void update(Piece pc, Square to, Value v) {
@@ -70,7 +67,7 @@ private:
 
 typedef Stats< true, Value> GainsStats;
 typedef Stats<false, Value> HistoryStats;
-typedef Stats<false, std::pair<Move, Move> > MovesStats;
+typedef Stats<false, Move> MovesStats;
 typedef Stats<false, HistoryStats> CounterMovesHistoryStats;
 
 
@@ -88,7 +85,7 @@ public:
 
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
   MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
-  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move*, Search::Stack*);
+  MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move, Search::Stack*);
 
   template<bool SpNode> Move next_move();
 
@@ -102,10 +99,10 @@ private:
   const HistoryStats& history;
   const CounterMovesHistoryStats& counterMovesHistory;
   Search::Stack* ss;
-  Move* countermoves;
+  Move countermove;
   Depth depth;
   Move ttMove;
-  ExtMove killers[4];
+  ExtMove killers[3];
   Square recaptureSquare;
   Value captureThreshold;
   int stage;
