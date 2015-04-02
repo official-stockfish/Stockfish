@@ -78,15 +78,15 @@ namespace {
 ///  inc >  0 && movestogo == 0 means: x basetime + z increment
 ///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
-void TimeManager::init(const Search::LimitsType& limits, Color us, int ply)
+void TimeManager::init(const Search::LimitsType& limits, Color us, int ply, TimePoint now)
 {
   int minThinkingTime = Options["Minimum Thinking Time"];
   int moveOverhead    = Options["Move Overhead"];
   int slowMover       = Options["Slow Mover"];
 
-  // Initialize unstablePvFactor to 1 and search times to maximum values
+  start = now;
   unstablePvFactor = 1;
-  optimumSearchTime = maximumSearchTime = std::max(limits.time[us], minThinkingTime);
+  optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
 
   const int MaxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
 
@@ -105,12 +105,12 @@ void TimeManager::init(const Search::LimitsType& limits, Color us, int ply)
       int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
       int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
 
-      optimumSearchTime = std::min(t1, optimumSearchTime);
-      maximumSearchTime = std::min(t2, maximumSearchTime);
+      optimumTime = std::min(t1, optimumTime);
+      maximumTime = std::min(t2, maximumTime);
   }
 
   if (Options["Ponder"])
-      optimumSearchTime += optimumSearchTime / 4;
+      optimumTime += optimumTime / 4;
 
-  optimumSearchTime = std::min(optimumSearchTime, maximumSearchTime);
+  optimumTime = std::min(optimumTime, maximumTime);
 }
