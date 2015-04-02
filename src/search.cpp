@@ -783,10 +783,9 @@ namespace {
 moves_loop: // When in check and at SpNode search starts from here
 
     Square prevMoveSq = to_sq((ss-1)->currentMove);
-    Move countermoves[] = { Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq].first,
-                            Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq].second };
+    Move countermove = Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq];
 
-    MovePicker mp(pos, ttMove, depth, History, CounterMovesHistory, countermoves, ss);
+    MovePicker mp(pos, ttMove, depth, History, CounterMovesHistory, countermove, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -965,7 +964,7 @@ moves_loop: // When in check and at SpNode search starts from here
                                        [pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO))
               ss->reduction += ONE_PLY;
 
-          if (move == countermoves[0] || move == countermoves[1])
+          if (move == countermove)
               ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
 
           // Decrease reduction for moves that escape a capture
