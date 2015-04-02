@@ -22,16 +22,16 @@
 
 #include "misc.h"
 
-/// The TimeManager class computes the optimal time to think depending on the
-/// maximum available time, the game move number and other parameters.
+/// The TimeManagement class computes the optimal time to think depending on
+/// the maximum available time, the game move number and other parameters.
 
-class TimeManager {
+class TimeManagement {
 public:
   void init(const Search::LimitsType& limits, Color us, int ply, TimePoint now);
   void pv_instability(double bestMoveChanges) { unstablePvFactor = 1 + bestMoveChanges; }
-  int available_time() const { return int(optimumTime * unstablePvFactor * 0.76); }
-  int maximum_time() const { return maximumTime; }
-  int elapsed_time() const { return now() - start; }
+  int available() const { return int(optimumTime * unstablePvFactor * 0.76); }
+  int maximum() const { return maximumTime; }
+  int elapsed() const { return now() - start; }
 
 private:
   TimePoint start;
