@@ -21,6 +21,7 @@
 #define TIMEMAN_H_INCLUDED
 
 #include "misc.h"
+#include "search.h"
 
 /// The TimeManagement class computes the optimal time to think depending on
 /// the maximum available time, the game move number and other parameters.
@@ -31,7 +32,7 @@ public:
   void pv_instability(double bestMoveChanges) { unstablePvFactor = 1 + bestMoveChanges; }
   int available() const { return int(optimumTime * unstablePvFactor * 0.76); }
   int maximum() const { return maximumTime; }
-  int elapsed() const { return now() - start; }
+  int elapsed() const { return Search::Limits.npmsec ? Search::RootPos.nodes_searched() : now() - start; }
 
   int64_t availableNodes; // When in 'nodes as time' mode
 
