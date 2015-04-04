@@ -38,6 +38,14 @@ void dbg_hit_on(bool b);
 void dbg_hit_on(bool c, bool b);
 void dbg_mean_of(int v);
 void dbg_print();
+void dbg_stats_of();
+void dbg_stats_add_sample(double p);
+
+template<typename T, typename... Params>
+void dbg_stats_of(T p, Params... parameters) {
+  dbg_stats_add_sample(double(p));
+  dbg_stats_of(parameters...);
+}
 
 typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
 
