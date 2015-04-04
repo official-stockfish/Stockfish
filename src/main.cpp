@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
   std::cout << engine_info() << std::endl;
 
   UCI::init(Options);
+  Tune::init();
   Bitboards::init();
   Position::init();
   Bitbases::init();
