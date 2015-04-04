@@ -127,6 +127,35 @@ void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
 void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
 void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 
+static std::vector<double> Samples, Sums, Covariances;
+static size_t samplesCnt;
+
+void dbg_stats_add_sample(double p) { Samples.push_back(p); }
+
+void dbg_stats_of() {
+
+  const size_t N = Samples.size();
+
+  if (Sums.size() != N)
+  {
+      samplesCnt = 0;
+      Sums.clear();
+      Sums.resize(N);
+      Covariances.clear();
+      Covariances.resize(N * N);
+  }
+
+  for (size_t i = 0; i < N; ++i)
+  {
+      Sums[i] += Samples[i];
+      for (size_t j = 0; j < N; ++j)
+          Covariances[i * N + j] += Samples[i] * Samples[j];
+  }
+
+  samplesCnt++;
+  Samples.clear();
+}
+
 void dbg_print() {
 
   if (hits[0])
@@ -136,6 +165,32 @@ void dbg_print() {
   if (means[0])
       cerr << "Total " << means[0] << " Mean "
            << (double)means[1] / means[0] << endl;
+
+  if (samplesCnt)
+  {
+      const size_t N = Sums.size();
+
+      std::cerr << "\nTotal samples: " << samplesCnt;
+      std::cerr << "\n\nMeans:\n";
+
+      for (size_t i = 0; i < Sums.size(); ++i)
+          std::cerr << showpoint << noshowpos << fixed << setprecision(2)
+                    << std::setw(15) << Sums[i] / samplesCnt << " ";
+
+      std::cerr << "\n\nCovariances:\n";
+
+      for (size_t i = 0; i < Covariances.size(); ++i)
+      {
+          if (i % N == 0)
+              std::cerr << "\n";
+
+          std::cerr << showpoint << noshowpos << fixed << setprecision(2) << std::setw(15)
+                    << (Covariances[i] - Sums[i % N] * Sums[i/N] / samplesCnt) / samplesCnt
+                    << " ";
+      }
+
+      std::cerr << "\n";
+  }
 }
 
 
