@@ -599,7 +599,7 @@ namespace {
         ss->currentMove = ttMove; // Can be MOVE_NONE
 
         // If ttMove is quiet, update killers, history, counter move on TT hit
-        if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove) && !inCheck)
+        if (ttValue >= beta && ttMove && !pos.capture_or_promotion(ttMove))
             update_stats(pos, ss, ttMove, depth, nullptr, 0);
 
         return ttValue;
@@ -1144,7 +1144,7 @@ moves_loop: // When in check and at SpNode search starts from here
                    :     inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
 
     // Quiet best move: update killers, history and countermoves
-    else if (bestValue >= beta && !pos.capture_or_promotion(bestMove) && !inCheck)
+    else if (bestValue >= beta && !pos.capture_or_promotion(bestMove))
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount - 1);
 
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
