@@ -70,29 +70,6 @@ static uint64 calc_key(Position& pos, int mirror)
   return key;
 }
 
-// Produce a 64-bit material key corresponding to the material combination
-// defined by pcs[16], where pcs[1], ..., pcs[6] is the number of white
-// pawns, ..., kings and pcs[9], ..., pcs[14] is the number of black
-// pawns, ..., kings.
-static uint64 calc_key_from_pcs(int *pcs, int mirror)
-{
-  int color;
-  PieceType pt;
-  int i;
-  uint64 key = 0;
-
-  color = !mirror ? 0 : 8;
-  for (pt = PAWN; pt <= KING; ++pt)
-    for (i = 0; i < pcs[color + pt]; i++)
-      key ^= Zobrist::psq[WHITE][pt][i];
-  color ^= 8;
-  for (pt = PAWN; pt <= KING; ++pt)
-    for (i = 0; i < pcs[color + pt]; i++)
-      key ^= Zobrist::psq[BLACK][pt][i];
-
-  return key;
-}
-
 bool is_little_endian() {
   union {
     int i;
@@ -247,7 +224,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
         free_dtz_entry(DTZ_table[DTZ_ENTRIES-1].entry);
       for (i = DTZ_ENTRIES - 1; i > 0; i--)
         DTZ_table[i] = DTZ_table[i - 1];
-      load_dtz_table(str, calc_key(pos, mirror), calc_key(pos, !mirror));
+      Tablebases::load_dtz_table(str, calc_key(pos, mirror), calc_key(pos, !mirror));
     }
   }
 
@@ -829,5 +806,193 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves
   rootMoves.resize(j, Search::RootMove(MOVE_NONE));
 
   return true;
+}
+
+long long Tablebases::calc_key_from_pcs(int * pcs, int mirror)
+{
+	int color;
+	PieceType pt;
+	int i;
+	uint64 key = 0;
+
+	color = !mirror ? 0 : 8;
+	for (pt = PAWN; pt <= KING; ++pt)
+		for (i = 0; i < pcs[color + pt]; i++)
+			key ^= Zobrist::psq[WHITE][pt][i];
+	color ^= 8;
+	for (pt = PAWN; pt <= KING; ++pt)
+		for (i = 0; i < pcs[color + pt]; i++)
+			key ^= Zobrist::psq[BLACK][pt][i];
+
+	return key;
+}
+
+void Tablebases::init(const std::string& path)
+{
+	char str[16];
+	int i, j, k, l;
+
+	if (initialized) {
+		free(path_string);
+		free(paths);
+		struct TBEntry *entry;
+		for (i = 0; i < TBnum_piece; i++) {
+			entry = (struct TBEntry *)&TB_piece[i];
+			free_wdl_entry(entry);
+		}
+		for (i = 0; i < TBnum_pawn; i++) {
+			entry = (struct TBEntry *)&TB_pawn[i];
+			free_wdl_entry(entry);
+		}
+		for (i = 0; i < DTZ_ENTRIES; i++)
+			if (DTZ_table[i].entry)
+				free_dtz_entry(DTZ_table[i].entry);
+	}
+	else {
+		init_indices();
+		initialized = true;
+	}
+
+	const char *p = path.c_str();
+	if (strlen(p) == 0 || !strcmp(p, "<empty>")) return;
+	path_string = (char *)malloc(strlen(p) + 1);
+	strcpy(path_string, p);
+	num_paths = 0;
+	for (i = 0;; i++) {
+		if (path_string[i] != SEP_CHAR)
+			num_paths++;
+		while (path_string[i] && path_string[i] != SEP_CHAR)
+			i++;
+		if (!path_string[i]) break;
+		path_string[i] = 0;
+	}
+	paths = (char **)malloc(num_paths * sizeof(char *));
+	for (i = j = 0; i < num_paths; i++) {
+		while (!path_string[j]) j++;
+		paths[i] = &path_string[j];
+		while (path_string[j]) j++;
+	}
+
+	LOCK_INIT(TB_mutex);
+
+	TBnum_piece = TBnum_pawn = 0;
+	MaxCardinality = 0;
+
+	for (i = 0; i < (1 << TBHASHBITS); i++)
+		for (j = 0; j < HSHMAX; j++) {
+			TB_hash[i][j].key = 0ULL;
+			TB_hash[i][j].ptr = NULL;
+		}
+
+	for (i = 0; i < DTZ_ENTRIES; i++)
+		DTZ_table[i].entry = NULL;
+
+	for (i = 1; i < 6; i++) {
+		sprintf(str, "K%cvK", pchr[i]);
+		init_tb(str);
+	}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++) {
+			sprintf(str, "K%cvK%c", pchr[i], pchr[j]);
+			init_tb(str);
+		}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++) {
+			sprintf(str, "K%c%cvK", pchr[i], pchr[j]);
+			init_tb(str);
+		}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++)
+			for (k = 1; k < 6; k++) {
+				sprintf(str, "K%c%cvK%c", pchr[i], pchr[j], pchr[k]);
+				init_tb(str);
+			}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++)
+			for (k = j; k < 6; k++) {
+				sprintf(str, "K%c%c%cvK", pchr[i], pchr[j], pchr[k]);
+				init_tb(str);
+			}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++)
+			for (k = i; k < 6; k++)
+				for (l = (i == k) ? j : k; l < 6; l++) {
+					sprintf(str, "K%c%cvK%c%c", pchr[i], pchr[j], pchr[k], pchr[l]);
+					init_tb(str);
+				}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++)
+			for (k = j; k < 6; k++)
+				for (l = 1; l < 6; l++) {
+					sprintf(str, "K%c%c%cvK%c", pchr[i], pchr[j], pchr[k], pchr[l]);
+					init_tb(str);
+				}
+
+	for (i = 1; i < 6; i++)
+		for (j = i; j < 6; j++)
+			for (k = j; k < 6; k++)
+				for (l = k; l < 6; l++) {
+					sprintf(str, "K%c%c%c%cvK", pchr[i], pchr[j], pchr[k], pchr[l]);
+					init_tb(str);
+				}
+
+	printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
+}
+
+void Tablebases::load_dtz_table(char * str, long long key1, long long key2)
+{
+	int i;
+	struct TBEntry *ptr, *ptr3;
+	struct TBHashEntry *ptr2;
+
+	DTZ_table[0].key1 = key1;
+	DTZ_table[0].key2 = key2;
+	DTZ_table[0].entry = NULL;
+
+	// find corresponding WDL entry
+	ptr2 = TB_hash[key1 >> (64 - TBHASHBITS)];
+	for (i = 0; i < HSHMAX; i++)
+		if (ptr2[i].key == key1) break;
+	if (i == HSHMAX) return;
+	ptr = ptr2[i].ptr;
+
+	ptr3 = (struct TBEntry *)malloc(ptr->has_pawns
+		? sizeof(struct DTZEntry_pawn)
+		: sizeof(struct DTZEntry_piece));
+
+	ptr3->data = map_file(str, DTZSUFFIX, &ptr3->mapping);
+	ptr3->key = ptr->key;
+	ptr3->num = ptr->num;
+	ptr3->symmetric = ptr->symmetric;
+	ptr3->has_pawns = ptr->has_pawns;
+	if (ptr3->has_pawns) {
+		struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr3;
+		entry->pawns[0] = ((struct TBEntry_pawn *)ptr)->pawns[0];
+		entry->pawns[1] = ((struct TBEntry_pawn *)ptr)->pawns[1];
+	}
+	else {
+		struct DTZEntry_piece *entry = (struct DTZEntry_piece *)ptr3;
+		entry->enc_type = ((struct TBEntry_piece *)ptr)->enc_type;
+	}
+	if (!init_table_dtz(ptr3))
+		free(ptr3);
+	else
+		DTZ_table[0].entry = ptr3;
+}
+
+short Tablebases::ReadUshort(unsigned char * d)
+{
+	return ushort(d[0] | (d[1] << 8));
+}
+
+int Tablebases::ReadUint32(unsigned char * d)
+{
+	return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
 }
 

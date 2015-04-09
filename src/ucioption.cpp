@@ -58,8 +58,8 @@ void init(OptionsMap& o) {
   o["Write Debug Log"]       << Option(false, on_logger);
   o["Contempt"]              << Option(0, -100, 100);
   o["Min Split Depth"]       << Option(0, 0, 12, on_threads);
-  o["Threads"]               << Option(1, 1, MAX_THREADS, on_threads);
-  o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
+  o["Threads"]               << Option(5, 1, MAX_THREADS, on_threads);
+  o["Hash"]                  << Option(528, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(true);
   o["MultiPV"]               << Option(1, 1, 500);
@@ -73,6 +73,9 @@ void init(OptionsMap& o) {
 #endif
 #ifdef KOTH
   o["UCI_KingOfTheHill"]     << Option(false);
+#endif
+#ifdef THREECHECK
+  o["UCI_ThreeCheck"]		 << Option(false);
 #endif
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
