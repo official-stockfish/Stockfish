@@ -75,7 +75,7 @@ void init(OptionsMap& o) {
   o["UCI_KingOfTheHill"]     << Option(false);
 #endif
 #ifdef THREECHECK
-  o["UCI_ThreeCheck"]		 << Option(false);
+  o["UCI_ThreeCheck"]		 << Option(true);
 #endif
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);

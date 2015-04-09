@@ -68,11 +68,17 @@ namespace {
   enum NodeType { Root, PV, NonPV };
 
   // Razoring and futility margin based on depth
-#ifdef THREECHECK
-  inline Value razor_margin(Depth d) { return Value(512 + 64 * d); }
-#else
-  inline Value razor_margin(Depth d) { return Value(512 + 32 * d); }
-#endif
+
+  inline Value razor_margin(Position& pos, Depth d) 
+  { 
+	  if (pos.is_three_check())
+	  {
+		  return Value(512 + 64 * d);
+	  }
+
+	  return Value(512 + 32 * d); 
+  }
+
   inline Value futility_margin(Depth d) { return Value(200 * d); }
 
   // Futility and reductions lookup tables, initialized at startup
@@ -705,20 +711,18 @@ namespace {
 		  Gains.update(pos.piece_on(to), to, -(ss - 1)->staticEval - ss->staticEval);
 	  }
 
-
-
 	  // Step 6. Razoring (skipped when in check)
 	  if (!PvNode
 		  &&  depth < 4 * ONE_PLY
-		  &&  eval + razor_margin(depth) <= alpha
+		  &&  eval + razor_margin(pos, depth) <= alpha
 		  &&  ttMove == MOVE_NONE
 		  && !pos.pawn_on_7th(pos.side_to_move()))
 	  {
 		  if (depth <= ONE_PLY
-			  && eval + razor_margin(3 * ONE_PLY) <= alpha)
+			  && eval + razor_margin(pos, 3 * ONE_PLY) <= alpha)
 			  return qsearch<NonPV, false>(pos, ss, alpha, beta, DEPTH_ZERO);
 
-		  Value ralpha = alpha - razor_margin(depth);
+		  Value ralpha = alpha - razor_margin(pos, depth);
 		  Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha + 1, DEPTH_ZERO);
 		  if (v <= ralpha)
 			  return v;
