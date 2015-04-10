@@ -281,6 +281,13 @@ void MovePicker::generate_next_stage() {
 template<>
 Move MovePicker::next_move<false>() {
 
+#ifdef THREECHECK
+	assert(pos.checks_given() < 3);
+
+	if (pos.checks_taken() == 3)
+		return MOVE_NONE;
+#endif
+
   Move move;
 
   while (true)

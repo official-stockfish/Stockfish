@@ -145,18 +145,43 @@ void benchmark(const Position& current, istream& is) {
   uint64_t nodes = 0;
   Search::StateStackPtr st;
   TimePoint elapsed = now();
+  bool setVariant = false;
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
+	  Position pos;
+
 #ifdef HORDE
-      Position pos(fens[i], Options["UCI_Chess960"], Options["UCI_Horde"], Threads.main());
-#else
+	  if (Options["UCI_KingOfTheHill"])
+	  {
+		  pos = Position(fens[i], false, HORDE_VARIANT, Threads.main());
+		  setVariant = true;
+	  }
+#endif
+
 #ifdef KOTH
-      Position pos(fens[i], Options["UCI_Chess960"], Options["UCI_KingOfTheHill"], Threads.main());
-#else
-      Position pos(fens[i], Options["UCI_Chess960"], Threads.main());
+	  if (Options["UCI_KingOfTheHill"] && !setVariant)
+	  {
+		  pos = Position(fens[i], false, KOTH_VARIANT, Threads.main());
+		  setVariant = true;
+	  }
+
 #endif
+
+#ifdef THREECHECK
+	  if (Options["UCI_ThreeCheck"] && !setVariant)
+	  {
+		  pos = Position(fens[i], false, THREECHECK_VARIANT, Threads.main());
+		  setVariant = true;
+	  }
 #endif
+
+	  if (!setVariant)
+	  {
+		  pos = Position(fens[i], Options["UCI_Chess960"], 0, Threads.main());
+	  }
+
+	  setVariant = false;
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 

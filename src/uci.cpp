@@ -57,31 +57,54 @@ namespace {
 
   void position(Position& pos, istringstream& is) {
 
-    Move m;
-    string token, fen;
+	  Move m;
+	  string token, fen;
 
-    is >> token;
+	  is >> token;
 
-    if (token == "startpos")
-    {
-        fen = StartFEN;
-        is >> token; // Consume "moves" token if any
-    }
-    else if (token == "fen")
-        while (is >> token && token != "moves")
-            fen += token + " ";
-    else
-        return;
+	  if (token == "startpos")
+	  {
+		  fen = StartFEN;
+		  is >> token; // Consume "moves" token if any
+	  }
+	  else if (token == "fen")
+		  while (is >> token && token != "moves")
+			  fen += token + " ";
+	  else
+		  return;
+
+	  bool setVariant = false;
 
 #ifdef HORDE
-    pos.set(fen, Options["UCI_Chess960"], Options["UCI_Horde"], Threads.main());
-#else
+	  if (Options["UCI_KingOfTheHill"])
+	  {
+		  pos.set(fen, false, HORDE_VARIANT, Threads.main());
+		  setVariant = true;
+	  }
+#endif
+
 #ifdef KOTH
-    pos.set(fen, Options["UCI_Chess960"], Options["UCI_KingOfTheHill"], Threads.main());
-#else
-    pos.set(fen, Options["UCI_Chess960"], Threads.main());
+	  if (Options["UCI_KingOfTheHill"] && !setVariant)
+	  {
+		  pos.set(fen, false, KOTH_VARIANT, Threads.main());
+		  setVariant = true;
+	  }
+
 #endif
+
+#ifdef THREECHECK
+	  if (Options["UCI_ThreeCheck"] && !setVariant)
+	  {
+		  pos.set(fen, false, THREECHECK_VARIANT, Threads.main());
+		  setVariant = true;
+	  }	 
 #endif
+
+	if (!setVariant)
+	{
+		pos.set(fen, Options["UCI_Chess960"], 0, Threads.main());
+	}
+    
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
 
     // Parse move list (if any)
@@ -99,6 +122,13 @@ namespace {
   void setoption(istringstream& is) {
 
     string token, name, value;
+
+#if THREECHECK
+	if (name == "SyzygyPath")
+	{
+		return;
+	}
+#endif
 
     is >> token; // Consume "name" token
 
@@ -157,6 +187,9 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
+#ifdef THREECHECK
+  Position pos(StartFEN, Threads.main()); // The root position
+#else
 #ifdef HORDE
   Position pos(StartFEN, Threads.main()); // The root position
 #else
@@ -164,6 +197,7 @@ void UCI::loop(int argc, char* argv[]) {
   Position pos(StartFEN, Threads.main()); // The root position
 #else
   Position pos(StartFEN, false, Threads.main()); // The root position
+#endif
 #endif
 #endif
   string token, cmd;

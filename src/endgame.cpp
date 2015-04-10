@@ -102,7 +102,11 @@ namespace {
 #ifdef KOTH
     return Position(fen, nullptr).material_key();
 #else
+#ifdef THREECHECK
+	return Position(fen, nullptr).material_key();
+#else
     return Position(fen, false, nullptr).material_key();
+#endif
 #endif
 #endif
   }

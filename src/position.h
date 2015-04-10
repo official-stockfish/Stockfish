@@ -57,6 +57,9 @@ struct StateInfo {
   int    castlingRights;
   int    rule50;
   int    pliesFromNull;
+#ifdef THREECHECK
+  unsigned checksGiven[2];
+#endif
   Score  psq;
   Square epSquare;
 
@@ -83,29 +86,16 @@ public:
   Position() = default; // To define the global object RootPos
   Position(const Position&) = delete;
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
-#ifdef HORDE
-  Position(const std::string& f, Thread* t) { set(f, false, false, t); }
-  Position(const std::string& f, bool c960, bool cHorde, Thread* t) { set(f, c960, cHorde, t); }
-#else
-#ifdef KOTH
-  Position(const std::string& f, Thread* t) { set(f, false, false, t); }
-  Position(const std::string& f, bool c960, bool cKOTH, Thread* t) { set(f, c960, cKOTH, t); }
-#else
-  Position(const std::string& f, bool c960, Thread* t) { set(f, c960, t); }
-#endif
-#endif
+
+  Position(const std::string& f, Thread* t) { set(f, false, 0, t); }
+  Position(const std::string& f, bool c960, int variant, Thread* t) { set(f, c960, variant, t); }
+
   Position& operator=(const Position&); // To assign RootPos from UCI
 
   // FEN string input/output
-#ifdef HORDE
-  void set(const std::string& fenStr, bool isChess960, bool isChessHorde, Thread* th);
-#else
-#ifdef KOTH
-  void set(const std::string& fenStr, bool isChess960, bool isKOTH, Thread* th);
-#else
-  void set(const std::string& fenStr, bool isChess960, Thread* th);
-#endif
-#endif
+  void set(const std::string& fenStr, bool isChess960, int variant, Thread* th);
+  //void set(const std::string& fenStr, bool isChess960, Thread* th);
+
   const std::string fen() const;
 
   // Position representation
@@ -187,6 +177,15 @@ public:
   bool is_koth_loss() const;
   int koth_distance(Color c) const;
 #endif
+#ifdef THREECHECK
+  bool in_check() const;
+  bool is_three_check() const;
+  bool got_third_check() const;
+  unsigned checks_given() const;
+  unsigned checks_taken() const;
+  unsigned checks_index() const;
+  void hash_three_check(Key& key, unsigned checksGiven);
+#endif
   Thread* this_thread() const;
   uint64_t nodes_searched() const;
   void set_nodes_searched(uint64_t n);
@@ -240,6 +239,10 @@ private:
 #ifdef KOTH
   bool koth;
 #endif
+#ifdef THREECHECK
+  bool threeCheck;
+#endif
+
 };
 
 inline Color Position::side_to_move() const {
@@ -296,6 +299,28 @@ inline Square Position::king_square(Color c) const {
 #endif
   return pieceList[c][KING][0];
 }
+
+#ifdef THREECHECK
+inline bool Position::is_three_check() const {
+	return threeCheck;
+}
+
+inline bool Position::got_third_check() const {
+	return st->checksGiven[sideToMove ^ 1] == 3;
+}
+
+inline unsigned Position::checks_given() const {
+	return st->checksGiven[sideToMove];
+}
+
+inline unsigned Position::checks_taken() const {
+	return st->checksGiven[sideToMove ^ 1];
+}
+
+inline unsigned Position::checks_index() const {
+	return unsigned(threeCheck) + st->checksGiven[sideToMove];
+}
+#endif
 
 inline Square Position::ep_square() const {
   return st->epSquare;
@@ -432,13 +457,13 @@ inline bool Position::is_koth_loss() const {
 
 inline int Position::koth_distance(Color c) const {
   Square ksq = king_square(c);
-  int distance =
-    square_distance(ksq, SQ_D4) +
-    square_distance(ksq, SQ_E4) +
-    square_distance(ksq, SQ_D5) +
-    square_distance(ksq, SQ_E5);
+  int sdistance =
+    distance(ksq, SQ_D4) +
+	distance(ksq, SQ_E4) +
+	distance(ksq, SQ_D5) +
+	distance(ksq, SQ_E5);
   // Return 0 if in the center, weighted average distance otherwise
-  return distance < 4 ? 0 : (distance + 1) / 4;
+  return sdistance < 4 ? 0 : (sdistance + 1) / 4;
 }
 #endif
 
