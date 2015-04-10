@@ -1405,8 +1405,7 @@ moves_loop: // When in check and at SpNode search starts from here
     *pv = MOVE_NONE;
   }
 
-  // update_stats() updates killers, history and countermoves stats after a fail-high
-  // of a quiet move.
+  // update_stats() updates killers, history, countermove history and countermoves stats for a quiet best move.
 
   void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt) {
 
