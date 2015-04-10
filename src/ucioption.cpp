@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <sstream>
+#include <ostream>
 
 #include "misc.h"
 #include "thread.h"
