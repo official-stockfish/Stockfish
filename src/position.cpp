@@ -149,6 +149,7 @@ void Position::init() {
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
   {
+      Zobrist::castling[cr] = 0;
       Bitboard b = cr;
       while (b)
       {
