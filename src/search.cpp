@@ -1068,7 +1068,6 @@ moves_loop: // When in check and at SpNode search starts from here
               rm.score = -VALUE_INFINITE;
       }
 
-      bool newBestMove = false;
       if (value > bestValue)
       {
           bestValue = SpNode ? splitPoint->bestValue = value : value;
@@ -1081,7 +1080,6 @@ moves_loop: // When in check and at SpNode search starts from here
                   && (move != EasyMove.get(pos.key()) || moveCount > 1))
                   EasyMove.clear();
 
-              newBestMove = true;
               bestMove = SpNode ? splitPoint->bestMove = move : move;
 
               if (PvNode && !RootNode) // Update pv even in fail-high case
@@ -1101,7 +1099,7 @@ moves_loop: // When in check and at SpNode search starts from here
           }
       }
 
-      if (!SpNode && !captureOrPromotion && !newBestMove && quietCount < 64)
+      if (!SpNode && !captureOrPromotion && move != bestMove && quietCount < 64)
           quietsSearched[quietCount++] = move;
 
       // Step 19. Check for splitting the search
@@ -1147,7 +1145,7 @@ moves_loop: // When in check and at SpNode search starts from here
                    :     inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
 
     // Quiet best move: update killers, history and countermoves
-    else if (bestMove != MOVE_NONE && !pos.capture_or_promotion(bestMove))
+    else if (bestMove && !pos.capture_or_promotion(bestMove))
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount);
 
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
@@ -1405,9 +1403,12 @@ moves_loop: // When in check and at SpNode search starts from here
     *pv = MOVE_NONE;
   }
 
-  // update_stats() updates killers, history, countermove history and countermoves stats for a quiet best move.
 
-  void update_stats(const Position& pos, Stack* ss, Move move, Depth depth, Move* quiets, int quietsCnt) {
+  // update_stats() updates killers, history, countermove history and
+  // countermoves stats for a quiet best move.
+
+  void update_stats(const Position& pos, Stack* ss, Move move,
+                    Depth depth, Move* quiets, int quietsCnt) {
 
     if (ss->killers[0] != move)
     {
