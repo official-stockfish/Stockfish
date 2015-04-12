@@ -58,6 +58,15 @@ namespace {
       return *begin;
   }
 
+  int captureScore [6][5] = {
+      // Captured:  Pawn   Knight  Bishop  Rook    Queen     Capturing
+                    {197,   816,    835,   1269,   2520},  // Pawn
+                    {196,   815,    834,   1268,   2519},  // Knight
+                    {195,   814,    833,   1267,   2518},  // Bishop
+                    {194,   813,    832,   1266,   2517},  // Rook
+                    {193,   812,    831,   1265,   2516},  // Queen
+                    {192,   811,    830,   1264,   2515}}; // King
+
 } // namespace
 
 
@@ -149,14 +158,11 @@ void MovePicker::score<CAPTURES>() {
   // calls in case we get a cutoff.
   for (auto& m : *this)
       if (type_of(m) == ENPASSANT)
-          m.value = PieceValue[MG][PAWN] - Value(PAWN);
-
+          m.value = Value(captureScore[PAWN-1][PAWN-1]);
       else if (type_of(m) == PROMOTION)
-          m.value =  PieceValue[MG][pos.piece_on(to_sq(m))] - Value(PAWN)
-                   + PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
+          m.value =  Value(captureScore[PAWN-1][type_of(pos.piece_on(to_sq(m)))-1]) + PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
       else
-          m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                   - Value(type_of(pos.moved_piece(m)));
+          m.value = Value(captureScore[type_of(pos.moved_piece(m))-1][type_of(pos.piece_on(to_sq(m)))-1]);
 }
 
 template<>
