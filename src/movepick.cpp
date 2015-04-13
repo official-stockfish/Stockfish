@@ -19,6 +19,7 @@
 */
 
 #include <cassert>
+#include <iostream>
 
 #include "movepick.h"
 #include "thread.h"
@@ -58,14 +59,15 @@ namespace {
       return *begin;
   }
 
-  int captureScore [6][5] = {
-      // Captured:  Pawn   Knight  Bishop  Rook    Queen     Capturing
-                    {197,   816,    835,   1269,   2520},  // Pawn
-                    {196,   815,    834,   1268,   2519},  // Knight
-                    {195,   814,    833,   1267,   2518},  // Bishop
-                    {194,   813,    832,   1266,   2517},  // Rook
-                    {193,   812,    831,   1265,   2516},  // Queen
-                    {192,   811,    830,   1264,   2515}}; // King
+  int captureScore [7][6] = {
+      // Captured:  EP-Pawn Pawn   Knight  Bishop  Rook    Queen     Capturing
+                    {197,   197,   816,    835,   1269,   2520},  // Pawn
+                    {  0,   196,   815,    834,   1268,   2519},  // Knight
+                    {  0,   195,   814,    833,   1267,   2518},  // Bishop
+                    {  0,   194,   813,    832,   1266,   2517},  // Rook
+                    {  0,   193,   812,    831,   1265,   2516},  // Queen
+                    {  0,   192,   811,    830,   1264,   2515},  // King
+                    {  0,     0,   619,    638,   1072,   2323}}; // Promotion bonus
 
 } // namespace
 
@@ -157,12 +159,9 @@ void MovePicker::score<CAPTURES>() {
   // has been picked up in pick_move_from_list(). This way we save some SEE
   // calls in case we get a cutoff.
   for (auto& m : *this)
-      if (type_of(m) == ENPASSANT)
-          m.value = Value(captureScore[PAWN-1][PAWN-1]);
-      else if (type_of(m) == PROMOTION)
-          m.value =  Value(captureScore[PAWN-1][type_of(pos.piece_on(to_sq(m)))-1]) + PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
-      else
-          m.value = Value(captureScore[type_of(pos.moved_piece(m))-1][type_of(pos.piece_on(to_sq(m)))-1]);
+      m.value = type_of(m) == PROMOTION ?
+                  Value(captureScore[PAWN][type_of(pos.piece_on(to_sq(m)))]) + Value(captureScore[6][promotion_type(m)]) :
+                  Value(captureScore[type_of(pos.moved_piece(m))-1][type_of(pos.piece_on(to_sq(m)))]);
 }
 
 template<>
