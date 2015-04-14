@@ -231,7 +231,7 @@ template<> inline int distance<Rank>(Square x, Square y) { return distance(rank_
 /// piece of type Pt (bishop or rook) placed on 's'. The helper magic_index()
 /// looks up the index using the 'magic bitboards' approach.
 template<PieceType Pt>
-FORCE_INLINE unsigned magic_index(Square s, Bitboard occupied) {
+inline unsigned magic_index(Square s, Bitboard occupied) {
 
   Bitboard* const Masks  = Pt == ROOK ? RookMasks  : BishopMasks;
   Bitboard* const Magics = Pt == ROOK ? RookMagics : BishopMagics;
@@ -271,13 +271,13 @@ inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
 
 #  if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 
-FORCE_INLINE Square lsb(Bitboard b) {
+inline Square lsb(Bitboard b) {
   unsigned long idx;
   _BitScanForward64(&idx, b);
   return (Square) idx;
 }
 
-FORCE_INLINE Square msb(Bitboard b) {
+inline Square msb(Bitboard b) {
   unsigned long idx;
   _BitScanReverse64(&idx, b);
   return (Square) idx;
@@ -285,28 +285,28 @@ FORCE_INLINE Square msb(Bitboard b) {
 
 #  elif defined(__arm__)
 
-FORCE_INLINE int lsb32(uint32_t v) {
+inline int lsb32(uint32_t v) {
   __asm__("rbit %0, %1" : "=r"(v) : "r"(v));
   return __builtin_clz(v);
 }
 
-FORCE_INLINE Square msb(Bitboard b) {
+inline Square msb(Bitboard b) {
   return (Square) (63 - __builtin_clzll(b));
 }
 
-FORCE_INLINE Square lsb(Bitboard b) {
+inline Square lsb(Bitboard b) {
   return (Square) (uint32_t(b) ? lsb32(uint32_t(b)) : 32 + lsb32(uint32_t(b >> 32)));
 }
 
 #  else // Assumed gcc or compatible compiler
 
-FORCE_INLINE Square lsb(Bitboard b) { // Assembly code by Heinz van Saanen
+inline Square lsb(Bitboard b) { // Assembly code by Heinz van Saanen
   Bitboard idx;
   __asm__("bsfq %1, %0": "=r"(idx): "rm"(b) );
   return (Square) idx;
 }
 
-FORCE_INLINE Square msb(Bitboard b) {
+inline Square msb(Bitboard b) {
   Bitboard idx;
   __asm__("bsrq %1, %0": "=r"(idx): "rm"(b) );
   return (Square) idx;
@@ -324,7 +324,7 @@ Square msb(Bitboard b);
 
 /// pop_lsb() finds and clears the least significant bit in a non-zero bitboard
 
-FORCE_INLINE Square pop_lsb(Bitboard* b) {
+inline Square pop_lsb(Bitboard* b) {
   const Square s = lsb(*b);
   *b &= *b - 1;
   return s;
