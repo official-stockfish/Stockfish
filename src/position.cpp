@@ -58,7 +58,7 @@ Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 // valuable attacker for the side to move, remove the attacker we just found
 // from the bitboards and scan for new X-ray attacks behind it.
 
-template<int Pt> FORCE_INLINE
+template<int Pt>
 PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 
@@ -78,7 +78,7 @@ PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stm
   return (PieceType)Pt;
 }
 
-template<> FORCE_INLINE
+template<>
 PieceType min_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bitboard&, Bitboard&) {
   return KING; // No need to update bitboards: it is the last cycle
 }

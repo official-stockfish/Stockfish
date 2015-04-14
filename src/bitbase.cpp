@@ -53,7 +53,7 @@ namespace {
     WIN     = 4
   };
 
-  inline Result& operator|=(Result& r, Result v) { return r = Result(r | v); }
+  Result& operator|=(Result& r, Result v) { return r = Result(r | v); }
 
   struct KPKPosition {
     KPKPosition() = default;
