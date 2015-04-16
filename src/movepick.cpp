@@ -58,7 +58,7 @@ namespace {
       return *begin;
   }
 
-  int captureScore [7][6] = {
+  int captureScore [7][8] = {
       // Captured:  EP-Pawn Pawn   Knight  Bishop  Rook    Queen     Capturing
                     {197,   197,   816,    835,   1269,   2520},  // Pawn
                     {  0,   196,   815,    834,   1268,   2519},  // Knight
