@@ -79,14 +79,6 @@
 #  define pext(b, m) (0)
 #endif
 
-#ifdef _MSC_VER
-#  define FORCE_INLINE  __forceinline
-#elif defined(__GNUC__)
-#  define FORCE_INLINE  inline __attribute__((always_inline))
-#else
-#  define FORCE_INLINE  inline
-#endif
-
 #ifdef USE_POPCNT
 const bool HasPopCnt = true;
 #else
@@ -158,6 +150,12 @@ template<Color C, CastlingSide S> struct MakeCastling {
   right = C == WHITE ? S == QUEEN_SIDE ? WHITE_OOO : WHITE_OO
                      : S == QUEEN_SIDE ? BLACK_OOO : BLACK_OO;
 };
+
+#ifdef THREECHECK
+enum Checks {
+  CHECKS_0 = 0, CHECKS_1 = 1, CHECKS_2 = 2, CHECKS_3 = 3, CHECKS_NB = 4
+};
+#endif
 
 enum Phase {
   PHASE_ENDGAME,
@@ -307,6 +305,9 @@ ENABLE_FULL_OPERATORS_ON(Value)
 ENABLE_FULL_OPERATORS_ON(PieceType)
 ENABLE_FULL_OPERATORS_ON(Piece)
 ENABLE_FULL_OPERATORS_ON(Color)
+#ifdef THREECHECK
+ENABLE_FULL_OPERATORS_ON(Checks)
+#endif
 ENABLE_FULL_OPERATORS_ON(Depth)
 ENABLE_FULL_OPERATORS_ON(Square)
 ENABLE_FULL_OPERATORS_ON(File)

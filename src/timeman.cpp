@@ -25,6 +25,8 @@
 #include "timeman.h"
 #include "uci.h"
 
+TimeManagement Time; // Our global time management object
+
 namespace {
 
   enum TimeType { OptimumTime, MaxTime };
@@ -78,15 +80,31 @@ namespace {
 ///  inc >  0 && movestogo == 0 means: x basetime + z increment
 ///  inc >  0 && movestogo != 0 means: x moves in y minutes + z increment
 
-void TimeManager::init(const Search::LimitsType& limits, Color us, int ply)
+void TimeManagement::init(Search::LimitsType& limits, Color us, int ply, TimePoint now)
 {
   int minThinkingTime = Options["Minimum Thinking Time"];
   int moveOverhead    = Options["Move Overhead"];
   int slowMover       = Options["Slow Mover"];
+  int npmsec          = Options["nodestime"];
 
-  // Initialize unstablePvFactor to 1 and search times to maximum values
+  // If we have to play in 'nodes as time' mode, then convert from time
+  // to nodes, and use resulting values in time management formulas.
+  // WARNING: Given npms (nodes per millisecond) must be much lower then
+  // real engine speed to avoid time losses.
+  if (npmsec)
+  {
+      if (!availableNodes) // Only once at game start
+          availableNodes = npmsec * limits.time[us]; // Time is in msec
+
+      // Convert from millisecs to nodes
+      limits.time[us] = (int)availableNodes;
+      limits.inc[us] *= npmsec;
+      limits.npmsec = npmsec;
+  }
+
+  start = now;
   unstablePvFactor = 1;
-  optimumSearchTime = maximumSearchTime = std::max(limits.time[us], minThinkingTime);
+  optimumTime = maximumTime = std::max(limits.time[us], minThinkingTime);
 
   const int MaxMTG = limits.movestogo ? std::min(limits.movestogo, MoveHorizon) : MoveHorizon;
 
@@ -105,12 +123,12 @@ void TimeManager::init(const Search::LimitsType& limits, Color us, int ply)
       int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
       int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
 
-      optimumSearchTime = std::min(t1, optimumSearchTime);
-      maximumSearchTime = std::min(t2, maximumSearchTime);
+      optimumTime = std::min(t1, optimumTime);
+      maximumTime = std::min(t2, maximumTime);
   }
 
   if (Options["Ponder"])
-      optimumSearchTime += optimumSearchTime / 4;
+      optimumTime += optimumTime / 4;
 
-  optimumSearchTime = std::min(optimumSearchTime, maximumSearchTime);
+  optimumTime = std::min(optimumTime, maximumTime);
 }

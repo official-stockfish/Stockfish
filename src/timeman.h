@@ -20,20 +20,29 @@
 #ifndef TIMEMAN_H_INCLUDED
 #define TIMEMAN_H_INCLUDED
 
-/// The TimeManager class computes the optimal time to think depending on the
-/// maximum available time, the game move number and other parameters.
+#include "misc.h"
+#include "search.h"
 
-class TimeManager {
+/// The TimeManagement class computes the optimal time to think depending on
+/// the maximum available time, the game move number and other parameters.
+
+class TimeManagement {
 public:
-  void init(const Search::LimitsType& limits, Color us, int ply);
+  void init(Search::LimitsType& limits, Color us, int ply, TimePoint now);
   void pv_instability(double bestMoveChanges) { unstablePvFactor = 1 + bestMoveChanges; }
-  int available_time() const { return int(optimumSearchTime * unstablePvFactor * 0.76); }
-  int maximum_time() const { return maximumSearchTime; }
+  int available() const { return int(optimumTime * unstablePvFactor * 0.76); }
+  int maximum() const { return maximumTime; }
+  int elapsed() const { return int(Search::Limits.npmsec ? Search::RootPos.nodes_searched() : now() - start); }
+
+  int64_t availableNodes; // When in 'nodes as time' mode
 
 private:
-  int optimumSearchTime;
-  int maximumSearchTime;
+  TimePoint start;
+  int optimumTime;
+  int maximumTime;
   double unstablePvFactor;
 };
+
+extern TimeManagement Time;
 
 #endif // #ifndef TIMEMAN_H_INCLUDED

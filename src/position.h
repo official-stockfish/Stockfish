@@ -63,7 +63,7 @@ struct StateInfo {
   int    rule50;
   int    pliesFromNull;
 #ifdef THREECHECK
-  unsigned checksGiven[2];
+  Checks checksGiven[CHECKS_NB];
 #endif
   Score  psq;
   Square epSquare;
@@ -186,10 +186,8 @@ public:
   bool in_check() const;
   bool is_three_check() const;
   bool got_third_check() const;
-  unsigned checks_given() const;
-  unsigned checks_taken() const;
-  unsigned checks_index() const;
-  void hash_three_check(Key& key, unsigned checksGiven);
+  Checks checks_given() const;
+  Checks checks_taken() const;
 #endif
   Thread* this_thread() const;
   uint64_t nodes_searched() const;
@@ -307,23 +305,19 @@ inline Square Position::king_square(Color c) const {
 
 #ifdef THREECHECK
 inline bool Position::is_three_check() const {
-	return threeCheck;
+  return threeCheck;
 }
 
 inline bool Position::got_third_check() const {
-	return st->checksGiven[sideToMove ^ 1] == 3;
+  return st->checksGiven[~sideToMove] == 3;
 }
 
-inline unsigned Position::checks_given() const {
-	return st->checksGiven[sideToMove];
+inline Checks Position::checks_given() const {
+  return st->checksGiven[sideToMove];
 }
 
-inline unsigned Position::checks_taken() const {
-	return st->checksGiven[sideToMove ^ 1];
-}
-
-inline unsigned Position::checks_index() const {
-	return unsigned(threeCheck) + st->checksGiven[sideToMove];
+inline Checks Position::checks_taken() const {
+  return st->checksGiven[~sideToMove];
 }
 #endif
 

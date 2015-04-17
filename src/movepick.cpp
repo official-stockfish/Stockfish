@@ -52,7 +52,7 @@ namespace {
   // pick_best() finds the best move in the range (begin, end) and moves it to
   // the front. It's faster than sorting all the moves in advance when there
   // are few moves e.g. the possible captures.
-  inline Move pick_best(ExtMove* begin, ExtMove* end)
+  Move pick_best(ExtMove* begin, ExtMove* end)
   {
       std::swap(*begin, *std::max_element(begin, end));
       return *begin;
@@ -68,13 +68,12 @@ namespace {
 /// ordering is at the current node.
 
 MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const CounterMovesHistoryStats& cmh,
-                       Move* cm, Move* fm, Search::Stack* s) : pos(p), history(h), counterMovesHistory(cmh), depth(d) {
+                       Move cm, Search::Stack* s) : pos(p), history(h), counterMovesHistory(cmh), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
   endBadCaptures = moves + MAX_MOVES - 1;
-  countermoves = cm;
-  followupmoves = fm;
+  countermove = cm;
   ss = s;
 
   if (pos.checkers())
@@ -168,7 +167,7 @@ void MovePicker::score<QUIETS>() {
 
   for (auto& m : *this)
       m.value =  history[pos.moved_piece(m)][to_sq(m)]
-               + cmh[pos.moved_piece(m)][to_sq(m)];
+               + cmh[pos.moved_piece(m)][to_sq(m)] * 3;
 }
 
 template<>
@@ -210,24 +209,12 @@ void MovePicker::generate_next_stage() {
 
       killers[0] = ss->killers[0];
       killers[1] = ss->killers[1];
-      killers[2].move = killers[3].move = MOVE_NONE;
-      killers[4].move = killers[5].move = MOVE_NONE;
+      killers[2].move = MOVE_NONE;
 
-      // In SMP case countermoves[] and followupmoves[] could have duplicated entries
-      // in rare cases (less than 1 out of a million). This is harmless.
-
-      // Be sure countermoves and followupmoves are different from killers
-      for (int i = 0; i < 2; ++i)
-          if (   countermoves[i] != killers[0]
-              && countermoves[i] != killers[1])
-              *endMoves++ = countermoves[i];
-
-      for (int i = 0; i < 2; ++i)
-          if (   followupmoves[i] != killers[0]
-              && followupmoves[i] != killers[1]
-              && followupmoves[i] != killers[2]
-              && followupmoves[i] != killers[3])
-              *endMoves++ = followupmoves[i];
+      // Be sure countermoves are different from killers
+      if (   countermove != killers[0]
+          && countermove != killers[1])
+          *endMoves++ = countermove;
       break;
 
   case QUIETS_1_S1:
@@ -327,10 +314,7 @@ Move MovePicker::next_move<false>() {
           if (   move != ttMove
               && move != killers[0]
               && move != killers[1]
-              && move != killers[2]
-              && move != killers[3]
-              && move != killers[4]
-              && move != killers[5])
+              && move != killers[2])
               return move;
           break;
 

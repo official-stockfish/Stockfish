@@ -160,42 +160,43 @@ namespace {
 
 #ifdef THREECHECK
   const Score ChecksGivenBonus[4] = {
-	  S(0, 0),
-	  S(2 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
-	  S(4 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
-	  S(9 * PawnValueMg + PawnValueMg / 2, 9 * PawnValueEg),
+      S(0, 0),
+      S(2 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
+      S(4 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
+      S(9 * PawnValueMg + PawnValueMg / 2, 9 * PawnValueEg),
   };
 
   const Score RookOpenFile[5] = {
-	  S(43, 21),
-	  S(43 + 2 * PawnValueMg, 21 + 2 * PawnValueEg),
-	  S(43 + 4 * PawnValueMg, 21 + 4 * PawnValueEg),
-	  S(43 + 6 * PawnValueMg, 21 + 6 * PawnValueEg),
-	  S(43 + 8 * PawnValueMg, 21 + 8 * PawnValueEg),
+      S(43, 21),
+      S(43 + 2 * PawnValueMg, 21 + 2 * PawnValueEg),
+      S(43 + 4 * PawnValueMg, 21 + 4 * PawnValueEg),
+      S(43 + 6 * PawnValueMg, 21 + 6 * PawnValueEg),
+      S(43 + 8 * PawnValueMg, 21 + 8 * PawnValueEg),
   };
   const Score RookSemiopenFile[5] = {
-	  S(19, 10),
-	  S(19 + 1 * PawnValueMg, 10 + 1 * PawnValueEg),
-	  S(19 + 2 * PawnValueMg, 10 + 2 * PawnValueEg),
-	  S(19 + 3 * PawnValueMg, 10 + 3 * PawnValueEg),
-	  S(19 + 4 * PawnValueMg, 10 + 4 * PawnValueEg),
+      S(19, 10),
+      S(19 + 1 * PawnValueMg, 10 + 1 * PawnValueEg),
+      S(19 + 2 * PawnValueMg, 10 + 2 * PawnValueEg),
+      S(19 + 3 * PawnValueMg, 10 + 3 * PawnValueEg),
+      S(19 + 4 * PawnValueMg, 10 + 4 * PawnValueEg),
   };
 
   const Score RookOn7th[4] = {
-	  S(11, 20),
-	  S(11 + 3 * PawnValueMg, 20 + 3 * PawnValueEg),
-	  S(11 + 6 * PawnValueMg, 20 + 6 * PawnValueEg),
-	  S(11 + 9 * PawnValueMg, 20 + 9 * PawnValueEg),
+      S(11, 20),
+      S(11 + 3 * PawnValueMg, 20 + 3 * PawnValueEg),
+      S(11 + 6 * PawnValueMg, 20 + 6 * PawnValueEg),
+      S(11 + 9 * PawnValueMg, 20 + 9 * PawnValueEg),
   };
   const Score QueenOn7th[4] = {
-	  S(3, 54),
-	  S(3 + 2 * PawnValueMg, 8 + 2 * PawnValueEg),
-	  S(3 + 4 * PawnValueMg, 8 + 4 * PawnValueEg),
-	  S(3 + 6 * PawnValueMg, 8 + 6 * PawnValueEg),
+      S(3, 54),
+      S(3 + 2 * PawnValueMg, 8 + 2 * PawnValueEg),
+      S(3 + 4 * PawnValueMg, 8 + 4 * PawnValueEg),
+      S(3 + 6 * PawnValueMg, 8 + 6 * PawnValueEg),
   };
 
-  const Score QueenOnPawn = make_score(4, 20);
+  const Score QueenOnPawn = S(4, 20);
 #endif
+  const Score ThreatenedByHangingPawn = S(40, 60);
 
   // Assorted bonuses and penalties used by evaluation
   const Score KingOnOne          = S( 2, 58);
@@ -239,22 +240,22 @@ namespace {
 
 #ifdef THREECHECK
   const int QueenContactCheck[5] = {
-	  6, (3 * PawnValueMg) / 2, 3 * PawnValueMg, (9 * PawnValueMg) / 2, 6 * PawnValueMg,
+      6, (3 * PawnValueMg) / 2, 3 * PawnValueMg, (9 * PawnValueMg) / 2, 6 * PawnValueMg,
   };
   const int RookContactCheck[5] = {
-	  4, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg,
+      4, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg,
   };
   const int QueenCheck[5] = {
-	  3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg,
+      3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg,
   };
   const int RookCheck[5] = {
-	  3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg
+      3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg
   };
   const int BishopCheck[5] = {
-	  3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg
+      3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg
   };
   const int KnightCheck[5] = {
-	  2, (3 * PawnValueMg) / 4, (6 * PawnValueMg) / 4, (9 * PawnValueMg) / 4, 3 * PawnValueMg,
+      2, (3 * PawnValueMg) / 4, (6 * PawnValueMg) / 4, (9 * PawnValueMg) / 4, 3 * PawnValueMg,
   };
 #else
   // Penalties for enemy's safe checks
@@ -334,126 +335,120 @@ namespace {
 
     ei.attackedBy[Us][Pt] = 0;
 
-	while ((s = *pl++) != SQ_NONE)
-	{
-		// Find attacked squares, including x-ray attacks for bishops and rooks
-		b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN))
-			: Pt == ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
-			: pos.attacks_from<Pt>(s);
+    while ((s = *pl++) != SQ_NONE)
+    {
+        // Find attacked squares, including x-ray attacks for bishops and rooks
+        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN))
+          : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN))
+                         : pos.attacks_from<Pt>(s);
 
-		if (ei.pinnedPieces[Us] & s)
-			b &= LineBB[pos.king_square(Us)][s];
+        if (ei.pinnedPieces[Us] & s)
+            b &= LineBB[pos.king_square(Us)][s];
 
-		ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][Pt] |= b;
+        ei.attackedBy[Us][ALL_PIECES] |= ei.attackedBy[Us][Pt] |= b;
 
-		if (b & ei.kingRing[Them])
-		{
-			ei.kingAttackersCount[Us]++;
-			ei.kingAttackersWeight[Us] += KingAttackWeights[Pt];
-			Bitboard bb = b & ei.attackedBy[Them][KING];
-			if (bb)
-				ei.kingAdjacentZoneAttacksCount[Us] += popcount<Max15>(bb);
-		}
+        if (b & ei.kingRing[Them])
+        {
+            ei.kingAttackersCount[Us]++;
+            ei.kingAttackersWeight[Us] += KingAttackWeights[Pt];
+            Bitboard bb = b & ei.attackedBy[Them][KING];
+            if (bb)
+                ei.kingAdjacentZoneAttacksCount[Us] += popcount<Max15>(bb);
+        }
 
-		if (Pt == QUEEN)
-			b &= ~(ei.attackedBy[Them][KNIGHT]
-			| ei.attackedBy[Them][BISHOP]
-			| ei.attackedBy[Them][ROOK]);
+        if (Pt == QUEEN)
+            b &= ~(  ei.attackedBy[Them][KNIGHT]
+                   | ei.attackedBy[Them][BISHOP]
+                   | ei.attackedBy[Them][ROOK]);
 
-		int mob = popcount<Pt == QUEEN ? Full : Max15>(b & mobilityArea[Us]);
+        int mob = popcount<Pt == QUEEN ? Full : Max15>(b & mobilityArea[Us]);
 
-		mobility[Us] += MobilityBonus[Pt][mob];
+        mobility[Us] += MobilityBonus[Pt][mob];
 
-		// Decrease score if we are attacked by an enemy pawn. The remaining part
-		// of threat evaluation must be done later when we have full attack info.
-		if (ei.attackedBy[Them][PAWN] & s)
-			score -= ThreatenedByPawn[Pt];
+        if (Pt == BISHOP || Pt == KNIGHT)
+        {
+            // Bonus for outpost square
+            if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
+                score += evaluate_outpost<Pt, Us>(pos, ei, s);
 
-		if (Pt == BISHOP || Pt == KNIGHT)
-		{
-			// Bonus for outpost square
-			if (!(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
-				score += evaluate_outpost<Pt, Us>(pos, ei, s);
+            // Bonus when behind a pawn
+            if (    relative_rank(Us, s) < RANK_5
+                && (pos.pieces(PAWN) & (s + pawn_push(Us))))
+                score += MinorBehindPawn;
 
-			// Bonus when behind a pawn
-			if (relative_rank(Us, s) < RANK_5
-				&& (pos.pieces(PAWN) & (s + pawn_push(Us))))
-				score += MinorBehindPawn;
+            // Penalty for pawns on same color square of bishop
+            if (Pt == BISHOP)
+                score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
 
-			// Penalty for pawns on same color square of bishop
-			if (Pt == BISHOP)
-				score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
+            // An important Chess960 pattern: A cornered bishop blocked by a friendly
+            // pawn diagonally in front of it is a very serious problem, especially
+            // when that pawn is also blocked.
+            if (   Pt == BISHOP
+                && pos.is_chess960()
+                && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
+            {
+                Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
+                if (pos.piece_on(s + d) == make_piece(Us, PAWN))
+                    score -= !pos.empty(s + d + pawn_push(Us))                ? TrappedBishopA1H1 * 4
+                            : pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? TrappedBishopA1H1 * 2
+                                                                              : TrappedBishopA1H1;
+            }
+        }
 
-			// An important Chess960 pattern: A cornered bishop blocked by a friendly
-			// pawn diagonally in front of it is a very serious problem, especially
-			// when that pawn is also blocked.
-			if (Pt == BISHOP
-				&& pos.is_chess960()
-				&& (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
-			{
-				Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
-				if (pos.piece_on(s + d) == make_piece(Us, PAWN))
-					score -= !pos.empty(s + d + pawn_push(Us)) ? TrappedBishopA1H1 * 4
-					: pos.piece_on(s + d + d) == make_piece(Us, PAWN) ? TrappedBishopA1H1 * 2
-					: TrappedBishopA1H1;
-			}
-		}
+        if (Pt == ROOK)
+        {
+            // Bonus for aligning with enemy pawns on the same rank/file
+            if (relative_rank(Us, s) >= RANK_5)
+            {
+                Bitboard alignedPawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
+                if (alignedPawns)
+                    score += popcount<Max15>(alignedPawns) * RookOnPawn;
+            }
 
-		if (Pt == ROOK)
-		{
-			// Bonus for aligning with enemy pawns on the same rank/file
-			if (relative_rank(Us, s) >= RANK_5)
-			{
-				Bitboard alignedPawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
-				if (alignedPawns)
-					score += popcount<Max15>(alignedPawns) * RookOnPawn;
-			}
-
-
-			// Bonus when on an open or semi-open file
-			if (ei.pi->semiopen_file(Us, file_of(s)))
-			{
+            // Bonus when on an open or semi-open file
+            if (ei.pi->semiopen_file(Us, file_of(s)))
+            {
 #ifdef THREECHECK
-				score += ei.pi->semiopen_file(Them, file_of(s))
-					? RookOpenFile[pos.checks_index()]
-					: RookSemiopenFile[pos.checks_index()];
-#else
-				score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOnOpenFile : RookOnSemiOpenFile;
+                if (pos.is_three_check())
+                    score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOpenFile[pos.checks_given()]
+                        : RookSemiopenFile[pos.checks_given()];
+                else
 #endif
-			}
+                score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOnOpenFile : RookOnSemiOpenFile;
+            }
 
-			// Penalize when trapped by the king, even more if king cannot castle
-			if (mob <= 3 && !ei.pi->semiopen_file(Us, file_of(s)))
-			{
-				Square ksq = pos.king_square(Us);
+            // Penalize when trapped by the king, even more if king cannot castle
+            if (mob <= 3 && !ei.pi->semiopen_file(Us, file_of(s)))
+            {
+                Square ksq = pos.king_square(Us);
 
-				if (((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
-					&& (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
-					&& !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
-					score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
-			}
-		}
+                if (   ((file_of(ksq) < FILE_E) == (file_of(s) < file_of(ksq)))
+                    && (rank_of(ksq) == rank_of(s) || relative_rank(Us, ksq) == RANK_1)
+                    && !ei.pi->semiopen_side(Us, file_of(ksq), file_of(s) < file_of(ksq)))
+                    score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
+            }
+        }
 
 #ifdef THREECHECK
-		if ((Pt == ROOK || Pt == QUEEN)
-			&& relative_rank(Us, s) >= RANK_5)
-		{
-			// Major piece on 7th rank and enemy king trapped on 8th
-			if (relative_rank(Us, s) == RANK_7
-				&& relative_rank(Us, pos.king_square(Them)) == RANK_8)
+        if (pos.is_three_check())
+        {
+            if ((Pt == ROOK || Pt == QUEEN)
+                && relative_rank(Us, s) >= RANK_5)
+            {
+                // Major piece on 7th rank and enemy king trapped on 8th
+                if (relative_rank(Us, s) == RANK_7
+                    && relative_rank(Us, pos.king_square(Them)) == RANK_8)
 
-				score += (Pt == ROOK
-				? RookOn7th[pos.checks_index()]
-				: QueenOn7th[pos.checks_index()]);
+                    score += (Pt == ROOK
+                        ? RookOn7th[pos.checks_given()]
+                        : QueenOn7th[pos.checks_given()]);
 
-			// Major piece attacking enemy pawns on the same rank/file
-			Bitboard pawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
-			if (pawns)
-				score += popcount<Max15>(pawns) * (Pt == ROOK ? RookOnPawn : QueenOnPawn);
-		}
-
-		if (pos.is_three_check())
-			continue;
+                // Major piece attacking enemy pawns on the same rank/file
+                Bitboard pawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
+                if (pawns)
+                    score += popcount<Max15>(pawns) * (Pt == ROOK ? RookOnPawn : QueenOnPawn);
+            }
+        }
 #endif
     }
 
@@ -518,9 +513,9 @@ namespace {
 
             if (b)
 #ifdef THREECHECK
-				attackUnits += QueenContactCheck[pos.checks_index()]
-				* popcount<Max15>(b)
-				* (Them == pos.side_to_move() ? 2 : 1);
+                attackUnits += QueenContactCheck[pos.checks_given()]
+                    * popcount<Max15>(b)
+                    * (Them == pos.side_to_move() ? 2 : 1);
 #else
                 attackUnits += QueenContactCheck * popcount<Max15>(b);
 #endif
@@ -541,9 +536,9 @@ namespace {
 
             if (b)
 #ifdef THREECHECK
-				attackUnits += RookContactCheck[pos.checks_taken()]
-				* popcount<Max15>(b)
-				* (Them == pos.side_to_move() ? 2 : 1);
+                attackUnits += RookContactCheck[pos.checks_taken()]
+                    * popcount<Max15>(b)
+                    * (Them == pos.side_to_move() ? 2 : 1);
 #else
                 attackUnits += RookContactCheck * popcount<Max15>(b);
 #endif
@@ -559,7 +554,7 @@ namespace {
         b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
         if (b)
 #ifdef THREECHECK
-			attackUnits += QueenCheck[pos.checks_index()] * popcount<Max15>(b);
+            attackUnits += QueenCheck[pos.checks_given()] * popcount<Max15>(b);
 #else
             attackUnits += QueenCheck * popcount<Max15>(b);
 #endif
@@ -568,7 +563,7 @@ namespace {
         b = b1 & ei.attackedBy[Them][ROOK];
         if (b)
 #ifdef THREECHECK
-			attackUnits += RookCheck[pos.checks_index()] * popcount<Max15>(b);
+            attackUnits += RookCheck[pos.checks_given()] * popcount<Max15>(b);
 #else
             attackUnits += RookCheck * popcount<Max15>(b);
 #endif
@@ -578,7 +573,7 @@ namespace {
 
         if (b)
 #ifdef THREECHECK
-			attackUnits += BishopCheck[pos.checks_index()] * popcount<Max15>(b);
+            attackUnits += BishopCheck[pos.checks_given()] * popcount<Max15>(b);
 #else
             attackUnits += BishopCheck * popcount<Max15>(b);
 #endif
@@ -587,7 +582,7 @@ namespace {
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
 #ifdef THREECHECK
-			attackUnits += KnightCheck[pos.checks_index()] * popcount<Max15>(b);
+            attackUnits += KnightCheck[pos.checks_given()] * popcount<Max15>(b);
 #else
             attackUnits += KnightCheck * popcount<Max15>(b);
 #endif
@@ -620,8 +615,25 @@ namespace {
     enum { Defended, Weak };
     enum { Minor, Major };
 
-    Bitboard b, weak, defended;
+    Bitboard b, weak, defended, safeThreats;
     Score score = SCORE_ZERO;
+
+    // Non-pawn enemies attacked by a pawn
+    weak = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Us][PAWN];
+
+    if (weak)
+    {
+        b = pos.pieces(Us, PAWN) & ( ~ei.attackedBy[Them][ALL_PIECES]
+                                    | ei.attackedBy[Us][ALL_PIECES]);
+
+        safeThreats = (shift_bb<Right>(b) | shift_bb<Left>(b)) & weak;
+
+        if (weak ^ safeThreats)
+            score += ThreatenedByHangingPawn;
+
+        while (safeThreats)
+            score += ThreatenedByPawn[type_of(pos.piece_on(pop_lsb(&safeThreats)))];
+    }
 
     // Non-pawn enemies defended by a pawn
     defended = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Them][PAWN];
@@ -836,17 +848,17 @@ namespace {
 #endif
 
 #ifdef THREECHECK
-	if (pos.is_three_check())
-	{
-		assert(pos.checks_given() <= 3);
-		assert(pos.checks_taken() <= 2);
+    if (pos.is_three_check())
+    {
+        assert(pos.checks_given() <= 3);
+        assert(pos.checks_taken() <= 2);
 
-		if (pos.checks_given() == 3)
-			return VALUE_MATE;
+        if (pos.checks_given() == 3)
+            return VALUE_MATE;
 
-		score += ChecksGivenBonus[pos.checks_given()];
-		score -= ChecksGivenBonus[pos.checks_taken()];
-	}
+        score += ChecksGivenBonus[pos.checks_given()];
+        score -= ChecksGivenBonus[pos.checks_taken()];
+    }
 #endif
 
     // Probe the material hash table
@@ -955,7 +967,7 @@ namespace {
     }
 
     Value f =  (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
-	return f;
+    return f;
   }
 
 
@@ -1048,7 +1060,7 @@ namespace Eval {
 #ifdef THREECHECK
     const int Peak = 2560000;
 #else
-	const int Peak = 1280000;
+    const int Peak = 1280000;
 #endif
 
     int t = 0;

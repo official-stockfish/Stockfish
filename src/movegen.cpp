@@ -66,7 +66,7 @@ namespace {
 
 
   template<GenType Type, Square Delta>
-  inline ExtMove* make_promotions(ExtMove* moveList, Square to, const CheckInfo* ci) {
+  ExtMove* make_promotions(ExtMove* moveList, Square to, const CheckInfo* ci) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
         *moveList++ = make<PROMOTION>(to - Delta, to, QUEEN);
@@ -219,7 +219,7 @@ namespace {
   }
 
 
-  template<PieceType Pt, bool Checks> FORCE_INLINE
+  template<PieceType Pt, bool Checks>
   ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Color us,
                           Bitboard target, const CheckInfo* ci) {
 
@@ -252,7 +252,7 @@ namespace {
   }
 
 
-  template<Color Us, GenType Type> FORCE_INLINE
+  template<Color Us, GenType Type>
   ExtMove* generate_all(const Position& pos, ExtMove* moveList, Bitboard target,
                         const CheckInfo* ci = nullptr) {
 
