@@ -79,14 +79,6 @@
 #  define pext(b, m) (0)
 #endif
 
-#ifdef _MSC_VER
-#  define FORCE_INLINE  __forceinline
-#elif defined(__GNUC__)
-#  define FORCE_INLINE  inline __attribute__((always_inline))
-#else
-#  define FORCE_INLINE  inline
-#endif
-
 #ifdef USE_POPCNT
 const bool HasPopCnt = true;
 #else

@@ -69,7 +69,7 @@ namespace {
   // bsf_index() returns the index into BSFTable[] to look up the bitscan. Uses
   // Matt Taylor's folding for 32 bit case, extended to 64 bit by Kim Walisch.
 
-  FORCE_INLINE unsigned bsf_index(Bitboard b) {
+  unsigned bsf_index(Bitboard b) {
     b ^= b - 1;
     return Is64Bit ? (b * DeBruijn64) >> 58
                    : ((unsigned(b) ^ unsigned(b >> 32)) * DeBruijn32) >> 26;
