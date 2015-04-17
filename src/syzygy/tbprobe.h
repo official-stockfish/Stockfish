@@ -8,7 +8,7 @@ namespace Tablebases {
 extern int MaxCardinality;
 
 void init(const std::string& path);
-void load_dtz_table(char *str, long long key1, long long key2);
+void load_dtz_table(char *str, uint64_t key1, uint64_t key2);
 short ReadUshort(unsigned char* d);
 int ReadUint32(unsigned char* d);
 int probe_wdl(Position& pos, int *success);

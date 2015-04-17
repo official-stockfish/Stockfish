@@ -27,6 +27,11 @@
 #include "bitboard.h"
 #include "types.h"
 
+#define STANDARD_VARIANT 0
+#define KOTH_VARIANT 1 << 1
+#define THREECHECK_VARIANT 1 << 2
+#define HORDE_VARIANT 1 << 3
+
 class Position;
 struct Thread;
 
@@ -87,7 +92,7 @@ public:
   Position(const Position&) = delete;
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
 
-  Position(const std::string& f, Thread* t) { set(f, false, 0, t); }
+  Position(const std::string& f, Thread* t) { set(f, false, STANDARD_VARIANT, t); }
   Position(const std::string& f, bool c960, int variant, Thread* t) { set(f, c960, variant, t); }
 
   Position& operator=(const Position&); // To assign RootPos from UCI

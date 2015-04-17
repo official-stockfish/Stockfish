@@ -187,19 +187,7 @@ namespace {
 
 void UCI::loop(int argc, char* argv[]) {
 
-#ifdef THREECHECK
   Position pos(StartFEN, Threads.main()); // The root position
-#else
-#ifdef HORDE
-  Position pos(StartFEN, Threads.main()); // The root position
-#else
-#ifdef KOTH
-  Position pos(StartFEN, Threads.main()); // The root position
-#else
-  Position pos(StartFEN, false, Threads.main()); // The root position
-#endif
-#endif
-#endif
   string token, cmd;
 
   for (int i = 1; i < argc; ++i)

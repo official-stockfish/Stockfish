@@ -39,10 +39,6 @@ struct CaseInsensitiveLess {
 /// Our options container is actually a std::map
 typedef std::map<std::string, Option, CaseInsensitiveLess> OptionsMap;
 
-#define KOTH_VARIANT 1 << 1
-#define THREECHECK_VARIANT 1 << 2
-#define HORDE_VARIANT 1 << 3
-
 /// Option class implements an option as defined by UCI protocol
 class Option {
 

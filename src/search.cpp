@@ -71,10 +71,12 @@ namespace {
 
   inline Value razor_margin(Position& pos, Depth d) 
   { 
+#ifdef THREECHECK
 	  if (pos.is_three_check())
 	  {
 		  return Value(512 + 64 * d);
 	  }
+#endif
 
 	  return Value(512 + 32 * d); 
   }

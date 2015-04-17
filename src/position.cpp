@@ -1275,22 +1275,21 @@ void Position::flip() {
   f += token;
 
 #ifdef HORDE
-  set(f, is_chess960(), is_horde(), this_thread());
+  set(f, is_chess960(), is_horde() ? HORDE_VARIANT : STANDARD_VARIANT, this_thread());
 #else
 #ifdef KOTH
-  set(f, is_chess960(), is_koth(), this_thread());
+  set(f, is_chess960(), is_koth() ? KOTH_VARIANT : STANDARD_VARIANT, this_thread());
 #else
 #ifdef THREECHECK
   if (is_three_check()) {
-	  f += " +";
-	  f += st->checksGiven[BLACK];
-	  f += "+";
-	  f += st->checksGiven[WHITE];
-}
-
-  set(f, is_chess960(), is_three_check(), this_thread());
+    f += " +";
+    f += st->checksGiven[BLACK];
+    f += "+";
+    f += st->checksGiven[WHITE];
+  }
+  set(f, is_chess960(), is_three_check() ? THREECHECK_VARIANT : STANDARD_VARIANT, this_thread());
 #else
-  set(f, is_chess960(), this_thread());
+  set(f, is_chess960(), STANDARD_VARIANT, this_thread());
 #endif
 #endif
 #endif

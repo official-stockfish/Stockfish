@@ -51,12 +51,12 @@ static void prt_str(Position& pos, char *str, int mirror)
 
 // Given a position, produce a 64-bit material signature key.
 // If the engine supports such a key, it should equal the engine's key.
-static uint64 calc_key(Position& pos, int mirror)
+static uint64_t calc_key(Position& pos, int mirror)
 {
   Color color;
   PieceType pt;
   int i;
-  uint64 key = 0;
+  uint64_t key = 0;
 
   color = !mirror ? WHITE : BLACK;
   for (pt = PAWN; pt <= KING; ++pt)
@@ -79,7 +79,7 @@ bool is_little_endian() {
   return x.c[0] == 1;
 }
 
-static ubyte decompress_pairs(struct PairsData *d, uint64 idx)
+static ubyte decompress_pairs(struct PairsData *d, uint64_t idx)
 {
   static const bool isLittleEndian = is_little_endian();
   return isLittleEndian ? decompress_pairs<true >(d, idx)
@@ -91,8 +91,8 @@ static int probe_wdl_table(Position& pos, int *success)
 {
   struct TBEntry *ptr;
   struct TBHashEntry *ptr2;
-  uint64 idx;
-  uint64 key;
+  uint64_t idx;
+  uint64_t key;
   int i;
   ubyte res;
   int p[TBPIECES];
@@ -181,7 +181,7 @@ static int probe_wdl_table(Position& pos, int *success)
                                     (PieceType)(pc[i] & 0x07));
       do {
         p[i++] = pop_lsb(&bb) ^ mirror;
-      } while (bb);
+      } while (bb && i < TBPIECES);
     }
     idx = encode_pawn(entry, entry->file[f].norm[bside], p, entry->file[f].factor[bside]);
     res = decompress_pairs(entry->file[f].precomp[bside], idx);
@@ -193,12 +193,12 @@ static int probe_wdl_table(Position& pos, int *success)
 static int probe_dtz_table(Position& pos, int wdl, int *success)
 {
   struct TBEntry *ptr;
-  uint64 idx;
+  uint64_t idx;
   int i, res;
   int p[TBPIECES];
 
   // Obtain the position's material signature key.
-  uint64 key = pos.material_key();
+  uint64_t key = pos.material_key();
 
   if (DTZ_table[0].key1 != key && DTZ_table[0].key2 != key) {
     for (i = 1; i < DTZ_ENTRIES; i++)
@@ -291,7 +291,7 @@ static int probe_dtz_table(Position& pos, int wdl, int *success)
                             (PieceType)(pc[i] & 0x07));
       do {
         p[i++] = pop_lsb(&bb) ^ mirror;
-      } while (bb);
+      } while (bb && i < TBPIECES);
     }
     idx = encode_pawn((struct TBEntry_pawn *)entry, entry->file[f].norm, p, entry->file[f].factor);
     res = decompress_pairs(entry->file[f].precomp, idx);
@@ -813,7 +813,7 @@ long long Tablebases::calc_key_from_pcs(int * pcs, int mirror)
 	int color;
 	PieceType pt;
 	int i;
-	uint64 key = 0;
+	uint64_t key = 0;
 
 	color = !mirror ? 0 : 8;
 	for (pt = PAWN; pt <= KING; ++pt)
@@ -945,7 +945,7 @@ void Tablebases::init(const std::string& path)
 	printf("info string Found %d tablebases.\n", TBnum_piece + TBnum_pawn);
 }
 
-void Tablebases::load_dtz_table(char * str, long long key1, long long key2)
+void Tablebases::load_dtz_table(char * str, uint64_t key1, uint64_t key2)
 {
 	int i;
 	struct TBEntry *ptr, *ptr3;

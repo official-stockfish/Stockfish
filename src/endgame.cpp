@@ -96,19 +96,7 @@ namespace {
     string fen =  sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/8/8/"
                 + sides[1] + char(8 - sides[1].length() + '0') + " w - - 0 10";
 
-#ifdef HORDE
     return Position(fen, nullptr).material_key();
-#else
-#ifdef KOTH
-    return Position(fen, nullptr).material_key();
-#else
-#ifdef THREECHECK
-	return Position(fen, nullptr).material_key();
-#else
-    return Position(fen, false, nullptr).material_key();
-#endif
-#endif
-#endif
   }
 
 } // namespace
