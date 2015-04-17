@@ -202,6 +202,10 @@ std::vector<string> Parse::split(const std::string& names) {
 
 void Tune::EntryBase::make_option(const string& n, int v, const SetRange& r) {
 
+  // Do not generate option when there is nothing to tune (ie. min = max)
+  if (r(v).first == r(v).second)
+      return;
+
   Options[n] << UCI::Option(v, r(v).first, r(v).second, Tune::on_tune);
 
   // Print formatted parameters, ready to be copy-pasted in fishtest
