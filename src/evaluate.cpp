@@ -427,6 +427,7 @@ namespace {
                 attackUnits += QueenContactCheck * popcount<Max15>(b);
         }
 
+//if (false) {
         // Analyse the enemy's safe rook contact checks. Firstly, find the
         // undefended squares around the king reachable by the enemy rooks...
         b = undefended & ei.attackedBy[Them][ROOK] & ~pos.pieces(Them);
@@ -438,11 +439,12 @@ namespace {
         {
             // ...and then remove squares not supported by another enemy piece
             b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
-                  | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][QUEEN]);
+                  | ei.attackedBy[Them][BISHOP]); // | ei.attackedBy[Them][QUEEN]);
 
             if (b)
                 attackUnits += RookContactCheck * popcount<Max15>(b);
         }
+//}
 
         // Analyse the enemy's safe distance checks for sliders and knights
         safe = ~(ei.attackedBy[Us][ALL_PIECES] | pos.pieces(Them));
