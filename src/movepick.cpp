@@ -148,15 +148,7 @@ void MovePicker::score<CAPTURES>() {
   // has been picked up in pick_move_from_list(). This way we save some SEE
   // calls in case we get a cutoff.
   for (auto& m : *this)
-      if (type_of(m) == ENPASSANT)
-          m.value = PieceValue[MG][PAWN] - Value(PAWN);
-
-      else if (type_of(m) == PROMOTION)
-          m.value =  PieceValue[MG][pos.piece_on(to_sq(m))] - Value(PAWN)
-                   + PieceValue[MG][promotion_type(m)] - PieceValue[MG][PAWN];
-      else
-          m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-                   - Value(type_of(pos.moved_piece(m)));
+      m.value =  Value(int(pos.piece_on(to_sq(m));
 }
 
 template<>
