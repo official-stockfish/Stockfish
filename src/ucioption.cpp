@@ -171,7 +171,7 @@ Option& Option::operator=(const string& v) {
 
 // Default Range function, to calculate Option's min-max values
 Range default_range(int v) {
-  return v > 0 ? Range(v / 2, 2 * v) : Range(2 * v, v / 2);
+  return v > 0 ? Range(0, 2 * v) : Range(2 * v, 0);
 }
 
 SetRange SetDefaultRange(default_range);
@@ -208,7 +208,7 @@ void Tune::EntryBase::make_option(const string& n, int v, const SetRange& r) {
   std::cout << n << ","
             << v << ","
             << r(v).first << "," << r(v).second << ","
-            << std::max(10, (r(v).second - r(v).first) / 20) << ","
+            << (r(v).second - r(v).first) / 20.0 << ","
             << "0.0020"
             << std::endl;
 }
