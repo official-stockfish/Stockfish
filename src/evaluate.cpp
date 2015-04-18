@@ -438,7 +438,7 @@ namespace {
         {
             // ...and then remove squares not supported by another enemy piece
             b &= (  ei.attackedBy[Them][PAWN]   | ei.attackedBy[Them][KNIGHT]
-                  | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][QUEEN]);
+                  | ei.attackedBy[Them][BISHOP]);
 
             if (b)
                 attackUnits += RookContactCheck * popcount<Max15>(b);
