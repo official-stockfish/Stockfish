@@ -1057,7 +1057,8 @@ moves_loop: // When in check and at SpNode search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              BestMoveChanges += moveCount - 1;
+              if (moveCount > 1)
+                  ++BestMoveChanges;
           }
           else
               // All other moves but the PV are set to the lowest value: this is
