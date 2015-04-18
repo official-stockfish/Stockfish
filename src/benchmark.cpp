@@ -145,43 +145,24 @@ void benchmark(const Position& current, istream& is) {
   uint64_t nodes = 0;
   Search::StateStackPtr st;
   TimePoint elapsed = now();
-  bool setVariant = false;
 
   for (size_t i = 0; i < fens.size(); ++i)
   {
-	  Position pos;
-
+      Position pos;
+      int variant = STANDARD_VARIANT;
 #ifdef HORDE
-	  if (Options["UCI_KingOfTheHill"])
-	  {
-		  pos = Position(fens[i], false, HORDE_VARIANT, Threads.main());
-		  setVariant = true;
-	  }
+      if (Options["UCI_Horde"])
+          variant |= HORDE_VARIANT;
 #endif
-
 #ifdef KOTH
-	  if (Options["UCI_KingOfTheHill"] && !setVariant)
-	  {
-		  pos = Position(fens[i], false, KOTH_VARIANT, Threads.main());
-		  setVariant = true;
-	  }
-
+      if (Options["UCI_KingOfTheHill"])
+          variant |= KOTH_VARIANT;
 #endif
-
 #ifdef THREECHECK
-	  if (Options["UCI_ThreeCheck"] && !setVariant)
-	  {
-		  pos = Position(fens[i], false, THREECHECK_VARIANT, Threads.main());
-		  setVariant = true;
-	  }
+      if (Options["UCI_3Check"])
+          variant |= THREECHECK_VARIANT;
 #endif
-
-	  if (!setVariant)
-	  {
-		  pos = Position(fens[i], Options["UCI_Chess960"], 0, Threads.main());
-	  }
-
-	  setVariant = false;
+      pos.set(fens[i], Options["UCI_Chess960"], variant, Threads.main());
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 

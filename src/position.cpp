@@ -349,6 +349,8 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
     ss >> std::skipws >> st->rule50 >> gamePly;
 
 #ifdef THREECHECK
+    st->checksGiven[WHITE] = CHECKS_0;
+    st->checksGiven[BLACK] = CHECKS_0;
     if ((variant & THREECHECK_VARIANT) != 0)
     {
         // 7. Checks given counter for Three-Check positions
@@ -382,8 +384,6 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
 
   chess960 = isChess960;
 #ifdef HORDE
-// TODO: Fix
-//isHorde = true;
   horde = (variant & HORDE_VARIANT) != 0;
 #endif
 #ifdef KOTH
@@ -476,12 +476,10 @@ void Position::set_state(StateInfo* si) const {
           si->nonPawnMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
 
 #ifdef THREECHECK
-  if (threeCheck)
+  if (is_three_check())
   {
-      if (st->checksGiven[WHITE])
-          st->key ^= Zobrist::checks[WHITE][st->checksGiven[WHITE] - 1];
-      if (st->checksGiven[BLACK])
-          st->key ^= Zobrist::checks[BLACK][st->checksGiven[BLACK] - 1];
+      for (Color c = WHITE; c <= BLACK; ++c)
+          st->key ^= Zobrist::checks[c][st->checksGiven[c]];
   }
 #endif
 }
@@ -815,11 +813,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(is_ok(m));
   assert(&newSt != st);
 
-#ifdef THREECHECK
-  assert(checks_given() < 3);
-  assert(checks_taken() < 3);
-#endif
-
   ++nodes;
   Key k = st->key ^ Zobrist::side;
 
@@ -835,11 +828,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++gamePly;
   ++st->rule50;
   ++st->pliesFromNull;
-
-#ifdef THREECHECK
-  bool hashed = false;
-  Checks checksGiven = checks_given();
-#endif
 
   Color us = sideToMove;
   Color them = ~us;
@@ -862,15 +850,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       captured = NO_PIECE_TYPE;
       st->psq += psq[us][ROOK][rto] - psq[us][ROOK][rfrom];
       k ^= Zobrist::psq[us][ROOK][rfrom] ^ Zobrist::psq[us][ROOK][rto];
-
-#ifdef THREECHECK
-      if (threeCheck && givesCheck)
-      {
-          assert(checksGiven < CHECKS_NB);
-          k ^= Zobrist::checks[sideToMove][checksGiven];
-          hashed = true;
-      }
-#endif
   }
 
   if (captured)
@@ -932,6 +911,16 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->castlingRights &= ~cr;
   }
 
+#ifdef THREECHECK
+  if (is_three_check() && givesCheck)
+  {
+      ++(st->checksGiven[sideToMove]);
+      Checks checksGiven = checks_given();
+      assert(checksGiven < CHECKS_NB);
+      k ^= Zobrist::checks[sideToMove][checksGiven];
+  }
+#endif
+
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
       move_piece(us, pt, from, to);
@@ -986,13 +975,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   // Update the key with the final value
   st->key = k;
-#ifdef THREECHECK
-  if (threeCheck && givesCheck && !hashed)
-  {
-      assert(checksGiven <= 2);
-      st->key ^= Zobrist::checks[sideToMove][checksGiven];
-  }
-#endif
 
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(king_square(them)) & pieces(us) : 0;

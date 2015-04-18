@@ -211,7 +211,7 @@ ifneq ($(comp),mingw)
 endif
 
 ### 3.4 Debugging
-CXXFLAGS += -DTHREECHECK
+CXXFLAGS += -DKOTH -DTHREECHECK
 #CXXFLAGS += -DKOTH_DISTANCE_BONUS
 ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG

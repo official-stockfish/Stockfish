@@ -850,11 +850,10 @@ namespace {
 #ifdef THREECHECK
     if (pos.is_three_check())
     {
-        assert(pos.checks_given() <= 3);
-        assert(pos.checks_taken() <= 2);
-
-        if (pos.checks_given() == 3)
+        if (pos.is_three_check_win())
             return VALUE_MATE;
+        if (pos.is_three_check_loss())
+            return -VALUE_MATE;
 
         score += ChecksGivenBonus[pos.checks_given()];
         score -= ChecksGivenBonus[pos.checks_taken()];

@@ -183,9 +183,9 @@ public:
   int koth_distance(Color c) const;
 #endif
 #ifdef THREECHECK
-  bool in_check() const;
   bool is_three_check() const;
-  bool got_third_check() const;
+  bool is_three_check_win() const;
+  bool is_three_check_loss() const;
   Checks checks_given() const;
   Checks checks_taken() const;
 #endif
@@ -308,8 +308,12 @@ inline bool Position::is_three_check() const {
   return threeCheck;
 }
 
-inline bool Position::got_third_check() const {
-  return st->checksGiven[~sideToMove] == 3;
+inline bool Position::is_three_check_win() const {
+  return st->checksGiven[sideToMove] == CHECKS_3;
+}
+
+inline bool Position::is_three_check_loss() const {
+  return st->checksGiven[~sideToMove] == CHECKS_3;
 }
 
 inline Checks Position::checks_given() const {
@@ -446,12 +450,12 @@ inline bool Position::is_koth() const {
 
 // Win if king is in the center (KOTH)
 inline bool Position::is_koth_win() const {
-  return koth_distance(side_to_move()) == 0;
+  return koth_distance(sideToMove) == 0;
 }
 
 // Loss if king is in the center (KOTH)
 inline bool Position::is_koth_loss() const {
-  return koth_distance(~side_to_move()) == 0;
+  return koth_distance(~sideToMove) == 0;
 }
 
 inline int Position::koth_distance(Color c) const {

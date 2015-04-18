@@ -324,11 +324,10 @@ void Search::think() {
       sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
   else
 #endif
-
 #ifdef THREECHECK
-	  if (RootPos.got_third_check())
-		  sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
-	  else
+  if (RootPos.is_three_check() && RootPos.is_three_check_loss())
+      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
+  else
 #endif
   // Best move could be MOVE_NONE when searching on a stalemate position
   sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0], RootPos.is_chess960());
@@ -588,6 +587,16 @@ namespace {
             if (pos.is_koth_win())
                 return mate_in(ss->ply + 1);
             if (pos.is_koth_loss())
+                return mated_in(ss->ply);
+        }
+#endif
+#ifdef THREECHECK
+        // Check for an instant win (King of the Hill)
+        if (pos.is_three_check())
+        {
+            if (pos.is_three_check_win())
+                return mate_in(ss->ply + 1);
+            if (pos.is_three_check_loss())
                 return mated_in(ss->ply);
         }
 #endif
@@ -1258,6 +1267,16 @@ moves_loop: // When in check and at SpNode search starts from here
             return mated_in(ss->ply);
     }
 #endif
+#ifdef THREECHECK
+        // Check for an instant win (King of the Hill)
+        if (pos.is_three_check())
+        {
+            if (pos.is_three_check_win())
+                return mate_in(ss->ply + 1);
+            if (pos.is_three_check_loss())
+                return mated_in(ss->ply);
+        }
+#endif
 
     // Check for an instant draw or if the maximum ply has been reached
     if (pos.is_draw() || ss->ply >= MAX_PLY)
@@ -1392,6 +1411,8 @@ moves_loop: // When in check and at SpNode search starts from here
                          : -qsearch<NT, false>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
       pos.undo_move(move);
 
+      assert(value > -VALUE_INFINITE);
+      assert(value < VALUE_INFINITE);
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // Check for new best move

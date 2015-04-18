@@ -58,53 +58,36 @@ namespace {
 
   void position(Position& pos, istringstream& is) {
 
-	  Move m;
-	  string token, fen;
+    Move m;
+    string token, fen;
 
-	  is >> token;
+    is >> token;
 
-	  if (token == "startpos")
-	  {
-		  fen = StartFEN;
-		  is >> token; // Consume "moves" token if any
-	  }
-	  else if (token == "fen")
-		  while (is >> token && token != "moves")
-			  fen += token + " ";
-	  else
-		  return;
+    if (token == "startpos")
+    {
+        fen = StartFEN;
+        is >> token; // Consume "moves" token if any
+    }
+    else if (token == "fen")
+        while (is >> token && token != "moves")
+            fen += token + " ";
+    else
+        return;
 
-	  bool setVariant = false;
-
+    int variant = STANDARD_VARIANT;
 #ifdef HORDE
-	  if (Options["UCI_KingOfTheHill"])
-	  {
-		  pos.set(fen, false, HORDE_VARIANT, Threads.main());
-		  setVariant = true;
-	  }
+    if (Options["UCI_Horde"])
+        variant |= HORDE_VARIANT;
 #endif
-
 #ifdef KOTH
-	  if (Options["UCI_KingOfTheHill"] && !setVariant)
-	  {
-		  pos.set(fen, false, KOTH_VARIANT, Threads.main());
-		  setVariant = true;
-	  }
-
+    if (Options["UCI_KingOfTheHill"])
+        variant |= KOTH_VARIANT;
 #endif
-
 #ifdef THREECHECK
-	  if (Options["UCI_ThreeCheck"] && !setVariant)
-	  {
-		  pos.set(fen, false, THREECHECK_VARIANT, Threads.main());
-		  setVariant = true;
-	  }	 
+    if (Options["UCI_3Check"])
+        variant |= THREECHECK_VARIANT;
 #endif
-
-	if (!setVariant)
-	{
-		pos.set(fen, Options["UCI_Chess960"], 0, Threads.main());
-	}
+    pos.set(fen, Options["UCI_Chess960"], variant, Threads.main());
     
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
 
@@ -123,14 +106,6 @@ namespace {
   void setoption(istringstream& is) {
 
     string token, name, value;
-
-#if THREECHECK
-	if (name == "SyzygyPath")
-	{
-		return;
-	}
-#endif
-
     is >> token; // Consume "name" token
 
     // Read option name (can contain spaces)
