@@ -134,10 +134,10 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, const
 /// highest values will be picked first.
 template<>
 void MovePicker::score<CAPTURES>() {
-  // Winning and equal captures in the main search are ordered by MVV/LVA.
-  // Suprisingly, this appears to perform slightly better than SEE based
+  // Winning and equal captures in the main search are ordered by MVV.
+  // Suprisingly, this appears to perform slightly better than SEE or MVV/LVA based
   // move ordering. The reason is probably that in a position with a winning
-  // capture, capturing a more valuable (but sufficiently defended) piece
+  // capture, capturing a valuable (but sufficiently defended) piece
   // first usually doesn't hurt. The opponent will have to recapture, and
   // the hanging piece will still be hanging (except in the unusual cases
   // where it is possible to recapture with the hanging piece). Exchanging
