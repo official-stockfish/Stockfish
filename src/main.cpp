@@ -26,6 +26,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+#include "psqtab.h"
 #include "syzygy/tbprobe.h"
 
 int main(int argc, char* argv[]) {
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
 
   UCI::init(Options);
   Bitboards::init();
+  PSQT::init();
   Position::init();
   Bitbases::init();
   Search::init();
