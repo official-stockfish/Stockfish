@@ -17,19 +17,16 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PSQTAB_H_INCLUDED
-#define PSQTAB_H_INCLUDED
-
 #include "types.h"
+
+namespace PSQT {
 
 #define S(mg, eg) make_score(mg, eg)
 
-
-/// PSQT[PieceType][Square] contains Piece-Square scores. For each piece type on
-/// a given square a (middlegame, endgame) score pair is assigned. PSQT is defined
-/// for the white side and the tables are symmetric for the black side.
-
-static const Score PSQT[][SQUARE_NB] = {
+/// BaseTable[PieceType][Square] contains Piece-Square scores. For each piece
+/// type on a given square a (middlegame, endgame) score pair is assigned. Table
+/// is defined just for the white side; it is symmetric for the black side.
+const Score BaseTable[][SQUARE_NB] = {
   { },
   { // Pawn
    S(  0, 0), S(  0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S( 0, 0), S(  0, 0), S(  0, 0),
@@ -95,4 +92,23 @@ static const Score PSQT[][SQUARE_NB] = {
 
 #undef S
 
-#endif // #ifndef PSQTAB_H_INCLUDED
+Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+
+// init() initializes piece square tables: the white halves of the tables are
+// copied from BaseTable[] adding the piece value, then the black halves of the
+// tables are initialized by flipping and changing the sign of the white scores.
+void init() {
+
+  for (PieceType pt = PAWN; pt <= KING; ++pt)
+  {
+      PieceValue[MG][make_piece(BLACK, pt)] = PieceValue[MG][pt];
+      PieceValue[EG][make_piece(BLACK, pt)] = PieceValue[EG][pt];
+
+      Score v = make_score(PieceValue[MG][pt], PieceValue[EG][pt]);
+
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+          psq[BLACK][pt][~s] = -(psq[WHITE][pt][ s] = (v + BaseTable[pt][s]));
+  }
+}
+
+} // namespace PSQT
