@@ -19,7 +19,6 @@
 */
 
 #include <cassert>
-#include <iostream>
 
 #include "movepick.h"
 #include "thread.h"
