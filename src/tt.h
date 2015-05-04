@@ -56,7 +56,7 @@ struct TTEntry {
       {   // Preserve any existing data for the same position
           if (m) move16 = (uint16_t)m;
 
-          if (d >= depth8 || b == BOUND_EXACT)
+          if (d+2 > depth8 || g != (genBound8 & 0xFC) || b == BOUND_EXACT)
           {
               value16   = (int16_t)v;
               genBound8 = (uint8_t)(g | b);
