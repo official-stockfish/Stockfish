@@ -339,10 +339,6 @@ namespace {
     beta = VALUE_INFINITE;
 
     TT.new_search();
-    History.clear();
-    CounterMovesHistory.clear();
-    Gains.clear();
-    Countermoves.clear();
 
     size_t multiPV = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
