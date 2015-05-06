@@ -291,6 +291,10 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                  [std::min(f, FILE_H - f)][rkThem];
   }
 
+#ifdef THREECHECK
+  if (pos.is_three_check())
+      safety -= pos.checks_taken();
+#endif
   return safety;
 }
 
