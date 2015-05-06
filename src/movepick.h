@@ -21,6 +21,7 @@
 #define MOVEPICK_H_INCLUDED
 
 #include <algorithm> // For std::max
+#include <cstring>   // For std::memset
 
 #include "movegen.h"
 #include "position.h"
@@ -43,6 +44,7 @@ struct Stats {
 
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
+  void clear() { std::memset(table, 0, sizeof(table)); }
 
   void update(Piece pc, Square to, Move m) {
 

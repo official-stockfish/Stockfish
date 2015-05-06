@@ -27,7 +27,6 @@
 #include "search.h"
 #include "thread.h"
 #include "timeman.h"
-#include "tt.h"
 #include "uci.h"
 
 using namespace std;
@@ -181,7 +180,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "ucinewgame")
       {
-          TT.clear();
+          Search::reset();
           Time.availableNodes = 0;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
