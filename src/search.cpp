@@ -753,9 +753,6 @@ namespace {
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(depth) >= beta
         &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
-#ifdef THREECHECK
-        &&  !pos.is_three_check()
-#endif
         &&  pos.non_pawn_material(pos.side_to_move()))
         return eval - futility_margin(depth);
 
@@ -763,9 +760,6 @@ namespace {
     if (   !PvNode
         &&  depth >= 2 * ONE_PLY
         &&  eval >= beta
-#ifdef THREECHECK
-        &&  !pos.is_three_check()
-#endif
         &&  pos.non_pawn_material(pos.side_to_move()))
     {
         ss->currentMove = MOVE_NULL;
@@ -808,9 +802,6 @@ namespace {
     // prune the previous move.
     if (   !PvNode
         &&  depth >= 5 * ONE_PLY
-#ifdef THREECHECK
-        && !pos.is_three_check()
-#endif
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = std::min(beta + 200, VALUE_INFINITE);
@@ -1268,7 +1259,7 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 #endif
 #ifdef THREECHECK
-        // Check for an instant win (King of the Hill)
+        // Check for an instant win (Three-Check)
         if (pos.is_three_check())
         {
             if (pos.is_three_check_win())
