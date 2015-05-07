@@ -159,35 +159,33 @@ namespace {
   };
 
 #ifdef THREECHECK
-  const Score ChecksGivenBonus[4] = {
+  const Score ChecksGivenBonus[CHECKS_NB] = {
       S(0, 0),
-      S(2 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
-      S(4 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
+      S(3 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
+      S(5 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
       S(9 * PawnValueMg + PawnValueMg / 2, 9 * PawnValueEg),
   };
 
-  const Score RookOpenFile[5] = {
+  const Score RookOpenFile[CHECKS_NB] = {
       S(43, 21),
       S(43 + 2 * PawnValueMg, 21 + 2 * PawnValueEg),
       S(43 + 4 * PawnValueMg, 21 + 4 * PawnValueEg),
       S(43 + 6 * PawnValueMg, 21 + 6 * PawnValueEg),
-      S(43 + 8 * PawnValueMg, 21 + 8 * PawnValueEg),
   };
-  const Score RookSemiopenFile[5] = {
+  const Score RookSemiopenFile[CHECKS_NB] = {
       S(19, 10),
       S(19 + 1 * PawnValueMg, 10 + 1 * PawnValueEg),
       S(19 + 2 * PawnValueMg, 10 + 2 * PawnValueEg),
       S(19 + 3 * PawnValueMg, 10 + 3 * PawnValueEg),
-      S(19 + 4 * PawnValueMg, 10 + 4 * PawnValueEg),
   };
 
-  const Score RookOn7th[4] = {
+  const Score RookOn7th[CHECKS_NB] = {
       S(11, 20),
       S(11 + 3 * PawnValueMg, 20 + 3 * PawnValueEg),
       S(11 + 6 * PawnValueMg, 20 + 6 * PawnValueEg),
       S(11 + 9 * PawnValueMg, 20 + 9 * PawnValueEg),
   };
-  const Score QueenOn7th[4] = {
+  const Score QueenOn7th[CHECKS_NB] = {
       S(3, 54),
       S(3 + 2 * PawnValueMg, 8 + 2 * PawnValueEg),
       S(3 + 4 * PawnValueMg, 8 + 4 * PawnValueEg),

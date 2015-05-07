@@ -292,8 +292,13 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
   }
 
 #ifdef THREECHECK
+  // Greatly decrease shelter bonus when checks have been taken
   if (pos.is_three_check())
-      safety -= pos.checks_taken();
+  {
+      Value danger = MaxSafetyBonus - safety;
+      for (Checks c = CHECKS_0; c < pos.checks_taken(); ++c)
+          safety -= danger;
+  }
 #endif
   return safety;
 }
@@ -308,6 +313,9 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   kingSquares[Us] = ksq;
   castlingRights[Us] = pos.can_castle(Us);
   int minKingPawnDistance = 0;
+#ifdef THREECHECK
+  Checks checks = pos.is_three_check() ? pos.checks_taken() : CHECKS_0;
+#endif
 
 #ifdef KOTH_DISTANCE_BONUS
   Score kothBonus = SCORE_ZERO;
@@ -324,10 +332,15 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
       while (!(DistanceRingBB[ksq][minKingPawnDistance++] & pawns)) {}
 
   if (relative_rank(Us, ksq) > RANK_4)
+#ifdef THREECHECK
+      // Decrease score when checks have been taken
+      return make_score(0, -16 * minKingPawnDistance - checks);
+#else
 #ifdef KOTH_DISTANCE_BONUS
       return kothBonus + make_score(0, -16 * minKingPawnDistance);
 #else
       return make_score(0, -16 * minKingPawnDistance);
+#endif
 #endif
 
   Value bonus = shelter_storm<Us>(pos, ksq);
@@ -339,10 +352,15 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
   if (pos.can_castle(MakeCastling<Us, QUEEN_SIDE>::right))
       bonus = std::max(bonus, shelter_storm<Us>(pos, relative_square(Us, SQ_C1)));
 
+#ifdef THREECHECK
+  // Decrease score when checks have been taken
+  return make_score(bonus, -16 * minKingPawnDistance - checks);
+#else
 #ifdef KOTH_DISTANCE_BONUS
   return kothBonus + make_score(bonus, -16 * minKingPawnDistance);
 #else
   return make_score(bonus, -16 * minKingPawnDistance);
+#endif
 #endif
 }
 
