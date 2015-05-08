@@ -68,8 +68,8 @@ namespace {
 
   // Razoring and futility margin based on depth
 #ifdef THREECHECK
-  Value razor_margin(Position& pos, Depth d) { 
-    return Value(512 + (pos.is_three_check() ? 64 : 32) * d);
+  Value razor_margin(Position &pos, Depth d) {
+      return Value(512 + 32 * d * (pos.is_three_check() ? 2 + pos.checks_taken() : 1));
   }
 #else
   Value razor_margin(Depth d)    { return Value(512 + 32 * d); }
@@ -554,6 +554,9 @@ namespace {
     // Step 1. Initialize node
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
+#ifdef THREECHECK
+    Checks checks = pos.is_three_check() ? pos.checks_taken() : CHECKS_0;
+#endif
 
     if (SpNode)
     {
@@ -591,7 +594,7 @@ namespace {
         }
 #endif
 #ifdef THREECHECK
-        // Check for an instant win (King of the Hill)
+        // Check for an instant win (Three-Check)
         if (pos.is_three_check())
         {
             if (pos.is_three_check_win())
@@ -801,7 +804,11 @@ namespace {
     // and a reduced search returns a value much above beta, we can (almost) safely
     // prune the previous move.
     if (   !PvNode
+#ifdef THREECHECK
+        &&  depth >= (5 + checks + checks) * ONE_PLY
+#else
         &&  depth >= 5 * ONE_PLY
+#endif
         &&  abs(beta) < VALUE_MATE_IN_MAX_PLY)
     {
         Value rbeta = std::min(beta + 200, VALUE_INFINITE);
@@ -827,7 +834,11 @@ namespace {
     }
 
     // Step 10. Internal iterative deepening (skipped when in check)
+#ifdef THREECHECK
+    if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY) - checks - checks
+#else
     if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY)
+#endif
         && !ttMove
         && (PvNode || ss->staticEval + 256 >= beta))
     {
@@ -854,7 +865,11 @@ moves_loop: // When in check and at SpNode search starts from here
 
     singularExtensionNode =   !RootNode
                            && !SpNode
+#ifdef THREECHECK
+                           &&  depth >= 8 * ONE_PLY - checks - checks
+#else
                            &&  depth >= 8 * ONE_PLY
+#endif
                            &&  ttMove != MOVE_NONE
                        /*  &&  ttValue != VALUE_NONE Already implicit in the next condition */
                            &&  abs(ttValue) < VALUE_KNOWN_WIN
@@ -949,7 +964,11 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Move count based pruning
+#ifdef THREECHECK
+          if (   depth < (16 - checks - checks) * ONE_PLY
+#else
           if (   depth < 16 * ONE_PLY
+#endif
               && moveCount >= FutilityMoveCounts[improving][depth])
           {
               if (SpNode)
@@ -961,7 +980,11 @@ moves_loop: // When in check and at SpNode search starts from here
           predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
 
           // Futility pruning: parent node
+#ifdef THREECHECK
+          if (predictedDepth < (7 - checks - checks) * ONE_PLY)
+#else
           if (predictedDepth < 7 * ONE_PLY)
+#endif
           {
               futilityValue =  ss->staticEval + futility_margin(predictedDepth)
                              + 128 + Gains[pos.moved_piece(move)][to_sq(move)];
@@ -1007,7 +1030,11 @@ moves_loop: // When in check and at SpNode search starts from here
 
       // Step 15. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
+#ifdef THREECHECK
+      if (    depth >= (3 + checks + checks) * ONE_PLY
+#else
       if (    depth >= 3 * ONE_PLY
+#endif
           &&  moveCount > 1
           && !captureOrPromotion
           &&  move != ss->killers[0]

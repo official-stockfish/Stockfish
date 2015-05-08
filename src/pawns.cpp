@@ -283,6 +283,11 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b  = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
+#if 0 //#ifdef THREECHECK
+      if (pos.is_three_check())
+          for (Checks c = CHECKS_0; c < pos.checks_taken(); ++c)
+              safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs] / 2;
+#endif
       safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs]
                + StormDanger
                  [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
@@ -291,15 +296,6 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
                  [std::min(f, FILE_H - f)][rkThem];
   }
 
-#ifdef THREECHECK
-  // Greatly decrease shelter bonus when checks have been taken
-  if (pos.is_three_check())
-  {
-      Value danger = MaxSafetyBonus - safety;
-      for (Checks c = CHECKS_0; c < pos.checks_taken(); ++c)
-          safety -= danger;
-  }
-#endif
   return safety;
 }
 

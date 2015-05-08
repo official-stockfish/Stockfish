@@ -161,38 +161,10 @@ namespace {
 #ifdef THREECHECK
   const Score ChecksGivenBonus[CHECKS_NB] = {
       S(0, 0),
-      S(3 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
-      S(5 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
+      S(5 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
+      S(7 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
       S(9 * PawnValueMg + PawnValueMg / 2, 9 * PawnValueEg),
   };
-
-  const Score RookOpenFile[CHECKS_NB] = {
-      S(43, 21),
-      S(43 + 2 * PawnValueMg, 21 + 2 * PawnValueEg),
-      S(43 + 4 * PawnValueMg, 21 + 4 * PawnValueEg),
-      S(43 + 6 * PawnValueMg, 21 + 6 * PawnValueEg),
-  };
-  const Score RookSemiopenFile[CHECKS_NB] = {
-      S(19, 10),
-      S(19 + 1 * PawnValueMg, 10 + 1 * PawnValueEg),
-      S(19 + 2 * PawnValueMg, 10 + 2 * PawnValueEg),
-      S(19 + 3 * PawnValueMg, 10 + 3 * PawnValueEg),
-  };
-
-  const Score RookOn7th[CHECKS_NB] = {
-      S(11, 20),
-      S(11 + 3 * PawnValueMg, 20 + 3 * PawnValueEg),
-      S(11 + 6 * PawnValueMg, 20 + 6 * PawnValueEg),
-      S(11 + 9 * PawnValueMg, 20 + 9 * PawnValueEg),
-  };
-  const Score QueenOn7th[CHECKS_NB] = {
-      S(3, 54),
-      S(3 + 2 * PawnValueMg, 8 + 2 * PawnValueEg),
-      S(3 + 4 * PawnValueMg, 8 + 4 * PawnValueEg),
-      S(3 + 6 * PawnValueMg, 8 + 6 * PawnValueEg),
-  };
-
-  const Score QueenOnPawn = S(4, 20);
 #endif
   const Score ThreatenedByHangingPawn = S(40, 60);
 
@@ -236,26 +208,6 @@ namespace {
   // KingAttackWeights[PieceType] contains king attack weights by piece type
   const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 7, 5, 4, 1 };
 
-#ifdef THREECHECK
-  const int QueenContactCheck[5] = {
-      6, (3 * PawnValueMg) / 2, 3 * PawnValueMg, (9 * PawnValueMg) / 2, 6 * PawnValueMg,
-  };
-  const int RookContactCheck[5] = {
-      4, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg,
-  };
-  const int QueenCheck[5] = {
-      3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg,
-  };
-  const int RookCheck[5] = {
-      3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg
-  };
-  const int BishopCheck[5] = {
-      3, PawnValueMg, 2 * PawnValueMg, 3 * PawnValueMg, 4 * PawnValueMg
-  };
-  const int KnightCheck[5] = {
-      2, (3 * PawnValueMg) / 4, (6 * PawnValueMg) / 4, (9 * PawnValueMg) / 4, 3 * PawnValueMg,
-  };
-#else
   // Penalties for enemy's safe checks
   const int QueenContactCheck = 89;
   const int RookContactCheck  = 71;
@@ -263,7 +215,6 @@ namespace {
   const int RookCheck         = 37;
   const int BishopCheck       = 6;
   const int KnightCheck       = 14;
-#endif
 
   // init_eval_info() initializes king bitboards for given color adding
   // pawn attacks. To be done at the beginning of the evaluation.
@@ -406,12 +357,6 @@ namespace {
             // Bonus when on an open or semi-open file
             if (ei.pi->semiopen_file(Us, file_of(s)))
             {
-#ifdef THREECHECK
-                if (pos.is_three_check())
-                    score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOpenFile[pos.checks_given()]
-                        : RookSemiopenFile[pos.checks_given()];
-                else
-#endif
                 score += ei.pi->semiopen_file(Them, file_of(s)) ? RookOnOpenFile : RookOnSemiOpenFile;
             }
 
@@ -426,28 +371,6 @@ namespace {
                     score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
             }
         }
-
-#ifdef THREECHECK
-        if (pos.is_three_check())
-        {
-            if ((Pt == ROOK || Pt == QUEEN)
-                && relative_rank(Us, s) >= RANK_5)
-            {
-                // Major piece on 7th rank and enemy king trapped on 8th
-                if (relative_rank(Us, s) == RANK_7
-                    && relative_rank(Us, pos.king_square(Them)) == RANK_8)
-
-                    score += (Pt == ROOK
-                        ? RookOn7th[pos.checks_given()]
-                        : QueenOn7th[pos.checks_given()]);
-
-                // Major piece attacking enemy pawns on the same rank/file
-                Bitboard pawns = pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s];
-                if (pawns)
-                    score += popcount<Max15>(pawns) * (Pt == ROOK ? RookOnPawn : QueenOnPawn);
-            }
-        }
-#endif
     }
 
     if (Trace)
@@ -476,6 +399,9 @@ namespace {
 
     // King shelter and enemy pawns storm
     Score score = ei.pi->king_safety<Us>(pos, ksq);
+#ifdef THREECHECK
+    Checks checks = pos.is_three_check() ? pos.checks_taken() : CHECKS_0;
+#endif
 
     // Main king safety evaluation
     if (ei.kingAttackersCount[Them])
@@ -511,9 +437,7 @@ namespace {
 
             if (b)
 #ifdef THREECHECK
-                attackUnits += QueenContactCheck[pos.checks_given()]
-                    * popcount<Max15>(b)
-                    * (Them == pos.side_to_move() ? 2 : 1);
+                attackUnits += QueenContactCheck * (checks+2) * popcount<Max15>(b);
 #else
                 attackUnits += QueenContactCheck * popcount<Max15>(b);
 #endif
@@ -534,9 +458,7 @@ namespace {
 
             if (b)
 #ifdef THREECHECK
-                attackUnits += RookContactCheck[pos.checks_taken()]
-                    * popcount<Max15>(b)
-                    * (Them == pos.side_to_move() ? 2 : 1);
+                attackUnits += RookContactCheck * (checks+2) * popcount<Max15>(b);
 #else
                 attackUnits += RookContactCheck * popcount<Max15>(b);
 #endif
@@ -552,7 +474,7 @@ namespace {
         b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
         if (b)
 #ifdef THREECHECK
-            attackUnits += QueenCheck[pos.checks_given()] * popcount<Max15>(b);
+            attackUnits += QueenCheck * (checks+2) * popcount<Max15>(b);
 #else
             attackUnits += QueenCheck * popcount<Max15>(b);
 #endif
@@ -561,7 +483,7 @@ namespace {
         b = b1 & ei.attackedBy[Them][ROOK];
         if (b)
 #ifdef THREECHECK
-            attackUnits += RookCheck[pos.checks_given()] * popcount<Max15>(b);
+            attackUnits += RookCheck * (checks+2) * popcount<Max15>(b);
 #else
             attackUnits += RookCheck * popcount<Max15>(b);
 #endif
@@ -571,7 +493,7 @@ namespace {
 
         if (b)
 #ifdef THREECHECK
-            attackUnits += BishopCheck[pos.checks_given()] * popcount<Max15>(b);
+            attackUnits += BishopCheck * (checks+2) * popcount<Max15>(b);
 #else
             attackUnits += BishopCheck * popcount<Max15>(b);
 #endif
@@ -580,7 +502,7 @@ namespace {
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
 #ifdef THREECHECK
-            attackUnits += KnightCheck[pos.checks_given()] * popcount<Max15>(b);
+            attackUnits += KnightCheck * (checks+2) * popcount<Max15>(b);
 #else
             attackUnits += KnightCheck * popcount<Max15>(b);
 #endif
@@ -815,6 +737,11 @@ namespace {
     int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
                 + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
 
+#ifdef THREECHECK
+    if (pos.is_three_check())
+        for (Checks c = CHECKS_0; c < pos.checks_taken(); ++c)
+            bonus += bonus;
+#endif
     return make_score(bonus * weight * weight, 0);
   }
 
