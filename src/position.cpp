@@ -94,12 +94,12 @@ CheckInfo::CheckInfo(const Position& pos) {
   pinned = pos.pinned_pieces(pos.side_to_move());
   dcCandidates = pos.discovered_check_candidates();
 
-  checkSq[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
-  checkSq[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
-  checkSq[BISHOP] = pos.attacks_from<BISHOP>(ksq);
-  checkSq[ROOK]   = pos.attacks_from<ROOK>(ksq);
-  checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
-  checkSq[KING]   = 0;
+  checkSquares[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
+  checkSquares[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
+  checkSquares[BISHOP] = pos.attacks_from<BISHOP>(ksq);
+  checkSquares[ROOK]   = pos.attacks_from<ROOK>(ksq);
+  checkSquares[QUEEN]  = checkSquares[BISHOP] | checkSquares[ROOK];
+  checkSquares[KING]   = 0;
 }
 
 
@@ -616,7 +616,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   Square to = to_sq(m);
 
   // Is there a direct check?
-  if (ci.checkSq[type_of(piece_on(from))] & to)
+  if (ci.checkSquares[type_of(piece_on(from))] & to)
       return true;
 
   // Is there a discovered check?

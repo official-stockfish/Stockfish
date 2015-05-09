@@ -33,41 +33,37 @@ namespace {
 /// DD-MM-YY and show in engine_info.
 const string Version = "";
 
-/// Debug counters
-int64_t hits[2], means[2];
-
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
 /// can toggle the logging of std::cout and std:cin at runtime whilst preserving
-/// usual i/o functionality, all without changing a single line of code!
+/// usual I/O functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
 struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
 
-  Tie(streambuf* b, ofstream* f) : buf(b), file(f) {}
+  Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
 
-  int sync() { return file->rdbuf()->pubsync(), buf->pubsync(); }
+  int sync() { return logBuf->pubsync(), buf->pubsync(); }
   int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
   int underflow() { return buf->sgetc(); }
   int uflow() { return log(buf->sbumpc(), ">> "); }
 
-  streambuf* buf;
-  ofstream* file;
+  streambuf *buf, *logBuf;
 
   int log(int c, const char* prefix) {
 
-    static int last = '\n';
+    static int last = '\n'; // Single log file
 
     if (last == '\n')
-        file->rdbuf()->sputn(prefix, 3);
+        logBuf->sputn(prefix, 3);
 
-    return last = file->rdbuf()->sputc((char)c);
+    return last = logBuf->sputc((char)c);
   }
 };
 
 class Logger {
 
-  Logger() : in(cin.rdbuf(), &file), out(cout.rdbuf(), &file) {}
+  Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
  ~Logger() { start(false); }
 
   ofstream file;
@@ -80,7 +76,7 @@ public:
 
     if (b && !l.file.is_open())
     {
-        l.file.open("io_log.txt", ifstream::out | ifstream::app);
+        l.file.open("io_log.txt", ifstream::out);
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
     }
@@ -124,6 +120,7 @@ const string engine_info(bool to_uci) {
 
 
 /// Debug functions used mainly to collect run-time statistics
+static int64_t hits[2], means[2];
 
 void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
 void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }

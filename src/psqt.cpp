@@ -109,7 +109,7 @@ void init() {
 
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
-          int edgeDistance = int(file_of(s) < FILE_E ? file_of(s) : FILE_H - file_of(s));
+          int edgeDistance = file_of(s) < FILE_E ? file_of(s) : FILE_H - file_of(s);
           psq[BLACK][pt][~s] = -(psq[WHITE][pt][s] = v + Bonus[pt][rank_of(s)][edgeDistance]);
       }
   }

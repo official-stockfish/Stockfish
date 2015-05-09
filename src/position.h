@@ -46,7 +46,7 @@ struct CheckInfo {
 
   Bitboard dcCandidates;
   Bitboard pinned;
-  Bitboard checkSq[PIECE_TYPE_NB];
+  Bitboard checkSquares[PIECE_TYPE_NB];
   Square   ksq;
 };
 

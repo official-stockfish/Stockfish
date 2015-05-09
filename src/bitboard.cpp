@@ -201,17 +201,15 @@ void Bitboards::init() {
       PseudoAttacks[QUEEN][s1]  = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
       PseudoAttacks[QUEEN][s1] |= PseudoAttacks[  ROOK][s1] = attacks_bb<  ROOK>(s1, 0);
 
-      for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-      {
-          Piece pc = (PseudoAttacks[BISHOP][s1] & s2) ? W_BISHOP :
-                     (PseudoAttacks[ROOK][s1]   & s2) ? W_ROOK   : NO_PIECE;
+      for (Piece pc = W_BISHOP; pc <= W_ROOK; ++pc)
+          for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+          {
+              if (!(PseudoAttacks[pc][s1] & s2))
+                  continue;
 
-          if (pc == NO_PIECE)
-              continue;
-
-          LineBB[s1][s2] = (attacks_bb(pc, s1, 0) & attacks_bb(pc, s2, 0)) | s1 | s2;
-          BetweenBB[s1][s2] = attacks_bb(pc, s1, SquareBB[s2]) & attacks_bb(pc, s2, SquareBB[s1]);
-      }
+              LineBB[s1][s2] = (attacks_bb(pc, s1, 0) & attacks_bb(pc, s2, 0)) | s1 | s2;
+              BetweenBB[s1][s2] = attacks_bb(pc, s1, SquareBB[s2]) & attacks_bb(pc, s2, SquareBB[s1]);
+          }
   }
 }
 
