@@ -43,14 +43,34 @@ struct TTEntry {
 
   void save(Key k, Value v, Bound b, Depth d, Move m, Value ev, uint8_t g) {
 
-    if (m || (k >> 48) != key16) // Preserve any existing move for the same position
-        move16 = (uint16_t)m;
+      if (key16 != (k >> 48))
+      {
+          key16     = (uint16_t)(k >> 48);
+          move16    = (uint16_t)m;
+          value16   = (int16_t)v;
+          eval16    = (int16_t)ev;
+          genBound8 = (uint8_t)(g | b);
+          depth8    = (int8_t)d;
+      }
+      else
+      {
+          // Preserve any existing move for the same position
+          if (m)
+              move16 = (uint16_t)m;
 
-    key16     = (uint16_t)(k >> 48);
-    value16   = (int16_t)v;
-    eval16    = (int16_t)ev;
-    genBound8 = (uint8_t)(g | b);
-    depth8    = (int8_t)d;
+          // Don't overwrite more valuable values
+          if (   d + 2 > depth8 
+              || g != (genBound8 & 0xFC) 
+              || b == BOUND_EXACT)
+          {
+              value16   = (int16_t)v;
+              genBound8 = (uint8_t)(g | b);
+              depth8    = (int8_t)d;
+          }
+
+          if (ev != VALUE_NONE)
+              eval16 = (int16_t)ev;
+      }
   }
 
 private:
