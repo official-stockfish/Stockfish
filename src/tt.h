@@ -54,7 +54,8 @@ struct TTEntry {
       }
       else
       {   
-          if (m) move16 = (uint16_t)m; // Preserve any existing move for the same position
+          if (m) // Preserve any existing move for the same position
+              move16 = (uint16_t)m;
 
           // Don't overwrite more valuable values
           if (d+2 > depth8 || g != (genBound8 & 0xFC) || b == BOUND_EXACT)
@@ -64,7 +65,8 @@ struct TTEntry {
               depth8    = (int8_t)d;
           }
 
-          if (ev != VALUE_NONE) eval16 = (int16_t)ev;
+          if (ev != VALUE_NONE)
+              eval16 = (int16_t)ev;
       }
   }
 
