@@ -161,9 +161,9 @@ namespace {
 #ifdef THREECHECK
   const Score ChecksGivenBonus[CHECKS_NB] = {
       S(0, 0),
-      S(5 * PawnValueMg + PawnValueMg / 2, 2 * PawnValueEg),
-      S(7 * PawnValueMg + PawnValueMg / 2, 4 * PawnValueEg),
-      S(9 * PawnValueMg + PawnValueMg / 2, 9 * PawnValueEg),
+      S(2 * PawnValueMg, 2 * PawnValueEg),
+      S(5 * PawnValueMg, 4 * PawnValueEg),
+      S(9 * PawnValueMg, 9 * PawnValueEg)
   };
 #endif
   const Score ThreatenedByHangingPawn = S(40, 60);
@@ -399,9 +399,6 @@ namespace {
 
     // King shelter and enemy pawns storm
     Score score = ei.pi->king_safety<Us>(pos, ksq);
-#ifdef THREECHECK
-    Checks checks = pos.is_three_check() ? pos.checks_taken() : CHECKS_0;
-#endif
 
     // Main king safety evaluation
     if (ei.kingAttackersCount[Them])
@@ -436,11 +433,7 @@ namespace {
                 | ei.attackedBy[Them][BISHOP] | ei.attackedBy[Them][ROOK];
 
             if (b)
-#ifdef THREECHECK
-                attackUnits += QueenContactCheck * (checks+2) * popcount<Max15>(b);
-#else
                 attackUnits += QueenContactCheck * popcount<Max15>(b);
-#endif
         }
 
         // Analyse the enemy's safe rook contact checks. Firstly, find the
@@ -457,15 +450,15 @@ namespace {
                   | ei.attackedBy[Them][BISHOP]);
 
             if (b)
-#ifdef THREECHECK
-                attackUnits += RookContactCheck * (checks+2) * popcount<Max15>(b);
-#else
                 attackUnits += RookContactCheck * popcount<Max15>(b);
-#endif
         }
 
         // Analyse the enemy's safe distance checks for sliders and knights
         safe = ~(ei.attackedBy[Us][ALL_PIECES] | pos.pieces(Them));
+#ifdef THREECHECK
+        if (pos.is_three_check() && pos.checks_taken())
+            safe = ~pos.pieces(Them);
+#endif
 
         b1 = pos.attacks_from<ROOK  >(ksq) & safe;
         b2 = pos.attacks_from<BISHOP>(ksq) & safe;
@@ -473,42 +466,39 @@ namespace {
         // Enemy queen safe checks
         b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
         if (b)
-#ifdef THREECHECK
-            attackUnits += QueenCheck * (checks+2) * popcount<Max15>(b);
-#else
             attackUnits += QueenCheck * popcount<Max15>(b);
-#endif
 
         // Enemy rooks safe checks
         b = b1 & ei.attackedBy[Them][ROOK];
         if (b)
-#ifdef THREECHECK
-            attackUnits += RookCheck * (checks+2) * popcount<Max15>(b);
-#else
             attackUnits += RookCheck * popcount<Max15>(b);
-#endif
 
         // Enemy bishops safe checks
         b = b2 & ei.attackedBy[Them][BISHOP];
 
         if (b)
-#ifdef THREECHECK
-            attackUnits += BishopCheck * (checks+2) * popcount<Max15>(b);
-#else
             attackUnits += BishopCheck * popcount<Max15>(b);
-#endif
 
         // Enemy knights safe checks
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
-#ifdef THREECHECK
-            attackUnits += KnightCheck * (checks+2) * popcount<Max15>(b);
-#else
             attackUnits += KnightCheck * popcount<Max15>(b);
-#endif
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from evaluation.
+#ifdef THREECHECK
+        if (pos.is_three_check())
+        {
+            switch(pos.checks_taken())
+            {
+            case CHECKS_NB:
+            case CHECKS_3:
+            case CHECKS_2:  attackUnits += RookCheck; break;
+            case CHECKS_1:  attackUnits += KnightCheck + attackUnits / 2; break;
+            case CHECKS_0:  attackUnits += BishopCheck + attackUnits; break;
+            }
+        }
+#endif
         score -= KingDanger[std::max(std::min(attackUnits, 399), 0)];
     }
 
@@ -736,12 +726,11 @@ namespace {
     int bonus = popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
     int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
                 + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
-
 #ifdef THREECHECK
     if (pos.is_three_check())
-        for (Checks c = CHECKS_0; c < pos.checks_taken(); ++c)
-            bonus += bonus;
+        weight -= pos.checks_given() + pos.checks_taken();
 #endif
+
     return make_score(bonus * weight * weight, 0);
   }
 
@@ -981,11 +970,7 @@ namespace Eval {
   void init() {
     const int MaxSlope = 8700;
 
-#ifdef THREECHECK
-    const int Peak = 2560000;
-#else
     const int Peak = 1280000;
-#endif
 
     int t = 0;
 

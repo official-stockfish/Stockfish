@@ -283,11 +283,6 @@ Value Entry::shelter_storm(const Position& pos, Square ksq) {
       b  = theirPawns & file_bb(f);
       Rank rkThem = b ? relative_rank(Us, frontmost_sq(Them, b)) : RANK_1;
 
-#if 0 //#ifdef THREECHECK
-      if (pos.is_three_check())
-          for (Checks c = CHECKS_0; c < pos.checks_taken(); ++c)
-              safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs] / 2;
-#endif
       safety -=  ShelterWeakness[std::min(f, FILE_H - f)][rkUs]
                + StormDanger
                  [f == file_of(ksq) && rkThem == relative_rank(Us, ksq) + 1 ? BlockedByKing  :
@@ -350,7 +345,7 @@ Score Entry::do_king_safety(const Position& pos, Square ksq) {
 
 #ifdef THREECHECK
   // Decrease score when checks have been taken
-  return make_score(bonus, -16 * minKingPawnDistance - checks);
+  return make_score(bonus, (-16 * minKingPawnDistance) + (-2 * checks));
 #else
 #ifdef KOTH_DISTANCE_BONUS
   return kothBonus + make_score(bonus, -16 * minKingPawnDistance);
