@@ -154,8 +154,6 @@ ifeq ($(COMP),gcc)
 	CXXFLAGS += -pedantic -Wno-long-long -Wextra -Wshadow
 	ifneq ($(UNAME),Darwin)
 	   LDFLAGS += -Wl,--no-as-needed
-	else
-	   LDFLAGS += -Wl
 	endif
 endif
 
