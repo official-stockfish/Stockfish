@@ -44,7 +44,7 @@ namespace {
     S(40, 35), S(40, 35), S(36, 35), S(25, 30) } };
 
   // Backward pawn penalty by opposed flag
-  const Score Backward[2] = { S(67, 56), S(49, 40) };
+  const Score Backward[2] = { S(67, 42), S(49, 24) };
 
   // Connected pawn bonus by opposed, phalanx, twice supported and rank
   Score Connected[2][2][2][RANK_NB];
@@ -67,29 +67,29 @@ namespace {
 
   // Weakness of our pawn shelter in front of the king by [distance from edge][rank]
   const Value ShelterWeakness[][RANK_NB] = {
-  { V( 99), V(20), V(26), V(54), V(85), V( 92), V(108) },
-  { V(117), V( 1), V(27), V(71), V(94), V(104), V(118) },
-  { V(104), V( 4), V(51), V(76), V(82), V(102), V( 97) },
-  { V( 80), V(12), V(43), V(65), V(88), V( 91), V(115) } };
+  { V( 97), V(21), V(26), V(51), V(87), V( 89), V( 99) },
+  { V(120), V( 0), V(28), V(76), V(88), V(103), V(104) },
+  { V(101), V( 7), V(54), V(78), V(77), V( 92), V(101) },
+  { V( 80), V(11), V(44), V(68), V(87), V( 90), V(119) } };
 
   // Danger of enemy pawns moving toward our king by [type][distance from edge][rank]
   const Value StormDanger[][4][RANK_NB] = {
-  { { V( 0),  V(  65), V( 126), V(36), V(30) },
-    { V( 0),  V(  55), V( 135), V(36), V(23) },
-    { V( 0),  V(  47), V( 116), V(45), V(26) },
-    { V( 0),  V(  62), V( 127), V(57), V(34) } },
-  { { V(21),  V(  45), V(  93), V(50), V(19) },
-    { V(23),  V(  24), V( 105), V(41), V(13) },
-    { V(23),  V(  36), V( 101), V(38), V(20) },
-    { V(30),  V(  19), V( 110), V(41), V(27) } },
-  { { V( 0),  V(   0), V(  81), V(14), V( 4) },
-    { V( 0),  V(   0), V( 169), V(30), V( 3) },
-    { V( 0),  V(   0), V( 168), V(24), V( 5) },
-    { V( 0),  V(   0), V( 162), V(26), V(10) } },
-  { { V( 0),  V(-283), V(-298), V(57), V(29) },
-    { V( 0),  V(  63), V( 137), V(42), V(18) },
-    { V( 0),  V(  67), V( 145), V(49), V(33) },
-    { V( 0),  V(  62), V( 126), V(53), V(21) } } };
+  { { V( 0),  V(  67), V( 134), V(38), V(32) },
+    { V( 0),  V(  57), V( 139), V(37), V(22) },
+    { V( 0),  V(  43), V( 115), V(43), V(27) },
+    { V( 0),  V(  68), V( 124), V(57), V(32) } },
+  { { V(20),  V(  43), V( 100), V(56), V(20) },
+    { V(23),  V(  20), V(  98), V(40), V(15) },
+    { V(23),  V(  39), V( 103), V(36), V(18) },
+    { V(28),  V(  19), V( 108), V(42), V(26) } },
+  { { V( 0),  V(   0), V(  75), V(14), V( 2) },
+    { V( 0),  V(   0), V( 150), V(30), V( 4) },
+    { V( 0),  V(   0), V( 160), V(22), V( 5) },
+    { V( 0),  V(   0), V( 166), V(24), V(13) } },
+  { { V( 0),  V(-283), V(-281), V(57), V(31) },
+    { V( 0),  V(  58), V( 141), V(39), V(18) },
+    { V( 0),  V(  65), V( 142), V(48), V(32) },
+    { V( 0),  V(  60), V( 126), V(51), V(19) } } };
 
   // Max bonus for king safety. Corresponds to start position with all the pawns
   // in front of the king and no enemy pawn on the horizon.
@@ -147,9 +147,10 @@ namespace {
         // Test for backward pawn.
         // If the pawn is passed, isolated, lever or connected it cannot be
         // backward. If there are friendly pawns behind on adjacent files
-        // it cannot be backward either.
+        // or if it is sufficiently advanced, it cannot be backward either.
         if (   (passed | isolated | lever | connected)
-            || (ourPawns & pawn_attack_span(Them, s)))
+            || (ourPawns & pawn_attack_span(Them, s))
+            || (relative_rank(Us, s) >= RANK_5))
             backward = false;
         else
         {
