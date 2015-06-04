@@ -26,12 +26,12 @@
 namespace {
 
   enum Stages {
-    MAIN_SEARCH, CAPTURES_S1, KILLERS_S1, QUIETS_1_S1, QUIETS_2_S1, BAD_CAPTURES_S1,
-    EVASION,     EVASIONS_S2,
-    QSEARCH_0,   CAPTURES_S3, QUIET_CHECKS_S3,
-    QSEARCH_1,   CAPTURES_S4,
-    PROBCUT,     CAPTURES_S5,
-    RECAPTURE,   CAPTURES_S6,
+    MAIN_SEARCH, GOOD_CAPTURES, KILLERS, GOOD_QUIETS, BAD_QUIETS, BAD_CAPTURES,
+    EVASION, ALL_EVASIONS,
+    QSEARCH_WITH_CHECKS, QCAPTURES_1, CHECKS,
+    QSEARCH_WITHOUT_CHECKS, QCAPTURES_2,
+    PROBCUT, PROBCUT_CAPTURES,
+    RECAPTURE, RECAPTURES,
     STOP
   };
 
@@ -95,10 +95,10 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
       stage = EVASION;
 
   else if (d > DEPTH_QS_NO_CHECKS)
-      stage = QSEARCH_0;
+      stage = QSEARCH_WITH_CHECKS;
 
   else if (d > DEPTH_QS_RECAPTURES)
-      stage = QSEARCH_1;
+      stage = QSEARCH_WITHOUT_CHECKS;
 
   else
   {
@@ -191,12 +191,13 @@ void MovePicker::generate_next_stage() {
 
   switch (++stage) {
 
-  case CAPTURES_S1: case CAPTURES_S3: case CAPTURES_S4: case CAPTURES_S5: case CAPTURES_S6:
+  case GOOD_CAPTURES: case QCAPTURES_1: case QCAPTURES_2:
+  case PROBCUT_CAPTURES: case RECAPTURES:
       endMoves = generate<CAPTURES>(pos, moves);
       score<CAPTURES>();
       break;
 
-  case KILLERS_S1:
+  case KILLERS:
       cur = killers;
       endMoves = cur + 2;
 
@@ -210,37 +211,38 @@ void MovePicker::generate_next_stage() {
           *endMoves++ = countermove;
       break;
 
-  case QUIETS_1_S1:
+  case GOOD_QUIETS:
       endQuiets = endMoves = generate<QUIETS>(pos, moves);
       score<QUIETS>();
       endMoves = std::partition(cur, endMoves, [](const ExtMove& m) { return m.value > VALUE_ZERO; });
       insertion_sort(cur, endMoves);
       break;
 
-  case QUIETS_2_S1:
+  case BAD_QUIETS:
       cur = endMoves;
       endMoves = endQuiets;
       if (depth >= 3 * ONE_PLY)
           insertion_sort(cur, endMoves);
       break;
 
-  case BAD_CAPTURES_S1:
+  case BAD_CAPTURES:
       // Just pick them in reverse order to get MVV/LVA ordering
       cur = moves + MAX_MOVES - 1;
       endMoves = endBadCaptures;
       break;
 
-  case EVASIONS_S2:
+  case ALL_EVASIONS:
       endMoves = generate<EVASIONS>(pos, moves);
       if (endMoves - moves > 1)
           score<EVASIONS>();
       break;
 
-  case QUIET_CHECKS_S3:
+  case CHECKS:
       endMoves = generate<QUIET_CHECKS>(pos, moves);
       break;
 
-  case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT: case RECAPTURE:
+  case EVASION: case QSEARCH_WITH_CHECKS: case QSEARCH_WITHOUT_CHECKS:
+  case PROBCUT: case RECAPTURE:
       stage = STOP;
       /* Fall through */
 
@@ -270,11 +272,12 @@ Move MovePicker::next_move<false>() {
 
       switch (stage) {
 
-      case MAIN_SEARCH: case EVASION: case QSEARCH_0: case QSEARCH_1: case PROBCUT:
+      case MAIN_SEARCH: case EVASION: case QSEARCH_WITH_CHECKS:
+      case QSEARCH_WITHOUT_CHECKS: case PROBCUT:
           ++cur;
           return ttMove;
 
-      case CAPTURES_S1:
+      case GOOD_CAPTURES:
           move = pick_best(cur++, endMoves);
           if (move != ttMove)
           {
@@ -286,7 +289,7 @@ Move MovePicker::next_move<false>() {
           }
           break;
 
-      case KILLERS_S1:
+      case KILLERS:
           move = *cur++;
           if (    move != MOVE_NONE
               &&  move != ttMove
@@ -295,7 +298,7 @@ Move MovePicker::next_move<false>() {
               return move;
           break;
 
-      case QUIETS_1_S1: case QUIETS_2_S1:
+      case GOOD_QUIETS: case BAD_QUIETS:
           move = *cur++;
           if (   move != ttMove
               && move != killers[0]
@@ -304,28 +307,28 @@ Move MovePicker::next_move<false>() {
               return move;
           break;
 
-      case BAD_CAPTURES_S1:
+      case BAD_CAPTURES:
           return *cur--;
 
-      case EVASIONS_S2: case CAPTURES_S3: case CAPTURES_S4:
+      case ALL_EVASIONS: case QCAPTURES_1: case QCAPTURES_2:
           move = pick_best(cur++, endMoves);
           if (move != ttMove)
               return move;
           break;
 
-      case CAPTURES_S5:
+      case PROBCUT_CAPTURES:
            move = pick_best(cur++, endMoves);
            if (move != ttMove && pos.see(move) > captureThreshold)
                return move;
            break;
 
-      case CAPTURES_S6:
+      case RECAPTURES:
           move = pick_best(cur++, endMoves);
           if (to_sq(move) == recaptureSquare)
               return move;
           break;
 
-      case QUIET_CHECKS_S3:
+      case CHECKS:
           move = *cur++;
           if (move != ttMove)
               return move;
