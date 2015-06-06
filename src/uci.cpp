@@ -36,14 +36,8 @@ extern void benchmark(const Position& pos, istream& is);
 
 namespace {
 
-#ifdef HORDE
-  // FEN string of the initial position, horde chess
-  //const char* StartFEN = "pppppppp/pppppppp/pppppppp/pppppppp/1pp2pp1/8/PPPPPPPP/RNBQKBNR w KQ - 0 1";
+  // FEN string of the initial position, normal variant
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-#else
-  // FEN string of the initial position, normal chess
-  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-#endif
 
   // Stack to keep track of the position states along the setup moves (from the
   // start position to the position just before the search starts). Needed by

@@ -298,7 +298,7 @@ template<PieceType Pt> inline const Square* Position::list(Color c) const {
 
 inline Square Position::king_square(Color c) const {
 #ifdef HORDE
-  return is_horde() && c == BLACK ? SQ_NONE : pieceList[c][KING][0];
+  return is_horde() && c == WHITE ? SQ_NONE : pieceList[c][KING][0];
 #endif
   return pieceList[c][KING][0];
 }

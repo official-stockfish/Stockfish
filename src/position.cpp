@@ -604,7 +604,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
 
   assert(color_of(moved_piece(m)) == us);
 #ifdef HORDE
-  assert(is_horde() && us == BLACK ? king_square(us) == SQ_NONE : piece_on(king_square(us)) == make_piece(us, KING));
+  assert(is_horde() && us == WHITE ? king_square(us) == SQ_NONE : piece_on(king_square(us)) == make_piece(us, KING));
 #else
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 #endif
