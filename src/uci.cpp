@@ -38,6 +38,10 @@ namespace {
 
   // FEN string of the initial position, normal variant
   const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+#ifdef HORDE
+  // FEN string of the initial position, horde variant
+  const char* StartFENHorde = "rnbqkbnr/pppppppp/8/1PP2PP1/PPPPPPPP/PPPPPPPP/PPPPPPPP/PPPPPPPP w kq - 0 1";
+#endif
 
   // Stack to keep track of the position states along the setup moves (from the
   // start position to the position just before the search starts). Needed by
@@ -55,19 +59,6 @@ namespace {
     Move m;
     string token, fen;
 
-    is >> token;
-
-    if (token == "startpos")
-    {
-        fen = StartFEN;
-        is >> token; // Consume "moves" token if any
-    }
-    else if (token == "fen")
-        while (is >> token && token != "moves")
-            fen += token + " ";
-    else
-        return;
-
     int variant = STANDARD_VARIANT;
 #ifdef HORDE
     if (Options["UCI_Horde"])
@@ -81,6 +72,22 @@ namespace {
     if (Options["UCI_3Check"])
         variant |= THREECHECK_VARIANT;
 #endif
+
+    is >> token;
+    if (token == "startpos")
+    {
+#ifdef HORDE
+        fen = (variant & HORDE_VARIANT) ? StartFENHorde : StartFEN;
+#else
+        fen = StartFEN;
+#endif
+        is >> token; // Consume "moves" token if any
+    }
+    else if (token == "fen")
+        while (is >> token && token != "moves")
+            fen += token + " ";
+    else
+        return;
     pos.set(fen, Options["UCI_Chess960"], variant, Threads.main());
     
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
