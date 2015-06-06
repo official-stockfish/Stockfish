@@ -975,13 +975,6 @@ moves_loop: // When in check and at SpNode search starts from here
 
           value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
-          // Re-search at intermediate depth if reduction is very high
-          if (value > alpha && ss->reduction >= 4 * ONE_PLY)
-          {
-              Depth d2 = std::max(newDepth - 2 * ONE_PLY, ONE_PLY);
-              value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d2, true);
-          }
-
           doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
           ss->reduction = DEPTH_ZERO;
       }
