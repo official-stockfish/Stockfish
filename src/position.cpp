@@ -336,8 +336,13 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
     }
 
     // 4. En passant square. Ignore if no pawn capture is possible
+#ifdef HORDE
+    if (((ss >> col) && (col >= 'a' && col <= 'h'))
+        && ((ss >> row) && ((variant & HORDE_VARIANT) && row == '2' || row == '3' || row == '6')))
+#else
     if (((ss >> col) && (col >= 'a' && col <= 'h'))
         && ((ss >> row) && (row == '3' || row == '6')))
+#endif
     {
         st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 

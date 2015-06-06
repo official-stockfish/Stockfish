@@ -96,6 +96,9 @@ namespace {
     const Color    Them     = (Us == WHITE ? BLACK    : WHITE);
     const Bitboard TRank8BB = (Us == WHITE ? Rank8BB  : Rank1BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
+#ifdef HORDE
+    const Bitboard TRank2BB = (Us == WHITE ? Rank2BB  : Rank7BB);
+#endif
     const Bitboard TRank3BB = (Us == WHITE ? Rank3BB  : Rank6BB);
     const Square   Up       = (Us == WHITE ? DELTA_N  : DELTA_S);
     const Square   Right    = (Us == WHITE ? DELTA_NE : DELTA_SW);
@@ -116,6 +119,10 @@ namespace {
 
         Bitboard b1 = shift_bb<Up>(pawnsNotOn7)   & emptySquares;
         Bitboard b2 = shift_bb<Up>(b1 & TRank3BB) & emptySquares;
+#ifdef HORDE
+        if (pos.is_horde())
+            b2 = shift_bb<Up>(b1 & (TRank2BB | TRank3BB)) & emptySquares;
+#endif
 
         if (Type == EVASIONS) // Consider only blocking squares
         {
