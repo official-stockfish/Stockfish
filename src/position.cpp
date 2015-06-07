@@ -443,10 +443,15 @@ void Position::set_state(StateInfo* si) const {
   si->psq = SCORE_ZERO;
 
 #ifdef HORDE
-  Square ksq = king_square(sideToMove);
-  si->checkersBB = ksq == SQ_NONE ? 0 : attackers_to(ksq) & pieces(~sideToMove);
-#else
-  si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+  if (is_horde())
+  {
+      Square ksq = king_square(sideToMove);
+      si->checkersBB = ksq == SQ_NONE ? 0 : attackers_to(ksq) & pieces(~sideToMove);
+  }
+  else
+  {
+      si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+  }
 #endif
 
   for (Bitboard b = pieces(); b; )
@@ -544,6 +549,10 @@ const string Position::fen() const {
 /// material between endgame and midgame limits.
 
 Phase Position::game_phase() const {
+#ifdef HORDE
+  if (is_horde())
+      return MG;
+#endif
 
   Value npm = st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
 
@@ -565,7 +574,7 @@ Bitboard Position::check_blockers(Color c, Color kingColor) const {
   Bitboard b, pinners, result = 0;
   Square ksq = king_square(kingColor);
 #ifdef HORDE
-  if (ksq == SQ_NONE) return result;
+  if (is_horde() && ksq == SQ_NONE) return result;
 #endif
 
   // Pinners are sliders that give check when a pinned piece is removed
@@ -614,15 +623,18 @@ bool Position::legal(Move m, Bitboard pinned) const {
   assert(piece_on(king_square(us)) == make_piece(us, KING));
 #endif
 
-#ifdef HORDE
-  // If the game is already won or lost, further moves are illegal
-  if (is_horde() && is_horde_loss())
-      return false;
-#endif
 #ifdef KOTH
   // If the game is already won or lost, further moves are illegal
   if (is_koth() && (is_koth_win() || is_koth_loss()))
       return false;
+#endif
+#ifdef HORDE
+  // If the game is already won or lost, further moves are illegal
+  if (is_horde() && is_horde_loss())
+      return false;
+  // All pseudo-legal moves by the horde are legal
+  if (is_horde() && king_square(us) == SQ_NONE)
+      return true;
 #endif
 
   // En passant captures are a tricky special case. Because they are rather
@@ -640,9 +652,6 @@ bool Position::legal(Move m, Bitboard pinned) const {
       assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-#ifdef HORDE
-      if (is_horde() && ksq != SQ_NONE)
-#endif
       return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
             && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
   }
@@ -653,10 +662,6 @@ bool Position::legal(Move m, Bitboard pinned) const {
   if (type_of(piece_on(from)) == KING)
       return type_of(m) == CASTLING || !(attackers_to(to_sq(m)) & pieces(~us));
 
-#ifdef HORDE
-   if (is_horde() && king_square(us) == SQ_NONE)
-      return true;
-#endif
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
   return   !pinned
@@ -1307,17 +1312,35 @@ bool Position::pos_is_ok(int* failedStep) const {
 
       if (step == Default)
           if (   (sideToMove != WHITE && sideToMove != BLACK)
+#ifdef HORDE
+              || (is_horde() ? king_square(WHITE) != SQ_NONE : piece_on(king_square(WHITE)) != W_KING)
+#else
               || piece_on(king_square(WHITE)) != W_KING
+#endif
               || piece_on(king_square(BLACK)) != B_KING
               || (   ep_square() != SQ_NONE
+#ifdef HORDE
+                  && (!is_horde() || relative_rank(sideToMove, ep_square()) != RANK_7)
+#endif
                   && relative_rank(sideToMove, ep_square()) != RANK_6))
               return false;
 
       if (step == King)
+      {
+#ifdef HORDE
+          if (is_horde())
+          {
+              if (   std::count(board, board + SQUARE_NB, W_KING) != 0
+                  || std::count(board, board + SQUARE_NB, B_KING) != 1
+                  || (sideToMove == WHITE && attackers_to(king_square(~sideToMove)) & pieces(sideToMove)))
+              return false;
+          } else
+#endif
           if (   std::count(board, board + SQUARE_NB, W_KING) != 1
               || std::count(board, board + SQUARE_NB, B_KING) != 1
               || attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
               return false;
+      }
 
       if (step == Bitboards)
       {

@@ -439,7 +439,7 @@ inline bool Position::is_horde() const {
 
 // Loss if horde is captured (Horde)
 inline bool Position::is_horde_loss() const {
-  return pieces(BLACK) == 0;
+  return pieces(WHITE) == 0;
 }
 #endif
 
