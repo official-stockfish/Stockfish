@@ -247,13 +247,16 @@ void Search::think() {
   if (RootMoves.empty())
   {
       RootMoves.push_back(RootMove(MOVE_NONE));
-      sync_cout << "info depth 0 score "
+      Value score = RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW;
 #ifdef KOTH
-                << UCI::value(RootPos.checkers() || (RootPos.is_koth() && RootPos.is_koth_loss()) ? -VALUE_MATE : VALUE_DRAW)
-#else
-                << UCI::value(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+      if (RootPos.is_koth() && RootPos.is_koth_loss())
+          score = -VALUE_MATE;
 #endif
-                << sync_endl;
+#ifdef HORDE
+      if (RootPos.is_horde() && RootPos.is_horde_loss())
+          score = -VALUE_MATE;
+#endif
+      sync_cout << "info depth 0 score " << UCI::value(score) << sync_endl;
   }
   else
   {
@@ -326,6 +329,11 @@ void Search::think() {
 #endif
 #ifdef THREECHECK
   if (RootPos.is_three_check() && RootPos.is_three_check_loss())
+      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
+  else
+#endif
+#ifdef HORDE
+  if (RootPos.is_horde() && RootPos.is_horde_loss())
       sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
   else
 #endif
@@ -584,7 +592,7 @@ namespace {
     if (!RootNode)
     {
 #ifdef KOTH
-        // Check for an instant win (King of the Hill)
+        // Check for an instant win/loss (King of the Hill)
         if (pos.is_koth())
         {
             if (pos.is_koth_win())
@@ -594,7 +602,7 @@ namespace {
         }
 #endif
 #ifdef THREECHECK
-        // Check for an instant win (Three-Check)
+        // Check for an instant win/loss (Three-Check)
         if (pos.is_three_check())
         {
             if (pos.is_three_check_win())
@@ -602,6 +610,11 @@ namespace {
             if (pos.is_three_check_loss())
                 return mated_in(ss->ply);
         }
+#endif
+#ifdef HORDE
+        // Check for an instant loss (Horde)
+        if (pos.is_horde() && pos.is_horde_loss())
+            return mated_in(ss->ply);
 #endif
 
         // Step 2. Check for aborted search and immediate draw
@@ -1223,8 +1236,15 @@ moves_loop: // When in check and at SpNode search starts from here
     // must be mate or stalemate. If we are in a singular extension search then
     // return a fail low score.
     if (!moveCount)
+    {
+#ifdef HORDE
+        if (RootPos.is_horde() && RootPos.is_horde_loss())
+            bestValue = excludedMove ? alpha : mated_in(ss->ply);
+        else
+#endif
         bestValue = excludedMove ? alpha
                    :     inCheck ? mated_in(ss->ply) : DrawValue[pos.side_to_move()];
+    }
 
     // Quiet best move: update killers, history and countermoves
     else if (bestMove && !pos.capture_or_promotion(bestMove))
