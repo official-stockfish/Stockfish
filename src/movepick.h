@@ -30,14 +30,13 @@
 
 
 /// The Stats struct stores moves statistics. According to the template parameter
-/// the class can store History, Gains and Countermoves. History records how often
+/// the class can store History and Countermoves. History records how often
 /// different moves have been successful or unsuccessful during the current search
-/// and is used for reduction and move ordering decisions. Gains records the move's
-/// best evaluation gain from one ply to the next and is used for pruning decisions.
+/// and is used for reduction and move ordering decisions. 
 /// Countermoves store the move that refute a previous one. Entries are stored
 /// using only the moving piece and destination square, hence two moves with
 /// different origin but same destination and piece will be considered identical.
-template<bool Gain, typename T>
+template<typename T>
 struct Stats {
 
   static const Value Max = Value(250);
@@ -54,10 +53,7 @@ struct Stats {
 
   void update(Piece pc, Square to, Value v) {
 
-    if (Gain)
-        table[pc][to] = std::max(v, table[pc][to] - 1);
-
-    else if (abs(table[pc][to] + v) < Max)
+    if (abs(table[pc][to] + v) < Max)
         table[pc][to] +=  v;
   }
 
@@ -65,10 +61,9 @@ private:
   T table[PIECE_NB][SQUARE_NB];
 };
 
-typedef Stats< true, Value> GainsStats;
-typedef Stats<false, Value> HistoryStats;
-typedef Stats<false, Move> MovesStats;
-typedef Stats<false, HistoryStats> CounterMovesHistoryStats;
+typedef Stats<Value> HistoryStats;
+typedef Stats<Move> MovesStats;
+typedef Stats<HistoryStats> CounterMovesHistoryStats;
 
 
 /// MovePicker class is used to pick one pseudo legal move at a time from the
