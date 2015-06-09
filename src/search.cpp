@@ -141,7 +141,6 @@ namespace {
   Value DrawValue[COLOR_NB];
   HistoryStats History;
   CounterMovesHistoryStats CounterMovesHistory;
-  GainsStats Gains;
   MovesStats Countermoves;
 
   template <NodeType NT, bool SpNode>
@@ -185,6 +184,17 @@ void Search::init() {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
   }
+}
+
+
+/// Search::reset() clears all search memory, to obtain reproducible search results
+
+void Search::reset () {
+
+  TT.clear();
+  History.clear();
+  CounterMovesHistory.clear();
+  Countermoves.clear();
 }
 
 
@@ -370,10 +380,6 @@ namespace {
     beta = VALUE_INFINITE;
 
     TT.new_search();
-    History.clear();
-    CounterMovesHistory.clear();
-    Gains.clear();
-    Countermoves.clear();
 
     size_t multiPV = Options["MultiPV"];
     Skill skill(Options["Skill Level"]);
@@ -695,7 +701,7 @@ namespace {
         }
     }
 
-    // Step 5. Evaluate the position statically and update parent's gain statistics
+    // Step 5. Evaluate the position statically
     if (inCheck)
     {
         ss->staticEval = eval = VALUE_NONE;
@@ -723,17 +729,6 @@ namespace {
 
     if (ss->skipEarlyPruning)
         goto moves_loop;
-
-    if (   !pos.captured_piece_type()
-        &&  ss->staticEval != VALUE_NONE
-        && (ss-1)->staticEval != VALUE_NONE
-        && (move = (ss-1)->currentMove) != MOVE_NULL
-        &&  move != MOVE_NONE
-        &&  type_of(move) == NORMAL)
-    {
-        Square to = to_sq(move);
-        Gains.update(pos.piece_on(to), to, -(ss-1)->staticEval - ss->staticEval);
-    }
 
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
@@ -934,7 +929,7 @@ moves_loop: // When in check and at SpNode search starts from here
       captureOrPromotion = pos.capture_or_promotion(move);
 
       givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
-                  ? ci.checkSq[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
+                  ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
 
       dangerous =   givesCheck
@@ -999,8 +994,7 @@ moves_loop: // When in check and at SpNode search starts from here
           if (predictedDepth < 7 * ONE_PLY)
 #endif
           {
-              futilityValue =  ss->staticEval + futility_margin(predictedDepth)
-                             + 128 + Gains[pos.moved_piece(move)][to_sq(move)];
+              futilityValue =  ss->staticEval + futility_margin(predictedDepth) + 256;
 
               if (futilityValue <= alpha)
               {
@@ -1056,9 +1050,9 @@ moves_loop: // When in check and at SpNode search starts from here
           ss->reduction = reduction<PvNode>(improving, depth, moveCount);
 
           if (   (!PvNode && cutNode)
-              || (  History[pos.piece_on(to_sq(move))][to_sq(move)]
-                  + CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
-                                       [pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO))
+              || (   History[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
+                  && CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
+                                        [pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               ss->reduction += ONE_PLY;
 
           if (move == countermove)
@@ -1076,13 +1070,6 @@ moves_loop: // When in check and at SpNode search starts from here
               alpha = splitPoint->alpha;
 
           value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d, true);
-
-          // Re-search at intermediate depth if reduction is very high
-          if (value > alpha && ss->reduction >= 4 * ONE_PLY)
-          {
-              Depth d2 = std::max(newDepth - 2 * ONE_PLY, ONE_PLY);
-              value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d2, true);
-          }
 
           doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
           ss->reduction = DEPTH_ZERO;
@@ -1397,7 +1384,7 @@ moves_loop: // When in check and at SpNode search starts from here
       assert(is_ok(move));
 
       givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
-                  ? ci.checkSq[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
+                  ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
 
       // Futility pruning

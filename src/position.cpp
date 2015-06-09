@@ -27,7 +27,6 @@
 #include "misc.h"
 #include "movegen.h"
 #include "position.h"
-#include "psqtab.h"
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
@@ -55,7 +54,6 @@ Key Position::exclusion_key() const { return st->key ^ Zobrist::exclusion; }
 namespace {
 
 const string PieceToChar(" PNBRQK  pnbrqk");
-Score psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
 
 // min_attacker() is a helper function used by see() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -96,31 +94,25 @@ CheckInfo::CheckInfo(const Position& pos) {
   Color them = ~pos.side_to_move();
   ksq = pos.king_square(them);
 
+  pinned = pos.pinned_pieces(pos.side_to_move());
+  dcCandidates = pos.discovered_check_candidates();
+
 #ifdef HORDE
   if (pos.is_horde() && ksq == SQ_NONE) {
-  pinned = pos.pinned_pieces(pos.side_to_move());
-  dcCandidates = pos.discovered_check_candidates();
-
-  checkSq[PAWN]   = 0;
-  checkSq[KNIGHT] = 0;
-  checkSq[BISHOP] = 0;
-  checkSq[ROOK]   = 0;
-  checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
-  checkSq[KING]   = 0;
+  checkSquares[PAWN]   = 0;
+  checkSquares[KNIGHT] = 0;
+  checkSquares[BISHOP] = 0;
+  checkSquares[ROOK]   = 0;
   } else {
-#endif
-  pinned = pos.pinned_pieces(pos.side_to_move());
-  dcCandidates = pos.discovered_check_candidates();
-
-  checkSq[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
-  checkSq[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
-  checkSq[BISHOP] = pos.attacks_from<BISHOP>(ksq);
-  checkSq[ROOK]   = pos.attacks_from<ROOK>(ksq);
-  checkSq[QUEEN]  = checkSq[BISHOP] | checkSq[ROOK];
-  checkSq[KING]   = 0;
+  checkSquares[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
+  checkSquares[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
+  checkSquares[BISHOP] = pos.attacks_from<BISHOP>(ksq);
+  checkSquares[ROOK]   = pos.attacks_from<ROOK>(ksq);
 #ifdef HORDE
   }
 #endif
+  checkSquares[QUEEN]  = checkSquares[BISHOP] | checkSquares[ROOK];
+  checkSquares[KING]   = 0;
 }
 
 
@@ -149,10 +141,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
 
 /// Position::init() initializes at startup the various arrays used to compute
-/// hash keys and the piece square tables. The latter is a two-step operation:
-/// Firstly, the white halves of the tables are copied from PSQT[] tables.
-/// Secondly, the black halves of the tables are initialized by flipping and
-/// changing the sign of the white scores.
+/// hash keys.
 
 void Position::init() {
 
@@ -179,20 +168,6 @@ void Position::init() {
 
   Zobrist::side = rng.rand<Key>();
   Zobrist::exclusion  = rng.rand<Key>();
-
-  for (PieceType pt = PAWN; pt <= KING; ++pt)
-  {
-      PieceValue[MG][make_piece(BLACK, pt)] = PieceValue[MG][pt];
-      PieceValue[EG][make_piece(BLACK, pt)] = PieceValue[EG][pt];
-
-      Score v = make_score(PieceValue[MG][pt], PieceValue[EG][pt]);
-
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      {
-         psq[WHITE][pt][ s] =  (v + PSQT[pt][s]);
-         psq[BLACK][pt][~s] = -(v + PSQT[pt][s]);
-      }
-  }
 
 #ifdef THREECHECK
   for (Color c = WHITE; c <= BLACK; ++c)
@@ -242,100 +217,100 @@ void Position::clear() {
 /// Position::set() initializes the position object with the given FEN string.
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
-/// The variant is the variant constant
 
 void Position::set(const string& fenStr, bool isChess960, int variant, Thread* th) {
-    /*
-       A FEN string defines a particular position using only the ASCII character set.
+/*
+   A FEN string defines a particular position using only the ASCII character set.
 
-       A FEN string contains six fields separated by a space. The fields are:
+   A FEN string contains six fields separated by a space. The fields are:
 
-       1) Piece placement (from white's perspective). Each rank is described, starting
-          with rank 8 and ending with rank 1. Within each rank, the contents of each
-          square are described from file A through file H. Following the Standard
-          Algebraic Notation (SAN), each piece is identified by a single letter taken
-          from the standard English names. White pieces are designated using upper-case
-          letters ("PNBRQK") whilst Black uses lowercase ("pnbrqk"). Blank squares are
-          noted using digits 1 through 8 (the number of blank squares), and "/"
-          separates ranks.
+   1) Piece placement (from white's perspective). Each rank is described, starting
+      with rank 8 and ending with rank 1. Within each rank, the contents of each
+      square are described from file A through file H. Following the Standard
+      Algebraic Notation (SAN), each piece is identified by a single letter taken
+      from the standard English names. White pieces are designated using upper-case
+      letters ("PNBRQK") whilst Black uses lowercase ("pnbrqk"). Blank squares are
+      noted using digits 1 through 8 (the number of blank squares), and "/"
+      separates ranks.
 
-       2) Active color. "w" means white moves next, "b" means black.
+   2) Active color. "w" means white moves next, "b" means black.
 
-       3) Castling availability. If neither side can castle, this is "-". Otherwise,
-          this has one or more letters: "K" (White can castle kingside), "Q" (White
-          can castle queenside), "k" (Black can castle kingside), and/or "q" (Black
-          can castle queenside).
+   3) Castling availability. If neither side can castle, this is "-". Otherwise,
+      this has one or more letters: "K" (White can castle kingside), "Q" (White
+      can castle queenside), "k" (Black can castle kingside), and/or "q" (Black
+      can castle queenside).
 
-       4) En passant target square (in algebraic notation). If there's no en passant
-          target square, this is "-". If a pawn has just made a 2-square move, this
-          is the position "behind" the pawn. This is recorded regardless of whether
-          there is a pawn in position to make an en passant capture.
+   4) En passant target square (in algebraic notation). If there's no en passant
+      target square, this is "-". If a pawn has just made a 2-square move, this
+      is the position "behind" the pawn. This is recorded regardless of whether
+      there is a pawn in position to make an en passant capture.
 
-       5) Halfmove clock. This is the number of halfmoves since the last pawn advance
-          or capture. This is used to determine if a draw can be claimed under the
-          fifty-move rule.
+   5) Halfmove clock. This is the number of halfmoves since the last pawn advance
+      or capture. This is used to determine if a draw can be claimed under the
+      fifty-move rule.
 
-       6) Fullmove number. The number of the full move. It starts at 1, and is
-          incremented after Black's move.
-    */
+   6) Fullmove number. The number of the full move. It starts at 1, and is
+      incremented after Black's move.
+*/
 
-    unsigned char col, row, token;
-    size_t idx;
-    Square sq = SQ_A8;
-    std::istringstream ss(fenStr);
+  unsigned char col, row, token;
+  size_t idx;
+  Square sq = SQ_A8;
+  std::istringstream ss(fenStr);
 
-    clear();
-    ss >> std::noskipws;
+  clear();
+  ss >> std::noskipws;
 
-    // 1. Piece placement
-    while ((ss >> token) && !isspace(token))
-    {
-        if (isdigit(token))
-            sq += Square(token - '0'); // Advance the given number of files
+  // 1. Piece placement
+  while ((ss >> token) && !isspace(token))
+  {
+      if (isdigit(token))
+          sq += Square(token - '0'); // Advance the given number of files
 
-        else if (token == '/')
-            sq -= Square(16);
+      else if (token == '/')
+          sq -= Square(16);
 
-        else if ((idx = PieceToChar.find(token)) != string::npos)
-        {
-            put_piece(color_of(Piece(idx)), type_of(Piece(idx)), sq);
-            ++sq;
-        }
-    }
+      else if ((idx = PieceToChar.find(token)) != string::npos)
+      {
+          put_piece(color_of(Piece(idx)), type_of(Piece(idx)), sq);
+          ++sq;
+      }
+  }
 
-    // 2. Active color
-    ss >> token;
-    sideToMove = (token == 'w' ? WHITE : BLACK);
-    ss >> token;
+  // 2. Active color
+  ss >> token;
+  sideToMove = (token == 'w' ? WHITE : BLACK);
+  ss >> token;
 
-    // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,
-    // Shredder-FEN that uses the letters of the columns on which the rooks began
-    // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
-    // if an inner rook is associated with the castling right, the castling tag is
-    // replaced by the file letter of the involved rook, as for the Shredder-FEN.
-    while ((ss >> token) && !isspace(token))
-    {
-        Square rsq;
-        Color c = islower(token) ? BLACK : WHITE;
+  // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,
+  // Shredder-FEN that uses the letters of the columns on which the rooks began
+  // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
+  // if an inner rook is associated with the castling right, the castling tag is
+  // replaced by the file letter of the involved rook, as for the Shredder-FEN.
+  while ((ss >> token) && !isspace(token))
+  {
+      Square rsq;
+      Color c = islower(token) ? BLACK : WHITE;
+      Piece rook = make_piece(c, ROOK);
 
-        token = char(toupper(token));
+      token = char(toupper(token));
 
-        if (token == 'K')
-            for (rsq = relative_square(c, SQ_H1); type_of(piece_on(rsq)) != ROOK; --rsq) {}
+      if (token == 'K')
+          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
 
-        else if (token == 'Q')
-            for (rsq = relative_square(c, SQ_A1); type_of(piece_on(rsq)) != ROOK; ++rsq) {}
+      else if (token == 'Q')
+          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
 
-        else if (token >= 'A' && token <= 'H')
-            rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+      else if (token >= 'A' && token <= 'H')
+          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
 
-        else
-            continue;
+      else
+          continue;
 
-        set_castling_right(c, rsq);
-    }
+      set_castling_right(c, rsq);
+  }
 
-    // 4. En passant square. Ignore if no pawn capture is possible
+  // 4. En passant square. Ignore if no pawn capture is possible
 #ifdef HORDE
     if (((ss >> col) && (col >= 'a' && col <= 'h'))
         && ((ss >> row) && (((variant & HORDE_VARIANT) && row == '2') || row == '3' || row == '6')))
@@ -343,15 +318,15 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
     if (((ss >> col) && (col >= 'a' && col <= 'h'))
         && ((ss >> row) && (row == '3' || row == '6')))
 #endif
-    {
-        st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
+  {
+      st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
-        if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
-            st->epSquare = SQ_NONE;
-    }
+      if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
+          st->epSquare = SQ_NONE;
+  }
 
-    // 5-6. Halfmove clock and fullmove number
-    ss >> std::skipws >> st->rule50 >> gamePly;
+  // 5-6. Halfmove clock and fullmove number
+  ss >> std::skipws >> st->rule50 >> gamePly;
 
 #ifdef THREECHECK
     st->checksGiven[WHITE] = CHECKS_0;
@@ -459,7 +434,7 @@ void Position::set_state(StateInfo* si) const {
       Square s = pop_lsb(&b);
       Piece pc = piece_on(s);
       si->key ^= Zobrist::psq[color_of(pc)][type_of(pc)][s];
-      si->psq += psq[color_of(pc)][type_of(pc)][s];
+      si->psq += PSQT::psq[color_of(pc)][type_of(pc)][s];
   }
 
   if (si->epSquare != SQ_NONE)
@@ -769,7 +744,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       return false;
 #endif
   // Is there a direct check?
-  if (ci.checkSq[type_of(piece_on(from))] & to)
+  if (ci.checkSquares[type_of(piece_on(from))] & to)
       return true;
 
   // Is there a discovered check?
@@ -858,7 +833,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       do_castling<true>(us, from, to, rfrom, rto);
 
       captured = NO_PIECE_TYPE;
-      st->psq += psq[us][ROOK][rto] - psq[us][ROOK][rfrom];
+      st->psq += PSQT::psq[us][ROOK][rto] - PSQT::psq[us][ROOK][rfrom];
       k ^= Zobrist::psq[us][ROOK][rfrom] ^ Zobrist::psq[us][ROOK][rto];
   }
 
@@ -897,7 +872,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       prefetch(thisThread->materialTable[st->materialKey]);
 
       // Update incremental scores
-      st->psq -= psq[them][captured][capsq];
+      st->psq -= PSQT::psq[them][captured][capsq];
 
       // Reset rule 50 counter
       st->rule50 = 0;
@@ -963,7 +938,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
                             ^ Zobrist::psq[us][PAWN][pieceCount[us][PAWN]];
 
           // Update incremental score
-          st->psq += psq[us][promotion][to] - psq[us][PAWN][to];
+          st->psq += PSQT::psq[us][promotion][to] - PSQT::psq[us][PAWN][to];
 
           // Update material
           st->nonPawnMaterial[us] += PieceValue[MG][promotion];
@@ -978,7 +953,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   // Update incremental scores
-  st->psq += psq[us][pt][to] - psq[us][pt][from];
+  st->psq += PSQT::psq[us][pt][to] - PSQT::psq[us][pt][from];
 
   // Set capture piece
   st->capturedType = captured;
