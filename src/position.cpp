@@ -66,11 +66,11 @@ PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stm
 
   occupied ^= b & ~(b - 1);
 
-  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
+  //if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
+  //    attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
 
-  if (Pt == ROOK || Pt == QUEEN)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
+  //if (Pt == ROOK || Pt == QUEEN)
+  //    attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
 
   attackers &= occupied; // After X-ray that may add already processed pieces
   return (PieceType)Pt;
