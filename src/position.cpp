@@ -53,33 +53,28 @@ namespace {
 const string PieceToChar(" PNBRQK  pnbrqk");
 
 // min_attacker() is a helper function used by see() to locate the least
-// valuable attacker for the side to move, remove the attacker we just found
-// from the bitboards and scan for new X-ray attacks behind it.
+// valuable attacker for the side to move, and remove the attacker we just found
+// from the bitboards.
 
-template<int Pt>
-PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
+inline PieceType min_attacker(const Bitboard* bb, const Bitboard& stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 
-  Bitboard b = stmAttackers & bb[Pt];
-  if (!b)
-      return min_attacker<Pt+1>(bb, to, stmAttackers, occupied, attackers);
-
-  occupied ^= b & ~(b - 1);
-
-  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
-
-  if (Pt == ROOK || Pt == QUEEN)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
-
-  attackers &= occupied; // After X-ray that may add already processed pieces
-  return (PieceType)Pt;
+  PieceType pt;
+  for (pt = PAWN; pt <= QUEEN; ++pt) 
+  {
+      Bitboard b = stmAttackers & bb[pt];
+      if (b)  
+      {
+          occupied ^= b & ~(b - 1);
+          attackers &= occupied; 
+          return pt;
+      }
+  }
+  // Since stmAttackers was not empty, the last attacker must be the KING
+  // No need to update the bitboards in this case.
+  return KING;
 }
 
-template<>
-PieceType min_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bitboard&, Bitboard&) {
-  return KING; // No need to update bitboards: it is the last cycle
-}
 
 } // namespace
 
@@ -1045,7 +1040,7 @@ Value Position::see(Move m) const {
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
 
       // Locate and remove the next least valuable attacker
-      captured = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      captured = min_attacker(byTypeBB, stmAttackers, occupied, attackers);
       stm = ~stm;
       stmAttackers = attackers & pieces(stm);
       ++slIndex;
