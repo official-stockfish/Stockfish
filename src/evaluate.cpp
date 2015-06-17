@@ -785,6 +785,14 @@ namespace {
     }
 
     // Evaluate space for both sides, only during opening
+#ifdef HORDE
+    if (pos.is_horde())
+    {
+        if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 11756/2)
+            score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
+    }
+    else 
+#endif
     if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 11756)
         score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
 
@@ -795,6 +803,9 @@ namespace {
     // If we don't already have an unusual scale factor, check for certain
     // types of endgames, and use a lower scale for those.
     if (    ei.mi->game_phase() < PHASE_MIDGAME
+#ifdef HORDE
+        && !pos.is_horde()
+#endif
         && (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN))
     {
         if (pos.opposite_bishops())
