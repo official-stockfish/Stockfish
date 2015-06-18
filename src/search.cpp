@@ -69,7 +69,7 @@ namespace {
   // Razoring and futility margin based on depth
 #ifdef THREECHECK
   Value razor_margin(Position &pos, Depth d) {
-      return Value(512 + 32 * d * (pos.is_three_check() ? 2 + pos.checks_taken() : 1));
+      return Value(512 + 32 * d * (pos.is_three_check() ? 1 + pos.checks_count() : 1));
   }
 #else
   Value razor_margin(Depth d)    { return Value(512 + 32 * d); }
@@ -569,7 +569,7 @@ namespace {
     Thread* thisThread = pos.this_thread();
     inCheck = pos.checkers();
 #ifdef THREECHECK
-    Checks checks = pos.is_three_check() ? pos.checks_taken() : CHECKS_0;
+    int checks = pos.is_three_check() ? pos.checks_count() : CHECKS_0;
 #endif
 
     if (SpNode)
@@ -813,7 +813,7 @@ namespace {
     // prune the previous move.
     if (   !PvNode
 #ifdef THREECHECK
-        &&  depth >= (5 + checks + checks) * ONE_PLY
+        &&  depth >= (5 + checks) * ONE_PLY
 #else
         &&  depth >= 5 * ONE_PLY
 #endif
@@ -843,7 +843,7 @@ namespace {
 
     // Step 10. Internal iterative deepening (skipped when in check)
 #ifdef THREECHECK
-    if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY) - checks - checks
+    if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY) - checks
 #else
     if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY)
 #endif
@@ -874,7 +874,7 @@ moves_loop: // When in check and at SpNode search starts from here
     singularExtensionNode =   !RootNode
                            && !SpNode
 #ifdef THREECHECK
-                           &&  depth >= 8 * ONE_PLY - checks - checks
+                           &&  depth >= 8 * ONE_PLY - checks
 #else
                            &&  depth >= 8 * ONE_PLY
 #endif
@@ -973,7 +973,7 @@ moves_loop: // When in check and at SpNode search starts from here
       {
           // Move count based pruning
 #ifdef THREECHECK
-          if (   depth < (16 - checks - checks) * ONE_PLY
+          if (   depth < (16 - checks) * ONE_PLY
 #else
           if (   depth < 16 * ONE_PLY
 #endif
@@ -989,7 +989,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
           // Futility pruning: parent node
 #ifdef THREECHECK
-          if (predictedDepth < (7 - checks - checks) * ONE_PLY)
+          if (predictedDepth < (7 - checks) * ONE_PLY)
 #else
           if (predictedDepth < 7 * ONE_PLY)
 #endif
@@ -1038,7 +1038,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // Step 15. Reduced depth search (LMR). If the move fails high it will be
       // re-searched at full depth.
 #ifdef THREECHECK
-      if (    depth >= (3 + checks + checks) * ONE_PLY
+      if (    depth >= (3 + checks) * ONE_PLY
 #else
       if (    depth >= 3 * ONE_PLY
 #endif

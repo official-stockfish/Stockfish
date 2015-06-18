@@ -193,6 +193,7 @@ public:
   bool is_three_check() const;
   bool is_three_check_win() const;
   bool is_three_check_loss() const;
+  int checks_count() const;
   Checks checks_given() const;
   Checks checks_taken() const;
 #endif
@@ -321,6 +322,10 @@ inline bool Position::is_three_check_win() const {
 
 inline bool Position::is_three_check_loss() const {
   return st->checksGiven[~sideToMove] == CHECKS_3;
+}
+
+inline int Position::checks_count() const {
+  return st->checksGiven[sideToMove] + st->checksGiven[~sideToMove];
 }
 
 inline Checks Position::checks_given() const {

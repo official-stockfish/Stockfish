@@ -686,7 +686,7 @@ namespace {
                 + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
 #ifdef THREECHECK
     if (pos.is_three_check())
-        weight -= pos.checks_given() + pos.checks_taken();
+        weight -= pos.checks_count();
 #endif
 
     return make_score(bonus * weight * weight, 0);
