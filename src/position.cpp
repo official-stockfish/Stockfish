@@ -292,15 +292,16 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
   {
       Square rsq;
       Color c = islower(token) ? BLACK : WHITE;
+      Piece king = make_piece(c, KING);
       Piece rook = make_piece(c, ROOK);
 
       token = char(toupper(token));
 
       if (token == 'K')
-          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
+          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook && piece_on(rsq) != king; --rsq) {}
 
       else if (token == 'Q')
-          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
+          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook && piece_on(rsq) != king; ++rsq) {}
 
       else if (token >= 'A' && token <= 'H')
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
@@ -308,7 +309,8 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
       else
           continue;
 
-      set_castling_right(c, rsq);
+      if (piece_on(rsq) == rook)
+          set_castling_right(c, rsq);
   }
 
   // 4. En passant square. Ignore if no pawn capture is possible
