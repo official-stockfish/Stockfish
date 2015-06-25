@@ -902,7 +902,7 @@ moves_loop: // When in check and at SpNode search starts from here
           // Futility pruning: parent node
           if (predictedDepth < 7 * ONE_PLY)
           {
-              futilityValue =  ss->staticEval + futility_margin(predictedDepth) + 256;
+              futilityValue = ss->staticEval + futility_margin(predictedDepth) + 256;
 
               if (futilityValue <= alpha)
               {

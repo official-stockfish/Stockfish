@@ -149,7 +149,7 @@ void MovePicker::score<CAPTURES>() {
   // calls in case we get a cutoff.
   for (auto& m : *this)
       m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
-               - 200 * relative_rank(pos.side_to_move(), to_sq(m));
+               - Value(200 * relative_rank(pos.side_to_move(), to_sq(m)));
 }
 
 template<>
