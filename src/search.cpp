@@ -959,7 +959,10 @@ moves_loop: // When in check and at SpNode search starts from here
                                         [pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               ss->reduction += ONE_PLY;
 
-          if (move == countermove)
+          if (    move == countermove
+              || (   History[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
+                  && CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
+                                        [pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO))
               ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
 
           // Decrease reduction for moves that escape a capture
