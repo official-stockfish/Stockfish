@@ -292,24 +292,27 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
   {
       Square rsq;
       Color c = islower(token) ? BLACK : WHITE;
-      Piece king = make_piece(c, KING);
+      Rank rank = relative_rank(c, RANK_1);
+      Square ksq = king_square(c);
+      if (ksq & ~rank)
+          continue;
       Piece rook = make_piece(c, ROOK);
 
       token = char(toupper(token));
 
       if (token == 'K')
-          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook && piece_on(rsq) != king; --rsq) {}
+          for (rsq = relative_square(c, SQ_H1); rsq != ksq && piece_on(rsq) != rook; --rsq) {}
 
       else if (token == 'Q')
-          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook && piece_on(rsq) != king; ++rsq) {}
+          for (rsq = relative_square(c, SQ_A1); rsq != ksq && piece_on(rsq) != rook; ++rsq) {}
 
       else if (token >= 'A' && token <= 'H')
-          rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+          rsq = make_square(File(token - 'A'), rank);
 
       else
           continue;
 
-      if (piece_on(rsq) == rook)
+      if (rsq != ksq)
           set_castling_right(c, rsq);
   }
 
@@ -325,6 +328,8 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
       st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
       if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
+          st->epSquare = SQ_NONE;
+      else if (st->epSquare & pieces())
           st->epSquare = SQ_NONE;
   }
 
@@ -1134,7 +1139,11 @@ Value Position::see(Move m) const {
 
   Square from, to;
   Bitboard occupied, attackers, stmAttackers;
+#ifdef HORDE
+  Value swapList[SQUARE_NB];
+#else
   Value swapList[32];
+#endif
   int slIndex = 1;
   PieceType captured;
   Color stm;
@@ -1178,7 +1187,11 @@ Value Position::see(Move m) const {
   captured = type_of(piece_on(from));
 
   do {
+#ifdef HORDE
+      assert(slIndex < SQUARE_NB);
+#else
       assert(slIndex < 32);
+#endif
 
       // Add the new entry to the swap list
       swapList[slIndex] = -swapList[slIndex - 1] + PieceValue[MG][captured];
