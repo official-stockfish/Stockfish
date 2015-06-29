@@ -329,7 +329,15 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
 
       if (!(attackers_to(st->epSquare) & pieces(sideToMove, PAWN)))
           st->epSquare = SQ_NONE;
-      else if (st->epSquare & pieces())
+      else if (SquareBB[st->epSquare] & pieces())
+          st->epSquare = SQ_NONE;
+      else if (sideToMove == WHITE && (shift_bb<DELTA_N>(SquareBB[st->epSquare]) & pieces()))
+          st->epSquare = SQ_NONE;
+      else if (sideToMove == BLACK && (shift_bb<DELTA_S>(SquareBB[st->epSquare]) & pieces()))
+          st->epSquare = SQ_NONE;
+      else if (sideToMove == WHITE && !(shift_bb<DELTA_S>(SquareBB[st->epSquare]) & pieces(BLACK, PAWN)))
+          st->epSquare = SQ_NONE;
+      else if (sideToMove == BLACK && !(shift_bb<DELTA_N>(SquareBB[st->epSquare]) & pieces(WHITE, PAWN)))
           st->epSquare = SQ_NONE;
   }
 
