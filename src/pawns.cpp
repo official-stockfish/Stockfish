@@ -25,7 +25,6 @@
 #include "pawns.h"
 #include "position.h"
 #include "thread.h"
-#include <iostream>
 
 namespace {
 
@@ -156,10 +155,10 @@ namespace {
         else {
             // If opponent pawn can capture this pawn before it reaches same row
             // as next neighbour, the pawn is backward.
-            oppControl = theirPawns & adjacent_files_bb(f) & pawn_attack_span(Us, s);
+            oppControl = theirPawns & pawn_attack_span(Us, s);
             backward   = oppControl 
-                       && (    relative_rank(Us, backmost_sq(Us, neighbours)) + 1
-                           >=  relative_rank(Us, backmost_sq(Us, oppControl)));
+                         && (     relative_rank(Us, backmost_sq(Us, neighbours)) + 1
+                              >=  relative_rank(Us, backmost_sq(Us, oppControl)));
         }
 
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
