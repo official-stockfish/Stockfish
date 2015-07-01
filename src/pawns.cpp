@@ -25,6 +25,7 @@
 #include "pawns.h"
 #include "position.h"
 #include "thread.h"
+#include <iostream>
 
 namespace {
 
@@ -106,7 +107,7 @@ namespace {
     const Square Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
     const Square Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
-    Bitboard b, neighbours, doubled, supported, phalanx;
+    Bitboard b, oppControl, neighbours, doubled, supported, phalanx;
     Square s;
     bool passed, isolated, opposed, backward, lever, connected;
     Score score = SCORE_ZERO;
@@ -152,18 +153,13 @@ namespace {
             || (ourPawns & pawn_attack_span(Them, s))
             || (relative_rank(Us, s) >= RANK_5))
             backward = false;
-        else
-        {
-            // We now know there are no friendly pawns beside or behind this
-            // pawn on adjacent files. We now check whether the pawn is
-            // backward by looking in the forward direction on the adjacent
-            // files, and picking the closest pawn there.
-            b = pawn_attack_span(Us, s) & (ourPawns | theirPawns);
-            b = pawn_attack_span(Us, s) & rank_bb(backmost_sq(Us, b));
-
-            // If we have an enemy pawn in the same or next rank, the pawn is
-            // backward because it cannot advance without being captured.
-            backward = (b | shift_bb<Up>(b)) & theirPawns;
+        else {
+            // If opponent pawn can capture this pawn before it reaches same row
+            // as next neighbour, the pawn is backward.
+            oppControl = theirPawns & adjacent_files_bb(f) & pawn_attack_span(Us, s);
+            backward   = oppControl 
+                       && (    relative_rank(Us, backmost_sq(Us, neighbours)) + 1
+                           >=  relative_rank(Us, backmost_sq(Us, oppControl)));
         }
 
         assert(opposed | passed | (pawn_attack_span(Us, s) & theirPawns));
