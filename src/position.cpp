@@ -441,7 +441,9 @@ void Position::set_state(StateInfo* si) const {
   }
   else
   {
+#endif
       si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+#ifdef HORDE
   }
 #endif
 
