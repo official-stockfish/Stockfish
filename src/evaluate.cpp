@@ -124,8 +124,12 @@ namespace {
       S( 94, 99), S( 96,100), S(99,111), S(99,112) }
   };
 
-  // Outpost[knight/bishop][supported by pawn]
-  const Score Outpost[2][2] = {{S(28,7), S(42,11)}, {S(12,3), S(18,5)}};
+  // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and bishops
+  // outposts, bigger if outpost piece is supported by a pawn.
+  const Score Outpost[][2] = {
+    { S(28, 7), S(42,11) }, // Knights
+    { S(12, 3), S(18, 5) }  // Bishops
+  };
 
   // Threat[defended/weak][minor/major attacking][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.

@@ -58,7 +58,7 @@
 /// _WIN32             Building on Windows (any)
 /// _WIN64             Building on Windows 64 bit
 
-#if defined(_WIN64) && !defined(IS_64BIT) // Last condition means Makefile is not used
+#if defined(_WIN64) && defined(_MSC_VER) // No Makefile used
 #  include <intrin.h> // MSVC popcnt and bsfq instrinsics
 #  define IS_64BIT
 #  define USE_BSFQ

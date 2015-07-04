@@ -56,7 +56,7 @@ namespace {
   const uint64_t DeBruijn64 = 0x3F79D71B4CB0A89ULL;
   const uint32_t DeBruijn32 = 0x783A9B23;
 
-  int MS1BTable[256];           // To implement software msb()
+  int MSBTable[256];            // To implement software msb()
   Square BSFTable[SQUARE_NB];   // To implement software bitscan
   Bitboard RookTable[0x19000];  // To store rook attacks
   Bitboard BishopTable[0x1480]; // To store bishop attacks
@@ -109,7 +109,7 @@ Square msb(Bitboard b) {
       result += 8;
   }
 
-  return Square(result + MS1BTable[b32]);
+  return Square(result + MSBTable[b32]);
 }
 
 #endif // ifndef USE_BSFQ
@@ -125,9 +125,9 @@ const std::string Bitboards::pretty(Bitboard b) {
   for (Rank r = RANK_8; r >= RANK_1; --r)
   {
       for (File f = FILE_A; f <= FILE_H; ++f)
-          s.append(b & make_square(f, r) ? "| X " : "|   ");
+          s += b & make_square(f, r) ? "| X " : "|   ";
 
-      s.append("|\n+---+---+---+---+---+---+---+---+\n");
+      s += "|\n+---+---+---+---+---+---+---+---+\n";
   }
 
   return s;
@@ -145,8 +145,8 @@ void Bitboards::init() {
       BSFTable[bsf_index(SquareBB[s])] = s;
   }
 
-  for (Bitboard b = 1; b < 256; ++b)
-      MS1BTable[b] = more_than_one(b) ? MS1BTable[b - 1] : lsb(b);
+  for (Bitboard b = 2; b < 256; ++b)
+      MSBTable[b] = MSBTable[b - 1] + !more_than_one(b);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
