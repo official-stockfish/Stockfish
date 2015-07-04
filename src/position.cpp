@@ -294,7 +294,7 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
       Color c = islower(token) ? BLACK : WHITE;
       Rank rank = relative_rank(c, RANK_1);
       Square ksq = king_square(c);
-      if (ksq & ~rank)
+      if (rank_of(ksq) != rank)
           continue;
       Piece rook = make_piece(c, ROOK);
 
