@@ -86,11 +86,16 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
   // Find an entry to be replaced according to the replacement strategy
   TTEntry* replace = tte;
+  int minScore = ((tte->genBound8 & 0xFC) == generation8) * 256 + tte->depth8;
   for (int i = 1; i < ClusterSize; ++i)
-      if (  ((  tte[i].genBound8 & 0xFC) == generation8 || tte[i].bound() == BOUND_EXACT)
-          - ((replace->genBound8 & 0xFC) == generation8)
-          - (tte[i].depth8 < replace->depth8) < 0)
+  {
+      int score = ((tte[i].genBound8 & 0xFC) == generation8 || tte[i].bound() == BOUND_EXACT) * 256 + tte[i].depth8;
+      if (score < minScore)
+      {
+          minScore = score;
           replace = &tte[i];
+      }
+  }
 
   return found = false, replace;
 }
