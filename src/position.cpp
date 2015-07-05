@@ -219,7 +219,7 @@ void Position::clear() {
 /// This function is not very robust - make sure that input FENs are correct,
 /// this is assumed to be the responsibility of the GUI.
 
-void Position::set(const string& fenStr, bool isChess960, int variant, Thread* th) {
+void Position::set(const string& fenStr, int var, Thread* th) {
 /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -319,7 +319,7 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
   // 4. En passant square. Ignore if no pawn capture is possible
 #ifdef HORDE
     if (((ss >> col) && (col >= 'a' && col <= 'h'))
-        && ((ss >> row) && (sideToMove ? (((variant & HORDE_VARIANT) && row == '2') || row == '3') : row == '6')))
+        && ((ss >> row) && (sideToMove ? (((var & HORDE_VARIANT) && row == '2') || row == '3') : row == '6')))
 #else
     if (((ss >> col) && (col >= 'a' && col <= 'h'))
         && ((ss >> row) && (sideToMove ? row == '3' : row == '6')))
@@ -347,7 +347,7 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
 #ifdef THREECHECK
     st->checksGiven[WHITE] = CHECKS_0;
     st->checksGiven[BLACK] = CHECKS_0;
-    if ((variant & THREECHECK_VARIANT) != 0)
+    if ((var & THREECHECK_VARIANT) != 0)
     {
         // 7. Checks given counter for Three-Check positions
         if ((ss >> std::skipws >> token) && token == '+')
@@ -378,16 +378,7 @@ void Position::set(const string& fenStr, bool isChess960, int variant, Thread* t
   // handle also common incorrect FEN with fullmove = 0.
   gamePly = std::max(2 * (gamePly - 1), 0) + (sideToMove == BLACK);
 
-  chess960 = isChess960;
-#ifdef HORDE
-  horde = (variant & HORDE_VARIANT) != 0;
-#endif
-#ifdef KOTH
-  koth = (variant & KOTH_VARIANT) != 0;
-#endif
-#ifdef THREECHECK
-  threeCheck = (variant & THREECHECK_VARIANT) != 0;
-#endif
+  variant = var;
   thisThread = th;
   set_state(st);
 
@@ -516,6 +507,7 @@ const string Position::fen() const {
 
   ss << (sideToMove == WHITE ? " w " : " b ");
 
+  bool chess960 = is_chess960();
   if (can_castle(WHITE_OO))
       ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE |  KING_SIDE))) : 'K');
 
@@ -758,7 +750,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   Square to = to_sq(m);
 
 #ifdef HORDE
-  if (is_horde() && king_square(~sideToMove) == SQ_NONE)
+  if (is_horde() && ci.ksq == SQ_NONE)
       return false;
 #endif
   // Is there a direct check?
@@ -1273,12 +1265,6 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-#ifdef HORDE
-  set(f, is_chess960(), is_horde() ? HORDE_VARIANT : STANDARD_VARIANT, this_thread());
-#else
-#ifdef KOTH
-  set(f, is_chess960(), is_koth() ? KOTH_VARIANT : STANDARD_VARIANT, this_thread());
-#else
 #ifdef THREECHECK
   if (is_three_check()) {
     f += " +";
@@ -1286,12 +1272,8 @@ void Position::flip() {
     f += "+";
     f += st->checksGiven[WHITE];
   }
-  set(f, is_chess960(), is_three_check() ? THREECHECK_VARIANT : STANDARD_VARIANT, this_thread());
-#else
-  set(f, is_chess960(), STANDARD_VARIANT, this_thread());
 #endif
-#endif
-#endif
+  set(f, variant, this_thread());
 
   assert(pos_is_ok());
 }

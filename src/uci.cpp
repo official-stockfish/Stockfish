@@ -59,6 +59,8 @@ namespace {
     string token, fen;
 
     int variant = STANDARD_VARIANT;
+    if (Options["UCI_Chess960"])
+        variant |= CHESS960_VARIANT;
 #ifdef HORDE
     if (Options["UCI_Horde"])
         variant |= HORDE_VARIANT;
@@ -87,7 +89,7 @@ namespace {
             fen += token + " ";
     else
         return;
-    pos.set(fen, Options["UCI_Chess960"], variant, Threads.main());
+    pos.set(fen, variant, Threads.main());
     
     SetupStates = Search::StateStackPtr(new std::stack<StateInfo>);
 
@@ -261,11 +263,9 @@ std::string UCI::square(Square s) {
 
 
 /// UCI::move() converts a Move to a string in coordinate notation (g1f3, a7a8q).
-/// The only special case is castling, where we print in the e1g1 notation in
-/// normal chess mode, and in e1h1 notation in chess960 mode. Internally all
-/// castling moves are always encoded as 'king captures rook'.
+/// Internally all castling moves are always encoded as 'king captures rook'.
 
-string UCI::move(Move m, bool chess960) {
+string UCI::move(Move m) {
 
   Square from = from_sq(m);
   Square to = to_sq(m);
@@ -275,9 +275,6 @@ string UCI::move(Move m, bool chess960) {
 
   if (m == MOVE_NULL)
       return "0000";
-
-  if (type_of(m) == CASTLING && !chess960)
-      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
   string move = UCI::square(from) + UCI::square(to);
 
@@ -297,8 +294,19 @@ Move UCI::to_move(const Position& pos, string& str) {
       str[4] = char(tolower(str[4]));
 
   for (const auto& m : MoveList<LEGAL>(pos))
-      if (str == UCI::move(m, pos.is_chess960()))
+      if (str == UCI::move(m))
           return m;
+
+  if (pos.can_castle(pos.side_to_move()))
+  {
+      if (pos.can_castle(WHITE_OOO) && str == "e1c1") str = "e1a1";
+      else if (pos.can_castle(WHITE_OO) && str == "e1g1") str = "e1h1";
+      else if (pos.can_castle(BLACK_OOO) && str == "e8c8") str = "e8a8";
+      else if (pos.can_castle(BLACK_OO) && str == "e8g8") str = "e8h8";
+      for (const auto& m : MoveList<LEGAL>(pos))
+          if (type_of(m) == CASTLING && str == UCI::move(m))
+              return m;
+  }
 
   return MOVE_NONE;
 }

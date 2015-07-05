@@ -28,9 +28,10 @@
 #include "types.h"
 
 #define STANDARD_VARIANT 0
-#define KOTH_VARIANT 1 << 1
-#define THREECHECK_VARIANT 1 << 2
-#define HORDE_VARIANT 1 << 3
+#define CHESS960_VARIANT 1 << 1
+#define KOTH_VARIANT 1 << 2
+#define THREECHECK_VARIANT 1 << 3
+#define HORDE_VARIANT 1 << 4
 
 class Position;
 struct Thread;
@@ -99,14 +100,13 @@ public:
   Position(const Position&) = delete;
   Position(const Position& pos, Thread* th) { *this = pos; thisThread = th; }
 
-  Position(const std::string& f, Thread* t) { set(f, false, STANDARD_VARIANT, t); }
-  Position(const std::string& f, bool c960, int variant, Thread* t) { set(f, c960, variant, t); }
+  Position(const std::string& f, Thread* t) { set(f, STANDARD_VARIANT, t); }
+  Position(const std::string& f, int var, Thread* t) { set(f, var, t); }
 
   Position& operator=(const Position&); // To assign RootPos from UCI
 
   // FEN string input/output
-  void set(const std::string& fenStr, bool isChess960, int variant, Thread* th);
-  //void set(const std::string& fenStr, bool isChess960, Thread* th);
+  void set(const std::string& fenStr, int var, Thread* th);
 
   const std::string fen() const;
 
@@ -243,16 +243,7 @@ private:
   Color sideToMove;
   Thread* thisThread;
   StateInfo* st;
-  bool chess960;
-#ifdef HORDE
-  bool horde;
-#endif
-#ifdef KOTH
-  bool koth;
-#endif
-#ifdef THREECHECK
-  bool threeCheck;
-#endif
+  int variant;
 
 };
 
@@ -313,7 +304,7 @@ inline Square Position::king_square(Color c) const {
 
 #ifdef THREECHECK
 inline bool Position::is_three_check() const {
-  return threeCheck;
+  return variant & THREECHECK_VARIANT;
 }
 
 inline bool Position::is_three_check_win() const {
@@ -446,7 +437,7 @@ inline bool Position::pawn_on_7th(Color c) const {
 
 #ifdef HORDE
 inline bool Position::is_horde() const {
-  return horde;
+  return variant & HORDE_VARIANT;
 }
 
 // Loss if horde is captured (Horde)
@@ -457,7 +448,7 @@ inline bool Position::is_horde_loss() const {
 
 #ifdef KOTH
 inline bool Position::is_koth() const {
-  return koth;
+  return variant & KOTH_VARIANT;
 }
 
 // Win if king is in the center (KOTH)
@@ -483,7 +474,7 @@ inline int Position::koth_distance(Color c) const {
 #endif
 
 inline bool Position::is_chess960() const {
-  return chess960;
+  return variant & CHESS960_VARIANT;
 }
 
 inline bool Position::capture_or_promotion(Move m) const {

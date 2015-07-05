@@ -150,6 +150,8 @@ void benchmark(const Position& current, istream& is) {
   {
       Position pos;
       int variant = STANDARD_VARIANT;
+      if (Options["UCI_Chess960"])
+          variant |= CHESS960_VARIANT;
 #ifdef HORDE
       if (Options["UCI_Horde"])
           variant |= HORDE_VARIANT;
@@ -162,7 +164,7 @@ void benchmark(const Position& current, istream& is) {
       if (Options["UCI_3Check"])
           variant |= THREECHECK_VARIANT;
 #endif
-      pos.set(fens[i], Options["UCI_Chess960"], variant, Threads.main());
+      pos.set(fens[i], variant, Threads.main());
 
       cerr << "\nPosition: " << i + 1 << '/' << fens.size() << endl;
 
