@@ -471,7 +471,7 @@ ScaleFactor Endgame<KRPKR>::operator()(const Position& pos) const {
   if (   r == RANK_6
       && distance(bksq, queeningSq) <= 1
       && rank_of(wksq) + tempo <= RANK_6
-      && (rank_of(brsq) == RANK_1 || (!tempo && distance(file_of(brsq), f) >= 3)))
+      && (rank_of(brsq) == RANK_1 || (!tempo && distance<File>(brsq, wpsq) >= 3)))
       return SCALE_FACTOR_DRAW;
 
   if (   r >= RANK_6
