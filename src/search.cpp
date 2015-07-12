@@ -674,8 +674,7 @@ namespace {
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
         &&  eval + razor_margin(depth) <= alpha
-        &&  ttMove == MOVE_NONE
-        && !pos.pawn_on_7th(pos.side_to_move()))
+        &&  ttMove == MOVE_NONE)
     {
         if (   depth <= ONE_PLY
             && eval + razor_margin(3 * ONE_PLY) <= alpha)
@@ -1428,7 +1427,7 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 
     // Extra penalty for TT move in previous ply when it gets refuted
-    if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove)
+    if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove && !pos.captured_piece_type())
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];

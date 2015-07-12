@@ -141,7 +141,6 @@ public:
 
   // Piece specific
   bool pawn_passed(Color c, Square s) const;
-  bool pawn_on_7th(Color c) const;
   bool opposite_bishops() const;
 
   // Doing and undoing moves
@@ -364,10 +363,6 @@ inline bool Position::opposite_bishops() const {
   return   pieceCount[WHITE][BISHOP] == 1
         && pieceCount[BLACK][BISHOP] == 1
         && opposite_colors(pieceList[WHITE][BISHOP][0], pieceList[BLACK][BISHOP][0]);
-}
-
-inline bool Position::pawn_on_7th(Color c) const {
-  return pieces(c, PAWN) & rank_bb(relative_rank(c, RANK_7));
 }
 
 inline bool Position::is_chess960() const {
