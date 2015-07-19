@@ -79,7 +79,7 @@ public:
   MovePicker& operator=(const MovePicker&) = delete;
 
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
+  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, Value);
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move, Search::Stack*);
 
   template<bool SpNode> Move next_move();
@@ -99,9 +99,9 @@ private:
   Move ttMove;
   ExtMove killers[3];
   Square recaptureSquare;
-  Value captureThreshold;
+  Value threshold;
   int stage;
-  ExtMove *endQuiets, *endBadCaptures;
+  ExtMove *endQuiets, *endBadCaptures = moves + MAX_MOVES - 1;
   ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
 };
 
