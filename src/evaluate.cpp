@@ -196,6 +196,27 @@ namespace {
   const int BishopCheck       = 6;
   const int KnightCheck       = 14;
 
+  // blocked_pawns() is a helper to find pawns which can't move up or capture
+  template<Color Us>
+  Bitboard blocked_pawns(const Position& pos) {
+    const Square Down  = (Us == WHITE ?  DELTA_S  : DELTA_N);
+    const Square Left  = (Us == WHITE ?  DELTA_SW : DELTA_NE);
+    const Square Right = (Us == WHITE ?  DELTA_SE : DELTA_NW);
+
+    const Color Them   = (Us == WHITE ?  BLACK : WHITE);
+
+    const Bitboard AdvancedBB = (Us == WHITE ? ~(Rank2BB | Rank3BB) : ~(Rank7BB | Rank6BB));
+
+    // Find squares from which a "pawn-style" push would be possible 
+    // toward the opponent half of the board.
+    Bitboard b = shift_bb<Down>(~pos.pieces()) & AdvancedBB;
+  
+    // Add squares from which a "pawn style" capture would be possible
+    b |= shift_bb<Left>(pos.pieces(Them)) | shift_bb<Right>(pos.pieces(Them));
+    
+    // The "blocked pawns" are pawns which are not on the above squares
+    return pos.pieces(Us, PAWN) & ~b;
+  }
 
   // init_eval_info() initializes king bitboards for given color adding
   // pawn attacks. To be done at the beginning of the evaluation.
@@ -701,9 +722,11 @@ namespace {
     ei.attackedBy[WHITE][ALL_PIECES] |= ei.attackedBy[WHITE][KING];
     ei.attackedBy[BLACK][ALL_PIECES] |= ei.attackedBy[BLACK][KING];
 
-    // Do not include in mobility squares protected by enemy pawns or occupied by our pawns or king
-    Bitboard mobilityArea[] = { ~(ei.attackedBy[BLACK][PAWN] | pos.pieces(WHITE, PAWN, KING)),
-                                ~(ei.attackedBy[WHITE][PAWN] | pos.pieces(BLACK, PAWN, KING)) };
+    // Do not include in mobility squares protected by the enemy pawns 
+    // or occupied by our blocked pawns or by our king
+    Bitboard mobilityArea[] = 
+        { ~(ei.attackedBy[BLACK][PAWN] | blocked_pawns<WHITE>(pos) | pos.king_square(WHITE)),
+          ~(ei.attackedBy[WHITE][PAWN] | blocked_pawns<BLACK>(pos) | pos.king_square(BLACK)) };
 
     // Evaluate pieces and mobility
     score += evaluate_pieces<KNIGHT, WHITE, Trace>(pos, ei, mobility, mobilityArea);
