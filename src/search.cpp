@@ -1430,7 +1430,7 @@ moves_loop: // When in check and at SpNode search starts from here
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
 
-    // Extra penalty for TT move in previous ply when it gets refuted
+    // Extra penalty for PV move in previous ply when it gets refuted
 	if (is_ok((ss - 2)->currentMove) && (ss-1)->moveCount==1 && !pos.captured_piece_type())
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
