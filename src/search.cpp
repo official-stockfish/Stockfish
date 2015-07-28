@@ -826,7 +826,8 @@ moves_loop: // When in check and at SpNode search starts from here
       }
       else
           ++moveCount;
-          ss->moveCount = moveCount;
+      
+      ss->moveCount = moveCount;
 
       if (RootNode)
       {
