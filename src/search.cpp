@@ -557,7 +557,7 @@ namespace {
 	
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
-	ss->cnt = 0;
+    ss->moveCount = 0;
 
     // Used to send selDepth info to GUI
     if (PvNode && thisThread->maxPly < ss->ply)
@@ -839,7 +839,7 @@ moves_loop: // When in check and at SpNode search starts from here
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
-	  ss->cnt = moveCount;
+      ss->moveCount = moveCount;
 
       if (PvNode)
           (ss+1)->pv = nullptr;
@@ -938,8 +938,8 @@ moves_loop: // When in check and at SpNode search starts from here
       if (!RootNode && !SpNode && !pos.legal(move, ci.pinned))
       {
           moveCount--;
-		  ss->cnt = moveCount;
-		  continue;
+          ss->moveCount = moveCount;
+          continue;
       }
 
       ss->currentMove = move;
@@ -1431,7 +1431,7 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 
     // Extra penalty for TT move in previous ply when it gets refuted
-	if (is_ok((ss - 2)->currentMove) && is_ok((ss - 2)->currentMove) && (ss-1)->cnt==1 && !pos.captured_piece_type())
+	if (is_ok((ss - 2)->currentMove) && (ss-1)->moveCount==1 && !pos.captured_piece_type())
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
