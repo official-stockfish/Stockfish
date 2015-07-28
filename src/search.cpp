@@ -553,11 +553,9 @@ namespace {
         goto moves_loop;
     }
 
-    moveCount = quietCount = 0;
-	
+    moveCount = quietCount =  ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
-    ss->moveCount = 0;
 
     // Used to send selDepth info to GUI
     if (PvNode && thisThread->maxPly < ss->ply)
@@ -828,6 +826,7 @@ moves_loop: // When in check and at SpNode search starts from here
       }
       else
           ++moveCount;
+          ss->moveCount = moveCount;
 
       if (RootNode)
       {
@@ -838,8 +837,6 @@ moves_loop: // When in check and at SpNode search starts from here
                         << " currmove " << UCI::move(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
-
-      ss->moveCount = moveCount;
 
       if (PvNode)
           (ss+1)->pv = nullptr;
@@ -1431,7 +1428,7 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 
     // Extra penalty for PV move in previous ply when it gets refuted
-	if (is_ok((ss - 2)->currentMove) && (ss-1)->moveCount==1 && !pos.captured_piece_type())
+    if (is_ok((ss-2)->currentMove) && (ss-1)->moveCount==1 && !pos.captured_piece_type())
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
