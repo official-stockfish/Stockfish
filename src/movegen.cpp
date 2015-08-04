@@ -34,7 +34,7 @@ namespace {
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
-    Square kfrom = pos.king_square(us);
+    Square kfrom = pos.square<KING>(us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
@@ -225,7 +225,7 @@ namespace {
 
     assert(Pt != KING && Pt != PAWN);
 
-    const Square* pl = pos.list<Pt>(us);
+    const Square* pl = pos.squares<Pt>(us);
 
     for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {
@@ -266,7 +266,7 @@ namespace {
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
     {
-        Square ksq = pos.king_square(Us);
+        Square ksq = pos.square<KING>(Us);
         Bitboard b = pos.attacks_from<KING>(ksq) & target;
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
@@ -364,7 +364,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   assert(pos.checkers());
 
   Color us = pos.side_to_move();
-  Square ksq = pos.king_square(us);
+  Square ksq = pos.square<KING>(us);
   Bitboard sliderAttacks = 0;
   Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
 
@@ -400,7 +400,7 @@ template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
 
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
-  Square ksq = pos.king_square(pos.side_to_move());
+  Square ksq = pos.square<KING>(pos.side_to_move());
   ExtMove* cur = moveList;
 
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)

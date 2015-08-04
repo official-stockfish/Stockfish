@@ -110,7 +110,7 @@ namespace {
     Square s;
     bool passed, isolated, opposed, backward, lever, connected;
     Score score = SCORE_ZERO;
-    const Square* pl = pos.list<PAWN>(Us);
+    const Square* pl = pos.squares<PAWN>(Us);
     const Bitboard* pawnAttacksBB = StepAttacksBB[make_piece(Us, PAWN)];
 
     Bitboard ourPawns   = pos.pieces(Us  , PAWN);
