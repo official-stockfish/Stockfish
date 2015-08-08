@@ -64,11 +64,11 @@ void TranspositionTable::clear() {
 
 
 /// TranspositionTable::probe() looks up the current position in the transposition
-/// table. It returns true and a pointer to the TTEntry if the position is found
+/// table. It returns true and a pointer to the TTEntry if the position is found.
 /// Otherwise, it returns false and a pointer to an empty or least valuable TTEntry
 /// to be replaced later. The replace value of an entry is calculated as its depth
 /// minus 8 times its relative age. TTEntry t1 is considered more valuable than
-/// TTEntry t2 if its replace score is greater than that of t2.
+/// TTEntry t2 if its replace value is greater than that of t2.
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
