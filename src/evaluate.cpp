@@ -149,11 +149,11 @@ namespace {
   // PassedPawnsBonusMg[Rank] and PassedPawnsBonusEg[Rank]
   //contains bonuses for midgame and endgame for passed pawns according to
   //the rank of the pawn.
-  Value PassedPawnsBonusMg[6] = {
+  const Value PassedPawnsBonusMg[6] = {
     V(0), V(1), V(34), V(90), V(214), V(328)
   };
 
-  Value PassedPawnsBonusEg[6] = {
+  const Value PassedPawnsBonusEg[6] = {
     V(7), V(14), V(37), V(63), V(134), V(189)
   };
 
@@ -578,8 +578,8 @@ namespace {
         int r = relative_rank(Us, s) - RANK_2;
         int rr = r * (r - 1);
 
-        Value mbonus = PassedPawnsBonusMg[relative_rank(Us, s) - RANK_2],
-              ebonus = PassedPawnsBonusEg[relative_rank(Us, s) - RANK_2];
+        Value mbonus = PassedPawnsBonusMg[r],
+              ebonus = PassedPawnsBonusEg[r];
 
         if (rr)
         {
