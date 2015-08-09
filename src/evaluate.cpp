@@ -146,6 +146,17 @@ namespace {
     S(0, 0), S(0, 0), S(107, 138), S(84, 122), S(114, 203), S(121, 217)
   };
 
+  // PassedPawnsBonusMg[Rank] and PassedPawnsBonusEg[Rank]
+  //contains bonuses for midgame and endgame for passed pawns according to
+  //the rank of the pawn.
+  const Value PassedPawnsBonusMg[6] = {
+    V(0), V(1), V(34), V(90), V(214), V(328)
+  };
+
+  const Value PassedPawnsBonusEg[6] = {
+    V(7), V(14), V(37), V(63), V(134), V(189)
+  };
+
   const Score ThreatenedByHangingPawn = S(40, 60);
 
   // Assorted bonuses and penalties used by evaluation
@@ -567,8 +578,8 @@ namespace {
         int r = relative_rank(Us, s) - RANK_2;
         int rr = r * (r - 1);
 
-        // Base bonus based on rank
-        Value mbonus = Value(17 * rr), ebonus = Value(7 * (rr + r + 1));
+        Value mbonus = PassedPawnsBonusMg[r],
+              ebonus = PassedPawnsBonusEg[r];
 
         if (rr)
         {
