@@ -351,7 +351,12 @@ namespace {
     TT.new_search();
 
     size_t multiPV = Options["MultiPV"];
-    Skill skill(Options["Skill Level"]);
+	  int skillLevel = Options["Skill Level"];
+
+	  if (Options["UCI_LimitStrength"])
+		    skillLevel = (Options["UCI_Elo"] - 1000) / 100;
+
+    Skill skill(skillLevel);
 
     // When playing with strength handicap enable MultiPV search that we will
     // use behind the scenes to retrieve a set of possible moves.
