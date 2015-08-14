@@ -519,12 +519,14 @@ namespace {
             score += more_than_one(b) ? KingOnMany : KingOnOne;
     }
 
-    // Bonus if the pawn push safely attacks an enemy piece
+    // Bonus if some pawns can safely push and attack an enemy piece
     b = pos.pieces(Us, PAWN) & ~TRank7BB;
     b = shift_bb<Up>(b | (shift_bb<Up>(b & TRank2BB) & ~pos.pieces()));
+
     b &=  ~pos.pieces()
         & ~ei.attackedBy[Them][PAWN]
         & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
+
     b =  (shift_bb<Left>(b) | shift_bb<Right>(b))
        &  pos.pieces(Them)
        & ~ei.attackedBy[Us][PAWN];
