@@ -1322,6 +1322,12 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (value > alpha)
           {
+              // Give a little bonus if the search detects that the second best move
+              // is only a bit worse than the best one.
+              if (value<bestValue+150) value=value+1;
+              if (value<bestValue+600) value=value+1;
+              bestValue = value;
+              
               if (PvNode) // Update pv even in fail-high case
                   update_pv(ss->pv, move, (ss+1)->pv);
 
