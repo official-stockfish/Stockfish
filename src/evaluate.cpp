@@ -124,8 +124,8 @@ namespace {
       S( 94, 99), S( 96,100), S(99,111), S(99,112) }
   };
 
-  // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and bishops
-  // outposts, bigger if outpost piece is supported by a pawn.
+  // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and
+  // bishops outposts, bigger if outpost piece is supported by a pawn.
   const Score Outpost[][2] = {
     { S(28, 7), S(42,11) }, // Knights
     { S(12, 3), S(18, 5) }  // Bishops
@@ -146,15 +146,11 @@ namespace {
     S(0, 0), S(0, 0), S(107, 138), S(84, 122), S(114, 203), S(121, 217)
   };
 
-  // PassedPawnsBonusMg[Rank] and PassedPawnsBonusEg[Rank]
-  //contains bonuses for midgame and endgame for passed pawns according to
-  //the rank of the pawn.
-  const Value PassedPawnsBonusMg[6] = {
-    V(0), V(1), V(34), V(90), V(214), V(328)
-  };
-
-  const Value PassedPawnsBonusEg[6] = {
-    V(7), V(14), V(37), V(63), V(134), V(189)
+  // Passed[mg/eg][rank] contains midgame and endgame bonuses for passed pawns.
+  // We don't use a Score because we process the two components independently.
+  const Value Passed[][RANK_NB] = {
+    { V(0), V( 1), V(34), V(90), V(214), V(328) },
+    { V(7), V(14), V(37), V(63), V(134), V(189) }
   };
 
   const Score ThreatenedByHangingPawn = S(40, 60);
@@ -578,8 +574,7 @@ namespace {
         int r = relative_rank(Us, s) - RANK_2;
         int rr = r * (r - 1);
 
-        Value mbonus = PassedPawnsBonusMg[r],
-              ebonus = PassedPawnsBonusEg[r];
+        Value mbonus = Passed[MG][r], ebonus = Passed[EG][r];
 
         if (rr)
         {
