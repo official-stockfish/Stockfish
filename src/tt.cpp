@@ -67,8 +67,8 @@ void TranspositionTable::clear() {
 /// table. It returns true and a pointer to the TTEntry if the position is found.
 /// Otherwise, it returns false and a pointer to an empty or least valuable TTEntry
 /// to be replaced later. The replace value of an entry is calculated as its depth
-/// minus 8 times its relative age. TTEntry t1 is considered more valuable than
-/// TTEntry t2 if its replace value is greater than that of t2.
+/// plus 2 times its age. TTEntry t1 is considered more valuable than TTEntry t2
+/// if its replace value is greater than that of t2.
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
@@ -87,9 +87,16 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
   // Find an entry to be replaced according to the replacement strategy
   TTEntry* replace = tte;
   for (int i = 1; i < ClusterSize; ++i)
-      if (  replace->depth8 - ((259 + generation8 - replace->genBound8) & 0xFC) * 2 * ONE_PLY
-          >   tte[i].depth8 - ((259 + generation8 -   tte[i].genBound8) & 0xFC) * 2 * ONE_PLY)
+      if (  replace->depth8 - tte[i].depth8
+          + (  (replace->genBound8 & 0xFC) - (tte[i].genBound8 & 0xFC)
+
+             // generation8 may overflows into a new cycle while an entry is still
+             // from previous one, in this case subtract 0x100 to compensate.
+             - (generation8 < (replace->genBound8 & 0xFC)) * 0x100
+             + (generation8 < (  tte[i].genBound8 & 0xFC)) * 0x100) * 2 * ONE_PLY > 0)
+      {
           replace = &tte[i];
+      }
 
   return found = false, replace;
 }
