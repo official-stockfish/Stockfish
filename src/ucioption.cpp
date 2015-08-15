@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cassert>
 #include <ostream>
+#include <thread>
 
 #include "misc.h"
 #include "search.h"
@@ -55,11 +56,14 @@ bool CaseInsensitiveLess::operator() (const string& s1, const string& s2) const 
 void init(OptionsMap& o) {
 
   const int MaxHashMB = Is64Bit ? 1024 * 1024 : 2048;
+  
+  unsigned int n = std::thread::hardware_concurrency(); // Get quantity of CPU cores (C++ 11)
+  if (!n) n = 1; // If something was wrong, set default to one thread
 
   o["Write Debug Log"]       << Option(false, on_logger);
   o["Contempt"]              << Option(0, -100, 100);
   o["Min Split Depth"]       << Option(5, 0, 12, on_threads);
-  o["Threads"]               << Option(1, 1, MAX_THREADS, on_threads);
+  o["Threads"]               << Option(n, 1, MAX_THREADS, on_threads);
   o["Hash"]                  << Option(16, 1, MaxHashMB, on_hash_size);
   o["Clear Hash"]            << Option(on_clear_hash);
   o["Ponder"]                << Option(true);

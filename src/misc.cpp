@@ -21,6 +21,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 #include "misc.h"
 #include "thread.h"
@@ -101,6 +102,8 @@ const string engine_info(bool to_uci) {
   const string months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
   string month, day, year;
   stringstream ss, date(__DATE__); // From compiler, format is "Sep 21 2008"
+  
+  unsigned int n = std::thread::hardware_concurrency(); // Get quantity of CPU cores (C++ 11)
 
   ss << "Stockfish " << Version << setfill('0');
 
@@ -110,10 +113,13 @@ const string engine_info(bool to_uci) {
       ss << setw(2) << day << setw(2) << (1 + months.find(month) / 4) << year.substr(2);
   }
 
-  ss << (Is64Bit ? " 64" : "")
+  ss << (Is64Bit ? " x64" : "")
      << (HasPext ? " BMI2" : (HasPopCnt ? " POPCNT" : ""))
      << (to_uci  ? "\nid author ": " by ")
-     << "Tord Romstad, Marco Costalba and Joona Kiiski";
+     << "Tord Romstad, Marco Costalba and Joona Kiiski"
+     << (to_uci ? "" : "\n\ninfo string ")
+     << (to_uci ? "" : std::to_string(n))
+     << (to_uci ? "" : " processor(s) found");
 
   return ss.str();
 }
