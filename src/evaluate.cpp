@@ -167,7 +167,6 @@ namespace {
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
   const Score PawnAttackThreat   = S(20, 20);
-  const Score PawnSafePush       = S( 5,  5);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -527,7 +526,7 @@ namespace {
             score += more_than_one(b) ? KingOnMany : KingOnOne;
     }
 
-    // Add a small bonus for safe pawn pushes
+    // Bonus if some pawns can safely push and attack an enemy piece
     b = pos.pieces(Us, PAWN) & ~TRank7BB;
     b = shift_bb<Up>(b | (shift_bb<Up>(b & TRank2BB) & ~pos.pieces()));
 
@@ -535,10 +534,6 @@ namespace {
         & ~ei.attackedBy[Them][PAWN]
         & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
 
-    if (b)
-        score += popcount<Full>(b) * PawnSafePush;
-
-    // Add another bonus if the pawn push attacks an enemy piece
     b =  (shift_bb<Left>(b) | shift_bb<Right>(b))
        &  pos.pieces(Them)
        & ~ei.attackedBy[Us][PAWN];
