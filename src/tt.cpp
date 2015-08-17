@@ -68,7 +68,10 @@ void TranspositionTable::clear() {
 /// Otherwise, it returns false and a pointer to an empty or least valuable TTEntry
 /// to be replaced later. The replace value of an entry is calculated as its depth
 /// minus 8 times its relative age. TTEntry t1 is considered more valuable than
-/// TTEntry t2 if its replace value is greater than that of t2.
+/// TTEntry t2 if its replace value is greater than that of t2. Due to our packed
+/// storage format for generation and its cyclic nature the cryptic looking
+/// "(259 + generation8 - replace->genBound8) & 0xFC" modular math is necessary to
+/// calculate the entry age correctly even after generation overflows.
 
 TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
