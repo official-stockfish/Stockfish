@@ -880,7 +880,6 @@ moves_loop: // When in check and at SpNode search starts from here
           && !captureOrPromotion
           && !inCheck
           && !givesCheck
-          &&  type_of(move) == NORMAL
           && !pos.advanced_pawn_push(move)
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
