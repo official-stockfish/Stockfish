@@ -632,7 +632,7 @@ namespace {
             return mated_in(ss->ply);
 #endif
 #ifdef ATOMIC
-        // Check for an instant loss (Horde)
+        // Check for an instant loss (Atomic)
         if (pos.is_atomic() && pos.is_atomic_loss())
             return mated_in(ss->ply);
 #endif
@@ -1339,7 +1339,7 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 #endif
 #ifdef HORDE
-    // Check for an instant win (Three-Check)
+    // Check for an instant win (Horde)
     if (pos.is_horde())
     {
         if (pos.is_horde_loss())
@@ -1347,7 +1347,7 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 #endif
 #ifdef ATOMIC
-    // Check for an instant win (Three-Check)
+    // Check for an instant win (Atomic)
     if (pos.is_atomic())
     {
         if (pos.is_atomic_win())
