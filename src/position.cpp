@@ -103,15 +103,26 @@ CheckInfo::CheckInfo(const Position& pos) {
   checkSquares[KNIGHT] = 0;
   checkSquares[BISHOP] = 0;
   checkSquares[ROOK]   = 0;
-  } else {
+  checkSquares[QUEEN]  = 0;
+  checkSquares[KING]   = 0;
+  return;
+  }
+#endif
+#ifdef ATOMIC
+  if (pos.is_atomic() && ksq == SQ_NONE) {
+  checkSquares[PAWN]   = 0;
+  checkSquares[KNIGHT] = 0;
+  checkSquares[BISHOP] = 0;
+  checkSquares[ROOK]   = 0;
+  checkSquares[QUEEN]  = 0;
+  checkSquares[KING]   = 0;
+  return;
+  }
 #endif
   checkSquares[PAWN]   = pos.attacks_from<PAWN>(ksq, them);
   checkSquares[KNIGHT] = pos.attacks_from<KNIGHT>(ksq);
   checkSquares[BISHOP] = pos.attacks_from<BISHOP>(ksq);
   checkSquares[ROOK]   = pos.attacks_from<ROOK>(ksq);
-#ifdef HORDE
-  }
-#endif
   checkSquares[QUEEN]  = checkSquares[BISHOP] | checkSquares[ROOK];
   checkSquares[KING]   = 0;
 }
@@ -431,12 +442,18 @@ void Position::set_state(StateInfo* si) const {
       si->checkersBB = ksq == SQ_NONE ? 0 : attackers_to(ksq) & pieces(~sideToMove);
   }
   else
+#endif
+#ifdef ATOMIC
+  if (is_atomic())
   {
-#endif
-      si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
-#ifdef HORDE
+      Square ksq = king_square(sideToMove);
+      si->checkersBB = (ksq == SQ_NONE || (attacks_from<KING>(ksq) & king_square(~sideToMove))) ? 0 : attackers_to(ksq) & pieces(~sideToMove);
   }
+  else
 #endif
+  {
+      si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+  }
 
   for (Bitboard b = pieces(); b; )
   {
@@ -621,6 +638,36 @@ bool Position::legal(Move m, Bitboard pinned) const {
   if (is_horde() && king_square(us) == SQ_NONE)
       return true;
 #endif
+#ifdef ATOMIC
+  if (is_atomic())
+  {
+      Square ksq = king_square(us);
+      Square to = to_sq(m);
+      // If the game is already won or lost, further moves are illegal
+      if (is_atomic_win() || is_atomic_loss())
+          return false;
+      if (capture(m) && (attacks_from<KING>(to) & ksq))
+          return false;
+      if (type_of(piece_on(from)) != KING)
+      {
+          if (attacks_from<KING>(king_square(~us)) & ksq)
+              return true;
+          if (capture(m))
+          {
+              Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
+              Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
+              Bitboard b = pieces() ^ ((blast | capsq) | from);
+              if (checkers() & ~b)
+                  return false;
+              if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
+                  (attacks_bb<BISHOP>(ksq, b) & pieces(~us, QUEEN, BISHOP) & b))
+                  return false;
+          }
+      }
+      else if (attacks_from<KING>(king_square(~us)) & to)
+          return true;
+  }
+#endif
 
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
@@ -666,15 +713,46 @@ bool Position::pseudo_legal(const Move m) const {
   Square to = to_sq(m);
   Piece pc = moved_piece(m);
 
+#ifdef KOTH
+  // If the game is already won or lost, further moves are illegal
+  if (is_koth() && (is_koth_win() || is_koth_loss()))
+      return false;
+#endif
 #ifdef HORDE
   // If the game is already won or lost, further moves are illegal
   if (is_horde() && is_horde_loss())
       return false;
 #endif
-#ifdef KOTH
-  // If the game is already won or lost, further moves are illegal
-  if (is_koth() && (is_koth_win() || is_koth_loss()))
-      return false;
+#ifdef ATOMIC
+  if (is_atomic())
+  {
+      Square ksq = king_square(us);
+      // If the game is already won or lost, further moves are illegal
+      if (is_atomic_win() || is_atomic_loss())
+          return false;
+      if (pc == NO_PIECE || color_of(pc) != us)
+          return false;
+      if (capture(m) && (attacks_from<KING>(to) & ksq))
+          return false;
+      if (type_of(pc) != KING)
+      {
+          if (attacks_from<KING>(king_square(~us)) & ksq)
+              return true;
+          if (capture(m))
+          {
+              Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
+              Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
+              Bitboard b = pieces() ^ ((blast | capsq) | from);
+              if (checkers() & ~b)
+                  return false;
+              if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
+                  (attacks_bb<BISHOP>(ksq, b) & pieces(~us, QUEEN, BISHOP) & b))
+                  return false;
+          }
+      }
+      else if (attacks_from<KING>(king_square(~us)) & to)
+          return true;
+  }
 #endif
 
   // Use a slower but simpler function for uncommon cases
@@ -753,6 +831,25 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
   if (is_horde() && ci.ksq == SQ_NONE)
       return false;
 #endif
+#ifdef ATOMIC
+  if (is_atomic())
+  {
+      Square ksq = (type_of(piece_on(from)) == KING ? to : king_square(sideToMove));
+      if (attacks_from<KING>(ci.ksq) & ksq)
+          return false;
+  }
+  if (is_atomic() && capture(m))
+  {
+      // Do blasted pieces discover checks?
+      Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
+      Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
+      Bitboard b = pieces() ^ ((blast | capsq) | from);
+
+      return (attacks_bb<  ROOK>(ci.ksq, b) & pieces(sideToMove, QUEEN, ROOK) & b)
+          || (attacks_bb<BISHOP>(ci.ksq, b) & pieces(sideToMove, QUEEN, BISHOP) & b);
+  }
+#endif
+
   // Is there a direct check?
   if (ci.checkSquares[type_of(piece_on(from))] & to)
       return true;
@@ -879,6 +976,44 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       // Update material hash key and prefetch access to materialTable
       k ^= Zobrist::psq[them][captured][capsq];
       st->materialKey ^= Zobrist::psq[them][captured][pieceCount[them][captured]];
+#ifdef ATOMIC
+      if (is_atomic()) // Remove the blast piece(s)
+      {
+          Bitboard blast = attacks_from<KING>(to);
+          while (blast)
+          {
+              Square bsq = pop_lsb(&blast);
+              if (bsq == from)
+                  continue;
+              st->blast[bsq] = piece_on(bsq);
+              PieceType bpt = type_of(st->blast[bsq]);
+              if (bpt != NO_PIECE_TYPE && bpt != PAWN)
+              {
+                  Color bc = color_of(st->blast[bsq]);
+                  st->nonPawnMaterial[bc] -= PieceValue[MG][bpt];
+
+                  // Update board and piece lists
+                  remove_piece(bc, bpt, bsq);
+
+                  // Update material hash key
+                  k ^= Zobrist::psq[bc][bpt][bsq];
+                  st->materialKey ^= Zobrist::psq[bc][bpt][pieceCount[bc][bpt]];
+
+                  // Update incremental scores
+                  st->psq -= PSQT::psq[bc][bpt][bsq];
+
+                  // Update castling rights if needed
+                  if (st->castlingRights && castlingRightsMask[bsq])
+                  {
+                      int cr = castlingRightsMask[bsq];
+                      k ^= Zobrist::castling[st->castlingRights & cr];
+                      st->castlingRights &= ~cr;
+                  }
+              }
+          }
+      }
+#endif
+
       prefetch(thisThread->materialTable[st->materialKey]);
 
       // Update incremental scores
@@ -888,6 +1023,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->rule50 = 0;
   }
 
+#ifdef ATOMIC
+  if (is_atomic() && captured)
+      k ^= Zobrist::psq[us][pt][from];
+  else
+#endif
   // Update hash key
   k ^= Zobrist::psq[us][pt][from] ^ Zobrist::psq[us][pt][to];
 
@@ -916,6 +1056,18 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 #endif
 
+#ifdef ATOMIC
+  if (is_atomic() && captured) // Remove the blast piece(s)
+  {
+      st->blast[from] = piece_on(from);
+      remove_piece(us, pt, from);
+      // Update material (hash key already updated)
+      st->materialKey ^= Zobrist::psq[us][pt][pieceCount[us][pt]];
+      if (pt != PAWN)
+          st->nonPawnMaterial[us] -= PieceValue[MG][pt];
+  }
+  else
+#endif
   // Move the piece. The tricky Chess960 castling is handled earlier
   if (type_of(m) != CASTLING)
       move_piece(us, pt, from, to);
@@ -930,7 +1082,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->epSquare = (from + to) / 2;
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
-
+#ifdef ATOMIC
+      else if (is_atomic() && captured)
+      {
+      }
+#endif
       else if (type_of(m) == PROMOTION)
       {
           PieceType promotion = promotion_type(m);
@@ -954,6 +1110,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
 
+#ifdef ATOMIC
+      if (is_atomic() && captured)
+          st->pawnKey ^= Zobrist::psq[us][PAWN][from];
+      else
+#endif
       // Update pawn hash key and prefetch access to pawnsTable
       st->pawnKey ^= Zobrist::psq[us][PAWN][from] ^ Zobrist::psq[us][PAWN][to];
       prefetch(thisThread->pawnsTable[st->pawnKey]);
@@ -962,6 +1123,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->rule50 = 0;
   }
 
+#ifdef ATOMIC
+  if (is_atomic() && captured)
+      st->psq -= PSQT::psq[us][pt][from];
+  else
+#endif
   // Update incremental scores
   st->psq += PSQT::psq[us][pt][to] - PSQT::psq[us][pt][from];
 
@@ -971,6 +1137,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Update the key with the final value
   st->key = k;
 
+#ifdef ATOMIC
+  if (is_atomic() && captured && is_atomic_win())
+      givesCheck = false;
+#endif
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(king_square(them)) & pieces(us) : 0;
 
@@ -993,18 +1163,30 @@ void Position::undo_move(Move m) {
   Square from = from_sq(m);
   Square to = to_sq(m);
   PieceType pt = type_of(piece_on(to));
+#ifdef ATOMIC
+  if (is_atomic() && st->capturedType) // Restore the blast piece(s)
+      pt = type_of(st->blast[from]);
+#endif
 
+  assert(empty(to) || color_of(piece_on(to)) == us);
   assert(empty(from) || type_of(m) == CASTLING);
   assert(st->capturedType != KING);
 
   if (type_of(m) == PROMOTION)
   {
       assert(relative_rank(us, to) == RANK_8);
+#ifdef ATOMIC
+      if (!is_atomic() || !st->capturedType)
+      {
+#endif
       assert(pt == promotion_type(m));
       assert(pt >= KNIGHT && pt <= QUEEN);
 
       remove_piece(us, pt, to);
       put_piece(us, PAWN, to);
+#ifdef ATOMIC
+      }
+#endif
       pt = PAWN;
   }
 
@@ -1015,6 +1197,11 @@ void Position::undo_move(Move m) {
   }
   else
   {
+#ifdef ATOMIC
+      if (is_atomic() && st->capturedType) // Restore the blast piece(s)
+          put_piece(us, pt, from);
+      else
+#endif
       move_piece(us, pt, to, from); // Put the piece back at the source square
 
       if (st->capturedType)
@@ -1032,9 +1219,28 @@ void Position::undo_move(Move m) {
               assert(st->capturedType == PAWN);
           }
 
+#ifdef ATOMIC
+          if (is_atomic() && st->capturedType) // Restore the blast piece(s)
+          {
+              Bitboard blast = attacks_from<KING>(to); // squares in blast radius
+              while (blast)
+              {
+                  Square bsq = pop_lsb(&blast);
+                  if (bsq == from)
+                      continue;
+                  PieceType bpt = type_of(st->blast[bsq]);
+                  if (bpt != NO_PIECE_TYPE && bpt != PAWN)
+                      put_piece(color_of(st->blast[bsq]), bpt, bsq);
+              }
+          }
+#endif
           put_piece(~us, st->capturedType, capsq); // Restore the captured piece
       }
   }
+#ifdef ATOMIC
+  if (is_atomic())
+      assert(piece_on(from) != NO_PIECE);
+#endif
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
@@ -1115,7 +1321,21 @@ Key Position::key_after(Move m) const {
   Key k = st->key ^ Zobrist::side;
 
   if (captured)
+  {
       k ^= Zobrist::psq[~us][captured][to];
+#ifdef ATOMIC
+      if (is_atomic())
+      {
+          Bitboard blast = (attacks_from<KING>(to) & (pieces() ^ pieces(PAWN))) - from;
+          while (blast)
+          {
+              Square bsq = pop_lsb(&blast);
+              PieceType bpt = type_of(st->blast[bsq]);
+              k ^= Zobrist::psq[~us][bpt][bsq];
+          }
+      }
+#endif
+  }
 
   return k ^ Zobrist::psq[us][pt][to] ^ Zobrist::psq[us][pt][from];
 }
@@ -1294,19 +1514,34 @@ bool Position::pos_is_ok(int* failedStep) const {
           *failedStep = step;
 
       if (step == Default)
+      {
+          Square wksq = king_square(WHITE), bksq = king_square(BLACK);
           if (   (sideToMove != WHITE && sideToMove != BLACK)
 #ifdef HORDE
-              || (is_horde() ? king_square(WHITE) != SQ_NONE : piece_on(king_square(WHITE)) != W_KING)
+#ifdef ATOMIC
+              || (is_horde() ? wksq != SQ_NONE : ((!is_atomic() || wksq != SQ_NONE) && piece_on(wksq) != W_KING))
 #else
-              || piece_on(king_square(WHITE)) != W_KING
+              || (is_horde() ? wksq != SQ_NONE : piece_on(wksq) != W_KING)
 #endif
-              || piece_on(king_square(BLACK)) != B_KING
+#else
+#ifdef ATOMIC
+              || ((!is_atomic() || wksq != SQ_NONE) && piece_on(wksq) != W_KING)
+#else
+              || piece_on(wksq) != W_KING
+#endif
+#endif
+#ifdef ATOMIC
+              || (bksq != SQ_NONE && piece_on(bksq) != B_KING)
+#else
+              || piece_on(bksq) != B_KING
+#endif
               || (   ep_square() != SQ_NONE
 #ifdef HORDE
                   && (!is_horde() || relative_rank(sideToMove, ep_square()) != RANK_7)
 #endif
                   && relative_rank(sideToMove, ep_square()) != RANK_6))
               return false;
+      }
 
       if (step == King)
       {
@@ -1317,6 +1552,17 @@ bool Position::pos_is_ok(int* failedStep) const {
                   || std::count(board, board + SQUARE_NB, B_KING) != 1
                   || (sideToMove == WHITE && attackers_to(king_square(~sideToMove)) & pieces(sideToMove)))
               return false;
+          } else
+#endif
+#ifdef ATOMIC
+          if (is_atomic() && (is_atomic_win() || is_atomic_loss()))
+          {
+              if (std::count(board, board + SQUARE_NB, W_KING) +
+                  std::count(board, board + SQUARE_NB, B_KING) != 1)
+              return false;
+          }
+          else if (is_atomic() && (attacks_from<KING>(king_square(~sideToMove)) & king_square(sideToMove)))
+          {
           } else
 #endif
           if (   std::count(board, board + SQUARE_NB, W_KING) != 1

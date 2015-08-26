@@ -166,7 +166,14 @@ namespace {
     if (pawnsOn7 && (Type != EVASIONS || (target & TRank8BB)))
     {
         if (Type == CAPTURES)
+        {
             emptySquares = ~pos.pieces();
+#ifdef ATOMIC
+            // Promotes only if promotion wins or explodes checkers
+            if (pos.is_atomic() && pos.checkers())
+                emptySquares &= target;
+#endif
+        }
 
         if (Type == EVASIONS)
             emptySquares &= target;
@@ -375,6 +382,27 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   Bitboard sliderAttacks = 0;
   Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
 
+#ifdef ATOMIC
+  if (pos.is_atomic())
+  {
+      // Blasts that explode the opposing king or explode all checkers
+      // are counted among evasive moves.
+      Bitboard target = 0;
+      target = pos.checkers();
+      Bitboard s = sliders;
+      while (s)
+          target |= pos.attacks_from<KING>(pop_lsb(&s));
+      s = sliders;
+      while (s)
+          target &= (s | pos.attacks_from<KING>(pop_lsb(&s)));
+      Square tksq = pos.king_square(~us);
+      target |= pos.attacks_from<KING>(tksq);
+      target &= pos.pieces(~us) & ~pos.attacks_from<KING>(ksq);
+      moveList = (us == WHITE ? generate_all<WHITE, CAPTURES>(pos, moveList, target)
+                              : generate_all<BLACK, CAPTURES>(pos, moveList, target));
+  }
+#endif
+
   // Find all the squares attacked by slider checkers. We will remove them from
   // the king evasions in order to skip known illegal moves, which avoids any
   // useless legality checks later on.
@@ -386,6 +414,10 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
 
   // Generate evasions for king, capture and non capture moves
   Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
+#ifdef ATOMIC
+  if (pos.is_atomic())
+      b &= ~pos.pieces(~us);
+#endif
   while (b)
       *moveList++ = make_move(ksq, pop_lsb(&b));
 

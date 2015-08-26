@@ -266,6 +266,10 @@ void Search::think() {
       if (RootPos.is_horde() && RootPos.is_horde_loss())
           score = -VALUE_MATE;
 #endif
+#ifdef ATOMIC
+      if (RootPos.is_atomic() && RootPos.is_atomic_loss())
+          score = -VALUE_MATE;
+#endif
       sync_cout << "info depth 0 score " << UCI::value(score) << sync_endl;
   }
   else
@@ -344,6 +348,11 @@ void Search::think() {
 #endif
 #ifdef HORDE
   if (RootPos.is_horde() && RootPos.is_horde_loss())
+      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
+  else
+#endif
+#ifdef ATOMIC
+  if (RootPos.is_atomic() && RootPos.is_atomic_loss())
       sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
   else
 #endif
@@ -622,6 +631,11 @@ namespace {
         if (pos.is_horde() && pos.is_horde_loss())
             return mated_in(ss->ply);
 #endif
+#ifdef ATOMIC
+        // Check for an instant loss (Horde)
+        if (pos.is_atomic() && pos.is_atomic_loss())
+            return mated_in(ss->ply);
+#endif
 
         // Step 2. Check for aborted search and immediate draw
         if (Signals.stop || pos.is_draw() || ss->ply >= MAX_PLY)
@@ -672,6 +686,18 @@ namespace {
     }
 
     // Step 4a. Tablebase probe
+#ifdef KOTH
+    if (pos.is_koth()) {} else
+#endif
+#ifdef THREECHECK
+    if (pos.is_three_check()) {} else
+#endif
+#ifdef HORDE
+    if (pos.is_horde()) {} else
+#endif
+#ifdef ATOMIC
+    if (pos.is_atomic()) {} else
+#endif
     if (!RootNode && TB::Cardinality)
     {
         int piecesCnt = pos.count<ALL_PIECES>(WHITE) + pos.count<ALL_PIECES>(BLACK);
@@ -929,6 +955,9 @@ moves_loop: // When in check and at SpNode search starts from here
       captureOrPromotion = pos.capture_or_promotion(move);
 
       givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
+#ifdef ATOMIC
+                  && !pos.is_atomic()
+#endif
                   ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
 
@@ -1261,7 +1290,11 @@ moves_loop: // When in check and at SpNode search starts from here
     const bool PvNode = NT == PV;
 
     assert(NT == PV || NT == NonPV);
+#ifdef ATOMIC
+    assert((pos.is_atomic() && pos.is_atomic_loss()) || InCheck == !!pos.checkers());
+#else
     assert(InCheck == !!pos.checkers());
+#endif
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= DEPTH_ZERO);
@@ -1296,14 +1329,32 @@ moves_loop: // When in check and at SpNode search starts from here
     }
 #endif
 #ifdef THREECHECK
-        // Check for an instant win (Three-Check)
-        if (pos.is_three_check())
-        {
-            if (pos.is_three_check_win())
-                return mate_in(ss->ply + 1);
-            if (pos.is_three_check_loss())
-                return mated_in(ss->ply);
-        }
+    // Check for an instant win (Three-Check)
+    if (pos.is_three_check())
+    {
+        if (pos.is_three_check_win())
+            return mate_in(ss->ply + 1);
+        if (pos.is_three_check_loss())
+            return mated_in(ss->ply);
+    }
+#endif
+#ifdef HORDE
+    // Check for an instant win (Three-Check)
+    if (pos.is_horde())
+    {
+        if (pos.is_horde_loss())
+            return mated_in(ss->ply);
+    }
+#endif
+#ifdef ATOMIC
+    // Check for an instant win (Three-Check)
+    if (pos.is_atomic())
+    {
+        if (pos.is_atomic_win())
+            return mate_in(ss->ply + 1);
+        if (pos.is_atomic_loss())
+            return mated_in(ss->ply);
+    }
 #endif
 
     // Check for an instant draw or if the maximum ply has been reached
@@ -1387,6 +1438,9 @@ moves_loop: // When in check and at SpNode search starts from here
       assert(is_ok(move));
 
       givesCheck =  type_of(move) == NORMAL && !ci.dcCandidates
+#ifdef ATOMIC
+                  && !pos.is_atomic()
+#endif
                   ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
 

@@ -722,10 +722,10 @@ namespace {
             return -VALUE_MATE;
     }
 #endif
-
 #ifdef THREECHECK
     if (pos.is_three_check())
     {
+        // Possibly redundant static evaluator
         if (pos.is_three_check_win())
             return VALUE_MATE;
         if (pos.is_three_check_loss())
@@ -733,6 +733,24 @@ namespace {
 
         score += ChecksGivenBonus[pos.checks_given()];
         score -= ChecksGivenBonus[pos.checks_taken()];
+    }
+#endif
+#ifdef HORDE
+    // Possibly redundant static evaluator
+    if (pos.is_horde())
+    {
+        if (pos.is_horde_loss())
+            return -VALUE_MATE;
+    }
+#endif
+#ifdef ATOMIC
+    // Possibly redundant static evaluator
+    if (pos.is_atomic())
+    {
+        if (pos.is_atomic_win())
+            return VALUE_MATE;
+        if (pos.is_atomic_loss())
+            return -VALUE_MATE;
     }
 #endif
 

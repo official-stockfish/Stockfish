@@ -32,6 +32,7 @@
 #define KOTH_VARIANT 1 << 2
 #define THREECHECK_VARIANT 1 << 3
 #define HORDE_VARIANT 1 << 4
+#define ATOMIC_VARIANT 1 << 5
 
 class Position;
 struct Thread;
@@ -80,6 +81,9 @@ struct StateInfo {
   Key        key;
   Bitboard   checkersBB;
   PieceType  capturedType;
+#ifdef ATOMIC
+  Piece      blast[SQUARE_NB];
+#endif
   StateInfo* previous;
 };
 
@@ -179,6 +183,11 @@ public:
   Phase game_phase() const;
   int game_ply() const;
   bool is_chess960() const;
+#ifdef ATOMIC
+  bool is_atomic() const;
+  bool is_atomic_win() const;
+  bool is_atomic_loss() const;
+#endif
 #ifdef HORDE
   bool is_horde() const;
   bool is_horde_loss() const;
@@ -435,6 +444,22 @@ inline bool Position::pawn_on_7th(Color c) const {
   return pieces(c, PAWN) & rank_bb(relative_rank(c, RANK_7));
 }
 
+#ifdef ATOMIC
+inline bool Position::is_atomic() const {
+  return variant & ATOMIC_VARIANT;
+}
+
+// Loss if king is captured (Atomic)
+inline bool Position::is_atomic_win() const {
+  return count<KING>(~sideToMove) == 0;
+}
+
+// Loss if king is captured (Atomic)
+inline bool Position::is_atomic_loss() const {
+  return count<KING>(sideToMove) == 0;
+}
+#endif
+
 #ifdef HORDE
 inline bool Position::is_horde() const {
   return variant & HORDE_VARIANT;
@@ -442,7 +467,7 @@ inline bool Position::is_horde() const {
 
 // Loss if horde is captured (Horde)
 inline bool Position::is_horde_loss() const {
-  return pieces(WHITE) == 0;
+  return count<ALL_PIECES>(WHITE) == 0;
 }
 #endif
 
@@ -518,6 +543,10 @@ inline void Position::remove_piece(Color c, PieceType pt, Square s) {
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[pt] ^= s;
   byColorBB[c] ^= s;
+#ifdef ATOMIC
+  if (is_atomic())
+      board[s] = NO_PIECE;
+#endif
   /* board[s] = NO_PIECE;  Not needed, overwritten by the capturing one */
   Square lastSquare = pieceList[c][pt][--pieceCount[c][pt]];
   index[lastSquare] = index[s];

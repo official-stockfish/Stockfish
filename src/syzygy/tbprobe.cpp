@@ -669,6 +669,18 @@ static Value wdl_to_Value[5] = {
 bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
 {
   int success;
+#ifdef KOTH
+  if (pos.is_koth()) return false;
+#endif
+#ifdef THREECHECK
+  if (pos.is_three_check()) return false;
+#endif
+#ifdef HORDE
+  if (pos.is_horde()) return false;
+#endif
+#ifdef ATOMIC
+  if (pos.is_atomic()) {} return false;
+#endif
 
   int dtz = probe_dtz(pos, &success);
   if (!success) return false;
@@ -776,6 +788,18 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoveVector& rootMoves, Va
 bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoveVector& rootMoves, Value& score)
 {
   int success;
+#ifdef KOTH
+  if (pos.is_koth()) return false;
+#endif
+#ifdef THREECHECK
+  if (pos.is_three_check()) return false;
+#endif
+#ifdef HORDE
+  if (pos.is_horde()) return false;
+#endif
+#ifdef ATOMIC
+  if (pos.is_atomic()) {} return false;
+#endif
 
   int wdl = Tablebases::probe_wdl(pos, &success);
   if (!success) return false;

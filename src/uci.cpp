@@ -61,6 +61,10 @@ namespace {
     int variant = STANDARD_VARIANT;
     if (Options["UCI_Chess960"])
         variant |= CHESS960_VARIANT;
+#ifdef ATOMIC
+    if (Options["UCI_Atomic"])
+        variant |= ATOMIC_VARIANT;
+#endif
 #ifdef HORDE
     if (Options["UCI_Horde"])
         variant |= HORDE_VARIANT;

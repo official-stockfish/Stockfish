@@ -70,6 +70,9 @@ void init(OptionsMap& o) {
   o["Slow Mover"]            << Option(80, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
+#ifdef ATOMIC
+  o["UCI_Atomic"]            << Option(false);
+#endif
 #ifdef HORDE
   o["UCI_Horde"]             << Option(false);
 #endif
