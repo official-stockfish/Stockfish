@@ -973,7 +973,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
           value = -search<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, d, true);
 
-          doFullDepthSearch = (value > alpha && ss->reduction != DEPTH_ZERO);
+          doFullDepthSearch = (value > alpha && d != newDepth);
           ss->reduction = DEPTH_ZERO;
       }
       else
