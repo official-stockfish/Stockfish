@@ -292,10 +292,13 @@ void ThreadPool::init() {
   read_uci_options();
 }
 
-unsigned int ThreadPool::max_slaves_per_splitpoint(Depth depth)
+size_t ThreadPool::max_slaves_per_splitpoint(Depth depth)
 {
-    return(1 + (depth/(2 * ONE_PLY)));
+
+  return 1 + depth / (2 * ONE_PLY);
 }
+
+
 
 // ThreadPool::exit() terminates the threads before the program exits. Cannot be
 // done in d'tor because threads must be terminated before freeing us.
