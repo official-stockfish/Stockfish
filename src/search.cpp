@@ -1092,9 +1092,9 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  depth >= Threads.minimumSplitDepth
           &&  (   !thisThread->activeSplitPoint
                || !thisThread->activeSplitPoint->allSlavesSearching
-               || (   Threads.size() > MAX_SLAVES_PER_SPLITPOINT
-                   && thisThread->activeSplitPoint->slavesMask.count() == MAX_SLAVES_PER_SPLITPOINT))
-          &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
+               || (   Threads.size() > Threads.max_slaves_per_splitpoint(thisThread->activeSplitPoint->depth)
+                   && thisThread->activeSplitPoint->slavesMask.count() == Threads.max_slaves_per_splitpoint(thisThread->activeSplitPoint->depth)))
+	  &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD)
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
@@ -1647,7 +1647,7 @@ void Thread::idle_loop() {
 
               if (   sp
                   && sp->allSlavesSearching
-                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
+                  && sp->slavesMask.count() < Threads.max_slaves_per_splitpoint(sp->depth)
                   && can_join(sp))
               {
                   assert(this != th);
@@ -1676,7 +1676,7 @@ void Thread::idle_loop() {
               sp->spinlock.acquire();
 
               if (   sp->allSlavesSearching
-                  && sp->slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT)
+                  && sp->slavesMask.count() < Threads.max_slaves_per_splitpoint(sp->depth))
               {
                   spinlock.acquire();
 
