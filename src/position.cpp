@@ -656,8 +656,8 @@ bool Position::legal(Move m, Bitboard pinned) const {
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
-              Bitboard b = pieces() ^ ((blast | capsq) | from);
-              if (checkers() & ~b)
+              Bitboard b = pieces() ^ (((blast | to) | capsq) | from);
+              if (checkers() & b)
                   return false;
               if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
                   (attacks_bb<BISHOP>(ksq, b) & pieces(~us, QUEEN, BISHOP) & b))
@@ -742,8 +742,8 @@ bool Position::pseudo_legal(const Move m) const {
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
-              Bitboard b = pieces() ^ ((blast | capsq) | from);
-              if (checkers() & ~b)
+              Bitboard b = pieces() ^ (((blast | to) | capsq) | from);
+              if (checkers() & b)
                   return false;
               if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
                   (attacks_bb<BISHOP>(ksq, b) & pieces(~us, QUEEN, BISHOP) & b))
@@ -1531,7 +1531,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 #endif
 #endif
 #ifdef ATOMIC
-              || (bksq != SQ_NONE && piece_on(bksq) != B_KING)
+              || ((!is_atomic() || bksq != SQ_NONE) && piece_on(bksq) != B_KING)
 #else
               || piece_on(bksq) != B_KING
 #endif

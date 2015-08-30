@@ -326,6 +326,10 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
   Bitboard target =  Type == CAPTURES     ?  pos.pieces(~us)
                    : Type == QUIETS       ? ~pos.pieces()
                    : Type == NON_EVASIONS ? ~pos.pieces(us) : 0;
+#ifdef ATOMIC
+  if (pos.is_atomic() && Type == CAPTURES)
+      target &= ~pos.attacks_from<KING>(pos.king_square(us));
+#endif
 
   return us == WHITE ? generate_all<WHITE, Type>(pos, moveList, target)
                      : generate_all<BLACK, Type>(pos, moveList, target);
@@ -387,14 +391,18 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   {
       // Blasts that explode the opposing king or explode all checkers
       // are counted among evasive moves.
-      Bitboard target = 0;
-      target = pos.checkers();
-      Bitboard s = sliders;
-      while (s)
-          target |= pos.attacks_from<KING>(pop_lsb(&s));
-      s = sliders;
-      while (s)
-          target &= (s | pos.attacks_from<KING>(pop_lsb(&s)));
+      Bitboard target = pos.checkers(), b1 = pos.checkers();
+      while (b1)
+          target |= pos.attacks_from<KING>(pop_lsb(&b1));
+      if (more_than_one(pos.checkers()))
+      {
+          b1 = pos.checkers();
+          while (b1)
+          {
+              Square s = pop_lsb(&b1);
+              target &= pos.attacks_from<KING>(s) | s;
+          }
+      }
       Square tksq = pos.king_square(~us);
       target |= pos.attacks_from<KING>(tksq);
       target &= pos.pieces(~us) & ~pos.attacks_from<KING>(ksq);
@@ -427,6 +435,10 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   // Generate blocking evasions or captures of the checking piece
   Square checksq = lsb(pos.checkers());
   Bitboard target = between_bb(checksq, ksq) | checksq;
+#ifdef ATOMIC
+  if (pos.is_atomic())
+      target &= ~(pos.attacks_from<KING>(ksq) & checksq);
+#endif
 
   return us == WHITE ? generate_all<WHITE, EVASIONS>(pos, moveList, target)
                      : generate_all<BLACK, EVASIONS>(pos, moveList, target);
@@ -442,6 +454,18 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
   Square ksq = pos.king_square(pos.side_to_move());
   ExtMove* cur = moveList;
 
+#ifdef KOTH
+  if (pos.is_koth() && (pos.is_koth_win() || pos.is_koth_loss()))
+      return moveList;
+#endif
+#ifdef THREECHECK
+  if (pos.is_three_check() && (pos.is_three_check_win() || pos.is_three_check_loss()))
+      return moveList;
+#endif
+#ifdef ATOMIC
+  if (pos.is_atomic() && (pos.is_atomic_win() || pos.is_atomic_loss()))
+      return moveList;
+#endif
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)
                             : generate<NON_EVASIONS>(pos, moveList);
   while (cur != moveList)

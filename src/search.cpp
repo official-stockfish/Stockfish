@@ -359,8 +359,15 @@ void Search::think() {
   // Best move could be MOVE_NONE when searching on a stalemate position
   sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0]);
 
+#ifdef ATOMIC
+  if (!RootPos.is_atomic() || RootMoves[0].pv.size() > 1 || RootMoves[0].pv[0] != MOVE_NONE)
+  {
+#endif
   if (RootMoves[0].pv.size() > 1 || RootMoves[0].extract_ponder_from_tt(RootPos))
       std::cout << " ponder " << UCI::move(RootMoves[0].pv[1]);
+#ifdef ATOMIC
+  }
+#endif
 
   std::cout << sync_endl;
 }
