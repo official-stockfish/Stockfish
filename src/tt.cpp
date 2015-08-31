@@ -46,9 +46,9 @@ void TranspositionTable::resize(size_t mbSize) {
       std::cerr << "Failed to allocate " << mbSize
                 << "MB for transposition table." << std::endl;
       exit(EXIT_FAILURE);
-  }else{
-      memset(mem, 0, clusterCount * sizeof(Cluster) + CacheLineSize - 1);
   }
+  memset(mem, 0, clusterCount * sizeof(Cluster) + CacheLineSize - 1);
+  
 
   table = (Cluster*)((uintptr_t(mem) + CacheLineSize - 1) & ~(CacheLineSize - 1));
 }
