@@ -295,7 +295,7 @@ void ThreadPool::init() {
 size_t ThreadPool::max_slaves_per_splitpoint(Depth depth)
 {
 
-  return std::min((1 + depth / (2 * ONE_PLY)), 5);
+  return std::min(depth/ONE_PLY - 1, 16);
 }
 
 
