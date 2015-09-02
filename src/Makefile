@@ -338,6 +338,7 @@ help:
 	@echo "profile-build           > PGO build"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
+	@echo "uninstall               > Remove executable"
 	@echo "clean                   > Clean up"
 	@echo ""
 	@echo "Supported archs:"
@@ -398,6 +399,9 @@ install:
 	-mkdir -p -m 755 $(BINDIR)
 	-cp $(EXE) $(BINDIR)
 	-strip $(BINDIR)/$(EXE)
+
+uninstall:
+	-$(RM) $(BINDIR)/$(EXE)
 
 clean:
 	$(RM) $(EXE) $(EXE).exe *.o .depend *~ core bench.txt *.gcda ./syzygy/*.o ./syzygy/*.gcda
