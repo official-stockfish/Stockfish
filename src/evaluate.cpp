@@ -871,6 +871,7 @@ namespace {
     }
 
     Value f =  (pos.side_to_move() == WHITE ? v : -v) + Eval::Tempo; // Side to move point of view
+
     return f;
   }
 

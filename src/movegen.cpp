@@ -212,7 +212,12 @@ namespace {
 
         if (pos.ep_square() != SQ_NONE)
         {
+#ifdef HORDE
+            assert((pos.is_horde() && rank_of(pos.ep_square()) == RANK_2) ||
+                   rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
+#else
             assert(rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
+#endif
 
             // An en passant capture can be an evasion only if the checking piece
             // is the double pushed pawn and so is in the target. Otherwise this
@@ -403,8 +408,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
               target &= pos.attacks_from<KING>(s) | s;
           }
       }
-      Square tksq = pos.king_square(~us);
-      target |= pos.attacks_from<KING>(tksq);
+      target |= pos.attacks_from<KING>(pos.king_square(~us));
       target &= pos.pieces(~us) & ~pos.attacks_from<KING>(ksq);
       moveList = (us == WHITE ? generate_all<WHITE, CAPTURES>(pos, moveList, target)
                               : generate_all<BLACK, CAPTURES>(pos, moveList, target));
@@ -436,8 +440,8 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   Square checksq = lsb(pos.checkers());
   Bitboard target = between_bb(checksq, ksq) | checksq;
 #ifdef ATOMIC
-  if (pos.is_atomic())
-      target &= ~(pos.attacks_from<KING>(ksq) & checksq);
+  if (pos.is_atomic() && (pos.attacks_from<KING>(ksq) & checksq))
+      target ^= checksq;
 #endif
 
   return us == WHITE ? generate_all<WHITE, EVASIONS>(pos, moveList, target)

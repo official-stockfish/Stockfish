@@ -551,12 +551,12 @@ const string Position::fen() const {
 /// material between endgame and midgame limits.
 
 Phase Position::game_phase() const {
-#ifdef HORDE
-  if (is_horde())
-      return MG;
-#endif
 
   Value npm = st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
+#ifdef HORDE
+  if (is_horde())
+      npm = st->nonPawnMaterial[BLACK] + st->nonPawnMaterial[BLACK];
+#endif
 
   npm = std::max(EndgameLimit, std::min(npm, MidgameLimit));
 
@@ -958,7 +958,12 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
               assert(pt == PAWN);
               assert(to == st->epSquare);
+#ifdef HORDE
+              assert((is_horde() && rank_of(to) == RANK_2) ||
+                     relative_rank(us, to) == RANK_6);
+#else
               assert(relative_rank(us, to) == RANK_6);
+#endif
               assert(piece_on(to) == NO_PIECE);
               assert(piece_on(capsq) == make_piece(them, PAWN));
 

@@ -180,6 +180,10 @@ namespace {
         // Passed pawns will be properly scored in evaluation because we need
         // full attack info to evaluate passed pawns. Only the frontmost passed
         // pawn on each file is considered a true passed pawn.
+#ifdef HORDE
+        if (pos.is_horde())
+            passed = !opposed;
+#endif
         if (passed && !doubled)
             e->passedPawns[Us] |= s;
 
