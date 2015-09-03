@@ -801,6 +801,13 @@ Value Eval::evaluate(const Position& pos) {
            + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
 
   v /= int(PHASE_MIDGAME);
+  
+  // Keep material
+  int malus = (PawnValueEg * (PHASE_MIDGAME - me->game_phase())) / (PHASE_MIDGAME - PHASE_ENDGAME);
+  if (v > VALUE_DRAW)
+  	  v = std::max(v - malus, VALUE_DRAW)
+  else if (v < VALUE_DRAW)
+  	  v = std::min(v + malus, VALUE_DRAW);
 
   // In case of tracing add all single evaluation terms
   if (DoTrace)
