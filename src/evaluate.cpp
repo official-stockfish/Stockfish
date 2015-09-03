@@ -802,12 +802,13 @@ Value Eval::evaluate(const Position& pos) {
 
   v /= int(PHASE_MIDGAME);
   
-  // Keep material
-  int malus = (PawnValueEg * (PHASE_MIDGAME - me->game_phase())) / (PHASE_MIDGAME - PHASE_ENDGAME);
+  // Keep more pawns when attacking
+  int x = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+  int malus = (100 * (14 - x)) / 14;
   if (v > VALUE_DRAW)
-  	  v = std::max(v - malus, VALUE_DRAW)
+  	  v = std::max(v - malus, v / 2);
   else if (v < VALUE_DRAW)
-  	  v = std::min(v + malus, VALUE_DRAW);
+  	  v = std::min(v + malus, v / 2);
 
   // In case of tracing add all single evaluation terms
   if (DoTrace)
