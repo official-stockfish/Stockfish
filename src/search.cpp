@@ -1634,7 +1634,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
     // RootMoves are already sorted by score in descending order
     int variance = std::min(RootMoves[0].score - RootMoves[multiPV - 1].score, PawnValueMg);
-    int weakness = 140 - 3 * level;
+    int weakness = 130 - (5 * level / 2);
     int maxScore = -VALUE_INFINITE;
 
     // Choose best move. For each move score we add two terms both dependent on
