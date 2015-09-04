@@ -656,12 +656,15 @@ bool Position::legal(Move m, Bitboard pinned) const {
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
+              if (blast & king_square(~us))
+                  return true;
               Bitboard b = pieces() ^ (((blast | to) | capsq) | from);
               if (checkers() & b)
                   return false;
               if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
                   (attacks_bb<BISHOP>(ksq, b) & pieces(~us, QUEEN, BISHOP) & b))
                   return false;
+              return true;
           }
       }
       else if (attacks_from<KING>(king_square(~us)) & to)
@@ -742,12 +745,15 @@ bool Position::pseudo_legal(const Move m) const {
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
+              if (blast & king_square(~us))
+                  return true;
               Bitboard b = pieces() ^ (((blast | to) | capsq) | from);
               if (checkers() & b)
                   return false;
               if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
                   (attacks_bb<BISHOP>(ksq, b) & pieces(~us, QUEEN, BISHOP) & b))
                   return false;
+              return true;
           }
       }
       else if (attacks_from<KING>(king_square(~us)) & to)
