@@ -102,6 +102,13 @@ bool Thread::cutoff_occurred() const {
 }
 
 
+bool Thread::can_split_again() const {
+
+  SplitPoint* sp = activeSplitPoint;
+  size_t oldMax = Threads.max_slaves_per_splitpoint(sp->depth);
+ 
+  return (Threads.size() > oldMax && sp->slavesMask.count() == oldMax);
+}
 // Thread::can_join() checks whether the thread is available to join the split
 // point 'sp'. An obvious requirement is that thread must be idle. With more than
 // two threads, this is not sufficient: If the thread is the master of some split

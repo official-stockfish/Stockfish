@@ -114,6 +114,7 @@ struct Thread : public ThreadBase {
   virtual void idle_loop();
   bool cutoff_occurred() const;
   bool can_join(const SplitPoint* sp) const;
+  bool can_split_again() const;
 
   void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);

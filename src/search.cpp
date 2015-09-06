@@ -1094,13 +1094,9 @@ moves_loop: // When in check and at SpNode search starts from here
           &&  thisThread->splitPointsSize < MAX_SPLITPOINTS_PER_THREAD
           &&  (   !thisThread->activeSplitPoint
                || !thisThread->activeSplitPoint->allSlavesSearching
-
-                  // Try to split again if previous split was limited due to
-                  // hit max_slaves_per_splitpoint.
-               || [&]() {
-                  SplitPoint* sp = thisThread->activeSplitPoint;
-                  size_t oldMax = Threads.max_slaves_per_splitpoint(sp->depth);
-                  return Threads.size() > oldMax && sp->slavesMask.count() == oldMax; }()))
+               // Try to split again if previous split was limited due to
+               // hit max_slaves_per_splitpoint.
+               || thisThread->can_split_again()))
       {
           assert(bestValue > -VALUE_INFINITE && bestValue < beta);
 
