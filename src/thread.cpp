@@ -145,6 +145,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   SplitPoint& sp = splitPoints[splitPointsSize];
 
   sp.spinlock.acquire(); // No contention here until we don't increment splitPointsSize
+  spinlock.acquire();
 
   sp.master = this;
   sp.parentSplitPoint = activeSplitPoint;
@@ -167,6 +168,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   ++splitPointsSize;
   activeSplitPoint = &sp;
   activePosition = nullptr;
+  spinlock.release();
 
   // Try to allocate available threads
   Thread* slave;
@@ -194,6 +196,9 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
 
   Thread::idle_loop(); // Force a call to base class idle_loop()
 
+  sp.spinlock.acquire();
+  spinlock.acquire();
+
   // In the helpful master concept, a master can help only a sub-tree of its
   // split point and because everything is finished here, it's not possible
   // for the master to be booked.
@@ -205,8 +210,6 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that decreasing splitPointsSize must be done under lock
   // protection to avoid a race with Thread::can_join().
-  sp.spinlock.acquire();
-
   --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
   activePosition = &pos;
@@ -214,6 +217,7 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   *bestMove = sp.bestMove;
   *bestValue = sp.bestValue;
 
+  spinlock.release();
   sp.spinlock.release();
 }
 
