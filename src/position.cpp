@@ -658,7 +658,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
               if (blast & king_square(~us))
                   return true;
-              Bitboard b = pieces() ^ (((blast | to) | capsq) | from);
+              Bitboard b = pieces() ^ ((blast | capsq) | from);
               if (checkers() & b)
                   return false;
               if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
@@ -691,6 +691,21 @@ bool Position::legal(Move m, Bitboard pinned) const {
             && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
   }
 
+#ifdef ATOMIC
+  if (is_atomic() && type_of(piece_on(from)) == KING && type_of(m) != CASTLING)
+  {
+      Square ksq = king_square(~us);
+      Square to = to_sq(m);
+      if ((attacks_from<KING>(ksq) & from) && !(attacks_from<KING>(ksq) & to))
+      {
+          if (attackers_to(to) & pieces(~us, KNIGHT, PAWN))
+              return false;
+          Bitboard occupied = (pieces() ^ from) | to;
+          return   !(attacks_bb<  ROOK>(to, occupied) & pieces(~us, QUEEN, ROOK))
+                && !(attacks_bb<BISHOP>(to, occupied) & pieces(~us, QUEEN, BISHOP));
+      }
+  }
+#endif
   // If the moving piece is a king, check whether the destination
   // square is attacked by the opponent. Castling moves are checked
   // for legality during move generation.
@@ -747,7 +762,7 @@ bool Position::pseudo_legal(const Move m) const {
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
               if (blast & king_square(~us))
                   return true;
-              Bitboard b = pieces() ^ (((blast | to) | capsq) | from);
+              Bitboard b = pieces() ^ ((blast | capsq) | from);
               if (checkers() & b)
                   return false;
               if ((attacks_bb<  ROOK>(ksq, b) & pieces(~us, QUEEN, ROOK) & b) ||
@@ -840,8 +855,24 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
 #ifdef ATOMIC
   if (is_atomic())
   {
-      Square ksq = (type_of(piece_on(from)) == KING ? to : king_square(sideToMove));
-      if (attacks_from<KING>(ci.ksq) & ksq)
+      if (is_horde() && ci.ksq == SQ_NONE)
+          return false;
+      // If kings are adjacent, there is no check
+      // If kings were adjacent, there may be direct checks
+      if (type_of(piece_on(from)) == KING)
+      {
+          if (attacks_from<KING>(ci.ksq) & to)
+              return false;
+          else if (attacks_from<KING>(ci.ksq) & from)
+          {
+              if (attackers_to(ci.ksq) & pieces(sideToMove, KNIGHT, PAWN))
+                  return true;
+              Bitboard occupied = (pieces() ^ from) | to;
+              return   (attacks_bb<  ROOK>(ci.ksq, occupied) & pieces(sideToMove, QUEEN, ROOK))
+                    || (attacks_bb<BISHOP>(ci.ksq, occupied) & pieces(sideToMove, QUEEN, BISHOP));
+          }
+      }
+      else if (attacks_from<KING>(ci.ksq) & king_square(sideToMove))
           return false;
   }
   if (is_atomic() && capture(m))
@@ -849,6 +880,8 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
       // Do blasted pieces discover checks?
       Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
       Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
+      if (blast & ci.ksq) // Variant ending
+          return false;
       Bitboard b = pieces() ^ ((blast | capsq) | from);
 
       return (attacks_bb<  ROOK>(ci.ksq, b) & pieces(sideToMove, QUEEN, ROOK) & b)
