@@ -750,7 +750,7 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
       if (pc == NO_PIECE || color_of(pc) != us)
           return false;
-      if (capture(m) && (attacks_from<KING>(to) & ksq))
+      if (capture(m) && ((pieces(us) & to) || (attacks_from<KING>(to) & ksq)))
           return false;
       if (type_of(pc) != KING)
       {
