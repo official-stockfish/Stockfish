@@ -38,7 +38,7 @@ struct Thread;
 
 const size_t MAX_THREADS = 128;
 const size_t MAX_SPLITPOINTS_PER_THREAD = 8;
-const size_t MAX_SLAVES_PER_SPLITPOINT = 4;
+const int    MAX_SLAVES_PER_SPLITPOINT = 7;
 
 class Spinlock {
 
@@ -114,6 +114,7 @@ struct Thread : public ThreadBase {
   virtual void idle_loop();
   bool cutoff_occurred() const;
   bool can_join(const SplitPoint* sp) const;
+  bool can_split_again() const;
 
   void split(Position& pos, Search::Stack* ss, Value alpha, Value beta, Value* bestValue, Move* bestMove,
              Depth depth, int moveCount, MovePicker* movePicker, int nodeType, bool cutNode);
@@ -163,7 +164,7 @@ struct ThreadPool : public std::vector<Thread*> {
   void read_uci_options();
   Thread* available_slave(const SplitPoint* sp) const;
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
-
+  size_t  max_slaves_per_splitpoint(Depth depth);
   Depth minimumSplitDepth;
   TimerThread* timer;
 };
