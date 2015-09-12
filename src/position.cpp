@@ -60,7 +60,7 @@ const string PieceToChar(" PNBRQK  pnbrqk");
 // from the bitboards and scan for new X-ray attacks behind it.
 
 template<int Pt>
-PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stmAttackers,
+PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 
   Bitboard b = stmAttackers & bb[Pt];
@@ -80,7 +80,7 @@ PieceType min_attacker(const Bitboard* bb, const Square& to, const Bitboard& stm
 }
 
 template<>
-PieceType min_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bitboard&, Bitboard&) {
+PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
   return KING; // No need to update bitboards: it is the last cycle
 }
 
@@ -92,7 +92,7 @@ PieceType min_attacker<KING>(const Bitboard*, const Square&, const Bitboard&, Bi
 CheckInfo::CheckInfo(const Position& pos) {
 
   Color them = ~pos.side_to_move();
-  ksq = pos.king_square(them);
+  ksq = pos.square<KING>(them);
 
   pinned = pos.pinned_pieces(pos.side_to_move());
   dcCandidates = pos.discovered_check_candidates();
@@ -304,7 +304,7 @@ void Position::set(const string& fenStr, int var, Thread* th) {
       Square rsq;
       Color c = islower(token) ? BLACK : WHITE;
       Rank rank = relative_rank(c, RANK_1);
-      Square ksq = king_square(c);
+      Square ksq = square<KING>(c);
       if (rank_of(ksq) != rank)
           continue;
       Piece rook = make_piece(c, ROOK);
@@ -402,7 +402,7 @@ void Position::set(const string& fenStr, int var, Thread* th) {
 
 void Position::set_castling_right(Color c, Square rfrom) {
 
-  Square kfrom = king_square(c);
+  Square kfrom = square<KING>(c);
   CastlingSide cs = kfrom < rfrom ? KING_SIDE : QUEEN_SIDE;
   CastlingRight cr = (c | cs);
 
@@ -431,14 +431,14 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 void Position::set_state(StateInfo* si) const {
 
-  si->key = si->pawnKey = si->materialKey = 0;
+  si->key = si->pawnKey = si->materialKey = variant;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
 
 #ifdef HORDE
   if (is_horde())
   {
-      Square ksq = king_square(sideToMove);
+      Square ksq = square<KING>(sideToMove);
       si->checkersBB = ksq == SQ_NONE ? 0 : attackers_to(ksq) & pieces(~sideToMove);
   }
   else
@@ -446,13 +446,13 @@ void Position::set_state(StateInfo* si) const {
 #ifdef ATOMIC
   if (is_atomic())
   {
-      Square ksq = king_square(sideToMove);
-      si->checkersBB = (ksq == SQ_NONE || (attacks_from<KING>(ksq) & king_square(~sideToMove))) ? 0 : attackers_to(ksq) & pieces(~sideToMove);
+      Square ksq = square<KING>(sideToMove);
+      si->checkersBB = (ksq == SQ_NONE || (attacks_from<KING>(ksq) & square<KING>(~sideToMove))) ? 0 : attackers_to(ksq) & pieces(~sideToMove);
   }
   else
 #endif
   {
-      si->checkersBB = attackers_to(king_square(sideToMove)) & pieces(~sideToMove);
+      si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
   }
 
   for (Bitboard b = pieces(); b; )
@@ -574,7 +574,7 @@ Phase Position::game_phase() const {
 Bitboard Position::check_blockers(Color c, Color kingColor) const {
 
   Bitboard b, pinners, result = 0;
-  Square ksq = king_square(kingColor);
+  Square ksq = square<KING>(kingColor);
 #ifdef HORDE
   if (is_horde() && ksq == SQ_NONE) return result;
 #endif
@@ -620,9 +620,9 @@ bool Position::legal(Move m, Bitboard pinned) const {
 
   assert(color_of(moved_piece(m)) == us);
 #ifdef HORDE
-  assert(is_horde() && us == WHITE ? king_square(us) == SQ_NONE : piece_on(king_square(us)) == make_piece(us, KING));
+  assert(is_horde() && us == WHITE ? square<KING>(us) == SQ_NONE : piece_on(square<KING>(us)) == make_piece(us, KING));
 #else
-  assert(piece_on(king_square(us)) == make_piece(us, KING));
+  assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 #endif
 
 #ifdef KOTH
@@ -635,13 +635,13 @@ bool Position::legal(Move m, Bitboard pinned) const {
   if (is_horde() && is_horde_loss())
       return false;
   // All pseudo-legal moves by the horde are legal
-  if (is_horde() && king_square(us) == SQ_NONE)
+  if (is_horde() && square<KING>(us) == SQ_NONE)
       return true;
 #endif
 #ifdef ATOMIC
   if (is_atomic())
   {
-      Square ksq = king_square(us);
+      Square ksq = square<KING>(us);
       Square to = to_sq(m);
       // If the game is already won or lost, further moves are illegal
       if (is_atomic_win() || is_atomic_loss())
@@ -650,13 +650,13 @@ bool Position::legal(Move m, Bitboard pinned) const {
           return false;
       if (type_of(piece_on(from)) != KING)
       {
-          if (attacks_from<KING>(king_square(~us)) & ksq)
+          if (attacks_from<KING>(square<KING>(~us)) & ksq)
               return true;
           if (capture(m))
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
-              if (blast & king_square(~us))
+              if (blast & square<KING>(~us))
                   return true;
               Bitboard b = pieces() ^ ((blast | capsq) | from);
               if (checkers() & b)
@@ -667,7 +667,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
               return true;
           }
       }
-      else if (attacks_from<KING>(king_square(~us)) & to)
+      else if (attacks_from<KING>(square<KING>(~us)) & to)
           return true;
   }
 #endif
@@ -677,7 +677,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
   // the move is made.
   if (type_of(m) == ENPASSANT)
   {
-      Square ksq = king_square(us);
+      Square ksq = square<KING>(us);
       Square to = to_sq(m);
       Square capsq = to - pawn_push(us);
       Bitboard occupied = (pieces() ^ from ^ capsq) | to;
@@ -694,7 +694,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
 #ifdef ATOMIC
   if (is_atomic() && type_of(piece_on(from)) == KING && type_of(m) != CASTLING)
   {
-      Square ksq = king_square(~us);
+      Square ksq = square<KING>(~us);
       Square to = to_sq(m);
       if ((attacks_from<KING>(ksq) & from) && !(attacks_from<KING>(ksq) & to))
       {
@@ -716,7 +716,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
   // is moving along the ray towards or away from the king.
   return   !pinned
         || !(pinned & from)
-        ||  aligned(from, to_sq(m), king_square(us));
+        ||  aligned(from, to_sq(m), square<KING>(us));
 }
 
 
@@ -744,7 +744,7 @@ bool Position::pseudo_legal(const Move m) const {
 #ifdef ATOMIC
   if (is_atomic())
   {
-      Square ksq = king_square(us);
+      Square ksq = square<KING>(us);
       // If the game is already won or lost, further moves are illegal
       if (is_atomic_win() || is_atomic_loss())
           return false;
@@ -754,13 +754,13 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
       if (type_of(pc) != KING)
       {
-          if (attacks_from<KING>(king_square(~us)) & ksq)
+          if (attacks_from<KING>(square<KING>(~us)) & ksq)
               return true;
           if (capture(m))
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
-              if (blast & king_square(~us))
+              if (blast & square<KING>(~us))
                   return true;
               Bitboard b = pieces() ^ ((blast | capsq) | from);
               if (checkers() & b)
@@ -771,7 +771,7 @@ bool Position::pseudo_legal(const Move m) const {
               return true;
           }
       }
-      else if (attacks_from<KING>(king_square(~us)) & to)
+      else if (attacks_from<KING>(square<KING>(~us)) & to)
           return true;
   }
 #endif
@@ -824,7 +824,7 @@ bool Position::pseudo_legal(const Move m) const {
               return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          if (!((between_bb(lsb(checkers()), king_square(us)) | checkers()) & to))
+          if (!((between_bb(lsb(checkers()), square<KING>(us)) | checkers()) & to))
               return false;
       }
       // In case of king moves under check we have to remove king so as to catch
@@ -872,7 +872,7 @@ bool Position::gives_check(Move m, const CheckInfo& ci) const {
                     || (attacks_bb<BISHOP>(ci.ksq, occupied) & pieces(sideToMove, QUEEN, BISHOP));
           }
       }
-      else if (attacks_from<KING>(ci.ksq) & king_square(sideToMove))
+      else if (attacks_from<KING>(ci.ksq) & square<KING>(sideToMove))
           return false;
   }
   if (is_atomic() && capture(m))
@@ -1186,7 +1186,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       givesCheck = false;
 #endif
   // Calculate checkers bitboard (if move gives check)
-  st->checkersBB = givesCheck ? attackers_to(king_square(them)) & pieces(us) : 0;
+  st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
 
   sideToMove = ~sideToMove;
 
@@ -1559,7 +1559,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
       if (step == Default)
       {
-          Square wksq = king_square(WHITE), bksq = king_square(BLACK);
+          Square wksq = square<KING>(WHITE), bksq = square<KING>(BLACK);
           if (   (sideToMove != WHITE && sideToMove != BLACK)
 #ifdef HORDE
 #ifdef ATOMIC
@@ -1594,7 +1594,7 @@ bool Position::pos_is_ok(int* failedStep) const {
           {
               if (   std::count(board, board + SQUARE_NB, W_KING) != 0
                   || std::count(board, board + SQUARE_NB, B_KING) != 1
-                  || (sideToMove == WHITE && attackers_to(king_square(~sideToMove)) & pieces(sideToMove)))
+                  || (sideToMove == WHITE && attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove)))
               return false;
           } else
 #endif
@@ -1605,13 +1605,13 @@ bool Position::pos_is_ok(int* failedStep) const {
                   std::count(board, board + SQUARE_NB, B_KING) != 1)
               return false;
           }
-          else if (is_atomic() && (attacks_from<KING>(king_square(~sideToMove)) & king_square(sideToMove)))
+          else if (is_atomic() && (attacks_from<KING>(square<KING>(~sideToMove)) & square<KING>(sideToMove)))
           {
           } else
 #endif
           if (   std::count(board, board + SQUARE_NB, W_KING) != 1
               || std::count(board, board + SQUARE_NB, B_KING) != 1
-              || attackers_to(king_square(~sideToMove)) & pieces(sideToMove))
+              || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
               return false;
       }
 
@@ -1657,7 +1657,7 @@ bool Position::pos_is_ok(int* failedStep) const {
 
                   if (   piece_on(castlingRookSquare[c | s]) != make_piece(c, ROOK)
                       || castlingRightsMask[castlingRookSquare[c | s]] != (c | s)
-                      ||(castlingRightsMask[king_square(c)] & (c | s)) != (c | s))
+                      ||(castlingRightsMask[square<KING>(c)] & (c | s)) != (c | s))
                       return false;
               }
   }

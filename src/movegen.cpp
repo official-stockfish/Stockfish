@@ -34,7 +34,7 @@ namespace {
 
     // After castling, the rook and king final positions are the same in Chess960
     // as they would be in standard chess.
-    Square kfrom = pos.king_square(us);
+    Square kfrom = pos.square<KING>(us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
     Bitboard enemies = pos.pieces(~us);
@@ -244,7 +244,7 @@ namespace {
 
     assert(Pt != KING && Pt != PAWN);
 
-    const Square* pl = pos.list<Pt>(us);
+    const Square* pl = pos.squares<Pt>(us);
 
     for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {
@@ -285,7 +285,7 @@ namespace {
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
     {
-        Square ksq = pos.king_square(Us);
+        Square ksq = pos.square<KING>(Us);
         Bitboard b = pos.attacks_from<KING>(ksq) & target;
         while (b)
             *moveList++ = make_move(ksq, pop_lsb(&b));
@@ -333,7 +333,7 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
                    : Type == NON_EVASIONS ? ~pos.pieces(us) : 0;
 #ifdef ATOMIC
   if (pos.is_atomic() && Type == CAPTURES)
-      target &= ~pos.attacks_from<KING>(pos.king_square(us));
+      target &= ~pos.attacks_from<KING>(pos.square<KING>(us));
 #endif
 
   return us == WHITE ? generate_all<WHITE, Type>(pos, moveList, target)
@@ -387,7 +387,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   assert(pos.checkers());
 
   Color us = pos.side_to_move();
-  Square ksq = pos.king_square(us);
+  Square ksq = pos.square<KING>(us);
   Bitboard sliderAttacks = 0;
   Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
 
@@ -408,7 +408,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
               target &= pos.attacks_from<KING>(s) | s;
           }
       }
-      target |= pos.attacks_from<KING>(pos.king_square(~us));
+      target |= pos.attacks_from<KING>(pos.square<KING>(~us));
       target &= pos.pieces(~us) & ~pos.attacks_from<KING>(ksq);
       moveList = (us == WHITE ? generate_all<WHITE, CAPTURES>(pos, moveList, target)
                               : generate_all<BLACK, CAPTURES>(pos, moveList, target));
@@ -455,7 +455,7 @@ template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
 
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
-  Square ksq = pos.king_square(pos.side_to_move());
+  Square ksq = pos.square<KING>(pos.side_to_move());
   ExtMove* cur = moveList;
 
 #ifdef KOTH

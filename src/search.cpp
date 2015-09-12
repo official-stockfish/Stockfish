@@ -388,7 +388,7 @@ namespace {
     Move easyMove = EasyMove.get(pos.key());
     EasyMove.clear();
 
-    std::memset(ss-2, 0, 5 * sizeof(Stack));
+    std::memset(stack, 0, 5 * sizeof(Stack));
 
     depth = DEPTH_ZERO;
     BestMoveChanges = 0;
@@ -578,7 +578,7 @@ namespace {
     Depth extension, newDepth, predictedDepth;
     Value bestValue, value, ttValue, eval, nullValue, futilityValue;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-    bool captureOrPromotion, dangerous, doFullDepthSearch;
+    bool captureOrPromotion, doFullDepthSearch;
     int moveCount, quietCount;
 
     // Step 1. Initialize node
@@ -603,7 +603,7 @@ namespace {
         goto moves_loop;
     }
 
-    moveCount = quietCount = 0;
+    moveCount = quietCount =  ss->moveCount = 0;
     bestValue = -VALUE_INFINITE;
     ss->ply = (ss-1)->ply + 1;
 
@@ -771,8 +771,7 @@ namespace {
 #else
         &&  eval + razor_margin(depth) <= alpha
 #endif
-        &&  ttMove == MOVE_NONE
-        && !pos.pawn_on_7th(pos.side_to_move()))
+        &&  ttMove == MOVE_NONE)
     {
         if (   depth <= ONE_PLY
 #ifdef THREECHECK
@@ -859,7 +858,7 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-        MovePicker mp(pos, ttMove, History, CounterMovesHistory, pos.captured_piece_type());
+        MovePicker mp(pos, ttMove, History, CounterMovesHistory, PieceValue[MG][pos.captured_piece_type()]);
         CheckInfo ci(pos);
 
         while ((move = mp.next_move<false>()) != MOVE_NONE)
@@ -883,9 +882,9 @@ namespace {
         && !ttMove
         && (PvNode || ss->staticEval + 256 >= beta))
     {
-        Depth d = 2 * (depth - 2 * ONE_PLY) - (PvNode ? DEPTH_ZERO : depth / 2);
+        Depth d = depth - 2 * ONE_PLY - (PvNode ? DEPTH_ZERO : depth / 4);
         ss->skipEarlyPruning = true;
-        search<PvNode ? PV : NonPV, false>(pos, ss, alpha, beta, d / 2, true);
+        search<PvNode ? PV : NonPV, false>(pos, ss, alpha, beta, d, true);
         ss->skipEarlyPruning = false;
 
         tte = TT.probe(posKey, ttHit);
@@ -939,11 +938,11 @@ moves_loop: // When in check and at SpNode search starts from here
           if (!pos.legal(move, ci.pinned))
               continue;
 
-          moveCount = ++splitPoint->moveCount;
+          ss->moveCount = moveCount = ++splitPoint->moveCount;
           splitPoint->spinlock.release();
       }
       else
-          ++moveCount;
+          ss->moveCount = ++moveCount;
 
       if (RootNode)
       {
@@ -967,10 +966,6 @@ moves_loop: // When in check and at SpNode search starts from here
 #endif
                   ? ci.checkSquares[type_of(pos.piece_on(from_sq(move)))] & to_sq(move)
                   : pos.gives_check(move, ci);
-
-      dangerous =   givesCheck
-                 || type_of(move) != NORMAL
-                 || pos.advanced_pawn_push(move);
 
       // Step 12. Extend checks
       if (givesCheck && pos.see_sign(move) >= VALUE_ZERO)
@@ -1004,7 +999,8 @@ moves_loop: // When in check and at SpNode search starts from here
       if (   !RootNode
           && !captureOrPromotion
           && !inCheck
-          && !dangerous
+          && !givesCheck
+          && !pos.advanced_pawn_push(move)
           &&  bestValue > VALUE_MATED_IN_MAX_PLY)
       {
           // Move count based pruning
@@ -1062,7 +1058,7 @@ moves_loop: // When in check and at SpNode search starts from here
       // Check for legality just before making the move
       if (!RootNode && !SpNode && !pos.legal(move, ci.pinned))
       {
-          moveCount--;
+          ss->moveCount = --moveCount;
           continue;
       }
 
@@ -1091,10 +1087,9 @@ moves_loop: // When in check and at SpNode search starts from here
                                         [pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               ss->reduction += ONE_PLY;
 
-          if (    move == countermove
-              || (   History[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
-                  && CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
-                                        [pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO))
+          if (   History[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
+              && CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
+                                    [pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
               ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
 
           // Decrease reduction for moves that escape a capture
@@ -1614,8 +1609,8 @@ moves_loop: // When in check and at SpNode search starts from here
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
 
-    // Extra penalty for TT move in previous ply when it gets refuted
-    if (is_ok((ss-2)->currentMove) && (ss-1)->currentMove == (ss-1)->ttMove && !pos.captured_piece_type())
+    // Extra penalty for PV move in previous ply when it gets refuted
+    if (is_ok((ss-2)->currentMove) && (ss-1)->moveCount == 1 && !pos.captured_piece_type())
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
@@ -1814,6 +1809,7 @@ void Thread::idle_loop() {
           else
               assert(false);
 
+          spinlock.acquire();
           assert(searching);
 
           searching = false;
@@ -1825,6 +1821,7 @@ void Thread::idle_loop() {
           // After releasing the lock we can't access any SplitPoint related data
           // in a safe way because it could have been released under our feet by
           // the sp master.
+          spinlock.release();
           sp->spinlock.release();
 
           // Try to late join to another split point if none of its slaves has

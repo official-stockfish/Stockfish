@@ -32,14 +32,14 @@
 /// The Stats struct stores moves statistics. According to the template parameter
 /// the class can store History and Countermoves. History records how often
 /// different moves have been successful or unsuccessful during the current search
-/// and is used for reduction and move ordering decisions. 
+/// and is used for reduction and move ordering decisions.
 /// Countermoves store the move that refute a previous one. Entries are stored
 /// using only the moving piece and destination square, hence two moves with
 /// different origin but same destination and piece will be considered identical.
 template<typename T>
 struct Stats {
 
-  static const Value Max = Value(250);
+  static const Value Max = Value(1<<28);
 
   const T* operator[](Piece pc) const { return table[pc]; }
   T* operator[](Piece pc) { return table[pc]; }
@@ -53,8 +53,8 @@ struct Stats {
 
   void update(Piece pc, Square to, Value v) {
 
-    if (abs(table[pc][to] + v) < Max)
-        table[pc][to] +=  v;
+    table[pc][to] -= table[pc][to] * std::min(abs(int(v)), 512) / 512;
+    table[pc][to] += int(v) * 64;
   }
 
 private:
@@ -79,7 +79,7 @@ public:
   MovePicker& operator=(const MovePicker&) = delete;
 
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Square);
-  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, PieceType);
+  MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, Value);
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move, Search::Stack*);
 
   template<bool SpNode> Move next_move();
@@ -99,9 +99,9 @@ private:
   Move ttMove;
   ExtMove killers[3];
   Square recaptureSquare;
-  Value captureThreshold;
+  Value threshold;
   int stage;
-  ExtMove *endQuiets, *endBadCaptures;
+  ExtMove *endQuiets, *endBadCaptures = moves + MAX_MOVES - 1;
   ExtMove moves[MAX_MOVES], *cur = moves, *endMoves = moves;
 };
 

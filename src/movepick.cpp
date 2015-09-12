@@ -67,27 +67,20 @@ namespace {
 /// search captures, promotions and some checks) and how important good move
 /// ordering is at the current node.
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const CounterMovesHistoryStats& cmh,
-                       Move cm, Search::Stack* s) : pos(p), history(h), counterMovesHistory(cmh), depth(d) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
+                       const CounterMovesHistoryStats& cmh, Move cm, Search::Stack* s)
+           : pos(p), history(h), counterMovesHistory(cmh), ss(s), countermove(cm), depth(d) {
 
   assert(d > DEPTH_ZERO);
 
-  endBadCaptures = moves + MAX_MOVES - 1;
-  countermove = cm;
-  ss = s;
-
-  if (pos.checkers())
-      stage = EVASION;
-
-  else
-      stage = MAIN_SEARCH;
-
-  ttMove = (ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE);
+  stage = pos.checkers() ? EVASION : MAIN_SEARCH;
+  ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h, const CounterMovesHistoryStats& cmh,
-                       Square s) : pos(p), history(h), counterMovesHistory(cmh) {
+MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats& h,
+                       const CounterMovesHistoryStats& cmh, Square s)
+           : pos(p), history(h), counterMovesHistory(cmh) {
 
   assert(d <= DEPTH_ZERO);
 
@@ -107,46 +100,39 @@ MovePicker::MovePicker(const Position& p, Move ttm, Depth d, const HistoryStats&
       ttm = MOVE_NONE;
   }
 
-  ttMove = (ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE);
+  ttMove = ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE;
   endMoves += (ttMove != MOVE_NONE);
 }
 
-MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h, const CounterMovesHistoryStats& cmh, PieceType pt)
-                       : pos(p), history(h), counterMovesHistory(cmh) {
+MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h,
+                       const CounterMovesHistoryStats& cmh, Value th)
+           : pos(p), history(h), counterMovesHistory(cmh), threshold(th) {
 
   assert(!pos.checkers());
 
   stage = PROBCUT;
 
-  // In ProbCut we generate only captures that are better than the parent's
-  // captured piece.
-  captureThreshold = PieceValue[MG][pt];
-  ttMove = (ttm && pos.pseudo_legal(ttm) ? ttm : MOVE_NONE);
-
-  if (ttMove && (!pos.capture(ttMove) || pos.see(ttMove) <= captureThreshold))
-      ttMove = MOVE_NONE;
+  // In ProbCut we generate captures with SEE higher than the given threshold
+  ttMove =   ttm
+          && pos.pseudo_legal(ttm)
+          && pos.capture(ttm)
+          && pos.see(ttm) > threshold ? ttm : MOVE_NONE;
 
   endMoves += (ttMove != MOVE_NONE);
 }
 
 
-/// score() assign a numerical value to each move in a move list. The moves with
+/// score() assigns a numerical value to each move in a move list. The moves with
 /// highest values will be picked first.
 template<>
 void MovePicker::score<CAPTURES>() {
-  // Winning and equal captures in the main search are ordered by MVV.
-  // Suprisingly, this appears to perform slightly better than SEE based
-  // move ordering. The reason is probably that in a position with a winning
-  // capture, capturing a valuable (but sufficiently defended) piece
-  // first usually doesn't hurt. The opponent will have to recapture, and
-  // the hanging piece will still be hanging (except in the unusual cases
-  // where it is possible to recapture with the hanging piece). Exchanging
-  // big pieces before capturing a hanging piece probably helps to reduce
-  // the subtree size.
+  // Winning and equal captures in the main search are ordered by MVV, preferring
+  // captures near our home rank. Suprisingly, this appears to perform slightly
+  // better than SEE based move ordering: exchanging big pieces before capturing
+  // a hanging piece probably helps to reduce the subtree size.
   // In main search we want to push captures with negative SEE values to the
   // badCaptures[] array, but instead of doing it now we delay until the move
-  // has been picked up in pick_move_from_list(). This way we save some SEE
-  // calls in case we get a cutoff.
+  // has been picked up, saving some SEE calls in case we get a cutoff.
   for (auto& m : *this)
       m.value =  PieceValue[MG][pos.piece_on(to_sq(m))]
                - Value(200 * relative_rank(pos.side_to_move(), to_sq(m)));
@@ -165,9 +151,9 @@ void MovePicker::score<QUIETS>() {
 
 template<>
 void MovePicker::score<EVASIONS>() {
-  // Try good captures ordered by MVV/LVA, then non-captures if destination square
-  // is not under attack, ordered by history value, then bad-captures and quiet
-  // moves with a negative SEE. This last group is ordered by the SEE value.
+  // Try winning and equal captures captures ordered by MVV/LVA, then non-captures
+  // ordered by history value, then bad-captures and quiet moves with a negative
+  // SEE ordered by SEE value.
   Value see;
 
   for (auto& m : *this)
@@ -187,6 +173,8 @@ void MovePicker::score<EVASIONS>() {
 
 void MovePicker::generate_next_stage() {
 
+  assert(stage != STOP);
+
   cur = moves;
 
   switch (++stage) {
@@ -198,17 +186,11 @@ void MovePicker::generate_next_stage() {
       break;
 
   case KILLERS:
-      cur = killers;
-      endMoves = cur + 2;
-
       killers[0] = ss->killers[0];
       killers[1] = ss->killers[1];
-      killers[2].move = MOVE_NONE;
-
-      // Be sure countermoves are different from killers
-      if (   countermove != killers[0]
-          && countermove != killers[1])
-          *endMoves++ = countermove;
+      killers[2] = countermove;
+      cur = killers;
+      endMoves = cur + 2 + (countermove != killers[0] && countermove != killers[1]);
       break;
 
   case GOOD_QUIETS:
@@ -226,7 +208,7 @@ void MovePicker::generate_next_stage() {
       break;
 
   case BAD_CAPTURES:
-      // Just pick them in reverse order to get MVV/LVA ordering
+      // Just pick them in reverse order to get correct ordering
       cur = moves + MAX_MOVES - 1;
       endMoves = endBadCaptures;
       break;
@@ -242,12 +224,8 @@ void MovePicker::generate_next_stage() {
       break;
 
   case EVASION: case QSEARCH_WITH_CHECKS: case QSEARCH_WITHOUT_CHECKS:
-  case PROBCUT: case RECAPTURE:
+  case PROBCUT: case RECAPTURE: case STOP:
       stage = STOP;
-      /* Fall through */
-
-  case STOP:
-      endMoves = cur + 1; // Avoid another generate_next_stage() call
       break;
 
   default:
@@ -267,7 +245,7 @@ Move MovePicker::next_move<false>() {
 
   while (true)
   {
-      while (cur == endMoves)
+      while (cur == endMoves && stage != STOP)
           generate_next_stage();
 
       switch (stage) {
@@ -318,7 +296,7 @@ Move MovePicker::next_move<false>() {
 
       case PROBCUT_CAPTURES:
            move = pick_best(cur++, endMoves);
-           if (move != ttMove && pos.see(move) > captureThreshold)
+           if (move != ttMove && pos.see(move) > threshold)
                return move;
            break;
 
