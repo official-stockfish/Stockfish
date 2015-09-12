@@ -864,8 +864,17 @@ Value Eval::evaluate(const Position& pos) {
   // If we don't already have an unusual scale factor, check for certain
   // types of endgames, and use a lower scale for those.
   if (    me->game_phase() < PHASE_MIDGAME
+#ifdef KOTH
+      && !pos.is_koth()
+#endif
+#ifdef THREECHECK
+      && !pos.is_three_check()
+#endif
 #ifdef HORDE
       && !pos.is_horde()
+#endif
+#ifdef ATOMIC
+      && !pos.is_atomic()
 #endif
       && (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN))
   {
