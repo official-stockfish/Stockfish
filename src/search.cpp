@@ -155,7 +155,7 @@ namespace {
 
 void Search::init() {
 
-  const double K[][2] = {{ 0.83, 2.25 }, { 0.50, 3.00 }};
+  const double K[][2] = {{ 0.83, 2.55 }, { 0.50, 3.00 }};
 
   for (int pv = 0; pv <= 1; ++pv)
       for (int imp = 0; imp <= 1; ++imp)
