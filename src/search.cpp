@@ -155,14 +155,14 @@ namespace {
 
 void Search::init() {
 
-  const double K[][2] = {{ 0.83, 2.25 }, { 0.50, 3.00 }};
+  const double K[][2] = {{ 0.83, 3.488 }, { 0.53, 4.55 }};
 
   for (int pv = 0; pv <= 1; ++pv)
       for (int imp = 0; imp <= 1; ++imp)
           for (int d = 1; d < 64; ++d)
               for (int mc = 1; mc < 64; ++mc)
               {
-                  double r = K[pv][0] + log(d) * log(mc) / K[pv][1];
+                  double r = K[pv][0] + sqrt(d-1) * sqrt(mc-1) / K[pv][1];
 
                   if (r >= 1.5)
                       Reductions[pv][imp][d][mc] = int(r) * ONE_PLY;
@@ -377,7 +377,7 @@ namespace {
             // Reset aspiration window starting size
             if (depth >= 5 * ONE_PLY)
             {
-                delta = Value(16);
+                delta = Value(17);
                 alpha = std::max(RootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
                 beta  = std::min(RootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
             }
@@ -433,7 +433,7 @@ namespace {
                 else
                     break;
 
-                delta += delta / 2;
+                delta += delta / 3;
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
