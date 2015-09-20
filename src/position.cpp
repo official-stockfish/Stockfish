@@ -436,19 +436,14 @@ void Position::set_state(StateInfo* si) const {
   si->psq = SCORE_ZERO;
 
 #ifdef HORDE
-  if (is_horde())
-  {
-      Square ksq = square<KING>(sideToMove);
-      si->checkersBB = ksq == SQ_NONE ? 0 : attackers_to(ksq) & pieces(~sideToMove);
-  }
+  if (is_horde() && square<KING>(sideToMove) == SQ_NONE)
+      si->checkersBB = 0;
   else
 #endif
 #ifdef ATOMIC
-  if (is_atomic())
-  {
-      Square ksq = square<KING>(sideToMove);
-      si->checkersBB = (ksq == SQ_NONE || (attacks_from<KING>(ksq) & square<KING>(~sideToMove))) ? 0 : attackers_to(ksq) & pieces(~sideToMove);
-  }
+  if (is_atomic() && (square<KING>(sideToMove) == SQ_NONE ||
+         (attacks_from<KING>(square<KING>(sideToMove)) & square<KING>(~sideToMove))))
+      si->checkersBB = 0;
   else
 #endif
   {
@@ -754,9 +749,7 @@ bool Position::pseudo_legal(const Move m) const {
           return false;
       if (type_of(pc) != KING)
       {
-          if (attacks_from<KING>(square<KING>(~us)) & ksq)
-              return true;
-          if (capture(m))
+          if (capture(m) && !(attacks_from<KING>(square<KING>(~us)) & ksq))
           {
               Square capsq = type_of(m) == ENPASSANT ? make_square(file_of(to), rank_of(from)) : to;
               Bitboard blast = attacks_from<KING>(to) & (pieces() ^ pieces(PAWN));
@@ -771,8 +764,6 @@ bool Position::pseudo_legal(const Move m) const {
               return true;
           }
       }
-      else if (attacks_from<KING>(square<KING>(~us)) & to)
-          return true;
   }
 #endif
 
@@ -815,6 +806,10 @@ bool Position::pseudo_legal(const Move m) const {
   // Evasions generator already takes care to avoid some kind of illegal moves
   // and legal() relies on this. We therefore have to take care that the same
   // kind of moves are filtered out here.
+#ifdef ATOMIC
+  if (is_atomic() && (attacks_from<KING>(square<KING>(~us)) & (type_of(pc) == KING ? to : square<KING>(us))))
+      return true;
+#endif
   if (checkers())
   {
       if (type_of(pc) != KING)
@@ -1281,10 +1276,6 @@ void Position::undo_move(Move m) {
           put_piece(~us, st->capturedType, capsq); // Restore the captured piece
       }
   }
-#ifdef ATOMIC
-  if (is_atomic())
-      assert(piece_on(from) != NO_PIECE);
-#endif
 
   // Finally point our state pointer back to the previous state
   st = st->previous;
