@@ -290,8 +290,6 @@ void Search::think() {
       // Prepare the threads.
       for (Thread* th : Threads)
       {
-          // TODO: What happens to the old pos object??
-          //       Do we end up using use more and more memory??
           Position pos(RootPos, th);
           th->pos = pos;
           th->maxPly = 0;
@@ -313,7 +311,7 @@ void Search::think() {
   // When playing in 'nodes as time' mode, subtract the searched nodes from
   // the available ones before to exit.
   if (Limits.npmsec)
-      Time.availableNodes += Limits.inc[us] - RootPos.nodes_searched();
+      Time.availableNodes += Limits.inc[us] - Threads.nodes_searched();
 
   // When we reach the maximum depth, we can arrive here without a raise of
   // Signals.stop. However, if we are pondering or in an infinite search,
@@ -546,13 +544,10 @@ namespace {
     Threads.main()->id_loop();
 
     // Force a quicker exit of fixed depth searches.
-    for (Thread* th : Threads)
-        th->searching = false;
+    Signals.stop = true;
 
     // Wait until all threads have finished.
     while (Threads.main()->slavesMask != 0) {}
-
-    RootPos.set_nodes_searched(Threads.nodes_searched());
 
     // Clear any candidate easy move that wasn't stable for the last search
     // iterations; the second condition prevents consecutive fast moves.
