@@ -40,7 +40,6 @@ namespace Search {
 
   volatile SignalsType Signals;
   LimitsType Limits;
-  Position RootPos;
   StateStackPtr SetupStates;
 }
 
@@ -226,8 +225,9 @@ template uint64_t Search::perft<true>(Position& pos, Depth depth);
 
 void Search::think() {
 
-  Color us = RootPos.side_to_move();
-  Time.init(Limits, us, RootPos.game_ply(), now());
+  MainThread* mth = Threads.main();   // Shorthand
+  Color us = mth->pos.side_to_move();
+  Time.init(Limits, us, mth->pos.game_ply(), now());
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
@@ -246,21 +246,21 @@ void Search::think() {
       TB::ProbeDepth = DEPTH_ZERO;
   }
 
-  if (Threads.main()->rootMoves.empty())
+  if (mth->rootMoves.empty())
   {
-      Threads.main()->rootMoves.push_back(RootMove(MOVE_NONE));
+      mth->rootMoves.push_back(RootMove(MOVE_NONE));
       sync_cout << "info depth 0 score "
-                << UCI::value(RootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+                << UCI::value(mth->pos.checkers() ? -VALUE_MATE : VALUE_DRAW)
                 << sync_endl;
   }
   else
   {
-      if (TB::Cardinality >=  RootPos.count<ALL_PIECES>(WHITE)
-                            + RootPos.count<ALL_PIECES>(BLACK))
+      if (TB::Cardinality >=  mth->pos.count<ALL_PIECES>(WHITE)
+                            + mth->pos.count<ALL_PIECES>(BLACK))
       {
           // If the current root position is in the tablebases then RootMoves
           // contains only moves that preserve the draw or win.
-          TB::RootInTB = Tablebases::root_probe(RootPos, Threads.main()->rootMoves, TB::Score);
+          TB::RootInTB = Tablebases::root_probe(mth->pos, mth->rootMoves, TB::Score);
 
           if (TB::RootInTB)
               TB::Cardinality = 0; // Do not probe tablebases during the search
@@ -268,7 +268,7 @@ void Search::think() {
           else // If DTZ tables are missing, use WDL tables as a fallback
           {
               // Filter out moves that do not preserve a draw or win
-              TB::RootInTB = Tablebases::root_probe_wdl(RootPos, Threads.main()->rootMoves, TB::Score);
+              TB::RootInTB = Tablebases::root_probe_wdl(mth->pos, mth->rootMoves, TB::Score);
 
               // Only probe during search if winning
               if (TB::Score <= VALUE_DRAW)
@@ -277,7 +277,7 @@ void Search::think() {
 
           if (TB::RootInTB)
           {
-              TB::Hits = Threads.main()->rootMoves.size();
+              TB::Hits = mth->rootMoves.size();
 
               if (!TB::UseRule50)
                   TB::Score =  TB::Score > VALUE_DRAW ?  VALUE_MATE - MAX_PLY - 1
@@ -289,11 +289,11 @@ void Search::think() {
       // Prepare the threads.
       for (Thread* th : Threads)
       {
-          Position pos(RootPos, th);
-          th->pos = pos;
           th->maxPly = 0;
-          if (th != Threads.main()) {
-              th->rootMoves = Threads.main()->rootMoves;  // Already set in ThreadPool::start_thinking
+          if (th != mth) {
+              Position pos(mth->pos, th);
+              th->pos = pos;
+              th->rootMoves = mth->rootMoves;  // Already set in ThreadPool::start_thinking
               th->additionalDepth = (Depth)th->idx;
           }
           th->notify_one(); // Wake up all the threads
@@ -320,13 +320,13 @@ void Search::think() {
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
   {
       Signals.stopOnPonderhit = true;
-      RootPos.this_thread()->wait_for(Signals.stop);
+      mth->pos.this_thread()->wait_for(Signals.stop);
   }
 
-  sync_cout << "bestmove " << UCI::move(Threads.main()->rootMoves[0].pv[0], RootPos.is_chess960());
+  sync_cout << "bestmove " << UCI::move(mth->rootMoves[0].pv[0], mth->pos.is_chess960());
 
-  if (Threads.main()->rootMoves[0].pv.size() > 1 || Threads.main()->rootMoves[0].extract_ponder_from_tt(RootPos))
-      std::cout << " ponder " << UCI::move(Threads.main()->rootMoves[0].pv[1], RootPos.is_chess960());
+  if (mth->rootMoves[0].pv.size() > 1 || mth->rootMoves[0].extract_ponder_from_tt(mth->pos))
+      std::cout << " ponder " << UCI::move(mth->rootMoves[0].pv[1], mth->pos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -1410,13 +1410,12 @@ moves_loop: // When in check search starts from here
 
   Move Skill::pick_best(size_t multiPV) {
 
-    // TODO: This function always uses rootmoves for the main thread.
-
     // PRNG sequence should be non-deterministic, so we seed it with the time at init
+    MainThread* mth = Threads.main();  // Shorthand
     static PRNG rng(now());
 
     // RootMoves are already sorted by score in descending order
-    int variance = std::min(Threads.main()->rootMoves[0].score - Threads.main()->rootMoves[multiPV - 1].score, PawnValueMg);
+    int variance = std::min(mth->rootMoves[0].score - mth->rootMoves[multiPV - 1].score, PawnValueMg);
     int weakness = 120 - 2 * level;
     int maxScore = -VALUE_INFINITE;
 
@@ -1426,13 +1425,13 @@ moves_loop: // When in check search starts from here
     for (size_t i = 0; i < multiPV; ++i)
     {
         // This is our magic formula
-        int push = (  weakness * int(Threads.main()->rootMoves[0].score - Threads.main()->rootMoves[i].score)
+        int push = (  weakness * int(mth->rootMoves[0].score - mth->rootMoves[i].score)
                     + variance * (rng.rand<unsigned>() % weakness)) / 128;
 
-        if (Threads.main()->rootMoves[i].score + push > maxScore)
+        if (mth->rootMoves[i].score + push > maxScore)
         {
-            maxScore = Threads.main()->rootMoves[i].score + push;
-            best = Threads.main()->rootMoves[i].pv[0];
+            maxScore = mth->rootMoves[i].score + push;
+            best = mth->rootMoves[i].pv[0];
         }
     }
     return best;

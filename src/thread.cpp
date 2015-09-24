@@ -216,7 +216,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   Signals.stop = Signals.failedLowAtRoot = false;
 
   main()->rootMoves.clear();
-  RootPos = pos;
+  main()->pos = pos;
   Limits = limits;
   if (states.get()) // If we don't set a new position, preserve current state
   {
