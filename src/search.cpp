@@ -128,7 +128,6 @@ namespace {
     Move pv[3];
   };
 
-  size_t PVIdx;
   EasyMoveManager EasyMove;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
@@ -385,8 +384,8 @@ void Thread::id_loop() {
           rm.previousScore = rm.score;
 
       // MultiPV loop. We perform a full root search for each PV line
-//      for (PVIdx = 0; PVIdx < multiPV && !Signals.stop; ++PVIdx)
-//      {
+      for (PVIdx = 0; PVIdx < multiPV && !Signals.stop; ++PVIdx)
+      {
           // Reset aspiration window starting size
           if (depth >= 5 * ONE_PLY)
           {
@@ -456,11 +455,8 @@ void Thread::id_loop() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
 
-//          if (this != Threads.main())
-//              break;
-
           if (this != Threads.main())
-              continue;
+              break;
 
           if (Signals.stop)
               sync_cout << "info nodes " << Threads.nodes_searched()
@@ -468,10 +464,10 @@ void Thread::id_loop() {
 
           else if (PVIdx + 1 == multiPV || Time.elapsed() > 3000)
               sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
-//      }
+      }
 
-//      if (this != Threads.main())
-//          continue;
+      if (this != Threads.main())
+          continue;
 
       // If skill level is enabled and time is up, pick a sub-optimal best move
       if (skill.enabled() && skill.time_to_pick(depth))
@@ -533,7 +529,6 @@ namespace {
   void id_loop() {
 
     BestMoveChanges = 0;
-    PVIdx = 0;
 
     TT.new_search();
 
@@ -632,7 +627,7 @@ namespace {
     excludedMove = ss->excludedMove;
     posKey = excludedMove ? pos.exclusion_key() : pos.key();
     tte = TT.probe(posKey, ttHit);
-    ss->ttMove = ttMove = RootNode ? thisThread->rootMoves[PVIdx].pv[0] : ttHit ? tte->move() : MOVE_NONE;
+    ss->ttMove = ttMove = RootNode ? thisThread->rootMoves[thisThread->PVIdx].pv[0] : ttHit ? tte->move() : MOVE_NONE;
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
 
     // At non-PV nodes we check for a fail high/low. We don't prune at PV nodes
@@ -852,7 +847,7 @@ moves_loop: // When in check search starts from here
       // At root obey the "searchmoves" option and skip moves not listed in Root
       // Move List. As a consequence any illegal move is also skipped. In MultiPV
       // mode we also skip PV moves which have been already searched.
-      if (RootNode && !std::count(thisThread->rootMoves.begin() + PVIdx, thisThread->rootMoves.end(), move))
+      if (RootNode && !std::count(thisThread->rootMoves.begin() + thisThread->PVIdx, thisThread->rootMoves.end(), move))
           continue;
 
       ss->moveCount = ++moveCount;
@@ -864,7 +859,7 @@ moves_loop: // When in check search starts from here
           if (thisThread == Threads.main() && Time.elapsed() > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
                         << " currmove " << UCI::move(move, pos.is_chess960())
-                        << " currmovenumber " << moveCount + PVIdx << sync_endl;
+                        << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
       }
 
       if (PvNode)
@@ -1458,7 +1453,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= PVIdx);
+      bool updated = (i <= thisThread->PVIdx);
 
       if (depth == ONE_PLY && !updated)
           continue;
@@ -1478,7 +1473,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (!tb && i == thisThread->PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodes

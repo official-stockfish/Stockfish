@@ -69,7 +69,7 @@ struct Thread : public ThreadBase {
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
-  size_t idx;
+  size_t idx, PVIdx;
   int maxPly;
   volatile bool searching;
 
