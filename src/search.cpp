@@ -436,8 +436,10 @@ void Thread::id_loop() {
               {
                   beta = (alpha + beta) / 2;
                   alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-                  Signals.failedLowAtRoot = true;
-                  Signals.stopOnPonderhit = false;
+                  if (this == Threads.main()) {
+                      Signals.failedLowAtRoot = true;
+                      Signals.stopOnPonderhit = false;
+                  }
               }
               else if (bestValue >= beta)
               {
@@ -852,11 +854,11 @@ moves_loop: // When in check search starts from here
 
       ss->moveCount = ++moveCount;
 
-      if (RootNode)
+      if (RootNode && thisThread == Threads.main())
       {
           Signals.firstRootMove = (moveCount == 1);
 
-          if (thisThread == Threads.main() && Time.elapsed() > 3000)
+          if (Time.elapsed() > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
                         << " currmove " << UCI::move(move, pos.is_chess960())
                         << " currmovenumber " << moveCount + thisThread->PVIdx << sync_endl;
@@ -1042,7 +1044,7 @@ moves_loop: // When in check search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (moveCount > 1)
+              if (moveCount > 1 && thisThread == Threads.main())
                   ++BestMoveChanges;
           }
           else
