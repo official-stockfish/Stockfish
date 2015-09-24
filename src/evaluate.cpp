@@ -172,8 +172,8 @@ namespace {
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn.
   const Score PassedFile[] = {
-    S(-15, -15), S(-5, -5), S( 5,  5), S( 15,  15),
-    S( 15,  15), S( 5,  5), S(-5, -5), S(-15, -15)
+    S( 30,  30), S( 10,  10), S(-10, -10), S(-30, -30),
+    S(-30, -30), S(-10, -10), S( 10,  10), S( 30,  30)
   };
 
   const Score ThreatenedByHangingPawn = S(40, 60);
