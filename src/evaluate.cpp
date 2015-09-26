@@ -185,6 +185,24 @@ namespace {
   const Score Hanging            = S(31, 26);
   const Score PawnAttackThreat   = S(20, 20);
 
+
+  // Scale factors
+  int ScaleFactorOppositeBishopsKBPKB       = 8;
+  int ScaleFactorOppositeBishopsPawns       = 32;
+  int ScaleFactorOppositeBishopsOtherPieces = 50;
+  int ScaleFactorFronKingPawnSpan           = 56;
+  int ScaleFactorFronKingNoPawnSpan         = 38;
+  int ScalePawnsA                           = 7;
+  int ScalePawnsB                           = 14;
+  int SpaceThreshold                        = 11756;
+  int PassedPawnsUnsafeSquaresA             = 15;
+  int PassedPawnsUnsafeSquaresB             = 9;
+  int AttackUnitsCoefficients[5]            = {74, 8, 25, 11, -60};
+
+
+
+
+
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
   // happen in Chess960 games.
@@ -209,15 +227,15 @@ namespace {
   Score KingDanger[512];
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 7, 5, 4, 1 };
+  int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 7, 5, 4, 1 };
 
   // Penalties for enemy's safe checks
-  const int QueenContactCheck = 89;
-  const int RookContactCheck  = 71;
-  const int QueenCheck        = 50;
-  const int RookCheck         = 37;
-  const int BishopCheck       = 6;
-  const int KnightCheck       = 14;
+  int QueenContactCheck = 89;
+  int RookContactCheck  = 71;
+  int QueenCheck        = 50;
+  int RookCheck         = 37;
+  int BishopCheck       = 6;
+  int KnightCheck       = 14;
 
 
   // init_eval_info() initializes king bitboards for given color adding
@@ -394,11 +412,11 @@ namespace {
         // number and types of the enemy's attacking pieces, the number of
         // attacked and undefended squares around our king and the quality of
         // the pawn shelter (current 'score' value).
-        attackUnits =  std::min(74, ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
-                     +  8 * ei.kingAdjacentZoneAttacksCount[Them]
-                     + 25 * popcount<Max15>(undefended)
-                     + 11 * !!ei.pinnedPieces[Us]
-                     - 60 * !pos.count<QUEEN>(Them)
+        attackUnits =  std::min(AttackUnitsCoefficients[0], ei.kingAttackersCount[Them] * ei.kingAttackersWeight[Them])
+                     +  AttackUnitsCoefficients[1] * ei.kingAdjacentZoneAttacksCount[Them]
+                     + AttackUnitsCoefficients[2] * popcount<Max15>(undefended)
+                     + AttackUnitsCoefficients[3] * !!ei.pinnedPieces[Us]
+                     + AttackUnitsCoefficients[4] * !pos.count<QUEEN>(Them)
                      - mg_value(score) / 8;
 
         // Analyse the enemy's safe queen contact checks. Firstly, find the
@@ -620,7 +638,7 @@ namespace {
 
                 // If there aren't any enemy attacks, assign a big bonus. Otherwise
                 // assign a smaller bonus if the block square isn't attacked.
-                int k = !unsafeSquares ? 15 : !(unsafeSquares & blockSq) ? 9 : 0;
+                int k = !unsafeSquares ? PassedPawnsUnsafeSquaresA : !(unsafeSquares & blockSq) ? PassedPawnsUnsafeSquaresB : 0;
 
                 // If the path to queen is fully defended, assign a big bonus.
                 // Otherwise assign a smaller bonus if the block square is defended.
@@ -764,7 +782,7 @@ Value Eval::evaluate(const Position& pos) {
   }
 
   // Evaluate space for both sides, only during opening
-  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 11756)
+  if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= SpaceThreshold)
       score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
 
   // Scale winning side if position is more drawish than it appears
@@ -782,25 +800,25 @@ Value Eval::evaluate(const Position& pos) {
           // is almost a draw, in case of KBP vs KB is even more a draw.
           if (   pos.non_pawn_material(WHITE) == BishopValueMg
               && pos.non_pawn_material(BLACK) == BishopValueMg)
-              sf = more_than_one(pos.pieces(PAWN)) ? ScaleFactor(32) : ScaleFactor(8);
+              sf = more_than_one(pos.pieces(PAWN)) ? ScaleFactor(ScaleFactorOppositeBishopsPawns) : ScaleFactor(ScaleFactorOppositeBishopsKBPKB);
 
           // Endgame with opposite-colored bishops, but also other pieces. Still
           // a bit drawish, but not as drawish as with only the two bishops.
           else
-              sf = ScaleFactor(50 * sf / SCALE_FACTOR_NORMAL);
+              sf = ScaleFactor(ScaleFactorOppositeBishopsOtherPieces * sf / SCALE_FACTOR_NORMAL);
       }
       // Endings where weaker side can place his king in front of the opponent's
       // pawns are drawish.
       else if (    abs(eg_value(score)) <= BishopValueEg
                &&  ei.pi->pawn_span(strongSide) <= 1
                && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
-          sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(56) : ScaleFactor(38);
+          sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(ScaleFactorFronKingPawnSpan) : ScaleFactor(ScaleFactorFronKingNoPawnSpan);
   }
 
   // Scale endgame by number of pawns
   int p = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
   int v_eg = 1 + abs(int(eg_value(score)));
-  sf = ScaleFactor(std::max(sf / 2, sf - 7 * SCALE_FACTOR_NORMAL * (14 - p) / v_eg));
+  sf = ScaleFactor(std::max(sf / 2, sf - ScalePawnsA * SCALE_FACTOR_NORMAL * (ScalePawnsB - p) / v_eg));
 
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   Value v =  mg_value(score) * int(me->game_phase())
