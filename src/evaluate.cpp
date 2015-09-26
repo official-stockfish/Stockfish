@@ -641,6 +641,12 @@ namespace {
                 if (!(pos.pieces(Us) & bb))
                     defendedSquares &= ei.attackedBy[Us][ALL_PIECES];
 
+#ifdef ATOMIC
+                // Consider most squares safe since capturing costs a piece
+                if (pos.is_atomic())
+                    unsafeSquares &= pos.square<KING>(Them);
+                else
+#endif
                 if (!(pos.pieces(Them) & bb))
                     unsafeSquares &= ei.attackedBy[Them][ALL_PIECES] | pos.pieces(Them);
 
@@ -667,6 +673,10 @@ namespace {
 
         score += make_score(mbonus, ebonus);
     }
+#ifdef ATOMIC
+    if (pos.is_atomic())
+        score += score;
+#endif
 
     if (DoTrace)
         Trace::add(PASSED, Us, score * Weights[PassedPawns]);
