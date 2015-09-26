@@ -390,6 +390,9 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   Square ksq = pos.square<KING>(us);
   Bitboard sliderAttacks = 0;
   Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
+#ifdef ATOMIC
+  Bitboard kingAttacks = pos.is_atomic() ? pos.attacks_from<KING>(pos.square<KING>(~us)) : 0;
+#endif
 
 #ifdef ATOMIC
   if (pos.is_atomic())
@@ -408,7 +411,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
               target &= pos.attacks_from<KING>(s) | s;
           }
       }
-      target |= pos.attacks_from<KING>(pos.square<KING>(~us));
+      target |= kingAttacks;
       target &= pos.pieces(~us) & ~pos.attacks_from<KING>(ksq);
       moveList = (us == WHITE ? generate_all<WHITE, CAPTURES>(pos, moveList, target)
                               : generate_all<BLACK, CAPTURES>(pos, moveList, target));
@@ -425,11 +428,13 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   }
 
   // Generate evasions for king, capture and non capture moves
-  Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
+  Bitboard b;
 #ifdef ATOMIC
   if (pos.is_atomic())
-      b &= ~pos.pieces(~us);
+      b = pos.attacks_from<KING>(ksq) & ~pos.pieces() & ~(sliderAttacks & ~kingAttacks);
+  else
 #endif
+  b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
   while (b)
       *moveList++ = make_move(ksq, pop_lsb(&b));
 
