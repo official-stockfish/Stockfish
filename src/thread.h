@@ -77,7 +77,9 @@ struct Thread : public ThreadBase {
   Position pos;
   Search::RootMoveVector rootMoves;
   Search::Stack stack[MAX_PLY+4];
-  Depth additionalDepth;
+  HistoryStats History;
+  MovesStats Countermoves;
+  Depth rootDepth;
 };
 
 
