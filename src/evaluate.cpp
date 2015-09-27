@@ -705,22 +705,47 @@ namespace {
                    & ~pos.pieces(Us, PAWN)
                    & ~ei.attackedBy[Them][PAWN]
                    & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
+#ifdef HORDE
+    if (pos.is_horde())
+        safe =   ~ei.attackedBy[Them][PAWN]
+               & (ei.attackedBy[Us][ALL_PIECES] | ~ei.attackedBy[Them][ALL_PIECES]);
+#endif
 
     // Find all squares which are at most three squares behind some friendly pawn
     Bitboard behind = pos.pieces(Us, PAWN);
     behind |= (Us == WHITE ? behind >>  8 : behind <<  8);
     behind |= (Us == WHITE ? behind >> 16 : behind << 16);
+#ifdef HORDE
+    if (pos.is_horde())
+        behind |= (Us == WHITE ? behind >> 24 : behind << 24);
+#endif
 
     // Since SpaceMask[Us] is fully on our half of the board...
+#ifdef HORDE
+    assert(is_horde() || unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
+#else
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
+#endif
 
     // ...count safe + (behind & safe) with a single popcount
     int bonus = popcount<Full>((Us == WHITE ? safe << 32 : safe >> 32) | (behind & safe));
+#ifdef HORDE
+    if (pos.is_horde())
+        bonus = popcount<Full>(safe | behind);
+#endif
     int weight =  pos.count<KNIGHT>(Us) + pos.count<BISHOP>(Us)
                 + pos.count<KNIGHT>(Them) + pos.count<BISHOP>(Them);
 #ifdef THREECHECK
     if (pos.is_three_check())
         weight -= pos.checks_count();
+#endif
+#ifdef HORDE
+    if (pos.is_horde())
+    {
+        weight += pos.count<ROOK>(Us) + pos.count<QUEEN>(Us) + pos.count<KING>(Us)
+                + pos.count<ROOK>(Them) + pos.count<QUEEN>(Them) + pos.count<KING>(Them);
+        return make_score(bonus * (bonus + 2 * weight) * weight, 0);
+    }
 #endif
 
     return make_score(bonus * weight * weight, 0);
@@ -858,15 +883,12 @@ Value Eval::evaluate(const Position& pos) {
   }
 
   // Evaluate space for both sides, only during opening
-#ifdef HORDE
-  if (pos.is_horde())
-  {
-      if (pos.non_pawn_material(BLACK) + pos.non_pawn_material(BLACK) >= 11756)
-          score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
-  }
-#endif
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 11756)
       score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
+#ifdef HORDE
+  else if (pos.is_horde())
+      score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
+#endif
 
   // Scale winning side if position is more drawish than it appears
   Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
