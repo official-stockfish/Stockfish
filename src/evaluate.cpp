@@ -144,8 +144,8 @@ namespace {
   // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and
   // bishops outposts, bigger if outpost piece is supported by a pawn.
   const Score Outpost[][2] = {
-    { S(28, 7), S(42,11) }, // Knights
-    { S(12, 3), S(18, 5) }  // Bishops
+    { S(42,11), S(63,17) }, // Knights
+    { S(18, 5), S(27, 8) }  // Bishops
   };
 
   // Threat[defended/weak][minor/major attacking][attacked PieceType] contains
@@ -303,6 +303,7 @@ namespace {
         {
             // Bonus for outpost square
             if (   relative_rank(Us, s) >= RANK_4
+                && relative_rank(Us, s) <= RANK_6
                 && !(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
                 score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & s)];
 
@@ -908,6 +909,11 @@ Value Eval::evaluate(const Position& pos) {
                && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
           sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(56) : ScaleFactor(38);
   }
+
+  // Scale endgame by number of pawns
+  int p = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+  int v_eg = 1 + abs(int(eg_value(score)));
+  sf = ScaleFactor(std::max(sf / 2, sf - 7 * SCALE_FACTOR_NORMAL * (14 - p) / v_eg));
 
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   Value v =  mg_value(score) * int(me->game_phase())
