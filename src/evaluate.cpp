@@ -141,16 +141,11 @@ namespace {
       S( 94, 99), S( 96,100), S(99,111), S(99,112) }
   };
 
-  // KnightOutpost[supported by pawn] contains bonuses for
-  // knight outposts, bigger if outpost piece is supported by a pawn.
-  const Score KnightOutpost[2] = {
-     S(42,11), S(63,17)
-  };
-
-  // BishopOutpost[supported by pawn] contains bonuses for
+  // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and
   // bishops outposts, bigger if outpost piece is supported by a pawn.
-  const Score BishopOutpost[2] = {
-     S(18, 5), S(27, 8)
+  const Score Outpost[][2] = {
+    { S(42,11), S(63,17) }, // Knights
+    { S(18, 5), S(27, 8) }  // Bishops
   };
 
   // Threat[defended/weak][minor/major attacking][attacked PieceType] contains
@@ -297,13 +292,13 @@ namespace {
 
         mobility[Us] += MobilityBonus[Pt][mob];
 
-        if (Pt == BISHOP)
+        if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus for outpost square
             if (   relative_rank(Us, s) >= RANK_4
                 && relative_rank(Us, s) <= RANK_6
                 && !(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
-                score += BishopOutpost[!!(ei.attackedBy[Us][PAWN] & s)];
+                score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & s)];
 
             // Bonus when behind a pawn
             if (    relative_rank(Us, s) < RANK_5
@@ -311,12 +306,14 @@ namespace {
                 score += MinorBehindPawn;
 
             // Penalty for pawns on same color square of bishop
-            score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
+            if (Pt == BISHOP)
+                score -= BishopPawns * ei.pi->pawns_on_same_color_squares(Us, s);
 
             // An important Chess960 pattern: A cornered bishop blocked by a friendly
             // pawn diagonally in front of it is a very serious problem, especially
             // when that pawn is also blocked.
-            if (   pos.is_chess960()
+            if (   Pt == BISHOP
+                && pos.is_chess960()
                 && (s == relative_square(Us, SQ_A1) || s == relative_square(Us, SQ_H1)))
             {
                 Square d = pawn_push(Us) + (file_of(s) == FILE_A ? DELTA_E : DELTA_W);
@@ -327,21 +324,7 @@ namespace {
             }
         }
 
-        else if (Pt == KNIGHT)
-        {
-          // Bonus for outpost square
-            if (   relative_rank(Us, s) >= RANK_4
-                && relative_rank(Us, s) <= RANK_6
-                && !(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
-                score += KnightOutpost[!!(ei.attackedBy[Us][PAWN] & s)];
-
-            // Bonus when behind a pawn
-            if (    relative_rank(Us, s) < RANK_5
-                && (pos.pieces(PAWN) & (s + pawn_push(Us))))
-                score += MinorBehindPawn;
-        }
-
-        else if (Pt == ROOK)
+        if (Pt == ROOK)
         {
             // Bonus for aligning with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
