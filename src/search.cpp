@@ -181,10 +181,10 @@ void Search::init() {
 void Search::reset () {
 
   TT.clear();
+  CounterMovesHistory.clear();
 
   for (Thread* th : Threads) {
       th->History.clear();
-      CounterMovesHistory.clear();
       th->Countermoves.clear();
   }
 }
