@@ -145,7 +145,7 @@ namespace {
   // bishops outposts, bigger if outpost piece is supported by a pawn.
   const Score Outpost[][2] = {
     { S(42, 11), S(63, 17) }, // Knights
-    { S(18, 5), S(27, 8) }  // Bishops
+    { S(18,  5), S(27,  8) }  // Bishops
   };
 
   // Threat[defended/weak][minor/major attacking][attacked PieceType] contains
