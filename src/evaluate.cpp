@@ -144,14 +144,14 @@ namespace {
   // KnightOutpost[supported by pawn] contains bonuses for
   // knight outposts, bigger if outpost piece is supported by a pawn.
   const Score KnightOutpost[2] = {
-    { S(42,11), S(63,17) }
+     S(42,11), S(63,17)
   };
-  
+
   // BishopOutpost[supported by pawn] contains bonuses for
   // bishops outposts, bigger if outpost piece is supported by a pawn.
   const Score BishopOutpost[2] = {
-    { S(18, 5), S(27, 8) }
-  }
+     S(18, 5), S(27, 8)
+  };
 
   // Threat[defended/weak][minor/major attacking][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.
@@ -326,7 +326,7 @@ namespace {
                                                                               : TrappedBishopA1H1;
             }
         }
-        
+
         else if (Pt == KNIGHT)
         {
           // Bonus for outpost square
