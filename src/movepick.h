@@ -51,10 +51,24 @@ struct Stats {
         table[pc][to] = m;
   }
 
-  void update(Piece pc, Square to, Value v) {
 
-    table[pc][to] -= table[pc][to] * std::min(abs(int(v)), 512) / 512;
-    table[pc][to] += int(v) * 64;
+
+  void updateH(Piece pc, Square to, Value v) {
+
+	  if (abs(int(v)) >= 324) 
+		  return;
+	  table[pc][to] -= table[pc][to] * abs(int(v)) / 324;
+	  table[pc][to] += int(v) * 32;
+  }
+
+
+
+  void updateCMH(Piece pc, Square to, Value v) {
+
+	  if (abs(int(v)) >= 324) 
+		  return;
+	 table[pc][to] -= table[pc][to] * abs(int(v)) / 512;
+	table[pc][to] += int(v) * 64;
   }
 
 private:
