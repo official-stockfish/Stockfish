@@ -220,7 +220,7 @@ uint64_t Search::perft(Position& pos, Depth depth) {
           pos.undo_move(m);
       }
       if (Root)
-          sync_cout << UCI::move(m) << ": " << cnt << sync_endl;
+          sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
   }
   return nodes;
 }
@@ -357,14 +357,14 @@ void Search::think() {
   else
 #endif
   // Best move could be MOVE_NONE when searching on a stalemate position
-  sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0]);
+  sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0], RootPos.is_chess960());
 
 #ifdef ATOMIC
   if (!RootPos.is_atomic() || RootMoves[0].pv.size() > 1 || RootMoves[0].pv[0] != MOVE_NONE)
   {
 #endif
   if (RootMoves[0].pv.size() > 1 || RootMoves[0].extract_ponder_from_tt(RootPos))
-      std::cout << " ponder " << UCI::move(RootMoves[0].pv[1]);
+      std::cout << " ponder " << UCI::move(RootMoves[0].pv[1], RootPos.is_chess960());
 #ifdef ATOMIC
   }
 #endif
@@ -950,7 +950,7 @@ moves_loop: // When in check and at SpNode search starts from here
 
           if (thisThread == Threads.main() && Time.elapsed() > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
-                        << " currmove " << UCI::move(move)
+                        << " currmove " << UCI::move(move, RootPos.is_chess960())
                         << " currmovenumber " << moveCount + PVIdx << sync_endl;
       }
 
@@ -1703,7 +1703,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " pv";
 
       for (Move m : RootMoves[i].pv)
-          ss << " " << UCI::move(m);
+          ss << " " << UCI::move(m, RootPos.is_chess960());
   }
 
   return ss.str();
