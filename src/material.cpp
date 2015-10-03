@@ -31,7 +31,7 @@ namespace {
   // Polynomial material imbalance parameters
 
   //                 pair  pawn knight bishop rook queen
-  int Linear[6] = { 1852, -162, -1122, -183,  249, -154 };
+  int Linear[6] = { 1756, -164, -1067, -160,  234, -137 };
 
   const int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
@@ -55,7 +55,7 @@ namespace {
     {  98,  105, -39,   141,  274,    0 }  // Queen
   };
 
-  int AssoredScaleFactors[] = {4, 12};
+  int AssoredScaleFactors[] = {4, 14};
 
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.

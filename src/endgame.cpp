@@ -59,7 +59,7 @@ namespace {
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
-  int RanksKRPPKRP[] = {10, 10, 15, 20, 40};
+  int RanksKRPPKRP[] = {9, 10, 14, 21, 44};
 
 
 

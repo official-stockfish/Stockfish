@@ -194,17 +194,17 @@ namespace {
 
 
   // Scale factors
-  int ScaleFactorOppositeBishopsKBPKB       = 8;
-  int ScaleFactorOppositeBishopsPawns       = 32;
-  int ScaleFactorOppositeBishopsOtherPieces = 50;
-  int ScaleFactorFronKingPawnSpan           = 56;
-  int ScaleFactorFronKingNoPawnSpan         = 38;
-  int ScalePawnsA                           = 7;
-  int ScalePawnsB                           = 14;
-  int SpaceThreshold                        = 11756;
-  int PassedPawnsUnsafeSquaresA             = 15;
-  int PassedPawnsUnsafeSquaresB             = 9;
-  int AttackUnitsCoefficients[5]            = {74, 8, 25, 11, -60};
+  int ScaleFactorOppositeBishopsKBPKB       = 9;
+  int ScaleFactorOppositeBishopsPawns       = 31;
+  int ScaleFactorOppositeBishopsOtherPieces = 46;
+  int ScaleFactorFronKingPawnSpan           = 51;
+  int ScaleFactorFronKingNoPawnSpan         = 37;
+  int ScalePawnsA                           = 8;
+  int ScalePawnsB                           = 12;
+  int SpaceThreshold                        = 12222;
+  int PassedPawnsUnsafeSquaresA             = 18;
+  int PassedPawnsUnsafeSquaresB             = 8;
+  int AttackUnitsCoefficients[5]            = {72, 9, 27, 11, -64};
 
 
 
