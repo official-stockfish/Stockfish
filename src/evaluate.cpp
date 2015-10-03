@@ -170,6 +170,12 @@ namespace {
     { V(7), V(14), V(37), V(63), V(134), V(189) }
   };
 
+  // PassedFile[File] contains a bonus according to the file of a passed pawn.
+  const Score PassedFile[] = {
+    S( 14,  13), S( 2,  5), S(-3, -4), S(-19, -14),
+    S(-19, -14), S(-3, -4), S( 2,  5), S( 14,  13)
+  };
+
   const Score ThreatenedByHangingPawn = S(40, 60);
 
   // Assorted bonuses and penalties used by evaluation
@@ -652,7 +658,7 @@ namespace {
         if (pos.count<PAWN>(Us) < pos.count<PAWN>(Them))
             ebonus += ebonus / 4;
 
-        score += make_score(mbonus, ebonus);
+        score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
     }
 
     if (DoTrace)
