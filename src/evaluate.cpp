@@ -705,9 +705,9 @@ namespace {
   }
 
 
-  // evaluate_initiative() computes the initiative correction values for the position, i.e. 
+  // evaluate_initiative() computes the initiative correction value for the position, i.e. 
   // second order bonus/malus based on the known attacking/defending status of the players. 
-  Score evaluate_initiative(const Position& pos, const Score positionnal_score) {
+  Score evaluate_initiative(const Position& pos, const Score positional_score) {
 
     int pawns           =   pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
     int king_separation =   distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
@@ -717,9 +717,8 @@ namespace {
                          +  8 * king_separation ;
 
     // Now apply the bonus: note that we find the attacking side by extracting the sign 
-    // of the endgame value of "positionnal_score", and that we carefully cap the bonus 
-    // to be at most half that value (in other words, the endgame score with the correction
-    // will never be divided by more than two).
+    // of the endgame value of "positional_score", and that we carefully cap the bonus so
+    // that the endgame score with the correction will never be divided by more than two.
     int eg = eg_value(positionnal_score);
     int value = ((eg > 0) - (eg < 0)) * std::max( attacker_bonus , -abs( eg / 2 ) );
 
