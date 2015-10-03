@@ -704,6 +704,28 @@ namespace {
     return make_score(bonus * weight * weight, 0);
   }
 
+
+  // evaluate_initiative() computes the initiative correction values for the position, i.e. 
+  // second order bonus/malus based on the known attacking/defending status of the players. 
+  Score evaluate_initiative(const Position& pos, const Score positionnal_score) {
+
+    int pawns           =   pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+    int king_separation =   distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
+
+    // Compute the initiative bonus for the attacking side
+    int attacker_bonus =    7 * pawns - 98
+                         +  8 * king_separation ;
+
+    // Now apply the bonus: note that we find the attacking side by extracting the sign 
+    // of the endgame value of "positionnal_score", and that we carefully cap the bonus 
+    // to be at most half that value (in other words, the endgame score with the correction
+    // will never be divided by more than two).
+    int eg = eg_value(positionnal_score);
+    int value = ((eg > 0) - (eg < 0)) * std::max( attacker_bonus , -abs( eg / 2 ) );
+
+    return make_score( 0 , value ) ; 
+  }
+
 } // namespace
 
 
@@ -785,6 +807,9 @@ Value Eval::evaluate(const Position& pos) {
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 11756)
       score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
+  
+  // Evaluate initiative
+  score += evaluate_initiative(pos, score);
 
   // Scale winning side if position is more drawish than it appears
   Color strongSide = eg_value(score) > VALUE_DRAW ? WHITE : BLACK;
@@ -815,11 +840,6 @@ Value Eval::evaluate(const Position& pos) {
                && !pos.pawn_passed(~strongSide, pos.square<KING>(~strongSide)))
           sf = ei.pi->pawn_span(strongSide) ? ScaleFactor(56) : ScaleFactor(38);
   }
-
-  // Scale endgame by number of pawns
-  int p = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
-  int v_eg = 1 + abs(int(eg_value(score)));
-  sf = ScaleFactor(std::max(sf / 2, sf - 7 * SCALE_FACTOR_NORMAL * (14 - p) / v_eg));
 
   // Interpolate between a middlegame and a (scaled by 'sf') endgame score
   Value v =  mg_value(score) * int(me->game_phase())
