@@ -1473,7 +1473,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
   size_t multiPV = std::min((size_t)Options["MultiPV"], thisThread->rootMoves.size());
-  int selDepth = 0;
+  int selDepth = thisThread->maxPly;
   uint64_t nodes = Threads.nodes_searched();
 
   for (size_t i = 0; i < multiPV; ++i)
