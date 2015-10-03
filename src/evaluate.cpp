@@ -184,6 +184,7 @@ namespace {
   const Score Unstoppable        = S( 0, 20);
   const Score Hanging            = S(31, 26);
   const Score PawnAttackThreat   = S(20, 20);
+  const Score Checked            = S(20, 20);
 
   // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
   // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -440,22 +441,34 @@ namespace {
         // Enemy queen safe checks
         b = (b1 | b2) & ei.attackedBy[Them][QUEEN];
         if (b)
+        {
             attackUnits += QueenCheck * popcount<Max15>(b);
+            score -= Checked;
+        }
 
         // Enemy rooks safe checks
         b = b1 & ei.attackedBy[Them][ROOK];
         if (b)
+        {
             attackUnits += RookCheck * popcount<Max15>(b);
+            score -= Checked;
+        }
 
         // Enemy bishops safe checks
         b = b2 & ei.attackedBy[Them][BISHOP];
         if (b)
+        {
             attackUnits += BishopCheck * popcount<Max15>(b);
+            score -= Checked;
+        }
 
         // Enemy knights safe checks
         b = pos.attacks_from<KNIGHT>(ksq) & ei.attackedBy[Them][KNIGHT] & safe;
         if (b)
+        {
             attackUnits += KnightCheck * popcount<Max15>(b);
+            score -= Checked;
+        }
 
         // Finally, extract the king danger score from the KingDanger[]
         // array and subtract the score from evaluation.
