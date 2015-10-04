@@ -719,7 +719,7 @@ namespace {
     // Now apply the bonus: note that we find the attacking side by extracting the sign 
     // of the endgame value of "positional_score", and that we carefully cap the bonus so
     // that the endgame score with the correction will never be divided by more than two.
-    int eg = eg_value(positionnal_score);
+    int eg = eg_value(positional_score);
     int value = ((eg > 0) - (eg < 0)) * std::max( attacker_bonus , -abs( eg / 2 ) );
 
     return make_score( 0 , value ) ; 
