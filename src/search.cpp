@@ -1139,7 +1139,7 @@ moves_loop: // When in check and at SpNode search starts from here
 			Square prevSq = to_sq((ss - 1)->currentMove);
 			Square prevPrevSq = to_sq((ss - 2)->currentMove);
 			HistoryStats& flMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
-				flMoveCmh.update(pos.piece_on(prevSq), prevSq, bonus);
+				flMoveCmh.updateCMH(pos.piece_on(prevSq), prevSq, bonus);
     }
   }
 
