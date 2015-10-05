@@ -30,8 +30,8 @@ namespace {
 
   // Polynomial material imbalance parameters
 
-  //                 pair  pawn knight bishop rook queen
-  int Linear[6] = { 1756, -164, -1067, -160,  234, -137 };
+  //                      pair  pawn knight bishop rook queen
+  const int Linear[6] = { 1756, -164, -1067, -160,  234, -137 };
 
   const int QuadraticOurs[][PIECE_TYPE_NB] = {
     //            OUR PIECES
@@ -54,8 +54,6 @@ namespace {
     {  50,   40,  23,   -22,    0       }, // Rook
     {  98,  105, -39,   141,  274,    0 }  // Queen
   };
-
-  int AssoredScaleFactors[] = {4, 14};
 
   // Endgame evaluation and scaling functions are accessed directly and not through
   // the function maps because they correspond to more than one material hash key.
@@ -201,11 +199,11 @@ Entry* probe(const Position& pos) {
   // drawish scale factor for cases such as KRKBP and KmmKm (except for KBBKN).
   if (!pos.count<PAWN>(WHITE) && npm_w - npm_b <= BishopValueMg)
       e->factor[WHITE] = uint8_t(npm_w <  RookValueMg   ? SCALE_FACTOR_DRAW :
-                                 npm_b <= BishopValueMg ? AssoredScaleFactors[0] : AssoredScaleFactors[1]);
+                                 npm_b <= BishopValueMg ? 4 : 14);
 
   if (!pos.count<PAWN>(BLACK) && npm_b - npm_w <= BishopValueMg)
       e->factor[BLACK] = uint8_t(npm_b <  RookValueMg   ? SCALE_FACTOR_DRAW :
-                                 npm_w <= BishopValueMg ? AssoredScaleFactors[0] : AssoredScaleFactors[1]);
+                                 npm_w <= BishopValueMg ? 4 : 14);
 
   if (pos.count<PAWN>(WHITE) == 1 && npm_w - npm_b <= BishopValueMg)
       e->factor[WHITE] = (uint8_t) SCALE_FACTOR_ONEPAWN;

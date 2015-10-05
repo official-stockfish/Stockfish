@@ -59,10 +59,6 @@ namespace {
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
-  int RanksKRPPKRP[] = {9, 10, 14, 21, 44};
-
-
-
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {
     return pos.non_pawn_material(c) == npm && pos.count<PAWN>(c) == pawnsCnt;
@@ -605,11 +601,11 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
       && relative_rank(strongSide, bksq) > r)
   {
       switch (r) {
-      case RANK_2: return ScaleFactor(RanksKRPPKRP[0]);
-      case RANK_3: return ScaleFactor(RanksKRPPKRP[1]);
-      case RANK_4: return ScaleFactor(RanksKRPPKRP[2]);
-      case RANK_5: return ScaleFactor(RanksKRPPKRP[3]);
-      case RANK_6: return ScaleFactor(RanksKRPPKRP[4]);
+      case RANK_2: return ScaleFactor(9);
+      case RANK_3: return ScaleFactor(10);
+      case RANK_4: return ScaleFactor(14);
+      case RANK_5: return ScaleFactor(21);
+      case RANK_6: return ScaleFactor(44);
       default: assert(false);
       }
   }
