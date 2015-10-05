@@ -1131,8 +1131,10 @@ moves_loop: // When in check and at SpNode search starts from here
     // Quiet best move: update killers, history and countermoves
     else if (bestMove && !pos.capture_or_promotion(bestMove))
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount);
-    else if (!bestMove){
+ 
     // Bonus for prior countermove that caused the fail low
+    else if (!bestMove)
+    {
         if (is_ok((ss - 2)->currentMove) && is_ok((ss - 1)->currentMove) && !pos.captured_piece_type() && !inCheck && depth>=3*ONE_PLY)
         {
             Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
@@ -1141,7 +1143,7 @@ moves_loop: // When in check and at SpNode search starts from here
             HistoryStats& flMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
             flMoveCmh.updateCMH(pos.piece_on(prevSq), prevSq, bonus);
         }
-  }
+    }
 
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
               bestValue >= beta ? BOUND_LOWER :
