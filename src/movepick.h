@@ -51,24 +51,20 @@ struct Stats {
         table[pc][to] = m;
   }
 
-
-
   void updateH(Piece pc, Square to, Value v) {
 
-	  if (abs(int(v)) >= 324) 
-		  return;
-	  table[pc][to] -= table[pc][to] * abs(int(v)) / 324;
-	  table[pc][to] += int(v) * 32;
+    if (abs(int(v)) >= 324) 
+        return;
+    table[pc][to] -= table[pc][to] * abs(int(v)) / 324;
+    table[pc][to] += int(v) * 32;
   }
-
-
 
   void updateCMH(Piece pc, Square to, Value v) {
 
-	  if (abs(int(v)) >= 324) 
-		  return;
-	 table[pc][to] -= table[pc][to] * abs(int(v)) / 512;
-	table[pc][to] += int(v) * 64;
+    if (abs(int(v)) >= 324) 
+        return;
+    table[pc][to] -= table[pc][to] * abs(int(v)) / 512;
+    table[pc][to] += int(v) * 64;
   }
 
 private:
