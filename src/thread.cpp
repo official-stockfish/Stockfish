@@ -66,12 +66,21 @@ void ThreadBase::notify_one() {
 }
 
 
-// ThreadBase::wait_for() set the thread to sleep until 'condition' turns true
+// ThreadBase::wait() set the thread to sleep until 'condition' turns true
 
-void ThreadBase::wait_for(volatile const bool& condition) {
+void ThreadBase::wait(volatile const bool& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.wait(lk, [&]{ return condition; });
+}
+
+
+// ThreadBase::wait_while() set the thread to sleep until 'condition' turns false
+
+void ThreadBase::wait_while(volatile const bool& condition) {
+
+  std::unique_lock<Mutex> lk(mutex);
+  sleepCondition.wait(lk, [&]{ return !condition; });
 }
 
 
@@ -82,140 +91,7 @@ Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in 
 
   searching = false;
   maxPly = 0;
-  splitPointsSize = 0;
-  activeSplitPoint = nullptr;
-  activePosition = nullptr;
   idx = Threads.size(); // Starts from 0
-}
-
-
-// Thread::cutoff_occurred() checks whether a beta cutoff has occurred in the
-// current active split point, or in some ancestor of the split point.
-
-bool Thread::cutoff_occurred() const {
-
-  for (SplitPoint* sp = activeSplitPoint; sp; sp = sp->parentSplitPoint)
-      if (sp->cutoff)
-          return true;
-
-  return false;
-}
-
-
-// Thread::can_join() checks whether the thread is available to join the split
-// point 'sp'. An obvious requirement is that thread must be idle. With more than
-// two threads, this is not sufficient: If the thread is the master of some split
-// point, it is only available as a slave for the split points below his active
-// one (the "helpful master" concept in YBWC terminology).
-
-bool Thread::can_join(const SplitPoint* sp) const {
-
-  if (searching)
-      return false;
-
-  // Make a local copy to be sure it doesn't become zero under our feet while
-  // testing next condition and so leading to an out of bounds access.
-  const size_t size = splitPointsSize;
-
-  // No split points means that the thread is available as a slave for any
-  // other thread otherwise apply the "helpful master" concept if possible.
-  return !size || splitPoints[size - 1].slavesMask.test(sp->master->idx);
-}
-
-
-// Thread::split() does the actual work of distributing the work at a node between
-// several available threads. If it does not succeed in splitting the node
-// (because no idle threads are available), the function immediately returns.
-// If splitting is possible, a SplitPoint object is initialized with all the
-// data that must be copied to the helper threads and then helper threads are
-// informed that they have been assigned work. This will cause them to instantly
-// leave their idle loops and call search(). When all threads have returned from
-// search() then split() returns.
-
-void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bestValue,
-                   Move* bestMove, Depth depth, int moveCount,
-                   MovePicker* movePicker, int nodeType, bool cutNode) {
-
-  assert(searching);
-  assert(-VALUE_INFINITE < *bestValue && *bestValue <= alpha && alpha < beta && beta <= VALUE_INFINITE);
-  assert(depth >= Threads.minimumSplitDepth);
-  assert(splitPointsSize < MAX_SPLITPOINTS_PER_THREAD);
-
-  // Pick and init the next available split point
-  SplitPoint& sp = splitPoints[splitPointsSize];
-
-  sp.spinlock.acquire(); // No contention here until we don't increment splitPointsSize
-
-  sp.master = this;
-  sp.parentSplitPoint = activeSplitPoint;
-  sp.slavesMask = 0, sp.slavesMask.set(idx);
-  sp.depth = depth;
-  sp.bestValue = *bestValue;
-  sp.bestMove = *bestMove;
-  sp.alpha = alpha;
-  sp.beta = beta;
-  sp.nodeType = nodeType;
-  sp.cutNode = cutNode;
-  sp.movePicker = movePicker;
-  sp.moveCount = moveCount;
-  sp.pos = &pos;
-  sp.nodes = 0;
-  sp.cutoff = false;
-  sp.ss = ss;
-  sp.allSlavesSearching = true; // Must be set under lock protection
-
-  ++splitPointsSize;
-  activeSplitPoint = &sp;
-  activePosition = nullptr;
-
-  // Try to allocate available threads
-  Thread* slave;
-
-  while (    sp.slavesMask.count() < MAX_SLAVES_PER_SPLITPOINT
-         && (slave = Threads.available_slave(&sp)) != nullptr)
-  {
-     slave->spinlock.acquire();
-
-      if (slave->can_join(activeSplitPoint))
-      {
-          activeSplitPoint->slavesMask.set(slave->idx);
-          slave->activeSplitPoint = activeSplitPoint;
-          slave->searching = true;
-      }
-
-      slave->spinlock.release();
-  }
-
-  // Everything is set up. The master thread enters the idle loop, from which
-  // it will instantly launch a search, because its 'searching' flag is set.
-  // The thread will return from the idle loop when all slaves have finished
-  // their work at this split point.
-  sp.spinlock.release();
-
-  Thread::idle_loop(); // Force a call to base class idle_loop()
-
-  // In the helpful master concept, a master can help only a sub-tree of its
-  // split point and because everything is finished here, it's not possible
-  // for the master to be booked.
-  assert(!searching);
-  assert(!activePosition);
-
-  // We have returned from the idle loop, which means that all threads are
-  // finished. Note that decreasing splitPointsSize must be done under lock
-  // protection to avoid a race with Thread::can_join().
-  spinlock.acquire();
-
-  searching = true;
-  --splitPointsSize;
-  activeSplitPoint = sp.parentSplitPoint;
-  activePosition = &pos;
-
-  spinlock.release();
-
-  // Split point data cannot be changed now, so no need to lock protect
-  pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
-  *bestMove = sp.bestMove;
-  *bestValue = sp.bestValue;
 }
 
 
@@ -233,8 +109,27 @@ void TimerThread::idle_loop() {
 
       lk.unlock();
 
-      if (run)
+      if (!exit && run)
           check_time();
+  }
+}
+
+
+// Thread::idle_loop() is where the thread is parked when it has no work to do
+
+void Thread::idle_loop() {
+
+  while (!exit)
+  {
+      std::unique_lock<Mutex> lk(mutex);
+
+      while (!searching && !exit)
+          sleepCondition.wait(lk);
+
+      lk.unlock();
+
+      if (!exit && searching)
+          search();
   }
 }
 
@@ -259,20 +154,12 @@ void MainThread::idle_loop() {
       lk.unlock();
 
       if (!exit)
-      {
-          searching = true;
-
-          Search::think();
-
-          assert(searching);
-
-          searching = false;
-      }
+          think();
   }
 }
 
 
-// MainThread::join() waits for main thread to finish the search
+// MainThread::join() waits for main thread to finish thinking
 
 void MainThread::join() {
 
@@ -317,7 +204,6 @@ void ThreadPool::exit() {
 
 void ThreadPool::read_uci_options() {
 
-  minimumSplitDepth = Options["Min Split Depth"] * ONE_PLY;
   size_t requested  = Options["Threads"];
 
   assert(requested > 0);
@@ -333,16 +219,14 @@ void ThreadPool::read_uci_options() {
 }
 
 
-// ThreadPool::available_slave() tries to find an idle thread which is available
-// to join SplitPoint 'sp'.
+// ThreadPool::nodes_searched() returns the number of nodes searched
 
-Thread* ThreadPool::available_slave(const SplitPoint* sp) const {
+int64_t ThreadPool::nodes_searched() {
 
-  for (Thread* th : *this)
-      if (th->can_join(sp))
-          return th;
-
-  return nullptr;
+  int64_t nodes = 0;
+  for (Thread *th : *this)
+      nodes += th->rootPos.nodes_searched();
+  return nodes;
 }
 
 
@@ -356,8 +240,8 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
 
-  RootMoves.clear();
-  RootPos = pos;
+  main()->rootMoves.clear();
+  main()->rootPos = pos;
   Limits = limits;
   if (states.get()) // If we don't set a new position, preserve current state
   {
@@ -368,7 +252,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   for (const auto& m : MoveList<LEGAL>(pos))
       if (   limits.searchmoves.empty()
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
-          RootMoves.push_back(RootMove(m));
+          main()->rootMoves.push_back(RootMove(m));
 
   main()->thinking = true;
   main()->notify_one(); // Wake up main thread: 'thinking' must be already set

@@ -88,6 +88,7 @@ struct LimitsType {
   std::vector<Move> searchmoves;
   int time[COLOR_NB], inc[COLOR_NB], npmsec, movestogo, depth, movetime, mate, infinite, ponder;
   int64_t nodes;
+  TimePoint startTime;
 };
 
 /// The SignalsType struct stores volatile flags updated during the search
@@ -101,12 +102,9 @@ typedef std::unique_ptr<std::stack<StateInfo>> StateStackPtr;
 
 extern volatile SignalsType Signals;
 extern LimitsType Limits;
-extern RootMoveVector RootMoves;
-extern Position RootPos;
 extern StateStackPtr SetupStates;
 
 void init();
-void think();
 void reset();
 template<bool Root> uint64_t perft(Position& pos, Depth depth);
 
