@@ -238,8 +238,8 @@ void MovePicker::generate_next_stage() {
 /// a new pseudo legal move every time it is called, until there are no more moves
 /// left. It picks the move with the biggest value from a list of generated moves
 /// taking care not to return the ttMove if it has already been searched.
-template<>
-Move MovePicker::next_move<false>() {
+
+Move MovePicker::next_move() {
 
   Move move;
 
