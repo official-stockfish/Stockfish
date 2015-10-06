@@ -1070,7 +1070,7 @@ moves_loop: // When in check search starts from here
               // We record how often the best move has been changed in each
               // iteration. This information is used for time management: When
               // the best move changes frequently, we allocate some more time.
-              if (moveCount > 1 && thisThread == Threads.main())
+              if (moveCount > 1)
                   ++BestMoveChanges;
           }
           else
