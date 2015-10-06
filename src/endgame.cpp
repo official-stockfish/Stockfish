@@ -601,11 +601,11 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
       && relative_rank(strongSide, bksq) > r)
   {
       switch (r) {
-      case RANK_2: return ScaleFactor(10);
+      case RANK_2: return ScaleFactor(9);
       case RANK_3: return ScaleFactor(10);
-      case RANK_4: return ScaleFactor(15);
-      case RANK_5: return ScaleFactor(20);
-      case RANK_6: return ScaleFactor(40);
+      case RANK_4: return ScaleFactor(14);
+      case RANK_5: return ScaleFactor(21);
+      case RANK_6: return ScaleFactor(44);
       default: assert(false);
       }
   }
