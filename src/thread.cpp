@@ -209,7 +209,6 @@ uint64_t ThreadPool::nodes_searched() {
 
 void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
                                 StateStackPtr& states) {
-
   main()->join();
 
   Signals.stopOnPonderhit = Signals.firstRootMove = false;

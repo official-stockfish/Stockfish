@@ -92,7 +92,7 @@ public:
   MovePicker(const Position&, Move, const HistoryStats&, const CounterMovesHistoryStats&, Value);
   MovePicker(const Position&, Move, Depth, const HistoryStats&, const CounterMovesHistoryStats&, Move, Search::Stack*);
 
-  template<bool SpNode> Move next_move();
+  Move next_move();
 
 private:
   template<GenType> void score();
