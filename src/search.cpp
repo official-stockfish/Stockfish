@@ -1088,7 +1088,6 @@ moves_loop: // When in check search starts from here
           {
               // If there is an easy move for this position, clear it if unstable
               if (    PvNode
-                  //&& thisThread == Threads.main()
                   &&  EasyMove.get(pos.key())
                   && (move != EasyMove.get(pos.key()) || moveCount > 1))
                   EasyMove.clear();
