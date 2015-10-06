@@ -174,8 +174,8 @@ void Search::init() {
 
   for (int d = 0; d < 16; ++d)
   {
-    FutilityMoveCounts[0][d] = int(2.4  + (2*Options["Threads"] - 2) + 0.773 * pow(d + 0.00, 1.8) );
-    FutilityMoveCounts[1][d] = int(2.9  + (2*Options["Threads"] - 2) + 1.045 * pow(d + 0.49, 1.8) );
+      FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
+      FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
   }
 }
 
@@ -1657,7 +1657,6 @@ void Thread::idle_loop() {
               {
                   assert(this != th);
                   assert(!(this_sp && this_sp->slavesMask.none()));
-                  assert(Threads.size() > 2);
 
                   // Prefer to join to SP with few parents to reduce the probability
                   // that a cut-off occurs above us, and hence we waste our work.
