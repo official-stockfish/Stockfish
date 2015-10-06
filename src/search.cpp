@@ -345,8 +345,12 @@ void Thread::id_loop() {
 
   Value bestValue, alpha, beta, delta;
 
-  Move easyMove = EasyMove.get(pos.key());
-  EasyMove.clear();
+  Move easyMove = MOVE_NONE;
+  if (this == Threads.main())
+  {
+      easyMove = EasyMove.get(pos.key());
+      EasyMove.clear();
+  }
 
   Stack *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
   std::memset(stack, 0, 5 * sizeof(Stack));
@@ -1084,6 +1088,7 @@ moves_loop: // When in check search starts from here
           {
               // If there is an easy move for this position, clear it if unstable
               if (    PvNode
+                  //&& thisThread == Threads.main()
                   &&  EasyMove.get(pos.key())
                   && (move != EasyMove.get(pos.key()) || moveCount > 1))
                   EasyMove.clear();
