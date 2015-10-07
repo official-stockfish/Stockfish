@@ -401,11 +401,11 @@ void Thread::search() {
           ++depth;
           for (Thread* th : Threads)
               if (th != this && th->depth <= depth)
-                  th->depth = depth + ONE_PLY + Depth(3 * log(1 + th->idx));
+                  th->depth = depth + Depth(3 * log(1 + th->idx));
       }
       else
           // This can cause a thread to search with the same depth for many iterations
-          depth = Threads.main()->depth + ONE_PLY + Depth(3 * log(1 + this->idx));
+          depth = Threads.main()->depth + Depth(3 * log(1 + this->idx));
 
       if (depth >= DEPTH_MAX || Signals.stop || (Limits.depth && depth > Limits.depth))
           break;
