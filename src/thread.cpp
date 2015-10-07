@@ -106,6 +106,27 @@ void TimerThread::idle_loop() {
 }
 
 
+// Thread::idle_loop() is where the thread is parked when it has no work to do
+
+void Thread::idle_loop() {
+
+  while (!exit)
+  {
+      // If this thread has been assigned work, launch a search
+      if (searching)
+          this->search();
+
+      // If search is finished then sleep
+      if (!Threads.main()->thinking)
+      {
+          std::unique_lock<Mutex> lk(mutex);
+          while (!exit && !Threads.main()->thinking)
+              sleepCondition.wait(lk);
+      }
+  }
+}
+
+
 // MainThread::idle_loop() is where the main thread is parked waiting to be started
 // when there is a new search. The main thread will launch all the slave threads.
 
