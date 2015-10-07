@@ -1,0 +1,22 @@
+language: cpp
+compiler: g++
+sudo: required
+
+before_install:
+  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  - sudo apt-get update -qq
+
+install:
+  - sudo apt-get install -qq g++-4.8
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+
+branches:
+  only:
+   - master
+
+before_script:
+  - cd src
+
+script:
+  - make clean && make build ARCH=x86-64 COMP=gcc && ./stockfish bench 2>&1 >/dev/null | grep 'Nodes searched'
+  - make clean && make build ARCH=x86-32 COMP=gcc && ./stockfish bench 2>&1 >/dev/null | grep 'Nodes searched'

@@ -36,6 +36,9 @@ enum GenType {
 struct ExtMove {
   Move move;
   Value value;
+
+  operator Move() const { return move; }
+  void operator=(Move m) { move = m; }
 };
 
 inline bool operator<(const ExtMove& f, const ExtMove& s) {
@@ -50,18 +53,17 @@ ExtMove* generate(const Position& pos, ExtMove* moveList);
 template<GenType T>
 struct MoveList {
 
-  explicit MoveList(const Position& pos) : cur(moveList), last(generate<T>(pos, moveList)) { last->move = MOVE_NONE; }
-  void operator++() { ++cur; }
-  Move operator*() const { return cur->move; }
+  explicit MoveList(const Position& pos) : last(generate<T>(pos, moveList)) {}
+  const ExtMove* begin() const { return moveList; }
+  const ExtMove* end() const { return last; }
   size_t size() const { return last - moveList; }
-  bool contains(Move m) const {
-    for (const ExtMove* it(moveList); it != last; ++it) if (it->move == m) return true;
+  bool contains(Move move) const {
+    for (const auto& m : *this) if (m == move) return true;
     return false;
   }
 
 private:
-  ExtMove moveList[MAX_MOVES];
-  ExtMove *cur, *last;
+  ExtMove moveList[MAX_MOVES], *last;
 };
 
 #endif // #ifndef MOVEGEN_H_INCLUDED

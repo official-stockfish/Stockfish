@@ -33,41 +33,37 @@ namespace {
 /// DD-MM-YY and show in engine_info.
 const string Version = "";
 
-/// Debug counters
-int64_t hits[2], means[2];
-
 /// Our fancy logging facility. The trick here is to replace cin.rdbuf() and
 /// cout.rdbuf() with two Tie objects that tie cin and cout to a file stream. We
 /// can toggle the logging of std::cout and std:cin at runtime whilst preserving
-/// usual i/o functionality, all without changing a single line of code!
+/// usual I/O functionality, all without changing a single line of code!
 /// Idea from http://groups.google.com/group/comp.lang.c++/msg/1d941c0f26ea0d81
 
 struct Tie: public streambuf { // MSVC requires splitted streambuf for cin and cout
 
-  Tie(streambuf* b, ofstream* f) : buf(b), file(f) {}
+  Tie(streambuf* b, streambuf* l) : buf(b), logBuf(l) {}
 
-  int sync() { return file->rdbuf()->pubsync(), buf->pubsync(); }
+  int sync() { return logBuf->pubsync(), buf->pubsync(); }
   int overflow(int c) { return log(buf->sputc((char)c), "<< "); }
   int underflow() { return buf->sgetc(); }
   int uflow() { return log(buf->sbumpc(), ">> "); }
 
-  streambuf* buf;
-  ofstream* file;
+  streambuf *buf, *logBuf;
 
   int log(int c, const char* prefix) {
 
-    static int last = '\n';
+    static int last = '\n'; // Single log file
 
     if (last == '\n')
-        file->rdbuf()->sputn(prefix, 3);
+        logBuf->sputn(prefix, 3);
 
-    return last = file->rdbuf()->sputc((char)c);
+    return last = logBuf->sputc((char)c);
   }
 };
 
 class Logger {
 
-  Logger() : in(cin.rdbuf(), &file), out(cout.rdbuf(), &file) {}
+  Logger() : in(cin.rdbuf(), file.rdbuf()), out(cout.rdbuf(), file.rdbuf()) {}
  ~Logger() { start(false); }
 
   ofstream file;
@@ -80,7 +76,7 @@ public:
 
     if (b && !l.file.is_open())
     {
-        l.file.open("io_log.txt", ifstream::out | ifstream::app);
+        l.file.open("io_log.txt", ifstream::out);
         cin.rdbuf(&l.in);
         cout.rdbuf(&l.out);
     }
@@ -124,9 +120,10 @@ const string engine_info(bool to_uci) {
 
 
 /// Debug functions used mainly to collect run-time statistics
+static int64_t hits[2], means[2];
 
 void dbg_hit_on(bool b) { ++hits[0]; if (b) ++hits[1]; }
-void dbg_hit_on_c(bool c, bool b) { if (c) dbg_hit_on(b); }
+void dbg_hit_on(bool c, bool b) { if (c) dbg_hit_on(b); }
 void dbg_mean_of(int v) { ++means[0]; means[1] += v; }
 
 void dbg_print() {
@@ -162,35 +159,16 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 void start_logger(bool b) { Logger::start(b); }
 
 
-/// timed_wait() waits for msec milliseconds. It is mainly a helper to wrap
-/// the conversion from milliseconds to struct timespec, as used by pthreads.
-
-void timed_wait(WaitCondition& sleepCond, Lock& sleepLock, int msec) {
-
-#ifdef _WIN32
-  int tm = msec;
-#else
-  timespec ts, *tm = &ts;
-  uint64_t ms = Time::now() + msec;
-
-  ts.tv_sec = ms / 1000;
-  ts.tv_nsec = (ms % 1000) * 1000000LL;
-#endif
-
-  cond_timedwait(sleepCond, sleepLock, tm);
-}
-
-
 /// prefetch() preloads the given address in L1/L2 cache. This is a non-blocking
 /// function that doesn't stall the CPU waiting for data to be loaded from memory,
 /// which can be quite slow.
 #ifdef NO_PREFETCH
 
-void prefetch(char*) {}
+void prefetch(void*) {}
 
 #else
 
-void prefetch(char* addr) {
+void prefetch(void* addr) {
 
 #  if defined(__INTEL_COMPILER)
    // This hack prevents prefetches from being optimized away by
@@ -199,7 +177,7 @@ void prefetch(char* addr) {
 #  endif
 
 #  if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-  _mm_prefetch(addr, _MM_HINT_T0);
+  _mm_prefetch((char*)addr, _MM_HINT_T0);
 #  else
   __builtin_prefetch(addr);
 #  endif
