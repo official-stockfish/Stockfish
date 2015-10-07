@@ -722,7 +722,7 @@ namespace {
 
     // Since SpaceMask[Us] is fully on our half of the board...
 #ifdef HORDE
-    assert(is_horde() || unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
+    assert(pos.is_horde() || unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
 #else
     assert(unsigned(safe >> (Us == WHITE ? 32 : 0)) == 0);
 #endif

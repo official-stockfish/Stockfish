@@ -458,6 +458,22 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
 
 template<>
 ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
+#ifdef ATOMIC
+  if (pos.is_atomic() && (pos.is_atomic_win() || pos.is_atomic_loss()))
+      return moveList;
+#endif
+#ifdef HORDE
+  if (pos.is_horde() && pos.is_horde_loss())
+      return moveList;
+#endif
+#ifdef KOTH
+  if (pos.is_koth() && (pos.is_koth_win() || pos.is_koth_loss()))
+      return moveList;
+#endif
+#ifdef THREECHECK
+  if (pos.is_three_check() && (pos.is_three_check_win() || pos.is_three_check_loss()))
+      return moveList;
+#endif
 
   Bitboard pinned = pos.pinned_pieces(pos.side_to_move());
   Square ksq = pos.square<KING>(pos.side_to_move());

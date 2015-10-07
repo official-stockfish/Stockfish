@@ -335,39 +335,11 @@ void Search::think() {
       RootPos.this_thread()->wait_for(Signals.stop);
   }
 
-#ifdef KOTH
-  // Best move can only be MOVE_NONE when searching on a lost KOTH position
-  if (RootPos.is_koth() && RootPos.is_koth_loss())
-      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
-  else
-#endif
-#ifdef THREECHECK
-  if (RootPos.is_three_check() && RootPos.is_three_check_loss())
-      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
-  else
-#endif
-#ifdef HORDE
-  if (RootPos.is_horde() && RootPos.is_horde_loss())
-      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
-  else
-#endif
-#ifdef ATOMIC
-  if (RootPos.is_atomic() && RootPos.is_atomic_loss())
-      sync_cout << "bestmove " << "(none) ponder (none)" << sync_endl;
-  else
-#endif
-  // Best move could be MOVE_NONE when searching on a stalemate position
+  // Best move could be MOVE_NONE when searching on a terminal position
   sync_cout << "bestmove " << UCI::move(RootMoves[0].pv[0], RootPos.is_chess960());
 
-#ifdef ATOMIC
-  if (!RootPos.is_atomic() || RootMoves[0].pv.size() > 1 || RootMoves[0].pv[0] != MOVE_NONE)
-  {
-#endif
   if (RootMoves[0].pv.size() > 1 || RootMoves[0].extract_ponder_from_tt(RootPos))
       std::cout << " ponder " << UCI::move(RootMoves[0].pv[1], RootPos.is_chess960());
-#ifdef ATOMIC
-  }
-#endif
 
   std::cout << sync_endl;
 }
@@ -874,11 +846,7 @@ namespace {
     }
 
     // Step 10. Internal iterative deepening (skipped when in check)
-#ifdef THREECHECK
-    if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY) - checks
-#else
     if (    depth >= (PvNode ? 5 * ONE_PLY : 8 * ONE_PLY)
-#endif
         && !ttMove
         && (PvNode || ss->staticEval + 256 >= beta))
     {
@@ -1747,6 +1715,8 @@ bool RootMove::extract_ponder_from_tt(Position& pos)
     bool ttHit;
 
     assert(pv.size() == 1);
+    if (pv[0] == MOVE_NONE) // Not pondering
+        return false;
 
     pos.do_move(pv[0], st, pos.gives_check(pv[0], CheckInfo(pos)));
     TTEntry* tte = TT.probe(pos.key(), ttHit);

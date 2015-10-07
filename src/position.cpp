@@ -481,13 +481,9 @@ void Position::set_state(StateInfo* si) const {
       for (PieceType pt = KNIGHT; pt <= QUEEN; ++pt)
           si->nonPawnMaterial[c] += pieceCount[c][pt] * PieceValue[MG][pt];
 
-#ifdef THREECHECK
-  if (is_three_check())
-  {
-      for (Color c = WHITE; c <= BLACK; ++c)
-          st->key ^= Zobrist::checks[c][st->checksGiven[c]];
-  }
-#endif
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (Checks n = CHECKS_1; n <= si->checksGiven[c]; ++n)
+          si->key ^= Zobrist::checks[c][n];
 }
 
 
@@ -537,6 +533,11 @@ const string Position::fen() const {
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
      << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
+
+#ifdef THREECHECK
+  if (is_three_check())
+      ss << " +" << st->checksGiven[WHITE] << "+" << st->checksGiven[BLACK];
+#endif
 
   return ss.str();
 }
@@ -624,15 +625,7 @@ bool Position::legal(Move m, Bitboard pinned) const {
   assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 #endif
 
-#ifdef KOTH
-  // If the game is already won or lost, further moves are illegal
-  if (is_koth() && (is_koth_win() || is_koth_loss()))
-      return false;
-#endif
 #ifdef HORDE
-  // If the game is already won or lost, further moves are illegal
-  if (is_horde() && is_horde_loss())
-      return false;
   // All pseudo-legal moves by the horde are legal
   if (is_horde() && square<KING>(us) == SQ_NONE)
       return true;
@@ -642,9 +635,6 @@ bool Position::legal(Move m, Bitboard pinned) const {
   {
       Square ksq = square<KING>(us);
       Square to = to_sq(m);
-      // If the game is already won or lost, further moves are illegal
-      if (is_atomic_win() || is_atomic_loss())
-          return false;
       if (capture(m) && (attacks_from<KING>(to) & ksq))
           return false;
       if (type_of(piece_on(from)) != KING)
@@ -1528,14 +1518,6 @@ void Position::flip() {
   std::getline(ss, token); // Half and full moves
   f += token;
 
-#ifdef THREECHECK
-  if (is_three_check()) {
-    f += " +";
-    f += st->checksGiven[BLACK];
-    f += "+";
-    f += st->checksGiven[WHITE];
-  }
-#endif
   set(f, variant, this_thread());
 
   assert(pos_is_ok());

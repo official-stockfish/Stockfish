@@ -72,7 +72,7 @@ struct StateInfo {
   int    rule50;
   int    pliesFromNull;
 #ifdef THREECHECK
-  Checks checksGiven[CHECKS_NB];
+  Checks checksGiven[COLOR_NB];
 #endif
   Score  psq;
   Square epSquare;
@@ -333,7 +333,7 @@ inline bool Position::is_three_check_loss() const {
 }
 
 inline int Position::checks_count() const {
-  return st->checksGiven[sideToMove] + st->checksGiven[~sideToMove];
+  return st->checksGiven[WHITE] + st->checksGiven[BLACK];
 }
 
 inline Checks Position::checks_given() const {
