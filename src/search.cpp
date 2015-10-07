@@ -137,7 +137,6 @@ namespace {
   template <NodeType NT, bool InCheck>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth);
 
-  void id_loop();
   Value value_to_tt(Value v, int ply);
   Value value_from_tt(Value v, int ply);
   void update_pv(Move* pv, Move move, Move* childPv);
@@ -303,9 +302,35 @@ void Search::think() {
       Threads.timer->run = true;
       Threads.timer->notify_one(); // Start the recurring timer
 
-      id_loop(); // Let's start searching !
+      BestMoveChanges = 0;
 
+      TT.new_search();
+
+      // Start the threads
+      for (Thread* th : Threads)
+          th->searching = true;
+
+      Threads.main()->search();
+
+      // Stop the threads and timer
+      Signals.stop = true;
       Threads.timer->run = false;
+
+      // Wait until all threads have finished
+      while (Threads.main()->slavesMask != 0) {}
+
+      // Clear any candidate easy move that wasn't stable for the last search
+      // iterations; the second condition prevents consecutive fast moves.
+      if (EasyMove.stableCnt < 6 || Time.elapsed() < Time.available())
+          EasyMove.clear();
+
+      size_t multiPV = Options["MultiPV"];
+      Skill skill(Options["Skill Level"]);
+
+      // If skill level is enabled, swap best PV line with the sub-optimal one
+      if (skill.enabled())
+          std::swap(Threads.main()->rootMoves[0], *std::find(Threads.main()->rootMoves.begin(),
+                    Threads.main()->rootMoves.end(), skill.best_move(multiPV)));
   }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
@@ -333,11 +358,11 @@ void Search::think() {
 }
 
 
-// Thread::id_loop() is the main iterative deepening loop. It calls search()
+// Thread::search() is the main iterative deepening loop. It calls search()
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, user stops the search, or the maximum search depth is reached.
 
-void Thread::id_loop() {
+void Thread::search() {
 
   Threads.main()->mutex.lock();
   Threads.main()->slavesMask.set(idx);
@@ -415,7 +440,7 @@ void Thread::id_loop() {
           // high/low anymore.
           while (true)
           {
-              bestValue = search<Root>(pos, ss, alpha, beta, depth, false);
+              bestValue = ::search<Root>(pos, ss, alpha, beta, depth, false);
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -542,43 +567,7 @@ void Thread::id_loop() {
 }
 
 
-
 namespace {
-
-  // id_loop() calls Thread::id_loop()
-
-  void id_loop() {
-
-    BestMoveChanges = 0;
-
-    TT.new_search();
-
-    // Start search for the other threads
-    for (Thread* th : Threads)
-        th->searching = true;
-
-    Threads.main()->id_loop();
-
-    // Force a quicker exit of fixed depth searches
-    Signals.stop = true;
-
-    // Wait until all threads have finished.
-    while (Threads.main()->slavesMask != 0) {}
-
-    // Clear any candidate easy move that wasn't stable for the last search
-    // iterations; the second condition prevents consecutive fast moves.
-    if (EasyMove.stableCnt < 6 || Time.elapsed() < Time.available())
-        EasyMove.clear();
-
-    size_t multiPV = Options["MultiPV"];
-    Skill skill(Options["Skill Level"]);
-
-    // If skill level is enabled, swap best PV line with the sub-optimal one
-    if (skill.enabled())
-        std::swap(Threads.main()->rootMoves[0], *std::find(Threads.main()->rootMoves.begin(),
-                  Threads.main()->rootMoves.end(), skill.best_move(multiPV)));
-  }
-
 
   // search<>() is the main search function for both PV and non-PV nodes and for
   // normal and SplitPoint nodes. When called just after a split point the search
@@ -1578,7 +1567,7 @@ void Thread::idle_loop() {
   {
       // If this thread has been assigned work, launch a search
       if (searching)
-          this->id_loop();
+          this->search();
 
       // If search is finished then sleep
       if (!Threads.main()->thinking)
