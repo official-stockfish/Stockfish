@@ -23,6 +23,12 @@ matrix:
         - COMP=clang
 
     - os: osx
+      compiler: gcc
+      env:
+        - COMPILER=g++-4.8
+        - COMP=gcc
+
+    - os: osx
       compiler: clang
       env:
         - COMPILER=clang++ V='Apple LLVM 6.0' # Apple LLVM version 6.0 (clang-600.0.54) (based on LLVM 3.5svn)
