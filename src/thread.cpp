@@ -75,6 +75,15 @@ void ThreadBase::wait_for(volatile const bool& condition) {
 }
 
 
+// ThreadBase::wait_while() set the thread to sleep until 'condition' turns false
+
+void ThreadBase::wait_while(volatile const bool& condition) {
+
+  std::unique_lock<Mutex> lk(mutex);
+  sleepCondition.wait(lk, [&]{ return !condition; });
+}
+
+
 // Thread c'tor makes some init but does not launch any execution thread that
 // will be started only when c'tor returns.
 
@@ -112,10 +121,6 @@ void Thread::idle_loop() {
 
   while (!exit)
   {
-      // If this thread has been assigned work, launch a search
-      if (searching)
-          this->search();
-
       // If search is finished then sleep
       if (!Threads.main()->thinking)
       {
@@ -123,6 +128,9 @@ void Thread::idle_loop() {
           while (!exit && !Threads.main()->thinking)
               sleepCondition.wait(lk);
       }
+
+      if (!exit && searching)
+          this->search();
   }
 }
 
@@ -147,9 +155,7 @@ void MainThread::idle_loop() {
       lk.unlock();
 
       if (!exit)
-      {
           Search::think();
-      }
   }
 }
 

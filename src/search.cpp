@@ -291,12 +291,13 @@ void Search::think() {
       {
           th->maxPly = 0;
           th->depth = DEPTH_ZERO;
+          th->searching = true;
           if (th != Threads.main())
           {
               th->pos = Position(rootPos, th);
               th->rootMoves = rootMoves;
+              th->notify_one(); // Wake up the thread and start searching
           }
-          th->notify_one(); // Wake up all the threads
       }
 
       Threads.timer->run = true;
@@ -306,10 +307,6 @@ void Search::think() {
 
       TT.new_search();
 
-      // Start the threads
-      for (Thread* th : Threads)
-          th->searching = true;
-
       Threads.main()->search();
 
       // Stop the threads and timer
@@ -317,7 +314,9 @@ void Search::think() {
       Threads.timer->run = false;
 
       // Wait until all threads have finished
-      while (Threads.main()->slavesMask != 0) {}
+      for (Thread* th : Threads)
+          if (th != Threads.main())
+              th->wait_while(th->searching);
 
       // Clear any candidate easy move that wasn't stable for the last search
       // iterations; the second condition prevents consecutive fast moves.
@@ -346,7 +345,7 @@ void Search::think() {
   if (!Signals.stop && (Limits.ponder || Limits.infinite))
   {
       Signals.stopOnPonderhit = true;
-      rootPos.this_thread()->wait_for(Signals.stop);
+      Threads.main()->wait_for(Signals.stop);
   }
 
   sync_cout << "bestmove " << UCI::move(rootMoves[0].pv[0], rootPos.is_chess960());
@@ -363,10 +362,6 @@ void Search::think() {
 // consumed, user stops the search, or the maximum search depth is reached.
 
 void Thread::search() {
-
-  Threads.main()->mutex.lock();
-  Threads.main()->slavesMask.set(idx);
-  Threads.main()->mutex.unlock();
 
   Value bestValue, alpha, beta, delta;
 
@@ -560,10 +555,7 @@ void Thread::search() {
   }
 
   searching = false;
-
-  Threads.main()->mutex.lock();
-  Threads.main()->slavesMask.reset(idx);
-  Threads.main()->mutex.unlock();
+  notify_one(); // Wake up main if is sleeping waiting for us
 }
 
 
