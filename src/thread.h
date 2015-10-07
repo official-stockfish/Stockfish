@@ -64,7 +64,7 @@ struct Thread : public ThreadBase {
 
   Thread();
   virtual void idle_loop();
-  virtual void id_loop();
+  void search();
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
