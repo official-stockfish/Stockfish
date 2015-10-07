@@ -48,6 +48,7 @@ struct ThreadBase : public std::thread {
   virtual void idle_loop() = 0;
   void notify_one();
   void wait_for(volatile const bool& b);
+  void wait_while(volatile const bool& b);
 
   Mutex mutex;
   ConditionVariable sleepCondition;
@@ -89,7 +90,6 @@ struct MainThread : public Thread {
   virtual void idle_loop();
   void join();
   volatile bool thinking = true; // Avoid a race with start_thinking()
-  std::bitset<MAX_THREADS> slavesMask;
 };
 
 struct TimerThread : public ThreadBase {
