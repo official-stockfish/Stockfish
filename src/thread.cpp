@@ -109,7 +109,7 @@ void TimerThread::idle_loop() {
 
       lk.unlock();
 
-      if (run)
+      if (!exit && run)
           check_time();
   }
 }
@@ -121,13 +121,12 @@ void Thread::idle_loop() {
 
   while (!exit)
   {
-      // If search is finished then sleep
-      if (!Threads.main()->thinking)
-      {
-          std::unique_lock<Mutex> lk(mutex);
-          while (!exit && !Threads.main()->thinking)
-              sleepCondition.wait(lk);
-      }
+      std::unique_lock<Mutex> lk(mutex);
+
+      while (!Threads.main()->thinking && !exit)
+          sleepCondition.wait(lk);
+
+      lk.unlock();
 
       if (!exit && searching)
           search();
@@ -160,7 +159,7 @@ void MainThread::idle_loop() {
 }
 
 
-// MainThread::join() waits for main thread to finish the search
+// MainThread::join() waits for main thread to finish thinking
 
 void MainThread::join() {
 
