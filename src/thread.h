@@ -47,7 +47,7 @@ struct ThreadBase : public std::thread {
   virtual ~ThreadBase() = default;
   virtual void idle_loop() = 0;
   void notify_one();
-  void wait_for(volatile const bool& b);
+  void wait(volatile const bool& b);
   void wait_while(volatile const bool& b);
 
   Mutex mutex;
@@ -65,7 +65,7 @@ struct Thread : public ThreadBase {
 
   Thread();
   virtual void idle_loop();
-  void search();
+  void search(bool isMainThread = false);
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
@@ -89,6 +89,7 @@ struct Thread : public ThreadBase {
 struct MainThread : public Thread {
   virtual void idle_loop();
   void join();
+  void think();
   volatile bool thinking = true; // Avoid a race with start_thinking()
 };
 
