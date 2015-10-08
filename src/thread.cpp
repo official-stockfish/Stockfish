@@ -190,8 +190,10 @@ void ThreadPool::exit() {
   timer = nullptr;
 
   for (Thread* th : *this)
-      delete_thread(th);
+      if (th != Threads.main())
+          delete_thread(th);
 
+  delete_thread(Threads.main()); // Must be the last one
   clear(); // Get rid of stale pointers
 }
 
