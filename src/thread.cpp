@@ -66,9 +66,9 @@ void ThreadBase::notify_one() {
 }
 
 
-// ThreadBase::wait_for() set the thread to sleep until 'condition' turns true
+// ThreadBase::wait() set the thread to sleep until 'condition' turns true
 
-void ThreadBase::wait_for(volatile const bool& condition) {
+void ThreadBase::wait(volatile const bool& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.wait(lk, [&]{ return condition; });
@@ -130,7 +130,7 @@ void Thread::idle_loop() {
       }
 
       if (!exit && searching)
-          this->search();
+          search();
   }
 }
 
@@ -155,7 +155,7 @@ void MainThread::idle_loop() {
       lk.unlock();
 
       if (!exit)
-          Search::think();
+          think();
   }
 }
 
