@@ -123,7 +123,7 @@ void Thread::idle_loop() {
   {
       std::unique_lock<Mutex> lk(mutex);
 
-      while (!Threads.main()->thinking && !exit)
+      while (!searching && !exit)
           sleepCondition.wait(lk);
 
       lk.unlock();
@@ -190,10 +190,8 @@ void ThreadPool::exit() {
   timer = nullptr;
 
   for (Thread* th : *this)
-      if (th != Threads.main())
-          delete_thread(th);
+      delete_thread(th);
 
-  delete_thread(Threads.main()); // Must be the last one
   clear(); // Get rid of stale pointers
 }
 
