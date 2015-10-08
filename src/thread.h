@@ -79,6 +79,7 @@ struct Thread : public ThreadBase {
   Search::Stack stack[MAX_PLY+4];
   HistoryStats History;
   MovesStats Countermoves;
+  CounterMovesHistoryStats CounterMovesHistory;
   Depth depth;
 };
 

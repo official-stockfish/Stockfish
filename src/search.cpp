@@ -129,7 +129,6 @@ namespace {
   EasyMoveManager EasyMove;
   double BestMoveChanges;
   Value DrawValue[COLOR_NB];
-  CounterMovesHistoryStats CounterMovesHistory;
 
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
@@ -179,10 +178,10 @@ void Search::init() {
 void Search::reset () {
 
   TT.clear();
-  CounterMovesHistory.clear();
 
   for (Thread* th : Threads)
   {
+      th->CounterMovesHistory.clear();
       th->History.clear();
       th->Countermoves.clear();
   }
@@ -784,7 +783,7 @@ namespace {
         assert((ss-1)->currentMove != MOVE_NONE);
         assert((ss-1)->currentMove != MOVE_NULL);
 
-        MovePicker mp(pos, ttMove, thisThread->History, CounterMovesHistory, PieceValue[MG][pos.captured_piece_type()]);
+        MovePicker mp(pos, ttMove, thisThread->History, thisThread->CounterMovesHistory, PieceValue[MG][pos.captured_piece_type()]);
         CheckInfo ci(pos);
 
         while ((move = mp.next_move()) != MOVE_NONE)
@@ -818,7 +817,7 @@ moves_loop: // When in check search starts from here
     Square prevMoveSq = to_sq((ss-1)->currentMove);
     Move countermove = thisThread->Countermoves[pos.piece_on(prevMoveSq)][prevMoveSq];
 
-    MovePicker mp(pos, ttMove, depth, thisThread->History, CounterMovesHistory, countermove, ss);
+    MovePicker mp(pos, ttMove, depth, thisThread->History, thisThread->CounterMovesHistory, countermove, ss);
     CheckInfo ci(pos);
     value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
     improving =   ss->staticEval >= (ss-2)->staticEval
@@ -962,12 +961,12 @@ moves_loop: // When in check search starts from here
 
           if (   (!PvNode && cutNode)
               || (   thisThread->History[pos.piece_on(to_sq(move))][to_sq(move)] < VALUE_ZERO
-                  && CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
+                  && thisThread->CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
                                         [pos.piece_on(to_sq(move))][to_sq(move)] <= VALUE_ZERO))
               ss->reduction += ONE_PLY;
 
           if (   thisThread->History[pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO
-              && CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
+              && thisThread->CounterMovesHistory[pos.piece_on(prevMoveSq)][prevMoveSq]
                                     [pos.piece_on(to_sq(move))][to_sq(move)] > VALUE_ZERO)
               ss->reduction = std::max(DEPTH_ZERO, ss->reduction - ONE_PLY);
 
@@ -1219,7 +1218,7 @@ moves_loop: // When in check search starts from here
     // to search the moves. Because the depth is <= 0 here, only captures,
     // queen promotions and checks (only if depth >= DEPTH_QS_CHECKS) will
     // be generated.
-    MovePicker mp(pos, ttMove, depth, pos.this_thread()->History, CounterMovesHistory, to_sq((ss-1)->currentMove));
+    MovePicker mp(pos, ttMove, depth, pos.this_thread()->History, pos.this_thread()->CounterMovesHistory, to_sq((ss-1)->currentMove));
     CheckInfo ci(pos);
 
     // Loop through the moves until no moves remain or a beta cutoff occurs
@@ -1375,7 +1374,7 @@ moves_loop: // When in check search starts from here
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
 
     Square prevSq = to_sq((ss-1)->currentMove);
-    HistoryStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
+    HistoryStats& cmh = th->CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
 
     th->History.update(pos.moved_piece(move), to_sq(move), bonus);
 
@@ -1398,7 +1397,7 @@ moves_loop: // When in check search starts from here
     if (is_ok((ss-2)->currentMove) && (ss-1)->moveCount == 1 && !pos.captured_piece_type())
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
-        HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
+        HistoryStats& ttMoveCmh = th->CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         ttMoveCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * depth / ONE_PLY - 1);
     }
   }
