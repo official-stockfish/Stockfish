@@ -311,19 +311,6 @@ void MainThread::think() {
       for (Thread* th : Threads)
           if (th != this)
               th->wait_while(th->searching);
-
-      // Clear any candidate easy move that wasn't stable for the last search
-      // iterations; the second condition prevents consecutive fast moves.
-      if (EasyMove.stableCnt < 6 || Time.elapsed() < Time.available())
-          EasyMove.clear();
-
-      size_t multiPV = Options["MultiPV"];
-      Skill skill(Options["Skill Level"]);
-
-      // If skill level is enabled, swap best PV line with the sub-optimal one
-      if (skill.enabled())
-          std::swap(rootMoves[0], *std::find(rootMoves.begin(),
-                    rootMoves.end(), skill.best_move(multiPV)));
   }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
@@ -551,7 +538,20 @@ void Thread::search(bool isMainThread) {
   }
 
   searching = false;
-  notify_one(); // Wake up main if is sleeping waiting for us
+  notify_one(); // Wake up main thread if is sleeping waiting for us
+
+  if (!isMainThread)
+      return;
+
+  // Clear any candidate easy move that wasn't stable for the last search
+  // iterations; the second condition prevents consecutive fast moves.
+  if (EasyMove.stableCnt < 6 || Time.elapsed() < Time.available())
+      EasyMove.clear();
+
+  // If skill level is enabled, swap best PV line with the sub-optimal one
+  if (skill.enabled())
+      std::swap(rootMoves[0], *std::find(rootMoves.begin(),
+                rootMoves.end(), skill.best_move(multiPV)));
 }
 
 
@@ -910,9 +910,7 @@ moves_loop: // When in check search starts from here
           // Move count based pruning
           if (   depth < 16 * ONE_PLY
               && moveCount >= FutilityMoveCounts[improving][depth])
-          {
               continue;
-          }
 
           predictedDepth = newDepth - reduction<PvNode>(improving, depth, moveCount);
 
@@ -930,9 +928,7 @@ moves_loop: // When in check search starts from here
 
           // Prune moves with negative SEE at low depths
           if (predictedDepth < 4 * ONE_PLY && pos.see_sign(move) < VALUE_ZERO)
-          {
               continue;
-          }
       }
 
       // Speculative prefetch as early as possible
@@ -990,12 +986,10 @@ moves_loop: // When in check search starts from here
 
       // Step 16. Full depth search, when LMR is skipped or fails high
       if (doFullDepthSearch)
-      {
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<NonPV,  true>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
                                        : -qsearch<NonPV, false>(pos, ss+1, -(alpha+1), -alpha, DEPTH_ZERO)
                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode);
-      }
 
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
@@ -1082,11 +1076,11 @@ moves_loop: // When in check search starts from here
           quietsSearched[quietCount++] = move;
     }
 
-    // Following condition would detect a stop or a cutoff set only after move
-    // loop has been completed. But in this case bestValue is valid because we
-    // have fully searched our subtree, and we can anyhow save the result in TT.
+    // Following condition would detect a stop only after move loop has been
+    // completed. But in this case bestValue is valid because we have fully
+    // searched our subtree, and we can anyhow save the result in TT.
     /*
-       if (Signals.stop || thisThread->cutoff_occurred())
+       if (Signals.stop)
         return VALUE_DRAW;
     */
 
@@ -1370,25 +1364,24 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Thread *th = pos.this_thread(); // Shorthand
-
     Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
 
     Square prevSq = to_sq((ss-1)->currentMove);
     HistoryStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
+    Thread* thisThread = pos.this_thread();
 
-    th->History.update(pos.moved_piece(move), to_sq(move), bonus);
+    thisThread->History.update(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
-        th->Countermoves.update(pos.piece_on(prevSq), prevSq, move);
+        thisThread->Countermoves.update(pos.piece_on(prevSq), prevSq, move);
         cmh.update(pos.moved_piece(move), to_sq(move), bonus);
     }
 
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        th->History.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+        thisThread->History.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
 
         if (is_ok((ss-1)->currentMove))
             cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
@@ -1581,7 +1574,7 @@ void check_time() {
 
   else if (Limits.nodes)
   {
-      if ((int64_t)Threads.nodes_searched() >= Limits.nodes)
+      if (Threads.nodes_searched() >= Limits.nodes)
           Signals.stop = true;
   }
 }

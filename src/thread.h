@@ -115,7 +115,7 @@ struct ThreadPool : public std::vector<Thread*> {
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void read_uci_options();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
-  uint64_t nodes_searched();
+  int64_t nodes_searched();
   TimerThread* timer;
 };
 
