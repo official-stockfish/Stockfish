@@ -219,11 +219,11 @@ void ThreadPool::read_uci_options() {
 }
 
 
-// ThreadPool::nodes_searched() returns the number of nodes searched.
+// ThreadPool::nodes_searched() returns the number of nodes searched
 
-uint64_t ThreadPool::nodes_searched() {
+int64_t ThreadPool::nodes_searched() {
 
-    uint64_t nodes = 0;
+    int64_t nodes = 0;
     for (Thread *th : *this)
         nodes += th->pos.nodes_searched();
     return nodes;
