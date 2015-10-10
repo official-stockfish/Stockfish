@@ -156,6 +156,7 @@ void benchmark(const Position& current, istream& is) {
       else
       {
           Search::StateStackPtr st;
+          limits.startTime = now();
           Threads.start_thinking(pos, limits, st);
           Threads.main()->join();
           nodes += Threads.nodes_searched();
