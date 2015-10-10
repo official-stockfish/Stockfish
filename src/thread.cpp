@@ -200,21 +200,22 @@ void Thread::split(Position& pos, Stack* ss, Value alpha, Value beta, Value* bes
   assert(!searching);
   assert(!activePosition);
 
-  searching = true;
-
   // We have returned from the idle loop, which means that all threads are
   // finished. Note that decreasing splitPointsSize must be done under lock
   // protection to avoid a race with Thread::can_join().
-  sp.spinlock.acquire();
+  spinlock.acquire();
 
+  searching = true;
   --splitPointsSize;
   activeSplitPoint = sp.parentSplitPoint;
   activePosition = &pos;
+
+  spinlock.release();
+
+  // Split point data cannot be changed now, so no need to lock protect
   pos.set_nodes_searched(pos.nodes_searched() + sp.nodes);
   *bestMove = sp.bestMove;
   *bestValue = sp.bestValue;
-
-  sp.spinlock.release();
 }
 
 
