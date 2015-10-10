@@ -306,11 +306,6 @@ void MainThread::think() {
       // Stop the threads and the timer
       Signals.stop = true;
       Threads.timer->run = false;
-
-      // Wait until all threads have finished
-      for (Thread* th : Threads)
-          if (th != this)
-              th->wait_while(th->searching);
   }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
@@ -335,6 +330,12 @@ void MainThread::think() {
       std::cout << " ponder " << UCI::move(rootMoves[0].pv[1], pos.is_chess960());
 
   std::cout << sync_endl;
+
+  // Wait until all threads have finished before returning. Best move is already
+  // sent, so this waiting time is not accounted.
+  for (Thread* th : Threads)
+      if (th != this)
+          th->wait_while(th->searching);
 }
 
 
