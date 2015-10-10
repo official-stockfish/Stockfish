@@ -226,7 +226,7 @@ template uint64_t Search::perft<true>(Position& pos, Depth depth);
 void MainThread::think() {
 
   Color us = pos.side_to_move();
-  Time.init(Limits, us, pos.game_ply(), now());
+  Time.init(Limits, us, pos.game_ply());
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
