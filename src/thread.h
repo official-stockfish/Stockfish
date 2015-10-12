@@ -88,11 +88,11 @@ struct Thread : public ThreadBase {
 /// special threads: the main one and the recurring timer.
 
 struct MainThread : public Thread {
-  MainThread() { thinking = true; }
+  MainThread() { thinking = true; } // Avoid a race with start_thinking()
   virtual void idle_loop();
   void join();
   void think();
-  std::atomic<bool> thinking; // Avoid a race with start_thinking()
+  std::atomic<bool> thinking;
 };
 
 struct TimerThread : public ThreadBase {
