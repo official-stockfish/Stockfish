@@ -37,7 +37,7 @@
 
 namespace Search {
 
-  volatile SignalsType Signals;
+  SignalsType Signals;
   LimitsType Limits;
   StateStackPtr SetupStates;
 }
