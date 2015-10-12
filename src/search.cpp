@@ -1132,6 +1132,19 @@ moves_loop: // When in check and at SpNode search starts from here
     else if (bestMove && !pos.capture_or_promotion(bestMove))
         update_stats(pos, ss, bestMove, depth, quietsSearched, quietCount);
 
+    // Bonus for prior countermove that caused the fail low
+    else if (!bestMove)
+    {
+        if (is_ok((ss - 2)->currentMove) && is_ok((ss - 1)->currentMove) && !pos.captured_piece_type() && !inCheck && depth>=3*ONE_PLY)
+        {
+            Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
+            Square prevSq = to_sq((ss - 1)->currentMove);
+            Square prevPrevSq = to_sq((ss - 2)->currentMove);
+            HistoryStats& flMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
+            flMoveCmh.updateCMH(pos.piece_on(prevSq), prevSq, bonus);
+        }
+    }
+
     tte->save(posKey, value_to_tt(bestValue, ss->ply),
               bestValue >= beta ? BOUND_LOWER :
               PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
@@ -1405,21 +1418,21 @@ moves_loop: // When in check and at SpNode search starts from here
     Square prevSq = to_sq((ss-1)->currentMove);
     HistoryStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
 
-    History.update(pos.moved_piece(move), to_sq(move), bonus);
+    History.updateH(pos.moved_piece(move), to_sq(move), bonus);
 
     if (is_ok((ss-1)->currentMove))
     {
         Countermoves.update(pos.piece_on(prevSq), prevSq, move);
-        cmh.update(pos.moved_piece(move), to_sq(move), bonus);
+        cmh.updateCMH(pos.moved_piece(move), to_sq(move), bonus);
     }
 
     // Decrease all the other played quiet moves
     for (int i = 0; i < quietsCnt; ++i)
     {
-        History.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+        History.updateH(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
 
         if (is_ok((ss-1)->currentMove))
-            cmh.update(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
+            cmh.updateCMH(pos.moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
     }
 
     // Extra penalty for PV move in previous ply when it gets refuted
@@ -1427,7 +1440,7 @@ moves_loop: // When in check and at SpNode search starts from here
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         HistoryStats& ttMoveCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
-        ttMoveCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * depth / ONE_PLY - 1);
+        ttMoveCmh.updateCMH(pos.piece_on(prevSq), prevSq, -bonus - 2 * depth / ONE_PLY - 1);
     }
   }
 
