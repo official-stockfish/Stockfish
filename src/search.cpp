@@ -372,26 +372,11 @@ void Thread::search(bool isMainThread) {
   multiPV = std::min(multiPV, rootMoves.size());
 
   // Iterative deepening loop until requested to stop or target depth reached
-  while (true)
+  while (++depth < DEPTH_MAX && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
   {
-      // Set up our new depth
-
-      // The main thread modifies other threads rootDepth, if it is <= main
-      // thread depth. The new depth will take effect after the other thread
-      // returns to id_loop().
-      if (isMainThread)
-      {
-          ++depth;
-          for (Thread* th : Threads)
-              if (th != this && th->depth <= depth)
-                  th->depth = depth + Depth(int(3 * log(1 + th->idx)));
-      }
-      else
-          // This can cause a thread to search with the same depth for many iterations
+      // Set up our new depth for the helper threads
+      if (!isMainThread)
           depth = Threads.main()->depth + Depth(int(3 * log(1 + this->idx)));
-
-      if (depth >= DEPTH_MAX || Signals.stop || (Limits.depth && depth > Limits.depth))
-          break;
 
       // Age out PV variability metric
       if (isMainThread)
