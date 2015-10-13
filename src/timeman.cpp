@@ -64,6 +64,7 @@ namespace {
 
     double ratio1 = (TMaxRatio * moveImportance) / (TMaxRatio * moveImportance + otherMovesImportance);
     double ratio2 = (moveImportance + TStealRatio * otherMovesImportance) / (moveImportance + otherMovesImportance);
+    assert(std::min(ratio1, ratio2) <= 1);
 
     return int(myTime * std::min(ratio1, ratio2)); // Intel C++ asks an explicit cast
   }
@@ -120,8 +121,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
 
       hypMyTime = std::max(hypMyTime, 0);
 
-      int t1 = minThinkingTime + remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover);
-      int t2 = minThinkingTime + remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover);
+      int t1 = std::max(minThinkingTime, remaining<OptimumTime>(hypMyTime, hypMTG, ply, slowMover));
+      int t2 = std::max(minThinkingTime, remaining<MaxTime    >(hypMyTime, hypMTG, ply, slowMover));
 
       optimumTime = std::min(t1, optimumTime);
       maximumTime = std::min(t2, maximumTime);
