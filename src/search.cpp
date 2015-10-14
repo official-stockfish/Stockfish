@@ -464,7 +464,7 @@ void Thread::search(bool isMainThread) {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin(), rootMoves.begin() + PVIdx + 1);
 
-          if (this != Threads.main())
+          if (!isMainThread)
               break;
 
           if (Signals.stop)
