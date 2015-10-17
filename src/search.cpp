@@ -225,8 +225,8 @@ template uint64_t Search::perft<true>(Position& pos, Depth depth);
 
 void MainThread::think() {
 
-  Color us = pos.side_to_move();
-  Time.init(Limits, us, pos.game_ply());
+  Color us = rootPos.side_to_move();
+  Time.init(Limits, us, rootPos.game_ply());
 
   int contempt = Options["Contempt"] * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
@@ -249,17 +249,17 @@ void MainThread::think() {
   {
       rootMoves.push_back(RootMove(MOVE_NONE));
       sync_cout << "info depth 0 score "
-                << UCI::value(pos.checkers() ? -VALUE_MATE : VALUE_DRAW)
+                << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW)
                 << sync_endl;
   }
   else
   {
-      if (TB::Cardinality >=  pos.count<ALL_PIECES>(WHITE)
-                            + pos.count<ALL_PIECES>(BLACK))
+      if (TB::Cardinality >=  rootPos.count<ALL_PIECES>(WHITE)
+                            + rootPos.count<ALL_PIECES>(BLACK))
       {
           // If the current root position is in the tablebases then RootMoves
           // contains only moves that preserve the draw or win.
-          TB::RootInTB = Tablebases::root_probe(pos, rootMoves, TB::Score);
+          TB::RootInTB = Tablebases::root_probe(rootPos, rootMoves, TB::Score);
 
           if (TB::RootInTB)
               TB::Cardinality = 0; // Do not probe tablebases during the search
@@ -267,7 +267,7 @@ void MainThread::think() {
           else // If DTZ tables are missing, use WDL tables as a fallback
           {
               // Filter out moves that do not preserve a draw or win
-              TB::RootInTB = Tablebases::root_probe_wdl(pos, rootMoves, TB::Score);
+              TB::RootInTB = Tablebases::root_probe_wdl(rootPos, rootMoves, TB::Score);
 
               // Only probe during search if winning
               if (TB::Score <= VALUE_DRAW)
@@ -292,7 +292,7 @@ void MainThread::think() {
           th->searching = true;
           if (th != this)
           {
-              th->pos = Position(pos, th);
+              th->rootPos = Position(rootPos, th);
               th->rootMoves = rootMoves;
               th->notify_one(); // Wake up the thread and start searching
           }
@@ -301,7 +301,7 @@ void MainThread::think() {
       Threads.timer->run = true;
       Threads.timer->notify_one(); // Start the recurring timer
 
-      search(true); // Here we go!
+      search(true); // Let's start searching!
 
       // Stop the threads and the timer
       Signals.stop = true;
@@ -329,10 +329,10 @@ void MainThread::think() {
       wait(Signals.stop);
   }
 
-  sync_cout << "bestmove " << UCI::move(rootMoves[0].pv[0], pos.is_chess960());
+  sync_cout << "bestmove " << UCI::move(rootMoves[0].pv[0], rootPos.is_chess960());
 
-  if (rootMoves[0].pv.size() > 1 || rootMoves[0].extract_ponder_from_tt(pos))
-      std::cout << " ponder " << UCI::move(rootMoves[0].pv[1], pos.is_chess960());
+  if (rootMoves[0].pv.size() > 1 || rootMoves[0].extract_ponder_from_tt(rootPos))
+      std::cout << " ponder " << UCI::move(rootMoves[0].pv[1], rootPos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -344,22 +344,22 @@ void MainThread::think() {
 
 void Thread::search(bool isMainThread) {
 
+  Stack* ss = stack + 2; // To allow referencing (ss-2) and (ss+2)
   Value bestValue, alpha, beta, delta;
-
   Move easyMove = MOVE_NONE;
-  if (isMainThread)
-  {
-      easyMove = EasyMove.get(pos.key());
-      EasyMove.clear();
-      BestMoveChanges = 0;
-      TT.new_search();
-  }
 
-  Stack* ss = stack+2; // To allow referencing (ss-2) and (ss+2)
   std::memset(ss-2, 0, 5 * sizeof(Stack));
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
+
+  if (isMainThread)
+  {
+      easyMove = EasyMove.get(rootPos.key());
+      EasyMove.clear();
+      BestMoveChanges = 0;
+      TT.new_search();
+  }
 
   size_t multiPV = Options["MultiPV"];
   Skill skill(Options["Skill Level"]);
@@ -374,7 +374,7 @@ void Thread::search(bool isMainThread) {
   // Iterative deepening loop until requested to stop or target depth reached
   while (++depth < DEPTH_MAX && !Signals.stop && (!Limits.depth || depth <= Limits.depth))
   {
-      // Set up our new depth for the helper threads
+      // Set up the new depth for the helper threads
       if (!isMainThread)
           depth = Threads.main()->depth + Depth(int(3 * log(1 + this->idx)));
 
@@ -403,7 +403,7 @@ void Thread::search(bool isMainThread) {
           // high/low anymore.
           while (true)
           {
-              bestValue = ::search<Root>(pos, ss, alpha, beta, depth, false);
+              bestValue = ::search<Root>(rootPos, ss, alpha, beta, depth, false);
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -411,13 +411,12 @@ void Thread::search(bool isMainThread) {
               // and we want to keep the same order for all the moves except the
               // new PV that goes to the front. Note that in case of MultiPV
               // search the already searched PV lines are preserved.
-
               std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
 
               // Write PV back to transposition table in case the relevant
               // entries have been overwritten during the search.
               for (size_t i = 0; i <= PVIdx; ++i)
-                  rootMoves[i].insert_pv_in_tt(pos);
+                  rootMoves[i].insert_pv_in_tt(rootPos);
 
               // If search has been stopped break immediately. Sorting and
               // writing PV back to TT is safe because RootMoves is still
@@ -425,15 +424,13 @@ void Thread::search(bool isMainThread) {
               if (Signals.stop)
                   break;
 
-              if (isMainThread)
-              {
-                // When failing high/low give some update (without cluttering
-                // the UI) before a re-search.
-                if (multiPV == 1
-                    && (bestValue <= alpha || bestValue >= beta)
-                    && Time.elapsed() > 3000)
-                    sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
-              }
+              // When failing high/low give some update (without cluttering
+              // the UI) before a re-search.
+              if (   isMainThread
+                  && multiPV == 1
+                  && (bestValue <= alpha || bestValue >= beta)
+                  && Time.elapsed() > 3000)
+                  sync_cout << UCI::pv(rootPos, depth, alpha, beta) << sync_endl;
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -472,7 +469,7 @@ void Thread::search(bool isMainThread) {
                         << " time " << Time.elapsed() << sync_endl;
 
           else if (PVIdx + 1 == multiPV || Time.elapsed() > 3000)
-              sync_cout << UCI::pv(pos, depth, alpha, beta) << sync_endl;
+              sync_cout << UCI::pv(rootPos, depth, alpha, beta) << sync_endl;
       }
 
       if (!isMainThread)
@@ -516,7 +513,7 @@ void Thread::search(bool isMainThread) {
           }
 
           if (rootMoves[0].pv.size() >= 3)
-              EasyMove.update(pos, rootMoves[0].pv);
+              EasyMove.update(rootPos, rootMoves[0].pv);
           else
               EasyMove.clear();
       }
@@ -1436,22 +1433,22 @@ moves_loop: // When in check search starts from here
 
 string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
-  Thread* thisThread = pos.this_thread();
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], thisThread->rootMoves.size());
-  int selDepth = thisThread->maxPly;
-  uint64_t nodes = Threads.nodes_searched();
+  const Search::RootMoveVector& rootMoves = pos.this_thread()->rootMoves;
+  size_t PVIdx = pos.this_thread()->PVIdx;
+  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  uint64_t nodes_searched = Threads.nodes_searched();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= thisThread->PVIdx);
+      bool updated = (i <= PVIdx);
 
       if (depth == ONE_PLY && !updated)
           continue;
 
       Depth d = updated ? depth : depth - ONE_PLY;
-      Value v = updated ? thisThread->rootMoves[i].score : thisThread->rootMoves[i].previousScore;
+      Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
       bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
       v = tb ? TB::Score : v;
@@ -1461,15 +1458,15 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       ss << "info"
          << " depth "    << d / ONE_PLY
-         << " seldepth " << selDepth
+         << " seldepth " << pos.this_thread()->maxPly
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == thisThread->PVIdx)
+      if (!tb && i == PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
-      ss << " nodes "    << nodes
-         << " nps "      << nodes * 1000 / elapsed;
+      ss << " nodes "    << nodes_searched
+         << " nps "      << nodes_searched * 1000 / elapsed;
 
       if (elapsed > 1000) // Earlier makes little sense
           ss << " hashfull " << TT.hashfull();
@@ -1478,7 +1475,7 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " time "     << elapsed
          << " pv";
 
-      for (Move m : thisThread->rootMoves[i].pv)
+      for (Move m : rootMoves[i].pv)
           ss << " " << UCI::move(m, pos.is_chess960());
   }
 
@@ -1571,9 +1568,6 @@ void check_time() {
   else if (Limits.movetime && elapsed >= Limits.movetime)
       Signals.stop = true;
 
-  else if (Limits.nodes)
-  {
-      if (Threads.nodes_searched() >= Limits.nodes)
+  else if (Limits.nodes && Threads.nodes_searched() >= Limits.nodes)
           Signals.stop = true;
-  }
 }

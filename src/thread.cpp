@@ -223,10 +223,10 @@ void ThreadPool::read_uci_options() {
 
 int64_t ThreadPool::nodes_searched() {
 
-    int64_t nodes = 0;
-    for (Thread *th : *this)
-        nodes += th->pos.nodes_searched();
-    return nodes;
+  int64_t nodes = 0;
+  for (Thread *th : *this)
+      nodes += th->rootPos.nodes_searched();
+  return nodes;
 }
 
 
@@ -241,7 +241,7 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
   Signals.stop = Signals.failedLowAtRoot = false;
 
   main()->rootMoves.clear();
-  main()->pos = pos;
+  main()->rootPos = pos;
   Limits = limits;
   if (states.get()) // If we don't set a new position, preserve current state
   {

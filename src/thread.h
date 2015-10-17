@@ -74,7 +74,7 @@ struct Thread : public ThreadBase {
   int maxPly;
   volatile bool searching;
 
-  Position pos;
+  Position rootPos;
   Search::RootMoveVector rootMoves;
   Search::Stack stack[MAX_PLY+4];
   HistoryStats History;
