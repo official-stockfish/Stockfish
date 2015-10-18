@@ -84,17 +84,6 @@ void ThreadBase::wait_while(volatile const bool& condition) {
 }
 
 
-// Thread c'tor makes some init but does not launch any execution thread that
-// will be started only when c'tor returns.
-
-Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in MSVC
-
-  searching = false;
-  maxPly = 0;
-  idx = Threads.size(); // Starts from 0
-}
-
-
 // TimerThread::idle_loop() is where the timer thread waits Resolution milliseconds
 // and then calls check_time(). When not searching, thread sleeps until it's woken up.
 
@@ -118,6 +107,12 @@ void TimerThread::idle_loop() {
 // Thread::idle_loop() is where the thread is parked when it has no work to do
 
 void Thread::idle_loop() {
+
+  std::memset(this, 0, sizeof(*this)); // Touch memory for NUMA allocation
+
+  //searching = false; maxPly = 0; // Done by memset
+
+  idx = Threads.size(); // Starts from 0
 
   while (!exit)
   {
