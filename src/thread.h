@@ -63,7 +63,6 @@ struct ThreadBase : public std::thread {
 
 struct Thread : public ThreadBase {
 
-  Thread();
   virtual void idle_loop();
   void search(bool isMainThread = false);
 
