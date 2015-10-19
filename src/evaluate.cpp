@@ -148,17 +148,16 @@ namespace {
     { S(18, 5), S(27, 8) }  // Bishops
   };
 
-  // Threat[defended/weak][minor/rook attacking][attacked PieceType] contains
+  // Threat[minor/rook][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.
-  const Score Threat[][2][PIECE_TYPE_NB] = {
-  { { S(0, 0), S( 0, 0), S(19, 37), S(24, 37), S(44, 97), S(35,106) },   // Minor on Defended
-    { S(0, 0), S( 0, 0), S( 9, 14), S( 9, 14), S( 7, 14), S(24, 48) } }, // Rook on Defended
-  { { S(0, 0), S( 0,32), S(33, 41), S(31, 50), S(41,100), S(35,104) },   // Minor on Weak
-    { S(0, 0), S( 0,27), S(26, 57), S(26, 57), S(0 , 43), S(23, 51) } }  // Rook on Weak
+  // Attacks on lesser pieces which are pawn defended are not considered.
+  const Score Threat[2][PIECE_TYPE_NB] = {
+   { S(0, 0), S(0, 32), S(25, 39), S(28, 44), S(42, 98), S(35,105) }, // Minor attacks
+   { S(0, 0), S(0, 27), S(26, 57), S(26, 57), S( 0, 30), S(23, 51) }  // Rook attacks
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
-  // type is attacked by an enemy pawn.
+  // type is attacked by a pawn.
   const Score ThreatenedByPawn[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 0), S(107, 138), S(84, 122), S(114, 203), S(121, 217)
   };
@@ -484,7 +483,6 @@ namespace {
     const Bitboard TRank2BB = (Us == WHITE ? Rank2BB  : Rank7BB);
     const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
 
-    enum { Defended, Weak };
     enum { Minor, Rook };
 
     Bitboard b, weak, defended, safeThreats;
@@ -510,33 +508,21 @@ namespace {
     // Non-pawn enemies defended by a pawn
     defended = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & ei.attackedBy[Them][PAWN];
 
-    // Add a bonus according to the kind of attacking pieces
-    if (defended)
-    {
-        b = defended & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
-        while (b)
-            score += Threat[Defended][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
-
-        b = defended & ei.attackedBy[Us][ROOK];
-        while (b)
-            score += Threat[Defended][Rook][type_of(pos.piece_on(pop_lsb(&b)))];
-    }
-
     // Enemies not defended by a pawn and under our attack
     weak =   pos.pieces(Them)
           & ~ei.attackedBy[Them][PAWN]
           &  ei.attackedBy[Us][ALL_PIECES];
 
     // Add a bonus according to the kind of attacking pieces
-    if (weak)
+    if (defended | weak)
     {
-        b = weak & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
+        b = (defended | weak) & (ei.attackedBy[Us][KNIGHT] | ei.attackedBy[Us][BISHOP]);
         while (b)
-            score += Threat[Weak][Minor][type_of(pos.piece_on(pop_lsb(&b)))];
+            score += Threat[Minor][type_of(pos.piece_on(pop_lsb(&b)))];
 
-        b = weak & ei.attackedBy[Us][ROOK];
+        b = (pos.pieces(Them, QUEEN) | weak) & ei.attackedBy[Us][ROOK];
         while (b)
-            score += Threat[Weak][Rook][type_of(pos.piece_on(pop_lsb(&b)))];
+            score += Threat[Rook ][type_of(pos.piece_on(pop_lsb(&b)))];
 
         b = weak & ~ei.attackedBy[Them][ALL_PIECES];
         if (b)
@@ -688,24 +674,25 @@ namespace {
   }
 
 
-  // evaluate_initiative() computes the initiative correction value for the position, i.e. 
-  // second order bonus/malus based on the known attacking/defending status of the players. 
+  // evaluate_initiative() computes the initiative correction value for the
+  // position, i.e. second order bonus/malus based on the known attacking/defending
+  // status of the players.
   Score evaluate_initiative(const Position& pos, const EvalInfo& ei, const Score positional_score) {
 
-    int pawns           =  pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
-    int king_separation =  distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
-    int asymmetry       =  ei.pi->pawn_asymmetry();
+    int king_separation = distance<File>(pos.square<KING>(WHITE), pos.square<KING>(BLACK));
+    int pawns           = pos.count<PAWN>(WHITE) + pos.count<PAWN>(BLACK);
+    int asymmetry       = ei.pi->pawn_asymmetry();
 
     // Compute the initiative bonus for the attacking side
-    int attacker_bonus =   8 * (pawns + asymmetry + king_separation) - 120;
+    int attacker_bonus = 8 * (pawns + asymmetry + king_separation) - 120;
 
-    // Now apply the bonus: note that we find the attacking side by extracting the sign 
+    // Now apply the bonus: note that we find the attacking side by extracting the sign
     // of the endgame value of "positional_score", and that we carefully cap the bonus so
     // that the endgame score with the correction will never be divided by more than two.
     int eg = eg_value(positional_score);
-    int value = ((eg > 0) - (eg < 0)) * std::max( attacker_bonus , -abs( eg / 2 ) );
+    int value = ((eg > 0) - (eg < 0)) * std::max(attacker_bonus, -abs(eg / 2));
 
-    return make_score( 0 , value ) ; 
+    return make_score(0, value);
   }
 
 } // namespace
@@ -789,7 +776,7 @@ Value Eval::evaluate(const Position& pos) {
   // Evaluate space for both sides, only during opening
   if (pos.non_pawn_material(WHITE) + pos.non_pawn_material(BLACK) >= 12222)
       score += (evaluate_space<WHITE>(pos, ei) - evaluate_space<BLACK>(pos, ei)) * Weights[Space];
-  
+
   // Evaluate initiative
   score += evaluate_initiative(pos, ei, score);
 
