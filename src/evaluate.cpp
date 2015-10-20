@@ -150,15 +150,14 @@ namespace {
 
   // Threat[minor/rook][attacked PieceType] contains
   // bonuses according to which piece type attacks which one.
-  // The minor attacks on pawn-defended pawns are not considered
-  // The rook  attacks on pawn-defended pawns, Minors or Rooks are not considered.
+  // Attacks on lesser pieces which are pawn defended are not considered.
   const Score Threat[2][PIECE_TYPE_NB] = {
    { S(0, 0), S( 0,32), S(25, 39), S(28, 44), S(42, 98), S(35,105) }, // Minor attacks
    { S(0, 0), S( 0,27), S(26, 57), S(26, 57), S( 0, 30), S(23, 51) }  // Rook attacks
   };
 
   // ThreatenedByPawn[PieceType] contains a penalty according to which piece
-  // type is attacked by an enemy pawn.
+  // type is attacked by a pawn.
   const Score ThreatenedByPawn[PIECE_TYPE_NB] = {
     S(0, 0), S(0, 0), S(107, 138), S(84, 122), S(114, 203), S(121, 217)
   };
@@ -683,15 +682,15 @@ namespace {
     int asymmetry       =  ei.pi->pawn_asymmetry();
 
     // Compute the initiative bonus for the attacking side
-    int attacker_bonus =   8 * (pawns + asymmetry + king_separation) - 120;
+    int attacker_bonus  =  8 * (pawns + asymmetry + king_separation) - 120;
 
     // Now apply the bonus: note that we find the attacking side by extracting the sign 
     // of the endgame value of "positional_score", and that we carefully cap the bonus so
     // that the endgame score with the correction will never be divided by more than two.
     int eg = eg_value(positional_score);
-    int value = ((eg > 0) - (eg < 0)) * std::max( attacker_bonus , -abs( eg / 2 ) );
+    int value = ((eg > 0) - (eg < 0)) * std::max(attacker_bonus, -abs( eg / 2 ));
 
-    return make_score( 0 , value ) ; 
+    return make_score(0, value);
   }
 
 } // namespace

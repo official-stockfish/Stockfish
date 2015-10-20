@@ -127,7 +127,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, const HistoryStats& h,
 template<>
 void MovePicker::score<CAPTURES>() {
   // Winning and equal captures in the main search are ordered by MVV, preferring
-  // captures near our home rank. Suprisingly, this appears to perform slightly
+  // captures near our home rank. Surprisingly, this appears to perform slightly
   // better than SEE based move ordering: exchanging big pieces before capturing
   // a hanging piece probably helps to reduce the subtree size.
   // In main search we want to push captures with negative SEE values to the
