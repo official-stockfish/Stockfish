@@ -90,7 +90,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply)
   // difficult to account correctly becuase it depends in subtle ways on the
   // hardware/platform used. As a general guideline use a safer and bigger one
   // when we have more time on the clock.
-  int moveOverhead = std::max(30, std::min(limits.time[us] / 20, 1000));
+  int moveOverhead = std::min(30 + limits.time[us] / 200, 1000);
 
   // If we have to play in 'nodes as time' mode, then convert from time
   // to nodes, and use resulting values in time management formulas.
