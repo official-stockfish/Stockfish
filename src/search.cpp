@@ -376,7 +376,7 @@ void Thread::search(bool isMainThread) {
   {
       // Set up the new depth for the helper threads
       if (!isMainThread)
-          depth = Threads.main()->depth + Depth(int(3 * log(1 + this->idx)));
+          depth = Threads.main()->depth + Depth(int(2.3 * log(1 + this->idx)));
 
       // Age out PV variability metric
       if (isMainThread)
