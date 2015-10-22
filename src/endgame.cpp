@@ -59,7 +59,7 @@ namespace {
   const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
-  // Assorted values
+  // Rank-based scaling factors used in KRPPKRP endgame
   const int KRPPKRPvalues[RANK_NB] = {0, 9, 10, 14, 21, 44, 0, 0};
 
 #ifndef NDEBUG
@@ -602,8 +602,10 @@ ScaleFactor Endgame<KRPPKRP>::operator()(const Position& pos) const {
   if (   distance<File>(bksq, wpsq1) <= 1
       && distance<File>(bksq, wpsq2) <= 1
       && relative_rank(strongSide, bksq) > r)
+  {
+      assert(r > RANK_1 && r < RANK_7);
       return ScaleFactor(KRPPKRPvalues[r]);
-
+  }
   return SCALE_FACTOR_NONE;
 }
 
