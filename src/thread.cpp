@@ -71,7 +71,7 @@ void ThreadBase::notify_one() {
 void ThreadBase::wait(std::atomic<bool>& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
-  sleepCondition.wait(lk, [&]{ return condition.load(std::memory_order_acquire); });
+  sleepCondition.wait(lk, [&]{ return bool(condition); });
 }
 
 
