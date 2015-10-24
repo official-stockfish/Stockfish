@@ -91,6 +91,8 @@ Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in 
 
   searching = false;
   maxPly = 0;
+  history.clear();
+  counterMoves.clear();
   idx = Threads.size(); // Starts from 0
 }
 
