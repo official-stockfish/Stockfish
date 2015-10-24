@@ -37,7 +37,7 @@
 
 namespace Search {
 
-  volatile SignalsType Signals;
+  SignalsType Signals;
   LimitsType Limits;
   StateStackPtr SetupStates;
 }
@@ -64,7 +64,7 @@ namespace {
   enum NodeType { Root, PV, NonPV };
 
   // Razoring and futility margin based on depth
-  Value razor_margin(Depth d) { return Value(512 + 32 * d); }
+  int razor_margin[4] = {483, 570, 603, 554};
   Value futility_margin(Depth d) { return Value(200 * d); }
 
   // Futility and reductions lookup tables, initialized at startup
@@ -149,7 +149,7 @@ namespace {
 
 void Search::init() {
 
-  const double K[][2] = {{ 0.83, 2.25 }, { 0.50, 3.00 }};
+  const double K[][2] = {{ 0.799, 2.281 }, { 0.484, 3.023 }};
 
   for (int pv = 0; pv <= 1; ++pv)
       for (int imp = 0; imp <= 1; ++imp)
@@ -393,7 +393,7 @@ void Thread::search(bool isMainThread) {
           // Reset aspiration window starting size
           if (depth >= 5 * ONE_PLY)
           {
-              delta = Value(16);
+              delta = Value(18);
               alpha = std::max(rootMoves[PVIdx].previousScore - delta,-VALUE_INFINITE);
               beta  = std::min(rootMoves[PVIdx].previousScore + delta, VALUE_INFINITE);
           }
@@ -453,7 +453,7 @@ void Thread::search(bool isMainThread) {
               else
                   break;
 
-              delta += delta / 2;
+              delta += delta / 4 + 5;
 
               assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
           }
@@ -581,7 +581,7 @@ namespace {
     if (!RootNode)
     {
         // Step 2. Check for aborted search and immediate draw
-        if (Signals.stop || pos.is_draw() || ss->ply >= MAX_PLY)
+        if (Signals.stop.load(std::memory_order_relaxed) || pos.is_draw() || ss->ply >= MAX_PLY)
             return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos) : DrawValue[pos.side_to_move()];
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -690,14 +690,14 @@ namespace {
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
-        &&  eval + razor_margin(depth) <= alpha
+        &&  eval + razor_margin[depth] <= alpha
         &&  ttMove == MOVE_NONE)
     {
         if (   depth <= ONE_PLY
-            && eval + razor_margin(3 * ONE_PLY) <= alpha)
+            && eval + razor_margin[3 * ONE_PLY] <= alpha)
             return qsearch<NonPV, false>(pos, ss, alpha, beta, DEPTH_ZERO);
 
-        Value ralpha = alpha - razor_margin(depth);
+        Value ralpha = alpha - razor_margin[depth];
         Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha+1, DEPTH_ZERO);
         if (v <= ralpha)
             return v;
@@ -835,7 +835,7 @@ moves_loop: // When in check search starts from here
 
       if (RootNode && thisThread == Threads.main())
       {
-          Signals.firstRootMove = (moveCount == 1);
+          Signals.firstRootMove = moveCount == 1;
 
           if (Time.elapsed() > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
@@ -996,7 +996,7 @@ moves_loop: // When in check search starts from here
       // Finished searching the move. If a stop occurred, the return value of
       // the search cannot be trusted, and we return immediately without
       // updating best move, PV and TT.
-      if (Signals.stop)
+      if (Signals.stop.load(std::memory_order_relaxed))
           return VALUE_ZERO;
 
       if (RootNode)
@@ -1559,7 +1559,7 @@ void check_time() {
   {
       bool stillAtFirstMove =    Signals.firstRootMove
                              && !Signals.failedLowAtRoot
-                             &&  elapsed > Time.available() * 75 / 100;
+                             &&  elapsed > Time.available() * 3 / 4;
 
       if (   stillAtFirstMove
           || elapsed > Time.maximum() - 2 * TimerThread::Resolution)
