@@ -37,7 +37,7 @@
 
 namespace Search {
 
-  volatile SignalsType Signals;
+  SignalsType Signals;
   LimitsType Limits;
   StateStackPtr SetupStates;
 }
@@ -581,8 +581,8 @@ namespace {
     if (!RootNode)
     {
         // Step 2. Check for aborted search and immediate draw
-        if (Signals.stop || pos.is_draw() || ss->ply >= MAX_PLY)
-            return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos)
+        if (Signals.stop.load(std::memory_order_relaxed) || pos.is_draw() || ss->ply >= MAX_PLY)
+            return ss->ply >= MAX_PLY && !inCheck ? evaluate(pos) 
                                                   : DrawValue[pos.side_to_move()];
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -841,7 +841,7 @@ moves_loop: // When in check search starts from here
 
       if (RootNode && thisThread == Threads.main())
       {
-          Signals.firstRootMove = (moveCount == 1);
+          Signals.firstRootMove = moveCount == 1;
 
           if (Time.elapsed() > 3000)
               sync_cout << "info depth " << depth / ONE_PLY
@@ -1008,7 +1008,7 @@ moves_loop: // When in check search starts from here
       // Finished searching the move. If a stop occurred, the return value of
       // the search cannot be trusted, and we return immediately without
       // updating best move, PV and TT.
-      if (Signals.stop)
+      if (Signals.stop.load(std::memory_order_relaxed))
           return VALUE_ZERO;
 
       if (RootNode)
@@ -1577,7 +1577,7 @@ void check_time() {
   {
       bool stillAtFirstMove =    Signals.firstRootMove
                              && !Signals.failedLowAtRoot
-                             &&  elapsed > Time.available() * 75 / 100;
+                             &&  elapsed > Time.available() * 3 / 4;
 
       if (   stillAtFirstMove
           || elapsed > Time.maximum() - 2 * TimerThread::Resolution)

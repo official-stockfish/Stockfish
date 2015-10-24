@@ -44,15 +44,16 @@ const size_t MAX_THREADS = 128;
 
 struct ThreadBase : public std::thread {
 
+  ThreadBase() { exit = false; }
   virtual ~ThreadBase() = default;
   virtual void idle_loop() = 0;
   void notify_one();
-  void wait(volatile const bool& b);
-  void wait_while(volatile const bool& b);
+  void wait(std::atomic<bool>& b);
+  void wait_while(std::atomic<bool>& b);
 
   Mutex mutex;
   ConditionVariable sleepCondition;
-  volatile bool exit = false;
+  std::atomic<bool> exit;
 };
 
 
@@ -72,7 +73,7 @@ struct Thread : public ThreadBase {
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly;
-  volatile bool searching;
+  std::atomic<bool> searching;
 
   Position rootPos;
   Search::RootMoveVector rootMoves;
@@ -87,10 +88,11 @@ struct Thread : public ThreadBase {
 /// special threads: the main one and the recurring timer.
 
 struct MainThread : public Thread {
+  MainThread() { thinking = true; } // Avoid a race with start_thinking()
   virtual void idle_loop();
   void join();
   void think();
-  volatile bool thinking = true; // Avoid a race with start_thinking()
+  std::atomic<bool> thinking;
 };
 
 struct TimerThread : public ThreadBase {
