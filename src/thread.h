@@ -56,8 +56,8 @@ struct ThreadBase : public std::thread {
 };
 
 
-/// Thread struct keeps together all the thread related stuff like locks, state
-/// and especially split points. We also use per-thread pawn and material hash
+/// Thread struct keeps together all the thread related stuff like locks, state,
+/// history and countermoves tables. We also use per-thread pawn and material hash
 /// tables so that once we get a pointer to an entry its life time is unlimited
 /// and we don't have to care about someone changing the entry under our feet.
 
@@ -104,7 +104,7 @@ struct TimerThread : public ThreadBase {
 
 
 /// ThreadPool struct handles all the threads related stuff like init, starting,
-/// parking and, most importantly, launching a slave thread at a split point.
+/// parking and, most importantly, launching a thread.
 /// All the access to shared thread data is done through this class.
 
 struct ThreadPool : public std::vector<Thread*> {
