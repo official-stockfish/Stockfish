@@ -68,16 +68,15 @@ void ThreadBase::notify_one() {
 
 // ThreadBase::wait() set the thread to sleep until 'condition' turns true
 
-void ThreadBase::wait(volatile const bool& condition) {
+void ThreadBase::wait(std::atomic<bool>& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
-  sleepCondition.wait(lk, [&]{ return condition; });
+  sleepCondition.wait(lk, [&]{ return bool(condition); });
 }
 
 
 // ThreadBase::wait_while() set the thread to sleep until 'condition' turns false
-
-void ThreadBase::wait_while(volatile const bool& condition) {
+void ThreadBase::wait_while(std::atomic<bool>& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.wait(lk, [&]{ return !condition; });
@@ -87,7 +86,7 @@ void ThreadBase::wait_while(volatile const bool& condition) {
 // Thread c'tor makes some init but does not launch any execution thread that
 // will be started only when c'tor returns.
 
-Thread::Thread() /* : splitPoints() */ { // Initialization of non POD broken in MSVC
+Thread::Thread() {
 
   searching = false;
   maxPly = 0;
