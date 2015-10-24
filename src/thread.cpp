@@ -76,7 +76,6 @@ void ThreadBase::wait(std::atomic<bool>& condition) {
 
 
 // ThreadBase::wait_while() set the thread to sleep until 'condition' turns false
-
 void ThreadBase::wait_while(std::atomic<bool>& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
