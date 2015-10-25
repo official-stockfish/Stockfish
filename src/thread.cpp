@@ -86,12 +86,7 @@ void ThreadBase::wait_while(std::atomic<bool>& condition) {
 // Thread c'tor makes some init but does not launch any execution thread that
 // will be started only when c'tor returns.
 
-<<<<<<< HEAD
-Thread::Thread() { // Initialization of non POD broken in MSVC
-=======
 Thread::Thread() {
->>>>>>> master
-
   searching = false;
   maxPly = 0;
   history.clear();
