@@ -34,10 +34,6 @@
 #include "search.h"
 #include "thread_win32.h"
 
-struct Thread;
-
-const size_t MAX_THREADS = 128;
-
 
 /// ThreadBase struct is the base of the hierarchy from where we derive all the
 /// specialized thread classes.
@@ -78,7 +74,6 @@ struct Thread : public ThreadBase {
   Position rootPos;
   Search::RootMoveVector rootMoves;
   Depth rootDepth;
-  Search::Stack stack[MAX_PLY+4];
   HistoryStats history;
   MovesStats counterMoves;
 };
@@ -100,6 +95,7 @@ struct TimerThread : public ThreadBase {
   static const int Resolution = 5; // Millisec between two check_time() calls
 
   virtual void idle_loop();
+  void check_time();
 
   bool run = false;
 };

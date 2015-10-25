@@ -29,8 +29,6 @@ using namespace Search;
 
 ThreadPool Threads; // Global object
 
-extern void check_time();
-
 namespace {
 
  // Helpers to launch a thread after creation and joining before delete. Outside the
@@ -83,7 +81,7 @@ void ThreadBase::wait_while(std::atomic<bool>& condition) {
 }
 
 
-// Thread constructor makes some init but does not launch any execution thread, 
+// Thread constructor makes some init but does not launch any execution thread,
 // which will be started only when the constructor returns.
 
 Thread::Thread() {
@@ -170,7 +168,7 @@ void MainThread::join() {
 
 
 // ThreadPool::init() is called at startup to create and launch requested threads,
-// that will go immediately to sleep. We cannot use a constructor because Threads 
+// that will go immediately to sleep. We cannot use a constructor because Threads
 // is a static object and we need a fully initialized engine at this point due to
 // allocation of Endgames in the Thread constructor.
 

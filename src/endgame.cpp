@@ -60,7 +60,7 @@ namespace {
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
-  const int KRPPKRPScaleFactors[RANK_NB] = {0, 9, 10, 14, 21, 44, 0, 0};
+  const int KRPPKRPScaleFactors[RANK_NB] = { 0, 9, 10, 14, 21, 44, 0, 0 };
 
 #ifndef NDEBUG
   bool verify_material(const Position& pos, Color c, Value npm, int pawnsCnt) {

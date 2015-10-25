@@ -182,7 +182,7 @@ void UCI::loop(int argc, char* argv[]) {
 
       else if (token == "ucinewgame")
       {
-          Search::reset();
+          Search::clear();
           Time.availableNodes = 0;
       }
       else if (token == "isready")    sync_cout << "readyok" << sync_endl;
