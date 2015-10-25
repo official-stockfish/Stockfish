@@ -37,8 +37,8 @@ namespace PSQT {
   void init();
 }
 
-/// CheckInfo struct is initialized at c'tor time and keeps info used to detect
-/// if a move gives check.
+/// CheckInfo struct is initialized at constructor time and keeps info used to 
+/// detect if a move gives check.
 
 struct CheckInfo {
 
