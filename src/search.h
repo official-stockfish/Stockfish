@@ -29,8 +29,6 @@
 #include "position.h"
 #include "types.h"
 
-struct SplitPoint;
-
 namespace Search {
 
 /// Stack struct keeps track of the information we need to remember from nodes
@@ -38,7 +36,6 @@ namespace Search {
 /// its own array of Stack objects, indexed by the current ply.
 
 struct Stack {
-  SplitPoint* splitPoint;
   Move* pv;
   int ply;
   Move currentMove;

@@ -87,7 +87,6 @@ void ThreadBase::wait_while(std::atomic<bool>& condition) {
 // will be started only when c'tor returns.
 
 Thread::Thread() {
-
   searching = false;
   maxPly = 0;
   history.clear();
