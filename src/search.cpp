@@ -172,12 +172,8 @@ void Search::init() {
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
   }
 
-
   for (int d = 0; d < MAX_PLY+1; ++d)
-  {
-	  HistoryBonus[d] = d*d+d-1;
-  }
-
+      HistoryBonus[d] = d*d+d-1;
 }
 
 
@@ -1107,7 +1103,7 @@ moves_loop: // When in check search starts from here
              && is_ok((ss - 1)->currentMove)
              && is_ok((ss - 2)->currentMove))
     {
-        Value bonus =Value(HistoryBonus[depth]);
+        Value bonus = Value(HistoryBonus[depth]);
         Square prevPrevSq = to_sq((ss - 2)->currentMove);
         CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         prevCmh.update(pos.piece_on(prevSq), prevSq, bonus);
@@ -1383,7 +1379,7 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Value bonus =Value(HistoryBonus[depth]);
+    Value bonus = Value(HistoryBonus[depth]);
 
     Square prevSq = to_sq((ss-1)->currentMove);
     CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
