@@ -175,7 +175,7 @@ void Search::init() {
 
   for (int d = 0; d < MAX_PLY+1; ++d)
   {
-	  HistoryBonus[d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
+	  HistoryBonus[d] = d*d+d-1;
   }
 
 }
