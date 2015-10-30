@@ -1095,7 +1095,7 @@ moves_loop: // When in check search starts from here
              && is_ok((ss - 1)->currentMove)
              && is_ok((ss - 2)->currentMove))
     {
-        Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
+        Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + depth / ONE_PLY -1);
         Square prevPrevSq = to_sq((ss - 2)->currentMove);
         CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         prevCmh.update(pos.piece_on(prevSq), prevSq, bonus);
@@ -1371,7 +1371,7 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
+    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY) + depth / ONE_PLY -1);
 
     Square prevSq = to_sq((ss-1)->currentMove);
     CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
@@ -1401,7 +1401,7 @@ moves_loop: // When in check search starts from here
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
-        prevCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * depth / ONE_PLY - 1);
+        prevCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * ((depth + 1) / ONE_PLY));
     }
   }
 
