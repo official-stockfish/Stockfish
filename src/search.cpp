@@ -70,7 +70,7 @@ namespace {
   // Futility and reductions lookup tables, initialized at startup
   int FutilityMoveCounts[2][16];  // [improving][depth]
   Depth Reductions[2][2][64][64]; // [pv][improving][depth][moveNumber]
-
+  int HistoryBonus[MAX_PLY + 1];
   template <bool PvNode> Depth reduction(bool i, Depth d, int mn) {
     return Reductions[PvNode][i][std::min(d, 63 * ONE_PLY)][std::min(mn, 63)];
   }
@@ -171,6 +171,9 @@ void Search::init() {
       FutilityMoveCounts[0][d] = int(2.4 + 0.773 * pow(d + 0.00, 1.8));
       FutilityMoveCounts[1][d] = int(2.9 + 1.045 * pow(d + 0.49, 1.8));
   }
+
+  for (int d = 0; d < MAX_PLY+1; ++d)
+      HistoryBonus[d] = d*d+d-1;
 }
 
 
@@ -1095,7 +1098,7 @@ moves_loop: // When in check search starts from here
              && is_ok((ss - 1)->currentMove)
              && is_ok((ss - 2)->currentMove))
     {
-        Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
+        Value bonus = Value(HistoryBonus[depth]);
         Square prevPrevSq = to_sq((ss - 2)->currentMove);
         CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
         prevCmh.update(pos.piece_on(prevSq), prevSq, bonus);
@@ -1371,7 +1374,7 @@ moves_loop: // When in check search starts from here
         ss->killers[0] = move;
     }
 
-    Value bonus = Value((depth / ONE_PLY) * (depth / ONE_PLY));
+    Value bonus = Value(HistoryBonus[depth]);
 
     Square prevSq = to_sq((ss-1)->currentMove);
     CounterMovesStats& cmh = CounterMovesHistory[pos.piece_on(prevSq)][prevSq];
@@ -1401,7 +1404,7 @@ moves_loop: // When in check search starts from here
     {
         Square prevPrevSq = to_sq((ss-2)->currentMove);
         CounterMovesStats& prevCmh = CounterMovesHistory[pos.piece_on(prevPrevSq)][prevPrevSq];
-        prevCmh.update(pos.piece_on(prevSq), prevSq, -bonus - 2 * depth / ONE_PLY - 1);
+        prevCmh.update(pos.piece_on(prevSq), prevSq, Value(-HistoryBonus[depth+1]));
     }
   }
 
