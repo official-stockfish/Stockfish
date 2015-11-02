@@ -329,10 +329,22 @@ void MainThread::think() {
       wait(Signals.stop);
   }
 
-  sync_cout << "bestmove " << UCI::move(rootMoves[0].pv[0], rootPos.is_chess960());
+  // Check if there are threads with a better score than main thread.
+  Thread* bestThread = this;
+  for (Thread* th : Threads)
+      if (   th->completedDepth > bestThread->completedDepth
+          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
+        bestThread = th;
 
-  if (rootMoves[0].pv.size() > 1 || rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(rootMoves[0].pv[1], rootPos.is_chess960());
+  // Send new PV when needed.
+  // FIXME: Breaks multiPV, and skill levels
+  if (bestThread != this)
+      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+
+  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+
+  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
+      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -352,6 +364,7 @@ void Thread::search(bool isMainThread) {
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
+  completedDepth = DEPTH_ZERO;
 
   if (isMainThread)
   {
@@ -471,6 +484,9 @@ void Thread::search(bool isMainThread) {
           else if (PVIdx + 1 == multiPV || Time.elapsed() > 3000)
               sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
+
+      if (!Signals.stop)
+          completedDepth = rootDepth;
 
       if (!isMainThread)
           continue;
