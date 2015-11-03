@@ -66,7 +66,7 @@ void ThreadBase::notify_one() {
 
 // ThreadBase::wait() set the thread to sleep until 'condition' turns true
 
-void ThreadBase::wait(std::atomic<bool>& condition) {
+void ThreadBase::wait(std::atomic_bool& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.wait(lk, [&]{ return bool(condition); });
@@ -74,7 +74,7 @@ void ThreadBase::wait(std::atomic<bool>& condition) {
 
 
 // ThreadBase::wait_while() set the thread to sleep until 'condition' turns false
-void ThreadBase::wait_while(std::atomic<bool>& condition) {
+void ThreadBase::wait_while(std::atomic_bool& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.wait(lk, [&]{ return !condition; });
@@ -86,31 +86,11 @@ void ThreadBase::wait_while(std::atomic<bool>& condition) {
 
 Thread::Thread() {
 
-  searching = false;
-  maxPly = 0;
+  searching = resetCallsCnt = false;
+  maxPly = callsCnt = 0;
   history.clear();
   counterMoves.clear();
   idx = Threads.size(); // Starts from 0
-}
-
-
-// TimerThread::idle_loop() is where the timer thread waits Resolution milliseconds
-// and then calls check_time(). When not searching, thread sleeps until it's woken up.
-
-void TimerThread::idle_loop() {
-
-  while (!exit)
-  {
-      std::unique_lock<Mutex> lk(mutex);
-
-      if (!exit)
-          sleepCondition.wait_for(lk, std::chrono::milliseconds(run ? Resolution : INT_MAX));
-
-      lk.unlock();
-
-      if (!exit && run)
-          check_time();
-  }
 }
 
 
@@ -174,7 +154,6 @@ void MainThread::join() {
 
 void ThreadPool::init() {
 
-  timer = new_thread<TimerThread>();
   push_back(new_thread<MainThread>());
   read_uci_options();
 }
@@ -184,9 +163,6 @@ void ThreadPool::init() {
 // done in destructor because threads must be terminated before freeing us.
 
 void ThreadPool::exit() {
-
-  delete_thread(timer); // As first because check_time() accesses threads data
-  timer = nullptr;
 
   for (Thread* th : *this)
       delete_thread(th);

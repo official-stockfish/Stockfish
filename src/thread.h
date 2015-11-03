@@ -44,12 +44,12 @@ struct ThreadBase : public std::thread {
   virtual ~ThreadBase() = default;
   virtual void idle_loop() = 0;
   void notify_one();
-  void wait(std::atomic<bool>& b);
-  void wait_while(std::atomic<bool>& b);
+  void wait(std::atomic_bool& b);
+  void wait_while(std::atomic_bool& b);
 
   Mutex mutex;
   ConditionVariable sleepCondition;
-  std::atomic<bool> exit;
+  std::atomic_bool exit;
 };
 
 
@@ -68,8 +68,8 @@ struct Thread : public ThreadBase {
   Material::Table materialTable;
   Endgames endgames;
   size_t idx, PVIdx;
-  int maxPly;
-  std::atomic<bool> searching;
+  int maxPly, callsCnt;
+  std::atomic_bool searching, resetCallsCnt;
 
   Position rootPos;
   Search::RootMoveVector rootMoves;
@@ -80,25 +80,14 @@ struct Thread : public ThreadBase {
 };
 
 
-/// MainThread and TimerThread are derived classes used to characterize the two
-/// special threads: the main one and the recurring timer.
+/// MainThread is a derived classes used to characterize the the main one
 
 struct MainThread : public Thread {
   MainThread() { thinking = true; } // Avoid a race with start_thinking()
   virtual void idle_loop();
   void join();
   void think();
-  std::atomic<bool> thinking;
-};
-
-struct TimerThread : public ThreadBase {
-
-  static const int Resolution = 5; // Millisec between two check_time() calls
-
-  virtual void idle_loop();
-  void check_time();
-
-  bool run = false;
+  std::atomic_bool thinking;
 };
 
 
@@ -108,14 +97,13 @@ struct TimerThread : public ThreadBase {
 
 struct ThreadPool : public std::vector<Thread*> {
 
-  void init(); // No constructor and destructor, threads rely on globals that should 
+  void init(); // No constructor and destructor, threads rely on globals that should
   void exit(); // be initialized and valid during the whole thread lifetime.
 
   MainThread* main() { return static_cast<MainThread*>(at(0)); }
   void read_uci_options();
   void start_thinking(const Position&, const Search::LimitsType&, Search::StateStackPtr&);
   int64_t nodes_searched();
-  TimerThread* timer;
 };
 
 extern ThreadPool Threads;
