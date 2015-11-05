@@ -29,68 +29,57 @@ using namespace Search;
 
 ThreadPool Threads; // Global object
 
-namespace {
+// Thread constructor makes some init and launches the thread that will go to
+// sleep in idle_loop().
 
- // Helpers to launch a thread after creation and joining before delete. Outside the
- // Thread constructor and destructor because the object must be fully initialized
- // when start_routine (and hence virtual idle_loop) is called and when joining.
+Thread::Thread() {
 
- template<typename T> T* new_thread() {
-   std::thread* th = new T;
-   *th = std::thread(&T::idle_loop, (T*)th); // Will go to sleep
-   return (T*)th;
- }
-
- void delete_thread(ThreadBase* th) {
-
-   th->mutex.lock();
-   th->exit = true; // Search must be already finished
-   th->mutex.unlock();
-
-   th->notify_one();
-   th->join(); // Wait for thread termination
-   delete th;
- }
-
+  searching = true; // Avoid a race with start_thinking()
+  exit = resetCalls = false;
+  maxPly = callsCnt = 0;
+  history.clear();
+  counterMoves.clear();
+  idx = Threads.size(); // Starts from 0
+  std::thread::operator=(std::thread(&Thread::idle_loop, this));
 }
 
 
-// ThreadBase::notify_one() wakes up the thread when there is some work to do
+// Thread destructor waits for thread termination before deleting
 
-void ThreadBase::notify_one() {
+Thread::~Thread() {
+
+  mutex.lock();
+  exit = true; // Search must be already finished
+  mutex.unlock();
+
+  notify_one();
+  std::thread::join(); // Wait for thread termination
+}
+
+
+// Thread::join() waits for the thread to finish searching
+void Thread::join() {
+
+  std::unique_lock<Mutex> lk(mutex);
+  sleepCondition.wait(lk, [&]{ return !searching; });
+}
+
+
+// Thread::notify_one() wakes up the thread when there is some work to do
+
+void Thread::notify_one() {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.notify_one();
 }
 
 
-// ThreadBase::wait() set the thread to sleep until 'condition' turns true
+// Thread::wait() set the thread to sleep until 'condition' turns true
 
-void ThreadBase::wait(std::atomic_bool& condition) {
+void Thread::wait(std::atomic_bool& condition) {
 
   std::unique_lock<Mutex> lk(mutex);
   sleepCondition.wait(lk, [&]{ return bool(condition); });
-}
-
-
-// ThreadBase::wait_while() set the thread to sleep until 'condition' turns false
-void ThreadBase::wait_while(std::atomic_bool& condition) {
-
-  std::unique_lock<Mutex> lk(mutex);
-  sleepCondition.wait(lk, [&]{ return !condition; });
-}
-
-
-// Thread constructor makes some init but does not launch any execution thread,
-// which will be started only when the constructor returns.
-
-Thread::Thread() {
-
-  searching = resetCallsCnt = false;
-  maxPly = callsCnt = 0;
-  history.clear();
-  counterMoves.clear();
-  idx = Threads.size(); // Starts from 0
 }
 
 
@@ -102,48 +91,19 @@ void Thread::idle_loop() {
   {
       std::unique_lock<Mutex> lk(mutex);
 
+      searching = false;
+
       while (!searching && !exit)
+      {
+          sleepCondition.notify_one(); // Wake up main thread if needed
           sleepCondition.wait(lk);
+      }
 
       lk.unlock();
 
       if (!exit && searching)
           search();
   }
-}
-
-
-// MainThread::idle_loop() is where the main thread is parked waiting to be started
-// when there is a new search. The main thread will launch all the slave threads.
-
-void MainThread::idle_loop() {
-
-  while (!exit)
-  {
-      std::unique_lock<Mutex> lk(mutex);
-
-      thinking = false;
-
-      while (!thinking && !exit)
-      {
-          sleepCondition.notify_one(); // Wake up the UI thread if needed
-          sleepCondition.wait(lk);
-      }
-
-      lk.unlock();
-
-      if (!exit)
-          think();
-  }
-}
-
-
-// MainThread::join() waits for main thread to finish thinking
-
-void MainThread::join() {
-
-  std::unique_lock<Mutex> lk(mutex);
-  sleepCondition.wait(lk, [&]{ return !thinking; });
 }
 
 
@@ -154,7 +114,7 @@ void MainThread::join() {
 
 void ThreadPool::init() {
 
-  push_back(new_thread<MainThread>());
+  push_back(new MainThread);
   read_uci_options();
 }
 
@@ -165,7 +125,7 @@ void ThreadPool::init() {
 void ThreadPool::exit() {
 
   for (Thread* th : *this)
-      delete_thread(th);
+      delete th;
 
   clear(); // Get rid of stale pointers
 }
@@ -184,11 +144,11 @@ void ThreadPool::read_uci_options() {
   assert(requested > 0);
 
   while (size() < requested)
-      push_back(new_thread<Thread>());
+      push_back(new Thread);
 
   while (size() > requested)
   {
-      delete_thread(back());
+      delete back();
       pop_back();
   }
 }
@@ -210,7 +170,8 @@ int64_t ThreadPool::nodes_searched() {
 
 void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
                                 StateStackPtr& states) {
-  main()->join();
+  for (Thread* th : Threads)
+      th->join();
 
   Signals.stopOnPonderhit = Signals.firstRootMove = false;
   Signals.stop = Signals.failedLowAtRoot = false;
@@ -229,6 +190,6 @@ void ThreadPool::start_thinking(const Position& pos, const LimitsType& limits,
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           main()->rootMoves.push_back(RootMove(m));
 
-  main()->thinking = true;
-  main()->notify_one(); // Wake up main thread: 'thinking' must be already set
+  main()->searching = true;
+  main()->notify_one(); // Wake up main thread: 'searching' must be already set
 }

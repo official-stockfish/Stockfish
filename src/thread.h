@@ -35,41 +35,30 @@
 #include "thread_win32.h"
 
 
-/// ThreadBase struct is the base of the hierarchy from where we derive all the
-/// specialized thread classes.
+/// Thread struct keeps together all the thread related stuff. We also use
+/// per-thread pawn and material hash tables so that once we get a pointer to an
+/// entry its life time is unlimited and we don't have to care about someone
+/// changing the entry under our feet.
 
-struct ThreadBase : public std::thread {
-
-  ThreadBase() { exit = false; }
-  virtual ~ThreadBase() = default;
-  virtual void idle_loop() = 0;
-  void notify_one();
-  void wait(std::atomic_bool& b);
-  void wait_while(std::atomic_bool& b);
-
-  Mutex mutex;
-  ConditionVariable sleepCondition;
-  std::atomic_bool exit;
-};
-
-
-/// Thread struct keeps together all the thread related stuff like locks, state,
-/// history and countermoves tables. We also use per-thread pawn and material hash
-/// tables so that once we get a pointer to an entry its life time is unlimited
-/// and we don't have to care about someone changing the entry under our feet.
-
-struct Thread : public ThreadBase {
+struct Thread : public std::thread {
 
   Thread();
-  virtual void idle_loop();
-  void search(bool isMainThread = false);
+  virtual ~Thread();
+  virtual void search();
+  void idle_loop();
+  void join();
+  void notify_one();
+  void wait(std::atomic_bool& b);
+
+  std::atomic_bool exit, searching, resetCalls;
+  Mutex mutex;
+  ConditionVariable sleepCondition;
 
   Pawns::Table pawnsTable;
   Material::Table materialTable;
   Endgames endgames;
   size_t idx, PVIdx;
   int maxPly, callsCnt;
-  std::atomic_bool searching, resetCallsCnt;
 
   Position rootPos;
   Search::RootMoveVector rootMoves;
@@ -83,11 +72,7 @@ struct Thread : public ThreadBase {
 /// MainThread is a derived classes used to characterize the the main one
 
 struct MainThread : public Thread {
-  MainThread() { thinking = true; } // Avoid a race with start_thinking()
-  virtual void idle_loop();
-  void join();
-  void think();
-  std::atomic_bool thinking;
+  virtual void search();
 };
 
 

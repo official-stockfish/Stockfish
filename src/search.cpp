@@ -220,11 +220,11 @@ uint64_t Search::perft(Position& pos, Depth depth) {
 template uint64_t Search::perft<true>(Position&, Depth);
 
 
-/// MainThread::think() is called by the main thread when the program receives
+/// MainThread::search() is called by the main thread when the program receives
 /// the UCI 'go' command. It searches from root position and at the end prints
 /// the "bestmove" to output.
 
-void MainThread::think() {
+void MainThread::search() {
 
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
@@ -299,7 +299,7 @@ void MainThread::think() {
           }
       }
 
-      search(true); // Let's start searching!
+      Thread::search(); // Let's start searching!
   }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
@@ -324,7 +324,7 @@ void MainThread::think() {
   // Wait until all threads have finished
   for (Thread* th : Threads)
       if (th != this)
-          th->wait_while(th->searching);
+          th->join();
 
   // Check if there are threads with a better score than main thread.
   Thread* bestThread = this;
@@ -351,11 +351,12 @@ void MainThread::think() {
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, user stops the search, or the maximum search depth is reached.
 
-void Thread::search(bool isMainThread) {
+void Thread::search() {
 
   Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
   Value bestValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
+  bool isMainThread = (this == Threads.main());
 
   std::memset(ss-2, 0, 5 * sizeof(Stack));
 
@@ -532,9 +533,6 @@ void Thread::search(bool isMainThread) {
       }
   }
 
-  searching = false;
-  notify_one(); // Wake up main thread if is sleeping waiting for us
-
   if (!isMainThread)
       return;
 
@@ -583,15 +581,15 @@ namespace {
     ss->ply = (ss-1)->ply + 1;
 
     // Check for available remaining time
-    if (thisThread->resetCallsCnt.load(std::memory_order_relaxed))
+    if (thisThread->resetCalls.load(std::memory_order_relaxed))
     {
-        thisThread->resetCallsCnt = false;
+        thisThread->resetCalls = false;
         thisThread->callsCnt = 0;
     }
     if (++thisThread->callsCnt > 4096)
     {
         for (Thread* th : Threads)
-            th->resetCallsCnt = true;
+            th->resetCalls = true;
 
         check_time();
     }
