@@ -161,6 +161,8 @@ void benchmark(const Position& current, istream& is) {
           Threads.main()->join();
           nodes += Threads.nodes_searched();
       }
+
+      Search::clear();
   }
 
   elapsed = now() - elapsed + 1; // Ensure positivity to avoid a 'divide by zero'
