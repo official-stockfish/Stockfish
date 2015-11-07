@@ -386,7 +386,7 @@ void Thread::search(bool isMainThread) {
   {
       // Set up the new depth for the helper threads
       if (!isMainThread)
-          rootDepth = Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx)));
+          rootDepth = std::min(DEPTH_MAX - ONE_PLY, Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx))));
 
       // Age out PV variability metric
       if (isMainThread)
@@ -562,7 +562,7 @@ namespace {
 
     assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
-    assert(depth > DEPTH_ZERO);
+    assert(DEPTH_ZERO < depth && depth < DEPTH_MAX);
 
     Move pv[MAX_PLY+1], quietsSearched[64];
     StateInfo st;
