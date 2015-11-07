@@ -77,7 +77,7 @@ namespace {
 
   // Skill struct is used to implement strength limiting
   struct Skill {
-    Skill(int l) : level(l) {}
+    explicit Skill(int l) : level(l) {}
     bool enabled() const { return level < 20; }
     bool time_to_pick(Depth depth) const { return depth / ONE_PLY == 1 + level; }
     Move best_move(size_t multiPV) { return best ? best : pick_best(multiPV); }
@@ -326,22 +326,34 @@ void MainThread::think() {
       wait(Signals.stop);
   }
 
-  // Check if there are threads with a better score than main thread.
-  Thread* bestThread = this;
-  for (Thread* th : Threads)
-      if (   th->completedDepth > bestThread->completedDepth
-          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-        bestThread = th;
+  // Check if there are threads with a better score than main thread and update
+  // the PV sent to GUI in this case.
+  if (!Skill(Options["Skill Level"]).enabled())
+  {
+      Thread* bestThread = this;
+      for (Thread* th : Threads)
+          if (   th->completedDepth > bestThread->completedDepth
+              && th->rootMoves[0].score > bestThread->rootMoves[0].score)
+              bestThread = th;
 
-  // Send new PV when needed.
-  // FIXME: Breaks multiPV, and skill levels
-  if (bestThread != this)
-      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+      if (bestThread != this)
+      {
+          Move bm = bestThread->rootMoves[0].pv[0];
+          if (bm != rootMoves[0].pv[0])
+          {
+              RootMove& rm = *std::find(rootMoves.begin(), rootMoves.end(), bm);
+              rm = bestThread->rootMoves[0];
+              std::stable_sort(rootMoves.begin(), rootMoves.end());
+              rootDepth = bestThread->rootDepth;
+              sync_cout << UCI::pv(this, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+          }
+      }
+  }
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  sync_cout << "bestmove " << UCI::move(rootMoves[0].pv[0], rootPos.is_chess960());
 
-  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+  if (rootMoves[0].pv.size() > 1 || rootMoves[0].extract_ponder_from_tt(rootPos))
+      std::cout << " ponder " << UCI::move(rootMoves[0].pv[1], rootPos.is_chess960());
 
   std::cout << sync_endl;
 }
@@ -440,7 +452,7 @@ void Thread::search(bool isMainThread) {
                   && multiPV == 1
                   && (bestValue <= alpha || bestValue >= beta)
                   && Time.elapsed() > 3000)
-                  sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+                  sync_cout << UCI::pv(this, alpha, beta) << sync_endl;
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -479,7 +491,7 @@ void Thread::search(bool isMainThread) {
                         << " time " << Time.elapsed() << sync_endl;
 
           else if (PVIdx + 1 == multiPV || Time.elapsed() > 3000)
-              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              sync_cout << UCI::pv(this, alpha, beta) << sync_endl;
       }
 
       if (!Signals.stop)
@@ -1509,24 +1521,22 @@ moves_loop: // When in check search starts from here
 /// UCI::pv() formats PV information according to the UCI protocol. UCI requires
 /// that all (if any) unsearched PV lines are sent using a previous search score.
 
-string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
+string UCI::pv(const Thread* th, Value alpha, Value beta) {
 
   std::stringstream ss;
   int elapsed = Time.elapsed() + 1;
-  const Search::RootMoveVector& rootMoves = pos.this_thread()->rootMoves;
-  size_t PVIdx = pos.this_thread()->PVIdx;
-  size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
+  size_t multiPV = std::min((size_t)Options["MultiPV"], th->rootMoves.size());
   uint64_t nodes_searched = Threads.nodes_searched();
 
   for (size_t i = 0; i < multiPV; ++i)
   {
-      bool updated = (i <= PVIdx);
+      bool updated = (i <= th->PVIdx);
 
-      if (depth == ONE_PLY && !updated)
+      if (th->rootDepth == ONE_PLY && !updated)
           continue;
 
-      Depth d = updated ? depth : depth - ONE_PLY;
-      Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
+      Depth d = updated ? th->rootDepth : th->rootDepth - ONE_PLY;
+      Value v = updated ? th->rootMoves[i].score : th->rootMoves[i].previousScore;
 
       bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
       v = tb ? TB::Score : v;
@@ -1536,11 +1546,11 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
 
       ss << "info"
          << " depth "    << d / ONE_PLY
-         << " seldepth " << pos.this_thread()->maxPly
+         << " seldepth " << th->maxPly
          << " multipv "  << i + 1
          << " score "    << UCI::value(v);
 
-      if (!tb && i == PVIdx)
+      if (!tb && i == th->PVIdx)
           ss << (v >= beta ? " lowerbound" : v <= alpha ? " upperbound" : "");
 
       ss << " nodes "    << nodes_searched
@@ -1553,8 +1563,8 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
          << " time "     << elapsed
          << " pv";
 
-      for (Move m : rootMoves[i].pv)
-          ss << " " << UCI::move(m, pos.is_chess960());
+      for (Move m : th->rootMoves[i].pv)
+          ss << " " << UCI::move(m, th->rootPos.is_chess960());
   }
 
   return ss.str();

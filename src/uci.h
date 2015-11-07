@@ -26,6 +26,7 @@
 #include "types.h"
 
 class Position;
+class Thread;
 
 namespace UCI {
 
@@ -69,7 +70,7 @@ void loop(int argc, char* argv[]);
 std::string value(Value v);
 std::string square(Square s);
 std::string move(Move m, bool chess960);
-std::string pv(const Position& pos, Depth depth, Value alpha, Value beta);
+std::string pv(const Thread* th, Value alpha, Value beta);
 Move to_move(const Position& pos, std::string& str);
 
 } // namespace UCI
