@@ -388,9 +388,9 @@ void Thread::search(bool isMainThread) {
       if (!isMainThread)
 		{
 		if (Limits.use_time_management() && Time.elapsed() > Time.available() / 5) 
-			rootDepth = Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx)))/2;
+			rootDepth = Threads.main()->rootDepth + Depth(int(2.7 * log(1 + this->idx)))/2;
 		else
-			rootDepth = Threads.main()->rootDepth + Depth(int(2.2 * log(1 + this->idx)));
+			rootDepth = Threads.main()->rootDepth + Depth(int(2.7 * log(1 + this->idx)));
 		}
 
       // Age out PV variability metric
