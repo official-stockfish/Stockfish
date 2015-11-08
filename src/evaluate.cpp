@@ -141,11 +141,21 @@ namespace {
       S(112,125), S(113,127), S(117,137), S(122,143) }
   };
 
+  // Mask of allowed outpost squares indexed by color
+  const Bitboard OutpostMask[COLOR_NB] = { Rank4BB | Rank5BB | Rank6BB, Rank5BB | Rank4BB | Rank3BB };
+
   // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and
   // bishops outposts, bigger if outpost piece is supported by a pawn.
   const Score Outpost[][2] = {
     { S(42,11), S(63,17) }, // Knights
     { S(18, 5), S(27, 8) }  // Bishops
+  };
+
+  // PossibleOutpost[knight/bishop][supported by pawn] contains bonuses for knights and
+  // bishops possible outpost squares, bigger if outpost square is supported by a pawn.
+  const Score PossibleOutpost[][2] = {
+    { S(21, 5), S(31, 8) }, // Knights
+    { S( 8, 2), S(13, 4) }  // Bishops
   };
 
   // Threat[minor/rook][attacked PieceType] contains
@@ -257,7 +267,7 @@ namespace {
   template<PieceType Pt, Color Us, bool DoTrace>
   Score evaluate_pieces(const Position& pos, EvalInfo& ei, Score* mobility, const Bitboard* mobilityArea) {
 
-    Bitboard b;
+    Bitboard b, bb;
     Square s;
     Score score = SCORE_ZERO;
 
@@ -283,7 +293,7 @@ namespace {
         {
             ei.kingAttackersCount[Us]++;
             ei.kingAttackersWeight[Us] += KingAttackWeights[Pt];
-            Bitboard bb = b & ei.attackedBy[Them][KING];
+            bb = b & ei.attackedBy[Them][KING];
             if (bb)
                 ei.kingAdjacentZoneAttacksCount[Us] += popcount<Max15>(bb);
         }
@@ -300,10 +310,15 @@ namespace {
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus for outpost square
-            if (   relative_rank(Us, s) >= RANK_4
-                && relative_rank(Us, s) <= RANK_6
-                && !(pos.pieces(Them, PAWN) & pawn_attack_span(Us, s)))
+            bb = OutpostMask[Us] & ~ei.pi->pawn_attacks_span(Them);
+            if (bb & s)
                 score += Outpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & s)];
+            else
+            {
+                bb &= b & ~pos.pieces(Us);
+                if(bb)
+                   score += PossibleOutpost[Pt == BISHOP][!!(ei.attackedBy[Us][PAWN] & bb)];
+            }
 
             // Bonus when behind a pawn
             if (    relative_rank(Us, s) < RANK_5
