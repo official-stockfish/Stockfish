@@ -326,12 +326,37 @@ void MainThread::think() {
       wait(Signals.stop);
   }
 
-  // Check if there are threads with a better score than main thread.
+  // Use all thread results in a voting scheme to select the best move unless
+  // we played an easy move in which case we need to use the main thread.
   Thread* bestThread = this;
-  for (Thread* th : Threads)
-      if (   th->completedDepth > bestThread->completedDepth
-          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-        bestThread = th;
+  if (Time.elapsed() > Time.available())
+  {
+      typedef std::pair<Move, int> MoveVote;
+      std::vector<MoveVote> votes;
+      votes.reserve(Threads.size());
+
+      for (Thread* th : Threads)
+      {
+          if (th->rootMoves[0].score >= this->rootMoves[0].score)
+          {
+              Move m = th->rootMoves[0].pv[0];
+              int voteWeight = (th->completedDepth + int(Threads.size() - th->idx)) * 128 + th->maxPly;
+
+              const auto voteIt = std::find_if(votes.begin(), votes.end(), [m](const MoveVote& p){ return p.first == m; });
+              if (voteIt != votes.end())
+                  voteIt->second += voteWeight;
+              else
+                  votes.push_back({ m, voteWeight });
+          }
+      }
+
+      const auto maxVote = std::max_element(votes.begin(), votes.end(), [](const MoveVote& p1, const MoveVote& p2) {
+          return p1.second < p2.second; });
+
+      Move bestMove = maxVote->first;
+      bestThread = *std::find_if(Threads.begin(), Threads.end(), [bestMove](const Thread* t){ return t->rootMoves[0].pv[0] == bestMove; });
+  }
+
 
   // Send new PV when needed.
   // FIXME: Breaks multiPV, and skill levels
