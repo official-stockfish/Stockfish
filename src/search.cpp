@@ -300,14 +300,6 @@ void MainThread::think() {
       }
 
       search(true); // Let's start searching!
-
-      // Stop the threads
-      Signals.stop = true;
-
-      // Wait until all threads have finished
-      for (Thread* th : Threads)
-          if (th != this)
-              th->wait_while(th->searching);
   }
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
@@ -325,6 +317,14 @@ void MainThread::think() {
       Signals.stopOnPonderhit = true;
       wait(Signals.stop);
   }
+
+  // Stop the threads if not already stopped
+  Signals.stop = true;
+
+  // Wait until all threads have finished
+  for (Thread* th : Threads)
+      if (th != this)
+          th->wait_while(th->searching);
 
   // Check if there are threads with a better score than main thread.
   Thread* bestThread = this;
