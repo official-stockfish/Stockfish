@@ -142,7 +142,9 @@ namespace {
   };
 
   // Mask of allowed outpost squares indexed by color
-  const Bitboard OutpostMask[COLOR_NB] = { Rank4BB | Rank5BB | Rank6BB, Rank5BB | Rank4BB | Rank3BB };
+  const Bitboard OutpostMask[COLOR_NB] = {
+    Rank4BB | Rank5BB | Rank6BB, Rank5BB | Rank4BB | Rank3BB
+  };
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for knights and
   // bishops outposts, bigger if outpost piece is supported by a pawn.
