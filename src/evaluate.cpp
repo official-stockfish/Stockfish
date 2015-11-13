@@ -154,7 +154,7 @@ namespace {
   };
 
   // PossibleOutpost[knight/bishop][supported by pawn] contains bonuses for knights and
-  // bishops which can reach in one move a outpost square, bigger if outpost square is supported by a pawn.
+  // bishops which can reach a outpost square in one move, bigger if outpost square is supported by a pawn.
   const Score PossibleOutpost[][2] = {
     { S(21, 5), S(31, 8) }, // Knights
     { S( 8, 2), S(13, 4) }  // Bishops
