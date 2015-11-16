@@ -82,8 +82,6 @@ struct StateInfo {
 
 class Position {
 
-  friend std::ostream& operator<<(std::ostream&, const Position&);
-
 public:
   static void init();
 
@@ -209,6 +207,8 @@ private:
   StateInfo* st;
   bool chess960;
 };
+
+extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
 inline Color Position::side_to_move() const {
   return sideToMove;
