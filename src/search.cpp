@@ -335,6 +335,7 @@ void MainThread::search() {
       std::vector<MoveVote> votes;
       votes.reserve(Threads.size());
 
+      // Cast votes.
       for (Thread* th : Threads)
       {
           if (th->rootMoves[0].score >= this->rootMoves[0].score)
@@ -353,8 +354,15 @@ void MainThread::search() {
       const auto maxVote = std::max_element(votes.begin(), votes.end(), [](const MoveVote& p1, const MoveVote& p2) {
           return p1.second < p2.second; });
 
+      // Select winning move w/ PV from the thread that cast the largest vote.
       Move bestMove = maxVote->first;
-      bestThread = *std::find_if(Threads.begin(), Threads.end(), [bestMove](const Thread* t){ return t->rootMoves[0].pv[0] == bestMove; });
+      size_t threadCnt = Threads.size();
+      bestThread = *std::max_element(Threads.begin(), Threads.end(), [bestMove, threadCnt](const Thread* t1, const Thread* t2) {
+          return t2->rootMoves[0].pv[0] == bestMove
+              && (   t1->rootMoves[0].pv[0] != bestMove
+                  ||   (t1->completedDepth + int(threadCnt - t1->idx)) * 128 + t1->maxPly 
+                     < (t2->completedDepth + int(threadCnt - t2->idx)) * 128 + t2->maxPly);
+      });
   }
 
 
