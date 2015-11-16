@@ -349,7 +349,7 @@ static ExtMove *add_underprom_caps(Position& pos, ExtMove *stack, ExtMove *end)
 static int probe_ab(Position& pos, int alpha, int beta, int *success)
 {
   int v;
-  ExtMove stack[64];
+  ExtMove stack[MAX_MOVES];
   ExtMove *moves, *end;
   StateInfo st;
 
