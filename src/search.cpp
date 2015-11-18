@@ -326,12 +326,45 @@ void MainThread::search() {
       if (th != this)
           th->join();
 
-  // Check if there are threads with a better score than main thread.
+  // Use all thread results in a voting scheme to select the best move unless
+  // we played an easy move in which case we need to use the main thread.
   Thread* bestThread = this;
-  for (Thread* th : Threads)
-      if (   th->completedDepth > bestThread->completedDepth
-          && th->rootMoves[0].score > bestThread->rootMoves[0].score)
-        bestThread = th;
+  if (Time.elapsed() > Time.available())
+  {
+      typedef std::pair<Move, int> MoveVote;
+      std::vector<MoveVote> votes;
+      votes.reserve(Threads.size());
+
+      // Cast votes.
+      for (Thread* th : Threads)
+      {
+          if (th->rootMoves[0].score >= this->rootMoves[0].score)
+          {
+              Move m = th->rootMoves[0].pv[0];
+              int voteWeight = (th->completedDepth + int(Threads.size() - th->idx)) * MAX_PLY + th->maxPly;
+
+              const auto voteIt = std::find_if(votes.begin(), votes.end(), [m](const MoveVote& p){ return p.first == m; });
+              if (voteIt != votes.end())
+                  voteIt->second += voteWeight;
+              else
+                  votes.push_back({ m, voteWeight });
+          }
+      }
+
+      const auto maxVote = std::max_element(votes.begin(), votes.end(), [](const MoveVote& p1, const MoveVote& p2) {
+          return p1.second < p2.second; });
+
+      // Select the thread that cast the largest vote for the winning move.
+      Move bestMove = maxVote->first;
+      size_t threadCnt = Threads.size();
+      bestThread = *std::max_element(Threads.begin(), Threads.end(), [bestMove, threadCnt](const Thread* t1, const Thread* t2) {
+          return t2->rootMoves[0].pv[0] == bestMove
+              && (   t1->rootMoves[0].pv[0] != bestMove
+                  ||   (t1->completedDepth + int(threadCnt - t1->idx)) * MAX_PLY + t1->maxPly 
+                     < (t2->completedDepth + int(threadCnt - t2->idx)) * MAX_PLY + t2->maxPly);
+      });
+  }
+
 
   // Send new PV when needed.
   // FIXME: Breaks multiPV, and skill levels
