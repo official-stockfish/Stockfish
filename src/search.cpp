@@ -354,7 +354,7 @@ void MainThread::search() {
       const auto maxVote = std::max_element(votes.begin(), votes.end(), [](const MoveVote& p1, const MoveVote& p2) {
           return p1.second < p2.second; });
 
-      // Select winning move w/ PV from the thread that cast the largest vote.
+      // Select the thread that cast the largest vote for the winning move.
       Move bestMove = maxVote->first;
       size_t threadCnt = Threads.size();
       bestThread = *std::max_element(Threads.begin(), Threads.end(), [bestMove, threadCnt](const Thread* t1, const Thread* t2) {
