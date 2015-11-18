@@ -341,7 +341,7 @@ void MainThread::search() {
           if (th->rootMoves[0].score >= this->rootMoves[0].score)
           {
               Move m = th->rootMoves[0].pv[0];
-              int voteWeight = (th->completedDepth + int(Threads.size() - th->idx)) * 128 + th->maxPly;
+              int voteWeight = (th->completedDepth + int(Threads.size() - th->idx)) * MAX_PLY + th->maxPly;
 
               const auto voteIt = std::find_if(votes.begin(), votes.end(), [m](const MoveVote& p){ return p.first == m; });
               if (voteIt != votes.end())
@@ -360,8 +360,8 @@ void MainThread::search() {
       bestThread = *std::max_element(Threads.begin(), Threads.end(), [bestMove, threadCnt](const Thread* t1, const Thread* t2) {
           return t2->rootMoves[0].pv[0] == bestMove
               && (   t1->rootMoves[0].pv[0] != bestMove
-                  ||   (t1->completedDepth + int(threadCnt - t1->idx)) * 128 + t1->maxPly 
-                     < (t2->completedDepth + int(threadCnt - t2->idx)) * 128 + t2->maxPly);
+                  ||   (t1->completedDepth + int(threadCnt - t1->idx)) * MAX_PLY + t1->maxPly 
+                     < (t2->completedDepth + int(threadCnt - t2->idx)) * MAX_PLY + t2->maxPly);
       });
   }
 
